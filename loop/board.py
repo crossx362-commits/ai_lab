@@ -28,13 +28,14 @@ import re
 import subprocess
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 import webbrowser
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 from zoneinfo import ZoneInfo
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -68,6 +69,14 @@ _GROK_PRODUCTS = {
 _usage_lock = threading.Lock()
 _usage_mem: dict | None = None
 _usage_at = 0.0
+_git_sync_lock = threading.Lock()
+_git_sync_last = {
+    "busy": False,
+    "ok": None,
+    "action": "",
+    "at": "",
+    "message": "최근 동기화 없음",
+}
 
 CHOICES = {
     "do": "이걸로 진행 — 큐 맨 위에서 이것만 잡아라",
@@ -1733,38 +1742,198 @@ def commit_allowed(path: str) -> bool:
     name = Path(norm).name
     if name in (".env", ".env.encrypted") or name.endswith(".log"):
         return False
-    return any(norm == p.rstrip("/") or norm.startswith(p) for p in _COMMIT_ALLOW)
+    return any(
+        norm.startswith(p) if p.endswith("/") else norm == p
+        for p in _COMMIT_ALLOW
+    )
 
 
-def dirty_files() -> list[dict]:
+def _dirty_files(strict: bool = False) -> tuple[list[dict], str]:
     try:
         raw = subprocess.check_output(
-            ["git", "status", "--porcelain", "-u"],
+            ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
             cwd=ROOT,
-            text=True,
-            encoding="utf-8",
             timeout=8,
         )
-    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return []
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        message = "Git 작업 트리 상태 확인 실패"
+        if strict:
+            raise ValueError(message) from e
+        return [], message
     out = []
-    for line in raw.splitlines():
-        if len(line) < 4:
+    records = raw.split(b"\0")
+    i = 0
+    while i < len(records):
+        record = records[i]
+        i += 1
+        if len(record) < 4:
             continue
-        code, rest = line[:2], line[3:]
-        if " -> " in rest:
-            rest = rest.split(" -> ", 1)[1]
-        path = rest.strip().strip('"')
+        code = record[:2].decode("ascii", errors="replace")
+        path = os.fsdecode(record[3:])
+        source_path = ""
+        if "R" in code or "C" in code:
+            if i < len(records):
+                source_path = os.fsdecode(records[i])
+                i += 1
+        if code == "??":
+            kind = "untracked"
+        elif "D" in code:
+            kind = "deleted"
+        elif "R" in code or "C" in code:
+            kind = "renamed"
+        elif "A" in code:
+            kind = "added"
+        else:
+            kind = "modified"
+        allowed = commit_allowed(path)
+        if source_path:
+            allowed = allowed and commit_allowed(source_path)
         out.append({
             "path": path,
             "code": code.strip() or "M",
-            "allowed": commit_allowed(path),
+            "allowed": allowed,
+            "kind": kind,
+            "staged": code[0] not in (" ", "?"),
+            "unstaged": code[1] != " ",
+            "source_path": source_path,
         })
-    return out
+    return out, ""
 
 
-def commit_work(message: str) -> dict:
-    files = [f["path"] for f in dirty_files() if f["allowed"]]
+def dirty_files() -> list[dict]:
+    files, _error = _dirty_files()
+    return files
+
+
+def _git_commit_info(ref: str) -> dict:
+    if not ref:
+        return {"hash": "", "when": "", "subject": ""}
+    try:
+        raw = subprocess.check_output(
+            [
+                "git", "log", "-1", "--pretty=format:%h%x09%ad%x09%s",
+                "--date=format:%m-%d %H:%M", ref,
+            ],
+            cwd=ROOT, text=True, encoding="utf-8", timeout=8,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        raw = ""
+    parts = raw.split("\t", 2)
+    if len(parts) != 3:
+        return {"hash": "", "when": "", "subject": ""}
+    return {"hash": parts[0], "when": parts[1], "subject": parts[2]}
+
+
+def git_detail(strict: bool = False) -> dict:
+    """현재 worktree와 추적 원격의 차이를 보드 표시용으로 계산한다."""
+    branch_error = ""
+    try:
+        branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=ROOT, text=True, encoding="utf-8", timeout=5,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        if strict:
+            raise ValueError("Git 브랜치 확인 실패") from e
+        branch = ""
+        branch_error = "Git 브랜치 확인 실패"
+
+    upstream_error = ""
+    try:
+        upstream = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+            cwd=ROOT, text=True, encoding="utf-8", timeout=5,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except subprocess.CalledProcessError:
+        upstream = ""
+    except (OSError, subprocess.TimeoutExpired) as e:
+        if strict:
+            raise ValueError("Git 원격 추적 확인 실패") from e
+        upstream = ""
+        upstream_error = "Git 원격 추적 확인 실패"
+
+    ahead = behind = 0
+    relation_error = ""
+    if upstream:
+        try:
+            raw = subprocess.check_output(
+                ["git", "rev-list", "--left-right", "--count", f"HEAD...{upstream}"],
+                cwd=ROOT, text=True, encoding="utf-8", timeout=8,
+                stderr=subprocess.DEVNULL,
+            ).strip().split()
+            if len(raw) == 2:
+                ahead, behind = int(raw[0]), int(raw[1])
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError) as e:
+            if strict:
+                raise ValueError("Git 원격 차이 확인 실패") from e
+            ahead = behind = 0
+            relation_error = "Git 원격 차이 확인 실패"
+
+    files, worktree_error = _dirty_files(strict=strict)
+    counts = {key: 0 for key in ("modified", "added", "deleted", "renamed", "untracked")}
+    for item in files:
+        counts[item["kind"]] += 1
+    allowed = sum(1 for item in files if item["allowed"])
+    error = branch_error or upstream_error or relation_error or worktree_error
+    if error:
+        status = error
+    elif not branch:
+        status = "Git 상태 확인 불가"
+    elif not upstream:
+        status = "원격 추적 없음"
+    elif ahead and behind:
+        status = f"로컬 {ahead}개·원격 {behind}개로 갈라짐"
+    elif behind:
+        status = f"원격 {behind}개 앞섬"
+    elif ahead:
+        status = f"로컬 {ahead}개 앞섬"
+    else:
+        status = "origin과 같음"
+    change_id = hashlib.sha1(json.dumps(sorted(
+        (item["code"], item["path"], item["source_path"], item["allowed"])
+        for item in files
+    ), ensure_ascii=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:12]
+    return {
+        "ok": not error,
+        "error": error,
+        "branch": branch,
+        "upstream": upstream,
+        "ahead": ahead,
+        "behind": behind,
+        "diverged": ahead > 0 and behind > 0,
+        "status": status,
+        "changed": len(files),
+        "allowed": allowed,
+        "blocked": len(files) - allowed,
+        "staged": sum(1 for item in files if item["staged"]),
+        "unstaged": sum(1 for item in files if item["unstaged"]),
+        "change_id": change_id,
+        "counts": counts,
+        "files": files,
+        "local": _git_commit_info("HEAD"),
+        "remote": _git_commit_info(upstream),
+    }
+
+
+def git_summary() -> dict:
+    summary = git_detail()
+    summary.pop("files", None)
+    return summary
+
+
+def _commit_work(message: str) -> dict:
+    dirty, _error = _dirty_files(strict=True)
+    staged_blocked = [
+        item for item in dirty if item.get("staged") and not item.get("allowed")
+    ]
+    if staged_blocked:
+        raise ValueError(
+            f"제외 파일 {len(staged_blocked)}개가 이미 스테이징되어 있다 — "
+            "다른 커밋에 섞지 않는다")
+    files = [f["path"] for f in dirty if f["allowed"]]
     if not files:
         raise ValueError("커밋할 허용 파일이 없다")
     msg = re.sub(r"\s+", " ", (message or "").strip())
@@ -1775,7 +1944,11 @@ def commit_work(message: str) -> dict:
     # add와 commit을 한 호흡 — 스테이징 방치 금지
     subprocess.check_call(["git", "add", "--"] + files, cwd=ROOT, timeout=20)
     try:
-        subprocess.check_call(["git", "commit", "-m", msg], cwd=ROOT, timeout=20)
+        # --only: 검사 뒤 다른 세션이 stage해도 이 경로 밖 파일은 새 커밋에 넣지 않는다.
+        subprocess.check_call(
+            ["git", "commit", "-m", msg, "--only", "--"] + files,
+            cwd=ROOT, timeout=20,
+        )
     except subprocess.CalledProcessError:
         subprocess.call(["git", "reset", "HEAD", "--"] + files, cwd=ROOT)
         raise ValueError("커밋 실패 — 스테이징을 되돌렸다")
@@ -1784,6 +1957,16 @@ def commit_work(message: str) -> dict:
         cwd=ROOT, text=True, encoding="utf-8", timeout=5,
     ).strip()
     return {"hash": head.split()[0], "subject": head[len(head.split()[0]) + 1:], "files": files}
+
+
+def commit_work(message: str) -> dict:
+    """수동 커밋도 동기화와 같은 잠금으로 index·HEAD 경합을 막는다."""
+    if not _git_sync_lock.acquire(blocking=False):
+        raise ValueError("다른 깃 작업이 이미 진행 중이다")
+    try:
+        return _commit_work(message)
+    finally:
+        _git_sync_lock.release()
 
 
 def push_state() -> dict:
@@ -1802,7 +1985,7 @@ def push_state() -> dict:
     return {"branch": branch, "ahead": ahead}
 
 
-def push_work() -> dict:
+def _push_work() -> dict:
     """지금 브랜치를 origin으로 올린다. **강제 푸시는 하지 않는다** — 남의 커밋을 지운다.
 
     보드 버튼 전용(오너 지시 2026-08-18). 사람이 눌렀을 때만 돈다 — 자동 루프는 이걸 안 부른다.
@@ -1815,11 +1998,13 @@ def push_work() -> dict:
         raise ValueError("브랜치가 없다(detached HEAD) — 푸시하지 않는다")
     if state.get("ahead", 0) <= 0:
         raise ValueError("올릴 커밋이 없다")
+    env = dict(os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
     try:
         out = subprocess.run(
             ["git", "push", "origin", branch],
             cwd=ROOT, text=True, encoding="utf-8", timeout=180,
-            capture_output=True)
+            capture_output=True, env=env)
     except (OSError, subprocess.TimeoutExpired) as e:
         raise ValueError(f"푸시 실패 — {e}") from e
     if out.returncode != 0:
@@ -1828,6 +2013,125 @@ def push_work() -> dict:
         raise ValueError(f"푸시 거절 — {why[:160]}")
     after = push_state()
     return {"branch": branch, "pushed": state["ahead"], "ahead": after.get("ahead", 0)}
+
+
+def push_work() -> dict:
+    """수동 푸시도 동기화와 같은 잠금으로 원격 변경 경합을 막는다."""
+    if not _git_sync_lock.acquire(blocking=False):
+        raise ValueError("다른 깃 작업이 이미 진행 중이다")
+    try:
+        return _push_work()
+    finally:
+        _git_sync_lock.release()
+
+
+def _fetch_origin(branch: str) -> None:
+    """원격 상태만 갱신한다. worktree와 브랜치는 바꾸지 않는다."""
+    env = dict(os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    try:
+        out = subprocess.run(
+            [
+                "git", "fetch", "--prune", "--no-tags",
+                "--no-recurse-submodules", "origin", branch,
+            ],
+            cwd=ROOT, text=True, encoding="utf-8", timeout=180,
+            capture_output=True, env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise ValueError(f"원격 확인 실패 — {e}") from e
+    if out.returncode != 0:
+        tail = (out.stderr or out.stdout or "").strip().splitlines()
+        why = tail[-1] if tail else f"exit {out.returncode}"
+        raise ValueError(f"원격 확인 실패 — {why[:160]}")
+
+
+def _sync_work(message: str = "") -> dict:
+    """원격을 확인한 뒤 허용 변경을 한 커밋으로 묶어 origin에 올린다."""
+    before = git_detail(strict=True)
+    branch = before.get("branch") or ""
+    if not branch or branch == "HEAD":
+        raise ValueError("브랜치가 없다(detached HEAD) — 동기화하지 않는다")
+    upstream = before.get("upstream") or ""
+    if not upstream:
+        raise ValueError(f"origin/{branch} 원격 추적이 없다 — 동기화하지 않는다")
+    if not upstream.startswith("origin/"):
+        raise ValueError(f"origin이 아닌 원격({upstream})을 추적 중이다 — 동기화하지 않는다")
+    expected_upstream = f"origin/{branch}"
+    if upstream != expected_upstream:
+        raise ValueError(
+            f"현재 브랜치와 다른 원격 브랜치({upstream})를 추적 중이다 — "
+            "동기화하지 않는다")
+    _fetch_origin(branch)
+    checked = git_detail(strict=True)
+    if checked.get("behind", 0) > 0:
+        raise ValueError(
+            f"원격이 {checked['behind']}개 앞서 있다 — 자동 병합하지 않는다")
+    staged_blocked = [
+        item for item in checked.get("files", [])
+        if item.get("staged") and not item.get("allowed")
+    ]
+    if staged_blocked:
+        raise ValueError(
+            f"제외 파일 {len(staged_blocked)}개가 이미 스테이징되어 있다 — "
+            "다른 커밋에 섞지 않는다")
+
+    commit = None
+    if checked.get("allowed", 0) > 0:
+        commit = _commit_work(message)
+
+    pushed = 0
+    state = git_detail(strict=True)
+    if state.get("ahead", 0) > 0:
+        pushed = _push_work()["pushed"]
+    return {
+        "action": "synced" if commit or pushed else "noop",
+        "branch": branch,
+        "commit": commit,
+        "pushed": pushed,
+        "at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "git": git_detail(strict=True),
+    }
+
+
+def sync_work(message: str = "") -> dict:
+    """동기화 요청을 직렬화해 여러 탭의 중복 커밋·푸시를 막는다."""
+    if not _git_sync_lock.acquire(blocking=False):
+        raise ValueError("깃 동기화가 이미 진행 중이다")
+    _git_sync_last.update({
+        "busy": True, "ok": None, "action": "running",
+        "message": "원격 확인 중…",
+    })
+    try:
+        result = _sync_work(message)
+    except Exception as e:
+        _git_sync_last.update({
+            "busy": False,
+            "ok": False,
+            "action": "error",
+            "at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "message": str(e),
+        })
+        raise
+    else:
+        message_out = (
+            "이미 최신 상태" if result["action"] == "noop"
+            else f"동기화 완료 · {result['pushed']}개 올림"
+        )
+        _git_sync_last.update({
+            "busy": False,
+            "ok": True,
+            "action": result["action"],
+            "at": result["at"],
+            "message": message_out,
+        })
+        return result
+    finally:
+        _git_sync_lock.release()
+
+
+def git_sync_status() -> dict:
+    return dict(_git_sync_last)
 
 
 def recent_commits() -> list[dict]:
@@ -2329,6 +2633,7 @@ def build_state() -> dict:
     inbox_box = parse_inbox(inbox)
     inbox_box["waiting"] = _plain_list(inbox_box.get("waiting") or [], "body")
     inbox_box["done"] = _plain_list(inbox_box.get("done") or [], "body")
+    git = git_summary()
     return {
         "updated": parse_updated(status),
         "queue": _plain_list(queue),
@@ -2340,8 +2645,9 @@ def build_state() -> dict:
         "choices": _plain_list(pending_choices(queue, miles, decisions, extra)),
         "loop": flags,
         "commits": recent_commits(),
-        "push": push_state(),
-        "git": dirty_files(),
+        "push": {"branch": git.get("branch", ""), "ahead": git.get("ahead", 0)},
+        "git": git,
+        "sync": git_sync_status(),
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
         "slice": _plain_list(slice_checks(status, design, _read(GAME_DESIGN))),
         "stuck": _plain_list(stuck_items(status, flags)),
@@ -2389,8 +2695,45 @@ class Handler(BaseHTTPRequestHandler):
             return {}
         return data if isinstance(data, dict) else {}
 
+    def _events(self, once: bool = False) -> None:
+        """타이머 절전 상태에서도 보드가 갱신되도록 서버가 신호를 보낸다."""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+        limit = 1 if once else 150  # 10분 뒤 EventSource가 자동 재연결한다.
+        try:
+            for sequence in range(limit):
+                payload = (
+                    f"event: refresh\n"
+                    f"data: {{\"sequence\":{sequence}}}\n\n"
+                ).encode("utf-8")
+                self.wfile.write(payload)
+                self.wfile.flush()
+                if not once:
+                    time.sleep(4)
+        except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+            return
+
+    def _post_is_trusted(self) -> bool:
+        """브라우저 form/교차 출처 요청이 로컬 Git을 바꾸지 못하게 한다."""
+        if self.headers.get_content_type() != "application/json":
+            self._json(415, {"ok": False, "error": "JSON 요청만 허용한다"})
+            return False
+        origin = (self.headers.get("Origin") or "").strip()
+        if not origin:
+            return True  # 로컬 CLI·테스트 클라이언트
+        parsed = urlparse(origin)
+        host = (self.headers.get("Host") or "").strip().lower()
+        if parsed.scheme not in ("http", "https") or parsed.netloc.lower() != host:
+            self._json(403, {"ok": False, "error": "다른 출처의 변경 요청을 거부한다"})
+            return False
+        return True
+
     def do_GET(self) -> None:
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         if path in ("/", "/index.html"):
             html = HERE / "board.html"
             try:
@@ -2408,6 +2751,16 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/state":
             self._json(200, build_state())
+            return
+        if path == "/api/git":
+            self._json(200, {
+                "ok": True,
+                "git": git_detail(),
+                "sync": git_sync_status(),
+            })
+            return
+        if path == "/api/events":
+            self._events(parse_qs(parsed.query).get("once") == ["1"])
             return
         if path.startswith("/shots/"):
             rel = unquote(path[len("/shots/"):])
@@ -2428,6 +2781,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
+        if not self._post_is_trusted():
+            return
         data = self._read_json()
         try:
             if path == "/api/decide":
@@ -2488,6 +2843,10 @@ class Handler(BaseHTTPRequestHandler):
                 result = commit_work(str(data.get("message") or ""))
                 self._json(200, {"ok": True, **result})
                 return
+            if path == "/api/sync":
+                result = sync_work(str(data.get("message") or ""))
+                self._json(200, {"ok": True, **result})
+                return
             if path == "/api/push":
                 self._json(200, {"ok": True, **push_work()})
                 return
@@ -2511,7 +2870,7 @@ def _lan_ip() -> str:
 
 
 def main() -> None:
-    host = os.getenv("BOARD_HOST", "0.0.0.0")
+    host = os.getenv("BOARD_HOST", "127.0.0.1")
     srv = ThreadingHTTPServer((host, PORT), Handler)
     print(f"재와 별 개발 보드  (ROOT={ROOT})")
     print(f"  이 기기: http://127.0.0.1:{PORT}/")

@@ -571,6 +571,27 @@ class TestReportTests(unittest.TestCase):
             self.assertEqual(len(data["items"]), 1)
 
 
+def _git_repo(tmp):
+    """Git 기능 테스트용 실제 worktree + bare origin."""
+    import subprocess
+    root = Path(tmp) / "work"
+    bare = Path(tmp) / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+    subprocess.run(["git", "init", "-q", "-b", "master", str(root)], check=True)
+    env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t", **os.environ}
+    (root / "docs").mkdir()
+    (root / "a.txt").write_text("1", encoding="utf-8")
+    (root / "docs" / "sync.txt").write_text("1", encoding="utf-8")
+    subprocess.run(["git", "-C", str(root), "add", "a.txt", "docs/sync.txt"], check=True)
+    subprocess.run(["git", "-C", str(root), "commit", "-qm", "one"], check=True, env=env)
+    subprocess.run(["git", "-C", str(root), "config", "user.name", "t"], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(root), "remote", "add", "origin", str(bare)], check=True)
+    subprocess.run(["git", "-C", str(root), "push", "-q", "-u", "origin", "master"], check=True)
+    return root, bare, env
+
+
 class PushTests(unittest.TestCase):
     """보드 푸시 버튼(오너 지시 2026-08-18) — 진짜 git 저장소로 확인한다.
 
@@ -578,18 +599,7 @@ class PushTests(unittest.TestCase):
     스크립트 성공이 아니었다). 임시 bare 원격을 만들어 실제로 밀어본다."""
 
     def _repo(self, tmp):
-        import subprocess
-        root = Path(tmp) / "work"
-        bare = Path(tmp) / "origin.git"
-        subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
-        subprocess.run(["git", "init", "-q", "-b", "master", str(root)], check=True)
-        env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
-               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t", **os.environ}
-        (root / "a.txt").write_text("1", encoding="utf-8")
-        subprocess.run(["git", "-C", str(root), "add", "a.txt"], check=True)
-        subprocess.run(["git", "-C", str(root), "commit", "-qm", "one"], check=True, env=env)
-        subprocess.run(["git", "-C", str(root), "remote", "add", "origin", str(bare)], check=True)
-        subprocess.run(["git", "-C", str(root), "push", "-q", "origin", "master"], check=True)
+        root, _bare, env = _git_repo(tmp)
         return root, env
 
     def test_push_sends_only_when_ahead(self):
@@ -617,10 +627,678 @@ class PushTests(unittest.TestCase):
     def test_push_never_forces(self):
         """강제 푸시 금지 — 남의 커밋을 지운다. 소스에 --force가 없어야 한다."""
         src = (HERE / "board.py").read_text(encoding="utf-8")
-        body = src[src.index("def push_work"):src.index("def recent_commits")]
+        body = src[src.index("def _push_work"):src.index("def recent_commits")]
         self.assertIn('"git", "push", "origin", branch', body)
         for bad in ('"--force"', '"-f"', '"--force-with-lease"', '"+HEAD"'):
             self.assertNotIn(bad, body)
+
+
+class GitDetailTests(unittest.TestCase):
+    def test_reports_branch_divergence_and_file_breakdown(self):
+        """종류 집계가 틀리면 보드의 상세 수치가 실제 worktree와 어긋난다."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
+            (root / "docs" / "new.txt").write_text("new", encoding="utf-8")
+            (root / ".env").write_text("SECRET=x", encoding="utf-8")
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                detail = board.git_detail()
+            finally:
+                board.ROOT = old
+
+        self.assertEqual(detail["branch"], "master")
+        self.assertEqual(detail["upstream"], "origin/master")
+        self.assertEqual(detail["ahead"], 0)
+        self.assertEqual(detail["behind"], 0)
+        self.assertEqual(detail["changed"], 3)
+        self.assertEqual(detail["allowed"], 2)
+        self.assertEqual(detail["blocked"], 1)
+        self.assertEqual(detail["counts"]["modified"], 1)
+        self.assertEqual(detail["counts"]["untracked"], 2)
+
+    def test_detail_exposes_commit_facts_and_stage_counts(self):
+        """상세 칸의 해시·시각·stage 수가 실제 Git 값과 다르면 안 된다."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
+            subprocess.run(
+                ["git", "-C", str(root), "add", "docs/sync.txt"], check=True)
+            (root / "docs" / "new.txt").write_text("new", encoding="utf-8")
+            expected_hash = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                detail = board.git_detail()
+            finally:
+                board.ROOT = old
+
+        self.assertEqual(detail["status"], "origin과 같음")
+        self.assertEqual(detail["staged"], 1)
+        self.assertEqual(detail["unstaged"], 1)
+        self.assertEqual(detail["local"]["hash"], expected_hash)
+        self.assertEqual(detail["remote"]["hash"], expected_hash)
+        self.assertTrue(detail["local"]["when"])
+        self.assertEqual(detail["local"]["subject"], "one")
+
+    def test_git_summary_omits_heavy_file_array(self):
+        """8초 상태 응답에 전체 파일을 넣으면 숨긴 화면도 계속 대량 렌더된다."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            (root / "docs" / "new.txt").write_text("new", encoding="utf-8")
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                summary = board.git_summary()
+            finally:
+                board.ROOT = old
+
+        self.assertNotIn("files", summary)
+        self.assertEqual(summary["changed"], 1)
+        self.assertEqual(summary["allowed"], 1)
+        self.assertEqual(summary["counts"]["untracked"], 1)
+        self.assertTrue(summary["change_id"])
+
+    def test_detail_and_sync_require_configured_upstream(self):
+        """origin ref가 있어도 실제 upstream 설정이 없으면 커밋·푸시하지 않는다."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            subprocess.run(
+                ["git", "-C", str(root), "branch", "--unset-upstream"], check=True)
+            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
+            before = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                detail = board.git_detail()
+                with self.assertRaisesRegex(ValueError, "원격 추적이 없다"):
+                    board.sync_work("test: no upstream")
+            finally:
+                board.ROOT = old
+            after = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+
+        self.assertEqual(detail["upstream"], "")
+        self.assertEqual(detail["status"], "원격 추적 없음")
+        self.assertEqual(detail["remote"]["hash"], "")
+        self.assertEqual(after, before)
+
+    def test_summary_change_id_changes_when_only_path_changes(self):
+        """집계가 같아도 변경 파일이 바뀌면 열린 상세 목록을 다시 받아야 한다."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, env = _git_repo(tmp)
+            for name in ("a.txt", "b.txt"):
+                (root / "docs" / name).write_text("base", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", "docs"], check=True)
+            subprocess.run(
+                ["git", "-C", str(root), "commit", "-qm", "tracked paths"],
+                check=True, env=env,
+            )
+            (root / "docs" / "a.txt").write_text("changed", encoding="utf-8")
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                first = board.git_summary()
+                subprocess.run(
+                    ["git", "-C", str(root), "checkout", "--", "docs/a.txt"],
+                    check=True,
+                )
+                (root / "docs" / "b.txt").write_text("changed", encoding="utf-8")
+                second = board.git_summary()
+            finally:
+                board.ROOT = old
+
+        self.assertEqual(first["changed"], second["changed"])
+        self.assertEqual(first["counts"], second["counts"])
+        self.assertNotEqual(first["change_id"], second["change_id"])
+
+    def test_git_status_failure_is_explicit_and_sync_fails_closed(self):
+        """git status 실패를 변경 없음으로 표시하거나 동기화하면 안 된다."""
+        import subprocess
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            real_check_output = board.subprocess.check_output
+
+            def fail_status(cmd, *args, **kwargs):
+                if cmd[:3] == ["git", "status", "--porcelain=v1"]:
+                    raise subprocess.CalledProcessError(1, cmd)
+                return real_check_output(cmd, *args, **kwargs)
+
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                with mock.patch.object(board.subprocess, "check_output", side_effect=fail_status):
+                    detail = board.git_detail()
+                    with self.assertRaisesRegex(ValueError, "작업 트리 상태 확인 실패"):
+                        board.sync_work()
+            finally:
+                board.ROOT = old
+
+        self.assertFalse(detail["ok"])
+        self.assertIn("작업 트리 상태 확인 실패", detail["status"])
+
+    def test_dirty_files_preserves_korean_path(self):
+        """Git의 C식 인용 문자열을 경로로 쓰면 화면과 git add가 모두 깨진다."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            path = root / "docs" / "한글 파일.txt"
+            path.write_text("내용", encoding="utf-8")
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                files = board.dirty_files()
+            finally:
+                board.ROOT = old
+
+        item = next(row for row in files if row["kind"] == "untracked")
+        self.assertEqual(item["path"], "docs/한글 파일.txt")
+        self.assertTrue(item["allowed"])
+
+    def test_sync_commits_allowed_files_and_pushes_real_origin(self):
+        """동기화가 제외 파일까지 커밋하거나 origin에 안 올리면 실패한다."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, bare, _env = _git_repo(tmp)
+            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
+            (root / ".env").write_text("SECRET=x", encoding="utf-8")
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                result = board.sync_work("test: board sync")
+                detail = board.git_detail()
+            finally:
+                board.ROOT = old
+
+            remote_body = subprocess.check_output(
+                ["git", "--git-dir", str(bare), "show", "master:docs/sync.txt"],
+                text=True, encoding="utf-8",
+            ).strip()
+            remote_files = subprocess.check_output(
+                ["git", "--git-dir", str(bare), "ls-tree", "-r", "--name-only", "master"],
+                text=True, encoding="utf-8",
+            ).splitlines()
+
+        self.assertEqual(result["action"], "synced")
+        self.assertEqual(result["pushed"], 1)
+        self.assertTrue(result["commit"]["hash"])
+        self.assertEqual(remote_body, "2")
+        self.assertNotIn(".env", remote_files)
+        self.assertEqual(detail["ahead"], 0)
+        self.assertEqual(detail["behind"], 0)
+        self.assertEqual(detail["blocked"], 1)
+
+    def test_sync_clean_repo_is_noop(self):
+        """변경이 없는데 커밋·푸시를 시도하면 버튼이 거짓 실패를 보여 준다."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                result = board.sync_work()
+            finally:
+                board.ROOT = old
+
+        self.assertEqual(result["action"], "noop")
+        self.assertIsNone(result["commit"])
+        self.assertEqual(result["pushed"], 0)
+        self.assertEqual(result["git"]["ahead"], 0)
+        self.assertEqual(result["git"]["behind"], 0)
+
+    def test_sync_status_records_latest_success(self):
+        """주기 갱신 뒤에도 완료 시각·결과를 서버 사실로 다시 그릴 수 있어야 한다."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                result = board.sync_work()
+                status = board.git_sync_status()
+            finally:
+                board.ROOT = old
+
+        self.assertEqual(result["action"], "noop")
+        self.assertFalse(status["busy"])
+        self.assertTrue(status["ok"])
+        self.assertEqual(status["action"], "noop")
+        self.assertTrue(status["at"])
+        self.assertIn("최신", status["message"])
+
+    def test_sync_refuses_pre_staged_blocked_file(self):
+        """다른 세션이 stage한 제외 파일을 commit_work가 함께 삼키면 안 된다."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, bare, _env = _git_repo(tmp)
+            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
+            (root / ".env").write_text("SECRET=x", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", ".env"], check=True)
+            before = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
+                encoding="utf-8",
+            ).strip()
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                with self.assertRaisesRegex(ValueError, "제외 파일.*스테이징"):
+                    board.sync_work("test: must refuse")
+            finally:
+                board.ROOT = old
+
+            after = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
+                encoding="utf-8",
+            ).strip()
+            remote_files = subprocess.check_output(
+                ["git", "--git-dir", str(bare), "ls-tree", "-r", "--name-only", "master"],
+                text=True, encoding="utf-8",
+            ).splitlines()
+
+        self.assertEqual(after, before)
+        self.assertNotIn(".env", remote_files)
+
+    def test_sync_fetches_then_stops_when_origin_is_ahead(self):
+        """원격이 앞선 상태에서 자동 commit/pull/merge를 하면 동시 작업을 덮는다."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, bare, env = _git_repo(tmp)
+            peer = Path(tmp) / "peer"
+            subprocess.run(
+                ["git", "clone", "-q", "-b", "master", str(bare), str(peer)], check=True)
+            (peer / "a.txt").write_text("remote", encoding="utf-8")
+            subprocess.run(["git", "-C", str(peer), "add", "a.txt"], check=True)
+            subprocess.run(
+                ["git", "-C", str(peer), "commit", "-qm", "remote"], check=True, env=env)
+            subprocess.run(["git", "-C", str(peer), "push", "-q"], check=True)
+            (root / "docs" / "sync.txt").write_text("local", encoding="utf-8")
+            before = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                with self.assertRaisesRegex(ValueError, "원격이 1개 앞서"):
+                    board.sync_work("test: must stop")
+                detail = board.git_detail()
+            finally:
+                board.ROOT = old
+            after = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+            merge_started = (root / ".git" / "MERGE_HEAD").exists()
+
+        self.assertEqual(after, before)
+        self.assertEqual(detail["behind"], 1)
+        self.assertEqual(detail["ahead"], 0)
+        self.assertFalse(merge_started)
+
+    def test_sync_refuses_non_origin_upstream(self):
+        """다른 upstream을 비교하고 origin에 push하면 성공 수치가 거짓이 된다."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, bare, _env = _git_repo(tmp)
+            backup = Path(tmp) / "backup.git"
+            subprocess.run(["git", "clone", "-q", "--bare", str(bare), str(backup)], check=True)
+            subprocess.run(
+                ["git", "-C", str(root), "remote", "add", "backup", str(backup)], check=True)
+            subprocess.run(["git", "-C", str(root), "fetch", "-q", "backup"], check=True)
+            subprocess.run(
+                ["git", "-C", str(root), "branch", "--set-upstream-to", "backup/master"],
+                check=True, stdout=subprocess.DEVNULL,
+            )
+            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
+            before = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                with self.assertRaisesRegex(ValueError, "origin이 아닌 원격"):
+                    board.sync_work("test: wrong remote")
+            finally:
+                board.ROOT = old
+            after = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+
+        self.assertEqual(after, before)
+
+    def test_sync_refuses_different_origin_upstream_branch(self):
+        """master가 origin/other를 추적할 때 origin/master로 잘못 push하면 안 된다."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            subprocess.run(["git", "-C", str(root), "branch", "other"], check=True)
+            subprocess.run(
+                ["git", "-C", str(root), "push", "-q", "origin", "other"], check=True)
+            subprocess.run(
+                ["git", "-C", str(root), "branch", "--set-upstream-to", "origin/other"],
+                check=True, stdout=subprocess.DEVNULL,
+            )
+            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
+            before = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                with self.assertRaisesRegex(ValueError, "다른 원격 브랜치"):
+                    board.sync_work("test: mismatched upstream")
+            finally:
+                board.ROOT = old
+            after = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+
+        self.assertEqual(after, before)
+
+    def test_concurrent_sync_returns_busy_without_second_git_run(self):
+        """두 탭의 연속 클릭이 fetch·commit을 두 번 실행하면 안 된다."""
+        import threading
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            entered = threading.Event()
+            release = threading.Event()
+            calls = []
+            errors = []
+            old = (board.ROOT, board._fetch_origin)
+
+            def slow_fetch(branch):
+                calls.append(branch)
+                if len(calls) == 1:
+                    entered.set()
+                    release.wait(3)
+
+            def first_sync():
+                try:
+                    board.sync_work()
+                except Exception as exc:  # pragma: no cover - 실패 내용을 주 스레드에서 확인
+                    errors.append(exc)
+
+            board.ROOT = root
+            board._fetch_origin = slow_fetch
+            worker = threading.Thread(target=first_sync)
+            worker.start()
+            try:
+                self.assertTrue(entered.wait(2), "첫 동기화가 fetch에 진입하지 않음")
+                with self.assertRaisesRegex(ValueError, "이미 진행 중"):
+                    board.sync_work()
+            finally:
+                release.set()
+                worker.join(4)
+                board.ROOT, board._fetch_origin = old
+
+        self.assertEqual(calls, ["master"])
+        self.assertEqual(errors, [])
+
+    def test_sync_lock_blocks_manual_commit(self):
+        """sync의 fetch 중 수동 commit이 index와 HEAD를 바꾸면 안 된다."""
+        import threading
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
+            entered = threading.Event()
+            release = threading.Event()
+            old = (board.ROOT, board._fetch_origin)
+
+            def slow_fetch(_branch):
+                entered.set()
+                release.wait(3)
+
+            board.ROOT = root
+            board._fetch_origin = slow_fetch
+            worker = threading.Thread(target=board.sync_work)
+            worker.start()
+            try:
+                self.assertTrue(entered.wait(2))
+                with self.assertRaisesRegex(ValueError, "깃 작업이 이미 진행 중"):
+                    board.commit_work("test: must wait")
+            finally:
+                release.set()
+                worker.join(4)
+                board.ROOT, board._fetch_origin = old
+
+    def test_sync_lock_blocks_manual_push(self):
+        """sync의 fetch 중 수동 push가 원격을 먼저 바꾸면 안 된다."""
+        import subprocess
+        import threading
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, env = _git_repo(tmp)
+            (root / "a.txt").write_text("ahead", encoding="utf-8")
+            subprocess.run(
+                ["git", "-C", str(root), "commit", "-qam", "ahead"],
+                check=True, env=env,
+            )
+            entered = threading.Event()
+            release = threading.Event()
+            old = (board.ROOT, board._fetch_origin)
+
+            def slow_fetch(_branch):
+                entered.set()
+                release.wait(3)
+
+            board.ROOT = root
+            board._fetch_origin = slow_fetch
+            worker = threading.Thread(target=board.sync_work)
+            worker.start()
+            try:
+                self.assertTrue(entered.wait(2))
+                with self.assertRaisesRegex(ValueError, "깃 작업이 이미 진행 중"):
+                    board.push_work()
+            finally:
+                release.set()
+                worker.join(4)
+                board.ROOT, board._fetch_origin = old
+
+
+class GitApiTests(unittest.TestCase):
+    def _server(self, root):
+        import threading
+        old = board.ROOT
+        board.ROOT = root
+        server = board.ThreadingHTTPServer(("127.0.0.1", 0), board.Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        return old, server, thread
+
+    def test_get_git_returns_lazy_file_details(self):
+        """상세를 열 때만 실제 파일 목록을 받고 한국어 경로도 그대로 보여야 한다."""
+        import urllib.request
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            (root / "docs" / "한글 파일.txt").write_text("내용", encoding="utf-8")
+            old, server, thread = self._server(root)
+            try:
+                url = f"http://127.0.0.1:{server.server_port}/api/git"
+                with urllib.request.urlopen(url, timeout=3) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                    cache = response.headers.get("Cache-Control")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(3)
+                board.ROOT = old
+
+        self.assertTrue(data["ok"])
+        self.assertEqual(cache, "no-store")
+        self.assertEqual(data["git"]["branch"], "master")
+        self.assertEqual(data["git"]["changed"], 1)
+        self.assertEqual(data["git"]["files"][0]["path"], "docs/한글 파일.txt")
+        self.assertIn("busy", data["sync"])
+
+    def test_post_sync_commits_and_pushes_through_http(self):
+        """화면 버튼의 실제 HTTP 경로가 함수만 존재하고 끊겨 있으면 안 된다."""
+        import subprocess
+        import urllib.request
+        with tempfile.TemporaryDirectory() as tmp:
+            root, bare, _env = _git_repo(tmp)
+            (root / "docs" / "sync.txt").write_text("api", encoding="utf-8")
+            old, server, thread = self._server(root)
+            try:
+                url = f"http://127.0.0.1:{server.server_port}/api/sync"
+                request = urllib.request.Request(
+                    url,
+                    data=json.dumps({"message": "test: api sync"}).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(3)
+                board.ROOT = old
+            remote_body = subprocess.check_output(
+                ["git", "--git-dir", str(bare), "show", "master:docs/sync.txt"],
+                text=True, encoding="utf-8",
+            ).strip()
+
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["action"], "synced")
+        self.assertEqual(data["pushed"], 1)
+        self.assertEqual(remote_body, "api")
+
+    def test_cross_origin_sync_is_rejected_and_default_is_loopback(self):
+        """다른 웹사이트가 로컬 보드에 요청을 보내 commit하면 안 된다."""
+        import subprocess
+        import urllib.error
+        import urllib.request
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            (root / "docs" / "sync.txt").write_text("csrf", encoding="utf-8")
+            before = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+            old, server, thread = self._server(root)
+            try:
+                url = f"http://127.0.0.1:{server.server_port}/api/sync"
+                request = urllib.request.Request(
+                    url,
+                    data=b"{}",
+                    headers={
+                        "Content-Type": "application/json",
+                        "Origin": "https://evil.example",
+                    },
+                    method="POST",
+                )
+                with self.assertRaises(urllib.error.HTTPError) as caught:
+                    urllib.request.urlopen(request, timeout=3)
+                code = caught.exception.code
+                caught.exception.close()
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(3)
+                board.ROOT = old
+            after = subprocess.check_output(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True, encoding="utf-8",
+            ).strip()
+
+        source = (HERE / "board.py").read_text(encoding="utf-8")
+        self.assertEqual(code, 403)
+        self.assertEqual(after, before)
+        self.assertIn('os.getenv("BOARD_HOST", "127.0.0.1")', source)
+
+    def test_page_exposes_unique_accessible_git_controls(self):
+        """화면에 고유 앵커와 실시간 상태 영역이 없으면 육안·E2E 검증이 불가능하다."""
+        from html.parser import HTMLParser
+        import urllib.request
+
+        class IdParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.nodes = {}
+                self.duplicates = set()
+                self.stack = []
+
+            _void = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                key = attrs.get("id")
+                if key:
+                    if key in self.nodes:
+                        self.duplicates.add(key)
+                    self.nodes[key] = {
+                        "tag": tag, "ancestors": tuple(x for x in self.stack if x), **attrs,
+                    }
+                if tag not in self._void:
+                    self.stack.append(key)
+
+            def handle_endtag(self, tag):
+                if self.stack:
+                    self.stack.pop()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            old, server, thread = self._server(root)
+            try:
+                url = f"http://127.0.0.1:{server.server_port}/"
+                with urllib.request.urlopen(url, timeout=3) as response:
+                    html = response.read().decode("utf-8")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(3)
+                board.ROOT = old
+
+        parser = IdParser()
+        parser.feed(html)
+        self.assertEqual(parser.duplicates, set())
+        self.assertEqual(parser.nodes["btn-git-sync"]["tag"], "button")
+        self.assertEqual(parser.nodes["btn-git-detail"]["aria-controls"], "git-detail-dialog")
+        self.assertEqual(parser.nodes["git-detail-dialog"]["tag"], "dialog")
+        self.assertEqual(parser.nodes["git-sync-msg"]["role"], "status")
+        self.assertEqual(parser.nodes["git-sync-msg"]["aria-live"], "polite")
+        self.assertIn("git-head-actions", parser.nodes["btn-git-sync"]["ancestors"])
+        self.assertIn("git-head-actions", parser.nodes["btn-git-detail"]["ancestors"])
+
+    def test_live_event_stream_drives_page_refresh(self):
+        """외부 Git 변경은 브라우저 타이머가 멈춰도 서버 신호로 반영돼야 한다."""
+        import urllib.request
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            old, server, thread = self._server(root)
+            try:
+                url = f"http://127.0.0.1:{server.server_port}/api/events?once=1"
+                with urllib.request.urlopen(url, timeout=3) as response:
+                    body = response.read().decode("utf-8")
+                    content_type = response.headers.get("Content-Type")
+                    cache = response.headers.get("Cache-Control")
+                page_url = f"http://127.0.0.1:{server.server_port}/"
+                with urllib.request.urlopen(page_url, timeout=3) as response:
+                    html = response.read().decode("utf-8")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(3)
+                board.ROOT = old
+
+        self.assertEqual(content_type, "text/event-stream; charset=utf-8")
+        self.assertEqual(cache, "no-cache")
+        self.assertIn("event: refresh\n", body)
+        self.assertIn('new EventSource("/api/events")', html)
+        self.assertIn('addEventListener("refresh"', html)
 
 
 class LiveLogTests(unittest.TestCase):
@@ -728,6 +1406,34 @@ class CommitAllowTests(unittest.TestCase):
         self.assertFalse(board.commit_allowed("projects/ashes-to-stars/unity/Library/foo"))
         self.assertFalse(board.commit_allowed("loop/logs/iter.log"))
         self.assertFalse(board.commit_allowed("projects/ashes-to-stars/unity_meas/Assets/x.cs"))
+
+    def test_exact_allow_entries_do_not_accept_suffixes(self):
+        """정확한 파일 허용값을 접두사로 읽으면 백업·시크릿 사본이 섞인다."""
+        self.assertFalse(board.commit_allowed(".gitignore.backup"))
+        self.assertFalse(board.commit_allowed("loop/board.py.bak"))
+        self.assertFalse(board.commit_allowed("projects/ashes-to-stars/CLAUDE.md.secret"))
+
+    def test_commit_refuses_pre_staged_blocked_file(self):
+        """수동 커밋도 기존 stage의 제외 파일을 함께 삼키면 안 된다."""
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _bare, _env = _git_repo(tmp)
+            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
+            (root / ".env").write_text("SECRET=x", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", ".env"], check=True)
+            old = board.ROOT
+            try:
+                board.ROOT = root
+                with self.assertRaisesRegex(ValueError, "제외 파일.*스테이징"):
+                    board.commit_work("test: must refuse")
+            finally:
+                board.ROOT = old
+
+            committed = subprocess.check_output(
+                ["git", "--git-dir", str(_bare), "ls-tree", "-r", "--name-only", "master"],
+                text=True, encoding="utf-8",
+            ).splitlines()
+        self.assertNotIn(".env", committed)
 
 
 class DecisionTests(unittest.TestCase):

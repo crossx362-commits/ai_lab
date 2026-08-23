@@ -223,6 +223,14 @@
     margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; color: var(--gold);
     text-transform: uppercase; display: flex; align-items: center; gap: 8px;
   }
+  .g-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .g-card .g-head h3 { margin: 0; }
+  .git-head-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+  .git-head-actions button { min-height: 44px; padding: 8px 10px; }
+  #btn-git-sync { min-height: 44px; padding: 8px 12px; flex: none; }
   .g-card.idle h3 { color: var(--muted); }
   .g-now { font-size: 19px; font-weight: 700; line-height: 1.35; }
   .g-sub { color: var(--muted); font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
@@ -261,6 +269,64 @@
   .g-kv b.ok { color: var(--ok); }
   .g-kv b.bad { color: var(--stop); }
   .g-kv b.warn { color: var(--hold); }
+  .git-summary { border-top: 1px solid var(--line); margin-top: 9px; padding-top: 8px; }
+  .git-summary-main, .git-summary-sub {
+    display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 12.5px;
+  }
+  .git-summary-main b { font-variant-numeric: tabular-nums; }
+  .git-summary-sub { color: var(--muted); margin-top: 2px; font-size: 11.5px; }
+  .git-summary-sub .bad { color: var(--stop); }
+  .git-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 7px; }
+  .git-actions button { min-height: 36px; padding: 6px 10px; }
+  #git-sync-msg { flex: 1; min-width: 120px; }
+  dialog.git-dialog {
+    width: min(760px, calc(100vw - 32px)); max-height: min(78vh, 760px);
+    color: var(--ink); background: var(--panel); border: 1px solid var(--gold);
+    border-radius: 14px; padding: 0; box-shadow: 0 24px 90px rgba(0,0,0,.68);
+  }
+  dialog.git-dialog::backdrop { background: rgba(8,6,4,.78); }
+  .git-dialog-head {
+    position: sticky; top: 0; z-index: 2; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; padding: 14px 16px;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .git-dialog-head h2 { margin: 0; }
+  .git-dialog-body { padding: 14px 16px 16px; }
+  .git-facts {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+  }
+  .git-fact { background: #100e0c; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; min-width: 0; }
+  .git-fact .lab { color: var(--muted); font-size: 11px; }
+  .git-fact .val { margin-top: 2px; font-size: 13px; overflow-wrap: anywhere; }
+  .git-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 10px; }
+  .git-kinds .pill { font-variant-numeric: tabular-nums; }
+  .git-file-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-top: 10px; }
+  .git-file-head h3 { margin: 0; color: var(--gold); font-size: 12px; letter-spacing: .06em; }
+  .git-file-list {
+    margin-top: 8px; max-height: 42vh; overflow: auto; border: 1px solid var(--line);
+    border-radius: 8px; background: #100e0c;
+  }
+  .git-file-row {
+    display: grid; grid-template-columns: 32px 1fr auto; gap: 8px; align-items: start;
+    padding: 6px 9px; border-top: 1px solid var(--line); font: 11.5px/1.4 ui-monospace, Menlo, monospace;
+  }
+  .git-file-row:first-child { border-top: 0; }
+  .git-file-row .code { color: var(--gold); }
+  .git-file-row .path { min-width: 0; overflow-wrap: anywhere; }
+  .git-file-row .source { color: var(--muted); display: block; }
+  .git-file-row .scope { color: var(--ok); font: 10.5px/1.4 "Apple SD Gothic Neo", sans-serif; }
+  .git-file-row.blocked .path, .git-file-row.blocked .scope { color: var(--stop); }
+  @media (max-width: 600px) {
+    dialog.git-dialog {
+      width: 100vw; max-width: none; max-height: 76dvh; margin: auto 0 0;
+      border-radius: 16px 16px 0 0; border-width: 1px 0 0;
+    }
+    .git-dialog-head { padding: 12px 14px; }
+    .git-dialog-body { padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
+    .git-facts { grid-template-columns: 1fr; }
+    .git-file-list { max-height: 37dvh; }
+    #btn-git-detail-close { min-height: 44px; }
+  }
   .g-road { grid-column: 1 / 3; }
   @media (max-width: 1100px) { .g-road, .g-done { grid-column: auto; } }
   .g-done .done-row {
@@ -319,14 +385,24 @@
     <div class="g-mini" id="g-flags"></div>
   </section>
   <section class="g-card g-bars">
-    <h3 id="g-stage-title">진행</h3>
+    <div class="g-head">
+      <h3 id="g-stage-title">진행</h3>
+      <div class="git-head-actions" id="git-head-actions">
+        <button class="ghost" id="btn-git-detail" type="button"
+          aria-controls="git-detail-dialog" aria-haspopup="dialog" aria-expanded="false">Git 상세</button>
+        <button id="btn-git-sync" type="button" disabled>깃 동기화</button>
+      </div>
+    </div>
     <div id="g-stage"></div>
     <div class="stack" id="g-stack"></div>
     <div class="legend" id="g-stack-legend"></div>
     <div class="g-kv" id="g-kv"></div>
-    <div class="row" style="margin-top:10px">
-      <button class="ghost" id="btn-push-top" type="button">푸시</button>
-      <span class="msg" id="push-msg-top"></span>
+    <div class="git-summary" id="git-summary">
+      <div class="git-summary-main" id="git-summary-main">Git 상태 불러오는 중…</div>
+      <div class="git-summary-sub" id="git-summary-sub"></div>
+      <div class="git-actions">
+        <span class="msg" id="git-sync-msg" role="status" aria-live="polite"></span>
+      </div>
     </div>
   </section>
   <section class="g-card g-road">
@@ -339,6 +415,27 @@
     <div id="g-done-list"></div>
   </section>
 </div>
+<dialog class="git-dialog" id="git-detail-dialog" aria-labelledby="git-detail-title">
+  <div class="git-dialog-head">
+    <h2 id="git-detail-title">Git 상세</h2>
+    <button class="ghost" id="btn-git-detail-close" type="button">닫기</button>
+  </div>
+  <div class="git-dialog-body">
+    <div class="git-facts">
+      <div class="git-fact"><div class="lab">브랜치 · 원격</div><div class="val" id="git-detail-branch">—</div></div>
+      <div class="git-fact"><div class="lab">원격 차이</div><div class="val" id="git-detail-relation">—</div></div>
+      <div class="git-fact"><div class="lab">로컬 최근 커밋</div><div class="val" id="git-detail-local">—</div></div>
+      <div class="git-fact"><div class="lab">원격 최근 커밋</div><div class="val" id="git-detail-remote">—</div></div>
+    </div>
+    <div class="git-kinds" id="git-kind-counts"></div>
+    <div class="meta" id="git-detail-sync">최근 동기화 없음</div>
+    <div class="git-file-head">
+      <h3>변경 파일</h3>
+      <span class="meta" id="git-file-meta"></span>
+    </div>
+    <div class="git-file-list" id="git-file-list"><p class="empty" style="padding:10px">불러오는 중…</p></div>
+  </div>
+</dialog>
 <div class="view-bar">
   <button class="ghost" id="btn-view" type="button">자세히 보기</button>
   <span class="meta" id="view-hint">한 화면만 본다. 나머지는 접혀 있다.</span>
@@ -455,6 +552,13 @@
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
+let latestState = null;
+let syncInFlight = false;
+let gitDetailLoading = false;
+let gitDetailSignature = "";
+let refreshTimer = null;
+let refreshInFlight = null;
+let liveEvents = null;
 
 async function api(path, body) {
   const opt = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
@@ -656,6 +760,113 @@ function ago(sec) {
   return Math.floor(sec / 3600) + "시간 전";
 }
 
+function gitSignature(g) {
+  const c = (g && g.counts) || {};
+  return [
+    g && g.branch, g && g.upstream, g && g.ahead, g && g.behind,
+    g && g.changed, g && g.staged, g && g.unstaged,
+    g && g.change_id, g && g.error,
+    c.modified, c.added, c.deleted, c.renamed, c.untracked,
+    g && g.local && g.local.hash, g && g.remote && g.remote.hash,
+  ].join("|");
+}
+
+function renderGitSummary(state) {
+  const g = state.git || {};
+  const sync = state.sync || {};
+  const counts = g.counts || {};
+  const branch = g.branch || "브랜치 없음";
+  const changedTone = g.allowed > 0 ? "warn" : "ok";
+  $("git-summary-main").innerHTML = [
+    `<b>${esc(branch)}</b>`,
+    `<span>변경 <b class="${changedTone}">${Number(g.changed || 0)}개</b></span>`,
+    `<span>↑${Number(g.ahead || 0)} ↓${Number(g.behind || 0)}</span>`,
+    `<span>${esc(g.status || "상태 확인 중")}</span>`,
+  ].join("");
+  const labels = {
+    modified: "수정", added: "추가", deleted: "삭제", renamed: "이름변경", untracked: "미추적",
+  };
+  const kindParts = Object.keys(labels)
+    .filter((key) => Number(counts[key] || 0) > 0)
+    .map((key) => `${labels[key]} ${counts[key]}`);
+  if (g.blocked > 0) kindParts.push(`<span class="bad">제외 ${g.blocked}</span>`);
+  $("git-summary-sub").innerHTML = kindParts.length
+    ? kindParts.join(" · ")
+    : "작업 트리 변경 없음";
+
+  const busy = syncInFlight || Boolean(sync.busy);
+  const btn = $("btn-git-sync");
+  btn.disabled = busy || !g.branch || !g.upstream || Boolean(g.error);
+  btn.textContent = busy
+    ? "원격 확인 중…"
+    : (g.allowed > 0 ? `깃 동기화 ${g.allowed}개`
+      : (g.ahead > 0 ? `깃 동기화 ↑${g.ahead}` : "깃 동기화"));
+  btn.title = !g.upstream
+    ? "추적 중인 origin 브랜치가 없다"
+    : `허용 변경 ${Number(g.allowed || 0)}개를 저장하고 ${esc(g.upstream)}에 올린다`;
+
+  const msg = $("git-sync-msg");
+  msg.className = "msg" + (sync.ok === false ? " err" : "");
+  const at = sync.at ? sync.at.slice(11) : "";
+  msg.textContent = sync.message ? `${sync.message}${at ? " · " + at : ""}` : "";
+
+  const dialog = $("git-detail-dialog");
+  if (dialog.open && gitSignature(g) !== gitDetailSignature) {
+    loadGitDetail().catch(() => {});
+  }
+}
+
+function commitFact(info) {
+  if (!info || !info.hash) return "기록 없음";
+  return `${esc(info.hash)} · ${esc(info.when || "시각 없음")} · ${esc(info.subject || "")}`;
+}
+
+function renderGitDetail(data) {
+  const g = data.git || {};
+  const sync = data.sync || {};
+  const counts = g.counts || {};
+  $("git-detail-branch").textContent = `${g.branch || "없음"} · ${g.upstream || "원격 추적 없음"}`;
+  $("git-detail-relation").textContent = `${g.status || "확인 불가"} · ↑${g.ahead || 0} ↓${g.behind || 0}`;
+  $("git-detail-local").innerHTML = commitFact(g.local);
+  $("git-detail-remote").innerHTML = commitFact(g.remote);
+  const labels = {
+    modified: "수정", added: "추가", deleted: "삭제", renamed: "이름변경", untracked: "미추적",
+  };
+  $("git-kind-counts").innerHTML = [
+    ...Object.keys(labels).filter((key) => counts[key] > 0)
+      .map((key) => `<span class="pill">${labels[key]} ${counts[key]}</span>`),
+    `<span class="pill on">저장 가능 ${g.allowed || 0}</span>`,
+    g.blocked ? `<span class="pill bad">제외 ${g.blocked}</span>` : "",
+    `<span class="pill">stage ${g.staged || 0} · 미stage ${g.unstaged || 0}</span>`,
+  ].filter(Boolean).join("");
+  const syncAt = sync.at ? sync.at.slice(11) : "";
+  $("git-detail-sync").textContent = `${sync.message || "최근 동기화 없음"}${syncAt ? " · " + syncAt : ""}`;
+  const files = g.files || [];
+  $("git-file-meta").textContent = `${files.length}개 · 저장 ${g.allowed || 0} · 제외 ${g.blocked || 0}`;
+  $("git-file-list").innerHTML = files.length ? files.map((f) => `
+    <div class="git-file-row${f.allowed ? "" : " blocked"}">
+      <span class="code">${esc(f.code)}</span>
+      <span class="path">${esc(f.path)}${f.source_path ? `<span class="source">← ${esc(f.source_path)}</span>` : ""}</span>
+      <span class="scope">${f.allowed ? "저장" : "제외"}</span>
+    </div>`).join("") : '<p class="empty" style="padding:10px">변경 파일 없음</p>';
+  gitDetailSignature = gitSignature(g);
+}
+
+async function loadGitDetail(force = false) {
+  if (gitDetailLoading) return;
+  const signature = gitSignature((latestState || {}).git || {});
+  if (!force && signature && signature === gitDetailSignature) return;
+  gitDetailLoading = true;
+  $("git-file-list").innerHTML = '<p class="empty" style="padding:10px">Git 사실 확인 중…</p>';
+  try {
+    renderGitDetail(await api("/api/git"));
+  } catch (err) {
+    $("git-file-list").innerHTML = `<p class="empty" style="padding:10px">${esc(err.message)}</p>`;
+  } finally {
+    gitDetailLoading = false;
+  }
+}
+
 function renderGlance(state) {
   const L = state.loop || {};
   const now = L.now || {};
@@ -761,21 +972,18 @@ function renderGlance(state) {
   const t = state.tests || {};
   const items = t.items || [];
   const passN = items.filter((x) => x.ok).length;
-  const dirty = (state.git || []).filter((f) => f.allowed).length;
   const lastCommit = (state.commits || [])[0];
   $("g-kv").innerHTML = [
     items.length
       ? `<span>검증 ${esc(t.at || "")}</span><b class="${t.ok ? "ok" : "bad"}">${passN}/${items.length} 통과</b>`
       : `<span>검증</span><b class="warn">기록 없음</b>`,
-    `<span>저장 안 한 파일</span><b class="${dirty ? "warn" : "ok"}">${dirty}개</b>`,
     lastCommit ? `<span>최근 저장</span><b>${esc(lastCommit.when)}</b>` : "",
-    (state.push && state.push.ahead > 0)
-      ? `<span>안 올린 커밋</span><b class="warn">${state.push.ahead}개</b>`
-      : `<span>안 올린 커밋</span><b class="ok">없음</b>`,
   ].filter(Boolean).join("");
+  renderGitSummary(state);
 }
 
 function render(state) {
+  latestState = state;
   $("updated").textContent = "마지막 갱신 · " + (state.updated || "시각 없음");
   const L = state.loop || {};
   $("pills").innerHTML = [
@@ -822,15 +1030,16 @@ function render(state) {
   renderItems($("milestones"), state.milestones || [], state);
   renderItems($("queue"), state.queue || [], state);
   $("log").textContent = L.log_tail || "(루프 로그 없음)";
-  const dirty = state.git || [];
-  const allowN = dirty.filter((f) => f.allowed).length;
-  $("dirty").innerHTML = dirty.length ? dirty.map((f) =>
-    `<div class="${f.allowed ? "ok" : "no"}">${esc(f.code)} ${esc(f.path)}</div>`
-  ).join("") + `<div class="ok">${allowN}개 저장 가능</div>` : '<p class="empty">저장할 변경 없음</p>';
-  $("btn-commit").disabled = allowN === 0;
+  const git = state.git || {};
+  const allowN = Number(git.allowed || 0);
+  $("dirty").innerHTML = git.changed
+    ? `<div class="ok">변경 ${git.changed}개 · 저장 가능 ${allowN}개 · 제외 ${git.blocked || 0}개</div>`
+      + '<div>전체 경로는 상단 「Git 상세」에서 필요할 때만 불러온다.</div>'
+    : '<p class="empty">저장할 변경 없음</p>';
+  $("btn-commit").disabled = allowN === 0 || syncInFlight || Boolean((state.sync || {}).busy);
   const push = state.push || {};
   const pushBtn = $("btn-push");
-  for (const id of ["btn-push", "btn-push-top"]) {
+  for (const id of ["btn-push"]) {
     const b = $(id);
     if (!b) continue;
     b.disabled = !(push.ahead > 0);
@@ -963,10 +1172,43 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-async function refresh() {
-  const state = await api("/api/state");
-  render(state);
+async function refresh(force = false) {
+  if (refreshInFlight) {
+    if (!force) return refreshInFlight;
+    try { await refreshInFlight; } catch (e) {}
+  }
+  const run = (async () => {
+    const state = await api("/api/state");
+    render(state);
+    return state;
+  })();
+  refreshInFlight = run;
+  try {
+    return await run;
+  } finally {
+    if (refreshInFlight === run) refreshInFlight = null;
+  }
 }
+
+function scheduleRefresh() {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(async () => {
+    try { await refresh(); } catch (e) {}
+    scheduleRefresh();
+  }, 30000);
+}
+
+function startLiveUpdates() {
+  if (liveEvents || !("EventSource" in window)) return;
+  liveEvents = new EventSource("/api/events");
+  liveEvents.addEventListener("refresh", () => {
+    refresh().catch(() => {});
+  });
+}
+
+window.addEventListener("beforeunload", () => {
+  if (liveEvents) liveEvents.close();
+});
 
 document.addEventListener("change", async (e) => {
   const box = e.target.closest("input[type=checkbox][data-id]");
@@ -1043,6 +1285,56 @@ $("loop-btns").onclick = async (e) => {
   } catch (err) { alert(err.message); }
 };
 
+$("btn-git-detail").onclick = async () => {
+  const dialog = $("git-detail-dialog");
+  $("btn-git-detail").setAttribute("aria-expanded", "true");
+  dialog.showModal();
+  await loadGitDetail(true);
+};
+$("btn-git-detail-close").onclick = () => $("git-detail-dialog").close();
+$("git-detail-dialog").addEventListener("close", () => {
+  $("btn-git-detail").setAttribute("aria-expanded", "false");
+});
+$("git-detail-dialog").addEventListener("click", (e) => {
+  if (e.target === $("git-detail-dialog")) $("git-detail-dialog").close();
+});
+
+async function syncNow() {
+  if (syncInFlight) return;
+  const g = (latestState && latestState.git) || {};
+  if (g.allowed > 0 || g.ahead > 0) {
+    const blocked = g.blocked > 0 ? ` 제외 ${g.blocked}개는 커밋하지 않습니다.` : "";
+    const plan = [];
+    if (g.allowed > 0) plan.push(`허용된 변경 ${g.allowed}개를 한 커밋으로 저장합니다.`);
+    if (g.ahead > 0) plan.push(`기존 로컬 커밋 ${g.ahead}개도 함께 올립니다.`);
+    plan.push(`${g.upstream || "origin"}에 올립니다.`);
+    const ok = window.confirm(
+      `${plan.join(" ")}${blocked}\n계속할까요?`
+    );
+    if (!ok) return;
+  }
+  if (refreshTimer) clearTimeout(refreshTimer);
+  syncInFlight = true;
+  if (latestState) renderGitSummary(latestState);
+  try {
+    const result = await api("/api/sync", { message: "" });
+    const msg = $("git-sync-msg");
+    msg.className = "msg";
+    msg.textContent = result.action === "noop"
+      ? "이미 최신 상태"
+      : `동기화 완료 · ${result.pushed}개 올림${result.commit ? " · " + result.commit.hash : ""}`;
+  } catch (err) {
+    const msg = $("git-sync-msg");
+    msg.className = "msg err";
+    msg.textContent = err.message;
+  } finally {
+    syncInFlight = false;
+    await refresh(true).catch(() => {});
+    scheduleRefresh();
+  }
+}
+$("btn-git-sync").onclick = syncNow;
+
 $("btn-commit").onclick = async () => {
   const out = $("commit-msg-out");
   out.className = "msg";
@@ -1065,7 +1357,6 @@ async function pushNow(outId) {
   out.className = "msg";
   out.textContent = "올리는 중…";
   $("btn-push").disabled = true;
-  $("btn-push-top").disabled = true;
   try {
     const r = await api("/api/push", {});
     out.textContent = `origin/${r.branch}로 ${r.pushed}개 올림`;
@@ -1076,7 +1367,6 @@ async function pushNow(outId) {
   await refresh().catch(() => {});
 }
 $("btn-push").onclick = () => pushNow("commit-msg-out");
-$("btn-push-top").onclick = () => pushNow("push-msg-top");
 
 $("done-gallery").onclick = (e) => {
   const img = e.target.closest("img[data-full]");
@@ -1089,8 +1379,12 @@ $("lightbox").onclick = () => {
   $("lightbox-img").src = "";
 };
 
-refresh().catch((err) => { $("updated").textContent = "불러오기 실패: " + err.message; });
-setInterval(() => refresh().catch(() => {}), 8000);
+refresh()
+  .catch((err) => { $("updated").textContent = "불러오기 실패: " + err.message; })
+  .finally(() => {
+    scheduleRefresh();
+    startLiveUpdates();
+  });
 </script>
 </body>
 </html>
