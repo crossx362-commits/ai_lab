@@ -80,6 +80,18 @@ namespace AshesToStars
                 $"세계 부제 (실제 {EstateStatusHud.WorldCaption()})");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.MineCaption()),
                 $"광산 부제 (실제 {EstateStatusHud.MineCaption()})");
+            Check(!EstateStatusHud.CaptionFits("11실버 99쿠퍼/h"),
+                "옛 광산 FormatCurrency+/h 풀표기는 안 맞음");
+            string mineSrc = File.ReadAllText(Path.Combine(
+                Application.dataPath, "_Game/Scripts/Runtime/EstateStatusHud.cs"));
+            int mineMethod = mineSrc.IndexOf("public static string MineCaption()", StringComparison.Ordinal);
+            int nextMine = mineSrc.IndexOf("public static string StoreCaption()", StringComparison.Ordinal);
+            Check(mineMethod >= 0 && nextMine > mineMethod
+                  && mineSrc.IndexOf("ShortCopper(EstateMine.CopperPerHourEffective())", mineMethod, nextMine - mineMethod) >= 0
+                  && mineSrc.IndexOf("FormatCurrency", mineMethod, nextMine - mineMethod) < 0,
+                "MineCaption은 ShortCopper만 쓴다");
+            Check(mineSrc.IndexOf("OldMineCaption", StringComparison.Ordinal) >= 0,
+                "OldMineCaption이 남아 있다");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.StoreCaption()),
                 $"창고 부제 (실제 {EstateStatusHud.StoreCaption()})");
             Check(EstateStatusHud.Line().Contains("부제"),

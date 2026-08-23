@@ -77,10 +77,17 @@ namespace AshesToStars
         public static string WorldCaption() =>
             $"해금 T{GameState.UnlockedTier + 1} · {GameState.TowerFloor}층";
 
-        public static string MineCaption()
+        /// <summary>옛 줄은 FormatCurrency 풀표기+/h라 슬림 도크에서 잘렸다.</summary>
+        public static string OldMineCaption()
         {
             if (EstateMine.Seized) return "생산 압류";
             return Economy.FormatCurrency(EstateMine.CopperPerHourEffective()) + "/h";
+        }
+
+        public static string MineCaption()
+        {
+            if (EstateMine.Seized) return "생산 압류";
+            return ShortCopper(EstateMine.CopperPerHourEffective()) + "/h";
         }
 
         public static string StoreCaption() =>
