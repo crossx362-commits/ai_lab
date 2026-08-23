@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -56,8 +57,8 @@ namespace AshesToStars
             Check(GameState.Wallet.Copper == 16_500, $"지갑 16500 (실제 {GameState.Wallet.Copper})");
             Check(SoftCap.EarnedThisHour == 16_500, $"시간창 16500 (실제 {SoftCap.EarnedThisHour})");
             Check(SoftCap.Line().Contains("150%"), $"문구 150% (실제 {SoftCap.Line()})");
-            Check(SoftCap.Line().Contains("1골드 50실버"),
-                $"문구 한도 1골드 50실버 (실제 {SoftCap.Line()})");
+            Check(SoftCap.Line().Contains("1골드") && SoftCap.Line().Contains("/h"),
+                $"문구 한도 ShortCopper (실제 {SoftCap.Line()})");
 
             long extra = GameState.Earn(10_000);
             Check(extra == 3_000, $"문턱 위 Earn(10000)=3000 (실제 {extra})");
@@ -140,6 +141,14 @@ namespace AshesToStars
             _ = nameof(SoftCap.Preview);
             _ = nameof(SoftCap.Line);
             _ = nameof(SoftCap.SeedQaIfRequested);
+
+            string capSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/SoftCap.cs"));
+            Check(capSrc.Contains("ShortCopper(ThresholdCopper())")
+                  && capSrc.IndexOf("FormatCurrency(ThresholdCopper())") < 0,
+                "SoftCap.Line 한도는 ShortCopper만");
+            Check(capSrc.Contains("FormatCurrency(EarnedThisHour)"),
+                "HourLine 이번 시간 FormatCurrency 유지(다음 칸)");
             _ = nameof(GameState.Earn);
             _ = nameof(GameState.Grant);
 

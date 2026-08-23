@@ -122,7 +122,7 @@ namespace AshesToStars
         {
             if (Blocked) return "시간당 수익 소프트캡 없음";
             return "시간당 수익 소프트캡 150%(§18-14) · 한도 "
-                + Economy.FormatCurrency(ThresholdCopper()) + "/h";
+                + EstateStatusHud.ShortCopper(ThresholdCopper()) + "/h";
         }
 
         public static string HourLine()
