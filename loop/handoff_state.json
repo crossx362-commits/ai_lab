@@ -1,8 +1,20 @@
 {
-  "phase": "idle",
-  "updated": "",
-  "last_commit": "",
-  "last_files": [],
-  "review": "",
-  "note": "준호 완료 보고 대기"
+  "phase": "fail",
+  "updated": "2026-08-23 15:00",
+  "last_commit": "25559505",
+  "last_files": [
+    "EstateBuild.cs",
+    "EstateBuildSelfCheck.cs",
+    "EstateScreen.cs",
+    "GAME_WORKLOG.md",
+    "STATUS.md"
+  ],
+  "review": "FAIL",
+  "note": "⑤ STATUS worker 수정 · ① SelfCheck PASS 증거 없음 → 기획검증 전달",
+  "commits": [
+    "25559505",
+    "167dd8a5"
+  ],
+  "task": "EstateBuild §2-3",
+  "routed_to": "기획검증"
 }
