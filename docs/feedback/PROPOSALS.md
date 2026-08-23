@@ -58,3 +58,5 @@
 - [2026-08-23 22:55] `Resources.Load`를 `$"FX/fx_dash_trail_{i}"` 같은 보간 문자열로 부르면 game_asset_names의 코드 소비 목록이 못 잡아 "미사용 Resources 190개" 경고에 실사용 자산이 섞임(실측: 이번 바퀴 fx_dash_trail 3장 오탐) → 검사기가 소스에서 `$"..."` 보간 접두(`FX/fx_dash_trail_`)를 뽑아 접두 매칭 지원 (우선순위 중)
 
 - [2026-08-23 22:55] PlayFromTitle이 도메인 리로드마다 `playModeStartScene`을 Title로 되돌려, W2 같은 비빌드 씬을 MCP로 검증할 때 매번 씬이 게임 흐름(Character)으로 바뀜(실측: 이번 바퀴 2회) → 「MCP로 W1/W2/W3 씬 검증하는 법」(startScene 재지정→play→원복 순서)을 loop/README 또는 GAME_WORKLOG에 절차로 남김 (우선순위 하)
+
+- [2026-08-23 23:45] STATUS·WORKLOG의 「다음」 포인터가 타 세션 선반영 커밋(초필살기 `24ef7e47`·ConceptLine fold `77cee37a`, 19:5x대)을 반영 못 해 4시간 가까이 낡은 과제를 가리켰고, 이번 바퀴가 재구현 없는 검증 전용으로 소비됐다(실측: 두 커밋 모두 HEAD 조상인데 큐엔 「다음 칸」으로 잔존) → 바퀴 시작 읽기 단계에 WORKLOG 트랙표의 닫음 커밋 해시를 `git merge-base --is-ancestor <해시> HEAD`로 검증해 낡은 포인터를 즉시 정리하는 절차 추가 (우선순위 중)
