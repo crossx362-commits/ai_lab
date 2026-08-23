@@ -2773,9 +2773,11 @@ def provider_health() -> dict:
     if app_env.is_file():
         for line in app_env.read_text(encoding="utf-8", errors="replace").splitlines():
             if line.startswith("export LOOP_PROVIDERS="):
-                val = line.split("=", 1)[1].strip().strip('"').strip("'")
-                val = re.sub(r"\$\{LOOP_PROVIDERS:-(.*)\}", r"\1", val)
-                names = [x.strip() for x in val.split(",") if x.strip()]
+                val = line.split("=", 1)[1].split("#", 1)[0].strip().strip('"').strip("'")
+                m = re.search(r"\$\{LOOP_PROVIDERS:-([^}]+)\}", val)
+                if m:
+                    val = m.group(1)
+                names = [x.strip().strip('"').strip("'") for x in val.split(",") if x.strip()]
     return {"providers": names, "note": "Claude 주간 한도 시 codex·grok만 쓰는 게 안전"}
 
 

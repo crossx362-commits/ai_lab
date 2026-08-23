@@ -5,7 +5,8 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Use
 
 # auto: 독립 작업이면 최대 3개 병렬, single: 한 개, parallel: 가능한 만큼 병렬
 export LOOP_MODE="${LOOP_MODE:-auto}"
-export LOOP_PROVIDERS="${LOOP_PROVIDERS:-codex,grok}"  # Claude weekly limit until ~2026-08-24 23:00 KST
+# Claude weekly limit until ~2026-08-24 23:00 KST — restore claude after reset
+export LOOP_PROVIDERS="${LOOP_PROVIDERS:-codex,grok}"
 export LOOP_MAX_PARALLEL="${LOOP_MAX_PARALLEL:-3}"
 
 # 강한 모델 고정. Claude는 Fable 사용량 소진/이용 불가 때만 Opus 5로 전환한다.
