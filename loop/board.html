@@ -164,6 +164,24 @@
   .d-card.wide { grid-column: 1 / -1; max-height: 260px; }
   .d-card.tall { max-height: 420px; }
   .d-card.err-card { border-color: var(--stop); }
+
+  .handoff-flow {
+    display: grid; gap: 6px; margin: 0 0 10px;
+    font-size: 12.5px; line-height: 1.4;
+  }
+  .handoff-flow .step {
+    display: grid; grid-template-columns: 22px 1fr; gap: 8px;
+    padding: 5px 8px; border-radius: 8px;
+    border: 1px solid var(--line); background: #100e0c;
+  }
+  .handoff-flow .step .n {
+    color: var(--gold); font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .handoff-flow .step .t { color: var(--ink); }
+  .handoff-badges { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; align-items: center; }
+  .d-card.handoff-pass { border-color: var(--ok); }
+  .d-card.handoff-fail { border-color: var(--stop); }
+  .d-card.handoff-review { border-color: var(--hold); }
   .d-card h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .02em; color: var(--gold); }
   .d-card details > summary {
     list-style: none; cursor: pointer; color: var(--gold);
@@ -465,6 +483,17 @@
   <section class="d-card tall">
     <h3>다음 할 일 · STATUS 큐 전체</h3>
     <div class="d-list" id="d-queue"></div>
+  </section>
+  <section class="d-card wide" id="d-handoff-card">
+    <h3>코디네이터 · 핸드오프 <span class="meta" id="d-handoff-meta"></span></h3>
+    <div class="handoff-flow" id="d-handoff-flow">
+      <div class="step"><span class="n">1</span><span class="t">준호 작업 완료 보고(커밋·파일·검사)</span></div>
+      <div class="step"><span class="n">2</span><span class="t">보드 → 루프검수 검토 (PROMPT.md ①④⑤)</span></div>
+      <div class="step"><span class="n">3</span><span class="t">PASS → 보드만 STATUS.md 갱신 → 다음 할 일 1개 준호 배정</span></div>
+      <div class="step"><span class="n">4</span><span class="t">FAIL → STATUS 미갱신 → 준호 재작업</span></div>
+    </div>
+    <div class="handoff-badges" id="d-handoff-badges"></div>
+    <div class="d-list" id="d-handoff"></div>
   </section>
   <section class="d-card tall">
     <h3>WORKLOG · 아직 안 한 것</h3>
@@ -939,6 +968,37 @@ function renderDetail(state) {
     `<div class="row"><span class="n">${it.n || i+1}</span><span class="t">${esc(it.title)}</span>`
     + (it.detail ? `<span class="d">${esc(it.detail)}</span>` : "") + `</div>`
   ).join("") : '<p class="empty">큐 비어 있음</p>';
+
+
+  const ho = state.handoff || {};
+  const phaseMap = {
+    idle: { label: "idle", cls: "" },
+    awaiting_review: { label: "검토중", cls: "on" },
+    pass: { label: "PASS", cls: "ok" },
+    fail: { label: "FAIL", cls: "bad" },
+  };
+  const ph = phaseMap[ho.phase] || phaseMap.idle;
+  $("d-handoff-meta").textContent = ho.updated ? `갱신 ${ho.updated}` : "";
+  $("d-handoff-badges").innerHTML =
+    `<span class="pill ${ph.cls}">${esc(ph.label)}</span>`
+    + (ho.last_commit ? `<span class="pill">커밋 ${esc(ho.last_commit)}</span>` : "")
+    + (ho.review ? `<span class="pill">${esc(ho.review)}</span>` : "");
+  const files = (ho.last_files || []).slice(0, 8);
+  let hoHtml = "";
+  if (ho.note) {
+    hoHtml += `<div class="row"><span class="n">·</span><span class="t">${esc(ho.note)}</span></div>`;
+  }
+  if (files.length) {
+    hoHtml += `<div class="row"><span class="n">📄</span><span class="t">파일</span>`
+      + `<span class="d">${esc(files.join(" · "))}</span></div>`;
+  }
+  $("d-handoff").innerHTML = hoHtml || '<p class="empty">핸드오프 상태 없음</p>';
+  const hoCard = $("d-handoff-card");
+  if (hoCard) {
+    hoCard.classList.toggle("handoff-pass", ho.phase === "pass");
+    hoCard.classList.toggle("handoff-fail", ho.phase === "fail");
+    hoCard.classList.toggle("handoff-review", ho.phase === "awaiting_review");
+  }
 
   const wl = state.worklog || [];
   $("d-worklog").innerHTML = wl.length ? wl.map((it) =>

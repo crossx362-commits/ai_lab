@@ -390,6 +390,42 @@ class ParseTests(unittest.TestCase):
         self.assertIn("renderCompleted", html)
         self.assertIn('id="slice"', html)
 
+
+    def test_board_html_handoff_card(self):
+        html = (board.HERE / "board.html").read_text(encoding="utf-8")
+        self.assertIn('id="d-handoff-card"', html)
+        self.assertIn("코디네이터 · 핸드오프", html)
+        self.assertIn("준호 작업 완료 보고", html)
+        self.assertIn("PROMPT.md", html)
+        self.assertLess(html.find('id="d-queue"'), html.find('id="d-handoff-card"'))
+        self.assertLess(html.find('id="d-handoff-card"'), html.find('id="d-lap-card"'))
+
+    def test_load_handoff_state_defaults(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "handoff_state.json"
+            old = board.HANDOFF_STATE_PATH
+            board.HANDOFF_STATE_PATH = path
+            try:
+                data = board.load_handoff_state()
+                self.assertEqual(data["phase"], "idle")
+                self.assertEqual(data["note"], "준호 완료 보고 대기")
+                self.assertEqual(data["last_files"], [])
+                path.write_text(
+                    '{"phase":"awaiting_review","updated":"t","last_commit":"abc",'
+                    '"last_files":["a.py"],"review":"검수","note":"대기"}\n',
+                    encoding="utf-8",
+                )
+                data = board.load_handoff_state()
+                self.assertEqual(data["phase"], "awaiting_review")
+                self.assertEqual(data["last_commit"], "abc")
+                self.assertEqual(data["last_files"], ["a.py"])
+                path.write_text('{"phase":"nope"}\n', encoding="utf-8")
+                self.assertEqual(board.load_handoff_state()["phase"], "idle")
+                path.write_text("not-json", encoding="utf-8")
+                self.assertEqual(board.load_handoff_state()["phase"], "idle")
+            finally:
+                board.HANDOFF_STATE_PATH = old
+
     def test_board_html_detail_is_primary_ops_panel(self):
         html = (HERE / "board.html").read_text(encoding="utf-8")
         # detail-grid is the single list source; main keeps interactive controls only

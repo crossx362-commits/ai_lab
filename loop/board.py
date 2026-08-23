@@ -49,6 +49,7 @@ DECISIONS_PATH = HERE / "board_decisions.json"
 COMMANDS_PATH = HERE / "owner_commands.json"
 COMMANDS_MAX = 80
 TEST_REPORT_PATH = HERE / "last_test_report.json"
+HANDOFF_STATE_PATH = HERE / "handoff_state.json"
 PID_PATH = HERE / "loop.pid"
 GROK_AUTH = Path.home() / ".grok" / "auth.json"
 GROK_USAGE_CACHE = HERE / "grok_usage.cache.json"
@@ -122,6 +123,7 @@ _COMMIT_ALLOW = (
     "loop/board.py",
     "loop/board.html",
     "loop/test_board.py",
+    "loop/handoff_state.json",
     "loop/last_test_report.json",
     "loop/v4_playtest.py",
     "loop/v4_testers.json",
@@ -1315,6 +1317,39 @@ def load_decisions() -> dict:
         return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError):
         return {}
+
+
+
+def load_handoff_state() -> dict:
+    """코디네이터 핸드오프 상태. 없거나 깨져도 보드가 죽지 않게 기본값."""
+    default = {
+        "phase": "idle",
+        "updated": "",
+        "last_commit": "",
+        "last_files": [],
+        "review": "",
+        "note": "준호 완료 보고 대기",
+    }
+    try:
+        raw = json.loads(HANDOFF_STATE_PATH.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return dict(default)
+    if not isinstance(raw, dict):
+        return dict(default)
+    phase = str(raw.get("phase") or "idle").strip()
+    if phase not in ("idle", "awaiting_review", "pass", "fail"):
+        phase = "idle"
+    files = raw.get("last_files") or []
+    if not isinstance(files, list):
+        files = []
+    return {
+        "phase": phase,
+        "updated": str(raw.get("updated") or ""),
+        "last_commit": str(raw.get("last_commit") or ""),
+        "last_files": [str(x) for x in files if str(x).strip()],
+        "review": str(raw.get("review") or ""),
+        "note": str(raw.get("note") or default["note"]),
+    }
 
 
 def save_decisions(data: dict) -> None:
@@ -2921,6 +2956,7 @@ def build_state() -> dict:
         "blockers": _plain_list(parse_blockers(status)),
         "worklog": _plain_list(parse_worklog_todos(worklog)),
         "lap": lap,
+        "handoff": load_handoff_state(),
         "providers": provider_health(),
         "completed": _plain_list(completed_posts(status)),
         "playtest": playtest_state(),
