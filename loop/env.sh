@@ -3,9 +3,10 @@
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/junholee/.grok/bin:/Users/junholee/.cargo/bin"
 
-# auto: 독립 작업이면 최대 3개 병렬, single: 한 개, parallel: 가능한 만큼 병렬
-export LOOP_MODE="${LOOP_MODE:-auto}"
+# session: 매 바퀴 새 그록 세션 (기본, 오너 명세). coordinator: agent_runner 병렬.
+export LOOP_MODE="${LOOP_MODE:-session}"
 # 오너 2026-08-23: 개발 루프는 그록만. 코덱스 쓰지 않음.
+export LOOP_AGENT="${LOOP_AGENT:-grok}"
 export LOOP_PROVIDERS="${LOOP_PROVIDERS:-grok}"
 export LOOP_MAX_PARALLEL="${LOOP_MAX_PARALLEL:-3}"
 

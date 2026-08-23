@@ -370,13 +370,13 @@ def _atomic_json(path: Path, value: object) -> None:
 
 def _planner_prompt(prompt_file: Path, repo_root: Path, limit: int) -> str:
     return f"""You are the lean planning pass for one autonomous game-development lap. Do not invoke process skills, spawn subagents, or produce a prose plan; this coordinator already defines the process.
-Read {prompt_file} and relevant nearest AI instructions, then read the project documents in this exact priority order: docs/feedback/INBOX.md, docs/GAME_WORKLOG.md, docs/STATUS.md, DESIGN.md, and finally docs/DESIGN.md.
-Treat DESIGN.md as the real game design source and docs/GAME_WORKLOG.md as the real next-work and handoff source. Do not infer a replacement task from the codebase while either document contains unfinished work.
-Inspect existing branches and commits so you do not duplicate work already developed by another AI.
-Choose at most {limit} small tasks whose write paths do not overlap. Do not edit files.
+Read {prompt_file} then docs in this exact order: docs/feedback/INBOX.md, docs/STATUS.md. That pair decides this lap. Then docs/GAME_WORKLOG.md and docs/GAME_DESIGN_ASHES_TO_STARS.md if present. docs/DESIGN.md is a stub summary — never the game design source.
+Pick at most {limit} small unfinished queue items from STATUS/INBOX. ascii id only (lowercase, digits, hyphen). write_paths must be repo-relative files the worker may edit, including docs/STATUS.md.
+Do not edit files yourself.
 Return only JSON: {{"tasks":[{{"id":"short-id","goal":"one concrete outcome","write_paths":["repo/relative/path"],"tests":["command for worker to run"],"visual":false}}]}}.
-If nothing useful remains, return {{"tasks":[]}}. Repository: {repo_root}
+If the queue is empty return {{"tasks":[]}}. Repository: {repo_root}
 """
+
 
 
 def plan_tasks(
@@ -417,7 +417,7 @@ Implement exactly one assigned task and do not duplicate work already present in
 TASK: {json.dumps(task, ensure_ascii=False, sort_keys=True)}
 BASE SHA: {base_sha}
 You may change only write_paths. Run the listed tests and visually inspect applicable game output. Image generation is allowed only through Higgsfield or Grok Imagine; if unavailable, do not substitute a weaker generator.
-After automated checks pass, commit the exact changed files before visual inspection. If visual inspection requires fixes, test and make a second exact-file commit. Never touch master, autonomous/integration, other worktrees, or docs/STATUS.md. Do not leave uncommitted files.
+After automated checks pass, commit the exact changed files before visual inspection. If visual inspection requires fixes, test and make a second exact-file commit. Update docs/STATUS.md this lap (PROMPT §④). Do not leave uncommitted files.
 """
 
 

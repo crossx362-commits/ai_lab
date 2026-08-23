@@ -31,49 +31,51 @@ ai_lab/
 
 ## 자율 개발 루프 (Autonomous Development Loop)
 
-대화 맥락에 의존하지 않고 **매 바퀴마다 새 헤드리스 세션**을 연다. 기억은 `docs/` 파일과 Git에만 둔다.
+대화 맥락에 의존하지 않고 **매 바퀴마다 새 헤드리스 그록 세션**을 연다 (`resume`/`continue` 없음).
+기억은 `docs/` 파일과 Git에만 둔다. 실행기는 **그록만** (`LOOP_AGENT=grok`).
 
-실제 launchd가 실행하는 복사본은 아래에 있다 (레포가 dirty여도 루프 본체가 안 깨지게):
-`~/Library/Application Support/AI Lab Autonomous Loop/`
-레포 `loop/`가 원본이고, `loop/deploy_launchd.sh`로 배포한다.
+launchd가 실행하는 복사본: `~/Library/Application Support/AI Lab Autonomous Loop/`
+원본은 레포 `loop/` 이다.
 
-### 1. 주요 파일
+### 만든 파일
 | 파일 | 역할 |
 |---|---|
-| `loop/loop.sh` | 무한 루프 · STOP · 날짜별 로그 · agent_runner 호출 |
-| `loop/agent_runner.py` | 한 바퀴 코디네이터 (planner/worker/reviewer, worktree 격리) |
-| `loop/env.sh` | 모델·턴·쿨다운·최대 바퀴·PATH |
+| `loop/loop.sh` | 무한 루프 · 새 세션 · STOP · 날짜별 로그 · STATUS.md 갱신 검사 |
+| `loop/env.sh` | 모델 · 최대 턴 · 바퀴 사이 대기 · 최대 바퀴 · PATH |
 | `loop/PROMPT.md` | 5절 지시서 (합격 / 읽을 문서 / 규칙 / 순서 / 커밋) |
 | `loop/com.ailab.autonomous_loop.plist` | macOS launchd (로그인 시작, 비정상만 재시작, PATH 명시) |
-| `loop/deploy_launchd.sh` | 레포 → Application Support 배포 + 재등록 |
-| `docs/DESIGN.md` | 기획 요약 틀 (원장은 `docs/GAME_DESIGN_ASHES_TO_STARS.md`) |
-| `docs/STATUS.md` | 진행·다음 큐 (보드·루프가 읽음) |
-| `docs/feedback/INBOX.md` | 오너 최우선 지시 |
-| `logs/YYYY-MM-DD/lap-*.log` | 날짜별 바퀴 로그 (+ worktree 하위 role 로그) |
+| `loop/deploy_launchd.sh` | 레포 → Application Support 배포 + 기동 |
+| `docs/DESIGN.md` | 무엇을 만드는가 (요약 틀. 원장은 `docs/GAME_DESIGN_ASHES_TO_STARS.md`) |
+| `docs/STATUS.md` | 어디까지 했고 다음은 뭔가 (한 바퀴마다 갱신) |
+| `docs/feedback/INBOX.md` | 오너 지시 (가장 먼저 처리) |
+| `logs/YYYY-MM-DD/lap-*.log` | 날짜별 바퀴 로그 |
 
-### 2. 켜는 법
+### 켜는 법
 ```bash
-# 배포 후 launchd 시작 (권장)
-./loop/deploy_launchd.sh
+rm -f loop/STOP
+./loop/deploy_launchd.sh          # 배포 + launchd 시작
 
-# 또는 터미널에서 직접 (최대 2바퀴 시험)
-LOOP_MAX_LOOPS=2 ./loop/loop.sh /Users/junholee/ai_lab
+# 시험만 (로그인 서비스는 켜지 않음)
+LOOP_MAX_LOOPS=2 LOOP_AGENT=grok ./loop/loop.sh /Users/junholee/ai_lab
 ```
 
-### 3. 끄는 법
+### 끄는 법
 ```bash
-touch loop/STOP          # 현재 바퀴 끝난 뒤 정상 종료 (권장)
+touch loop/STOP          # 현재 바퀴 끝난 뒤 정상 종료
 rm loop/STOP             # 다시 켤 때
-launchctl bootout gui/$(id -u)/com.ailab.autonomous_loop   # 서비스 내리기
+launchctl bootout gui/$(id -u)/com.ailab.autonomous_loop
 ```
 
-### 4. 상태 보는 법
+### 상태 보는 법
 ```bash
 launchctl print gui/$(id -u)/com.ailab.autonomous_loop | head
 tail -f logs/loop_main.log
 ls -lt logs/$(date +%Y-%m-%d)/ | head
 python3 loop/board.py    # 개발보드 http://127.0.0.1:8766
 ```
+
+### 한 바퀴 순서 (PROMPT.md)
+읽기(INBOX→STATUS) → 하나만 만들기 → 자동검사 → **화면 보기 전 커밋** → 눈으로 확인 → STATUS.md 갱신.
 
 ## Agent System
 
