@@ -31,60 +31,49 @@ ai_lab/
 
 ## 자율 개발 루프 (Autonomous Development Loop)
 
-대화 맥락에 의존하지 않고 매 이터레이션마다 **새로운 헤드리스 세션**으로 자율 개발을 진행하는 루프 시스템입니다. 상태와 작업 큐는 파일(`docs/`)로 영속 관리됩니다.
+대화 맥락에 의존하지 않고 **매 바퀴마다 새 헤드리스 세션**을 연다. 기억은 `docs/` 파일과 Git에만 둔다.
 
-### 1. 주요 파일 구성
-- [loop/loop.sh](file:///Users/junholee/ai_lab/loop/loop.sh): 루프 본체 스크립트 (독립 세션 실행, 지시서 전달, 로그 기록, STOP 감지)
-- [loop/env.sh](file:///Users/junholee/ai_lab/loop/env.sh): 루프 환경설정 (실행기/모델, 최대 턴 수, 쿨다운 대기시간, 최대 바퀴 수, PATH)
-- [loop/PROMPT.md](file:///Users/junholee/ai_lab/loop/PROMPT.md): 5개 절 지시서 (합격 기준, 읽을 문서 순서, 아트 규칙, 도는 순서, 커밋 규칙)
-- [loop/com.ailab.autonomous_loop.plist](file:///Users/junholee/ai_lab/loop/com.ailab.autonomous_loop.plist): macOS 자동 실행 (launchd) 등록 정의
-- [docs/DESIGN.md](file:///Users/junholee/ai_lab/docs/DESIGN.md): 무엇을 만드는가 (초기 기획서, 기준 헌법)
-- [docs/STATUS.md](file:///Users/junholee/ai_lab/docs/STATUS.md): 어디까지 했고 다음은 뭔가 (매 바퀴 갱신 상태 및 큐)
-- [docs/feedback/INBOX.md](file:///Users/junholee/ai_lab/docs/feedback/INBOX.md): 오너 직접 지시함 (최우선 처리)
-- `logs/`: 매 바퀴별 실행 상세 로그 디렉토리 (`logs/loop_YYYYMMDD_HHMMSS_iterN.log`)
+실제 launchd가 실행하는 복사본은 아래에 있다 (레포가 dirty여도 루프 본체가 안 깨지게):
+`~/Library/Application Support/AI Lab Autonomous Loop/`
+레포 `loop/`가 원본이고, `loop/deploy_launchd.sh`로 배포한다.
 
-### 2. 켜는 법 (Start)
-- **터미널에서 직접 실행**:
-  ```bash
-  ./loop/loop.sh
-  ```
-- **특정 에이전트/바퀴 수 지정 실행**:
-  ```bash
-  LOOP_AGENT=codex LOOP_MAX_LOOPS=5 ./loop/loop.sh
-  ```
-- **macOS launchd 백그라운드 서비스 시작**:
-  ```bash
-  launchctl load ~/Library/LaunchAgents/com.ailab.autonomous_loop.plist
-  launchctl start com.ailab.autonomous_loop
-  ```
+### 1. 주요 파일
+| 파일 | 역할 |
+|---|---|
+| `loop/loop.sh` | 무한 루프 · STOP · 날짜별 로그 · agent_runner 호출 |
+| `loop/agent_runner.py` | 한 바퀴 코디네이터 (planner/worker/reviewer, worktree 격리) |
+| `loop/env.sh` | 모델·턴·쿨다운·최대 바퀴·PATH |
+| `loop/PROMPT.md` | 5절 지시서 (합격 / 읽을 문서 / 규칙 / 순서 / 커밋) |
+| `loop/com.ailab.autonomous_loop.plist` | macOS launchd (로그인 시작, 비정상만 재시작, PATH 명시) |
+| `loop/deploy_launchd.sh` | 레포 → Application Support 배포 + 재등록 |
+| `docs/DESIGN.md` | 기획 요약 틀 (원장은 `docs/GAME_DESIGN_ASHES_TO_STARS.md`) |
+| `docs/STATUS.md` | 진행·다음 큐 (보드·루프가 읽음) |
+| `docs/feedback/INBOX.md` | 오너 최우선 지시 |
+| `logs/YYYY-MM-DD/lap-*.log` | 날짜별 바퀴 로그 (+ worktree 하위 role 로그) |
 
-### 3. 끄는 법 (Stop)
-- **현재 바퀴 완료 후 안전하게 정지 (권장)**:
-  ```bash
-  touch loop/STOP
-  ```
-  *(다시 시작할 때는 `rm loop/STOP`)*
-- **macOS launchd 서비스 정지 및 비활성화**:
-  ```bash
-  launchctl stop com.ailab.autonomous_loop
-  launchctl unload ~/Library/LaunchAgents/com.ailab.autonomous_loop.plist
-  ```
-- **강제 즉시 종료**:
-  ```bash
-  pkill -f loop/loop.sh
-  ```
+### 2. 켜는 법
+```bash
+# 배포 후 launchd 시작 (권장)
+./loop/deploy_launchd.sh
 
-### 4. 상태 보는 법 (Status)
-- **현재 작업 및 다음 할 일 확인**: `docs/STATUS.md` 및 `docs/feedback/INBOX.md` 열람
-- **실시간 실행 로그 확인**:
-  ```bash
-  tail -f logs/loop_main.log
-  ```
-- **launchd 서비스 상태 확인**:
-  ```bash
-  launchctl list | grep com.ailab.autonomous_loop
-  ```
+# 또는 터미널에서 직접 (최대 2바퀴 시험)
+LOOP_MAX_LOOPS=2 ./loop/loop.sh /Users/junholee/ai_lab
+```
 
+### 3. 끄는 법
+```bash
+touch loop/STOP          # 현재 바퀴 끝난 뒤 정상 종료 (권장)
+rm loop/STOP             # 다시 켤 때
+launchctl bootout gui/$(id -u)/com.ailab.autonomous_loop   # 서비스 내리기
+```
+
+### 4. 상태 보는 법
+```bash
+launchctl print gui/$(id -u)/com.ailab.autonomous_loop | head
+tail -f logs/loop_main.log
+ls -lt logs/$(date +%Y-%m-%d)/ | head
+python3 loop/board.py    # 개발보드 http://127.0.0.1:8766
+```
 
 ## Agent System
 

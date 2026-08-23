@@ -8,24 +8,25 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/junholee/ai_lab/loop/loop.sh</string>
+        <string>/Users/junholee/Library/Application Support/AI Lab Autonomous Loop/loop.sh</string>
+        <string>/Users/junholee/ai_lab</string>
     </array>
 
     <key>WorkingDirectory</key>
     <string>/Users/junholee/ai_lab</string>
 
-    <!-- 로그인 시 자동 시작 -->
     <key>RunAtLoad</key>
     <true/>
 
-    <!-- 비정상 종료(exit code != 0) 시에만 재시작, 정상 종료(0) 시에는 재시작 안 함 -->
     <key>KeepAlive</key>
     <dict>
         <key>SuccessfulExit</key>
         <false/>
     </dict>
 
-    <!-- 터미널 환경변수 명시 -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
@@ -34,6 +35,8 @@
         <string>/Users/junholee</string>
         <key>USER</key>
         <string>junholee</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
     </dict>
 
     <key>StandardOutPath</key>
