@@ -110,11 +110,14 @@
     margin: 12px 24px 0; padding: 12px 14px 10px; border-radius: 12px;
     border: 1px solid var(--gold); background: #221c14;
   }
-  .request-top h2 { margin-bottom: 6px; }
+  @media (max-width: 1100px) { .request-top { margin: 12px 14px 0; } }
+  .request-top h2 { margin: 0 0 6px; font-size: 15px; }
   /* 할 일 적기는 한 줄짜리 입력이다 — 화면을 먹지 않게 낮게. */
-  #req-title, #req-body { padding: 7px 10px; }
-  #req-body { min-height: 46px; }
-  .request-top .row { margin-top: 8px; }
+  #req-title, #req-body { padding: 7px 10px; width: 100%; box-sizing: border-box; }
+  #req-body { min-height: 46px; resize: vertical; }
+  .request-top .row {
+    margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center;
+  }
   .stuck-box {
     display: none; margin: 14px 24px 0; padding: 16px 16px 12px; border-radius: 12px;
     border: 1px solid var(--stop); background: #2a1612;
@@ -146,12 +149,13 @@
   .now-panel .t { font-size: 16px; font-weight: 650; }
   .now-panel .log { margin-top: 10px; max-height: 160px; }
   .detail-grid {
-    margin: 14px 24px 8px;
+    margin: 12px 24px 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+    align-items: stretch;
   }
-  @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; margin: 14px; } }
+  @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; margin: 12px 14px 0; } }
   .d-card {
     background: var(--panel);
     border: 1px solid var(--line);
@@ -159,7 +163,8 @@
     padding: 12px 14px 10px;
     max-height: 340px;
     overflow: auto;
-    min-height: 120px;
+    min-height: 140px;
+    box-sizing: border-box;
   }
   .d-card.wide { grid-column: 1 / -1; max-height: 260px; }
   .d-card.tall { max-height: 420px; }
@@ -208,11 +213,12 @@
   .ops-wrap > section, .ops-wrap > .charts { margin-left: 0; margin-right: 0; }
   .main-ops { display: grid; grid-template-columns: 1.2fr .8fr; gap: 18px; padding: 18px 0 8px; }
   @media (max-width: 900px) { .main-ops { grid-template-columns: 1fr; } }
-  .charts { margin: 14px 0 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
-  @media (max-width: 900px) { .charts { grid-template-columns: 1fr; margin: 14px; } }
-  .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; }
-  .bar-row { display: grid; grid-template-columns: 118px 1fr 36px; gap: 8px; align-items: center; margin: 7px 0; }
+  .charts { margin: 12px 0 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; }
+  @media (max-width: 900px) { .charts { grid-template-columns: 1fr; margin: 12px 0 0; } }
+  .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 10px; box-sizing: border-box; }
+  .bar-row { display: grid; grid-template-columns: 118px 1fr 36px; gap: 4px 8px; align-items: center; margin: 6px 0; }
   .bar-row .lab { font-size: 12px; color: var(--ink); }
+  .bar-note { grid-column: 1 / -1; font-size: 11px; color: var(--muted); line-height: 1.35; margin: 0 0 2px; }
   .bar-track { height: 10px; background: #100e0c; border-radius: 99px; overflow-y: auto; }
   .bar-fill { height: 100%; background: var(--gold); border-radius: 99px; }
   .bar-fill.ok { background: var(--ok); }
@@ -273,13 +279,14 @@
   .script-gate ol { margin: 6px 0 0 1.2em; padding: 0; color: var(--muted); font-size: 13px; }
   /* ── 한눈에: 스크롤 없이 한 화면 ── */
   .glance {
-    margin: 12px 24px 0; display: grid; gap: 14px;
+    margin: 12px 24px 0; display: grid; gap: 12px;
     grid-template-columns: 1.35fr .95fr 1fr;
+    align-items: stretch;
   }
   @media (max-width: 1100px) { .glance { grid-template-columns: 1fr; margin: 12px 14px 0; } }
   .g-card {
     background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    padding: 14px 16px 12px; min-width: 0;
+    padding: 12px 14px 10px; min-width: 0; box-sizing: border-box;
   }
   .g-card.live { border-color: var(--gold); background: #1f1a12; }
   .g-card h3 {
@@ -403,23 +410,52 @@
   .g-done .done-row .d { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .g-done { max-height: 190px; overflow: auto; }
-  .road-steps { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
-  .road-step { min-width: 0; }
+  .road-steps {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px;
+  }
+  .road-step {
+    min-width: 0; padding: 8px 9px; border-radius: 10px;
+    border: 1px solid var(--line); background: #100e0c;
+  }
+  .road-step.on { border-color: var(--gold); background: #1f1a12; }
+  .road-step.done { border-color: rgba(108,186,122,.45); }
   .road-step .lab {
     font-size: 12px; color: var(--muted); white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis;
   }
   .road-step.on .lab { color: var(--gold); font-weight: 650; }
   .road-step.done .lab { color: var(--ok); }
-  .road-step .bar-track { margin-top: 5px; }
-  .road-step .pc { font-size: 11px; color: var(--muted); margin-top: 3px; }
-  .weeks { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-  .wk {
-    font-size: 11px; padding: 2px 8px; border-radius: 999px;
-    border: 1px solid var(--line); color: var(--muted); background: var(--chip);
+  .road-step .bar-track { margin-top: 6px; }
+  .road-step .pc {
+    font-size: 11px; color: var(--muted); margin-top: 3px;
+    font-variant-numeric: tabular-nums;
   }
+  .road-step .note {
+    margin-top: 5px; font-size: 11px; color: var(--muted); line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .road-step.on .note { color: #cfc4b0; }
+  .weeks {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px; margin-top: 12px;
+  }
+  .wk {
+    display: flex; flex-direction: column; gap: 3px;
+    font-size: 11.5px; padding: 8px 10px; border-radius: 10px;
+    border: 1px solid var(--line); color: var(--muted); background: var(--chip);
+    min-width: 0;
+  }
+  .wk .wk-lab {
+    display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+    color: inherit; font-weight: 650;
+  }
+  .wk .wk-lab b { font-variant-numeric: tabular-nums; font-weight: 650; }
+  .wk .wk-goal, .wk .wk-note { line-height: 1.35; color: var(--muted); }
+  .wk .wk-note { font-size: 11px; }
   .wk.done { border-color: var(--ok); color: var(--ok); }
   .wk.now { border-color: var(--gold); color: var(--gold); font-weight: 700; }
+  .wk.now .wk-goal, .wk.now .wk-note { color: #cfc4b0; font-weight: 400; }
+  .wk.done .wk-goal, .wk.done .wk-note { color: #9bb89f; font-weight: 400; }
   .view-bar { margin: 12px 24px 0; display: flex; gap: 8px; align-items: center; }
   @media (max-width: 1100px) { .view-bar { margin: 12px 14px 0; } }
   body.compact .hide-compact { display: none !important; }
@@ -434,6 +470,16 @@
   <div class="pills" id="pills"></div>
 </header>
 <div class="usage-line" id="usage-box">불러오는 중…</div>
+<section class="request-top" id="req-box">
+  <h2>할 일 적기</h2>
+  <input type="text" id="req-title" maxlength="80" placeholder="예: 보스가 안 때려요">
+  <textarea id="req-body" placeholder="원하는 모습. 예: 가까이 오면 때리게"></textarea>
+  <div class="row">
+    <label class="meta"><input type="checkbox" id="req-resume"> 멈춰 있으면 다시 시작</label>
+    <button id="req-send" type="button">보내기</button>
+    <span class="msg" id="req-msg"></span>
+  </div>
+</section>
 <div class="glance" id="glance">
   <section class="g-card live" id="g-now">
     <h3><span class="dot" id="g-dot"></span><span id="g-phase">지금</span></h3>
@@ -568,17 +614,6 @@
 
 <div class="ops-wrap">
 <div class="charts hide-compact" id="charts"></div>
-
-<section class="request-top">
-  <h2>할 일 적기</h2>
-  <input type="text" id="req-title" maxlength="80" placeholder="예: 보스가 안 때려요">
-  <textarea id="req-body" placeholder="원하는 모습. 예: 가까이 오면 때리게"></textarea>
-  <div class="row">
-    <label class="meta"><input type="checkbox" id="req-resume"> 멈춰 있으면 다시 시작</label>
-    <button id="req-send" type="button">보내기</button>
-    <span class="msg" id="req-msg"></span>
-  </div>
-</section>
 
 <section class="request-top hide-compact" id="tests-box">
   <h2>검증 결과</h2>
@@ -1171,9 +1206,10 @@ function renderGlance(state) {
   const gates = (c.focus || c.gates || []).slice(0, 4);
   $("g-stage").innerHTML = gates.map((r) => {
     const pct = r.pct == null ? 0 : r.pct;
+    const note = r.note ? `<div class="bar-note">${esc(r.note)}</div>` : "";
     return `<div class="bar-row"><div class="lab">${esc(r.label)}</div>
       <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${pct}%"></div></div>
-      <div class="n">${pct}%</div></div>`;
+      <div class="n">${pct}%</div>${note}</div>`;
   }).join("");
   const qs = c.queue || { done: 0, open: 0, blocked: 0, total: 0 };
   const tot = qs.total || 1;
@@ -1189,18 +1225,26 @@ function renderGlance(state) {
   const road = c.roadmap || [];
   $("g-road").innerHTML = road.map((r) => {
     const pct = r.pct == null ? 0 : r.pct;
-    const cls = pct >= 100 ? "done" : (r.id === (cur.id || "") ? "on" : "");
-    return `<div class="road-step ${cls}" title="${esc(r.note || "")}">
+    const cls = pct >= 100 ? "done" : (String(r.id) === String(cur.id || "") ? "on" : "");
+    const note = r.note ? `<div class="note">${esc(r.note)}</div>` : "";
+    return `<div class="road-step ${cls}">
       <div class="lab">${esc(r.label)}</div>
       <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${pct}%"></div></div>
-      <div class="pc">${pct}%</div></div>`;
+      <div class="pc">${pct}%</div>${note}</div>`;
   }).join("");
   const weeks = c.weeks || [];
   $("g-weeks").innerHTML = weeks.map((w) => {
     const pct = w.pct == null ? 0 : w.pct;
     const cls = pct >= 100 ? "done" : (pct > 0 ? "now" : "");
-    return `<span class="wk ${cls}" title="${esc(w.goal || "")}">${esc(w.label || w.id)}${
-      pct >= 100 ? " ✓" : (pct > 0 ? " " + pct + "%" : "")}</span>`;
+    const goal = w.goal || "";
+    const note = w.note || "";
+    const noteHtml = note && note !== goal
+      ? `<span class="wk-note">${esc(note)}</span>` : "";
+    return `<div class="wk ${cls}">
+      <span class="wk-lab"><span>${esc(w.label || w.id)}${pct >= 100 ? " ✓" : ""}</span><b>${pct}%</b></span>
+      ${goal ? `<span class="wk-goal">${esc(goal)}</span>` : ""}
+      ${noteHtml}
+    </div>`;
   }).join("");
 
   const doneEl = $("g-done-list");
@@ -1336,9 +1380,20 @@ function renderCharts(c) {
   const sparkMax = Math.max(1, ...spark.map((s) => s.n));
   const bars = (rows) => rows.map((r) => {
     const pct = r.pct == null ? 0 : r.pct;
+    const note = r.note ? `<div class="bar-note">${esc(r.note)}</div>` : "";
     return `<div class="bar-row"><div class="lab">${esc(r.label)}</div>
       <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${pct}%"></div></div>
-      <div class="n">${pct}%</div></div>`;
+      <div class="n">${pct}%</div>${note}</div>`;
+  }).join("");
+  const weekRows = weeks.map((w) => {
+    const pct = w.pct == null ? 0 : w.pct;
+    const goal = w.goal || w.note || "";
+    const extra = (w.note && w.goal && w.note !== w.goal) ? ` · ${w.note}` : "";
+    const note = goal || extra
+      ? `<div class="bar-note">${esc((goal || "") + extra)}</div>` : "";
+    return `<div class="bar-row"><div class="lab">${esc(w.label || w.id)}</div>
+      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${pct}%"></div></div>
+      <div class="n">${pct}%</div>${note}</div>`;
   }).join("");
   el.innerHTML = `
     <section class="chart">
@@ -1347,11 +1402,10 @@ function renderCharts(c) {
       <div class="legend" style="margin-top:8px">${esc(cur.note || (cur.proto_done ? "프로토는 끝났고 다음 단계다" : "끝난 단계만 채워진다."))}</div>
     </section>
     <section class="chart">
-      <h2>앞으로의 일정</h2>
+      <h2>앞으로의 일정 · 로드맵</h2>
       ${bars(road)}
-      ${weeks.map((w) => `<div class="bar-row"><div class="lab">${esc(w.id)}</div>
-        <div class="bar-track"><div class="bar-fill ${barClass(w.pct)}" style="width:${w.pct}%"></div></div>
-        <div class="n">${w.pct}%</div></div>`).join("")}
+      <div class="legend" style="margin-top:10px">주차별</div>
+      ${weekRows}
     </section>
     <section class="chart">
       <h2>할 일 ${q.total}개</h2>

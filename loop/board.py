@@ -405,8 +405,8 @@ def parse_weeks(game_design: str) -> list[dict]:
         out.append({
             "id": week.split()[0],
             "label": week,
-            "goal": goal[:48],
-            "gate": re.sub(r"<[^>]+>", "", gate)[:80],
+            "goal": goal[:72],
+            "gate": re.sub(r"<[^>]+>", "", gate)[:100],
             "state": state,
             "pct": pct,
         })
@@ -435,9 +435,9 @@ def parse_roadmap_table(game_design: str) -> list[dict]:
             continue
         out.append({
             "id": num.group(1),
-            "label": label[:24],
+            "label": label[:40],
             "pct": 0,
-            "note": re.sub(r"<[^>]+>", "", cells[-1])[:80],
+            "note": re.sub(r"<[^>]+>", "", cells[-1])[:120],
         })
     return out
 
@@ -709,6 +709,9 @@ def progress_charts(status: str | None = None, design: str | None = None,
         queue_stat = {"done": done_n, "open": open_n, "blocked": blocked_n, "total": len(rows)}
     current = pick_current_stage(roadmap)
     focus = focus_bars(current, gates, slice_rows)
+    for w in weeks:
+        if not w.get("note"):
+            w["note"] = w.get("gate") or w.get("goal") or ""
     return {
         "gates": gates,
         "focus": focus,
@@ -783,7 +786,7 @@ def focus_bars(current: dict, gates: list[dict], slice_rows: list[dict]) -> list
                 "id": str(r.get("id") or r.get("title") or "open"),
                 "label": r.get("title") or "남음",
                 "pct": 0,
-                "note": "남음",
+                "note": str(r.get("detail") or "남음")[:80],
             })
         return bars
     return [{
