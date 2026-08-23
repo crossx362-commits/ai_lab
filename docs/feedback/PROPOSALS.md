@@ -31,9 +31,10 @@
 
 <!-- [정리 검사] 2026-08-23 (proposals-triage 15차, BASE 6f84a139) — 현행 항목 3건(`^- \` grep: agent_runner 건너뛰기(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하), 서로 상이한 제안): 중복 병합 대상 없음, 전 항목 끝에 우선순위(상/중/하) 태그 존재로 빠진 것 없음·보정 불필요. 기존 내용(마커·제안 전체) 삭제 없음. -->
 
-- [2026-08-23 21:34] proposals-triage가 PROPOSALS.md 항목 0건인데도 반복 배정돼 무변경 검증 랩이 누적됨(정리 `30cf1231` 후 4차 검증까지) → loop/agent_runner가 TASKS.json의 proposals-triage를 `^- \[` 형식 라인 grep 0건이면 건너뛰거나, 검증 랩 1회 후 보드 큐에서 완료 표시로 제외 (우선순위 중)
+<!-- [정리 검사] 2026-08-23 (proposals-triage 16차, BASE 8149db96) — 현행 항목 4건(`^- \` grep) 중 반복 배정 방지 제안 2건(proposals-triage 건너뛰기 21:34·keeper-warn-chip 선반영 감지 22:5x)이 동일 문제(무변경 랩 누적)·동일 처방(agent_runner 건너뛰기 또는 TASKS.json 큐 제외)이라 1건으로 병합 — 양쪽 관찰·처방 전부 병합 항목에 보존. 병합 후 3건 모두 끝에 우선순위(상/중/하) 태그 존재. 나머지 2건(board.py 더임 판정 표시·PROFILE 키트 이동)은 서로 상이해 그대로 유지. 기존 내용 삭제 없음. -->
+
+- [2026-08-23 21:34] 같은 작업이 무변경인데도 반복 배정돼 검증 랩이 누적됨(21:34 proposals-triage 건 + 22:5x keeper-warn-chip 건 병합) — proposals-triage는 정리 `30cf1231` 후 항목 0건 상태로 15차 검증까지, keeper-warn-chip은 `0ec68f11` 선반영 후 11차까지(9차 때 이미 지적) 재검증 랩이 쌓임 → loop/agent_runner가 보드 작업 배정 전 `git log --grep=<작업 id>`으로 선반영 커밋을 찾아 첫 검증 랩 이후 재배정을 건너뛰고, proposals-triage는 `^- \[` 형식 라인 grep 0건이면 건너뛰며, 검증 랩 1회 후에는 TASKS.json 큐에서 완료 표시로 제외 (우선순위 중)
 
 - [2026-08-23 22:4x] 더임 리허설(v4_dummy_sim) 결과가 output(git 제외)에만 있어 다른 세션·보드가 판정 요약을 볼 수 없음 → board.py가 `v4_playtest_dummy/dummy_report.json`을 읽어 V4 게이트 칸에 "더임 리허설 V2·V3·V4 판정(실측 아님)" 한 줄로 표시 (우선순위 하)
 
 - [2026-08-23 22:4x] v4_dummy_sim의 성향 프로필이 코드 안 상수라 오너가 성향을 바꾸려면 코드 수정이 필요함 → PROFILE을 `loop/v4_dummy_testers.json` 키트 쪽으로 옮겨 비개발자도 키트만 고쳐 리허설 가능하게 (우선순위 하)
-- [2026-08-23 22:5x] keeper-warn-chip이 `0ec68f11` 선반영 후 10차까지 무변경 재검증 랩으로 누적됨(9차 때 이미 지적) → loop/agent_runner가 보드 작업 배정 전 `git log --grep=<작업 id>`으로 선반영 커밋을 찾아 첫 검증 랩 이후 재배정을 건너뛰거나 TASKS.json 큐에서 제외 (우선순위 중)
