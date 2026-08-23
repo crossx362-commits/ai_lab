@@ -124,6 +124,13 @@ namespace AshesToStars
                     _selX = EstateGrid.KeepX;
                     _selY = EstateGrid.KeepY;
                 }
+                else if (AutoOpen == "광산칸")
+                {
+                    // QA 샷: 광산 선택 → DrawCoreBuildDock 업비 부제
+                    _hubPage = 0;
+                    _selX = EstateGrid.MineX;
+                    _selY = EstateGrid.MineY;
+                }
                 else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
                     _sub = want;
@@ -965,7 +972,7 @@ namespace AshesToStars
             string why = EstateBuild.WhyCannotUpgrade(c);
             string upLabel = $"{title} Lv{lv} → {lv + 1}";
             string upDesc = why
-                ?? $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
+                ?? $"{EstateStatusHud.ShortCopper(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
             if (why != null)
                 DrawCard(r, upLabel, upDesc, icon, locked: true);
             else if (DrawCard(r, upLabel, upDesc, icon))

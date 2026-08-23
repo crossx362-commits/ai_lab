@@ -195,6 +195,22 @@ namespace AshesToStars
                   && gl0.Contains("GoldCostToFloor")
                   && gl0.IndexOf("FormatCurrency") < 0,
                 "본성 골드 단축은 ShortCopper만");
+
+            // 광산·창고 도크 업비: DrawCoreBuildDock UpgradeCost → ShortCopper
+            int dockFn = estate.IndexOf("void DrawCoreBuildDock(Rect");
+            Check(dockFn >= 0, "DrawCoreBuildDock이 있다");
+            int dockEnd = estate.IndexOf("void DrawDefenseRush", dockFn);
+            string dockSrc = dockFn >= 0 && dockEnd > dockFn
+                ? estate.Substring(dockFn, dockEnd - dockFn) : "";
+            // upDesc 줄만 (GoldCostToFloor 줄과 구분)
+            int dockUpLine = dockSrc.LastIndexOf("string upDesc");
+            int dockUpSemi = dockUpLine >= 0 ? dockSrc.IndexOf(";", dockUpLine) : -1;
+            string dockUp0 = dockUpLine >= 0 && dockUpSemi > dockUpLine
+                ? dockSrc.Substring(dockUpLine, dockUpSemi - dockUpLine) : "";
+            Check(dockUp0.Contains("EstateStatusHud.ShortCopper")
+                  && dockUp0.Contains("UpgradeCost")
+                  && dockUp0.IndexOf("FormatCurrency") < 0,
+                "광산·창고 업비는 ShortCopper만");
             // 순자산 줄(§18-5)은 파산·광산 압류와 동형으로 ShowOnHub 게이트 뒤 statusRow에서만
             // 그린다 — 도크 5칸(DockH 하단)은 상시 슬림이다. NetWorthSelfCheck가 배선을 요구하므로
             // 「NetWorth.Line 문자열 부재」는 이제 틀린 단언이다. 게이트 존재로 상시 슬림을 지킨다.
