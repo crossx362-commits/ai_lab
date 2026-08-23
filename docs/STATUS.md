@@ -39,7 +39,7 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
-| — | 2026-08-23 | 개선안 수함대 정리 검사(proposals-triage) — 항목 0건이라 중복 병합·우선순위(상/중/하) 보정 대상 없음 · 기존 내용 삭제 없음 · 검사 기록 주석만 추가 | 문서 검증 · `30cf1231` |
+| — | 2026-08-23 | README 루프 섹션에 속도 레인 운영법 추가 (worktree 격리 병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수 · STOP_LANE 토글, 본문 4줄) | 요건 충족(5줄 이내) · loop/README.md는 기존 문서화로 무변경 · `55fc2373` |
 | — | 2026-08-23 | §18-9 RaceDef.방어배율 소비처 DefenseLine(그록 바퀴 인수 완주) | compile PASS · RaceDefenseSelfCheck PASS · 네거 `QA_NO_RACE_DEFENSE` · 배치로그 `results/race_defense_selfcheck_20260823_201550.log` · `ead55a1d` |
 | — | 2026-08-23 | 캐릭터 SkillDescLine 우측 잘림 InfoWrap | compile PASS · SkillDescSelfCheck PASS · 샷 `skill_desc_wrap_shots/qa_go:Character.png`(빙결: 광역 슬로우) · 네거 `qa_negctrl_no_wrap.png`(빙결: 광) · `6ba0a995` |
 | — | 2026-08-23 | §3 SkillDef.설명 소비처 SkillDescLine | compile PASS · SkillDescSelfCheck PASS · 샷 `skill_desc_shots/qa_go:Character.png` · 네거 `qa_negctrl_no_desc.png` · `017335fc` |
