@@ -98,6 +98,7 @@ namespace AshesToStars
         /// </summary>
         public static string AutoOpen;
         bool _pendingDefenseRushShot;
+        bool _pendingMineRushShot;
 
         protected override void Update()
         {
@@ -137,6 +138,14 @@ namespace AshesToStars
                     // QA 샷: 방어 탭 + 화살탑 공사 중 → 골드 단축 줄
                     _hubPage = 2;
                     _pendingDefenseRushShot = true;
+                }
+                else if (AutoOpen == "광산단축")
+                {
+                    // QA 샷: 광산 선택 + 공사 중 → DrawCoreBuildDock 골드 단축
+                    _hubPage = 0;
+                    _selX = EstateGrid.MineX;
+                    _selY = EstateGrid.MineY;
+                    _pendingMineRushShot = true;
                 }
                 else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
@@ -194,6 +203,13 @@ namespace AshesToStars
                 long cost = EstateDefense.UpgradeCost(0);
                 GameState.Grant(cost * 4 + 10_000);
                 EstateDefense.TryStart(EstateDefense.Kind.화살탑);
+            }
+            if (_pendingMineRushShot)
+            {
+                _pendingMineRushShot = false;
+                long cost = EstateBuild.UpgradeCost(EstateGrid.Cell.Mine, EstateBuild.Level(EstateGrid.Cell.Mine));
+                GameState.Grant(cost * 4 + 10_000);
+                EstateBuild.TryStartUpgrade(EstateGrid.Cell.Mine);
             }
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
@@ -979,7 +995,7 @@ namespace AshesToStars
                 string goldWhy = EstateBuild.WhyCannotRushGold(c);
                 string label = $"{title} Lv{lv}→{EstateBuild.Target(c)} · 골드 단축";
                 string desc = goldWhy
-                    ?? $"{EstateBuild.RemainingText(c)} · {Economy.FormatCurrency(EstateBuild.GoldCostToFloor(c))}";
+                    ?? $"{EstateBuild.RemainingText(c)} · {EstateStatusHud.ShortCopper(EstateBuild.GoldCostToFloor(c))}";
                 if (goldWhy != null)
                     DrawCard(r, label, desc, icon, locked: true);
                 else if (DrawCard(r, label, desc, "gold"))
