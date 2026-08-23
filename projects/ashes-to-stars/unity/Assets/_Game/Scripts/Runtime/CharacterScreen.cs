@@ -71,6 +71,7 @@ namespace AshesToStars
             SeedSpecialJobQaIfRequested();
             SeedJobTraitQaIfRequested();
             SeedSkillCostQaIfRequested();
+            SeedSkillDescQaIfRequested();
             SeedRaceTraitQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
@@ -412,7 +413,7 @@ namespace AshesToStars
                         Info(r, advancementRow++, $"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)} — 합성에서 교체/포기");
 
                     // §4 직업 특성·§3 보유 스킬·§18-9 종족 특성/정체성/이속 — 전부 **이미 배선된 ✅ 표시
-                    // 소비처**(ConceptLine·SkillLine(쿨·위력·반경)·MechanicLine·IdentityLine·SpeedLine·HealthLine)인데, 76px 기본 그리드에선
+                    // 소비처**(ConceptLine·SkillLine(쿨·위력·반경·소모)·SkillDescLine(설명)·MechanicLine·IdentityLine·SpeedLine·HealthLine)인데, 76px 기본 그리드에선
                     // 1차+ 캐릭터에서 표제·전직·이동기 우선존이 행 6을 다 먹어 넘쳐 사라졌다(밀도 상한).
                     // 이 패널은 위 DrawAttributes 머리에서 RowPitch/RowHt를 컴팩트로 낮춰(공유 헬퍼 필드)
                     // 같은 인덱스 그리드로 더 많은 행을 담으므로 이 줄들도 한 판에 보인다. 기본직·에셋
@@ -424,6 +425,10 @@ namespace AshesToStars
                         // §3 SkillDef.쿨다운·위력배율·반경·자원소모 — SkillLine이 이름 옆에 (N초·×P·반경R·소모C) (표시 전용).
                         string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
+                        // §3 SkillDef.설명 — SkillDescLine이 이름:설명 한 줄(표시 전용). SkillLine에 붙이면
+                        // 뒷 스킬 이름이 LabelClip에 잘리므로 다음 행. QA_NO면 빈 문자열이라 행을 안 그린다.
+                        string skillDesc = JobInfo.SkillDescLine(ch.Job);
+                        if (!string.IsNullOrEmpty(skillDesc)) Info(r, advancementRow++, skillDesc);
                         // §18-9·§14 종족 고유 메커니즘·정체성 — 계정 종족(RacePrefs.Get) RaceDef의 유일 소비처.
                         string raceTrait = RaceInfo.MechanicLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceTrait)) Info(r, advancementRow++, raceTrait);
@@ -663,6 +668,19 @@ namespace AshesToStars
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             roster[0].Job = "검사";
+            roster[0].Advancement = AdvancementTier.First;
+            _selectedCharacter = 0;
+            _detailPage = 1;
+        }
+
+        // QA — 1차 마법사. SkillDef.설명(화염폭풍 장판 광역)이 SkillDescLine에 보이는지
+        // 육안 확인용. 검사 일섬 설명은 길어 잘리기 쉬워 대표 칸은 마법사.
+        void SeedSkillDescQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_SKILL_DESC") != "1") return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            roster[0].Job = "마법사";
             roster[0].Advancement = AdvancementTier.First;
             _selectedCharacter = 0;
             _detailPage = 1;

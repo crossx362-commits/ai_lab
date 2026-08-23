@@ -95,6 +95,18 @@ namespace AshesToStars
             }
         }
 
+        /// <summary>§3·SkillDef.설명. QA_NO면 설명 줄을 비운다(옛 화면 = 설명 행 없음).</summary>
+        public const string EnvNoSkillDesc = "QA_NO_SKILL_DESC";
+
+        public static bool SkillDescBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoSkillDesc);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         /// <summary>
         /// "보유 스킬 — {이름}(N초·×P·반경R·소모C) · …". JobDef.스킬의 이름·쿨다운·위력배율·반경·**자원소모** 소비처.
         /// 이름·쿨·위력만 읽던 SkillLine(50202ce5) 옆에, ProjectSetup이 스킬마다 authored한
@@ -144,6 +156,33 @@ namespace AshesToStars
             }
             if (parts.Count == 0) return "";
             return "보유 스킬 — " + string.Join(" · ", parts);
+        }
+
+        /// <summary>
+        /// "스킬 설명 — {이름}: {설명} · …". JobDef.스킬의 <c>SkillDef.설명</c> **유일한 런타임 소비처**.
+        /// 같은 SkillDef 행의 이름·쿨·위력·반경·자원소모는 SkillLine이 읽는데, ProjectSetup이
+        /// 스킬마다 authored한 설명(화염폭풍 「장판 광역 — 4체 이상 밀집 시」·일섬 「스택 5 전량
+        /// 소모 단일 폭딜」…)만 정의·에셋에 있고 grep 소비처 0곳이었다 — 숫자 형제는 SkillLine에
+        /// 붙고 같은 행의 TextArea만 죽어 있던 함정(반경·자원소모와 동일 계열). 원장 §3 직업 스킬
+        /// 표의 스킬 설명 열. SkillLine에 이어붙이면 LabelClip이 뒷 스킬 이름부터 자르므로
+        /// **별도 한 줄**로 낸다(IdentityLine이 MechanicLine과 갈라진 이유와 같음). 값이 빈
+        /// 스킬은 건너뛴다(지어내지 않음). QA_NO_SKILL_DESC면 항상 빈 문자열로 옛 화면(설명
+        /// 행 없음)에 회귀. 표시 전용 — W3Party·전투 수치 무접촉.
+        /// </summary>
+        public static string SkillDescLine(string jobName)
+        {
+            if (SkillDescBlocked) return "";
+            var d = For(jobName);
+            if (d == null || d.스킬 == null || d.스킬.Length == 0) return "";
+            var parts = new System.Collections.Generic.List<string>();
+            foreach (var s in d.스킬)
+            {
+                if (s == null || string.IsNullOrEmpty(s.이름) || string.IsNullOrEmpty(s.설명))
+                    continue;
+                parts.Add(s.이름 + ": " + s.설명);
+            }
+            if (parts.Count == 0) return "";
+            return "스킬 설명 — " + string.Join(" · ", parts);
         }
 
         /// <summary>
