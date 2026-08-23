@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace AshesToStars
@@ -43,21 +44,43 @@ namespace AshesToStars
             return $"직업 특성 — {concept} · {mech}";
         }
 
+        /// <summary>§3·SkillDef.쿨다운. QA_NO면 이름만 남긴다(옛 SkillLine).</summary>
+        public const string EnvNoSkillCd = "QA_NO_SKILL_CD";
+
+        public static bool SkillCdBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoSkillCd);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         /// <summary>
-        /// "보유 스킬 — {이름} · {이름} · …". JobDef.스킬(SkillDef[])의 **유일한 런타임 소비처**.
-        /// 이 배열은 ProjectSetup이 직업마다 authored(도발의 함성·성채 방패…)하고도 어떤 코드도
-        /// 읽지 않아 소비처 0곳이었다(ConceptLine이 겪은 함정과 동일 계열). 매칭 직업이 없거나
-        /// 스킬 배열이 비면 빈 문자열 — 호출부는 이때 줄을 그리지 않는다(지어내지 않음).
+        /// "보유 스킬 — {이름}(N초) · …". JobDef.스킬의 이름·**쿨다운** 소비처.
+        /// 이름만 읽던 SkillLine(이전 배선) 옆에, ProjectSetup이 스킬마다 authored한
+        /// <c>SkillDef.쿨다운</c>(도발의 함성 6·화염폭풍 5·최후의 보루 40…)이 정의·에셋만 있고
+        /// grep 소비처 0곳이었다 — 형제 이름 필드는 읽는데 같은 SkillDef 행의 쿨다운만 죽어 있던
+        /// 함정(이동기거리·전투당발동과 동일 계열). 툴팁 「마나 없음, 쿨다운 단일 체계」·원장 §3
+        /// 직업 스킬 표(✅)의 수치 칸. 쿨다운 &gt; 0일 때만 「(N초)」를 이름 뒤에 붙인다(0=패시브/
+        /// 게이지형은 이름만). QA_NO_SKILL_CD면 옛 줄(이름만)로 회귀. 매칭 직업이 없거나 스킬
+        /// 배열이 비면 빈 문자열 — 호출부는 이때 줄을 그리지 않는다(지어내지 않음).
         /// </summary>
         public static string SkillLine(string jobName)
         {
             var d = For(jobName);
             if (d == null || d.스킬 == null || d.스킬.Length == 0) return "";
-            var names = new System.Collections.Generic.List<string>();
+            var parts = new System.Collections.Generic.List<string>();
             foreach (var s in d.스킬)
-                if (s != null && !string.IsNullOrEmpty(s.이름)) names.Add(s.이름);
-            if (names.Count == 0) return "";
-            return "보유 스킬 — " + string.Join(" · ", names);
+            {
+                if (s == null || string.IsNullOrEmpty(s.이름)) continue;
+                string piece = s.이름;
+                if (!SkillCdBlocked && s.쿨다운 > 0f)
+                    piece += "(" + s.쿨다운.ToString("0.#") + "초)";
+                parts.Add(piece);
+            }
+            if (parts.Count == 0) return "";
+            return "보유 스킬 — " + string.Join(" · ", parts);
         }
 
         /// <summary>

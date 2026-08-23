@@ -50,6 +50,22 @@ rm -f loop/STOP
 원장은 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」을 반드시 읽어라** —
 자리 크기로 그림 크기까지 내면 건물이 화면을 덮는 거인이 된다(실측 후 되돌림 `b414e914`).
 
+## 완료 (2026-08-23) — §3 SkillDef.쿨다운 소비처 (Grok)
+
+원장 §3 직업 스킬 표(✅)·SkillDef 툴팁 「마나 없음, 쿨다운 단일 체계」의 `SkillDef.쿨다운`이
+ProjectSetup·에셋에 authored돼 있으면서도 grep 소비처 0곳이었다. 형제 `이름`만 SkillLine이
+읽고 같은 행의 쿨다운만 죽어 있던 함정(이동기거리·전투당발동과 동일 계열). `JobInfo.SkillLine`이
+쿨다운 > 0일 때 「이름(N초)」를 이어 붙인다(0=게이지/패시브형은 이름만). 표시 전용 — W3Party·전투
+무접촉. `QA_NO_SKILL_CD`면 옛 줄(이름만)로 회귀.
+
+### 검수
+- `unity_meas` sync 후 batch SelfCheck **PASS** (exit 0).
+- MenuItem `Ashes to Stars/QA/Skill Cd Self Check`.
+- 로그: `projects/ashes-to-stars/results/skill_cd_selfcheck_20260823_155637.log` — `[SkillCdSelfCheck] PASS` 전항.
+- 소비처: CharacterScreen 속성 탭 `JobInfo.SkillLine` (수호기사 「도발의 함성(6초) · 성채 방패 · 최후의 보루(40초)」).
+
+---
+
 ## 완료 (2026-08-23) — §18-9 RaceDef.전투당발동 소비처 (Grok)
 
 원장 §18-9·라인 160 「발동을 전투당 1회로 묶어」의 `RaceDef.전투당발동`(default 1, 에셋 committed)이
