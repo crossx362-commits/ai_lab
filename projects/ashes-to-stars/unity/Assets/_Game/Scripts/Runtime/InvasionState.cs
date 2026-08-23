@@ -220,7 +220,7 @@ namespace AshesToStars
         public static string LootCapLine()
         {
             if (LootCapBlocked) return "약탈 상한 없음";
-            return $"약탈 상한 6 G/h(§18-13) · {Economy.FormatCurrency(CapCopper())}";
+            return $"약탈 상한 6 G/h(§18-13) · {EstateStatusHud.ShortCopper(CapCopper())}";
         }
 
         /// <summary>§18-13 승자 최소. 상대 본성 레벨 × 0.5 G/h. 로컬 별은 내 본성.
