@@ -116,7 +116,7 @@ namespace AshesToStars
             if (Blocked) return "목숨 시세 옛 고정가";
             long stone = Floor(Economy.LifeItem.RebornStone);
             long hi = Ceil(Economy.LifeItem.RebornStone);
-            return $"목숨 시세 하한 · 환생석 {Economy.FormatCurrency(stone)} · 상한 {Economy.FormatCurrency(hi)}(§18-4)";
+            return $"목숨 시세 하한 · 환생석 {EstateStatusHud.ShortCopper(stone)} · 상한 {EstateStatusHud.ShortCopper(hi)}(§18-4)";
         }
 
         /// <summary>시각 QA. 30층으로 장을 열고 T1을 골라 150골드가 보이게 한다.</summary>
