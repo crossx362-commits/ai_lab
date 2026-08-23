@@ -225,6 +225,20 @@ namespace AshesToStars
                   && d0.Contains("EstateDefense.UpgradeCost")
                   && d0.IndexOf("FormatCurrency") < 0,
                 "방어 업비는 ShortCopper만");
+
+            // 방어 골드 단축: DrawDefenseRush GoldCostToFloor → ShortCopper
+            int drFn = estate.IndexOf("void DrawDefenseRush(Rect");
+            Check(drFn >= 0, "DrawDefenseRush가 있다");
+            int drEnd = estate.IndexOf("static string FormatWait", drFn);
+            string drSrc = drFn >= 0 && drEnd > drFn
+                ? estate.Substring(drFn, drEnd - drFn) : "";
+            int drGl = drSrc.IndexOf("골드 단축");
+            int drGlSemi = drGl >= 0 ? drSrc.IndexOf(";", drGl) : -1;
+            string drGl0 = drGl >= 0 && drGlSemi > drGl ? drSrc.Substring(drGl, drGlSemi - drGl) : "";
+            Check(drGl0.Contains("EstateStatusHud.ShortCopper")
+                  && drGl0.Contains("EstateDefense.GoldCostToFloor")
+                  && drGl0.IndexOf("FormatCurrency") < 0,
+                "방어 골드 단축은 ShortCopper만");
             // 순자산 줄(§18-5)은 파산·광산 압류와 동형으로 ShowOnHub 게이트 뒤 statusRow에서만
             // 그린다 — 도크 5칸(DockH 하단)은 상시 슬림이다. NetWorthSelfCheck가 배선을 요구하므로
             // 「NetWorth.Line 문자열 부재」는 이제 틀린 단언이다. 게이트 존재로 상시 슬림을 지킨다.

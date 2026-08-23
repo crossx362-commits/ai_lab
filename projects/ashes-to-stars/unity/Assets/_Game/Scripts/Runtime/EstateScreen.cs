@@ -97,6 +97,7 @@ namespace AshesToStars
         /// 이 프로젝트에서 "렌더는 되는데 아무도 안 본 화면"이 반복해서 나온 이유다.
         /// </summary>
         public static string AutoOpen;
+        bool _pendingDefenseRushShot;
 
         protected override void Update()
         {
@@ -130,6 +131,12 @@ namespace AshesToStars
                     _hubPage = 0;
                     _selX = EstateGrid.MineX;
                     _selY = EstateGrid.MineY;
+                }
+                else if (AutoOpen == "방어단축")
+                {
+                    // QA 샷: 방어 탭 + 화살탑 공사 중 → 골드 단축 줄
+                    _hubPage = 2;
+                    _pendingDefenseRushShot = true;
                 }
                 else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
@@ -179,6 +186,15 @@ namespace AshesToStars
             BankruptcySeize.SeedQaIfRequested();
             NetWorth.SeedQaIfRequested();
             EstateDefense.SeedQaIfRequested();
+            if (_pendingDefenseRushShot)
+            {
+                _pendingDefenseRushShot = false;
+                EstateDefense.ResetForTest();
+                GameState.SetTowerFloorForTest(EstateDefense.UnlockFloor);
+                long cost = EstateDefense.UpgradeCost(0);
+                GameState.Grant(cost * 4 + 10_000);
+                EstateDefense.TryStart(EstateDefense.Kind.화살탑);
+            }
             EstateBuild.SeedRushQaIfRequested();
             EstateGrid.SeedQaIfRequested();
             EstateStore.SeedQaIfRequested();
@@ -984,7 +1000,7 @@ namespace AshesToStars
         {
             long cut = EstateDefense.RushableSeconds();
             string goldWhy = EstateDefense.WhyCannotRushGold();
-            string goldLabel = $"골드 단축 · {Economy.FormatCurrency(EstateDefense.GoldCostToFloor())}";
+            string goldLabel = $"골드 단축 · {EstateStatusHud.ShortCopper(EstateDefense.GoldCostToFloor())}";
             if (goldWhy != null)
                 Locked(r, row++, goldLabel, goldWhy, "gold");
             else if (Row(r, row++, goldLabel,
