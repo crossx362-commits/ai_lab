@@ -1,13 +1,12 @@
 {
-  "phase": "review",
-  "updated": "2026-08-23 16:10",
+  "phase": "fail",
+  "updated": "2026-08-23 16:12",
   "last_commit": "d461fbcb",
-  "review": "pending",
+  "review": "FAIL",
   "task": "영지 §6 아트",
-  "routed_to": "재와별·루프검수",
-  "note": "아트 완료 → 루프검수 검토 중 · PropOf는 PASS 후 개발",
+  "routed_to": "재와별·기획검증",
+  "note": "실루엣 샷 없음 → 기획검증→아트 재작업",
   "commits": [
-    "d461fbcb",
-    "26104ea2"
+    "d461fbcb"
   ]
 }
