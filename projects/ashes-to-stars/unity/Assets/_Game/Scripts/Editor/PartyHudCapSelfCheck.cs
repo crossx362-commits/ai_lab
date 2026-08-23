@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AshesToStars
 {
-    /// <summary>파티 편성 헤더 부제는 한 줄. QA_NO면 옛 긴 줄(§16).</summary>
+    /// <summary>파티 편성 헤더·삭제 카드 상태는 한 줄. QA_NO면 옛 긴 줄(§16).</summary>
     public static class PartyHudCapSelfCheck
     {
         static int _fail;
@@ -43,6 +43,16 @@ namespace AshesToStars
             Check(PartyHudCap.Line().IndexOf("한 줄", StringComparison.Ordinal) >= 0,
                 $"줄 (실제 {PartyHudCap.Line()})");
 
+            Check(PartyHudCap.Deleted() == PartyHudCap.DeletedShort,
+                $"삭제 상태 (실제 {PartyHudCap.Deleted()})");
+            Check(PartyHudCap.CardStatusFits(PartyHudCap.Deleted()),
+                $"삭제 길이 {PartyHudCap.RuneCount(PartyHudCap.Deleted())} ≤ {PartyHudCap.CardStatusMaxRunes}");
+            Check(!PartyHudCap.CardStatusFits(PartyHudCap.OldDeleted)
+                  && PartyHudCap.OldDeletedStatus() == PartyHudCap.OldDeleted,
+                $"옛 삭제는 긴 줄 (길이 {PartyHudCap.RuneCount(PartyHudCap.OldDeleted)})");
+            Check(PartyHudCap.DeletedLine().IndexOf("한 줄", StringComparison.Ordinal) >= 0,
+                $"삭제 줄 (실제 {PartyHudCap.DeletedLine()})");
+
             Environment.SetEnvironmentVariable(PartyHudCap.EnvNo, "1");
             Check(PartyHudCap.Blocked, "QA_NO");
             Check(PartyHudCap.Caption() == PartyHudCap.Old()
@@ -50,6 +60,11 @@ namespace AshesToStars
                 $"QA_NO 옛 긴 줄 (실제 {PartyHudCap.Caption()})");
             Check(PartyHudCap.Line().IndexOf("잘린다", StringComparison.Ordinal) >= 0,
                 $"QA_NO 줄 (실제 {PartyHudCap.Line()})");
+            Check(PartyHudCap.Deleted() == PartyHudCap.OldDeleted
+                  && !PartyHudCap.CardStatusFits(PartyHudCap.Deleted()),
+                $"QA_NO 옛 삭제 (실제 {PartyHudCap.Deleted()})");
+            Check(PartyHudCap.DeletedLine().IndexOf("하트", StringComparison.Ordinal) >= 0,
+                $"QA_NO 삭제 줄 (실제 {PartyHudCap.DeletedLine()})");
             Environment.SetEnvironmentVariable(PartyHudCap.EnvNo, null);
 
             PartyHudCap.ResetForTest();
@@ -66,15 +81,20 @@ namespace AshesToStars
             string partySrc = File.ReadAllText(Path.Combine(runtime, "PartyScreen.cs"));
             Check(partySrc.IndexOf("PartyHudCap.SeedQaIfRequested", StringComparison.Ordinal) >= 0
                   && partySrc.IndexOf("PartyHudCap.Line", StringComparison.Ordinal) >= 0
-                  && partySrc.IndexOf("PartyHudCap.Caption", StringComparison.Ordinal) >= 0,
-                "파티가 Caption·Line·시드를 읽는다");
+                  && partySrc.IndexOf("PartyHudCap.Caption", StringComparison.Ordinal) >= 0
+                  && partySrc.IndexOf("PartyHudCap.Deleted", StringComparison.Ordinal) >= 0,
+                "파티가 Caption·Line·Deleted·시드를 읽는다");
             Check(partySrc.IndexOf("최대 {PartyState.MaxSlots}인(§9)", StringComparison.Ordinal) < 0
                   && partySrc.IndexOf("§10-4 진형", StringComparison.Ordinal) < 0
                   && partySrc.IndexOf("PartyHudCap.Old", StringComparison.Ordinal) < 0,
                 "헤더가 긴 옛 줄을 안 붙인다");
+            Check(partySrc.IndexOf("환생석으로만 복구", StringComparison.Ordinal) < 0
+                  && partySrc.IndexOf("PartyHudCap.OldDeleted", StringComparison.Ordinal) < 0,
+                "카드가 긴 삭제 줄을 안 붙인다");
 
             _ = nameof(PartyHudCap.Caption);
             _ = nameof(PartyHudCap.Line);
+            _ = nameof(PartyHudCap.Deleted);
             _ = nameof(PartyHudCap.SeedQaIfRequested);
 
             Environment.SetEnvironmentVariable(PartyHudCap.EnvShow, show);

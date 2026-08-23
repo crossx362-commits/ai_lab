@@ -3,7 +3,7 @@ using System;
 namespace AshesToStars
 {
     /// <summary>
-    /// 파티 편성 헤더 부제. 옛 줄은 상한·편성·진형·부활초를 이어 붙여 LabelClip에 잘렸다.
+    /// 파티 편성 헤더·카드 상태 부제. 헤더는 네 덩어리, 삭제 카드는 환생석 설명이 하트에 붙었다.
     /// QA_NO면 옛 긴 줄. PartyScreen이 읽는다.
     /// </summary>
     public static class PartyHudCap
@@ -12,6 +12,10 @@ namespace AshesToStars
         public const string EnvNo = "QA_NO_PARTY_HUD";
         /// <summary>슬림 제목판 부제 한 줄(§16). 헤더는 도크보다 넓지만 네 덩어리면 잘린다.</summary>
         public const int CaptionMaxRunes = 28;
+        /// <summary>카드 이름칸. 「이름 · 상태」가 하트 앞에서 한 줄.</summary>
+        public const int CardStatusMaxRunes = 12;
+        public const string OldDeleted = "삭제됨 — 환생석으로만 복구(§4)";
+        public const string DeletedShort = "삭제 · 환생석";
 
         static bool _qaSeeded;
 
@@ -38,6 +42,10 @@ namespace AshesToStars
             ? "부제가 잘린다"
             : "파티 부제는 한 줄이다(§16)";
 
+        public static string DeletedLine() => Blocked
+            ? "삭제 상태가 하트에 붙는다"
+            : "삭제 상태는 한 줄이다(§16)";
+
         public static int RuneCount(string text)
         {
             if (string.IsNullOrEmpty(text)) return 0;
@@ -52,6 +60,9 @@ namespace AshesToStars
         public static bool CaptionFits(string text) =>
             RuneCount(text) <= CaptionMaxRunes;
 
+        public static bool CardStatusFits(string text) =>
+            RuneCount(text) <= CardStatusMaxRunes;
+
         /// <summary>옛 소비처 — 상한·편성·진형·부활초를 한 줄에 이어 붙였다.</summary>
         public static string Old() =>
             $"최대 {PartyState.MaxSlots}인(§9) · 편성 {PartyState.Slots.Count}명 · " +
@@ -62,6 +73,16 @@ namespace AshesToStars
         {
             if (Blocked) return Old();
             return $"편성 {PartyState.Slots.Count}/{PartyState.MaxSlots} · 1번=탱 · 부활초 {LifeSystem.GetRevivePotions()}/3";
+        }
+
+        /// <summary>옛 카드 상태 — 환생석 설명을 이어 붙여 하트에 붙었다.</summary>
+        public static string OldDeletedStatus() => OldDeleted;
+
+        /// <summary>이름은 카드가 붙인다. 상태만 12자 이하.</summary>
+        public static string Deleted()
+        {
+            if (Blocked) return OldDeleted;
+            return DeletedShort;
         }
 
         public static void SeedQaIfRequested()

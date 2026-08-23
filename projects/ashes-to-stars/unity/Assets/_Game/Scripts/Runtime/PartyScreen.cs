@@ -102,7 +102,7 @@ namespace AshesToStars
 
         static string StatusOf(CharacterRecord ch, int rosterIndex, bool inParty)
         {
-            if (ch.IsDeleted) return "삭제됨 — 환생석으로만 복구(§4)";
+            if (ch.IsDeleted) return PartyHudCap.Deleted();
             int left = LifeSystem.GetRecoveryTimeRemaining(ch);
             if (left > 0 && DefenseState.Contains(rosterIndex))
                 return $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§15)";
