@@ -1176,7 +1176,7 @@ namespace AshesToStars
                 var g = bag[0];
                 long price = 12_000 + g.Enhance * 2_000;
                 if (Row(r, row++, $"등록 {g.Name}",
-                        $"수수료 {Economy.FormatCurrency(AuctionState.ListFee(price))} · {Economy.FormatCurrency(price)}"))
+                        $"수수료 {EstateStatusHud.ShortCopper(AuctionState.ListFee(price))} · {EstateStatusHud.ShortCopper(price)}"))
                 {
                     _msg = AuctionState.TryListGear(g.Id, price)
                         ? $"{g.Name} 등록"
@@ -1187,7 +1187,7 @@ namespace AshesToStars
             {
                 long price = AuctionTrade.ListPrice(bagItem);
                 if (Row(r, row++, $"등록 {GameState.Label(bagItem)} {bagQty}",
-                        $"수수료 {Economy.FormatCurrency(AuctionState.ListFee(price))} · {Economy.FormatCurrency(price)}"))
+                        $"수수료 {EstateStatusHud.ShortCopper(AuctionState.ListFee(price))} · {EstateStatusHud.ShortCopper(price)}"))
                 {
                     _msg = AuctionState.TryListItem(bagItem, bagQty, price)
                         ? $"{GameState.Label(bagItem)} 등록" : "등록 실패";
