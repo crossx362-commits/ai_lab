@@ -19,8 +19,8 @@
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
-| 개발 직렬 | 소비처0 다음 한 칸 | §3 SkillDef.반경 `e4557f35` 닫음. `W3Party` 금지 |
-| UI 폴리싱 다음 | 본성 골드 단축 FormatCurrency 잘림 | 건물칸·본성상세·업비 ShortCopper 닫음 |
+| 개발 직렬 | 소비처0 다음 한 칸 | §3 SkillDef.반경 `e4557f35` 닫음. `W3Party` 금지. 직전 트랙=폴리싱이라 다음 바퀴는 이 칸 |
+| UI 폴리싱 다음 | 지갑 WalletText FormatCurrency 잘림 | HuntGoldHourLine `261c8a21` · TokenPrice `70f4a5ba` 닫음. HuntGoldLine은 전투 결과라 루프 밖 |
 | launchd 자율 루프 | 살아 있으나 플래너가 task manifest를 못 만듦 | agent=`codex`. Claude 한도 ~08-24 23:00 → Codex/Grok만 |
 | 사람 관문 | 안 닫음 | V2 · V4 70% · W2 FAIL(기준 낮추지 말 것) · 관문② |
 
@@ -32,6 +32,21 @@
 3. ~~**§2-4/§6 아트**~~ — 닫음. 17장 반입 · `EstateArtTierSelfCheck` PASS · `estate_tier_shots/qa_go:Estate.png`.
 
 원장 `docs/GAME_SPEC_ESTATE_BUILD.md`. **§2-1의 「⚠️ 정정」** — 자리 크기로 그림 크기까지 내면 거인이 된다(`b414e914`).
+
+## 완료 (2026-08-23) — 필드 시간당 HuntGoldHourLine ShortCopper (Grok)
+
+직전 트랙 코드(SkillDef.반경) → 필드 화면 한 결함. T2 `FormatCurrency(16000)`이
+「1골드 60실버」라 자막이 길어진다. `HuntGoldHourLine`이 `ShortCopper`만 읽는다.
+T1·T2 모두 「필드 1골드/h(§18-1)」. `QA_NO`면 「필드 골드 없음」.
+`HuntGoldLine` 획득 줄은 FormatCurrency 유지(전투 결과 · 루프 밖).
+샷 `hunt_gold_hour_shots/qa_go:Field.png` — 자막 `세계 T1 · 필드 1골드/h(§18-1)`.
+코드 `261c8a21`. TokenPrice ShortCopper(`70f4a5ba`)는 이미 닫혀 있어 STATUS만 따라잡았다.
+다음은 소비처0 한 칸(직전=폴리싱). 폴리싱 다음은 지갑 WalletText.
+
+### 검수
+- `game_compile_check.py` PASS (289소스 0).
+- `unity_meas` batch `HuntGoldSelfCheck` **PASS** (`results/hunt_gold_hour_selfcheck.log`).
+- 샷 `output/qa/ashes-to-stars/hunt_gold_hour_shots/qa_go:Field.png` — `필드 1골드/h(§18-1)` 보임. 지갑 `553골드 30실버 8쿠퍼`는 다음 칸.
 
 ## 완료 (2026-08-23) — §3 SkillDef.반경 소비처 (Grok)
 
