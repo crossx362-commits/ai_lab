@@ -290,6 +290,12 @@ namespace AshesToStars
             _ = nameof(FieldDockCap.SeedDungeonQaIfRequested);
             _ = nameof(FieldDockCap.SeedHuntQaIfRequested);
 
+            string dockSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/FieldDockCap.cs"));
+            Check(dockSrc.Contains("ShortCopper(cost)")
+                  && dockSrc.IndexOf("FormatCurrency(cost)") < 0,
+                "입장 비용(OldRaid·OldDungeon)은 ShortCopper만");
+
             Environment.SetEnvironmentVariable(FieldDockCap.EnvShow, show);
             Environment.SetEnvironmentVariable(FieldDockCap.EnvBoss, boss);
             Environment.SetEnvironmentVariable(FieldDockCap.EnvRaid, raid);

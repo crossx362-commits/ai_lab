@@ -159,7 +159,7 @@ namespace AshesToStars
         public static string OldRaid()
         {
             long cost = Economy.GetActionCost("RaidDungeon", GameState.Tier);
-            return $"5인 전제 · {Economy.FormatCurrency(cost)} · 환생석·증표 없음(§10-8)";
+            return $"5인 전제 · {EstateStatusHud.ShortCopper(cost)} · 환생석·증표 없음(§10-8)";
         }
 
         public static string Raid() => Blocked ? OldRaid() : RaidShort;
@@ -168,7 +168,7 @@ namespace AshesToStars
         public static string OldDungeon()
         {
             long cost = Economy.GetActionCost("DungeonEntry", GameState.Tier);
-            return $"랜덤 생성 + 종점 보스 · {Economy.FormatCurrency(cost)}(§7)";
+            return $"랜덤 생성 + 종점 보스 · {EstateStatusHud.ShortCopper(cost)}(§7)";
         }
 
         public static string Dungeon() => Blocked ? OldDungeon() : DungeonShort;
