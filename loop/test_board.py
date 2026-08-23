@@ -396,7 +396,7 @@ class ParseTests(unittest.TestCase):
     def test_board_html_handoff_card(self):
         html = (board.HERE / "board.html").read_text(encoding="utf-8")
         self.assertIn('id="d-handoff-card"', html)
-        self.assertIn("코디네이터 · 핸드오프", html)
+        self.assertIn("작업 넘겨받기 흐름", html)
         self.assertIn("준호 작업 완료 보고", html)
         self.assertIn("PROMPT.md", html)
         self.assertLess(html.find('id="d-queue"'), html.find('id="d-handoff-card"'))
@@ -1476,7 +1476,7 @@ class BoardManageTests(unittest.TestCase):
         self.assertIn('id="d-queue"', html)
         self.assertIn('id="d-commands"', html)
         self.assertIn("할 일 적기", html)
-        self.assertIn("오너 명령 기록", html)
+        self.assertIn("시킨 일 기록", html)
         self.assertIn("테스트 하는 사람", html)
         self.assertIn("검증 결과", html)
         self.assertTrue(callable(board.load_test_report))

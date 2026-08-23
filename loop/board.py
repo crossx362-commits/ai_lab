@@ -3037,6 +3037,22 @@ def keeper_info() -> dict:
     }
 
 
+def _usages_parallel() -> dict:
+    """사용량 3종(grok·claude·codex)을 병렬로, 상한 6초 안에서만 기다린다.
+    느리면 그 항목만 빈 값으로 보여 주고 화면 전체가 막히는 일을 없앤다 (2026-08-23)."""
+    import concurrent.futures
+    out: dict[str, dict] = {}
+    jobs = {"grok": grok_usage, "claude": claude_usage, "codex": codex_usage}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        futs = {key: pool.submit(fn) for key, fn in jobs.items()}
+        for key, fut in futs.items():
+            try:
+                out[key] = fut.result(timeout=6)
+            except Exception:
+                out[key] = {}
+    return out
+
+
 def build_state() -> dict:
     status = _read(STATUS)
     design = _read(DESIGN)
@@ -3061,6 +3077,7 @@ def build_state() -> dict:
     git = git_summary()
     worklog = _read(WORKLOG)
     lap = latest_lap_info()
+    usages = _usages_parallel()
     return {
         "updated": parse_updated(status),
         "queue": _plain_list(queue),
@@ -3091,9 +3108,9 @@ def build_state() -> dict:
         "keeper": keeper_info(),
         "completed": _plain_list(completed_posts(status)),
         "playtest": playtest_state(),
-        "grok": grok_usage(),
-        "claude": claude_usage(),
-        "codex": codex_usage(),
+        "grok": usages.get("grok", {}),
+        "claude": usages.get("claude", {}),
+        "codex": usages.get("codex", {}),
         "commands": _plain_list(load_commands()[:40], "body"),
         "tests": load_test_report(),
         "status_snip": make_status_snip(status),
@@ -3181,6 +3198,18 @@ class Handler(BaseHTTPRequestHandler):
                 body = f"board.html 없음: {e}".encode("utf-8")
                 self.send_response(500)
             else:
+                # 첫 화면에 상태를 직접 심는다 — 브라우저 fetch가 어떤 사정으로
+                # 막혀도 보드는 반드시 그려진다 (2026-08-23, 조용한 빈 화면 재발 방지)
+                try:
+                    seed = json.dumps(build_state(), ensure_ascii=False).replace("<", "\\u003c")
+                    injected = (f'<script>window.__STATE__={seed};</script>'
+                                ).encode("utf-8")
+                    marker = b"<script>"
+                    idx = body.find(marker)
+                    if idx != -1:
+                        body = body[:idx] + injected + body[idx:]
+                except Exception:
+                    pass  # 심기 실패 시에도 기존 방식(fetch)으로 동작한다
                 self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Cache-Control", "no-store")

@@ -13,6 +13,8 @@ TARGET_REPO="$(cd "$TARGET_REPO" && pwd)"
 STOP_FILE="$TARGET_REPO/loop/STOP_LANE"
 MAIN_LOG="$TARGET_REPO/logs/speed_lane.log"
 IDLE_WAIT="${LOOP_IDLE_WAIT:-60}"
+# worktree를 저장소 밖에 둔다 — opencode가 상위 .git을 프로젝트 루트로 오인하는 것을 막음
+export LOOP_STATE_ROOT="${LOOP_STATE_ROOT:-$HOME/Library/Application Support/AI Lab Autonomous Loop/lane_state}"
 
 log() { echo "[$(date '+%m-%d %H:%M:%S')] $*" | tee -a "$MAIN_LOG"; }
 
@@ -29,7 +31,7 @@ while true; do
   LOOP_MODE=parallel \
   python3 "$DEPLOY_ROOT/agent_runner.py" \
       --repo-root "$TARGET_REPO" \
-      --prompt-file "$DEPLOY_ROOT/SPEED_PROMPT.md" \
+      --prompt-file "$TARGET_REPO/loop/SPEED_PROMPT.md" \
       --task-file "$TARGET_REPO/loop/TASKS.json" >> "$MAIN_LOG" 2>&1
   RC=$?
   # 0=완료 · 10=할 일 없음(idle) · 75=잠금/인프라 홀드

@@ -440,6 +440,17 @@ Return only JSON: {{"approved":true,"critical":0,"score":90,"categories":{{"func
 """
 
 
+def _seed_agent_config(repo_root: Path, worktree: Path) -> None:
+    """worktree에는 프로젝트 opencode.json이 없어 권한이 전부 ask가 된다 — 복제해 준다."""
+    src = repo_root / "opencode.json"
+    if src.is_file():
+        try:
+            (worktree / "opencode.json").write_text(
+                src.read_text(encoding="utf-8"), encoding="utf-8")
+        except OSError:
+            pass
+
+
 def _create_candidate(
     repo_root: Path,
     run_root: Path,
@@ -447,11 +458,20 @@ def _create_candidate(
     assignment: Assignment,
     base_sha: str,
 ) -> tuple[Assignment, str, Path]:
+    """worktree 대신 **완전 클론**으로 격리한다.
+    opencode는 .git 포인터(gitdir)를 따라가 프로젝트 루트를 본 저장소로 되돌리므로,
+    링크드 worktree에서는 도구 실행이 메인 저장소에서 일어난다(2026-08-23 사고).
+    클론은 .git이 자기 자신을 가리키므로 프로젝트 루트=클론 루트가 보장된다."""
     task_id = str(assignment.task["id"])
     branch = f"autonomous/loop-{run_id}-{task_id}"
-    worktree = run_root / f"worker-{task_id}"
-    _git(repo_root, "worktree", "add", "-b", branch, str(worktree), base_sha)
-    return assignment, branch, worktree
+    clone_dir = run_root / f"worker-{task_id}"
+    cloned = _git(repo_root, "clone", "--no-hardlinks", "--quiet",
+                  str(repo_root), str(clone_dir), check=False)
+    if cloned.returncode != 0:
+        raise RuntimeError(f"worker clone 실패({task_id}): {cloned.stderr.strip()[:200]}")
+    _git(clone_dir, "checkout", "-q", "-b", branch, base_sha)
+    _seed_agent_config(repo_root, clone_dir)
+    return assignment, branch, clone_dir
 
 
 def _run_worker(
@@ -607,22 +627,40 @@ def integrate_candidates(
     approved = [item for item in reviewed if item.approved]
     if not approved:
         return []
+    # integration 트리도 완전 클론이다 — worktree 오인 문제 회피 (2026-08-23)
+    integration_tree = run_root / "integration"
+    cloned = _git(repo_root, "clone", "--no-hardlinks", "--quiet",
+                  str(repo_root), str(integration_tree), check=False)
+    if cloned.returncode != 0:
+        raise RuntimeError(f"integration clone 실패: {cloned.stderr.strip()[:200]}")
     ref_exists = _git(
         repo_root, "show-ref", "--verify", "--quiet",
         "refs/heads/autonomous/integration", check=False,
     ).returncode == 0
-    if not ref_exists:
-        _git(repo_root, "branch", "autonomous/integration", approved[0].candidate.base_sha)
-    integration_tree = run_root / "integration"
-    _git(repo_root, "worktree", "add", str(integration_tree), "autonomous/integration")
+    if ref_exists:
+        _git(integration_tree, "fetch", "--quiet", str(repo_root),
+             "+refs/heads/autonomous/integration:refs/heads/autonomous/integration")
+        checkout = _git(integration_tree, "checkout", "-q",
+                        "autonomous/integration", check=False)
+        if checkout.returncode != 0:
+            _git(integration_tree, "checkout", "-q", "-B", "autonomous/integration",
+                 approved[0].candidate.base_sha)
+    else:
+        _git(integration_tree, "checkout", "-q", "-B", "autonomous/integration",
+             approved[0].candidate.base_sha)
     merged: list[ReviewedCandidate] = []
     try:
-        for item in approved:
+        for index, item in enumerate(approved):
+            remote_name = f"cand_{index}"
+            added = _git(integration_tree, "remote", "add", remote_name,
+                         str(item.candidate.worktree), check=False)
+            fetched = _git(integration_tree, "fetch", "--quiet", remote_name,
+                           item.candidate.branch, check=False)
             result = _git(
                 integration_tree, "merge", "--no-ff", "--no-edit",
-                item.candidate.branch, check=False,
-            )
-            if result.returncode != 0:
+                "FETCH_HEAD", check=False,
+            ) if added.returncode == 0 and fetched.returncode == 0 else None
+            if result is None or result.returncode != 0:
                 _git(integration_tree, "merge", "--abort", check=False)
                 continue
             merged.append(item)
@@ -636,7 +674,7 @@ def integrate_candidates(
             if os.environ.get("LOOP_PUSH", "1") == "1":
                 _git(integration_tree, "push", "origin", "autonomous/integration", check=False)
     finally:
-        _git(repo_root, "worktree", "remove", "--force", str(integration_tree), check=False)
+        shutil.rmtree(integration_tree, ignore_errors=True)
     return merged
 
 
@@ -653,7 +691,12 @@ def run_lap(repo_root: Path, prompt_file: Path, task_file: Path | None) -> int:
     if not 1 <= limit <= 3:
         raise ValueError("LOOP_MAX_PARALLEL must be 1..3")
 
-    state_root = repo_root / "output/cache/autonomous_loop"
+    state_root = os.environ.get("LOOP_STATE_ROOT", "").strip()
+    if state_root:
+        # 저장소 밖에 두면 opencode가 상위 .git을 프로젝트 루트로 오인하지 않는다
+        state_root = Path(state_root).expanduser()
+    else:
+        state_root = repo_root / "output/cache/autonomous_loop"
     state_root.mkdir(parents=True, exist_ok=True)
     lock_handle = (state_root / "coordinator.lock").open("a+", encoding="utf-8")
     try:
@@ -758,7 +801,7 @@ def run_lap(repo_root: Path, prompt_file: Path, task_file: Path | None) -> int:
         return 0
     finally:
         for worktree in worktrees:
-            _git(repo_root, "worktree", "remove", "--force", str(worktree), check=False)
+            shutil.rmtree(worktree, ignore_errors=True)  # 클론 디렉터리 — 그냥 제거
         lock_handle.close()
 
 

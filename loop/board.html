@@ -472,6 +472,17 @@
 </style>
 </head>
 <body>
+<div id="js-error-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:999;background:#d06450;color:#fff;padding:8px 16px;font-size:13px"></div>
+<script>
+window.addEventListener("error", (e) => {
+  const b = document.getElementById("js-error-banner");
+  if (b) { b.style.display = "block"; b.textContent = "화면 오류: " + (e.message || e.type); }
+});
+window.addEventListener("unhandledrejection", (e) => {
+  const b = document.getElementById("js-error-banner");
+  if (b) { b.style.display = "block"; b.textContent = "통신 오류: " + (e.reason && e.reason.message ? e.reason.message : e.reason); }
+});
+</script>
 <header>
   <div>
     <h1>재와 별 <span>지금 하는 일</span></h1>
@@ -538,11 +549,11 @@
 
 <div class="detail-grid" id="detail-grid">
   <section class="d-card tall">
-    <h3>다음 할 일 · STATUS 큐 전체</h3>
+    <h3>앞으로 할 일 전체 목록</h3>
     <div class="d-list" id="d-queue"></div>
   </section>
   <section class="d-card wide" id="d-handoff-card">
-    <h3>코디네이터 · 핸드오프 <span class="meta" id="d-handoff-meta"></span></h3>
+    <h3>작업 넘겨받기 흐름 <span class="meta" id="d-handoff-meta"></span></h3>
     <div class="handoff-flow" id="d-handoff-flow">
       <div class="step"><span class="n">1</span><span class="t">준호 작업 완료 보고(커밋·파일·검사)</span></div>
       <div class="step"><span class="n">2</span><span class="t">보드 → 루프검수 검토 (PROMPT.md ①④⑤)</span></div>
@@ -553,19 +564,19 @@
     <div class="d-list" id="d-handoff"></div>
   </section>
   <section class="d-card tall">
-    <h3>WORKLOG · 아직 안 한 것</h3>
+    <h3>아직 안 한 것들</h3>
     <div class="d-list" id="d-worklog"></div>
   </section>
   <section class="d-card tall" id="d-lap-card">
-    <h3>최신 바퀴 <span class="meta" id="d-lap-meta"></span></h3>
+    <h3>방금 끝난 자동 작업 <span class="meta" id="d-lap-meta"></span></h3>
     <div class="d-list" id="d-lap"></div>
   </section>
   <section class="d-card">
-    <h3>막힘 · 보류</h3>
+    <h3>막힌 것 · 미룬 것</h3>
     <div class="d-list" id="d-blockers"></div>
   </section>
   <section class="d-card">
-    <h3>사람 관문</h3>
+    <h3>사람이 결정할 것</h3>
     <div class="d-list" id="d-gates"></div>
   </section>
   <section class="d-card">
@@ -573,20 +584,20 @@
     <div class="d-list" id="d-completed"></div>
   </section>
   <section class="d-card">
-    <h3>INBOX</h3>
+    <h3>온 요청함</h3>
     <div class="d-list" id="d-inbox"></div>
   </section>
   <section class="d-card">
-    <h3>제공자 · 사용량</h3>
+    <h3>AI 사용량</h3>
     <div class="d-list" id="d-providers"></div>
   </section>
   <section class="d-card wide">
-    <h3>최근 커밋</h3>
+    <h3>최근 저장 기록</h3>
     <div class="d-list" id="d-commits"></div>
   </section>
   <section class="d-card wide">
     <details>
-      <summary>오너 명령 기록</summary>
+      <summary>시킨 일 기록</summary>
       <div class="d-list" id="d-commands"></div>
     </details>
   </section>
@@ -874,12 +885,12 @@ function grokTone(remain) {
 
 function usageChip(g, name) {
   if (!g)
-    return `<span class="u bad">${name} 없음</span>`;
+    return `<span class="u bad">${name} 확인 불가</span>`;
   if (g.remain_pct == null)
-    return `<span class="u bad">${name} ${esc(g.error || "없음")}</span>`;
-  const until = g.period_end ? ` ${g.period_end}` : "";
-  const stale = g.stale ? " · 직전" : "";
-  return `<span class="u ${grokTone(g.remain_pct)}">${name} <b>${g.remain_pct}%</b>${until}${stale}</span>`;
+    return `<span class="u bad">${name} ${esc(g.error || "확인 불가")}</span>`;
+  const until = g.period_end ? ` (${g.period_end}까지)` : "";
+  const stale = g.stale ? " · 직전 기준" : "";
+  return `<span class="u ${grokTone(g.remain_pct)}">${name} 남은 양 <b>${g.remain_pct}%</b>${until}${stale}</span>`;
 }
 
 function renderGrokUsage(state) {
@@ -899,31 +910,33 @@ function renderOps(state) {
   if (!box) return;
   const m = state.mcp || {};
   const dot = (ok, label) =>
-    `<span class="u ${ok ? "ok" : "bad"}">${label} ${ok ? "●" : "○"}</span>`;
+    `<span class="u ${ok ? "ok" : "bad"}">${label} ${ok ? "연결됨" : "꺼짐"}</span>`;
   const r = state.runner || {};
   const live = r.live || {};
-  const runnerLive = live.opencode ? "가동 중" : (live.grok ? "그록 가동 중" : "대기");
+  const AI_NAME = { opencode: "오픈코드", grok: "그록", claude: "클로드", codex: "코덱스" };
+  const runnerLive = live.opencode ? "지금 일하는 중"
+    : (live.grok ? "그록이 대신 일하는 중" : "잠깐 쉬는 중");
   const c = state.council || {};
   const p = state.proposals || {};
   const k = state.keeper || {};
   const kWarns = (Array.isArray(k.warns) ? k.warns : []).filter(Boolean);
   const kChip = k.ok === true
-    ? `<span class="u ${kWarns.length ? "hold" : "ok"}">지킴이 ${kWarns.length
-        ? `▲ ${esc(kWarns.join(" · "))}`
-        : "●"}${k.when ? " · " + esc(k.when) : ""}</span>`
+    ? `<span class="u ${kWarns.length ? "hold" : "ok"}">자동 점검 ${kWarns.length
+        ? `주의 · ${esc(kWarns.join(" · "))}`
+        : "정상"}${k.when ? " · " + esc(k.when) : ""}</span>`
     : (k.ok === false
-      ? `<span class="u bad">지킴이 ✕ ${esc((k.failed || ["검증 실패"])[0])}${kWarns.length ? ` · ▲ ${esc(kWarns.join(" · "))}` : ""} · ${esc(k.when || "")}</span>`
-      : '<span class="u bad">지킴이 미실시</span>');
+      ? `<span class="u bad">자동 점검에서 문제 발견${kWarns.length ? ` · ${esc(kWarns.join(" · "))}` : ""} · ${esc(k.when || "")}</span>`
+      : '<span class="u bad">아직 자동 점검 전</span>');
   box.innerHTML = [
-    '<span class="cap">운영</span>',
-    dot(m.unity, "유니티MCP"),
-    dot(m.blender_bridge, "블렌더"),
-    `<span class="u">러너 <b>${esc(r.agent || "?")}</b>${r.model ? " · " + esc(r.model) : ""} · ${runnerLive}</span>`,
-    `<span class="u ${p.open > 0 ? "hold" : ""}">개선안 미처리 <b>${p.open ?? 0}</b>/${p.total ?? 0}</span>`,
+    '<span class="cap">지금 상태</span>',
+    dot(m.unity, "게임 에디터(유니티)"),
+    dot(m.blender_bridge, "3D 도구(블렌더)"),
+    `<span class="u">일하는 AI <b>${esc(AI_NAME[r.agent] || r.agent || "?")}</b> · ${runnerLive}</span>`,
+    `<span class="u ${p.open > 0 ? "hold" : ""}">검토할 아이디어 <b>${p.open ?? 0}</b>건</span>`,
     kChip,
     c.latest
-      ? `<span class="u">회의 ${esc(c.when || "")} · ${esc(c.title || "최근 회의")} (${esc(c.latest)})</span>`
-      : '<span class="u bad">회의 기록 없음</span>',
+      ? `<span class="u">AI 회의 · 최근 ${esc(c.when || "")}</span>`
+      : '<span class="u bad">아직 회의 기록 없음</span>',
   ].join("");
 }
 
@@ -1327,13 +1340,13 @@ function render(state) {
   const lapId = (state.lap && state.lap.id) || "";
   const lapErrs = (state.lap && state.lap.errors) || [];
   $("pills").innerHTML = [
-    L.running ? `<span class="pill ok">running</span>` : `<span class="pill bad">꺼짐</span>`,
-    L.stop ? `<span class="pill bad">STOP</span>` : "",
-    L.hold ? `<span class="pill bad">HOLD</span>` : "",
-    `<span class="pill on">agent ${esc(L.agent || "?")}</span>`,
-    L.latest_iter ? `<span class="pill">lap ${esc(L.latest_iter)}</span>` : "",
-    lapId ? `<span class="pill on">바퀴 ${esc(lapId)}</span>` : "",
-    lapErrs.length ? `<span class="pill bad">바퀴 오류 ${lapErrs.length}</span>` : "",
+    L.running ? `<span class="pill ok">자동 개발 진행 중</span>` : `<span class="pill bad">자동 개발 멈춤</span>`,
+    L.stop ? `<span class="pill bad">정지 신호 감지</span>` : "",
+    L.hold ? `<span class="pill bad">잠시 보류 중</span>` : "",
+    `<span class="pill on">작업 AI ${esc(L.agent || "?")}</span>`,
+    L.latest_iter ? `<span class="pill">마지막 작업 ${esc(String(L.latest_iter).slice(8, 10) + ":" + String(L.latest_iter).slice(10, 12))}</span>` : "",
+    lapId ? `<span class="pill on">작업 한 바퀴 진행 중</span>` : "",
+    lapErrs.length ? `<span class="pill bad">실패한 작업 ${lapErrs.length}건</span>` : "",
     (state.charts && state.charts.current)
       ? `<span class="pill on">지금 ${esc(state.charts.current.label)}</span>` : "",
   ].filter(Boolean).join("");
@@ -1568,7 +1581,13 @@ async function refresh(force = false) {
     try { await refreshInFlight; } catch (e) {}
   }
   const run = (async () => {
-    const state = await api("/api/state");
+    let state;
+    if (!force && window.__STATE__) {
+      state = window.__STATE__;   // 첫 화면은 서버가 심어 준 상태로 즉시 렌더
+      window.__STATE__ = null;
+    } else {
+      state = await api("/api/state");
+    }
     render(state);
     return state;
   })();
