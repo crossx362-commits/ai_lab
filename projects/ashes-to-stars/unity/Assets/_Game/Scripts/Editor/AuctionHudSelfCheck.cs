@@ -84,6 +84,11 @@ namespace AshesToStars
             Check(estate.Contains("AuctionHud.Line"), "자막이 Line을 읽는다");
             Check(estate.Contains("AuctionHud.SeedQaIfRequested"), "시드를 읽는다");
 
+            string hud = File.ReadAllText(Path.Combine(runtime, "AuctionHud.cs"));
+            Check(hud.Contains("EstateStatusHud.ShortCopper(copper)")
+                  && hud.IndexOf("FormatCurrency(copper)") < 0,
+                "StatusLine 지갑은 ShortCopper만");
+
             Environment.SetEnvironmentVariable(AuctionHud.EnvShow, show);
             Environment.SetEnvironmentVariable(AuctionHud.EnvNo, no);
             if (_fail == 0) Debug.Log("[AuctionHudSelfCheck] PASS\n" + _log);

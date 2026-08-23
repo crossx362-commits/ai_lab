@@ -58,9 +58,7 @@ namespace AshesToStars
         public static string StatusLine()
         {
             long copper = GameState.Wallet.Copper;
-            string money = copper >= Economy.COPPER_PER_GOLD
-                ? $"{copper / Economy.COPPER_PER_GOLD}골드"
-                : Economy.FormatCurrency(copper);
+            string money = EstateStatusHud.ShortCopper(copper);
             return $"{money} · {AuctionState.MineCount}/{AuctionState.MaxMine}";
         }
 
