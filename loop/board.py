@@ -86,6 +86,9 @@ CHOICES = {
 }
 
 STATUS = ROOT / "docs" / "STATUS.md"
+WORKLOG = ROOT / "docs" / "GAME_WORKLOG.md"
+HANDOFF = ROOT / "docs" / "GAME_DEV_HANDOFF.md"
+LOGS = ROOT / "logs"
 DESIGN = ROOT / "docs" / "DESIGN.md"
 GAME_DESIGN = ROOT / "docs" / "GAME_DESIGN_ASHES_TO_STARS.md"
 INBOX = ROOT / "docs" / "feedback" / "INBOX.md"
@@ -2649,6 +2652,134 @@ def codex_usage(now: float | None = None, fetch=None, force: bool = False) -> di
         return summarize_codex_usage({}, error=err)
 
 
+
+def parse_worklog_todos(text: str, limit: int = 20) -> list[dict]:
+    """GAME_WORKLOG 「아직 안 한 것」 번호 목록."""
+    m = re.search(r"^##\s+아직 안 한 것[^\n]*\n(.*?)(?=^##\s|\Z)", text, re.M | re.S)
+    if not m:
+        return []
+    out = []
+    for line in m.group(1).splitlines():
+        hit = re.match(r"^(\d+)\.\s+\*\*(.+?)\*\*\s*(?:—|-)?\s*(.*)$", line.strip())
+        if not hit:
+            hit = re.match(r"^(\d+)\.\s+(.+)$", line.strip())
+            if not hit:
+                continue
+            title, detail = hit.group(2).strip(), ""
+        else:
+            title, detail = hit.group(2).strip(), (hit.group(3) or "").strip()
+        if not title:
+            continue
+        out.append({
+            "n": int(hit.group(1)),
+            "id": item_id("wl:" + title),
+            "title": title[:160],
+            "detail": detail[:300],
+        })
+        if len(out) >= limit:
+            break
+    return out
+
+
+def parse_blockers(status: str) -> list[dict]:
+    """STATUS 「막힌 것」 불릿."""
+    m = re.search(r"^##\s+막힌[^\n]*\n(.*?)(?=^##\s|\Z)", status, re.M | re.S)
+    if not m:
+        return []
+    out = []
+    for line in m.group(1).splitlines():
+        line = line.strip()
+        if not line.startswith("-"):
+            continue
+        body = line.lstrip("- ").strip()
+        if not body:
+            continue
+        title = body.split("—")[0].split("-")[0].strip()[:120]
+        out.append({
+            "id": item_id("blk:" + title),
+            "title": title,
+            "detail": body[:300],
+        })
+    return out
+
+
+def latest_lap_info() -> dict:
+    """logs/YYYY-MM-DD/ 아래 최신 바퀴 폴더와 role 로그 요약."""
+    logs = ROOT / "logs"
+    if not logs.is_dir():
+        return {"ok": False, "error": "logs 없음"}
+    dated = sorted([p for p in logs.iterdir() if p.is_dir() and re.match(r"\d{4}-\d{2}-\d{2}$", p.name)])
+    if not dated:
+        return {"ok": False, "error": "날짜 로그 없음"}
+    day = dated[-1]
+    laps = sorted(
+        [p for p in day.iterdir() if p.is_dir() and not p.name.startswith("smoke")],
+        key=lambda p: p.stat().st_mtime,
+    )
+    if not laps:
+        # flat lap-*.log only
+        laps_files = sorted(day.glob("lap-*.log"), key=lambda p: p.stat().st_mtime)
+        return {
+            "ok": True,
+            "day": day.name,
+            "id": laps_files[-1].name if laps_files else "",
+            "path": str(day.relative_to(ROOT)) if laps_files else str(day),
+            "roles": [],
+            "errors": [],
+            "mtime": _hhmm(laps_files[-1].stat().st_mtime) if laps_files else "",
+        }
+    lap = laps[-1]
+    roles = []
+    errors = []
+    for f in sorted(lap.glob("*.log")):
+        raw = _read(f)
+        tail = "\n".join(raw.strip().splitlines()[-8:]) if raw.strip() else ""
+        err = ""
+        low = raw.lower()
+        if f.stem.endswith("claude") and (
+            "weekly limit" in low or "hit your weekly" in low or "주간 한도" in raw
+            or '"api_error_status":429' in raw
+        ):
+            err = "Claude 주간 한도"
+        elif f.stem.endswith("claude") and '"is_error":true' in raw and "api_error" in low:
+            err = "Claude API 오류"
+        elif "traceback (most recent" in low:
+            err = "예외"
+        roles.append({
+            "name": f.stem,
+            "bytes": f.stat().st_size,
+            "tail": humanize_detail(tail, 220) if tail else "(비어 있음)",
+            "error": err,
+        })
+        if err:
+            errors.append(f"{f.stem}: {err}")
+    return {
+        "ok": True,
+        "day": day.name,
+        "id": lap.name,
+        "path": str(lap.relative_to(ROOT)),
+        "roles": roles,
+        "errors": errors,
+        "mtime": _hhmm(lap.stat().st_mtime),
+    }
+
+
+def provider_health() -> dict:
+    """env LOOP_PROVIDERS + 간단 바이너리/한도 힌트."""
+    raw = os.environ.get("LOOP_PROVIDERS", "claude,codex,grok")
+    names = [x.strip() for x in raw.replace("·", ",").split(",") if x.strip()]
+    # also check App Support env if present
+    app_env = Path.home() / "Library/Application Support/AI Lab Autonomous Loop/env.sh"
+    if app_env.is_file():
+        for line in app_env.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("export LOOP_PROVIDERS="):
+                val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                val = re.sub(r"\$\{LOOP_PROVIDERS:-(.*)\}", r"\1", val)
+                names = [x.strip() for x in val.split(",") if x.strip()]
+    return {"providers": names, "note": "Claude 주간 한도 시 codex·grok만 쓰는 게 안전"}
+
+
+
 def build_state() -> dict:
     status = _read(STATUS)
     design = _read(DESIGN)
@@ -2671,9 +2802,12 @@ def build_state() -> dict:
     inbox_box["waiting"] = _plain_list(inbox_box.get("waiting") or [], "body")
     inbox_box["done"] = _plain_list(inbox_box.get("done") or [], "body")
     git = git_summary()
+    worklog = _read(WORKLOG)
+    lap = latest_lap_info()
     return {
         "updated": parse_updated(status),
         "queue": _plain_list(queue),
+        "queue_table": _plain_list(table),
         "results": _plain_list(parse_results(status), "body"),
         "milestones": _plain_list(miles),
         "inbox": inbox_box,
@@ -2688,13 +2822,18 @@ def build_state() -> dict:
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
         "slice": _plain_list(slice_checks(status, design, _read(GAME_DESIGN))),
         "stuck": _plain_list(stuck_items(status, flags)),
+        "blockers": _plain_list(parse_blockers(status)),
+        "worklog": _plain_list(parse_worklog_todos(worklog)),
+        "lap": lap,
+        "providers": provider_health(),
         "completed": _plain_list(completed_posts(status)),
         "playtest": playtest_state(),
         "grok": grok_usage(),
         "claude": claude_usage(),
         "codex": codex_usage(),
-        "commands": _plain_list(load_commands()[:24], "body"),
+        "commands": _plain_list(load_commands()[:40], "body"),
         "tests": load_test_report(),
+        "status_snip": humanize_detail(status[:1200], 400),
     }
 
 

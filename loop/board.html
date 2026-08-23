@@ -145,12 +145,36 @@
   .now-panel.idle .phase { color: var(--muted); }
   .now-panel .t { font-size: 16px; font-weight: 650; }
   .now-panel .log { margin-top: 10px; max-height: 160px; }
-  .charts { margin: 14px 24px 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
+  .detail-grid {
+  margin: 14px 24px 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; margin: 14px; } }
+.d-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px 10px;
+  max-height: 340px;
+  overflow: auto;
+}
+.d-card.wide { grid-column: 1 / -1; max-height: 260px; }
+.d-card h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: .02em; }
+.d-list .row { display: grid; grid-template-columns: 28px 1fr; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.d-list .row .n { color: var(--muted); }
+.d-list .row .t { font-weight: 600; }
+.d-list .row .d { grid-column: 2; color: var(--muted); font-size: 12px; line-height: 1.35; }
+.d-list .err { color: var(--hold); font-weight: 700; }
+.d-list .ok { color: var(--ok); }
+.d-list .empty { color: var(--muted); font-size: 13px; }
+.charts { margin: 14px 24px 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
   @media (max-width: 900px) { .charts { grid-template-columns: 1fr; margin: 14px; } }
   .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; }
   .bar-row { display: grid; grid-template-columns: 118px 1fr 36px; gap: 8px; align-items: center; margin: 7px 0; }
   .bar-row .lab { font-size: 12px; color: var(--ink); }
-  .bar-track { height: 10px; background: #100e0c; border-radius: 99px; overflow: hidden; }
+  .bar-track { height: 10px; background: #100e0c; border-radius: 99px; overflow-y: auto; }
   .bar-fill { height: 100%; background: var(--gold); border-radius: 99px; }
   .bar-fill.ok { background: var(--ok); }
   .bar-fill.hold { background: var(--hold); }
@@ -415,6 +439,42 @@
     <div id="g-done-list"></div>
   </section>
 </div>
+
+<div class="detail-grid" id="detail-grid">
+  <section class="d-card">
+    <h3>STATUS 큐 전체</h3>
+    <div class="d-list" id="d-queue"></div>
+  </section>
+  <section class="d-card">
+    <h3>WORKLOG 아직 안 한 것</h3>
+    <div class="d-list" id="d-worklog"></div>
+  </section>
+  <section class="d-card">
+    <h3>최신 바퀴 <span class="meta" id="d-lap-meta"></span></h3>
+    <div class="d-list" id="d-lap"></div>
+  </section>
+  <section class="d-card">
+    <h3>막힘 · 보류</h3>
+    <div class="d-list" id="d-blockers"></div>
+  </section>
+  <section class="d-card">
+    <h3>INBOX</h3>
+    <div class="d-list" id="d-inbox"></div>
+  </section>
+  <section class="d-card">
+    <h3>제공자 · 사용량</h3>
+    <div class="d-list" id="d-providers"></div>
+  </section>
+  <section class="d-card wide">
+    <h3>최근 커밋</h3>
+    <div class="d-list" id="d-commits"></div>
+  </section>
+  <section class="d-card wide">
+    <h3>오너 명령 기록</h3>
+    <div class="d-list" id="d-commands"></div>
+  </section>
+</div>
+
 <dialog class="git-dialog" id="git-detail-dialog" aria-labelledby="git-detail-title">
   <div class="git-dialog-head">
     <h2 id="git-detail-title">Git 상세</h2>
@@ -867,6 +927,80 @@ async function loadGitDetail(force = false) {
   }
 }
 
+
+function renderDetail(state) {
+  const q = state.queue || [];
+  $("d-queue").innerHTML = q.length ? q.map((it, i) =>
+    `<div class="row"><span class="n">${it.n || i+1}</span><span class="t">${esc(it.title)}</span>`
+    + (it.detail ? `<span class="d">${esc(it.detail)}</span>` : "") + `</div>`
+  ).join("") : '<p class="empty">큐 비어 있음</p>';
+
+  const wl = state.worklog || [];
+  $("d-worklog").innerHTML = wl.length ? wl.map((it) =>
+    `<div class="row"><span class="n">${it.n || ""}</span><span class="t">${esc(it.title)}</span>`
+    + (it.detail ? `<span class="d">${esc(it.detail)}</span>` : "") + `</div>`
+  ).join("") : '<p class="empty">WORKLOG 항목 없음</p>';
+
+  const lap = state.lap || {};
+  $("d-lap-meta").textContent = lap.id ? `${lap.day || ""} · ${lap.id} · ${lap.mtime || ""}` : "";
+  const roles = lap.roles || [];
+  let lapHtml = "";
+  if (lap.errors && lap.errors.length) {
+    lapHtml += `<div class="row"><span class="n">!</span><span class="t err">${esc(lap.errors.join(" · "))}</span></div>`;
+  }
+  lapHtml += roles.length ? roles.map((r) =>
+    `<div class="row"><span class="n">${r.bytes > 0 ? "●" : "○"}</span>`
+    + `<span class="t">${esc(r.name)}${r.error ? ` <span class="err">(${esc(r.error)})</span>` : ""}</span>`
+    + `<span class="d">${esc(r.tail || "")}</span></div>`
+  ).join("") : '<p class="empty">바퀴 로그 없음</p>';
+  $("d-lap").innerHTML = lapHtml;
+
+  const bl = (state.blockers || []).concat(state.stuck || []);
+  $("d-blockers").innerHTML = bl.length ? bl.map((it) =>
+    `<div class="row"><span class="n">⛔</span><span class="t">${esc(it.title)}</span>`
+    + (it.detail ? `<span class="d">${esc(it.detail)}</span>` : "") + `</div>`
+  ).join("") : '<p class="empty">막힌 것 없음</p>';
+
+  const inbox = state.inbox || {};
+  const waiting = inbox.waiting || [];
+  const done = inbox.done || [];
+  $("d-inbox").innerHTML =
+    (waiting.length ? waiting.map((it) =>
+      `<div class="row"><span class="n">대기</span><span class="t">${esc(it.title || it.body || "")}</span>`
+      + (it.body && it.title ? `<span class="d">${esc(it.body)}</span>` : "") + `</div>`
+    ).join("") : '<p class="empty">대기 지시 없음</p>')
+    + (done.length ? `<p class="empty">처리 완료 ${done.length}건</p>` : "");
+
+  const prov = (state.providers || {}).providers || [];
+  const chips = [
+    ["Claude", state.claude],
+    ["Codex", state.codex],
+    ["Grok", state.grok],
+  ].map(([name, u]) => {
+    u = u || {};
+    const rem = u.remain_pct;
+    const cls = rem == null ? "" : (rem < 15 ? "err" : (rem < 40 ? "" : "ok"));
+    const line = u.error || (rem != null ? `남음 ${rem}%` : "기록 없음");
+    return `<div class="row"><span class="n">·</span><span class="t ${cls}">${name}</span><span class="d">${esc(line)}${u.period ? " · " + esc(u.period) : ""}</span></div>`;
+  }).join("");
+  $("d-providers").innerHTML =
+    `<div class="row"><span class="n">⚙</span><span class="t">LOOP_PROVIDERS</span><span class="d">${esc(prov.join(", ") || "?")}</span></div>` + chips;
+
+  const commits = state.commits || [];
+  $("d-commits").innerHTML = commits.length ? commits.slice(0, 12).map((c) =>
+    `<div class="row"><span class="n">${esc((c.hash || "").slice(0,7))}</span>`
+    + `<span class="t">${esc(c.subject || c.msg || "")}</span>`
+    + `<span class="d">${esc(c.when || "")}</span></div>`
+  ).join("") : '<p class="empty">커밋 없음</p>';
+
+  const cmds = state.commands || [];
+  $("d-commands").innerHTML = cmds.length ? cmds.slice(0, 15).map((c) =>
+    `<div class="row"><span class="n">·</span><span class="t">${esc(c.title || "")}</span>`
+    + (c.body ? `<span class="d">${esc(c.body)}</span>` : "") + `</div>`
+  ).join("") : '<p class="empty">명령 기록 없음</p>';
+}
+
+
 function renderGlance(state) {
   const L = state.loop || {};
   const now = L.now || {};
@@ -889,7 +1023,7 @@ function renderGlance(state) {
   $("g-log").textContent = (L.log_tail || "(로그 없음)").split("\n").slice(-8).join("\n");
   $("g-log").scrollTop = $("g-log").scrollHeight;
 
-  const q = (state.queue || []).slice(0, 3);
+  const q = (state.queue || []).slice(0, 12);
   $("g-queue").innerHTML = q.length ? q.map((it, i) => `
     <div class="g-row${i ? " dim" : ""}"><span class="n">${it.n || i + 1}</span>
     <span class="t">${esc(it.title)}</span></div>`).join("")
