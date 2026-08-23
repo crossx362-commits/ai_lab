@@ -951,6 +951,13 @@ namespace AshesToStars
 
             var center = face.center;
             CharHud.EquipRingFit(stage, face, out float ringX, out float ringY);
+            // 라벨이 나가 있는 실제 평평한 내부 — 안쪽 금테 선(stage↔chrome 중간)까지.
+            // 정보 칸(infoTop·infoBottom)과 같은 보간선이라 한 선을 맞춘다. 이 선 안으로만
+            // 클램프하지 않으면 좌측 라벨(장갑·갑옷)이 장식 여백에 걸리고 신발은 하단
+            // 장식 위에 묻힌다(실측 2026-08-24).
+            var flat = Rect.MinMaxRect(
+                Mathf.Lerp(stage.x, chrome.x, 0.5f), Mathf.Lerp(stage.y, chrome.y, 0.5f),
+                Mathf.Lerp(stage.xMax, chrome.xMax, 0.5f), Mathf.Lerp(stage.yMax, chrome.yMax, 0.5f));
             for (int i = 0; i < RingSlots.Length; i++)
             {
                 var slot = RingSlots[i];
@@ -966,7 +973,7 @@ namespace AshesToStars
                             slotRect.width - inset * 2f, slotRect.height - inset * 2f),
                         ItemAtlas.KeyForSlot(slot), new Color(1f, 1f, 1f, 0.28f));
                 }
-                var cap = CharHud.EquipLabel(stage, slotRect);
+                var cap = CharHud.EquipLabel(stage, slotRect, flat);
                 Hint(cap, CharHud.SlotLabel(slot, worn));
                 if (GUI.Button(slotRect, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)
                 {

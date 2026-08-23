@@ -78,6 +78,32 @@ namespace AshesToStars
                 Check(noOverlap, $"라벨 {i}가 칸과 안 겹친다");
             }
             Check(labelOk == 6, $"둘레 라벨 6/6 통과 (실제 {labelOk})");
+
+            // 평평한 내부(flat) 판정 — 라벨이 장식 여백으로 나가면 결함이다(실측 2026-08-24:
+            // 갑옷 라벨 패널 가장자리 절단·신발 라벨 하단 금색 장식 위 묻힘). DrawEquipStudio가
+            // 쓰는 것과 같은 stage↔chrome 0.5 보간선으로 flat을 만들어 검사한다.
+            var chromeFlat = UiAtlas.ContentRect(stage, "panel", 2f);
+            var flat = Rect.MinMaxRect(
+                Mathf.Lerp(stage.x, chromeFlat.x, 0.5f), Mathf.Lerp(stage.y, chromeFlat.y, 0.5f),
+                Mathf.Lerp(stage.xMax, chromeFlat.xMax, 0.5f), Mathf.Lerp(stage.yMax, chromeFlat.yMax, 0.5f));
+            int flatOk = 0;
+            for (int i = 0; i < UiPages.EquipRingDegrees.Length; i++)
+            {
+                var slot = UiPages.ClampIn(stage,
+                    UiPages.SlotOnRing(face.center, ringX, ringY,
+                        UiPages.EquipRingDegrees[i], UiPages.EquipSlotSize));
+                var lab = CharHud.EquipLabel(stage, slot, flat);
+                bool inFlat = lab.x >= flat.x - 0.01f && lab.xMax <= flat.xMax + 0.01f
+                    && lab.y >= flat.y - 0.01f && lab.yMax <= flat.yMax + 0.01f;
+                bool clear = !lab.Overlaps(new Rect(slot.x, slot.y, slot.width, slot.height));
+                if (inFlat && clear) flatOk++;
+                Check(inFlat, $"평평한 내부 라벨 {i} 안 ({lab})");
+                Check(clear, $"평평한 내부 라벨 {i}가 칸과 안 겹친다");
+            }
+            Check(flatOk == 6, $"평평한 내부 라벨 6/6 통과 (실제 {flatOk})");
+            Check(CharHud.EquipLabel(stage,
+                    new Rect(stage.x + 40f, stage.y + 80f, 48f, 48f)).width >= CharHud.LabelW,
+                "flat 없는 옛 호출도 80폭 새 길");
             Check(CharHud.SlotLabel(EquipSlot.Accessory, null) == "장신구",
                 "빈 장신구 라벨");
             Check(CharHud.Line().Contains("잘리지 않는다"),

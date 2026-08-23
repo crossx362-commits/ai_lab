@@ -91,15 +91,28 @@ namespace AshesToStars
         }
 
         /// <summary>옛 길은 칸 폭 48이라 「장신구」가 잘린다. 새 길은 80·칸 아래.</summary>
-        public static Rect EquipLabel(Rect stage, Rect slot)
+        public static Rect EquipLabel(Rect stage, Rect slot) => EquipLabel(stage, slot, stage);
+
+        /// <summary>
+        /// 라벨은 패널의 **안쪽 금테 안 평평한 영역(flat)** 에만 둔다. stage로 클램프하면
+        /// 좌측 라벨(장갑·갑옷)이 장식 여백에 걸려 가장자리에서 잘리고, 신발은 하단 금색
+        /// 장식 위에 묻혀 판독 불가였다(실측 2026-08-24, polish_r65 샷). flat은
+        /// stage↔chrome 중간선 — CharacterScreen.DrawEquipStudio가 정보 칸을 짜는
+        /// 같은 보간 선이다. 아래 배치가 flat 바닥에 안 들어오면(좌하단 신발) 칸 위로 올린다.
+        /// </summary>
+        public static Rect EquipLabel(Rect stage, Rect slot, Rect flat)
         {
             if (Blocked)
-            {
                 return UiPages.ClampIn(stage,
                     new Rect(slot.x, slot.yMax - 2f, slot.width, LabelH));
-            }
-            var lab = new Rect(slot.center.x - LabelW * 0.5f, slot.yMax + LabelGap, LabelW, LabelH);
-            return UiPages.ClampIn(stage, lab);
+            var slotRect = new Rect(slot.x, slot.y, slot.width, slot.height);
+            var below = UiPages.ClampIn(flat, new Rect(
+                slot.center.x - LabelW * 0.5f, slot.yMax + LabelGap, LabelW, LabelH));
+            if (!below.Overlaps(slotRect)) return below;
+            var above = UiPages.ClampIn(flat, new Rect(
+                slot.center.x - LabelW * 0.5f, slot.y - LabelGap - LabelH, LabelW, LabelH));
+            if (!above.Overlaps(slotRect)) return above;
+            return UiPages.ClampIn(stage, below);   // 최후: 평평한 영역이 너무 작으면 옛 배치
         }
 
         public static void EquipRingFit(Rect stage, Rect face, out float ringX, out float ringY)
