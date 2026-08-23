@@ -885,7 +885,7 @@ namespace AshesToStars
             {
                 string why = EstateBuild.WhyCannotUpgrade(c);
                 string label = $"Lv{lv} → {lv + 1}";
-                string desc = $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
+                string desc = $"{EstateStatusHud.ShortCopper(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
                 if (why != null)
                     Locked(r, row++, label, why, "territory");
                 else if (Row(r, row++, label, desc, "territory"))

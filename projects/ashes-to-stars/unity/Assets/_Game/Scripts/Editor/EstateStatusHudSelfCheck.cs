@@ -171,6 +171,16 @@ namespace AshesToStars
                   && info0.Contains("WarehouseCapCopper()")
                   && info0.IndexOf("FormatCurrency") < 0,
                 "본성 Info 창고는 ShortCopper만");
+
+            // Keep 업그레이드 비용 줄: ShortCopper(UpgradeCost) · Info/업그레이드 desc만 범위
+            int upDesc = keepDetailSrc.IndexOf("string desc =");
+            int upSemi = upDesc >= 0 ? keepDetailSrc.IndexOf(";", upDesc) : -1;
+            string up0 = upDesc >= 0 && upSemi > upDesc
+                ? keepDetailSrc.Substring(upDesc, upSemi - upDesc) : "";
+            Check(up0.Contains("EstateStatusHud.ShortCopper")
+                  && up0.Contains("UpgradeCost")
+                  && up0.IndexOf("FormatCurrency") < 0,
+                "본성 업그레이드 비용은 ShortCopper만");
             // 순자산 줄(§18-5)은 파산·광산 압류와 동형으로 ShowOnHub 게이트 뒤 statusRow에서만
             // 그린다 — 도크 5칸(DockH 하단)은 상시 슬림이다. NetWorthSelfCheck가 배선을 요구하므로
             // 「NetWorth.Line 문자열 부재」는 이제 틀린 단언이다. 게이트 존재로 상시 슬림을 지킨다.
