@@ -1176,6 +1176,16 @@ class GitDetailTests(unittest.TestCase):
 
 
 class GitApiTests(unittest.TestCase):
+    def setUp(self):
+        """서버 테스트가 외부 사용량 API(grok·claude·codex)를 치지 않게 막는다.
+        2026-08-24 04:19 스위트 FAIL: 이 기계의 실제 토큰으로 라이브 호출이 일어나고,
+        외부 429 지연이 로컬 클라이언트 3초 타임아웃을 넘겼다."""
+        stub = {"ok": False, "stale": True, "products": []}
+        for name in ("grok_usage", "claude_usage", "codex_usage"):
+            patcher = mock.patch.object(board, name, return_value=stub)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     def _server(self, root):
         import threading
         old = board.ROOT
