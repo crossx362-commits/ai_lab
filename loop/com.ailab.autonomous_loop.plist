@@ -8,7 +8,8 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/junholee/ai_lab/loop/loop.sh</string>
+        <string>/Users/junholee/Library/Application Support/AI Lab Autonomous Loop/loop.sh</string>
+        <string>/Users/junholee/ai_lab</string>
     </array>
 
     <key>WorkingDirectory</key>
@@ -24,6 +25,9 @@
         <key>SuccessfulExit</key>
         <false/>
     </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
 
     <!-- 터미널 환경변수 명시 -->
     <key>EnvironmentVariables</key>

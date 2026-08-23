@@ -675,12 +675,12 @@ class LiveLogTests(unittest.TestCase):
 
     def test_loop_standing_polish_uses_existing_art(self):
         """오너 2026-08-18: 상시 폴리싱. 중복 재생성이 금지이지 5직업·몹 금지가 아니다. 할로우 강제는 취소."""
-        sh = (HERE / "loop.sh").read_text(encoding="utf-8")
-        self.assertIn("상시 폴리싱", sh)
-        self.assertIn("중복 리소스 재생성 금지", sh)
-        self.assertIn("할로우 나이트 화풍 강제는 취소", sh)
-        self.assertIn("영지 화면·EstateYard", sh)
-        self.assertNotIn("기본 5직업·몹 실루엣은 다시 뽑지 않는다", sh)
+        prompt = (HERE / "PROMPT.md").read_text(encoding="utf-8")
+        self.assertIn("상시 폴리싱", prompt)
+        self.assertIn("중복 리소스 재생성 금지", prompt)
+        self.assertIn("할로우 나이트 화풍 강제는 취소", prompt)
+        self.assertIn("영지 화면·EstateYard", prompt)
+        self.assertNotIn("기본 5직업·몹 실루엣은 다시 뽑지 않는다", prompt)
 
     def test_loop_sh_writes_main_log_itself(self):
         """띄우는 쪽에 로그를 맡기지 마라 — loop.sh가 직접 tee 한다."""
@@ -740,7 +740,7 @@ class DecisionTests(unittest.TestCase):
         self.assertEqual(nq[0]["n"], 1)
         self.assertIn("오너 선택: V2 → 통과", out)
 
-    def test_apply_pass_writes_inbox_and_drops_queue(self):
+    def test_apply_pass_writes_inbox_without_mutating_integration_status(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             status_p = tmp / "STATUS.md"
@@ -759,20 +759,14 @@ class DecisionTests(unittest.TestCase):
                 v2 = next(x for x in q if x["title"] == "V2 사람 판정")
                 r = board.apply_decision(v2["id"], "pass", "창에서 피한 느낌 있음")
                 self.assertEqual(r["choice"], "pass")
-                self.assertEqual([x["title"] for x in board.parse_queue(status_p.read_text(encoding="utf-8"))],
-                                 ["V4 삭제 루프 준비"])
+                self.assertEqual(status_p.read_text(encoding="utf-8"), STATUS)
                 inbox = inbox_p.read_text(encoding="utf-8")
                 wait = inbox.split("## 대기 중", 1)[1]
                 self.assertIn("오너 판정 — V2 사람 판정", wait)
                 self.assertIn("통과", wait)
                 self.assertIn("창에서 피한 느낌 있음", wait)
-                pending = board.pending_choices(
-                    board.parse_queue(status_p.read_text(encoding="utf-8")),
-                    board.parse_milestones(DESIGN),
-                    board.load_decisions(),
-                )
-                self.assertFalse(any(p["title"] == "V2 사람 판정" for p in pending))
-                # 큐에 같은 제목이 다시 있으면 예전 통과로 숨기지 않는다
+                # STATUS 정본은 coordinator만 갱신한다. 보드 판정은 INBOX에 남아
+                # 다음 바퀴가 처리하며, 같은 제목의 새 항목을 숨기지 않는다.
                 again = board.pending_choices(
                     [{"id": v2["id"], "title": "V2 사람 판정", "detail": "사람", "human": True}],
                     [],

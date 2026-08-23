@@ -142,6 +142,21 @@ def _read(path: Path) -> str:
         return ""
 
 
+def read_status() -> str:
+    """통합 브랜치 STATUS가 정본이며, 아직 없을 때만 루트 틀을 쓴다."""
+    try:
+        result = subprocess.run(
+            ["git", "show", "autonomous/integration:docs/STATUS.md"],
+            cwd=str(ROOT), capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=5, check=False,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return _read(STATUS)
+
+
 def item_id(text: str) -> str:
     return hashlib.sha1(text.strip().encode("utf-8")).hexdigest()[:12]
 
@@ -580,7 +595,7 @@ def commit_spark(days: int = 14) -> list[dict]:
 def progress_charts(status: str | None = None, design: str | None = None,
                     game_design: str | None = None, decisions: dict | None = None) -> dict:
     """보드·이미지 공통. 숫자는 문서·파일·git에서만 온다."""
-    status = status if status is not None else _read(STATUS)
+    status = status if status is not None else read_status()
     design = design if design is not None else _read(DESIGN)
     game_design = game_design if game_design is not None else _read(GAME_DESIGN)
     decisions = decisions if decisions is not None else load_decisions()
@@ -1290,7 +1305,7 @@ def rewrite_queue(status: str, items: list[dict], note: str = "") -> str:
 def apply_decision(item_id: str, choice: str, note: str = "") -> dict:
     if choice not in CHOICES:
         raise ValueError("이걸로 진행/완료/다시/보류 중에서 고르라")
-    status = _read(STATUS)
+    status = read_status()
     queue = parse_queue(status)
     miles = parse_milestones(_read(DESIGN))
     catalog = queue + parse_queue_table(status) + parse_now_list(_read(GAME_DESIGN)) + miles
@@ -1315,19 +1330,6 @@ def apply_decision(item_id: str, choice: str, note: str = "") -> dict:
     else:
         body += "완료로 내리지 마라. 이 항목은 보류하고 다음 실행 가능 항목을 잡아라."
     write_request(f"오너 판정 — {item['title']} ({label})", body, source="decide")
-
-    if choice == "do":
-        remain = [q for q in queue if q["id"] != item_id]
-        remain.insert(0, item)
-        marker = f"> **오너 선택({stamp}): {item['title']} → 다음 할 일.**"
-        STATUS.write_text(rewrite_queue(_read(STATUS), remain, marker), encoding="utf-8")
-    elif choice in ("pass", "skip"):
-        remain = [q for q in queue if q["id"] != item_id]
-        marker = (
-            f"> **오너 선택({stamp}): {item['title']} → {label}.**"
-            + (f" {note.strip()[:80]}" if note.strip() else "")
-        )
-        STATUS.write_text(rewrite_queue(_read(STATUS), remain, marker), encoding="utf-8")
 
     rec = load_decisions()
     rec[item_id] = {
@@ -1505,9 +1507,15 @@ def _hhmm(ts: float) -> str:
     return datetime.fromtimestamp(ts).strftime("%H:%M:%S")
 
 
+def _main_log_path() -> Path:
+    current = ROOT / "logs" / "loop_main.log"
+    legacy = HERE / "loop_main.log"
+    return current if current.exists() or not legacy.exists() else legacy
+
+
 def loop_flags() -> dict:
-    agent = _read(HERE / "agent").strip() or os.getenv("LOOP_AGENT", "grok")
-    main = ROOT / "loop" / "loop_main.log"
+    agent = os.getenv("LOOP_PROVIDERS", "claude · codex · grok").replace(",", " · ")
+    main = _main_log_path()
     latest = _latest_iter_path()
     latest_iter = latest.name if latest else ""
     main_at = main.stat().st_mtime if main.is_file() else 0.0
@@ -1546,10 +1554,13 @@ def loop_flags() -> dict:
 
 
 def _latest_iter_path() -> Path | None:
-    log_dir = HERE / "logs"
-    if not log_dir.is_dir():
-        return None
-    iters = sorted(log_dir.glob("iter_*.log"), key=lambda p: p.stat().st_mtime)
+    logs_root = ROOT / "logs"
+    iters = list(logs_root.glob("*/lap-*.log")) if logs_root.is_dir() else []
+    # 이전 로그는 이행 기간에만 fallback으로 읽는다.
+    old_log_dir = HERE / "logs"
+    if not iters and old_log_dir.is_dir():
+        iters = list(old_log_dir.glob("iter_*.log"))
+    iters.sort(key=lambda p: p.stat().st_mtime)
     return iters[-1] if iters else None
 
 
@@ -1611,7 +1622,7 @@ def infer_now_title(log_text: str, queue: list[dict], inbox_waiting: list[dict])
 def current_work(running: bool, hold: bool, stop: bool,
                  latest_iter: str, main_log: str) -> dict:
     """지금 루프가 손에 든 일. 끝난 이터는 작업 중으로 안 속인다."""
-    full_main = _read(HERE / "loop_main.log")
+    full_main = _read(_main_log_path())
     latest = _latest_iter_path()
     iter_text = _read(latest) if latest else ""
     number, started = "", ""
@@ -1636,7 +1647,7 @@ def current_work(running: bool, hold: bool, stop: bool,
         if m:
             started = ":".join(m.groups())
     generating = _read(ROOT / "projects" / "ashes-to-stars" / "art" / ".generating").strip()
-    queue = parse_queue(_read(STATUS))
+    queue = parse_queue(read_status())
     inbox = parse_inbox(_read(INBOX)).get("waiting") or []
     if stop:
         phase = "STOP"
@@ -1695,13 +1706,14 @@ def find_loop_pids() -> list[int]:
 def start_loop() -> int:
     if find_loop_pids():
         return find_loop_pids()[0]
-    log_path = HERE / "loop_main.log"
+    log_path = ROOT / "logs" / "loop_main.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
     with open(log_path, "a", encoding="utf-8") as log:
         log.write(f"\n▶ 보드에서 재개 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         log.flush()
     # 로그는 loop.sh가 직접 tee 한다 — 여기서 또 리다이렉트하면 두 벌로 쌓인다.
     proc = subprocess.Popen(
-        ["bash", str(HERE / "loop.sh")],
+        ["bash", str(HERE / "loop.sh"), str(ROOT)],
         cwd=str(ROOT),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
@@ -2309,7 +2321,7 @@ def codex_usage(now: float | None = None, fetch=None, force: bool = False) -> di
 
 
 def build_state() -> dict:
-    status = _read(STATUS)
+    status = read_status()
     design = _read(DESIGN)
     inbox = _read(INBOX)
     checks = load_checks()

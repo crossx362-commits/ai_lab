@@ -21,6 +21,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🎯 에이전트 작업 지침
 
+**자율 게임 루프 예외:** `loop/agent_runner.py`가 격리 worktree·한 작업·허용 경로를 배정한 비대화형 세션은 승인 질문 없이 즉시 구현한다. Claude 기본은 Fable이고 사용량 소진·이용 불가 때만 Opus 5다. 다른 제공자가 후보 커밋을 승인하기 전에는 `autonomous/integration`에 합치지 않는다.
+
 **목표**: 이 파일 하나만 수정해.  
 **범위**: [파일명] 외에는 열지 마.  
 **금지**: 전체 리팩터링, 전체 검색, 의존성 추가, 전체 테스트 실행 금지.

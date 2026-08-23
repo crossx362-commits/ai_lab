@@ -27,9 +27,9 @@
 기획서 기반 자동 회의(`game_council.py`, 09:00·21:00)가 낸 작업지시서. **위에서부터 순서대로.**
 각 항목에 통과 기준·네거티브 컨트롤이 있다 — 코드를 넣은 것과 끝난 것은 다르다.
 
-## 2. 세션 구성 — **단일 세션 통합 개발** (오너 지시 2026-08-15)
+## 2. 세션 구성 — **한 작업 또는 격리 병렬 개발** (오너 지시 2026-08-23)
 
-개발·그래픽을 **한 세션에서 전부** 한다. 코드·아트·측정·빌드가 한 자리에 있다.
+작업 하나는 한 세션에서 코드·아트·측정·빌드를 끝낸다. 서로 파일 경로가 겹치지 않는 작업은 `loop/agent_runner.py`가 별도 Git worktree로 최대 3개까지 병렬 배정할 수 있다. 같은 경로·Unity 원본 lock·공유 자원이 겹치면 단일 작업으로 직렬화한다. worker와 reviewer는 서로 다른 제공자이며, 다른 AI 브랜치·커밋을 먼저 확인해 중복 개발하지 않는다.
 
 > 이전에는 두 세션으로 나눠 `docs/GAME_SESSION_BOUNDARY.md`의 자원 경계(`.cs`면 개발,
 > 그 외는 그래픽)로 운영했다. 그 문서는 **이력으로만** 남긴다. 나누는 동안 실제로 겪은 것:
@@ -58,6 +58,8 @@ ls unity/Temp/UnityLockfile
 
 ## 4. 자동진행·세션 감시 — **전부 중단** (2026-08-15, 통합 개발 전환)
 
+아래의 옛 autopilot/session-watch는 계속 중단 상태다. 2026-08-23의 `loop/` 자율 개발 루프는 격리 worktree와 STOP 파일을 쓰는 별도 시스템이며 이 항목을 되살리는 것이 아니다.
+
 단일 세션이 되면서 필요가 사라졌다. 아래는 전부 꺼져 있다:
 - `autopilot_stop_hook.py`(Stop 훅) — `.claude/autopilot_sessions.txt`의 대상이 주석 처리됨
 - `game_session_watch.py`(예원 세션 감시) — schedules.json에서 `enabled: false`
@@ -75,9 +77,7 @@ ls unity/Temp/UnityLockfile
 
 ## 5. 아트를 만들었으면 반드시 반입까지
 
-**이미지 생성(오너 2026-08-18):** 힉스필드 **Nano Banana 2** (`nano_banana_flash`) + 해상도 **2k**.
-웹에서는 Unlimited 토글 ON. CLI 별칭 `nano_banana_2`는 Pro다 — 쓰지 마라.
-Gemini·Grok Imagine·Nano Banana Pro 금지. 생성은 `art/aigen.py`만.
+**이미지 생성 최신 지시(오너 2026-08-23):** Higgsfield 또는 Grok Imagine만 사용한다. 둘 다 이용할 수 없으면 다른 생성기로 대체하지 말고 인프라 보류한다. 실제 게임 반입 가능성과 출처·모델·프롬프트를 기록한다. 2026-08-18의 Nano Banana 전용/Grok Imagine 금지는 이 최신 지시로 폐기됐다.
 **화풍 강제(할로우 나이트)는 오너 2026-08-18 취소.** 이미 만든 장을 화풍 맞추려 다시 뽑지 마라. 있는 리소스를 반입·연결한다.
 > **코드에서도 제거됨(2026-08-18 2차 지시 "전체에 할로우 나이트 스타일 제거").**
 > `aigen.py`가 모든 프롬프트 앞에 `HOLLOW_STYLE`(몸은 VOID BLACK·뼈색 가면·채도 금지)을

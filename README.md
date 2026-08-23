@@ -31,59 +31,88 @@ ai_lab/
 
 ## 자율 개발 루프 (Autonomous Development Loop)
 
-대화 맥락에 의존하지 않고 매 이터레이션마다 **새로운 헤드리스 세션**으로 자율 개발을 진행하는 루프 시스템입니다. 상태와 작업 큐는 파일(`docs/`)로 영속 관리됩니다.
+매 바퀴 Claude·Codex·Grok CLI를 완전히 새 세션으로 실행합니다. 작업이 하나면 Claude(Fable, 사용량 소진 시에만 Opus 5)가 개발하고 Codex가 검토합니다. 독립 작업이 여러 개면 최대 세 개를 별도 Git worktree에서 병렬 개발하며, 다른 제공자가 정확한 후보 커밋을 검토합니다. 통과한 변경만 `autonomous/integration`에 합치므로 `master`와 사용자의 열린 작업트리는 자동 수정하지 않습니다.
 
-### 1. 주요 파일 구성
-- [loop/loop.sh](file:///Users/junholee/ai_lab/loop/loop.sh): 루프 본체 스크립트 (독립 세션 실행, 지시서 전달, 로그 기록, STOP 감지)
-- [loop/env.sh](file:///Users/junholee/ai_lab/loop/env.sh): 루프 환경설정 (실행기/모델, 최대 턴 수, 쿨다운 대기시간, 최대 바퀴 수, PATH)
-- [loop/PROMPT.md](file:///Users/junholee/ai_lab/loop/PROMPT.md): 5개 절 지시서 (합격 기준, 읽을 문서 순서, 아트 규칙, 도는 순서, 커밋 규칙)
-- [loop/com.ailab.autonomous_loop.plist](file:///Users/junholee/ai_lab/loop/com.ailab.autonomous_loop.plist): macOS 자동 실행 (launchd) 등록 정의
-- [docs/DESIGN.md](file:///Users/junholee/ai_lab/docs/DESIGN.md): 무엇을 만드는가 (초기 기획서, 기준 헌법)
-- [docs/STATUS.md](file:///Users/junholee/ai_lab/docs/STATUS.md): 어디까지 했고 다음은 뭔가 (매 바퀴 갱신 상태 및 큐)
-- [docs/feedback/INBOX.md](file:///Users/junholee/ai_lab/docs/feedback/INBOX.md): 오너 직접 지시함 (최우선 처리)
-- `logs/`: 매 바퀴별 실행 상세 로그 디렉토리 (`logs/loop_YYYYMMDD_HHMMSS_iterN.log`)
+### 주요 파일
 
-### 2. 켜는 법 (Start)
-- **터미널에서 직접 실행**:
-  ```bash
-  ./loop/loop.sh
-  ```
-- **특정 에이전트/바퀴 수 지정 실행**:
-  ```bash
-  LOOP_AGENT=codex LOOP_MAX_LOOPS=5 ./loop/loop.sh
-  ```
-- **macOS launchd 백그라운드 서비스 시작**:
-  ```bash
-  launchctl load ~/Library/LaunchAgents/com.ailab.autonomous_loop.plist
-  launchctl start com.ailab.autonomous_loop
-  ```
+- `loop/loop.sh`: 무한 반복, 새 coordinator 프로세스, 날짜별 로그, STOP 처리
+- `loop/agent_runner.py`: 작업 분리, 겹침 차단, 격리 worktree, 교차 검토, 통합
+- `loop/env.sh`: 모델·최대 턴·대기·최대 바퀴·병렬 수·PATH
+- `loop/PROMPT.md`: 다섯 절 개발 지시서
+- `loop/TASKS.example.json`: planner 호출을 아끼는 구조화 작업 예시
+- `loop/board.py`, `loop/board.html`: 상태·로그·오너 지시 보드
+- `loop/com.ailab.autonomous_loop.plist`: macOS launchd 정의
+- `docs/DESIGN.md`, `docs/STATUS.md`, `docs/feedback/INBOX.md`: 파일 기억
+- `logs/YYYY-MM-DD/<run-id>/`: planner/worker/reviewer/run JSON 증거
 
-### 3. 끄는 법 (Stop)
-- **현재 바퀴 완료 후 안전하게 정지 (권장)**:
-  ```bash
-  touch loop/STOP
-  ```
-  *(다시 시작할 때는 `rm loop/STOP`)*
-- **macOS launchd 서비스 정지 및 비활성화**:
-  ```bash
-  launchctl stop com.ailab.autonomous_loop
-  launchctl unload ~/Library/LaunchAgents/com.ailab.autonomous_loop.plist
-  ```
-- **강제 즉시 종료**:
-  ```bash
-  pkill -f loop/loop.sh
-  ```
+### 작업 수와 토큰 사용 조절
 
-### 4. 상태 보는 법 (Status)
-- **현재 작업 및 다음 할 일 확인**: `docs/STATUS.md` 및 `docs/feedback/INBOX.md` 열람
-- **실시간 실행 로그 확인**:
-  ```bash
-  tail -f logs/loop_main.log
-  ```
-- **launchd 서비스 상태 확인**:
-  ```bash
-  launchctl list | grep com.ailab.autonomous_loop
-  ```
+```bash
+# 자동: 독립 작업이면 최대 3개, 겹치면 다음 바퀴로 미룸
+LOOP_MODE=auto ./loop/loop.sh
+
+# 한 번에 하나만 개발
+LOOP_MODE=single ./loop/loop.sh
+
+# 독립 작업을 최대 3개 병렬 개발
+LOOP_MODE=parallel LOOP_MAX_PARALLEL=3 ./loop/loop.sh
+```
+
+기본적으로 INBOX/STATUS를 읽는 짧은 Claude planner가 작업 경로를 나눕니다. planner 토큰도 아끼려면 `loop/TASKS.example.json`을 복사해 gitignored `loop/TASKS.json`을 채우면 planner 세션을 생략합니다. 완료된 작업 hash는 `output/cache/autonomous_loop/completed.json`에 기록되어 같은 지시를 반복하지 않습니다. Ollama는 기본 `off`이며 판단이 필요 없는 형식 정리에만 선택적으로 허용됩니다.
+
+### 터미널에서 켜기
+
+```bash
+rm -f loop/STOP
+./loop/loop.sh /Users/junholee/ai_lab
+
+# 확인용 두 바퀴만
+LOOP_MAX_LOOPS=2 ./loop/loop.sh /Users/junholee/ai_lab
+```
+
+### launchd 설치와 켜기
+
+설치본은 worktree 삭제와 무관한 고정 경로를 사용합니다. 아래 복사는 등록만 하며 즉시 켜지 않습니다.
+
+```bash
+mkdir -p "/Users/junholee/Library/Application Support/AI Lab Autonomous Loop"
+install -m 755 loop/loop.sh loop/agent_runner.py "/Users/junholee/Library/Application Support/AI Lab Autonomous Loop/"
+install -m 644 loop/env.sh loop/PROMPT.md "/Users/junholee/Library/Application Support/AI Lab Autonomous Loop/"
+install -m 644 loop/com.ailab.autonomous_loop.plist /Users/junholee/Library/LaunchAgents/com.ailab.autonomous_loop.plist
+```
+
+검증 후 실제로 켤 때만 실행합니다.
+
+```bash
+launchctl bootstrap "gui/$(id -u)" /Users/junholee/Library/LaunchAgents/com.ailab.autonomous_loop.plist
+```
+
+plist는 로그인 시 시작하고(`RunAtLoad`), 비정상 종료만 재시작하며 정상 STOP 종료는 그대로 둡니다. `ThrottleInterval=60`과 절대 PATH가 설정돼 있습니다.
+
+### 끄기·재개·등록 해제
+
+```bash
+# 현재 바퀴를 끝낸 뒤 정상 정지
+touch /Users/junholee/ai_lab/loop/STOP
+
+# 같은 로그인 세션에서 다시 시작
+rm -f /Users/junholee/ai_lab/loop/STOP
+launchctl kickstart "gui/$(id -u)/com.ailab.autonomous_loop"
+
+# launchd 등록도 해제
+launchctl bootout "gui/$(id -u)" /Users/junholee/Library/LaunchAgents/com.ailab.autonomous_loop.plist
+```
+
+### 상태와 개발 결과 확인
+
+```bash
+launchctl print "gui/$(id -u)/com.ailab.autonomous_loop"
+tail -f /Users/junholee/ai_lab/logs/loop_main.log
+git log --oneline autonomous/integration -20
+git branch --list 'autonomous/loop-*'
+```
+
+보드는 `python3 loop/board.py`로 열 수 있습니다. 최신 STATUS는 `autonomous/integration:docs/STATUS.md`가 정본이고 루트 STATUS는 최초 틀입니다. 불합격 후보도 고유 branch와 세션 로그가 남아 Claude·GPT·Grok이 서로 개발한 부분을 다시 확인할 수 있습니다.
 
 
 ## Agent System

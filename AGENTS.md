@@ -14,7 +14,7 @@ This file provides guidance to Codex (and other non-Claude AI tools) when workin
 - **운영 기계는 맥** — `projects/ai-team/_shared/fleet_machine_policy.json`의 `primary_platform: "darwin"`(2026-07-11 오너 지시). Windows에서 펫나 데몬을 켜지 마라(이중 병합 참사).
 - **에이전트 10명**: 예원(CEO·워치독)·영숙(비서·텔레그램)·봄이(QA)·수리(Dev)·테오(Test)·백호(Backend)·미오(Design)·나무(PM)·마루(게임개발)·별이(이미지품질). 로스터·역할·도구·자동 개발 루프는 [CLAUDE.md](CLAUDE.md) 「Agent Roster」가 원천, 각 봇 헌장은 `projects/ai-team/skills/<봇>/SKILL.md`.
 - **공유 모듈**: `projects/ai-team/_shared/` — `env.py`·`llm.py`·`notify.py`·`process.py`·`utils.py`(핵심 5) + `cc.py`(헤드리스 클로드)·`backlog.py`·`registry.py` 등. 임포트 패턴은 CLAUDE.md 「Shared Module System」.
-- **LLM 체인**: Ollama(로컬) → 구독 클로드(`claude -p`, Max) → 구독 GPT(`codex exec`, Plus) → Gemini → API 크레딧 백업. 유료 API 신규 사용 금지, 클라우드 모델은 haiku 고정.
+- **LLM 체인**: Ollama(로컬) → 구독 클로드(`claude -p`, Max) → 구독 GPT(`codex exec`, Plus) → Gemini → API 크레딧 백업. 유료 API 신규 사용 금지, 클라우드 모델은 haiku 고정. 단 `loop/` 게임 개발은 최신 오너 지시대로 Claude Fable→Opus 5, Codex `gpt-5.6-sol` xhigh, Grok 강한 모델과 제공자 교차검토를 쓴다.
 - **시크릿**: 전부 루트 `.env` 하나. `.env.encrypted`는 기계별 파생 키라 **git에 올리지 마라**(로컬 전용). 프로젝트별 `.env` 금지, 하드코딩 금지, 사용 전 `load_env()` 필수.
 - **데몬 제어**: `python projects/ai-team/skills/영숙_비서/tools/agent_controller.py <에이전트> <start|stop|restart|status>` / launchd 서비스는 `launchctl list | grep com.ailab`. 정시 잡은 `skills/영숙_비서/tools/schedules.json`에 등록 후 `launchctl list | grep com.ailab.sched.<id>`로 실제 등록 확인(파일에 적었다고 도는 게 아니다).
 - **점검·테스트**: `python3 projects/ai-team/harness/check_all.py`(exit 0 필수), 회귀 테스트는 `projects/ai-team/tests/test_*.py`.
