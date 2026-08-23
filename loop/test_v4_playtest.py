@@ -13,6 +13,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import board  # noqa: E402
+import v4_dummy_sim  # noqa: E402
 import v4_playtest  # noqa: E402
 
 
@@ -183,6 +184,71 @@ class KitTests(unittest.TestCase):
         self.assertNotIn("통과", v4b["note"])
         self.assertEqual(proto["pct"], 100)
         self.assertIn("넘김", proto["note"])
+
+
+class DummyRehearsalTests(unittest.TestCase):
+    """더임 리허설(v4_dummy_sim) — 실측 파이프라인과 분리·사람 관문 미종료."""
+
+    def test_dummy_kit_is_ten_and_marked(self):
+        kit = v4_dummy_sim.load_kit()
+        self.assertEqual(len(kit["testers"]), 10)
+        self.assertTrue(all(t.get("dummy") for t in kit["testers"]))
+
+    def test_dummy_judge_passes_on_full_sessions(self):
+        rows = []
+        for i in range(1, 11):
+            r = {"id": f"t{i:02d}", "deleted": True, "continued": True,
+                 "recheck_24h": True, "v2": None, "v3": None}
+            if i <= 5:
+                r["v2"] = {"after": 4}
+                r["v3"] = {"auto": [600, 610, 620], "manual": [400, 405, 410],
+                           "gimmicks": ["장판", "힐 체크"]}
+            rows.append(r)
+        verdict = v4_dummy_sim.judge({"sessions": rows})
+        self.assertTrue(verdict["V2"]["pass"])
+        self.assertTrue(verdict["V3"]["pass"])
+        self.assertTrue(verdict["V4"]["pass"])
+
+    def test_dummy_judge_fails_when_short(self):
+        rows = [
+            {"id": "t01", "continued": False, "recheck_24h": False,
+             "v2": {"after": 1},
+             "v3": {"auto": [500], "manual": [600], "gimmicks": ["장판"]}},
+            {"id": "t02", "continued": True, "recheck_24h": True,
+             "v2": {"after": 2},
+             "v3": {"auto": [500], "manual": [300], "gimmicks": ["장판", "소환", "힐 체크"]}},
+            {"id": "t03", "continued": True, "recheck_24h": True,
+             "v2": {"after": 5},
+             "v3": {"auto": [500], "manual": [400], "gimmicks": ["장판"]}},
+            *[{"id": f"t{i:02d}", "continued": i in (4, 5), "recheck_24h": False,
+               "v2": None if i > 5 else {"after": 5},
+               "v3": None if i > 5 else {"auto": [500], "manual": [300],
+                                         "gimmicks": ["장판", "소환", "힐 체크"]}}
+              for i in range(4, 11)],
+        ]
+        verdict = v4_dummy_sim.judge(rows)
+        self.assertFalse(verdict["V2"]["pass"])
+        self.assertFalse(verdict["V3"]["pass"])
+        self.assertFalse(verdict["V4"]["pass"])
+
+    def test_dummy_report_never_closes_human_gate(self):
+        old = (v4_dummy_sim.OUT,)
+        with tempfile.TemporaryDirectory() as tmp:
+            v4_dummy_sim.OUT = Path(tmp)
+            try:
+                kit = v4_dummy_sim.load_kit()
+                sim = v4_dummy_sim.simulate(kit, seed=7)
+                report = v4_dummy_sim.write_report(
+                    kit, sim, v4_dummy_sim.judge(sim))
+            finally:
+                v4_dummy_sim.OUT = old[0]
+        self.assertEqual(report["human_70"], "pending")
+        self.assertTrue(report["dummy"])
+        self.assertEqual(len(report["sessions"]), 10)
+
+    def test_dummy_output_stays_out_of_live_paths(self):
+        self.assertNotEqual(
+            v4_dummy_sim.SESSIONS.parent.name, v4_playtest.OUT.name)
 
 
 if __name__ == "__main__":

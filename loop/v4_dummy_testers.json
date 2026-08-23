@@ -1,0 +1,17 @@
+{
+  "gate": "dummy-rehearsal",
+  "note": "외부 인원 없이 진행하는 더미 리허설 키트다. 실측 표본이 아니며 보드의 사람 관문(V2·V3·V4 70%)을 닫지 않는다. live 키트(v4_testers.json · 아나)와 별개다.",
+  "recheck_hours": 24,
+  "testers": [
+    {"id": "t01", "name": "이서연", "favorite": "백호", "job": "탱→수호기사", "gear": true,  "dummy": true},
+    {"id": "t02", "name": "박준호", "favorite": "적월", "job": "딜→검사",       "gear": true,  "dummy": true},
+    {"id": "t03", "name": "최하린", "favorite": "이슬", "job": "힐→사제",       "gear": true,  "dummy": true},
+    {"id": "t04", "name": "정민재", "favorite": "현랑", "job": "버퍼→음유시인", "gear": false, "dummy": true},
+    {"id": "t05", "name": "한소율", "favorite": "은시", "job": "딜→궁수",       "gear": false, "dummy": true},
+    {"id": "t06", "name": "오태양", "favorite": "광철", "job": "탱→광전사",     "gear": true,  "dummy": true},
+    {"id": "t07", "name": "김나경", "favorite": "풀잎", "job": "힐→드루이드",   "gear": false, "dummy": true},
+    {"id": "t08", "name": "윤도현", "favorite": "잿빛", "job": "버퍼→주술사",   "gear": false, "dummy": true},
+    {"id": "t09", "name": "배지훈", "favorite": "불꽃", "job": "딜→마법사",     "gear": false, "dummy": true},
+    {"id": "t10", "name": "신유라", "favorite": "이랑", "job": "버퍼→정령사",   "gear": false, "dummy": true}
+  ]
+}
