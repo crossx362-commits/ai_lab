@@ -85,7 +85,8 @@ namespace AshesToStars
             string mineSrc = File.ReadAllText(Path.Combine(
                 Application.dataPath, "_Game/Scripts/Runtime/EstateStatusHud.cs"));
             int mineMethod = mineSrc.IndexOf("public static string MineCaption()", StringComparison.Ordinal);
-            int nextMine = mineSrc.IndexOf("public static string StoreCaption()", StringComparison.Ordinal);
+            int nextMine = mineSrc.IndexOf("public static string OldStoreCaption()", StringComparison.Ordinal);
+            if (nextMine < 0) nextMine = mineSrc.IndexOf("public static string StoreCaption()", StringComparison.Ordinal);
             Check(mineMethod >= 0 && nextMine > mineMethod
                   && mineSrc.IndexOf("ShortCopper(EstateMine.CopperPerHourEffective())", mineMethod, nextMine - mineMethod) >= 0
                   && mineSrc.IndexOf("FormatCurrency", mineMethod, nextMine - mineMethod) < 0,
