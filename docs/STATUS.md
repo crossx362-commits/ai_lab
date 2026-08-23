@@ -39,8 +39,10 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
+| — | 2026-08-23 | proposals-triage 10차 검증(BASE `ff843c4f`) — PROPOSALS.md 현행 항목 1건: 중복 병합 대상 없음·우선순위(상/중/하) 태그 전 항목 존재로 보정 불필요 · 기존 내용 삭제 없이 정리 마커 추가 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | keeper-warn-chip 6차 재검증(BASE `ff843c4f`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영으로 현재 board.html(921~929행)에도 존속. 재구현 없음 · loop/board.html 무변경. 같은 지시 6회 반복 배정 — TASKS.json 큐 중복 제거 필요 | test_board 102 OK · 이 커밋 |
 | — | 2026-08-23 | INBOX 20:34 외부 테스터 더임 리허설 — `loop/v4_dummy_sim.py`(결정론 시뮬+시험지 기준 판정)·더임 키트 t01~t10·회귀 5건. 결과: V2 PASS 5/5 · V3 FAIL 3/5 · V4 PASS 10/10, human_70 pending 유지, live 키트(아나) 무변경 | test_v4_playtest 16 OK · test_board 102 OK · 시드 재현 확인 · `b812da86` |
+| — | 2026-08-23 | lane-doc 7차 재검증(BASE `ff843c4f`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행·본문 4줄 ≤5줄)와 loop/README.md(15행·STOP_LANE 토글 48~50행)에 존속 확인. 재구현 없음 · 두 파일 무변경 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | keeper-warn-chip 5차 재검증(BASE `4c9b26d1`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영으로 현재 board.html(909~918행)에도 존속(작업 트리 문구 개선 판에서도 로직 유지). 재구현 없음 · loop/board.html 무변경. 같은 지시 5회 반복 배정 — TASKS.json 큐 중복 제거 필요 | test_board 102 OK · 이 커밋 |
 | — | 2026-08-23 | lane-doc 6차 재검증(BASE `4c9b26d1`) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 흡수)은 `55fc2373` 선반영으로 README.md(80~85행)·loop/README.md에 존속 확인. 재구현 없음 · 두 파일 무변경. 같은 지시 6회 반복 배정 — TASKS.json 큐 중복 제거 필요 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 9차 검증(BASE `4c9b26d1`) — PROPOSALS.md 현행 항목 1건: 중복 병합 대상 없음·우선순위(상/중/하) 태그 전 항목 존재로 보정 불필요 · 기존 내용 삭제 없이 정리 마커 추가 | tests 없음 · 문서 검증 · 이 커밋 |
