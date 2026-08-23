@@ -1,12 +1,15 @@
 {
-  "phase": "fail",
+  "phase": "review",
   "updated": "2026-08-23 16:12",
-  "last_commit": "d461fbcb",
-  "review": "FAIL",
-  "task": "영지 §6 아트",
-  "routed_to": "재와별·기획검증",
-  "note": "실루엣 샷 없음 → 기획검증→아트 재작업",
+  "last_commit": "e4fd1d15",
+  "review": "pending",
+  "task": "§18-9 RaceDef.체력배율 소비처0",
+  "routed_to": "재와별·루프검수",
+  "note": "코드 검수 중 · §6 아트 FAIL은 기획검증→아트 별트랙",
   "commits": [
-    "d461fbcb"
-  ]
+    "e4fd1d15"
+  ],
+  "parallel": {
+    "§6": "FAIL→기획검증"
+  }
 }
