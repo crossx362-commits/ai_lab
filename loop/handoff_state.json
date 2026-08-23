@@ -1,12 +1,12 @@
 {
-  "phase": "pass",
-  "updated": "2026-08-23 16:21",
-  "last_commit": "50202ce5",
-  "review": "PASS",
+  "phase": "review",
+  "updated": "2026-08-23 16:26",
+  "last_commit": "c757f1e6",
+  "review": "pending",
   "task": "PropOf/scaffold 티어 SelfCheck",
-  "routed_to": "재와별·개발",
-  "note": "위력배율 PASS · PropOf 배정",
+  "routed_to": "재와별·루프검수",
+  "note": "개발 완료 → 루프검수 검토 중",
   "commits": [
-    "50202ce5"
+    "c757f1e6"
   ]
 }
