@@ -235,20 +235,34 @@ def parse_json_payload(text: str) -> dict[str, object]:
                     candidates.append(json.dumps(value))
             except json.JSONDecodeError:
                 pass
-    for candidate in reversed(candidates):
+    decoded: list[dict[str, object]] = []
+
+    def collect(value: object) -> None:
+        if isinstance(value, dict):
+            decoded.append(value)
+            for child in value.values():
+                collect(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect(child)
+        elif isinstance(value, str) and "{" in value:
+            try:
+                child, _ = decoder.raw_decode(value[value.index("{"):])
+            except json.JSONDecodeError:
+                return
+            collect(child)
+
+    for candidate in candidates:
         try:
             value = json.loads(candidate)
         except (json.JSONDecodeError, TypeError):
             continue
-        if not isinstance(value, dict):
-            continue
-        wrapped = value.get("result")
-        if isinstance(wrapped, str):
-            try:
-                return parse_json_payload(wrapped)
-            except ValueError:
-                pass
-        return value
+        collect(value)
+    for value in reversed(decoded):
+        if "approved" in value or "tasks" in value:
+            return value
+    if decoded:
+        return decoded[-1]
     raise ValueError("JSON object not found in provider output")
 
 

@@ -93,6 +93,11 @@ class ManifestTests(unittest.TestCase):
         payload = runner.parse_json_payload('text\n```json\n{"approved": true}\n```')
         self.assertEqual(payload, {"approved": True})
 
+    def test_json_payload_finds_review_inside_stream_event(self) -> None:
+        event = json.dumps({"type": "item.completed", "item": {"text": '{"approved": true, "score": 90}'}})
+        payload = runner.parse_json_payload(event)
+        self.assertEqual(payload, {"approved": True, "score": 90})
+
 
 class GitIntegrationTests(unittest.TestCase):
     def git(self, root: Path, *args: str) -> str:
