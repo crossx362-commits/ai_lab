@@ -1,12 +1,13 @@
 {
-  "phase": "pass",
-  "updated": "2026-08-23 16:14",
-  "last_commit": "e4fd1d15",
-  "review": "PASS",
-  "task": "소비처0 다음 한 칸",
-  "routed_to": "재와별·개발",
-  "note": "체력배율 PASS · §6 FAIL은 기획검증 트랙",
+  "phase": "review",
+  "updated": "2026-08-23 16:17",
+  "last_commit": "d461fbcb",
+  "review": "pending",
+  "task": "영지 §6 아트 FAIL 보완(실루엣)",
+  "routed_to": "재와별·루프검수",
+  "note": "실루엣 스트립 재제출 → 재검토",
   "commits": [
-    "e4fd1d15"
-  ]
+    "d461fbcb"
+  ],
+  "evidence": "output/qa/ashes-to-stars/estate_tier_silhouette/"
 }
