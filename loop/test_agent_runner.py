@@ -115,6 +115,19 @@ class ProviderFallbackTests(unittest.TestCase):
         self.assertEqual([call.args[0] for call in provider.call_args_list], ["claude", "codex"])
 
 
+class PlannerPromptTests(unittest.TestCase):
+    def test_planner_reads_owner_queue_worklog_and_real_design_in_order(self) -> None:
+        prompt = runner._planner_prompt(Path("loop/PROMPT.md"), Path("/repo"), 2)
+        required = [
+            "docs/feedback/INBOX.md",
+            "docs/GAME_WORKLOG.md",
+            "docs/STATUS.md",
+            "DESIGN.md",
+        ]
+        positions = [prompt.index(path) for path in required]
+        self.assertEqual(positions, sorted(positions))
+
+
 class ManifestTests(unittest.TestCase):
     def test_manifest_is_strict_and_deduplicated(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

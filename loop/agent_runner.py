@@ -368,7 +368,8 @@ def _atomic_json(path: Path, value: object) -> None:
 
 def _planner_prompt(prompt_file: Path, repo_root: Path, limit: int) -> str:
     return f"""You are the lean planning pass for one autonomous game-development lap. Do not invoke process skills, spawn subagents, or produce a prose plan; this coordinator already defines the process.
-Read {prompt_file}, docs/feedback/INBOX.md, docs/STATUS.md, docs/DESIGN.md, and relevant nearest AI instructions.
+Read {prompt_file} and relevant nearest AI instructions, then read the project documents in this exact priority order: docs/feedback/INBOX.md, docs/GAME_WORKLOG.md, docs/STATUS.md, DESIGN.md, and finally docs/DESIGN.md.
+Treat DESIGN.md as the real game design source and docs/GAME_WORKLOG.md as the real next-work and handoff source. Do not infer a replacement task from the codebase while either document contains unfinished work.
 Inspect existing branches and commits so you do not duplicate work already developed by another AI.
 Choose at most {limit} small tasks whose write paths do not overlap. Do not edit files.
 Return only JSON: {{"tasks":[{{"id":"short-id","goal":"one concrete outcome","write_paths":["repo/relative/path"],"tests":["command for worker to run"],"visual":false}}]}}.
@@ -409,7 +410,7 @@ def plan_tasks(
 
 
 def _worker_prompt(prompt_file: Path, task: dict[str, object], base_sha: str) -> str:
-    return f"""You are a dispatched worker for one already-approved task in a completely new session. Do not brainstorm, make another plan, invoke process skills, or spawn subagents. Read only {prompt_file}, relevant repository AI instructions, docs/feedback/INBOX.md, docs/STATUS.md, and docs/DESIGN.md, then execute immediately.
+    return f"""You are a dispatched worker for one already-approved task in a completely new session. Do not brainstorm, make another plan, invoke process skills, or spawn subagents. Read only {prompt_file}, relevant repository AI instructions, docs/feedback/INBOX.md, docs/GAME_WORKLOG.md, docs/STATUS.md, DESIGN.md, and docs/DESIGN.md in that priority order, then execute immediately.
 Implement exactly one assigned task and do not duplicate work already present in branches/commits.
 TASK: {json.dumps(task, ensure_ascii=False, sort_keys=True)}
 BASE SHA: {base_sha}

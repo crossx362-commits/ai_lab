@@ -12,8 +12,9 @@
 
 1. `DIRECTIVES.md`, `AGENTS.md`, 작업 경로에서 가장 가까운 `CLAUDE.md`를 읽고 안전 규칙을 지킨다.
 2. `docs/feedback/INBOX.md`를 가장 먼저 처리한다.
-3. `docs/STATUS.md`에서 완료된 작업과 다음 일을 확인하고, Git 브랜치·커밋도 살펴 다른 AI 작업을 중복하지 않는다.
-4. `GAME_WORKLOG.md`나 `ORDERS.md`가 있으면 읽고, 마지막으로 `docs/DESIGN.md`와 대상 기능 문서를 확인한다.
+3. `docs/GAME_WORKLOG.md`를 실제 다음 작업·인수인계 원장으로 읽는다. 미완료 작업이 있으면 코드에서 임의의 대체 작업을 고르지 않는다.
+4. `docs/STATUS.md`에서 자동 루프가 완료한 작업을 확인하고, Git 브랜치·커밋도 살펴 다른 AI 작업을 중복하지 않는다.
+5. 루트 `DESIGN.md`를 실제 게임 기획 원문으로 읽는다. `docs/DESIGN.md`는 보조 요약으로만 참고하고, 내용이 비어 있으면 루트 기획서를 대신하지 못한다.
 
 ### ③ 규칙과 근거
 
