@@ -39,6 +39,7 @@
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 |---|---|---|---|
+| — | 2026-08-23 | keeper-warn-chip 4차 재검증(BASE `3f88250b`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영으로 현재 board.html(909~918행)에도 존재(작업 트리 문구 개선 판에서도 로직 유지 확인). 재구현 없음 · loop/board.html 무변경. 같은 지시 4회 반복 배정 — TASKS.json 큐 중복 제거 필요 | test_board 102 OK · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 8차 검증(BASE `3f88250b`) — PROPOSALS.md 현행 항목 1건: 중복 병합 대상 없음·우선순위(상/중/하) 태그 전 항목 존재로 보정 불필요 · 기존 내용 삭제 없이 정리 마커 추가 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | proposals-triage 7차 검증(BASE `bfe3c887`) — PROPOSALS.md 현행 항목 1건: 중복 병합 대상 없음·우선순위(상/중/하) 태그 전 항목 존재로 보정 불필요 · 기존 내용 삭제 없이 정리 마커 추가 | tests 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-23 | keeper-warn-chip 3차 재검증(BASE `bfe3c887`) — kChip warns→hold 톤·실패 칩 경고 병기는 `0ec68f11` 선반영 확인(board.html:909-916), 재구현 없음 · loop/board.html 무변경. 참고: 같은 작업 지시가 3회 반복 배정됨 — TASKS.json 큐 중복 점검 필요 | test_board 102 OK · 이 커밋 |
