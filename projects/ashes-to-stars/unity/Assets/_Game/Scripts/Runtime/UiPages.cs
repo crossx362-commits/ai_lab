@@ -33,6 +33,16 @@ namespace AshesToStars
             return tiles;
         }
 
+        /// <summary>
+        /// 내비 플레이트 윗변. GameScreen 도크 판이 tiles[0].y − 6 에서 시작한다.
+        /// 본문 카드 아랫변이 이보다 아래면 금테가 내비에 먹힌다(§16).
+        /// </summary>
+        public static float NavPlateTop(int count, float screenW = 1280f, float screenH = 720f)
+        {
+            var tiles = NavDock(count, screenW, screenH);
+            return tiles[0].y - 6f;
+        }
+
         public static string NavIcon(string scene) => scene switch
         {
             "Estate" => "territory",

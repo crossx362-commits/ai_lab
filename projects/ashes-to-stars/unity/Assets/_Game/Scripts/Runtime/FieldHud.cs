@@ -47,17 +47,24 @@ namespace AshesToStars
 
         public static string Line() => Blocked
             ? "카드가 필드를 가린다"
-            : "HUD는 필드를 가리지 않는다(§16)";
+            : "HUD는 필드를 가리지 않는다 — 도크는 내비 위(§16)";
+
+        /// <summary>내비 플레이트 윗변. 도크 아랫변이 이보다 아래면 금테가 먹힌다(§16).</summary>
+        public static float NavPlateTop(float screenH = 720f) =>
+            UiPages.NavPlateTop(GameFlow.BottomBar.Length, 1280f, screenH);
 
         /// <summary>
         /// 사냥·던전·레이드·저체력·일정·배회 보스 순서.
         /// 막히면 옛 2×3 전폭, 아니면 아래 3×2 도크.
+        /// 새 길은 영지 PaletteBar와 같이 내비 플레이트 위에 둔다 —
+        /// body.yMax에 붙이면 하단 금테가 도크에 먹힌다(실측 1280×720, 카드 yMax 640 · 플레이트 636).
         /// </summary>
-        public static Rect[] Cards(Rect body)
+        public static Rect[] Cards(Rect body, float screenH = 720f)
         {
             if (Blocked)
                 return UiPages.Grid(body, OldCols, OldRows, 16f);
-            var dock = new Rect(body.x, body.yMax - DockH, body.width, DockH);
+            float yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - 2f);
+            var dock = new Rect(body.x, yMax - DockH, body.width, DockH);
             return UiPages.Grid(dock, DockCols, DockRows, DockGap);
         }
 
