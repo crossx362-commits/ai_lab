@@ -23,7 +23,8 @@ namespace AshesToStars
         protected override string Title => "전투 스타일";
         protected override string BackgroundArt => "bg_party";
         protected override string Subtitle =>
-            "직업마다 따로 고른다(§3) · 선택은 저장되며 다음 전투부터 적용된다";
+            StyleHud.ShowQa ? StyleHud.Line()
+            : "직업마다 따로 고른다(§3) · 선택은 저장되며 다음 전투부터 적용된다";
 
         /// <summary>W3Party가 편성하는 5직업. 순서는 진형 순(탱 → 딜 → 후열)이다.</summary>
         static readonly string[] Jobs = { "수호기사", "검사", "마법사", "사제", "음유시인" };
@@ -37,6 +38,8 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            StyleHud.SeedQaIfRequested();
+            r = StyleHud.Content(r);
             var jobCells = UiPages.Grid(new Rect(r.x, r.y, r.width, 108f), Jobs.Length, 1, 10f);
             for (int i = 0; i < Jobs.Length; i++)
             {

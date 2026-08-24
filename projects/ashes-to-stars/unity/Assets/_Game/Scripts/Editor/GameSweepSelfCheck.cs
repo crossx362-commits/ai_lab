@@ -48,6 +48,7 @@ namespace AshesToStars
                 One("시작 직업 선택", StarterPickSelfCheck.Run, rows, errors);
                 One("캐릭터 명부", CharacterRosterSelfCheck.Run, rows, errors);
                 One("캐릭터 3열·장비 라벨", CharHudSelfCheck.Run, rows, errors);
+                One("전투 스타일 HUD", StyleHudSelfCheck.Run, rows, errors);
                 One("부활초 소지 상한", ReviveCapSelfCheck.Run, rows, errors);
                 One("사망 상한", DeathCapSelfCheck.Run, rows, errors);
                 One("잡몹 상한", PerfCapSelfCheck.Run, rows, errors);
