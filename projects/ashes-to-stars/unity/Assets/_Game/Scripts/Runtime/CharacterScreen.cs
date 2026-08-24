@@ -990,7 +990,10 @@ namespace AshesToStars
             // 삐져나가는 넘침 결함을 만들었다. 실제 평평한 내부는 안쪽 금테 선(≈stage와 chrome의 중간)까지다 —
             // stage↔chrome를 0.5로 보간해 그 선에 맞추면 넘침 없이 ≈13줄을 담아 장비 전부·가방이 보인다.
             float infoTop = Mathf.Lerp(stage.y, chrome.y, 0.62f);
-            float infoBottom = Mathf.Lerp(stage.yMax, chrome.yMax, 0.45f);
+            // 바닥은 CharHud.InfoBottom — 옛 0.45 보간은 안쪽 금테 선보다 0.05×pad ≈ 5px
+            // 아래라 목록 마지막 줄(장비 6줄·가방)이 선을 가로질러 글리프 하단이 덮였다
+            // (실측 2026-08-24, polish_r65). 금테 선(stage↔chrome 0.5)에서 10px 위로 끊는다.
+            float infoBottom = CharHud.InfoBottom(stage, chrome);
             var info = new Rect(infoX, infoTop, stage.xMax - infoX - 14f, infoBottom - infoTop);
             // 목숨 하트는 정보 칸 맨 윗줄(Lv·경험)의 오른쪽에 붙여 헤더로 읽힌다 — chrome.xMax 우측 끝에
             // 두던 옛 위치는 정보 칸 중간(무기·없음 줄)에 떠 라벨 없이 겹쳐 보였다(겹침 결함).

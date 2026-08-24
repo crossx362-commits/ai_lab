@@ -101,6 +101,31 @@ namespace AshesToStars
                 Check(clear, $"평평한 내부 라벨 {i}가 칸과 안 겹친다");
             }
             Check(flatOk == 6, $"평평한 내부 라벨 6/6 통과 (실제 {flatOk})");
+
+            // 정보 칸 바닥 — 옛 0.45 보간은 안쪽 금테 선(flat.yMax)보다 0.05×pad ≈ 5px 아래라
+            // 목록 마지막 줄(장비 6줄·가방)이 선을 가로질러 글리프 하단이 덮였다(실측 2026-08-24,
+            // polish_r65). InfoBottom은 금테 선에서 10px 위라 최악 줄 rect 바닥(yMax+2)도
+            // 선 위 8px에 머문다. 아울러 바닥을 올리며 13줄(정보 5+장착 헤더+장비 6+가방)
+            // ×20+6 = 266px 수용을 잃지 않는다 — 잃으면 잘림 결함이 돌아온다.
+            // 치수는 DrawEquipStudio와 같게 — 런타임 체인 그대로: Body → AfterTabs(탭 62) →
+            // RosterSplit → 다시 AfterTabs(장비·속성 탭 62) → 하단 액션바 56을 뺀 studio stage.
+            var pageRect = UiPages.AfterTabs(body);
+            CharHud.RosterSplit(pageRect, out var rtStage, out _);
+            var afterTabs = UiPages.AfterTabs(rtStage);
+            var studio = new Rect(rtStage.x, afterTabs.y, rtStage.width,
+                Mathf.Max(80f, afterTabs.height - 56f));
+            var studioChrome = UiAtlas.ContentRect(studio, "panel", 2f);
+            var studioFlat = Rect.MinMaxRect(
+                Mathf.Lerp(studio.x, studioChrome.x, 0.5f), Mathf.Lerp(studio.y, studioChrome.y, 0.5f),
+                Mathf.Lerp(studio.xMax, studioChrome.xMax, 0.5f),
+                Mathf.Lerp(studio.yMax, studioChrome.yMax, 0.5f));
+            float infoBottom = CharHud.InfoBottom(studio, studioChrome);
+            float infoTop = Mathf.Lerp(studio.y, studioChrome.y, 0.62f);
+            Check(infoBottom <= studioFlat.yMax - 9f,
+                $"정보 바닥 {infoBottom:0.0} ≤ 금테 선 {studioFlat.yMax:0.0} − 9 — 마지막 줄이 금테에 안 닿는다");
+            Check(infoBottom - infoTop >= 13f * 20f + 6f,
+                $"정보 칸 높이 {infoBottom - infoTop:0} ≥ 13줄+간격 {13f * 20f + 6f:0} — 가방 줄이 안 잘린다");
+
             Check(CharHud.EquipLabel(stage,
                     new Rect(stage.x + 40f, stage.y + 80f, 48f, 48f)).width >= CharHud.LabelW,
                 "flat 없는 옛 호출도 80폭 새 길");
@@ -126,6 +151,10 @@ namespace AshesToStars
             var oldLab = CharHud.EquipLabel(stage, new Rect(stage.x + 40f, stage.y + 80f, 48f, 48f));
             Check(oldLab.width <= CharHud.OldLabelW + 0.01f,
                 $"차단 라벨 {oldLab.width:0} ≤ 옛 48");
+            // 네거티브 — 차단하면 옛 0.45 보간(금테 선 아래 0.05×pad)으로 돌아가 결함이 재현된다.
+            float oldInfoBottom = CharHud.InfoBottom(studio, studioChrome);
+            Check(oldInfoBottom > studioFlat.yMax - 9f,
+                $"차단 정보 바닥 {oldInfoBottom:0.0} > 금테 선 {studioFlat.yMax:0.0} − 9 — 옛 결함 경로");
             Check(CharHud.Line().Contains("잘린다") && !CharHud.Line().Contains("잘리지 않는다"),
                 $"차단 줄 (실제 {CharHud.Line()})");
             Environment.SetEnvironmentVariable(CharHud.EnvNo, null);
@@ -146,6 +175,8 @@ namespace AshesToStars
             Check(screen.Contains("CharHud.Line"), "자막이 Line을 읽는다");
             Check(screen.Contains("CharHud.SeedQaIfRequested"), "시드를 읽는다");
             Check(screen.Contains("CharHud.SlotLabel"), "칸 이름이 SlotLabel을 읽는다");
+            Check(screen.Contains("CharHud.InfoBottom"),
+                "정보 칸 바닥이 InfoBottom을 읽는다 (옛 인라인 0.45 금지)");
 
             Environment.SetEnvironmentVariable(CharHud.EnvShow, show);
             Environment.SetEnvironmentVariable(CharHud.EnvNo, no);

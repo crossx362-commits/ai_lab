@@ -133,6 +133,18 @@ namespace AshesToStars
             ringY = Mathf.Max(24f, ringY);
         }
 
+        /// <summary>
+        /// 정보 칸 바닥. 옛 0.45 보간은 안쪽 금테 선(stage↔chrome 0.5)보다 0.05×pad ≈ 5px
+        /// 아래라 목록 마지막 줄 rect가 선을 가로질러 글리프 하단이 덮였다(실측 2026-08-24,
+        /// polish_r65 샷). 금테 선에서 10px 위로 끊는다 — 13줄(정보 5+장착 헤더+장비 6+가방)
+        /// ×20+6 = 266px는 그 높이(≈283px)에 그대로 들어온다. QA_NO면 옛 0.45(결함 재현용).
+        /// </summary>
+        public static float InfoBottom(Rect stage, Rect chrome)
+        {
+            if (Blocked) return Mathf.Lerp(stage.yMax, chrome.yMax, 0.45f);
+            return Mathf.Lerp(stage.yMax, chrome.yMax, 0.5f) - 10f;
+        }
+
         public static void SeedQaIfRequested()
         {
             if (!ShowQa) return;
