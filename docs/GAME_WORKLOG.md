@@ -21,7 +21,7 @@
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
 | 개발 직렬 | 착용레벨 닫음 | 탐험 `8c0b4b4a` · 수비명예 `cd21fa0c` · 내구 `5213c8bc` · 환생 `86485fd7` · 착용레벨 `4d9bc2d2`(요구레벨 기본 0). `W3Party` 금지 |
 | VFX §6-P1#5 대시 잔상 | **닫음** | `2cd07dbe` — `fx_dash_trail_0~2` Resources 반입 + `W2Arena` 트레일 풀 8장(0.04s 간격·알파 0.6→0·0.15s·order 210). 샷 쌍 `unity/results/vfx_dash_trail_{on,off}.png` + 네거티브(로드 차단→풀 미생성) PASS. INBOX 21:59 소비 |
-| UI 폴리싱 다음 | 영지 침략 줄 금테 칩 닫음 | `fb2a6321` EstateHud. 다음: 필드·월드맵·파티 순회 1건 |
+| UI 폴리싱 다음 | 월드맵 도크-내비 간격 닫음 | 필드 `007f71dc`/`46b57c03` · 월드맵 `fd0ba129` WorldMapHud. 다음: 파티 순회 1건. 탑 HUD 겹침은 PROPOSALS |
 | launchd 자율 루프 | **상시 켜짐**(오너 2026-08-24) | grok · `com.ailab.autonomous_loop`. 한 작업마다 보고·커밋 |
 | 사람 관문 | **더미로 진행**(오너 2026-08-24) | V2 PASS 5/5 · V3 FAIL 3/5 · V4 PASS 10/10 · 관문② PASS 9/10 · 시드 20260823. W2 FAIL은 제외(기준 낮추지 말 것) |
 
