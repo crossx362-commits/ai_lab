@@ -24,6 +24,7 @@ namespace AshesToStars
             : EquipJob.ShowQa ? EquipJob.Line()
             : EquipLevel.ShowQa ? EquipLevel.Line()
             : ReviveCap.ShowQa ? ReviveCap.Line()
+            : DeathCap.ShowQa ? DeathCap.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -79,6 +80,7 @@ namespace AshesToStars
             SeedRaceDefenseQaIfRequested();
             SeedRaceDurabilityQaIfRequested();
             SeedReviveCapQaIfRequested();
+            SeedDeathCapQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -481,6 +483,9 @@ namespace AshesToStars
                         // §4 BalanceConfig.부활초소지상한 — ReviveCap.Line. QA_NO면 빈 문자열.
                         string teaCap = ReviveCap.Line();
                         if (!string.IsNullOrEmpty(teaCap)) Info(r, advancementRow++, teaCap);
+                        // §4 BalanceConfig.사망상한 — DeathCap.Line. QA_NO면 빈 문자열.
+                        string deathCap = DeathCap.Line();
+                        if (!string.IsNullOrEmpty(deathCap)) Info(r, advancementRow++, deathCap);
                     }
                     // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
                     // 기본 76/64를 기대하므로 반드시 되돌린다(안 하면 다음 프레임에 그 화면이 눌린다).
@@ -781,6 +786,16 @@ namespace AshesToStars
         {
             ReviveCap.SeedQaIfRequested();
             if (!ReviveCap.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            _selectedCharacter = 0;
+            _detailPage = 1;
+        }
+
+        void SeedDeathCapQaIfRequested()
+        {
+            DeathCap.SeedQaIfRequested();
+            if (!DeathCap.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             _selectedCharacter = 0;

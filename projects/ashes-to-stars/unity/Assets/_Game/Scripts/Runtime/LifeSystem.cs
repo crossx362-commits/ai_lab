@@ -63,7 +63,7 @@ namespace AshesToStars
         /// </summary>
         public long Exp { get; set; }
 
-        /// <summary>누적 사망 횟수 (0~3, 3이면 삭제된 상태).</summary>
+        /// <summary>누적 사망 횟수 (0~상한, 상한이면 삭제된 상태). 상한은 DeathCap.Limit(§4).</summary>
         public int DeathCount { get; set; }
 
         /// <summary>회복 종료 시각 (Unix 타임스탬프). 0이면 회복 중이 아님.</summary>
@@ -84,8 +84,8 @@ namespace AshesToStars
         /// </summary>
         public bool IsSpecialJob { get; set; }
 
-        /// <summary>일반 3목숨, 특수 직업 1목숨(§3).</summary>
-        public int MaxLives => IsSpecialJob ? 1 : 3;
+        /// <summary>일반은 DeathCap.Limit(§4 기본 3), 특수 직업 1목숨(§3).</summary>
+        public int MaxLives => IsSpecialJob ? 1 : DeathCap.Limit();
 
         /// <summary>합성으로 흡수한 패시브(BoonId). 상한 4(§18-7).</summary>
         public readonly System.Collections.Generic.List<int> AbsorbedBoons = new System.Collections.Generic.List<int>();
@@ -999,7 +999,7 @@ namespace AshesToStars
         /// <summary>
         /// 사망을 기록한다.
         /// isPvp가 true면 사망 카운트를 올리지 않고 12시간 회복만 건다(§4·§15).
-        /// 특수 직업 PvP도 소멸하지 않는다(§3). 일반 PvE는 3회, 특수 PvE는 1회에 소멸.
+        /// 특수 직업 PvP도 소멸하지 않는다(§3). 일반 PvE는 DeathCap.Limit회, 특수 PvE는 1회에 소멸.
         /// </summary>
         public static void RegisterDeath(CharacterRecord character, bool isPvp = false)
         {
@@ -1034,23 +1034,24 @@ namespace AshesToStars
             // 사망 카운트 증가
             character.DeathCount++;
 
-            // 3회 사망 = 삭제 (§4)
-            if (character.DeathCount >= 3)
+            // 상한 사망 = 삭제 (§4). BalanceConfig.사망상한 — QA_NO면 옛 3.
+            int cap = DeathCap.Limit();
+            if (character.DeathCount >= cap)
             {
                 character.IsDeleted = true;
-                character.DeathCount = 3;  // 상한 유지
+                character.DeathCount = cap;  // 상한 유지
                 Memorial.Stamp(character);
                 Memorial.Open();
                 Equipment.DestroyEquippedOn(character);
                 Sfx.Play(Sfx.Signal.LastLifeGone);   // §16-10 소멸은 별도 신호음
-                Debug.Log($"[목숨] {character.Name}이(가) 삭제되었습니다. (3회 사망)");
+                Debug.Log($"[목숨] {character.Name}이(가) 삭제되었습니다. ({cap}회 사망)");
             }
             else
             {
-                // §16-10: 일반 사망은 저음 1회, 마지막 목숨 진입(2/3)은 위험 경고를 함께 낸다.
-                if (character.DeathCount == 2) Sfx.Play(Sfx.Signal.LastLifeEnter);
+                // §16-10: 일반 사망은 저음 1회, 마지막 목숨 진입은 위험 경고를 함께 낸다.
+                if (character.DeathCount == cap - 1) Sfx.Play(Sfx.Signal.LastLifeEnter);
                 Sfx.Play(Sfx.Signal.DeathLow);
-                Debug.Log($"[목숨] {character.Name} 사망: {character.DeathCount}/3 회복 기간 시작");
+                Debug.Log($"[목숨] {character.Name} 사망: {character.DeathCount}/{cap} 회복 기간 시작");
             }
 
             Save();
