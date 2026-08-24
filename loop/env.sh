@@ -5,9 +5,10 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Use
 
 # session: 매 바퀴 새 세션 (기본, 오너 명세). coordinator: agent_runner 병렬.
 export LOOP_MODE="${LOOP_MODE:-session}"
-# 오너 2026-08-24: 실행기는 그록. (INBOX 「그록만」 · 코덱스 안 씀)
-export LOOP_AGENT="${LOOP_AGENT:-grok}"
-export LOOP_PROVIDERS="${LOOP_PROVIDERS:-grok}"
+# 오너 2026-08-23: 루프를 이쪽(opencode)으로 가져온다. 유니티·블렌더 MCP 사용.
+# 그록은 백업 실행기로만 남긴다(아트 외주 등 불가피할 때).
+export LOOP_AGENT="${LOOP_AGENT:-opencode}"
+export LOOP_PROVIDERS="${LOOP_PROVIDERS:-opencode}"
 export LOOP_MAX_PARALLEL="${LOOP_MAX_PARALLEL:-3}"
 
 # 강한 모델 고정. Claude는 Fable 사용량 소진/이용 불가 때만 Opus 5로 전환한다.

@@ -12,6 +12,7 @@ namespace AshesToStars
     {
         public const string EnvShow = "QA_AUCTION_HUD";
         public const string EnvNo = "QA_NO_AUCTION_HUD";
+        public const string EnvNoLockDup = "QA_NO_AUCTION_LOCK_DUP";
         public const float OldBarH = 64f;
         public const float OldGap = 12f;
         public const float SlimH = 36f;
@@ -37,6 +38,28 @@ namespace AshesToStars
                 string raw = Environment.GetEnvironmentVariable(EnvShow);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
+        }
+
+        public static bool LockDupBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoLockDup);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// 잠긴 경매장 본문 막대. 헤더 부제가 이미 AuctionHubLockReason이라
+        /// 같은 문장을 막대에 다시 그리면 중복이다(플레이모드 샷 circuit_r69).
+        /// QA_NO면 옛 중복. null이면 막대를 그리지 않는다.
+        /// </summary>
+        public static string LockBarLine()
+        {
+            string reason = EstateScreen.AuctionHubLockReason();
+            if (reason == null) return null;
+            if (LockDupBlocked) return reason;
+            return null;
         }
 
         public static float BarH => Blocked ? OldBarH : SlimH;

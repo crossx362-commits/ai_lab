@@ -1126,7 +1126,9 @@ namespace AshesToStars
             string lockReason = AuctionHubLockReason();
             if (lockReason != null)
             {
-                InfoAt(AuctionHud.BarRect(r, info++), lockReason);
+                string bar = AuctionHud.LockBarLine();
+                if (bar != null)
+                    InfoAt(AuctionHud.BarRect(r, info++), bar);
                 var back = AuctionHud.LotsBody(r, info);
                 if (Row(back, 0, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
                 return;

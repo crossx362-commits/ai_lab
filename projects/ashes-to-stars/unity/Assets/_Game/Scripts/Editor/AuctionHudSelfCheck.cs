@@ -25,8 +25,10 @@ namespace AshesToStars
             _log.Length = 0;
             string show = Environment.GetEnvironmentVariable(AuctionHud.EnvShow);
             string no = Environment.GetEnvironmentVariable(AuctionHud.EnvNo);
+            string noDup = Environment.GetEnvironmentVariable(AuctionHud.EnvNoLockDup);
             Environment.SetEnvironmentVariable(AuctionHud.EnvShow, null);
             Environment.SetEnvironmentVariable(AuctionHud.EnvNo, null);
+            Environment.SetEnvironmentVariable(AuctionHud.EnvNoLockDup, null);
             AuctionHud.ResetForTest();
 
             var body = new Rect(36f, 56f, 1208f, 584f);
@@ -52,6 +54,26 @@ namespace AshesToStars
             Check(lots.height > 400f, $"롯 높이 {lots.height:0} > 400");
             Check(AuctionHud.Line().Contains("가리지 않는다"),
                 $"줄 (실제 {AuctionHud.Line()})");
+
+            int floor = GameState.TowerFloor;
+            GameState.SetTowerFloorForTest(1);
+            string lockReason = EstateScreen.AuctionHubLockReason();
+            Check(lockReason != null && lockReason.Length > 0,
+                $"1층 잠금 사유 (실제 {lockReason})");
+            Check(AuctionHud.LockBarLine() == null,
+                "잠금 막대 없음 — 헤더가 맡는다");
+            Environment.SetEnvironmentVariable(AuctionHud.EnvNoLockDup, "1");
+            Check(AuctionHud.LockDupBlocked, "QA_NO면 옛 중복");
+            Check(AuctionHud.LockBarLine() == lockReason,
+                $"QA_NO 막대가 헤더와 같다 (실제 {AuctionHud.LockBarLine()})");
+            Environment.SetEnvironmentVariable(AuctionHud.EnvNoLockDup, null);
+            GameState.SetTowerFloorForTest(EstateScreen.AuctionUnlockFloor);
+            if (GameState.CanUseAuction())
+            {
+                Check(EstateScreen.AuctionHubLockReason() == null, "30층·무부채면 잠금 없음");
+                Check(AuctionHud.LockBarLine() == null, "열린 경매는 잠금 막대 없음");
+            }
+            GameState.SetTowerFloorForTest(floor);
 
             Environment.SetEnvironmentVariable(AuctionHud.EnvNo, "1");
             Check(AuctionHud.Blocked, "QA_NO면 차단");
@@ -83,6 +105,7 @@ namespace AshesToStars
             Check(estate.Contains("AuctionHud.LotsBody"), "롯이 LotsBody를 읽는다");
             Check(estate.Contains("AuctionHud.Line"), "자막이 Line을 읽는다");
             Check(estate.Contains("AuctionHud.SeedQaIfRequested"), "시드를 읽는다");
+            Check(estate.Contains("AuctionHud.LockBarLine"), "잠금 막대가 LockBarLine을 읽는다");
 
             string hud = File.ReadAllText(Path.Combine(runtime, "AuctionHud.cs"));
             Check(hud.Contains("EstateStatusHud.ShortCopper(copper)")
@@ -91,6 +114,7 @@ namespace AshesToStars
 
             Environment.SetEnvironmentVariable(AuctionHud.EnvShow, show);
             Environment.SetEnvironmentVariable(AuctionHud.EnvNo, no);
+            Environment.SetEnvironmentVariable(AuctionHud.EnvNoLockDup, noDup);
             if (_fail == 0) Debug.Log("[AuctionHudSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[AuctionHudSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[AuctionHudSelfCheck] FAIL {_fail}건");
