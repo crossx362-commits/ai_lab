@@ -7,12 +7,19 @@ namespace AshesToStars
     /// 캐릭터창 명부·장비 둘레 글씨. 3열이 좁으면 이름이 잘리고,
     /// 장비 칸 폭(48)으로 라벨을 그리면 「장신구」가 잘린다.
     /// QA_NO면 옛 좁은 칸·48폭 라벨.
+    /// QA_NO_CHAR_NAV면 액션바가 본문 yMax=640에 붙어 내비 플레이트(636)와 겹친다.
     /// CharacterScreen이 읽는다.
     /// </summary>
     public static class CharHud
     {
         public const string EnvShow = "QA_CHAR_HUD";
         public const string EnvNo = "QA_NO_CHAR_HUD";
+        public const string EnvNoNav = "QA_NO_CHAR_NAV";
+        /// <summary>
+        /// 전폭 액션바는 좌우가 내비 옆으로 빠진다.
+        /// 2px면 금테가 내비 윗변에 붙어 한 덩어리로 읽힌다(필드·영지와 동형).
+        /// </summary>
+        public const float NavGap = 12f;
 
         public const float OldListRatio = 0.36f;
         public const float ListRatio = 0.44f;
@@ -47,6 +54,31 @@ namespace AshesToStars
                 string raw = Environment.GetEnvironmentVariable(EnvShow);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
+        }
+
+        public static bool NavBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoNav);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>내비 플레이트 윗변. 액션바 아랫변이 이보다 아래면 금테가 먹힌다(§16).</summary>
+        public static float NavPlateTop(float screenH = 720f) =>
+            UiPages.NavPlateTop(GameFlow.BottomBar.Length, 1280f, screenH);
+
+        /// <summary>
+        /// 명부·모습 본문. 막히면 page.yMax에 붙어 하단 금테가 내비에 먹힌다
+        /// (실측 1280×720, 액션바 yMax 640 · 플레이트 636). 새 길은 필드·영지와 같이
+        /// 내비 플레이트 위에 둔다.
+        /// </summary>
+        public static Rect Content(Rect page, float screenH = 720f)
+        {
+            if (NavBlocked) return page;
+            float yMax = Mathf.Min(page.yMax, NavPlateTop(screenH) - NavGap);
+            return new Rect(page.x, page.y, page.width, Mathf.Max(40f, yMax - page.y));
         }
 
         public static float ListW(Rect body)

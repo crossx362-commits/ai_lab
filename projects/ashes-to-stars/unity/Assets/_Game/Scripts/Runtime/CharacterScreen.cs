@@ -25,6 +25,7 @@ namespace AshesToStars
             : EquipLevel.ShowQa ? EquipLevel.Line()
             : ReviveCap.ShowQa ? ReviveCap.Line()
             : DeathCap.ShowQa ? DeathCap.Line()
+            : ProjCap.ShowQa ? ProjCap.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -553,7 +554,7 @@ namespace AshesToStars
             if (FloorRecruit.PendingSpecialBanner)
                 Hint(new Rect(r.x, r.y, r.width, 22f), FloorRecruit.SpecialHint());
             float top = FloorRecruit.PendingSpecialBanner ? 28f : 0f;
-            var area = new Rect(r.x, r.y + top, r.width, r.height - top);
+            var area = CharHud.Content(new Rect(r.x, r.y + top, r.width, r.height - top));
             var allCharacters = LifeSystem.GetCharacters();
             if (allCharacters.Count == 0)
             {

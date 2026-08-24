@@ -25,8 +25,10 @@ namespace AshesToStars
             _log.Length = 0;
             string show = Environment.GetEnvironmentVariable(CharHud.EnvShow);
             string no = Environment.GetEnvironmentVariable(CharHud.EnvNo);
+            string noNav = Environment.GetEnvironmentVariable(CharHud.EnvNoNav);
             Environment.SetEnvironmentVariable(CharHud.EnvShow, null);
             Environment.SetEnvironmentVariable(CharHud.EnvNo, null);
+            Environment.SetEnvironmentVariable(CharHud.EnvNoNav, null);
             CharHud.ResetForTest();
 
             var body = new Rect(36f, 56f, 1208f, 584f);
@@ -153,6 +155,25 @@ namespace AshesToStars
                   && CharHud.JobFace("힐") != "힐" && CharHud.JobFace("버퍼") != "버퍼",
                 "표시는 기본직 ID가 아니다");
 
+            var hubBody = new Rect(36f, HubHeader.SlimBodyTop, 1208f,
+                720f - HubHeader.SlimBodyTop - UiPages.NavReserve);
+            var page = UiPages.AfterTabs(hubBody);
+            var content = CharHud.Content(page);
+            float navTop = CharHud.NavPlateTop();
+            Check(content.yMax <= navTop - CharHud.NavGap + 0.01f,
+                $"액션바 아랫변 {content.yMax:0} ≤ 내비-간격 {navTop - CharHud.NavGap:0}");
+            Check(navTop - content.yMax >= 10f,
+                $"액션바-내비 간격 {navTop - content.yMax:0} ≥ 10 (전폭 금테가 내비와 한 덩어리가 되지 않게)");
+            Check(Mathf.Approximately(content.x, page.x) && Mathf.Approximately(content.width, page.width),
+                "본문 가로는 그대로");
+
+            Environment.SetEnvironmentVariable(CharHud.EnvNoNav, "1");
+            Check(CharHud.NavBlocked, "QA_NO_CHAR_NAV면 차단");
+            var oldNav = CharHud.Content(page);
+            Check(oldNav.yMax > CharHud.NavPlateTop() - 1f,
+                $"차단 아랫변 {oldNav.yMax:0} 이 내비와 겹친다");
+            Environment.SetEnvironmentVariable(CharHud.EnvNoNav, null);
+
             Environment.SetEnvironmentVariable(CharHud.EnvNo, "1");
             Check(CharHud.Blocked, "QA_NO면 차단");
             Check(CharHud.ListW(body) < 450f,
@@ -206,9 +227,17 @@ namespace AshesToStars
                 "정보 칸 꼭대기가 InfoTop을 읽는다 (옛 인라인 0.62 금지)");
             Check(screen.Contains("CharHud.JobFace"),
                 "명부·헤더 직업이 JobFace를 읽는다 (옛 ch.Job ID 금지)");
+            Check(screen.Contains("CharHud.Content"),
+                "명부가 Content를 읽는다 (page.yMax 붙이기 금지)");
+            string hud = File.ReadAllText(Path.Combine(runtime, "CharHud.cs"));
+            Check(hud.Contains("NavPlateTop"),
+                "액션바가 NavPlateTop을 읽는다 (body.yMax 붙이기 금지)");
+            Check(hud.Contains("NavGap"),
+                "액션바가 NavGap을 읽는다");
 
             Environment.SetEnvironmentVariable(CharHud.EnvShow, show);
             Environment.SetEnvironmentVariable(CharHud.EnvNo, no);
+            Environment.SetEnvironmentVariable(CharHud.EnvNoNav, noNav);
             if (_fail == 0) Debug.Log("[CharHudSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharHudSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[CharHudSelfCheck] FAIL {_fail}건");
