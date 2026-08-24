@@ -30,12 +30,14 @@ namespace AshesToStars
             _log.Length = 0;
             string show = Environment.GetEnvironmentVariable(WorldExplore.EnvShow);
             string no = Environment.GetEnvironmentVariable(WorldExplore.EnvNo);
+            string noDup = Environment.GetEnvironmentVariable(WorldExplore.EnvNoDup);
             string noRange = Environment.GetEnvironmentVariable(WorldStar.EnvNoRange);
             RaceId oldRace = RacePrefs.Get();
             float oldForce = WorldExplore.ForceMul;
             int oldFloor = GameState.TowerFloor;
             Environment.SetEnvironmentVariable(WorldExplore.EnvShow, null);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNo, null);
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoDup, null);
             Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, null);
             WorldExplore.ForceMul = 0f;
 
@@ -94,8 +96,25 @@ namespace AshesToStars
             Check(WorldExplore.Line(30).Contains("+30%")
                   && WorldExplore.Line(30).Contains("3/3"),
                 $"엘프 문구 (실제 {WorldExplore.Line(30)})");
+            Check(WorldExplore.HeaderOwnsLine(), "엘프는 헤더가 Line을 가진다");
+            Check(string.IsNullOrEmpty(WorldExplore.FieldCaption(30)),
+                $"엘프 필드 캡션은 헤더가 가져서 빈다 (실제 '{WorldExplore.FieldCaption(30)}')");
             Check(WorldMapDockCap.Star() == "탐험 3/3",
                 $"도크가 Caption을 읽는다 (실제 {WorldMapDockCap.Star()})");
+
+            RacePrefs.Set(RaceId.인간);
+            Check(!WorldExplore.HeaderOwnsLine(), "인간은 헤더가 Line을 안 가진다");
+            Check(WorldExplore.FieldCaption(30) == WorldExplore.Line(30),
+                $"인간 필드 캡션은 Line (실제 {WorldExplore.FieldCaption(30)})");
+            RacePrefs.Set(RaceId.엘프);
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoDup, "1");
+            Check(WorldExplore.DupBlocked, "QA_NO_EXPLORE_DUP면 차단");
+            Check(WorldExplore.FieldCaption(30) == WorldExplore.Line(30)
+                  && WorldExplore.FieldCaption(30).Contains("+30%"),
+                $"차단 캡션은 옛 중복 (실제 {WorldExplore.FieldCaption(30)})");
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoDup, null);
+            Check(string.IsNullOrEmpty(WorldExplore.FieldCaption(30)),
+                "차단을 풀면 다시 빈다");
 
             RacePrefs.Set(RaceId.인간);
             Check(WorldExplore.RevealedCount(1) == 1,
@@ -122,6 +141,9 @@ namespace AshesToStars
             Check(GameState.TowerFloor >= 30, $"시드 30층 (실제 {GameState.TowerFloor})");
             Check(WorldExplore.Line().Contains("+30%"), "시드 문구 +30%");
             Check(WorldExplore.RevealedCount(GameState.TowerFloor) == 3, "시드 3/3");
+            Check(WorldExplore.HeaderOwnsLine(), "시드면 헤더가 Line");
+            Check(string.IsNullOrEmpty(WorldExplore.FieldCaption()),
+                "시드(헤더=Line)면 필드 캡션 없음");
             Environment.SetEnvironmentVariable(WorldExplore.EnvShow, null);
 
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime");
@@ -133,6 +155,9 @@ namespace AshesToStars
                 "_Game/Scripts/Editor/ProjectSetup.cs"));
             Check(expSrc.Contains("d.탐험범위배율"),
                 "WorldExplore가 d.탐험범위배율을 읽는다");
+            Check(expSrc.Contains("FieldCaption(floor)")
+                  && expSrc.Contains("QA_NO_EXPLORE_DUP"),
+                "Draw가 FieldCaption을 그린다 (옛 Line 중복 금지)");
             Check(mapSrc.Contains("WorldExplore.Draw")
                   && mapSrc.Contains("WorldExplore.SeedQaIfRequested")
                   && mapSrc.Contains("WorldExplore.Line"),
@@ -147,11 +172,13 @@ namespace AshesToStars
             _ = nameof(WorldExplore.Radius);
             _ = nameof(WorldExplore.RevealedCount);
             _ = nameof(WorldExplore.Caption);
+            _ = nameof(WorldExplore.FieldCaption);
             _ = nameof(WorldExplore.Draw);
             _ = nameof(RaceDef.탐험범위배율);
 
             Environment.SetEnvironmentVariable(WorldExplore.EnvShow, show);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNo, no);
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoDup, noDup);
             Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, noRange);
             WorldExplore.ForceMul = oldForce;
             RacePrefs.Set(oldRace);

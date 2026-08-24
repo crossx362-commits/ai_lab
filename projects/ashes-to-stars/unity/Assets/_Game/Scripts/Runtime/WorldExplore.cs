@@ -8,11 +8,14 @@ namespace AshesToStars
     /// 반경 공식은 이미 확정된 SenseBase(층) — 새 숫자를 만들지 않는다.
     /// 엘프는 그 반경에 ×1.30. 로컬 더미 별 3개가 반경 안이면 밝혀진다.
     /// 서버 별은 없다. QA_NO면 옛 「로컬 허브만」·안개 없음.
+    /// 별 위 흰 캡션은 헤더 부제와 같은 Line()을 두 번 그리지 않는다
+    /// (실측 worldmap_hud_nav_shots/after). QA_NO_EXPLORE_DUP면 옛 중복.
     /// </summary>
     public static class WorldExplore
     {
         public const string EnvShow = "QA_EXPLORE_FOG";
         public const string EnvNo = "QA_NO_EXPLORE_FOG";
+        public const string EnvNoDup = "QA_NO_EXPLORE_DUP";
         public const int HumanPercent = 100;
         public const int ElfPercent = 130;
         public const int NearFloor = 1;
@@ -54,6 +57,36 @@ namespace AshesToStars
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
         }
+
+        public static bool DupBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoDup);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// 헤더 부제가 이미 Line()이다(QA_EXPLORE_FOG 또는 엘프 탐험 조각).
+        /// 별 위까지 같은 문장이면 두 번 겹친다.
+        /// </summary>
+        public static bool HeaderOwnsLine()
+        {
+            if (ShowQa) return true;
+            return Percent() == ElfPercent;
+        }
+
+        /// <summary>별 필드 캡션. QA_NO면 옛 중복. 헤더가 가진 문장은 빈 문자열.</summary>
+        public static string FieldCaption(int floor)
+        {
+            if (DupBlocked) return Line(floor);
+            if (HeaderOwnsLine()) return "";
+            return Line(floor);
+        }
+
+        public static string FieldCaption() =>
+            FieldCaption(Mathf.Max(1, GameState.TowerFloor));
 
         /// <summary>가까운=1층 영공, 경계=30층 인간 영공, 안개=30층 엘프 영공(×1.30).</summary>
         public static Neighbor[] Neighbors()
@@ -164,8 +197,10 @@ namespace AshesToStars
             }
 
             GUI.color = prev;
+            string cap = FieldCaption(floor);
+            if (string.IsNullOrEmpty(cap)) return;
             var head = new Rect(field.x + 8f, field.y + 4f, field.width - 16f, 18f);
-            UiPages.LabelFit(head, Line(floor), _cap);
+            UiPages.LabelFit(head, cap, _cap);
         }
 
         static Texture2D Disc()
