@@ -81,6 +81,7 @@ namespace AshesToStars
             SeedRaceDurabilityQaIfRequested();
             SeedReviveCapQaIfRequested();
             SeedDeathCapQaIfRequested();
+            SeedPerfCapQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -486,6 +487,9 @@ namespace AshesToStars
                         // §4 BalanceConfig.사망상한 — DeathCap.Line. QA_NO면 빈 문자열.
                         string deathCap = DeathCap.Line();
                         if (!string.IsNullOrEmpty(deathCap)) Info(r, advancementRow++, deathCap);
+                        // §10-9 BalanceConfig.잡몹상한 — PerfCap.Line. QA_NO면 빈 문자열.
+                        string perfCap = PerfCap.Line();
+                        if (!string.IsNullOrEmpty(perfCap)) Info(r, advancementRow++, perfCap);
                     }
                     // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
                     // 기본 76/64를 기대하므로 반드시 되돌린다(안 하면 다음 프레임에 그 화면이 눌린다).
@@ -796,6 +800,16 @@ namespace AshesToStars
         {
             DeathCap.SeedQaIfRequested();
             if (!DeathCap.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            _selectedCharacter = 0;
+            _detailPage = 1;
+        }
+
+        void SeedPerfCapQaIfRequested()
+        {
+            PerfCap.SeedQaIfRequested();
+            if (!PerfCap.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             _selectedCharacter = 0;

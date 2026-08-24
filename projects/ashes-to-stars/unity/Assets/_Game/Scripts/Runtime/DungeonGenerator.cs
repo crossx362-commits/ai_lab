@@ -15,7 +15,8 @@ namespace AshesToStars
     // G3 이후는 전부 '덧붙이기'라 무엇이 실패해도 던전은 클리어 가능한 채로 남는다.
     // 그래서 "생성 실패 → 전체 재생성" 루프가 아예 존재하지 않는다(영구사망 게임에서 이건 필수다).
     //
-    // UnityEngine 참조 없음 — 씬 없이 1만 시드를 돌려볼 수 있어야 한다.
+    // 생성 알고리즘은 UnityEngine을 안 쓴다 — 씬 없이 1만 시드를 돌려볼 수 있어야 한다.
+    // 상한만 PerfCap(BalanceConfig.잡몹상한)을 읽는다. 값은 캐시라 시드 루프가 SO를 매 웨이브마다 안 만든다.
     // ─────────────────────────────────────────────────────────────
     public static class DungeonGenerator
     {
@@ -25,8 +26,8 @@ namespace AshesToStars
         /// <summary>어떤 노드 종류든 유효한 기본 템플릿(§3-6 R3).</summary>
         public const ArenaTemplate FallbackTemplate = ArenaTemplate.open_ring;
 
-        /// <summary>동시 몹 수 상한. BalanceConfig.잡몹상한(500)과 같은 값이어야 한다(§3-6 R7).</summary>
-        public const int MobHardCap = 500;
+        /// <summary>동시 몹 수 상한. BalanceConfig.잡몹상한을 읽는다(§10-9·§3-6 R7). QA_NO면 옛 500.</summary>
+        public static int MobHardCap => PerfCap.MobLimit();
 
         // §3-5 티어별 밀도·비율 표(몬스터문서 §5). 인덱스 = Tier(0~9) = T1~T10
         static readonly int[] StartCount = { 30, 30, 30, 40, 40, 40, 50, 50, 50, 60 };
