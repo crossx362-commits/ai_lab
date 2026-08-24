@@ -3,9 +3,9 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 00:05 · 전투 스타일 세부 토글(`305bee56`). 사람 관문 더미 유지
-마지막 트랙: 코드 — §3 정예우선타겟·소모품자동사용. `StyleScreen.ToggleLine`이 스타일 카드에서 읽음. QA_NO_STYLE_TOGGLES면 옛 수치·행동설명만
-폴리싱 다음: 월드맵 도크-내비는 닫음(`fd0ba129`). 다음은 파티 순회 결함 1건. 탑 HUD 겹침은 PROPOSALS
+최종 갱신: 2026-08-25 00:20 · 파티 출전 도크-내비 간격(`7d9cd50b`). 사람 관문 더미 유지
+마지막 트랙: UI 폴리싱 — 파티 출전 2×2를 내비 플레이트 위 12px로 올림. `PartyHud.Dock`·`NavGap`. QA_NO_PARTY_SORTIE면 옛 전폭 겹침
+폴리싱 다음: 파티 출전 도크-내비 닫음(`PartyHud` `7d9cd50b`). 필드·월드맵도 닫음. 탑 HUD 겹침은 PROPOSALS. 다음 트랙은 소비처0
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -55,6 +55,7 @@
 
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
+| — | 2026-08-25 00:18 | **UI 폴리싱 — 파티 출전 도크-내비 간격 12px.** 출전 탭 2×2가 AfterTabs yMax=640에 붙어 내비 플레이트(636)와 겹침. 필드·월드맵과 같이 `PartyHud.Dock`를 NavPlateTop-12. QA_NO_PARTY_SORTIE면 옛 전폭 겹침. GameSweep에 PartyHud 행 추가 | PartyHudSelfCheck PASS(아랫변 624 · 간격 12 · 차단 겹침) · `7d9cd50b` |
 | — | 2026-08-24 23:53 | **§3 전투 스타일 세부 토글 — 소비처 0곳.** 원장 정예우선타겟·소모품자동사용이 에셋에만 있고 grep 소비처가 없었다. `StyleScreen.ToggleLine`이 스타일 카드 수치 줄에 붙인다. 기본은 「가까운 적 · 소모품 자동 불가(§4)」. QA_NO_STYLE_TOGGLES면 옛 수치·행동설명만. `W3Party`는 안 만짐 | StyleToggleSelfCheck PASS · 네거(차단·가짜 true 읽기) · `305bee56` |
 | — | 2026-08-24 23:45 | **UI 폴리싱 — 월드맵 도크-내비 간격 12px.** 플레이모드 실측(before.png)에서 랭킹·수비대 금테가 내비 플레이트(636)와 4px 겹쳐 한 덩어리. 필드 `NavGap`과 같이 `WorldMapHud.Dock`를 NavPlateTop-12에 올리고 탐험 필드도 `Dock.y`를 읽음. SelfCheck는 GameScreen 본문 yMax=640으로 간격 ≥10을 단언(OldBodyH=540은 내비 위라 못 잡음). QA_NO면 아랫변 640 겹침 회귀. 블렌더 꺼짐(3D 없음) | 컴파일 PASS(307소스 0) · WorldMapHudSelfCheck PASS(도크 아랫변 624 · 간격 12 · 차단 아랫변 640) · 샷 `worldmap_hud_nav_shots/{before,after}.png` · `fd0ba129` |
 | — | 2026-08-24 23:04 | **§11 착용레벨 — INBOX 막힌 칸 마지막 1종.** 레시피 `요구레벨` 기본 0(제한 없음). `EquipLevel.CanWear`를 TryEquip·캐릭터창·대장간이 읽음. 오너 수치표는 §21-3이라 안 만듦. QA 시드가 가죽 흉갑 Lv20을 걸어 Lv10 캐릭터가 「가죽 흉갑은 Lv20(§11)」로 거부. 환생·탐험·내구·수비명예는 HEAD 조상 실측으로 재구현 없이 닫음 | 컴파일 PASS(307소스 0) · EquipLevelSelfCheck PASS(`equip_level_selfcheck.log`) · 샷 `equip_level_shots/qa_go:Character.png`(부제·상세 `착용 레벨 — Lv20(§11)` · 거부 줄) · 네거 `equip_level_shots_off/`(기본 부제, 레벨 줄 없음) · `4d9bc2d2` |
