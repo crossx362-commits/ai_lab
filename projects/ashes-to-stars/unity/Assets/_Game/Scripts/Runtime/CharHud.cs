@@ -149,22 +149,6 @@ namespace AshesToStars
             return Mathf.Lerp(stage.yMax, chrome.yMax, FrameLineFrac) - InfoBottomGap;
         }
 
-        /// <summary>
-        /// 정보 칸 꼭대기. 바닥(InfoBottom)과 같은 실측 선 — 「panel」의 안쪽 금테 선은
-        /// 위쪽도 pad의 ≈2/3 지점에 있다(플레이모드 픽셀 재단 2026-08-24, polish_r67:
-        /// 하트 밴드가 상단 선 밴드와 14행 겹침 · 0.667 예측선과 실측 내연 1px 일치).
-        /// 옛 0.62 보간은 선보다 위라 목숨 하트·Lv 줄이 금테에 얹혔다. 실제 선에서
-        /// 4px 아래로 물긴다 — 8px면 14줄+가방 높이 예산(254px)을 깨므로 4px가 한계.
-        /// QA_NO면 옛 0.62(결함 재현용).
-        /// </summary>
-        public const float InfoTopGap = 4f;
-
-        public static float InfoTop(Rect stage, Rect chrome)
-        {
-            if (Blocked) return Mathf.Lerp(stage.y, chrome.y, 0.62f);
-            return Mathf.Lerp(stage.y, chrome.y, FrameLineFrac) + InfoTopGap;
-        }
-
         public static void SeedQaIfRequested()
         {
             if (!ShowQa) return;

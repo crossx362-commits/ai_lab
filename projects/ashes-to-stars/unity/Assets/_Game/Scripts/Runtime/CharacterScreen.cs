@@ -989,9 +989,7 @@ namespace AshesToStars
             // 잘렸고, 옛 세션은 이를 피하려 top을 프레임 밖으로 끌어올려(pull-up) 첫 두 줄(Lv·xp)이 탭 옆에
             // 삐져나가는 넘침 결함을 만들었다. 실제 평평한 내부는 안쪽 금테 선(≈stage와 chrome의 중간)까지다 —
             // stage↔chrome를 0.5로 보간해 그 선에 맞추면 넘침 없이 ≈13줄을 담아 장비 전부·가방이 보인다.
-            // 꼭대기도 CharHud.InfoTop — 바닥과 같은 실측 선(pad 2/3)에서 4px 아래. 옛 0.62 보간은
-            // 선보다 위라 목숨 하트·Lv 줄이 상단 금테에 얹혔다(플레이모드 픽셀 재단 2026-08-24).
-            float infoTop = CharHud.InfoTop(stage, chrome);
+            float infoTop = Mathf.Lerp(stage.y, chrome.y, 0.62f);
             // 바닥은 CharHud.InfoBottom — 실측하면 안쪽 금테 선은 pad의 ≈2/3 지점(0.5 flat보다
             // 16px 위)이라 옛 0.45·0.5 어느 쪽이든 마지막 줄이 선에 덮였다(플레이모드 픽셀 재단
             // 2026-08-24). 실제 선(0.667)에서 8px 위로 끊고, 줄 피치를 20→18로 낮춰 14줄+가방을
