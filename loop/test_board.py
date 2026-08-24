@@ -2005,6 +2005,51 @@ class ResumeTests(unittest.TestCase):
 
 
 
+class UsagesParallelBudgetTests(unittest.TestCase):
+    """2026-08-24 보드응답:000 — 사용량 프로브의 '상한 6초'가 항목별 순차 누적(최악 18s)과
+    with 블록 잔여 대기 때문에 실질 상한이 아니었다. 전체 예산 안에서 반드시 돌아오고,
+    느린 항목은 빈 값으로 내려가야 한다."""
+
+    def _patch_usages(self, **targets):
+        patchers = [mock.patch.object(board, name, side_effect=fn)
+                    for name, fn in targets.items()]
+        for p in patchers:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_slow_probes_cannot_exceed_budget(self):
+        import time as _t
+
+        def slow():
+            _t.sleep(1.2)
+            return {"ok": True}
+
+        self._patch_usages(grok_usage=slow, claude_usage=slow, codex_usage=slow)
+        t0 = _t.monotonic()
+        out = board._usages_parallel(budget=0.5)
+        elapsed = _t.monotonic() - t0
+        # 옛 구현이면 3항목 순차 대기로 3.6초 이상 — 예산 0.5초를 넘기면 재발이다.
+        self.assertLess(elapsed, 1.15)
+        self.assertEqual(out, {"grok": {}, "claude": {}, "codex": {}})
+
+    def test_fast_probes_keep_results(self):
+        def fast_grok():
+            return {"ok": True, "remain_pct": 12.3}
+
+        def fast_claude():
+            return {"ok": True, "used_pct": 4.5}
+
+        def fast_codex():
+            return {"ok": False}
+
+        self._patch_usages(grok_usage=fast_grok, claude_usage=fast_claude,
+                           codex_usage=fast_codex)
+        out = board._usages_parallel(budget=3.0)
+        self.assertEqual(out["grok"], {"ok": True, "remain_pct": 12.3})
+        self.assertEqual(out["claude"], {"ok": True, "used_pct": 4.5})
+        self.assertEqual(out["codex"], {"ok": False})
+
+
 class TestStatusFormatCompat(unittest.TestCase):
     """2026-08-23 empty template broke the board — parsers must accept both shapes."""
 

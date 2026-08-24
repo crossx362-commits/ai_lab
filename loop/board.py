@@ -3055,19 +3055,31 @@ def keeper_info() -> dict:
     }
 
 
-def _usages_parallel() -> dict:
-    """사용량 3종(grok·claude·codex)을 병렬로, 상한 6초 안에서만 기다린다.
-    느리면 그 항목만 빈 값으로 보여 주고 화면 전체가 막히는 일을 없앤다 (2026-08-23)."""
+def _usages_parallel(budget: float = 3.0) -> dict:
+    """사용량 3종(grok·claude·codex)을 병렬로, 전체 예산(기본 3초) 안에서만 기다린다.
+    느리면 그 항목만 빈 값으로 보여 주고 화면 전체가 막히는 일을 없앤다 (2026-08-23).
+    2026-08-24(보드응답:000 재발 차단): 옛 구현은 항목당 result(timeout=6)가 순차 누적되어
+    최악 18초, with 블록 종료 시 잔여 스레드까지 기다려 실질 상한이 없었다.
+    마감시간 하나로 묶고 예산 초과분은 기다리지 않는다 — 남은 스레드는 각자 타임아웃 안에서
+    조용히 끝나며 다음 요청이 쓸 메모리 캐시만 채우고 간다."""
     import concurrent.futures
     out: dict[str, dict] = {}
     jobs = {"grok": grok_usage, "claude": claude_usage, "codex": codex_usage}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+    deadline = time.monotonic() + budget
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=len(jobs))
+    try:
         futs = {key: pool.submit(fn) for key, fn in jobs.items()}
         for key, fut in futs.items():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                out[key] = {}
+                continue
             try:
-                out[key] = fut.result(timeout=6)
+                out[key] = fut.result(timeout=remaining)
             except Exception:
                 out[key] = {}
+    finally:
+        pool.shutdown(wait=False)
     return out
 
 
