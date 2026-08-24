@@ -21,7 +21,7 @@
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
 | 개발 직렬 | 소비처0 다음 한 칸 | SkillDesc wrap `6ba0a995`·초필살기 `24ef7e47`·ConceptLine fold `77cee37a`·§18-9 방어배율 `ead55a1d` 닫음(DefenseLine — RaceDefenseSelfCheck PASS·네거 `QA_NO_RACE_DEFENSE`). `W3Party` 금지 |
 | VFX §6-P1#5 대시 잔상 | **닫음** | `2cd07dbe` — `fx_dash_trail_0~2` Resources 반입 + `W2Arena` 트레일 풀 8장(0.04s 간격·알파 0.6→0·0.15s·order 210). 샷 쌍 `unity/results/vfx_dash_trail_{on,off}.png` + 네거티브(로드 차단→풀 미생성) PASS. INBOX 21:59 소비 |
-| UI 폴리싱 다음 | 캐릭터 로스터 카드 이름·하트 겹침 | ConceptLine LabelClip은 `77cee37a` 선반영을 수호기사 실화면으로 실측 확인(끝 글자 「소모해 보호막」까지 표시 · SelfCheck 22/22 PASS). 다음 결함: 로스터 카드 이름 라벨 끝글자가 목숨 하트에 덮임(마법사·사제) — 샷 `output/qa/ashes-to-stars/concept_wrap_shots_v2/go/qa_go:Character.png` |
+| UI 폴리싱 다음 | 캐릭터 상세 패널 정렬 3건 소진 — 다음 결함 발굴 | 로스터 카드 겹침 `6464be32`·장비 라벨 flat `390a5868`·정보 바닥 `a5907732`·정보 꼭대기 `ef97fd9e`(2026-08-24 r68 배치 SelfCheck 재실측 PASS + r67 A/B 크롭 육안) 전부 닫음. 다음: 플레이모드 순회 샷(영지·탑·필드·월드맵·파티·캐릭터·경매)에서 결함 1건 발굴 |
 | launchd 자율 루프 | **정지 — 대화 세션이 인수**(오너 2026-08-23) | 그록 루프 STOP으로 정상 종료·bootout. 실행기 grok→opencode 전환 + 유니티·블렌더 MCP 절차는 `5b1bddbd`. 재개법은 `loop/README.md` |
 | 사람 관문 | 안 닫음 | V2 · V4 70% · W2 FAIL(기준 낮추지 말 것) · 관문② |
 
