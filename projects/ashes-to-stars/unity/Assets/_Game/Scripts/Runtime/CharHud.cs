@@ -134,15 +134,19 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 정보 칸 바닥. 옛 0.45 보간은 안쪽 금테 선(stage↔chrome 0.5)보다 0.05×pad ≈ 5px
-        /// 아래라 목록 마지막 줄 rect가 선을 가로질러 글리프 하단이 덮였다(실측 2026-08-24,
-        /// polish_r65 샷). 금테 선에서 10px 위로 끊는다 — 13줄(정보 5+장착 헤더+장비 6+가방)
-        /// ×20+6 = 266px는 그 높이(≈283px)에 그대로 들어온다. QA_NO면 옛 0.45(결함 재현용).
+        /// 정보 칸 바닥. 실측(2026-08-24, polish_r66 플레이모드 샷 픽셀 재단)하면 「panel」의
+        /// 안쪽 금테 선은 pad의 약 2/3 지점(아래는 stage.yMax − 0.667×pad ≈ 66px 위)에 있다 —
+        /// 라벨이 쓰던 0.5 "flat" 보간은 실제 선보다 16px 아래라, 0.45·0.5 어느 쪽으로 끊어도
+        /// 목록 마지막 줄이 선을 가로질러 글리프 하단이 덮였다(0.45 원본 결함 + 0.5−10 재실측).
+        /// 실제 선(0.667)에서 8px 위로 끊는다. QA_NO면 옛 0.45(결함 재현용).
         /// </summary>
+        public const float FrameLineFrac = 0.667f;
+        public const float InfoBottomGap = 8f;
+
         public static float InfoBottom(Rect stage, Rect chrome)
         {
             if (Blocked) return Mathf.Lerp(stage.yMax, chrome.yMax, 0.45f);
-            return Mathf.Lerp(stage.yMax, chrome.yMax, 0.5f) - 10f;
+            return Mathf.Lerp(stage.yMax, chrome.yMax, FrameLineFrac) - InfoBottomGap;
         }
 
         public static void SeedQaIfRequested()

@@ -989,13 +989,11 @@ namespace AshesToStars
             // 잘렸고, 옛 세션은 이를 피하려 top을 프레임 밖으로 끌어올려(pull-up) 첫 두 줄(Lv·xp)이 탭 옆에
             // 삐져나가는 넘침 결함을 만들었다. 실제 평평한 내부는 안쪽 금테 선(≈stage와 chrome의 중간)까지다 —
             // stage↔chrome를 0.5로 보간해 그 선에 맞추면 넘침 없이 ≈13줄을 담아 장비 전부·가방이 보인다.
-            // 꼭대기도 금테 선에서 여유를 둔다 — 0.60이면 선 아래 ≈0.10×pad ≈ 10px(바닥 10px와
-            // 대칭). 옛 0.62도 문제는 없었지만 바닥을 10px 올리며 14줄(편성 줄 포함)+가방을
-            // 다 담기 위한 보강이다.
-            float infoTop = Mathf.Lerp(stage.y, chrome.y, 0.60f);
-            // 바닥은 CharHud.InfoBottom — 옛 0.45 보간은 안쪽 금테 선보다 0.05×pad ≈ 5px
-            // 아래라 목록 마지막 줄(장비 6줄·가방)이 선을 가로질러 글리프 하단이 덮였다
-            // (실측 2026-08-24, polish_r65). 금테 선(stage↔chrome 0.5)에서 10px 위로 끊는다.
+            float infoTop = Mathf.Lerp(stage.y, chrome.y, 0.62f);
+            // 바닥은 CharHud.InfoBottom — 실측하면 안쪽 금테 선은 pad의 ≈2/3 지점(0.5 flat보다
+            // 16px 위)이라 옛 0.45·0.5 어느 쪽이든 마지막 줄이 선에 덮였다(플레이모드 픽셀 재단
+            // 2026-08-24). 실제 선(0.667)에서 8px 위로 끊고, 줄 피치를 20→18로 낮춰 14줄+가방을
+            // 다 담는다(아래 DrawInspectInfo 참조).
             float infoBottom = CharHud.InfoBottom(stage, chrome);
             var info = new Rect(infoX, infoTop, stage.xMax - infoX - 14f, infoBottom - infoTop);
             // 목숨 하트는 정보 칸 맨 윗줄(Lv·경험)의 오른쪽에 붙여 헤더로 읽힌다 — chrome.xMax 우측 끝에
@@ -1016,13 +1014,14 @@ namespace AshesToStars
         void DrawInspectInfo(Rect r, CharacterRecord ch)
         {
             float y = r.y;
-            // 줄 간격 20f — 정보 칸은 안쪽 금테 안 ≈275px에 14줄(Lv·xp·전투력·상태·장착 헤더·
-            // 장비 6슬롯·가방§11)을 담아야 해 22f면 마지막 가방 줄이 넘쳐 잘렸다(폴리싱, 잘림 결함).
+            // 줄 간격 18f — 정보 칸은 실제 금테 선(pad 2/3, 실측 2026-08-24) 안쪽 ≈268px에
+            // 14줄(표제·xp·전투력·상태·전직·편성·장착 헤더·장비 6·가방)을 담는다. 20f였다가
+            // 바닥을 실제 선 위 8px로 올리며 14줄+가방이 다 들어오도록 낮췄다(22f→20f 사례와 같은 계열).
             void Line(string text)
             {
-                if (y + 18f > r.yMax) return;
-                Hint(new Rect(r.x, y, r.width, 20f), text);
-                y += 20f;
+                if (y + 16f > r.yMax) return;
+                Hint(new Rect(r.x, y, r.width, 18f), text);
+                y += 18f;
             }
 
             Line(ExpText(ch));
@@ -1032,7 +1031,7 @@ namespace AshesToStars
                 float ratio = need <= 0f ? 0f : Mathf.Clamp01(ch.Exp / (float)need);
                 UiAtlas.DrawMeter(new Rect(r.x, y, Mathf.Min(220f, r.width), 16f),
                     "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
-                y += 20f;
+                y += 18f;
             }
             Line($"전투력  {CombatPower(ch):N0}");
             if (ch.IsDeleted)
@@ -1086,8 +1085,8 @@ namespace AshesToStars
                       + (string.IsNullOrEmpty(opt) ? "" : " · " + opt));
             }
 
-            // 4f — 장비 블록과 가방 줄 사이 여백. 6f였다가 바닥을 금테 선 위 10px로 올린 뒤
-            // 14줄(편성 줄 포함) 목록에서 가방 줄이 yMax를 0.9px 넘겐 잘리는 것을 되찾으려 4f로.
+            // 4f — 장비 블록과 가방 줄 사이 여백. 6f였다가 바닥을 실제 금테 선(pad 2/3) 위 8px로
+            // 올린 뒤에도 가방 줄이 남도록 4f로.
             y += 4f;
             var bag = Equipment.Unequipped();
             int filled = 0;

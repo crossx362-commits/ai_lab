@@ -102,11 +102,11 @@ namespace AshesToStars
             }
             Check(flatOk == 6, $"평평한 내부 라벨 6/6 통과 (실제 {flatOk})");
 
-            // 정보 칸 바닥 — 옛 0.45 보간은 안쪽 금테 선(flat.yMax)보다 0.05×pad ≈ 5px 아래라
-            // 목록 마지막 줄(장비 6줄·가방)이 선을 가로질러 글리프 하단이 덮였다(실측 2026-08-24,
-            // polish_r65). InfoBottom은 금테 선에서 10px 위라 최악 줄 rect 바닥(yMax+2)도
-            // 선 위 8px에 머문다. 아울러 바닥을 올리며 13줄(정보 5+장착 헤더+장비 6+가방)
-            // ×20+6 = 266px 수용을 잃지 않는다 — 잃으면 잘림 결함이 돌아온다.
+            // 정보 칸 바닥 — 실측(2026-08-24, polish_r66 플레이모드 샷 픽셀 재단)하면 「panel」의
+            // 안쪽 금테 선은 pad의 ≈2/3 지점이라 옛 0.45(0.5 flat도 마찬가지)는 선보다 아래로
+            // 내려와 목록 마지막 줄이 선에 덮였다. InfoBottom은 실제 선(0.667)에서 8px 위.
+            // 아울러 바닥을 올리며 14줄(표제·xp·전투력·상태·전직·편성·장착 헤더+장비 6)×18
+            // + 가방 간격 4 + 가방 판정 16 = 254px 수용을 잃지 않는다 — 잃으면 가방 줄 잘림이 돌아온다.
             // 치수는 DrawEquipStudio와 같게 — 런타임 체인 그대로: Body → AfterTabs(탭 62) →
             // RosterSplit → 다시 AfterTabs(장비·속성 탭 62) → 하단 액션바 56을 뺀 studio stage.
             var pageRect = UiPages.AfterTabs(body);
@@ -115,21 +115,13 @@ namespace AshesToStars
             var studio = new Rect(rtStage.x, afterTabs.y, rtStage.width,
                 Mathf.Max(80f, afterTabs.height - 56f));
             var studioChrome = UiAtlas.ContentRect(studio, "panel", 2f);
-            var studioFlat = Rect.MinMaxRect(
-                Mathf.Lerp(studio.x, studioChrome.x, 0.5f), Mathf.Lerp(studio.y, studioChrome.y, 0.5f),
-                Mathf.Lerp(studio.xMax, studioChrome.xMax, 0.5f),
-                Mathf.Lerp(studio.yMax, studioChrome.yMax, 0.5f));
+            float frameLine = Mathf.Lerp(studio.yMax, studioChrome.yMax, CharHud.FrameLineFrac);
             float infoBottom = CharHud.InfoBottom(studio, studioChrome);
-            float infoTop = Mathf.Lerp(studio.y, studioChrome.y, 0.60f);
-            Check(infoBottom <= studioFlat.yMax - 9f,
-                $"정보 바닥 {infoBottom:0.0} ≤ 금테 선 {studioFlat.yMax:0.0} − 9 — 마지막 줄이 금테에 안 닿는다");
-            Check(infoTop >= studioFlat.y + 8f,
-                $"정보 꼭대기 {infoTop:0.0} ≥ 금테 선 {studioFlat.y:0.0} + 8 — 첫 줄도 금테에 안 붙는다");
-            // 최악 14줄(표제·xp·전투력·출전·전직·편성·장착 헤더+장비 6)×20 + 가방 앞 간격 4
-            // + 가방 줄 판정 18 — 바닥·꼭대기를 올리며 가방 줄을 잃지 않았는다(실측 2026-08-24:
-            // 10px 여유만으로는 14줄 목록에서 가방 줄이 0.9px 넘겐 잘렸다).
-            Check(infoBottom - infoTop >= 13f * 20f + 4f + 18f,
-                $"정보 칸 높이 {infoBottom - infoTop:0} ≥ 14줄+간격 {13f * 20f + 4f + 18f:0} — 가방 줄이 안 잘린다");
+            float infoTop = Mathf.Lerp(studio.y, studioChrome.y, 0.62f);
+            Check(infoBottom <= frameLine - (CharHud.InfoBottomGap - 1f),
+                $"정보 바닥 {infoBottom:0.0} ≤ 실측 금테 선 {frameLine:0.0} − {CharHud.InfoBottomGap - 1f:0} — 마지막 줄이 금테에 안 닿는다");
+            Check(infoBottom - infoTop >= 13f * 18f + 4f + 16f,
+                $"정보 칸 높이 {infoBottom - infoTop:0} ≥ 14줄+간격 {13f * 18f + 4f + 16f:0} — 가방 줄이 안 잘린다");
 
             Check(CharHud.EquipLabel(stage,
                     new Rect(stage.x + 40f, stage.y + 80f, 48f, 48f)).width >= CharHud.LabelW,
@@ -156,10 +148,10 @@ namespace AshesToStars
             var oldLab = CharHud.EquipLabel(stage, new Rect(stage.x + 40f, stage.y + 80f, 48f, 48f));
             Check(oldLab.width <= CharHud.OldLabelW + 0.01f,
                 $"차단 라벨 {oldLab.width:0} ≤ 옛 48");
-            // 네거티브 — 차단하면 옛 0.45 보간(금테 선 아래 0.05×pad)으로 돌아가 결함이 재현된다.
+            // 네거티브 — 차단하면 옛 0.45 보간으로 돌아가 실측 금테 선(0.667)보다 아래로 내려가 결함이 재현된다.
             float oldInfoBottom = CharHud.InfoBottom(studio, studioChrome);
-            Check(oldInfoBottom > studioFlat.yMax - 9f,
-                $"차단 정보 바닥 {oldInfoBottom:0.0} > 금테 선 {studioFlat.yMax:0.0} − 9 — 옛 결함 경로");
+            Check(oldInfoBottom > frameLine - 1f,
+                $"차단 정보 바닥 {oldInfoBottom:0.0} > 실측 금테 선 {frameLine:0.0} − 1 — 옛 결함 경로");
             Check(CharHud.Line().Contains("잘린다") && !CharHud.Line().Contains("잘리지 않는다"),
                 $"차단 줄 (실제 {CharHud.Line()})");
             Environment.SetEnvironmentVariable(CharHud.EnvNo, null);
