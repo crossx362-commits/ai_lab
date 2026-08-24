@@ -24,6 +24,7 @@ namespace AshesToStars
               (MobSpeed.ShowQa ? MobSpeed.Line() + " · " : "") +
               (MobHp.ShowQa ? MobHp.Line() + " · " : "") +
               (MobDmg.ShowQa ? MobDmg.Line() + " · " : "") +
+              (MobMeleeCadence.ShowQa ? MobMeleeCadence.Line() + " · " : "") +
               (MobShotCadence.ShowQa ? MobShotCadence.Line() + " · " : "") +
               (MobProjectileSpeed.ShowQa ? MobProjectileSpeed.Line() + " · " : "") +
               $"시드 {DungeonRun.Plan.RunSeed} · T{DungeonRun.Plan.Tier + 1} · " +
@@ -40,6 +41,7 @@ namespace AshesToStars
             MobSpeed.SeedQaIfRequested();
             MobHp.SeedQaIfRequested();
             MobDmg.SeedQaIfRequested();
+            MobMeleeCadence.SeedQaIfRequested();
             MobShotCadence.SeedQaIfRequested();
             MobProjectileSpeed.SeedQaIfRequested();
             if (!DungeonRun.Active)

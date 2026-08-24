@@ -24,7 +24,7 @@ namespace AshesToStars
         public float 체력배율 = 1.2f;
         [Tooltip("캐릭터 최대 HP 대비 피해 비율 (0.02~0.04 = 2~4%). 소비처: MobDmg.Ratio → 던전 부제 · 속성 탭 줄")]
         public float 피해비율 = 0.03f;
-        [Tooltip("근접 공격 간격(초)")] public float 공격간격 = 1.0f;
+        [Tooltip("근접 공격 간격(초). 소비처: MobMeleeCadence.Seconds → 던전 부제 · 속성 탭 줄")] public float 공격간격 = 1.0f;
 
         [Header("원거리형 전용")]
         public float 유지거리 = 6.5f;

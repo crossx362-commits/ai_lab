@@ -378,6 +378,9 @@ namespace AshesToStars
                         // QA_NO면 빈 문자열.
                         string mobDmg = MobDmg.Line();
                         if (!string.IsNullOrEmpty(mobDmg)) { Info(r, statusMax + 1, mobDmg); statusMax += 1; }
+                        // §10-2 근접형 공격 주기. QA_NO면 옛 화면처럼 빈 문자열.
+                        string mobMelee = MobMeleeCadence.Line();
+                        if (!string.IsNullOrEmpty(mobMelee)) { Info(r, statusMax + 1, mobMelee); statusMax += 1; }
                         // §10-2 원거리형 발사 주기. QA_NO면 옛 화면처럼 빈 문자열.
                         string mobShot = MobShotCadence.Line();
                         if (!string.IsNullOrEmpty(mobShot)) { Info(r, statusMax + 1, mobShot); statusMax += 1; }

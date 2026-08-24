@@ -68,6 +68,7 @@ namespace AshesToStars
                 One("잡몹 이동속도", MobSpeedSelfCheck.Run, rows, errors);
                 One("잡몹 HP", MobHpSelfCheck.Run, rows, errors);
                 One("잡몹 피해", MobDmgSelfCheck.Run, rows, errors);
+                One("근접 공격 주기", MobMeleeCadenceSelfCheck.Run, rows, errors);
                 One("원거리 발사 주기", MobShotCadenceSelfCheck.Run, rows, errors);
                 One("원거리 투사체 속도", MobProjectileSpeedSelfCheck.Run, rows, errors);
                 One("초상 아틀라스", PortraitAtlasSelfCheck.Run, rows, errors);
