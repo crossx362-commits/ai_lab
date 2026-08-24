@@ -26,6 +26,7 @@ namespace AshesToStars
             : ReviveCap.ShowQa ? ReviveCap.Line()
             : DeathCap.ShowQa ? DeathCap.Line()
             : ProjCap.ShowQa ? ProjCap.Line()
+            : GhAnchor.ShowQa ? GhAnchor.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -85,6 +86,7 @@ namespace AshesToStars
             SeedPerfCapQaIfRequested();
             SeedSummonCapQaIfRequested();
             SeedProjCapQaIfRequested();
+            SeedGhAnchorQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -499,9 +501,12 @@ namespace AshesToStars
                         // 투사체를 맨 뒤 단독 행에 두면 r.yMax를 넘겨 안 보인다(소환수 상한 실측).
                         string perfCap = PerfCap.Line();
                         string projCap = ProjCap.Line();
+                        string gh = GhAnchor.Line();
                         string budget = perfCap;
                         if (!string.IsNullOrEmpty(projCap))
                             budget = string.IsNullOrEmpty(budget) ? projCap : budget + " · " + projCap;
+                        if (!string.IsNullOrEmpty(gh))
+                            budget = string.IsNullOrEmpty(budget) ? gh : budget + " · " + gh;
                         if (!string.IsNullOrEmpty(budget)) Info(r, advancementRow++, budget);
                     }
                     // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
@@ -849,6 +854,19 @@ namespace AshesToStars
         {
             ProjCap.SeedQaIfRequested();
             if (!ProjCap.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            int pick = 0;
+            for (int i = 0; i < roster.Count; i++)
+                if (!roster[i].IsDeleted) { pick = i; break; }
+            _selectedCharacter = pick;
+            _detailPage = 1;
+        }
+
+        void SeedGhAnchorQaIfRequested()
+        {
+            GhAnchor.SeedQaIfRequested();
+            if (!GhAnchor.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             int pick = 0;

@@ -412,7 +412,7 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 필드 잡몹 생존 골드(§18-1). T1 1시간 = 1골드 = 10,000쿠퍼.
+        /// 필드 잡몹 생존 골드(§18-1). T1 1시간 = GhAnchor.Hours() 골드.
         /// G/h 앵커의 생산 소비처. 던전·탑 일반층은 안 탄다(필드만).
         /// 초가 0이하거나 QA_NO면 0. 저체력 귀환·전멸은 호출부가 안 부른다.
         /// </summary>
@@ -423,7 +423,7 @@ namespace AshesToStars
             int t = tier;
             if (t < 0) t = 0;
             if (t >= TierRevenueMultiplier.Length) t = TierRevenueMultiplier.Length - 1;
-            double raw = COPPER_PER_GOLD * (double)seconds * TierRevenueMultiplier[t]
+            double raw = COPPER_PER_GOLD * GhAnchor.Hours() * (double)seconds * TierRevenueMultiplier[t]
                 / HuntGoldHourSeconds;
             long gold = (long)raw;
             return gold < 1 ? 1 : gold;
