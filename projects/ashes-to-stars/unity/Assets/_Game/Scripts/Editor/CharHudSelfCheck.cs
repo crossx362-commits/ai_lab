@@ -26,9 +26,11 @@ namespace AshesToStars
             string show = Environment.GetEnvironmentVariable(CharHud.EnvShow);
             string no = Environment.GetEnvironmentVariable(CharHud.EnvNo);
             string noNav = Environment.GetEnvironmentVariable(CharHud.EnvNoNav);
+            string noPortrait = Environment.GetEnvironmentVariable(CharHud.EnvNoPortraitFit);
             Environment.SetEnvironmentVariable(CharHud.EnvShow, null);
             Environment.SetEnvironmentVariable(CharHud.EnvNo, null);
             Environment.SetEnvironmentVariable(CharHud.EnvNoNav, null);
+            Environment.SetEnvironmentVariable(CharHud.EnvNoPortraitFit, null);
             CharHud.ResetForTest();
 
             var body = new Rect(36f, 56f, 1208f, 584f);
@@ -59,7 +61,18 @@ namespace AshesToStars
             Check(nameR.yMax <= heartsR.y + 0.01f,
                 $"이름 아래 {nameR.yMax:0.0} ≤ 하트 위 {heartsR.y:0.0} — 끝글자가 하트에 안 덮인다");
 
-            var face = UiPages.LargeLook(stage);
+            var oldFace = UiPages.LargeLook(stage);
+            var face = CharHud.EquipPortrait(stage);
+            Check(face.width < oldFace.width && face.height < oldFace.height,
+                $"장비 초상 {face.width:0}×{face.height:0} < 옛 {oldFace.width:0}×{oldFace.height:0}");
+            Check(Vector2.Distance(face.center, oldFace.center) < 0.01f,
+                "장비 초상을 줄여도 링 중심축은 유지한다");
+            Environment.SetEnvironmentVariable(CharHud.EnvNoPortraitFit, "1");
+            var blockedFace = CharHud.EquipPortrait(stage);
+            Check(Mathf.Approximately(blockedFace.width, oldFace.width)
+                  && Mathf.Approximately(blockedFace.height, oldFace.height),
+                "QA_NO_CHAR_PORTRAIT_FIT이면 옛 큰 초상");
+            Environment.SetEnvironmentVariable(CharHud.EnvNoPortraitFit, null);
             CharHud.EquipRingFit(stage, face, out float ringX, out float ringY);
             int labelOk = 0;
             for (int i = 0; i < UiPages.EquipRingDegrees.Length; i++)
@@ -238,6 +251,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(CharHud.EnvShow, show);
             Environment.SetEnvironmentVariable(CharHud.EnvNo, no);
             Environment.SetEnvironmentVariable(CharHud.EnvNoNav, noNav);
+            Environment.SetEnvironmentVariable(CharHud.EnvNoPortraitFit, noPortrait);
             if (_fail == 0) Debug.Log("[CharHudSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharHudSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[CharHudSelfCheck] FAIL {_fail}건");

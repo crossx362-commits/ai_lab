@@ -1250,7 +1250,7 @@ namespace AshesToStars
             // 제목은 초상 위 좌측에 둔다. 목숨 하트는 정보 칸 Lv 줄 오른쪽으로 내렸다(아래 참조).
             Hint(new Rect(chrome.x, chrome.y, 360f, 24f), $"{title} · {CharHud.JobFace(ch.Job)}");
 
-            var face = UiPages.LargeLook(stage);
+            var face = CharHud.EquipPortrait(stage);
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
             DrawSelectedLook(face, ch.Job, tint);
             UiAtlas.Draw(new Rect(face.center.x - 16f, face.yMax - 18f, 32f, 32f),

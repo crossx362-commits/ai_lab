@@ -15,6 +15,8 @@ namespace AshesToStars
         public const string EnvShow = "QA_CHAR_HUD";
         public const string EnvNo = "QA_NO_CHAR_HUD";
         public const string EnvNoNav = "QA_NO_CHAR_NAV";
+        public const string EnvNoPortraitFit = "QA_NO_CHAR_PORTRAIT_FIT";
+        public const float PortraitScale = 0.68f;
         /// <summary>
         /// 전폭 액션바는 좌우가 내비 옆으로 빠진다.
         /// 2px면 금테가 내비 윗변에 붙어 한 덩어리로 읽힌다(필드·영지와 동형).
@@ -63,6 +65,29 @@ namespace AshesToStars
                 string raw = Environment.GetEnvironmentVariable(EnvNoNav);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
+        }
+
+        public static bool PortraitFitBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoPortraitFit);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// 장비 스튜디오의 큰 모습. 옛 240×300 초상은 1280px 패널에서 장비 링 여섯 칸과
+        /// 라벨을 덮어 캐릭터 그림 위로 「투구·장갑·신발」이 떠 보였다. 중심축은 유지하고
+        /// 그림만 줄여 장비 링이 실제 둘레로 읽히게 한다.
+        /// </summary>
+        public static Rect EquipPortrait(Rect stage)
+        {
+            var old = UiPages.LargeLook(stage);
+            if (PortraitFitBlocked) return old;
+            float w = old.width * PortraitScale;
+            float h = old.height * PortraitScale;
+            return new Rect(old.center.x - w * 0.5f, old.center.y - h * 0.5f, w, h);
         }
 
         /// <summary>내비 플레이트 윗변. 액션바 아랫변이 이보다 아래면 금테가 먹힌다(§16).</summary>
