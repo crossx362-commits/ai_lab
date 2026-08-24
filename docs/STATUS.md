@@ -3,9 +3,9 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 01:10 · 잡몹상한(`31836976`). 사람 관문 더미 유지
-마지막 트랙: 코드 — §10-9 잡몹상한. `PerfCap.MobLimit`가 BalanceConfig를 읽고 던전 웨이브·속성 탭이 소비. QA_NO면 옛 500·상한 줄 없음. 시드는 삭제된 캐릭터를 건너뜀(`188b5bda`)
-폴리싱 다음: 탑 HUD 도크-내비는 닫음(`16a57558`). 다음은 영지 현황 도크(EstateStatusHud body.yMax)
+최종 갱신: 2026-08-25 01:15 · 영지 현황 도크-내비(`0beff9ad`). 사람 관문 더미 유지
+마지막 트랙: UI 폴리싱 — 영지 현황 도크를 내비 플레이트 위 12px로 올림. `EstateStatusHud.Dock`·`NavGap`. QA_NO면 옛 전폭 겹침
+폴리싱 다음: 영지 현황 도크-내비 닫음(`0beff9ad`). 필드·월드맵·파티·탑도 닫음. 다음은 UI 폴리싱 1건
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -55,6 +55,7 @@
 
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
+| — | 2026-08-25 01:14 | **UI 폴리싱 — 영지 현황 도크-내비 간격 12px.** 필드·월드맵·파티·탑과 같이 `EstateStatusHud.Dock`를 NavPlateTop-12. SelfCheck는 GameScreen 본문 yMax=640으로 간격 ≥10. QA_NO면 아랫변 640 겹침 회귀 | EstateStatusHudSelfCheck PASS · `0beff9ad` |
 | — | 2026-08-25 01:04 | **§10-9 잡몹상한 — 소비처 0곳.** 에셋 기본 500인데 `DungeonGenerator.MobHardCap`이 500을 하드코딩. `PerfCap.MobLimit`가 읽고 생성기·속성 탭이 소비. QA_NO면 옛 500. 시드가 삭제된 0번을 고르면 줄을 안 그려 `188b5bda`가 산 캐릭터만 고름. `W3Party`는 안 만짐 | PerfCapSelfCheck PASS · GameSweep 행 추가 · `31836976` · `188b5bda` |
 | — | 2026-08-25 00:54 | **UI 폴리싱 — 탑 도크-내비 간격 12px.** 플레이모드 실측에서 2×2 금테가 내비 플레이트(636)와 겹침. 필드·월드맵·파티와 같이 `TowerHud.Dock`를 NavPlateTop-12. SelfCheck는 GameScreen 본문 yMax=640으로 간격 ≥10을 단언(OldBodyH=540은 내비 위라 못 잡음). QA_NO면 아랫변 640 겹침 회귀. 블렌더 꺼짐(3D 없음) | 컴파일 PASS(314소스 0) · TowerHudSelfCheck PASS(도크 아랫변 624 · 간격 12 · 차단 아랫변 640) · 샷 `tower_hud_nav_shots/{after,neg}.png` · `16a57558` |
 | — | 2026-08-25 00:40 | **§4 사망상한 — 소비처 0곳.** 에셋 `사망상한` 기본 3인데 MaxLives·RegisterDeath가 3을 하드코딩. `DeathCap.Limit`가 읽고 LifeSystem·속성 탭이 소비. QA_NO면 옛 3·상한 줄 없음. `W3Party`는 안 만짐 | DeathCapSelfCheck PASS · GameSweep 행 추가 · `f45cd729` |
