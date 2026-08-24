@@ -549,21 +549,9 @@ namespace AshesToStars
         /// <summary>
         /// 티어별 기준 수익 (G/h 배수)
         /// 기준: T1 = 1 G/h = 100 실버 (§18-1)
-        /// 티어당 ×1.6 배율
+        /// 티어당 ×BalanceConfig.티어배율 (기본 1.6). QA_NO면 옛 하드코드 표.
         /// </summary>
-        public static readonly float[] TierRevenueMultiplier = new float[]
-        {
-            1.0f,      // T1: 1 G/h
-            1.6f,      // T2: 1.6 G/h
-            2.56f,     // T3: 2.56 G/h
-            4.096f,    // T4: 4.096 G/h
-            6.5536f,   // T5: 6.5536 G/h
-            10.48576f, // T6: 10.48576 G/h
-            16.777216f,    // T7: 16.777216 G/h
-            26.8435456f,   // T8: 26.8435456 G/h
-            42.94967296f,  // T9: 42.94967296 G/h
-            68.71947674f   // T10: 68.71947674 G/h (≈69)
-        };
+        public static float[] TierRevenueMultiplier => TierMul.Table();
 
         /// <summary>
         /// 행위별 골드 비용 (G/h 배수, §18-2)

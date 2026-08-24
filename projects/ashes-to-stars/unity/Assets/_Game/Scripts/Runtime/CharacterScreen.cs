@@ -27,6 +27,7 @@ namespace AshesToStars
             : DeathCap.ShowQa ? DeathCap.Line()
             : ProjCap.ShowQa ? ProjCap.Line()
             : GhAnchor.ShowQa ? GhAnchor.Line()
+            : TierMul.ShowQa ? TierMul.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -87,6 +88,7 @@ namespace AshesToStars
             SeedSummonCapQaIfRequested();
             SeedProjCapQaIfRequested();
             SeedGhAnchorQaIfRequested();
+            SeedTierMulQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -502,11 +504,14 @@ namespace AshesToStars
                         string perfCap = PerfCap.Line();
                         string projCap = ProjCap.Line();
                         string gh = GhAnchor.Line();
+                        string tm = TierMul.Line();
                         string budget = perfCap;
                         if (!string.IsNullOrEmpty(projCap))
                             budget = string.IsNullOrEmpty(budget) ? projCap : budget + " · " + projCap;
                         if (!string.IsNullOrEmpty(gh))
                             budget = string.IsNullOrEmpty(budget) ? gh : budget + " · " + gh;
+                        if (!string.IsNullOrEmpty(tm))
+                            budget = string.IsNullOrEmpty(budget) ? tm : budget + " · " + tm;
                         if (!string.IsNullOrEmpty(budget)) Info(r, advancementRow++, budget);
                     }
                     // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
@@ -867,6 +872,19 @@ namespace AshesToStars
         {
             GhAnchor.SeedQaIfRequested();
             if (!GhAnchor.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            int pick = 0;
+            for (int i = 0; i < roster.Count; i++)
+                if (!roster[i].IsDeleted) { pick = i; break; }
+            _selectedCharacter = pick;
+            _detailPage = 1;
+        }
+
+        void SeedTierMulQaIfRequested()
+        {
+            TierMul.SeedQaIfRequested();
+            if (!TierMul.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             int pick = 0;
