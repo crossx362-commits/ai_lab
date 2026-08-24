@@ -1521,6 +1521,8 @@ namespace AshesToStars
                 {
                     if (!EquipJob.CanWear(ch, bag[0]))
                         _msg = EquipJob.WhyNot(ch, bag[0]);
+                    else if (!EquipLevel.CanWear(ch, bag[0]))
+                        _msg = EquipLevel.WhyNot(ch, bag[0]);
                     else
                         _msg = Equipment.TryEquip(ch, bag[0].Id)
                             ? $"{ch.Name}이(가) {bag[0].Name}을(를) 입었다"

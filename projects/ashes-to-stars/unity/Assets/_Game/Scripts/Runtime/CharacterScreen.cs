@@ -22,6 +22,7 @@ namespace AshesToStars
             : GearOpt.ShowQa ? GearOpt.Line()
             : BagSlots.ShowQa ? BagSlots.Line()
             : EquipJob.ShowQa ? EquipJob.Line()
+            : EquipLevel.ShowQa ? EquipLevel.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -82,6 +83,7 @@ namespace AshesToStars
             SeedCharLookQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
+            EquipLevel.SeedQaIfRequested();
             BagSlots.SeedQaIfRequested();
             EliteDrop.SeedQaIfRequested();
             GearDrop.SeedQaIfRequested();
@@ -91,6 +93,8 @@ namespace AshesToStars
                 _selectedCharacter = 0;
             if (EquipJob.ShowQa && _selectedCharacter < 0)
                 _selectedCharacter = EquipJob.QaHealerIndex();
+            if (EquipLevel.ShowQa && _selectedCharacter < 0)
+                _selectedCharacter = EquipLevel.QaCharIndex();
             StarterPick.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             SeedDefenseRecoverQaIfRequested();
@@ -1078,6 +1082,12 @@ namespace AshesToStars
             if (!ch.IsDeleted && ch.PendingBoon >= 0)
                 Line($"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)}");
             if (EquipJob.ShowQa) Line(EquipJob.Line());
+            if (EquipLevel.ShowQa)
+            {
+                Line(EquipLevel.Line());
+                string deny = EquipLevel.SeedWhyNot();
+                if (!string.IsNullOrEmpty(deny)) Line(deny);
+            }
             if (BagSlots.ShowQa) Line(BagSlots.Line());
             if (GearOpt.ShowQa || GearOpt.ShowListQa)
             {
@@ -1128,6 +1138,8 @@ namespace AshesToStars
                 {
                     if (!EquipJob.CanWear(ch, bag[i]))
                         _equipMsg = EquipJob.WhyNot(ch, bag[i]);
+                    else if (!EquipLevel.CanWear(ch, bag[i]))
+                        _equipMsg = EquipLevel.WhyNot(ch, bag[i]);
                     else if (Equipment.TryEquip(ch, bag[i].Id))
                         _equipMsg = "";
                 }
@@ -1170,6 +1182,7 @@ namespace AshesToStars
                 {
                     if ((int)bag[i].Slot != s) continue;
                     if (!EquipJob.CanWear(ch, bag[i])) continue;
+                    if (!EquipLevel.CanWear(ch, bag[i])) continue;
                     Equipment.TryEquip(ch, bag[i].Id);
                     break;
                 }
