@@ -385,6 +385,7 @@
 | — | 2026-08-23 | EstateBuild §2-3 건물별 레벨·업그레이드 창 | SelfCheck PASS · `25559505`(+`5fa97195`/`355f4095`) |
 | — | 2026-08-23 | 영지 §5 건물 드래그 미리보기 | SelfCheck PASS · `6d9b4fae` |
 
+| — | 2026-08-24 | lane-doc 재검증(BASE `cc2c6379`) — 속도 레인 운영법(병렬 worker/reviewer worktree 격리 최대 3개 · 승인 커밋 `autonomous/integration` 적립 · 메인 루프 바퀴마다 `merge_integration.sh`로 master 흡수 · STOP_LANE 토글)은 `55fc2373` 선반영으로 README.md(루프 섹션 본문 4줄 ≤5줄)·loop/README.md(speed_lane.sh 표행·STOP_LANE 토글) 존재 실측 — 지정 BASE=세션 기점=HEAD, 두 write_path diff 0행 실측으로 중복 재구현 없음·두 파일 무변경 — 같은 지시 누적(117회) — 건너뛰기 처방(a27b3d2b 병합 항목) TASKS.json 큐 적용 요망 | tests 없음(빈 목록) · 문서 검증 · visual=false 해당 없음 · 이 커밋 |
 ## 막힌 것 · 보류
 - 위 **관문 부채** 표가 권위. 여기에는 한 줄 요약만.
 - W2 FAIL — 기준 낮추지 말 것 · 담당 대화 세션
