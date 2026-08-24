@@ -3027,7 +3027,7 @@ def runner_info() -> dict:
                  HERE / "env.sh"):
         vals.update(_env_defaults(base))
     live_opencode = _pgrep(r"opencode run -m")
-    live_grok = _pgrep(r"/grok --model")
+    live_grok = _pgrep(r"grok .*--model") or _pgrep(r"/grok --model")
     return {
         "agent": vals.get("LOOP_AGENT", "?"),
         "model": vals.get("LOOP_OPENCODE_MODEL", ""),
@@ -3116,6 +3116,37 @@ def _usages_parallel(budget: float = 3.0) -> dict:
     finally:
         pool.shutdown(wait=False)
     return out
+
+
+def _live_stamp() -> str:
+    """보드가 화면에 그리는 입력들의 지문. 하나라도 바뀌면 SSE가 즉시 refresh를 보낸다."""
+    paths = [
+        STATUS, INBOX, WORKLOG, DESIGN, GAME_DESIGN,
+        ROOT / "logs" / "loop_main.log",
+        ROOT / ".git" / "HEAD",
+        ROOT / ".git" / "refs" / "heads" / "master",
+        HERE / "board_keeper.json",
+        HERE / "STOP",
+        HERE / "HOLD",
+        HERE / "last_test_report.json",
+        ROOT / "output" / "qa" / "ashes-to-stars" / "v4_playtest_dummy" / "dummy_report.json",
+    ]
+    day = ROOT / "logs" / datetime.now().strftime("%Y-%m-%d")
+    if day.is_dir():
+        laps = list(day.glob("lap-*.log"))
+        if laps:
+            try:
+                paths.append(max(laps, key=lambda p: p.stat().st_mtime))
+            except OSError:
+                pass
+    bits: list[str] = []
+    for p in paths:
+        try:
+            st = p.stat()
+            bits.append(f"{st.st_mtime_ns}:{st.st_size}")
+        except OSError:
+            bits.append("-")
+    return ",".join(bits)
 
 
 def build_state() -> dict:
@@ -3217,23 +3248,32 @@ class Handler(BaseHTTPRequestHandler):
         return data if isinstance(data, dict) else {}
 
     def _events(self, once: bool = False) -> None:
-        """타이머 절전 상태에서도 보드가 갱신되도록 서버가 신호를 보낸다."""
+        """파일·깃·바퀴 로그가 바뀌면 바로 신호를 보낸다. 브라우저 타이머에 의존하지 않는다."""
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
         self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
-        limit = 1 if once else 150  # 10분 뒤 EventSource가 자동 재연결한다.
+        limit = 1 if once else 1200  # 0.5초 × 1200 ≈ 10분 뒤 EventSource가 재연결
+        stamp = ""
+        last_emit = -10**9
         try:
             for sequence in range(limit):
-                payload = (
-                    f"event: refresh\n"
-                    f"data: {{\"sequence\":{sequence}}}\n\n"
-                ).encode("utf-8")
-                self.wfile.write(payload)
-                self.wfile.flush()
-                if not once:
-                    time.sleep(4)
+                now = _live_stamp()
+                changed = now != stamp
+                stamp = now
+                heartbeat = (sequence - last_emit) >= 10
+                if sequence == 0 or changed or heartbeat:
+                    last_emit = sequence
+                    payload = (
+                        f"event: refresh\n"
+                        f"data: {{\"sequence\":{sequence},\"changed\":{str(changed).lower()}}}\n\n"
+                    ).encode("utf-8")
+                    self.wfile.write(payload)
+                    self.wfile.flush()
+                if once:
+                    return
+                time.sleep(0.5)
         except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
             return
 

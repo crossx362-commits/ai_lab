@@ -732,6 +732,7 @@ let gitDetailLoading = false;
 let gitDetailSignature = "";
 let refreshTimer = null;
 let refreshInFlight = null;
+let refreshDirty = false;
 let liveEvents = null;
 
 async function api(path, body) {
@@ -1601,13 +1602,14 @@ document.addEventListener("click", async (e) => {
 
 async function refresh(force = false) {
   if (refreshInFlight) {
+    refreshDirty = true;
     if (!force) return refreshInFlight;
     try { await refreshInFlight; } catch (e) {}
   }
   const run = (async () => {
     let state;
     if (!force && window.__STATE__) {
-      state = window.__STATE__;   // 첫 화면은 서버가 심어 준 상태로 즉시 렌더
+      state = window.__STATE__;
       window.__STATE__ = null;
     } else {
       state = await api("/api/state");
@@ -1620,22 +1622,26 @@ async function refresh(force = false) {
     return await run;
   } finally {
     if (refreshInFlight === run) refreshInFlight = null;
+    if (refreshDirty) {
+      refreshDirty = false;
+      refresh(true).catch(() => {});
+    }
   }
 }
 
 function scheduleRefresh() {
   if (refreshTimer) clearTimeout(refreshTimer);
   refreshTimer = setTimeout(async () => {
-    try { await refresh(); } catch (e) {}
+    try { await refresh(true); } catch (e) {}
     scheduleRefresh();
-  }, 30000);
+  }, 8000);
 }
 
 function startLiveUpdates() {
   if (liveEvents || !("EventSource" in window)) return;
   liveEvents = new EventSource("/api/events");
   liveEvents.addEventListener("refresh", () => {
-    refresh().catch(() => {});
+    refresh(true).catch(() => {});
   });
 }
 
