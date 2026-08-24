@@ -578,10 +578,12 @@ namespace AshesToStars
             // 예전엔 빈 GameObject만 만들고 끝나서 소환 기믹이 파티에 아무 위협도 아니었다
             // (2026-08-15 발견). 실제 W3Party 전투에 쫄을 밀어넣어 「§10-5 분리 소환」이
             // 파티 피해로 성립하게 한다. W3Party가 도는 판이 아니면(예: 검증 하네스) 조용히 무시된다.
-            global::W3Party.SummonMobsToActive(mobCount);
+            // 마릿수는 §10-9 BalanceConfig.소환수상한(SummonCap)이 자른다. W3Party 본문은 안 만진다.
+            int n = SummonCap.Clamp(mobCount);
+            global::W3Party.SummonMobsToActive(n);
             FxPool.PlayStatus(4, Vector2.zero, 2.0f);
 
-            Debug.Log($"[BossBattle] Triggered mob summon x{mobCount} → W3Party, active danger mechanics: {activeDangerMechanicsCount}");
+            Debug.Log($"[BossBattle] Triggered mob summon x{n} → W3Party, active danger mechanics: {activeDangerMechanicsCount}");
         }
 
         /// <summary>

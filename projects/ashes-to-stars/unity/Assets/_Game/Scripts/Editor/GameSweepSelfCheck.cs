@@ -51,6 +51,7 @@ namespace AshesToStars
                 One("부활초 소지 상한", ReviveCapSelfCheck.Run, rows, errors);
                 One("사망 상한", DeathCapSelfCheck.Run, rows, errors);
                 One("잡몹 상한", PerfCapSelfCheck.Run, rows, errors);
+                One("소환수 상한", SummonCapSelfCheck.Run, rows, errors);
                 One("초상 아틀라스", PortraitAtlasSelfCheck.Run, rows, errors);
                 One("아이템 아틀라스", ItemAtlasSelfCheck.Run, rows, errors);
                 One("영지 격자", EstateGridSelfCheck.Run, rows, errors);
