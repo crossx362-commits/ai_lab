@@ -535,6 +535,22 @@ namespace AshesToStars
         };
 
         /// <summary>
+        /// 화면에 그리는 직업명. 저장값은 기본직 ID(딜·마딜)라 명부에 그대로 내면
+        /// 플레이스홀더로 읽힌다(실측 2026-08-24, circuit_r69 명부 「딜」「마딜」「힐」).
+        /// 1차가 두 종이면 「검사·궁수」로 붙이고, 세 종(버퍼)는 칸 폭에 「음유시인 외」.
+        /// 이미 전직한 이름(수호기사)은 그대로.
+        /// </summary>
+        public static string JobFace(string job)
+        {
+            if (string.IsNullOrEmpty(job)) return "";
+            if (!FirstAdvancementByBasicJob.TryGetValue(job, out string[] options)
+                || options == null || options.Length == 0)
+                return job;
+            if (options.Length <= 2) return string.Join("·", options);
+            return options[0] + " 외";
+        }
+
+        /// <summary>
         /// 시작 로스터의 두 번째(§3). Lv10 기본직업. 같은 역할이면 이름에 숫자를 붙인다.
         /// 층 클리어 영입(Lv1)과 갈라 둔다.
         /// </summary>

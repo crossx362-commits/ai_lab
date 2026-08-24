@@ -82,6 +82,11 @@ namespace AshesToStars
             ? "명부가 좁고 장비 이름이 잘린다"
             : "명부 3열과 장비 이름이 잘리지 않는다(§16)";
 
+        /// <summary>
+        /// 명부·모습 헤더의 직업 줄. 기본은 1차 선택지(검사·궁수). QA_NO면 옛 ID(딜).
+        /// </summary>
+        public static string JobFace(string job) => Blocked ? (job ?? "") : LifeSystem.JobFace(job);
+
         public static string SlotLabel(EquipSlot slot, GearItem worn)
         {
             string name = Equipment.SlotName(slot);

@@ -27,6 +27,7 @@ namespace AshesToStars
         [Tooltip("침략 약탈량 배율")] public float 약탈량배율 = 1f;
         [Tooltip("별 인식 범위 배율")] public float 인식범위배율 = 1f;
         [Tooltip("골드 소모 행위 비용 배율 — 드워프 0.80")] public float 골드소비배율 = 1f;
+        [Tooltip("방어 건물 내구 배율 — 드워프 1.20")] public float 건물내구배율 = 1f;
         [Tooltip("경매 수수료(%) — 기본 10")] public float 경매수수료 = 10f;
 
         [Header("고유 메커니즘")]

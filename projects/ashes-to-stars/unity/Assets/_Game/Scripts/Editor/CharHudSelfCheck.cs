@@ -135,6 +135,23 @@ namespace AshesToStars
                 "빈 장신구 라벨");
             Check(CharHud.Line().Contains("잘리지 않는다"),
                 $"줄 (실제 {CharHud.Line()})");
+            Check(LifeSystem.JobFace("딜") == "검사·궁수",
+                $"딜 얼굴 (실제 {LifeSystem.JobFace("딜")})");
+            Check(LifeSystem.JobFace("마딜") == "마법사·소환사",
+                $"마딜 얼굴 (실제 {LifeSystem.JobFace("마딜")})");
+            Check(LifeSystem.JobFace("힐") == "사제·드루이드",
+                $"힐 얼굴 (실제 {LifeSystem.JobFace("힐")})");
+            Check(LifeSystem.JobFace("탱") == "수호기사·광전사",
+                $"탱 얼굴 (실제 {LifeSystem.JobFace("탱")})");
+            Check(LifeSystem.JobFace("버퍼") == "음유시인 외",
+                $"버퍼 얼굴은 세 종이 칸을 넘치지 않게 외 (실제 {LifeSystem.JobFace("버퍼")})");
+            Check(LifeSystem.JobFace("수호기사") == "수호기사",
+                "1차 직업명은 그대로");
+            Check(CharHud.JobFace("딜") == "검사·궁수",
+                $"표시 딜 (실제 {CharHud.JobFace("딜")})");
+            Check(CharHud.JobFace("딜") != "딜" && CharHud.JobFace("마딜") != "마딜"
+                  && CharHud.JobFace("힐") != "힐" && CharHud.JobFace("버퍼") != "버퍼",
+                "표시는 기본직 ID가 아니다");
 
             Environment.SetEnvironmentVariable(CharHud.EnvNo, "1");
             Check(CharHud.Blocked, "QA_NO면 차단");
@@ -163,6 +180,8 @@ namespace AshesToStars
                 $"차단 정보 꼭대기 {oldInfoTop:0.0} < 실측 상단 선 {topLine:0.0} — 옛 결함 경로");
             Check(CharHud.Line().Contains("잘린다") && !CharHud.Line().Contains("잘리지 않는다"),
                 $"차단 줄 (실제 {CharHud.Line()})");
+            Check(CharHud.JobFace("딜") == "딜" && CharHud.JobFace("마딜") == "마딜",
+                $"차단 직업은 옛 ID (실제 {CharHud.JobFace("딜")}/{CharHud.JobFace("마딜")})");
             Environment.SetEnvironmentVariable(CharHud.EnvNo, null);
 
             Environment.SetEnvironmentVariable(CharHud.EnvShow, "1");
@@ -185,6 +204,8 @@ namespace AshesToStars
                 "정보 칸 바닥이 InfoBottom을 읽는다 (옛 인라인 0.45 금지)");
             Check(screen.Contains("CharHud.InfoTop"),
                 "정보 칸 꼭대기가 InfoTop을 읽는다 (옛 인라인 0.62 금지)");
+            Check(screen.Contains("CharHud.JobFace"),
+                "명부·헤더 직업이 JobFace를 읽는다 (옛 ch.Job ID 금지)");
 
             Environment.SetEnvironmentVariable(CharHud.EnvShow, show);
             Environment.SetEnvironmentVariable(CharHud.EnvNo, no);

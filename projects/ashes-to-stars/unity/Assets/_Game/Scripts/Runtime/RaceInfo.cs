@@ -194,5 +194,37 @@ namespace AshesToStars
             string sign = pct > 0 ? "+" : "";
             return "종족 방어 — ×" + mul.ToString("0.##") + " (" + sign + pct + "%)";
         }
+
+        /// <summary>§18-9 드워프 방어 건물 내구. QA_NO면 줄을 비운다(옛 화면 = 내구 줄 없음).</summary>
+        public const string EnvNoDurability = "QA_NO_RACE_DURABILITY";
+        public const string EnvShowDurability = "QA_RACE_DURABILITY";
+
+        public static bool DurabilityBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoDurability);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// "건물 내구 — ×1.2 (+20%)". 계정 종족 RaceDef.건물내구배율의 **표시 런타임 소비처**.
+        /// 원장 §18-9 드워프 표 「방어 건물 내구 +20%」가 에셋에도 없이 소비처 0곳이었다.
+        /// 건물 HP 서브시스템은 아직 없다 — 표시만. 기준(×1)과 같으면 빈 문자열.
+        /// QA_NO면 옛 화면(내구 줄 없음). W3Party·건물 HP 수치 무접촉.
+        /// </summary>
+        public static string DurabilityLine(RaceId id)
+        {
+            if (DurabilityBlocked) return "";
+            var d = For(id);
+            if (d == null) return "";
+            float mul = d.건물내구배율;
+            if (mul <= 0f) return "";
+            if (Mathf.Abs(mul - 1f) < 0.0001f) return "";
+            int pct = Mathf.RoundToInt((mul - 1f) * 100f);
+            string sign = pct > 0 ? "+" : "";
+            return "건물 내구 — ×" + mul.ToString("0.##") + " (" + sign + pct + "%)";
+        }
     }
 }

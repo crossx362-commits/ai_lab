@@ -75,6 +75,7 @@ namespace AshesToStars
             SeedSkillUltQaIfRequested();
             SeedRaceTraitQaIfRequested();
             SeedRaceDefenseQaIfRequested();
+            SeedRaceDurabilityQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -220,7 +221,7 @@ namespace AshesToStars
                     // ✅ 소비처가 10행 가까이 쌓여 76px 기본 그리드로는 하위 줄이 넘쳐 사라졌다(밀도 상한).
                     // 이 패널만 행 피치를 46/40으로 낮춰 같은 index 그리드로 전부 담는다. 끝에서 되돌린다.
                     RowPitch = 46f; RowHt = 40f;
-                    string detail = $"{ch.Name} ({ch.Job}) · {ExpText(ch)}";
+                    string detail = $"{ch.Name} ({CharHud.JobFace(ch.Job)}) · {ExpText(ch)}";
                     if (!ch.IsDeleted && ch.Level == Rebirth.StartLevel
                         && !string.IsNullOrEmpty(Rebirth.LastName)
                         && ch.Name == Rebirth.LastName)
@@ -467,6 +468,10 @@ namespace AshesToStars
                         // 표시 전용. W3Party 전투 피해 배율은 안 건드린다. QA_NO면 빈 문자열이라 행을 안 그린다.
                         string raceDef = RaceInfo.DefenseLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceDef)) Info(r, advancementRow++, raceDef);
+                        // §18-9 RaceDef.건물내구배율 — 드워프 ×1.2 등 기준과 다를 때만 한 줄.
+                        // 표시 전용. 건물 HP는 안 건드린다. QA_NO면 빈 문자열이라 행을 안 그린다.
+                        string raceDur = RaceInfo.DurabilityLine(RacePrefs.Get());
+                        if (!string.IsNullOrEmpty(raceDur)) Info(r, advancementRow++, raceDur);
                     }
                     // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
                     // 기본 76/64를 기대하므로 반드시 되돌린다(안 하면 다음 프레임에 그 화면이 눌린다).
@@ -582,7 +587,7 @@ namespace AshesToStars
             string name = ch.IsRescue ? $"{ch.Name}·재건" : ch.Name;
             Hint(nameR, name);
             int cellLeft = LifeSystem.GetRecoveryTimeRemaining(ch);
-            string job = ch.Job;
+            string job = CharHud.JobFace(ch.Job);
             if (cellLeft > 0 && DefenseState.Contains(rosterIndex))
                 job = $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(cellLeft)}";
             else if (cellLeft > 0)
@@ -745,6 +750,18 @@ namespace AshesToStars
         {
             if (Environment.GetEnvironmentVariable("QA_RACE_DEFENSE") != "1") return;
             RacePrefs.Set(RaceId.엘프);
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            _selectedCharacter = 0;
+            _detailPage = 1;
+        }
+
+        // 시각 QA. QA_RACE_DURABILITY=1이면 계정 종족을 드워프로 두고 속성 탭을 연다 —
+        // §18-9 건물 내구 +20%가 DurabilityLine에 보이는지 육안 확인용. 나머지 종족은 ×1이라 줄이 없다.
+        void SeedRaceDurabilityQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(RaceInfo.EnvShowDurability) != "1") return;
+            RacePrefs.Set(RaceId.드워프);
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             _selectedCharacter = 0;
@@ -944,7 +961,7 @@ namespace AshesToStars
             // 전투력은 오른쪽 정보 패널로 내렸다 — 헤더 둘째 줄(전투력)이 초상 위
             // 「투구」 링 라벨과 같은 좁은 상단 밴드를 다퉈 겹쳤다(폴리싱, 겹침 결함).
             // 제목은 초상 위 좌측에 둔다. 목숨 하트는 정보 칸 Lv 줄 오른쪽으로 내렸다(아래 참조).
-            Hint(new Rect(chrome.x, chrome.y, 360f, 24f), $"{title} · {ch.Job}");
+            Hint(new Rect(chrome.x, chrome.y, 360f, 24f), $"{title} · {CharHud.JobFace(ch.Job)}");
 
             var face = UiPages.LargeLook(stage);
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;

@@ -1263,7 +1263,8 @@ namespace AshesToStars
         void Mausoleum(Rect r)
         {
             int row = 0;
-            DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Mausoleum);
+            if (_rebornPick == null)
+                DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Mausoleum);
             string lockReason = Memorial.LockReason();
             if (lockReason != null)
             {
@@ -1280,6 +1281,8 @@ namespace AshesToStars
                 var pickNames = RebirthSkill.NamesOf(_rebornPick.Job);
                 Info(r, row++, RebirthSkill.PickTitle(_rebornPick));
                 Info(r, row++, "생전 스킬 중 하나만 남고 나머지는 소실된다(§4)");
+                if (Row(r, row++, "← 선택 취소", "영묘 목록으로"))
+                { _rebornPick = null; _msg = ""; return; }
                 for (int i = 0; i < pickNames.Length; i++)
                 {
                     string skill = pickNames[i];
@@ -1299,8 +1302,6 @@ namespace AshesToStars
                         else _msg = "환생에 실패했다 — 환생석 소모를 확인할 것";
                     }
                 }
-                if (Row(r, row++, "← 선택 취소", "영묘 목록으로"))
-                { _rebornPick = null; _msg = ""; }
                 if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
                 return;
             }
