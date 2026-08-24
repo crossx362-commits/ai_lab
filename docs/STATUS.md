@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 08:16 · §10-2 잡몹 근접 공격 주기 소비처 연결(`ed6269d5`). 사람 관문 더미 유지
-마지막 트랙: 소비처0 — `MobDef.공격간격` 1.0초가 authored돼 있었지만 직업의 동명 필드만 소비되고 잡몹 필드는 런타임 소비처 0곳이었다. `MobMeleeCadence`가 값을 읽어 던전 QA 부제와 속성 탭에 연결하며, `QA_NO_MOB_MELEE_CADENCE`는 옛 1초·표시 없음으로 되돌린다
-소비처0 다음: 직전=코드이므로 UI 폴리싱 한 칸
-검증: C# 컴파일 PASS(357소스 0) · `unity_meas` MobMeleeCadenceSelfCheck PASS 11/11 · 실행 파일 빌드 PASS · 1280×720 활성 던전 ON/NEG 샷 육안 확인(`output/qa/ashes-to-stars/mob_melee_cadence_shots/{active,neg}/qa_dungeon.png`) — ON 부제에 `근접 공격 1초(§10-2)`, NEG에서는 해당 조각 없음. 캐릭터 화면은 우선존 포화로 줄이 보이지 않아 증거로 쓰지 않음. 블렌더는 3D·메시 작업이 아니라 건너뜀
+최종 갱신: 2026-08-25 08:25 · 타이틀 로컬 테스트 상태 패널 폴리싱(`84869544`). 사람 관문 더미 유지
+마지막 트랙: UI — 타이틀의 `QA_PLAY` 상태가 어두운 배경 위 20px 생텍스트로 떠 개발 상태 표시가 게임 UI와 분리돼 보였다. 왼쪽 소개 열 40px 금테 패널로 통일하고 `QA_NO_TITLE_LOCAL_KIT_LANE`은 옛 생텍스트를 재현한다
+소비처0 다음: 직전=UI이므로 원장 ✅ 소비처 0곳 새 칸 재스캔
+검증: C# 컴파일 PASS · `unity_meas` LocalPlayKitSelfCheck PASS · 실행 파일 빌드 PASS · 1280×720 타이틀 A/B 육안 확인(`output/qa/ashes-to-stars/title_local_kit_panel/{after,neg}/qa_go:Title.png`) — 수정본은 왼쪽 하단 금테 상태 패널, NEG는 옛 생텍스트. ESC·오른쪽 카드 비겹침. 블렌더는 3D·메시 작업이 아니라 건너뜀
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -56,6 +56,7 @@
 
 ## 최근 완료 내역 (History)
 
+| — | 2026-08-25 08:25 | **UI 폴리싱 — 타이틀 로컬 테스트 상태 패널.** `QA_PLAY` 안내가 배경 위 작은 생텍스트라 상태 표시로 읽히지 않았다. 왼쪽 소개 열에 40px 금테 정보 패널로 통일하고 QA_NO는 옛 20px 생텍스트를 재현한다. 최초의 「종료 카드 가림」 가설은 A/B 샷에서 실제 겹침이 없어 폐기했다 | 컴파일 PASS · LocalPlayKitSelfCheck PASS · 실행 빌드 PASS · 1280×720 A/B 육안 확인 `title_local_kit_panel/{after,neg}/qa_go:Title.png` · `fbc0f375`/`ad3c7baf`/`84869544` |
 | — | 2026-08-25 08:09 | **UI 폴리싱 — 마지막 목숨 경고 빈 장비 패널.** 장비 뒷줄이 빈 문자열이어도 필드·탑이 Info 4칸을 그려 빈 금테 한 줄이 남았다. 두 화면 모두 `GearRest`가 비어 있지 않을 때만 네 번째 패널을 그린다. 장착 6부위가 있으면 기존 두 줄 유지. 표시 전용 — W3Party 무접촉 | 컴파일 PASS(355소스 0) · LastLifeWarnSelfCheck PASS · 실행 빌드 PASS · 1280×720 `last_life_empty_row_shots/after_field/qa_go:Field.png` 육안 확인(빈 패널 0) · `e6cebda2` |
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
 | — | 2026-08-25 05:55 | **§18-11 잡몹 피해 — 소비처 0곳.** MobDef.피해비율 기본 0.03(원장 2~4%=25~50대)이 에셋에만 있음. `MobDmg`가 읽고 속성 탭·던전 부제가 소비. QA_NO면 옛 0.03·줄 없음. `W3Party`는 안 만짐. 블렌더 꺼짐(3D 없음) | 컴파일 PASS(350소스 0) · MobDmgSelfCheck PASS 21/21 · GameSweep 행 추가 · 샷 `mob_dmg_shots/qa_go_Character.png`(속성 탭 「잡몹 피해 3%(§18-11)」) · 네거 `qa_negctrl_no_dmg.png`(QA_NO면 그 줄 없음·PvP 회복이 HP 다음) · `fc2499d8` |
