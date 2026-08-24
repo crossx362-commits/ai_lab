@@ -812,7 +812,10 @@ namespace AshesToStars
             if (!PerfCap.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
-            _selectedCharacter = 0;
+            int pick = 0;
+            for (int i = 0; i < roster.Count; i++)
+                if (!roster[i].IsDeleted) { pick = i; break; }
+            _selectedCharacter = pick;
             _detailPage = 1;
         }
 

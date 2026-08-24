@@ -105,6 +105,8 @@ namespace AshesToStars
                 "CharacterScreen이 Line을 속성 탭에 그린다");
             Check(charSrc.Contains("PerfCap.SeedQaIfRequested"),
                 "CharacterScreen이 SeedQa를 부른다");
+            Check(charSrc.Contains("!roster[i].IsDeleted"),
+                "시드가 삭제된 캐릭터를 건너뛴다 — 0번 환생시험은 속성 줄을 안 그린다");
 
             _ = nameof(PerfCap.MobLimit);
             _ = nameof(PerfCap.Line);
