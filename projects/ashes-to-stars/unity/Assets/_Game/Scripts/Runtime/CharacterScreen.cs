@@ -347,12 +347,11 @@ namespace AshesToStars
                         string summonCap = SummonCap.Line();
                         if (!string.IsNullOrEmpty(summonCap))
                             stats = string.IsNullOrEmpty(stats) ? summonCap : stats + " · " + summonCap;
-                        // §18-11 플레이어 이동속도 — 맨 뒤면 r.yMax를 넘겨 안 보인다(소환수 상한 실측).
-                        // StatLine 우선존에 붙여 패널이 꽉 차도 보이게 한다. QA_NO면 빈 문자열.
-                        string spd = MoveSpd.Line();
-                        if (!string.IsNullOrEmpty(spd))
-                            stats = string.IsNullOrEmpty(stats) ? spd : stats + " · " + spd;
                         if (!string.IsNullOrEmpty(stats)) { Info(r, statusMax + 1, stats); statusMax += 1; }
+                        // §18-11 플레이어 이동속도. StatLine에 붙이면 소환수 상한과 같이
+                        // 우측이 잘린다(플레이모드 실측). 우선존 단독 행. QA_NO면 빈 문자열.
+                        string spd = MoveSpd.Line();
+                        if (!string.IsNullOrEmpty(spd)) { Info(r, statusMax + 1, spd); statusMax += 1; }
 
                         // §5 이동기 프로필(형태·거리·무적·쿨) + §4 사망 리스크 + §6 자동사냥을 한 행에.
                         // 무적은 원장 379 「이 게임 조작의 핵심 기술」이라 ConceptLine(직업 특성)·SkillLine(보유

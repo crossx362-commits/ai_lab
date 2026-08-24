@@ -85,8 +85,8 @@ namespace AshesToStars
             string charSrc = File.ReadAllText(Path.Combine(runtime, "CharacterScreen.cs"));
             Check(charSrc.Contains("MoveSpd.Line"),
                 "CharacterScreen이 Line을 속성 탭에 그린다");
-            Check(charSrc.Contains("stats + \" · \" + spd"),
-                "이동 줄을 StatLine 우선존에 붙인다 — 맨 뒤면 화면에서 잘린다");
+            Check(charSrc.Contains("Info(r, statusMax + 1, spd)"),
+                "이동 줄을 우선존 단독 행에 그린다 — StatLine에 붙이면 우측이 잘린다");
             Check(charSrc.Contains("MoveSpd.ShowQa ? MoveSpd.Line()"),
                 "부제에 이동 줄을 올린다 — 속성 패널 맨 뒤는 샷에 안 나온다");
             Check(charSrc.Contains("MoveSpd.SeedQaIfRequested"),
