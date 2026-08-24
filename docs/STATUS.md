@@ -3,9 +3,9 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 02:29 · 스타일 선택 바-내비(`78ac5212`). 사람 관문 더미 유지
-마지막 트랙: UI 폴리싱 — 전투 스타일 선택 바-내비 간격 12px. `StyleHud.Content`가 NavPlateTop-12. QA_NO_STYLE_NAV면 옛 640 겹침
-폴리싱 다음: 스타일 선택 바-내비는 닫음(`78ac5212`). 던전은 하단바 없음. 다음은 파티 편성 탭 하단 안내줄-내비 한 결함
+최종 갱신: 2026-08-25 02:42 · 파티 편성 탭 안내줄-내비(`99f4f2aa`). 사람 관문 더미 유지
+마지막 트랙: UI 폴리싱 — 파티 편성 탭 안내줄-내비 간격 12px. `PartyFormHud.Content/Hint`가 NavPlateTop-12. QA_NO_PARTY_FORM_NAV면 옛 640 겹침
+폴리싱 다음: 파티 편성 탭 안내줄-내비는 닫음(`99f4f2aa`). 허브 하단바 화면의 내비 겹침은 닫힘. 던전은 하단바 없음. 다음은 소비처0 재스캔 한 칸
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -55,6 +55,7 @@
 
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
+| — | 2026-08-25 02:42 | **UI 폴리싱 — 파티 편성 탭 안내줄-내비 간격 12px.** 플레이모드 실측에서 하단 Info가 본문 yMax=640에 붙어 내비 플레이트(636)와 겹침. 출전·스타일과 같이 `PartyFormHud.Content/Hint`를 NavPlateTop-12. SelfCheck는 간격 ≥10. QA_NO_PARTY_FORM_NAV면 아랫변 640 겹침 회귀. 던전은 ShowBottomBar=false라 내비 없음. 블렌더 꺼짐(3D 없음) | 컴파일 PASS(324소스 0) · PartyFormHudSelfCheck PASS(아랫변 624 · 간격 12 · 차단 아랫변 640) · 샷 `party_form_nav_shots/{after,neg}.png` · `99f4f2aa` |
 | — | 2026-08-25 02:29 | **UI 폴리싱 — 전투 스타일 선택 바-내비 간격 12px.** 플레이모드 실측에서 DrawChoice 두 장이 본문 yMax=640에 붙어 내비 플레이트(636)와 겹침. 필드·캐릭터와 같이 `StyleHud.Content`를 NavPlateTop-12. SelfCheck는 간격 ≥10. QA_NO_STYLE_NAV면 아랫변 640 겹침 회귀. 던전은 ShowBottomBar=false라 내비 없음. 블렌더 꺼짐(3D 없음) | 컴파일 PASS(322소스 0) · StyleHudSelfCheck PASS(아랫변 624 · 간격 12 · 차단 아랫변 640) · 샷 `style_hud_nav_shots/{after,neg}.png` · `78ac5212` |
 | — | 2026-08-25 02:14 | **UI 폴리싱 — 캐릭터 액션바-내비 간격 12px.** 플레이모드 실측에서 파티 금테가 본문 yMax=640에 붙어 내비 플레이트(636)와 겹침. 필드·영지와 같이 `CharHud.Content`를 NavPlateTop-12. SelfCheck는 간격 ≥10. QA_NO_CHAR_NAV면 아랫변 640 겹침 회귀. 블렌더 꺼짐(3D 없음) | 컴파일 PASS(320소스 0) · CharHudSelfCheck PASS(아랫변 624 · 간격 12 · 차단 아랫변 640) · 샷 `char_hud_nav_shots/{after,neg}.png` · `04063950` |
 | — | 2026-08-25 01:54 | **§10-9 투사체상한 — 소비처 0곳.** 에셋 기본 200인데 grep 소비처 0곳. `ProjCap.Limit`가 읽고 StressTest 풀·속성 탭이 소비. QA_NO면 옛 200·줄 없음. `W3Party`는 안 만짐 | ProjCapSelfCheck PASS · GameSweep 행 추가 · `89e7136d` |

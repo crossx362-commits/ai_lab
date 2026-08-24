@@ -21,11 +21,27 @@
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
 | 개발 직렬 | 투사체상한 닫음 | 소환수상한 `bfff2789` · 투사체상한 `89e7136d`(ProjCap·QA_NO). `W3Party` 금지 |
 | VFX §6-P1#5 대시 잔상 | **닫음** | `2cd07dbe` — `fx_dash_trail_0~2` Resources 반입 + `W2Arena` 트레일 풀 8장(0.04s 간격·알파 0.6→0·0.15s·order 210). 샷 쌍 `unity/results/vfx_dash_trail_{on,off}.png` + 네거티브(로드 차단→풀 미생성) PASS. INBOX 21:59 소비 |
-| UI 폴리싱 다음 | 스타일 선택 바-내비 닫음 | 캐릭터 `04063950` · 스타일 `78ac5212` StyleHud. 던전은 하단바 없음. 다음은 파티 편성 탭 하단 안내줄 1건 |
+| UI 폴리싱 다음 | 파티 편성 탭 안내줄-내비 닫음 | 스타일 `78ac5212` · 편성 `99f4f2aa` PartyFormHud. 허브 하단바 내비 겹침은 닫힘. 던전은 하단바 없음. 다음은 소비처0 재스캔 |
 | launchd 자율 루프 | **상시 켜짐**(오너 2026-08-24) | grok · `com.ailab.autonomous_loop`. 한 작업마다 보고·커밋 |
 | 사람 관문 | **더미로 진행**(오너 2026-08-24) | V2 PASS 5/5 · V3 FAIL 3/5 · V4 PASS 10/10 · 관문② PASS 9/10 · 시드 20260823. W2 FAIL은 제외(기준 낮추지 말 것) |
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
+
+## 완료 (2026-08-25) — 파티 편성 탭 안내줄-내비 (Grok)
+
+직전 트랙 폴리싱(스타일 선택 바) → 파티 편성 탭 한 결함. 하단 Info가
+본문 yMax=640에 붙어 내비 플레이트(636)와 겹쳤다. `PartyFormHud.Content`·`Hint`가
+NavPlateTop-12. `QA_NO_PARTY_FORM_NAV`면 옛 640 겹침. 던전은 하단바가 없어
+내비 결함이 아니다. 표시 전용 — W3Party 무접촉.
+
+샷 `party_form_nav_shots/after.png` — 안내줄 금테가 내비 위.
+네거티브 `neg.png` — QA_NO면 금테가 내비 타일에 먹힘.
+코드 `99f4f2aa`. 다음은 소비처0 재스캔.
+
+### 검수
+- `game_compile_check.py` PASS (324소스 0).
+- `PartyFormHudSelfCheck` PASS (아랫변 624 · 간격 12 · 차단 아랫변 640).
+- 샷 쌍 플레이모드 육안 확인. 블렌더 꺼짐(3D 없음).
 
 ## 완료 (2026-08-25) — 전투 스타일 선택 바-내비 (Grok)
 
