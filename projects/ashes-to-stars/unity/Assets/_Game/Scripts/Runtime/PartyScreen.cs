@@ -18,7 +18,8 @@ namespace AshesToStars
         protected override string Title => "파티 편성";
         protected override string BackgroundArt => "bg_party";
         protected override string Subtitle =>
-            PartyHud.ShowQa ? PartyHud.Line()
+            PartyFormHud.ShowQa ? PartyFormHud.Line()
+            : PartyHud.ShowQa ? PartyHud.Line()
             : PartyHudCap.ShowQa ? PartyHudCap.Line()
             : PartyHudCap.Caption();
 
@@ -29,6 +30,7 @@ namespace AshesToStars
         {
             PartyHudCap.SeedQaIfRequested();
             PartyHud.SeedQaIfRequested();
+            PartyFormHud.SeedQaIfRequested();
             DefenseState.SeedQaIfRequested();
             _page = DrawTabs(r, new[] { "편성", "출전" }, _page);
             var page = UiPages.AfterTabs(r);
@@ -38,6 +40,7 @@ namespace AshesToStars
                 return;
             }
 
+            page = PartyFormHud.Content(page);
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0)
             {
@@ -67,8 +70,9 @@ namespace AshesToStars
                 }
             }
 
-            if (!string.IsNullOrEmpty(_msg))
-                Info(new Rect(page.x, page.yMax - RowH, page.width, RowH), 0, _msg);
+            string hint = PartyFormHud.ShowQa ? PartyFormHud.Line() : _msg;
+            if (!string.IsNullOrEmpty(hint))
+                Info(PartyFormHud.Hint(page), 0, hint);
         }
 
         bool DrawPartyCard(Rect cell, CharacterRecord ch, bool inParty, string status)
