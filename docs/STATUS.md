@@ -397,6 +397,7 @@
 | — | 2026-08-23 | 영지 §5 건물 드래그 미리보기 | SelfCheck PASS · `6d9b4fae` |
 
 | — | 2026-08-24 | lane-doc 재검증(BASE `cc2c6379`) — 속도 레인 운영법(병렬 worker/reviewer worktree 격리 최대 3개 · 승인 커밋 `autonomous/integration` 적립 · 메인 루프 바퀴마다 `merge_integration.sh`로 master 흡수 · STOP_LANE 토글)은 `55fc2373` 선반영으로 README.md(루프 섹션 본문 4줄 ≤5줄)·loop/README.md(speed_lane.sh 표행·STOP_LANE 토글) 존재 실측 — 지정 BASE=세션 기점=HEAD, 두 write_path diff 0행 실측으로 중복 재구현 없음·두 파일 무변경 — 같은 지시 누적(117회) — 건너뛰기 처방(a27b3d2b 병합 항목) TASKS.json 큐 적용 요망 | tests 없음(빈 목록) · 문서 검증 · visual=false 해당 없음 · 이 커밋 |
+| — | 2026-08-24 | proposals-triage 재검증(BASE `bd75a789`=지정 BASE=HEAD) — PROPOSALS.md 현행 항목 18건(HEAD·작업 트리 항목 수 18동일) 서로 상이해 중복 병합 대상 없음(과거 중복쌍은 16차 `a27b3d2b`·25차에서 이미 병합) · 실측 grep(`grep -c '^- \['`=18 · `(우선순위 [상중하])` 미부착 0건 · 전행 sort+uniq 중복 0건 · 선두 70자 대조 중복 0건 · 태그 분포 상×3·중×10·하×5)으로 전 항목 끝 우선순위 태그 존재(18/18) — 빠진 것 없음·보정 불필요 · 작업 트리-HEAD 항목 집합 동일로 신규 제안 0건 · write_paths 유일 대상 PROPOSALS.md 무변경(내용 삭제 없음 · 작업 트리 타 세션 미커밋 편집 보존·미포함) · 정리 마커 생략(88~126차 선례) — 같은 지시 반복 배정 누적(127회) — 건너뛰기 처방(a27b3d2b 병합 항목) TASKS.json 큐 적용 요망 | tests 없음(빈 목록) · 문서 검증 · visual=false 해당 없음 · 이 커밋 |
 ## 막힌 것 · 보류
 - 위 **관문 부채** 표가 권위. 여기에는 한 줄 요약만.
 - W2 FAIL — 기준 낮추지 말 것 · 담당 대화 세션
