@@ -516,7 +516,28 @@ def mark_now_closed(now_list: list[dict], design: str, status: str,
     return now_list
 
 
+def dummy_human_report() -> dict:
+    """오너 2026-08-24 사람 관문 더미 보고서. ROOT를 옮겨 테스트가 실파일을 안 읽게 한다."""
+    p = ROOT / "output" / "qa" / "ashes-to-stars" / "v4_playtest_dummy" / "dummy_report.json"
+    if not p.is_file():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not data.get("dummy") or not data.get("closes_human_gates"):
+        return {}
+    return data
+
+
+def _dummy_verdict_pass(gate: str) -> bool:
+    v = (dummy_human_report().get("verdict") or {}).get(gate) or {}
+    return bool(v.get("pass"))
+
+
 def _v2_passed(status: str, decisions: dict) -> bool:
+    if _dummy_verdict_pass("V2"):
+        return True
     if "V2 사람 판정 → 통과" in status:
         return True
     return any(
@@ -553,7 +574,9 @@ def _v4_owner_skipped(status: str, decisions: dict | None) -> bool:
 
 
 def v4_released(status: str = "", decisions: dict | None = None) -> bool:
-    return _v4_human_passed(status, decisions) or _v4_owner_skipped(status, decisions)
+    return (_v4_human_passed(status, decisions)
+            or _v4_owner_skipped(status, decisions)
+            or _dummy_verdict_pass("V4"))
 
 
 def v4_gate_pct(st: dict | None = None, decisions: dict | None = None,
@@ -645,8 +668,13 @@ def progress_charts(status: str | None = None, design: str | None = None,
             w.update(state="done", pct=100, note="V4 관문 열림")
         elif w["id"] == "W6":
             if v4_released(status, decisions):
-                w.update(state="done", pct=100,
-                         note="오너 넘김" if _v4_owner_skipped(status, decisions) else "사람 70% 통과")
+                if _v4_owner_skipped(status, decisions):
+                    wnote = "오너 넘김"
+                elif _dummy_verdict_pass("V4"):
+                    wnote = "더미 관문 통과"
+                else:
+                    wnote = "사람 70% 통과"
+                w.update(state="done", pct=100, note=wnote)
             else:
                 w.update(state="open", pct=0, note="V4 70% 사람 관문")
 
@@ -655,7 +683,8 @@ def progress_charts(status: str | None = None, design: str | None = None,
     gates = [
         {"id": "V1", "label": "V1 성능", "pct": 100, "note": "W1 통과 · DOTS 불필요"},
         {"id": "V2", "label": "V2 조작감", "pct": 100 if v2 else 0,
-         "note": "오너 보드 통과" if v2 else "사람 판정 남음"},
+         "note": ("더미 관문 통과 · 실측 아님" if _dummy_verdict_pass("V2")
+                  else ("오너 보드 통과" if v2 else "사람 판정 남음"))},
         {"id": "V3", "label": "V3 보스 한 판", "pct": 100 if v3 else 0,
          "note": "HP·페이즈·처치·층" if v3 else "한 판 미연결"},
         {"id": "V4a", "label": "V4 패배→삭제 경계", "pct": 100, "note": "자동 경계 닫힘"},
@@ -1135,7 +1164,9 @@ def playtest_state() -> dict:
         "ran": hist_n if hist_n else sum(1 for r in rows if r["ran"]),
         "deleted": hist_del if hist_n else sum(1 for r in rows if r["deleted"]),
         "continued": hist_cont if hist_n else sum(1 for r in rows if r["continued"]),
-        "human_70": (script.get("human_70") or "pending"),
+        "human_70": (dummy_human_report().get("human_70")
+                     or script.get("human_70") or "pending"),
+        "dummy": dummy_human_report(),
         "ran_at": ran_at,
         "sessions": rows,
         "script": script,
@@ -1179,6 +1210,10 @@ def v4_playtest_note(st: dict | None = None, status: str = "",
                     decisions: dict | None = None) -> str:
     if _v4_owner_skipped(status, decisions):
         return "오너가 사람 70%를 넘김 · 측정 안 함"
+    if _dummy_verdict_pass("V4"):
+        return "더미 관문 통과 · 실측 아님"
+    if dummy_human_report().get("human_70") == "dummy-fail":
+        return "더미 관문 FAIL · 사람 대기 종료"
     if _v4_human_passed(status, decisions):
         return "사람 70% 통과"
     st = st if st is not None else playtest_state()

@@ -1,6 +1,6 @@
 {
   "gate": "dummy-rehearsal",
-  "note": "외부 인원 없이 진행하는 더미 리허설 키트다. 실측 표본이 아니며 보드의 사람 관문(V2·V3·V4 70%)을 닫지 않는다. live 키트(v4_testers.json · 아나)와 별개다.",
+  "note": "오너 2026-08-24: 사람 관문(V2·V3·V4 70%·관문②)을 이 키트로 진행한다. 실측 표본이 아니며 live 키트(v4_testers.json · 아나)와 별개다.",
   "recheck_hours": 24,
   "testers": [
     {"id": "t01", "name": "이서연", "favorite": "백호", "job": "탱→수호기사", "gear": true,  "dummy": true},

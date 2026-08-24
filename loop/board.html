@@ -1152,8 +1152,9 @@ function renderDetail(state) {
   const P = state.playtest || {};
   const script = P.script || {};
   const h70 = P.human_70 || script.human_70 || "pending";
-  const h70Cls = /pass|통과|ok/i.test(String(h70)) ? "ok"
-    : /skip|넘김|pending|대기/i.test(String(h70)) ? "" : "err";
+  const h70Cls = /pass|통과|ok|dummy-pass/i.test(String(h70)) ? "ok"
+    : /skip|넘김|pending|대기/i.test(String(h70)) ? ""
+    : /dummy-fail/i.test(String(h70)) ? "err" : "";
   const chartGates = ((state.charts || {}).focus || (state.charts || {}).gates || []);
   const scriptGates = script.gates || [];
   let gatesHtml = `<div class="row"><span class="n">70</span>`

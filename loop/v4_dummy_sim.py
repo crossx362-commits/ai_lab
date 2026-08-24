@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""외부 테스터 더임 리허설 — V2·V3·V4 절차를 더임 10명으로 끝까지 소화.
+"""사람 관문 더미 — V2·V3·V4·관문②를 더미 10명으로 끝까지 소화.
 
     python3 loop/v4_dummy_sim.py                 # 생성 + 집계 + 판정
     python3 loop/v4_dummy_sim.py --seed 20260823 # 시드 지정 재현
 
-오너 2026-08-23 20:34 "외부 테스터 부분은 더미로 만들어서 진행해".
-실측 표본이 아니다. 보드의 사람 관문(human_70)을 닫지 않는다.
-live 키트(v4_testers.json · 아나)는 건드리지 않는다.
+오너 2026-08-24: 사람 관문은 모두 더미로 진행. 실측 표본이 오기 전엔
+이 판정이 대기를 닫는다. live 키트(v4_testers.json · 아나)는 건드리지 않는다.
+W2 FAIL은 사람 관문이 아니다(기준 낮추지 말 것).
 """
 from __future__ import annotations
 
@@ -111,8 +111,23 @@ def _v4(rng: random.Random, t: dict, p: dict) -> dict:
     }
 
 
+def _gate2(rng: random.Random, p: dict) -> dict:
+    """관문② 5h 지루함. 합격 초안: 중도 포기 없이 5h + 의무숙제감 ≤2/5."""
+    quit = rng.random() < p["rage"] * 0.45
+    score = 1 + int(round((1.0 - p["attach"]) * 2 + p["rage"] * 2))
+    score = min(5, max(1, score))
+    if quit:
+        score = max(score, 3)
+    return {
+        "finished_5h": not quit,
+        "homework": score,
+        "quit_reason": FAIL_REASONS[3] if quit else "",
+    }
+
+
 def simulate(kit: dict, seed: int) -> dict:
     rng = random.Random(seed)
+    g2rng = random.Random(seed + 1)
     rows = []
     for t in kit["testers"]:
         p = PROFILE.get(t["id"], DEFAULT_PROFILE)
@@ -125,8 +140,9 @@ def simulate(kit: dict, seed: int) -> dict:
             row["v2"] = _v2(rng, p)
             row["v3"] = _v3(rng, p)
         row.update(_v4(rng, t, p))
+        row["gate2"] = _gate2(g2rng, p)
         rows.append(row)
-    return {"gate": "dummy-rehearsal", "dummy": True, "seed": seed,
+    return {"gate": "dummy-human-gates", "dummy": True, "seed": seed,
             "ran_at": datetime.now().strftime("%Y-%m-%d %H:%M"), "sessions": rows}
 
 
@@ -149,34 +165,46 @@ def judge(sessions: dict | list) -> dict:
             v3_ok.append(r["id"])
     cont = [r["id"] for r in rows if r.get("continued")]
     recheck = [r["id"] for r in rows if r.get("recheck_24h")]
+    g2_ok = [
+        r["id"] for r in rows
+        if (r.get("gate2") or {}).get("finished_5h")
+        and int((r.get("gate2") or {}).get("homework") or 9) <= 2
+    ]
     verdict = {
         "V2": {"pass": len(v2_ok) >= 4, "detail": f"{len(v2_ok)}/5 · 피했다 3회+: {','.join(v2_ok)}"},
         "V3": {"pass": len(v3_ok) >= 4,
                "detail": f"{len(v3_ok)}/5 · 2종+&30%빠름: {','.join(v3_ok)}"},
         "V4": {"pass": len(cont) >= 7 and len(recheck) >= 7,
                "detail": f"즉시계속 {len(cont)}/10 · 24h재실행 {len(recheck)}/10"},
+        "GATE2": {"pass": len(g2_ok) >= 7,
+                  "detail": f"{len(g2_ok)}/10 · 5h완주+숙제감≤2: {','.join(g2_ok)}"},
     }
     return verdict
 
 
 def write_report(kit: dict, sim: dict, verdict: dict) -> dict:
-    OUT.mkdir(parents=True, exist_ok=True)
-    SESSIONS.write_text(json.dumps(sim, ensure_ascii=False, indent=2), encoding="utf-8")
+    out = OUT
+    out.mkdir(parents=True, exist_ok=True)
+    sessions_path = out / "sessions.json"
+    report_path = out / "dummy_report.json"
+    sessions_path.write_text(json.dumps(sim, ensure_ascii=False, indent=2), encoding="utf-8")
+    v4_ok = bool((verdict.get("V4") or {}).get("pass"))
     report = {
-        "gate": "V4-dummy-rehearsal",
+        "gate": "dummy-human-gates",
         "dummy": True,
+        "closes_human_gates": True,
         "testers": len(kit["testers"]),
         "seed": sim.get("seed"),
         "ran_at": sim.get("ran_at"),
         "verdict": verdict,
-        "human_70": "pending",
+        "human_70": "dummy-pass" if v4_ok else "dummy-fail",
         "recheck_after": (
             datetime.now() + timedelta(hours=int(kit.get("recheck_hours") or 24))
         ).strftime("%Y-%m-%d %H:%M"),
-        "note": "더임 리허설이다. 실제 외부 표본이 아니며 보드의 사람 관문을 닫지 않는다.",
+        "note": "오너 2026-08-24: 사람 관문은 더미로 진행. 실측 표본이 아니며 실외부 인원이 오면 §21-1로 재측정한다.",
         "sessions": sim.get("sessions"),
     }
-    REPORT.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return report
 
 
@@ -189,10 +217,10 @@ def main() -> int:
     sim = simulate(kit, seed)
     verdict = judge(sim)
     report = write_report(kit, sim, verdict)
-    print("더임 리허설 · 키트", report["testers"], "명 · 시드", report["seed"])
+    print("더미 사람 관문 · 키트", report["testers"], "명 · 시드", report["seed"])
     for g, v in verdict.items():
         print(f"  {g}: {'PASS' if v['pass'] else 'FAIL'} — {v['detail']}")
-    print("사람70%", report["human_70"], "(더임은 관문을 닫지 않는다)")
+    print("사람70%", report["human_70"], "(더미가 대기를 닫는다)")
     print("보고서", REPORT)
     return 0
 

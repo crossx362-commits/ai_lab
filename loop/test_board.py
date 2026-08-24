@@ -1959,7 +1959,15 @@ class SliceBoardTests(unittest.TestCase):
                             for f in charts["focus"]))
 
     def test_current_stays_proto_until_v4_done(self):
-        charts = board.progress_charts(STATUS, DESIGN, "", {})
+        old = board.ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            (tmp / "output/qa/ashes-to-stars/v4_playtest").mkdir(parents=True)
+            board.ROOT = tmp
+            try:
+                charts = board.progress_charts(STATUS, DESIGN, "", {})
+            finally:
+                board.ROOT = old
         self.assertEqual(charts["current"]["id"], "0")
         self.assertFalse(charts["current"]["proto_done"])
         self.assertTrue(any(f["id"] == "V4b" for f in charts["focus"]))

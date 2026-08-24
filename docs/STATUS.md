@@ -3,7 +3,7 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-24 07:06 · UI 폴리싱 — 캐릭터 장비 라벨이 안쪽 금테 안 평평한 영역에 머문다(`390a5868` 실측) · 로스터 카드 이름·하트 겹침은 `6464be32` 선반영 닫음 판정
+최종 갱신: 2026-08-24 21:30 · 사람 관문 더미 진행(V2 PASS·V3 FAIL·V4 PASS·관문② PASS, 시드 20260823). 게임 큐는 아래 포인터 유지 · UI 폴리싱 — 캐릭터 장비 라벨이 안쪽 금테 안 평평한 영역에 머문다(`390a5868` 실측) · 로스터 카드 이름·하트 겹침은 `6464be32` 선반영 닫음 판정
 마지막 트랙: UI·아트 폴리싱 — 캐릭터 상세 패널 장비 라벨이 stage(장식 여백 포함)에 클램프돼 좌측 장갑·갑옷 라벨은 안쪽 금테 밖 여백에 그려지고(갑옷=패널 가장자리 절단) 신발은 좌하단 금색 장식 위에 묻혀 판독 불가. CharHudSelfCheck이 stage 기준이라 못 잡은 「검사 통과·화면 결함」. 처방: `CharHud.EquipLabel(stage, slot, flat)` 3인자 오버로드 — flat=stage↔chrome 0.5 보간선(정보 칸과 같은 선), 아래 배치가 flat 바닥에 안 들어오면 칸 위 배치, 2인자 옛 호출은 flat=stage 호환. 플레이모드 A/B 실측: 전=갑옷 절단·신발 장식 묻힘 → 후=3라벨 전부 평평한 내부 어두운 바탕. 네거티브 QA_NO_CHAR_HUD=1로 옛 여백 경로 재현. CharHudSelfCheck PASS(신규 「평평한 내부 라벨 6/6」 단언 포함)·컴파일 오류 0
 폴리싱 다음: **캐릭터 상세 패널 우측 스탯 목록 마지막 줄이 안쪽 금테 선에 붙어 글리프 하단이 덮임**(polish_r65/character.png·character_after.png 공통 실측 — QA 행 유무와 무관하게 목록 하단이 프레임 라인에 닿는다. 다음 바퀴에서 샷 1장 재확인 후 infoBottom 여유 재산정)
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
@@ -11,7 +11,7 @@
 
 ## 관문 부채 (루프 밖 · 사람/대화 세션)
 
-> 원장 §22 운영규칙 3: 소비처0 루프는 로드맵이 아님. 아래는 루프가 닫지 않는 관문.
+> 원장 §22 운영규칙 3: 소비처0 루프는 로드맵이 아님. 사람 관문(V2·V3·V4 70%·관문②)은 더미로 진행(오너 2026-08-24). W2 FAIL은 사람 관문이 아니다.
 
 | 관문 | 상태 | 담당 | 재개 트리거 |
 |---|---|---|---|
@@ -30,9 +30,9 @@
 | — | 2026-08-24 | lane-doc 54차 재검증(BASE `b0324716`=HEAD) — 속도 레인 운영법(병렬 worker/reviewer · autonomous/integration 적립 · 바퀴마다 master 병합)은 `55fc2373` 선반영(`git merge-base --is-ancestor` HEAD 조상 실측 확인)으로 README.md(80~85행 · 루프 섹션 「### 속도 레인 (병렬 작업)」 본문 4줄 ≤5줄: speed_lane.sh worktree 격리 최대 3건 worker→reviewer · 승인 커밋 autonomous/integration 적립 · merge_integration.sh로 각 바퀴 master 흡수 · STOP_LANE 끄기/켜기 · 게임플레이 C#·STATUS 메인 루프 전용)·loop/README.md(15행 속도 레인 표행 · STOP_LANE 토글 48~50행) 존속 실측(참조 스크립트 `loop/speed_lane.sh`·`loop/merge_integration.sh` 존재 확인) — BASE 및 현재 HEAD 기준 두 write_path(README.md·loop/README.md) 커밋·작업 트리 diff 0행 실측(`git diff b0324716 --stat -- README.md loop/README.md` 공란) — 중복 재구현 없음 · 두 파일 무변경 · tests 없음(빈 목록) · visual=false 해당 없음 — 같은 지시 54회 반복 배정 누적 — 건너뛰기 처방(`a27b3d2b` 병합 항목) TASKS.json 큐 적용 요망 — 배당 지시 PROMPT §④에 따라 docs/STATUS.md 히스토리 행만 선택 스테이징(temp index commit-tree + update-ref CAS · 직전 바퀴 `7da8b20f` 선례 준수 · 타 세션 미커밋 편집(GAME_WORKLOG·gen_sfx_grammar.py·packages-lock.json·STATUS 작업 트리 편집분 등) 미포함) | tests 없음(빈 목록) · visual=false 해당 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-24 | proposals-triage 59차 검증(BASE `b0324716`=HEAD) — PROPOSALS.md 현행 항목 12건(반복 배정 방지 병합(중)·board.py 더임 판정 표시(하)·PROFILE 키트 이동(하)·png 실로드 검사 추가(상)·보간 접두 매칭 지원(중)·MCP 씬 검증 절차 문서화(하)·낡은 포인터 정리 절차(중)·배정 템플릿 STATUS 문구 단서 명기(하)·UiAtlas SlicePad maxPad 상한 점검·SelfCheck 치수 하한 단언(중)·OnGUI 캡처 ScreenCapture 통일(중)·3번 칸 포인터 자동 산출 스크립트(중)·QA 증거 샷 경로 통일(하), 서로 상이): BASE=HEAD로 신규 제안 0건·작업 트리 diff 없어 중복 병합 대상 없음(과거 중복쌍은 16차 `a27b3d2b`·25차에서 이미 병합)·실측 grep(`grep -c '^- \['`=12 · `(우선순위 [상중하])` 미부착 0건 · 선두 70자 대조 중복 0건 · 태그 분포 상×1·중×6·하×5)으로 전 항목 끝 우선순위 태그 존재(12/12) — 빠진 것 없음·보정 불필요 · 기존 내용 삭제 없이 정리 마커 1행 추가(+2행·삭제 0행 · `f7cd6a05`) · 같은 지시 반복 배정 누적 — agent_runner 건너뛰기 제안(병합 항목) 채택 시 해소 · tests 없음(빈 목록) · visual=false 해당 없음 · 배당 지시 PROMPT §④에 따라 docs/STATUS.md 히스토리 행 1행만 선택 스테이징(temp index commit-tree + update-ref CAS · 직전 바퀴 `b0324716` 선례 준수 · 타 세션 미커밋 편집(GAME_WORKLOG·packages-lock.json·gen_sfx_grammar.py·GameSweepSelfCheck.cs·STATUS 기존 편집분 등) 미포함) | tests 없음(빈 목록) · visual=false 해당 없음 · 문서 검증 · 이 커밋 |
 | — | 2026-08-24 | **UI 폴리싱 — 하단 도크 활성 탭 라벨 회색 결함 수정 + §10-3 선반영 판정** — 플레이모드 순회 실측(영지·탑·필드·월드맵·파티)에서 유일 결함 확정: 현재 화면 탭 라벨이 `GUI.enabled = !here` 비활성 알파로 회색 처리돼 위 금강조선과 정반대로 「막힌 탭」처럼 읽힘(비허브 파티 화면은 전 라벨 밝아 경로 입증). 처방: DrawAtlasButton 뒤 GUI.enabled 복구(아이콘·라벨 선명)·클릭 금지는 !here 가드 보존·네거티브 `QA_NO_DOCK_ACTIVE_BRIGHT`. §10-3 계열 상성은 `a7f82e6a` 선반영(`FamilyAdv` 1.3/0.7·SelfCheck·DungeonScreen 소비처 실측)으로 재구현 없이 닫음 | 컴파일 PASS(에러 0) · 플레이모드 A/B 실측 `output/qa/ashes-to-stars/dock_active_shots/`(before_field 회색 → after_field 흰색 크롭 육안) · 네거티브 neg_field(옛 흐림 재현) · 콘솔 에러 0 · `777eacab` |
-| 단계1 관문② (5h 지루함) | 규격 초안 · 측정 대기 | 사람 세션 · 루프=CSV훅 | 체크리스트 `docs/plans/GATE2_LOOP_CHECKLIST.md` · 설문=일시정지 오버레이 · 구현은 보드 배정 후 |
-| V4 영구삭제 수용성 | §21-6 넘김 · 외부 표본 0 · **더임 리허설 완주**(`b812da86`: V2 PASS·V3 FAIL·V4 PASS, 실측 아님) | 사람 관문 | 데모·EA 전 / 사망 규칙 변경 시. 더임 보고서: `output/qa/ashes-to-stars/v4_playtest_dummy/dummy_report.json` |
-| V2 손맛 · V3 | 사람 관문 | 사람 | 단계4 진입 전 §21-6과 함께 |
+| 단계1 관문② (5h 지루함) | **더미 관문 PASS** 9/10 (5h+숙제감≤2) | 더미 | 시드 20260823 · `v4_dummy_sim.py` · 실측 표본 오면 §22 재측정 |
+| V4 영구삭제 수용성 | **더미 관문 PASS** 즉시계속 10/10 · 24h 10/10 · human_70=`dummy-pass` | 더미 | 실측 표본 오면 §21-1 재측정. 보고서 `output/qa/ashes-to-stars/v4_playtest_dummy/dummy_report.json` |
+| V2 손맛 · V3 | 더미 V2 **PASS** 5/5 · V3 **FAIL** 3/5 (t03 기믹 1종 · t04 단축 미달) | 더미 | 사람 대기 종료. V3 FAIL은 공식 더미 결과(기준 낮추지 않음) |
 | W2 FAIL (회피 기회) | FAIL 유지 · **기준 낮추지 말 것** | 대화 세션 | 위협밀도·대시 손맛 손대기 직전 |
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
