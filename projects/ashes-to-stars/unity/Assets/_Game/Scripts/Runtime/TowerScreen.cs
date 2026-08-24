@@ -21,6 +21,7 @@ namespace AshesToStars
         {
             get
             {
+                if (TowerWarnHud.ShowQa) return TowerWarnHud.Line();
                 if (BossSkills.ShowQa) return BossSkills.Line();
                 if (TowerDockCap.ShowQa) return TowerDockCap.Line();
                 if (TowerHud.ShowQa) return TowerHud.Line();
@@ -60,6 +61,7 @@ namespace AshesToStars
 
         protected override void Body(Rect r)
         {
+            TowerWarnHud.SeedQaIfRequested();
             TowerHud.SeedQaIfRequested();
             TowerDockCap.SeedQaIfRequested();
             TowerEnding.SeedQaIfRequested();
@@ -84,8 +86,26 @@ namespace AshesToStars
                 _showDeathConsent = true;
                 DeathTraining.AckQaPrompt();
             }
+            if (TowerWarnHud.QaConsentPrompt)
+            {
+                _showDeathConsent = true;
+                TowerWarnHud.AckConsent();
+            }
+            if (TowerWarnHud.QaGoldPrompt)
+            {
+                _showInsufficientGold = true;
+                if (_pendingCost <= 0)
+                    _pendingCost = 10_000L;
+                TowerWarnHud.AckGold();
+            }
+            if (TowerWarnHud.QaLifePrompt)
+            {
+                _showLastLifeWarning = true;
+                TowerWarnHud.AckLife();
+            }
             if (_showDeathConsent)
             {
+                r = TowerWarnHud.Content(r);
                 Info(r, 0, "[주의] " + DeathTraining.ConsentTitle());
                 Info(r, 1, DeathTraining.ConsentBody());
                 if (DrawChoice(r, "동의하고 입장", "이제부터 목숨이 깎인다(§4)", "tower",
@@ -116,6 +136,7 @@ namespace AshesToStars
             }
             if (_showInsufficientGold)
             {
+                r = TowerWarnHud.Content(r);
                 Info(r, 0, "[주의] 골드가 부족합니다");
                 Info(r, 1, $"필요 {EstateStatusHud.ShortCopper(_pendingCost)} · 보유 {EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
                 long shortfall = _pendingCost - GameState.Wallet.Copper;
@@ -158,6 +179,7 @@ namespace AshesToStars
 
             if (_showLastLifeWarning)
             {
+                r = TowerWarnHud.Content(r);
                 Info(r, 0, LastLifeWarn.Title());
                 Info(r, 1, LastLifeWarn.Body());
                 Info(r, 2, LastLifeWarn.GearLine());

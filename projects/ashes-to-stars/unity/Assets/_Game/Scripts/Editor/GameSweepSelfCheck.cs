@@ -42,6 +42,7 @@ namespace AshesToStars
                 One("파티 편성 HUD", PartyFormHudSelfCheck.Run, rows, errors);
                 One("사냥 편성 HUD", HuntPickHudSelfCheck.Run, rows, errors);
                 One("필드 경고 HUD", FieldWarnHudSelfCheck.Run, rows, errors);
+                One("탑 경고 HUD", TowerWarnHudSelfCheck.Run, rows, errors);
                 One("월드맵 안개", WorldExploreSelfCheck.Run, rows, errors);
                 One("영지 마을 HUD", EstateHudSelfCheck.Run, rows, errors);
                 One("영지 현황 HUD", EstateStatusHudSelfCheck.Run, rows, errors);
