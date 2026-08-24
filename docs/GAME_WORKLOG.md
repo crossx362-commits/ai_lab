@@ -19,7 +19,7 @@
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
-| 개발 직렬 | 투사체상한 닫음 | 소환수상한 `bfff2789` · 투사체상한 `89e7136d`(ProjCap·QA_NO). `W3Party` 금지 |
+| 개발 직렬 | 티어1시간당골드 닫음 | 투사체상한 `89e7136d` · 시간당골드 `12e3e0b4`(GhAnchor·QA_NO). `W3Party` 금지 |
 | VFX §6-P1#5 대시 잔상 | **닫음** | `2cd07dbe` — `fx_dash_trail_0~2` Resources 반입 + `W2Arena` 트레일 풀 8장(0.04s 간격·알파 0.6→0·0.15s·order 210). 샷 쌍 `unity/results/vfx_dash_trail_{on,off}.png` + 네거티브(로드 차단→풀 미생성) PASS. INBOX 21:59 소비 |
 | UI 폴리싱 다음 | 파티 편성 탭 안내줄-내비 닫음 | 스타일 `78ac5212` · 편성 `99f4f2aa` PartyFormHud. 허브 하단바 내비 겹침은 닫힘. 던전은 하단바 없음. 다음은 소비처0 재스캔 |
 | launchd 자율 루프 | **상시 켜짐**(오너 2026-08-24) | grok · `com.ailab.autonomous_loop`. 한 작업마다 보고·커밋 |
