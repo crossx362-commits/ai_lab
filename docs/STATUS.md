@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 08:09 · 마지막 목숨 경고 빈 장비 패널 제거(`e6cebda2`). 사람 관문 더미 유지
-마지막 트랙: UI 폴리싱 — `LastLifeWarn.GearRest()`가 빈 문자열이어도 필드·탑이 `Info`를 호출해 네 번째 빈 금테 패널을 그렸다. 두 소비처가 비어 있지 않을 때만 뒷줄을 그리며, 실제 6부위는 기존 두 줄을 유지한다
-소비처0 다음: 직전=UI이므로 원장 재스캔으로 새 소비처 0곳 한 칸 발굴
-검증: C# 컴파일 PASS(355소스 0) · `unity_meas` LastLifeWarnSelfCheck PASS(필드·탑 빈 뒷줄 생략 단언 포함) · 실행 파일 빌드 PASS · 1280×720 필드 경고 샷 육안 확인(`output/qa/ashes-to-stars/last_life_empty_row_shots/after_field/qa_go:Field.png`) — 제목·본문·장비 3패널만 남고 선택 카드 위 빈 금테 없음. 비교 전 샷 `body_nav_shots/after_field.png`에는 네 번째 빈 패널이 있었다. 블렌더는 3D·메시 작업이 아니라 건너뜀
+최종 갱신: 2026-08-25 08:16 · §10-2 잡몹 근접 공격 주기 소비처 연결(`ed6269d5`). 사람 관문 더미 유지
+마지막 트랙: 소비처0 — `MobDef.공격간격` 1.0초가 authored돼 있었지만 직업의 동명 필드만 소비되고 잡몹 필드는 런타임 소비처 0곳이었다. `MobMeleeCadence`가 값을 읽어 던전 QA 부제와 속성 탭에 연결하며, `QA_NO_MOB_MELEE_CADENCE`는 옛 1초·표시 없음으로 되돌린다
+소비처0 다음: 직전=코드이므로 UI 폴리싱 한 칸
+검증: C# 컴파일 PASS(357소스 0) · `unity_meas` MobMeleeCadenceSelfCheck PASS 11/11 · 실행 파일 빌드 PASS · 1280×720 활성 던전 ON/NEG 샷 육안 확인(`output/qa/ashes-to-stars/mob_melee_cadence_shots/{active,neg}/qa_dungeon.png`) — ON 부제에 `근접 공격 1초(§10-2)`, NEG에서는 해당 조각 없음. 캐릭터 화면은 우선존 포화로 줄이 보이지 않아 증거로 쓰지 않음. 블렌더는 3D·메시 작업이 아니라 건너뜀
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
