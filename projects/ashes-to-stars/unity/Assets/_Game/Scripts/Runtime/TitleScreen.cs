@@ -12,6 +12,15 @@ namespace AshesToStars
     /// <summary>타이틀 — 시작과 종료. 하단바 없음.</summary>
     public class TitleScreen : GameScreen
     {
+        public const string EnvNoLocalKitLane = "QA_NO_TITLE_LOCAL_KIT_LANE";
+
+        /// <summary>로컬 테스트 안내는 소개 열만 쓴다. 전체 폭이면 오른쪽 「종료」 카드를 가린다.</summary>
+        public static Rect LocalKitRect(Rect body)
+        {
+            bool blocked = System.Environment.GetEnvironmentVariable(EnvNoLocalKitLane) == "1";
+            return new Rect(body.x, body.yMax - 22f, blocked ? body.width : body.width * 0.54f, 20f);
+        }
+
         protected override void Awake()
         {
             base.Awake();
@@ -31,7 +40,7 @@ namespace AshesToStars
             SoloRaidClear.SeedQaIfRequested();
             StarterPick.SeedQaIfRequested();
             if (!string.IsNullOrEmpty(LocalPlayKit.Line))
-                Hint(new Rect(r.x, r.y + r.height - 22f, r.width, 20f), LocalPlayKit.Line);
+                Hint(LocalKitRect(r), LocalPlayKit.Line);
             if (StarterPick.Open)
             {
                 DrawStarterPick(r);

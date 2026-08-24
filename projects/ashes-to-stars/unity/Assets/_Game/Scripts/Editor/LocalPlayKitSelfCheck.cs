@@ -35,6 +35,7 @@ namespace AshesToStars
             string show = Environment.GetEnvironmentVariable(LocalPlayKit.EnvShow);
             string no = Environment.GetEnvironmentVariable(LocalPlayKit.EnvNo);
             string start = Environment.GetEnvironmentVariable("GAME_START");
+            string noTitleLane = Environment.GetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane);
             Environment.SetEnvironmentVariable(LocalPlayKit.EnvShow, null);
             Environment.SetEnvironmentVariable(LocalPlayKit.EnvNo, null);
             Environment.SetEnvironmentVariable("GAME_START", null);
@@ -77,9 +78,23 @@ namespace AshesToStars
             Check(GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) >= 40, "전직 재료 40");
             Check(LocalPlayKit.Line.Contains("로컬 테스트"), "타이틀에 시드 줄");
 
+            var body = new Rect(GameScreen.BodyPadX, GameScreen.BodyTop,
+                1280f - GameScreen.BodyPadX * 2f, 720f - GameScreen.BodyTop - 36f);
+            var rightCards = UiPages.Grid(new Rect(body.x + body.width * 0.56f, body.y + 8f,
+                body.width * 0.44f, body.height - 16f), 1, 3, 14f);
+            var lane = TitleScreen.LocalKitRect(body);
+            Check(lane.xMax < rightCards[2].x,
+                $"로컬 안내 오른쪽 {lane.xMax:0} < 종료 카드 왼쪽 {rightCards[2].x:0}");
+
+            Environment.SetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane, "1");
+            var blockedLane = TitleScreen.LocalKitRect(body);
+            Check(blockedLane.Overlaps(rightCards[2]), "네거티브는 옛 전체 폭으로 종료 카드를 가린다");
+            Environment.SetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane, null);
+
             Environment.SetEnvironmentVariable(LocalPlayKit.EnvShow, show);
             Environment.SetEnvironmentVariable(LocalPlayKit.EnvNo, no);
             Environment.SetEnvironmentVariable("GAME_START", start);
+            Environment.SetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane, noTitleLane);
             LocalPlayKit.ResetForTest();
 
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime");
