@@ -66,13 +66,13 @@ namespace AshesToStars
         /// <summary>옛 소비처 — 상한·편성·진형·부활초를 한 줄에 이어 붙였다.</summary>
         public static string Old() =>
             $"최대 {PartyState.MaxSlots}인(§9) · 편성 {PartyState.Slots.Count}명 · " +
-            $"1번 자리가 탱 자리다(§10-4 진형) · 부활초 {LifeSystem.GetRevivePotions()}/3";
+            $"1번 자리가 탱 자리다(§10-4 진형) · 부활초 {LifeSystem.GetRevivePotions()}/{ReviveCap.Limit()}";
 
         /// <summary>제목이 파티 편성이라 숫자·탱·부활초만. 28자 이하.</summary>
         public static string Caption()
         {
             if (Blocked) return Old();
-            return $"편성 {PartyState.Slots.Count}/{PartyState.MaxSlots} · 1번=탱 · 부활초 {LifeSystem.GetRevivePotions()}/3";
+            return $"편성 {PartyState.Slots.Count}/{PartyState.MaxSlots} · 1번=탱 · 부활초 {LifeSystem.GetRevivePotions()}/{ReviveCap.Limit()}";
         }
 
         /// <summary>옛 카드 상태 — 환생석 설명을 이어 붙여 하트에 붙었다.</summary>

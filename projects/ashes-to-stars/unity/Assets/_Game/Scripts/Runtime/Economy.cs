@@ -475,6 +475,16 @@ namespace AshesToStars
         };
 
         /// <summary>
+        /// 소지 상한. 부활초는 <see cref="ReviveCap.Limit"/>가 BalanceConfig를 읽는다.
+        /// 나머지 아이템은 ItemCapacity 표.
+        /// </summary>
+        public static int Capacity(LifeItem item)
+        {
+            if (item == LifeItem.RevivalTea) return ReviveCap.Limit();
+            return ItemCapacity.TryGetValue(item, out int cap) ? cap : 0;
+        }
+
+        /// <summary>
         /// 인벤토리 - 목숨 아이템 보유 현황
         /// </summary>
         public class LifeItemInventory
@@ -507,7 +517,7 @@ namespace AshesToStars
                     return false;
 
                 int current = GetCount(item);
-                int cap = ItemCapacity[item];
+                int cap = Capacity(item);
 
                 // 상한 초과면 거부
                 if (current + amount > cap)

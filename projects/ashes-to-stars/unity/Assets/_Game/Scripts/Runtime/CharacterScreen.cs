@@ -23,6 +23,7 @@ namespace AshesToStars
             : BagSlots.ShowQa ? BagSlots.Line()
             : EquipJob.ShowQa ? EquipJob.Line()
             : EquipLevel.ShowQa ? EquipLevel.Line()
+            : ReviveCap.ShowQa ? ReviveCap.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -77,6 +78,7 @@ namespace AshesToStars
             SeedRaceTraitQaIfRequested();
             SeedRaceDefenseQaIfRequested();
             SeedRaceDurabilityQaIfRequested();
+            SeedReviveCapQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -305,7 +307,7 @@ namespace AshesToStars
                     }
                     else if (!ch.IsDeleted && ch.DeathCount > 0 && LifeSystem.GetRevivePotions() > 0)
                     {
-                        if (Row(r, 3, "부활초 사용", $"사망 카운트 1 차감 (보유: {LifeSystem.GetRevivePotions()}/3)",
+                        if (Row(r, 3, "부활초 사용", $"사망 카운트 1 차감 (보유: {LifeSystem.GetRevivePotions()}/{ReviveCap.Limit()})",
                                 ItemAtlas.KeyFor(Economy.LifeItem.RevivalTea)))
                         {
                             LifeSystem.UseRevivePotion(ch);
@@ -476,6 +478,9 @@ namespace AshesToStars
                         // 표시 전용. 건물 HP는 안 건드린다. QA_NO면 빈 문자열이라 행을 안 그린다.
                         string raceDur = RaceInfo.DurabilityLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceDur)) Info(r, advancementRow++, raceDur);
+                        // §4 BalanceConfig.부활초소지상한 — ReviveCap.Line. QA_NO면 빈 문자열.
+                        string teaCap = ReviveCap.Line();
+                        if (!string.IsNullOrEmpty(teaCap)) Info(r, advancementRow++, teaCap);
                     }
                     // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
                     // 기본 76/64를 기대하므로 반드시 되돌린다(안 하면 다음 프레임에 그 화면이 눌린다).
@@ -766,6 +771,16 @@ namespace AshesToStars
         {
             if (Environment.GetEnvironmentVariable(RaceInfo.EnvShowDurability) != "1") return;
             RacePrefs.Set(RaceId.드워프);
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            _selectedCharacter = 0;
+            _detailPage = 1;
+        }
+
+        void SeedReviveCapQaIfRequested()
+        {
+            ReviveCap.SeedQaIfRequested();
+            if (!ReviveCap.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             _selectedCharacter = 0;
