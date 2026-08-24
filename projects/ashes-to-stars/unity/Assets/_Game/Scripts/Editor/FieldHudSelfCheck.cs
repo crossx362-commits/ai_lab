@@ -45,8 +45,12 @@ namespace AshesToStars
                 $"도크 칸 높이 {slim[0].height:0} < 110");
             Check(slim[0].width > 300f,
                 $"도크 칸 폭 {slim[0].width:0} 가로 카드");
-            Check(slim[slim.Length - 1].yMax < FieldHud.NavPlateTop(),
-                $"도크 아랫변 {slim[slim.Length - 1].yMax:0} < 내비 {FieldHud.NavPlateTop():0}");
+            float dockBottom = slim[slim.Length - 1].yMax;
+            float navTop = FieldHud.NavPlateTop();
+            Check(dockBottom <= navTop - FieldHud.NavGap + 0.01f,
+                $"도크 아랫변 {dockBottom:0} ≤ 내비-간격 {navTop - FieldHud.NavGap:0}");
+            Check(navTop - dockBottom >= 10f,
+                $"도크-내비 간격 {navTop - dockBottom:0} ≥ 10 (전폭 카드가 내비와 한 덩어리가 되지 않게)");
             Check(FieldHud.Line().Contains("가리지 않는다"),
                 $"줄 (실제 {FieldHud.Line()})");
             Check(FieldHud.Line().Contains("내비"),

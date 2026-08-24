@@ -15,6 +15,11 @@ namespace AshesToStars
         public const float OldBodyH = 540f;
         public const float DockH = 200f;
         public const float DockGap = 10f;
+        /// <summary>
+        /// 전폭 3×2 카드는 영지 가운데 팔레트와 달리 좌우가 내비 옆으로 빠진다.
+        /// 2px면 금테가 내비 윗변에 붙어 한 덩어리로 읽힌다(실측 2026-08-24 field_hud_nav_after).
+        /// </summary>
+        public const float NavGap = 12f;
         public const int DockCols = 3;
         public const int DockRows = 2;
         public const int OldCols = 2;
@@ -63,7 +68,7 @@ namespace AshesToStars
         {
             if (Blocked)
                 return UiPages.Grid(body, OldCols, OldRows, 16f);
-            float yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - 2f);
+            float yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - NavGap);
             var dock = new Rect(body.x, yMax - DockH, body.width, DockH);
             return UiPages.Grid(dock, DockCols, DockRows, DockGap);
         }
