@@ -21,6 +21,7 @@ namespace AshesToStars
             {
                 if (UiAtlas.ShowQa) return UiAtlas.Line();
                 if (HuntPickHud.ShowQa) return HuntPickHud.Line();
+                if (FieldWarnHud.ShowQa) return FieldWarnHud.Line();
                 if (FieldHud.ShowQa) return FieldHud.Line();
                 if (EscapeManual.ShowQa) return EscapeManual.Line();
                 if (BagTextFmt.ShowQa) return BagTextFmt.Line();
@@ -66,6 +67,7 @@ namespace AshesToStars
         {
             HuntStart.SeedQaIfRequested();
             HuntPickHud.SeedQaIfRequested();
+            FieldWarnHud.SeedQaIfRequested();
             Economy.SeedHuntGoldQaIfRequested();
             LastLifeWarn.SeedQaIfRequested();
             HuntSchedule.SeedQaIfRequested();
@@ -85,9 +87,20 @@ namespace AshesToStars
                 _showLastLifeWarning = true;
                 LastLifeWarn.AckQaPrompt();
             }
+            if (FieldWarnHud.QaGoldPrompt)
+            {
+                _showInsufficientGold = true;
+                FieldWarnHud.AckGold();
+            }
+            if (FieldWarnHud.QaLifePrompt)
+            {
+                _showLastLifeWarning = true;
+                FieldWarnHud.AckLife();
+            }
 
             if (_showInsufficientGold)
             {
+                r = FieldWarnHud.Content(r);
                 Info(r, 0, "[주의] 골드가 부족합니다");
                 Info(r, 1, "던전 입장에는 골드가 필요합니다(§18-2)\n필드 사냥으로 먼저 재화를 모으세요(§2)");
                 if (DrawChoice(r, "확인", "돌아간다", "field",
@@ -102,6 +115,7 @@ namespace AshesToStars
 
             if (_showLastLifeWarning)
             {
+                r = FieldWarnHud.Content(r);
                 Info(r, 0, LastLifeWarn.Title());
                 Info(r, 1, LastLifeWarn.Body());
                 Info(r, 2, LastLifeWarn.GearLine());
