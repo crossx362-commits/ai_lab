@@ -204,4 +204,7 @@
 
 - [2026-08-24 23:04] STATUS 큐 4번이 환생·탐험·내구·수비명예를 오펀으로 남겨 닫힌 칸을 다시 배정했다(실측: 네 커밋이 이미 HEAD 조상인데 큐 문구는 2026-08-19 그대로) → 막힌 칸은 바퀴 시작 때 클래스·커밋 해시로 실측하고 닫힌 것은 큐에서 빼라 (우선순위 중)
 - [2026-08-24 23:04] 캐릭터 상세에 QA 줄 두 줄(`착용 레벨`·거부 문구)을 넣으면 가방 칸이 금테 아래로 밀려 샷에 안 보인다(실측 `equip_level_shots/qa_go:Character.png`) → 정보 목록이 늘면 가방 칸을 패널 안 고정 바닥에 두거나 접기 (우선순위 중)
+- [2026-08-24 23:45] 허브 HUD SelfCheck가 OldBodyH=540(yMax 596)이면 내비(636) 겹침을 못 잡는다(월드맵은 이번 바퀴에서 hub 본문 yMax=640을 추가해 닫음). 탑 `TowerHud`는 아직 `body.yMax - DockH`라 같은 4px 겹침 → SelfCheck 본문을 GameScreen yMax=640으로 맞추고 탑 도크도 NavPlateTop-12로 올려라 (우선순위 중)
+- [2026-08-24 23:45] 월드맵 헤더 부제와 별 위 흰 캡션이 「엘프 탐험 +30% · 별 3/3(§18-9)」을 두 번 그린다(실측 `worldmap_hud_nav_shots/after.png`) → 캡션은 헤더에 없는 규칙만 남겨라 (우선순위 중)
 - [2026-08-25 00:54] 관찰: Unity MCP manage_camera 샷은 브리지가 살아 있어도 "No Unity Editor instances found"로 실패하고, 같은 세션 execute_code + ScreenCapture.CaptureScreenshot는 성공한다(실측 탑 HUD after/neg). 시각 검증이 카메라 도구 한 길에 묶이면 화면을 못 보고 끝난다 → 샷 폴백을 execute_code ScreenCapture로 박아라 (우선순위 중)
+- [2026-08-25 01:46] 영지 마을 팔레트를 내비에서 12px 띄운 뒤에도 가운데 슬림 타일이 마름모 맨 아래 건물(창고 앞 오두막)과 겹친다(실측 `estate_hud_nav_shots/after.png`) → 다음 폴리싱은 팔레트를 좌·우 가장자리로 옮기거나 마름모를 위로 올린다 (우선순위 중)
