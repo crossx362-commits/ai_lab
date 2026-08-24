@@ -88,9 +88,9 @@ namespace AshesToStars
         public static void SeedQaIfRequested()
         {
             if (!ShowQa) return;
-            if (NavBlocked) return;
             if (_qaSeeded) return;
             _qaSeeded = true;
+            // 차단이어도 경고 페이지는 띄운다 — QA_NO는 Content만 옛 yMax에 붙여 겹침을 재현한다.
             if (GoldQa) _goldPrompt = true;
             else _lifePrompt = true;
         }

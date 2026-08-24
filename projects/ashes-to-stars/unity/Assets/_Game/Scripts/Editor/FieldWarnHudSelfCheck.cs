@@ -58,6 +58,12 @@ namespace AshesToStars
                 $"차단 아랫변 {oldNav.yMax:0} 이 내비와 겹친다");
             Check(FieldWarnHud.Line().Contains("겹친다"),
                 $"차단 줄 (실제 {FieldWarnHud.Line()})");
+            Environment.SetEnvironmentVariable(FieldWarnHud.EnvShow, "1");
+            FieldWarnHud.ResetForTest();
+            FieldWarnHud.SeedQaIfRequested();
+            Check(FieldWarnHud.QaLifePrompt, "차단이어도 경고 시드는 켠다");
+            Environment.SetEnvironmentVariable(FieldWarnHud.EnvShow, null);
+            FieldWarnHud.ResetForTest();
             Environment.SetEnvironmentVariable(FieldWarnHud.EnvNoNav, null);
 
             Environment.SetEnvironmentVariable(FieldWarnHud.EnvShow, "1");
