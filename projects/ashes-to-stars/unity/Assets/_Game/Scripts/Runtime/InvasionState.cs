@@ -136,7 +136,9 @@ namespace AshesToStars
         public static void ArmShield()
         {
             if (ShieldBlocked) return;
+            Load();
             _shieldUntil = NowUnix() + GuardSeconds;
+            Save();
         }
 
         public static long SortieCost() =>

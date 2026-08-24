@@ -650,6 +650,7 @@ namespace AshesToStars
             EstateStore.ResetForTest();
             SoftCap.ResetForTest();
             Honor.ResetForTest();
+            InboundRaid.ResetForTest();
             DeathTraining.ResetForTest();
             RaidScale.ResetForTest();
             RaidBossPool.ResetForTest();

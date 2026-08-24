@@ -25,8 +25,12 @@ namespace AshesToStars
             _log.Length = 0;
             string show = Environment.GetEnvironmentVariable(WorldMapDockCap.EnvShow);
             string no = Environment.GetEnvironmentVariable(WorldMapDockCap.EnvNo);
+            string honorNo = Environment.GetEnvironmentVariable(Honor.EnvNo);
+            string guardNo = Environment.GetEnvironmentVariable(Honor.EnvNoGuard);
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvShow, null);
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, null);
+            Environment.SetEnvironmentVariable(Honor.EnvNo, null);
+            Environment.SetEnvironmentVariable(Honor.EnvNoGuard, null);
 
             GameState.ResetAll();
             InvasionState.ResetForTest();
@@ -67,7 +71,7 @@ namespace AshesToStars
                 $"성계 부제 (실제 {WorldMapDockCap.Star()})");
             Check(WorldMapDockCap.Rank() == WorldMapDockCap.RankCap,
                 $"랭킹 부제 (실제 {WorldMapDockCap.Rank()})");
-            Check(WorldMapDockCap.Defense() == WorldMapDockCap.DefenseCap,
+            Check(WorldMapDockCap.Defense() == Honor.GuardCap,
                 $"수비대 부제 (실제 {WorldMapDockCap.Defense()})");
             string starLocked = "잠김 — " + WorldMapDockCap.Star();
             string rankLocked = "잠김 — " + WorldMapDockCap.Rank();
@@ -148,6 +152,8 @@ namespace AshesToStars
 
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvShow, show);
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, no);
+            Environment.SetEnvironmentVariable(Honor.EnvNo, honorNo);
+            Environment.SetEnvironmentVariable(Honor.EnvNoGuard, guardNo);
             WorldMapDockCap.ResetForTest();
             InvasionApproach.ResetForTest();
             InvasionState.ResetForTest();

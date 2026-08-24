@@ -6,18 +6,23 @@ namespace AshesToStars
     /// <summary>
     /// 침략 명예(§18-13). 거래 불가 통화. 승리 +30 / 패배 0.
     /// 상대 방어(EstateDefense.CutPercent)에 ±50% — Cut 0=15 · 20=30 · 40=45.
-    /// 수비 성공 +20은 들어오는 침략이 없어 안 넣는다.
+    /// 수비 성공 +20(§18-13). InboundRaid가 로컬 인바운드를 정산할 때 ApplyGuard가 적립하고
+    /// 월드맵 수비대 카드가 GuardCap을 읽는다. QA_NO_HONOR_GUARD면 옛 「침략 없음」.
     /// QA_NO_HONOR면 불변. QA_NO_HONOR_DEFENSE면 옛 고정 +30.
     /// </summary>
     public static class Honor
     {
         public const int Win = 30;
         public const int Lose = 0;
+        public const int Guard = 20;
         public const int ScaleFloor = 50;
         public const string EnvShow = "QA_HONOR";
         public const string EnvNo = "QA_NO_HONOR";
         public const string EnvShowDefense = "QA_HONOR_DEFENSE";
         public const string EnvNoDefense = "QA_NO_HONOR_DEFENSE";
+        public const string EnvShowGuard = "QA_HONOR_GUARD";
+        public const string EnvNoGuard = "QA_NO_HONOR_GUARD";
+        public const string GuardCap = "수비 +20";
 
         const string K_POINTS = "ats.honor.points";
         const string K_LAST = "ats.honor.last";
@@ -41,6 +46,25 @@ namespace AshesToStars
             get
             {
                 string raw = Environment.GetEnvironmentVariable(EnvNoDefense);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool GuardBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoGuard);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool ShowGuardQa
+        {
+            get
+            {
+                if (Blocked || GuardBlocked) return false;
+                string raw = Environment.GetEnvironmentVariable(EnvShowGuard);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
         }
@@ -106,6 +130,29 @@ namespace AshesToStars
             return $"명예 {Points}";
         }
 
+        /// <summary>수비 성공 Guard, 실패 0. QA_NO·QA_NO_HONOR_GUARD면 0을 주고 잔액은 안 바꾼다.</summary>
+        public static int ApplyGuard(bool held)
+        {
+            Load();
+            if (Blocked || GuardBlocked)
+            {
+                _last = 0;
+                Save();
+                return 0;
+            }
+            int add = held ? Guard : Lose;
+            _points += add;
+            _last = add;
+            Save();
+            return add;
+        }
+
+        public static string GuardLine()
+        {
+            if (Blocked || GuardBlocked) return "수비 명예 없음";
+            return $"수비 성공 +{Guard}(§18-13)";
+        }
+
         /// <summary>시각 QA. QA_HONOR=1이면 30층·보호막 없음으로 침략 카드를 연다.</summary>
         public static void SeedQaIfRequested()
         {
@@ -142,6 +189,22 @@ namespace AshesToStars
             if (GameState.Wallet.Copper < InvasionState.SortieCost())
                 GameState.Earn(InvasionState.SortieCost());
             InvasionState.ResetPendingForHonorQa();
+        }
+
+        /// <summary>시각 QA. QA_HONOR_GUARD=1이면 수비 1명·인바운드 성공 정산·명예 +20.</summary>
+        public static void SeedGuardQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(EnvShowGuard) != "1") return;
+            if (Blocked || GuardBlocked) return;
+            if (_qaSeeded) return;
+            _qaSeeded = true;
+            Load();
+            RacePrefs.Set(RaceId.인간);
+            WorldStar.EnemyDebuff = false;
+            WorldStar.AllyBuff = false;
+            if (GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor)
+                GameState.SetTowerFloorForTest(WorldMapScreen.InvasionUnlockFloor);
+            InboundRaid.SeedHeldForQa();
         }
 
         public static void ResetForTest()

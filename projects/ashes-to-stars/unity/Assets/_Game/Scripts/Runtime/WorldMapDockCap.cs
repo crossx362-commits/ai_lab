@@ -129,8 +129,13 @@ namespace AshesToStars
         /// <summary>옛 소비처 — 서버 부재 설명을 통째로 붙였다.</summary>
         public static string Rank() => Blocked ? OldRank : RankCap;
 
-        /// <summary>옛 소비처 — 침략 본게임이 없다는 문장을 통째로 붙였다.</summary>
-        public static string Defense() => Blocked ? OldDefense : DefenseCap;
+        /// <summary>수비 성공 +20(§18-13). QA_NO면 옛 긴 줄, QA_NO_HONOR_GUARD면 「침략 없음」.</summary>
+        public static string Defense()
+        {
+            if (Blocked) return OldDefense;
+            if (Honor.Blocked || Honor.GuardBlocked) return DefenseCap;
+            return Honor.GuardCap;
+        }
 
         /// <summary>시각 QA. 30층이라 카드가 열리고 최단 면 부제가 한 줄.</summary>
         public static void SeedQaIfRequested()

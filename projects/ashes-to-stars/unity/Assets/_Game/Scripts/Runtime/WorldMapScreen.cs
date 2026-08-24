@@ -44,6 +44,8 @@ namespace AshesToStars
                      || Environment.GetEnvironmentVariable(Honor.EnvShowDefense) == "1")
                     && !Honor.Blocked)
                     s += " · " + Honor.WinLine();
+                if (Honor.ShowGuardQa)
+                    s += " · " + Honor.GuardLine();
                 if (Environment.GetEnvironmentVariable(InvasionState.EnvShowRepeat) == "1"
                     && !InvasionState.RepeatLootBlocked)
                     s += " · " + InvasionState.RepeatLootLine();
@@ -84,6 +86,8 @@ namespace AshesToStars
             InvasionState.SeedRepeatLootQaIfRequested();
             Honor.SeedQaIfRequested();
             Honor.SeedDefenseQaIfRequested();
+            Honor.SeedGuardQaIfRequested();
+            InboundRaid.OfferIfDue();
             WorldStar.SeedQaIfRequested();
             WorldStar.SeedRangeQaIfRequested();
             WorldStar.SeedRaceSenseQaIfRequested();
@@ -128,8 +132,11 @@ namespace AshesToStars
 
             DrawCard(cards[2], "랭킹", WorldMapDockCap.Rank(),
                 "characters", locked: true);
-            DrawCard(cards[3], $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots}",
-                WorldMapDockCap.Defense(), "building_barracks", locked: true);
+            if (DrawCard(cards[3], $"수비대 {DefenseState.Count}/{DefenseState.MaxSlots}",
+                    WorldMapDockCap.Defense(), "building_barracks",
+                    locked: !InboundRaid.Pending)
+                && InboundRaid.Pending)
+                InboundRaid.Settle();
         }
 
         void DrawApproachPick(Rect r)
