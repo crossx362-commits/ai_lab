@@ -399,8 +399,9 @@ class ParseTests(unittest.TestCase):
         self.assertIn("작업 넘겨받기 흐름", html)
         self.assertIn("준호 작업 완료 보고", html)
         self.assertIn("PROMPT.md", html)
-        self.assertLess(html.find('id="d-queue"'), html.find('id="d-handoff-card"'))
-        self.assertLess(html.find('id="d-handoff-card"'), html.find('id="d-lap-card"'))
+        # 우선순위 정렬(오너 2026-08-25): 할 일 → 방금 결과 → … → 넘겨받기 흐름은 뒤쪽.
+        self.assertLess(html.find('id="d-queue"'), html.find('id="d-lap-card"'))
+        self.assertLess(html.find('id="d-lap-card"'), html.find('id="d-handoff-card"'))
 
     def test_load_handoff_state_defaults(self):
         with tempfile.TemporaryDirectory() as td:
@@ -435,7 +436,7 @@ class ParseTests(unittest.TestCase):
         self.assertLess(html.find('id="charts"'), html.find('id="choices"'))
         self.assertLess(html.find('id="d-queue"'), html.find('id="d-worklog"'))
         self.assertLess(html.find('id="d-blockers"'), html.find('id="d-gates"'))
-        self.assertLess(html.find('id="d-completed"'), html.find('id="d-inbox"'))
+        self.assertLess(html.find('id="d-inbox"'), html.find('id="d-completed"'))
         self.assertLess(html.find('id="d-providers"'), html.find('id="d-commits"'))
         self.assertIn('id="d-commands"', html)
         self.assertIn("proto_done", html)
@@ -483,6 +484,35 @@ class WriteTests(unittest.TestCase):
 
 
 class PlainCopyTests(unittest.TestCase):
+    def test_now_title_ignores_code_comment_and_uses_screen_topic(self):
+        log = (
+            "/// 과거 화면마다 무거운 씬을 11개 만들다 배치모드가 죽은\n"
+            "projects/ashes-to-stars/unity/Assets/_Game/Scripts/Runtime/AuctionHud.cs:86\n"
+            "경매장 화면을 그리는 코드\n"
+        )
+        title = board.infer_now_title(
+            log,
+            [{"title": "영지 아트", "detail": "닫음."}],
+            [],
+        )
+        self.assertEqual(title, "경매장 화면을 보기 쉽게 다듬는 중")
+
+    def test_now_title_ignores_ansi_tool_name_before_work_log(self):
+        log = (
+            "\x1b[0m⚙ \x1b[0munity_manage_editor\n"
+            "AuctionHud.cs 경매장 화면 구현\n"
+        )
+        title = board.infer_now_title(log, [], [])
+        self.assertEqual(title, "경매장 화면을 보기 쉽게 다듬는 중")
+
+    def test_now_title_uses_screen_topic_when_sentence_contains_code_name(self):
+        log = (
+            "다음 바퀴에서 샷 1장 재확인 후 infoBottom 여유를 검증합니다.\n"
+            "CharacterScreen.cs\n"
+        )
+        title = board.infer_now_title(log, [], [])
+        self.assertEqual(title, "캐릭터 화면을 보기 쉽게 다듬는 중")
+
     def test_inbox_stamp_and_code_leave_the_title(self):
         t = board.humanize_title(
             "INBOX 08:47 지금 문제점",
@@ -510,6 +540,11 @@ class PlainCopyTests(unittest.TestCase):
         self.assertIn("탈출", t)
         self.assertNotIn("움직임", t)
 
+    def test_title_drops_internal_camel_case_name(self):
+        title = board.humanize_title("다음 바퀴에서 샷 1장 재확인 후 infoBottom 여유")
+        self.assertNotIn("infoBottom", title)
+        self.assertIn("여유", title)
+
     def test_loop_meta_is_not_a_description(self):
         d = board.humanize_detail("큐 1번은 움직임·겹침이 W3Party/FieldDecor라 대기하지 않음.")
         self.assertNotIn("큐 1번", d)
@@ -522,6 +557,103 @@ class PlainCopyTests(unittest.TestCase):
         )
         self.assertIn("남음", d)
         self.assertNotIn("UiPages", d)
+
+
+class OverviewTests(unittest.TestCase):
+    @staticmethod
+    def _build():
+        build = getattr(
+            board,
+            "build_overview",
+            lambda *args: {
+                "current": {}, "next": [], "recent": [],
+                "blocked": [], "needs_human": [],
+            },
+        )
+        return build(
+            {"now": {"phase": "작업 중", "title": "경매장 화면을 보기 쉽게 다듬는 중"}},
+            [
+                {"n": 1, "title": "영지 아트", "detail": "닫음. 검사 통과"},
+                {"n": 2, "title": "경매장 정보 정리", "detail": "정보를 한눈에 보이게"},
+                {"n": 3, "title": "캐릭터 움직임", "detail": "움직임을 자연스럽게"},
+            ],
+            [{"title": "장비 글자 잘림 수정", "detail": "실제 화면 확인"}],
+            [{"title": "30층 성장 곡선", "detail": "선행 기능 필요"}],
+            [{"title": "전투 손맛 확인", "detail": "직접 플레이 필요"}],
+        )
+
+    def test_overview_explains_current_work_in_plain_korean(self):
+        overview = self._build()
+        self.assertEqual(overview.get("current", {}).get("title"),
+                         "경매장 화면을 보기 쉽게 다듬는 중")
+        self.assertIn("한눈", overview.get("current", {}).get("why", ""))
+        self.assertIn("실제 화면", overview.get("current", {}).get("done_when", ""))
+        self.assertIn("검사", overview.get("current", {}).get("done_when", ""))
+
+    def test_overview_omits_closed_work_from_next_list(self):
+        overview = self._build()
+        self.assertEqual(
+            [row["title"] for row in overview.get("next", [])],
+            ["경매장 정보 정리", "캐릭터 움직임"],
+        )
+
+    def test_overview_keeps_open_work_whose_detail_starts_with_completion_word(self):
+        overview = board.build_overview(
+            {"now": {"phase": "작업 중", "title": "다음 작업 고르는 중"}},
+            [
+                {"title": "화면 정리", "detail": "완료 기준부터 정리한 뒤 구현"},
+                {"title": "전투 조정", "detail": "완료로 내리지 말고 다시 확인"},
+            ],
+            [], [], [],
+        )
+        self.assertEqual(
+            [row["title"] for row in overview.get("next", [])],
+            ["화면 정리", "전투 조정"],
+        )
+
+    def test_overview_omits_work_whose_detail_explicitly_ends_closed(self):
+        overview = board.build_overview(
+            {"now": {"phase": "작업 중", "title": "다음 작업 고르는 중"}},
+            [
+                {"title": "지난 요청 묶음", "detail": "그림과 화면 조정은 닫음"},
+                {"title": "새 화면 정리", "detail": "정보를 한눈에 보이게"},
+            ],
+            [], [], [],
+        )
+        self.assertEqual([row["title"] for row in overview["next"]], ["새 화면 정리"])
+
+    def test_overview_uses_next_item_when_current_title_is_empty(self):
+        overview = board.build_overview(
+            {"now": {"phase": "작업 중", "title": ""}},
+            [{"title": "경매장 정보 정리", "detail": "정보를 한눈에 보이게"}],
+            [], [], [],
+        )
+        self.assertEqual(overview["current"]["title"], "경매장 정보 정리 하는 중")
+
+    def test_overview_uses_next_item_when_current_title_is_only_internal_name(self):
+        overview = board.build_overview(
+            {"now": {"phase": "작업 중", "title": "AuctionHud"}},
+            [{"title": "경매장 정보 정리", "detail": "정보를 한눈에 보이게"}],
+            [], [], [],
+        )
+        self.assertEqual(overview["current"]["title"], "경매장 정보 정리 하는 중")
+
+    def test_overview_replaces_generic_code_message_with_next_real_work(self):
+        overview = board.build_overview(
+            {"now": {"phase": "작업 중", "title": "코드를 찾아 그 한 건만 고치겠습니다"}},
+            [{"title": "경매장 정보 정리", "detail": "정보를 한눈에 보이게"}],
+            [], [], [],
+        )
+        self.assertEqual(overview["current"]["title"], "경매장 정보 정리 하는 중")
+
+    def test_overview_separates_recent_blocked_and_human_items(self):
+        overview = self._build()
+        self.assertEqual([row["title"] for row in overview.get("recent", [])],
+                         ["장비 글자 잘림 수정"])
+        self.assertEqual([row["title"] for row in overview.get("blocked", [])],
+                         ["30층 성장 곡선"])
+        self.assertEqual([row["title"] for row in overview.get("needs_human", [])],
+                         ["전투 손맛 확인"])
 
 
 class CommandLogTests(unittest.TestCase):
@@ -2089,6 +2221,45 @@ class TestStatusFormatCompat(unittest.TestCase):
         queue = board.parse_queue(status)
         self.assertEqual(queue[0]["title"], "영지 §4")
         self.assertIn("업그레이드", queue[0]["detail"])
+
+
+class NowTitleLapFormatTests(unittest.TestCase):
+    def test_blockquote_excerpt_is_not_a_title(self):
+        log = (
+            "> 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브 기준으로 복구합니다.\n"
+            "던전 화면 확인\n"
+        )
+        title = board.infer_now_title(log, [], [])
+        self.assertNotIn("템플릿", title)
+
+    def test_wrapup_commit_summary_is_not_a_title(self):
+        log = (
+            "커밋: - `ffb42f89` 구현 - `d0d43267` 상태 기록입니다.\n"
+            "바퀴 종료: 20260825-072849-2 code=0\n"
+        )
+        title = board.infer_now_title(log, [{"title": "영지 아트"}], [])
+        self.assertEqual(title, "영지 아트 하는 중")
+
+    def test_html_comment_and_diff_lines_are_not_titles(self):
+        log = (
+            "+ 기존 내용(마커·제안 관찰·처방 전문) 삭제 없음. -->\n"
+            "낡은 검증 문장 삭제 없음 확인합니다 -->\n"
+        )
+        title = board.infer_now_title(log, [{"title": "영지 아트"}], [])
+        self.assertNotIn("-->", title)
+
+    def test_markdown_heading_is_not_a_title(self):
+        log = (
+            "# 왜 사본을 쓰나: 유니티는 같은 프로젝트 폴더를 두 번 못 엽니다.\n"
+            "던전 화면 확인\n"
+        )
+        title = board.infer_now_title(log, [{"title": "영지 아트"}], [])
+        self.assertNotIn("사본", title)
+
+    def test_bare_code_word_rejects_candidate(self):
+        log = "env 게이트라 일반 플레이엔 영향 없음 void 검증합니다.\n"
+        title = board.infer_now_title(log, [{"title": "큐항목"}], [])
+        self.assertNotIn("void", title)
 
 
 if __name__ == "__main__":

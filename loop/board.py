@@ -180,11 +180,19 @@ def humanize_title(title: str, detail: str = "") -> str:
     t = re.sub(r"^INBOX\s+\d{1,2}:\d{2}\s+", "", t)
     t = re.sub(r"\s*\(오너[^)]*\)\s*$", "", t)
     t = re.sub(r"\s*§[0-9.\-]+", "", t)
+    t = re.sub(r"\*+", "", t)
     for pat, label in _TITLE_HINTS:
         if pat.search(t):
             t = label
             break
     t = re.sub(r"`[^`]+`", "", t)
+    # infoBottom·AuctionHud 같은 내부 식별자는 제목에서 빼되 UI·V2 같은 약어는 남긴다.
+    t = re.sub(
+        r"\b(?=[A-Za-z0-9_]*[a-z])(?=[A-Za-z0-9_]*[A-Z])[A-Za-z][A-Za-z0-9_]*\b",
+        "",
+        t,
+    )
+    t = re.sub(r"\b[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]+\b", "", t)
     t = re.sub(r"\s+", " ", t).strip(" ·,;—-")
     return _now_short(t, 36) if t else "할 일"
 
@@ -547,7 +555,11 @@ def _v2_passed(status: str, decisions: dict) -> bool:
 
 
 def _v3_closed(design: str) -> bool:
-    return any(m.get("done") and "V3" in m["title"] for m in parse_milestones(design))
+    if any(m.get("done") and "V3" in m["title"] for m in parse_milestones(design)):
+        return True
+    # 요약 틀 DESIGN.md가 비어도 원장 증거가 있으면 한 판은 닫힘
+    game = _read(GAME_DESIGN)
+    return "한 판 종단을 코드·화면·네거티브로 닫음" in game
 
 
 def _v4_human_passed(status: str, decisions: dict | None) -> bool:
@@ -1743,16 +1755,37 @@ def _latest_iter_path() -> Path | None:
 _NOW_SKIP = re.compile(
     r"이터레이션을 시작|지시대로|STATUS\.md|인수인계|함정 목록|DIRECTIVES|"
     r"먼저 읽|대조합|큐 1|사람 육안|오너 보류|대기하지|최근 커밋|"
-    r"한 일|남긴 것|다음 세션|큐에만 올리|\*\*코드\*\*|증거"
+    r"한 일|남긴 것|다음 세션|큐에만 올리|\*\*코드\*\*|증거|///|"
+    r"바퀴 시작|바퀴 종료|회의 소집|커밋:"
 )
 _NOW_WORK = re.compile(
     r"구현|넣겠|고치|고칩|붙이|나누|찍|검증|커밋|배치|"
     r"SelfCheck|만듭|바꿉|나눕|검사기|동기화"
 )
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+_NOW_TECHNICAL = re.compile(
+    r"(?:[/\\]|\.cs\b|[A-Za-z][A-Za-z0-9]*_|"
+    r"(?=[A-Za-z0-9_]*[a-z])(?=[A-Za-z0-9_]*[A-Z])[A-Za-z][A-Za-z0-9_]*|"
+    r"\b[a-z]{3,}\b|"   # 소문자 코드 낱말(void, env 등)이 낀 문장은 제목으로 안 쓴다
+    r"<!--|-->)"        # HTML 주석 조각도 문서 흔적이다
+)
+_NOW_TOPIC_HINTS = (
+    (re.compile(r"AuctionHud|경매장", re.I), "경매장 화면을 보기 쉽게 다듬는 중"),
+    (re.compile(r"Estate|영지", re.I), "영지 화면을 보기 쉽게 다듬는 중"),
+    (re.compile(r"Character|캐릭터", re.I), "캐릭터 화면을 보기 쉽게 다듬는 중"),
+    (re.compile(r"Dungeon|던전", re.I), "던전 화면과 기능을 다듬는 중"),
+    (re.compile(r"Boss|보스", re.I), "보스 전투를 제대로 작동하게 만드는 중"),
+    (re.compile(r"Party|파티|편성", re.I), "파티 편성 화면을 다듬는 중"),
+    (re.compile(r"WorldMap|월드맵", re.I), "월드맵 화면을 보기 쉽게 다듬는 중"),
+    (re.compile(r"Field|필드", re.I), "필드 화면과 전투를 다듬는 중"),
+)
 
 
 def _now_sentences(text: str) -> list[str]:
-    blob = re.sub(r"\s+", " ", text or "").strip()
+    # 인용문(>)·제목줄(#)·diff(+/-)·태그(<) 줄은 문서 발췌라 제목 후보에서 뺀다.
+    lines = [ln for ln in (text or "").splitlines()
+             if not ln.lstrip().startswith((">", "#", "+", "-", "<"))]
+    blob = re.sub(r"\s+", " ", "\n".join(lines)).strip()
     parts = re.split(r"(?<=[다요])\.\s*|(?<=니다)\.\s*|(?<=까)\.\s*", blob)
     out = []
     for part in parts:
@@ -1782,10 +1815,16 @@ def _now_short(text: str, limit: int = 52) -> str:
 
 def infer_now_title(log_text: str, queue: list[dict], inbox_waiting: list[dict]) -> str:
     """지금 손에 든 일 한 줄. 읽기·계획 로그는 제목으로 안 쓴다."""
-    sents = _now_sentences(log_text)
+    clean_log = _ANSI_ESCAPE.sub("", log_text or "")
+    sents = _now_sentences(clean_log)
     work = [s for s in sents if _NOW_WORK.search(s) and not _NOW_SKIP.search(s)]
-    if work:
-        return _now_short(_now_ing(work[-1]))
+    for sentence in reversed(work):
+        candidate = _now_short(_now_ing(sentence))
+        if re.search(r"[가-힣]", candidate) and not _NOW_TECHNICAL.search(candidate):
+            return candidate
+    for pattern, label in _NOW_TOPIC_HINTS:
+        if pattern.search(clean_log):
+            return label
     if inbox_waiting:
         title = re.sub(r"^[📌⭐✅]\s*", "", inbox_waiting[0]["title"])
         title = re.sub(r"\s*\(오너[^)]*\)\s*$", "", title)
@@ -1795,15 +1834,94 @@ def infer_now_title(log_text: str, queue: list[dict], inbox_waiting: list[dict])
     return "다음 일을 고르는 중"
 
 
+def _queue_item_closed(item: dict) -> bool:
+    """보드 상단의 '다음 작업'에서 이미 닫힌 행만 뺀다."""
+    title = str(item.get("title") or "").strip()
+    detail = str(item.get("detail") or "").strip()
+    closed_marker = re.compile(r"^(?:닫음|완료)(?:\s*[.!。]|$)")
+    closed_tail = re.compile(r"(?:닫음|완료)\s*[.!。]?$")
+    return bool(item.get("done")) or bool(
+        closed_marker.match(detail) or closed_marker.match(title)
+        or closed_tail.search(detail)
+    )
+
+
+def _focus_explanation(title: str, detail: str = "") -> tuple[str, str]:
+    """기술 문서 대신 비개발자가 읽을 수 있는 이유·완료 기준을 만든다."""
+    blob = f"{title} {detail}"
+    if any(k in blob for k in ("화면", "UI", "글씨", "경매장", "영지", "캐릭터", "월드맵")):
+        return (
+            "게임 화면에서 필요한 정보를 한눈에 알아보고 불편 없이 조작할 수 있게 만드는 일이에요.",
+            "실제 화면에서 글자와 배치가 자연스럽게 보이고 관련 검사가 통과하면 끝나요.",
+        )
+    if any(k in blob for k in ("아트", "그림", "그래픽", "스프라이트")):
+        return (
+            "게임 속 대상이 더 분명하고 보기 좋게 보이도록 다듬는 일이에요.",
+            "그림이 실제 화면에 표시되고 깨짐이나 겹침이 없는지 확인하면 끝나요.",
+        )
+    if any(k in blob for k in ("전투", "보스", "기능", "움직임", "던전")):
+        return (
+            "플레이에 필요한 기능이 실제 게임에서 자연스럽게 작동하도록 만드는 일이에요.",
+            "기능을 직접 실행해 보고 관련 검사가 통과하면 끝나요.",
+        )
+    return (
+        "다음 개발 단계를 막힘없이 이어가기 위해 지금 필요한 일을 처리하고 있어요.",
+        "결과를 직접 실행해 확인하고 관련 검사가 통과하면 끝나요.",
+    )
+
+
+def build_overview(loop: dict, queue: list[dict], completed: list[dict],
+                   stuck: list[dict], choices: list[dict]) -> dict:
+    """한눈 카드용 데이터. 원문 형식은 바꾸지 않고 표시만 쉽게 정리한다."""
+    open_queue = [_plain_item(it) for it in (queue or []) if not _queue_item_closed(it)]
+    now = dict((loop or {}).get("now") or {})
+    raw_title = str(now.get("title") or "").strip()
+    title = humanize_title(raw_title) if raw_title else ""
+    if title == "할 일" or re.search(r"코드를 찾아.*(?:한 건|고치)", title):
+        title = ""
+    if not title and open_queue:
+        title = open_queue[0]["title"] + " 하는 중"
+    if not title:
+        title = "다음 일을 고르는 중"
+    match = next((it for it in open_queue if it.get("title") and it["title"] in title), None)
+    why, done_when = _focus_explanation(title, (match or {}).get("detail") or "")
+    return {
+        "current": {
+            "phase": now.get("phase") or "지금",
+            "title": title,
+            "why": why,
+            "done_when": done_when,
+        },
+        # 닫힌 행은 제외하고 STATUS의 큐 번호 순서를 유지한 전체 표시용 목록.
+        "queue": open_queue,
+        "next": open_queue[:3],
+        "recent": [dict(it) for it in (completed or [])[:3]],
+        "blocked": [dict(it) for it in (stuck or [])[:3]],
+        "needs_human": [dict(it) for it in (choices or [])[:3]],
+    }
+
+
 def current_work(running: bool, hold: bool, stop: bool,
                  latest_iter: str, main_log: str) -> dict:
     """지금 루프가 손에 든 일. 끝난 이터는 작업 중으로 안 속인다."""
     full_main = _read(_main_log_path())
     latest = _latest_iter_path()
     iter_text = _read(latest) if latest else ""
-    number, started = "", ""
+    number, started, agent = "", "", ""
     finished = False
-    if latest:
+    lap = re.match(r"lap-(\d{8}-\d{6}-(\d+))\.log$", latest.name) if latest else None
+    if lap:
+        # 새 형식: loop.sh가 "바퀴 시작/종료: LAP_ID agent=X"를 메인·랩 로그에 남긴다.
+        lap_id, number = lap.group(1), lap.group(2)
+        blob = full_main + "\n" + iter_text
+        m = re.search(r"바퀴 시작:\s*" + re.escape(lap_id) + r"\s+agent=(\S+)", blob)
+        if m:
+            agent = m.group(1)
+        finished = bool(re.search(r"바퀴 종료:\s*" + re.escape(lap_id) + r"\b", blob))
+        t = re.search(r"\d{8}-(\d{2})(\d{2})(\d{2})", lap_id)
+        if t:
+            started = ":".join(t.groups())
+    elif latest:
         last = None
         for m in re.finditer(
             r"▶ 이터레이션 #(\d+)\s+(\d{2}:\d{2}:\d{2})\s+→\s+(\S+)",
@@ -1817,11 +1935,11 @@ def current_work(running: bool, hold: bool, stop: bool,
             finished = bool(re.search(
                 rf"(?:✅|❌|⚠️|⏸)\s+#{{0,1}}{number}\b", after
             ))
-    if latest and not started:
-        # 메인 로그가 낡아도 시작 시각은 이터 로그 이름에 있다(iter_YYYYmmdd_HHMMSS.log).
-        m = re.search(r"iter_\d{8}_(\d{2})(\d{2})(\d{2})", latest.name)
-        if m:
-            started = ":".join(m.groups())
+        if not started:
+            # 메인 로그가 낡아도 시작 시각은 이터 로그 이름에 있다(iter_YYYYmmdd_HHMMSS.log).
+            m = re.search(r"iter_\d{8}_(\d{2})(\d{2})(\d{2})", latest.name)
+            if m:
+                started = ":".join(m.groups())
     generating = _read(ROOT / "projects" / "ashes-to-stars" / "art" / ".generating").strip()
     queue = parse_queue(_read(STATUS))
     inbox = parse_inbox(_read(INBOX)).get("waiting") or []
@@ -1848,6 +1966,7 @@ def current_work(running: bool, hold: bool, stop: bool,
         "iter": latest.name if latest else "",
         "number": number,
         "started": started,
+        "agent": agent,
         "generating": generating,
         "activity": [],
     }
@@ -3174,24 +3293,29 @@ def build_state() -> dict:
     worklog = _read(WORKLOG)
     lap = latest_lap_info()
     usages = _usages_parallel()
+    plain_queue = _plain_list(queue)
+    choices = _plain_list(pending_choices(queue, miles, decisions, extra))
+    stuck = _plain_list(stuck_items(status, flags))
+    completed = _plain_list(completed_posts(status))
     return {
         "updated": parse_updated(status),
-        "queue": _plain_list(queue),
+        "queue": plain_queue,
         "queue_table": _plain_list(table),
         "results": _plain_list(parse_results(status), "body"),
         "milestones": _plain_list(miles),
         "inbox": inbox_box,
         "checks": checks,
         "decisions": decisions,
-        "choices": _plain_list(pending_choices(queue, miles, decisions, extra)),
+        "choices": choices,
         "loop": flags,
+        "overview": build_overview(flags, plain_queue, completed, stuck, choices),
         "commits": recent_commits(),
         "push": {"branch": git.get("branch", ""), "ahead": git.get("ahead", 0)},
         "git": git,
         "sync": git_sync_status(),
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
         "slice": _plain_list(slice_checks(status, design, _read(GAME_DESIGN))),
-        "stuck": _plain_list(stuck_items(status, flags)),
+        "stuck": stuck,
         "blockers": _plain_list(parse_blockers(status)),
         "worklog": _plain_list(parse_worklog_todos(worklog)),
         "lap": lap,
@@ -3202,7 +3326,7 @@ def build_state() -> dict:
         "council": council_info(),
         "proposals": proposals_info(),
         "keeper": keeper_info(),
-        "completed": _plain_list(completed_posts(status)),
+        "completed": completed,
         "playtest": playtest_state(),
         "grok": usages.get("grok", {}),
         "claude": usages.get("claude", {}),

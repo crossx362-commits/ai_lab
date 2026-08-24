@@ -87,6 +87,22 @@
   .cmd .when { min-width: 0; }
   .cmd .src { color: var(--gold); font-size: 12px; }
   .cmd.done .t { color: var(--ok); }
+  /* 검증 항목은 긴 목록 대신 작은 바둑판으로 배치해 세로 공간을 아낀다. */
+  #tests.cmd-list {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px; align-items: stretch;
+  }
+  #tests.cmd-list .cmd {
+    display: block; min-width: 0; padding: 9px 10px;
+    border: 1px solid var(--line); border-radius: 8px; background: #16130f;
+  }
+  #tests.cmd-list .cmd:first-of-type { border-top: 1px solid var(--line); padding-top: 9px; }
+  #tests.cmd-list .cmd .src { display: block; margin-bottom: 4px; }
+  #tests.cmd-list .cmd .t { line-height: 1.35; }
+  #tests.cmd-list .cmd .d { margin-top: 3px; color: var(--muted); line-height: 1.35; }
+  @media (max-width: 600px) {
+    #tests.cmd-list { grid-template-columns: 1fr; }
+  }
   .queue-top { margin: 14px 24px 0; }
   .empty { color: var(--muted); font-size: 13px; }
   .banner {
@@ -169,6 +185,8 @@
   .d-card.wide { grid-column: 1 / -1; max-height: 260px; }
   .d-card.tall { max-height: 420px; }
   .d-card.err-card { border-color: var(--stop); }
+  /* 접힌 상세 카드는 같은 행의 긴 카드 높이를 따라가지 않게 한다. */
+  .detail-grid > .d-card.sec-collapsed { align-self: start; min-height: 0; }
 
   .handoff-flow {
     display: grid; gap: 6px; margin: 0 0 10px;
@@ -280,10 +298,20 @@
   /* ── 한눈에: 스크롤 없이 한 화면 ── */
   .glance {
     margin: 12px 24px 0; display: grid; gap: 12px;
-    grid-template-columns: 1.35fr .95fr 1fr;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, .75fr);
+    align-items: start;
   }
-  @media (max-width: 1100px) { .glance { grid-template-columns: 1fr; margin: 12px 14px 0; } }
+  .overview-column { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  @media (max-width: 980px) {
+    .glance { display: flex; flex-direction: column; margin: 12px 14px 0; }
+    .overview-column { display: contents; }
+    #g-now { order: 1; }
+    #g-next-card { order: 2; }
+    #g-attention-card { order: 3; }
+    #g-status-card { order: 4; }
+    #g-recent-card { order: 5; }
+    .g-road { order: 6; }
+  }
   .g-card {
     background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
     padding: 12px 14px 10px; min-width: 0; box-sizing: border-box;
@@ -302,8 +330,20 @@
   .git-head-actions button { min-height: 44px; padding: 8px 10px; }
   #btn-git-sync { min-height: 44px; padding: 8px 12px; flex: none; }
   .g-card.idle h3 { color: var(--muted); }
-  .g-now { font-size: 19px; font-weight: 700; line-height: 1.35; }
+  .g-now { font-size: clamp(20px, 2vw, 28px); font-weight: 750; line-height: 1.35; word-break: keep-all; overflow-wrap: anywhere; }
   .g-sub { color: var(--muted); font-size: 12px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .focus-copy {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px; margin-top: 14px;
+  }
+  .focus-copy > div {
+    padding: 10px 11px; border: 1px solid var(--line); border-radius: 9px;
+    background: #16130f; min-width: 0;
+  }
+  .focus-copy .lab { display: block; margin-bottom: 4px; color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+  .focus-copy p { margin: 0; color: #d8cfbf; font-size: 13px; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; }
+  .g-log-details { margin-top: 10px; }
+  .g-log-details summary { color: var(--muted); font-size: 11.5px; cursor: pointer; }
   .dot {
     width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none;
     animation: pulse 1.6s ease-in-out infinite;
@@ -314,9 +354,9 @@
   .g-log {
     margin-top: 10px; white-space: pre-wrap; font: 11.5px/1.5 ui-monospace, Menlo, monospace;
     color: #cfc4b0; background: #100e0c; border-radius: 8px; padding: 8px 10px;
-    max-height: 132px; overflow: auto;
+    max-height: 132px; overflow: auto; overflow-wrap: anywhere;
   }
-  .g-stuck { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .g-stuck { margin-top: 0; }
   .fixbtn {
     background: transparent; color: var(--hold); border: 1px solid var(--hold);
     border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 650;
@@ -325,15 +365,22 @@
   .fixbtn:disabled { opacity: .45; }
   .fixbtn.done { color: var(--ok); border-color: var(--ok); }
   .g-stuck .g-row .t { color: var(--stop); }
-  .g-list { display: flex; flex-direction: column; gap: 8px; }
-  .g-row { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; }
+  .g-list { display: flex; flex-direction: column; gap: 7px; }
+  .g-row { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; min-width: 0; }
   .g-row .n { color: var(--gold); font-variant-numeric: tabular-nums; }
   .g-row .t { flex: 1; min-width: 0; }
+  .g-row .d { color: var(--muted); font-size: 11.5px; line-height: 1.4; margin-top: 2px; word-break: keep-all; overflow-wrap: anywhere; }
   .g-row.dim .t { color: var(--muted); }
+  .attention-group + .attention-group { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); }
+  .attention-label { margin-bottom: 6px; color: var(--muted); font-size: 11px; letter-spacing: .04em; }
+  #g-human .n { color: var(--hold); }
   .g-mini { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .g-mini .pill { font-size: 11.5px; }
   .g-bars .bar-row { grid-template-columns: 92px 1fr 34px; margin: 5px 0; }
-  .g-kv { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 13px; margin-top: 8px; }
+  .g-kv {
+    display: grid; grid-template-columns: max-content max-content;
+    justify-content: start; gap: 2px 8px; font-size: 13px; margin-top: 8px;
+  }
   .g-kv span { color: var(--muted); }
   .g-kv b { font-weight: 650; font-variant-numeric: tabular-nums; }
   .g-kv b.ok { color: var(--ok); }
@@ -409,7 +456,7 @@
   .g-done .done-row .hash { font-size: 11px; }
   .g-done .done-row .d { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .g-done { max-height: 190px; overflow: auto; }
+  .g-done { overflow: visible; }
   .road-steps {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px;
   }
@@ -459,6 +506,14 @@
   .view-bar { margin: 12px 24px 0; display: flex; gap: 8px; align-items: center; }
   @media (max-width: 1100px) { .view-bar { margin: 12px 14px 0; } }
   body.compact .hide-compact { display: none !important; }
+  body.compact .detail-grid { display: none !important; }
+  body.compact .ops-wrap { display: none !important; }
+  body.compact .g-bars .bar-note,
+  body.compact .g-bars .git-summary-sub,
+  body.compact .g-bars #git-sync-msg:empty { display: none; }
+  body.compact .g-bars .bar-row { margin: 3px 0; }
+  body.compact .g-bars .git-summary { margin-top: 6px; padding-top: 6px; }
+  body.compact .g-bars .git-actions { margin-top: 0; }
   /* 한 화면에서 열고 닫기 — 섹션 머리글 클릭으로 접고 펼친다 */
   h2.sec-toggle, h3.sec-toggle { cursor: pointer; user-select: none; }
   h2.sec-toggle::after, h3.sec-toggle::after {
@@ -481,6 +536,14 @@
   .t { font-weight: 600; }
   .request-top, .view-bar, .charts, .playtest-wrap, .done-wrap, .stuck-box { margin-left: 18px; margin-right: 18px; }
   .request-top { margin-top: 8px; padding: 9px 12px 8px; }
+  #req-box {
+    display: grid; grid-template-columns: minmax(180px, .7fr) minmax(280px, 1.3fr) auto;
+    gap: 7px 9px; align-items: end;
+  }
+  #req-box > h2 { grid-column: 1 / -1; margin-bottom: 0; }
+  #req-box > .row { margin-top: 0; flex-wrap: nowrap; }
+  #req-body { min-height: 38px; height: 38px; resize: none; }
+  #req-title { min-height: 38px; }
   .detail-grid { gap: 10px; }
   .usage-line { padding: 4px 18px; font-size: 12px; gap: 10px; display: flex; flex-wrap: wrap; align-items: baseline; }
   .usage-line .cap { margin-right: 2px; }
@@ -491,6 +554,14 @@
   .d-list .t, .g-list .t, .item .t { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:keep-all; }
   .d-list .d, .item .d { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; color:var(--muted); }
   .item:has(.badge.pass) , .d-list .row.done { opacity:.62; }
+  @media (max-width: 760px) {
+    header { align-items: flex-start; }
+    #updated { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    #req-box { grid-template-columns: 1fr; }
+    #req-box > h2 { grid-column: auto; }
+    #req-box > .row { justify-content: space-between; flex-wrap: wrap; }
+    .focus-copy { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -513,6 +584,71 @@ window.addEventListener("unhandledrejection", (e) => {
   </div>
   <div class="pills" id="pills"></div>
 </header>
+<div class="glance" id="glance">
+  <div class="overview-column overview-main">
+    <section class="g-card live" id="g-now">
+      <h3><span class="dot" id="g-dot"></span><span id="g-phase">현재 작업</span></h3>
+      <div class="g-now" id="g-title">불러오는 중…</div>
+      <div class="focus-copy">
+        <div><span class="lab">왜 하는지</span><p id="g-why">작업 이유를 불러오는 중…</p></div>
+        <div><span class="lab">끝나는 기준</span><p id="g-done-when">확인 기준을 불러오는 중…</p></div>
+      </div>
+      <div class="g-mini" id="g-flags"></div>
+      <div class="g-sub" id="g-sub"></div>
+      <details class="g-log-details">
+        <summary>최근 작업 기록 보기</summary>
+        <pre class="g-log" id="g-log"></pre>
+      </details>
+    </section>
+    <section class="g-card g-bars" id="g-status-card">
+      <div class="g-head">
+        <h3 id="g-stage-title">진행 상태</h3>
+        <div class="git-head-actions" id="git-head-actions">
+          <button class="ghost" id="btn-git-detail" type="button"
+            aria-controls="git-detail-dialog" aria-haspopup="dialog" aria-expanded="false">저장 상태</button>
+          <button id="btn-git-sync" type="button" disabled>동기화</button>
+        </div>
+      </div>
+      <div id="g-stage"></div>
+      <div class="stack" id="g-stack"></div>
+      <div class="legend" id="g-stack-legend"></div>
+      <div class="g-kv" id="g-kv"></div>
+      <div class="git-summary" id="git-summary">
+        <div class="git-summary-main" id="git-summary-main">저장 상태 불러오는 중…</div>
+        <div class="git-summary-sub" id="git-summary-sub"></div>
+        <div class="git-actions">
+          <span class="msg" id="git-sync-msg" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
+    <section class="g-card g-road hide-compact">
+      <h3>전체 로드맵</h3>
+      <div class="road-steps" id="g-road"></div>
+      <div class="weeks" id="g-weeks"></div>
+    </section>
+  </div>
+  <div class="overview-column overview-side">
+    <section class="g-card" id="g-next-card">
+      <h3>다음 작업</h3>
+      <div class="g-list" id="g-queue"></div>
+    </section>
+    <section class="g-card" id="g-attention-card">
+      <h3>막힌 일 · 사람 확인 필요</h3>
+      <div class="attention-group" id="g-blocked-group">
+        <div class="attention-label">막힌 일</div>
+        <div class="g-list g-stuck" id="g-stuck"></div>
+      </div>
+      <div class="attention-group" id="g-human-group">
+        <div class="attention-label">사람이 확인할 일</div>
+        <div class="g-list" id="g-human"></div>
+      </div>
+    </section>
+    <section class="g-card g-done" id="g-recent-card">
+      <h3>최근 끝낸 일 <span class="meta" id="g-done-meta"></span></h3>
+      <div id="g-done-list"></div>
+    </section>
+  </div>
+</div>
 <div class="usage-line" id="usage-box">불러오는 중…</div>
 <div class="usage-line" id="ops-box"></div>
 <section class="request-top" id="req-box">
@@ -525,70 +661,11 @@ window.addEventListener("unhandledrejection", (e) => {
     <span class="msg" id="req-msg"></span>
   </div>
 </section>
-<div class="glance" id="glance">
-  <section class="g-card live" id="g-now">
-    <h3><span class="dot" id="g-dot"></span><span id="g-phase">지금</span></h3>
-    <div class="g-now" id="g-title">불러오는 중…</div>
-    <div class="g-sub" id="g-sub"></div>
-    <div class="g-log" id="g-log"></div>
-  </section>
-  <section class="g-card">
-    <h3>다음 할 일</h3>
-    <div class="g-list" id="g-queue"></div>
-    <div class="g-list g-stuck" id="g-stuck"></div>
-    <div class="g-mini" id="g-flags"></div>
-  </section>
-  <section class="g-card g-bars">
-    <div class="g-head">
-      <h3 id="g-stage-title">진행</h3>
-      <div class="git-head-actions" id="git-head-actions">
-        <button class="ghost" id="btn-git-detail" type="button"
-          aria-controls="git-detail-dialog" aria-haspopup="dialog" aria-expanded="false">Git 상세</button>
-        <button id="btn-git-sync" type="button" disabled>깃 동기화</button>
-      </div>
-    </div>
-    <div id="g-stage"></div>
-    <div class="stack" id="g-stack"></div>
-    <div class="legend" id="g-stack-legend"></div>
-    <div class="g-kv" id="g-kv"></div>
-    <div class="git-summary" id="git-summary">
-      <div class="git-summary-main" id="git-summary-main">Git 상태 불러오는 중…</div>
-      <div class="git-summary-sub" id="git-summary-sub"></div>
-      <div class="git-actions">
-        <span class="msg" id="git-sync-msg" role="status" aria-live="polite"></span>
-      </div>
-    </div>
-  </section>
-  <section class="g-card g-road">
-    <h3>전체 로드맵</h3>
-    <div class="road-steps" id="g-road"></div>
-    <div class="weeks" id="g-weeks"></div>
-  </section>
-  <section class="g-card g-done">
-    <h3>완료된 일 <span class="meta" id="g-done-meta"></span></h3>
-    <div id="g-done-list"></div>
-  </section>
-</div>
 
 <div class="detail-grid" id="detail-grid">
   <section class="d-card tall">
-    <h3>앞으로 할 일 전체 목록</h3>
+    <h3>우선순위 순서 · 앞으로 할 일</h3>
     <div class="d-list" id="d-queue"></div>
-  </section>
-  <section class="d-card wide" id="d-handoff-card">
-    <h3>작업 넘겨받기 흐름 <span class="meta" id="d-handoff-meta"></span></h3>
-    <div class="handoff-flow" id="d-handoff-flow">
-      <div class="step"><span class="n">1</span><span class="t">준호 작업 완료 보고(커밋·파일·검사)</span></div>
-      <div class="step"><span class="n">2</span><span class="t">보드 → 루프검수 검토 (PROMPT.md ①④⑤)</span></div>
-      <div class="step"><span class="n">3</span><span class="t">PASS → 보드만 STATUS.md 갱신 → 다음 할 일 1개 준호 배정</span></div>
-      <div class="step"><span class="n">4</span><span class="t">FAIL → STATUS 미갱신 → 기획검증(원인·수정안) → 준호</span></div>
-    </div>
-    <div class="handoff-badges" id="d-handoff-badges"></div>
-    <div class="d-list" id="d-handoff"></div>
-  </section>
-  <section class="d-card tall">
-    <h3>아직 안 한 것들</h3>
-    <div class="d-list" id="d-worklog"></div>
   </section>
   <section class="d-card tall" id="d-lap-card">
     <h3>방금 끝난 자동 작업 <span class="meta" id="d-lap-meta"></span></h3>
@@ -603,12 +680,27 @@ window.addEventListener("unhandledrejection", (e) => {
     <div class="d-list" id="d-gates"></div>
   </section>
   <section class="d-card">
+    <h3>온 요청함</h3>
+    <div class="d-list" id="d-inbox"></div>
+  </section>
+  <section class="d-card tall">
+    <h3>아직 안 한 것들</h3>
+    <div class="d-list" id="d-worklog"></div>
+  </section>
+  <section class="d-card">
     <h3>최근 완료</h3>
     <div class="d-list" id="d-completed"></div>
   </section>
-  <section class="d-card">
-    <h3>온 요청함</h3>
-    <div class="d-list" id="d-inbox"></div>
+  <section class="d-card wide" id="d-handoff-card">
+    <h3>작업 넘겨받기 흐름 <span class="meta" id="d-handoff-meta"></span></h3>
+    <div class="handoff-flow" id="d-handoff-flow">
+      <div class="step"><span class="n">1</span><span class="t">준호 작업 완료 보고(커밋·파일·검사)</span></div>
+      <div class="step"><span class="n">2</span><span class="t">보드 → 루프검수 검토 (PROMPT.md ①④⑤)</span></div>
+      <div class="step"><span class="n">3</span><span class="t">PASS → 보드만 STATUS.md 갱신 → 다음 할 일 1개 준호 배정</span></div>
+      <div class="step"><span class="n">4</span><span class="t">FAIL → STATUS 미갱신 → 기획검증(원인·수정안) → 준호</span></div>
+    </div>
+    <div class="handoff-badges" id="d-handoff-badges"></div>
+    <div class="d-list" id="d-handoff"></div>
   </section>
   <section class="d-card">
     <h3>AI 사용량</h3>
@@ -1080,9 +1172,9 @@ async function loadGitDetail(force = false) {
 
 
 function renderDetail(state) {
-  const q = state.queue || [];
+  const q = (state.overview && state.overview.queue) || state.queue || [];
   $("d-queue").innerHTML = q.length ? q.map((it, i) =>
-    `<div class="row"><span class="n">${it.n || i+1}</span><span class="t">${esc(it.title)}</span>`
+    `<div class="row"><span class="n">${i + 1}</span><span class="t">${esc(it.title)}</span>`
     + (it.detail ? `<span class="d">${esc(it.detail)}</span>` : "") + `</div>`
   ).join("") : '<p class="empty">큐 비어 있음</p>';
 
@@ -1234,54 +1326,66 @@ function renderDetail(state) {
 function renderGlance(state) {
   const L = state.loop || {};
   const now = L.now || {};
+  const overview = state.overview || {};
+  const current = overview.current || {};
   const c = state.charts || {};
-  const working = now.phase === "작업 중";
+  const working = (current.phase || now.phase) === "작업 중";
   const fresh = (L.log_age_sec != null) && L.log_age_sec < 900;
   $("g-now").classList.toggle("live", working);
   $("g-now").classList.toggle("idle", !working);
   const dot = $("g-dot");
   dot.className = "dot" + (working && fresh ? "" : (L.running ? " warn" : " off"));
-  $("g-phase").textContent = working
-    ? ("작업 중" + (now.number ? " · #" + now.number : ""))
-    : (now.phase || "지금");
-  $("g-title").textContent = now.title || "상태 없음";
+  const agentName = String(now.agent || "").replace(/^[a-z]/, (ch) => ch.toUpperCase());
+  $("g-phase").textContent = (working
+    ? "현재 작업 · 진행 중"
+    : (current.phase || now.phase || "현재 작업"))
+    + (working && agentName ? " · " + agentName : "");
+  $("g-title").textContent = current.title || now.title || "다음 일을 고르는 중";
+  $("g-why").textContent = current.why || "다음 개발 단계를 이어가기 위해 필요한 일을 처리하고 있어요.";
+  $("g-done-when").textContent = current.done_when || "결과를 직접 확인하고 관련 검사가 통과하면 끝나요.";
   $("g-sub").textContent = [
     now.started ? "시작 " + now.started : "",
-    L.log_at ? "로그 " + L.log_at + " (" + ago(L.log_age_sec) + ")" : "",
-    L.latest_iter || "",
+    L.log_at ? "최근 움직임 " + L.log_at + " · " + ago(L.log_age_sec) : "",
   ].filter(Boolean).join(" · ");
   $("g-log").textContent = (L.log_tail || "(로그 없음)").split("\n").slice(-8).join("\n");
   $("g-log").scrollTop = $("g-log").scrollHeight;
 
-  const q = (state.queue || []).slice(0, 6);
+  const q = overview.next || state.queue || [];
   $("g-queue").innerHTML = q.length ? q.map((it, i) => `
-    <div class="g-row${i ? " dim" : ""}"><span class="n">${it.n || i + 1}</span>
-    <span class="t">${esc(it.title)}</span></div>`).join("")
-    : '<p class="empty">큐 비었음</p>';
-  const stuckItems = state.stuck || [];
-  const shownStuck = stuckItems.slice(0, 3);
-  const stuckMore = stuckItems.length - shownStuck.length;
+    <div class="g-row"><span class="n">${i + 1}</span>
+    <div class="t">${esc(it.title)}${it.detail ? `<div class="d">${esc(it.detail)}</div>` : ""}</div></div>`).join("")
+    : '<p class="empty">새로 잡힌 다음 작업이 없어요.</p>';
+  $("g-next-card").classList.toggle("sec-empty", !q.length);
+
+  const shownStuck = overview.blocked || state.stuck || [];
   const stuckEl = $("g-stuck");
   if (stuckEl) {
-    stuckEl.style.display = shownStuck.length ? "" : "none";
     stuckEl.innerHTML = shownStuck.map((it) =>
-      `<div class="g-row"><span class="t">${esc(it.title)}</span>`
+      `<div class="g-row"><span class="n">!</span><div class="t">${esc(it.title)}`
+      + (it.detail ? `<div class="d">${esc(it.detail)}</div>` : "") + `</div>`
       + `<button class="fixbtn" data-fix="${esc(it.title)}"`
       + ` data-why="${esc(it.detail || "")}">해결 요청</button></div>`).join("")
-      + (stuckMore > 0 ? `<div class="g-row dim"><span class="t">외 ${stuckMore}개</span></div>` : "");
+      || '<p class="empty">막힌 일 없음</p>';
   }
-  const stuck = stuckItems.length;
+  const humanItems = overview.needs_human || state.choices || [];
+  $("g-human").innerHTML = humanItems.length ? humanItems.map((it) =>
+    `<div class="g-row"><span class="n">확인</span><div class="t">${esc(it.title)}`
+    + (it.detail ? `<div class="d">${esc(it.detail)}</div>` : "") + `</div></div>`
+  ).join("") : '<p class="empty">사람 확인이 필요한 일 없음</p>';
+  $("g-blocked-group").style.display = shownStuck.length ? "" : "none";
+  $("g-human-group").style.display = humanItems.length ? "" : "none";
+  $("g-attention-card").classList.toggle("sec-empty", !shownStuck.length && !humanItems.length);
+
+  const stuck = shownStuck.length;
   const waiting = ((state.inbox || {}).waiting || []).length;
   const lapId = (state.lap && state.lap.id) || "";
   $("g-flags").innerHTML = [
-    L.running ? '<span class="pill ok">running</span>' : '<span class="pill bad">꺼짐</span>',
-    L.stop ? '<span class="pill bad">STOP</span>' : "",
-    L.hold ? '<span class="pill bad">HOLD</span>' : "",
-    `<span class="pill">agent ${esc(L.agent || "?")}</span>`,
-    L.latest_iter ? `<span class="pill">${esc(L.latest_iter)}</span>` : "",
-    lapId ? `<span class="pill on">바퀴 ${esc(lapId)}</span>` : "",
-    stuck ? `<span class="pill bad">막힌 것 ${stuck}</span>` : "",
-    waiting ? `<span class="pill on">대기 지시 ${waiting}</span>` : "",
+    L.running ? '<span class="pill ok">자동 작업 진행 중</span>' : '<span class="pill bad">자동 작업 꺼짐</span>',
+    L.stop ? '<span class="pill bad">정지됨</span>' : "",
+    L.hold ? '<span class="pill bad">잠시 멈춤</span>' : "",
+    lapId ? '<span class="pill on">한 바퀴 작업 중</span>' : "",
+    stuck ? `<span class="pill bad">막힌 일 ${stuck}건</span>` : "",
+    waiting ? `<span class="pill on">새 요청 ${waiting}건</span>` : "",
   ].filter(Boolean).join("");
 
   const cur = c.current || {};
@@ -1334,15 +1438,16 @@ function renderGlance(state) {
   if (doneEl) {
     const whenOf = {};
     (state.commits || []).forEach((c) => { whenOf[c.hash] = c.when; });
-    const rows = (state.results || []).slice(0, 6);
-    $("g-done-meta").textContent = rows.length ? `최근 ${rows.length}건` : "";
+    const rows = overview.recent || state.completed || state.results || [];
+    $("g-done-meta").textContent = rows.length ? `${rows.length}건` : "";
     doneEl.innerHTML = rows.length ? rows.map((r) => `
       <div class="done-row">
         <span class="t">${esc(r.title)}</span>
         <span>${r.commit ? `<span class="hash">${esc(r.commit)}</span>` : ""}
           <span class="meta">${esc(whenOf[r.commit] || "")}</span></span>
-        ${r.body ? `<span class="d">${esc(r.body.slice(0, 90))}</span>` : ""}
+        ${r.detail ? `<span class="d">${esc(r.detail)}</span>` : ""}
       </div>`).join("") : '<p class="empty">기록 없음</p>';
+    $("g-recent-card").classList.toggle("sec-empty", !rows.length);
   }
 
   const t = state.tests || {};
@@ -1472,7 +1577,9 @@ function hideEmptySections() {
 
 /* 한 화면에서 열고 닫기 — 머리글 클릭으로 접고 펼친다. 상태는 저장한다 */
 function initCollapse() {
-  const ALWAYS_OPEN = new Set(["req-box", "g-now"]);
+  const ALWAYS_OPEN = new Set([
+    "req-box", "g-now", "g-status-card", "g-next-card", "g-attention-card", "g-recent-card",
+  ]);
   document.querySelectorAll("section").forEach((sec) => {
     if (sec.closest("dialog") || ALWAYS_OPEN.has(sec.id)) return;
     const head = sec.querySelector(":scope > h2, :scope > h3");
@@ -1482,7 +1589,7 @@ function initCollapse() {
     let saved = null;
     try { saved = localStorage.getItem(key); } catch (e) {}
     if (saved === null) {
-      // 기본값(한 화면 철칙): 지금·큐·바퀴·핸드오프만 펼치고 나머지는 접는다
+      // 기본값(한 화면 철칙): 핵심 요약은 위에서 항상 열고, 운영 상세만 접는다.
       const open = sec.classList.contains("live")
         || !!sec.querySelector("#d-queue, #d-lap, #d-handoff-flow");
       try { localStorage.setItem(key, open ? "0" : "1"); } catch (e) {}
@@ -1609,7 +1716,7 @@ async function refresh(force = false) {
   const run = (async () => {
     let state;
     if (!force && window.__STATE__) {
-      state = window.__STATE__;
+      state = window.__STATE__;   // 첫 화면은 서버가 심어 준 상태로 즉시 렌더
       window.__STATE__ = null;
     } else {
       state = await api("/api/state");
