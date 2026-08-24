@@ -29,6 +29,7 @@ namespace AshesToStars
             : GhAnchor.ShowQa ? GhAnchor.Line()
             : TierMul.ShowQa ? TierMul.Line()
             : BurnTarget.ShowQa ? BurnTarget.Line()
+            : MoveSpd.ShowQa ? MoveSpd.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -91,6 +92,7 @@ namespace AshesToStars
             SeedGhAnchorQaIfRequested();
             SeedTierMulQaIfRequested();
             SeedBurnTargetQaIfRequested();
+            SeedMoveSpdQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -345,6 +347,11 @@ namespace AshesToStars
                         string summonCap = SummonCap.Line();
                         if (!string.IsNullOrEmpty(summonCap))
                             stats = string.IsNullOrEmpty(stats) ? summonCap : stats + " · " + summonCap;
+                        // §18-11 플레이어 이동속도 — 맨 뒤면 r.yMax를 넘겨 안 보인다(소환수 상한 실측).
+                        // StatLine 우선존에 붙여 패널이 꽉 차도 보이게 한다. QA_NO면 빈 문자열.
+                        string spd = MoveSpd.Line();
+                        if (!string.IsNullOrEmpty(spd))
+                            stats = string.IsNullOrEmpty(stats) ? spd : stats + " · " + spd;
                         if (!string.IsNullOrEmpty(stats)) { Info(r, statusMax + 1, stats); statusMax += 1; }
 
                         // §5 이동기 프로필(형태·거리·무적·쿨) + §4 사망 리스크 + §6 자동사냥을 한 행에.
@@ -903,6 +910,19 @@ namespace AshesToStars
         {
             BurnTarget.SeedQaIfRequested();
             if (!BurnTarget.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            int pick = 0;
+            for (int i = 0; i < roster.Count; i++)
+                if (!roster[i].IsDeleted) { pick = i; break; }
+            _selectedCharacter = pick;
+            _detailPage = 1;
+        }
+
+        void SeedMoveSpdQaIfRequested()
+        {
+            MoveSpd.SeedQaIfRequested();
+            if (!MoveSpd.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             int pick = 0;

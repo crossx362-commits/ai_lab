@@ -19,7 +19,7 @@ namespace AshesToStars
         [Tooltip("총 유입 대비 소각 목표(%). 소비처: BurnTarget.Range → 속성 탭 줄")] public Vector2 소각목표 = new Vector2(45f, 55f);
 
         [Header("플레이어")]
-        public float 플레이어이동속도 = 4.2f;
+        [Tooltip("초당 유닛. 소비처: MoveSpd.Units → 속성 탭 줄. 잡몹 속도 배율의 기준(§18-11)")] public float 플레이어이동속도 = 4.2f;
 
         [Header("사망 (§4·§18-8)")]
         public int 사망상한 = 3;
