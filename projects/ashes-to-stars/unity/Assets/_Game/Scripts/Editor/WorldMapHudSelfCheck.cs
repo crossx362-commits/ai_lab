@@ -48,6 +48,18 @@ namespace AshesToStars
                 $"도크 칸 폭 {slim[0].width:0} 가로 카드");
             Check(WorldMapHud.Line().Contains("가리지 않는다"),
                 $"줄 (실제 {WorldMapHud.Line()})");
+            Check(WorldMapHud.Line().Contains("내비"),
+                $"줄에 내비 (실제 {WorldMapHud.Line()})");
+
+            // GameScreen 본문 yMax=640. OldBodyH=540 상자는 내비(636) 위라 겹침이 안 잡힌다.
+            var hub = new Rect(36f, 56f, 1208f, 720f - 56f - UiPages.NavReserve);
+            var hubCards = WorldMapHud.Cards(hub);
+            float dockBottom = hubCards[hubCards.Length - 1].yMax;
+            float navTop = WorldMapHud.NavPlateTop();
+            Check(dockBottom <= navTop - WorldMapHud.NavGap + 0.01f,
+                $"도크 아랫변 {dockBottom:0} ≤ 내비-간격 {navTop - WorldMapHud.NavGap:0}");
+            Check(navTop - dockBottom >= 10f,
+                $"도크-내비 간격 {navTop - dockBottom:0} ≥ 10 (전폭 카드가 내비와 한 덩어리가 되지 않게)");
 
             Environment.SetEnvironmentVariable(WorldMapHud.EnvNo, "1");
             Check(WorldMapHud.Blocked, "QA_NO면 차단");
@@ -56,6 +68,9 @@ namespace AshesToStars
             var old = WorldMapHud.Cards(body);
             Check(old[0].height > 150f, $"차단 칸 {old[0].height:0} 전폭 카드");
             Check(old[0].y < body.y + 100f, "차단하면 본문 위에서 시작");
+            var oldHub = WorldMapHud.Cards(hub);
+            Check(oldHub[oldHub.Length - 1].yMax > WorldMapHud.NavPlateTop() - 1f,
+                $"차단 아랫변 {oldHub[oldHub.Length - 1].yMax:0} 이 내비와 겹친다");
             Check(WorldMapHud.Line().Contains("가린다"),
                 $"차단 줄 (실제 {WorldMapHud.Line()})");
             Environment.SetEnvironmentVariable(WorldMapHud.EnvNo, null);
@@ -76,6 +91,11 @@ namespace AshesToStars
                 "옛 AfterPlate 2×2 Grid를 안 쓴다");
             Check(!map.Contains("UiPages.Grid(r, 2, 2"),
                 "본문 2×2 전폭 Grid를 안 쓴다");
+            Check(map.Contains("WorldMapHud.Dock"),
+                "탐험 필드가 Dock.y를 읽는다 (r.yMax-DockH 금지)");
+            string hud = File.ReadAllText(Path.Combine(runtime, "WorldMapHud.cs"));
+            Check(hud.Contains("NavPlateTop"),
+                "도크가 NavPlateTop을 읽는다 (body.yMax 붙이기 금지)");
 
             Environment.SetEnvironmentVariable(WorldMapHud.EnvShow, show);
             Environment.SetEnvironmentVariable(WorldMapHud.EnvNo, no);
