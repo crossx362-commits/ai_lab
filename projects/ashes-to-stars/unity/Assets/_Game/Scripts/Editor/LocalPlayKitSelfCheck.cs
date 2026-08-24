@@ -77,6 +77,7 @@ namespace AshesToStars
             Check(GameState.Bag.GetCount(Economy.LifeItem.CraftHide) >= 30, "가죽 30");
             Check(GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) >= 40, "전직 재료 40");
             Check(LocalPlayKit.Line.Contains("로컬 테스트"), "타이틀에 시드 줄");
+            Check(TitleScreen.LocalKitLine().Contains("로컬 테스트"), "타이틀 표시 줄");
 
             var body = new Rect(GameScreen.BodyPadX, GameScreen.BodyTop,
                 1280f - GameScreen.BodyPadX * 2f, 720f - GameScreen.BodyTop - 36f);

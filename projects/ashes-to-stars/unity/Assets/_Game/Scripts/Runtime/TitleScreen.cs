@@ -21,6 +21,14 @@ namespace AshesToStars
             return new Rect(body.x, body.yMax - 22f, blocked ? body.width : body.width * 0.54f, 20f);
         }
 
+        public static string LocalKitLine()
+        {
+            if (!string.IsNullOrEmpty(LocalPlayKit.Line)) return LocalPlayKit.Line;
+            return System.Environment.GetEnvironmentVariable(LocalPlayKit.EnvShow) == "1"
+                ? "로컬 테스트 · 타이틀 안내 배치 QA"
+                : "";
+        }
+
         protected override void Awake()
         {
             base.Awake();
@@ -39,8 +47,9 @@ namespace AshesToStars
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
             StarterPick.SeedQaIfRequested();
-            if (!string.IsNullOrEmpty(LocalPlayKit.Line))
-                Hint(LocalKitRect(r), LocalPlayKit.Line);
+            string localKitLine = LocalKitLine();
+            if (!string.IsNullOrEmpty(localKitLine))
+                Hint(LocalKitRect(r), localKitLine);
             if (StarterPick.Open)
             {
                 DrawStarterPick(r);
