@@ -3,9 +3,9 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 05:55 · 잡몹 피해(`fc2499d8`). 사람 관문 더미 유지
-마지막 트랙: 소비처0 — §18-11 잡몹 피해비율. `MobDmg`가 읽고 속성 탭·던전 부제가 소비. QA_NO면 옛 0.03·줄 없음
-폴리싱 다음: 잡몹 피해 닫음(`fc2499d8`). 직전=코드라 다음은 UI 폴리싱 1건
+최종 갱신: 2026-08-25 07:27 · 월드맵 탐험 캡션 중복 제거(`b11cfdcf`). 사람 관문 더미 유지
+마지막 트랙: UI 폴리싱 — 헤더가 탐험 Line을 가진 엘프/QA에서는 별 필드 캡션을 비움. 인간은 기존 캡션 유지. QA_NO_EXPLORE_DUP면 옛 중복
+폴리싱 다음: 월드맵 탐험 캡션 닫음(`b11cfdcf`). 직전=폴리싱이라 다음은 소비처0 재스캔 1건
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
