@@ -24,7 +24,7 @@ namespace AshesToStars
         [Header("사망 (§4·§18-8)")]
         public int 사망상한 = 3;
         public float PvE회복시간 = 24f;
-        public float PvP회복시간 = 12f;
+        [Tooltip("PvP 사망 회복(시간). 소비처: PvpRecover.Hours → LifeSystem.PvpRecoverSeconds · 속성 탭 줄")] public float PvP회복시간 = 12f;
         public int 부활초소지상한 = 3;
 
         [Header("성능 예산 (§10-9)")]

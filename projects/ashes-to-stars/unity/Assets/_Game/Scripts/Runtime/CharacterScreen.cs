@@ -25,6 +25,7 @@ namespace AshesToStars
             : EquipLevel.ShowQa ? EquipLevel.Line()
             : ReviveCap.ShowQa ? ReviveCap.Line()
             : DeathCap.ShowQa ? DeathCap.Line()
+            : PvpRecover.ShowQa ? PvpRecover.Line()
             : ProjCap.ShowQa ? ProjCap.Line()
             : GhAnchor.ShowQa ? GhAnchor.Line()
             : TierMul.ShowQa ? TierMul.Line()
@@ -86,6 +87,7 @@ namespace AshesToStars
             SeedRaceDurabilityQaIfRequested();
             SeedReviveCapQaIfRequested();
             SeedDeathCapQaIfRequested();
+            SeedPvpRecoverQaIfRequested();
             SeedPerfCapQaIfRequested();
             SeedSummonCapQaIfRequested();
             SeedProjCapQaIfRequested();
@@ -505,7 +507,11 @@ namespace AshesToStars
                         string teaCap = ReviveCap.Line();
                         if (!string.IsNullOrEmpty(teaCap)) Info(r, advancementRow++, teaCap);
                         // §4 BalanceConfig.사망상한 — DeathCap.Line. QA_NO면 빈 문자열.
+                        // §4 BalanceConfig.PvP회복시간 — PvpRecover.Line. 같은 행(잘림 방지).
                         string deathCap = DeathCap.Line();
+                        string pvpRec = PvpRecover.Line();
+                        if (!string.IsNullOrEmpty(pvpRec))
+                            deathCap = string.IsNullOrEmpty(deathCap) ? pvpRec : deathCap + " · " + pvpRec;
                         if (!string.IsNullOrEmpty(deathCap)) Info(r, advancementRow++, deathCap);
                         // §10-9 BalanceConfig.잡몹상한·투사체상한 — 한 행. QA_NO면 빈 문자열.
                         // 투사체를 맨 뒤 단독 행에 두면 r.yMax를 넘겨 안 보인다(소환수 상한 실측).
@@ -834,6 +840,16 @@ namespace AshesToStars
         {
             DeathCap.SeedQaIfRequested();
             if (!DeathCap.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            _selectedCharacter = 0;
+            _detailPage = 1;
+        }
+
+        void SeedPvpRecoverQaIfRequested()
+        {
+            PvpRecover.SeedQaIfRequested();
+            if (!PvpRecover.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             _selectedCharacter = 0;

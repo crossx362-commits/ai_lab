@@ -938,8 +938,8 @@ namespace AshesToStars
             return true;
         }
 
-        /// <summary>침략 보호막과 같은 12시간(§15). 한쪽만 바꾸면 무방비 창이 생긴다.</summary>
-        public static long PvpRecoverSeconds() => InvasionState.DefenseRecoverSeconds;
+        /// <summary>§4 BalanceConfig.PvP회복시간. QA_NO면 옛 12시간(InvasionState.DefenseRecoverSeconds).</summary>
+        public static long PvpRecoverSeconds() => PvpRecover.Seconds();
 
         /// <summary>
         /// PvE 사망 회복 초(§3·§18-8). RaceDef.회복시간을 읽는다.
