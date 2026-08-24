@@ -19,13 +19,30 @@
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
-| 개발 직렬 | 티어1시간당골드 닫음 | 투사체상한 `89e7136d` · 시간당골드 `12e3e0b4`(GhAnchor·QA_NO). `W3Party` 금지 |
+| 개발 직렬 | 티어배율 닫음 | 시간당골드 `12e3e0b4` · 티어배율 `9de769f8`(TierMul·QA_NO). `W3Party` 금지 |
 | VFX §6-P1#5 대시 잔상 | **닫음** | `2cd07dbe` — `fx_dash_trail_0~2` Resources 반입 + `W2Arena` 트레일 풀 8장(0.04s 간격·알파 0.6→0·0.15s·order 210). 샷 쌍 `unity/results/vfx_dash_trail_{on,off}.png` + 네거티브(로드 차단→풀 미생성) PASS. INBOX 21:59 소비 |
-| UI 폴리싱 다음 | 파티 편성 탭 안내줄-내비 닫음 | 스타일 `78ac5212` · 편성 `99f4f2aa` PartyFormHud. 허브 하단바 내비 겹침은 닫힘. 던전은 하단바 없음. 다음은 소비처0 재스캔 |
+| UI 폴리싱 다음 | 파티 편성 탭 안내줄-내비 닫음 | 스타일 `78ac5212` · 편성 `99f4f2aa` PartyFormHud. 허브 하단바 내비 겹침은 닫힘. 던전은 하단바 없음. 직전=코드라 다음 바퀴는 UI 폴리싱 1건 |
 | launchd 자율 루프 | **상시 켜짐**(오너 2026-08-24) | grok · `com.ailab.autonomous_loop`. 한 작업마다 보고·커밋 |
 | 사람 관문 | **더미로 진행**(오너 2026-08-24) | V2 PASS 5/5 · V3 FAIL 3/5 · V4 PASS 10/10 · 관문② PASS 9/10 · 시드 20260823. W2 FAIL은 제외(기준 낮추지 말 것) |
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
+
+## 완료 (2026-08-25) — §18-1 티어배율 소비처 (Grok)
+
+원장 §18-1 앵커 ② 티어당 ×1.6이 BalanceConfig.티어배율로 authored돼
+있으면서도 grep 소비처 0곳이었다. 형제 티어1시간당골드(GhAnchor)는 읽히는데
+Economy.TierRevenueMultiplier만 ×1.6 거듭제곱 표로 죽어 있던 함정.
+`TierMul.Table`이 읽고 필드 골드·행위 비용이 따른다. `QA_NO_TIER_MUL`면 옛 표·줄 없음.
+표시 전용 줄 + 표 소비 — W3Party 무접촉.
+
+샷 `tier_mul_shots/qa_go:Character.png` — 부제 `티어당 ×1.6(§18-1)`.
+네거티브 `qa_negctrl_no_mul.png` — `QA_NO_TIER_MUL=1`이면 기본 부제만.
+코드 `9de769f8`. 다음은 UI 폴리싱 1건(직전=코드).
+
+### 검수
+- `game_compile_check.py` PASS (328소스 0).
+- `unity_meas` batch `TierMulSelfCheck` PASS (`results/tier_mul_selfcheck.log`).
+- 샷 쌍 플레이어 육안 확인. 블렌더 꺼짐(3D 없음). MCP execute_code는 도메인 리로드로 끊김.
 
 ## 완료 (2026-08-25) — 파티 편성 탭 안내줄-내비 (Grok)
 

@@ -211,3 +211,5 @@
 - [2026-08-25 02:14] 관찰: execute_code에서 ScreenCapture.CaptureScreenshot를 연속 호출하면 첫 프레임이 끝나기 전 파일은 같은 바이트를 복제한다(실측 after/equip/equip2 해시 동일 · 3초 뒤 네거는 다른 해시). 카메라 샷은 OnGUI를 못 담아 검다 → 샷마다 플레이 프레임이 지난 뒤 해시가 달라졌는지 확인하고, 같으면 재시도 (우선순위 중)
 - [2026-08-25 02:29] 관찰: GameScreen Body는 NavReserve=80이라 yMax=640인데 내비 플레이트는 636이다. 허브마다 *Hud.Content/Dock에 NavGap 12를 복제했다(필드·월드맵·파티·탑·영지·캐릭터·스타일). 새 화면은 또 4px 겹침으로 시작한다 → GameScreen이 Body를 NavPlateTop-NavGap으로 한 곳에서 자르면 화면별 복제를 끊는다 (우선순위 중)
 - [2026-08-25 02:42] 관찰: Unity MCP manage_camera는 capture_source=game_view여도 camera=Main Camera로 찍어 OnGUI 허브가 검다(실측 첫 neg 27KB 단색). GameView를 Focus한 뒤에야 IMGUI가 담겼다 → 허브 샷 전에 GameView.Focus()를 강제하거나 camera를 생략해 ScreenCapture로 가라 (우선순위 중)
+- [2026-08-25 03:13] 관찰: `qa_shot.sh`가 같은 `GAME_SHOT_DIR`+모드면 ON/NEG가 `qa_${MODE}.png` 한 파일을 덮어쓴다(이번 바퀴에서 ON 1MB를 NEG가 지움 → 복사 후 ON 재촬영). → 네거티브는 찍기 전 ON을 다른 이름으로 옮기거나 `GAME_SHOT_DIR`를 on/neg로 나눠라 (우선순위 중)
+- [2026-08-25 03:13] 관찰: 소비처0 닫힘 목록이 같은 ScriptableObject의 형제 필드를 빠뜨린다(GhAnchor 닫힌 뒤 `BalanceConfig.티어배율`이 0곳인 채 남음). Unity MCP `execute_code`는 새 스크립트 도메인 리로드 중 연결이 끊긴다 → 칸을 닫을 때 같은 파일의 미소비 필드를 같이 grep하고, 시각 검증은 `unity_meas`+`qa_shot`을 기본 경로로 둬라 (우선순위 중)
