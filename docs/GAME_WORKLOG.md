@@ -19,13 +19,29 @@
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
-| 개발 직렬 | 티어배율 닫음 | 시간당골드 `12e3e0b4` · 티어배율 `9de769f8`(TierMul·QA_NO). `W3Party` 금지 |
+| 개발 직렬 | 사냥 편성 내비 닫음 | 시간당골드 `12e3e0b4` · 티어배율 `9de769f8` · 편성 내비 `0a66661f`. `W3Party` 금지 |
 | VFX §6-P1#5 대시 잔상 | **닫음** | `2cd07dbe` — `fx_dash_trail_0~2` Resources 반입 + `W2Arena` 트레일 풀 8장(0.04s 간격·알파 0.6→0·0.15s·order 210). 샷 쌍 `unity/results/vfx_dash_trail_{on,off}.png` + 네거티브(로드 차단→풀 미생성) PASS. INBOX 21:59 소비 |
-| UI 폴리싱 다음 | 파티 편성 탭 안내줄-내비 닫음 | 스타일 `78ac5212` · 편성 `99f4f2aa` PartyFormHud. 허브 하단바 내비 겹침은 닫힘. 던전은 하단바 없음. 직전=코드라 다음 바퀴는 UI 폴리싱 1건 |
+| UI 폴리싱 다음 | 사냥 편성 선택 바-내비 닫음 | 스타일 `78ac5212` · 편성 `99f4f2aa` · 사냥 `0a66661f` HuntPickHud. 허브 하단바 내비 겹침은 닫힘. 던전은 하단바 없음. 직전=폴리싱이라 다음은 소비처0 |
 | launchd 자율 루프 | **상시 켜짐**(오너 2026-08-24) | grok · `com.ailab.autonomous_loop`. 한 작업마다 보고·커밋 |
 | 사람 관문 | **더미로 진행**(오너 2026-08-24) | V2 PASS 5/5 · V3 FAIL 3/5 · V4 PASS 10/10 · 관문② PASS 9/10 · 시드 20260823. W2 FAIL은 제외(기준 낮추지 말 것) |
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
+
+## 완료 (2026-08-25) — 사냥 시작 편성 선택 바-내비 (Grok)
+
+직전 트랙 코드(티어배율) → 필드 사냥 시작 편성 한 결함. 스타트/취소가
+본문 yMax=640에 붙어 내비 플레이트(636)와 겹쳤다. `HuntPickHud.Content`·
+`Actions`가 NavPlateTop-12. `QA_NO_HUNT_PICK_NAV`면 옛 640 겹침.
+표시 전용 — W3Party 무접촉.
+
+샷 `hunt_pick_nav_shots/after.png` — 스타트/취소 금테가 내비 위.
+네거티브 `neg.png` — QA_NO면 금테가 내비 타일에 먹힘.
+코드 `0a66661f`. 다음은 소비처0 재스캔(직전=폴리싱).
+
+### 검수
+- `game_compile_check.py` PASS (330소스 0).
+- `unity_meas` batch `HuntPickHudSelfCheck` PASS (`results/hunt_pick_hud_selfcheck.log` — 아랫변 624 · 간격 12 · 차단 아랫변 640).
+- 샷 쌍 플레이모드 육안 확인. 블렌더 꺼짐(3D 없음).
 
 ## 완료 (2026-08-25) — §18-1 티어배율 소비처 (Grok)
 
