@@ -6,6 +6,8 @@ namespace AshesToStars
     /// <summary>
     /// 탑 허브 HUD. 클래시·킹덤처럼 배경이 보이고 조작은 아래에만 둔다.
     /// 옛 길은 2×2 전폭 카드가 본문 540을 전부 덮었다.
+    /// 도크를 body.yMax에 붙이면 하단 금테가 내비 플레이트(636)와 4px 겹친다
+    /// (실측 2026-08-24 worldmap_hud_nav_shots/before.png와 동형).
     /// QA_NO면 그 옛 겹침. TowerScreen이 읽는다.
     /// </summary>
     public static class TowerHud
@@ -15,6 +17,11 @@ namespace AshesToStars
         public const float OldBodyH = 540f;
         public const float DockH = 200f;
         public const float DockGap = 10f;
+        /// <summary>
+        /// 전폭 2×2 카드는 좌우가 내비 옆으로 빠진다.
+        /// 2px면 금테가 내비 윗변에 붙어 한 덩어리로 읽힌다(필드·월드맵·파티와 동형).
+        /// </summary>
+        public const float NavGap = 12f;
         public const int DockCols = 2;
         public const int DockRows = 2;
         public const int OldCols = 2;
@@ -48,18 +55,31 @@ namespace AshesToStars
 
         public static string Line() => Blocked
             ? "카드가 탑을 가린다"
-            : "HUD는 탑을 가리지 않는다(§16)";
+            : "HUD는 탑을 가리지 않는다 — 도크는 내비 위(§16)";
+
+        /// <summary>내비 플레이트 윗변. 도크 아랫변이 이보다 아래면 금테가 먹힌다(§16).</summary>
+        public static float NavPlateTop(float screenH = 720f) =>
+            UiPages.NavPlateTop(GameFlow.BottomBar.Length, 1280f, screenH);
+
+        /// <summary>
+        /// 새 길 도크 상자. 필드·월드맵·파티와 같이 내비 플레이트 위에 둔다 —
+        /// body.yMax에 붙이면 하단 금테가 도크에 먹힌다(실측 1280×720, 카드 yMax 640 · 플레이트 636).
+        /// </summary>
+        public static Rect Dock(Rect body, float screenH = 720f)
+        {
+            float yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - NavGap);
+            return new Rect(body.x, yMax - DockH, body.width, DockH);
+        }
 
         /// <summary>
         /// 다음 층 · 레이드 · 하위 레이드 · 지갑 순서.
         /// 막히면 옛 2×2 전폭, 아니면 아래 2×2 도크.
         /// </summary>
-        public static Rect[] Cards(Rect body)
+        public static Rect[] Cards(Rect body, float screenH = 720f)
         {
             if (Blocked)
                 return UiPages.Grid(body, OldCols, OldRows, 16f);
-            var dock = new Rect(body.x, body.yMax - DockH, body.width, DockH);
-            return UiPages.Grid(dock, DockCols, DockRows, DockGap);
+            return UiPages.Grid(Dock(body, screenH), DockCols, DockRows, DockGap);
         }
 
         public static void SeedQaIfRequested()
