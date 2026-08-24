@@ -36,6 +36,7 @@ namespace AshesToStars
             : MobHp.ShowQa ? MobHp.Line()
             : MobDmg.ShowQa ? MobDmg.Line()
             : MobShotCadence.ShowQa ? MobShotCadence.Line()
+            : MobProjectileSpeed.ShowQa ? MobProjectileSpeed.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -105,6 +106,7 @@ namespace AshesToStars
             SeedMobHpQaIfRequested();
             SeedMobDmgQaIfRequested();
             SeedMobShotCadenceQaIfRequested();
+            SeedMobProjectileSpeedQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -379,6 +381,9 @@ namespace AshesToStars
                         // §10-2 원거리형 발사 주기. QA_NO면 옛 화면처럼 빈 문자열.
                         string mobShot = MobShotCadence.Line();
                         if (!string.IsNullOrEmpty(mobShot)) { Info(r, statusMax + 1, mobShot); statusMax += 1; }
+                        // §10-2 원거리형 느린 탄속. QA_NO면 옛 화면처럼 빈 문자열.
+                        string mobProjectile = MobProjectileSpeed.Line();
+                        if (!string.IsNullOrEmpty(mobProjectile)) { Info(r, statusMax + 1, mobProjectile); statusMax += 1; }
                         // §4 PvP 회복. 전직 블록 뒤에 두면 r.yMax를 넘겨 안 보인다(플레이모드 실측).
                         // 우선존 단독 행. QA_NO면 빈 문자열.
                         string pvpRec = PvpRecover.Line();
@@ -1041,6 +1046,17 @@ namespace AshesToStars
             if (Environment.GetEnvironmentVariable("QA_TOWER_END") != "1") return;
             TowerEnding.SeedQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
+        }
+
+        void SeedMobProjectileSpeedQaIfRequested()
+        {
+            MobProjectileSpeed.SeedQaIfRequested();
+            if (!MobProjectileSpeed.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            for (int i = 0; i < roster.Count; i++)
+                if (!roster[i].IsDeleted) { _selectedCharacter = i; break; }
+            _detailPage = 1;
         }
 
         void SeedSoloRaidQaIfRequested()

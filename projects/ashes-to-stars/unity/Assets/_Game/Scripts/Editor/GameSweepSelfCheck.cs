@@ -69,6 +69,7 @@ namespace AshesToStars
                 One("잡몹 HP", MobHpSelfCheck.Run, rows, errors);
                 One("잡몹 피해", MobDmgSelfCheck.Run, rows, errors);
                 One("원거리 발사 주기", MobShotCadenceSelfCheck.Run, rows, errors);
+                One("원거리 투사체 속도", MobProjectileSpeedSelfCheck.Run, rows, errors);
                 One("초상 아틀라스", PortraitAtlasSelfCheck.Run, rows, errors);
                 One("아이템 아틀라스", ItemAtlasSelfCheck.Run, rows, errors);
                 One("영지 격자", EstateGridSelfCheck.Run, rows, errors);
