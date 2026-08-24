@@ -34,6 +34,7 @@ namespace AshesToStars
             : MoveSpd.ShowQa ? MoveSpd.Line()
             : MobSpeed.ShowQa ? MobSpeed.Line()
             : MobHp.ShowQa ? MobHp.Line()
+            : MobDmg.ShowQa ? MobDmg.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -101,6 +102,7 @@ namespace AshesToStars
             SeedMoveSpdQaIfRequested();
             SeedMobSpeedQaIfRequested();
             SeedMobHpQaIfRequested();
+            SeedMobDmgQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -368,6 +370,10 @@ namespace AshesToStars
                         // QA_NO면 빈 문자열.
                         string mobHp = MobHp.Line();
                         if (!string.IsNullOrEmpty(mobHp)) { Info(r, statusMax + 1, mobHp); statusMax += 1; }
+                        // §18-11 잡몹 피해. HP와 같은 앵커라 바로 아래 단독 행.
+                        // QA_NO면 빈 문자열.
+                        string mobDmg = MobDmg.Line();
+                        if (!string.IsNullOrEmpty(mobDmg)) { Info(r, statusMax + 1, mobDmg); statusMax += 1; }
                         // §4 PvP 회복. 전직 블록 뒤에 두면 r.yMax를 넘겨 안 보인다(플레이모드 실측).
                         // 우선존 단독 행. QA_NO면 빈 문자열.
                         string pvpRec = PvpRecover.Line();
@@ -992,6 +998,19 @@ namespace AshesToStars
         {
             MobHp.SeedQaIfRequested();
             if (!MobHp.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            int pick = 0;
+            for (int i = 0; i < roster.Count; i++)
+                if (!roster[i].IsDeleted) { pick = i; break; }
+            _selectedCharacter = pick;
+            _detailPage = 1;
+        }
+
+        void SeedMobDmgQaIfRequested()
+        {
+            MobDmg.SeedQaIfRequested();
+            if (!MobDmg.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             int pick = 0;
