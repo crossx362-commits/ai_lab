@@ -32,6 +32,7 @@ namespace AshesToStars
             : TierMul.ShowQa ? TierMul.Line()
             : BurnTarget.ShowQa ? BurnTarget.Line()
             : MoveSpd.ShowQa ? MoveSpd.Line()
+            : MobSpeed.ShowQa ? MobSpeed.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -97,6 +98,7 @@ namespace AshesToStars
             SeedTierMulQaIfRequested();
             SeedBurnTargetQaIfRequested();
             SeedMoveSpdQaIfRequested();
+            SeedMobSpeedQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -356,6 +358,10 @@ namespace AshesToStars
                         // 우측이 잘린다(플레이모드 실측). 우선존 단독 행. QA_NO면 빈 문자열.
                         string spd = MoveSpd.Line();
                         if (!string.IsNullOrEmpty(spd)) { Info(r, statusMax + 1, spd); statusMax += 1; }
+                        // §18-11 잡몹 이속. 플레이어 이동과 같은 앵커라 바로 아래 단독 행.
+                        // QA_NO면 빈 문자열.
+                        string mobSpd = MobSpeed.Line();
+                        if (!string.IsNullOrEmpty(mobSpd)) { Info(r, statusMax + 1, mobSpd); statusMax += 1; }
                         // §4 PvP 회복. 전직 블록 뒤에 두면 r.yMax를 넘겨 안 보인다(플레이모드 실측).
                         // 우선존 단독 행. QA_NO면 빈 문자열.
                         string pvpRec = PvpRecover.Line();
@@ -954,6 +960,19 @@ namespace AshesToStars
         {
             MoveSpd.SeedQaIfRequested();
             if (!MoveSpd.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            int pick = 0;
+            for (int i = 0; i < roster.Count; i++)
+                if (!roster[i].IsDeleted) { pick = i; break; }
+            _selectedCharacter = pick;
+            _detailPage = 1;
+        }
+
+        void SeedMobSpeedQaIfRequested()
+        {
+            MobSpeed.SeedQaIfRequested();
+            if (!MobSpeed.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             int pick = 0;
