@@ -21,8 +21,8 @@
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
 | 개발 직렬 | 소비처0 다음 한 칸 | SkillDesc wrap `6ba0a995`·초필살기 `24ef7e47`·ConceptLine fold `77cee37a`·§18-9 방어배율 `ead55a1d` 닫음(DefenseLine — RaceDefenseSelfCheck PASS·네거 `QA_NO_RACE_DEFENSE`). `W3Party` 금지 |
 | VFX §6-P1#5 대시 잔상 | **닫음** | `2cd07dbe` — `fx_dash_trail_0~2` Resources 반입 + `W2Arena` 트레일 풀 8장(0.04s 간격·알파 0.6→0·0.15s·order 210). 샷 쌍 `unity/results/vfx_dash_trail_{on,off}.png` + 네거티브(로드 차단→풀 미생성) PASS. INBOX 21:59 소비 |
-| UI 폴리싱 다음 | 캐릭터 상세 패널 정렬 3건 소진 — 다음 결함 발굴 | 로스터 카드 겹침 `6464be32`·장비 라벨 flat `390a5868`·정보 바닥 `a5907732`·정보 꼭대기 `ef97fd9e`(2026-08-24 r68 배치 SelfCheck 재실측 PASS + r67 A/B 크롭 육안) 전부 닫음. 다음: 플레이모드 순회 샷(영지·탑·필드·월드맵·파티·캐릭터·경매)에서 결함 1건 발굴 |
-| launchd 자율 루프 | **등록만 · 지금은 안 켬**(오너 2026-08-24 원 명세) | PROMPT 그림=힉스필드/이매진 · 실행기 grok · `deploy_launchd.sh --no-start`. 켜는 법 `loop/README.md` |
+| UI 폴리싱 다음 | 탑 허브 부제 한 줄 닫음 — 다음 화면 1건 | `TowerHubCap` 옛 스펙 나열 잘림. 경매 중복은 `d5e9c985`. 다음: 영지·필드·월드맵·파티·캐릭터 순회 1건 |
+| launchd 자율 루프 | **상시 켜짐**(오너 2026-08-24) | grok · `com.ailab.autonomous_loop`. 한 작업마다 보고·커밋 |
 | 사람 관문 | **더미로 진행**(오너 2026-08-24) | V2 PASS 5/5 · V3 FAIL 3/5 · V4 PASS 10/10 · 관문② PASS 9/10 · 시드 20260823. W2 FAIL은 제외(기준 낮추지 말 것) |
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.

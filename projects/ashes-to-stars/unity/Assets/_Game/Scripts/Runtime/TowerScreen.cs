@@ -24,37 +24,23 @@ namespace AshesToStars
                 if (BossSkills.ShowQa) return BossSkills.Line();
                 if (TowerDockCap.ShowQa) return TowerDockCap.Line();
                 if (TowerHud.ShowQa) return TowerHud.Line();
-                string train = DeathTraining.Line();
-                string scale = RaidScale.Line();
-                string pool = RaidBossPool.Line();
-                string reroll = RaidReroll.Line();
-                string mega = RaidCost.Line();
-                string curve = BossHp.Line();
-                string countMul = BossHp.CountLine();
-                string count = BossCount.Line();
-                string skills = BossSkills.Line();
+                if (TowerHubCap.ShowQa) return TowerHubCap.Line();
                 string rest = TowerEnding.HasTitle
                     ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
                     : SoloRaidClear.HasAny
                         ? $"{SoloRaidClear.LastTitle} · 홀로 깬 레이드 {SoloRaidClear.Count} · 해금 T{GameState.UnlockedTier + 1}"
                         : $"최대 100층. 해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
-                if (!string.IsNullOrEmpty(scale))
-                    rest = scale + " · " + rest;
-                if (!string.IsNullOrEmpty(pool))
-                    rest = pool + " · " + rest;
-                if (!string.IsNullOrEmpty(reroll))
-                    rest = reroll + " · " + rest;
-                if (!string.IsNullOrEmpty(mega))
-                    rest = mega + " · " + rest;
-                if (!string.IsNullOrEmpty(curve))
-                    rest = curve + " · " + rest;
-                if (!string.IsNullOrEmpty(countMul))
-                    rest = countMul + " · " + rest;
-                if (!string.IsNullOrEmpty(count))
-                    rest = count + " · " + rest;
-                if (!string.IsNullOrEmpty(skills))
-                    rest = skills + " · " + rest;
-                return string.IsNullOrEmpty(train) ? rest : train + " · " + rest;
+                return TowerHubCap.Compose(
+                    DeathTraining.Line(),
+                    RaidScale.Line(),
+                    RaidBossPool.Line(),
+                    RaidReroll.Line(),
+                    RaidCost.Line(),
+                    BossHp.Line(),
+                    BossHp.CountLine(),
+                    BossCount.Line(),
+                    BossSkills.Line(),
+                    rest);
             }
         }
 
