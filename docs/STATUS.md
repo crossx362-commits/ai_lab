@@ -3,9 +3,9 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 03:35 · 소각목표(`470f416c`). 사람 관문 더미 유지
-마지막 트랙: 코드 — §18-2 소각목표. `BurnTarget`이 BalanceConfig 45~55%를 읽고 속성 탭이 소비. QA_NO면 옛 45~55·줄 없음
-폴리싱 다음: 사냥 편성 선택 바-내비는 닫음(`0a66661f`). 허브 하단바 내비 겹침은 닫힘. 다음은 UI 폴리싱 1건
+최종 갱신: 2026-08-25 03:48 · 필드 경고 선택 바-내비(`9f553b44`). 사람 관문 더미 유지
+마지막 트랙: UI 폴리싱 — 골드부족·마지막목숨 선택 바. `FieldWarnHud.Content`가 NavPlateTop-12. QA_NO면 옛 640 겹침. 시드는 차단과 분리(`78831df4`)
+폴리싱 다음: 필드 경고 선택 바-내비는 닫음(`9f553b44`). 허브 하단바 내비 겹침은 닫힘. 다음은 소비처0 재스캔
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -55,6 +55,7 @@
 
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
+| — | 2026-08-25 03:47 | **UI 폴리싱 — 필드 골드부족·마지막목숨 선택 바-내비 12px.** DrawChoice가 본문 yMax=640에 붙어 내비(636)와 겹침. `FieldWarnHud.Content`를 NavPlateTop-12. QA_NO면 옛 겹침. 시드가 QA_NO에 꺼지던 구멍은 `78831df4`가 시드와 차단을 분리 | FieldWarnHudSelfCheck PASS · GameSweep 행 추가 · `9f553b44` · `78831df4` |
 | — | 2026-08-25 03:34 | **§18-2 소각목표 — 소비처 0곳.** 에셋 45~55%가 authored인데 grep 소비처 0곳. `BurnTarget`이 읽고 속성 탭이 소비. QA_NO면 옛 45~55·줄 없음. `W3Party`는 안 만짐 | BurnTargetSelfCheck PASS · GameSweep 행 추가 · `470f416c` |
 | — | 2026-08-25 03:13 | **§18-1 티어배율 — 소비처 0곳.** 에셋 기본 1.6인데 Economy가 ×1.6 거듭제곱 표를 하드코딩. `TierMul.Table`이 읽고 정산·비용·속성 탭·부제가 소비. QA_NO면 옛 표·줄 없음. `W3Party`는 안 만짐 | TierMulSelfCheck PASS · GameSweep 행 추가 · 샷 `tier_mul_shots/qa_go:Character.png`(부제 티어당 ×1.6) · 네거 `qa_negctrl_no_mul.png` · `9de769f8` |
 | — | 2026-08-25 02:53 | **§18-1 티어1시간당골드 — 소비처 0곳.** 에셋 기본 1골드인데 WaveHuntGold가 1 G/h를 하드코딩. `GhAnchor.Hours`가 읽고 정산·속성 탭·부제가 소비. QA_NO면 옛 1골드·줄 없음. `W3Party`는 안 만짐 | GhAnchorSelfCheck PASS · GameSweep 행 추가 · `12e3e0b4` |
