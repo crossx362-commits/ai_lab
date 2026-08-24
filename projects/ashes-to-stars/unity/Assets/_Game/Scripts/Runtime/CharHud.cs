@@ -16,7 +16,7 @@ namespace AshesToStars
         public const string EnvNo = "QA_NO_CHAR_HUD";
         public const string EnvNoNav = "QA_NO_CHAR_NAV";
         public const string EnvNoPortraitFit = "QA_NO_CHAR_PORTRAIT_FIT";
-        public const float PortraitScale = 0.68f;
+        public const float PortraitScale = 0.50f;
         /// <summary>
         /// 전폭 액션바는 좌우가 내비 옆으로 빠진다.
         /// 2px면 금테가 내비 윗변에 붙어 한 덩어리로 읽힌다(필드·영지와 동형).
