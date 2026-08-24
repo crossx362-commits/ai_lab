@@ -183,7 +183,8 @@ namespace AshesToStars
                 Info(r, 0, LastLifeWarn.Title());
                 Info(r, 1, LastLifeWarn.Body());
                 Info(r, 2, LastLifeWarn.GearLine());
-                Info(r, 3, LastLifeWarn.GearRest());
+                string gearRest = LastLifeWarn.GearRest();
+                if (!string.IsNullOrEmpty(gearRest)) Info(r, 3, gearRest);
                 if (DrawChoice(r, "계속 진행", "입장한다", "tower",
                                "취소", "파티를 다시 편성한다", "characters", out bool cancel))
                 {
