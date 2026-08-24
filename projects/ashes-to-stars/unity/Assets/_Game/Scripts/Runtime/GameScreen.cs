@@ -219,7 +219,12 @@ namespace AshesToStars
             if (buttonPreview) previewH += RowH + 12f;
             if (rarityPreview) previewH += 80f;
             if (bossHpPreview) previewH += 132f;
-            Body(new Rect(BodyPadX, BodyTop, REF_W - BodyPadX * 2f, REF_H - BodyTop - bottom - previewH));
+            BodyNav.SeedQaIfRequested();
+            var body = new Rect(BodyPadX, BodyTop, REF_W - BodyPadX * 2f,
+                REF_H - BodyTop - bottom - previewH);
+            // NavReserve=80이면 yMax=640인데 내비 플레이트는 636이라 하단 금테가 4px 겹친다.
+            // 화면마다 Hud.NavGap을 복제하지 않고 여기서 한 번 자른다. QA_NO면 옛 640.
+            Body(BodyNav.Fit(body, ShowBottomBar));
             float previewY = REF_H - bottom;
             if (bossHpPreview)
             {
