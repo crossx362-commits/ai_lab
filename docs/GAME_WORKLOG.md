@@ -19,13 +19,29 @@
 | 영지 §2-3 건물별 레벨·업그레이드 창 | 닫음 | SelfCheck PASS · `25559505` |
 | 영지 §2-2/§5 드래그 | 닫음 | SelfCheck PASS · `6d9b4fae`. 경로 목적지는 `EstateStore.Reached`. `StoreX/StoreY`는 **기본 스폰 상수**로만 남음 |
 | 영지 §6 아트(_1/_2·공사판) | **닫음** | `d461fbcb` · `EstateArtTierSelfCheck` PASS · PNG `estate_tier_shots/qa_go:Estate.png` · `_0` 재생성 안 함 |
-| 개발 직렬 | PvP 회복시간 닫음 | 이동속도 `be1882cd` · 탑 경고 `c7077ab5` · PvP 회복 `903a1cf7`(PvpRecover·QA_NO). `W3Party` 금지 |
+| 개발 직렬 | 영지 팔레트-마름모 닫음 | 팔레트 가장자리 `37705577` · PvP 회복 `903a1cf7`. `W3Party` 금지 |
 | VFX §6-P1#5 대시 잔상 | **닫음** | `2cd07dbe` — `fx_dash_trail_0~2` Resources 반입 + `W2Arena` 트레일 풀 8장(0.04s 간격·알파 0.6→0·0.15s·order 210). 샷 쌍 `unity/results/vfx_dash_trail_{on,off}.png` + 네거티브(로드 차단→풀 미생성) PASS. INBOX 21:59 소비 |
-| UI 폴리싱 다음 | 탑 경고 선택 바-내비 닫음 | 필드 `9f553b44` · 탑 `c7077ab5` TowerWarnHud. 허브 DrawChoice-내비 닫힘. 직전=폴리싱이라 다음은 소비처0 |
+| UI 폴리싱 다음 | 영지 팔레트-마름모 닫음 | `37705577` EstateHud 왼쪽 가장자리. 직전=폴리싱이라 다음은 소비처0 |
 | launchd 자율 루프 | **상시 켜짐**(오너 2026-08-24) | grok · `com.ailab.autonomous_loop`. 한 작업마다 보고·커밋 |
 | 사람 관문 | **더미로 진행**(오너 2026-08-24) | V2 PASS 5/5 · V3 FAIL 3/5 · V4 PASS 10/10 · 관문② PASS 9/10 · 시드 20260823. W2 FAIL은 제외(기준 낮추지 말 것) |
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
+
+## 완료 (2026-08-25) — 영지 마을 팔레트-마름모 (Grok)
+
+직전 트랙 코드(PvP 회복) → 영지 마을 한 결함. 가운데 슬림 타일이
+마름모 남단 오두막과 겹쳤다(실측 estate_hud_nav_shots/after).
+`EstateHud.PaletteTiles`가 왼쪽 가장자리(EdgePad 8).
+`QA_NO_YARD_PALETTE_EDGE`면 옛 가운데. 표시 전용 — W3Party 무접촉.
+
+샷 `estate_palette_edge_shots/after.png` — 화살탑~함정이 왼쪽, 오두막 전부 보임.
+네거티브 `neg.png` — QA_NO면 타일이 오두막 지붕에 먹힘.
+코드 `37705577`. 다음은 소비처0 재스캔(직전=폴리싱).
+
+### 검수
+- `game_compile_check.py` PASS (340소스 0).
+- `unity_meas` batch `EstateHudSelfCheck` PASS (`results/estate_hud_selfcheck.log` — 도크 x 44 · 마지막 칸 334 < 가운데 640 · 차단 x 495).
+- 샷 쌍 플레이모드 육안 확인. 블렌더 꺼짐(3D 없음).
 
 ## 완료 (2026-08-25) — 탑 경고 선택 바-내비 (Grok)
 
