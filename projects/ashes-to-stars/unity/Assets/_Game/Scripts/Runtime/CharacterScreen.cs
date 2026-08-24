@@ -35,6 +35,7 @@ namespace AshesToStars
             : MobSpeed.ShowQa ? MobSpeed.Line()
             : MobHp.ShowQa ? MobHp.Line()
             : MobDmg.ShowQa ? MobDmg.Line()
+            : MobShotCadence.ShowQa ? MobShotCadence.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -103,6 +104,7 @@ namespace AshesToStars
             SeedMobSpeedQaIfRequested();
             SeedMobHpQaIfRequested();
             SeedMobDmgQaIfRequested();
+            SeedMobShotCadenceQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
@@ -374,6 +376,9 @@ namespace AshesToStars
                         // QA_NO면 빈 문자열.
                         string mobDmg = MobDmg.Line();
                         if (!string.IsNullOrEmpty(mobDmg)) { Info(r, statusMax + 1, mobDmg); statusMax += 1; }
+                        // §10-2 원거리형 발사 주기. QA_NO면 옛 화면처럼 빈 문자열.
+                        string mobShot = MobShotCadence.Line();
+                        if (!string.IsNullOrEmpty(mobShot)) { Info(r, statusMax + 1, mobShot); statusMax += 1; }
                         // §4 PvP 회복. 전직 블록 뒤에 두면 r.yMax를 넘겨 안 보인다(플레이모드 실측).
                         // 우선존 단독 행. QA_NO면 빈 문자열.
                         string pvpRec = PvpRecover.Line();
@@ -1017,6 +1022,17 @@ namespace AshesToStars
             for (int i = 0; i < roster.Count; i++)
                 if (!roster[i].IsDeleted) { pick = i; break; }
             _selectedCharacter = pick;
+            _detailPage = 1;
+        }
+
+        void SeedMobShotCadenceQaIfRequested()
+        {
+            MobShotCadence.SeedQaIfRequested();
+            if (!MobShotCadence.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            for (int i = 0; i < roster.Count; i++)
+                if (!roster[i].IsDeleted) { _selectedCharacter = i; break; }
             _detailPage = 1;
         }
 

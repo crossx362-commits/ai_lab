@@ -28,6 +28,7 @@ namespace AshesToStars
 
         [Header("원거리형 전용")]
         public float 유지거리 = 6.5f;
+        [Tooltip("2~3초에 1발(§10-2). 소비처: MobShotCadence.Seconds → 던전 부제 · 속성 탭 줄")]
         public float 발사간격 = 2.4f;
         [Tooltip("탄속 — 느려야 회피 가능(§10-2)")] public float 탄속 = 5.5f;
 
