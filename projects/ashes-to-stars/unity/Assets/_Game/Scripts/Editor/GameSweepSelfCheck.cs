@@ -56,6 +56,7 @@ namespace AshesToStars
                 One("부활초 소지 상한", ReviveCapSelfCheck.Run, rows, errors);
                 One("사망 상한", DeathCapSelfCheck.Run, rows, errors);
                 One("PvP 회복", PvpRecoverSelfCheck.Run, rows, errors);
+                One("PvE 회복", PveRecoverSelfCheck.Run, rows, errors);
                 One("잡몹 상한", PerfCapSelfCheck.Run, rows, errors);
                 One("소환수 상한", SummonCapSelfCheck.Run, rows, errors);
                 One("투사체 상한", ProjCapSelfCheck.Run, rows, errors);

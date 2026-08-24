@@ -943,11 +943,12 @@ namespace AshesToStars
 
         /// <summary>
         /// PvE 사망 회복 초(§3·§18-8). RaceDef.회복시간을 읽는다.
-        /// 인간은 18시간, 나머지 24시간. PvP 9시간은 보호막 12시간과 어긋나 안 넣는다.
+        /// 인간은 18시간, 나머지·종족표 차단은 BalanceConfig.PvE회복시간(PveRecover).
+        /// PvP 9시간은 보호막 12시간과 어긋나 안 넣는다.
         /// </summary>
         public static long PveRecoverSeconds()
         {
-            if (RaceRecoverBlocked) return DefaultPveRecoverSeconds;
+            if (RaceRecoverBlocked) return PveRecover.Seconds();
             if (ForcePveRecoverHours > 0f)
                 return Math.Max(1L, (long)(ForcePveRecoverHours * 3600f));
             try
@@ -966,7 +967,7 @@ namespace AshesToStars
             }
             return RacePrefs.Get() == RaceId.인간
                 ? HumanPveRecoverSeconds
-                : DefaultPveRecoverSeconds;
+                : PveRecover.Seconds();
         }
 
         public static bool RaceRecoverBlocked
@@ -1027,7 +1028,7 @@ namespace AshesToStars
                 return;
             }
 
-            // 회복 기간 — RaceDef.회복시간(인간 18h, 나머지 24h, §18-8)
+            // 회복 기간 — RaceDef.회복시간(인간 18h) · 기본은 PveRecover(§18-8)
             long currentTime = GetCurrentUnixTime();
             character.RecoveryEndTime = currentTime + PveRecoverSeconds();
 

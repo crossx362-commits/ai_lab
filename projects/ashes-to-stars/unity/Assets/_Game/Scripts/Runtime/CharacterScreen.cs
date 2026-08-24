@@ -26,6 +26,7 @@ namespace AshesToStars
             : ReviveCap.ShowQa ? ReviveCap.Line()
             : DeathCap.ShowQa ? DeathCap.Line()
             : PvpRecover.ShowQa ? PvpRecover.Line()
+            : PveRecover.ShowQa ? PveRecover.Line()
             : ProjCap.ShowQa ? ProjCap.Line()
             : GhAnchor.ShowQa ? GhAnchor.Line()
             : TierMul.ShowQa ? TierMul.Line()
@@ -88,6 +89,7 @@ namespace AshesToStars
             SeedReviveCapQaIfRequested();
             SeedDeathCapQaIfRequested();
             SeedPvpRecoverQaIfRequested();
+            SeedPveRecoverQaIfRequested();
             SeedPerfCapQaIfRequested();
             SeedSummonCapQaIfRequested();
             SeedProjCapQaIfRequested();
@@ -354,6 +356,14 @@ namespace AshesToStars
                         // 우측이 잘린다(플레이모드 실측). 우선존 단독 행. QA_NO면 빈 문자열.
                         string spd = MoveSpd.Line();
                         if (!string.IsNullOrEmpty(spd)) { Info(r, statusMax + 1, spd); statusMax += 1; }
+                        // §4 PvP 회복. 전직 블록 뒤에 두면 r.yMax를 넘겨 안 보인다(플레이모드 실측).
+                        // 우선존 단독 행. QA_NO면 빈 문자열.
+                        string pvpRec = PvpRecover.Line();
+                        if (!string.IsNullOrEmpty(pvpRec)) { Info(r, statusMax + 1, pvpRec); statusMax += 1; }
+                        // §18-8 PvE 회복. 전직 블록 뒤에 두면 r.yMax를 넘겨 안 보인다.
+                        // 우선존 단독 행. QA_NO면 빈 문자열.
+                        string pveRec = PveRecover.Line();
+                        if (!string.IsNullOrEmpty(pveRec)) { Info(r, statusMax + 1, pveRec); statusMax += 1; }
 
                         // §5 이동기 프로필(형태·거리·무적·쿨) + §4 사망 리스크 + §6 자동사냥을 한 행에.
                         // 무적은 원장 379 「이 게임 조작의 핵심 기술」이라 ConceptLine(직업 특성)·SkillLine(보유
@@ -507,11 +517,7 @@ namespace AshesToStars
                         string teaCap = ReviveCap.Line();
                         if (!string.IsNullOrEmpty(teaCap)) Info(r, advancementRow++, teaCap);
                         // §4 BalanceConfig.사망상한 — DeathCap.Line. QA_NO면 빈 문자열.
-                        // §4 BalanceConfig.PvP회복시간 — PvpRecover.Line. 같은 행(잘림 방지).
                         string deathCap = DeathCap.Line();
-                        string pvpRec = PvpRecover.Line();
-                        if (!string.IsNullOrEmpty(pvpRec))
-                            deathCap = string.IsNullOrEmpty(deathCap) ? pvpRec : deathCap + " · " + pvpRec;
                         if (!string.IsNullOrEmpty(deathCap)) Info(r, advancementRow++, deathCap);
                         // §10-9 BalanceConfig.잡몹상한·투사체상한 — 한 행. QA_NO면 빈 문자열.
                         // 투사체를 맨 뒤 단독 행에 두면 r.yMax를 넘겨 안 보인다(소환수 상한 실측).
@@ -850,6 +856,16 @@ namespace AshesToStars
         {
             PvpRecover.SeedQaIfRequested();
             if (!PvpRecover.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            _selectedCharacter = 0;
+            _detailPage = 1;
+        }
+
+        void SeedPveRecoverQaIfRequested()
+        {
+            PveRecover.SeedQaIfRequested();
+            if (!PveRecover.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             _selectedCharacter = 0;
