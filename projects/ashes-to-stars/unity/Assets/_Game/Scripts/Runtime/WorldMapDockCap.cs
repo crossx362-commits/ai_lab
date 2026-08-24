@@ -123,8 +123,13 @@ namespace AshesToStars
         /// <summary>잠기면 Lock, 아니면 Open. DrawCard가 잠김 접두를 붙인다.</summary>
         public static string Caption() => IsLocked ? Lock() : Open();
 
-        /// <summary>옛 소비처 — 미구현 설명을 통째로 붙였다.</summary>
-        public static string Star() => Blocked ? OldStar : StarCap;
+        /// <summary>전장의 안개(§14). QA_NO면 옛 긴 줄, QA_NO_EXPLORE_FOG면 「로컬 허브만」.</summary>
+        public static string Star()
+        {
+            if (Blocked) return OldStar;
+            if (WorldExplore.Blocked) return StarCap;
+            return WorldExplore.Caption();
+        }
 
         /// <summary>옛 소비처 — 서버 부재 설명을 통째로 붙였다.</summary>
         public static string Rank() => Blocked ? OldRank : RankCap;

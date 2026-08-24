@@ -27,17 +27,22 @@ namespace AshesToStars
             string no = Environment.GetEnvironmentVariable(WorldMapDockCap.EnvNo);
             string honorNo = Environment.GetEnvironmentVariable(Honor.EnvNo);
             string guardNo = Environment.GetEnvironmentVariable(Honor.EnvNoGuard);
+            string exploreNo = Environment.GetEnvironmentVariable(WorldExplore.EnvNo);
+            RaceId oldRace = RacePrefs.Get();
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvShow, null);
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, null);
             Environment.SetEnvironmentVariable(Honor.EnvNo, null);
             Environment.SetEnvironmentVariable(Honor.EnvNoGuard, null);
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNo, null);
 
             GameState.ResetAll();
             InvasionState.ResetForTest();
             InvasionApproach.ResetForTest();
             EstateStore.ResetForTest();
             Honor.ResetForTest();
+            WorldExplore.ResetForTest();
             WorldMapDockCap.ResetForTest();
+            RacePrefs.Set(RaceId.인간);
 
             Check(!WorldMapDockCap.Blocked, "기본은 켜짐");
             Check(GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor, "기본 층은 잠김");
@@ -67,7 +72,8 @@ namespace AshesToStars
             Check(WorldMapDockCap.Line().IndexOf("한 줄", StringComparison.Ordinal) >= 0,
                 $"줄 (실제 {WorldMapDockCap.Line()})");
 
-            Check(WorldMapDockCap.Star() == WorldMapDockCap.StarCap,
+            Check(WorldMapDockCap.Star() == WorldExplore.Caption()
+                  && WorldMapDockCap.Star() == "탐험 2/3",
                 $"성계 부제 (실제 {WorldMapDockCap.Star()})");
             Check(WorldMapDockCap.Rank() == WorldMapDockCap.RankCap,
                 $"랭킹 부제 (실제 {WorldMapDockCap.Rank()})");
@@ -154,11 +160,14 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, no);
             Environment.SetEnvironmentVariable(Honor.EnvNo, honorNo);
             Environment.SetEnvironmentVariable(Honor.EnvNoGuard, guardNo);
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNo, exploreNo);
             WorldMapDockCap.ResetForTest();
             InvasionApproach.ResetForTest();
             InvasionState.ResetForTest();
             EstateStore.ResetForTest();
             Honor.ResetForTest();
+            WorldExplore.ResetForTest();
+            RacePrefs.Set(oldRace);
             GameState.ResetAll();
 
             if (_fail == 0) Debug.Log("[WorldMapDockCapSelfCheck] PASS\n" + _log);

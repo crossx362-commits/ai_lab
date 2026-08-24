@@ -20,6 +20,7 @@ namespace AshesToStars
         {
             get
             {
+                if (WorldExplore.ShowQa) return WorldExplore.Line();
                 if (WorldStar.ShowRangeQa) return WorldStar.SenseLine();
                 if (WorldStar.ShowQa) return WorldStar.SizeLine();
                 if (WorldMapDockCap.ShowQa) return WorldMapDockCap.Line();
@@ -27,6 +28,8 @@ namespace AshesToStars
                 string s = "내 별 " + WorldStar.SizeLabel(GameState.TowerFloor);
                 if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
                     s += " · " + WorldStar.RaceSenseLine();
+                if (!WorldExplore.Blocked && WorldExplore.Percent() == WorldExplore.ElfPercent)
+                    s += " · " + WorldExplore.Line();
                 if (WorldStar.EnemyPercent() == WorldStar.EnemyDebuffPercent)
                     s += " · " + WorldStar.EnemyLine();
                 if (Economy.RaceCostPercent() == Economy.DwarfCostPercent)
@@ -92,6 +95,7 @@ namespace AshesToStars
             WorldStar.SeedRangeQaIfRequested();
             WorldStar.SeedRaceSenseQaIfRequested();
             WorldStar.SeedAuraDebuffQaIfRequested();
+            WorldExplore.SeedQaIfRequested();
             InvasionApproach.SeedQaIfRequested();
             EstateStore.SeedQaIfRequested();
             WorldMapHud.SeedQaIfRequested();
@@ -114,6 +118,15 @@ namespace AshesToStars
             {
                 DrawApproachPick(r);
                 return;
+            }
+
+            if (!WorldExplore.Blocked && !WorldMapHud.Blocked)
+            {
+                var after = WorldStar.AfterPlate(r);
+                float dockTop = r.yMax - WorldMapHud.DockH;
+                var field = new Rect(after.x, after.y, after.width,
+                    Mathf.Max(0f, dockTop - after.y));
+                WorldExplore.Draw(field);
             }
 
             var cards = WorldMapHud.Cards(r);

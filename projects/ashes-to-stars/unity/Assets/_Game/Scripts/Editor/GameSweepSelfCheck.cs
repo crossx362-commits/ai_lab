@@ -38,6 +38,7 @@ namespace AshesToStars
                 One("필드 허브 HUD", FieldHudSelfCheck.Run, rows, errors);
                 One("탑 허브 HUD", TowerHudSelfCheck.Run, rows, errors);
                 One("월드맵 HUD", WorldMapHudSelfCheck.Run, rows, errors);
+                One("월드맵 안개", WorldExploreSelfCheck.Run, rows, errors);
                 One("영지 마을 HUD", EstateHudSelfCheck.Run, rows, errors);
                 One("영지 현황 HUD", EstateStatusHudSelfCheck.Run, rows, errors);
                 One("허브 제목판", HubHeaderSelfCheck.Run, rows, errors);
