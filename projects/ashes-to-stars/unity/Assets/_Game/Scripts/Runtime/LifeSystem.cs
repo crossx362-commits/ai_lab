@@ -136,6 +136,9 @@ namespace AshesToStars
         /// <summary>누적 출전 초(§4). 전투·일정 사냥이 더한다. 옛 저장은 0.</summary>
         public long SortieSeconds { get; set; }
 
+        /// <summary>환생 때 가져온 스킬 1개(§4). 없으면 직업 표 전체(옛 화면).</summary>
+        public string KeptSkill { get; set; }
+
         public string PackMemorial()
         {
             return MemorialFloor + "|" + (MemorialPlace ?? "") + "|" + (MemorialCause ?? "")
@@ -236,6 +239,7 @@ namespace AshesToStars
             IsDeleted = false;
             IsRescue = false;
             SortieSeconds = 0;
+            KeptSkill = "";
         }
     }
 
@@ -378,6 +382,8 @@ namespace AshesToStars
                 c.MemorialParty = p.Length > 14 ? p[14] : "";
                 // 16번째 필드는 누적 출전 초. 없던 저장은 0.
                 c.SortieSeconds = p.Length > 15 ? SafeLong(p[15], 0) : 0;
+                // 17번째 필드는 환생 계승 스킬. 없던 저장은 빈 칸(직업 표 전체).
+                c.KeptSkill = p.Length > 16 ? RebirthSkill.Pack(p[16]) : "";
                 _characters.Add(c);
                 legacyIndex++;
             }
@@ -425,7 +431,8 @@ namespace AshesToStars
                   .Append('\t').Append(c.IsSpecialJob ? '1' : '0')
                   .Append('\t').Append(c.PackMemorial())
                   .Append('\t').Append(SanitizeMemorialParty(c.MemorialParty))
-                  .Append('\t').Append(c.SortieSeconds).Append('\n');
+                  .Append('\t').Append(c.SortieSeconds)
+                  .Append('\t').Append(RebirthSkill.Pack(c.KeptSkill)).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 

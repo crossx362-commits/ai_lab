@@ -29,6 +29,7 @@ namespace AshesToStars
         EstateGrid.Cell _moveCell = EstateGrid.Cell.Empty;
         string _moveHint;
         Vector2 _moveFromMouse;
+        CharacterRecord _rebornPick;
 
         /// <summary>경매장 해금 층(§12). 침략과 동시 해금이다.</summary>
         public const int AuctionUnlockFloor = 30;
@@ -45,7 +46,7 @@ namespace AshesToStars
                 ? AuctionHud.Line()
                 : AuctionHubLockReason() ?? AuctionTrade.TradeLine(),
             Sub.영묘 => Memorial.Unlocked
-                ? Rebirth.MausoleumSubtitle()
+                ? RebirthSkill.MausoleumSubtitle()
                 : Memorial.LockLine(),
             Sub.수비대 => DefenseState.Unlocked
                 ? "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)"
@@ -252,13 +253,24 @@ namespace AshesToStars
             AuctionTrade.SeedQaIfRequested();
             AuctionHud.SeedQaIfRequested();
             Rebirth.SeedQaIfRequested();
+            RebirthSkill.SeedQaIfRequested();
             Memorial.SeedQaIfRequested();
             Memorial.SeedUnlockQaIfRequested();
             DefenseState.SeedUnlockQaIfRequested();
             Equipment.SeedUnlockQaIfRequested();
             if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "1"
+                || System.Environment.GetEnvironmentVariable(RebirthSkill.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(Memorial.EnvShow) == "1")
                 _sub = Sub.영묘;
+            if (RebirthSkill.SeedPick && _rebornPick == null)
+            {
+                var wait = LifeSystem.GetDeletedCharacters();
+                if (wait.Count > 0)
+                {
+                    _rebornPick = wait[0];
+                    RebirthSkill.ConsumeSeedPick();
+                }
+            }
             if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowExpire) == "1"
@@ -1256,7 +1268,40 @@ namespace AshesToStars
             if (lockReason != null)
             {
                 Info(r, row++, lockReason);
-                if (Row(r, row, "← 영지로", "건물에서 나온다")) { _sub = Sub.없음; _msg = ""; }
+                if (Row(r, row, "← 영지로", "건물에서 나온다"))
+                { _sub = Sub.없음; _msg = ""; _rebornPick = null; }
+                return;
+            }
+
+            if (_rebornPick != null && (!_rebornPick.IsDeleted || _rebornPick.IsSpecialJob))
+                _rebornPick = null;
+            if (_rebornPick != null)
+            {
+                var pickNames = RebirthSkill.NamesOf(_rebornPick.Job);
+                Info(r, row++, RebirthSkill.PickTitle(_rebornPick));
+                Info(r, row++, "생전 스킬 중 하나만 남고 나머지는 소실된다(§4)");
+                for (int i = 0; i < pickNames.Length; i++)
+                {
+                    string skill = pickNames[i];
+                    if (Row(r, row++, skill, "이 스킬만 가져간다(§4)",
+                            ItemAtlas.KeyFor(Economy.LifeItem.RebornStone)))
+                    {
+                        if (!RebirthSkill.Apply(_rebornPick, skill))
+                            _msg = "그 스킬은 가져갈 수 없다";
+                        else if (LifeSystem.UseRebornStone(_rebornPick))
+                        {
+                            _msg = string.IsNullOrEmpty(RebirthSkill.Line(_rebornPick))
+                                ? $"{_rebornPick.Name}이(가) 돌아왔다 — 사망 0에서 다시 시작한다"
+                                : $"{_rebornPick.Name}이(가) 돌아왔다 — {Rebirth.DoneLine()} · {RebirthSkill.Line(_rebornPick)}";
+                            _rebornPick = null;
+                            return;
+                        }
+                        else _msg = "환생에 실패했다 — 환생석 소모를 확인할 것";
+                    }
+                }
+                if (Row(r, row++, "← 선택 취소", "영묘 목록으로"))
+                { _rebornPick = null; _msg = ""; }
+                if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
                 return;
             }
 
@@ -1302,6 +1347,8 @@ namespace AshesToStars
                             ItemAtlas.KeyFor(Economy.LifeItem.RebornStone)))
                     {
                         if (stones <= 0) _msg = "환생석이 없다. 10층 보스를 잡아야 한다(§4)";
+                        else if (RebirthSkill.NeedsPick(ch))
+                        { _rebornPick = ch; _msg = ""; return; }
                         else if (LifeSystem.UseRebornStone(ch))
                         {
                             _msg = string.IsNullOrEmpty(Rebirth.DoneLine())
@@ -1325,7 +1372,8 @@ namespace AshesToStars
             }
 
             if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
-            if (Row(r, row, "← 영지로", "건물에서 나온다")) { _sub = Sub.없음; _msg = ""; }
+            if (Row(r, row, "← 영지로", "건물에서 나온다"))
+            { _sub = Sub.없음; _msg = ""; _rebornPick = null; }
         }
 
         /// <summary>

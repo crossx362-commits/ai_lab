@@ -657,6 +657,7 @@ namespace AshesToStars
             RaidCost.ResetForTest();
             BankruptcySeize.ResetForTest();
             Rebirth.ResetForTest();
+            RebirthSkill.ResetForTest();
             Memorial.ResetForTest();
             HuntSchedule.ResetForTest();
             NetWorth.ResetForTest();

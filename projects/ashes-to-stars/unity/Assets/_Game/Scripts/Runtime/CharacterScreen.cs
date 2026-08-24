@@ -95,8 +95,10 @@ namespace AshesToStars
             SeedDefenseRecoverQaIfRequested();
             SeedRaceRecoverQaIfRequested();
             Rebirth.SeedQaIfRequested();
+            RebirthSkill.SeedQaIfRequested();
             Memorial.SeedQaIfRequested();
             if ((System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "2"
+                 || System.Environment.GetEnvironmentVariable(RebirthSkill.EnvShow) == "2"
                  || System.Environment.GetEnvironmentVariable(Memorial.EnvShow) == "1")
                 && _selectedCharacter < 0)
                 _selectedCharacter = 0;
@@ -432,18 +434,19 @@ namespace AshesToStars
                             else advancementRow += InfoWrap(r, advancementRow, trait, RowHt);
                         }
                         // §3 SkillDef.쿨다운·위력배율·반경·자원소모 — SkillLine이 이름 옆에 (N초·×P·반경R·소모C) (표시 전용).
-                        string skills = JobInfo.SkillLine(ch.Job);
+                        // 환생 계승이 있으면 1개만(§4). QA_NO_REBORN_SKILL이면 옛 직업 표 전체.
+                        string skills = RebirthSkill.SkillLine(ch);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
                         // §3 SkillDef.초필살기 — SkillUltLine이 초필 이름·쿨만 별도 한 줄(표시 전용).
                         // SkillLine에 붙이면 뒤부터 잘리고, 설명 줄은 이미 두 줄이라 초필을 잃는다.
-                        // QA_NO면 빈 문자열이라 행을 안 그린다.
-                        string skillUlt = JobInfo.SkillUltLine(ch.Job);
+                        // QA_NO면 빈 문자열이라 행을 안 그린다. 계승 1개면 초필 줄은 접는다.
+                        string skillUlt = RebirthSkill.SkillUltLine(ch);
                         if (!string.IsNullOrEmpty(skillUlt)) Info(r, advancementRow++, skillUlt);
                         // §3 SkillDef.설명 — SkillDescLine이 이름:설명 한 줄(표시 전용). SkillLine에 붙이면
                         // 뒷 스킬 이름이 LabelClip에 잘리므로 다음 행. QA_NO면 빈 문자열이라 행을 안 그린다.
                         // Info(LabelClip·inner 20px)면 마법사 「빙결: 광」에서 우측이 잘린다 — 두 줄
                         // InfoWrap(LabelFit). QA_NO_SKILL_DESC_WRAP이면 옛 한 줄 Clip.
-                        string skillDesc = JobInfo.SkillDescLine(ch.Job);
+                        string skillDesc = RebirthSkill.SkillDescLine(ch);
                         if (!string.IsNullOrEmpty(skillDesc))
                         {
                             if (JobInfo.SkillDescWrapBlocked) Info(r, advancementRow++, skillDesc);
