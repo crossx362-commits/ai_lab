@@ -487,6 +487,10 @@
   .pill { font-size: 11px; padding: 3px 8px; }
   .meta { font-size: 12px; }
   .g-list .row, .d-list .row { align-items: baseline; }
+  /* 보기 쉬움 (오너 2026-08-24): 긴 설명은 두 줄 요약, 끝난 일은 흐리게 */
+  .d-list .t, .g-list .t, .item .t { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:keep-all; }
+  .d-list .d, .item .d { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; color:var(--muted); }
+  .item:has(.badge.pass) , .d-list .row.done { opacity:.62; }
 </style>
 </head>
 <body>
