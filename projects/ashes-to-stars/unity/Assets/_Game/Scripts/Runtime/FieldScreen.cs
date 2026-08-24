@@ -20,6 +20,7 @@ namespace AshesToStars
             get
             {
                 if (UiAtlas.ShowQa) return UiAtlas.Line();
+                if (HuntPickHud.ShowQa) return HuntPickHud.Line();
                 if (FieldHud.ShowQa) return FieldHud.Line();
                 if (EscapeManual.ShowQa) return EscapeManual.Line();
                 if (BagTextFmt.ShowQa) return BagTextFmt.Line();
@@ -64,6 +65,7 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             HuntStart.SeedQaIfRequested();
+            HuntPickHud.SeedQaIfRequested();
             Economy.SeedHuntGoldQaIfRequested();
             LastLifeWarn.SeedQaIfRequested();
             HuntSchedule.SeedQaIfRequested();
@@ -228,9 +230,12 @@ namespace AshesToStars
 
         void DrawHuntPick(Rect r)
         {
+            r = HuntPickHud.Content(r);
             Hint(new Rect(r.x, r.y, r.width, 24f), HuntStart.PickTitle);
             Hint(new Rect(r.x, r.y + 26f, r.width, 22f), HuntStart.PickSubtitle);
-            var board = new Rect(r.x, r.y + 56f, r.width, Mathf.Max(80f, r.height - 56f - 180f));
+            var actionBand = HuntPickHud.Actions(r);
+            var board = new Rect(r.x, r.y + 56f, r.width,
+                Mathf.Max(80f, actionBand.y - (r.y + 56f) - 12f));
             var roster = LifeSystem.GetCharacters();
             for (int i = 0; i < roster.Count; i++)
             {
@@ -242,7 +247,7 @@ namespace AshesToStars
                     PartyState.Toggle(i);
             }
 
-            var actions = UiPages.Grid(new Rect(r.x, r.yMax - 168f, r.width, 168f), 2, 1, 16f);
+            var actions = UiPages.Grid(actionBand, 2, 1, 16f);
             bool can = PartyState.CanSortie;
             if (DrawCard(actions[0], "스타트",
                     can ? "전장으로 들어간다 — 들어가서 배치한다" : "한 명도 편성되지 않았다",
