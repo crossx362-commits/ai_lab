@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 07:39 · 슬림 정보줄 한글 아랫획 잘림 폴리싱(`c332592a`). 사람 관문 더미 유지
-마지막 트랙: UI 폴리싱 — 40px 속성 정보줄이 글자 영역을 20px로 고정해 한글 아랫획을 잘랐다. `CompactInfoTextRect`가 위·아래 6px를 남긴 28px를 쓰며 `QA_NO_COMPACT_INFO_FIT=1`이면 옛 20px 비교 화면
-소비처0 다음: 직전=폴리싱이므로 소비처0 재스캔 1건
-검증: 컴파일 PASS(353소스·오류 0) · `unity_meas` CompactInfoSelfCheck PASS(ON 28px·NEG 20px) · 실행 파일 1280×720 ON/NEG 샷 육안 확인(`output/qa/ashes-to-stars/compact_info_shots/{on,neg}/qa_go:Character.png`) — ON은 속성 정보줄 한글·숫자 아랫획이 온전하고 NEG는 중앙에서 잘림. 블렌더 앱은 실행 중이나 3D·메시 작업이 아니라 건너뜀
+최종 갱신: 2026-08-25 07:45 · §10-2 원거리 잡몹 탄속 소비처(`bb4ae5e9`). 사람 관문 더미 유지
+마지막 트랙: 코드 — `MobDef.탄속=5.5`가 원장의 느리고 회피 가능한 투사체 수치인데 런타임 참조 0곳이었다. `MobProjectileSpeed.Units`가 값을 읽고 캐릭터 속성·던전 부제가 소비하며 `QA_NO_MOB_PROJECTILE_SPEED=1`이면 옛 기본값·빈 줄
+소비처0 다음: 직전=코드이므로 UI 폴리싱 1건
+검증: `unity_meas` 컴파일 PASS · MobProjectileSpeedSelfCheck PASS 12/12(에셋 변경 4.25→표시 4.3·QA_NO 기본 5.5/빈 줄 포함) · 실행 파일 1280×720 ON/NEG 샷 육안 확인(`output/qa/ashes-to-stars/mob_projectile_speed_shots/{on,neg}/qa_go:Character.png`) — ON `원거리 탄속 5.5u/s(§10-2)` 온전, 동일 속성 화면 NEG는 그 행만 빠지고 PvP 회복이 당겨짐. 블렌더는 3D·메시 작업이 아니라 건너뜀
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
