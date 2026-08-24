@@ -120,11 +120,16 @@ namespace AshesToStars
                 Mathf.Lerp(studio.xMax, studioChrome.xMax, 0.5f),
                 Mathf.Lerp(studio.yMax, studioChrome.yMax, 0.5f));
             float infoBottom = CharHud.InfoBottom(studio, studioChrome);
-            float infoTop = Mathf.Lerp(studio.y, studioChrome.y, 0.62f);
+            float infoTop = Mathf.Lerp(studio.y, studioChrome.y, 0.60f);
             Check(infoBottom <= studioFlat.yMax - 9f,
                 $"정보 바닥 {infoBottom:0.0} ≤ 금테 선 {studioFlat.yMax:0.0} − 9 — 마지막 줄이 금테에 안 닿는다");
-            Check(infoBottom - infoTop >= 13f * 20f + 6f,
-                $"정보 칸 높이 {infoBottom - infoTop:0} ≥ 13줄+간격 {13f * 20f + 6f:0} — 가방 줄이 안 잘린다");
+            Check(infoTop >= studioFlat.y + 8f,
+                $"정보 꼭대기 {infoTop:0.0} ≥ 금테 선 {studioFlat.y:0.0} + 8 — 첫 줄도 금테에 안 붙는다");
+            // 최악 14줄(표제·xp·전투력·출전·전직·편성·장착 헤더+장비 6)×20 + 가방 앞 간격 4
+            // + 가방 줄 판정 18 — 바닥·꼭대기를 올리며 가방 줄을 잃지 않았는다(실측 2026-08-24:
+            // 10px 여유만으로는 14줄 목록에서 가방 줄이 0.9px 넘겐 잘렸다).
+            Check(infoBottom - infoTop >= 13f * 20f + 4f + 18f,
+                $"정보 칸 높이 {infoBottom - infoTop:0} ≥ 14줄+간격 {13f * 20f + 4f + 18f:0} — 가방 줄이 안 잘린다");
 
             Check(CharHud.EquipLabel(stage,
                     new Rect(stage.x + 40f, stage.y + 80f, 48f, 48f)).width >= CharHud.LabelW,
