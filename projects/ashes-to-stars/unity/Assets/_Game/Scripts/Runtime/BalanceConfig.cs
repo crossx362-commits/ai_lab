@@ -30,7 +30,7 @@ namespace AshesToStars
         [Header("성능 예산 (§10-9)")]
         public int 잡몹상한 = 500;
         public int 소환수상한 = 50;
-        public int 투사체상한 = 200;
+        public int 투사체상한 = 200; // 소비처: ProjCap.Limit → StressTest 풀 · 속성 탭 줄
 
         [Header("쿼터뷰")]
         [Tooltip("월드 y를 화면에 그릴 때 곱하는 값 = sin(30°)")] public float ISO_Y = 0.5f;
