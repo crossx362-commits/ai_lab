@@ -44,6 +44,8 @@ namespace AshesToStars
                 $"줄 (실제 {EstateHud.Line()})");
             Check(EstateHud.Line().Contains("금테 칩"),
                 $"줄에 칩 (실제 {EstateHud.Line()})");
+            Check(EstateHud.Line().Contains("내비"),
+                $"줄에 내비 (실제 {EstateHud.Line()})");
 
             var body = new Rect(36f, 52f, 1208f, 720f - 52f - UiPages.NavReserve);
             var chip = EstateHud.ChipRect(body);
@@ -66,8 +68,11 @@ namespace AshesToStars
             Check(slim[0].x > bar.x + 200f, "도크는 가운데");
 
             var pal = EstateHud.PaletteBar(body);
-            Check(pal.yMax < EstateHud.NavPlateTop(),
-                $"팔레트 아랫변 {pal.yMax:0} < 내비 {EstateHud.NavPlateTop():0}");
+            float navTop = EstateHud.NavPlateTop();
+            Check(pal.yMax <= navTop - EstateHud.NavGap + 0.01f,
+                $"팔레트 아랫변 {pal.yMax:0} ≤ 내비-간격 {navTop - EstateHud.NavGap:0}");
+            Check(navTop - pal.yMax >= 10f,
+                $"팔레트-내비 간격 {navTop - pal.yMax:0} ≥ 10 (전폭 카드가 내비와 한 덩어리가 되지 않게)");
             Check(chip.yMax < pal.y - 0.01f,
                 $"칩 바닥 {chip.yMax:0} < 팔레트 {pal.y:0} — 침략 줄이 방어 도크와 안 겹친다");
 
@@ -84,6 +89,9 @@ namespace AshesToStars
             var oldChip = EstateHud.ChipRect(body);
             Check(oldChip.height <= EstateHud.OldChipH + 0.01f,
                 $"차단 칩 {oldChip.height:0} ≤ 옛 {EstateHud.OldChipH:0} — 옛 Hint 높이");
+            var oldPal = EstateHud.PaletteBar(body);
+            Check(oldPal.yMax > EstateHud.NavPlateTop() - 1f,
+                $"차단 아랫변 {oldPal.yMax:0} 이 내비와 겹친다");
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, null);
 
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, "1");
@@ -112,6 +120,11 @@ namespace AshesToStars
                 "새 길은 InfoAt 금테 — Hint면 글씨가 마을에 묻힌다");
             Check(block.Contains("EstateHud.Blocked") && block.Contains("Hint(chip"),
                 "QA_NO면 옛 Hint 경로");
+            string hud = File.ReadAllText(Path.Combine(runtime, "EstateHud.cs"));
+            Check(hud.Contains("NavPlateTop"),
+                "팔레트가 NavPlateTop을 읽는다 (body.yMax 붙이기 금지)");
+            Check(hud.Contains("NavGap"),
+                "팔레트가 NavGap을 읽는다");
 
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, show);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, no);

@@ -6,6 +6,8 @@ namespace AshesToStars
     /// <summary>
     /// 영지 마을 HUD. 클래시·킹덤처럼 마을이 보이고 조작은 가장자리에만 둔다.
     /// 옛 길은 안내 86 + 팔레트 68 전폭 카드가 마름모 아래를 덮었다.
+    /// 팔레트를 NavPlateTop-2에 붙이면 하단 금테가 내비 플레이트(636)와 4px 겹친다
+    /// (실측 2026-08-24 tower_hud_nav_shots/before.png와 동형).
     /// QA_NO면 그 옛 겹침. EstateScreen 마을 탭이 읽는다.
     /// </summary>
     public static class EstateHud
@@ -16,6 +18,11 @@ namespace AshesToStars
         public const float OldPaletteH = 68f;
         public const float SlimPaletteH = 44f;
         public const float SlimInspectH = 36f;
+        /// <summary>
+        /// 가운데 팔레트도 내비 윗변에 2px로 붙이면 한 덩어리로 읽힌다
+        /// (필드·월드맵·파티·탑·현황과 동형).
+        /// </summary>
+        public const float NavGap = 12f;
         // 방어 팔레트 타일 폭. 라벨이 「화살탑 0」처럼 3글자+개수라 폭이 좁으면
         // LabelFit(wordWrap)이 두 줄로 접고 14px 칸이 둘째 줄을 잘라 「탑·개수」가 사라진다
         // (실측 2026-08-20 go:Estate 샷: 화살탑→「화살」, 마법탑→「마법」로 잘림). 아이콘은
@@ -55,12 +62,15 @@ namespace AshesToStars
         public static float NavPlateTop(float screenH = 720f) =>
             UiPages.NavPlateTop(GameFlow.BottomBar.Length, 1280f, screenH);
 
-        /// <summary>막히면 본문 바닥에 붙고, 아니면 내비 플레이트 위에 둔다.</summary>
+        /// <summary>
+        /// 막히면 본문 바닥에 붙고, 아니면 필드·현황과 같이 내비 플레이트 위에 둔다 —
+        /// NavPlateTop-2에 붙이면 하단 금테가 팔레트에 먹힌다(실측 1280×720, 카드 yMax 640 · 플레이트 636).
+        /// </summary>
         public static Rect PaletteBar(Rect body, float screenH = 720f)
         {
             float yMax = body.yMax;
             if (!Blocked)
-                yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - 2f);
+                yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - NavGap);
             return new Rect(body.x, yMax - PaletteH, body.width, PaletteH);
         }
 
@@ -84,7 +94,7 @@ namespace AshesToStars
 
         public static string Line() => Blocked
             ? "안내·팔레트가 마을을 가린다"
-            : "HUD는 마을을 가리지 않는다 — 침략 줄은 금테 칩(§16)";
+            : "HUD는 마을을 가리지 않는다 — 침략 줄은 금테 칩 · 팔레트는 내비 위(§16)";
 
         /// <summary>막히면 전폭 카드, 아니면 가운데 아이콘 도크.</summary>
         public static Rect[] PaletteTiles(Rect r, int count)
