@@ -3,9 +3,9 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-24 23:04 · INBOX 막힌 칸 착용레벨 게이트 열림(`EquipLevel` `4d9bc2d2`). 환생·탐험·내구·수비명예는 선반영이라 재구현 없음. 사람 관문 더미 유지
+최종 갱신: 2026-08-24 23:18 · 영지 마을 침략 줄 금테 칩(`fb2a6321`). 사람 관문 더미 유지
 마지막 트랙: 코드 — §11 착용 레벨. `CraftRecipe.요구레벨` 기본 0(제한 없음, 수치표 안 만듦). `TryEquip`·캐릭터창·대장간이 `EquipLevel.CanWear`를 읽음. QA_EQUIP_LV=1이면 Lv20 가죽 흉갑 거부 문구. QA_NO면 옛 항상 허용
-폴리싱 다음: 직전=코드라 다음 바퀴는 UI·아트 상시 폴리싱 한 화면 한 결함(영지·필드·월드맵·파티 순회)
+폴리싱 다음: 영지 마을 침략 줄 금테 칩 닫음(`EstateHud` `fb2a6321`). 다음은 필드·월드맵·파티 순회 결함 1건
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
