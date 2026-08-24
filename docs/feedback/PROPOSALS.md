@@ -214,3 +214,4 @@
 - [2026-08-25 03:13] 관찰: `qa_shot.sh`가 같은 `GAME_SHOT_DIR`+모드면 ON/NEG가 `qa_${MODE}.png` 한 파일을 덮어쓴다(이번 바퀴에서 ON 1MB를 NEG가 지움 → 복사 후 ON 재촬영). → 네거티브는 찍기 전 ON을 다른 이름으로 옮기거나 `GAME_SHOT_DIR`를 on/neg로 나눠라 (우선순위 중)
 - [2026-08-25 03:13] 관찰: 소비처0 닫힘 목록이 같은 ScriptableObject의 형제 필드를 빠뜨린다(GhAnchor 닫힌 뒤 `BalanceConfig.티어배율`이 0곳인 채 남음). Unity MCP `execute_code`는 새 스크립트 도메인 리로드 중 연결이 끊긴다 → 칸을 닫을 때 같은 파일의 미소비 필드를 같이 grep하고, 시각 검증은 `unity_meas`+`qa_shot`을 기본 경로로 둬라 (우선순위 중)
 - [2026-08-25 03:25] 관찰: 필드 사냥 편성 선택 바는 닫았지만 FieldScreen 골드부족·마지막목숨 DrawChoice는 아직 r.yMax에 붙는다(같은 4px 겹침). 에디터 Play는 열린 씬이 아니라 빌드 시작 씬(Title)로 들어간다 → 다음 폴리싱은 그 DrawChoice 클램프 또는 GameScreen 본문 한 곳 절단(02:29). 허브 샷은 play 뒤 GameFlow.Go를 한 프레임 기다린다 (우선순위 중)
+- [2026-08-25 04:18] 관찰: 탑 마지막목숨 경고가 장착 없을 때도 Info 4칸을 그려 빈 금테 한 줄이 남는다(실측 `tower_warn_nav_shots/after.png`). 필드·탑 경고 HUD는 NavGap을 또 복제했다(02:29 미해소) → Info는 빈 문자열을 건너뛰고, GameScreen Body를 NavPlateTop-NavGap으로 한 곳에서 자른다 (우선순위 중)
