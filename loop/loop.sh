@@ -100,7 +100,9 @@ run_session() {
 
   case "$agent" in
     grok)
+      cd "$TARGET_REPO" || return 3
       "$bin" \
+        --cwd "$TARGET_REPO" \
         --model "$GROK_MODEL" \
         --prompt-file "$PROMPT_FILE" \
         --always-approve \
@@ -179,8 +181,9 @@ while true; do
     echo "STATUS.md 갱신 없음" | tee -a "$MAIN_LOG" "$LAP_LOG"
     FAILS=$((FAILS + 1))
     if [ "$FAILS" -ge "$MAX_FAILS" ]; then
-      echo "STATUS.md 미갱신이 ${MAX_FAILS}회 — 실패 종료합니다." | tee -a "$MAIN_LOG" "$LAP_LOG"
-      exit 1
+      echo "STATUS.md 미갱신이 ${MAX_FAILS}회 — 정상 종료합니다(재기동 루프 방지)." | tee -a "$MAIN_LOG" "$LAP_LOG"
+      touch "$STOP_FILE"
+      exit 0
     fi
   elif [ "$RESULT" -eq 0 ]; then
     COUNT=$((COUNT + 1))
