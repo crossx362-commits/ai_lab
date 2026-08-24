@@ -9,11 +9,14 @@ namespace AshesToStars
     /// 팔레트를 NavPlateTop-2에 붙이면 하단 금테가 내비 플레이트(636)와 4px 겹친다
     /// (실측 2026-08-24 tower_hud_nav_shots/before.png와 동형).
     /// QA_NO면 그 옛 겹침. EstateScreen 마을 탭이 읽는다.
+    /// 가운데 슬림 타일은 마름모 맨 아래 오두막과 겹친다(실측 estate_hud_nav_shots/after.png).
+    /// QA_NO_YARD_PALETTE_EDGE면 그 옛 가운데. 새 길은 왼쪽 가장자리.
     /// </summary>
     public static class EstateHud
     {
         public const string EnvShow = "QA_YARD_HUD";
         public const string EnvNo = "QA_NO_YARD_HUD";
+        public const string EnvNoEdge = "QA_NO_YARD_PALETTE_EDGE";
         public const float OldInspectH = 86f;
         public const float OldPaletteH = 68f;
         public const float SlimPaletteH = 44f;
@@ -30,6 +33,8 @@ namespace AshesToStars
         // 분리해 3글자 라벨이 한 줄에 들어가게 한다.
         public const float TileW = 68f;
         public const float TileGap = 6f;
+        /// <summary>슬림 팔레트를 본문 왼쪽에서 띄우는 칸. 0이면 금테가 본문 테두리에 붙는다.</summary>
+        public const float EdgePad = 8f;
 
         static bool _qaSeeded;
 
@@ -47,6 +52,16 @@ namespace AshesToStars
             get
             {
                 string raw = Environment.GetEnvironmentVariable(EnvShow);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>막히면 슬림 타일이 가운데 — 마름모 아래 오두막과 겹친다.</summary>
+        public static bool EdgeBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoEdge);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
         }
@@ -92,9 +107,12 @@ namespace AshesToStars
             return new Rect(body.x, body.y + UiPages.TabH + 8f, w, h);
         }
 
-        public static string Line() => Blocked
-            ? "안내·팔레트가 마을을 가린다"
-            : "HUD는 마을을 가리지 않는다 — 침략 줄은 금테 칩 · 팔레트는 내비 위(§16)";
+        public static string Line()
+        {
+            if (Blocked) return "안내·팔레트가 마을을 가린다";
+            if (EdgeBlocked) return "팔레트가 마름모 아래 가운데와 겹친다";
+            return "HUD는 마을을 가리지 않는다 — 침략 줄은 금테 칩 · 팔레트는 왼쪽 가장자리·내비 위(§16)";
+        }
 
         /// <summary>막히면 전폭 카드, 아니면 가운데 아이콘 도크.</summary>
         public static Rect[] PaletteTiles(Rect r, int count)
@@ -114,7 +132,11 @@ namespace AshesToStars
             float tw = TileW;
             float th = Mathf.Max(28f, r.height - 4f);
             float used = count * tw + (count - 1) * TileGap;
-            float x0 = r.x + (r.width - used) * 0.5f;
+            // 가운데면 마름모 남단 오두막과 겹친다(실측 estate_hud_nav_shots/after.png).
+            // 왼쪽 가장자리는 빈 잔디 위라 건물을 안 가린다. QA_NO_YARD_PALETTE_EDGE면 옛 가운데.
+            float x0 = EdgeBlocked
+                ? r.x + (r.width - used) * 0.5f
+                : r.x + EdgePad;
             for (int i = 0; i < count; i++)
                 tiles[i] = new Rect(x0 + i * (tw + TileGap), r.y + 2f, tw, th);
             return tiles;

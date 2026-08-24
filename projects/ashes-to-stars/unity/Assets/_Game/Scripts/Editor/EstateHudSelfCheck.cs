@@ -25,8 +25,10 @@ namespace AshesToStars
             _log.Length = 0;
             string show = Environment.GetEnvironmentVariable(EstateHud.EnvShow);
             string no = Environment.GetEnvironmentVariable(EstateHud.EnvNo);
+            string noEdge = Environment.GetEnvironmentVariable(EstateHud.EnvNoEdge);
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, null);
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, null);
             EstateHud.ResetForTest();
 
             int n = EstateDefense.All.Length;
@@ -65,7 +67,12 @@ namespace AshesToStars
             float used = EstateHud.PaletteUsedW(bar, n);
             Check(used < 400f && used < bar.width * 0.40f,
                 $"도크 폭 {used:0} < 전폭의 40%");
-            Check(slim[0].x > bar.x + 200f, "도크는 가운데");
+            Check(Mathf.Abs(slim[0].x - (bar.x + EstateHud.EdgePad)) < 0.01f,
+                $"도크 x {slim[0].x:0} = 왼쪽 가장자리 {bar.x + EstateHud.EdgePad:0}");
+            Check(slim[n - 1].xMax < bar.center.x - 0.01f,
+                $"마지막 칸 {slim[n - 1].xMax:0} < 가운데 {bar.center.x:0} — 오두막과 안 겹친다");
+            Check(EstateHud.Line().Contains("가장자리"),
+                $"줄에 가장자리 (실제 {EstateHud.Line()})");
 
             var pal = EstateHud.PaletteBar(body);
             float navTop = EstateHud.NavPlateTop();
@@ -93,6 +100,19 @@ namespace AshesToStars
             Check(oldPal.yMax > EstateHud.NavPlateTop() - 1f,
                 $"차단 아랫변 {oldPal.yMax:0} 이 내비와 겹친다");
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, null);
+
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, "1");
+            Check(EstateHud.EdgeBlocked, "QA_NO_YARD_PALETTE_EDGE면 가운데 차단");
+            Check(!EstateHud.Blocked, "가장자리 차단은 전폭 HUD 차단이 아니다");
+            var oldEdge = EstateHud.PaletteTiles(bar, n);
+            Check(oldEdge[0].x > bar.x + 200f, $"차단 도크 x {oldEdge[0].x:0} 옛 가운데");
+            Check(oldEdge[n - 1].xMax > bar.center.x,
+                $"차단 마지막 칸 {oldEdge[n - 1].xMax:0} 이 가운데를 넘는다");
+            Check(EstateHud.Line().Contains("가운데"),
+                $"차단 줄 (실제 {EstateHud.Line()})");
+            Check(EstateHud.Line().Contains("겹친다"),
+                $"차단 줄에 겹침 (실제 {EstateHud.Line()})");
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, null);
 
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, "1");
             EstateHud.SeedQaIfRequested();
@@ -125,9 +145,14 @@ namespace AshesToStars
                 "팔레트가 NavPlateTop을 읽는다 (body.yMax 붙이기 금지)");
             Check(hud.Contains("NavGap"),
                 "팔레트가 NavGap을 읽는다");
+            Check(hud.Contains("EnvNoEdge") && hud.Contains("EdgePad"),
+                "팔레트가 가장자리 차단·여백을 읽는다");
+            Check(hud.Contains("EdgeBlocked"),
+                "타일이 EdgeBlocked를 읽는다 (가운데 붙이기 금지)");
 
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, show);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, no);
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, noEdge);
             if (_fail == 0) Debug.Log("[EstateHudSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[EstateHudSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[EstateHudSelfCheck] FAIL {_fail}건");
