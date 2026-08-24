@@ -78,6 +78,21 @@ namespace AshesToStars
         protected float RowPitch = RowH + RowGap;
         protected float RowHt = RowH;
 
+        public const string EnvNoCompactInfoFit = "QA_NO_COMPACT_INFO_FIT";
+
+        /// <summary>
+        /// 48px 미만 정보 칸의 글자 영역. 예전 고정 20px는 22px 픽셀 폰트의 한글
+        /// 아랫획을 잘랐다. 패널 안쪽 6px만 남겨 실제 높이를 쓰고, QA_NO는 비교 샷용 옛 칸이다.
+        /// </summary>
+        public static Rect CompactInfoTextRect(Rect panel)
+        {
+            bool blocked = System.Environment.GetEnvironmentVariable(EnvNoCompactInfoFit) == "1";
+            return blocked
+                ? new Rect(panel.x + 16f, panel.y + 8f, panel.width - 32f, 20f)
+                : new Rect(panel.x + 16f, panel.y + 6f, panel.width - 32f,
+                    Mathf.Max(20f, panel.height - 12f));
+        }
+
         GUIStyle _h1, _h2, _h1Slim, _h2Slim, _btn, _btnLeft, _small, _navLabel, _panel, _cardTitle, _tab;
         // 아이콘 없는 카드(예: 타이틀 「종료」)를 형제 카드와 어긋나 보이지 않게 중앙 정렬로 그린다.
         GUIStyle _cardTitleC, _h2C;
@@ -545,9 +560,10 @@ namespace AshesToStars
             if (panel.yMax > REF_H) return;
             if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
-            // 36px 슬림 칸은 SlicePad가 높이를 먹어 글씨가 잘린다. 전폭 64 Info는 예전 칸.
+            // 슬림 칸도 실제 안쪽 높이를 써야 22px 픽셀 폰트의 한글 아랫획이 잘리지 않는다.
+            // 전폭 64 Info는 아틀라스 ContentRect를 유지한다.
             var inner = panel.height < 48f
-                ? new Rect(panel.x + 16f, panel.y + 8f, panel.width - 32f, 20f)
+                ? CompactInfoTextRect(panel)
                 : UiAtlas.ContentRect(panel, "panel", 2f);
             if (absTextLeft > inner.x)
                 inner = new Rect(absTextLeft, inner.y, Mathf.Max(4f, inner.xMax - absTextLeft), inner.height);
