@@ -332,6 +332,11 @@ namespace AshesToStars
                     if (!ch.IsDeleted)
                     {
                         string stats = JobInfo.StatLine(ch.Job);
+                        // §10-9 소환수 상한은 맨 뒤에 두면 r.yMax를 넘겨 안 보인다(플레이모드 실측).
+                        // StatLine과 같은 우선존에 붙여 패널이 꽉 차도 보이게 한다. QA_NO면 빈 문자열.
+                        string summonCap = SummonCap.Line();
+                        if (!string.IsNullOrEmpty(summonCap))
+                            stats = string.IsNullOrEmpty(stats) ? summonCap : stats + " · " + summonCap;
                         if (!string.IsNullOrEmpty(stats)) { Info(r, statusMax + 1, stats); statusMax += 1; }
 
                         // §5 이동기 프로필(형태·거리·무적·쿨) + §4 사망 리스크 + §6 자동사냥을 한 행에.
@@ -491,9 +496,6 @@ namespace AshesToStars
                         // §10-9 BalanceConfig.잡몹상한 — PerfCap.Line. QA_NO면 빈 문자열.
                         string perfCap = PerfCap.Line();
                         if (!string.IsNullOrEmpty(perfCap)) Info(r, advancementRow++, perfCap);
-                        // §10-9 BalanceConfig.소환수상한 — SummonCap.Line. QA_NO면 빈 문자열.
-                        string summonCap = SummonCap.Line();
-                        if (!string.IsNullOrEmpty(summonCap)) Info(r, advancementRow++, summonCap);
                     }
                     // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
                     // 기본 76/64를 기대하므로 반드시 되돌린다(안 하면 다음 프레임에 그 화면이 눌린다).

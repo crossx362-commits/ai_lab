@@ -89,6 +89,8 @@ namespace AshesToStars
             string charSrc = File.ReadAllText(Path.Combine(runtime, "CharacterScreen.cs"));
             Check(charSrc.Contains("SummonCap.Line"),
                 "CharacterScreen이 Line을 속성 탭에 그린다");
+            Check(charSrc.Contains("stats + \" · \" + summonCap"),
+                "상한 줄을 StatLine 우선존에 붙인다 — 맨 뒤면 화면에서 잘린다");
             Check(charSrc.Contains("SummonCap.SeedQaIfRequested"),
                 "CharacterScreen이 SeedQa를 부른다");
             Check(charSrc.Contains("!roster[i].IsDeleted"),
