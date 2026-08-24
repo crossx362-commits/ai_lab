@@ -58,6 +58,7 @@ namespace AshesToStars
                 One("투사체 상한", ProjCapSelfCheck.Run, rows, errors);
                 One("G/h 앵커", GhAnchorSelfCheck.Run, rows, errors);
                 One("티어 배율", TierMulSelfCheck.Run, rows, errors);
+                One("소각 목표", BurnTargetSelfCheck.Run, rows, errors);
                 One("초상 아틀라스", PortraitAtlasSelfCheck.Run, rows, errors);
                 One("아이템 아틀라스", ItemAtlasSelfCheck.Run, rows, errors);
                 One("영지 격자", EstateGridSelfCheck.Run, rows, errors);

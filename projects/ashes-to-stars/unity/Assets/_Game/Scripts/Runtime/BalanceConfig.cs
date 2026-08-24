@@ -16,7 +16,7 @@ namespace AshesToStars
         [Tooltip("티어1 필드 자동사냥 1시간 수익 = 1골드. 소비처: GhAnchor.Hours → WaveHuntGold · 속성 탭 줄")] public float 티어1시간당골드 = 1f;
         [Tooltip("티어당 수익 배율. 소비처: TierMul.Factor → Economy.TierRevenueMultiplier · 속성 탭 줄")] public float 티어배율 = 1.6f;
         [Tooltip("하위 레이드 스케일링 계수")] public float 스케일링계수 = 0.65f;
-        [Tooltip("총 유입 대비 소각 목표(%)")] public Vector2 소각목표 = new Vector2(45f, 55f);
+        [Tooltip("총 유입 대비 소각 목표(%). 소비처: BurnTarget.Range → 속성 탭 줄")] public Vector2 소각목표 = new Vector2(45f, 55f);
 
         [Header("플레이어")]
         public float 플레이어이동속도 = 4.2f;
