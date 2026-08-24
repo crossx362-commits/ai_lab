@@ -18,7 +18,9 @@ namespace AshesToStars
         protected override string Title => "파티 편성";
         protected override string BackgroundArt => "bg_party";
         protected override string Subtitle =>
-            PartyHudCap.ShowQa ? PartyHudCap.Line() : PartyHudCap.Caption();
+            PartyHud.ShowQa ? PartyHud.Line()
+            : PartyHudCap.ShowQa ? PartyHudCap.Line()
+            : PartyHudCap.Caption();
 
         string _msg = "";
         int _page;
@@ -26,6 +28,7 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             PartyHudCap.SeedQaIfRequested();
+            PartyHud.SeedQaIfRequested();
             DefenseState.SeedQaIfRequested();
             _page = DrawTabs(r, new[] { "편성", "출전" }, _page);
             var page = UiPages.AfterTabs(r);
@@ -87,7 +90,7 @@ namespace AshesToStars
 
         void DrawSortiePage(Rect r)
         {
-            var cards = UiPages.Grid(r, 2, 2, 16f);
+            var cards = PartyHud.Cards(r);
             if (DrawCard(cards[0], "필드 출전",
                     PartyState.CanSortie ? "이 편성으로 사냥에 나간다" : "한 명도 편성되지 않았다",
                     "field", locked: !PartyState.CanSortie))
