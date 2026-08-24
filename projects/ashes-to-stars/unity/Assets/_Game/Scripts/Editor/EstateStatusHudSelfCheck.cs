@@ -110,6 +110,18 @@ namespace AshesToStars
                 "OldStoreCaption이 남아 있다");
             Check(EstateStatusHud.Line().Contains("부제"),
                 $"줄 (실제 {EstateStatusHud.Line()})");
+            Check(EstateStatusHud.Line().Contains("내비"),
+                $"줄에 내비 (실제 {EstateStatusHud.Line()})");
+
+            // GameScreen 본문 yMax=640. OldBodyH=540 상자는 내비(636)와 yMax가 달라 겹침이 안 잡힌다.
+            var hub = new Rect(36f, 56f, 1208f, 720f - 56f - UiPages.NavReserve);
+            var hubCards = EstateStatusHud.Cards(hub);
+            float dockBottom = hubCards[hubCards.Length - 1].yMax;
+            float navTop = EstateStatusHud.NavPlateTop();
+            Check(dockBottom <= navTop - EstateStatusHud.NavGap + 0.01f,
+                $"도크 아랫변 {dockBottom:0} ≤ 내비-간격 {navTop - EstateStatusHud.NavGap:0}");
+            Check(navTop - dockBottom >= 10f,
+                $"도크-내비 간격 {navTop - dockBottom:0} ≥ 10 (전폭 카드가 내비와 한 덩어리가 되지 않게)");
 
             Environment.SetEnvironmentVariable(EstateStatusHud.EnvNo, "1");
             Check(EstateStatusHud.Blocked, "QA_NO면 차단");
@@ -120,6 +132,9 @@ namespace AshesToStars
                 $"차단 영공 {old[0].width:0}×{old[0].height:0} 전폭");
             Check(old[1].height > 150f, $"차단 칸 {old[1].height:0} 전폭 카드");
             Check(old[0].y < body.y + 4f, "차단하면 본문 위에서 시작");
+            var oldHub = EstateStatusHud.Cards(hub);
+            Check(oldHub[oldHub.Length - 1].yMax > EstateStatusHud.NavPlateTop() - 1f,
+                $"차단 아랫변 {oldHub[oldHub.Length - 1].yMax:0} 이 내비와 겹친다");
             Check(EstateStatusHud.Line().Contains("가린다"),
                 $"차단 줄 (실제 {EstateStatusHud.Line()})");
             Environment.SetEnvironmentVariable(EstateStatusHud.EnvNo, null);
@@ -139,6 +154,11 @@ namespace AshesToStars
             Check(estate.Contains("EstateStatusHud.MineCaption"), "광산이 MineCaption을 읽는다");
             Check(estate.Contains("EstateStatusHud.StoreCaption"), "창고가 StoreCaption을 읽는다");
             Check(estate.Contains("EstateStatusHud.SeedQaIfRequested"), "시드를 읽는다");
+            string hud = File.ReadAllText(Path.Combine(runtime, "EstateStatusHud.cs"));
+            Check(hud.Contains("NavPlateTop"),
+                "도크가 NavPlateTop을 읽는다 (body.yMax 붙이기 금지)");
+            Check(hud.Contains("NavGap"),
+                "도크가 NavGap을 읽는다");
 
             // 건물 칸 상세 미리보기(YardInspectLine): 본성·광산·창고는 ShortCopper만
             // 끝은 바로 다음 메서드(CoreBuildCaption). AuctionHubLockReason 호출/정의로 자르면 안 됨.

@@ -6,6 +6,8 @@ namespace AshesToStars
     /// <summary>
     /// 영지 현황 HUD. 클래시·킹덤처럼 마을이 보이고 조작은 아래에만 둔다.
     /// 옛 길은 영공 80 + 2×2 전폭이 본문을 전부 덮었다.
+    /// 도크를 body.yMax에 붙이면 하단 금테가 내비 플레이트(636)와 4px 겹친다
+    /// (실측 2026-08-24 tower_hud_nav_shots/before.png와 동형).
     /// QA_NO면 그 옛 겹침. EstateScreen 현황 탭이 읽는다.
     /// </summary>
     public static class EstateStatusHud
@@ -17,6 +19,11 @@ namespace AshesToStars
         public const float OldBodyH = 540f;
         public const float DockH = 88f;
         public const float DockGap = 8f;
+        /// <summary>
+        /// 전폭 5칸 카드는 좌우가 내비 옆으로 빠진다.
+        /// 2px면 금테가 내비 윗변에 붙어 한 덩어리로 읽힌다(필드·월드맵·파티·탑과 동형).
+        /// </summary>
+        public const float NavGap = 12f;
         public const int DockCols = 5;
         public const int DockRows = 1;
         public const int CardCount = 5;
@@ -48,7 +55,21 @@ namespace AshesToStars
 
         public static string Line() => Blocked
             ? "카드가 마을을 가린다"
-            : "현황 도크 부제가 잘리지 않는다(§16)";
+            : "현황 도크 부제가 잘리지 않는다 — 도크는 내비 위(§16)";
+
+        /// <summary>내비 플레이트 윗변. 도크 아랫변이 이보다 아래면 금테가 먹힌다(§16).</summary>
+        public static float NavPlateTop(float screenH = 720f) =>
+            UiPages.NavPlateTop(GameFlow.BottomBar.Length, 1280f, screenH);
+
+        /// <summary>
+        /// 새 길 도크 상자. 필드·월드맵·파티·탑과 같이 내비 플레이트 위에 둔다 —
+        /// body.yMax에 붙이면 하단 금테가 도크에 먹힌다(실측 1280×720, 카드 yMax 640 · 플레이트 636).
+        /// </summary>
+        public static Rect Dock(Rect body, float screenH = 720f)
+        {
+            float yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - NavGap);
+            return new Rect(body.x, yMax - DockH, body.width, DockH);
+        }
 
         /// <summary>도크 한 칸에 들어가는 짧은 부제. 긴 순자산·압류 줄은 건물 안에서 본다.</summary>
         public const int CaptionMaxRunes = 16;
@@ -122,9 +143,9 @@ namespace AshesToStars
 
         /// <summary>
         /// 영공·본성·세계·광산·창고 순서.
-        /// 막히면 옛 영공 80 + 2×2 전폭, 아니면 아래 3×2 도크의 앞 5칸.
+        /// 막히면 옛 영공 80 + 2×2 전폭, 아니면 아래 5칸 도크.
         /// </summary>
-        public static Rect[] Cards(Rect body)
+        public static Rect[] Cards(Rect body, float screenH = 720f)
         {
             var cards = new Rect[CardCount];
             if (Blocked)
@@ -139,8 +160,7 @@ namespace AshesToStars
                 return cards;
             }
 
-            var dock = new Rect(body.x, body.yMax - DockH, body.width, DockH);
-            var slim = UiPages.Grid(dock, DockCols, DockRows, DockGap);
+            var slim = UiPages.Grid(Dock(body, screenH), DockCols, DockRows, DockGap);
             for (int i = 0; i < CardCount && i < slim.Length; i++)
                 cards[i] = slim[i];
             return cards;
