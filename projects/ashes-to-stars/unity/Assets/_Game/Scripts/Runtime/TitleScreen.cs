@@ -14,11 +14,12 @@ namespace AshesToStars
     {
         public const string EnvNoLocalKitLane = "QA_NO_TITLE_LOCAL_KIT_LANE";
 
-        /// <summary>로컬 테스트 안내는 소개 열만 쓴다. 전체 폭이면 오른쪽 「종료」 카드를 가린다.</summary>
+        /// <summary>로컬 테스트 안내는 소개 열의 금테 상태 패널로 읽힌다. QA_NO는 옛 생텍스트.</summary>
         public static Rect LocalKitRect(Rect body)
         {
             bool blocked = System.Environment.GetEnvironmentVariable(EnvNoLocalKitLane) == "1";
-            return new Rect(body.x, body.yMax - 22f, blocked ? body.width : body.width * 0.54f, 20f);
+            float h = blocked ? 20f : 40f;
+            return new Rect(body.x, body.yMax - h, blocked ? body.width : body.width * 0.54f, h);
         }
 
         public static string LocalKitLine()
@@ -49,7 +50,13 @@ namespace AshesToStars
             StarterPick.SeedQaIfRequested();
             string localKitLine = LocalKitLine();
             if (!string.IsNullOrEmpty(localKitLine))
-                Hint(LocalKitRect(r), localKitLine);
+            {
+                var kitRect = LocalKitRect(r);
+                if (System.Environment.GetEnvironmentVariable(EnvNoLocalKitLane) == "1")
+                    Hint(kitRect, localKitLine);
+                else
+                    InfoAt(kitRect, localKitLine);
+            }
             if (StarterPick.Open)
             {
                 DrawStarterPick(r);

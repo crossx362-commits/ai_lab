@@ -86,10 +86,12 @@ namespace AshesToStars
             var lane = TitleScreen.LocalKitRect(body);
             Check(lane.xMax < rightCards[2].x,
                 $"로컬 안내 오른쪽 {lane.xMax:0} < 종료 카드 왼쪽 {rightCards[2].x:0}");
+            Check(Mathf.Approximately(lane.height, 40f), "로컬 상태 패널 높이 40px");
 
             Environment.SetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane, "1");
             var blockedLane = TitleScreen.LocalKitRect(body);
-            Check(blockedLane.Overlaps(rightCards[2]), "네거티브는 옛 전체 폭으로 종료 카드를 가린다");
+            Check(Mathf.Approximately(blockedLane.height, 20f), "네거티브는 옛 20px 생텍스트 칸");
+            Check(blockedLane.width > lane.width, "네거티브는 옛 전체 폭");
             Environment.SetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane, null);
 
             Environment.SetEnvironmentVariable(LocalPlayKit.EnvShow, show);
