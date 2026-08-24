@@ -375,11 +375,15 @@ namespace AshesToStars
                 return;
             }
 
-            if (_moveDragging && !string.IsNullOrEmpty(_moveHint))
-                Hint(new Rect(r.x, r.y + UiPages.TabH + 8f, Mathf.Min(520f, r.width * 0.55f), 22f),
-                    _moveHint);
-            else if (_selX < 0)
-                Hint(new Rect(r.x, r.y + UiPages.TabH + 8f, Mathf.Min(520f, r.width * 0.55f), 22f), hud);
+            var chip = EstateHud.ChipRect(r);
+            string chipText = (_moveDragging && !string.IsNullOrEmpty(_moveHint)) ? _moveHint
+                : (_selX < 0 ? hud : null);
+            if (!string.IsNullOrEmpty(chipText))
+            {
+                // QA_NO면 옛 Hint(배경에 글씨만). 새 길은 InfoAt 금테 — 마을 그림에 묻히지 않는다.
+                if (EstateHud.Blocked) Hint(chip, chipText);
+                else InfoAt(chip, chipText);
+            }
             bool selected = _selX >= 0;
             float insH = EstateHud.InspectH(selected);
             var paletteOn = EstateHud.PaletteBar(r);

@@ -42,6 +42,19 @@ namespace AshesToStars
             Check(EstateHud.ShowInspectBar(true), "선택하면 안내");
             Check(EstateHud.Line().Contains("가리지 않는다"),
                 $"줄 (실제 {EstateHud.Line()})");
+            Check(EstateHud.Line().Contains("금테 칩"),
+                $"줄에 칩 (실제 {EstateHud.Line()})");
+
+            var body = new Rect(36f, 52f, 1208f, 720f - 52f - UiPages.NavReserve);
+            var chip = EstateHud.ChipRect(body);
+            Check(Mathf.Approximately(chip.height, EstateHud.ChipH),
+                $"칩 높이 {chip.height:0} = {EstateHud.ChipH:0}");
+            Check(chip.width <= EstateHud.ChipW + 0.01f,
+                $"칩 폭 {chip.width:0} ≤ {EstateHud.ChipW:0}");
+            Check(chip.y >= body.y + UiPages.TabH - 0.01f,
+                $"칩 y {chip.y:0} ≥ 탭 아래 {body.y + UiPages.TabH:0}");
+            Check(chip.x >= body.x - 0.01f && chip.xMax <= body.xMax + 0.01f,
+                $"칩 x {chip.x:0}~{chip.xMax:0} 본문 안");
 
             var slim = EstateHud.PaletteTiles(bar, n);
             Check(slim.Length == n, $"도크 {n}칸");
@@ -52,10 +65,11 @@ namespace AshesToStars
                 $"도크 폭 {used:0} < 전폭의 40%");
             Check(slim[0].x > bar.x + 200f, "도크는 가운데");
 
-            var body = new Rect(36f, 52f, 1208f, 720f - 52f - UiPages.NavReserve);
             var pal = EstateHud.PaletteBar(body);
             Check(pal.yMax < EstateHud.NavPlateTop(),
                 $"팔레트 아랫변 {pal.yMax:0} < 내비 {EstateHud.NavPlateTop():0}");
+            Check(chip.yMax < pal.y - 0.01f,
+                $"칩 바닥 {chip.yMax:0} < 팔레트 {pal.y:0} — 침략 줄이 방어 도크와 안 겹친다");
 
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, "1");
             Check(EstateHud.Blocked, "QA_NO면 차단");
@@ -67,6 +81,9 @@ namespace AshesToStars
             Check(old[0].width > 200f, $"차단 칸 {old[0].width:0} 전폭 카드");
             Check(EstateHud.Line().Contains("가린다"),
                 $"차단 줄 (실제 {EstateHud.Line()})");
+            var oldChip = EstateHud.ChipRect(body);
+            Check(oldChip.height <= EstateHud.OldChipH + 0.01f,
+                $"차단 칩 {oldChip.height:0} ≤ 옛 {EstateHud.OldChipH:0} — 옛 Hint 높이");
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, null);
 
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, "1");
@@ -85,6 +102,16 @@ namespace AshesToStars
             Check(estate.Contains("EstateHud.PaletteTiles"), "팔레트가 PaletteTiles를 읽는다");
             Check(estate.Contains("EstateHud.ShowInspectBar"), "안내가 ShowInspectBar를 읽는다");
             Check(estate.Contains("EstateHud.Line"), "자막이 Line을 읽는다");
+            int dv = estate.IndexOf("void DrawVillage", StringComparison.Ordinal);
+            int dvEnd = estate.IndexOf("void HandleBuildingDrag", dv, StringComparison.Ordinal);
+            Check(dv >= 0 && dvEnd > dv, "DrawVillage 블록을 찾는다");
+            string block = dv >= 0 && dvEnd > dv ? estate.Substring(dv, dvEnd - dv) : "";
+            Check(block.Contains("EstateHud.ChipRect"),
+                "마을 침략 줄이 ChipRect를 읽는다 (옛 인라인 Hint 22px 금지)");
+            Check(block.Contains("InfoAt(chip"),
+                "새 길은 InfoAt 금테 — Hint면 글씨가 마을에 묻힌다");
+            Check(block.Contains("EstateHud.Blocked") && block.Contains("Hint(chip"),
+                "QA_NO면 옛 Hint 경로");
 
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, show);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, no);

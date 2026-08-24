@@ -69,9 +69,25 @@ namespace AshesToStars
 
         public static bool ShowInspectBar(bool selected) => Blocked || selected;
 
+        /// <summary>
+        /// 미선택 침략 줄. 옛 길은 Hint 22px라 마을 그림 위에 글씨만 얹혀
+        /// 「침략 북 3칸」이 배경에 묻혔다(실측 2026-08-24, estate_hub_shots).
+        /// 새 길은 금테 칩(InfoAt) 36px. QA_NO면 옛 22.
+        /// </summary>
+        public const float ChipH = 36f;
+        public const float ChipW = 520f;
+        public const float OldChipH = 22f;
+
+        public static Rect ChipRect(Rect body)
+        {
+            float h = Blocked ? OldChipH : ChipH;
+            float w = Mathf.Min(ChipW, body.width * 0.55f);
+            return new Rect(body.x, body.y + UiPages.TabH + 8f, w, h);
+        }
+
         public static string Line() => Blocked
             ? "안내·팔레트가 마을을 가린다"
-            : "HUD는 마을을 가리지 않는다(§16)";
+            : "HUD는 마을을 가리지 않는다 — 침략 줄은 금테 칩(§16)";
 
         /// <summary>막히면 전폭 카드, 아니면 가운데 아이콘 도크.</summary>
         public static Rect[] PaletteTiles(Rect r, int count)
