@@ -75,6 +75,18 @@ namespace AshesToStars
                 GameFlow.Go(GameFlow.Party);
         }
 
+        /// <summary>§3 세부 토글. QA_NO면 토글 조각을 뺀 옛 StatLine(수치·행동설명만).</summary>
+        public const string EnvNoToggles = "QA_NO_STYLE_TOGGLES";
+
+        public static bool TogglesBlocked
+        {
+            get
+            {
+                string raw = System.Environment.GetEnvironmentVariable(EnvNoToggles);
+                return raw == "1" || string.Equals(raw, "true", System.StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         /// <summary>
         /// 수치를 에셋에서 읽어 보여준다. 화면이 코드 상수를 따로 들고 있으면
         /// 기획자가 인스펙터에서 값을 고쳤을 때 **화면만 옛 숫자를 말한다** —
@@ -85,8 +97,13 @@ namespace AshesToStars
         /// 화면에 한 번도 안 떴다(이 저장소가 반복한 「정의만 있고 부르는 곳 없다」 함정 —
         /// 컨셉·스킬·사망리스크와 동일 계열). 같은 에셋을 이미 로드하는 이 소비처에서
         /// 수치 아래 한 줄로 붙인다. 값이 비면 지어내지 않고 붙이지 않는다.
+        ///
+        /// §3 세부 토글 「타겟 우선순위」「소모품 자동 사용」은 `정예우선타겟`·`소모품자동사용`에
+        /// authored돼 있으면서도 grep 소비처 0곳이었다(형제 딜·피해·후퇴·거리·행동설명은
+        /// 이 줄이 읽는데 토글만 죽어 있던 함정). 행동설명 뒤에 이어 붙인다.
+        /// QA_NO_STYLE_TOGGLES면 토글 조각만 빼고 옛 줄.
         /// </summary>
-        static string StatLine(StyleId id)
+        public static string StatLine(StyleId id)
         {
             var defs = Resources.LoadAll<CombatStyleDef>("styles");
             foreach (var d in defs)
@@ -94,10 +111,29 @@ namespace AshesToStars
                 if (d.Id != id) continue;
                 string stat = $"딜 ×{d.딜배율:0.00} · 받는 피해 ×{d.피해배율:0.00} · " +
                               $"후퇴 {d.후퇴체력 * 100f:0}% · 거리 {d.유지거리:0.0}";
-                return string.IsNullOrEmpty(d.행동설명) ? stat : stat + "\n" + d.행동설명;
+                string body = string.IsNullOrEmpty(d.행동설명) ? stat : stat + "\n" + d.행동설명;
+                if (TogglesBlocked) return body;
+                string tog = ToggleLine(d);
+                if (string.IsNullOrEmpty(tog)) return body;
+                if (string.IsNullOrEmpty(d.행동설명)) return stat + "\n" + tog;
+                return stat + "\n" + d.행동설명 + " · " + tog;
             }
             // 에셋을 못 읽으면 숫자를 **지어내지 않는다.** 설명만 보여주고 사실을 말한다.
             return CombatStylePrefs.Describe(id) + " (수치 에셋을 못 읽었다)";
+        }
+
+        /// <summary>
+        /// "가까운 적 · 소모품 자동 불가(§4)". CombatStyleDef.정예우선타겟·소모품자동사용의
+        /// **유일한 런타임 소비처**. 기본(가까운 적)도 빈 문자열이 아니라 문구로 남긴다 —
+        /// 안 그러면 전 에셋이 0이라 화면에 소비 증거가 안 남는다. 소모품은 §4가
+        /// 자동을 금하므로 false면 「불가」를 명시한다. 값이 true여도 지어내지 않고 읽은 대로.
+        /// </summary>
+        public static string ToggleLine(CombatStyleDef d)
+        {
+            if (d == null || TogglesBlocked) return "";
+            string target = d.정예우선타겟 ? "정예 우선(§10-2)" : "가까운 적";
+            string potion = d.소모품자동사용 ? "소모품 자동" : "소모품 자동 불가(§4)";
+            return target + " · " + potion;
         }
     }
 }

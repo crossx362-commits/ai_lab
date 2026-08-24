@@ -302,6 +302,8 @@ public static class ProjectSetup
             var a = ScriptableObject.CreateInstance<CombatStyleDef>();
             a.Id = r.Item1; a.딜배율 = r.Item2; a.피해배율 = r.Item3;
             a.후퇴체력 = r.Item4; a.유지거리 = r.Item5; a.행동설명 = r.Item6;
+            a.정예우선타겟 = false;
+            a.소모품자동사용 = false;
             // ⚠️ **Resources 아래에 쓴다.** 예전에는 `Data/Styles/`에 만들었는데
             //    런타임은 `Resources/` 밖을 못 읽어서(이 저장소가 겪은 「Resources 밖 자산」 함정)
             //    전투 코드가 이 에셋을 영영 못 봤고, 결국 코드 상수 표가 진짜 소스가 돼 있었다.
