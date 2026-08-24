@@ -3,9 +3,9 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 05:25 · 잡몹 HP(`6f1e1226`). 사람 관문 더미 유지
-마지막 트랙: 코드 — §18-11 잡몹 HP. `MobHp`가 MobDef.체력배율(1.2)을 읽고 속성 탭·던전 부제가 소비. QA_NO면 옛 1.2·줄 없음
-폴리싱 다음: 직전=코드(잡몹 HP `6f1e1226`)라 다음은 UI 폴리싱 1건. 팔레트-마름모(`37705577`)는 닫음
+최종 갱신: 2026-08-25 05:37 · 허브 본문-내비(`0fc2eb14`). 사람 관문 더미 유지
+마지막 트랙: UI 폴리싱 — 허브 본문을 내비 플레이트 위 12px에서 한 곳에서 자름. `BodyNav.Fit`. QA_NO_BODY_NAV면 옛 640. 화면마다 Hud.NavGap 복제를 끊음
+폴리싱 다음: 허브 본문-내비 닫음(`0fc2eb14`). 직전=폴리싱이라 다음은 소비처0 재스캔
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -55,6 +55,7 @@
 
 ## 최근 완료 내역 (History)
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
+| — | 2026-08-25 05:36 | **UI 폴리싱 — 허브 본문-내비 한 곳에서 자름.** NavReserve=80이면 Body yMax=640인데 내비 플레이트는 636이라 하단 금테 4px 겹침. `BodyNav.Fit`이 NavPlateTop-12. QA_NO_BODY_NAV면 옛 640. 화면마다 Hud.NavGap 복제를 끊음 | BodyNavSelfCheck PASS · GameSweep 행 추가 · `0fc2eb14` |
 | — | 2026-08-25 05:25 | **§18-11 잡몹 HP — 소비처 0곳.** MobDef.체력배율 기본 1.2(원장 0.8~1.5=1~2타)가 에셋에만 있음. `MobHp`가 읽고 속성 탭·던전 부제가 소비. QA_NO면 옛 1.2·줄 없음. `W3Party`는 안 만짐. 블렌더 꺼짐(3D 없음) | 컴파일 PASS(346소스 0) · MobHpSelfCheck PASS 22/22 · GameSweep 행 추가 · 샷 `mob_hp_shots/qa_go_Character.png`(속성 탭 「잡몹 HP ×1.2(§18-11)」) · 네거 `qa_negctrl_no_hp.png`(QA_NO면 그 줄 없음) · `6f1e1226` |
 | — | 2026-08-25 05:07 | **§18-11 잡몹 이동속도 — 소비처 0곳.** MobDef.속도배율(추적 0.90·포위 0.85·원거리 0.65)이 에셋에만 있음. `MobSpeed`가 읽고 속성 탭·던전 부제가 소비. QA_NO면 옛 표·줄 없음. `W3Party`는 안 만짐 | MobSpeedSelfCheck PASS · GameSweep 행 추가 · `8c89e69b` |
 | — | 2026-08-25 04:52 | **§18-8 PvE 회복시간 — 소비처 0곳.** 에셋 기본 24시간인데 grep 소비처 0곳. `PveRecover`가 읽고 속성 탭·LifeSystem이 소비. QA_NO면 옛 24시간·줄 없음. `W3Party`는 안 만짐 | PveRecoverSelfCheck PASS · GameSweep 행 추가 · `cff20f97` |
