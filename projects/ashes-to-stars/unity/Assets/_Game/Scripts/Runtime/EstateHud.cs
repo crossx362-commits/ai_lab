@@ -17,6 +17,7 @@ namespace AshesToStars
         public const string EnvShow = "QA_YARD_HUD";
         public const string EnvNo = "QA_NO_YARD_HUD";
         public const string EnvNoEdge = "QA_NO_YARD_PALETTE_EDGE";
+        public const string EnvNoChipCompact = "QA_NO_ESTATE_CHIP_COMPACT";
         public const float OldInspectH = 86f;
         public const float OldPaletteH = 68f;
         public const float SlimPaletteH = 44f;
@@ -97,13 +98,16 @@ namespace AshesToStars
         /// 새 길은 금테 칩(InfoAt) 36px. QA_NO면 옛 22.
         /// </summary>
         public const float ChipH = 36f;
-        public const float ChipW = 520f;
+        // 520px 칩은 x=470 부근의 높은 본성 탑 지붕을 덮었다. 세 수치는 420px에 한 줄로 들어간다.
+        public const float ChipW = 420f;
+        public const float OldChipW = 520f;
         public const float OldChipH = 22f;
 
         public static Rect ChipRect(Rect body)
         {
             float h = Blocked ? OldChipH : ChipH;
-            float w = Mathf.Min(ChipW, body.width * 0.55f);
+            bool oldWide = Environment.GetEnvironmentVariable(EnvNoChipCompact) == "1";
+            float w = Mathf.Min(oldWide ? OldChipW : ChipW, body.width * 0.55f);
             return new Rect(body.x, body.y + UiPages.TabH + 8f, w, h);
         }
 

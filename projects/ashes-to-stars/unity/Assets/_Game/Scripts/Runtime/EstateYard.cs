@@ -32,7 +32,6 @@ namespace AshesToStars
         public const string EnvNoFootprint = "QA_NO_ESTATE_FOOTPRINT";
         public const string EnvShowDrag = "QA_ESTATE_DRAG";
         public const string EnvNoDrag = "QA_NO_ESTATE_DRAG";
-        public const string EnvNoHeaderClear = "QA_NO_ESTATE_YARD_HEADER_CLEAR";
         public const float QaPanX = 180f;
         public const float QaPanY = 48f;
         public const float QaZoom = 1.50f;
@@ -46,9 +45,6 @@ namespace AshesToStars
 
         public static bool FillBlocked =>
             Environment.GetEnvironmentVariable(EnvNo) == "1";
-
-        public static bool HeaderClearBlocked =>
-            Environment.GetEnvironmentVariable(EnvNoHeaderClear) == "1";
 
         public static bool PanBlocked
         {
@@ -278,11 +274,7 @@ namespace AshesToStars
             int n = Mathf.Max(1, EstateGrid.Size);
             Vector2 pan = Pan;
             float ox = area.center.x + pan.x;
-            // 높은 탑 지붕이 상단 탭 뒤에서 잘리지 않도록 마름모 시점을 아래로 내린다.
-            // QA_NO_ESTATE_YARD_HEADER_CLEAR는 지붕이 탭에 먹히던 옛 시점이다.
-            float topShare = HeaderClearBlocked ? 0.16f : 0.06f;
-            float liftY = HeaderClearBlocked ? 0f : 44f;
-            float oy = area.y + Mathf.Max(6f, (area.height - n * th) * topShare) + liftY + pan.y;
+            float oy = area.y + Mathf.Max(6f, (area.height - n * th) * 0.16f) + pan.y;
             return new Vector2(
                 ox + (x - y) * tw * 0.5f - tw * 0.5f,
                 oy + (x + y) * th * 0.5f);

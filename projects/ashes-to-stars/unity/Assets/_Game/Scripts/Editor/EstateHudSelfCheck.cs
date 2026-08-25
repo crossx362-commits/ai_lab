@@ -26,9 +26,11 @@ namespace AshesToStars
             string show = Environment.GetEnvironmentVariable(EstateHud.EnvShow);
             string no = Environment.GetEnvironmentVariable(EstateHud.EnvNo);
             string noEdge = Environment.GetEnvironmentVariable(EstateHud.EnvNoEdge);
+            string noChipCompact = Environment.GetEnvironmentVariable(EstateHud.EnvNoChipCompact);
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, null);
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, null);
             EstateHud.ResetForTest();
 
             int n = EstateDefense.All.Length;
@@ -55,10 +57,19 @@ namespace AshesToStars
                 $"칩 높이 {chip.height:0} = {EstateHud.ChipH:0}");
             Check(chip.width <= EstateHud.ChipW + 0.01f,
                 $"칩 폭 {chip.width:0} ≤ {EstateHud.ChipW:0}");
+            Check(chip.xMax <= 460f,
+                $"칩 오른쪽 {chip.xMax:0} ≤ 460 — 높은 본성 탑 지붕을 덮지 않는다");
             Check(chip.y >= body.y + UiPages.TabH - 0.01f,
                 $"칩 y {chip.y:0} ≥ 탭 아래 {body.y + UiPages.TabH:0}");
             Check(chip.x >= body.x - 0.01f && chip.xMax <= body.xMax + 0.01f,
                 $"칩 x {chip.x:0}~{chip.xMax:0} 본문 안");
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, "1");
+            var oldWideChip = EstateHud.ChipRect(body);
+            Check(oldWideChip.width >= EstateHud.OldChipW - 0.01f,
+                $"네거티브 칩 폭 {oldWideChip.width:0} = 옛 {EstateHud.OldChipW:0}");
+            Check(oldWideChip.xMax > 500f,
+                $"네거티브 칩 오른쪽 {oldWideChip.xMax:0} > 500 — 높은 탑 영역을 덮는다");
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, null);
 
             var slim = EstateHud.PaletteTiles(bar, n);
             Check(slim.Length == n, $"도크 {n}칸");
@@ -153,6 +164,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, show);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, no);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, noEdge);
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, noChipCompact);
             if (_fail == 0) Debug.Log("[EstateHudSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[EstateHudSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[EstateHudSelfCheck] FAIL {_fail}건");
