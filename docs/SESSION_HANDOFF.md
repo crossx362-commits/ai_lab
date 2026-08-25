@@ -1,17 +1,18 @@
 # SESSION_HANDOFF — 재와 별 자율 루프 (2026-08-25)
 
-## ⚠️ 오너 지시 (2026-08-25): 이 기계에서 개발 루프 전면 정지 — "다른데서 할게"
-- 30분 주기 이어받기 크론(`9903c5ca`) **삭제됨**. 이 기계에서 클로드가 자동으로 개발을
-  이어받는 패턴은 종료 — 새 세션은 오너가 직접 시키기 전엔 게임 개발 작업을 집지 마라.
-- `loop/STOP` 유지(메인 루프 정지), `loop/STOP_LANE` 생성(속도 레인 정지 신호).
-- 진행 중이던 "소비처 0곳" 재스캔 에이전트도 중지함(결과 미채택).
+## ✅ 오너 지시 (2026-08-25 밤): 이 기계 자율 루프 **재개** — 같은 날 정지 지시 해제
+- 오너가 "여기 자율 루프 진행해"로 재지시 → 인수인계 기록 절차 그대로
+  `rm -f loop/STOP loop/STOP_LANE && bash loop/deploy_launchd.sh` 실행.
+  메인(`com.ailab.autonomous_loop`)·속도 레인 모두 launchd 구동 실측 확인(PID 부여).
+- 공급자가 전부 불가라 메인 루프는 설계대로 "양쪽 다 소진 — 1800초 대기 후 재확인" 상태.
+  **오너가 터미널에서 `claude` 1회 로그인하면 곧바로 개발 재개됨.**
 
-## 현재 상황
-- 자율 개발 루프(`com.ailab.autonomous_loop`)는 정지 상태(`launchctl list` PID `-`, `loop/STOP` 존재).
-  실측(2026-08-25, `python3 loop/board.py usage <name>`): **Claude = 로그인 없음(OAuth 재인증 필요,
-  오너가 터미널에서 `claude` 1회 로그인해야 함), Grok = 사용량 100% 소진.** Codex도 100%(재개 2026-08-31).
-- 다른 곳에서 재기동하려면: `rm -f loop/STOP loop/STOP_LANE && bash loop/deploy_launchd.sh`
-  (커밋 `9b25f042` 이후 board.py도 함께 배포됨).
+## 현재 상황 (2026-08-25 20:31 재개 직후 실측)
+- 메인 루프: 양쪽 소진 감지(claude·grok, 실패 카운터 1/6) → 1800초마다 재확인(`logs/loop_main.log`).
+  속도 레인: 구동 중, 할 일 없음 → 60초 대기, 보류됐던 "즉시 회의 소집 신호" 처리 진입(`logs/speed_lane.log`).
+- 공급자: **Claude = 로그인 없음(OAuth 재인증 필요 — 오너가 터미널에서 `claude` 1회 실행),
+  Grok = 사용량 100% 소진(주기 8/23~8/30), Codex = 재개 2026-08-31.**
+- 끄려면: `touch loop/STOP loop/STOP_LANE`(다음 랩 체크 시 정상 종료).
 
 ## Claude↔Grok 사용량 자동전환 — 구현 완료 (오너 지시 2026-08-25)
 오너의 "자율 루프 처음부터 구축" 스펙을 AskUserQuestion으로 확인 → **"ashes-to-stars에 이식·병합"**
