@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 13:41 · §10-2 잡몹 크기 소비처(`5734657a`). 사람 관문 더미 유지
-마지막 트랙: 코드 — `MobDef.크기` 2.2를 `MobSize`가 읽고 던전 QA 부제에서 증명한다
-소비처0 다음: 직전=코드이므로 최신 정상 샷에서 UI 절단·겹침 한 곳 폴리싱
-검증: C# 정적 컴파일 PASS(364소스 0) · `unity_meas` MobSizeSelfCheck PASS 11/11 · 실행 파일 빌드 PASS · 1280×720 ON/NEG 육안 확인(`output/qa/ashes-to-stars/mob_size_shots/{on_active,neg_active}/qa_go:Dungeon.png`) — 정상 부제에 `잡몹 크기 ×2.2`, 네거티브는 해당 조각만 없음. 카드·헤더 잘림/겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
+최종 갱신: 2026-08-25 14:19 · 던전 전투 카드 플레이어 문구 폴리싱(`ffae51ef`). 사람 관문 더미 유지
+마지막 트랙: UI — 전투 카드의 구현 용어를 `최대 105마리 · 원거리 적 20% · 좁은 길`로 풀어썼다
+소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔. 코드 칸이 없으면 최신 정상 샷 UI 한 곳 폴리싱
+검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` DungeonEncounterCopySelfCheck PASS 4/4 · 실행 파일 빌드 PASS(1,390,373,399 bytes) · 1280×720 정상/네거티브 육안 확인(`output/qa/ashes-to-stars/dungeon_encounter_copy_shots/{after,neg}/qa_dungeon.png`) — 정상은 플레이어 단위·지형명, 네거티브는 `동시 105체 · 원거리 20% · 병목`. 카드 제목·부제·아이콘과 우측 포기 카드 절단/겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -369,4 +369,22 @@
 
 - 완료: 허브 공통 슬림 부제 색을 `0.62/0.65/0.75`에서 `0.76/0.79/0.87`로 올려 영지 성벽·필드 안개 위 가독성을 강화했다 (`9b3d499b`). `QA_NO_HUB_SUBTITLE_CONTRAST=1`은 옛 흐린 색을 재현한다.
 - 검증: C# 컴파일 PASS(362소스 0)·고의 오류 탐지 PASS·`unity_meas` HubHeaderSelfCheck PASS 28항목·실행 빌드 PASS(1,388,341,063 bytes). 1280×720 정상/네거티브 화면 `output/qa/ashes-to-stars/hub_subtitle_contrast/{after,neg}/qa_go:Estate.png`을 직접 비교해 정상 부제가 배경에서 분리되고 절단·겹침이 없음을 확인했다. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뛰었고, Unity MCP가 노출되지 않아 격리 빌드+실행 캡처로 검증했다.
+- 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔한다. 코드 칸이 없으면 최신 정상 샷에서 UI 절단·겹침 한 곳만 폴리싱한다.
+
+## 최신 바퀴 (2026-08-25 13:52)
+
+- 완료: 도크 없는 화면의 `ESC — 뒤로` 안내가 720p 바닥과 6px밖에 떨어지지 않던 최신 던전 샷 결함을 공통 `EscapeHintRect`로 고쳐 12px 안전 여백을 확보했다 (`c43fb298`). `QA_NO_ESCAPE_SAFE_MARGIN=1`은 옛 바닥 밀착 좌표를 재현한다.
+- 검증: C# 정적 컴파일 PASS(365소스 0) · `unity_meas` EscapeHintHudSelfCheck PASS 5/5 · 실행 파일 빌드 PASS(1,389,785,660 bytes) · 1280×720 정상/네거티브 `output/qa/ashes-to-stars/escape_hint_shots/{after,neg}/qa_dungeon.png`을 직접 비교해 정상 하단 여백 12px, 네거티브 6px를 확인했다. 카드·제목·안내에 새 절단·겹침 없음. 신규 그림·3D 작업이 아니어서 이미지 생성·블렌더는 건너뛰었고 Unity MCP가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증했다.
+- 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔한다. 코드 칸이 없으면 최신 정상 샷에서 UI 절단·겹침 한 곳만 폴리싱한다.
+
+## 최신 바퀴 (2026-08-25 14:10)
+
+- 완료: 최신 던전 정상 샷의 `던전 포기` 카드에 플레이어와 무관한 내부 원장 표기 `(§7)`이 노출되던 문구를 `여기서 나간다 — 임시 강화는 모두 사라진다`로 바꿨다 (`d5f8a4a6`). `QA_NO_DUNGEON_ABANDON_COPY=1`은 옛 문구를 재현한다.
+- 검증: C# 정적 컴파일 PASS(367소스 0) · `unity_meas` DungeonAbandonCopySelfCheck PASS 4/4 · 실행 파일 빌드 PASS(1,389,785,852 bytes) · 1280×720 정상/네거티브 `output/qa/ashes-to-stars/dungeon_abandon_copy_shots/{after,neg}/qa_dungeon.png`을 직접 비교했다. 정상은 소실 범위가 명확하고 네거티브만 `(§7)`이 보이며, 카드·헤더·하단 안내에 새 절단·겹침은 없다. 신규 그림·3D 작업이 아니어서 이미지 생성·블렌더는 건너뛰었고 Unity MCP가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증했다.
+- 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔한다. 코드 칸이 없으면 최신 정상 샷에서 UI 절단·겹침 한 곳만 폴리싱한다.
+
+## 최신 바퀴 (2026-08-25 14:19)
+
+- 완료: 최신 던전 정상 샷의 일반 전투 카드가 `동시 105체 · 원거리 20% · 병목`처럼 구현 단위·용어를 나열하던 문구를 `최대 105마리 · 원거리 적 20% · 좁은 길`로 풀어썼다 (`ffae51ef`). `QA_NO_DUNGEON_ENCOUNTER_COPY=1`은 옛 문구를 재현한다.
+- 검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` DungeonEncounterCopySelfCheck PASS 4/4 · 실행 파일 빌드 PASS(1,390,373,399 bytes) · 1280×720 정상/네거티브 `output/qa/ashes-to-stars/dungeon_encounter_copy_shots/{after,neg}/qa_dungeon.png`을 직접 비교했다. 정상 문구는 선택 의미가 바로 읽히고 카드 제목·부제·아이콘 및 우측 포기 카드에 절단·겹침이 없다. 신규 그림·3D 작업이 아니어서 이미지 생성·블렌더는 건너뛰었고 Unity MCP가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증했다.
 - 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔한다. 코드 칸이 없으면 최신 정상 샷에서 UI 절단·겹침 한 곳만 폴리싱한다.
