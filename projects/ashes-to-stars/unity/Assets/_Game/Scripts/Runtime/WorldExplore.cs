@@ -17,6 +17,7 @@ namespace AshesToStars
         public const string EnvNo = "QA_NO_EXPLORE_FOG";
         public const string EnvNoDup = "QA_NO_EXPLORE_DUP";
         public const string EnvNoLabelPlate = "QA_NO_EXPLORE_LABEL_PLATE";
+        public const string EnvNoLabelSpread = "QA_NO_EXPLORE_LABEL_SPREAD";
         public const int HumanPercent = 100;
         public const int ElfPercent = 130;
         public const int NearFloor = 1;
@@ -71,12 +72,33 @@ namespace AshesToStars
         public static bool LabelPlateBlocked =>
             Environment.GetEnvironmentVariable(EnvNoLabelPlate) == "1";
 
+        public static bool LabelSpreadBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoLabelSpread) == "1";
+
         /// <summary>별 이름을 성운 위에 띄우지 않고 작은 금테 표찰 안에 가둔다.</summary>
         public static Rect LabelPlate(Rect field, Rect icon)
         {
             var plate = new Rect(icon.x - 32f, icon.yMax + 2f, icon.width + 64f, 24f);
             plate.x = Mathf.Clamp(plate.x, field.x + 2f, field.xMax - plate.width - 2f);
             plate.y = Mathf.Min(plate.y, field.yMax - plate.height - 2f);
+            return plate;
+        }
+
+        /// <summary>가까운 별 세 개의 표찰을 아이콘 사방으로 펼쳐 서로 가리지 않게 한다.</summary>
+        public static Rect LabelPlate(Rect field, Rect icon, int index)
+        {
+            if (LabelSpreadBlocked) return LabelPlate(field, icon);
+            const float width = 86f;
+            const float height = 24f;
+            Rect plate;
+            if (index == 0)
+                plate = new Rect(icon.xMax + 6f, icon.center.y - height * 0.5f, width, height);
+            else if (index == 1)
+                plate = new Rect(icon.x - width - 6f, icon.center.y + 5f, width, height);
+            else
+                plate = new Rect(icon.x - width - 6f, icon.center.y - height - 5f, width, height);
+            plate.x = Mathf.Clamp(plate.x, field.x + 2f, field.xMax - plate.width - 2f);
+            plate.y = Mathf.Clamp(plate.y, field.y + 2f, field.yMax - plate.height - 2f);
             return plate;
         }
 
@@ -203,7 +225,7 @@ namespace AshesToStars
                 GUI.color = seen ? Color.white : new Color(1f, 1f, 1f, 0.16f);
                 UiAtlas.DrawFit(ir, "worldmap");
                 if (!seen) continue;
-                var lab = LabelPlate(field, ir);
+                var lab = LabelPlate(field, ir, i);
                 if (!LabelPlateBlocked)
                 {
                     if (!UiAtlas.DrawSliced(lab, "panel", 8f,

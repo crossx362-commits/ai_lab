@@ -32,6 +32,7 @@ namespace AshesToStars
             string no = Environment.GetEnvironmentVariable(WorldExplore.EnvNo);
             string noDup = Environment.GetEnvironmentVariable(WorldExplore.EnvNoDup);
             string noLabelPlate = Environment.GetEnvironmentVariable(WorldExplore.EnvNoLabelPlate);
+            string noLabelSpread = Environment.GetEnvironmentVariable(WorldExplore.EnvNoLabelSpread);
             string noRange = Environment.GetEnvironmentVariable(WorldStar.EnvNoRange);
             RaceId oldRace = RacePrefs.Get();
             float oldForce = WorldExplore.ForceMul;
@@ -40,6 +41,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(WorldExplore.EnvNo, null);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNoDup, null);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelPlate, null);
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelSpread, null);
             Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, null);
             WorldExplore.ForceMul = 0f;
 
@@ -130,6 +132,22 @@ namespace AshesToStars
                 $"별 표찰은 아이콘 아래 24px (실제 {label})");
             Check(field.Contains(label.min) && field.Contains(label.max - Vector2.one),
                 "별 표찰은 필드 안에 있다");
+            var clustered = new Rect(620f, 260f, 22f, 22f);
+            var spread = new Rect[3];
+            for (int i = 0; i < spread.Length; i++)
+            {
+                spread[i] = WorldExplore.LabelPlate(field, clustered, i);
+                Check(field.Contains(spread[i].min) && field.Contains(spread[i].max - Vector2.one),
+                    $"펼친 표찰 {i + 1}은 필드 안 (실제 {spread[i]})");
+            }
+            Check(!spread[0].Overlaps(spread[1]) && !spread[0].Overlaps(spread[2])
+                  && !spread[1].Overlaps(spread[2]), "세 표찰 방향은 서로 겹치지 않는다");
+            Check(!WorldExplore.LabelSpreadBlocked, "별 표찰 펼침 기본은 켜짐");
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelSpread, "1");
+            Check(WorldExplore.LabelSpreadBlocked
+                  && WorldExplore.LabelPlate(field, clustered, 0) == WorldExplore.LabelPlate(field, clustered),
+                "QA_NO_SPREAD면 옛 아이콘 아래 표찰");
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelSpread, null);
             Check(!WorldExplore.LabelPlateBlocked, "별 표찰 기본은 켜짐");
             Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelPlate, "1");
             Check(WorldExplore.LabelPlateBlocked, "QA_NO면 옛 배경 없는 이름");
@@ -171,9 +189,10 @@ namespace AshesToStars
             Check(expSrc.Contains("FieldCaption(floor)")
                   && expSrc.Contains("QA_NO_EXPLORE_DUP"),
                 "Draw가 FieldCaption을 그린다 (옛 Line 중복 금지)");
-            Check(expSrc.Contains("LabelPlate(field, ir)")
-                  && expSrc.Contains("QA_NO_EXPLORE_LABEL_PLATE"),
-                "Draw가 별 이름 금테 표찰을 그린다");
+            Check(expSrc.Contains("LabelPlate(field, ir, i)")
+                  && expSrc.Contains("QA_NO_EXPLORE_LABEL_PLATE")
+                  && expSrc.Contains("QA_NO_EXPLORE_LABEL_SPREAD"),
+                "Draw가 서로 펼친 별 이름 금테 표찰을 그린다");
             Check(mapSrc.Contains("WorldExplore.Draw")
                   && mapSrc.Contains("WorldExplore.SeedQaIfRequested")
                   && mapSrc.Contains("WorldExplore.Line"),
@@ -197,6 +216,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(WorldExplore.EnvNo, no);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNoDup, noDup);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelPlate, noLabelPlate);
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelSpread, noLabelSpread);
             Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, noRange);
             WorldExplore.ForceMul = oldForce;
             RacePrefs.Set(oldRace);
