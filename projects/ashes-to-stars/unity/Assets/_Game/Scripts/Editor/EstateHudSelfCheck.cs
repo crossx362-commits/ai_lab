@@ -42,12 +42,12 @@ namespace AshesToStars
             EstateHud.ResetForTest();
 
             string qaHeader = EstateScreen.PlayerSubtitle(EstateHud.Line());
-            Check(!qaHeader.Contains("§") && qaHeader.Contains("HUD는 마을을 가리지 않는다"),
+            Check(!qaHeader.Contains("§") && qaHeader == "침략에 대비해 방어 시설을 배치하고 영지를 확장하세요",
                 $"영지 QA 헤더도 플레이어 문구만 표시 (실제 {qaHeader})");
             Check(EstateScreen.PlayerSubtitle("본성 상한(§13-2) · 자동 적용") == "본성 상한 · 자동 적용",
                 "영지 하위 화면 헤더의 내부 절 번호도 제거");
             Environment.SetEnvironmentVariable(EstateScreen.EnvNoHeaderPlayerCopy, "1");
-            Check(EstateScreen.PlayerSubtitle(EstateHud.Line()).Contains("§16"),
+            Check(EstateScreen.PlayerSubtitle("HUD는 마을을 가리지 않는다(§16)").Contains("§16"),
                 "네거티브는 옛 내부 절 번호 노출");
             Environment.SetEnvironmentVariable(EstateScreen.EnvNoHeaderPlayerCopy, null);
 
@@ -62,12 +62,10 @@ namespace AshesToStars
             Check(EstateHud.OverlayH(true) < 100f, "선택 겹침 < 100 (옛 154)");
             Check(!EstateHud.ShowInspectBar(false), "선택 없으면 안내 막대 없음");
             Check(EstateHud.ShowInspectBar(true), "선택하면 안내");
-            Check(EstateHud.Line().Contains("가리지 않는다"),
+            Check(EstateHud.Line().Contains("침략에 대비"),
                 $"줄 (실제 {EstateHud.Line()})");
-            Check(EstateHud.Line().Contains("금테 칩"),
-                $"줄에 칩 (실제 {EstateHud.Line()})");
-            Check(EstateHud.Line().Contains("내비"),
-                $"줄에 내비 (실제 {EstateHud.Line()})");
+            Check(!EstateHud.Line().Contains("HUD") && !EstateHud.Line().Contains("팔레트"),
+                $"플레이어 문구에 개발 용어 없음 (실제 {EstateHud.Line()})");
             Check(EstateHud.PaletteTint(false).a >= 0.90f,
                 $"비선택 팔레트 알파 {EstateHud.PaletteTint(false).a:0.00} ≥ 0.90 — 잔디 위 대비");
             Check(Mathf.Approximately(EstateHud.PaletteTint(true).a, 1f),
@@ -112,8 +110,8 @@ namespace AshesToStars
                 $"도크 x {slim[0].x:0} = 왼쪽 가장자리 {bar.x + EstateHud.EdgePad:0}");
             Check(slim[n - 1].xMax < bar.center.x - 0.01f,
                 $"마지막 칸 {slim[n - 1].xMax:0} < 가운데 {bar.center.x:0} — 오두막과 안 겹친다");
-            Check(EstateHud.Line().Contains("가장자리"),
-                $"줄에 가장자리 (실제 {EstateHud.Line()})");
+            Check(Mathf.Approximately(slim[0].x, bar.x + EstateHud.EdgePad),
+                "팔레트 가장자리 배치는 자막이 아니라 좌표로 검증");
             Environment.SetEnvironmentVariable(EstateHud.EnvNoReadablePalette, "1");
             var cramped = EstateHud.PaletteTiles(bar, n);
             Check(Mathf.Approximately(cramped[0].width, EstateHud.OldTileW),
@@ -165,7 +163,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, "1");
             EstateHud.SeedQaIfRequested();
             Check(EstateHud.ShowQa, "시드 켜짐");
-            Check(EstateHud.Line().Contains("가리지 않는다"), "시드 줄");
+            Check(EstateHud.Line().Contains("침략에 대비"), "시드 줄");
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, null);
             EstateHud.ResetForTest();
 

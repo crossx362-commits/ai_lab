@@ -136,7 +136,7 @@ namespace AshesToStars
         {
             if (Blocked) return "안내·팔레트가 마을을 가린다";
             if (EdgeBlocked) return "팔레트가 마름모 아래 가운데와 겹친다";
-            return "HUD는 마을을 가리지 않는다 — 침략 줄은 금테 칩 · 팔레트는 왼쪽 가장자리·내비 위(§16)";
+            return "침략에 대비해 방어 시설을 배치하고 영지를 확장하세요";
         }
 
         /// <summary>막히면 전폭 카드, 아니면 가운데 아이콘 도크.</summary>
