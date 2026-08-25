@@ -13,6 +13,19 @@ namespace AshesToStars
     /// <summary>월드맵 — 우주 성계. 침략은 30층 달성 시 해금(§14·§15).</summary>
     public class WorldMapScreen : GameScreen
     {
+        public const string EnvNoPlayerCopy = "QA_NO_WORLD_MAP_PLAYER_COPY";
+
+        public static string PlayerCopy(string value)
+        {
+            if (string.IsNullOrEmpty(value)
+                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
+                return value;
+            return value.Replace("(§18-13)", "")
+                .Replace("(§18-9)", "")
+                .Replace("(§14·§15)", "")
+                .Replace("(§14)", "");
+        }
+
         protected override string Title => "월드맵";
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.WorldMap);
         protected override string BackgroundArt => "bg_worldmap";
@@ -20,9 +33,9 @@ namespace AshesToStars
         {
             get
             {
-                if (WorldExplore.ShowQa) return WorldExplore.Line();
-                if (WorldStar.ShowRangeQa) return WorldStar.SenseLine();
-                if (WorldStar.ShowQa) return WorldStar.SizeLine();
+                if (WorldExplore.ShowQa) return PlayerCopy(WorldExplore.Line());
+                if (WorldStar.ShowRangeQa) return PlayerCopy(WorldStar.SenseLine());
+                if (WorldStar.ShowQa) return PlayerCopy(WorldStar.SizeLine());
                 if (WorldMapDockCap.ShowQa) return WorldMapDockCap.Line();
                 if (WorldMapHud.ShowQa) return WorldMapHud.Line();
                 string s = "내 별 " + WorldStar.SizeLabel(GameState.TowerFloor);
@@ -56,7 +69,7 @@ namespace AshesToStars
                     s += " · " + InvasionApproach.Line();
                 if (EstateStore.ShowQa)
                     s += " · " + EstateStore.Line();
-                return s + " · 침략은 탑 30층(§14·§15)";
+                return PlayerCopy(s + " · 침략은 탑 30층(§14·§15)");
             }
         }
 
@@ -112,7 +125,7 @@ namespace AshesToStars
             string starCap = "층을 오를수록 내 별이 커진다(§14)";
             if (WorldStar.RaceSensePercent() == WorldStar.ElfSensePercent)
                 starCap = WorldStar.RaceSenseLine() + " · " + starCap;
-            Hint(WorldStar.Caption(plate, icon), starCap);
+            Hint(WorldStar.Caption(plate, icon), PlayerCopy(starCap));
 
             if (InvasionApproach.Picking && InvasionHubLockReason() == null)
             {
