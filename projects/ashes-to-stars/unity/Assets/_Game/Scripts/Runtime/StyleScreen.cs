@@ -24,7 +24,7 @@ namespace AshesToStars
         protected override string BackgroundArt => "bg_party";
         protected override string Subtitle =>
             StyleHud.ShowQa ? StyleHud.Line()
-            : "직업마다 따로 고른다(§3) · 선택은 저장되며 다음 전투부터 적용된다";
+            : "직업마다 따로 고른다 · 선택은 저장되며 다음 전투부터 적용된다";
 
         /// <summary>W3Party가 편성하는 5직업. 순서는 진형 순(탱 → 딜 → 후열)이다.</summary>
         static readonly string[] Jobs = { "수호기사", "검사", "마법사", "사제", "음유시인" };
@@ -126,7 +126,7 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// "가까운 적 · 소모품 자동 불가(§4)". CombatStyleDef.정예우선타겟·소모품자동사용의
+        /// "가까운 적 · 소모품 자동 불가". CombatStyleDef.정예우선타겟·소모품자동사용의
         /// **유일한 런타임 소비처**. 기본(가까운 적)도 빈 문자열이 아니라 문구로 남긴다 —
         /// 안 그러면 전 에셋이 0이라 화면에 소비 증거가 안 남는다. 소모품은 §4가
         /// 자동을 금하므로 false면 「불가」를 명시한다. 값이 true여도 지어내지 않고 읽은 대로.
@@ -134,8 +134,8 @@ namespace AshesToStars
         public static string ToggleLine(CombatStyleDef d)
         {
             if (d == null || TogglesBlocked) return "";
-            string target = d.정예우선타겟 ? "정예 우선(§10-2)" : "가까운 적";
-            string potion = d.소모품자동사용 ? "소모품 자동" : "소모품 자동 불가(§4)";
+            string target = d.정예우선타겟 ? "정예 우선" : "가까운 적";
+            string potion = d.소모품자동사용 ? "소모품 자동" : "소모품 자동 불가";
             return target + " · " + potion;
         }
     }

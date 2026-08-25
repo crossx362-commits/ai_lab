@@ -46,10 +46,12 @@ namespace AshesToStars
                         $"{d.Id}: 형제 딜 보존 — 「{line}」");
                     Check(!string.IsNullOrEmpty(d.행동설명) && line.Contains(d.행동설명),
                         $"{d.Id}: 형제 행동설명 보존 — 「{line}」");
-                    Check(tog.Contains(d.정예우선타겟 ? "정예 우선(§10-2)" : "가까운 적"),
+                    Check(tog.Contains(d.정예우선타겟 ? "정예 우선" : "가까운 적"),
                         $"{d.Id}: ToggleLine이 정예우선타겟을 읽는다 (값={d.정예우선타겟}) — 「{tog}」");
-                    Check(tog.Contains(d.소모품자동사용 ? "소모품 자동" : "소모품 자동 불가(§4)"),
+                    Check(tog.Contains(d.소모품자동사용 ? "소모품 자동" : "소모품 자동 불가"),
                         $"{d.Id}: ToggleLine이 소모품자동사용을 읽는다 (값={d.소모품자동사용}) — 「{tog}」");
+                    Check(tog.IndexOf("§", StringComparison.Ordinal) < 0,
+                        $"{d.Id}: 플레이어 문구에 내부 절 번호 없음 — 「{tog}」");
                     Check(line.Contains(tog),
                         $"{d.Id}: StatLine이 ToggleLine을 붙인다 — 「{line}」");
                     Check(!d.소모품자동사용,
@@ -60,7 +62,7 @@ namespace AshesToStars
             Check(seen >= 4, $"스타일 {seen}종 검사됨 (0이면 배선 확인 불가)");
 
             string atk = StyleScreen.StatLine(StyleId.공격형);
-            Check(atk.Contains("가까운 적") && atk.Contains("소모품 자동 불가(§4)"),
+            Check(atk.Contains("가까운 적") && atk.Contains("소모품 자동 불가"),
                 $"공격형 토글 조각 — 「{atk}」");
             Check(atk.Contains("회피 시도 안 함"),
                 $"공격형 행동설명 유지 — 「{atk}」");
@@ -69,7 +71,7 @@ namespace AshesToStars
             fake.정예우선타겟 = true;
             fake.소모품자동사용 = true;
             string fakeTog = StyleScreen.ToggleLine(fake);
-            Check(fakeTog.Contains("정예 우선(§10-2)") && fakeTog.IndexOf("가까운 적", StringComparison.Ordinal) < 0,
+            Check(fakeTog.Contains("정예 우선") && fakeTog.IndexOf("가까운 적", StringComparison.Ordinal) < 0,
                 $"네거티브 정예 켜짐 — 「{fakeTog}」");
             Check(fakeTog.Contains("소모품 자동") && fakeTog.IndexOf("불가", StringComparison.Ordinal) < 0,
                 $"네거티브 소모품 켜짐(명세 위반 값도 읽은 대로) — 「{fakeTog}」");
@@ -88,7 +90,7 @@ namespace AshesToStars
                 "차단하면 ToggleLine 빈 문자열");
             Environment.SetEnvironmentVariable(StyleScreen.EnvNoToggles, null);
             Check(!StyleScreen.TogglesBlocked
-                  && StyleScreen.StatLine(StyleId.공격형).Contains("가까운 적 · 소모품 자동 불가(§4)"),
+                  && StyleScreen.StatLine(StyleId.공격형).Contains("가까운 적 · 소모품 자동 불가"),
                 "차단을 풀면 다시 토글 조각");
 
             string styleSrc = File.ReadAllText(Path.Combine(Application.dataPath,
@@ -99,6 +101,8 @@ namespace AshesToStars
                 "StyleScreen이 d.소모품자동사용을 읽는다 — 지우면 소비처 0곳으로 되돌아간다");
             Check(styleSrc.Contains("StatLine(id)"),
                 "StyleScreen 카드가 StatLine을 그린다");
+            Check(styleSrc.IndexOf("직업마다 따로 고른다(§3)", StringComparison.Ordinal) < 0,
+                "화면 부제에 내부 절 번호 없음");
 
             string setupSrc = File.ReadAllText(Path.Combine(Application.dataPath,
                 "_Game/Scripts/Editor/ProjectSetup.cs"));
