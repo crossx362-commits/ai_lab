@@ -25,8 +25,8 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(WorldMapScreen.EnvNoPlayerCopy, null);
 
             string cleaned = WorldMapScreen.PlayerCopy(
-                "엘프 인식 +20%(§18-9) · 층을 오를수록 내 별이 커진다(§14)");
-            Check(cleaned == "엘프 인식 +20% · 층을 오를수록 내 별이 커진다",
+                "내 별 영공 +20% · 층을 오를수록 내 별이 커진다(§14)");
+            Check(cleaned == "내 별 영공 +20% · 층을 오를수록 내 별이 커진다",
                 $"플레이어 문구에서 원장 절 번호 제거 (실제 '{cleaned}')");
             Check(WorldMapScreen.PlayerCopy("영공 11.00(§18-13)") == "영공 11.00",
                 "영공 QA 문구도 절 번호 제거");

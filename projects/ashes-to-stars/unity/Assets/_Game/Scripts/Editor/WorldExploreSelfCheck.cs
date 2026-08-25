@@ -97,10 +97,12 @@ namespace AshesToStars
             Check(WorldExplore.Revealed(far, 30), "엘프 30층 안개 별이 열린다");
             Check(WorldExplore.Caption() == "탐험 3/3",
                 $"엘프 카드 (실제 {WorldExplore.Caption()})");
-            Check(WorldExplore.Line(30).Contains("+30%")
+            Check(WorldExplore.Line(30).Contains("탐험 반경 +30%")
+                  && WorldExplore.Line(30).Contains("밝힌 별")
                   && WorldExplore.Line(30).Contains("3/3")
+                  && !WorldExplore.Line(30).Contains("영공")
                   && !WorldExplore.Line(30).Contains("§"),
-                $"엘프 문구에 내부 절 번호 없음 (실제 {WorldExplore.Line(30)})");
+                $"엘프 탐험 문구가 밝히는 반경 역할을 설명 (실제 {WorldExplore.Line(30)})");
             Check(WorldExplore.HeaderOwnsLine(), "엘프는 헤더가 Line을 가진다");
             Check(string.IsNullOrEmpty(WorldExplore.FieldCaption(30)),
                 $"엘프 필드 캡션은 헤더가 가져서 빈다 (실제 '{WorldExplore.FieldCaption(30)}')");

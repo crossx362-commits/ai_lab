@@ -168,7 +168,7 @@ namespace AshesToStars
             int n = RevealedCount(floor);
             int tot = Neighbors().Length;
             if (Percent() == ElfPercent)
-                return $"엘프 탐험 +30% · 별 {n}/{tot}";
+                return $"탐험 반경 +30% · 밝힌 별 {n}/{tot}";
             return $"밝혀진 별 {n}/{tot}";
         }
 

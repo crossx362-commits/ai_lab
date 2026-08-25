@@ -176,7 +176,7 @@ namespace AshesToStars
         public static string RaceSenseLine()
         {
             if (RaceSensePercent() == ElfSensePercent && RacePrefs.Get() == RaceId.엘프)
-                return "엘프 인식 +20%(§18-9)";
+                return "내 별 영공 +20%";
             return "종족 인식 배율 없음";
         }
 
