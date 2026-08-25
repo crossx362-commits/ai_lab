@@ -40,7 +40,8 @@ namespace AshesToStars
             bool old = Environment.GetEnvironmentVariable("QA_NO_DUNGEON_EMPTY_CENTER") == "1";
             float h = Mathf.Min(180f, r.height - 96f);
             float y = old ? r.y + 88f : r.y + (r.height - h) * 0.5f + 24f;
-            return new Rect(r.x, y, r.width, h);
+            float w = old ? r.width : Mathf.Min(760f, r.width);
+            return new Rect(r.center.x - w * 0.5f, y, w, h);
         }
 
         protected override void Body(Rect r)
