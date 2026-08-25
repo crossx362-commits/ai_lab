@@ -30,6 +30,16 @@ GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
 OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/x-preview-f-free}"
 COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
 
+# Claude↔Grok 사용량 자동전환 (오너 지시 2026-08-25). claude로 시작, 소진되면 grok, grok도
+# 소진되면 다시 claude. 코드 오류·테스트 실패로는 전환하지 않는다 — 소진 판정은 오직
+# board.py의 공식 사용량 API(claude_usage/grok_usage)와 랩 로그의 사후 폴백뿐이다.
+AUTO_SWITCH="${LOOP_AUTO_SWITCH:-1}"
+PROVIDER_RETRY_SECONDS="${PROVIDER_RETRY_SECONDS:-1800}"
+MAX_PROVIDER_FAILURES="${MAX_PROVIDER_FAILURES:-6}"
+PROVIDER_STATE_FILE="$TARGET_REPO/loop/provider.state"
+BOARD_PY="$DEPLOY_ROOT/board.py"
+EXHAUST_PATTERN="${LOOP_EXHAUST_PATTERN:-usage limit|quota exceeded|rate limit exceeded|out of credits|사용량.*(소진|초과)|로그인.*필요|please (log|sign) in|authentication required}"
+
 if [ ! -f "$PROMPT_FILE" ]; then
   PROMPT_FILE="$TARGET_REPO/loop/PROMPT.md"
 fi
@@ -93,6 +103,91 @@ status_stamp() {
   fi
 }
 
+other_provider() {
+  case "$1" in
+    claude) echo grok ;;
+    grok) echo claude ;;
+    *) echo "$1" ;;
+  esac
+}
+
+# 공식 사용량 API(board.py usage)로 소진 여부를 확인한다. echo: ok | exhausted | unknown
+# unknown은 "조회 자체가 실패"(네트워크/키체인 일시 오류) — 소진으로 오판하지 않고
+# 이전 provider를 그대로 쓴다(fail-open).
+usage_check() {
+  local name="$1"
+  python3 "$BOARD_PY" usage "$name" 2>/dev/null | python3 -c '
+import json, sys
+raw = sys.stdin.read()
+try:
+    d = json.loads(raw)
+except Exception:
+    print("unknown"); sys.exit()
+err = d.get("error")
+if err and "로그인 없음" in err:
+    print("exhausted"); sys.exit()
+remain = d.get("remain_pct")
+if d.get("ok") and remain is not None and remain <= 0:
+    print("exhausted"); sys.exit()
+if err:
+    print("unknown"); sys.exit()
+print("ok")
+'
+}
+
+provider_state_read_current() {
+  python3 -c '
+import json, sys
+path = sys.argv[1]
+try:
+    with open(path, encoding="utf-8") as f:
+        cur = (json.load(f) or {}).get("current")
+except Exception:
+    cur = None
+print(cur or "claude")
+' "$PROVIDER_STATE_FILE"
+}
+
+provider_state_write() {
+  # provider_state_write <current> <reason>
+  python3 -c '
+import json, sys, time
+path, current, reason = sys.argv[1:4]
+try:
+    with open(path, encoding="utf-8") as f:
+        d = json.load(f)
+except Exception:
+    d = {}
+d["current"] = current
+d["last_switch_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+d["last_switch_reason"] = reason
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(d, f, ensure_ascii=False, indent=2)
+' "$PROVIDER_STATE_FILE" "$1" "$2"
+}
+
+provider_state_mark_retry() {
+  # provider_state_mark_retry <name> — 그 실행기가 소진 감지된 시각을 기록만 한다(참고용).
+  python3 -c '
+import json, sys, time
+path, name = sys.argv[1:3]
+try:
+    with open(path, encoding="utf-8") as f:
+        d = json.load(f)
+except Exception:
+    d = {}
+d[f"{name}_retry_after"] = time.strftime("%Y-%m-%d %H:%M:%S")
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(d, f, ensure_ascii=False, indent=2)
+' "$PROVIDER_STATE_FILE" "$1"
+}
+
+# 랩 로그에서 사후 소진 신호를 찾는다(usage_check가 못 잡는 세션 도중 소진 대비 폴백).
+detect_exhaustion_in_log() {
+  local logfile="$1"
+  [ -f "$logfile" ] && grep -qiE "$EXHAUST_PATTERN" "$logfile"
+}
+
 run_session() {
   local agent="$1"
   local bin="$2"
@@ -100,7 +195,9 @@ run_session() {
 
   case "$agent" in
     grok)
+      cd "$TARGET_REPO" || return 3
       "$bin" \
+        --cwd "$TARGET_REPO" \
         --model "$GROK_MODEL" \
         --prompt-file "$PROMPT_FILE" \
         --always-approve \
@@ -140,14 +237,19 @@ run_session() {
   esac
 }
 
-AGENT="$(pick_agent)"
-BIN="$(find_bin "$AGENT")"
-if [ -z "$BIN" ]; then
-  echo "실행기를 찾지 못했다: $AGENT" >&2
-  exit 1
+STARTUP_AGENT="$(pick_agent)"
+if [ "$AUTO_SWITCH" = "1" ] && { [ "$STARTUP_AGENT" = "claude" ] || [ "$STARTUP_AGENT" = "grok" ]; }; then
+  echo "자율 개발 루프 시작: target=$TARGET_REPO agent=auto(claude<->grok, 시작=$(provider_state_read_current)) max=${MAX_LOOPS:-0}"
+else
+  BIN="$(find_bin "$STARTUP_AGENT")"
+  if [ -z "$BIN" ]; then
+    echo "실행기를 찾지 못했다: $STARTUP_AGENT" >&2
+    exit 1
+  fi
+  echo "자율 개발 루프 시작: target=$TARGET_REPO agent=$STARTUP_AGENT max=${MAX_LOOPS:-0}"
 fi
 
-echo "자율 개발 루프 시작: target=$TARGET_REPO agent=$AGENT max=${MAX_LOOPS:-0}"
+PROVIDER_WAIT_ROUNDS=0
 
 while true; do
   if [ -f "$STOP_FILE" ]; then
@@ -157,6 +259,40 @@ while true; do
   if [ "$MAX_LOOPS" -gt 0 ] && [ "$COUNT" -ge "$MAX_LOOPS" ]; then
     echo "지정된 ${MAX_LOOPS}바퀴를 마쳤습니다."
     exit 0
+  fi
+
+  AGENT="$(pick_agent)"
+  if [ "$AUTO_SWITCH" = "1" ] && { [ "$AGENT" = "claude" ] || [ "$AGENT" = "grok" ]; }; then
+    STATE_CURRENT="$(provider_state_read_current)"
+    CHECK1="$(usage_check "$STATE_CURRENT")"
+    if [ "$CHECK1" = "exhausted" ]; then
+      OTHER="$(other_provider "$STATE_CURRENT")"
+      CHECK2="$(usage_check "$OTHER")"
+      if [ "$CHECK2" = "exhausted" ]; then
+        PROVIDER_WAIT_ROUNDS=$((PROVIDER_WAIT_ROUNDS + 1))
+        echo "양쪽 다 소진($STATE_CURRENT·$OTHER, ${PROVIDER_WAIT_ROUNDS}/${MAX_PROVIDER_FAILURES}) — ${PROVIDER_RETRY_SECONDS}초 대기 후 재확인" | tee -a "$MAIN_LOG"
+        provider_state_mark_retry "$STATE_CURRENT"
+        provider_state_mark_retry "$OTHER"
+        if [ "$PROVIDER_WAIT_ROUNDS" -ge "$MAX_PROVIDER_FAILURES" ]; then
+          echo "양쪽 소진 대기 ${MAX_PROVIDER_FAILURES}회 초과 — 정상 종료합니다(사용량 확인 자체가 고장났을 가능성 포함)." | tee -a "$MAIN_LOG"
+          touch "$STOP_FILE"
+          exit 0
+        fi
+        wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
+        continue
+      fi
+      echo "$STATE_CURRENT 소진 감지 — $OTHER(으)로 전환" | tee -a "$MAIN_LOG"
+      provider_state_write "$OTHER" "usage_check: $STATE_CURRENT exhausted"
+      AGENT="$OTHER"
+    else
+      AGENT="$STATE_CURRENT"
+    fi
+    PROVIDER_WAIT_ROUNDS=0
+  fi
+  BIN="$(find_bin "$AGENT")"
+  if [ -z "$BIN" ]; then
+    echo "실행기를 찾지 못했다: $AGENT" | tee -a "$MAIN_LOG"
+    exit 1
   fi
 
   DATE_DIR="$(date +%Y-%m-%d)"
@@ -175,12 +311,24 @@ while true; do
 
   echo "바퀴 종료: $LAP_ID code=$RESULT" | tee -a "$MAIN_LOG" "$LAP_LOG"
 
-  if [ "$AFTER" = "$BEFORE" ]; then
+  EXHAUSTED_THIS_LAP=0
+  if [ "$AUTO_SWITCH" = "1" ] && { [ "$AGENT" = "claude" ] || [ "$AGENT" = "grok" ]; } \
+      && detect_exhaustion_in_log "$LAP_LOG"; then
+    EXHAUSTED_THIS_LAP=1
+    NEXT_PROVIDER="$(other_provider "$AGENT")"
+    echo "랩 로그에서 소진 신호 감지 — $AGENT 소진, 다음 바퀴부터 $NEXT_PROVIDER (FAILS 미증가)" | tee -a "$MAIN_LOG" "$LAP_LOG"
+    provider_state_write "$NEXT_PROVIDER" "log-detect: $AGENT exhaustion phrase in $LAP_ID"
+  fi
+
+  if [ "$EXHAUSTED_THIS_LAP" = "1" ]; then
+    : # 코드 오류가 아니라 소진이므로 FAILS/COUNT를 건드리지 않는다 — 다음 바퀴가 전환을 반영한다.
+  elif [ "$AFTER" = "$BEFORE" ]; then
     echo "STATUS.md 갱신 없음" | tee -a "$MAIN_LOG" "$LAP_LOG"
     FAILS=$((FAILS + 1))
     if [ "$FAILS" -ge "$MAX_FAILS" ]; then
-      echo "STATUS.md 미갱신이 ${MAX_FAILS}회 — 실패 종료합니다." | tee -a "$MAIN_LOG" "$LAP_LOG"
-      exit 1
+      echo "STATUS.md 미갱신이 ${MAX_FAILS}회 — 정상 종료합니다(재기동 루프 방지)." | tee -a "$MAIN_LOG" "$LAP_LOG"
+      touch "$STOP_FILE"
+      exit 0
     fi
   elif [ "$RESULT" -eq 0 ]; then
     COUNT=$((COUNT + 1))

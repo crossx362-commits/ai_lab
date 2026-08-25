@@ -3680,7 +3680,28 @@ def cli_command(argv: list[str]) -> int:
     return 0
 
 
+def cli_usage(argv: list[str]) -> int:
+    """python3 loop/board.py usage <claude|grok> — 캐시된 공식 사용량 JSON을 stdout에 찍는다.
+
+    loop.sh의 자동전환 로직이 이 서브커맨드로 소진 여부를 확인한다(문자열 grep 대신
+    공식 API 응답을 그대로 재사용 — claude_usage()/grok_usage()는 이미 board.html이
+    상시 쓰는 검증된 경로).
+    """
+    name = argv[2] if len(argv) > 2 else ""
+    if name == "claude":
+        out = claude_usage()
+    elif name == "grok":
+        out = grok_usage()
+    else:
+        print("usage: python3 loop/board.py usage <claude|grok>", file=sys.stderr)
+        return 2
+    print(json.dumps(out, ensure_ascii=False))
+    return 0
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "command":
         raise SystemExit(cli_command(sys.argv))
+    if len(sys.argv) > 1 and sys.argv[1] == "usage":
+        raise SystemExit(cli_usage(sys.argv))
     main()

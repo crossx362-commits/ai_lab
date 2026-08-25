@@ -22,6 +22,18 @@ export LOOP_OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/x-preview-f-free}"
 # 자가학습 회의 — N바퀴마다 역할(planner·builder·tester) 병렬 회의 소집 (오너 2026-08-23)
 export LOOP_COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
 
+# Claude↔Grok 사용량 자동전환 (오너 2026-08-25). 기본은 Claude로 시작, 소진되면 Grok, Grok도
+# 소진되면 다시 Claude — pick_agent()가 claude/grok을 고를 때만 적용된다(codex/opencode로
+# 수동 지정하면 이 전환은 관여하지 않는다). 소진 판정은 board.py의 공식 사용량 API
+# (claude_usage/grok_usage)가 1순위, 랩 로그 문구 매치는 사후 폴백일 뿐이다.
+export LOOP_AUTO_SWITCH="${LOOP_AUTO_SWITCH:-1}"
+# 둘 다 소진이면 이만큼(초) 기다렸다 재확인한다 — 빠른 왕복 금지.
+export PROVIDER_RETRY_SECONDS="${PROVIDER_RETRY_SECONDS:-1800}"
+# 위 대기를 몇 번 반복해도 계속 둘 다 소진이면 STOP을 찍는 안전판(사용량 확인 자체가
+# 고장났을 가능성 포함 — 무한 대기 방지).
+export MAX_PROVIDER_FAILURES="${MAX_PROVIDER_FAILURES:-6}"
+# 전환 상태는 loop/provider.state(git 미추적)에만 남는다 — 대화가 아니라 파일이 기억한다.
+
 export LOOP_MAX_TURNS="${LOOP_MAX_TURNS:-60}"
 export LOOP_SESSION_TIMEOUT="${LOOP_SESSION_TIMEOUT:-1800}"
 export LOOP_COOLDOWN="${LOOP_COOLDOWN:-10}"

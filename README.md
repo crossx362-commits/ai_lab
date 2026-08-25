@@ -31,8 +31,10 @@ ai_lab/
 
 ## 자율 개발 루프 (Autonomous Development Loop)
 
-대화 맥락에 의존하지 않고 **매 바퀴마다 새 헤드리스 그록 세션**을 연다 (`resume`/`continue` 없음).
-기억은 `docs/` 파일과 Git에만 둔다. 실행기는 **그록만** (`LOOP_AGENT=grok`).
+대화 맥락에 의존하지 않고 **매 바퀴마다 새 헤드리스 세션**을 연다 (`resume`/`continue` 없음).
+기억은 `docs/` 파일과 Git에만 둔다. 실행기는 **Claude↔Grok 자동전환**(오너 2026-08-25,
+아래 「사용량 자동전환」 참고) — 수동으로 `LOOP_AGENT`/`loop/agent`를 codex/opencode로
+지정하면 그쪽이 우선한다.
 
 launchd가 실행하는 복사본: `~/Library/Application Support/AI Lab Autonomous Loop/`
 원본은 레포 `loop/` 이다.
@@ -41,7 +43,8 @@ launchd가 실행하는 복사본: `~/Library/Application Support/AI Lab Autonom
 | 파일 | 역할 |
 |---|---|
 | `loop/loop.sh` | 무한 루프 · 새 세션 · STOP · 날짜별 로그 · STATUS.md 갱신 검사 |
-| `loop/env.sh` | 모델 · 최대 턴 · 바퀴 사이 대기 · 최대 바퀴 · PATH |
+| `loop/env.sh` | 모델 · 최대 턴 · 바퀴 사이 대기 · 최대 바퀴 · PATH · Claude↔Grok 자동전환 설정 |
+| `loop/provider.state` | 자동전환 상태(현재 실행기·전환 시각/사유) — git 미추적, 런타임 전용 |
 | `loop/PROMPT.md` | 5절 지시서 (합격 / 읽을 문서 / 규칙 / 순서 / 커밋) |
 | `loop/com.ailab.autonomous_loop.plist` | macOS launchd (로그인 시작, 비정상만 재시작, PATH 명시) |
 | `loop/deploy_launchd.sh` | 레포 → Application Support 배포 + 기동 |
@@ -83,6 +86,25 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ailab.board.plist
 승인 커밋은 `autonomous/integration` 브랜치에 적립되고, 메인 루프 각 바퀴가 `loop/merge_integration.sh`로 master에 흡수한다.
 끄기 `touch loop/STOP_LANE` · 다시 켜기 `rm -f loop/STOP_LANE && ./loop/deploy_launchd.sh`.
 게임플레이 C#과 STATUS.md는 속도 레인 금지 — 메인 루프 전용이다.
+
+### 사용량 자동전환 (Claude ↔ Grok)
+
+기본은 Claude로 시작, 사용량 소진 시 Grok으로, Grok도 소진되면 다시 Claude로 전환한다.
+코드 오류·테스트 실패로는 전환하지 않는다 — 소진 판정은 `loop/board.py`의 공식 사용량 API
+(`claude_usage()`/`grok_usage()`, 이미 대시보드가 쓰는 검증된 경로)가 1순위이고, 랩 로그의
+소진 문구 매치는 세션 도중 갑자기 걸리는 경우를 잡는 사후 폴백일 뿐이다. 둘 다 소진이면
+`PROVIDER_RETRY_SECONDS`(기본 1800초)만큼 기다렸다 재확인한다(빠른 왕복 금지) —
+`MAX_PROVIDER_FAILURES`(기본 6)회를 넘기면 안전판으로 STOP을 찍는다.
+
+```bash
+python3 loop/board.py usage claude    # 클로드 사용량 확인 (JSON)
+python3 loop/board.py usage grok      # 그록 사용량 확인 (JSON)
+cat loop/provider.state               # 현재 실행기 · 마지막 전환 시각/사유 (git 미추적)
+```
+
+끄기: `LOOP_AUTO_SWITCH=0`(env.sh 또는 launchd plist에 지정). 켜져 있어도 `LOOP_AGENT` env나
+`loop/agent` 파일이 `codex`/`opencode`를 가리키면 그 수동 지정이 항상 이긴다 — claude/grok을
+가리킬 때만(또는 아무 지정이 없을 때 기본값이 claude/grok로 떨어질 때만) 자동전환이 관여한다.
 
 ### 한 바퀴 순서 (PROMPT.md)
 읽기(INBOX→STATUS) → 하나만 만들기 → 자동검사 → **화면 보기 전 커밋** → 눈으로 확인 → STATUS.md 갱신.
