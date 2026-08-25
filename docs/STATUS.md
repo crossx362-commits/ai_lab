@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 09:26 · 영지 침략 칩 폭 정돈(`c199341d`). 사람 관문 더미 유지
-마지막 트랙: UI — 영지 마을의 520px 침략 칩이 x=470 부근 높은 탑 외곽을 덮었다. 정상 칩은 420px로 줄여 세 수치를 한 줄로 유지하면서 탑을 드러내고, `QA_NO_ESTATE_CHIP_COMPACT`는 옛 520px 폭을 재현한다. 최초 마름모 이동 가설은 A/B에서 하단 건물·내비 겹침을 만들어 폐기하고 원래 시점으로 복구했다
+최종 갱신: 2026-08-25 09:36 · 타이틀 핵심 소개 패널 폴리싱(`4b9d3a41`·`79cf9551`·`40a29cbf`). 사람 관문 더미 유지
+마지막 트랙: UI — 타이틀 좌측의 정상 정복·영구삭제 설명이 배경 위에 낮은 대비로 떠 있던 것을 우측 시작 카드와 같은 금테 패널로 묶었다. 첫 실화면의 과대 빈 액자는 260px 중앙형으로 줄이고, 두 번째 실화면의 문양 아래 글자 잘림은 좌우 50px 안전영역으로 보정했다
 소비처0 다음: 직전=UI이므로 원장 ✅ 소비처 0곳 새 칸 재스캔. 새 오펀이 없으면 UI·아트 상시 폴리싱 한 건
-검증: C# 컴파일 PASS · `unity_meas` GameSweepSelfCheck·EstateHudSelfCheck PASS(정상 칩 xMax 456≤460, 네거티브 폭 520·xMax 556) · 실행 파일 빌드 PASS · 1280×720 A/B 육안 확인(`output/qa/ashes-to-stars/estate_chip_compact/{after,neg}/qa_go:Estate.png`) — 수정본은 칩 문구를 한 줄로 유지하면서 높은 탑 왼쪽 외곽을 드러내고, NEG는 칩이 탑을 덮는다. 블렌더는 3D·메시 작업이 아니라 건너뜀
+검증: C# 컴파일 PASS · `unity_meas` LocalPlayKitSelfCheck PASS(소개 패널 260px·좌측 중앙·우측 카드/하단 QA 안내 비겹침) · 실행 파일 빌드 PASS · 1280×720 실화면 육안 확인(`output/qa/ashes-to-stars/title_intro_panel/final2/qa_go:Title.png`) — 패널과 우측 3카드의 균형, 제목·설명 끝글자, 겹침 없음 확인. 블렌더는 3D·메시 작업이 아니라 건너뜀
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
