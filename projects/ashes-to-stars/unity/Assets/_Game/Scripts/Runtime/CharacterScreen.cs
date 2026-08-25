@@ -74,6 +74,8 @@ namespace AshesToStars
         int _detailPage;
         int _bagFilter = -1;
         Vector2 _listScroll;
+        Vector2 _attrScroll;
+        Vector2 _infoScroll;
         string _equipMsg = "";
 
         protected override void Body(Rect r)
@@ -674,7 +676,29 @@ namespace AshesToStars
             _detailPage = DrawTabs(stage, new[] { "장비", "속성" }, _detailPage);
             var detailBody = UiPages.AfterTabs(stage);
             if (_detailPage == 0) DrawEquipStudio(detailBody, ch);
-            else DrawAttributes(detailBody, ch);
+            else DrawAttributesScrolled(detailBody, ch);
+        }
+
+        /// <summary>
+        /// 속성 탭은 소비처 줄이 30행 가까이 쌓여 패널 높이(~13행)를 넘긴다. Info는 넘치는
+        /// 행을 조용히 건너뛰므로 전직·스킬·종족 줄이 아예 안 보였다(오너 2026-08-25
+        /// 「캐릭터 정보보기 불편」·플레이모드 실측 — PvP 회복 줄에서 하단 절단).
+        /// 넉넉한 가상 높이를 스크롤로 보여 잘림 없이 끝까지 도달하게 한다.
+        /// QA_NO_CHAR_SCROLL이면 옛 잘림 경로(네거티브).
+        /// </summary>
+        void DrawAttributesScrolled(Rect r, CharacterRecord ch)
+        {
+            if (CharHud.ScrollBlocked)
+            {
+                DrawAttributes(r, ch);
+                return;
+            }
+            const float maxRows = 34f;
+            float contentH = maxRows * 46f;
+            var view = new Rect(0f, 0f, Mathf.Max(40f, r.width - 16f), contentH);
+            _attrScroll = GUI.BeginScrollView(r, _attrScroll, view);
+            DrawAttributes(new Rect(0f, 0f, view.width, contentH), ch);
+            GUI.EndScrollView();
         }
 
         void DrawRosterCell(Rect cell, CharacterRecord ch, bool selected, int rosterIndex)
@@ -687,8 +711,10 @@ namespace AshesToStars
             PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
             UiAtlas.Draw(new Rect(face.xMax - 14f, face.yMax - 14f, 18f, 18f), UiAtlas.RoleKey(ch.Job));
             string name = ch.IsRescue ? $"{ch.Name}·재건" : ch.Name;
-            Hint(nameR, name);
-            int cellLeft = LifeSystem.GetRecoveryTimeRemaining(ch);
+            // 선택 피드백 — 옛 회색 Hint는 어느 셀이 고른지 모호했다(오너 2026-08-25
+            // 「캐릭터 선택이 안되는거 같음」). 선택 셀만 밝고 굵은 DockLabel로 이름을 띄운다.
+            if (selected && !CharHud.SelTintBlocked) DockLabel(nameR, name);
+            else Hint(nameR, name);            int cellLeft = LifeSystem.GetRecoveryTimeRemaining(ch);
             string job = CharHud.JobFace(ch.Job);
             if (cellLeft > 0 && DefenseState.Contains(rosterIndex))
                 job = $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(cellLeft)}";
@@ -1329,7 +1355,7 @@ namespace AshesToStars
             // 두던 옛 위치는 정보 칸 중간(무기·없음 줄)에 떠 라벨 없이 겹쳐 보였다(겹침 결함).
             UiAtlas.DrawHearts(new Rect(info.xMax - 76f, infoTop, 76f, 22f),
                 ch.DeathCount, ch.IsDeleted, ch.MaxLives);
-            DrawInspectInfo(info, ch);
+            DrawInspectInfoScrolled(info, ch);
 
             var bar = new Rect(r.x, r.yMax - 48f, r.width, 44f);
             var actions = UiPages.Grid(bar, 2, 1, 12f);
@@ -1338,6 +1364,26 @@ namespace AshesToStars
             CompactAction(actions[1],
                 $"{EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}  ·  석 {GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone)}",
                 "gold", locked: true);
+        }
+
+        /// <summary>
+        /// 장비 탭 정보 칸도 옛 14줄 예산이라 가방을 8칸만 보여줬다(오너 2026-08-25
+        /// 「정보보기 불편」). 넉넉한 가상 높이를 스크롤로 보여 가방 전체·장비 줄이 끝까지
+        /// 도달하게 한다. QA_NO_CHAR_SCROLL이면 옛 잘림 경로(네거티브).
+        /// </summary>
+        void DrawInspectInfoScrolled(Rect r, CharacterRecord ch)
+        {
+            if (CharHud.ScrollBlocked)
+            {
+                DrawInspectInfo(r, ch);
+                return;
+            }
+            // 표제~장비 6줄 ≈ 252px + 가방 60칸(4열 15행 × 50px) = 1002px — 여유 1400px.
+            const float contentH = 1400f;
+            var view = new Rect(0f, 0f, Mathf.Max(40f, r.width - 16f), contentH);
+            _infoScroll = GUI.BeginScrollView(r, _infoScroll, view);
+            DrawInspectInfo(new Rect(0f, 0f, view.width, contentH), ch);
+            GUI.EndScrollView();
         }
 
         void DrawInspectInfo(Rect r, CharacterRecord ch)

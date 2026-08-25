@@ -16,6 +16,10 @@ namespace AshesToStars
         public const string EnvNo = "QA_NO_CHAR_HUD";
         public const string EnvNoNav = "QA_NO_CHAR_NAV";
         public const string EnvNoPortraitFit = "QA_NO_CHAR_PORTRAIT_FIT";
+        /// <summary>속성·정보 칸 스크롤을 끈다 — 옛 「넘치면 조용히 잘림」 결함 경로(2026-08-25 실측).</summary>
+        public const string EnvNoScroll = "QA_NO_CHAR_SCROLL";
+        /// <summary>선택 셀 이름 금색 강조를 끈다 — 옛 회색 이름(선택 피드백 약함) 결함 경로.</summary>
+        public const string EnvNoSelTint = "QA_NO_CHAR_SEL_TINT";
         public const float PortraitScale = 0.50f;
         /// <summary>
         /// 전폭 액션바는 좌우가 내비 옆으로 빠진다.
@@ -72,6 +76,24 @@ namespace AshesToStars
             get
             {
                 string raw = Environment.GetEnvironmentVariable(EnvNoPortraitFit);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool ScrollBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoScroll);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool SelTintBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoSelTint);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
         }

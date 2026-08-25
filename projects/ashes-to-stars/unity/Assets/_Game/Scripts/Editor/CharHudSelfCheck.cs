@@ -27,10 +27,14 @@ namespace AshesToStars
             string no = Environment.GetEnvironmentVariable(CharHud.EnvNo);
             string noNav = Environment.GetEnvironmentVariable(CharHud.EnvNoNav);
             string noPortrait = Environment.GetEnvironmentVariable(CharHud.EnvNoPortraitFit);
+            string noScroll = Environment.GetEnvironmentVariable(CharHud.EnvNoScroll);
+            string noSelTint = Environment.GetEnvironmentVariable(CharHud.EnvNoSelTint);
             Environment.SetEnvironmentVariable(CharHud.EnvShow, null);
             Environment.SetEnvironmentVariable(CharHud.EnvNo, null);
             Environment.SetEnvironmentVariable(CharHud.EnvNoNav, null);
             Environment.SetEnvironmentVariable(CharHud.EnvNoPortraitFit, null);
+            Environment.SetEnvironmentVariable(CharHud.EnvNoScroll, null);
+            Environment.SetEnvironmentVariable(CharHud.EnvNoSelTint, null);
             CharHud.ResetForTest();
 
             var body = new Rect(36f, 56f, 1208f, 584f);
@@ -242,6 +246,24 @@ namespace AshesToStars
                 "명부·헤더 직업이 JobFace를 읽는다 (옛 ch.Job ID 금지)");
             Check(screen.Contains("CharHud.Content"),
                 "명부가 Content를 읽는다 (page.yMax 붙이기 금지)");
+            // 스크롤 — 속성 30행·정보 칸 가방은 패널 예산을 넘겨 옛엔 조용히 잘렸다(오너 2026-08-25).
+            // 새 길은 스크롤로 끝까지 도달하고, QA_NO_CHAR_SCROLL이면 옛 잘림 경로다.
+            Check(screen.Contains("DrawAttributesScrolled") && screen.Contains("GUI.BeginScrollView"),
+                "속성 탭이 스크롤로 끝까지 도달한다 (옛 조용한 절단 금지)");
+            Check(screen.Contains("DrawInspectInfoScrolled"),
+                "장비 정보 칸이 스크롤로 가방 전체를 보인다 (8칸 제한 금지)");
+            Check(screen.Contains("CharHud.ScrollBlocked"),
+                "스크롤이 QA_NO_CHAR_SCROLL 게이트를 읽는다");
+            Check(screen.Contains("CharHud.SelTintBlocked") && screen.Contains("DockLabel(nameR"),
+                "선택 셀 이름이 DockLabel 강조를 읽는다 (선택 피드백)");
+            Environment.SetEnvironmentVariable(CharHud.EnvNoScroll, "1");
+            Check(CharHud.ScrollBlocked, "QA_NO_CHAR_SCROLL면 차단");
+            Environment.SetEnvironmentVariable(CharHud.EnvNoScroll, null);
+            Check(!CharHud.ScrollBlocked, "게이트 끄면 스크롤 복귀");
+            Environment.SetEnvironmentVariable(CharHud.EnvNoSelTint, "1");
+            Check(CharHud.SelTintBlocked, "QA_NO_CHAR_SEL_TINT면 차단");
+            Environment.SetEnvironmentVariable(CharHud.EnvNoSelTint, null);
+            Check(!CharHud.SelTintBlocked, "게이트 끄면 선택 강조 복귀");
             string hud = File.ReadAllText(Path.Combine(runtime, "CharHud.cs"));
             Check(hud.Contains("NavPlateTop"),
                 "액션바가 NavPlateTop을 읽는다 (body.yMax 붙이기 금지)");
@@ -252,6 +274,8 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(CharHud.EnvNo, no);
             Environment.SetEnvironmentVariable(CharHud.EnvNoNav, noNav);
             Environment.SetEnvironmentVariable(CharHud.EnvNoPortraitFit, noPortrait);
+            Environment.SetEnvironmentVariable(CharHud.EnvNoScroll, noScroll);
+            Environment.SetEnvironmentVariable(CharHud.EnvNoSelTint, noSelTint);
             if (_fail == 0) Debug.Log("[CharHudSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharHudSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[CharHudSelfCheck] FAIL {_fail}건");
