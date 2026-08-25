@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 14:19 · 던전 전투 카드 플레이어 문구 폴리싱(`ffae51ef`). 사람 관문 더미 유지
-마지막 트랙: UI — 전투 카드의 구현 용어를 `최대 105마리 · 원거리 적 20% · 좁은 길`로 풀어썼다
+최종 갱신: 2026-08-25 14:31 · 영지 방어 도크 라벨 가독성 폴리싱(`8fb215cd`, 분리 `8014123f`). 사람 관문 더미 유지
+마지막 트랙: UI — 영지 마을 하단 `화살탑·마법탑·성벽·함정 0`을 밝은 굵은 라벨로 바꿨다
 소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔. 코드 칸이 없으면 최신 정상 샷 UI 한 곳 폴리싱
-검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` DungeonEncounterCopySelfCheck PASS 4/4 · 실행 파일 빌드 PASS(1,390,373,399 bytes) · 1280×720 정상/네거티브 육안 확인(`output/qa/ashes-to-stars/dungeon_encounter_copy_shots/{after,neg}/qa_dungeon.png`) — 정상은 플레이어 단위·지형명, 네거티브는 `동시 105체 · 원거리 20% · 병목`. 카드 제목·부제·아이콘과 우측 포기 카드 절단/겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
+검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` EstateHudSelfCheck PASS · 실행 파일 빌드 PASS(1,388,344,119 bytes) · 1280×720 정상/네거티브 육안 확인(`output/qa/ashes-to-stars/estate_palette_bright_shots/{after,neg}/qa_go:Estate.png`) — 정상은 방어 4칸의 이름·개수가 밝고 굵게 읽히며 네거티브는 옛 회색 Hint로 복귀. 카드 절단·건물 가림·내비 겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
