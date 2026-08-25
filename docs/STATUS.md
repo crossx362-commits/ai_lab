@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 10:10 · 월드 티어 복귀 카드 폭 정돈(`42eefb95`). 사람 관문 더미 유지
-마지막 트랙: UI — 원장 소비처 0곳 후보를 재스캔했으나 수치 필드는 모두 소비 중이었다. 월드 티어의 단일 「영지로」 카드가 1208px 전폭으로 늘어나던 대신 520px 최대폭·가로 중앙으로 응집했다. `QA_NO_WORLD_TIER_BACK_FIT`은 옛 전폭 카드를 복원한다
+최종 갱신: 2026-08-25 10:18 · 월드맵 플레이어 문구 정돈(`805fb885`). 사람 관문 더미 유지
+마지막 트랙: UI — 월드맵 헤더·별 배너에 노출되던 내부 기획서 절 번호(`§14`·`§18-9`·`§18-13`)를 플레이어 문구에서 제거했다. `QA_NO_WORLD_MAP_PLAYER_COPY`는 옛 절 번호 문구를 복원한다
 소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸 재스캔. 새 오펀이 없으면 UI·아트 상시 폴리싱 한 건
-검증: C# 컴파일 PASS(358소스) · `unity_meas` WorldTierSelfCheck PASS(520px 중앙·본문 경계·QA_NO 1208px) · 실행 파일 빌드 PASS · 1280×720 A/B 실화면 육안 확인(`output/qa/ashes-to-stars/world_tier_back_fit/{on,neg}/qa_go:Estate/월드티어.png`) — 정상은 복귀 행동이 중앙 카드로 읽히고 네거는 빈 전폭 액자 재현. 3D·메시·신규 그림 작업이 아니라 블렌더·이미지 생성은 건너뜀
+검증: C# 컴파일 PASS · `unity_meas` WorldMapPlayerCopySelfCheck 4/4 PASS · 실행 파일 빌드 PASS · 1280×720 A/B 실화면 육안 확인(`output/qa/ashes-to-stars/world_map_player_copy/{on,neg}/qa_go:WorldMap.png`) — 정상은 헤더·배너에서 절 번호 0건, 네거는 `§18-9`·`§14` 재현, 잘림·레이아웃 변화 없음. `check_all.py` exit 0(WARN은 기존 추적 미디어·루트 파일·타 세션 미추적 파일). 3D·메시·신규 그림 작업이 아니라 블렌더·이미지 생성은 건너뜀
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
