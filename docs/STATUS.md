@@ -364,3 +364,9 @@
 - W2 FAIL — 기준 낮추지 말 것 · 담당 대화 세션
 - V2/V3/V4 — 루프가 닫지 않음 · 데모·EA 전 재측정
 - 전체 이력: `docs/archive/legacy_loop_docs_20260823/STATUS.md` · `docs/GAME_WORKLOG.md`
+
+## 최신 바퀴 (2026-08-25 13:34)
+
+- 완료: 허브 공통 슬림 부제 색을 `0.62/0.65/0.75`에서 `0.76/0.79/0.87`로 올려 영지 성벽·필드 안개 위 가독성을 강화했다 (`9b3d499b`). `QA_NO_HUB_SUBTITLE_CONTRAST=1`은 옛 흐린 색을 재현한다.
+- 검증: C# 컴파일 PASS(362소스 0)·고의 오류 탐지 PASS·`unity_meas` HubHeaderSelfCheck PASS 28항목·실행 빌드 PASS(1,388,341,063 bytes). 1280×720 정상/네거티브 화면 `output/qa/ashes-to-stars/hub_subtitle_contrast/{after,neg}/qa_go:Estate.png`을 직접 비교해 정상 부제가 배경에서 분리되고 절단·겹침이 없음을 확인했다. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뛰었고, Unity MCP가 노출되지 않아 격리 빌드+실행 캡처로 검증했다.
+- 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔한다. 코드 칸이 없으면 최신 정상 샷에서 UI 절단·겹침 한 곳만 폴리싱한다.
