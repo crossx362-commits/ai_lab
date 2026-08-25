@@ -84,8 +84,8 @@ namespace AshesToStars
             Check(WorldExplore.Caption() == "탐험 2/3",
                 $"인간 카드 (실제 {WorldExplore.Caption()})");
             Check(WorldExplore.Line(30).Contains("2/3")
-                  && WorldExplore.Line(30).Contains("§14"),
-                $"인간 문구 (실제 {WorldExplore.Line(30)})");
+                  && !WorldExplore.Line(30).Contains("§"),
+                $"인간 문구에 내부 절 번호 없음 (실제 {WorldExplore.Line(30)})");
 
             RacePrefs.Set(RaceId.엘프);
             Check(WorldExplore.Percent() == WorldExplore.ElfPercent,
@@ -98,8 +98,9 @@ namespace AshesToStars
             Check(WorldExplore.Caption() == "탐험 3/3",
                 $"엘프 카드 (실제 {WorldExplore.Caption()})");
             Check(WorldExplore.Line(30).Contains("+30%")
-                  && WorldExplore.Line(30).Contains("3/3"),
-                $"엘프 문구 (실제 {WorldExplore.Line(30)})");
+                  && WorldExplore.Line(30).Contains("3/3")
+                  && !WorldExplore.Line(30).Contains("§"),
+                $"엘프 문구에 내부 절 번호 없음 (실제 {WorldExplore.Line(30)})");
             Check(WorldExplore.HeaderOwnsLine(), "엘프는 헤더가 Line을 가진다");
             Check(string.IsNullOrEmpty(WorldExplore.FieldCaption(30)),
                 $"엘프 필드 캡션은 헤더가 가져서 빈다 (실제 '{WorldExplore.FieldCaption(30)}')");
