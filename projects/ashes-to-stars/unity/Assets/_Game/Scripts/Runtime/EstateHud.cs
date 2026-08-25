@@ -18,6 +18,7 @@ namespace AshesToStars
         public const string EnvNo = "QA_NO_YARD_HUD";
         public const string EnvNoEdge = "QA_NO_YARD_PALETTE_EDGE";
         public const string EnvNoReadablePalette = "QA_NO_YARD_PALETTE_READABLE";
+        public const string EnvNoPaletteContrast = "QA_NO_YARD_PALETTE_CONTRAST";
         public const string EnvNoChipCompact = "QA_NO_ESTATE_CHIP_COMPACT";
         public const float OldInspectH = 86f;
         public const float OldPaletteH = 68f;
@@ -71,6 +72,17 @@ namespace AshesToStars
 
         public static bool ReadablePaletteBlocked =>
             Environment.GetEnvironmentVariable(EnvNoReadablePalette) == "1";
+
+        /// <summary>
+        /// 비선택 방어 타일도 잔디 위에서 이름·개수가 읽히도록 프레임을 거의 불투명하게 둔다.
+        /// 옛 0.72는 1280×720 실화면에서 회색 글씨와 잔디가 섞였다.
+        /// </summary>
+        public static Color PaletteTint(bool selected)
+        {
+            if (selected) return Color.white;
+            bool oldContrast = Environment.GetEnvironmentVariable(EnvNoPaletteContrast) == "1";
+            return new Color(1f, 1f, 1f, oldContrast ? 0.72f : 0.92f);
+        }
 
         public static float PaletteH => Blocked ? OldPaletteH : SlimPaletteH;
 

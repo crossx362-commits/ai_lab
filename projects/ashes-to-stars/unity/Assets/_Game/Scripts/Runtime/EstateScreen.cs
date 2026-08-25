@@ -715,8 +715,7 @@ namespace AshesToStars
                 }
 
                 string btnKey = UiAtlas.ButtonKey(false, on);
-                UiAtlas.DrawSliced(b, btnKey, 8f,
-                    on ? (Color?)null : new Color(1f, 1f, 1f, 0.72f));
+                UiAtlas.DrawSliced(b, btnKey, 8f, EstateHud.PaletteTint(on));
                 var inner = UiAtlas.ContentRect(b, btnKey, 2f);
                 if (EstateHud.ReadablePaletteBlocked)
                 {
