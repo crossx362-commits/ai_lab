@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 11:33 · 파티 화면 내부 절 번호 노출 제거(`81aa6d8e`). 사람 관문 더미 유지
-마지막 트랙: UI — 파티 편성 카드 상태·출전 거부 안내에서 기획서 `§` 표기를 걷고, 마지막 목숨 영구 삭제 위험과 수비대 해임 등 해결 행동은 유지했다
+최종 갱신: 2026-08-25 11:39 · 전투 스타일 화면 내부 절 번호 노출 제거(`a4fd8ea2`). 사람 관문 더미 유지
+마지막 트랙: UI — 전투 스타일 부제와 정예 우선·소모품 자동 상태 문구에서 기획서 `§` 표기를 걷고, 직업별 저장·타겟 우선순위·자동 사용 금지 의미는 유지했다
 소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸 재스캔. 코드 칸이 없으면 다음 UI·아트 상시 폴리싱 한 건
-검증: C# 컴파일 PASS · `unity_meas` PartyHudCapSelfCheck PASS · 실행 파일 빌드 PASS · 1280×720 실화면 육안 확인(`output/qa/ashes-to-stars/party_copy_shots/qa_go:Party.png`) — 상단 부제와 카드 상태에 내부 절 번호 없음, 금테·초상·하트·하단 내비 잘림/겹침 없음. `check_all.py` exit 0(WARN은 기존 추적 미디어·루트 파일·타 세션 미추적 파일). 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
+검증: C# 컴파일 PASS(362소스) · `unity_meas` StyleToggleSelfCheck PASS · 실행 파일 빌드 PASS · 1280×720 실화면 육안 확인(`output/qa/ashes-to-stars/style_copy_shots/qa_go:Style.png`) — 부제·네 스타일 카드에 내부 절 번호 0건, 핵심 문구와 금테·아이콘·하단 내비가 잘림/겹침 없이 보임. `check_all.py`는 기존 추적 미디어·루트 파일·타 세션 미추적 파일 WARN으로 exit 1. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증. 첫 커밋에 선행 스테이지 문서가 혼입돼 작업 트리를 보존한 복구 커밋 `423d97f3` 추가
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
