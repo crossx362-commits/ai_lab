@@ -16,6 +16,7 @@ namespace AshesToStars
         public const string EnvShow = "QA_EXPLORE_FOG";
         public const string EnvNo = "QA_NO_EXPLORE_FOG";
         public const string EnvNoDup = "QA_NO_EXPLORE_DUP";
+        public const string EnvNoLabelPlate = "QA_NO_EXPLORE_LABEL_PLATE";
         public const int HumanPercent = 100;
         public const int ElfPercent = 130;
         public const int NearFloor = 1;
@@ -65,6 +66,18 @@ namespace AshesToStars
                 string raw = Environment.GetEnvironmentVariable(EnvNoDup);
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
+        }
+
+        public static bool LabelPlateBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoLabelPlate) == "1";
+
+        /// <summary>별 이름을 성운 위에 띄우지 않고 작은 금테 표찰 안에 가둔다.</summary>
+        public static Rect LabelPlate(Rect field, Rect icon)
+        {
+            var plate = new Rect(icon.x - 32f, icon.yMax + 2f, icon.width + 64f, 20f);
+            plate.x = Mathf.Clamp(plate.x, field.x + 2f, field.xMax - plate.width - 2f);
+            plate.y = Mathf.Min(plate.y, field.yMax - plate.height - 2f);
+            return plate;
         }
 
         /// <summary>
@@ -190,9 +203,14 @@ namespace AshesToStars
                 GUI.color = seen ? Color.white : new Color(1f, 1f, 1f, 0.16f);
                 UiAtlas.DrawFit(ir, "worldmap");
                 if (!seen) continue;
-                var lab = new Rect(ir.x - 28f, ir.yMax, s + 56f, 16f);
-                lab.x = Mathf.Clamp(lab.x, field.x, field.xMax - lab.width);
-                lab.y = Mathf.Min(lab.y, field.yMax - lab.height);
+                var lab = LabelPlate(field, ir);
+                if (!LabelPlateBlocked)
+                {
+                    if (!UiAtlas.DrawSliced(lab, "panel", 8f,
+                            new Color(0.80f, 0.88f, 1f, 0.82f)))
+                        UiAtlas.Draw(lab, "panel", new Color(0.80f, 0.88f, 1f, 0.82f));
+                    lab = UiAtlas.ContentRect(lab, "panel", 1f, 4f);
+                }
                 UiPages.LabelFit(lab, stars[i].Name, _cap);
             }
 

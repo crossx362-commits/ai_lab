@@ -31,6 +31,7 @@ namespace AshesToStars
             string show = Environment.GetEnvironmentVariable(WorldExplore.EnvShow);
             string no = Environment.GetEnvironmentVariable(WorldExplore.EnvNo);
             string noDup = Environment.GetEnvironmentVariable(WorldExplore.EnvNoDup);
+            string noLabelPlate = Environment.GetEnvironmentVariable(WorldExplore.EnvNoLabelPlate);
             string noRange = Environment.GetEnvironmentVariable(WorldStar.EnvNoRange);
             RaceId oldRace = RacePrefs.Get();
             float oldForce = WorldExplore.ForceMul;
@@ -38,6 +39,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(WorldExplore.EnvShow, null);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNo, null);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNoDup, null);
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelPlate, null);
             Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, null);
             WorldExplore.ForceMul = 0f;
 
@@ -122,6 +124,17 @@ namespace AshesToStars
             Check(WorldExplore.RevealedCount(100) == 3,
                 $"인간 100층 3/3 (실제 {WorldExplore.RevealedCount(100)})");
 
+            var field = new Rect(36f, 140f, 1208f, 284f);
+            var label = WorldExplore.LabelPlate(field, new Rect(620f, 260f, 22f, 22f));
+            Check(label.height == 20f && label.y > 282f,
+                $"별 표찰은 아이콘 아래 20px (실제 {label})");
+            Check(field.Contains(label.min) && field.Contains(label.max - Vector2.one),
+                "별 표찰은 필드 안에 있다");
+            Check(!WorldExplore.LabelPlateBlocked, "별 표찰 기본은 켜짐");
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelPlate, "1");
+            Check(WorldExplore.LabelPlateBlocked, "QA_NO면 옛 배경 없는 이름");
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelPlate, null);
+
             Environment.SetEnvironmentVariable(WorldExplore.EnvNo, "1");
             Check(WorldExplore.Blocked, "QA_NO_EXPLORE_FOG");
             Check(WorldExplore.Percent() == WorldExplore.HumanPercent, "차단하면 100");
@@ -158,6 +171,9 @@ namespace AshesToStars
             Check(expSrc.Contains("FieldCaption(floor)")
                   && expSrc.Contains("QA_NO_EXPLORE_DUP"),
                 "Draw가 FieldCaption을 그린다 (옛 Line 중복 금지)");
+            Check(expSrc.Contains("LabelPlate(field, ir)")
+                  && expSrc.Contains("QA_NO_EXPLORE_LABEL_PLATE"),
+                "Draw가 별 이름 금테 표찰을 그린다");
             Check(mapSrc.Contains("WorldExplore.Draw")
                   && mapSrc.Contains("WorldExplore.SeedQaIfRequested")
                   && mapSrc.Contains("WorldExplore.Line"),
@@ -173,12 +189,14 @@ namespace AshesToStars
             _ = nameof(WorldExplore.RevealedCount);
             _ = nameof(WorldExplore.Caption);
             _ = nameof(WorldExplore.FieldCaption);
+            _ = nameof(WorldExplore.LabelPlate);
             _ = nameof(WorldExplore.Draw);
             _ = nameof(RaceDef.탐험범위배율);
 
             Environment.SetEnvironmentVariable(WorldExplore.EnvShow, show);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNo, no);
             Environment.SetEnvironmentVariable(WorldExplore.EnvNoDup, noDup);
+            Environment.SetEnvironmentVariable(WorldExplore.EnvNoLabelPlate, noLabelPlate);
             Environment.SetEnvironmentVariable(WorldStar.EnvNoRange, noRange);
             WorldExplore.ForceMul = oldForce;
             RacePrefs.Set(oldRace);
