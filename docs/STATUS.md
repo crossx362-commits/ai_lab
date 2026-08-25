@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 09:49 · 월드맵 별 이름 표찰 폴리싱(`863056fc`·`1bbdc4c1`). 사람 관문 더미 유지
-마지막 트랙: UI — 월드맵의 가까운 별·경계 별·안개 별 이름이 어두운 성운 위에 작은 글씨로 떠 있던 것을 아이콘 아래 반투명 금테 표찰로 묶었다. 첫 실화면에서 20px 내부 패딩 때문에 자소가 잘린 것을 확인해 24px·고정 2px 안전영역으로 보정했다
+최종 갱신: 2026-08-25 10:02 · 월드맵 별 이름 표찰 겹침 해소(`032ec5a9`). 사람 관문 더미 유지
+마지막 트랙: UI — 최신 1280×720 화면에서 가까운 별·경계 별·안개 별의 금테 표찰이 중앙에 포개져 이름과 아이콘을 가렸다. 세 표찰을 아이콘의 우측·좌하·좌상으로 펼치고 필드 경계 안에 고정했다. `QA_NO_EXPLORE_LABEL_SPREAD`는 옛 아이콘 아래 겹침을 복원한다
 소비처0 다음: 직전=UI이므로 원장 ✅ 소비처 0곳 새 칸 재스캔. 새 오펀이 없으면 UI·아트 상시 폴리싱 한 건
-검증: C# 컴파일 PASS(358소스) · `unity_meas` WorldExploreSelfCheck PASS(표찰 24px·필드 경계 안·QA_NO 옛 배경 없음) · 실행 파일 빌드 PASS · 1280×720 실화면 육안 확인(`output/qa/ashes-to-stars/world_explore_label_plate_shots/final/qa_worldmap.png`) — 세 별 이름 끝글자·금테·배경 대비·도크 비겹침 확인. 블렌더는 3D·메시 작업이 아니라 건너뜀
+검증: C# 컴파일 PASS(358소스) · `unity_meas` WorldExploreSelfCheck PASS(세 방향 상호 비겹침·필드 경계·QA_NO 옛 배치) · 실행 파일 빌드 PASS · 1280×720 A/B 실화면 육안 확인(`output/qa/ashes-to-stars/world_explore_label_spread_shots/{after,neg}/qa_go:WorldMap.png`) — 정상은 이름·별 아이콘 모두 분리, 네거는 중앙 겹침 재현. 블렌더는 3D·메시 작업이 아니라 건너뜀
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
