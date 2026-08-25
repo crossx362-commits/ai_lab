@@ -239,7 +239,20 @@ namespace AshesToStars
                 REF_H - BodyTop - bottom - previewH);
             // NavReserve=80이면 yMax=640인데 내비 플레이트는 636이라 하단 금테가 4px 겹친다.
             // 화면마다 Hud.NavGap을 복제하지 않고 여기서 한 번 자른다. QA_NO면 옛 640.
+            // Body 구현은 화면마다 제각각이다. 한 화면이 GUI 색/활성/행렬을 되돌리지 않으면
+            // 그 뒤에 그리는 공통 하단 내비까지 아이콘·글자가 잘리거나 흐려진다. 본문을
+            // 플러그인 경계처럼 취급해 공통 껍데기의 상태를 반드시 되찾는다.
+            var bodyMatrix = GUI.matrix;
+            var bodyColor = GUI.color;
+            var bodyContentColor = GUI.contentColor;
+            var bodyBackgroundColor = GUI.backgroundColor;
+            bool bodyEnabled = GUI.enabled;
             Body(BodyNav.Fit(body, ShowBottomBar));
+            GUI.matrix = bodyMatrix;
+            GUI.color = bodyColor;
+            GUI.contentColor = bodyContentColor;
+            GUI.backgroundColor = bodyBackgroundColor;
+            GUI.enabled = bodyEnabled;
             float previewY = REF_H - bottom;
             if (bossHpPreview)
             {
