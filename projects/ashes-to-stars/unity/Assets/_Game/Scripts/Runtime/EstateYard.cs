@@ -167,18 +167,18 @@ namespace AshesToStars
         public static string Line()
         {
             if (FillBlocked)
-                return "마을에서 건물을 눌러 관리한다. 방어는 빈 칸에 놓는다(§13·§16)";
+                return "마을에서 건물을 눌러 관리한다. 방어는 빈 칸에 놓는다";
             if (ShowPinchQa && ZoomEnabled)
-                return "마을을 두 손가락으로 벌려 확대한다. 집을 누르면 들어간다(§16)";
+                return "마을을 두 손가락으로 벌려 확대한다. 집을 누르면 들어간다";
             if (DragEnabled)
-                return "건물을 끌면 옮긴다. 빈 곳은 마을을 끌어 본다(§2-2·§16)";
+                return "건물을 끌면 옮긴다. 빈 곳은 마을을 끌어 본다";
             if (PanEnabled && ZoomEnabled)
-                return "마을을 끌어 보고 굴려 확대한다. 집을 누르면 들어간다(§16)";
+                return "마을을 끌어 보고 굴려 확대한다. 집을 누르면 들어간다";
             if (PanEnabled)
-                return "마을을 끌어 본다. 집을 누르면 들어간다(§16)";
+                return "마을을 끌어 본다. 집을 누르면 들어간다";
             if (ZoomEnabled)
-                return "마을을 굴려 확대한다. 집을 누르면 들어간다(§16)";
-            return "마을이 화면을 채운다. 집을 누르면 들어간다(§16)";
+                return "마을을 굴려 확대한다. 집을 누르면 들어간다";
+            return "마을이 화면을 채운다. 집을 누르면 들어간다";
         }
 
         /// <summary>

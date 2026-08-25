@@ -44,6 +44,8 @@ namespace AshesToStars
             Check(diamond >= 900f, $"마름모 폭 {diamond:0}");
             Check(EstateYard.Line().Contains("끌어 본다"),
                 $"줄 (실제 {EstateYard.Line()})");
+            Check(!EstateYard.Line().Contains("§"),
+                $"플레이어 부제에 내부 절 번호 없음 (실제 {EstateYard.Line()})");
 
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep, "본성=전용");
             Check(EstateYard.PropOf(EstateGrid.Cell.Warehouse) == EstateBuildings.Warehouse, "창고=전용");
@@ -66,6 +68,8 @@ namespace AshesToStars
             Check(oldYard.height < yard.height, $"차단 높이 {oldYard.height:0} < 전면 {yard.height:0}");
             Check(EstateYard.Line().Contains("빈 칸에 놓는다"),
                 $"차단 줄 (실제 {EstateYard.Line()})");
+            Check(!EstateYard.Line().Contains("§"),
+                $"차단 부제에도 내부 절 번호 없음 (실제 {EstateYard.Line()})");
             Environment.SetEnvironmentVariable(EstateYard.EnvNo, null);
 
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime");
