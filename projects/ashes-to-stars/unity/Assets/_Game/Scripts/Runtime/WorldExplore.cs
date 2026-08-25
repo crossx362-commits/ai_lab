@@ -74,7 +74,7 @@ namespace AshesToStars
         /// <summary>별 이름을 성운 위에 띄우지 않고 작은 금테 표찰 안에 가둔다.</summary>
         public static Rect LabelPlate(Rect field, Rect icon)
         {
-            var plate = new Rect(icon.x - 32f, icon.yMax + 2f, icon.width + 64f, 20f);
+            var plate = new Rect(icon.x - 32f, icon.yMax + 2f, icon.width + 64f, 24f);
             plate.x = Mathf.Clamp(plate.x, field.x + 2f, field.xMax - plate.width - 2f);
             plate.y = Mathf.Min(plate.y, field.yMax - plate.height - 2f);
             return plate;
@@ -209,7 +209,7 @@ namespace AshesToStars
                     if (!UiAtlas.DrawSliced(lab, "panel", 8f,
                             new Color(0.80f, 0.88f, 1f, 0.82f)))
                         UiAtlas.Draw(lab, "panel", new Color(0.80f, 0.88f, 1f, 0.82f));
-                    lab = UiAtlas.ContentRect(lab, "panel", 1f, 4f);
+                    lab = new Rect(lab.x + 2f, lab.y + 2f, lab.width - 4f, lab.height - 4f);
                 }
                 UiPages.LabelFit(lab, stars[i].Name, _cap);
             }

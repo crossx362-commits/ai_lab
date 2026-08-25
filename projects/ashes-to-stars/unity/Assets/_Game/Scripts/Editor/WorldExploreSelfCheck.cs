@@ -126,8 +126,8 @@ namespace AshesToStars
 
             var field = new Rect(36f, 140f, 1208f, 284f);
             var label = WorldExplore.LabelPlate(field, new Rect(620f, 260f, 22f, 22f));
-            Check(label.height == 20f && label.y > 282f,
-                $"별 표찰은 아이콘 아래 20px (실제 {label})");
+            Check(label.height == 24f && label.y > 282f,
+                $"별 표찰은 아이콘 아래 24px (실제 {label})");
             Check(field.Contains(label.min) && field.Contains(label.max - Vector2.one),
                 "별 표찰은 필드 안에 있다");
             Check(!WorldExplore.LabelPlateBlocked, "별 표찰 기본은 켜짐");
