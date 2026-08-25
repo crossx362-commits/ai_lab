@@ -6,7 +6,7 @@
 최종 갱신: 2026-08-25 14:19 · 던전 전투 카드 플레이어 문구 폴리싱(`ffae51ef`). 사람 관문 더미 유지
 마지막 트랙: UI — 전투 카드의 구현 용어를 `최대 105마리 · 원거리 적 20% · 좁은 길`로 풀어썼다
 소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔. 코드 칸이 없으면 최신 정상 샷 UI 한 곳 폴리싱
-검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` DungeonEncounterCopySelfCheck PASS 4/4 · 실행 파일 빌드 PASS(1,389,785,852 bytes) · 1280×720 정상/네거티브 육안 확인(`output/qa/ashes-to-stars/dungeon_encounter_copy_shots/{after,neg}/qa_dungeon.png`) — 정상은 플레이어 단위·지형명, 네거티브는 `동시 105체 · 원거리 20% · 병목`. 카드 제목·부제·아이콘과 우측 포기 카드 절단/겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
+검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` DungeonEncounterCopySelfCheck PASS 4/4 · 실행 파일 빌드 PASS(1,390,373,399 bytes) · 1280×720 정상/네거티브 육안 확인(`output/qa/ashes-to-stars/dungeon_encounter_copy_shots/{after,neg}/qa_dungeon.png`) — 정상은 플레이어 단위·지형명, 네거티브는 `동시 105체 · 원거리 20% · 병목`. 카드 제목·부제·아이콘과 우측 포기 카드 절단/겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -386,5 +386,5 @@
 ## 최신 바퀴 (2026-08-25 14:19)
 
 - 완료: 최신 던전 정상 샷의 일반 전투 카드가 `동시 105체 · 원거리 20% · 병목`처럼 구현 단위·용어를 나열하던 문구를 `최대 105마리 · 원거리 적 20% · 좁은 길`로 풀어썼다 (`ffae51ef`). `QA_NO_DUNGEON_ENCOUNTER_COPY=1`은 옛 문구를 재현한다.
-- 검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` DungeonEncounterCopySelfCheck PASS 4/4 · 실행 파일 빌드 PASS(1,389,785,852 bytes) · 1280×720 정상/네거티브 `output/qa/ashes-to-stars/dungeon_encounter_copy_shots/{after,neg}/qa_dungeon.png`을 직접 비교했다. 정상 문구는 선택 의미가 바로 읽히고 카드 제목·부제·아이콘 및 우측 포기 카드에 절단·겹침이 없다. 신규 그림·3D 작업이 아니어서 이미지 생성·블렌더는 건너뛰었고 Unity MCP가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증했다.
+- 검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` DungeonEncounterCopySelfCheck PASS 4/4 · 실행 파일 빌드 PASS(1,390,373,399 bytes) · 1280×720 정상/네거티브 `output/qa/ashes-to-stars/dungeon_encounter_copy_shots/{after,neg}/qa_dungeon.png`을 직접 비교했다. 정상 문구는 선택 의미가 바로 읽히고 카드 제목·부제·아이콘 및 우측 포기 카드에 절단·겹침이 없다. 신규 그림·3D 작업이 아니어서 이미지 생성·블렌더는 건너뛰었고 Unity MCP가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증했다.
 - 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔한다. 코드 칸이 없으면 최신 정상 샷에서 UI 절단·겹침 한 곳만 폴리싱한다.
