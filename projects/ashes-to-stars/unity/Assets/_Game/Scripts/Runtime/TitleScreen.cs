@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -14,6 +15,16 @@ namespace AshesToStars
     {
         public const string EnvNoLocalKitLane = "QA_NO_TITLE_LOCAL_KIT_LANE";
         public const string EnvNoIntroPanel = "QA_NO_TITLE_INTRO_PANEL";
+        public const string EnvNoPlayerCopy = "QA_NO_TITLE_PLAYER_COPY";
+
+        public static string PlayerCopy(string value)
+        {
+            if (string.IsNullOrEmpty(value)
+                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
+                return value;
+            return System.Text.RegularExpressions.Regex.Replace(
+                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
+        }
 
         /// <summary>소개 문구를 배경 위에 띄우지 않고 시작 카드와 같은 금테 패널에 묶는다.</summary>
         public static Rect IntroPanelRect(Rect body)
@@ -98,9 +109,9 @@ namespace AshesToStars
                  : "아직 정상에 오른 파티가 없다");
             Hint(new Rect(copy.x, by + titleH + gap, copy.width, descH),
                  TowerEnding.HasTitle
-                     ? $"{TowerEnding.LookName} · 전투력은 그대로 · 100층을 다시 오를 수 있다(§8)"
+                     ? PlayerCopy($"{TowerEnding.LookName} · 전투력은 그대로 · 100층을 다시 오를 수 있다(§8)")
                      : SoloRaidClear.HasAny
-                         ? $"{SoloRaidClear.LookName} · 홀로 깬 레이드 {SoloRaidClear.Count} · 전투력은 그대로(§8)"
+                         ? PlayerCopy($"{SoloRaidClear.LookName} · 홀로 깬 레이드 {SoloRaidClear.Count} · 전투력은 그대로(§8)")
                          : "5인 파티를 키워 탑을 오른다. 목숨 3번이면 캐릭터와 장비가 영구 삭제된다.");
 
             var cells = UiPages.Grid(new Rect(r.x + r.width * 0.56f, r.y + 8f, r.width * 0.44f, r.height - 16f),
