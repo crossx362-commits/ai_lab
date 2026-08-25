@@ -8,7 +8,7 @@
 
 
 
-최종 갱신: 2026-08-25 21:36 · 커밋 가드 바퀴(회의 20260825-203200 채택 #3 이행). 공용 커밋 가드 `loop/commit_guard.sh` + 샌드박스 검사 12건 착수(`70db7ebf`) — 인덱스 스테이징=허용 경로 강제로 타 세션 혼입 사고 재발 차단. 루프 가동 중(opencode). INBOX 20:35 오너 지시에 따라 COUNCIL_NOW 재생성 — 이 바퀴 종료 시 정기 회의가 ORDERS 3건·§18-14 소환수 재소환·큐#1 필드 정예 훅을 심의. 보더가 남긴 test_board 실패 1건은 재실측 126/126 OK로 미재현.
+최종 갱신: 2026-08-26 08:35 · **ORDERS③ 측정 하네스 50층 확장 + G3 파티 실DPS 대조 게이트** 완료(`f5e6b1c3`). 첫 실측 **FAIL 3건 공식 기록** — G2 5h사냥→Lv47 vs 필요50(최상층 도달 6.04h) · G3 권장 파티(기대레벨+전직) 25·50층 보스전 **전멸**(실측 DPS 0 vs 필요 542/3076 — 장비·합성·가호 미포함 베어 로스터 기준). 네거티브(약한 파티 Lv1 탈락) PASS로 판별력 입증. 직전 바퀴 ORDERS② 멤버별 스타일 배선(`51c3e862`)·캐릭터창 열람 개선(`80f934e8`) STATUS 반영. GameSweep 재실측 ok:true 63/63(07:45). 루프 가동 중(opencode).
 
 > ⚠️ [2026-08-25 21:58 보드지킴이] 공유 인덱스의 `loop/board.py`·`loop/test_board.py`는 보드지킴이 커밋 `6b9699f4`(수함대 집계 수정+회귀검사) **이전** 스냅이다 — 이 상태로 맨몸 `git commit`하면 방금 닫힌 수정이 되돌려진다. board·test 두 파일은 커밋 전 작업 트리 기준으로 다시 `git add`해 해소할 것(board.py엔 인덱스에만 있는 cli_usage 변경분도 있으니 병합 확인).
 
@@ -49,13 +49,11 @@
 
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
-1. **ORDERS ② 파티 멤버별 전투 스타일 배선** — 승인(오너 위임 2026-08-25). W3Party 소비부를 멤버 루프 `m.Style` 참조로, `UseFixedStyle` 측정 단일 경로 삼항 유지·네거티브 필수.
-2. **ORDERS ③ 측정 하네스 50층 확장 + G3 게이트** — 승인. `TowerClimbCurveMeasure` TopFloor 30→50, 파티 실DPS 대조 게이트 신설, 약한 파티 FAIL 네거티브.
-3. **ORDERS ① 유령 과제 종결 정리** — 승인. CombatStyle 실소비·UseFixedStyle·보스 쫄 소환을 코드 근거로 종결, `JobDef.이동기형태` 소비처 정리.
-4. **§18-14 소환수 재소환 + 큐#1 필드 정예 훅** — 승인(오너 위임). 재소환 0.5G/h·쿨다운 30초 신규 시스템 / W3Party 정예 처치 1회를 `EliteDrop`·`GameState`로 넘기는 최소 훅(판정 로직 변경 금지·QA_NO 네거티브).
+1. **ORDERS ① 유령 과제 종결 정리** — 승인. CombatStyle 실소비·UseFixedStyle·보스 쫄 소환을 코드 근거로 종결, `JobDef.이동기형태` 소비처 정리.
+2. **§18-14 소환수 재소환 + 큐#1 필드 정예 훅** — 승인(오너 위임). 재소환 0.5G/h·쿨다운 30초 신규 시스템 / W3Party 정예 처치 1회를 `EliteDrop`·`GameState`로 넘기는 최소 훅(판정 로직 변경 금지·QA_NO 네거티브).
 3. **기획서 ✅ · 소비처 0곳** — 원장 `GAME_DESIGN_ASHES_TO_STARS.md`를 훑어 ✅인데 grep 소비처가 0인 칸 **하나만** 닫는다. **§10-3 계열 상성은 닫음**(`a7f82e6a` 선반영 + `777eacab` 판정 + `927ce693` GameSweep 등록·재실측 PASS). §10-5 보스 스킬 수는 닫음(`BossSkills` 선반영 — SelfCheck 25/25 PASS, 2026-08-24 판정). **남은 알려진 오픈 셀 없음 — 다음 바퀴는 원장 재스캔으로 새 칸 발굴.** §18-11 잡몹 피해(MobDmg `fc2499d8`)·§18-11 잡몹 HP(MobHp `6f1e1226`)·§18-11 잡몹 이동속도(MobSpeed `8c89e69b`)·§18-8 PvE 회복시간(PveRecover `cff20f97`)·§4 PvP 회복시간(PvpRecover `903a1cf7`)·§18-11 플레이어 이동속도(MoveSpd `be1882cd`)·§18-2 소각목표(BurnTarget `470f416c`)·§18-1 티어1시간당골드(GhAnchor `12e3e0b4`)·§18-1 티어배율(TierMul `9de769f8`)·§10-9 투사체상한(ProjCap `89e7136d`)·§10-9 소환수상한(SummonCap `bfff2789`)·§10-9 잡몹상한(PerfCap `31836976`)·§4 사망상한(DeathCap `f45cd729`)·§4 부활초소지상한(ReviveCap `9b50c0d7`)·§3 전투 스타일 정예우선타겟·소모품자동사용(StyleScreen.ToggleLine `305bee56`)·§3 SkillDef.초필살기(SkillUltLine `24ef7e47` — 이번 바퀴 선반영 확인)·§18-13 별 인식(`1 + 층/10`)·§18-13 별 크기(`1 + 층×0.02`)·§18-11 대보스 개체 HP(2체 65·3체 45)·§10-2 정예 유형 1~2종(지도 Caption)·§10-7 탑 대보스 마릿수(60/30/10)·§18-10 레이드 벽(5층 ×1.5·10층 ×2.2)·§18-4 목숨 시세 상한(부활초 8·두루마리 4·환생석 300)·증표 시세 상한 400·§11 드랍 옵션 체력(`GearOpt.HpMul`→`EffectiveHpMul`)·경매 복원 등급·옵션·§13-3 창고 현재 칸 경로·§11 드랍 옵션 1~4·§10-8 정예 일반·보스 고급 장비·가방 60칸·무기 직업 계열·진입 면 선택·§18-9 RaceDef.전투당발동(`f9f195e8`)·§3 SkillDef.쿨다운(속성 SkillLine `92cc2feb`)·§18-9 RaceDef.이속배율(속성 SpeedLine `dbe02f57`)·§18-9 RaceDef.체력배율(속성 HealthLine `e4fd1d15`)·§18-9 RaceDef.방어배율(속성 DefenseLine `ead55a1d`)·§3 SkillDef.위력배율(속성 SkillLine ×P `50202ce5`)·§3 SkillDef.반경(SkillLine `e4557f35`)·§3 SkillDef.자원소모(SkillLine `564baaf8`)·§3 SkillDef.설명(SkillDescLine `017335fc`)은 닫음. 시각 UI「다른 게임만큼」·V2 손맛·V4 70%는 사람 관문이라 닫지 않는다. `W3Party`·오너 Unity는 건드리지 않는다. **중복 리소스 재생성 금지.** 통과 기준: 소비처 ≥1 + SelfCheck + 네거티브. 증거 없는 완료 금지. **선반영 감지 시 재구현 금지·닫음 판정 후 다음 칸으로**(PROPOSALS 병합 항목 처방). 직전 트랙이 UI면 이번은 이 칸. 직전 트랙이 코드면 **UI·아트 상시 폴리싱**.
-5. **UI·아트 상시 폴리싱** — 최신 정상 샷에서 절단·겹침 한 곳만(다음 후보: GameScreen Body 절단). 「다른 게임만큼」완료 금지. 기존 닫음 나열은 아카이브 참조.
-6. **W2 손맛(회피 기회)** — 더미 판정 FAIL 유지(`loop/w2_dummy_sim.py`, 2026-08-25). 오너 직접 플레이 후 위협밀도·대시 지시 필요.
+4. **UI·아트 상시 폴리싱** — 최신 정상 샷에서 절단·겹침 한 곳만(다음 후보: GameScreen Body 절단). 「다른 게임만큼」완료 금지. 기존 닫음 나열은 아카이브 참조.
+5. **W2 손맛(회피 기회)** — 더미 판정 FAIL 유지(`loop/w2_dummy_sim.py`, 2026-08-25). 오너 직접 플레이 후 위협밀도·대시 지시 필요.
 
 ## 다음 할 일 큐 (루프가 못 닫은 것)
 
@@ -70,6 +68,7 @@
 | 3 | **영지 §5 드래그 UX** | 닫음. SelfCheck PASS · `6d9b4fae` |
 
 | 4 | **환생·탐험·내구·수비명예·착용레벨** | **닫음.** 환생 `86485fd7` · 탐험 `8c0b4b4a` · 내구 `5213c8bc` · 수비명예 `cd21fa0c` · 착용레벨 `4d9bc2d2`(요구레벨 기본 0, 오너 수치표는 안 만듦) |
+| 5 | **G3 권장 파티 픽스처 고도화 후 재판정** | 첫 실측에서 베어 로스터 전멸(실측0 vs 필요3076). BossHp 권장 전투력은 장비·합성·가호를 「흡수」한 기대치 — G3 픽스처에 실제 Equipment·Fusion CombatMuls 경로를 심어 정의 일치 후 재판정 |
 
 
 
@@ -78,6 +77,8 @@
 
 
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
+| — | 2026-08-26 08:35 | **ORDERS③ 측정 하네스 50층 확장 + G3 파티 실DPS 대조 게이트** — `TowerClimbCurveMeasure` TopFloor 30→50, 실판 시뮬(`W3Party.Step` 리플렉션 경로 — BossAutoAttackSelfCheck와 동일 경계)로 기대 레벨·전직 파티의 실측 DPS를 필요 DPS와 대조하는 G3 신설 + 약한 파티(Lv1 기본직) 네거티브. CSV/JSON 파일명 TopFloor 연동. 첫 실측 **FAIL 3건 공식 기록**(기준 낮추지 않음): G2 5h→Lv47 vs 필요50(6.04h) · G3 권장 파티 전멸(실측0 vs 필요542@25층/3076@50층 — 장비·합성·가호 미포함 베어 로스터). W3Party 런타임 무변경 | 배치 실행 컴파일 에러 0 · JSON/CSV 산출 육안 `output/qa/ashes-to-stars/curve/tower_climb_50.{json,csv}` · 실판 로그 실측(편성 5인·스킬4·시간경과 사망) · 네거티브 PASS · `f5e6b1c3` |
+| — | 2026-08-26 08:00 | **ORDERS② 파티 멤버별 전투 스타일 실소비 배선**(직전 바퀴 — STATUS 갱신 누락분 보완) — TickParty·TickMobs·TickShots가 `StyleFor(m.Style)` 개별 적용, UseFixedStyle·QA_NO_MEMBER_STYLE 삼항으로 측정 단일 경로 보존, MemberStyleSelfCheck 20건 + GameSweep 등록 | GameSweep 재실측 ok:true 63/63(`loop/last_test_report.json` 07:45) · `51c3e862` |
 | — | 2026-08-25 21:40 | **W2 회피 기회 더미** — 오너 지시로 `loop/w2_dummy_sim.py` 신설(§21-1c 방법론 재현: 전략 3종 피격 수·대시 회피기회율, 에셋 수치 MobSpeed 0.90/0.85/0.65·MoveSpd 4.2). 판정 **FAIL** — 직선/원형 계층·숙련 보상 밴드 미달, 동일 시드 해시 일치로 결정론 입증. 리포트 `output/qa/ashes-to-stars/w2_playtest_dummy/w2_report.json`. 기준 낮추지 않음 | 동일 시드 2회 실행 digest 일치 · 이 커밋 |
 | — | 2026-08-25 21:35 | **보드 표준 정리** — History 285행·폐기 포맷 「최신 바퀴」 4섹션·서술형 정정 원문을 `docs/archive/legacy_loop_docs_20260826/`로 이관, 반복 재검증 행 14건 요약 통합, 관문 부채 핵심 5행 복구 검증. board.py 파서 계약 유지(126테스트 중 125 PASS — 1건은 워커 커밋 `70db7ebf` 샌드박스 테스트의 ROOT 누출로 별도 이슈) | 정리 전후 test_board 비교 · 이 커밋 |
 | — | 2026-08-25 21:30 | **루프 인프라 — 커밋 직전 공용 인덱스 가드(회의 채택 #3·PROPOSALS 09:49 상 이행)** — 시작 시점에도 공유 인덱스에 타 세션 스테이징이 살아 있어(실측 5건) 맨몸 커밋 혼입 위험이 상시. `loop/commit_guard.sh`: `git diff --cached --name-only`(GIT_INDEX_FILE 임시 인덱스 존중)가 허용 경로 집합과 정확히 같은지 강제하고, 불일치 시 혼입·누락 경로를 지목해 1로 끝난다(커밋 중단). temp-index 커밋 후 공유 인덱스 잔해는 `git reset -q -- <내 경로>`로만 닦음(타 세션 분 보존). 게임 코드 무변경(W3Party 무접촉) · 이미지 생성·블렌더 해당 없음 | 샌드박스 12/12 PASS(`loop/test_commit_guard.sh`) · 실공유 인덱스 네거티브(혼입 6건 지목 차단) + temp-index 포지티브 PASS · test_board 재실측 126/126 · `70db7ebf` |
