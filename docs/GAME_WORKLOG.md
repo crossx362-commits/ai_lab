@@ -1305,3 +1305,27 @@ SelfCheck PASS.
 
 ## 정기 회의 20260824-071350
 - 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260824-071350.md (rc=0, 파트 3/3)
+
+## 정기 회의 20260825-055654
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-055654.md (rc=0, 파트 2/3)
+
+## 정기 회의 20260825-074704
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-074704.md (rc=0, 파트 1/3)
+
+## 정기 회의 20260825-083651
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-083651.md (rc=1, 파트 3/3)
+
+## 정기 회의 20260825-101959
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-101959.md (rc=0, 파트 3/3)
+
+## 정기 회의 20260825-114114
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-114114.md (rc=1, 파트 3/3)
+
+## 정기 회의 20260825-130130
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-130130.md (rc=0, 파트 1/3)
+
+## 정기 회의 20260825-135006
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-135006.md (rc=0, 파트 2/3)
+
+## 정기 회의 20260825-144115
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-144115.md (rc=0, 파트 2/3)
