@@ -9,6 +9,7 @@ LABEL=com.ailab.autonomous_loop
 mkdir -p "$APP" "$AGENT"
 cp "$ROOT/loop/loop.sh" "$APP/loop.sh"
 cp "$ROOT/loop/env.sh" "$APP/env.sh"
+cp "$ROOT/loop/board.py" "$APP/board.py"
 cp "$ROOT/loop/PROMPT.md" "$APP/PROMPT.md"
 cp "$ROOT/loop/agent_runner.py" "$APP/agent_runner.py"
 cp "$ROOT/loop/council.sh" "$APP/council.sh"
