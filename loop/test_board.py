@@ -2190,6 +2190,86 @@ class UsagesParallelBudgetTests(unittest.TestCase):
         self.assertEqual(out["codex"], {"ok": False})
 
 
+class StateSnapshotDeadlineTests(unittest.TestCase):
+    """2026-08-25 보드응답:000 재발 — 개발 루프 바퀴(CPU 부하)와 겹치면 GET / 의
+    상태 조립(사용량 프로브+git 서브프로세스+샷 디코드)이 지킴이 curl 5초 한도를
+    넘겼다. 사용량 프로브만 묶어선 부족하다: 전체 조립도 단일 마감 안에서 반드시
+    돌아오고, 넘으면 직전 성공 스냅숏으로라도 응답해야 한다."""
+
+    def setUp(self):
+        self._old_good = board._state_good
+        board._state_good = None
+        self.addCleanup(setattr, board, "_state_good", self._old_good)
+
+    def test_slow_build_returns_last_good_within_budget(self):
+        import time as _t
+
+        marker = {"updated": "스냅숏", "queue": []}
+
+        def slow_build():
+            _t.sleep(1.2)
+            return {"updated": "느린 조립", "queue": []}
+
+        with mock.patch.object(board, "build_state", side_effect=slow_build):
+            board._state_good = marker
+            t0 = _t.monotonic()
+            out = board.state_snapshot(budget=0.4)
+            elapsed = _t.monotonic() - t0
+        # 옛 구현이면 조립이 끝날 때까지 1.2초 이상 기다린다 — 마감 초과가 재발이다.
+        self.assertLess(elapsed, 1.15)
+        self.assertEqual(out, marker)
+
+    def test_timeout_without_history_serves_minimal_skeleton(self):
+        import time as _t
+
+        def slow_build():
+            _t.sleep(1.2)
+            return {"updated": "느린 조립", "queue": []}
+
+        with mock.patch.object(board, "build_state", side_effect=slow_build):
+            t0 = _t.monotonic()
+            out = board.state_snapshot(budget=0.3)
+            elapsed = _t.monotonic() - t0
+        self.assertLess(elapsed, 1.15)
+        # 지킴이가 /api/state에서 요구하는 키는 골격에도 있어야 한다.
+        for key in ("updated", "queue", "mcp", "runner", "council", "proposals"):
+            self.assertIn(key, out)
+
+    def test_concurrent_request_while_building_does_not_stack_builds(self):
+        import threading
+        import time as _t
+
+        entered = threading.Event()
+        release = threading.Event()
+        builds = []
+
+        def slow_build():
+            builds.append(1)
+            entered.set()
+            release.wait(3)
+            return {"updated": "느린 조립", "queue": []}
+
+        with mock.patch.object(board, "build_state", side_effect=slow_build):
+            worker = threading.Thread(
+                target=lambda: board.state_snapshot(budget=2.5))
+            worker.start()
+            try:
+                self.assertTrue(entered.wait(2))
+                out = board.state_snapshot(budget=2.5)
+            finally:
+                release.set()
+                worker.join(4)
+        self.assertEqual(len(builds), 1)
+        self.assertIn("degraded", out)
+
+    def test_fast_build_keeps_result(self):
+        marker = {"updated": "즉시", "queue": []}
+        with mock.patch.object(board, "build_state", return_value=marker):
+            out = board.state_snapshot(budget=2.0)
+        self.assertEqual(out, marker)
+        self.assertIs(board._state_good, marker)
+
+
 class TestStatusFormatCompat(unittest.TestCase):
     """2026-08-23 empty template broke the board — parsers must accept both shapes."""
 

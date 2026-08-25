@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 11:27 · 원거리 잡몹 유지거리 소비처(`ca8b5492`·`b15bbedf`). 사람 관문 더미 유지
-마지막 트랙: 코드 — `MobDef.유지거리` 6.5u를 `MobRangedDistance`가 읽고 캐릭터 속성·던전 QA 부제가 소비한다. 속성 탭은 유지거리와 발사 주기를 한 행으로 묶어 기존 행 밀림을 막았다
-소비처0 다음: 직전=코드이므로 UI·아트 상시 폴리싱 한 건. 그다음 원장 소비처 0곳 새 칸 재스캔
-검증: C# 컴파일 PASS(362소스 0) · `unity_meas` MobRangedDistanceSelfCheck PASS 14/14 · 실행 파일 빌드 PASS · 1280×720 A/B 실화면 육안 확인(`output/qa/ashes-to-stars/mob_ranged_distance_shots/{on_v2,neg_v3}/qa_go:Character.png`) — 정상은 「원거리 유지 6.5u · 원거리 발사 2.4초」 한 행, 네거는 유지거리만 빠지고 발사 행 유지. 글자 잘림·금테/내비 겹침 없음. 첫 정상 샷에서 단독 행이 기존 발사 행을 밀어내는 것을 발견해 두 번째 커밋으로 보완했다. `check_all.py` exit 0(WARN은 기존 추적 미디어·루트 파일·타 세션 미추적 파일). 3D·메시·신규 그림 작업이 아니라 블렌더·이미지 생성은 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
+최종 갱신: 2026-08-25 11:13 · 탑 플레이어 문구 정돈(`c3d455db`·`a4e66aab`). 사람 관문 더미 유지
+마지막 트랙: UI — 탑 헤더·영구 사망 경고·선택 카드에 노출되던 내부 기획서 절 번호(`§16`·`§4` 등)를 제거했다. `QA_NO_TOWER_PLAYER_COPY`는 옛 절 번호 문구를 복원한다
+소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸 재스캔. 새 오펀이 없으면 UI·아트 상시 폴리싱 한 건
+검증: C# 컴파일 PASS · `unity_meas` TowerPlayerCopySelfCheck PASS · 실행 파일 빌드 PASS · 1280×720 A/B 실화면 육안 확인(`output/qa/ashes-to-stars/tower_player_copy/{on_v2,neg}/qa_go:Tower.png`) — 정상은 헤더·경고·카드에서 절 번호 0건, 네거는 `§16`·`§4` 재현, 문구 잘림·금테/내비 겹침 없음. 첫 캡처에서 QA 헤더 조기 반환 누락을 발견해 두 번째 커밋으로 보완했다. `check_all.py` exit 0(WARN은 기존 추적 미디어·루트 파일·타 세션 미추적 파일). 3D·메시·신규 그림 작업이 아니라 블렌더·이미지 생성은 건너뜀
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -59,7 +59,6 @@
 | — | 2026-08-25 08:25 | **UI 폴리싱 — 타이틀 로컬 테스트 상태 패널.** `QA_PLAY` 안내가 배경 위 작은 생텍스트라 상태 표시로 읽히지 않았다. 왼쪽 소개 열에 40px 금테 정보 패널로 통일하고 QA_NO는 옛 20px 생텍스트를 재현한다. 최초의 「종료 카드 가림」 가설은 A/B 샷에서 실제 겹침이 없어 폐기했다 | 컴파일 PASS · LocalPlayKitSelfCheck PASS · 실행 빌드 PASS · 1280×720 A/B 육안 확인 `title_local_kit_panel/{after,neg}/qa_go:Title.png` · `fbc0f375`/`ad3c7baf`/`84869544` |
 | — | 2026-08-25 08:09 | **UI 폴리싱 — 마지막 목숨 경고 빈 장비 패널.** 장비 뒷줄이 빈 문자열이어도 필드·탑이 Info 4칸을 그려 빈 금테 한 줄이 남았다. 두 화면 모두 `GearRest`가 비어 있지 않을 때만 네 번째 패널을 그린다. 장착 6부위가 있으면 기존 두 줄 유지. 표시 전용 — W3Party 무접촉 | 컴파일 PASS(355소스 0) · LastLifeWarnSelfCheck PASS · 실행 빌드 PASS · 1280×720 `last_life_empty_row_shots/after_field/qa_go:Field.png` 육안 확인(빈 패널 0) · `e6cebda2` |
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
-| — | 2026-08-25 11:27 | **§10-2 원거리 잡몹 유지거리 — 소비처 0곳.** `MobDef.유지거리` 기본 6.5u가 에셋 작성 외 런타임에서 읽히지 않았다. `MobRangedDistance`가 읽고 속성 탭·던전 QA 부제가 소비한다. QA_NO면 옛 기본값·줄 없음. 첫 샷의 행 밀림은 유지거리+발사 주기 한 행으로 보완 | 컴파일 PASS(362소스 0) · MobRangedDistanceSelfCheck PASS 14/14 · GameSweep 행 추가 · 실행 빌드 PASS · 1280×720 샷 `mob_ranged_distance_shots/{on_v2,neg_v3}/qa_go:Character.png` 육안 확인 · `ca8b5492` · `b15bbedf` |
 | — | 2026-08-25 05:55 | **§18-11 잡몹 피해 — 소비처 0곳.** MobDef.피해비율 기본 0.03(원장 2~4%=25~50대)이 에셋에만 있음. `MobDmg`가 읽고 속성 탭·던전 부제가 소비. QA_NO면 옛 0.03·줄 없음. `W3Party`는 안 만짐. 블렌더 꺼짐(3D 없음) | 컴파일 PASS(350소스 0) · MobDmgSelfCheck PASS 21/21 · GameSweep 행 추가 · 샷 `mob_dmg_shots/qa_go_Character.png`(속성 탭 「잡몹 피해 3%(§18-11)」) · 네거 `qa_negctrl_no_dmg.png`(QA_NO면 그 줄 없음·PvP 회복이 HP 다음) · `fc2499d8` |
 | — | 2026-08-25 05:36 | **UI 폴리싱 — 허브 본문-내비 한 곳에서 자름.** NavReserve=80이면 Body yMax=640인데 내비 플레이트는 636이라 하단 금테 4px 겹침. `BodyNav.Fit`이 NavPlateTop-12. QA_NO_BODY_NAV면 옛 640. 화면마다 Hud.NavGap 복제를 끊음 | BodyNavSelfCheck PASS · GameSweep 행 추가 · `0fc2eb14` |
 | — | 2026-08-25 05:25 | **§18-11 잡몹 HP — 소비처 0곳.** MobDef.체력배율 기본 1.2(원장 0.8~1.5=1~2타)가 에셋에만 있음. `MobHp`가 읽고 속성 탭·던전 부제가 소비. QA_NO면 옛 1.2·줄 없음. `W3Party`는 안 만짐. 블렌더 꺼짐(3D 없음) | 컴파일 PASS(346소스 0) · MobHpSelfCheck PASS 22/22 · GameSweep 행 추가 · 샷 `mob_hp_shots/qa_go_Character.png`(속성 탭 「잡몹 HP ×1.2(§18-11)」) · 네거 `qa_negctrl_no_hp.png`(QA_NO면 그 줄 없음) · `6f1e1226` |

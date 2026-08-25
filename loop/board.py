@@ -3337,6 +3337,64 @@ def build_state() -> dict:
     }
 
 
+_STATE_BUDGET = 3.5  # 지킴이 curl 한도 5초 — HTML 읽기·심기·쓰기 여유를 남긴다
+_state_good: dict | None = None
+_state_gate = threading.Lock()
+
+
+def _minimal_state(reason: str) -> dict:
+    """조립이 마감을 넘었을 때도 화면·/api/state가 성립하는 최소 골격."""
+    return {
+        "updated": "", "queue": [], "queue_table": [], "results": [],
+        "milestones": [], "inbox": {"waiting": [], "done": []},
+        "checks": {}, "decisions": {}, "choices": [],
+        "loop": {}, "overview": {}, "commits": [],
+        "push": {"branch": "", "ahead": 0}, "git": {}, "sync": {},
+        "charts": {}, "slice": [], "stuck": [], "blockers": [],
+        "worklog": [], "lap": {}, "handoff": {}, "providers": [],
+        "mcp": {}, "runner": {}, "council": {}, "proposals": {},
+        "keeper": {}, "completed": [], "playtest": {},
+        "grok": {}, "claude": {}, "codex": {}, "commands": [],
+        "tests": {}, "status_snip": "", "degraded": reason,
+    }
+
+
+def state_snapshot(budget: float = _STATE_BUDGET) -> dict:
+    """build_state를 예산 안에서만 기다린다 (2026-08-25 보드응답:000 재발 차단).
+
+    사용량 프로브(3초 상한)만 묶어서는 부족했다: 개발 루프 바퀴 같은 기계
+    부하와 겹치면 git 서브프로세스·QA 샷 디코드·문서 파싱의 합이 늘어
+    지킴이 curl 5초 한도를 넘겼다. 페이지 전체 조립에도 단일 마감을 걸고,
+    넘기거나 실패하면 직전 성공 스냅숏을 즉시 내준다. 마감 후 남은 조립
+    스레드는 각자 타임아웃 안에서 조용히 끝나며 다음 요청이 쓸 스냅숏
+    (_state_good)만 채우고 간다 (_usages_parallel과 같은 원칙). 조립 중인
+    요청은 새로 파지 않는다 — 부하가 몰릴수록 조립을 늘려 느려지는
+    악순환을 끊는다.
+    """
+    global _state_good
+    if not _state_gate.acquire(blocking=False):
+        return dict(_state_good) if _state_good else _minimal_state("조립 진행 중")
+    import concurrent.futures
+    try:
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        try:
+            fut = pool.submit(build_state)
+            try:
+                out = fut.result(timeout=budget)
+                _state_good = out
+                return out
+            except concurrent.futures.TimeoutError:
+                pass
+            except Exception:
+                import traceback
+                traceback.print_exc()
+        finally:
+            pool.shutdown(wait=False)
+    finally:
+        _state_gate.release()
+    return dict(_state_good) if _state_good else _minimal_state("조립 마감 초과")
+
+
 def set_flag(name: str, on: bool) -> None:
     if name not in ("HOLD", "STOP"):
         raise ValueError("unknown flag")
@@ -3430,7 +3488,7 @@ class Handler(BaseHTTPRequestHandler):
                 # 첫 화면에 상태를 직접 심는다 — 브라우저 fetch가 어떤 사정으로
                 # 막혀도 보드는 반드시 그려진다 (2026-08-23, 조용한 빈 화면 재발 방지)
                 try:
-                    seed = json.dumps(build_state(), ensure_ascii=False).replace("<", "\\u003c")
+                    seed = json.dumps(state_snapshot(), ensure_ascii=False).replace("<", "\\u003c")
                     injected = (f'<script>window.__STATE__={seed};</script>'
                                 ).encode("utf-8")
                     marker = b"<script>"
@@ -3447,7 +3505,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         if path == "/api/state":
-            self._json(200, build_state())
+            self._json(200, state_snapshot())
             return
         if path == "/api/git":
             self._json(200, {
