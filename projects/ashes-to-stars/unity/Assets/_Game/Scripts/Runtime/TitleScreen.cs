@@ -77,8 +77,10 @@ namespace AshesToStars
             {
                 var introPanel = IntroPanelRect(r);
                 UiAtlas.DrawSliced(introPanel, "panel", 16f, new Color(1f, 1f, 1f, 0.68f));
-                copy = new Rect(introPanel.x + 22f, introPanel.y + 18f,
-                    introPanel.width - 44f, introPanel.height - 36f);
+                // panel 아트의 굵은 좌우 문양은 약 42px를 차지한다. 22px만 띄우면
+                // 설명 끝 글자가 금테 아래로 들어가므로 문양 안쪽 50px를 안전영역으로 쓴다.
+                copy = new Rect(introPanel.x + 50f, introPanel.y + 18f,
+                    introPanel.width - 100f, introPanel.height - 36f);
             }
             // 소개 두 줄이 헤더 바로 아래에 붙어 좌측 열이 통째로 비어 화면이 위로 쏠려
             // 보였다(폴리싱 2026-08-20). 오른쪽 3카드는 열 전체 높이를 채우는데 왼쪽만
