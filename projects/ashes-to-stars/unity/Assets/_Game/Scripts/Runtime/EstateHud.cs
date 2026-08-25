@@ -17,6 +17,7 @@ namespace AshesToStars
         public const string EnvShow = "QA_YARD_HUD";
         public const string EnvNo = "QA_NO_YARD_HUD";
         public const string EnvNoEdge = "QA_NO_YARD_PALETTE_EDGE";
+        public const string EnvNoReadablePalette = "QA_NO_YARD_PALETTE_READABLE";
         public const string EnvNoChipCompact = "QA_NO_ESTATE_CHIP_COMPACT";
         public const float OldInspectH = 86f;
         public const float OldPaletteH = 68f;
@@ -32,7 +33,8 @@ namespace AshesToStars
         // (실측 2026-08-20 go:Estate 샷: 화살탑→「화살」, 마법탑→「마법」로 잘림). 아이콘은
         // 정사각이라도 라벨을 담으려면 타일은 세로보다 가로가 넓어야 한다 — 폭을 높이와
         // 분리해 3글자 라벨이 한 줄에 들어가게 한다.
-        public const float TileW = 68f;
+        public const float OldTileW = 68f;
+        public const float TileW = 100f;
         public const float TileGap = 6f;
         /// <summary>슬림 팔레트를 본문 왼쪽에서 띄우는 칸. 0이면 금테가 본문 테두리에 붙는다.</summary>
         public const float EdgePad = 8f;
@@ -66,6 +68,9 @@ namespace AshesToStars
                 return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
             }
         }
+
+        public static bool ReadablePaletteBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoReadablePalette) == "1";
 
         public static float PaletteH => Blocked ? OldPaletteH : SlimPaletteH;
 
@@ -133,7 +138,7 @@ namespace AshesToStars
 
             // 폭은 라벨 기준(TileW), 높이만 팔레트 바를 따른다 — 둘을 묶으면(옛 min(TileW,height+8))
             // 44px 바에서 폭이 52로 눌려 3글자 라벨이 잘렸다.
-            float tw = TileW;
+            float tw = ReadablePaletteBlocked ? OldTileW : TileW;
             float th = Mathf.Max(28f, r.height - 4f);
             float used = count * tw + (count - 1) * TileGap;
             // 가운데면 마름모 남단 오두막과 겹친다(실측 estate_hud_nav_shots/after.png).

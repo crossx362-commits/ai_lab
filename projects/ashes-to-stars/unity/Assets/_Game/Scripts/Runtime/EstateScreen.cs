@@ -718,12 +718,26 @@ namespace AshesToStars
                 UiAtlas.DrawSliced(b, btnKey, 8f,
                     on ? (Color?)null : new Color(1f, 1f, 1f, 0.72f));
                 var inner = UiAtlas.ContentRect(b, btnKey, 2f);
-                // 14px 글씨 띠에서는 LabelFit이 3글자 이름(화살탑·마법탑)을 12px 밑으로 줄여
-                // 안 읽혔다 — 아이콘을 줄여 글씨 띠를 18px로 넓힌다(폴리싱 2026-08-20, 표시 전용).
-                float ih = Mathf.Min(16f, inner.height - 20f);
-                if (ih > 8f && !string.IsNullOrEmpty(icon))
-                    UiAtlas.DrawFit(new Rect(inner.center.x - ih * 0.5f, inner.y, ih, ih), icon);
-                Hint(new Rect(inner.x, inner.yMax - 18f, inner.width, 18f), $"{k} {left}");
+                if (EstateHud.ReadablePaletteBlocked)
+                {
+                    float oldIconH = Mathf.Min(16f, inner.height - 20f);
+                    if (oldIconH > 8f && !string.IsNullOrEmpty(icon))
+                        UiAtlas.DrawFit(new Rect(inner.center.x - oldIconH * 0.5f, inner.y,
+                            oldIconH, oldIconH), icon);
+                    Hint(new Rect(inner.x, inner.yMax - 18f, inner.width, 18f), $"{k} {left}");
+                }
+                else
+                {
+                    // 44px 타일에 아이콘 위·글씨 아래를 쌓으면 둘이 10px 넘게 겹쳐
+                    // 「화살탑 0」이 작은 회색 얼룩으로 읽혔다. 가로 배치로 클릭 높이는
+                    // 유지하고 이름·개수에 한 줄 전체 높이를 준다.
+                    float iconW = Mathf.Min(16f, inner.height - 4f);
+                    if (iconW > 8f && !string.IsNullOrEmpty(icon))
+                        UiAtlas.DrawFit(new Rect(inner.x, inner.center.y - iconW * 0.5f,
+                            iconW, iconW), icon);
+                    Hint(new Rect(inner.x + iconW + 4f, inner.y,
+                        Mathf.Max(20f, inner.width - iconW - 4f), inner.height), $"{k} {left}");
+                }
                 if (GUI.Button(b, GUIContent.none, GUIStyle.none))
                     _placeKind = cellKind;
             }

@@ -26,10 +26,12 @@ namespace AshesToStars
             string show = Environment.GetEnvironmentVariable(EstateHud.EnvShow);
             string no = Environment.GetEnvironmentVariable(EstateHud.EnvNo);
             string noEdge = Environment.GetEnvironmentVariable(EstateHud.EnvNoEdge);
+            string noReadable = Environment.GetEnvironmentVariable(EstateHud.EnvNoReadablePalette);
             string noChipCompact = Environment.GetEnvironmentVariable(EstateHud.EnvNoChipCompact);
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, null);
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoReadablePalette, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, null);
             EstateHud.ResetForTest();
 
@@ -73,17 +75,24 @@ namespace AshesToStars
 
             var slim = EstateHud.PaletteTiles(bar, n);
             Check(slim.Length == n, $"도크 {n}칸");
-            Check(slim[0].width <= EstateHud.TileW + 0.01f,
-                $"도크 칸 폭 {slim[0].width:0.0} ≤ {EstateHud.TileW}");
+            Check(Mathf.Approximately(slim[0].width, EstateHud.TileW),
+                $"읽기 좋은 도크 칸 폭 {slim[0].width:0.0} = {EstateHud.TileW}");
             float used = EstateHud.PaletteUsedW(bar, n);
-            Check(used < 400f && used < bar.width * 0.40f,
-                $"도크 폭 {used:0} < 전폭의 40%");
+            Check(used < 480f && used < bar.width * 0.40f,
+                $"도크 폭 {used:0} < 480·전폭의 40%");
             Check(Mathf.Abs(slim[0].x - (bar.x + EstateHud.EdgePad)) < 0.01f,
                 $"도크 x {slim[0].x:0} = 왼쪽 가장자리 {bar.x + EstateHud.EdgePad:0}");
             Check(slim[n - 1].xMax < bar.center.x - 0.01f,
                 $"마지막 칸 {slim[n - 1].xMax:0} < 가운데 {bar.center.x:0} — 오두막과 안 겹친다");
             Check(EstateHud.Line().Contains("가장자리"),
                 $"줄에 가장자리 (실제 {EstateHud.Line()})");
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoReadablePalette, "1");
+            var cramped = EstateHud.PaletteTiles(bar, n);
+            Check(Mathf.Approximately(cramped[0].width, EstateHud.OldTileW),
+                $"네거티브 좁은 칸 {cramped[0].width:0} = 옛 {EstateHud.OldTileW:0}");
+            Check(EstateHud.PaletteUsedW(bar, n) < used,
+                "네거티브는 이름 칸이 더 좁다");
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoReadablePalette, null);
 
             var pal = EstateHud.PaletteBar(body);
             float navTop = EstateHud.NavPlateTop();
@@ -164,6 +173,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, show);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, no);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, noEdge);
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoReadablePalette, noReadable);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, noChipCompact);
             if (_fail == 0) Debug.Log("[EstateHudSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[EstateHudSelfCheck] FAIL {_fail}건\n" + _log);
