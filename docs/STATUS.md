@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 08:35 · 캐릭터 장비 초상-링 간격 폴리싱(`21180247`·`8f0d639d`). 사람 관문 더미 유지
-마지막 트랙: UI — 원장 소비처 재스캔에서 새 오펀을 찾지 못해 실화면 결함으로 전환. 1280×720 장비 스튜디오의 옛 240×300 초상이 장비 칸·라벨을 덮었다. `CharHud.EquipPortrait`가 중심축을 유지한 120×150으로 줄이고 `QA_NO_CHAR_PORTRAIT_FIT`은 옛 크기를 재현한다
+최종 갱신: 2026-08-25 09:07 · 던전 빈 상태 카드 중앙 정렬(`99ec41d6`). 사람 관문 더미 유지
+마지막 트랙: UI — 정상 1280×720 던전 빈 상태에서 복귀 카드가 안내줄 바로 아래에 붙어 화면 상단으로 쏠렸다. `DungeonScreen.EmptyCardRect`가 본문 중심+24px에 180px 카드를 놓고 `QA_NO_DUNGEON_EMPTY_CENTER`는 옛 y=144를 재현한다. 처음 잡은 탑 긴 자막은 기존 `TowerHubCap` 네거티브 화면임을 A/B에서 확인해 중복 구현을 즉시 되돌렸다
 소비처0 다음: 직전=UI이므로 원장 ✅ 소비처 0곳 새 칸 재스캔. 새 오펀이 없으면 UI·아트 상시 폴리싱 한 건
-검증: C# 컴파일 PASS(357소스) · `unity_meas` CharHudSelfCheck PASS(초상 120×150 < 240×300·중심축 유지·QA_NO 네거티브) · 실행 파일 빌드 PASS · 1280×720 A/B 육안 확인(`output/qa/ashes-to-stars/char_portrait_fit/{after,neg}/qa_go:Character.png`) — 수정본은 장비 6칸·라벨이 초상 둘레에서 분리, NEG는 큰 초상이 링을 덮음. 블렌더는 3D·메시 작업이 아니라 건너뜀
+검증: C# 컴파일 PASS(358소스) · `unity_meas` DungeonEmptyHudSelfCheck PASS(중앙 y=304·옛 y=144) · 실행 파일 빌드 PASS · 1280×720 A/B 육안 확인(`output/qa/ashes-to-stars/dungeon_empty_center/{after,neg}/qa_go:Dungeon.png`) — 수정본은 카드가 본문 중앙에 서고, NEG는 안내줄 아래 상단에 붙음. 블렌더는 3D·메시 작업이 아니라 건너뜀
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
