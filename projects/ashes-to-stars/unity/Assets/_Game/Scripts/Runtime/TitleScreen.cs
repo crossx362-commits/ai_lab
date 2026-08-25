@@ -16,8 +16,12 @@ namespace AshesToStars
         public const string EnvNoIntroPanel = "QA_NO_TITLE_INTRO_PANEL";
 
         /// <summary>소개 문구를 배경 위에 띄우지 않고 시작 카드와 같은 금테 패널에 묶는다.</summary>
-        public static Rect IntroPanelRect(Rect body) =>
-            new Rect(body.x, body.y + 8f, body.width * 0.54f - 14f, body.height - 64f);
+        public static Rect IntroPanelRect(Rect body)
+        {
+            const float h = 260f;
+            return new Rect(body.x, body.y + (body.height - h) * 0.5f,
+                body.width * 0.54f - 14f, h);
+        }
 
         /// <summary>로컬 테스트 안내는 소개 열의 금테 상태 패널로 읽힌다. QA_NO는 옛 생텍스트.</summary>
         public static Rect LocalKitRect(Rect body)

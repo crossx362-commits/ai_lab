@@ -87,7 +87,8 @@ namespace AshesToStars
             var intro = TitleScreen.IntroPanelRect(body);
             Check(intro.xMax < rightCards[0].x,
                 $"소개 패널 오른쪽 {intro.xMax:0} < 시작 카드 왼쪽 {rightCards[0].x:0}");
-            Check(intro.height >= 500f, $"소개 패널 높이 {intro.height:0}px");
+            Check(Mathf.Approximately(intro.height, 260f), $"소개 패널 높이 {intro.height:0}px");
+            Check(Mathf.Abs(intro.center.y - body.center.y) < 0.01f, "소개 패널은 좌측 열 세로 중앙");
             Check(lane.y >= intro.yMax,
                 $"로컬 안내 y {lane.y:0} ≥ 소개 패널 아래 {intro.yMax:0}");
             Check(lane.xMax < rightCards[2].x,
