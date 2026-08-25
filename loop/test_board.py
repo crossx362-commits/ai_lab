@@ -710,6 +710,37 @@ class CheckTests(unittest.TestCase):
                 board.CHECKS_PATH = old
 
 
+class ProposalsInfoTests(unittest.TestCase):
+    """2026-08-25: 연속 행 제안의 ✅·⏸ 표식을 못 읽어 미처리 수치가 부풀었다."""
+
+    DOC = """# 개선안 수함대
+
+<!-- 여기 아래에 추가 -->
+- [2026-08-25 10:00] 첫 제안은 닫힘 표식이 마지막 연속 행에 있다
+  이어지는 본문이다.
+  → 제안 (우선순위 중) ✅20260825-110000
+- [2026-08-25 11:00] 둘째 제안은 한 줄로 열려 있다 → 제안 (우선순위 하)
+- [2026-08-25 12:00] 셋째는 없음 판정 행이다: 없음: 선행 제안이 포괄 (우선순위 하)
+- [시각] 관찰한 문제 → 제안 (우선순위 상/중/하)
+"""
+
+    def test_multiline_marker_counts_entry_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            docs = Path(tmp) / "docs" / "feedback"
+            docs.mkdir(parents=True)
+            (docs / "PROPOSALS.md").write_text(self.DOC, encoding="utf-8")
+            old = board.ROOT
+            try:
+                board.ROOT = Path(tmp)
+                info = board.proposals_info()
+            finally:
+                board.ROOT = old
+        self.assertEqual(info["total"], 2)
+        self.assertEqual(info["open"], 1)
+        self.assertIn("둘째 제안", info["last"])
+        self.assertNotIn("첫 제안", info["last"])
+
+
 class TestReportTests(unittest.TestCase):
     def test_missing_report_is_empty(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -3174,21 +3174,31 @@ def council_info() -> dict:
 
 
 def proposals_info() -> dict:
-    """자가학습 개선안 수함대 — 미처리(표식 없음) 건수와 최근 1건."""
+    """자가학습 개선안 수함대 — 미처리(표식 없음) 건수와 최근 1건.
+
+    제안은 연속 행으로 이어질 수 있고 ✅·⏸ 표식이 마지막 행에 붙으므로
+    항목 전체를 묶어 판정한다(첫 행만 보면 미처리가 부풀어 올랐다 — 2026-08-25).
+    """
     path = ROOT / "docs" / "feedback" / "PROPOSALS.md"
     total = open_count = 0
     last = ""
     if path.is_file():
+        entries: list[list[str]] = []
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
             t = line.strip()
-            if not t.startswith("- [") and not re.match(r"^- \d{4}-", t):
-                continue
-            if t.startswith("- [시각]") or "없음:" in t:
+            if t.startswith("- [") or re.match(r"^- \d{4}-", t):
+                entries.append([t])
+            elif entries and t:
+                entries[-1].append(t)
+        for entry in entries:
+            head = entry[0]
+            if head.startswith("- [시각]") or "없음:" in head:
                 continue
             total += 1
-            if "✅" not in t and "⏸" not in t:
+            joined = "\n".join(entry)
+            if "✅" not in joined and "⏸" not in joined:
                 open_count += 1
-                last = t.lstrip("- ")
+                last = head.lstrip("- ")
     return {"total": total, "open": open_count, "last": humanize_detail(last)}
 
 
