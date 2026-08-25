@@ -84,6 +84,12 @@ namespace AshesToStars
             var rightCards = UiPages.Grid(new Rect(body.x + body.width * 0.56f, body.y + 8f,
                 body.width * 0.44f, body.height - 16f), 1, 3, 14f);
             var lane = TitleScreen.LocalKitRect(body);
+            var intro = TitleScreen.IntroPanelRect(body);
+            Check(intro.xMax < rightCards[0].x,
+                $"소개 패널 오른쪽 {intro.xMax:0} < 시작 카드 왼쪽 {rightCards[0].x:0}");
+            Check(intro.height >= 500f, $"소개 패널 높이 {intro.height:0}px");
+            Check(lane.y >= intro.yMax,
+                $"로컬 안내 y {lane.y:0} ≥ 소개 패널 아래 {intro.yMax:0}");
             Check(lane.xMax < rightCards[2].x,
                 $"로컬 안내 오른쪽 {lane.xMax:0} < 종료 카드 왼쪽 {rightCards[2].x:0}");
             Check(Mathf.Approximately(lane.height, 40f), "로컬 상태 패널 높이 40px");

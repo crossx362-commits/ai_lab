@@ -13,6 +13,11 @@ namespace AshesToStars
     public class TitleScreen : GameScreen
     {
         public const string EnvNoLocalKitLane = "QA_NO_TITLE_LOCAL_KIT_LANE";
+        public const string EnvNoIntroPanel = "QA_NO_TITLE_INTRO_PANEL";
+
+        /// <summary>소개 문구를 배경 위에 띄우지 않고 시작 카드와 같은 금테 패널에 묶는다.</summary>
+        public static Rect IntroPanelRect(Rect body) =>
+            new Rect(body.x, body.y + 8f, body.width * 0.54f - 14f, body.height - 64f);
 
         /// <summary>로컬 테스트 안내는 소개 열의 금테 상태 패널로 읽힌다. QA_NO는 옛 생텍스트.</summary>
         public static Rect LocalKitRect(Rect body)
@@ -64,6 +69,13 @@ namespace AshesToStars
             }
 
             var copy = new Rect(r.x, r.y + 8f, r.width * 0.54f, r.height - 16f);
+            if (System.Environment.GetEnvironmentVariable(EnvNoIntroPanel) != "1")
+            {
+                var introPanel = IntroPanelRect(r);
+                UiAtlas.DrawSliced(introPanel, "panel", 16f, new Color(1f, 1f, 1f, 0.68f));
+                copy = new Rect(introPanel.x + 22f, introPanel.y + 18f,
+                    introPanel.width - 44f, introPanel.height - 36f);
+            }
             // 소개 두 줄이 헤더 바로 아래에 붙어 좌측 열이 통째로 비어 화면이 위로 쏠려
             // 보였다(폴리싱 2026-08-20). 오른쪽 3카드는 열 전체 높이를 채우는데 왼쪽만
             // 상단에 몰려 균형이 깨졌다. 소개 블록을 좌측 열 세로 중앙에 놓아 맞춘다.
