@@ -3,9 +3,18 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 14:40 · 영지 헤더 내부 절 번호 비노출(`bc7eb983`). 사람 관문 더미 유지
-마지막 트랙: UI — 영지의 모든 헤더 자막에서 플레이어에게 의미 없는 `(§…)` 구현 근거를 숨겼다
-소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔. 코드 칸이 없으면 최신 정상 샷 UI 한 곳 폴리싱
+최종 갱신: 2026-08-25 16:20 · 필드 화면 내부 절 번호 비노출(`377b034a`). 사람 관문 더미 유지
+마지막 트랙: UI — `PlayerCopy` 패턴(WorldMap·Tower·Estate에 이미 있음)을 FieldScreen에도 적용:
+자동사냥 부제·던전 골드부족 경고에서 `(§2·§6)`·`(§18-2)` 노출을 제거. `FieldPlayerCopySelfCheck` PASS.
+⚠️ Unity MCP 브리지가 이 바퀴 중 간헐적으로 끊겨(Connection closed/Timeout) Play 모드 스크린샷 육안
+확인은 생략 — SelfCheck(정규식 동작·QA_NO 복원·소스 소비 그렇대로 확인)만으로 대체. 다음 세션은
+가능하면 Play 스크린샷으로 재확인할 것.
+참고: `e1868f2b`(영지 헤더 플레이어 문구화)는 코덱스 사용량 소진 직전 바퀴라 이 STATUS 갱신 없이
+커밋만 있었다 — 코드 자체는 정상이나 기록이 빠졌던 것을 여기서 보정한다.
+소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔(에이전트 탐색 결과 §18-14 소환수
+재소환 0.5G/h+쿨다운 30초는 필드가 아예 없어 "재구현 없이 닫음"이 아니라 신규 시스템 구축이
+필요 — 오너 판단 필요, 자동 루프 범위 밖). 코드 칸이 없으면 최신 정상 샷 UI 한 곳 폴리싱(BattleScreen·
+ResultScreen에 §refs 다수 — 다음 폴리싱 후보)
 검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` EstateHudSelfCheck PASS · 실행 파일 빌드 PASS(1,388,344,631 bytes) · 1280×720 정상/네거티브 육안 확인(`output/qa/ashes-to-stars/estate_header_player_copy_shots/{after2,neg}/auto_dungeon_map.png`) — 정상은 영지 QA 헤더 끝의 `§16`이 사라지고 네거티브는 같은 위치에 복귀. 문장·금테·건물·하단 내비 유지. 첫 정상 캡처는 글꼴이 한 프레임 덜 그려져 재촬영본으로 판정. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
