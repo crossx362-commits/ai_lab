@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 12:58 · 영지 방어 팔레트 한 줄 가독성 폴리싱(`a9e6b5dc`). 사람 관문 더미 유지
-마지막 트랙: UI — 좌하단 방어 팔레트 4칸을 68→100px로 넓히고 아이콘·건물명·개수를 세로 겹침 없는 가로 한 줄로 배치했다
-소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸 재스캔. 코드 칸이 없으면 최신 정상 샷에서 UI 절단·겹침 한 곳 폴리싱
-검증: C# 컴파일 PASS(362소스 0) · `unity_meas` EstateHudSelfCheck PASS(100px 정상·68px 네거티브 포함) · 실행 파일 빌드 PASS · 1280×720 실화면 ON/NEG 육안 확인(`output/qa/ashes-to-stars/estate_palette_readable/{after,neg}/qa_go:Estate.png`) — 정상은 `화살탑·마법탑·성벽·함정`과 개수가 아이콘 옆 한 줄로 읽히고, 마름모·오두막·하단 내비 잘림/겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
+최종 갱신: 2026-08-25 13:41 · §10-2 잡몹 크기 소비처(`5734657a`). 사람 관문 더미 유지
+마지막 트랙: 코드 — `MobDef.크기` 2.2를 `MobSize`가 읽고 던전 QA 부제에서 증명한다
+소비처0 다음: 직전=코드이므로 최신 정상 샷에서 UI 절단·겹침 한 곳 폴리싱
+검증: C# 정적 컴파일 PASS(364소스 0) · `unity_meas` MobSizeSelfCheck PASS 11/11 · 실행 파일 빌드 PASS · 1280×720 ON/NEG 육안 확인(`output/qa/ashes-to-stars/mob_size_shots/{on_active,neg_active}/qa_go:Dungeon.png`) — 정상 부제에 `잡몹 크기 ×2.2`, 네거티브는 해당 조각만 없음. 카드·헤더 잘림/겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
