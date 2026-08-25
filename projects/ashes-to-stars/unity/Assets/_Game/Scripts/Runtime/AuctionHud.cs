@@ -13,6 +13,7 @@ namespace AshesToStars
         public const string EnvShow = "QA_AUCTION_HUD";
         public const string EnvNo = "QA_NO_AUCTION_HUD";
         public const string EnvNoLockDup = "QA_NO_AUCTION_LOCK_DUP";
+        public const string EnvNoPlayerCopy = "QA_NO_AUCTION_HUD_PLAYER_COPY";
         public const float OldBarH = 64f;
         public const float OldGap = 12f;
         public const float SlimH = 36f;
@@ -74,9 +75,18 @@ namespace AshesToStars
             return lines * BarH + (lines - 1) * Gap;
         }
 
+        public static string PlayerCopy(string value)
+        {
+            if (string.IsNullOrEmpty(value)
+                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
+                return value;
+            return System.Text.RegularExpressions.Regex.Replace(
+                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
+        }
+
         public static string Line() => Blocked
             ? "안내 막대가 경매를 가린다"
-            : "HUD는 경매 배경을 가리지 않는다(§16)";
+            : PlayerCopy("HUD는 경매 배경을 가리지 않는다(§16)");
 
         public static string StatusLine()
         {
