@@ -53,6 +53,7 @@ namespace AshesToStars
                 One("캐릭터 명부", CharacterRosterSelfCheck.Run, rows, errors);
                 One("캐릭터 3열·장비 라벨", CharHudSelfCheck.Run, rows, errors);
                 One("전투 스타일 HUD", StyleHudSelfCheck.Run, rows, errors);
+                One("멤버별 전투 스타일 배선", MemberStyleSelfCheck.Run, rows, errors);
                 One("본문 내비 절단", BodyNavSelfCheck.Run, rows, errors);
                 One("부활초 소지 상한", ReviveCapSelfCheck.Run, rows, errors);
                 One("사망 상한", DeathCapSelfCheck.Run, rows, errors);

@@ -369,6 +369,47 @@ public class W3Party : MonoBehaviour
     int _chargeTells, _chargeRushes;
     public static (int tell, int rush) ChargeStatsOnActive()
         => _game != null ? (_game._chargeTells, _game._chargeRushes) : (-1, -1);
+
+    /// <summary>
+    /// 멤버별 전투 스타일 배선 실측용(§3·ORDERS ②). 활성 판의 각 멤버가
+    /// StyleFor로 확정한 스타일과 소비 배율을 한 줄 요약으로 돌린다.
+    /// 게임 모드에선 직업별 값이 서로 다르고(멤버별 적용), UseFixedStyle·
+    /// QA_NO_MEMBER_STYLE 판에선 전원이 같아야 한다(측정 단일 경로).
+    /// </summary>
+    public static string MemberStyleSummaryOnActive()
+    {
+        var g = _game;
+        if (g == null || g._party == null || g._party.Length == 0) return "";
+        var sb = new System.Text.StringBuilder();
+        foreach (var m in g._party)
+        {
+            if (!m.Alive && m.Hp <= 0f && m.MaxHp <= 0f) continue;   // 빈 슬롯 건너뜀
+            var st = g.StyleFor(m);
+            var sp = Spec(st);
+            sb.Append($"{m.Job}={st}(딜×{sp.DmgMul:0.00}·받음×{sp.TakenMul:0.00}) ");
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// 멤버별 배선 판정(ORDERS ② 실측·순수 함수). 요약에 3인 이상이 있고,
+    /// 게임 모드(blocked=false)에선 서로 다른 스타일 2종 이상, 네거티브
+    /// (blocked=true — 옛 단일 경로)에선 전원이 같아야 통과다.
+    /// </summary>
+    public static bool MemberStyleVerdict(string summary, bool blocked)
+    {
+        if (string.IsNullOrWhiteSpace(summary)) return false;
+        int entries = 0;
+        var distinct = new System.Collections.Generic.HashSet<string>();
+        foreach (var tok in summary.Split(' '))
+        {
+            int eq = tok.IndexOf('='), pa = tok.IndexOf('(');
+            if (eq <= 0 || pa <= eq) continue;
+            entries++;
+            distinct.Add(tok.Substring(eq + 1, pa - eq - 1));
+        }
+        return entries >= 3 && (blocked ? distinct.Count <= 1 : distinct.Count >= 2);
+    }
     /// <summary>4프레임 × 0.1초(SpriteBank가 그렇게 끊는다) + 마지막 장을 잠깐 남긴다.</summary>
     const float DEATH_ANIM_SEC = 0.55f;
     Transform[] _mTr; SpriteRenderer[] _mSr;
@@ -426,6 +467,20 @@ public class W3Party : MonoBehaviour
     /// 게임 플레이에서는 false라야 플레이어의 직업별 선택이 반영된다.
     /// </summary>
     public static bool UseFixedStyle;
+
+    /// <summary>
+    /// 전투 소비부가 실제로 쓰는 스타일(§3). 게임 모드에선 멤버별 고른 값(m.Style),
+    /// 측정 모드(UseFixedStyle)에선 파티 단일 `_style`로 되돌려 구성 비교의 결정론을 지킨다.
+    /// QA_NO_MEMBER_STYLE=1은 옛 단일 경로(`Spec(_style)`)를 재현하는 네거티브 컨트롤이다.
+    /// </summary>
+    Style StyleFor(Member m) =>
+        ResolveStyle(UseFixedStyle,
+            System.Environment.GetEnvironmentVariable("QA_NO_MEMBER_STYLE") == "1",
+            _style, m == null ? _style : m.Style);
+
+    /// <summary>삼항 본체 — 자가검사(MemberStyleSelfCheck)가 리플렉션으로 직접 판정한다.</summary>
+    public static Style ResolveStyle(bool fixedMode, bool blocked, Style partyStyle, Style memberStyle) =>
+        fixedMode || blocked ? partyStyle : memberStyle;
 
     /// <summary>직업별 저장된 선택을 전투 스타일로 옮긴다(§3).</summary>
     static Style StyleOf(Job job) => AshesToStars.CombatStylePrefs.Get(job.ToString()) switch
@@ -1872,7 +1927,6 @@ public class W3Party : MonoBehaviour
     // ── 파티 자동 전투 ────────────────────────────────────
     void TickParty(float dt)
     {
-        var sp = Spec(_style);
         Member tank = null;
         foreach (var candidate in _party)
             if (candidate.Alive && candidate.Role == Role.Tank && (tank == null || candidate.Job == Job.수호기사))
@@ -1882,6 +1936,7 @@ public class W3Party : MonoBehaviour
         foreach (var m in _party)
         {
             if (!m.Alive) continue;
+            var sp = Spec(StyleFor(m));   // §3 멤버별 전투 스타일 — 측정(UseFixedStyle)이면 파티 단일로 되돌린다
             m.Cd -= dt; m.SkillCd -= dt; m.UltimateCd -= dt;
             if (m.AutoArmed != 0 && m.ForceSkill == 0)
             {
@@ -2886,7 +2941,6 @@ public class W3Party : MonoBehaviour
 
     void TickMobs(float dt)
     {
-        var sp = Spec(_style);
         for (int i = 0; i < MAXM; i++)
         {
             if (!_mOn[i]) continue;
@@ -2897,6 +2951,7 @@ public class W3Party : MonoBehaviour
             // 단 탱의 도발(Threat 급등)이 그걸 끊는다 — 이 두 줄이 진형을 만든다.
             Member tgt = _mKind[i] == 2 ? PickBackline() : PickNearestOrTaunt(p);   // §10-4 후열 저격은 원거리형만
             if (tgt == null) continue;
+            var sp = Spec(StyleFor(tgt));   // 맞을 멤버의 스타일 피해배율 — 측정(UseFixedStyle)이면 파티 단일
 
             Vector2 to = tgt.Pos - p;
             float dist = to.magnitude + 1e-4f;
@@ -3270,7 +3325,6 @@ public class W3Party : MonoBehaviour
 
     void TickShots(float dt)
     {
-        var sp = Spec(_style);
         for (int i = 0; i < MAXP; i++)
         {
             if (!_pOn[i]) continue;
@@ -3280,6 +3334,7 @@ public class W3Party : MonoBehaviour
             foreach (var m in _party)
             {
                 if (!m.Alive) continue;
+                var sp = Spec(StyleFor(m));   // 맞은 멤버의 스타일 피해배율 — 측정이면 파티 단일
                 if ((m.Pos - _pPos[i]).sqrMagnitude < 0.36f)
                 {
                     _shotHits++;
