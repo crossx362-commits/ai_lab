@@ -149,7 +149,7 @@ namespace AshesToStars
                 }
             }
             int last = Mathf.Min(next.Count, nodes.Length - 1);
-            if (last >= 0 && DrawCard(nodes[last], "던전 포기", "여기서 나간다 — 강화는 사라진다(§7)", "heart_broken"))
+            if (last >= 0 && DrawCard(nodes[last], "던전 포기", DungeonAbandonCopy.Text(), "heart_broken"))
             {
                 DungeonRun.End();
                 GameFlow.Go(DungeonRun.ReturnScene);
