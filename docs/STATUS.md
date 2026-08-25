@@ -3,20 +3,23 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 18:50 · 타이틀 화면 내부 절 번호 비노출(`e13909a6`). 코덱스 자율루프 정지 중,
-클로드가 30분 주기 크론으로 이어받아 진행. 사람 관문 더미 유지
-마지막 트랙: UI — `PlayerCopy` 패턴을 TitleScreen에도 적용: 정상 정복(100층 클리어)·홀로 레이드
-칭호 문구의 `(§8)` 제거. `TitlePlayerCopySelfCheck` PASS, 컴파일 0 에러. Play 모드 스크린샷은
-Unity MCP 브릿지가 5회 연속 Connection closed/Timeout으로 복구되지 않아 생략(SelfCheck는
-그 이전에 정상 완료).
-`*Screen.cs` 7종(WorldMap·Tower·Estate·Field·Result·Battle·Title) 전부 PlayerCopy 폴리싱 완료.
-전 Runtime 파일 재스캔(`grep -c §`) 결과 남은 § 참조 대부분은 코드 주석(설계문서 인용)이지만,
-**player-facing 리크가 확인된 비-Screen 클래스**가 다수 남음 — 예: `AuctionHud.cs:79`
-(`"HUD는 경매 배경을 가리지 않는다(§16)"`, 화면에 그대로 뜨는 `Line()` 반환값),
-`BagTextFmt.cs:53`(`"지갑 부제는 한 줄이다(§16)"`), `TowerEnding.cs`·`TowerHubCap.cs` 등 1건씩.
-이들은 `GameScreen` 하위 클래스가 아니라 독립 정적 클래스라 기존 패턴(클래스별 로컬
-`PlayerCopy`+`EnvNoPlayerCopy`)을 그대로 복제할지, 공용 유틸(`PlayerCopy.cs` 신설)로 통합할지
-판단이 필요 — 다음 랩에서 먼저 방침을 정하고 시작할 것(설계 확장이라 무단 진행 자제).
+최종 갱신: 2026-08-25 19:15 · AuctionHud QA 안내줄 방어 추가(`a3fd819c`), 전 캠페인 마감 판단.
+코덱스 자율루프 정지 중, 클로드가 30분 주기 크론으로 이어받아 진행. 사람 관문 더미 유지
+
+**정정(직전 STATUS의 오판 수정)**: 지난 바퀴에 "AuctionHud.cs·BagTextFmt.cs 등에 player-facing
+리크가 남아있다"고 적었으나, 실제 소비처를 추적해보니 **틀렸다** — `AuctionHud.Line()`의
+유일한 호출부(`EstateScreen.cs:46`)는 `AuctionHud.ShowQa`(QA 전용 env 플래그)로 게이트돼
+있고, 그마저도 `EstateScreen.PlayerSubtitle()`을 거쳐 이미 `(§N)`이 제거된 채 화면에 뜬다 —
+이중으로 안전했다. `TowerEnding.cs`의 § 참조도 doc-comment일 뿐 실제 문자열(`EpilogueBody`)엔
+§가 없다. **grep 카운트만으로 "리크"를 단정한 것이 원인** — 이번엔 각 후보의 실제 소비처를
+추적(`grep -rn "ClassName\."`)해 게이트 여부·통과 경로까지 확인한 뒤에야 판단했다.
+AuctionHud.cs에는 그래도 일관성을 위해 방어적으로 로컬 PlayerCopy를 추가(`AuctionHudPlayerCopySelfCheck`
+PASS, 컴파일 0에러, Play 스크린샷은 QA 오버레이 진입에 비공개 필드 리플렉션이 필요해 생략).
+
+`*Screen.cs` 7종(WorldMap·Tower·Estate·Field·Result·Battle·Title)의 **상시 노출** Subtitle/Hint
+문구 폴리싱은 전부 완료. 남은 `*Hud.Line()`류는 전부 QA 전용 env 플래그로 게이트된 디버그
+오버레이라 일반 플레이가 진짜로 절대 못 보는 텍스트 — **이 UI 폴리싱 캠페인은 여기서 마감**.
+새 후보가 나오면 이번처럼 "화면에 항상 뜨는가"를 소비처 추적으로 먼저 확인할 것.
 참고: `e1868f2b`(영지 헤더 플레이어 문구화)는 코덱스 사용량 소진 직전 바퀴라 이 STATUS 갱신 없이
 커밋만 있었다 — 코드 자체는 정상이나 기록이 빠졌던 것을 여기서 보정한다.
 소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔(에이전트 탐색 결과 §18-14 소환수
