@@ -1111,8 +1111,23 @@ namespace AshesToStars
                         "tower"))
                     GameState.TrySelectTier(i);
             }
-            var back = UiPages.Grid(new Rect(r.x, r.yMax - 88f, r.width, 80f), 1, 1, 10f);
+            var back = UiPages.Grid(WorldTierBackBand(r), 1, 1, 10f);
             if (DrawCard(back[0], "영지로", "건물에서 나온다", "territory")) _sub = Sub.없음;
+        }
+
+        public const string EnvNoWorldTierBackFit = "QA_NO_WORLD_TIER_BACK_FIT";
+        public const float WorldTierBackMaxW = 520f;
+
+        /// <summary>
+        /// 월드 티어의 단일 「영지로」 카드는 1208px 전폭 그리드에 넣으면 내용은 왼쪽에
+        /// 몰리고 오른쪽은 빈 액자가 된다. 행동 하나는 최대폭으로 가운데 모아 선택지처럼 읽힌다.
+        /// QA_NO면 옛 전폭 카드로 돌아가 A/B를 남긴다.
+        /// </summary>
+        public static Rect WorldTierBackBand(Rect body)
+        {
+            bool blocked = System.Environment.GetEnvironmentVariable(EnvNoWorldTierBackFit) == "1";
+            float w = blocked ? body.width : Mathf.Min(WorldTierBackMaxW, body.width);
+            return new Rect(body.center.x - w * 0.5f, body.yMax - 88f, w, 80f);
         }
 
         /// <summary>
