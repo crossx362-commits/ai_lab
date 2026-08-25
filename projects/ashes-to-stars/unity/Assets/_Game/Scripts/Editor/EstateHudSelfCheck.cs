@@ -166,7 +166,7 @@ namespace AshesToStars
             string block = dv >= 0 && dvEnd > dv ? estate.Substring(dv, dvEnd - dv) : "";
             Check(block.Contains("EstateHud.ChipRect"),
                 "마을 침략 줄이 ChipRect를 읽는다 (옛 인라인 Hint 22px 금지)");
-            Check(block.Contains("EstateHud.PaletteTint"),
+            Check(estate.Contains("EstateHud.PaletteTint"),
                 "방어 팔레트가 잔디 대비 PaletteTint를 읽는다");
             Check(block.Contains("InfoAt(chip"),
                 "새 길은 InfoAt 금테 — Hint면 글씨가 마을에 묻힌다");
