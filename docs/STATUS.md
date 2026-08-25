@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 14:31 · 영지 방어 도크 라벨 가독성 폴리싱(`8fb215cd`, 분리 `8014123f`). 사람 관문 더미 유지
-마지막 트랙: UI — 영지 마을 하단 `화살탑·마법탑·성벽·함정 0`을 밝은 굵은 라벨로 바꿨다
+최종 갱신: 2026-08-25 14:40 · 영지 헤더 내부 절 번호 비노출(`bc7eb983`). 사람 관문 더미 유지
+마지막 트랙: UI — 영지의 모든 헤더 자막에서 플레이어에게 의미 없는 `(§…)` 구현 근거를 숨겼다
 소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔. 코드 칸이 없으면 최신 정상 샷 UI 한 곳 폴리싱
-검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` EstateHudSelfCheck PASS · 실행 파일 빌드 PASS(1,388,344,119 bytes) · 1280×720 정상/네거티브 육안 확인(`output/qa/ashes-to-stars/estate_palette_bright_shots/{after,neg}/qa_go:Estate.png`) — 정상은 방어 4칸의 이름·개수가 밝고 굵게 읽히며 네거티브는 옛 회색 Hint로 복귀. 카드 절단·건물 가림·내비 겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
+검증: C# 정적 컴파일 PASS(369소스 0) · `unity_meas` EstateHudSelfCheck PASS · 실행 파일 빌드 PASS(1,388,344,631 bytes) · 1280×720 정상/네거티브 육안 확인(`output/qa/ashes-to-stars/estate_header_player_copy_shots/{after2,neg}/auto_dungeon_map.png`) — 정상은 영지 QA 헤더 끝의 `§16`이 사라지고 네거티브는 같은 위치에 복귀. 문장·금테·건물·하단 내비 유지. 첫 정상 캡처는 글꼴이 한 프레임 덜 그려져 재촬영본으로 판정. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
@@ -55,6 +55,8 @@
 | 4 | **환생·탐험·내구·수비명예·착용레벨** | **닫음.** 환생 `86485fd7` · 탐험 `8c0b4b4a` · 내구 `5213c8bc` · 수비명예 `cd21fa0c` · 착용레벨 `4d9bc2d2`(요구레벨 기본 0, 오너 수치표는 안 만듦) |
 
 ## 최근 완료 내역 (History)
+
+| — | 2026-08-25 14:40 | **UI 폴리싱 — 영지 헤더 내부 절 번호 비노출.** 최신 실행 샷의 QA 헤더 끝에 플레이어에게 의미 없는 `§16`이 노출됐다. `EstateScreen.PlayerSubtitle`이 모든 영지 헤더의 `(§…)` 근거 표기를 제거하고 `QA_NO_ESTATE_HEADER_PLAYER_COPY=1`은 옛 노출을 재현한다. 표시 전용 — W3Party 무접촉. 이미지 생성·블렌더 건너뜀 | 컴파일 PASS(369소스 0) · EstateHudSelfCheck PASS · 실행 빌드 PASS(1,388,344,631 bytes) · 1280×720 A/B 육안 확인 `estate_header_player_copy_shots/{after2,neg}/auto_dungeon_map.png` · `bc7eb983` |
 
 | — | 2026-08-25 08:25 | **UI 폴리싱 — 타이틀 로컬 테스트 상태 패널.** `QA_PLAY` 안내가 배경 위 작은 생텍스트라 상태 표시로 읽히지 않았다. 왼쪽 소개 열에 40px 금테 정보 패널로 통일하고 QA_NO는 옛 20px 생텍스트를 재현한다. 최초의 「종료 카드 가림」 가설은 A/B 샷에서 실제 겹침이 없어 폐기했다 | 컴파일 PASS · LocalPlayKitSelfCheck PASS · 실행 빌드 PASS · 1280×720 A/B 육안 확인 `title_local_kit_panel/{after,neg}/qa_go:Title.png` · `fbc0f375`/`ad3c7baf`/`84869544` |
 | — | 2026-08-25 08:09 | **UI 폴리싱 — 마지막 목숨 경고 빈 장비 패널.** 장비 뒷줄이 빈 문자열이어도 필드·탑이 Info 4칸을 그려 빈 금테 한 줄이 남았다. 두 화면 모두 `GearRest`가 비어 있지 않을 때만 네 번째 패널을 그린다. 장착 6부위가 있으면 기존 두 줄 유지. 표시 전용 — W3Party 무접촉 | 컴파일 PASS(355소스 0) · LastLifeWarnSelfCheck PASS · 실행 빌드 PASS · 1280×720 `last_life_empty_row_shots/after_field/qa_go:Field.png` 육안 확인(빈 패널 0) · `e6cebda2` |
