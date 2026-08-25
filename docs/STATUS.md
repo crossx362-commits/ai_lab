@@ -3,10 +3,10 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 12:31 · 월드맵 탐험 문구 내부 절 번호 노출 제거(`cdb2d3b1`). 사람 관문 더미 유지
-마지막 트랙: UI — 월드맵 헤더·별 필드 탐험 문구에서 기획서 `§14`·`§18-9` 표기를 걷고, 밝혀진 별 수와 엘프 탐험 +30% 의미는 유지했다
-소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸 재스캔. 코드 칸이 없으면 월드맵의 `엘프 탐험 +30%`와 배너 `엘프 인식 +20%` 역할 구분 폴리싱 한 건
-검증: C# 컴파일 PASS · `unity_meas` WorldExploreSelfCheck PASS · 실행 파일 빌드 PASS · 1280×720 실화면 육안 확인(`output/qa/ashes-to-stars/world_explore_copy_shots/qa_go:WorldMap.png`) — 상단 `엘프 탐험 +30% · 별 3/3`에 내부 절 번호 0건, 별 표찰·카드·하단 내비 잘림/겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
+최종 갱신: 2026-08-25 12:38 · 월드맵 엘프 탐험 반경과 내 별 영공 역할 구분(`5353d444`). 사람 관문 더미 유지
+마지막 트랙: UI — 월드맵 헤더를 `탐험 반경 +30% · 밝힌 별 3/3`, 별 배너를 `내 별 영공 +20%`로 바꿔 발견 범위와 적 감지 범위를 구분했다
+소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸 재스캔. 코드 칸이 없으면 최신 정상 샷에서 GameScreen Body 절단 한 곳 폴리싱
+검증: C# 컴파일 PASS · `unity_meas` WorldExploreSelfCheck·RaceSenseSelfCheck·WorldMapPlayerCopySelfCheck PASS · 실행 파일 빌드 PASS · 1280×720 실화면 육안 확인(`output/qa/ashes-to-stars/world_role_copy_shots/qa_go:WorldMap.png`) — 탐험 반경/밝힌 별과 내 별 영공이 서로 다른 역할로 읽히고, 두 문구·별 표찰·카드·하단 내비 잘림/겹침 없음. 신규 그림·3D 작업이 아니라 이미지 생성·블렌더는 건너뜀. Unity MCP 도구가 세션에 노출되지 않아 `unity_meas` 빌드+실행 캡처로 검증
 §10-3 판정: 계열 상성(×1.3/×0.7)은 선반영 완료 — `FamilyAdv.cs`(Strong 1.3·Weak 0.7)·`FamilyAdvSelfCheck.cs`·소비처 `DungeonScreen`(Title/Line/Mul/SeedQaIfRequested) 존재, `a7f82e6a`가 HEAD 조상(`git merge-base --is-ancestor` 실측). 재구현 없이 닫음. 3번 칸 목록(§10-5 포함 전 항 닫음)과 합쳐 이번 바퀴 소진 — 다음은 4번 UI·아트 상시 폴리싱 또는 보드 배정.
 §10-3 감시망: FamilyAdvSelfCheck를 GameSweep 33번째 행으로 등록(`927ce693`) — unity_meas 배치 재실측 PASS 25항목·내장 네거티브(QA_NO 차단 → 배율 1·옛 제목 복귀) 3종·컴파일 오류 0(로그 `output/qa/ashes-to-stars/family_adv_selfcheck_r56.log`).
 
