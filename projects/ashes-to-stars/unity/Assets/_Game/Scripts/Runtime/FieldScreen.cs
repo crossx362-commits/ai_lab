@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -12,6 +13,17 @@ namespace AshesToStars
     /// <summary>필드 — 자동사냥. 코어 루프의 시작점(§2·§6).</summary>
     public class FieldScreen : GameScreen
     {
+        public const string EnvNoPlayerCopy = "QA_NO_FIELD_PLAYER_COPY";
+
+        public static string PlayerCopy(string value)
+        {
+            if (string.IsNullOrEmpty(value)
+                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
+                return value;
+            return System.Text.RegularExpressions.Regex.Replace(
+                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
+        }
+
         protected override string Title => "필드";
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Field);
         protected override string BackgroundArt => "bg_field";
@@ -31,8 +43,8 @@ namespace AshesToStars
                 if (FieldDockCap.ShowDungeonQa) return FieldDockCap.DungeonLine();
                 if (FieldDockCap.ShowHuntQa) return FieldDockCap.HuntLine();
                 string train = DeathTraining.Line();
-                string rest =
-                    $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
+                string rest = PlayerCopy(
+                    $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}");
                 if (HuntSchedule.Running) rest = HuntSchedule.Line() + " · " + rest;
                 if (FieldBoss.Active) rest = FieldBoss.Line() + " · " + rest;
                 if (EmergencyEscape.HasScroll()) rest = EscapeManual.Line() + " · " + rest;
@@ -102,7 +114,7 @@ namespace AshesToStars
             {
                 r = FieldWarnHud.Content(r);
                 Info(r, 0, "[주의] 골드가 부족합니다");
-                Info(r, 1, "던전 입장에는 골드가 필요합니다(§18-2)\n필드 사냥으로 먼저 재화를 모으세요(§2)");
+                Info(r, 1, PlayerCopy("던전 입장에는 골드가 필요합니다(§18-2)\n필드 사냥으로 먼저 재화를 모으세요(§2)"));
                 if (DrawChoice(r, "확인", "돌아간다", "field",
                                "영지로", "허브로 간다", "territory", out bool home)
                     || home)
