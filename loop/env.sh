@@ -9,7 +9,7 @@ export LOOP_MODE="${LOOP_MODE:-session}"
 # 비워두면 loop/agent 파일이 실행기를 정한다(README 규칙). 기본값을 넣으면 파일 지정이 죽는다.
 export LOOP_AGENT="${LOOP_AGENT:-}"
 export LOOP_PROVIDERS="${LOOP_PROVIDERS:-grok}"
-# 실행기 체인(오너 지시 2026-08-25 "어느 ai에서든"): 핀이 없으면 이 순서로 사용 가능한 실행기를 고른다.
+# 실행기 체인(오너 지시 2026-08-25): 우선순위 없음 — 현재 실행기 스티키, 소진 시 링의 다음으로.
 export LOOP_PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude,grok,codex,opencode}"
 export LOOP_MAX_PARALLEL="${LOOP_MAX_PARALLEL:-3}"
 

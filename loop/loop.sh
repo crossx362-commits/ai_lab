@@ -28,8 +28,8 @@ STATUS_FILE="$TARGET_REPO/docs/STATUS.md"
 MAIN_LOG="$TARGET_REPO/logs/loop_main.log"
 GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
 OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/x-preview-f-free}"
-# 실행기 체인(오너 지시 2026-08-25 "어느 ai에서든"): 왼쪽부터 사용 가능한 실행기를 고른다.
-# 핀(codex/opencode 지정)이 없는 한 매 바퀴 이 순서대로 소진 여부를 검사해 고른다.
+# 실행기 체인(오너 지시 2026-08-25): 우선순위 없음 — 현재 돌리는 실행기를 소진될 때까지 쓰고,
+# 소진되면 체인의 다음(링 회전)으로 넘어간다. 핀(codex/opencode 지정)은 전환 관여 없음.
 PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude,grok,codex,opencode}"
 COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
 
@@ -114,13 +114,25 @@ other_provider() {
   esac
 }
 
-# 체인(왼쪽→오른쪽)에서 find_bin 가능하고 usage_check가 exhausted가 아닌 첫 실행기를 고른다.
-# exclude <name>: 그 실행기는 후보에서 뺀다(랩 로그 소진 직후 재선택 방지).
+# 체인에서 find_bin 가능하고 usage_check가 exhausted가 아닌 첫 실행기를 고른다.
+# start <name>: 링 순회 시작점(보통 현재 실행기) — 그 자체부터 검사해 스티키 유지.
+# exclude <name>: 후보 제외(랩 로그 소진 직후 재선택 방지).
 # echo: 실행기명 | 전부 소진·부재면 빈 문자열(return 1).
 pick_from_chain() {
-  local exclude="${1:-}" p bin check
+  local exclude="${1:-}" start="${2:-}" p bin check order
+  if [ -n "$start" ]; then
+    order="$(printf '%s' "$PROVIDERS_CHAIN" | awk -F, -v s="$start" '
+      { n=split($0,a,","); idx=0
+        for(i=1;i<=n;i++){ gsub(/ /,"",a[i]); if(a[i]==s) idx=i }
+        if(idx<1) idx=1
+        out=""
+        for(i=0;i<n;i++) out=out (i?",":"") a[((idx-1+i)%n)+1]
+        print out }')"
+  else
+    order="$PROVIDERS_CHAIN"
+  fi
   local IFS=','
-  for p in $PROVIDERS_CHAIN; do
+  for p in $order; do
     p="$(printf '%s' "$p" | tr -d '[:space:]')"
     [ -z "$p" ] && continue
     [ -n "$exclude" ] && [ "$p" = "$exclude" ] && continue
@@ -291,7 +303,7 @@ while true; do
     *)
       if [ "$AUTO_SWITCH" = "1" ]; then
         STATE_CURRENT="$(provider_state_read_current)"
-        PICKED="$(pick_from_chain)"
+        PICKED="$(pick_from_chain "" "$STATE_CURRENT")"
         if [ -z "$PICKED" ]; then
           PROVIDER_WAIT_ROUNDS=$((PROVIDER_WAIT_ROUNDS + 1))
           echo "체인 전체 소진(${PROVIDER_WAIT_ROUNDS}/${MAX_PROVIDER_FAILURES}) — ${PROVIDER_RETRY_SECONDS}초 대기 후 재확인" | tee -a "$MAIN_LOG"
@@ -339,7 +351,7 @@ while true; do
   if [ "$AUTO_SWITCH" = "1" ] && { [ "$AGENT" = "claude" ] || [ "$AGENT" = "grok" ]; } \
       && detect_exhaustion_in_log "$LAP_LOG"; then
     EXHAUSTED_THIS_LAP=1
-    NEXT_PROVIDER="$(pick_from_chain "$AGENT")"
+    NEXT_PROVIDER="$(pick_from_chain "$AGENT" "$AGENT")"
     [ -z "$NEXT_PROVIDER" ] && NEXT_PROVIDER="$(other_provider "$AGENT")"
     echo "랩 로그에서 소진 신호 감지 — $AGENT 소진, 다음 바퀴부터 $NEXT_PROVIDER (FAILS 미증가)" | tee -a "$MAIN_LOG" "$LAP_LOG"
     provider_state_write "$NEXT_PROVIDER" "log-detect: $AGENT exhaustion phrase in $LAP_ID"
