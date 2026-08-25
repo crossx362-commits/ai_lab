@@ -74,7 +74,6 @@ namespace AshesToStars
                 One("원거리 투사체 속도", MobProjectileSpeedSelfCheck.Run, rows, errors);
                 One("잡몹 크기", MobSizeSelfCheck.Run, rows, errors);
                 One("던전 포기 문구", DungeonAbandonCopySelfCheck.Run, rows, errors);
-                One("던전 전투 문구", DungeonEncounterCopySelfCheck.Run, rows, errors);
                 One("초상 아틀라스", PortraitAtlasSelfCheck.Run, rows, errors);
                 One("아이템 아틀라스", ItemAtlasSelfCheck.Run, rows, errors);
                 One("영지 격자", EstateGridSelfCheck.Run, rows, errors);

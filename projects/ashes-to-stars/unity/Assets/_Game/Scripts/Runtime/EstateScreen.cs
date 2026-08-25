@@ -734,8 +734,10 @@ namespace AshesToStars
                     if (iconW > 8f && !string.IsNullOrEmpty(icon))
                         UiAtlas.DrawFit(new Rect(inner.x, inner.center.y - iconW * 0.5f,
                             iconW, iconW), icon);
-                    Hint(new Rect(inner.x + iconW + 4f, inner.y,
-                        Mathf.Max(20f, inner.width - iconW - 4f), inner.height), $"{k} {left}");
+                    var label = new Rect(inner.x + iconW + 4f, inner.y,
+                        Mathf.Max(20f, inner.width - iconW - 4f), inner.height);
+                    if (EstateHud.BrightLabelBlocked) Hint(label, $"{k} {left}");
+                    else DockLabel(label, $"{k} {left}");
                 }
                 if (GUI.Button(b, GUIContent.none, GUIStyle.none))
                     _placeKind = cellKind;

@@ -19,6 +19,7 @@ namespace AshesToStars
         public const string EnvNoEdge = "QA_NO_YARD_PALETTE_EDGE";
         public const string EnvNoReadablePalette = "QA_NO_YARD_PALETTE_READABLE";
         public const string EnvNoPaletteContrast = "QA_NO_YARD_PALETTE_CONTRAST";
+        public const string EnvNoPaletteBrightLabel = "QA_NO_YARD_PALETTE_BRIGHT_LABEL";
         public const string EnvNoChipCompact = "QA_NO_ESTATE_CHIP_COMPACT";
         public const float OldInspectH = 86f;
         public const float OldPaletteH = 68f;
@@ -72,6 +73,9 @@ namespace AshesToStars
 
         public static bool ReadablePaletteBlocked =>
             Environment.GetEnvironmentVariable(EnvNoReadablePalette) == "1";
+
+        public static bool BrightLabelBlocked =>
+            Environment.GetEnvironmentVariable(EnvNoPaletteBrightLabel) == "1";
 
         /// <summary>
         /// 비선택 방어 타일도 잔디 위에서 이름·개수가 읽히도록 프레임을 거의 불투명하게 둔다.

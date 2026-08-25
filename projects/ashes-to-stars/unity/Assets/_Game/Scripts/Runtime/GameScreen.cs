@@ -432,6 +432,13 @@ namespace AshesToStars
             UiPages.LabelFit(r, text, _h2);
         }
 
+        /// <summary>작은 도크처럼 배경 위에 놓인 핵심 조작 라벨. Hint의 회색보다 밝고 굵게 읽힌다.</summary>
+        protected void DockLabel(Rect r, string text)
+        {
+            Styles();
+            UiPages.LabelFit(r, text, _tab);
+        }
+
         /// <summary>본문 버튼 한 줄. 왼쪽에 버튼, 오른쪽에 설명(근거 조문).</summary>
         protected bool Row(Rect r, int index, string label, string desc = "", string iconKey = null, float leftPad = 0f,
                            GearGrade? rarity = null)

@@ -203,7 +203,7 @@ namespace AshesToStars
                 case NodeKind.정예:
                     return EliteKinds.Caption(n);
                 default:
-                    return DungeonEncounterCopy.Text(n);
+                    return $"동시 {n.Wave?.TargetCount ?? 0}체 · 원거리 {n.Wave?.RangedPercent ?? 0:F0}% · {TemplateKo(n.Template)}";
             }
         }
     }

@@ -28,12 +28,14 @@ namespace AshesToStars
             string noEdge = Environment.GetEnvironmentVariable(EstateHud.EnvNoEdge);
             string noReadable = Environment.GetEnvironmentVariable(EstateHud.EnvNoReadablePalette);
             string noContrast = Environment.GetEnvironmentVariable(EstateHud.EnvNoPaletteContrast);
+            string noBrightLabel = Environment.GetEnvironmentVariable(EstateHud.EnvNoPaletteBrightLabel);
             string noChipCompact = Environment.GetEnvironmentVariable(EstateHud.EnvNoChipCompact);
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoReadablePalette, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteContrast, null);
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteBrightLabel, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, null);
             EstateHud.ResetForTest();
 
@@ -58,6 +60,10 @@ namespace AshesToStars
                 $"비선택 팔레트 알파 {EstateHud.PaletteTint(false).a:0.00} ≥ 0.90 — 잔디 위 대비");
             Check(Mathf.Approximately(EstateHud.PaletteTint(true).a, 1f),
                 "선택 팔레트는 불투명");
+            Check(!EstateHud.BrightLabelBlocked, "방어 도크는 밝은 굵은 라벨");
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteBrightLabel, "1");
+            Check(EstateHud.BrightLabelBlocked, "네거티브는 옛 흐린 Hint 라벨");
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteBrightLabel, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteContrast, "1");
             Check(Mathf.Approximately(EstateHud.PaletteTint(false).a, 0.72f),
                 "네거티브는 옛 흐린 알파 0.72");
@@ -168,6 +174,8 @@ namespace AshesToStars
                 "마을 침략 줄이 ChipRect를 읽는다 (옛 인라인 Hint 22px 금지)");
             Check(estate.Contains("EstateHud.PaletteTint"),
                 "방어 팔레트가 잔디 대비 PaletteTint를 읽는다");
+            Check(estate.Contains("EstateHud.BrightLabelBlocked") && estate.Contains("DockLabel(label"),
+                "방어 팔레트가 밝은 굵은 도크 라벨을 읽는다");
             Check(block.Contains("InfoAt(chip"),
                 "새 길은 InfoAt 금테 — Hint면 글씨가 마을에 묻힌다");
             Check(block.Contains("EstateHud.Blocked") && block.Contains("Hint(chip"),
@@ -187,6 +195,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, noEdge);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoReadablePalette, noReadable);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteContrast, noContrast);
+            Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteBrightLabel, noBrightLabel);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, noChipCompact);
             if (_fail == 0) Debug.Log("[EstateHudSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[EstateHudSelfCheck] FAIL {_fail}건\n" + _log);
