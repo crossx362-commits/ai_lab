@@ -379,14 +379,17 @@ namespace AshesToStars
                         // QA_NO면 빈 문자열.
                         string mobDmg = MobDmg.Line();
                         if (!string.IsNullOrEmpty(mobDmg)) { Info(r, statusMax + 1, mobDmg); statusMax += 1; }
-                        // §10-2 원거리형 거리 유지 기준. QA_NO면 옛 화면처럼 빈 문자열.
-                        string mobRangedDistance = MobRangedDistance.Line();
-                        if (!string.IsNullOrEmpty(mobRangedDistance)) { Info(r, statusMax + 1, mobRangedDistance); statusMax += 1; }
                         // §10-2 근접형 공격 주기. QA_NO면 옛 화면처럼 빈 문자열.
                         string mobMelee = MobMeleeCadence.Line();
                         if (!string.IsNullOrEmpty(mobMelee)) { Info(r, statusMax + 1, mobMelee); statusMax += 1; }
-                        // §10-2 원거리형 발사 주기. QA_NO면 옛 화면처럼 빈 문자열.
+                        // §10-2 원거리형 거리 유지·발사 주기는 같은 행동 프로필이라 한 행에 둔다.
+                        // 단독 행을 늘리면 아래 탄속 줄이 패널 밖으로 밀린다(1280×720 실측).
+                        string mobRangedDistance = MobRangedDistance.Line();
                         string mobShot = MobShotCadence.Line();
+                        if (!string.IsNullOrEmpty(mobRangedDistance))
+                            mobShot = string.IsNullOrEmpty(mobShot)
+                                ? mobRangedDistance
+                                : mobRangedDistance + " · " + mobShot;
                         if (!string.IsNullOrEmpty(mobShot)) { Info(r, statusMax + 1, mobShot); statusMax += 1; }
                         // §10-2 원거리형 느린 탄속. QA_NO면 옛 화면처럼 빈 문자열.
                         string mobProjectile = MobProjectileSpeed.Line();

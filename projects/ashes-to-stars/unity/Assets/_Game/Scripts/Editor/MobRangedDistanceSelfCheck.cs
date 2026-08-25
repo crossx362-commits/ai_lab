@@ -48,6 +48,7 @@ namespace AshesToStars
             string charSrc = File.ReadAllText(Path.Combine(runtime, "CharacterScreen.cs"));
             string dungeonSrc = File.ReadAllText(Path.Combine(runtime, "DungeonScreen.cs"));
             Check(charSrc.Contains("MobRangedDistance.Line"), "캐릭터 속성 탭이 줄을 소비한다");
+            Check(charSrc.Contains("mobRangedDistance + \" · \" + mobShot"), "유지거리·발사 주기를 한 행에 묶는다");
             Check(charSrc.Contains("MobRangedDistance.SeedQaIfRequested"), "캐릭터 QA 시드가 연결됐다");
             Check(dungeonSrc.Contains("MobRangedDistance.Line"), "던전 부제가 줄을 소비한다");
             Check(dungeonSrc.Contains("MobRangedDistance.SeedQaIfRequested"), "던전 QA 시드가 연결됐다");
