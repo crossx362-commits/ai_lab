@@ -28,11 +28,11 @@ namespace AshesToStars
             string no = Environment.GetEnvironmentVariable(EstateYard.EnvNo);
             string noPan = Environment.GetEnvironmentVariable(EstateYard.EnvNoPan);
             string noZoom = Environment.GetEnvironmentVariable(EstateYard.EnvNoZoom);
-            string noLift = Environment.GetEnvironmentVariable(EstateYard.EnvNoLift);
+            string noHeaderClear = Environment.GetEnvironmentVariable(EstateYard.EnvNoHeaderClear);
             Environment.SetEnvironmentVariable(EstateYard.EnvNo, null);
             Environment.SetEnvironmentVariable(EstateYard.EnvNoPan, null);
             Environment.SetEnvironmentVariable(EstateYard.EnvNoZoom, "1");
-            Environment.SetEnvironmentVariable(EstateYard.EnvNoLift, null);
+            Environment.SetEnvironmentVariable(EstateYard.EnvNoHeaderClear, null);
             EstateYard.ResetForTest();
 
             var body = new Rect(GameScreen.BodyPadX, GameScreen.BodyTop,
@@ -41,15 +41,15 @@ namespace AshesToStars
             var yard = EstateYard.VillageRect(body);
             float tw = EstateYard.TileW(yard);
             float diamond = tw * EstateGrid.Size;
-            Vector2 liftedOrigin = EstateYard.TileOrigin(yard, 0, 0);
+            Vector2 clearedOrigin = EstateYard.TileOrigin(yard, 0, 0);
             Check(yard.height >= 500f, $"전면 높이 {yard.height:0}");
             Check(tw > 100f, $"칸 {tw:0.0} > 100 (옛 상한 88)");
             Check(diamond >= 900f, $"마름모 폭 {diamond:0}");
-            Environment.SetEnvironmentVariable(EstateYard.EnvNoLift, "1");
+            Environment.SetEnvironmentVariable(EstateYard.EnvNoHeaderClear, "1");
             Vector2 oldOrigin = EstateYard.TileOrigin(yard, 0, 0);
-            Check(liftedOrigin.y < oldOrigin.y - 20f,
-                $"기본 마름모 y {liftedOrigin.y:0.0} < 옛 시점 {oldOrigin.y:0.0} - 20");
-            Environment.SetEnvironmentVariable(EstateYard.EnvNoLift, null);
+            Check(clearedOrigin.y > oldOrigin.y + 20f,
+                $"기본 마름모 y {clearedOrigin.y:0.0} > 옛 시점 {oldOrigin.y:0.0} + 20");
+            Environment.SetEnvironmentVariable(EstateYard.EnvNoHeaderClear, null);
             Check(EstateYard.Line().Contains("끌어 본다"),
                 $"줄 (실제 {EstateYard.Line()})");
 
@@ -89,7 +89,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateYard.EnvNo, no);
             Environment.SetEnvironmentVariable(EstateYard.EnvNoPan, noPan);
             Environment.SetEnvironmentVariable(EstateYard.EnvNoZoom, noZoom);
-            Environment.SetEnvironmentVariable(EstateYard.EnvNoLift, noLift);
+            Environment.SetEnvironmentVariable(EstateYard.EnvNoHeaderClear, noHeaderClear);
             EstateYard.ResetForTest();
             if (_fail == 0) Debug.Log("[EstateYardSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[EstateYardSelfCheck] FAIL {_fail}건\n" + _log);
