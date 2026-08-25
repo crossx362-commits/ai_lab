@@ -3,13 +3,15 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 17:46 · 결과 화면·아이템 설명 내부 절 번호 비노출(`1eeb6f23`). 사람 관문 더미 유지
-마지막 트랙: UI — `PlayerCopy` 패턴(WorldMap·Tower·Estate·Field에 이미 있음)을 ResultScreen에도 적용:
-100층 클리어·캐릭터 삭제(영묘)·허브 복귀·목숨아이템 설명 11종에서 `(§N)` 노출 제거.
-`ResultPlayerCopySelfCheck` PASS. Play 모드에서 "허브 복귀" 부제가 절 번호 없이 렌더링됨을
-스크린샷으로 확인(`unity/Captures/result_player_copy_shots/qa_go_Result.png`).
-남은 후보: BattleScreen(§refs 25, 대부분 주석이지만 line 117 필드 배회 보스 격파 요약 등 일부
-player-facing 문자열 남음).
+최종 갱신: 2026-08-25 18:20 · 전투 화면 내부 절 번호 비노출(`cebcf428`). 코덱스 자율루프 정지 중,
+클로드가 30분 주기 크론으로 이어받아 진행. 사람 관문 더미 유지
+마지막 트랙: UI — `PlayerCopy` 패턴을 BattleScreen에도 적용: Subtitle 전체·전투 요약
+(LastBattleSummary 2곳: 필드 배회 보스 격파/저체력 귀환)·저체력 귀환 힌트에서 `(§N)` 노출 제거.
+`BattlePlayerCopySelfCheck` PASS, 컴파일 0 에러. Play 모드 스크린샷은 Unity MCP 브릿지가
+Connection closed/Timeout을 반복해 5회 재시도 후에도 캡처 실패 — SelfCheck만으로 검증 대체
+(브릿지는 각 시도 사이 ping엔 정상 응답, 코드 결함 아님).
+남은 후보: TitleScreen 101·103번째 줄 — `100층을 다시 오를 수 있다(§8)`,
+`전투력은 그대로(§8)` player-facing 리크 확인됨, PlayerCopy 미적용.
 참고: `e1868f2b`(영지 헤더 플레이어 문구화)는 코덱스 사용량 소진 직전 바퀴라 이 STATUS 갱신 없이
 커밋만 있었다 — 코드 자체는 정상이나 기록이 빠졌던 것을 여기서 보정한다.
 소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔(에이전트 탐색 결과 §18-14 소환수
