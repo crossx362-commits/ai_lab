@@ -36,6 +36,7 @@ namespace AshesToStars
         [Header("표시")]
         public Sprite 스프라이트;
         public Color 색조 = Color.white;
+        [Tooltip("화면 배율. 소비처: MobSize.Units → 던전 QA 부제")]
         public float 크기 = 2.2f;
     }
 }

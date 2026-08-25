@@ -29,6 +29,7 @@ namespace AshesToStars
               (MobMeleeCadence.ShowQa ? MobMeleeCadence.Line() + " · " : "") +
               (MobShotCadence.ShowQa ? MobShotCadence.Line() + " · " : "") +
               (MobProjectileSpeed.ShowQa ? MobProjectileSpeed.Line() + " · " : "") +
+              (MobSize.ShowQa ? MobSize.Line() + " · " : "") +
               $"시드 {DungeonRun.Plan.RunSeed} · T{DungeonRun.Plan.Tier + 1} · " +
               $"노드 {DungeonRun.State.Cleared.Count}/{DungeonRun.Plan.Nodes.Length} · " +
               $"{DungeonRun.Plan.Kind} · 보유 {GameState.WalletText}"
@@ -56,6 +57,7 @@ namespace AshesToStars
             MobMeleeCadence.SeedQaIfRequested();
             MobShotCadence.SeedQaIfRequested();
             MobProjectileSpeed.SeedQaIfRequested();
+            MobSize.SeedQaIfRequested();
             if (!DungeonRun.Active)
             {
                 Info(r, 0, "진행 중인 던전이 없다. 필드에서 던전에 입장할 수 있다(§7).");
