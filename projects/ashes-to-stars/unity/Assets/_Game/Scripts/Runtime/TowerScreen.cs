@@ -32,11 +32,11 @@ namespace AshesToStars
         {
             get
             {
-                if (TowerWarnHud.ShowQa) return TowerWarnHud.Line();
-                if (BossSkills.ShowQa) return BossSkills.Line();
-                if (TowerDockCap.ShowQa) return TowerDockCap.Line();
-                if (TowerHud.ShowQa) return TowerHud.Line();
-                if (TowerHubCap.ShowQa) return TowerHubCap.Line();
+                if (TowerWarnHud.ShowQa) return PlayerCopy(TowerWarnHud.Line());
+                if (BossSkills.ShowQa) return PlayerCopy(BossSkills.Line());
+                if (TowerDockCap.ShowQa) return PlayerCopy(TowerDockCap.Line());
+                if (TowerHud.ShowQa) return PlayerCopy(TowerHud.Line());
+                if (TowerHubCap.ShowQa) return PlayerCopy(TowerHubCap.Line());
                 string rest = TowerEnding.HasTitle
                     ? $"{TowerEnding.TitleName} · 100층 재도전 · 해금 T{GameState.UnlockedTier + 1}"
                     : SoloRaidClear.HasAny

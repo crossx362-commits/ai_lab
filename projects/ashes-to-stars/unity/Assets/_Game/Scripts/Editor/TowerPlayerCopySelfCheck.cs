@@ -26,6 +26,7 @@ namespace AshesToStars
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime/TowerScreen.cs");
             string source = File.ReadAllText(runtime);
             if (!source.Contains("PlayerCopy(TowerHubCap.Compose")
+                || !source.Contains("return PlayerCopy(TowerWarnHud.Line())")
                 || !source.Contains("PlayerCopy(DeathTraining.ConsentBody())")
                 || !source.Contains("PlayerCopy(\"벽 콘텐츠 — 재도전 리듬(§8)\")"))
                 throw new InvalidOperationException("탑 헤더·경고·카드가 PlayerCopy를 모두 소비하지 않는다");
