@@ -13,6 +13,17 @@ namespace AshesToStars
     /// <summary>탑 — 최대 100층. 10층 돌파마다 필드·던전 난이도가 오른다(§8·§10-6).</summary>
     public class TowerScreen : GameScreen
     {
+        public const string EnvNoPlayerCopy = "QA_NO_TOWER_PLAYER_COPY";
+
+        public static string PlayerCopy(string value)
+        {
+            if (string.IsNullOrEmpty(value)
+                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
+                return value;
+            return System.Text.RegularExpressions.Regex.Replace(
+                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
+        }
+
         protected override string Title => $"탑 · {GameState.TowerFloor}층";
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Tower);
         protected override string BackgroundArt => "bg_tower";
@@ -31,7 +42,7 @@ namespace AshesToStars
                     : SoloRaidClear.HasAny
                         ? $"{SoloRaidClear.LastTitle} · 홀로 깬 레이드 {SoloRaidClear.Count} · 해금 T{GameState.UnlockedTier + 1}"
                         : $"최대 100층. 해금 T{GameState.UnlockedTier + 1} · 세계 T{GameState.Tier + 1} · 보유 {GameState.WalletText}";
-                return TowerHubCap.Compose(
+                return PlayerCopy(TowerHubCap.Compose(
                     DeathTraining.Line(),
                     RaidScale.Line(),
                     RaidBossPool.Line(),
@@ -41,7 +52,7 @@ namespace AshesToStars
                     BossHp.CountLine(),
                     BossCount.Line(),
                     BossSkills.Line(),
-                    rest);
+                    rest));
             }
         }
 
@@ -106,9 +117,9 @@ namespace AshesToStars
             if (_showDeathConsent)
             {
                 r = TowerWarnHud.Content(r);
-                Info(r, 0, "[주의] " + DeathTraining.ConsentTitle());
-                Info(r, 1, DeathTraining.ConsentBody());
-                if (DrawChoice(r, "동의하고 입장", "이제부터 목숨이 깎인다(§4)", "tower",
+                Info(r, 0, PlayerCopy("[주의] " + DeathTraining.ConsentTitle()));
+                Info(r, 1, PlayerCopy(DeathTraining.ConsentBody()));
+                if (DrawChoice(r, "동의하고 입장", PlayerCopy("이제부터 목숨이 깎인다(§4)"), "tower",
                                "아직 훈련", "5층 전에 돌아간다", "territory", out bool decline))
                 {
                     DeathTraining.Consent();
@@ -138,16 +149,16 @@ namespace AshesToStars
             {
                 r = TowerWarnHud.Content(r);
                 Info(r, 0, "[주의] 골드가 부족합니다");
-                Info(r, 1, $"필요 {EstateStatusHud.ShortCopper(_pendingCost)} · 보유 {EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)");
+                Info(r, 1, PlayerCopy($"필요 {EstateStatusHud.ShortCopper(_pendingCost)} · 보유 {EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}\n필드 사냥은 무료이니 먼저 재화를 모으세요(§2)"));
                 long shortfall = _pendingCost - GameState.Wallet.Copper;
-                Info(r, 2, $"대출 한도 {EstateStatusHud.ShortCopper(GameState.LoanBorrowable)} · 부채 {EstateStatusHud.ShortCopper(GameState.Debt)} · {NetWorth.Line()} · 이자 0.5%/h(§18-5)");
+                Info(r, 2, PlayerCopy($"대출 한도 {EstateStatusHud.ShortCopper(GameState.LoanBorrowable)} · 부채 {EstateStatusHud.ShortCopper(GameState.Debt)} · {NetWorth.Line()} · 이자 0.5%/h(§18-5)"));
                 if (shortfall > 0 && GameState.LoanBorrowable < shortfall)
-                    Info(r, 3, "대출 한도가 부족합니다 — 순자산의 30%까지만 빌릴 수 있습니다(§18-5)");
+                    Info(r, 3, PlayerCopy("대출 한도가 부족합니다 — 순자산의 30%까지만 빌릴 수 있습니다(§18-5)"));
 
                 string okTitle = shortfall > 0 && GameState.LoanBorrowable >= shortfall
                     ? "대출받고 입장" : "확인";
                 string okSub = shortfall > 0 && GameState.LoanBorrowable >= shortfall
-                    ? "빚을 내서라도 다음 판에 — 골드는 곧 목숨이다(§12)" : "돌아간다";
+                    ? PlayerCopy("빚을 내서라도 다음 판에 — 골드는 곧 목숨이다(§12)") : "돌아간다";
                 if (DrawChoice(r, okTitle, okSub, "tower",
                                "취소", "입장하지 않는다", "territory", out bool cancel))
                 {
@@ -180,11 +191,11 @@ namespace AshesToStars
             if (_showLastLifeWarning)
             {
                 r = TowerWarnHud.Content(r);
-                Info(r, 0, LastLifeWarn.Title());
-                Info(r, 1, LastLifeWarn.Body());
-                Info(r, 2, LastLifeWarn.GearLine());
+                Info(r, 0, PlayerCopy(LastLifeWarn.Title()));
+                Info(r, 1, PlayerCopy(LastLifeWarn.Body()));
+                Info(r, 2, PlayerCopy(LastLifeWarn.GearLine()));
                 string gearRest = LastLifeWarn.GearRest();
-                if (!string.IsNullOrEmpty(gearRest)) Info(r, 3, gearRest);
+                if (!string.IsNullOrEmpty(gearRest)) Info(r, 3, PlayerCopy(gearRest));
                 if (DrawChoice(r, "계속 진행", "입장한다", "tower",
                                "취소", "파티를 다시 편성한다", "characters", out bool cancel))
                 {
@@ -207,20 +218,20 @@ namespace AshesToStars
             }
 
             var cards = TowerHud.Cards(r);
-            if (DrawCard(cards[0], "다음 층 도전", "벽 콘텐츠 — 재도전 리듬(§8)", "tower"))
+            if (DrawCard(cards[0], "다음 층 도전", PlayerCopy("벽 콘텐츠 — 재도전 리듬(§8)"), "tower"))
                 Enter(Economy.GetActionCost("TowerNormalFloor", GameState.UnlockedTier),
                       GameFlow.BattleKind.잡몹웨이브, GameState.TowerFloor);
             {
                 int raidFloor = Mathf.Max(5, (GameState.TowerFloor / 5) * 5);
                 if (DrawCard(cards[1], "레이드 (5층 단위)",
-                        TowerDockCap.Raid(raidFloor), "damage"))
+                        PlayerCopy(TowerDockCap.Raid(raidFloor)), "damage"))
                     Enter(RaidCost.Copper(raidFloor), GameFlow.BattleKind.보스, raidFloor);
             }
             int lower = RaidScale.LowerFloor;
             if (lower > 0)
             {
                 if (DrawCard(cards[2], $"하위 레이드 {lower}층",
-                        TowerDockCap.Lower(lower), "damage"))
+                        PlayerCopy(TowerDockCap.Lower(lower)), "damage"))
                     Enter(RaidReroll.Cost(lower), GameFlow.BattleKind.보스, lower);
             }
             else
