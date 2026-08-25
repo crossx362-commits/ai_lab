@@ -25,6 +25,7 @@ namespace AshesToStars
     {
         protected abstract string Title { get; }
         protected virtual string Subtitle => "";
+        protected virtual bool FitHeaderSubtitle => false;
         protected virtual bool ShowBottomBar => true;
         /// <summary>전투처럼 자체 HUD가 상단을 소유하는 화면은 공통 제목판을 숨긴다.</summary>
         protected virtual bool ShowHeader => true;
@@ -223,7 +224,11 @@ namespace AshesToStars
                 string shownSub = HubHeader.ShowQa ? HubHeader.Line() : Subtitle;
                 UiPages.LabelClip(HubHeader.TitleRect(atlas), Title, titleStyle);
                 if (!string.IsNullOrEmpty(shownSub))
-                    UiPages.LabelClip(HubHeader.SubtitleRect(atlas), shownSub, subStyle);
+                {
+                    var subtitleRect = HubHeader.SubtitleRect(atlas);
+                    if (FitHeaderSubtitle) UiPages.LabelFit(subtitleRect, shownSub, subStyle, 10);
+                    else UiPages.LabelClip(subtitleRect, shownSub, subStyle);
+                }
             }
 
             float bottom = ShowBottomBar ? UiPages.NavReserve : 36f;
