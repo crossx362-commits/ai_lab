@@ -148,7 +148,11 @@ namespace AshesToStars
             _h1 = new GUIStyle(GUI.skin.label) { fontSize = 32, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
             _h2 = new GUIStyle(GUI.skin.label) { fontSize = UiPages.CardSubFont, wordWrap = true, normal = { textColor = Dim } };
             _h1Slim = new GUIStyle(_h1) { fontSize = UiPages.SlimTitleFont };
-            _h2Slim = new GUIStyle(_h2) { fontSize = UiPages.SlimSubFont };
+            _h2Slim = new GUIStyle(_h2)
+            {
+                fontSize = UiPages.SlimSubFont,
+                normal = { textColor = HubHeader.SubtitleColor },
+            };
             _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
             _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
             _small = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, normal = { textColor = Dim } };

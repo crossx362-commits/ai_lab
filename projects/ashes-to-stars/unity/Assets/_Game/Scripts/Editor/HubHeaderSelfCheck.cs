@@ -25,8 +25,10 @@ namespace AshesToStars
             _log.Length = 0;
             string show = Environment.GetEnvironmentVariable(HubHeader.EnvShow);
             string no = Environment.GetEnvironmentVariable(HubHeader.EnvNo);
+            string noContrast = Environment.GetEnvironmentVariable(HubHeader.EnvNoSubtitleContrast);
             Environment.SetEnvironmentVariable(HubHeader.EnvShow, null);
             Environment.SetEnvironmentVariable(HubHeader.EnvNo, null);
+            Environment.SetEnvironmentVariable(HubHeader.EnvNoSubtitleContrast, null);
             HubHeader.ResetForTest();
 
             Check(Mathf.Approximately(HubHeader.H, HubHeader.SlimH),
@@ -50,6 +52,14 @@ namespace AshesToStars
             Check(title.x > icon.x, "제목이 아이콘 오른쪽");
             Check(HubHeader.Line().Contains("가리지 않는다"),
                 $"줄 (실제 {HubHeader.Line()})");
+            Color subtitle = HubHeader.SubtitleColor;
+            Check(subtitle.r >= 0.75f && subtitle.g >= 0.78f && subtitle.b >= 0.86f,
+                $"슬림 부제 대비 {subtitle.r:0.00}/{subtitle.g:0.00}/{subtitle.b:0.00}");
+            Environment.SetEnvironmentVariable(HubHeader.EnvNoSubtitleContrast, "1");
+            Color oldSubtitle = HubHeader.SubtitleColor;
+            Check(oldSubtitle.r < subtitle.r && oldSubtitle.g < subtitle.g && oldSubtitle.b < subtitle.b,
+                $"네거티브는 옛 흐린 색 {oldSubtitle.r:0.00}/{oldSubtitle.g:0.00}/{oldSubtitle.b:0.00}");
+            Environment.SetEnvironmentVariable(HubHeader.EnvNoSubtitleContrast, null);
 
             Environment.SetEnvironmentVariable(HubHeader.EnvNo, "1");
             Check(HubHeader.Blocked, "QA_NO면 차단");
@@ -79,9 +89,11 @@ namespace AshesToStars
                 "제목판이 Icon/Title 칸을 읽는다");
             Check(screen.Contains("HubHeader.Line"), "자막이 Line을 읽는다");
             Check(screen.Contains("HubHeader.SeedQaIfRequested"), "시드를 읽는다");
+            Check(screen.Contains("HubHeader.SubtitleColor"), "슬림 부제가 대비 색을 읽는다");
 
             Environment.SetEnvironmentVariable(HubHeader.EnvShow, show);
             Environment.SetEnvironmentVariable(HubHeader.EnvNo, no);
+            Environment.SetEnvironmentVariable(HubHeader.EnvNoSubtitleContrast, noContrast);
             if (_fail == 0) Debug.Log("[HubHeaderSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[HubHeaderSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[HubHeaderSelfCheck] FAIL {_fail}건");

@@ -12,6 +12,7 @@ namespace AshesToStars
     {
         public const string EnvShow = "QA_HUB_HEADER";
         public const string EnvNo = "QA_NO_HUB_HEADER";
+        public const string EnvNoSubtitleContrast = "QA_NO_HUB_SUBTITLE_CONTRAST";
         public const float ScreenW = 1280f;
         public const float ScreenH = 720f;
         public const float OldH = 88f;
@@ -46,6 +47,15 @@ namespace AshesToStars
         public static float BodyTop => Blocked ? OldBodyTop : SlimBodyTop;
 
         public static float IconSize => Blocked ? OldIcon : SlimIcon;
+
+        /// <summary>
+        /// 슬림 부제는 12px라 옛 Dim 색(0.62/0.65/0.75)이 영지 성벽·필드 안개와 섞였다.
+        /// 제목보다 한 단계만 낮은 명도로 올리고 QA_NO면 옛 색을 재현한다.
+        /// </summary>
+        public static Color SubtitleColor =>
+            Environment.GetEnvironmentVariable(EnvNoSubtitleContrast) == "1"
+                ? new Color(0.62f, 0.65f, 0.75f)
+                : new Color(0.76f, 0.79f, 0.87f);
 
         public static float OpenH(float navReserve) => ScreenH - BodyTop - navReserve;
 
