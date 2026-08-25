@@ -3681,19 +3681,26 @@ def cli_command(argv: list[str]) -> int:
 
 
 def cli_usage(argv: list[str]) -> int:
-    """python3 loop/board.py usage <claude|grok> — 캐시된 공식 사용량 JSON을 stdout에 찍는다.
+    """python3 loop/board.py usage <claude|grok|codex|opencode> — 캐시된 공식 사용량 JSON을 stdout에 찍는다.
 
-    loop.sh의 자동전환 로직이 이 서브커맨드로 소진 여부를 확인한다(문자열 grep 대신
-    공식 API 응답을 그대로 재사용 — claude_usage()/grok_usage()는 이미 board.html이
-    상시 쓰는 검증된 경로).
+    loop.sh의 자동전환 로직이 이 서브커먼드로 소진 여부를 확인한다(문자열 grep 대신
+    공식 API 응답을 그대로 재사용 — claude_usage()/grok_usage()/codex_usage()는 이미
+    board.html이 상시 쓰는 검증된 경로).
     """
     name = argv[2] if len(argv) > 2 else ""
     if name == "claude":
         out = claude_usage()
     elif name == "grok":
         out = grok_usage()
+    elif name == "codex":
+        out = codex_usage()
+    elif name == "opencode":
+        # 무료 프리뷰 실행기 — 사용량 한도 개념이 없어 항상 가용으로 판정한다.
+        out = {"ok": True, "used_pct": 0.0, "remain_pct": 100.0, "period": "",
+               "products": [], "plan": "Free", "fetched_at": "", "stale": False,
+               "error": None}
     else:
-        print("usage: python3 loop/board.py usage <claude|grok>", file=sys.stderr)
+        print("usage: python3 loop/board.py usage <claude|grok|codex|opencode>", file=sys.stderr)
         return 2
     print(json.dumps(out, ensure_ascii=False))
     return 0

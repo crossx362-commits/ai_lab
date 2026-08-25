@@ -28,6 +28,9 @@ STATUS_FILE="$TARGET_REPO/docs/STATUS.md"
 MAIN_LOG="$TARGET_REPO/logs/loop_main.log"
 GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
 OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/x-preview-f-free}"
+# 실행기 체인(오너 지시 2026-08-25 "어느 ai에서든"): 왼쪽부터 사용 가능한 실행기를 고른다.
+# 핀(codex/opencode 지정)이 없는 한 매 바퀴 이 순서대로 소진 여부를 검사해 고른다.
+PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude,grok,codex,opencode}"
 COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
 
 # Claude↔Grok 사용량 자동전환 (오너 지시 2026-08-25). claude로 시작, 소진되면 grok, grok도
@@ -109,6 +112,26 @@ other_provider() {
     grok) echo claude ;;
     *) echo "$1" ;;
   esac
+}
+
+# 체인(왼쪽→오른쪽)에서 find_bin 가능하고 usage_check가 exhausted가 아닌 첫 실행기를 고른다.
+# exclude <name>: 그 실행기는 후보에서 뺀다(랩 로그 소진 직후 재선택 방지).
+# echo: 실행기명 | 전부 소진·부재면 빈 문자열(return 1).
+pick_from_chain() {
+  local exclude="${1:-}" p bin check
+  local IFS=','
+  for p in $PROVIDERS_CHAIN; do
+    p="$(printf '%s' "$p" | tr -d '[:space:]')"
+    [ -z "$p" ] && continue
+    [ -n "$exclude" ] && [ "$p" = "$exclude" ] && continue
+    bin="$(find_bin "$p")"
+    [ -z "$bin" ] && continue
+    check="$(usage_check "$p")"
+    [ "$check" = "exhausted" ] && continue
+    echo "$p"
+    return 0
+  done
+  return 1
 }
 
 # 공식 사용량 API(board.py usage)로 소진 여부를 확인한다. echo: ok | exhausted | unknown
@@ -239,7 +262,7 @@ run_session() {
 
 STARTUP_AGENT="$(pick_agent)"
 if [ "$AUTO_SWITCH" = "1" ] && { [ "$STARTUP_AGENT" = "claude" ] || [ "$STARTUP_AGENT" = "grok" ]; }; then
-  echo "자율 개발 루프 시작: target=$TARGET_REPO agent=auto(claude<->grok, 시작=$(provider_state_read_current)) max=${MAX_LOOPS:-0}"
+  echo "자율 개발 루프 시작: target=$TARGET_REPO agent=auto(${PROVIDERS_CHAIN}, 시작=$(provider_state_read_current)) max=${MAX_LOOPS:-0}"
 else
   BIN="$(find_bin "$STARTUP_AGENT")"
   if [ -z "$BIN" ]; then
@@ -262,33 +285,34 @@ while true; do
   fi
 
   AGENT="$(pick_agent)"
-  if [ "$AUTO_SWITCH" = "1" ] && { [ "$AGENT" = "claude" ] || [ "$AGENT" = "grok" ]; }; then
-    STATE_CURRENT="$(provider_state_read_current)"
-    CHECK1="$(usage_check "$STATE_CURRENT")"
-    if [ "$CHECK1" = "exhausted" ]; then
-      OTHER="$(other_provider "$STATE_CURRENT")"
-      CHECK2="$(usage_check "$OTHER")"
-      if [ "$CHECK2" = "exhausted" ]; then
-        PROVIDER_WAIT_ROUNDS=$((PROVIDER_WAIT_ROUNDS + 1))
-        echo "양쪽 다 소진($STATE_CURRENT·$OTHER, ${PROVIDER_WAIT_ROUNDS}/${MAX_PROVIDER_FAILURES}) — ${PROVIDER_RETRY_SECONDS}초 대기 후 재확인" | tee -a "$MAIN_LOG"
-        provider_state_mark_retry "$STATE_CURRENT"
-        provider_state_mark_retry "$OTHER"
-        if [ "$PROVIDER_WAIT_ROUNDS" -ge "$MAX_PROVIDER_FAILURES" ]; then
-          echo "양쪽 소진 대기 ${MAX_PROVIDER_FAILURES}회 초과 — 정상 종료합니다(사용량 확인 자체가 고장났을 가능성 포함)." | tee -a "$MAIN_LOG"
-          touch "$STOP_FILE"
-          exit 0
+  case "$AGENT" in
+    codex|opencode)
+      : ;;  # 수동 핀 — 전환 관여 없음(설계 유지)
+    *)
+      if [ "$AUTO_SWITCH" = "1" ]; then
+        STATE_CURRENT="$(provider_state_read_current)"
+        PICKED="$(pick_from_chain)"
+        if [ -z "$PICKED" ]; then
+          PROVIDER_WAIT_ROUNDS=$((PROVIDER_WAIT_ROUNDS + 1))
+          echo "체인 전체 소진(${PROVIDER_WAIT_ROUNDS}/${MAX_PROVIDER_FAILURES}) — ${PROVIDER_RETRY_SECONDS}초 대기 후 재확인" | tee -a "$MAIN_LOG"
+          provider_state_mark_retry "$STATE_CURRENT"
+          if [ "$PROVIDER_WAIT_ROUNDS" -ge "$MAX_PROVIDER_FAILURES" ]; then
+            echo "체인 소진 대기 ${MAX_PROVIDER_FAILURES}회 초과 — 정상 종료합니다(사용량 확인 자체가 고장났을 가능성 포함)." | tee -a "$MAIN_LOG"
+            touch "$STOP_FILE"
+            exit 0
+          fi
+          wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
+          continue
         fi
-        wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
-        continue
+        if [ "$PICKED" != "$STATE_CURRENT" ]; then
+          echo "$STATE_CURRENT 소진/부재 감지 — $PICKED(으)로 전환" | tee -a "$MAIN_LOG"
+          provider_state_write "$PICKED" "usage_check: $STATE_CURRENT exhausted"
+        fi
+        AGENT="$PICKED"
+        PROVIDER_WAIT_ROUNDS=0
       fi
-      echo "$STATE_CURRENT 소진 감지 — $OTHER(으)로 전환" | tee -a "$MAIN_LOG"
-      provider_state_write "$OTHER" "usage_check: $STATE_CURRENT exhausted"
-      AGENT="$OTHER"
-    else
-      AGENT="$STATE_CURRENT"
-    fi
-    PROVIDER_WAIT_ROUNDS=0
-  fi
+      ;;
+  esac
   BIN="$(find_bin "$AGENT")"
   if [ -z "$BIN" ]; then
     echo "실행기를 찾지 못했다: $AGENT" | tee -a "$MAIN_LOG"
@@ -315,7 +339,8 @@ while true; do
   if [ "$AUTO_SWITCH" = "1" ] && { [ "$AGENT" = "claude" ] || [ "$AGENT" = "grok" ]; } \
       && detect_exhaustion_in_log "$LAP_LOG"; then
     EXHAUSTED_THIS_LAP=1
-    NEXT_PROVIDER="$(other_provider "$AGENT")"
+    NEXT_PROVIDER="$(pick_from_chain "$AGENT")"
+    [ -z "$NEXT_PROVIDER" ] && NEXT_PROVIDER="$(other_provider "$AGENT")"
     echo "랩 로그에서 소진 신호 감지 — $AGENT 소진, 다음 바퀴부터 $NEXT_PROVIDER (FAILS 미증가)" | tee -a "$MAIN_LOG" "$LAP_LOG"
     provider_state_write "$NEXT_PROVIDER" "log-detect: $AGENT exhaustion phrase in $LAP_ID"
   fi

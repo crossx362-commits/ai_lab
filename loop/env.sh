@@ -6,8 +6,11 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Use
 # session: 매 바퀴 새 세션 (기본, 오너 명세). coordinator: agent_runner 병렬.
 export LOOP_MODE="${LOOP_MODE:-session}"
 # 오너 2026-08-24: 실행기는 그록. (INBOX 「그록만」 · 코덱스 안 씀)
-export LOOP_AGENT="${LOOP_AGENT:-grok}"
+# 비워두면 loop/agent 파일이 실행기를 정한다(README 규칙). 기본값을 넣으면 파일 지정이 죽는다.
+export LOOP_AGENT="${LOOP_AGENT:-}"
 export LOOP_PROVIDERS="${LOOP_PROVIDERS:-grok}"
+# 실행기 체인(오너 지시 2026-08-25 "어느 ai에서든"): 핀이 없으면 이 순서로 사용 가능한 실행기를 고른다.
+export LOOP_PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude,grok,codex,opencode}"
 export LOOP_MAX_PARALLEL="${LOOP_MAX_PARALLEL:-3}"
 
 # 강한 모델 고정. Claude는 Fable 사용량 소진/이용 불가 때만 Opus 5로 전환한다.
