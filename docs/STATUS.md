@@ -3,15 +3,20 @@
 > 인수인계서. 보드(`loop/board.py`)가 이 파일을 읽는다.
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
-최종 갱신: 2026-08-25 18:20 · 전투 화면 내부 절 번호 비노출(`cebcf428`). 코덱스 자율루프 정지 중,
+최종 갱신: 2026-08-25 18:50 · 타이틀 화면 내부 절 번호 비노출(`e13909a6`). 코덱스 자율루프 정지 중,
 클로드가 30분 주기 크론으로 이어받아 진행. 사람 관문 더미 유지
-마지막 트랙: UI — `PlayerCopy` 패턴을 BattleScreen에도 적용: Subtitle 전체·전투 요약
-(LastBattleSummary 2곳: 필드 배회 보스 격파/저체력 귀환)·저체력 귀환 힌트에서 `(§N)` 노출 제거.
-`BattlePlayerCopySelfCheck` PASS, 컴파일 0 에러. Play 모드 스크린샷은 Unity MCP 브릿지가
-Connection closed/Timeout을 반복해 5회 재시도 후에도 캡처 실패 — SelfCheck만으로 검증 대체
-(브릿지는 각 시도 사이 ping엔 정상 응답, 코드 결함 아님).
-남은 후보: TitleScreen 101·103번째 줄 — `100층을 다시 오를 수 있다(§8)`,
-`전투력은 그대로(§8)` player-facing 리크 확인됨, PlayerCopy 미적용.
+마지막 트랙: UI — `PlayerCopy` 패턴을 TitleScreen에도 적용: 정상 정복(100층 클리어)·홀로 레이드
+칭호 문구의 `(§8)` 제거. `TitlePlayerCopySelfCheck` PASS, 컴파일 0 에러. Play 모드 스크린샷은
+Unity MCP 브릿지가 5회 연속 Connection closed/Timeout으로 복구되지 않아 생략(SelfCheck는
+그 이전에 정상 완료).
+`*Screen.cs` 7종(WorldMap·Tower·Estate·Field·Result·Battle·Title) 전부 PlayerCopy 폴리싱 완료.
+전 Runtime 파일 재스캔(`grep -c §`) 결과 남은 § 참조 대부분은 코드 주석(설계문서 인용)이지만,
+**player-facing 리크가 확인된 비-Screen 클래스**가 다수 남음 — 예: `AuctionHud.cs:79`
+(`"HUD는 경매 배경을 가리지 않는다(§16)"`, 화면에 그대로 뜨는 `Line()` 반환값),
+`BagTextFmt.cs:53`(`"지갑 부제는 한 줄이다(§16)"`), `TowerEnding.cs`·`TowerHubCap.cs` 등 1건씩.
+이들은 `GameScreen` 하위 클래스가 아니라 독립 정적 클래스라 기존 패턴(클래스별 로컬
+`PlayerCopy`+`EnvNoPlayerCopy`)을 그대로 복제할지, 공용 유틸(`PlayerCopy.cs` 신설)로 통합할지
+판단이 필요 — 다음 랩에서 먼저 방침을 정하고 시작할 것(설계 확장이라 무단 진행 자제).
 참고: `e1868f2b`(영지 헤더 플레이어 문구화)는 코덱스 사용량 소진 직전 바퀴라 이 STATUS 갱신 없이
 커밋만 있었다 — 코드 자체는 정상이나 기록이 빠졌던 것을 여기서 보정한다.
 소비처0 다음: 직전=UI이므로 원장 소비처 0곳 새 칸을 재스캔(에이전트 탐색 결과 §18-14 소환수
