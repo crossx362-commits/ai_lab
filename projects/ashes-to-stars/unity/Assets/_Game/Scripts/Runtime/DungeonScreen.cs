@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 namespace AshesToStars
 {
@@ -34,6 +35,14 @@ namespace AshesToStars
 
         protected override bool ShowBottomBar => false;
 
+        public static Rect EmptyCardRect(Rect r)
+        {
+            bool old = Environment.GetEnvironmentVariable("QA_NO_DUNGEON_EMPTY_CENTER") == "1";
+            float h = Mathf.Min(180f, r.height - 96f);
+            float y = old ? r.y + 88f : r.y + (r.height - h) * 0.5f + 24f;
+            return new Rect(r.x, y, r.width, h);
+        }
+
         protected override void Body(Rect r)
         {
             FamilyAdv.SeedQaIfRequested();
@@ -47,7 +56,7 @@ namespace AshesToStars
             if (!DungeonRun.Active)
             {
                 Info(r, 0, "진행 중인 던전이 없다. 필드에서 던전에 입장할 수 있다(§7).");
-                var empty = UiPages.Grid(new Rect(r.x, r.y + 88f, r.width, Mathf.Min(180f, r.height - 96f)), 1, 1, 12f);
+                var empty = UiPages.Grid(EmptyCardRect(r), 1, 1, 12f);
                 if (DrawCard(empty[0], "필드로", "돌아간다", "field")) GameFlow.Go(GameFlow.Field);
                 return;
             }

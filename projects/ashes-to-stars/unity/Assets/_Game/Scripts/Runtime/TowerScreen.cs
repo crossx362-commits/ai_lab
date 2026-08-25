@@ -17,7 +17,6 @@ namespace AshesToStars
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Tower);
         protected override string BackgroundArt => "bg_tower";
         protected override bool ShowBossHpPreview => UiAtlas.QaShowBossHp;
-        protected override bool FitHeaderSubtitle => TowerSubtitleFit.Enabled;
         protected override string Subtitle
         {
             get
