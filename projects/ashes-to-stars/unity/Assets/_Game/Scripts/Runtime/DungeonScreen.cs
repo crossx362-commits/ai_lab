@@ -25,6 +25,7 @@ namespace AshesToStars
               (MobSpeed.ShowQa ? MobSpeed.Line() + " · " : "") +
               (MobHp.ShowQa ? MobHp.Line() + " · " : "") +
               (MobDmg.ShowQa ? MobDmg.Line() + " · " : "") +
+              (MobRangedDistance.ShowQa ? MobRangedDistance.Line() + " · " : "") +
               (MobMeleeCadence.ShowQa ? MobMeleeCadence.Line() + " · " : "") +
               (MobShotCadence.ShowQa ? MobShotCadence.Line() + " · " : "") +
               (MobProjectileSpeed.ShowQa ? MobProjectileSpeed.Line() + " · " : "") +
@@ -51,6 +52,7 @@ namespace AshesToStars
             MobSpeed.SeedQaIfRequested();
             MobHp.SeedQaIfRequested();
             MobDmg.SeedQaIfRequested();
+            MobRangedDistance.SeedQaIfRequested();
             MobMeleeCadence.SeedQaIfRequested();
             MobShotCadence.SeedQaIfRequested();
             MobProjectileSpeed.SeedQaIfRequested();

@@ -27,6 +27,7 @@ namespace AshesToStars
         [Tooltip("근접 공격 간격(초). 소비처: MobMeleeCadence.Seconds → 던전 부제 · 속성 탭 줄")] public float 공격간격 = 1.0f;
 
         [Header("원거리형 전용")]
+        [Tooltip("원거리형이 플레이어에게서 유지할 거리. 소비처: MobRangedDistance.Units → 던전 부제 · 속성 탭 줄")]
         public float 유지거리 = 6.5f;
         [Tooltip("2~3초에 1발(§10-2). 소비처: MobShotCadence.Seconds → 던전 부제 · 속성 탭 줄")]
         public float 발사간격 = 2.4f;

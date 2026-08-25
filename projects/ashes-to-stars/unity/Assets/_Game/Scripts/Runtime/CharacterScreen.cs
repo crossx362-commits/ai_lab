@@ -105,6 +105,7 @@ namespace AshesToStars
             SeedMobSpeedQaIfRequested();
             SeedMobHpQaIfRequested();
             SeedMobDmgQaIfRequested();
+            SeedMobRangedDistanceQaIfRequested();
             SeedMobShotCadenceQaIfRequested();
             SeedMobProjectileSpeedQaIfRequested();
             SeedTowerEndingQaIfRequested();
@@ -378,6 +379,9 @@ namespace AshesToStars
                         // QA_NO면 빈 문자열.
                         string mobDmg = MobDmg.Line();
                         if (!string.IsNullOrEmpty(mobDmg)) { Info(r, statusMax + 1, mobDmg); statusMax += 1; }
+                        // §10-2 원거리형 거리 유지 기준. QA_NO면 옛 화면처럼 빈 문자열.
+                        string mobRangedDistance = MobRangedDistance.Line();
+                        if (!string.IsNullOrEmpty(mobRangedDistance)) { Info(r, statusMax + 1, mobRangedDistance); statusMax += 1; }
                         // §10-2 근접형 공격 주기. QA_NO면 옛 화면처럼 빈 문자열.
                         string mobMelee = MobMeleeCadence.Line();
                         if (!string.IsNullOrEmpty(mobMelee)) { Info(r, statusMax + 1, mobMelee); statusMax += 1; }
@@ -1024,6 +1028,19 @@ namespace AshesToStars
         {
             MobDmg.SeedQaIfRequested();
             if (!MobDmg.ShowQa) return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            int pick = 0;
+            for (int i = 0; i < roster.Count; i++)
+                if (!roster[i].IsDeleted) { pick = i; break; }
+            _selectedCharacter = pick;
+            _detailPage = 1;
+        }
+
+        void SeedMobRangedDistanceQaIfRequested()
+        {
+            MobRangedDistance.SeedQaIfRequested();
+            if (!MobRangedDistance.ShowQa) return;
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0) return;
             int pick = 0;
