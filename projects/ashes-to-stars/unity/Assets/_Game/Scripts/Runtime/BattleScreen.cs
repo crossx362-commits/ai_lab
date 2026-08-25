@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -16,12 +17,23 @@ namespace AshesToStars
     /// </summary>
     public class BattleScreen : GameScreen
     {
+        public const string EnvNoPlayerCopy = "QA_NO_BATTLE_PLAYER_COPY";
+
+        public static string PlayerCopy(string value)
+        {
+            if (string.IsNullOrEmpty(value)
+                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
+                return value;
+            return System.Text.RegularExpressions.Regex.Replace(
+                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
+        }
+
         protected override string Title => FieldBoss.Fighting
             ? FieldBoss.BattleTitle()
             : GameFlow.Kind == GameFlow.BattleKind.보스
             ? RaidBossPool.BattleTitle()
             : GameFlow.Kind == GameFlow.BattleKind.침략 ? "침략" : "전투";
-        protected override string Subtitle => FieldBoss.Fighting
+        protected override string Subtitle => PlayerCopy(FieldBoss.Fighting
             ? "필드 배회 보스 — 준비 없이 만나면 위험. 환생석 없음(§10-1·§10-8)"
             : GameFlow.Kind == GameFlow.BattleKind.보스
             ? (string.IsNullOrEmpty(RaidBossPool.PickedLine())
@@ -29,7 +41,7 @@ namespace AshesToStars
                 : RaidBossPool.PickedLine() + " · 기믹은 출현 보스(§9)")
             : GameFlow.Kind == GameFlow.BattleKind.침략
                 ? "로컬 별 수비대. PvP 사망은 목숨을 깎지 않는다(§15)"
-                : "잡몹은 자동. " + EscapeManual.Line();
+                : "잡몹은 자동. " + EscapeManual.Line());
         protected override bool ShowBottomBar => false;
         protected override bool ShowHeader => false;
         // 전투 장면을 보여줘야 하므로 배경을 깔지 않는다 — 깔면 카메라 렌더가 통째로 가려진다
@@ -113,9 +125,9 @@ namespace AshesToStars
                         return;
                     }
                     RecordSortie();
-                    GameFlow.LastBattleSummary = FieldBoss.Fighting
+                    GameFlow.LastBattleSummary = PlayerCopy(FieldBoss.Fighting
                         ? $"필드 배회 보스 격파 — {FieldBoss.Name()}(§10-1)"
-                        : $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층";
+                        : $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층");
                     GameFlow.Go(GameFlow.Result);
                 };
                 boss.OnPartyWiped += () =>
@@ -284,7 +296,7 @@ namespace AshesToStars
                 var leave = new Rect(340f, y + 8f, 600f, 28f);
                 UiAtlas.DrawSliced(leave, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
                 Hint(UiAtlas.ContentRect(leave, "panel", 2f),
-                    $"저체력 귀환 {LowHpReturn.Remaining:0.0}초 — 피격 가능 · 이번 판 보상 없음(§4)");
+                    PlayerCopy($"저체력 귀환 {LowHpReturn.Remaining:0.0}초 — 피격 가능 · 이번 판 보상 없음(§4)"));
                 float fill = 1f - Mathf.Clamp01(LowHpReturn.Remaining / LowHpReturn.LeaveSeconds);
                 GUI.Box(new Rect(leave.x, leave.y, leave.width * Mathf.Max(0.02f, fill), leave.height), "");
                 y = leave.yMax + 8f;
@@ -344,7 +356,7 @@ namespace AshesToStars
             _leftForSafety = true;
             RecordSortie();
             _reward.Clear();
-            GameFlow.LastBattleSummary = "저체력 귀환 — 이번 판 보상 없음(§4)";
+            GameFlow.LastBattleSummary = PlayerCopy("저체력 귀환 — 이번 판 보상 없음(§4)");
             GameFlow.Go(GameFlow.Estate);
         }
 
