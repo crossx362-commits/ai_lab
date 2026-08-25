@@ -30,6 +30,7 @@ namespace AshesToStars
             string noContrast = Environment.GetEnvironmentVariable(EstateHud.EnvNoPaletteContrast);
             string noBrightLabel = Environment.GetEnvironmentVariable(EstateHud.EnvNoPaletteBrightLabel);
             string noChipCompact = Environment.GetEnvironmentVariable(EstateHud.EnvNoChipCompact);
+            string noHeaderPlayerCopy = Environment.GetEnvironmentVariable(EstateScreen.EnvNoHeaderPlayerCopy);
             Environment.SetEnvironmentVariable(EstateHud.EnvShow, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNo, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoEdge, null);
@@ -37,7 +38,18 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteContrast, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteBrightLabel, null);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, null);
+            Environment.SetEnvironmentVariable(EstateScreen.EnvNoHeaderPlayerCopy, null);
             EstateHud.ResetForTest();
+
+            string qaHeader = EstateScreen.PlayerSubtitle(EstateHud.Line());
+            Check(!qaHeader.Contains("§") && qaHeader.Contains("HUD는 마을을 가리지 않는다"),
+                $"영지 QA 헤더도 플레이어 문구만 표시 (실제 {qaHeader})");
+            Check(EstateScreen.PlayerSubtitle("본성 상한(§13-2) · 자동 적용") == "본성 상한 · 자동 적용",
+                "영지 하위 화면 헤더의 내부 절 번호도 제거");
+            Environment.SetEnvironmentVariable(EstateScreen.EnvNoHeaderPlayerCopy, "1");
+            Check(EstateScreen.PlayerSubtitle(EstateHud.Line()).Contains("§16"),
+                "네거티브는 옛 내부 절 번호 노출");
+            Environment.SetEnvironmentVariable(EstateScreen.EnvNoHeaderPlayerCopy, null);
 
             int n = EstateDefense.All.Length;
             var bar = new Rect(36f, 596f, 1208f, EstateHud.SlimPaletteH);
@@ -166,6 +178,8 @@ namespace AshesToStars
             Check(estate.Contains("EstateHud.PaletteTiles"), "팔레트가 PaletteTiles를 읽는다");
             Check(estate.Contains("EstateHud.ShowInspectBar"), "안내가 ShowInspectBar를 읽는다");
             Check(estate.Contains("EstateHud.Line"), "자막이 Line을 읽는다");
+            Check(estate.Contains("PlayerSubtitle(_sub switch"),
+                "영지의 모든 헤더 자막이 PlayerSubtitle을 거친다");
             int dv = estate.IndexOf("void DrawVillage", StringComparison.Ordinal);
             int dvEnd = estate.IndexOf("void HandleBuildingDrag", dv, StringComparison.Ordinal);
             Check(dv >= 0 && dvEnd > dv, "DrawVillage 블록을 찾는다");
@@ -197,6 +211,7 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteContrast, noContrast);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoPaletteBrightLabel, noBrightLabel);
             Environment.SetEnvironmentVariable(EstateHud.EnvNoChipCompact, noChipCompact);
+            Environment.SetEnvironmentVariable(EstateScreen.EnvNoHeaderPlayerCopy, noHeaderPlayerCopy);
             if (_fail == 0) Debug.Log("[EstateHudSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[EstateHudSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[EstateHudSelfCheck] FAIL {_fail}건");

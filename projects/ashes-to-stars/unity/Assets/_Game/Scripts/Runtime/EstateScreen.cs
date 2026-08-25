@@ -37,7 +37,7 @@ namespace AshesToStars
         protected override string Title => _sub == Sub.없음 ? "영지" : $"영지 · {_sub}";
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Estate);
         protected override string BackgroundArt => "bg_estate";
-        protected override string Subtitle => _sub switch
+        protected override string Subtitle => PlayerSubtitle(_sub switch
         {
             Sub.대장간 => Equipment.SmithUnlocked()
                 ? "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)"
@@ -55,7 +55,30 @@ namespace AshesToStars
             Sub.본성 => "본성 레벨이 다른 건물 상한과 창고 용량이다. 공사는 끝나면 자동 적용(§13-2)",
             Sub.영공 => "층을 오를수록 인식 범위가 넓어진다. 아군 버프·적 디버프를 켠다(§14)",
             _ => SoftCapHubSubtitle(),
-        };
+        });
+
+        public const string EnvNoHeaderPlayerCopy = "QA_NO_ESTATE_HEADER_PLAYER_COPY";
+
+        /// <summary>
+        /// 영지 헤더는 플레이어 화면이다. 구현 근거인 (섹션 번호) 표기는 QA 자막에도 내보내지 않는다.
+        /// QA_NO면 최신 정상 화면에서 발견한 옛 노출을 재현한다.
+        /// </summary>
+        public static string PlayerSubtitle(string value)
+        {
+            if (string.IsNullOrEmpty(value)
+                || System.Environment.GetEnvironmentVariable(EnvNoHeaderPlayerCopy) == "1")
+                return value;
+
+            int mark = value.IndexOf("(§", System.StringComparison.Ordinal);
+            while (mark >= 0)
+            {
+                int end = value.IndexOf(')', mark);
+                if (end < 0) break;
+                value = value.Remove(mark, end - mark + 1);
+                mark = value.IndexOf("(§", System.StringComparison.Ordinal);
+            }
+            return value.Trim();
+        }
 
         static string SoftCapHubSubtitle()
         {
