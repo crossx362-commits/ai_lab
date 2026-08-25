@@ -79,6 +79,19 @@ namespace AshesToStars
         protected float RowHt = RowH;
 
         public const string EnvNoCompactInfoFit = "QA_NO_COMPACT_INFO_FIT";
+        public const string EnvNoEscapeSafeMargin = "QA_NO_ESCAPE_SAFE_MARGIN";
+
+        /// <summary>
+        /// 도크 없는 화면의 ESC 힌트. 옛 y=692는 22px 글자칸 바닥이 714라 720p 화면 끝과
+        /// 6px밖에 남지 않았다. 12px 안전 여백을 둬 아랫획과 화면 끝이 붙지 않게 한다.
+        /// </summary>
+        public static Rect EscapeHintRect()
+        {
+            bool blocked = System.Environment.GetEnvironmentVariable(EnvNoEscapeSafeMargin) == "1";
+            const float h = 22f;
+            float bottom = blocked ? 6f : 12f;
+            return new Rect(48f, REF_H - h - bottom, 280f, h);
+        }
 
         /// <summary>
         /// 48px 미만 정보 칸의 글자 영역. 예전 고정 20px는 22px 픽셀 폰트의 한글
@@ -271,7 +284,7 @@ namespace AshesToStars
                     // 타이틀(루트)에서 ESC는 뒤가 없어 `GameFlow.Quit()`이다(Update 참조). 그
                     // 화면에서 「뒤로」라 적으면 ESC로 게임이 닫히는 걸 「돌아간다」로 오해한다.
                     string escHint = Title == "재와 별" ? "ESC — 종료" : "ESC — 뒤로";
-                    UiPages.LabelClip(new Rect(48, REF_H - 28, 280, 22), escHint, _small);
+                    UiPages.LabelClip(EscapeHintRect(), escHint, _small);
                 }
             }
             Overlay();
