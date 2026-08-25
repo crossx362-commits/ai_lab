@@ -1,12 +1,17 @@
-# SESSION_HANDOFF — 재와 별 자율 루프 이어받기 (2026-08-25)
+# SESSION_HANDOFF — 재와 별 자율 루프 (2026-08-25)
+
+## ⚠️ 오너 지시 (2026-08-25): 이 기계에서 개발 루프 전면 정지 — "다른데서 할게"
+- 30분 주기 이어받기 크론(`9903c5ca`) **삭제됨**. 이 기계에서 클로드가 자동으로 개발을
+  이어받는 패턴은 종료 — 새 세션은 오너가 직접 시키기 전엔 게임 개발 작업을 집지 마라.
+- `loop/STOP` 유지(메인 루프 정지), `loop/STOP_LANE` 생성(속도 레인 정지 신호).
+- 진행 중이던 "소비처 0곳" 재스캔 에이전트도 중지함(결과 미채택).
 
 ## 현재 상황
 - 자율 개발 루프(`com.ailab.autonomous_loop`)는 정지 상태(`launchctl list` PID `-`, `loop/STOP` 존재).
   실측(2026-08-25, `python3 loop/board.py usage <name>`): **Claude = 로그인 없음(OAuth 재인증 필요,
   오너가 터미널에서 `claude` 1회 로그인해야 함), Grok = 사용량 100% 소진.** Codex도 100%(재개 2026-08-31).
-- 30분 주기 크론(job id `9903c5ca`, durable)이 루프 상태를 계속 확인 중. 정지 상태면 클로드가
-  직접 한 항목씩 이어받아 완료하는 패턴으로 운영 중.
-- 실행기 하나라도 복구되면 `rm -f loop/STOP && bash loop/deploy_launchd.sh`로 재기동.
+- 다른 곳에서 재기동하려면: `rm -f loop/STOP loop/STOP_LANE && bash loop/deploy_launchd.sh`
+  (커밋 `9b25f042` 이후 board.py도 함께 배포됨).
 
 ## Claude↔Grok 사용량 자동전환 — 구현 완료 (오너 지시 2026-08-25)
 오너의 "자율 루프 처음부터 구축" 스펙을 AskUserQuestion으로 확인 → **"ashes-to-stars에 이식·병합"**
