@@ -91,6 +91,13 @@ namespace AshesToStars
             Check(partySrc.IndexOf("환생석으로만 복구", StringComparison.Ordinal) < 0
                   && partySrc.IndexOf("PartyHudCap.OldDeleted", StringComparison.Ordinal) < 0,
                 "카드가 긴 삭제 줄을 안 붙인다");
+            Check(partySrc.IndexOf("출전 불가(§", StringComparison.Ordinal) < 0
+                  && partySrc.IndexOf("영구 삭제(§", StringComparison.Ordinal) < 0
+                  && partySrc.IndexOf("상한이다(§", StringComparison.Ordinal) < 0,
+                "플레이어 상태 문구에 내부 절 번호를 노출하지 않는다");
+            Check(partySrc.IndexOf("마지막 목숨 — 죽으면 영구 삭제\"", StringComparison.Ordinal) >= 0
+                  && partySrc.IndexOf("영지 수비대에서 해임해야 출전한다\"", StringComparison.Ordinal) >= 0,
+                "절 번호를 걷어도 위험과 해결 행동은 남긴다");
 
             _ = nameof(PartyHudCap.Caption);
             _ = nameof(PartyHudCap.Line);

@@ -58,14 +58,14 @@ namespace AshesToStars
                 {
                     if (!PartyState.Toggle(i))
                         _msg = LifeSystem.GetRecoveryTimeRemaining(ch) > 0
-                            ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(LifeSystem.GetRecoveryTimeRemaining(ch))} — 출전 불가(§15)"
+                            ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(LifeSystem.GetRecoveryTimeRemaining(ch))} — 출전 불가"
                             : DefenseState.Contains(i)
-                                ? "수비 배치 중이다 — 영지 수비대에서 해임해야 출전한다(§13-5)"
+                                ? "수비 배치 중이다 — 영지 수비대에서 해임해야 출전한다"
                                 : HuntSchedule.Contains(i)
-                                    ? "일정 사냥 중이다 — 필드에서 일정을 꺼야 출전한다(§6)"
+                                    ? "일정 사냥 중이다 — 필드에서 일정을 꺼야 출전한다"
                                 : LifeSystem.IsAvailable(ch)
-                                    ? $"자리가 없다 — {PartyState.MaxSlots}인이 상한이다(§9)"
-                                    : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
+                                    ? $"자리가 없다 — {PartyState.MaxSlots}인이 상한이다"
+                                    : "출전할 수 없는 캐릭터다 — 회복 중이거나 삭제됐다";
                     else _msg = "";
                 }
             }
@@ -112,15 +112,15 @@ namespace AshesToStars
             if (ch.IsDeleted) return PartyHudCap.Deleted();
             int left = LifeSystem.GetRecoveryTimeRemaining(ch);
             if (left > 0 && DefenseState.Contains(rosterIndex))
-                return $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§15)";
+                return $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가";
             if (DefenseState.Contains(rosterIndex))
-                return "수비 배치 — 출전 불가(§13-5)";
+                return "수비 배치 — 출전 불가";
             if (HuntSchedule.Contains(rosterIndex))
-                return "일정 사냥 — 출전 불가(§6)";
-            if (left > 0) return $"회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§4·§18-8)";
+                return "일정 사냥 — 출전 불가";
+            if (left > 0) return $"회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가";
 
             string mark = inParty ? "편성됨" : "대기";
-            if (ch.DeathCount >= 2) return $"{mark} · [주의] 마지막 목숨 — 죽으면 영구 삭제(§4)";
+            if (ch.DeathCount >= 2) return $"{mark} · [주의] 마지막 목숨 — 죽으면 영구 삭제";
             return mark;
         }
     }
