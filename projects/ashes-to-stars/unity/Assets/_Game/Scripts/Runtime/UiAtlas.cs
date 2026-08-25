@@ -83,6 +83,20 @@ namespace AshesToStars
                 && inner.yMin + e >= well.yMin && inner.yMax - e <= well.yMax;
         }
 
+        /// <summary>
+        /// 그려진 크롬 기준 판정. DrawSliced·CardLayout이 maxPad로 금테를 얇게 캡핑한 뒤
+        /// (<see cref="UiPages.CardPad"/>) 기본 오버로드는 무캡 절편을 재므로,
+        /// 카드 검증은 반드시 이 오버로드로 **같은 인자**를 써야 한다(67664c3a 이후 계약).
+        /// </summary>
+        public static bool FitsInContent(Rect target, Rect inner, string key, float extra, float maxPad)
+        {
+            if (inner.width < 1f || inner.height < 1f) return true;
+            var well = ContentRect(target, key, extra, maxPad);
+            const float e = 0.6f;
+            return inner.xMin + e >= well.xMin && inner.xMax - e <= well.xMax
+                && inner.yMin + e >= well.yMin && inner.yMax - e <= well.yMax;
+        }
+
         static readonly Dictionary<string, Rect> Pieces = new Dictionary<string, Rect>
         {
             // 상단: 하단 고정바 5종
