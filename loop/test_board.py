@@ -1342,7 +1342,11 @@ class GitApiTests(unittest.TestCase):
     def setUp(self):
         """서버 테스트가 외부 사용량 API(grok·claude·codex)를 치지 않게 막는다.
         2026-08-24 04:19 스위트 FAIL: 이 기계의 실제 토큰으로 라이브 호출이 일어나고,
-        외부 429 지연이 로컬 클라이언트 3초 타임아웃을 넘겼다."""
+        외부 429 지연이 로컬 클라이언트 3초 타임아웃을 넘겼다.
+        2026-08-26 03:40 스위트 FAIL 재발: /api/git·/api/sync 등 서버 응답은 git
+        서브프로세스를 여러 번 spawn하므로 개발 루프 바퀴(opencode 부트)와 겹치면
+        프로세스 기동 스톨로 3~5초 클라이언트 타임아웃을 넘긴다(GET / 의 3→10초
+        선례 11fd3037과 같은 계열). 단언은 그대로 두고 대기 여유만 연다."""
         stub = {"ok": False, "stale": True, "products": []}
         for name in ("grok_usage", "claude_usage", "codex_usage"):
             patcher = mock.patch.object(board, name, return_value=stub)
@@ -1367,7 +1371,8 @@ class GitApiTests(unittest.TestCase):
             old, server, thread = self._server(root)
             try:
                 url = f"http://127.0.0.1:{server.server_port}/api/git"
-                with urllib.request.urlopen(url, timeout=3) as response:
+                # git 서브프로세스 스톨 흡수 — 단언과 무관한 대기 여유(부하 flake 차단)
+                with urllib.request.urlopen(url, timeout=8) as response:
                     data = json.loads(response.read().decode("utf-8"))
                     cache = response.headers.get("Cache-Control")
             finally:
@@ -1399,7 +1404,8 @@ class GitApiTests(unittest.TestCase):
                     headers={"Content-Type": "application/json"},
                     method="POST",
                 )
-                with urllib.request.urlopen(request, timeout=5) as response:
+                # fetch+commit+push로 git spawn이 가장 많은 요청 — 여유 최대
+                with urllib.request.urlopen(request, timeout=12) as response:
                     data = json.loads(response.read().decode("utf-8"))
             finally:
                 server.shutdown()
@@ -1441,7 +1447,7 @@ class GitApiTests(unittest.TestCase):
                     method="POST",
                 )
                 with self.assertRaises(urllib.error.HTTPError) as caught:
-                    urllib.request.urlopen(request, timeout=3)
+                    urllib.request.urlopen(request, timeout=8)
                 code = caught.exception.code
                 caught.exception.close()
             finally:
@@ -1522,7 +1528,7 @@ class GitApiTests(unittest.TestCase):
             old, server, thread = self._server(root)
             try:
                 url = f"http://127.0.0.1:{server.server_port}/api/events?once=1"
-                with urllib.request.urlopen(url, timeout=3) as response:
+                with urllib.request.urlopen(url, timeout=6) as response:
                     body = response.read().decode("utf-8")
                     content_type = response.headers.get("Content-Type")
                     cache = response.headers.get("Cache-Control")
