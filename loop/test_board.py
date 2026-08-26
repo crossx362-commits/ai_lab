@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from unittest import mock
 from pathlib import Path
 
@@ -2377,6 +2378,108 @@ class NowTitleLapFormatTests(unittest.TestCase):
         log = "env 게이트라 일반 플레이엔 영향 없음 void 검증합니다.\n"
         title = board.infer_now_title(log, [{"title": "큐항목"}], [])
         self.assertNotIn("void", title)
+
+
+class HeaderTextTest(unittest.TestCase):
+    """헤더는 시각만, 본문은 한 줄 요약 (오너 2026-08-26 「글벽이라 못 읽겠다」)."""
+
+    STATUS = ("# 재와 별\n\n최종 갱신: 2026-08-26 (바퀴) · **루프 생존성 수리**(`d2410dcf`) — "
+              "원인 체인 실측 확정: " + "아주 긴 설명 " * 20 + "\n")
+
+    def test_updated_is_only_the_stamp(self):
+        self.assertEqual(board.parse_updated(self.STATUS), "2026-08-26 (바퀴)")
+
+    def test_note_is_one_short_line_without_markdown(self):
+        note = board.parse_updated_note(self.STATUS)
+        self.assertLessEqual(len(note), 112)
+        self.assertNotIn("**", note)
+        self.assertNotIn("`", note)
+        self.assertIn("루프 생존성 수리", note)
+
+    def test_missing_line_is_empty_not_crash(self):
+        self.assertEqual(board.parse_updated("# 제목만"), "")
+        self.assertEqual(board.parse_updated_note("# 제목만"), "")
+
+
+class LoopHealthTest(unittest.TestCase):
+    """루프판 DORA 4키. 처리량·안정성·복구·신선도."""
+
+    def _repo(self, tmp, laps):
+        """laps: [(id, code, 끝난 초)] — loop_main.log와 lap 로그 mtime을 만든다."""
+        lines = []
+        for lap_id, code, secs in laps:
+            lines.append(f"바퀴 시작: {lap_id} agent=opencode")
+            if code is not None:
+                lines.append(f"바퀴 종료: {lap_id} code={code}")
+        (tmp / "logs").mkdir(parents=True, exist_ok=True)
+        (tmp / "logs" / "loop_main.log").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        for lap_id, code, secs in laps:
+            began = datetime.strptime(lap_id.split("-")[0] + lap_id.split("-")[1], "%Y%m%d%H%M%S")
+            day = (tmp / "logs" / began.strftime("%Y-%m-%d"))
+            day.mkdir(parents=True, exist_ok=True)
+            f = day / f"lap-{lap_id}.log"
+            f.write_text("x", encoding="utf-8")
+            end = began.timestamp() + (secs or 0)
+            os.utime(f, (end, end))
+
+    def test_success_rate_median_and_recovery(self):
+        laps = [("20260826-100000-1", 0, 600),    # 10분 성공
+                ("20260826-101500-2", 1, 300),    # 실패
+                ("20260826-102500-3", 0, 1800),   # 30분 성공 → 실패 10분 뒤 복구
+                ("20260826-110000-4", 0, 1200)]
+        old = board.ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            self._repo(tmp, laps)
+            board.ROOT = tmp
+            try:
+                h = board.loop_health(now=datetime(2026, 8, 26, 11, 30))
+            finally:
+                board.ROOT = old
+        self.assertEqual(h["laps"], 4)
+        self.assertEqual(h["fail"], 1)
+        self.assertEqual(h["success_pct"], 75)
+        self.assertEqual(h["median_secs"], 900)          # 평균(975)이 아니라 중앙값
+        self.assertEqual(h["recover_secs"], 600)         # 10:15 실패 → 10:25 성공
+        self.assertEqual(h["idle_secs"], 10 * 60)        # 11:00 시작 +20분 = 11:20 종료 → 11:30
+        self.assertFalse(h["stale"])
+        self.assertEqual([s["code"] for s in h["spark"]], [0, 1, 0, 0])
+
+    def test_stale_when_quiet_over_90min(self):
+        old = board.ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            self._repo(tmp, [("20260826-100000-1", 0, 60)])
+            board.ROOT = tmp
+            try:
+                h = board.loop_health(now=datetime(2026, 8, 26, 12, 0))
+            finally:
+                board.ROOT = old
+        self.assertTrue(h["stale"])                      # 침묵을 초록으로 그리면 안 된다
+        self.assertGreater(h["idle_secs"], 90 * 60)
+
+    def test_empty_log_is_safe(self):
+        old = board.ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            board.ROOT = Path(tmp)
+            try:
+                h = board.loop_health()
+            finally:
+                board.ROOT = old
+        self.assertEqual(h["laps"], 0)
+        self.assertEqual(h["success_pct"], 0)
+
+
+class SliceBarTest(unittest.TestCase):
+    def test_summary_bar_uses_real_ratio(self):
+        """0/14인데 막대가 꽉 차 있던 버그(2026-08-26)."""
+        rows = [{"done": False} for _ in range(14)]
+        bars = board.focus_bars({"id": "1", "proto_done": True}, [], rows)
+        self.assertEqual(bars[0]["id"], "slice-done")
+        self.assertEqual(bars[0]["pct"], 0)
+        rows[0]["done"] = rows[1]["done"] = True
+        bars = board.focus_bars({"id": "1", "proto_done": True}, [], rows)
+        self.assertEqual(bars[0]["pct"], 14)
 
 
 class GateOverrideTest(unittest.TestCase):

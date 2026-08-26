@@ -29,6 +29,78 @@
   h1 { margin: 0; font-size: 20px; letter-spacing: .04em; font-weight: 700; }
   h1 span { color: var(--gold); }
   .meta { color: var(--muted); font-size: 13px; }
+  /* 한눈에 — 숫자 타일. 라벨(무엇을 세는가) · 값 · 한 줄 뜻 세 층으로 고정한다. */
+  .kpi {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    gap: 10px; margin: 14px 0 8px;
+  }
+  .kpi .k {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;
+    border-left: 3px solid var(--line);
+  }
+  .kpi .k .lab { font-size: 11.5px; color: var(--muted); letter-spacing: .02em; }
+  .kpi .k .val { font-size: 21px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .kpi .k .val small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 3px; }
+  .kpi .k .sub { font-size: 11.5px; color: var(--muted); }
+  .kpi .k.ok { border-left-color: var(--ok); }
+  .kpi .k.run { border-left-color: var(--gold); }
+  .kpi .k.warn { border-left-color: var(--hold); }
+  .kpi .k.bad { border-left-color: var(--stop); }
+  .kpi .k.ok .val { color: var(--ok); }
+  .kpi .k.run .val { color: var(--gold); }
+  .kpi .k.warn .val { color: var(--hold); }
+  .kpi .k.bad .val { color: var(--stop); }
+  .kpi .k .bar { height: 4px; border-radius: 999px; background: var(--chip); overflow: hidden; margin-top: 4px; }
+  .kpi .k .bar i { display: block; height: 100%; background: currentColor; }
+  /* 루프 건강 — 처리량 | 안정성 | 신선도를 한 줄에 */
+  .health {
+    display: grid; grid-template-columns: 1.15fr 1.15fr auto; gap: 10px;
+    margin-bottom: 10px; align-items: stretch;
+  }
+  .health .h-box {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  }
+  .health h4 {
+    margin: 0 0 7px; font-size: 11.5px; color: var(--muted); font-weight: 600;
+    letter-spacing: .04em; text-transform: uppercase;
+  }
+  .health .h-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .health .m { display: flex; flex-direction: column; gap: 1px; min-width: 84px; }
+  .health .m .v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .health .m .v.ok { color: var(--ok); } .health .m .v.warn { color: var(--hold); } .health .m .v.bad { color: var(--stop); }
+  .health .m .l { font-size: 11px; color: var(--muted); }
+  .spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; margin-top: 8px; }
+  .spark i {
+    flex: 1 1 auto; min-width: 4px; border-radius: 2px 2px 0 0; background: var(--ok); opacity: .85;
+  }
+  .spark i.bad { background: var(--stop); opacity: 1; }
+  .spark-cap { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .fresh { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 132px; }
+  .fresh .big { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fresh.ok .big { color: var(--ok); } .fresh.bad .big { color: var(--stop); }
+  .fresh .cap { font-size: 11px; color: var(--muted); text-align: center; margin-top: 2px; }
+  @media (max-width: 900px) { .health { grid-template-columns: 1fr; } }
+  /* 범례 — 보드 전체에서 색이 뜻하는 바는 여기 다섯 가지뿐이다. */
+  .h3sub { display: block; font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+  .legend-bar { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .legend-bar .lg { display: inline-flex; align-items: center; gap: 5px; }
+  .legend-bar .sw { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .sw.ok { background: var(--ok); } .sw.run { background: var(--gold); }
+  .sw.wait { background: var(--chip); border: 1px solid var(--line); }
+  .sw.stop { background: var(--stop); } .sw.off { background: repeating-linear-gradient(45deg, var(--muted) 0 2px, transparent 2px 4px); }
+  .upd-note { color: var(--muted); max-width: 72ch; }
+  /* 관문 칩 — 통과/미통과 두 값으로는 철회·보류를 못 그린다(오너 2026-08-26 결정) */
+  .gate-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .gate-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--chip); font-size: 12px;
+  }
+  .gate-chip b { color: var(--ink); font-weight: 650; }
+  .gate-chip .st { font-size: 11px; }
+  .gate-chip.done { border-color: var(--ok); } .gate-chip.done .st { color: var(--ok); }
+  .gate-chip.open { border-color: var(--stop); } .gate-chip.open .st { color: var(--stop); }
+  .gate-chip.off { border-style: dashed; opacity: .72; } .gate-chip.off .st { color: var(--muted); }
   .pills { display: flex; gap: 8px; flex-wrap: wrap; }
   .pill {
     border: 1px solid var(--line); background: var(--chip);
@@ -582,9 +654,24 @@ window.addEventListener("unhandledrejection", (e) => {
   <div>
     <h1>재와 별 <span>지금 하는 일</span></h1>
     <div class="meta" id="updated">불러오는 중…</div>
+    <div class="meta upd-note" id="updated-note"></div>
   </div>
   <div class="pills" id="pills"></div>
 </header>
+<!-- 한눈에: 보드 첫 화면이 글벽이라 「뭐가 뭔지 모르겠다」는 오너 지적(2026-08-26)에 대한 답.
+     숫자 하나마다 무엇을 세는지 라벨로 못박고, 색은 아래 범례와 같은 뜻만 쓴다. -->
+<section class="kpi" id="kpi" aria-label="한눈에"></section>
+<!-- 루프 건강 — 소프트웨어 배포 지표(DORA 4키)를 이 루프에 대응시킨 것.
+     처리량(커밋·바퀴 시간)과 안정성(실패율·복구)을 **나란히** 둬야 한쪽만 보고 오판하지 않는다.
+     시간 지표는 평균이 아니라 중앙값·p90을 쓴다(꼬리가 길어 평균이 거짓말을 한다). -->
+<section class="health" id="health" aria-label="루프 건강"></section>
+<div class="legend-bar" id="legend-bar">
+  <span class="lg"><i class="sw ok"></i>끝남</span>
+  <span class="lg"><i class="sw run"></i>진행 중</span>
+  <span class="lg"><i class="sw wait"></i>안 시작</span>
+  <span class="lg"><i class="sw stop"></i>막힘 — 사람이 풀어야 함</span>
+  <span class="lg"><i class="sw off"></i>철회·보류 — 판정하지 않음</span>
+</div>
 <div class="glance" id="glance">
   <div class="overview-column overview-main">
     <section class="g-card live" id="g-now">
@@ -837,6 +924,108 @@ async function api(path, body) {
 }
 
 function checked(state, id) { return Boolean(state.checks && state.checks[id]); }
+
+/* 한눈에 — 첫 화면에서 「지금 어떤 상태인가」를 다섯 숫자로 답한다.
+   숫자만 두면 또 못 읽으므로 라벨(무엇을 세는가)과 한 줄 뜻을 항상 같이 그린다. */
+function renderKpi(state) {
+  const el = $("kpi");
+  if (!el) return;
+  const c = state.charts || {};
+  const q = c.queue || {};
+  const gates = c.gates || [];
+  const live = gates.filter((g) => g.counted !== false);
+  const off = gates.filter((g) => g.counted === false);
+  const closed = live.filter((g) => (g.pct || 0) >= 100).length;
+  const loop = state.loop || {};
+  const git = state.git || {};
+  const commits = state.commits || [];
+  const today = (commits[0] || {}).when ? String((commits[0] || {}).when).slice(0, 5) : "";
+  const todayN = commits.filter((x) => String(x.when || "").slice(0, 5) === today).length;
+  const open = Number(q.open || 0), total = Number(q.total || 0), done = Number(q.done || 0);
+  const donePct = total ? Math.round(100 * done / total) : 0;
+  const loopState = loop.stop ? ["bad", "꺼짐", "STOP 파일 있음"]
+    : loop.hold ? ["warn", "멈춤", "HOLD 상태"]
+    : loop.running ? ["run", "도는 중", (loop.agent || "실행기 미상") + " · 바퀴 진행"]
+    : ["bad", "안 돎", "프로세스 없음"];
+  const slicePct = Number(c.slice_pct || 0);
+  const sliceRows = state.slice || c.slice || [];
+  const sliceN = sliceRows.length;
+  const sliceDone = sliceRows.filter((r) => r.done).length;
+  const tiles = [
+    { cls: loopState[0], lab: "자동 루프", val: loopState[1], sub: loopState[2] },
+    { cls: open ? "run" : "ok", lab: "할 일 큐", val: open, unit: "건 남음",
+      sub: `${done}/${total} 끝남`, pct: donePct },
+    { cls: "ok", lab: "관문", val: `${closed}/${live.length}`,
+      sub: off.length ? `닫힘 · 제외 ${off.map((g) => g.id).join("·")}(철회·보류)` : "닫힘" },
+    { cls: "run", lab: "오늘 커밋", val: todayN, unit: "개",
+      sub: (commits[0] || {}).hash ? `최근 ${String((commits[0] || {}).hash).slice(0, 7)}` : "기록 없음" },
+    { cls: Number(git.changed || 0) ? "warn" : "ok", lab: "저장 안 된 변경",
+      val: Number(git.changed || 0), unit: "개",
+      sub: `커밋 가능 ${Number(git.allowed || 0)} · 제외 ${Number(git.blocked || 0)}` },
+    { cls: slicePct >= 100 ? "ok" : "run", lab: "수직 슬라이스", val: `${sliceDone}/${sliceN}`,
+      sub: "마을·탑·장비 칸 중 닫힘 근거가 STATUS에 적힌 것", pct: slicePct },
+  ];
+  el.innerHTML = tiles.map((t) => `<div class="k ${t.cls}">
+    <span class="lab">${esc(t.lab)}</span>
+    <span class="val">${esc(String(t.val))}${t.unit ? `<small>${esc(t.unit)}</small>` : ""}</span>
+    <span class="sub">${esc(t.sub || "")}</span>
+    ${t.pct == null ? "" : `<span class="bar"><i style="width:${Math.max(0, Math.min(100, t.pct))}%"></i></span>`}
+  </div>`).join("");
+}
+
+function dur(secs) {
+  const s = Number(secs || 0);
+  if (!s) return "—";
+  if (s < 60) return s + "초";
+  if (s < 3600) return Math.round(s / 60) + "분";
+  const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+  return m ? `${h}시간 ${m}분` : `${h}시간`;
+}
+
+/* 루프 건강 — 처리량(왼쪽)과 안정성(가운데)을 나란히, 신선도(오른쪽)를 크게.
+   멈춘 보드의 초록불이 제일 나쁜 상태라, 마지막 활동 경과를 가장 큰 숫자로 둔다. */
+function renderHealth(state) {
+  const el = $("health");
+  if (!el) return;
+  const h = state.health || {};
+  if (!h.laps) { el.innerHTML = ""; return; }
+  const okPct = Number(h.success_pct || 0);
+  const okCls = okPct >= 80 ? "ok" : (okPct >= 50 ? "warn" : "bad");
+  const spark = (h.spark || []).map((s) => {
+    const max = Math.max(...(h.spark || []).map((x) => x.secs || 0), 1);
+    const hgt = Math.max(8, Math.round(100 * (s.secs || 0) / max));
+    return `<i class="${s.code === 0 ? "" : "bad"}" style="height:${hgt}%" `
+      + `title="${esc(s.id)} · ${s.code === 0 ? "성공" : "실패 code=" + s.code}"></i>`;
+  }).join("");
+  const idle = h.idle_secs == null ? null : Number(h.idle_secs);
+  const freshCls = h.stale ? "bad" : "ok";
+  el.innerHTML = `
+    <div class="h-box">
+      <h4>처리량 — 얼마나 나아갔나</h4>
+      <div class="h-row">
+        <span class="m"><span class="v">${Number(h.commits24 || 0)}</span><span class="l">24시간 커밋</span></span>
+        <span class="m"><span class="v">${esc(dur(h.median_secs))}</span><span class="l">바퀴 시간 중앙값</span></span>
+        <span class="m"><span class="v">${esc(dur(h.p90_secs))}</span><span class="l">느린 쪽 p90</span></span>
+      </div>
+      <div class="spark">${spark}</div>
+      <div class="spark-cap">최근 ${(h.spark || []).length}바퀴 · 막대 높이 = 걸린 시간 · 빨강 = 실패</div>
+    </div>
+    <div class="h-box">
+      <h4>안정성 — 믿을 수 있나</h4>
+      <div class="h-row">
+        <span class="m"><span class="v ${okCls}">${okPct}%</span><span class="l">바퀴 성공률 (최근 ${h.laps})</span></span>
+        <span class="m"><span class="v ${h.fail ? "warn" : "ok"}">${Number(h.fail || 0)}</span><span class="l">실패 바퀴</span></span>
+        <span class="m"><span class="v">${h.recover_secs == null ? "—" : esc(dur(h.recover_secs))}</span><span class="l">실패→복구</span></span>
+      </div>
+      <div class="spark-cap" style="margin-top:12px">
+        실패는 대부분 도구·공급자 장애다. 복구 시간이 길면 감시자(loop_watch)를 먼저 본다.
+      </div>
+    </div>
+    <div class="h-box fresh ${freshCls}">
+      <span class="big">${idle == null ? "—" : esc(dur(idle))}</span>
+      <span class="cap">마지막 바퀴 활동 이후<br>${h.stale ? "90분 넘게 조용함 — 확인 필요" : "정상 범위"}</span>
+    </div>`;
+}
 
 function renderItems(el, items, state, extra) {
   if (!items.length) { el.innerHTML = '<p class="empty">없음</p>'; return; }
@@ -1255,11 +1444,22 @@ function renderDetail(state) {
     + `<span class="t ${h70Cls}">playtest.human_70</span>`
     + `<span class="d">${esc(h70)}${P.doc ? " · " + esc(P.doc) : ""}</span></div>`;
   if (chartGates.length) {
+    /* 칩 한 줄로 전체 관문 상태를 먼저 보여주고(철회·보류는 점선), 자세한 사유는 아래 줄에 남긴다.
+       철회·보류는 「막힌 것」이 아니므로 빨강을 쓰지 않는다(오너 2026-08-26 결정). */
+    const st = (g) => g.state === "retired" ? ["off", "철회"]
+      : g.state === "deferred" ? ["off", "보류"]
+      : (g.pct >= 100 ? ["done", "닫힘"] : ["open", "열림"]);
+    gatesHtml += `<div class="gate-chips">` + chartGates.map((g) => {
+      const [cls, word] = st(g);
+      return `<span class="gate-chip ${cls}" title="${esc(g.note || "")}">`
+        + `<b>${esc(g.id || "관문")}</b><span class="st">${word}</span></span>`;
+    }).join("") + `</div>`;
     gatesHtml += chartGates.map((g) => {
-      const pct = g.pct == null ? "?" : g.pct + "%";
-      const cls = g.pct >= 100 ? "ok" : (g.pct > 0 ? "" : "err");
-      return `<div class="row"><span class="n">V</span>`
-        + `<span class="t ${cls}">${esc(g.label || g.id || "관문")}</span>`
+      const [cls, word] = st(g);
+      const rowCls = cls === "done" ? "ok" : (cls === "open" ? "err" : "");
+      const pct = cls === "off" ? word : (g.pct == null ? "?" : g.pct + "%");
+      return `<div class="row"><span class="n">${word}</span>`
+        + `<span class="t ${rowCls}">${esc(g.label || g.id || "관문")}</span>`
         + `<span class="d">${esc(String(pct))}${g.note ? " · " + esc(g.note) : ""}</span></div>`;
     }).join("");
   }
@@ -1390,7 +1590,9 @@ function renderGlance(state) {
   ].filter(Boolean).join("");
 
   const cur = c.current || {};
-  $("g-stage-title").textContent = "진행 · " + (cur.label || "프로토타입");
+  /* 제목만 「진행 · 마을·탑·장비」면 아래 막대가 무엇을 세는지 알 수 없다 — 한 줄 뜻을 붙인다. */
+  $("g-stage-title").innerHTML = "진행 · " + esc(cur.label || "프로토타입")
+    + `<span class="h3sub">${esc(cur.note || "원장 슬라이스 중 STATUS에 닫힘 근거가 적힌 칸")}</span>`;
   const gates = (c.focus || c.gates || []).slice(0, 4);
   $("g-stage").innerHTML = gates.map((r) => {
     const pct = r.pct == null ? 0 : r.pct;
@@ -1467,6 +1669,14 @@ function renderGlance(state) {
 function render(state) {
   latestState = state;
   $("updated").textContent = "마지막 갱신 · " + (state.updated || "시각 없음");
+  const noteEl = $("updated-note");
+  if (noteEl) {
+    const note = state.updated_note || "";
+    noteEl.textContent = note;
+    noteEl.title = note;
+  }
+  renderKpi(state);
+  renderHealth(state);
   const L = state.loop || {};
   const lapId = (state.lap && state.lap.id) || "";
   const lapErrs = (state.lap && state.lap.errors) || [];

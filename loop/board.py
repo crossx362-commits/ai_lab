@@ -32,7 +32,7 @@ import time
 import urllib.error
 import urllib.request
 import webbrowser
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
@@ -858,11 +858,13 @@ def focus_bars(current: dict, gates: list[dict], slice_rows: list[dict]) -> list
         return list(gates)
     if str(current.get("id")) == "1":
         done_n = sum(1 for r in slice_rows if r.get("done"))
+        # 요약 막대는 실제 비율이어야 한다. 「100 if slice_rows」는 0/14인데도 막대를 꽉 채워
+        # 「다 됐다」로 읽히게 만들던 버그다(오너 2026-08-26 「뭐가 뭔지 알 수가 없다」의 한 원인).
         bars = [{
             "id": "slice-done",
             "label": f"끝낸 것 {done_n}/{len(slice_rows)}",
-            "pct": 100 if slice_rows else 0,
-            "note": "끝",
+            "pct": round(100 * done_n / len(slice_rows)) if slice_rows else 0,
+            "note": f"{done_n}칸 닫힘" if done_n else "아직 0칸",
         }]
         for r in slice_rows:
             if r.get("done"):
@@ -1411,8 +1413,35 @@ def parse_inbox(inbox: str) -> dict:
 
 
 def parse_updated(status: str) -> str:
+    """머리글의 **시각만**. STATUS의 「최종 갱신」 줄은 한 문단짜리 바퀴 보고서라,
+    통째로 헤더에 박으면 보드 첫 화면이 읽을 수 없는 글벽이 된다(오너 2026-08-26).
+    본문은 parse_updated_note가 한 줄로 줄여서 따로 준다."""
     m = re.search(r"^최종 갱신:\s*(.+)$", status, re.M)
-    return m.group(1).strip() if m else ""
+    if not m:
+        return ""
+    raw = m.group(1).strip()
+    head = re.match(r"^\s*(\d{4}-\d{2}-\d{2}(?:\s*\([^)]{1,12}\))?)", raw)
+    return head.group(1).strip() if head else raw[:24].strip()
+
+
+def parse_updated_note(status: str, limit: int = 110) -> str:
+    """「최종 갱신」 문단을 한 줄 요약으로. 마크다운·해시·경로를 걷어낸다."""
+    m = re.search(r"^최종 갱신:\s*(.+)$", status, re.M)
+    if not m:
+        return ""
+    raw = m.group(1).strip()
+    raw = re.sub(r"^\s*\d{4}-\d{2}-\d{2}(?:\s*\([^)]{1,12}\))?\s*[·—-]*\s*", "", raw)
+    raw = re.sub(r"\*\*([^*]+)\*\*", r"\1", raw)
+    raw = re.sub(r"`([^`]*)`", r"\1", raw)
+    raw = re.sub(r"\s+", " ", raw).strip()
+    if len(raw) <= limit:
+        return raw
+    cut = raw[:limit]
+    for sep in ("—", "·", ". ", ", "):
+        i = cut.rfind(sep)
+        if i > limit * 0.5:
+            return cut[:i].strip(" ·—,.") + "…"
+    return cut.strip() + "…"
 
 
 def load_checks() -> dict:
@@ -1744,6 +1773,117 @@ def _main_log_path() -> Path:
     current = ROOT / "logs" / "loop_main.log"
     legacy = HERE / "loop_main.log"
     return current if current.exists() or not legacy.exists() else legacy
+
+
+def _lap_records(limit: int = 40) -> list[dict]:
+    """`logs/loop_main.log`의 「바퀴 시작/종료」에서 바퀴 기록을 뽑는다.
+
+    시각은 바퀴 id(YYYYMMDD-HHMMSS-n)에서, 끝난 시각은 그 바퀴의 lap 로그 mtime에서 온다
+    (종료 줄에는 시각이 없다). 반환은 오래된 것부터.
+    """
+    text = _read(_main_log_path())
+    if not text:
+        return []
+    starts: dict[str, str] = {}
+    order: list[str] = []
+    ends: dict[str, int] = {}
+    for line in text.splitlines():
+        m = re.match(r"바퀴 시작:\s*(\S+)\s*(?:agent=(\S+))?", line.strip())
+        if m:
+            lap_id = m.group(1)
+            if lap_id not in starts:
+                order.append(lap_id)
+            starts[lap_id] = m.group(2) or ""
+            continue
+        m = re.match(r"바퀴 종료:\s*(\S+)\s*code=(-?\d+)", line.strip())
+        if m:
+            ends[m.group(1)] = int(m.group(2))
+    out = []
+    for lap_id in order[-limit:]:
+        try:
+            began = datetime.strptime(lap_id.split("-")[0] + lap_id.split("-")[1], "%Y%m%d%H%M%S")
+        except (ValueError, IndexError):
+            continue
+        log = ROOT / "logs" / began.strftime("%Y-%m-%d") / f"lap-{lap_id}.log"
+        secs = None
+        if log.exists():
+            secs = max(0, int(log.stat().st_mtime - began.timestamp()))
+        out.append({
+            "id": lap_id,
+            "agent": starts.get(lap_id, ""),
+            "began": began,
+            "code": ends.get(lap_id),
+            "secs": secs,
+            "running": lap_id not in ends,
+        })
+    return out
+
+
+def _median(nums: list[int]) -> int:
+    if not nums:
+        return 0
+    s = sorted(nums)
+    mid = len(s) // 2
+    return s[mid] if len(s) % 2 else (s[mid - 1] + s[mid]) // 2
+
+
+def loop_health(limit: int = 20, now: datetime | None = None) -> dict:
+    """루프판 DORA 4키 (웹 조사 2026-08-26 반영).
+
+    소프트웨어 배포 지표를 이 루프에 그대로 대응시킨다 — 처리량과 안정성을 **나란히** 본다:
+      배포 빈도  → 24시간 커밋 수          (throughput)
+      리드 타임  → 바퀴 소요 **중앙값**     (평균은 꼬리에 끌려간다 → 중앙값·p90)
+      변경 실패율 → 바퀴 실패율(code≠0)     (stability)
+      복구 시간  → 마지막 실패 뒤 다시 성공하기까지 (오늘 7시간 공백을 숫자로 드러낸다)
+    여기에 「마지막 활동 이후 경과」를 같이 준다 — 멈춘 보드의 초록불은 보드가 없느니만 못하다.
+    """
+    now = now or datetime.now()
+    laps = _lap_records(max(limit * 2, 40))
+    done = [l for l in laps if l["code"] is not None][-limit:]
+    fails = [l for l in done if l["code"] != 0]
+    durs = [l["secs"] for l in done if l["secs"]]
+    ok_n = len(done) - len(fails)
+
+    recover = None
+    for i, lap in enumerate(done):
+        if lap["code"] == 0:
+            continue
+        for nxt in done[i + 1:]:
+            if nxt["code"] == 0 and nxt["secs"] is not None:
+                recover = int((nxt["began"] - lap["began"]).total_seconds())
+                break
+    last = laps[-1] if laps else None
+    idle = (int(now.timestamp() - (last["began"].timestamp() + (last["secs"] or 0)))
+            if last else None)
+
+    since = now - timedelta(hours=24)
+    commits24 = 0
+    try:
+        raw = subprocess.run(
+            ["git", "log", "--since", since.strftime("%Y-%m-%d %H:%M:%S"), "--format=%h"],
+            cwd=ROOT, capture_output=True, text=True, timeout=6)
+        commits24 = len([x for x in raw.stdout.splitlines() if x.strip()])
+    except (OSError, subprocess.SubprocessError):
+        commits24 = 0
+
+    return {
+        "laps": len(done),
+        "ok": ok_n,
+        "fail": len(fails),
+        "success_pct": round(100 * ok_n / len(done)) if done else 0,
+        "median_secs": _median(durs),
+        "p90_secs": sorted(durs)[int(len(durs) * 0.9)] if durs else 0,
+        "recover_secs": recover,
+        "idle_secs": idle,
+        "stale": bool(idle is not None and idle > 90 * 60),
+        "commits24": commits24,
+        "last_id": done[-1]["id"] if done else "",
+        "last_code": done[-1]["code"] if done else None,
+        "spark": [
+            {"id": l["id"][-8:], "code": l["code"], "secs": l["secs"] or 0}
+            for l in done[-14:]
+        ],
+    }
 
 
 def loop_flags() -> dict:
@@ -3353,6 +3493,8 @@ def build_state() -> dict:
     completed = _plain_list(completed_posts(status))
     return {
         "updated": parse_updated(status),
+        "updated_note": parse_updated_note(status),
+        "health": loop_health(),
         "queue": plain_queue,
         "queue_table": _plain_list(table),
         "results": _plain_list(parse_results(status), "body"),
@@ -3399,7 +3541,7 @@ _state_gate = threading.Lock()
 def _minimal_state(reason: str) -> dict:
     """조립이 마감을 넘었을 때도 화면·/api/state가 성립하는 최소 골격."""
     return {
-        "updated": "", "queue": [], "queue_table": [], "results": [],
+        "updated": "", "updated_note": "", "health": {}, "queue": [], "queue_table": [], "results": [],
         "milestones": [], "inbox": {"waiting": [], "done": []},
         "checks": {}, "decisions": {}, "choices": [],
         "loop": {}, "overview": {}, "commits": [],
