@@ -291,7 +291,7 @@ namespace AshesToStars
             // 256 세트 · 알파 유효 · 티어 오를수록 불투명 픽셀 단조 증가(장식만 추가되므로).
             // ox-alpha 티어로 교체 완료된 건물 목록 — 한 바퀴 한 동씩 반입될 때마다 여기 한 줄 추가.
             // (같은 검증 로직을 건물마다 복붙하지 않는다 — 가드레일 「같은 로직 여러 곳」.)
-            var tierStems = new[] { "estate_keep", "estate_mine", "estate_warehouse", "estate_barracks", "estate_smith", "estate_mausoleum", "estate_tower" };
+            var tierStems = new[] { "estate_keep", "estate_mine", "estate_warehouse", "estate_barracks", "estate_smith", "estate_mausoleum", "estate_tower", "estate_auction" };
             foreach (var stem in tierStems)
             {
                 int solid0 = 0, solid1 = 0, solid2 = 0;
@@ -390,6 +390,9 @@ namespace AshesToStars
             Check(EstateBuildings.TierName(EstateGrid.Cell.Arrow, 1) == "estate_tower_1"
                 && EstateBuildings.TierName(EstateGrid.Cell.Arrow, 2) == "estate_tower_2",
                 "PropOf 탑 티어 접미사가 _1/_2를 가리킨다");
+            Check(EstateBuildings.TierName(EstateGrid.Cell.Auction, 1) == "estate_auction_1"
+                && EstateBuildings.TierName(EstateGrid.Cell.Auction, 2) == "estate_auction_2",
+                "PropOf 경매장 티어 접미사가 _1/_2를 가리킨다");
 
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, "1");
             Check(EstateBuildings.Blocked, "QA_NO면 차단");
