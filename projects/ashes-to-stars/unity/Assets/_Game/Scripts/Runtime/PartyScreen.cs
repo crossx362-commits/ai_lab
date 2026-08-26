@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace AshesToStars
@@ -32,6 +33,7 @@ namespace AshesToStars
             PartyHud.SeedQaIfRequested();
             PartyFormHud.SeedQaIfRequested();
             DefenseState.SeedQaIfRequested();
+            SeedPartyToggleQaIfRequested();
             _page = DrawTabs(r, new[] { "편성", "출전" }, _page);
             var page = UiPages.AfterTabs(r);
             if (_page == 1)
@@ -77,6 +79,16 @@ namespace AshesToStars
 
         bool DrawPartyCard(Rect cell, CharacterRecord ch, bool inParty, string status)
         {
+            // 클릭을 슬라이스·초상보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
+            // CharacterScreen 옛 버그(952662fa)와 같이 크롬에 먹혀 Toggle이 안 먹었다.
+            bool hit = false;
+            var ev = Event.current;
+            if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                && cell.Contains(ev.mousePosition))
+            {
+                hit = true;
+                ev.Use();
+            }
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : new Color(1f, 1f, 1f, 0.94f);
             if (!UiAtlas.DrawSliced(cell, "panel", 12f, tint))
                 UiAtlas.Draw(cell, "panel", tint);
@@ -89,7 +101,17 @@ namespace AshesToStars
             UiAtlas.Draw(new Rect(faceR.xMax - 22f, faceR.yMax - 22f, 20f, 20f), UiAtlas.RoleKey(ch.Job));
             UiAtlas.DrawHearts(marks, ch.DeathCount, ch.IsDeleted);
             Hint(nameR, (inParty ? "★ " : "") + ch.Name + " · " + status);
-            return GUI.Button(cell, GUIContent.none, GUIStyle.none);
+            return hit;
+        }
+
+        bool _toggleQaSeeded;
+        void SeedPartyToggleQaIfRequested()
+        {
+            if (_toggleQaSeeded) return;
+            if (Environment.GetEnvironmentVariable("QA_PARTY_TOGGLE") != "1") return;
+            _toggleQaSeeded = true;
+            if (PartyState.Contains(0))
+                PartyState.Toggle(0);
         }
 
         void DrawSortiePage(Rect r)

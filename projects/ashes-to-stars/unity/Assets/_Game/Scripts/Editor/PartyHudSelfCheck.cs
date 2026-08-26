@@ -91,6 +91,19 @@ namespace AshesToStars
             Check(hud.Contains("NavPlateTop"),
                 "도크가 NavPlateTop을 읽는다 (page.yMax 붙이기 금지)");
 
+            int card = party.IndexOf("bool DrawPartyCard", StringComparison.Ordinal);
+            int sortie = party.IndexOf("void DrawSortiePage", StringComparison.Ordinal);
+            Check(card >= 0 && sortie > card, "DrawPartyCard·DrawSortiePage가 있다");
+            string cardSrc = (card >= 0 && sortie > card)
+                ? party.Substring(card, sortie - card) : "";
+            Check(cardSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
+                  && cardSrc.IndexOf("cell.Contains", StringComparison.Ordinal) >= 0,
+                "파티 셀 클릭은 MouseDown으로 먹는다");
+            Check(cardSrc.IndexOf("GUI.Button(cell", StringComparison.Ordinal) < 0,
+                "DrawPartyCard가 GUI.Button(none)을 안 쓴다");
+            Check(party.IndexOf("PartyState.Toggle", StringComparison.Ordinal) >= 0,
+                "셀 클릭이 PartyState.Toggle을 탄다");
+
             Environment.SetEnvironmentVariable(PartyHud.EnvShow, show);
             Environment.SetEnvironmentVariable(PartyHud.EnvNo, no);
             if (_fail == 0) Debug.Log("[PartyHudSelfCheck] PASS\n" + _log);
