@@ -284,6 +284,43 @@ namespace AshesToStars
             Check(EstateBuildings.Line().Contains("경매장") && EstateBuildings.Line().Contains("전용 그림"),
                 $"줄 (실제 {EstateBuildings.Line()})");
 
+            // 레벨 티어 _1/_2 oxalpha 파생 세트(2026-08-27, 오너 INBOX 「게임 ui 퀄리티 업」·
+            // 「티어 변형은 채택 확정 후 후속」). PropOf가 lvl 5-9→_1·10-13→_2를 읽으므로(§10)
+            // 티어가 옛 나노바나나(keep 1989×1931·3.8MB)로 남으면 레벨업에서 딴 화풍으로 튄다.
+            // _0에서 파생해 같은 256 캔버스·같은 팔레트 + 지붕 장식(첨탑·페넌트)만 얹은 것을 검증:
+            // 256 세트 · 알파 유효 · 티어 오를수록 불투명 픽셀 단조 증가(장식만 추가되므로).
+            int keepSolid0 = 0, keepSolid1 = 0, keepSolid2 = 0;
+            for (int t = 0; t <= 2; t++)
+            {
+                string tierPath = Path.Combine(Application.dataPath,
+                    "Resources/props/estate_keep_" + t + ".png");
+                Check(File.Exists(tierPath), $"본성 티어_{t} PNG가 있다");
+                Check(Resources.Load<Texture2D>("props/estate_keep_" + t) != null,
+                    $"본성 티어_{t}를 Resources에서 읽는다");
+                if (!File.Exists(tierPath)) continue;
+                var kt = new Texture2D(2, 2);
+                kt.LoadImage(File.ReadAllBytes(tierPath));
+                Check(kt.width == 256 && kt.height == 256,
+                    $"본성 티어_{t} oxalpha 256 세트 (실제 {kt.width}×{kt.height})");
+                int ktClear = 0, ktSolid = 0;
+                foreach (var p in kt.GetPixels())
+                {
+                    if (p.a < 0.05f) ktClear++;
+                    else if (p.a > 0.95f) ktSolid++;
+                }
+                Check(ktClear > 0 && ktSolid > 256 * 256 / 4,
+                    $"본성 티어_{t} 알파 유효 (투명 {ktClear} · 불투명 {ktSolid})");
+                if (t == 0) keepSolid0 = ktSolid;
+                else if (t == 1) keepSolid1 = ktSolid;
+                else keepSolid2 = ktSolid;
+                UnityEngine.Object.DestroyImmediate(kt);
+            }
+            Check(keepSolid1 >= keepSolid0 && keepSolid2 >= keepSolid1,
+                $"본성 티어 불투명 단조 증가 — 장식만 추가 (t0 {keepSolid0} ≤ t1 {keepSolid1} ≤ t2 {keepSolid2})");
+            Check(EstateBuildings.TierName(EstateGrid.Cell.Keep, 1) == "estate_keep_1"
+                && EstateBuildings.TierName(EstateGrid.Cell.Keep, 2) == "estate_keep_2",
+                "PropOf 티어 접미사가 _1/_2를 가리킨다");
+
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, "1");
             Check(EstateBuildings.Blocked, "QA_NO면 차단");
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == "village_house_1",
