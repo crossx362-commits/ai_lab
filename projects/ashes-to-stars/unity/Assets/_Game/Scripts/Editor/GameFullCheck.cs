@@ -15,8 +15,8 @@ namespace AshesToStars
     ///
     /// 실패는 예외로 세고 다음 검사로 넘어간다(대부분의 SelfCheck는 FAIL 시 throw).
     /// EditorApplication.Exit를 직접 부르는 넷(UiAtlasUv·PlayableScenesBuilder·
-    /// V4ExternalPlaytest·TowerClimbCurveMeasure)은 제외한다 — 스윕 도중 프로세스를
-    /// 죽여 나머지 결과를 잃는다. 그 넷은 각자 따로 돈다.
+    /// V4ExternalPlaytest·TowerClimbCurveMeasure)과 스윕 본체(GameSweepSelfCheck —
+    /// 등록부가 전수와 같아 중첩)는 제외한다. 그 다섯은 각자 따로 돈다.
     ///
     ///   Unity -batchmode -quit -nographics -projectPath &lt;unity_meas&gt; \
     ///         -executeMethod AshesToStars.GameFullCheck.Run
@@ -29,6 +29,9 @@ namespace AshesToStars
             "PlayableScenesBuilder",     // 빌더지 검사가 아니다
             "V4ExternalPlaytest",        // 별도 러너(loop/v4_playtest.py)가 돈다
             "TowerClimbCurveMeasure",    // 관문 측정 — 결과 파일을 따로 남긴다
+            "GameSweepSelfCheck",        // 스윕 본체 — 등록부가 전수와 같아져(20260826 채택 1)
+                                         // 중첩 실행은 모든 검사를 두 번 도는 것과 같다.
+                                         // 스윕은 매 바퀴 batch로 이미 돈다.
         };
 
         [MenuItem("Ashes to Stars/QA/Game Full Check (all SelfChecks)")]
@@ -55,9 +58,13 @@ namespace AshesToStars
                 }
                 catch (Exception e)
                 {
-                    var why = (e.InnerException ?? e).Message;
+                    var why = e.InnerException ?? e;
                     failed.Add(t.Type.Name);
-                    log.AppendLine("  FAIL  " + t.Type.Name + " — " + Truncate(why, 160));
+                    log.AppendLine("  FAIL  " + t.Type.Name + " — " + Truncate(why.Message, 160));
+                    // InnerException.StackTrace 병기(회의 20260826-095813 채택 2) —
+                    // BossBattleDps NRE 스택 오독(W3Party.cs:809 오독 → NextStyle:1126 정정) 재발 차단.
+                    var stack = (why.StackTrace ?? "스택 없음").Replace("\n", " | ").Replace("\r", "");
+                    log.AppendLine("        at " + Truncate(stack, 240));
                 }
                 done++;
             }
