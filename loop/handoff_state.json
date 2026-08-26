@@ -1,12 +1,12 @@
 {
-  "phase": "assign",
-  "updated": "2026-08-27 08:35",
-  "last_commit": "a5d87403",
-  "review": "none",
+  "phase": "review",
+  "updated": "2026-08-27 08:45",
+  "last_commit": "952ddb40",
+  "review": "pending",
   "task": "§18-13 디버프 중첩 최대 2개 별",
-  "routed_to": "재와별·개발",
-  "note": "루프 STOP 유지. 아트=village_cart_0. UI=ResultScreen 골드. speed_lane 중복 금지.",
+  "routed_to": "재와별·루프검수",
+  "note": "STATUS 미갱신. PASS 후 보드가 STATUS·다음 1칸.",
   "commits": [
-    "a5d87403"
+    "952ddb40"
   ]
 }
