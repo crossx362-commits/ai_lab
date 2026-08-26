@@ -2379,5 +2379,47 @@ class NowTitleLapFormatTests(unittest.TestCase):
         self.assertNotIn("void", title)
 
 
+class GateOverrideTest(unittest.TestCase):
+    """관문 철회·보류 (오너 2026-08-26)."""
+
+    RETIRE = {"title": "V2 조작감 — 손맛 관문", "choice": "retire", "note": "오너 철회"}
+    DEFER = {"title": "V3 보스 한 판 — 지휘 판정", "choice": "defer", "note": "오너 보류"}
+
+    def test_retire_and_defer_are_recognized(self):
+        d = {"a": self.RETIRE, "b": self.DEFER}
+        self.assertEqual(board.gate_override("V2", d)["state"], "retired")
+        self.assertEqual(board.gate_override("V3", d)["state"], "deferred")
+        self.assertIsNone(board.gate_override("V4b", d))
+
+    def test_pass_choice_is_not_an_override(self):
+        """옛 pass/skip 결정이 철회로 오독되면 안 된다."""
+        d = {"a": {"title": "V2 사람 판정", "choice": "pass"},
+             "b": {"title": "V4 외부 테스터 70% 사람 판정", "choice": "skip"}}
+        self.assertIsNone(board.gate_override("V2", d))
+        self.assertIsNone(board.gate_override("V4", d))
+
+    def test_override_marks_state_and_uncounts(self):
+        gates = [{"id": "V2", "pct": 100, "note": "옛 문구"},
+                 {"id": "V4a", "pct": 100, "note": "자동 경계 닫힘"}]
+        board.apply_gate_overrides(gates, {"a": self.RETIRE})
+        v2, v4a = gates
+        self.assertEqual(v2["state"], "retired")
+        self.assertEqual(v2["note"], "오너 철회")
+        self.assertFalse(v2["counted"])
+        self.assertTrue(v4a["counted"])          # 나머지는 건드리지 않는다
+        self.assertNotIn("state", v4a)
+
+    def test_retired_gate_leaves_average(self):
+        """네거티브 대조: 같은 관문 집합이라도 철회 결정이 없으면 평균이 끌려간다."""
+        def avg(decisions):
+            gates = [{"id": "V2", "pct": 0, "note": ""}, {"id": "V4a", "pct": 100, "note": ""}]
+            board.apply_gate_overrides(gates, decisions)
+            counted = [g for g in gates if g.get("counted", True)]
+            return round(sum(g["pct"] for g in counted) / len(counted)), len(counted)
+
+        self.assertEqual(avg(None), (50, 2))                 # 철회 없음 — 0%가 평균을 끈다
+        self.assertEqual(avg({"a": self.RETIRE}), (100, 1))  # 철회 — 평균에서 빠진다
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -585,6 +585,44 @@ def _v4_owner_skipped(status: str, decisions: dict | None) -> bool:
     return False
 
 
+def gate_override(gate_id: str, decisions: dict | None) -> dict | None:
+    """관문 철회·보류 (오너 2026-08-26).
+
+    관문은 「통과/미통과」 두 값만으로는 표현이 안 되는 상태를 가진다:
+      - **철회(retire)** — 그 축을 이 게임에서 판정하지 않기로 했다(V2·W2 손맛).
+      - **보류(defer)** — 판정 시점이 아직 아니다(V3 — 구현 밀도가 낮아 측정 불가).
+    둘 다 「막힌 관문」이 아니므로 진척 평균·닫힘 수에서 빼야 한다. 빼지 않으면 보드가
+    영원히 「사람 70% 전 상한 90」을 띄워 실제로 막힌 것과 구분이 안 된다.
+
+    board_decisions.json에 choice가 retire·defer인 항목으로 기록한다.
+    """
+    for v in (decisions or {}).values():
+        if str(v.get("choice") or "") not in ("retire", "defer"):
+            continue
+        title = str(v.get("title") or "")
+        if not title.startswith(gate_id):
+            continue
+        return {
+            "state": "retired" if v["choice"] == "retire" else "deferred",
+            "note": str(v.get("note") or "") or (
+                "철회 — 판정하지 않음" if v["choice"] == "retire" else "보류 — 판정 시점 아님"),
+        }
+    return None
+
+
+def apply_gate_overrides(gates: list[dict], decisions: dict | None) -> list[dict]:
+    """철회·보류 관문에 상태·문구를 입히고 `counted=False`로 평균에서 뺀다."""
+    for g in gates:
+        g.setdefault("counted", True)
+        ov = gate_override(str(g.get("id") or ""), decisions)
+        if not ov:
+            continue
+        g["state"] = ov["state"]
+        g["note"] = ov["note"]
+        g["counted"] = False
+    return gates
+
+
 def v4_released(status: str = "", decisions: dict | None = None) -> bool:
     return (_v4_human_passed(status, decisions)
             or _v4_owner_skipped(status, decisions)
@@ -702,16 +740,22 @@ def progress_charts(status: str | None = None, design: str | None = None,
         {"id": "V4a", "label": "V4 패배→삭제 경계", "pct": 100, "note": "자동 경계 닫힘"},
         {"id": "V4b", "label": "V4 외부 테스터 70%", "pct": v4b_pct, "note": v4b_note},
     ]
-    proto_pct = round(sum(g["pct"] for g in gates) / max(len(gates), 1))
-    proto_closed = sum(1 for g in gates if g["pct"] >= 100)
-    if any(g["pct"] < 100 for g in gates):
+    apply_gate_overrides(gates, decisions)
+    counted = [g for g in gates if g.get("counted", True)]
+    proto_pct = round(sum(g["pct"] for g in counted) / max(len(counted), 1))
+    proto_closed = sum(1 for g in counted if g["pct"] >= 100)
+    if any(g["pct"] < 100 for g in counted):
         proto_pct = min(proto_pct, 90)
     if _v4_owner_skipped(status, decisions):
         proto_note = "오너가 사람 70%를 넘김 · 측정 안 함"
     elif proto_pct >= 100:
-        proto_note = f"관문 {proto_closed}/{len(gates)} 닫힘"
+        proto_note = f"관문 {proto_closed}/{len(counted)} 닫힘"
     else:
-        proto_note = f"관문 평균 · {proto_closed}/{len(gates)}닫힘 · 사람 70% 전 상한 90"
+        proto_note = f"관문 평균 · {proto_closed}/{len(counted)}닫힘 · 사람 70% 전 상한 90"
+    off = [g for g in gates if not g.get("counted", True)]
+    if off:
+        proto_note += " · 제외 " + "·".join(
+            f"{g['id']}({'철회' if g.get('state') == 'retired' else '보류'})" for g in off)
     slice_rows = slice_checks(status, design, game_design)
     slice_done = sum(1 for r in slice_rows if r["done"])
     slice_n = max(len(slice_rows), 1)
