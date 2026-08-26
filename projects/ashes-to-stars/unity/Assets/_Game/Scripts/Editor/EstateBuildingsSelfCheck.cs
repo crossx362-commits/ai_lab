@@ -221,6 +221,29 @@ namespace AshesToStars
                     $"영묘 알파 유효 — 배경 잘림+실체 함께 (투명 {mzClear} · 불투명 {mzSolid}/{mzpx.Length})");
                 UnityEngine.Object.DestroyImmediate(mz);
             }
+            var twRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Tower);
+            Check(twRes != null, "화살탑 PNG를 Resources에서 읽는다");
+            string twPath = Path.Combine(Application.dataPath,
+                "Resources/props/" + EstateBuildings.Tower + ".png");
+            Check(File.Exists(twPath), "화살탑 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(twPath))
+            {
+                var tw = new Texture2D(2, 2);
+                tw.LoadImage(File.ReadAllBytes(twPath));
+                Check(tw.width == 256 && tw.height == 256,
+                    $"화살탑 PNG가 oxalpha 256 세트 (실제 {tw.width}×{tw.height})");
+                var twpx = tw.GetPixels();
+                int twClear = 0, twSolid = 0;
+                foreach (var p in twpx)
+                {
+                    if (p.a < 0.05f) twClear++;
+                    else if (p.a > 0.95f) twSolid++;
+                }
+                // 탑은 좁고 높은 첨탑형이라 실체가 가장 좁다(실측 14.2%) — 임계 1/8.
+                Check(twClear > 0 && twSolid > twpx.Length / 8,
+                    $"화살탑 알파 유효 — 배경 잘림+실체 함께 (투명 {twClear} · 불투명 {twSolid}/{twpx.Length})");
+                UnityEngine.Object.DestroyImmediate(tw);
+            }
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "마을이 본성 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
