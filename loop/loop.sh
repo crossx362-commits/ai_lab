@@ -51,6 +51,7 @@ EXHAUST_PATTERN="${LOOP_EXHAUST_PATTERN:-usage limit|quota exceeded|rate limit e
 INFRA_PATTERN="${LOOP_INFRA_PATTERN:-Endpoint is unavailable|Unexpected server error|UnknownError|Upstream request failed|502 Bad Gateway|503 Service|504 Gateway|overloaded_error|Internal server error}"
 INFRA_MAX="${LOOP_INFRA_MAX:-6}"
 INFRA_BACKOFF="${LOOP_INFRA_BACKOFF:-120}"
+INFRA_COOLOFF="${LOOP_INFRA_COOLOFF:-1800}"
 
 if [ ! -f "$PROMPT_FILE" ]; then
   PROMPT_FILE="$TARGET_REPO/loop/PROMPT.md"
@@ -386,8 +387,11 @@ while true; do
     INFRA_THIS_LAP=1
     INFRA_FAILS=$((INFRA_FAILS + 1))
     if [ "$INFRA_FAILS" -ge "$INFRA_MAX" ]; then
-      echo "공급자 장애가 ${INFRA_MAX}회 연속 — 더는 자동 재시도하지 않고 미갱신으로 셉니다." | tee -a "$MAIN_LOG" "$LAP_LOG"
-      INFRA_THIS_LAP=0
+      # 상대 서버가 오래 죽어 있는 상황이다. 여기서 종료하면 오너가 가장 싫어하는 「루프가
+      # 안 돈다」가 된다(loop_watch가 살리기까지 최대 90분 공백). 대신 길게 쉬고 다시 본다.
+      echo "공급자 장애 ${INFRA_MAX}회 연속 — ${INFRA_COOLOFF}초 길게 쉬고 재확인합니다(종료하지 않음)." \
+        | tee -a "$MAIN_LOG" "$LAP_LOG"
+      wait_with_stop "$INFRA_COOLOFF" || { echo "STOP 감지 — 종료" | tee -a "$MAIN_LOG"; exit 0; }
       INFRA_FAILS=0
     else
       BACKOFF=$((INFRA_BACKOFF * INFRA_FAILS))
