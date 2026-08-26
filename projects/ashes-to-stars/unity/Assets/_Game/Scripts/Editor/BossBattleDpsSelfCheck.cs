@@ -16,11 +16,10 @@ namespace AshesToStars
             try
             {
                 Environment.SetEnvironmentVariable("BOSS_NO_DPS", null);
-                liveGo = new GameObject("BossBattleDpsSelfCheck_Live");
-                var liveParty = liveGo.AddComponent<global::W3Party>();
-                liveParty.GameMode = true;
+                liveGo = BuildParty("BossBattleDpsSelfCheck_Live");
+                var liveParty = liveGo.GetComponent<global::W3Party>();
                 liveParty.ApplyGameParty();
-                var live = liveGo.AddComponent<BossBattle>();
+                var live = AttachWithAwake<BossBattle>(liveGo);
                 int defeated = 0;
                 int phases = 0;
                 live.OnBossDefeated += _ => defeated++;
@@ -43,11 +42,10 @@ namespace AshesToStars
                 liveGo = null;
 
                 Environment.SetEnvironmentVariable("BOSS_NO_DPS", "1");
-                blockedGo = new GameObject("BossBattleDpsSelfCheck_Blocked");
-                var blockedParty = blockedGo.AddComponent<global::W3Party>();
-                blockedParty.GameMode = true;
+                blockedGo = BuildParty("BossBattleDpsSelfCheck_Blocked");
+                var blockedParty = blockedGo.GetComponent<global::W3Party>();
                 blockedParty.ApplyGameParty();
-                var blocked = blockedGo.AddComponent<BossBattle>();
+                var blocked = AttachWithAwake<BossBattle>(blockedGo);
                 blocked.Begin(5, 1);
                 blocked.AttachCombatTargets();
                 DamageFirstW3Target(blockedParty, startHp);
@@ -71,6 +69,39 @@ namespace AshesToStars
         static void Require(bool condition, string message)
         {
             if (!condition) throw new InvalidOperationException("[BossDps] " + message);
+        }
+
+        /// <summary>
+        /// W3Party 검증 판 세우기 — BossAutoAttackSelfCheck.Build와 같은 경계.
+        /// 에디터(비플레이) 배치에선 AddComponent가 Awake를 부르지 않아 _slots가 null이고,
+        /// ApplyGameParty→NextStyle이 슬롯 접근에서 NRE로 죽었다(전수 실측 2026-08-26).
+        /// 비활성 생성 → GameMode 대입 → 수동 Awake(BuildWorld 포함) 순서로 런타임과 같은 상태를 만든다.
+        /// </summary>
+        static GameObject BuildParty(string name)
+        {
+            var go = new GameObject(name);
+            go.SetActive(false);
+            var party = go.AddComponent<global::W3Party>();
+            party.GameMode = true;
+            var awake = typeof(global::W3Party).GetMethod("Awake",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Require(awake != null, "W3Party.Awake 경계를 찾지 못했다");
+            awake.Invoke(party, null);
+            go.SetActive(true);
+            return go;
+        }
+
+        /// <summary>
+        /// 에디터(비플레이) 배치에선 AddComponent가 Awake를 부르지 않는다 — BossBattle.Awake가
+        /// activeFloorAOEs 등을 채우므로 Begin 전에 수동으로 띄운다(위 BuildParty와 같은 경계).
+        /// </summary>
+        static T AttachWithAwake<T>(GameObject go) where T : Component
+        {
+            var comp = go.AddComponent<T>();
+            var awake = typeof(T).GetMethod("Awake",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            if (awake != null) awake.Invoke(comp, null);
+            return comp;
         }
 
         static void DamageFirstW3Target(global::W3Party party, float amount)

@@ -129,10 +129,12 @@ namespace AshesToStars
                 "_Game/Scripts/Runtime/CharacterScreen.cs"));
             Check(life.Contains("Rebirth.Apply("),
                 "UseRebornStone이 Rebirth.Apply를 읽는다");
-            Check(estate.Contains("Rebirth.MausoleumSubtitle")
+            Check(estate.Contains("RebirthSkill.MausoleumSubtitle")
                   && estate.Contains("Rebirth.Line")
                   && estate.Contains("Rebirth.SeedQaIfRequested"),
                 "영묘가 자막·문구·시드를 읽는다");
+            // 2026-08-26 갱신 — 영묘 자막은 RebirthSkill.MausoleumSubtitle(계승 우선, Blocked면
+            // Rebirth.MausoleumSubtitle 폴백)을 읽는다. 소비처 이동은 런타임 정상이다.
             Check(character.Contains("Rebirth.Line")
                   && character.Contains("Rebirth.SeedQaIfRequested"),
                 "캐릭터가 문구·시드를 읽는다");

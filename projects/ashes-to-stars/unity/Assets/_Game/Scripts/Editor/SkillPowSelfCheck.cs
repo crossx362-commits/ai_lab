@@ -58,7 +58,8 @@ namespace AshesToStars
                             $"{d.직업명}: SkillLine이 위력배율 필드를 읽는다 ({s.이름} {mul}) — 「{line}」");
                         if (s.쿨다운 > 0f)
                         {
-                            string want = s.이름 + "(" + s.쿨다운.ToString("0.#") + "초·" + mul + ")";
+                            // 2026-08-26 계약 갱신 — 괄호 안은 "(N초·×P·반경R·소모C)" 순서라 닫는 괄호까지 보면 안 된다.
+                            string want = s.이름 + "(" + s.쿨다운.ToString("0.#") + "초·" + mul;
                             Check(line.Contains(want),
                                 $"{d.직업명}: 쿨+위력 합쳐 표기 ({want}) — 「{line}」");
                         }
@@ -73,12 +74,12 @@ namespace AshesToStars
                 }
             Check(withPow > 0, $"위력≠1 스킬 {withPow}개 검사됨 (0이면 배선 확인 불가)");
 
-            // 앵커 — ProjectSetup authored.
+            // 앵커 — ProjectSetup authored. 2026-08-26 갱신 — 화염폭풍·빙결은 반경 조각까지 합성된다.
             string mage = JobInfo.SkillLine("마법사");
-            Check(mage.Contains("화염폭풍(5초·×1.2)"),
-                $"마법사 화염폭풍 5초·×1.2 — 「{mage}」");
-            Check(mage.Contains("빙결(10초·×0.4)"),
-                $"마법사 빙결 10초·×0.4 — 「{mage}」");
+            Check(mage.Contains("화염폭풍(5초·×1.2·반경3.2)"),
+                $"마법사 화염폭풍 5초·×1.2·반경3.2 — 「{mage}」");
+            Check(mage.Contains("빙결(10초·×0.4·반경4)"),
+                $"마법사 빙결 10초·×0.4·반경4 — 「{mage}」");
             Check(mage.Contains("점멸(8초)") && mage.IndexOf("점멸(8초·", StringComparison.Ordinal) < 0,
                 $"마법사 점멸(위력0)은 쿨만 — 「{mage}」");
 
@@ -89,29 +90,30 @@ namespace AshesToStars
                 $"검사 발도 8초·×1.2 — 「{sword}」");
 
             string guard = JobInfo.SkillLine("수호기사");
-            Check(guard.Contains("도발의 함성(6초)"),
+            Check(guard.Contains("도발의 함성(6초"),
                 $"수호기사 도발 6초 보존 — 「{guard}」");
             Check(guard.IndexOf("도발의 함성(6초·×", StringComparison.Ordinal) < 0,
                 $"수호기사 도발(위력0)은 × 없음 — 「{guard}」");
 
             Check(JobInfo.SkillLine("없는직업") == "", "모르는 직업은 빈 문자열(지어내지 않음)");
 
-            // 네거티브: QA_NO면 위력 조각만 빠지고 쿨은 남음(옛 줄).
+            // 네거티브: QA_NO면 위력 조각만 빠지고 쿨·반경은 남는다(옛 줄 + 반경).
             Environment.SetEnvironmentVariable(JobInfo.EnvNoSkillPow, "1");
             Check(JobInfo.SkillPowBlocked, "QA_NO면 차단");
             string old = JobInfo.SkillLine("마법사");
-            Check(old.Contains("화염폭풍(5초)") && old.IndexOf("×1.2", StringComparison.Ordinal) < 0,
+            Check(old.Contains("화염폭풍(5초") && old.IndexOf("×1.2", StringComparison.Ordinal) < 0,
                 $"차단하면 화염폭풍은 쿨만 — 「{old}」");
             Check(old.IndexOf("×", StringComparison.Ordinal) < 0,
                 $"차단하면 ×P 조각이 없다 — 「{old}」");
             Environment.SetEnvironmentVariable(JobInfo.EnvNoSkillPow, null);
-            Check(!JobInfo.SkillPowBlocked && JobInfo.SkillLine("마법사").Contains("화염폭풍(5초·×1.2)"),
+            Check(!JobInfo.SkillPowBlocked && JobInfo.SkillLine("마법사").Contains("화염폭풍(5초·×1.2·반경3.2)"),
                 "차단을 풀면 다시 위력 조각");
 
             string charSrc = File.ReadAllText(Path.Combine(Application.dataPath,
                 "_Game/Scripts/Runtime/CharacterScreen.cs"));
-            Check(charSrc.Contains("JobInfo.SkillLine"),
-                "CharacterScreen이 SkillLine을 속성 탭에 그린다");
+            // 2026-08-26 갱신 — 화면은 RebirthSkill.SkillLine(계승 위임)을 쓴다.
+            Check(charSrc.Contains("RebirthSkill.SkillLine"),
+                "CharacterScreen이 RebirthSkill.SkillLine을 속성 탭에 그린다");
             Check(charSrc.Contains("SkillDef.위력배율") || charSrc.Contains("위력배율"),
                 "CharacterScreen 주석이 위력배율 소비처를 가리킨다");
 

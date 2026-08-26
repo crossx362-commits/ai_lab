@@ -55,7 +55,10 @@ namespace AshesToStars
                             continue;
                         }
                         withCd++;
-                        string want = s.이름 + "(" + s.쿨다운.ToString("0.#") + "초)";
+                        // 2026-08-26 계약 갱신 — SkillLine은 합성 조각 "(N초·×P·반경R·소모C)"을 내므로
+                        // 닫는 괄호까지 보면 위력·반경이 있는 스킬에서 어긋난다(전수 16건 FAIL 실측).
+                        // 쿨 필드 소비 확인은 "(N초" 접두로 충분하다.
+                        string want = s.이름 + "(" + s.쿨다운.ToString("0.#") + "초";
                         Check(line.Contains(want),
                             $"{d.직업명}: SkillLine이 쿨다운 필드를 읽는다 ({want}) — 「{line}」");
                     }
@@ -63,13 +66,14 @@ namespace AshesToStars
             Check(withCd > 0, $"쿨다운>0 스킬 {withCd}개 검사됨 (0이면 배선 확인 불가)");
 
             // 수호기사 앵커 — ProjectSetup authored 도발 6 · 최후 40 · 성채 0(게이지).
+            // 2026-08-26 갱신 — 도발은 반경4.5, 성채는 쿨0에 반경8·소모60이 합성 조각으로 붙는다(전수 실측).
             string guard = JobInfo.SkillLine("수호기사");
-            Check(guard.Contains("도발의 함성(6초)"),
-                $"수호기사 도발 6초 — 「{guard}」");
+            Check(guard.Contains("도발의 함성(6초·반경4.5)"),
+                $"수호기사 도발 6초·반경4.5 — 「{guard}」");
             Check(guard.Contains("최후의 보루(40초)"),
                 $"수호기사 최후 40초 — 「{guard}」");
-            Check(guard.Contains("성채 방패") && guard.IndexOf("성채 방패(", StringComparison.Ordinal) < 0,
-                $"수호기사 성채(쿨0)는 이름만 — 「{guard}」");
+            Check(guard.Contains("성채 방패 반경8 소모60") && guard.IndexOf("성채 방패(", StringComparison.Ordinal) < 0,
+                $"수호기사 성채(쿨0)는 반경8·소모60 괄호 없이 — 「{guard}」");
 
             Check(JobInfo.SkillLine("없는직업") == "", "모르는 직업은 빈 문자열(지어내지 않음)");
 
@@ -82,13 +86,14 @@ namespace AshesToStars
             Check(old.IndexOf("초)", StringComparison.Ordinal) < 0,
                 $"차단하면 (N초) 조각이 없다 — 「{old}」");
             Environment.SetEnvironmentVariable(JobInfo.EnvNoSkillCd, null);
-            Check(!JobInfo.SkillCdBlocked && JobInfo.SkillLine("수호기사").Contains("도발의 함성(6초)"),
+            Check(!JobInfo.SkillCdBlocked && JobInfo.SkillLine("수호기사").Contains("도발의 함성(6초"),
                 "차단을 풀면 다시 쿨다운 조각");
 
             string charSrc = File.ReadAllText(Path.Combine(Application.dataPath,
                 "_Game/Scripts/Runtime/CharacterScreen.cs"));
-            Check(charSrc.Contains("JobInfo.SkillLine"),
-                "CharacterScreen이 SkillLine을 속성 탭에 그린다");
+            // 2026-08-26 갱신 — 화면은 RebirthSkill.SkillLine(계승 위임, KeptSkill 없으면 JobInfo 폴백)을 쓴다.
+            Check(charSrc.Contains("RebirthSkill.SkillLine"),
+                "CharacterScreen이 RebirthSkill.SkillLine을 속성 탭에 그린다");
 
             string jobSrc = File.ReadAllText(Path.Combine(Application.dataPath,
                 "_Game/Scripts/Runtime/JobInfo.cs"));

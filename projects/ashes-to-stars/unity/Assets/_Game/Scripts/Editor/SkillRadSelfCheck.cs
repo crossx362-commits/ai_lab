@@ -104,8 +104,9 @@ namespace AshesToStars
 
             string charSrc = File.ReadAllText(Path.Combine(Application.dataPath,
                 "_Game/Scripts/Runtime/CharacterScreen.cs"));
-            Check(charSrc.Contains("JobInfo.SkillLine"),
-                "CharacterScreen이 SkillLine을 속성 탭에 그린다");
+            // 2026-08-26 갱신 — 화면은 RebirthSkill.SkillLine(계승 위임)을 쓴다.
+            Check(charSrc.Contains("RebirthSkill.SkillLine"),
+                "CharacterScreen이 RebirthSkill.SkillLine을 속성 탭에 그린다");
             Check(charSrc.Contains("반경"),
                 "CharacterScreen 주석이 반경 소비처를 가리킨다");
 

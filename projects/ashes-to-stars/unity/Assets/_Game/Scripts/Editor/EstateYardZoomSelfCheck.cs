@@ -47,7 +47,8 @@ namespace AshesToStars
                 $"칸 {grown:0.0} = 기본 {home:0.0} × {EstateYard.QaZoom:0.00}");
             Check(grown > home + 20f, $"칸 {grown:0.0} > 기본 {home:0.0}");
             Check(EstateYard.ZoomEnabled, "기본은 굴려 확대");
-            Check(EstateYard.Line().Contains("굴려 확대한다"),
+            // 2026-08-26 계약 갱신 — §2-2 드래그(6d9b4fae)가 줄을 선점한다. 확대 실측은 위 칸 크기로 한다.
+            Check(EstateYard.Line().Contains("건물을 끌면 옮긴다"),
                 $"줄 (실제 {EstateYard.Line()})");
 
             EstateYard.SetZoom(9f);
@@ -73,7 +74,8 @@ namespace AshesToStars
             EstateYard.SeedQaIfRequested();
             Check(Mathf.Abs(EstateYard.Zoom - EstateYard.QaZoom) < 0.001f,
                 $"시드 {EstateYard.Zoom:0.00} = {EstateYard.QaZoom:0.00}");
-            Check(EstateYard.Line().Contains("굴려 확대한다"), "시드 줄");
+            // 2026-08-26 갱신 — 시드 반영은 위 배율 실측으로 확인하고, 줄은 drag 선점 문구를 유지한다.
+            Check(EstateYard.Line().Contains("건물을 끌면 옮긴다"), "시드 줄");
             Environment.SetEnvironmentVariable(EstateYard.EnvShowZoom, null);
             EstateYard.ResetForTest();
 
