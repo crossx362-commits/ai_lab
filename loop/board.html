@@ -76,6 +76,8 @@
   }
   .spark i.bad { background: var(--stop); opacity: 1; }
   .spark-cap { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .spark-cap.cost b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .spark-cap.cost span { cursor: help; }
   .fresh { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 132px; }
   .fresh .big { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .fresh.ok .big { color: var(--ok); } .fresh.bad .big { color: var(--stop); }
@@ -997,6 +999,7 @@ function renderHealth(state) {
     return `<i class="${s.code === 0 ? "" : "bad"}" style="height:${hgt}%" `
       + `title="${esc(s.id)} · ${s.code === 0 ? "성공" : "실패 code=" + s.code}"></i>`;
   }).join("");
+  const cost = h.cost || {};
   const idle = h.idle_secs == null ? null : Number(h.idle_secs);
   const freshCls = h.stale ? "bad" : "ok";
   el.innerHTML = `
@@ -1009,6 +1012,9 @@ function renderHealth(state) {
       </div>
       <div class="spark">${spark}</div>
       <div class="spark-cap">최근 ${(h.spark || []).length}바퀴 · 막대 높이 = 걸린 시간 · 빨강 = 실패</div>
+      <div class="spark-cap cost">바퀴당 왕복 — 셸 명령 <b>${cost.cmds || 0}</b>회 ·
+        유니티 배치 <b>${cost.unity || 0}</b>회 · 커밋 가드 <b>${cost.guard || 0}</b>회
+        <span title="유니티 내부 처리는 3초인데 배치 1회가 1.5~2분이다. 시간은 무엇을 하느냐가 아니라 몇 번 왕복하느냐로 간다.">ⓘ</span></div>
     </div>
     <div class="h-box">
       <h4>안정성 — 믿을 수 있나</h4>

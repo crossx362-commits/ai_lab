@@ -1819,6 +1819,40 @@ def _lap_records(limit: int = 40) -> list[dict]:
     return out
 
 
+def lap_costs(laps: list[dict], sample: int = 5) -> dict:
+    """바퀴 하나가 무엇 때문에 오래 걸리는지 — 최근 몇 바퀴의 왕복 비용을 센다.
+
+    실측(2026-08-26): 바퀴당 셸 명령 34~49회 · 유니티 배치 8~11회 · 커밋 가드 최대 10회.
+    유니티 내부 처리는 3초인데(도메인 리로드 296~572ms) 배치 1회가 1.5~2분씩 든다 — 즉 비용은
+    「무엇을 하는가」가 아니라 **몇 번 왕복하는가**다. 그래서 이 셋을 보드에 상시 노출한다.
+    로그가 큰 편이라 최근 sample개만 읽는다.
+    """
+    cmds = unity = guard = 0
+    seen = 0
+    for lap in reversed(laps):
+        if seen >= sample:
+            break
+        path = (ROOT / "logs" / lap["began"].strftime("%Y-%m-%d") / f"lap-{lap['id']}.log")
+        if not path.exists():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        seen += 1
+        cmds += text.count("$ ")
+        unity += text.count("executeMethod")
+        guard += text.count("commit_guard.sh")
+    if not seen:
+        return {"laps": 0, "cmds": 0, "unity": 0, "guard": 0}
+    return {
+        "laps": seen,
+        "cmds": round(cmds / seen),
+        "unity": round(unity / seen),
+        "guard": round(guard / seen),
+    }
+
+
 def _median(nums: list[int]) -> int:
     if not nums:
         return 0
@@ -1877,6 +1911,7 @@ def loop_health(limit: int = 20, now: datetime | None = None) -> dict:
         "idle_secs": idle,
         "stale": bool(idle is not None and idle > 90 * 60),
         "commits24": commits24,
+        "cost": lap_costs(laps),
         "last_id": done[-1]["id"] if done else "",
         "last_code": done[-1]["code"] if done else None,
         "spark": [
