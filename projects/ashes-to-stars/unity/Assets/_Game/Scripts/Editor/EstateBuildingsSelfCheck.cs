@@ -129,6 +129,29 @@ namespace AshesToStars
                     $"광산 알파 유효 — 배경 잘림+실체 함께 (투명 {mClear} · 불투명 {mSolid}/{mpx.Length})");
                 UnityEngine.Object.DestroyImmediate(mx);
             }
+            var whRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Warehouse);
+            Check(whRes != null, "창고 PNG를 Resources에서 읽는다");
+            string whPath = Path.Combine(Application.dataPath,
+                "Resources/props/" + EstateBuildings.Warehouse + ".png");
+            Check(File.Exists(whPath), "창고 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(whPath))
+            {
+                var wx = new Texture2D(2, 2);
+                wx.LoadImage(File.ReadAllBytes(whPath));
+                Check(wx.width == 256 && wx.height == 256,
+                    $"창고 PNG가 oxalpha 256 세트 (실제 {wx.width}×{wx.height})");
+                var wpx = wx.GetPixels();
+                int wClear = 0, wSolid = 0;
+                foreach (var p in wpx)
+                {
+                    if (p.a < 0.05f) wClear++;
+                    else if (p.a > 0.95f) wSolid++;
+                }
+                // 창고는 직사각형 건물이라 실체가 광산보다 넓다(실측 30%) — 임계 1/6.
+                Check(wClear > 0 && wSolid > wpx.Length / 6,
+                    $"창고 알파 유효 — 배경 잘림+실체 함께 (투명 {wClear} · 불투명 {wSolid}/{wpx.Length})");
+                UnityEngine.Object.DestroyImmediate(wx);
+            }
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "마을이 본성 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
