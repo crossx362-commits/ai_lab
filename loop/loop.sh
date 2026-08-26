@@ -9,6 +9,9 @@
 set -uo pipefail
 
 DEPLOY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 자가검사 모드는 저장소 인자를 먹지 않는다 — 판정 함수만 쓰고 끝낸다(아래 후크).
+SELFTEST_INFRA=""
+if [ "${1:-}" = "--self-test-infra" ]; then SELFTEST_INFRA="${2:-}"; set --; fi
 TARGET_REPO="${1:-$(cd "$DEPLOY_ROOT/.." && pwd)}"
 TARGET_REPO="$(cd "$TARGET_REPO" && pwd)"
 
@@ -42,6 +45,12 @@ MAX_PROVIDER_FAILURES="${MAX_PROVIDER_FAILURES:-6}"
 PROVIDER_STATE_FILE="$TARGET_REPO/loop/provider.state"
 BOARD_PY="$DEPLOY_ROOT/board.py"
 EXHAUST_PATTERN="${LOOP_EXHAUST_PATTERN:-usage limit|quota exceeded|rate limit exceeded|out of credits|사용량.*(소진|초과)|로그인.*필요|please (log|sign) in|authentication required}"
+# 공급자 인프라 장애 — 「인프라 실패 ≠ 이슈 실패」(CLAUDE.md 가드레일). 이런 바퀴는 우리 코드가
+# 틀린 게 아니라 상대 서버가 죽은 것이므로 STATUS 미갱신으로 세면 안 된다. 2026-08-26 22:23·22:38
+# 두 바퀴가 이 오류로 죽어 「미갱신 3회」에 걸려 루프 전체가 정상 종료했다.
+INFRA_PATTERN="${LOOP_INFRA_PATTERN:-Endpoint is unavailable|Unexpected server error|UnknownError|Upstream request failed|502 Bad Gateway|503 Service|504 Gateway|overloaded_error|Internal server error}"
+INFRA_MAX="${LOOP_INFRA_MAX:-6}"
+INFRA_BACKOFF="${LOOP_INFRA_BACKOFF:-120}"
 
 if [ ! -f "$PROMPT_FILE" ]; then
   PROMPT_FILE="$TARGET_REPO/loop/PROMPT.md"
@@ -87,6 +96,7 @@ mkdir -p "$TARGET_REPO/logs" "$TARGET_REPO/loop" "$TARGET_REPO/docs/feedback"
 export PYTHONUNBUFFERED=1
 COUNT=0
 FAILS=0
+INFRA_FAILS=0
 
 wait_with_stop() {
   local remaining="$1"
@@ -223,6 +233,20 @@ detect_exhaustion_in_log() {
   [ -f "$logfile" ] && grep -qiE "$EXHAUST_PATTERN" "$logfile"
 }
 
+# 공급자 서버 장애로 죽은 바퀴인가 — 마지막 40줄만 본다(작업 중 인용한 문구를 장애로 오독하지
+# 않기 위해서다. 실제 장애는 세션 끝에서 터진다).
+detect_infra_failure_in_log() {
+  local logfile="$1"
+  [ -f "$logfile" ] || return 1
+  tail -40 "$logfile" | grep -qiE "$INFRA_PATTERN"
+}
+
+# 자가검사용 후크 — `bash loop/loop.sh --self-test-infra <로그파일>`이면 판정만 하고 끝낸다
+# (종료 0=공급자 장애 · 1=아니다). 네거티브 컨트롤 없는 통과를 만들지 않기 위한 장치다.
+if [ -n "$SELFTEST_INFRA" ]; then
+  detect_infra_failure_in_log "$SELFTEST_INFRA" && exit 0 || exit 1
+fi
+
 run_session() {
   local agent="$1"
   local bin="$2"
@@ -357,8 +381,24 @@ while true; do
     provider_state_write "$NEXT_PROVIDER" "log-detect: $AGENT exhaustion phrase in $LAP_ID"
   fi
 
-  if [ "$EXHAUSTED_THIS_LAP" = "1" ]; then
-    : # 코드 오류가 아니라 소진이므로 FAILS/COUNT를 건드리지 않는다 — 다음 바퀴가 전환을 반영한다.
+  INFRA_THIS_LAP=0
+  if [ "$EXHAUSTED_THIS_LAP" = "0" ] && [ "$RESULT" -ne 0 ] && detect_infra_failure_in_log "$LAP_LOG"; then
+    INFRA_THIS_LAP=1
+    INFRA_FAILS=$((INFRA_FAILS + 1))
+    if [ "$INFRA_FAILS" -ge "$INFRA_MAX" ]; then
+      echo "공급자 장애가 ${INFRA_MAX}회 연속 — 더는 자동 재시도하지 않고 미갱신으로 셉니다." | tee -a "$MAIN_LOG" "$LAP_LOG"
+      INFRA_THIS_LAP=0
+      INFRA_FAILS=0
+    else
+      BACKOFF=$((INFRA_BACKOFF * INFRA_FAILS))
+      echo "공급자 서버 장애로 죽은 바퀴 ($AGENT · ${INFRA_FAILS}/${INFRA_MAX}) — FAILS 미증가, ${BACKOFF}초 후 재시도" \
+        | tee -a "$MAIN_LOG" "$LAP_LOG"
+      wait_with_stop "$BACKOFF" || { echo "STOP 감지 — 종료" | tee -a "$MAIN_LOG"; exit 0; }
+    fi
+  fi
+
+  if [ "$EXHAUSTED_THIS_LAP" = "1" ] || [ "$INFRA_THIS_LAP" = "1" ]; then
+    : # 우리 코드가 틀린 게 아니라 공급자 사정이다 — FAILS/COUNT를 건드리지 않는다.
   elif [ "$AFTER" = "$BEFORE" ]; then
     echo "STATUS.md 갱신 없음" | tee -a "$MAIN_LOG" "$LAP_LOG"
     FAILS=$((FAILS + 1))
@@ -370,6 +410,7 @@ while true; do
   elif [ "$RESULT" -eq 0 ]; then
     COUNT=$((COUNT + 1))
     FAILS=0
+    INFRA_FAILS=0   # 한 바퀴라도 정상이면 공급자는 살아난 것이다
     # 자가학습 회의 — N바퀴마다 역할별 병렬 회의를 소집한다 (오너 2026-08-23).
     # 어떤 에이전트든 loop/COUNCIL_NOW 파일을 만들면 다음 바퀴 끝에 즉시 소집된다.
     if [ -f "$TARGET_REPO/loop/COUNCIL_NOW" ]; then
