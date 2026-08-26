@@ -119,8 +119,9 @@ namespace AshesToStars
             Check(ecoSrc.Contains("ShortCopper(hour)")
                   && ecoSrc.IndexOf("FormatCurrency(hour)") < 0,
                 "HuntGoldHourLine은 ShortCopper만");
-            Check(ecoSrc.Contains("필드 사냥 {FormatCurrency(copper)}"),
-                "HuntGoldLine 획득은 FormatCurrency 유지(다음 칸)");
+            Check(ecoSrc.Contains("ShortCopper(copper)")
+                  && ecoSrc.IndexOf("필드 사냥 {FormatCurrency(copper)}") < 0,
+                "HuntGoldLine 획득은 ShortCopper만");
 
             GameState.ResetAll();
             SoftCap.ResetForTest();

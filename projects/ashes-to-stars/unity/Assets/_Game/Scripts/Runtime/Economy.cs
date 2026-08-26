@@ -439,7 +439,7 @@ namespace AshesToStars
         public static string HuntGoldLine(long copper)
         {
             if (HuntGoldBlocked) return "필드 골드 없음";
-            return $"필드 사냥 {FormatCurrency(copper)}(§18-1)";
+            return $"필드 사냥 {EstateStatusHud.ShortCopper(copper)}(§18-1)";
         }
 
         /// <summary>QA_HUNT_GOLD=1이면 티어를 T1로 맞춰 1골드/h가 화면에 보이게 한다.</summary>
