@@ -289,37 +289,46 @@ namespace AshesToStars
             // 티어가 옛 나노바나나(keep 1989×1931·3.8MB)로 남으면 레벨업에서 딴 화풍으로 튄다.
             // _0에서 파생해 같은 256 캔버스·같은 팔레트 + 지붕 장식(첨탑·페넌트)만 얹은 것을 검증:
             // 256 세트 · 알파 유효 · 티어 오를수록 불투명 픽셀 단조 증가(장식만 추가되므로).
-            int keepSolid0 = 0, keepSolid1 = 0, keepSolid2 = 0;
-            for (int t = 0; t <= 2; t++)
+            // ox-alpha 티어로 교체 완료된 건물 목록 — 한 바퀴 한 동씩 반입될 때마다 여기 한 줄 추가.
+            // (같은 검증 로직을 건물마다 복붙하지 않는다 — 가드레일 「같은 로직 여러 곳」.)
+            var tierStems = new[] { "estate_keep", "estate_mine" };
+            foreach (var stem in tierStems)
             {
-                string tierPath = Path.Combine(Application.dataPath,
-                    "Resources/props/estate_keep_" + t + ".png");
-                Check(File.Exists(tierPath), $"본성 티어_{t} PNG가 있다");
-                Check(Resources.Load<Texture2D>("props/estate_keep_" + t) != null,
-                    $"본성 티어_{t}를 Resources에서 읽는다");
-                if (!File.Exists(tierPath)) continue;
-                var kt = new Texture2D(2, 2);
-                kt.LoadImage(File.ReadAllBytes(tierPath));
-                Check(kt.width == 256 && kt.height == 256,
-                    $"본성 티어_{t} oxalpha 256 세트 (실제 {kt.width}×{kt.height})");
-                int ktClear = 0, ktSolid = 0;
-                foreach (var p in kt.GetPixels())
+                int solid0 = 0, solid1 = 0, solid2 = 0;
+                for (int t = 0; t <= 2; t++)
                 {
-                    if (p.a < 0.05f) ktClear++;
-                    else if (p.a > 0.95f) ktSolid++;
+                    string tierPath = Path.Combine(Application.dataPath,
+                        "Resources/props/" + stem + "_" + t + ".png");
+                    Check(File.Exists(tierPath), $"{stem} 티어_{t} PNG가 있다");
+                    Check(Resources.Load<Texture2D>("props/" + stem + "_" + t) != null,
+                        $"{stem} 티어_{t}를 Resources에서 읽는다");
+                    if (!File.Exists(tierPath)) continue;
+                    var kt = new Texture2D(2, 2);
+                    kt.LoadImage(File.ReadAllBytes(tierPath));
+                    Check(kt.width == 256 && kt.height == 256,
+                        $"{stem} 티어_{t} oxalpha 256 세트 (실제 {kt.width}×{kt.height})");
+                    int ktClear = 0, ktSolid = 0;
+                    foreach (var p in kt.GetPixels())
+                    {
+                        if (p.a < 0.05f) ktClear++;
+                        else if (p.a > 0.95f) ktSolid++;
+                    }
+                    Check(ktClear > 0 && ktSolid > 256 * 256 / 4,
+                        $"{stem} 티어_{t} 알파 유효 (투명 {ktClear} · 불투명 {ktSolid})");
+                    if (t == 0) solid0 = ktSolid;
+                    else if (t == 1) solid1 = ktSolid;
+                    else solid2 = ktSolid;
+                    UnityEngine.Object.DestroyImmediate(kt);
                 }
-                Check(ktClear > 0 && ktSolid > 256 * 256 / 4,
-                    $"본성 티어_{t} 알파 유효 (투명 {ktClear} · 불투명 {ktSolid})");
-                if (t == 0) keepSolid0 = ktSolid;
-                else if (t == 1) keepSolid1 = ktSolid;
-                else keepSolid2 = ktSolid;
-                UnityEngine.Object.DestroyImmediate(kt);
+                Check(solid1 >= solid0 && solid2 >= solid1,
+                    $"{stem} 티어 불투명 단조 증가 — 장식만 추가 (t0 {solid0} ≤ t1 {solid1} ≤ t2 {solid2})");
             }
-            Check(keepSolid1 >= keepSolid0 && keepSolid2 >= keepSolid1,
-                $"본성 티어 불투명 단조 증가 — 장식만 추가 (t0 {keepSolid0} ≤ t1 {keepSolid1} ≤ t2 {keepSolid2})");
             Check(EstateBuildings.TierName(EstateGrid.Cell.Keep, 1) == "estate_keep_1"
                 && EstateBuildings.TierName(EstateGrid.Cell.Keep, 2) == "estate_keep_2",
                 "PropOf 티어 접미사가 _1/_2를 가리킨다");
+            Check(EstateBuildings.TierName(EstateGrid.Cell.Mine, 1) == "estate_mine_1"
+                && EstateBuildings.TierName(EstateGrid.Cell.Mine, 2) == "estate_mine_2",
+                "PropOf 광산 티어 접미사가 _1/_2를 가리킨다");
 
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, "1");
             Check(EstateBuildings.Blocked, "QA_NO면 차단");
