@@ -1271,15 +1271,49 @@ SelfCheck PASS.
 
 ## 아직 안 한 것 (우선순위 순)
 
+> 2026-08-26 갱신 — ORDERS① 유령 과제 종결 판정으로 2·3·4·5번 닫음(아래 「유령 과제 종결 판정」 참조).
+> 현재 작업 큐의 권위는 `docs/STATUS.md` 「다음 할 일」이다. 이 섹션은 2026-08-15~16 스냅의 잔재다.
+
 1. **캐릭터 재생성 완주** — 위 진행 중
-2. **영지 하위 건물 4종** — `EstateScreen.cs`가 껍데기. 대장간·경매장·영묘·수비대가
-   전부 "아직 내용이 없다"로 간다
-3. **전투 스타일 UI 부재** — 데이터는 살아났는데 플레이어가 바꿀 화면이 없다.
-   `CharacterScreen`에 스타일 선택이 없어 실질적으로 기본값 고정
-4. **RaceDef 배선** — §3 종족 4종이 전투에 영향 0. `CombatStyleDef`와 같은 계열 빈 배선
-5. **보스 쫄 소환** — `BossBattle.cs:317`이 빈 GameObject만 만든다
-6. **W2 회피** — 포위율 97%인데 접촉 60초 3회. ⚠️흡수·대시 기준을 낮춰 통과시키지 말 것
+2. ~~**영지 하위 건물 4종**~~ ✅ 닫음 — `EstateBuild` 레벨·업그레이드 창 `25559505`(+드래그 `6d9b4fae`)
+3. ~~**전투 스타일 UI 부재**~~ ✅ 닫음 — StyleScreen 토글 `305bee56` + 멤버별 실소비 배선 `51c3e862`
+4. ~~**RaceDef 배선**~~ ✅ 닫음 — 속성 라인 배선 `f9f195e8`·`dbe02f57`·`e4fd1d15`·`ead55a1d`
+5. ~~**보스 쫄 소환**~~ ✅ 닫음 — 빈 GameObject → 실몹 소환 `ecf4b4b4`(+상한 `bfff2789`)
+6. **W2 회피** — 포위율 97%인데 접촉 60초 3회. ⚠️흡수·대시 기준을 낮춰 통과시키지 말 것.
+   더미 판정 FAIL(`loop/w2_dummy_sim.py`, 2026-08-25) — 오너 직접 플레이 후 재판정
 7. **P2 몹 Play 육안 확인** — 검사기·컴파일은 통과했으나 화면은 아직 안 봤다
+
+## 유령 과제 종결 판정 (ORDERS① · 2026-08-26)
+
+> ORDERS.md 항목1(P3) 이행. 통과 기준대로 각 항목이 실코드에서 기능적으로 작동함을
+> grep+SelfCheck로 확인하고 네거티브 컨트롤을 대조했다. 게임 런타임 코드 무변경 —
+> 판정 기록 + 네거티브 검증 코드 취약점 1건 수정(아래 실측 기록).
+
+| 유령 과제 | 판정 | 코드 근거 | 네거티브 |
+|---|---|---|---|
+| CombatStyle 실소비 | ✅ 이미 작동 — 종결 | `W3Party.cs:1175` 멤버별 배정, `:1939` TickParty `Spec(StyleFor(m))`, `:2954` TickMobs 피해배율 — 멤버별 배선 `51c3e862` | `QA_NO_MEMBER_STYLE=1` → 옛 단일 경로(`MemberStyleSelfCheck` 단독 배치 PASS) |
+| UseFixedStyle 측정 단일 경로 | ✅ 보존 확인 — 종결 | `W3Party.cs:469` 정의 · `:477` ResolveStyle · `:1175` 삼항 — `MemberStyleSelfCheck.cs` 계약 판정 PASS | 동일 삼항 네거티브(측정 결정론 보호) |
+| 보스 쫄 소환 | ✅ 실몹 소환 — 종결 | `BossBattle.TriggerSummonMobs`(:563) → `SummonCap.Clamp`(:582) → `W3Party.SummonMobsToActive(n)`(:583) (`ecf4b4b4`, `bfff2789`). 빈 GameObject 시절 종료 | `BOSS_NO_SUMMON=1` → 기믹 비활성(BossBattle.cs:120, `BossBattleRunSelfCheck` GameFullCheck 통과군) |
+| JobDef.이동기형태 | ⚠️ ORDERS 오진 — 제거하지 않고 종결 | 소비처 존재: `JobInfo.MovementLine`(JobInfo.cs:280) → `CharacterScreen.cs:415`. 이미 단일 출처 구조(JobDef 필드 → MovementLine 단일 리더 → 화면 1곳). 제거하면 캐릭터창 「이동기 — …」 줄이 사라져 퇴보 | 값 비면 줄을 안 그림(지어내지 않음). `MobilityDistanceSelfCheck`도 GameFullCheck 통과군 |
+
+### 종결 검증 실측 (2026-08-26 오전 · unity_meas 단독 배치)
+
+- **GameFullCheck 첫 전수 노출**: 오늘 08:36 처음 돌린 전수(194종)에서 11건 FAIL —
+  지금까지 63종 큐레이션(GameSweep)만 돌아 이 체크들이 잠복해 있었다. 단독 배치 재실행으로
+  「일괄 상태 오염」 가설은 **기각**(오염 없는 환경에서도 재현).
+- **MemberStyleSelfCheck 1건 = 검증 코드 취약점(수정)** — 「미선택 직업은 균형형」이
+  PlayerPrefs에 「미선택」이 남아 있기를 *가정*만 했다. 실측으로
+  `unity.DefaultCompany.unity.plist`에 `ats.style.음유시인=공격형`(0) 잔재 확인 —
+  unity/와 unity_meas/가 product 이름을 공유해 같은 prefs 저장소를 쓴다.
+  수정: 검증이 전제를 직접 확립(`PlayerPrefs.DeleteKey`)하도록 바꾸고 단독 배치 재실행
+  **PASS(exit 0, 20/20)**. 런타임 배선·네거티브 19건은 애초 통과 상태였다.
+- **Skill Cd/Cost/Desc/Pow/Rad/Ult 6종 = 낡은 기대 포맷(미수정 · 다음 바퀴 후보)** —
+  SkillCdSelfCheck가 `이름(N초)` 독립 조각을 기대하는데, 이후 화면 작업에서 조각이
+  `(쿨·위력·반경)` 합성 표기로 진화. 단독 재현 실측: 쿨다운 값은 줄에 실재(데이터 소비 정상),
+  문자열 계약만 낡음 — 예: `후퇴 사격(7초)` PASS vs `조준 사격(3초)` FAIL(실물 `조준 사격(3초·×2)`).
+- **BossBattleDpsSelfCheck = 신규 결함 후보(미수정)** — W3Party.cs:809 종족 배율 적용 경로
+  NRE 단독 재현. RaceDef 방어배율 접근 계열 — 다음 바퀴 원인 규명 필요.
+- EstateYardCam·Zoom·Rebirth 3건 — 미분류(단독 미재현), 전수 정리 바퀴에서 처리.
 
 ## 보류 — 근거 소멸
 
@@ -1329,3 +1363,6 @@ SelfCheck PASS.
 
 ## 정기 회의 20260825-144115
 - 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-144115.md (rc=0, 파트 2/3)
+
+## 정기 회의 20260825-203200
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-203200.md (rc=0, 파트 3/3)

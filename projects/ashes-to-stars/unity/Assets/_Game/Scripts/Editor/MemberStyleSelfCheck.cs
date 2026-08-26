@@ -84,6 +84,10 @@ namespace AshesToStars
                     CombatStylePrefs.Set(key, (StyleId)before);   // 원복 — 세이브 오염 금지
 
                     object bard = Enum.Parse(jobT, "음유시인");
+                    // 「미선택」 전제를 가정하지 않고 직접 만든다 — 이 저장소의 PlayerPrefs는
+                    // unity/와 unity_meas/가 같은 product 이름을 공유해 실측 오염이 흘러든다
+                    // (2026-08-26 실측: ats.style.음유시인=공격형 잔재가 기본값 검사를 깼다).
+                    PlayerPrefs.DeleteKey("ats.style." + bard);
                     var def = styleOfM.Invoke(null, new[] { bard });
                     Check(def.Equals(W3Party.Style.Balanced),
                         $"미선택 직업은 균형형 기본 — 실제 {def}");
