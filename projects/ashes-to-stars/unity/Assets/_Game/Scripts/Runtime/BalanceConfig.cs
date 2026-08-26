@@ -36,6 +36,11 @@ namespace AshesToStars
         [Tooltip("소환수 재소환 비용(실버). 원장 0.5G/h = T1 50실버 고정. 소비처: Resummon.CostSilver → 속성 탭 줄")] public float 재소환비용실버 = 50f;
         [Tooltip("소환수 재소환 쿨다운(초). 소비처: Resummon.CooldownSeconds → 속성 탭 줄")] public float 재소환쿨다운초 = 30f;
 
+        [Header("정예 수호자 오라 (§10-2 — 원장은 「피해 감소 오라·고방어」만 확정, 수치는 미확정)")]
+        [Tooltip("수호자 오라 반경(유닛). 원장 미확정. 소비처: EliteGuardian.AuraRadius → W3Party.DamageMob")] public float 수호자오라반경 = 3.5f;
+        [Tooltip("오라 안 잡몹이 받는 피해 배율(0~1, 낮을수록 강한 보호). 원장 미확정. 소비처: EliteGuardian.NearbyTakenMul → W3Party.DamageMob")] public float 수호자주변피해배율 = 0.5f;
+        [Tooltip("수호자 자신이 받는 피해 배율(0~1, 낮을수록 고방어). 원장 미확정. 소비처: EliteGuardian.SelfTakenMul → W3Party.DamageMob")] public float 수호자자체피해배율 = 0.4f;
+
         [Header("쿼터뷰")]
         [Tooltip("월드 y를 화면에 그릴 때 곱하는 값 = sin(30°)")] public float ISO_Y = 0.5f;
     }

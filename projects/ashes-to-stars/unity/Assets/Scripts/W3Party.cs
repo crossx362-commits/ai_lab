@@ -1218,12 +1218,14 @@ public class W3Party : MonoBehaviour
             float a = Random.value * Mathf.PI * 2f;
             _mPos[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Random.Range(Arena * 0.6f, Arena);
             int r = Random.Range(0, 100);
-            // §10-2 AI 4종 + 정예 2종.
-            //   0 추적형 30% · 1 포위형 20% · 5 돌진형 25% · 2 원거리형 15% · 3/4 정예 10%
+            // §10-2 AI 4종 + 정예 3종.
+            //   0 추적형 30% · 1 포위형 20% · 5 돌진형 25% · 2 원거리형 15% · 3/4/6 정예 10%
             // 원거리형은 §10-2가 정한 **15~25%** 안에 둔다(많으면 접근 자체가 불가능해진다).
-            // 돌진형은 이번에 신설했다 — 「예고 표식 후 직선 돌진」이 §10-2의 4종 중
-            // 유일하게 **없던** 것이고, 대시(§5)를 넣은 지금이라야 회피가 성립한다.
-            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 96 ? 3 : 4;
+            // 돌진형은 「예고 표식 후 직선 돌진」이 §10-2의 4종 중 유일하게 없던 것이고,
+            // 대시(§5)를 넣은 지금이라야 회피가 성립한다.
+            // 정예 10%는 3 치유·4 소환·6 수호자로 4/3/3 나눈다(수호자는 §10-2 탱 거울,
+            // 오라 밖 유인·선처치가 정답). 총 비율은 그대로라 측정 단일 경로가 안 흔들린다.
+            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 94 ? 3 : r < 97 ? 4 : 6;
             // 보스 소환 몹은 **근접 돌격형(kind 1)으로 고정**한다. 원거리(kind 2)로 나오면
             // 탄으로 때려 피해 귀속 지점이 갈라지고, 무엇보다 「달려드는 쫄」이라는 소환 기믹의
             // 뜻과도 어긋난다. 근접으로 고정하면 파티 피해가 근접 판정 한 곳에서 온전히 잡힌다.
@@ -1394,9 +1396,37 @@ public class W3Party : MonoBehaviour
         }
     }
 
+    // §10-2 수호자 오라 — 살아있는 수호자(kind 6) 위치를 프레임마다 스냅해 둔다.
+    // DamageMob은 매 타 호출되는 핫패스라, 여기서 개체 수·수치를 미리 캐시해 두고
+    // 피해 배율 계산은 순수 함수(EliteGuardian.Multiplier)로만 돌린다.
+    int _guardianN;
+    readonly Vector2[] _guardianAt = new Vector2[16];
+    float _gRadius = AshesToStars.EliteGuardian.DefaultAuraRadius;
+    float _gNearby = AshesToStars.EliteGuardian.DefaultNearbyTakenMul;
+    float _gSelf = AshesToStars.EliteGuardian.DefaultSelfTakenMul;
+
+    void RefreshGuardians()
+    {
+        _guardianN = 0;
+        if (AshesToStars.EliteGuardian.Blocked) return;   // 네거티브 컨트롤 — 오라·고방어 전부 끔
+        for (int i = 0; i < MAXM && _guardianN < _guardianAt.Length; i++)
+            if (_mOn[i] && _mBossIndex[i] < 0 && _mKind[i] == 6) _guardianAt[_guardianN++] = _mPos[i];
+        if (_guardianN > 0)
+        {
+            // 설정은 판 중 안 바뀌므로 개체가 있을 때만 한 번 읽는다(ScriptableObject 생성 비용 회피).
+            _gRadius = AshesToStars.EliteGuardian.AuraRadius();
+            _gNearby = AshesToStars.EliteGuardian.NearbyTakenMul();
+            _gSelf = AshesToStars.EliteGuardian.SelfTakenMul();
+        }
+    }
+
     void DamageMob(int index, float amount)
     {
         if (index < 0 || index >= MAXM || !_mOn[index] || amount <= 0f) return;
+        // §10-2 수호자 오라 — 오라 안 잡몹·수호자 자신은 받는 피해가 준다(소비처 = 이 관문).
+        if (_guardianN > 0)
+            amount *= AshesToStars.EliteGuardian.Multiplier(
+                _mPos[index], _mKind[index] == 6, _guardianAt, _guardianN, _gRadius, _gNearby, _gSelf);
         float dealt = Mathf.Min(_mHp[index], amount);
         if (_mBossIndex[index] >= 0
             && !AshesToStars.BossBattle.TryReportPartyDamageToActive(_mBossIndex[index], dealt))
@@ -1695,6 +1725,7 @@ public class W3Party : MonoBehaviour
         }
         TickDashProbe(dt);
         UpdateCallouts(dt);
+        RefreshGuardians();   // §10-2 수호자 오라 스냅 — 파티 피해(DamageMob) 전에 잡아야 이번 프레임에 반영된다
         TickParty(dt);
         TickMobs(dt);
 
@@ -2721,6 +2752,7 @@ public class W3Party : MonoBehaviour
         3 => SpriteBank.MobKindPriest,     // 치유 정예 — 사제
         4 => SpriteBank.MobKindSummoner,   // 소환 정예 — 소환사
         5 => SpriteBank.MobKindCharger,    // 돌진형 — 뿔·덩치·앞으로 쏠린 무게중심
+        6 => SpriteBank.MobKindGuardian,   // 수호자 정예 — 방패 든 수호기사 실루엣(§10-2 탱 거울)
         _ => SpriteBank.MobKindBasic,      // 0 추적형
     };
 
@@ -2770,6 +2802,7 @@ public class W3Party : MonoBehaviour
             2 => Muted(TintOf(MobFamily.언데드), 0.22f, 0.80f), // 원거리형 — 초록기
             5 => Muted(new Color(1f, 0.82f, 0.30f), 0.30f, 0.86f), // 돌진형 — 예고를 봐야 하니 조금 진하게
             3 => Muted(new Color(1f, 0.30f, 0.30f), 0.34f, 0.84f), // 치유 정예 — 붉은기
+            6 => Muted(new Color(0.60f, 0.80f, 0.95f), 0.32f, 0.92f), // 수호자 정예 — 강철빛(방패, 정예 중 가장 밝게)
             _ => Muted(new Color(0.78f, 0.40f, 1f), 0.34f, 0.84f), // 소환 정예 — 보랏기
         };
     }
@@ -3044,6 +3077,21 @@ public class W3Party : MonoBehaviour
                 want = dir; spd = PlayerSpeed * 0.55f;
                 _mCd[i] -= dt;
                 if (_mCd[i] <= 0f && _mAlive < MAXM - 20) { _mCd[i] = 5.0f; SpawnMob(); }
+            }
+            else if (_mKind[i] == 6)                              // 정예: 수호자 — 피해 감소 오라·고방어
+            {
+                // 느리게 다가와 잡몹 곁을 지킨다. 피해 감소는 DamageMob(단일 피해 관문)이
+                // EliteGuardian 배율로 처리한다 — 오라 밖 유인·선처치가 정답이 되게(§10-2).
+                want = dir; spd = PlayerSpeed * 0.5f;
+                _mCd[i] -= dt;
+                if (_mCd[i] <= 0f)
+                {
+                    _mCd[i] = 1.2f;
+                    // 오라 표식 — **바닥 링이 아니라** 수호자 몸에 감기는 방패빛(작게).
+                    // 큰 바닥 원은 스킬 범위로 읽힌다(§6-A 오너 4회 지적) → 개체에 붙인 광륜으로
+                    // "이 개체가 지킨다"만 말하고 반경 원은 그리지 않는다(돌진 예고가 먼지뿐인 것과 같은 원칙).
+                    FxParticles.Play(FxKind.광륜, ToScreen(p), 1.2f, _mTint[i]);
+                }
             }
             else { want = dir; spd = PlayerSpeed * ChaserRatio; } // 추적형
 

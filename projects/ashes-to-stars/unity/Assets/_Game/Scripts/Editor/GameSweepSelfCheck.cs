@@ -57,6 +57,7 @@ namespace AshesToStars
                 new Entry { Name = "전투 스타일 HUD", Run = StyleHudSelfCheck.Run },
                 new Entry { Name = "멤버별 전투 스타일 배선", Run = MemberStyleSelfCheck.Run },
                 new Entry { Name = "정예 드랍·필드 훅", Run = EliteDropSelfCheck.Run },
+                new Entry { Name = "정예 수호자 오라", Run = EliteGuardianSelfCheck.Run },
                 new Entry { Name = "본문 내비 절단", Run = BodyNavSelfCheck.Run },
                 new Entry { Name = "부활초 소지 상한", Run = ReviveCapSelfCheck.Run },
                 new Entry { Name = "사망 상한", Run = DeathCapSelfCheck.Run },
