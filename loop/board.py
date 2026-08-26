@@ -1822,13 +1822,17 @@ def _lap_records(limit: int = 40) -> list[dict]:
 def lap_costs(laps: list[dict], sample: int = 5) -> dict:
     """바퀴 하나가 무엇 때문에 오래 걸리는지 — 최근 몇 바퀴의 왕복 비용을 센다.
 
-    실측(2026-08-26): 바퀴당 셸 명령 34~49회 · 유니티 배치 8~11회 · 커밋 가드 최대 10회.
-    유니티 내부 처리는 3초인데(도메인 리로드 296~572ms) 배치 1회가 1.5~2분씩 든다 — 즉 비용은
-    「무엇을 하는가」가 아니라 **몇 번 왕복하는가**다. 그래서 이 셋을 보드에 상시 노출한다.
+    실측(2026-08-26 재측정): 바퀴당 셸 명령 35~48회. 유니티 배치는 **싸다** — 단일 SelfCheck
+    3~4초 · 전수 스윕 195종 74초(로그 파일 생성~마지막 기록). 비싼 것은 왕복 자체다(명령 1회당
+    약 1분: 57분 바퀴에 명령 43회). 그래서 「무엇을 하는가」가 아니라 **몇 번 왕복하는가**를 센다.
     로그가 큰 편이라 최근 sample개만 읽는다.
+
+    세는 방법: ANSI를 벗긴 뒤 **줄머리** `$ `만 명령으로 센다(문자열 안의 "$ "를 세면 부풀려진다).
+    유니티·가드는 그 명령 줄에서만 센다 — grep 인자로 등장한 단어를 실행으로 오독하지 않는다.
     """
     cmds = unity = guard = 0
     seen = 0
+    ansi = re.compile(r"\x1b\[[0-9;]*m")
     for lap in reversed(laps):
         if seen >= sample:
             break
@@ -1840,9 +1844,10 @@ def lap_costs(laps: list[dict], sample: int = 5) -> dict:
         except OSError:
             continue
         seen += 1
-        cmds += text.count("$ ")
-        unity += text.count("executeMethod")
-        guard += text.count("commit_guard.sh")
+        lines = [l for l in ansi.sub("", text).split("\n") if l.startswith("$ ")]
+        cmds += len(lines)
+        unity += sum(1 for l in lines if "executeMethod" in l)
+        guard += sum(1 for l in lines if "commit_guard.sh" in l or "safe_commit.sh" in l)
     if not seen:
         return {"laps": 0, "cmds": 0, "unity": 0, "guard": 0}
     return {
