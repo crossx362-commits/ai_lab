@@ -1254,7 +1254,7 @@ public class W3Party : MonoBehaviour
             if (summoned) _summonedAlive++;
             // 소환 몹은 잡몹보다 훨씬 단단하게(220) — 파티 한복판에 떨어지면 순식간에 포커싱되므로,
             // 즉사하면 「달려들어 후열을 문다」는 위협이 성립하지 않는다(실측: 90도 첫 타 전에 죽었다).
-            _mHp[i] = _mMaxHp[i] = summoned ? 220f : _mKind[i] >= 3 ? 90f : 26f;
+            _mHp[i] = _mMaxHp[i] = summoned ? 220f : IsElite(_mKind[i]) ? 90f : 26f;
             _mCd[i] = Random.value * 2f;
             // 소환 몹은 사거리 안에 나타나므로 **곧바로** 한 대 문다 — 예고 후 대응할 수 있는 위협이 된다.
             _mAtkCd[i] = summoned ? 0.15f : Random.value * 0.8f; _mFlash[i] = 0f;
@@ -1278,7 +1278,7 @@ public class W3Party : MonoBehaviour
             //    정예가 캐릭터(2.0u)보다 커져 "주인공이 안 보인다"의 실제 원인이 됐는데,
             //    크기표에도 SpriteBank에도 이 곱셈은 안 적혀 있어 누구도 못 봤다.
             //    이제 배율을 표에서 역산한다 — 비율을 바꾸려면 `prop_scale.json`만 고친다.
-            _mTr[i].localScale = Vector3.one * (_mKind[i] >= 3 ? EliteScale : 1.0f);
+            _mTr[i].localScale = Vector3.one * (IsElite(_mKind[i]) ? EliteScale : 1.0f);
             _mBarBg[i].gameObject.SetActive(false);      // 다시 스폰됐으니 만피 — 바 숨김
             _mBarFg[i].gameObject.SetActive(false);
             _mTr[i].gameObject.SetActive(true);
@@ -2820,6 +2820,17 @@ public class W3Party : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// §10-2 정예 여부. **번호 비교(`>= 3`)가 아니라 명시 술어로 판정한다.**
+    /// 정예 = {3 치유·4 소환·6 수호자·7 군단장·8 저주술사·9 처형자}.
+    /// kind 5(돌진형)는 3·4 정예 **뒤에** 추가된 잡몹인데, 번호가 3보다 커서
+    /// 옛 「kind ＞= 3」 번호 관용구가 정예로 오분류했다 — 돌진형이 정예 HP(90 vs 26)·
+    /// EliteScale·필드 정예 드랍(EliteDrop.NoteFieldKill)·정예 사망 FX를 4바퀴 동안
+    /// 잘못 받고 있었다(번호 순서 ≠ 의미 순서). 새 정예 종을 추가하면 여기 한 곳만
+    /// 고치고 HP·스케일·드랍·FX 호출부는 이 술어를 재사용한다(가드레일 「같은 로직 여러 곳」).
+    /// </summary>
+    public static bool IsElite(int kind) => kind == 3 || kind == 4 || (kind >= 6 && kind <= 9);
+
     static int MobSpriteKind(int kind) => kind switch
     {
         1 => SpriteBank.MobKindSwarmer,    // 포위형 — 낮고 넓게 벌어진 군집형
@@ -2923,24 +2934,24 @@ public class W3Party : MonoBehaviour
         _kills++;
         if (GameMode) AshesToStars.HuntBoon.NoteKill();
         // 필드 정예 훅(큐#1, 오너 위임 승인) — 던전 정예는 노드 Complete가 이미 지급하므로 필드만.
-        if (GameMode && !AshesToStars.DungeonRun.Active && _mKind[i] >= 3)
+        if (GameMode && !AshesToStars.DungeonRun.Active && IsElite(_mKind[i]))
             AshesToStars.EliteDrop.NoteFieldKill();
-        PushReward(_mKind[i] >= 3 ? "정예 처치 · 희귀 전리품" : CombatHudRewardLine(12, 4, 1),
-                   _mKind[i] >= 3 ? new Color(0.86f, 0.50f, 1f) : new Color(1f, 0.78f, 0.30f));
+        PushReward(IsElite(_mKind[i]) ? "정예 처치 · 희귀 전리품" : CombatHudRewardLine(12, 4, 1),
+                   IsElite(_mKind[i]) ? new Color(0.86f, 0.50f, 1f) : new Color(1f, 0.78f, 0.30f));
         if (_mSummoned[i]) { _mSummoned[i] = false; _summonedAlive = Mathf.Max(0, _summonedAlive - 1); }
         // 죽은 자리에 먼지 — 다만 **초당 처치가 수십 건**이므로 전부 뿌리면 화면이 먼지밭이 된다.
         // 5마리에 한 번만 낸다(파티클 풀 24개를 잡몹 사망이 독점하지 않게).
         // 5마리에 1번은 지나치게 성겼다 — 처치가 화면에서 거의 안 읽혔다.
         // 3마리에 1번으로 올리고, 정예는 매번 크게 터뜨린다(드물게 죽으므로 비용도 작다).
         if ((_kills % 3) == 0) MobDeathPuff(_mPos[i]);
-        if (_mKind[i] >= 3)
+        if (IsElite(_mKind[i]))
         {
             FxParticles.Play(FxKind.쇼크웨이브, ToScreen(_mPos[i]), 1.2f);
             FxParticles.Play(FxKind.광륜, ToScreen(_mPos[i]), 0.9f, _mTint[i]);
         }
         // 정예는 매번 — 드물게 죽는 데다, 죽은 것이 화면에서 확실히 읽혀야 한다.
-        if (_mKind[i] >= 3 || (_kills % 3) == 0)
-            FxPool.Play(FxPool.Kind.Death, _mPos[i], _mKind[i] >= 3 ? 1.5f : 0.9f);
+        if (IsElite(_mKind[i]) || (_kills % 3) == 0)
+            FxPool.Play(FxPool.Kind.Death, _mPos[i], IsElite(_mKind[i]) ? 1.5f : 0.9f);
 
         // 오브젝트를 여기서 끄지 않는다 — 사망 모션이 돌 시간을 준다.
         // `_mOn[i]`는 이미 false라 AI·타겟팅·피격 판정에서는 즉시 빠진다(시체가 싸우지 않는다).
@@ -3162,7 +3173,7 @@ public class W3Party : MonoBehaviour
                     _mCd[i] = 1.5f;
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - p).sqrMagnitude < 16f)
-                            _mHp[j] = Mathf.Min(_mKind[j] >= 3 ? 90f : 26f, _mHp[j] + 8f);
+                            _mHp[j] = Mathf.Min(IsElite(_mKind[j]) ? 90f : 26f, _mHp[j] + 8f);
                 }
             }
             else if (_mKind[i] == 4)                              // 정예: 잡몹 소환

@@ -61,6 +61,7 @@ namespace AshesToStars
                 new Entry { Name = "정예 군단장 오라", Run = EliteLegionSelfCheck.Run },
                 new Entry { Name = "정예 저주술사 오라", Run = EliteCurseSelfCheck.Run },
                 new Entry { Name = "정예 처형자 폭딜", Run = EliteExecutionerSelfCheck.Run },
+                new Entry { Name = "정예 분류(IsElite)", Run = EliteClassifySelfCheck.Run },
                 new Entry { Name = "본문 내비 절단", Run = BodyNavSelfCheck.Run },
                 new Entry { Name = "부활초 소지 상한", Run = ReviveCapSelfCheck.Run },
                 new Entry { Name = "사망 상한", Run = DeathCapSelfCheck.Run },
