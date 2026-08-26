@@ -67,7 +67,8 @@ namespace AshesToStars
             return gear;
         }
 
-        /// <summary>필드 정예 누적 처치 수(§10-2 보정 소비용). QA_NO면 오르지 않는다.</summary>
+        /// <summary>필드 정예 누적 처치 수(§10-2 보정 소비용). QA_NO면 오르지 않는다.
+        /// 소비처: EliteWaveDrop.BeginWave → Mul → Economy.FieldHuntHideCount.</summary>
         public static int FieldKills => _fieldKills;
 
         /// <summary>

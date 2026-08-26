@@ -55,6 +55,10 @@ namespace AshesToStars
         [Tooltip("처형자 후열 명중 폭딜 배율(≥1, 클수록 위협적). 원장 미확정. 소비처: EliteExecutioner.BurstMul → W3Party.TickMobs(근접 피해에 곱)")] public float 처형자폭딜배율 = 3.0f;
         [Tooltip("처형자 돌진 이동 배율(플레이어 대비, 정예 중 가장 빠름). 원장 미확정. 소비처: EliteExecutioner.RushMul → W3Party.TickMobs(이동 spd)")] public float 처형자돌진속도배율 = 0.95f;
 
+        [Header("정예 처치 다음 웨이브 드랍 (§10-2 — 원장은 「처치해야 다음 웨이브 드랍 배율이 오른다」만 확정, 수치는 미확정)")]
+        [Tooltip("필드 정예 1킬당 다음 웨이브 드랍 가산. 원장 미확정. 소비처: EliteWaveDrop.Mul → Economy.FieldHuntHideCount")] public float 정예처치드랍배율 = 0.25f;
+        [Tooltip("다음 웨이브 드랍 배율 상한. 원장 미확정. 소비처: EliteWaveDrop.Mul")] public float 정예처치드랍상한 = 2f;
+
         [Header("침략·월드맵 (§18-13 · 담합 방지 §14)")]
         [Tooltip("디버프 중첩 최대 별 수. 소비처: StarDebuffCap.Cap → WorldStar.AppliedStacks · HUD 부제")] public int 디버프중첩별상한 = 2;
 

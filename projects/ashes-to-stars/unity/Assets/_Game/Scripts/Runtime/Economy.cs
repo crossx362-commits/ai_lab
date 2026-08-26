@@ -346,8 +346,14 @@ namespace AshesToStars
         /// 필드 사냥(보스 테이블이 아닌 잡몹 웨이브)에서 가죽만 판정한다.
         /// 보스 테이블을 그대로 쓰면 필드에서 부활초가 나와 목숨 경제가 풀린다.
         /// 프로토타입 검증값: 생존 1회에 가죽 1장 — 대장간 루프가 화면에 보여야 한다.
+        /// §10-2 정예 처치 다음 웨이브 드랍 배율을 곱한다. QA_NO면 옛 1장.
         /// </summary>
-        public static int FieldHuntHideCount() => 1;
+        public static int FieldHuntHideCount()
+        {
+            float n = 1f * EliteWaveDrop.Mul();
+            int hides = (int)Math.Round(n);
+            return hides < 1 ? 1 : hides;
+        }
 
         /// <summary>
         /// 잡몹 웨이브(필드·탑 일반층·던전 노드) 초당 경험치(T1, 종족 1.0).

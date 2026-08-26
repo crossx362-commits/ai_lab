@@ -181,6 +181,10 @@ namespace AshesToStars
             else
                 HuntBoon.BeginField((uint)(20260817 ^ GameState.Tier * 2654435761u));
 
+            // §10-2 정예 처치 → 다음 웨이브 드랍. 이번 웨이브는 시작 시점 FieldKills.
+            if (GameFlow.Kind == GameFlow.BattleKind.잡몹웨이브)
+                EliteWaveDrop.BeginWave();
+
             // 던전 노드는 **편성이 계획에서 온다**(§3-5 밀도 곡선). 여기서 꽂지 않으면
             // 어느 노드를 들어가든 같은 판이 돌아 "던전이 매번 바뀐다"가 거짓말이 된다.
             var wave = DungeonRun.PendingWave();

@@ -27,6 +27,18 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — §10-2 정예 처치 다음 웨이브 드랍 배율 (Grok)
+
+원장 §10-2 「정예를 처치해야 다음 웨이브 드랍 배율이 오른다」가 정성만 있고
+`EliteDrop.FieldKills` 선행 훅(`03035f8f`)의 소비처가 0곳이었다. `EliteWaveDrop`이
+FieldKills를 읽어 다음 잡몹 웨이브 드랍 배율을 만들고, `Economy.FieldHuntHideCount`가
+곱한다. BeginWave가 웨이브 시작 시점 킬 수를 고정 — 이번 웨이브 처치는 다음부터.
+원장 수치 미확정이라 1킬당 +0.25·상한 ×2를 BalanceConfig에 둔다.
+`QA_NO_ELITE_WAVE_DROP`이면 옛 ×1·가죽 1장. W3Party 무접촉.
+
+`EliteWaveDropSelfCheck` PASS 30/30 (`results/elite_wave_drop_selfcheck.log`).
+unity_meas batch 6000.5.6f1 exit 0.
+
 ## 완료 (2026-08-27) — §18-13 디버프 중첩 최대 2개 별 소비처 (Grok)
 
 원장 §18-13·담합 방지 §14 「디버프 중첩 최대 2개 별」이 authored인데 WorldStar는

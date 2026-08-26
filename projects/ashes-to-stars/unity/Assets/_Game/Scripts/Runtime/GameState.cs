@@ -666,6 +666,7 @@ namespace AshesToStars
             BagSlots.ResetForTest();
             GearDrop.ResetForTest();
             EliteDrop.ResetForTest();
+            EliteWaveDrop.ResetForTest();
             EliteKinds.ResetForTest();
         }
 
