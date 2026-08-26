@@ -6,7 +6,8 @@ namespace AshesToStars
     /// <summary>
     /// 핵심 건물(IsCore)별 레벨·공사(GAME_SPEC_ESTATE_BUILD §2-3·§13-2·§18-12).
     /// 본성 API는 보존하고 Cell.Keep으로 위임한다. 방어 건물은 EstateDefense.
-    /// 완료는 수령 버튼 없이 시각이 되면 적용된다(숙제 금지). 칸마다 병렬 공사 OK.
+    /// 완료는 수령 버튼 없이 시각이 되면 적용된다(숙제 금지).
+    /// 동시 건설은 §18-12 슬롯 상한(본성 라인 1 + 그 외 1 = BuildSlots.Cap)을 지킨다.
     /// </summary>
     public static class EstateBuild
     {
@@ -109,6 +110,20 @@ namespace AshesToStars
             return keep * 12L * Economy.COPPER_PER_GOLD;
         }
 
+        /// <summary>본성을 뺀 핵심 건물 중 공사 중(§18-12 「그 외」 슬롯 점유)인 수.</summary>
+        public static int ActiveOtherBuilds()
+        {
+            Load();
+            Tick();
+            int n = 0;
+            for (int i = 0; i < Cores.Length; i++)
+            {
+                if (Cores[i] == EstateGrid.Cell.Keep) continue;
+                if (_to[i] > _level[i]) n++;
+            }
+            return n;
+        }
+
         public static long RemainingSeconds() => RemainingSeconds(EstateGrid.Cell.Keep);
 
         public static long RemainingSeconds(EstateGrid.Cell c)
@@ -153,6 +168,10 @@ namespace AshesToStars
             }
             if (_to[i] > _level[i])
                 return c == EstateGrid.Cell.Keep ? "본성 공사가 끝나지 않았다" : "공사가 끝나지 않았다";
+            // §18-12 동시 건설 슬롯: 본성은 전용 슬롯이라 무제한, 그 외는 「그 외 슬롯」을 공유.
+            if (c != EstateGrid.Cell.Keep && !BuildSlots.Blocked
+                && ActiveOtherBuilds() >= BuildSlots.OtherSlots())
+                return "동시 건설 슬롯이 찼다(§18-12)";
             long cost = UpgradeCost(c, lv);
             if (GameState.Wallet.Copper < cost)
                 return $"골드가 부족하다 — {EstateStatusHud.ShortCopper(cost)}";
