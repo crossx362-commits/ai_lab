@@ -152,6 +152,29 @@ namespace AshesToStars
                     $"창고 알파 유효 — 배경 잘림+실체 함께 (투명 {wClear} · 불투명 {wSolid}/{wpx.Length})");
                 UnityEngine.Object.DestroyImmediate(wx);
             }
+            var baRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Barracks);
+            Check(baRes != null, "수비대 PNG를 Resources에서 읽는다");
+            string baPath = Path.Combine(Application.dataPath,
+                "Resources/props/" + EstateBuildings.Barracks + ".png");
+            Check(File.Exists(baPath), "수비대 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(baPath))
+            {
+                var bx = new Texture2D(2, 2);
+                bx.LoadImage(File.ReadAllBytes(baPath));
+                Check(bx.width == 256 && bx.height == 256,
+                    $"수비대 PNG가 oxalpha 256 세트 (실제 {bx.width}×{bx.height})");
+                var bpx = bx.GetPixels();
+                int bClear = 0, bSolid = 0;
+                foreach (var p in bpx)
+                {
+                    if (p.a < 0.05f) bClear++;
+                    else if (p.a > 0.95f) bSolid++;
+                }
+                // 수비대는 직사각형 건물이라 실체가 넓다(실측 24%) — 임계 1/6.
+                Check(bClear > 0 && bSolid > bpx.Length / 6,
+                    $"수비대 알파 유효 — 배경 잘림+실체 함께 (투명 {bClear} · 불투명 {bSolid}/{bpx.Length})");
+                UnityEngine.Object.DestroyImmediate(bx);
+            }
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "마을이 본성 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
