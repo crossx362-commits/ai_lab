@@ -132,6 +132,44 @@ namespace AshesToStars
                     $"Complete 줄 (실제 {EliteDrop.LastLine})");
             }
 
+            // ── 필드 정예 훅(STATUS 큐#1, 오너 위임 승인) — KillMob → NoteFieldKill ──
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            Equipment.ResetAll();
+            EliteDrop.ResetForTest();
+            _ = LifeSystem.GetCharacters();
+            Check(EliteDrop.FieldKills == 0, "필드 훅 기본 0");
+            int fkGear = Equipment.Unequipped().Count;
+            int fkStone = GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone);
+            EliteDrop.NoteFieldKill();
+            Check(EliteDrop.FieldKills == 1, $"필드 처치 카운트 1 (실제 {EliteDrop.FieldKills})");
+            Check(GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone) == fkStone + EliteDrop.Stones,
+                "필드 훅 강화석");
+            Check(Equipment.Unequipped().Count == fkGear + 1, "필드 훅 일반 장비");
+            Check(EliteDrop.LastLine.IndexOf("일반", StringComparison.Ordinal) >= 0,
+                $"필드 훅 줄 (실제 {EliteDrop.LastLine})");
+            EliteDrop.NoteFieldKill();
+            Check(EliteDrop.FieldKills == 2, $"두 번째 카운트 2 (실제 {EliteDrop.FieldKills})");
+
+            string w3Src = File.ReadAllText(Path.Combine(Application.dataPath, "Scripts/W3Party.cs"));
+            Check(w3Src.IndexOf("EliteDrop.NoteFieldKill", StringComparison.Ordinal) >= 0,
+                "W3Party가 필드 훅을 건다");
+            Check(w3Src.IndexOf("!AshesToStars.DungeonRun.Active", StringComparison.Ordinal) >= 0,
+                "훅은 던전 중 제외(노드 Complete 이중 지급 방지)");
+            Check(w3Src.IndexOf("GameMode && !AshesToStars.DungeonRun.Active", StringComparison.Ordinal) >= 0,
+                "훅은 실플레이 판 한정(검증 보드 무영향)");
+
+            Environment.SetEnvironmentVariable(EliteDrop.EnvNo, "1");
+            int noFk = EliteDrop.FieldKills;
+            int noGear = Equipment.Unequipped().Count;
+            int noStone = GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone);
+            EliteDrop.NoteFieldKill();
+            Check(EliteDrop.FieldKills == noFk, "QA_NO 카운트 고정");
+            Check(Equipment.Unequipped().Count == noGear
+                  && GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone) == noStone,
+                "QA_NO 지급 없음 — 기존 동작 유지");
+            Environment.SetEnvironmentVariable(EliteDrop.EnvNo, null);
+
             GameState.ResetAll();
             LifeSystem.ResetAll();
             Equipment.ResetAll();
@@ -169,6 +207,8 @@ namespace AshesToStars
             _ = nameof(EliteDrop.Applies);
             _ = nameof(EliteDrop.Line);
             _ = nameof(EliteDrop.SeedQaIfRequested);
+            _ = nameof(EliteDrop.NoteFieldKill);
+            _ = nameof(EliteDrop.FieldKills);
 
             Environment.SetEnvironmentVariable(EliteDrop.EnvShow, show);
             Environment.SetEnvironmentVariable(EliteDrop.EnvNo, no);

@@ -2804,6 +2804,9 @@ public class W3Party : MonoBehaviour
         }
         _kills++;
         if (GameMode) AshesToStars.HuntBoon.NoteKill();
+        // 필드 정예 훅(큐#1, 오너 위임 승인) — 던전 정예는 노드 Complete가 이미 지급하므로 필드만.
+        if (GameMode && !AshesToStars.DungeonRun.Active && _mKind[i] >= 3)
+            AshesToStars.EliteDrop.NoteFieldKill();
         PushReward(_mKind[i] >= 3 ? "정예 처치 · 희귀 전리품" : CombatHudRewardLine(12, 4, 1),
                    _mKind[i] >= 3 ? new Color(0.86f, 0.50f, 1f) : new Color(1f, 0.78f, 0.30f));
         if (_mSummoned[i]) { _mSummoned[i] = false; _summonedAlive = Mathf.Max(0, _summonedAlive - 1); }

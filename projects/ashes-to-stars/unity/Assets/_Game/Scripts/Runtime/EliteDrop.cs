@@ -16,6 +16,7 @@ namespace AshesToStars
 
         static bool _qaSeeded;
         static string _lastLine = "";
+        static int _fieldKills;
 
         public static bool Blocked
         {
@@ -66,6 +67,24 @@ namespace AshesToStars
             return gear;
         }
 
+        /// <summary>필드 정예 누적 처치 수(§10-2 보정 소비용). QA_NO면 오르지 않는다.</summary>
+        public static int FieldKills => _fieldKills;
+
+        /// <summary>
+        /// 필드 정예 처치 훅 — W3Party.KillMob이 정예(종류 3·4) 1회씩 건다(큐#1, 오너 위임 승인).
+        /// 던전 정예는 노드 Complete가 이미 Apply로 지급하므로 W3Party 쪽에서 던전 중 호출 금지.
+        /// §10-1 「처치 시 추가 드랍」을 노드와 같은 보상(§10-8)으로 지급하고 카운트를 남긴다.
+        /// QA_NO_ELITE_DROP이면 옛 동작(무지급·카운트 고정) 유지.
+        /// </summary>
+        public static void NoteFieldKill()
+        {
+            if (Blocked) return;
+            _fieldKills++;
+            uint seed = 20260825u ^ (uint)_fieldKills * 2654435761u;
+            var rng = new Rng(seed);
+            Apply(NodeKind.정예, ref rng);
+        }
+
         /// <summary>시각 QA. QA_ELITE_DROP=1이면 가방에 일반 흉갑+강화석.</summary>
         public static void SeedQaIfRequested()
         {
@@ -90,6 +109,7 @@ namespace AshesToStars
         {
             _qaSeeded = false;
             _lastLine = "";
+            _fieldKills = 0;
         }
     }
 }
