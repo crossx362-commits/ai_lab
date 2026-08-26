@@ -51,3 +51,12 @@ Claude↔Grok 사용량 자동전환 설계 결정 3가지는 이전 판 git 이
 - **남은 최대 병목은 공급자**: `claude -p` = "OAuth session expired". 전 바퀴가 opencode
   무료 프리뷰 모델(x-preview-f-free)로 돈다. 오너가 터미널에서 `claude` 1회 로그인하면
   체인 1순위(fable)로 복귀해 턴당 생성 시간이 크게 줄어든다. 이건 오너만 할 수 있다.
+
+## 공급자 장애 대응 (2026-08-26 22:45)
+- opencode 서버가 22:23부터 간헐 다운(`Endpoint is unavailable` · `Unexpected server error`).
+  그 여파로 루프가 「STATUS 미갱신 3회」에 걸려 22:38 자멸했다 → STOP 해제 후 재기동함.
+- 재발 방지: 장애로 죽은 바퀴는 FAILS 미증가 + backoff 재시도, 6회 연속이면 30분 쉬고 재확인
+  (`f3e03e0a`·`e25307a6`, `bash loop/test_infra_detect.sh` 8/8).
+- **지금 opencode가 계속 죽으면 바퀴가 안 돈다** — 루프는 살아서 재시도 중이니 손대지 말고
+  `tail logs/loop_main.log`로 「공급자 서버 장애」 줄이 멈추고 「바퀴 시작」이 이어지는지만 보면 된다.
+
