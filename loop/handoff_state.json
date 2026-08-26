@@ -1,12 +1,12 @@
 {
-  "phase": "review",
-  "updated": "2026-08-23 16:27",
-  "last_commit": "0f7d05ef",
-  "review": "pending",
-  "task": "1차 전직 수호기사 전신",
-  "routed_to": "재와별·루프검수",
-  "note": "아트 완료 → 루프검수 · PropOf는 별도 검수 중일 수 있음",
+  "phase": "assign",
+  "updated": "2026-08-27 08:35",
+  "last_commit": "a5d87403",
+  "review": "none",
+  "task": "§18-13 디버프 중첩 최대 2개 별",
+  "routed_to": "재와별·개발",
+  "note": "루프 STOP 유지. 아트=village_cart_0. UI=ResultScreen 골드. speed_lane 중복 금지.",
   "commits": [
-    "0f7d05ef"
+    "a5d87403"
   ]
 }
