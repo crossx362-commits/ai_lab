@@ -175,6 +175,29 @@ namespace AshesToStars
                     $"수비대 알파 유효 — 배경 잘림+실체 함께 (투명 {bClear} · 불투명 {bSolid}/{bpx.Length})");
                 UnityEngine.Object.DestroyImmediate(bx);
             }
+            var smRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Smith);
+            Check(smRes != null, "대장간 PNG를 Resources에서 읽는다");
+            string smPath = Path.Combine(Application.dataPath,
+                "Resources/props/" + EstateBuildings.Smith + ".png");
+            Check(File.Exists(smPath), "대장간 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(smPath))
+            {
+                var sx = new Texture2D(2, 2);
+                sx.LoadImage(File.ReadAllBytes(smPath));
+                Check(sx.width == 256 && sx.height == 256,
+                    $"대장간 PNG가 oxalpha 256 세트 (실제 {sx.width}×{sx.height})");
+                var spx = sx.GetPixels();
+                int sClear = 0, sSolid = 0;
+                foreach (var p in spx)
+                {
+                    if (p.a < 0.05f) sClear++;
+                    else if (p.a > 0.95f) sSolid++;
+                }
+                // 대장간은 실체가 넓다(실측 18%) — 임계 1/6.
+                Check(sClear > 0 && sSolid > spx.Length / 6,
+                    $"대장간 알파 유효 — 배경 잘림+실체 함께 (투명 {sClear} · 불투명 {sSolid}/{spx.Length})");
+                UnityEngine.Object.DestroyImmediate(sx);
+            }
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "마을이 본성 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
