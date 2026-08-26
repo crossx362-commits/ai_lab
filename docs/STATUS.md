@@ -8,7 +8,7 @@
 
 
 
-최종 갱신: 2026-08-26 08:35 · **ORDERS③ 측정 하네스 50층 확장 + G3 파티 실DPS 대조 게이트** 완료(`f5e6b1c3`). 첫 실측 **FAIL 3건 공식 기록** — G2 5h사냥→Lv47 vs 필요50(최상층 도달 6.04h) · G3 권장 파티(기대레벨+전직) 25·50층 보스전 **전멸**(실측 DPS 0 vs 필요 542/3076 — 장비·합성·가호 미포함 베어 로스터 기준). 네거티브(약한 파티 Lv1 탈락) PASS로 판별력 입증. 직전 바퀴 ORDERS② 멤버별 스타일 배선(`51c3e862`)·캐릭터창 열람 개선(`80f934e8`) STATUS 반영. GameSweep 재실측 ok:true 63/63(07:45). 루프 가동 중(opencode).
+최종 갱신: 2026-08-26 09:25 · **ORDERS① 유령 과제 종결 정리** 완료(`bf979fc9`). CombatStyle 실소비·UseFixedStyle·보스 쫄 소환은 실코드 근거로 종결, `JobDef.이동기형태`는 **ORDERS 오진**(소비처 `JobInfo.MovementLine`→`CharacterScreen.cs:415` 존재)으로 제거하지 않고 닫음. 부수 실측: 오늘 처음 돌린 GameFullCheck 전수(194)에서 11건 FAIL 노출 → 단독 배치 재현으로 분류(오염 가설 기각): MemberStyleSelfCheck 1건은 prefs 영속 오염에 전제를 가정하던 검증 취약점 — DeleteKey 수정 후 **단독 PASS(exit 0)** · Skill 6종은 낡은 기대 포맷(런타임 소비 정상) · BossBattleDps NRE(W3Party.cs:809)는 다음 바퀴 후보. 게임 런타임 무변경. 직전 바퀴 ORDERS③(`f5e6b1c3`)·ORDERS②(`51c3e862`). 루프 가동 중(opencode).
 
 > ⚠️ [2026-08-25 21:58 보드지킴이] 공유 인덱스의 `loop/board.py`·`loop/test_board.py`는 보드지킴이 커밋 `6b9699f4`(수함대 집계 수정+회귀검사) **이전** 스냅이다 — 이 상태로 맨몸 `git commit`하면 방금 닫힌 수정이 되돌려진다. board·test 두 파일은 커밋 전 작업 트리 기준으로 다시 `git add`해 해소할 것(board.py엔 인덱스에만 있는 cli_usage 변경분도 있으니 병합 확인).
 
@@ -49,7 +49,7 @@
 
 
 ## 다음 할 일 (원장 §22 — 위에서부터 하나만)
-1. **ORDERS ① 유령 과제 종결 정리** — 승인. CombatStyle 실소비·UseFixedStyle·보스 쫄 소환을 코드 근거로 종결, `JobDef.이동기형태` 소비처 정리.
+1. **GameFullCheck 전수 정리** — 오늘 첫 전수(194)에서 노출된 11건 잔여 10건: Skill Cd/Cost/Desc/Pow/Rad/Ult 6종은 `(쿨·위력·반경)` 합성 표기 이후 낡은 기대 포맷이니 계약을 갱신(런타임 소비는 실측 정상), BossBattleDpsSelfCheck NRE(W3Party.cs:809 종족 배율 경로)는 원인 규명, EstateYardCam·Zoom·Rebirth 3건은 단독 재현 후 분류. 검증 공급망 신뢰 복구가 목적 — 게임 밸런스 수치는 건드리지 않는다.
 2. **§18-14 소환수 재소환 + 큐#1 필드 정예 훅** — 승인(오너 위임). 재소환 0.5G/h·쿨다운 30초 신규 시스템 / W3Party 정예 처치 1회를 `EliteDrop`·`GameState`로 넘기는 최소 훅(판정 로직 변경 금지·QA_NO 네거티브).
 3. **기획서 ✅ · 소비처 0곳** — 원장 `GAME_DESIGN_ASHES_TO_STARS.md`를 훑어 ✅인데 grep 소비처가 0인 칸 **하나만** 닫는다. **§10-3 계열 상성은 닫음**(`a7f82e6a` 선반영 + `777eacab` 판정 + `927ce693` GameSweep 등록·재실측 PASS). §10-5 보스 스킬 수는 닫음(`BossSkills` 선반영 — SelfCheck 25/25 PASS, 2026-08-24 판정). **남은 알려진 오픈 셀 없음 — 다음 바퀴는 원장 재스캔으로 새 칸 발굴.** §18-11 잡몹 피해(MobDmg `fc2499d8`)·§18-11 잡몹 HP(MobHp `6f1e1226`)·§18-11 잡몹 이동속도(MobSpeed `8c89e69b`)·§18-8 PvE 회복시간(PveRecover `cff20f97`)·§4 PvP 회복시간(PvpRecover `903a1cf7`)·§18-11 플레이어 이동속도(MoveSpd `be1882cd`)·§18-2 소각목표(BurnTarget `470f416c`)·§18-1 티어1시간당골드(GhAnchor `12e3e0b4`)·§18-1 티어배율(TierMul `9de769f8`)·§10-9 투사체상한(ProjCap `89e7136d`)·§10-9 소환수상한(SummonCap `bfff2789`)·§10-9 잡몹상한(PerfCap `31836976`)·§4 사망상한(DeathCap `f45cd729`)·§4 부활초소지상한(ReviveCap `9b50c0d7`)·§3 전투 스타일 정예우선타겟·소모품자동사용(StyleScreen.ToggleLine `305bee56`)·§3 SkillDef.초필살기(SkillUltLine `24ef7e47` — 이번 바퀴 선반영 확인)·§18-13 별 인식(`1 + 층/10`)·§18-13 별 크기(`1 + 층×0.02`)·§18-11 대보스 개체 HP(2체 65·3체 45)·§10-2 정예 유형 1~2종(지도 Caption)·§10-7 탑 대보스 마릿수(60/30/10)·§18-10 레이드 벽(5층 ×1.5·10층 ×2.2)·§18-4 목숨 시세 상한(부활초 8·두루마리 4·환생석 300)·증표 시세 상한 400·§11 드랍 옵션 체력(`GearOpt.HpMul`→`EffectiveHpMul`)·경매 복원 등급·옵션·§13-3 창고 현재 칸 경로·§11 드랍 옵션 1~4·§10-8 정예 일반·보스 고급 장비·가방 60칸·무기 직업 계열·진입 면 선택·§18-9 RaceDef.전투당발동(`f9f195e8`)·§3 SkillDef.쿨다운(속성 SkillLine `92cc2feb`)·§18-9 RaceDef.이속배율(속성 SpeedLine `dbe02f57`)·§18-9 RaceDef.체력배율(속성 HealthLine `e4fd1d15`)·§18-9 RaceDef.방어배율(속성 DefenseLine `ead55a1d`)·§3 SkillDef.위력배율(속성 SkillLine ×P `50202ce5`)·§3 SkillDef.반경(SkillLine `e4557f35`)·§3 SkillDef.자원소모(SkillLine `564baaf8`)·§3 SkillDef.설명(SkillDescLine `017335fc`)은 닫음. 시각 UI「다른 게임만큼」·V2 손맛·V4 70%는 사람 관문이라 닫지 않는다. `W3Party`·오너 Unity는 건드리지 않는다. **중복 리소스 재생성 금지.** 통과 기준: 소비처 ≥1 + SelfCheck + 네거티브. 증거 없는 완료 금지. **선반영 감지 시 재구현 금지·닫음 판정 후 다음 칸으로**(PROPOSALS 병합 항목 처방). 직전 트랙이 UI면 이번은 이 칸. 직전 트랙이 코드면 **UI·아트 상시 폴리싱**.
 4. **UI·아트 상시 폴리싱** — 최신 정상 샷에서 절단·겹침 한 곳만(다음 후보: GameScreen Body 절단). 「다른 게임만큼」완료 금지. 기존 닫음 나열은 아카이브 참조.
@@ -77,6 +77,7 @@
 
 
 | 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
+| — | 2026-08-26 09:25 | **ORDERS① 유령 과제 종결 정리** — 4항목 판정: CombatStyle 실소비(`W3Party.cs:1175·1939·2954` StyleFor 소비, `51c3e862`)·UseFixedStyle 측정 단일 경로(삼항 보존)·보스 쫄 소환(`BossBattle.cs:563→582→583`, `ecf4b4b4`+`bfff2789`)은 실코드 근거로 종결. `JobDef.이동기형태`는 ORDERS 오진 — 소비처 `JobInfo.MovementLine`(JobInfo.cs:280)→`CharacterScreen.cs:415` 존재해 제거 시 캐릭터창 줄 퇴보, 단일 출처 구조 그대로 종결. 부수: GameFullCheck 첫 전수 11건 FAIL 분류 — MemberStyleSelfCheck 검증 취약점 수정(prefs 영속 오염 `ats.style.*` 실측 → DeleteKey 전제 확립) 후 단독 배치 PASS exit 0 · Skill 6종 낡은 기대 포맷 확인(런타임 정상) · BossBattleDps NRE 다음 바퀴. 게임 런타임 무변경 | 단독 배치 실측 3회(MemberStyle FAIL→수정→PASS exit 0 · SkillCd FAIL 16건 재현 · BossDps NRE 재현) · 커밋 가드 혼입 16건 차단 후 temp-index 분리 커밋 · `bf979fc9` |
 | — | 2026-08-26 08:35 | **ORDERS③ 측정 하네스 50층 확장 + G3 파티 실DPS 대조 게이트** — `TowerClimbCurveMeasure` TopFloor 30→50, 실판 시뮬(`W3Party.Step` 리플렉션 경로 — BossAutoAttackSelfCheck와 동일 경계)로 기대 레벨·전직 파티의 실측 DPS를 필요 DPS와 대조하는 G3 신설 + 약한 파티(Lv1 기본직) 네거티브. CSV/JSON 파일명 TopFloor 연동. 첫 실측 **FAIL 3건 공식 기록**(기준 낮추지 않음): G2 5h→Lv47 vs 필요50(6.04h) · G3 권장 파티 전멸(실측0 vs 필요542@25층/3076@50층 — 장비·합성·가호 미포함 베어 로스터). W3Party 런타임 무변경 | 배치 실행 컴파일 에러 0 · JSON/CSV 산출 육안 `output/qa/ashes-to-stars/curve/tower_climb_50.{json,csv}` · 실판 로그 실측(편성 5인·스킬4·시간경과 사망) · 네거티브 PASS · `f5e6b1c3` |
 | — | 2026-08-26 08:00 | **ORDERS② 파티 멤버별 전투 스타일 실소비 배선**(직전 바퀴 — STATUS 갱신 누락분 보완) — TickParty·TickMobs·TickShots가 `StyleFor(m.Style)` 개별 적용, UseFixedStyle·QA_NO_MEMBER_STYLE 삼항으로 측정 단일 경로 보존, MemberStyleSelfCheck 20건 + GameSweep 등록 | GameSweep 재실측 ok:true 63/63(`loop/last_test_report.json` 07:45) · `51c3e862` |
 | — | 2026-08-25 21:40 | **W2 회피 기회 더미** — 오너 지시로 `loop/w2_dummy_sim.py` 신설(§21-1c 방법론 재현: 전략 3종 피격 수·대시 회피기회율, 에셋 수치 MobSpeed 0.90/0.85/0.65·MoveSpd 4.2). 판정 **FAIL** — 직선/원형 계층·숙련 보상 밴드 미달, 동일 시드 해시 일치로 결정론 입증. 리포트 `output/qa/ashes-to-stars/w2_playtest_dummy/w2_report.json`. 기준 낮추지 않음 | 동일 시드 2회 실행 digest 일치 · 이 커밋 |
@@ -121,7 +122,7 @@
 
 | 항목 | 판정 | 현재 상태 |
 |---|---|---|
-| ORDERS ①유령과제 ②멤버별스타일 ③하네스50층+G3 | 전부 승인(P1 순서 ②→③①) | 랩 큐 — 순차 소화 중 |
+| ORDERS ①유령과제 ②멤버별스타일 ③하네스50층+G3 | 전부 승인(P1 순서 ②→③→①) | **전부 완료** — ②`51c3e862` · ③`f5e6b1c3`(FAIL 3건 공식 기록) · ①`bf979fc9`(이동기형태는 ORDERS 오진으로 종결) |
 | §18-14 소환수 재소환(0.5G/h·쿨30초) | 구현 승인(신규 시스템) | 랩 큐 대기 |
 | 큐#1 필드 정예 훅(W3Party 최소 훅) | 루프 실행 승인(네거티브 필수) | 랩 큐 대기 |
 | **W2 회피 기회** | **더미 구현 완료 → FAIL**(직선 도주 강함·원형 카이팅 밴드 초과, `loop/w2_dummy_sim.py` 시드 20260825 결정론) | 기준 유지 — 손맛 튜닝 후 재판정 |
