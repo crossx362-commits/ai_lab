@@ -1040,6 +1040,10 @@ public class W3Party : MonoBehaviour
     /// </summary>
     static float Heal(Member o, float amount)
     {
+        // §10-2 저주술사 오라 — 오라 안 파티원은 받는 회복이 준다(소비처 = 이 단일 관문).
+        // 오라 밖·저주술사 없으면 배율 1(무변). 캐시는 RefreshCursers가 프레임마다 스냅한다.
+        if (_curseN > 0 && o != null)
+            amount *= AshesToStars.EliteCurse.NearbyMul(o.Pos, false, _curseAt, _curseN, _curseRadius, _curseHeal);
         float before = o.Hp;
         o.Hp = Mathf.Min(o.MaxHp, o.Hp + amount);
         float healed = o.Hp - before;
@@ -1223,10 +1227,12 @@ public class W3Party : MonoBehaviour
             // 원거리형은 §10-2가 정한 **15~25%** 안에 둔다(많으면 접근 자체가 불가능해진다).
             // 돌진형은 「예고 표식 후 직선 돌진」이 §10-2의 4종 중 유일하게 없던 것이고,
             // 대시(§5)를 넣은 지금이라야 회피가 성립한다.
-            // 정예 10%는 3 치유·4 소환·6 수호자·7 군단장으로 3/3/2/2 나눈다(§10-2 거울 4종).
-            // 군단장은 버퍼 거울 — 주변 몹 공속·이속 증가, 처치 우선순위 2순위.
+            // 정예 10%는 3 치유·4 소환·8 저주술사·6 수호자·7 군단장으로 3/2/2/2/1 나눈다(§10-2 거울 5종).
+            // 저주술사는 디버퍼 거울 — 오라 안 파티 회복량·이속 감소, 사거리 밖 이탈 후 처치.
+            // 군단장·수호자 순서(…? 6 : 7)는 그대로 두고 저주(8)를 그 앞에 끼워 넣는다 —
+            // 정예 SelfCheck가 스폰 문자열을 보는데 `? 6 : 7`을 보존해야 회귀가 안 난다.
             // 총 비율(90~100=10%)은 그대로라 측정 단일 경로가 안 흔들린다.
-            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 93 ? 3 : r < 96 ? 4 : r < 98 ? 6 : 7;
+            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 93 ? 3 : r < 95 ? 4 : r < 97 ? 8 : r < 99 ? 6 : 7;
             // 보스 소환 몹은 **근접 돌격형(kind 1)으로 고정**한다. 원거리(kind 2)로 나오면
             // 탄으로 때려 피해 귀속 지점이 갈라지고, 무엇보다 「달려드는 쫄」이라는 소환 기믹의
             // 뜻과도 어긋난다. 근접으로 고정하면 파티 피해가 근접 판정 한 곳에서 온전히 잡힌다.
@@ -1441,6 +1447,30 @@ public class W3Party : MonoBehaviour
             _cRadius = AshesToStars.EliteLegion.AuraRadius();
             _cAtk = AshesToStars.EliteLegion.AtkSpdMul();
             _cMove = AshesToStars.EliteLegion.MoveMul();
+        }
+    }
+
+    // §10-2 저주술사 오라 — 살아있는 저주술사(kind 8) 위치를 프레임마다 스냅해 둔다.
+    // 소비처가 **정적** 회복 관문(Heal)이라 캐시도 static이어야 Heal에서 읽을 수 있다.
+    // (군단장·수호자는 인스턴스 관문 TickMobs/DamageMob이라 인스턴스 필드였다.)
+    // 배율 계산은 순수 함수(EliteCurse.NearbyMul)로만 돌린다.
+    static int _curseN;
+    static readonly Vector2[] _curseAt = new Vector2[16];
+    static float _curseRadius = AshesToStars.EliteCurse.DefaultAuraRadius;
+    static float _curseHeal = AshesToStars.EliteCurse.DefaultHealMul;
+    static float _curseMove = AshesToStars.EliteCurse.DefaultMoveMul;
+
+    void RefreshCursers()
+    {
+        _curseN = 0;
+        if (AshesToStars.EliteCurse.Blocked) return;   // 네거티브 컨트롤 — 회복·이속 저주 전부 끔
+        for (int i = 0; i < MAXM && _curseN < _curseAt.Length; i++)
+            if (_mOn[i] && _mBossIndex[i] < 0 && _mKind[i] == 8) _curseAt[_curseN++] = _mPos[i];
+        if (_curseN > 0)
+        {
+            _curseRadius = AshesToStars.EliteCurse.AuraRadius();
+            _curseHeal = AshesToStars.EliteCurse.HealMul();
+            _curseMove = AshesToStars.EliteCurse.MoveMul();
         }
     }
 
@@ -1751,6 +1781,7 @@ public class W3Party : MonoBehaviour
         UpdateCallouts(dt);
         RefreshGuardians();   // §10-2 수호자 오라 스냅 — 파티 피해(DamageMob) 전에 잡아야 이번 프레임에 반영된다
         RefreshCommanders();  // §10-2 군단장 오라 스냅 — 몹 이동·공격(TickMobs) 전에 잡아야 이번 프레임에 반영된다
+        RefreshCursers();     // §10-2 저주술사 오라 스냅 — 파티 회복(Heal)·이동(TickParty) 전에 잡아야 이번 프레임에 반영된다
         TickParty(dt);
         TickMobs(dt);
 
@@ -2186,7 +2217,11 @@ public class W3Party : MonoBehaviour
 
             if (m.DashT <= 0f)
             {
-                Vector2 step = want * PlayerSpeed * 0.85f * SpdOf(m) * dt;
+                // §10-2 저주술사 이속 감소 — 오라 안 파티원은 더 느리게 움직인다(소비처 = 이동 단일 경로).
+                // 오라 밖·저주술사 없으면 배율 1(무변). 대시는 이동기라 위 DashT 분기에서 제외된다.
+                float curseMove = _curseN > 0
+                    ? AshesToStars.EliteCurse.NearbyMul(m.Pos, false, _curseAt, _curseN, _curseRadius, _curseMove) : 1f;
+                Vector2 step = want * PlayerSpeed * 0.85f * SpdOf(m) * curseMove * dt;
                 if (ArenaLayout.Any) step = ArenaLayout.Around(m.Pos, step, UnitSeparation.AllyRadius);
                 m.Pos += step;
                 if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos, UnitSeparation.AllyRadius);
@@ -2779,6 +2814,7 @@ public class W3Party : MonoBehaviour
         5 => SpriteBank.MobKindCharger,    // 돌진형 — 뿔·덩치·앞으로 쏠린 무게중심
         6 => SpriteBank.MobKindGuardian,   // 수호자 정예 — 방패 든 수호기사 실루엣(§10-2 탱 거울)
         7 => SpriteBank.MobKindBard,       // 군단장 정예 — 결집 나부낌 든 버퍼 실루엣(§10-2 버퍼 거울)
+        8 => SpriteBank.MobKindShaman,     // 저주술사 정예 — 지팡이·후드 든 저주술사 실루엣(§10-2 디버퍼 거울)
         _ => SpriteBank.MobKindBasic,      // 0 추적형
     };
 
@@ -2830,6 +2866,7 @@ public class W3Party : MonoBehaviour
             3 => Muted(new Color(1f, 0.30f, 0.30f), 0.34f, 0.84f), // 치유 정예 — 붉은기
             6 => Muted(new Color(0.60f, 0.80f, 0.95f), 0.32f, 0.92f), // 수호자 정예 — 강철빛(방패, 정예 중 가장 밝게)
             7 => Muted(new Color(0.95f, 0.75f, 0.10f), 0.40f, 0.90f), // 군단장 정예 — 결집의 순금빛(돌진 금색보다 진하고 채도 높게)
+            8 => Muted(new Color(0.42f, 0.62f, 0.28f), 0.55f, 0.60f), // 저주술사 정예 — 병색 독초록(정예 중 가장 어둡게, 소환 보라·치유 붉기와 다른 축)
             _ => Muted(new Color(0.78f, 0.40f, 1f), 0.34f, 0.84f), // 소환 정예 — 보랏기
         };
     }
@@ -3139,6 +3176,21 @@ public class W3Party : MonoBehaviour
                     // 큰 바닥 원은 스킬 범위로 읽힌다(§6-A 오너 4회 지적) → 개체 광채로
                     // "이 개체가 무리를 몰아친다"만 말하고 반경 원은 그리지 않는다.
                     FxParticles.Play(FxKind.무적, ToScreen(p), 1.1f, _mTint[i]);
+                }
+            }
+            else if (_mKind[i] == 8)                              // 정예: 저주술사 — 회복량·이속 감소 오라
+            {
+                // 느리게 다가와 파티 곁을 맴돈다. 저주는 Heal(회복 단일 관문)·TickParty(이동)이
+                // EliteCurse 배율로 처리한다 — 사거리 밖 이탈 후 처치가 정답이 되게(§10-2 디버퍼 거울).
+                want = dir; spd = PlayerSpeed * 0.5f;
+                _mCd[i] -= dt;
+                if (_mCd[i] <= 0f)
+                {
+                    _mCd[i] = 1.2f;
+                    // 저주 표식 — **바닥 링이 아니라** 저주술사 몸에 감기는 검보라 그을음(작게).
+                    // 큰 바닥 원은 스킬 범위로 읽힌다(§6-A 오너 4회 지적) → 개체에 붙인 어두운
+                    // 먼지로 "이 개체가 저주한다"만 말하고 반경 원은 그리지 않는다.
+                    FxParticles.Play(FxKind.먼지, ToScreen(p), 1.0f, _mTint[i]);
                 }
             }
             else { want = dir; spd = PlayerSpeed * ChaserRatio; } // 추적형

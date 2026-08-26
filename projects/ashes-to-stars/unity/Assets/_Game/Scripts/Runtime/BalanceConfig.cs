@@ -46,6 +46,11 @@ namespace AshesToStars
         [Tooltip("오라 안 잡몹 공속 배율(≥1, 클수록 자주 때림). 원장 미확정. 소비처: EliteLegion.AtkSpdMul → W3Party.TickMobs(공격 쿨다운을 나눔)")] public float 군단장주변공속배율 = 1.5f;
         [Tooltip("오라 안 잡몹 이속 배율(≥1, 클수록 빠르게 접근). 원장 미확정. 소비처: EliteLegion.MoveMul → W3Party.TickMobs(이동 spd에 곱)")] public float 군단장주변이속배율 = 1.3f;
 
+        [Header("정예 저주술사 오라 (§10-2 — 원장은 「플레이어 회복량·이속 감소」만 확정, 수치는 미확정)")]
+        [Tooltip("저주술사 오라 반경(유닛). 원장 미확정. 소비처: EliteCurse.AuraRadius → W3Party.Heal/TickParty")] public float 저주술사오라반경 = 4.0f;
+        [Tooltip("오라 안 파티가 받는 회복 배율(0~1, 낮을수록 강한 저주). 원장 미확정. 소비처: EliteCurse.HealMul → W3Party.Heal")] public float 저주술사회복배율 = 0.7f;
+        [Tooltip("오라 안 파티 이속 배율(0~1, 낮을수록 느려짐). 원장 미확정. 소비처: EliteCurse.MoveMul → W3Party.TickParty(이동 step에 곱)")] public float 저주술사이속배율 = 0.85f;
+
         [Header("쿼터뷰")]
         [Tooltip("월드 y를 화면에 그릴 때 곱하는 값 = sin(30°)")] public float ISO_Y = 0.5f;
     }
