@@ -198,6 +198,29 @@ namespace AshesToStars
                     $"대장간 알파 유효 — 배경 잘림+실체 함께 (투명 {sClear} · 불투명 {sSolid}/{spx.Length})");
                 UnityEngine.Object.DestroyImmediate(sx);
             }
+            var mzRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Mausoleum);
+            Check(mzRes != null, "영묘 PNG를 Resources에서 읽는다");
+            string mzPath = Path.Combine(Application.dataPath,
+                "Resources/props/" + EstateBuildings.Mausoleum + ".png");
+            Check(File.Exists(mzPath), "영묘 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(mzPath))
+            {
+                var mz = new Texture2D(2, 2);
+                mz.LoadImage(File.ReadAllBytes(mzPath));
+                Check(mz.width == 256 && mz.height == 256,
+                    $"영묘 PNG가 oxalpha 256 세트 (실제 {mz.width}×{mz.height})");
+                var mzpx = mz.GetPixels();
+                int mzClear = 0, mzSolid = 0;
+                foreach (var p in mzpx)
+                {
+                    if (p.a < 0.05f) mzClear++;
+                    else if (p.a > 0.95f) mzSolid++;
+                }
+                // 영묘는 첨탑형 건물이라 실체가 다소 좁다(실측 18%) — 임계 1/6.
+                Check(mzClear > 0 && mzSolid > mzpx.Length / 6,
+                    $"영묘 알파 유효 — 배경 잘림+실체 함께 (투명 {mzClear} · 불투명 {mzSolid}/{mzpx.Length})");
+                UnityEngine.Object.DestroyImmediate(mz);
+            }
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "마을이 본성 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
