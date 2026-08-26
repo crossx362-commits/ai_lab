@@ -44,6 +44,7 @@ namespace AshesToStars
             RaidBossPool.SeedQaIfRequested();
             BattleScreen.SeedHuntExpRewardQaIfRequested();
             BattleScreen.SeedHuntGoldRewardQaIfRequested();
+            BattleScreen.SeedInvasionLootQaIfRequested();
             BattleScreen.SeedRaceDropRewardQaIfRequested();
             BattleScreen.SeedRaceAdvMatRewardQaIfRequested();
             BattleScreen.SeedGearDropRewardQaIfRequested();

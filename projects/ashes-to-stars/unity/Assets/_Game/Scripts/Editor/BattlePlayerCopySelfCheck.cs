@@ -39,6 +39,12 @@ namespace AshesToStars
                 || !source.Contains("GameFlow.LastBattleSummary = PlayerCopy(\"저체력 귀환 — 이번 판 보상 없음(§4)\")"))
                 throw new InvalidOperationException("전투 화면이 PlayerCopy를 모두 소비하지 않는다");
 
+            if (!source.Contains("ShortCopper(loot)")
+                || source.Contains("FormatCurrency(loot)"))
+                throw new InvalidOperationException("침략 성공 약탈이 ShortCopper가 아니다");
+            if (!source.Contains("FormatCurrency(_reward.GoldReward)"))
+                throw new InvalidOperationException("생존 사냥 골드 FormatCurrency가 빠졌다");
+
             Debug.Log("[BattlePlayerCopySelfCheck] PASS — 전투 화면 절 번호 제거 + QA_NO 복원");
         }
     }

@@ -451,7 +451,7 @@ namespace AshesToStars
                         lootLine += " · " + repeatLine;
                     string honorLine = Honor.Blocked ? "" : " · " + Honor.WinLine();
                     GameFlow.LastBattleSummary =
-                        $"침략 성공 — 약탈 {Economy.FormatCurrency(loot)}{lootLine}{honorLine} ({_t:F1}초)";
+                        $"침략 성공 — 약탈 {EstateStatusHud.ShortCopper(loot)}{lootLine}{honorLine} ({_t:F1}초)";
                 }
                 else
                     ApplyDefeatOnce($"침략 패배 — {_t:F1}초", isPvp: true);
@@ -634,6 +634,14 @@ namespace AshesToStars
         }
 
         /// <summary>QA_HUNT_GOLD=1이면 결과 화면에 T1 1시간 = 1골드를 심는다.</summary>
+        /// <summary>QA_INVASION_LOOT=1이면 결과 화면에 침략 성공 약탈 줄을 심는다.</summary>
+        public static void SeedInvasionLootQaIfRequested()
+        {
+            if (System.Environment.GetEnvironmentVariable("QA_INVASION_LOOT") != "1") return;
+            GameFlow.LastBattleSummary =
+                $"침략 성공 — 약탈 {EstateStatusHud.ShortCopper(50_000)} (1.0초)";
+        }
+
         public static void SeedHuntGoldRewardQaIfRequested()
         {
             if (System.Environment.GetEnvironmentVariable(Economy.EnvShowHuntGold) != "1") return;
