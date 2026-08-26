@@ -31,6 +31,26 @@ namespace AshesToStars
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, null);
             EstateBuildings.ResetForTest();
 
+            // 결정론 전제: 영지 건물 레벨 prefs 잔상을 치운다. 실측(2026-08-26 unity_meas 배치)에서
+            // ats.estate.b.* 레벨 5+ 잔상이 PropOf가 티어 _1을 반환해 「마을이 전용을 읽는다」 기대(_0)와
+            // 어긋났다 — MemberStyleSelfCheck의 ats.style.* 오염과 같은 계열. 검증만 결정론으로 만들고
+            // 런타임 로직은 변경하지 않는다. Load()는 이 뒤 처음 불리므로 지금 치우면 레벨 기본 1(티어0)로 읽힌다.
+            var cores = new[]
+            {
+                EstateGrid.Cell.Keep, EstateGrid.Cell.Mine, EstateGrid.Cell.Warehouse,
+                EstateGrid.Cell.Smith, EstateGrid.Cell.Auction, EstateGrid.Cell.Mausoleum,
+                EstateGrid.Cell.Barracks,
+            };
+            foreach (var c in cores)
+            foreach (var s in new[] { "lv", "to", "done", "orig", "job" })
+                PlayerPrefs.DeleteKey("ats.estate.b." + c + "." + s);
+            PlayerPrefs.DeleteKey("ats.estate.keep");
+            PlayerPrefs.DeleteKey("ats.estate.keep_to");
+            PlayerPrefs.DeleteKey("ats.estate.keep_done");
+            PlayerPrefs.DeleteKey("ats.estate.keep_orig");
+            PlayerPrefs.DeleteKey("ats.estate.keep_job");
+            PlayerPrefs.Save();
+
             Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "본성 전용 이름");
             Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
@@ -59,6 +79,33 @@ namespace AshesToStars
             Check(EstateBuildings.HasDedicated(EstateBuildings.Warehouse), "창고 PNG");
             Check(EstateBuildings.HasDedicated(EstateBuildings.Barracks), "수비대 PNG");
             Check(EstateBuildings.HasDedicated(EstateBuildings.Auction), "경매장 PNG");
+
+            // oxalpha 코드합성 세트 반입 판정(2026-08-26, 오너 INBOX 「영지가 밋밋함」).
+            // keep_0만 이번 바퀴 대상(한 바퀴 한 건물). 게임이 읽는 Resources 경로와
+            // 실제 파일 내용(크기·알파)을 둘 다 본다 — 낡은 나노바나나(1487×1516)가
+            // 남아 있으면 크기 판정에서 걸린다.
+            var keepRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Keep);
+            Check(keepRes != null, "본성 PNG를 Resources에서 읽는다");
+            string keepPath = Path.Combine(Application.dataPath,
+                "Resources/props/" + EstateBuildings.Keep + ".png");
+            Check(File.Exists(keepPath), "본성 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(keepPath))
+            {
+                var ox = new Texture2D(2, 2);
+                ox.LoadImage(File.ReadAllBytes(keepPath));
+                Check(ox.width == 256 && ox.height == 256,
+                    $"본성 PNG가 oxalpha 256 세트 (실제 {ox.width}×{ox.height})");
+                var px = ox.GetPixels();
+                int clear = 0, solid = 0;
+                foreach (var p in px)
+                {
+                    if (p.a < 0.05f) clear++;
+                    else if (p.a > 0.95f) solid++;
+                }
+                Check(clear > 0 && solid > px.Length / 4,
+                    $"본성 알파 유효 — 배경 잘림+실체 함께 (투명 {clear} · 불투명 {solid}/{px.Length})");
+                UnityEngine.Object.DestroyImmediate(ox);
+            }
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "마을이 본성 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
