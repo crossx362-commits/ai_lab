@@ -81,9 +81,9 @@ namespace AshesToStars
             Check(EstateBuildings.HasDedicated(EstateBuildings.Auction), "경매장 PNG");
 
             // oxalpha 코드합성 세트 반입 판정(2026-08-26, 오너 INBOX 「영지가 밋밋함」).
-            // keep_0만 이번 바퀴 대상(한 바퀴 한 건물). 게임이 읽는 Resources 경로와
-            // 실제 파일 내용(크기·알파)을 둘 다 본다 — 낡은 나노바나나(1487×1516)가
-            // 남아 있으면 크기 판정에서 걸린다.
+            // keep_0·mine_0가 지금까지 대상(한 바퀴 한 건물). 게임이 읽는 Resources 경로와
+            // 실제 파일 내용(크기·알파)을 둘 다 본다 — 낡은 나노바나나(keep 1487×1516 ·
+            // mine 1783×1626)가 남아 있으면 크기 판정에서 걸린다.
             var keepRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Keep);
             Check(keepRes != null, "본성 PNG를 Resources에서 읽는다");
             string keepPath = Path.Combine(Application.dataPath,
@@ -105,6 +105,29 @@ namespace AshesToStars
                 Check(clear > 0 && solid > px.Length / 4,
                     $"본성 알파 유효 — 배경 잘림+실체 함께 (투명 {clear} · 불투명 {solid}/{px.Length})");
                 UnityEngine.Object.DestroyImmediate(ox);
+            }
+            var mineRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Mine);
+            Check(mineRes != null, "광산 PNG를 Resources에서 읽는다");
+            string minePath = Path.Combine(Application.dataPath,
+                "Resources/props/" + EstateBuildings.Mine + ".png");
+            Check(File.Exists(minePath), "광산 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(minePath))
+            {
+                var mx = new Texture2D(2, 2);
+                mx.LoadImage(File.ReadAllBytes(minePath));
+                Check(mx.width == 256 && mx.height == 256,
+                    $"광산 PNG가 oxalpha 256 세트 (실제 {mx.width}×{mx.height})");
+                var mpx = mx.GetPixels();
+                int mClear = 0, mSolid = 0;
+                foreach (var p in mpx)
+                {
+                    if (p.a < 0.05f) mClear++;
+                    else if (p.a > 0.95f) mSolid++;
+                }
+                // 광산은 언덕+갱도라 실체 면적이 본성(27%)보다 낮다(실측 22%) — 임계 1/8.
+                Check(mClear > 0 && mSolid > mpx.Length / 8,
+                    $"광산 알파 유효 — 배경 잘림+실체 함께 (투명 {mClear} · 불투명 {mSolid}/{mpx.Length})");
+                UnityEngine.Object.DestroyImmediate(mx);
             }
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "마을이 본성 전용을 읽는다");
