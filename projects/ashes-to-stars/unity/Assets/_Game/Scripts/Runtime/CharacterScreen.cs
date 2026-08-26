@@ -700,9 +700,14 @@ namespace AshesToStars
             const float maxRows = 34f;
             float contentH = maxRows * 46f;
             var view = new Rect(0f, 0f, Mathf.Max(40f, r.width - 16f), contentH);
+            // 스크롤 가상공간에서는 InfoAt의 REF_H(720) 절대 컷이 하단 소비처(보유 스킬·종족·
+            // 상한·예산 줄)를 조용히 지운다 — 접힘 한계를 가상 높이로 올리고, 빠져나오며
+            // 반드시 되돌린다(같은 프레임 다음 그리기가 옛 한계를 기대한다).
+            InfoFoldLimit = contentH;
             _attrScroll = GUI.BeginScrollView(r, _attrScroll, view);
             DrawAttributes(new Rect(0f, 0f, view.width, contentH), ch);
             GUI.EndScrollView();
+            InfoFoldLimit = REF_H;
         }
 
         void DrawRosterCell(Rect cell, CharacterRecord ch, bool selected, int rosterIndex)

@@ -65,6 +65,15 @@ namespace AshesToStars
 
         // 기준 해상도 — 모든 좌표는 이 안에서 계산한다
         protected const float REF_W = 1280f, REF_H = 720f;
+
+        /// <summary>
+        /// InfoAt의 절대좌표 접힘 한계. 기본 REF_H — 행 인덱스가 본문 밖으로 나가면
+        /// 화면 밖 좌표에 그리지 않게 하는 안전장치다. **스크롤 가상공간**은 콘텐츠가
+        /// REF_H보다 길어야 하므로 소비처가 여기서 조용히 사라진다(2026-08-26 실측:
+        /// 속성 탭 스크롤에서 보유 스킬·종족·상한·예산 줄이 y&gt;680에서 전부 누락).
+        /// 스크롤 경로만 이 값을 가상 높이로 올리고, 빠져나오면 반드시 되돌린다.
+        /// </summary>
+        protected float InfoFoldLimit = REF_H;
         /// <summary>제목판. 118px면 720p 본문이 카드 한 줄도 못 채운다. 슬림은 HubHeader.</summary>
         public static float HeaderH => HubHeader.H;
         public static float BodyTop => HubHeader.BodyTop;
@@ -581,7 +590,7 @@ namespace AshesToStars
         protected void InfoAt(Rect panel, string text, float absTextLeft)
         {
             Styles();
-            if (panel.yMax > REF_H) return;
+            if (panel.yMax > InfoFoldLimit) return;
             if (!UiAtlas.DrawSliced(panel, "panel", 14f, new Color(1f, 1f, 1f, 0.92f)))
                 UiAtlas.Draw(panel, "panel", new Color(1f, 1f, 1f, 0.92f));
             // 슬림 칸도 실제 안쪽 높이를 써야 22px 픽셀 폰트의 한글 아랫획이 잘리지 않는다.

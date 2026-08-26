@@ -256,6 +256,15 @@ namespace AshesToStars
                 "스크롤이 QA_NO_CHAR_SCROLL 게이트를 읽는다");
             Check(screen.Contains("CharHud.SelTintBlocked") && screen.Contains("DockLabel(nameR"),
                 "선택 셀 이름이 DockLabel 강조를 읽는다 (선택 피드백)");
+            // 스크롤 가상공간의 하단 소비처 — InfoAt의 REF_H(720) 절대 컷이 y>680 행
+            // (보유 스킬·초필·종족 5줄·부활초 상한·사망 상한·성능 예산)을 조용히 지웠다
+            // (2026-08-26 플레이모드 실측). 접힘 한계가 필드화돼 스크롤 경로만 해제된다.
+            Check(screen.Contains("InfoFoldLimit = contentH") && screen.Contains("InfoFoldLimit = REF_H"),
+                "속성 스크롤이 접힘 한계를 올렸다 되돌린다 (하단 소비처 생존)");
+            string gameScreen = File.ReadAllText(Path.Combine(runtime, "GameScreen.cs"));
+            Check(gameScreen.Contains("InfoFoldLimit")
+                  && !gameScreen.Contains("if (panel.yMax > REF_H) return;"),
+                "InfoAt이 InfoFoldLimit을 읽는다 (REF_H 하드컷 금지)");
             Environment.SetEnvironmentVariable(CharHud.EnvNoScroll, "1");
             Check(CharHud.ScrollBlocked, "QA_NO_CHAR_SCROLL면 차단");
             Environment.SetEnvironmentVariable(CharHud.EnvNoScroll, null);
