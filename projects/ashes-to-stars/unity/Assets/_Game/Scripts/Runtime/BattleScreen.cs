@@ -515,7 +515,7 @@ namespace AshesToStars
                         long huntExp = Economy.WaveHuntExp(GameState.Tier, _t);
                         _reward.ExpGains = LifeSystem.AwardWaveHunt(_t);
                         GameFlow.LastBattleSummary =
-                            $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장 · {Economy.FormatCurrency(_reward.GoldReward)} · EXP {huntExp}";
+                            $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장 · {EstateStatusHud.ShortCopper(_reward.GoldReward)} · EXP {huntExp}";
                     }
                     else
                         GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
@@ -652,7 +652,8 @@ namespace AshesToStars
             _reward.Survived = true;
             _reward.BattleDurationSeconds = Economy.HuntGoldHourSeconds;
             _reward.GoldReward = gold;
-            GameFlow.LastBattleSummary = "생존 — " + Economy.HuntGoldLine(gold);
+            GameFlow.LastBattleSummary =
+                $"생존 — {Economy.HuntGoldHourSeconds:0.0}초 · 사냥 가죽 0장 · {EstateStatusHud.ShortCopper(gold)} · EXP 0";
         }
     }
 }

@@ -42,8 +42,9 @@ namespace AshesToStars
             if (!source.Contains("ShortCopper(loot)")
                 || source.Contains("FormatCurrency(loot)"))
                 throw new InvalidOperationException("침략 성공 약탈이 ShortCopper가 아니다");
-            if (!source.Contains("FormatCurrency(_reward.GoldReward)"))
-                throw new InvalidOperationException("생존 사냥 골드 FormatCurrency가 빠졌다");
+            if (!source.Contains("ShortCopper(_reward.GoldReward)")
+                || source.Contains("FormatCurrency(_reward.GoldReward)"))
+                throw new InvalidOperationException("생존 사냥 골드가 ShortCopper가 아니다");
 
             Debug.Log("[BattlePlayerCopySelfCheck] PASS — 전투 화면 절 번호 제거 + QA_NO 복원");
         }
