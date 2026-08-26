@@ -267,6 +267,36 @@ namespace AshesToStars
                     $"경매장 알파 유효 — 배경 잘림+실체 함께 (투명 {auClear} · 불투명 {auSolid}/{aupx.Length})");
                 UnityEngine.Object.DestroyImmediate(au);
             }
+            // 공용 공사판(scaffold) oxalpha 반입 판정(2026-08-27, 오너 INBOX 「게임 ui 퀄리티 업」).
+            // 건물이 공사 중이면 EstateYard.DrawScaffoldIfBusy가 이 그림을 건물 박스에 72% 알파로
+            // 겹친다. 8동 _0/_1/_2가 전부 256 oxalpha인데 공사판만 옛 나노바나나(1864×2028·4MB)로
+            // 남아 겹칠 때 딴 화풍으로 튀었다. 프레임형이라 가운데를 비운다 — 건물이 비쳐야 한다.
+            var scRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Scaffold);
+            Check(scRes != null, "공사판 PNG를 Resources에서 읽는다");
+            string scPath = Path.Combine(Application.dataPath,
+                "Resources/props/" + EstateBuildings.Scaffold + ".png");
+            Check(File.Exists(scPath), "공사판 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(scPath))
+            {
+                var sc = new Texture2D(2, 2);
+                sc.LoadImage(File.ReadAllBytes(scPath));
+                Check(sc.width == 256 && sc.height == 256,
+                    $"공사판 PNG가 oxalpha 256 세트 (실제 {sc.width}×{sc.height})");
+                var scpx = sc.GetPixels();
+                int scClear = 0, scSolid = 0;
+                foreach (var p in scpx)
+                {
+                    if (p.a < 0.05f) scClear++;
+                    else if (p.a > 0.95f) scSolid++;
+                }
+                // 프레임 오버레이라 판정이 건물과 반대다: 가운데가 크게 비어야(밑 건물 노출) 하고
+                // (투명 > 절반), 목재 골조가 실제로 보여야 한다(불투명 > 0). 실측 투명 56840·불투명 8696.
+                Check(scClear > scpx.Length / 2 && scSolid > 0,
+                    $"공사판 알파 유효 — 프레임 오버레이(밑 건물 노출) (투명 {scClear} · 불투명 {scSolid}/{scpx.Length})");
+                UnityEngine.Object.DestroyImmediate(sc);
+            }
+            Check(EstateBuildings.HasDedicated(EstateBuildings.Scaffold),
+                "공사판 전용 그림이 존재한다(ScaffoldOf가 Busy 때 이걸 겹친다)");
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "마을이 본성 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
@@ -423,6 +453,7 @@ namespace AshesToStars
             string estate = File.ReadAllText(Path.Combine(runtime, "EstateScreen.cs"));
             string yard = File.ReadAllText(Path.Combine(runtime, "EstateYard.cs"));
             Check(yard.Contains("EstateBuildings.PropOf"), "마을이 PropOf를 읽는다");
+            Check(yard.Contains("EstateBuildings.ScaffoldOf"), "마을이 공사판을 ScaffoldOf로 겹친다");
             Check(estate.Contains("EstateBuildings.Line"), "자막이 Line을 읽는다");
             Check(estate.Contains("EstateBuildings.SeedQaIfRequested"), "시드를 읽는다");
             string buildings = File.ReadAllText(Path.Combine(runtime, "EstateBuildings.cs"));
