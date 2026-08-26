@@ -35,6 +35,10 @@ namespace AshesToStars
                 || !source.Contains("return PlayerCopy(item switch"))
                 throw new InvalidOperationException("결과 화면·아이템 설명이 PlayerCopy를 모두 소비하지 않는다");
 
+            if (!source.Contains("ShortCopper(reward.GoldReward)")
+                || source.Contains("FormatCurrency(reward.GoldReward)"))
+                throw new InvalidOperationException("획득 골드가 ShortCopper가 아니다");
+
             Debug.Log("[ResultPlayerCopySelfCheck] PASS — 결과 화면·아이템 설명 절 번호 제거 + QA_NO 복원");
         }
     }

@@ -161,7 +161,7 @@ namespace AshesToStars
             if (reward != null && reward.Survived)
             {
                 _rowIndex++;  // 빈 줄 — 프레임 없이 세로 간격만(빈 패널 방지)
-                RewardInfo(r, _rowIndex++, "gold", $"획득 골드: {Economy.FormatCurrency(reward.GoldReward)}");
+                RewardInfo(r, _rowIndex++, "gold", $"획득 골드: {EstateStatusHud.ShortCopper(reward.GoldReward)}");
                 bool showHuntGold = System.Environment.GetEnvironmentVariable(Economy.EnvShowHuntGold) == "1";
                 if (showHuntGold || GameFlow.ReturnTo == GameFlow.Field)
                     Info(r, _rowIndex++, Economy.HuntGoldLine(reward.GoldReward));
