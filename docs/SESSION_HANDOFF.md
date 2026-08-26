@@ -1,52 +1,26 @@
-# SESSION_HANDOFF — 재와 별 자율 루프 (2026-08-25)
+# SESSION_HANDOFF — 재와 별 자율 루프 (2026-08-26 저녁)
 
-## ✅ 오너 지시 (2026-08-25 밤): 이 기계 자율 루프 **재개** — 같은 날 정지 지시 해제
-- 오너가 "여기 자율 루프 진행해"로 재지시 → 인수인계 기록 절차 그대로
-  `rm -f loop/STOP loop/STOP_LANE && bash loop/deploy_launchd.sh` 실행.
-  메인(`com.ailab.autonomous_loop`)·속도 레인 모두 launchd 구동 실측 확인(PID 부여).
-- 공급자가 전부 불가라 메인 루프는 설계대로 "양쪽 다 소진 — 1800초 대기 후 재확인" 상태.
-  **오너가 터미널에서 `claude` 1회 로그인하면 곧바로 개발 재개됨.**
-
-## 현재 상황 (2026-08-25 20:31 재개 직후 실측)
-- 메인 루프: 양쪽 소진 감지(claude·grok, 실패 카운터 1/6) → 1800초마다 재확인(`logs/loop_main.log`).
-  속도 레인: 구동 중, 할 일 없음 → 60초 대기, 보류됐던 "즉시 회의 소집 신호" 처리 진입(`logs/speed_lane.log`).
-- 공급자: **Claude = 로그인 없음(OAuth 재인증 필요 — 오너가 터미널에서 `claude` 1회 실행),
-  Grok = 사용량 100% 소진(주기 8/23~8/30), Codex = 재개 2026-08-31.**
+## 현재 상태 (2026-08-26 20:30 대화 세션 검수 실측)
+- 메인 PID 12651 가동, 바퀴 `20260826-194324-1` 진행 중. `loop_watch` 재설계 후 실제로
+  19:53에 자동 kickstart 1회 성공 — 감시 장치 작동 확인.
+- 속도 레인은 `loop/TASKS.json` tasks가 0건이라 매분 "할 일 없음" 공회전 중(무해하나 무의미).
+- 공급자 현황: **claude = 터미널 로그인 없음(오너가 `claude` 1회 실행 필요)**,
+  grok = 소진+로그인 만료(주기 8/30까지), codex = 8/31 재개 → 당분간 opencode 의존.
 - 끄려면: `touch loop/STOP loop/STOP_LANE`(다음 랩 체크 시 정상 종료).
 
-## Claude↔Grok 사용량 자동전환 — 구현 완료 (오너 지시 2026-08-25)
-오너의 "자율 루프 처음부터 구축" 스펙을 AskUserQuestion으로 확인 → **"ashes-to-stars에 이식·병합"**
-선택됨. 스펙 대부분은 기존 인프라가 이미 충족(DESIGN/STATUS/INBOX 존재, launchd
-SuccessfulExit=false, qa_shot.sh 시각 QA, claude -p --no-session-persistence). 진짜 빠진 것
-하나(사용량 기반 자동전환)만 추가 구현했다. 승인된 계획: `~/.claude/plans/spicy-sprouting-ripple.md`.
-
-- **커밋 `0cbf91e8`** (6파일, +226/-12): `loop/loop.sh`(usage_check·provider_state·양쪽 소진 대기·
-  랩로그 소진 폴백·EXHAUSTED_THIS_LAP은 FAILS 미증가), `loop/board.py`(`usage <claude|grok>` CLI
-  서브커맨드 — 기존 claude_usage()/grok_usage() 재사용), `loop/env.sh`(LOOP_AUTO_SWITCH=1·
-  PROVIDER_RETRY_SECONDS=1800·MAX_PROVIDER_FAILURES=6), `.gitignore`(loop/provider.state),
-  `docs/DESIGN.md`(§5 완료기준·레퍼런스 — 원장에서 옮겨적기만), `README.md`(자동전환 사용법).
-- **핵심 설계 결정(되돌리지 말 것)**: ① 수동 지정 판정은 "LOOP_AGENT/loop/agent 존재 여부"가
-  아니라 **resolved 값이 codex/opencode일 때만** — `loop/agent`에 "claude"가 이미 들어있어서
-  존재 여부로 판정하면 자동전환이 영구 비활성화된다. ② usage_check의 `error`는 "로그인 없음"
-  문자열만 소진 취급, 그 외 error는 unknown(fail-open, 전환 안 함) — 일시 네트워크 오류를
-  소진으로 오판 금지. ③ 소진으로 인한 무산 랩은 기존 MAX_FAILS=3 정체 감지를 안 건드린다
-  (EXHAUSTED_THIS_LAP 가드 + 양쪽 소진 시 continue로 BEFORE/AFTER 블록 우회).
-- **검증 완료**: bash -n 통과, board.py usage 실호출(claude→로그인 없음, grok→100%), 헬퍼 함수
-  가짜 픽스처 단위검증. **라이브 MAX_LOOPS=2 검증은 실 API 사용량이 들어 미실행** — 오너가
-  원할 때: `LOOP_MAX_LOOPS=2 ./loop/loop.sh /Users/junholee/ai_lab`.
-- **후속 커밋(직전 작업)**: `loop/deploy_launchd.sh`가 board.py를 Application Support로 복사하지
-  않아 배포본에서 usage_check가 조용히 unknown 폴백되는 버그 발견 → `cp "$ROOT/loop/board.py"
-  "$APP/board.py"` 1줄 추가. 이 파일에는 남의 미커밋 `--no-start` diff가 섞여 있어 **git apply
-  --cached로 내 1줄 훙크만 부분 스테이징해 커밋**(전체 파일 add 금지).
-
-## UI 폴리싱 캠페인 — 완료·마감 (더 파지 말 것)
-`PlayerCopy`(내부 §번호 숨기기) 패턴을 `*Screen.cs` 7종 전부 적용 완료: WorldMap·Tower·Estate·
-Field(`377b034a`)·Result(`1eeb6f23`)·Battle(`cebcf428`)·Title(`e13909a6`) + AuctionHud 방어적
-추가(`a3fd819c`). 남은 `*Hud.Line()`류는 전부 QA 전용 게이트 뒤라 일반 플레이 리크 없음
-(정정 기록 `4dc069f4`). **후보 확정 전 실소비처 추적 필수** — grep 카운트만으로 리크 단정 금지.
+## 이 세션이 처리한 것 (2026-08-26 20:30, 오너 지시)
+- **공유 인덱스 오염 해소**: 인덱스가 HEAD보다 뒤진 스냅이라 맨몸 커밋 시 loop_watch.sh -81·
+  TowerClimbCurveMeasure.cs -153·CharacterScreen.cs -17(§18-14 소비처)이 되돌아가고 영지 아트
+  png 8종이 삭제될 상태였다. 전 파일 작업트리==HEAD 확인 후 `git reset`으로 해소(무손실).
+- **재발 방지**: `loop/commit_guard.sh`가 경로 일치뿐 아니라 **스테이지 블롭 == 작업 트리**까지
+  본다(`878ed6b5`, 테스트 18/18). 부분 스테이징은 `COMMIT_GUARD_ALLOW_PARTIAL=1`.
+- **죽은 바퀴 잔여 인수 완료**: 속성 탭 스크롤 하단 소비처 복구(`f5115e72` — InfoAt REF_H
+  하드컷 → `InfoFoldLimit` 필드화). 12:19·12:21 배치 로그로 대체 검증(SelfCheck PASS·전수 195/195).
+  ※ ORDERS③ TowerClimb 178줄은 **이미 커밋돼 있었다**(낡은 인덱스가 미커밋처럼 보이게 한 것).
 
 ## 다음 세션이 볼 것
-1. 크론 확인 시 루프 재개 여부(`launchctl list`, `git log` 최신 커밋 주체) 먼저 — 재개됐으면 대기만.
+1. `launchctl list | grep autonomous_loop` + `tail logs/loop_main.log` 로 재바퀴 성패 확인.
+   opencode가 또 code=1 반복하면 공급자 상태 점검(claude 로그인 여부·grok 주기 8/30까지 소진·codex 8/31 재개).
 2. `output/qa/ashes-to-stars/ORDERS.md` 항목 3개는 전부 `[오너 판단 필요]` — 자동 이어받기 금지.
 3. 자동 이어받기 기본값: "소비처 0곳" 재스캔(✅ 확정 기능인데 읽는 코드 0곳). 단
    **MobDef.정예유형은 후보 아님** — 원장 §(정예 유형은 별개 축, 6×5=30조합)이 종별 독립 추첨을
@@ -54,12 +28,13 @@ Field(`377b034a`)·Result(`1eeb6f23`)·Battle(`cebcf428`)·Title(`e13909a6`) + A
    판단이 필요한 큰 갭이다(자율 범위 밖).
 
 ## 손대지 않고 남겨둔 것 (건드리지 말 것)
-- 남의 미커밋 diff들(정지와 무관): `loop/README.md`, `loop/com.ailab.loopwatch.plist`,
+- 남의 미커밋 diff들: `loop/README.md`, `loop/com.ailab.loopwatch.plist`,
   `loop/deploy_launchd.sh`의 `--no-start` 부분, `loop/last_test_report.json`,
   `projects/ashes-to-stars/art/gen_sfx_grammar.py`, `Editor/ProjCapSelfCheck.cs`,
-  `unity/Packages/packages-lock.json`.
-- `loop/STOP` 상태 그대로(오너/사용량 사정) — 이번 작업은 로직만, 실행 여부는 별도 결정.
+  `unity/Packages/packages-lock.json`, `docs/GAME_WORKLOG.md`.
+  (전부 `git reset` 후에도 작업 트리에 그대로 남아 있다 — 스테이징만 풀렸다.)
 
 ## 확립된 패턴 (재사용할 것)
 PlayerCopy 표준 구현·SelfCheck 템플릿·.meta GUID 생성·Unity MCP 재시도·index.lock 재시도 요령은
-직전 커밋들(`377b034a`·`cebcf428`·`e13909a6`·`a3fd819c`)과 CLAUDE.md §5 참고.
+커밋들(`377b034a`·`cebcf428`·`e13909a6`·`a3fd819c`)과 CLAUDE.md §5 참고.
+Claude↔Grok 사용량 자동전환 설계 결정 3가지는 이전 판 git 이력(커밋 `0cbf91e8`) 참조.
