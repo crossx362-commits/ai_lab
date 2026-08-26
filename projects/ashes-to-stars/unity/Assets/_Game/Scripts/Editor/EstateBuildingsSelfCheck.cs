@@ -323,6 +323,52 @@ namespace AshesToStars
                 Check(solid1 >= solid0 && solid2 >= solid1,
                     $"{stem} 티어 불투명 단조 증가 — 장식만 추가 (t0 {solid0} ≤ t1 {solid1} ≤ t2 {solid2})");
             }
+
+            // ── 전 건물 티어 세대 일괄 화풍 일관성 스캔 (PROPOSALS 2026-08-27 06:40→07:30 최상 승격) ──
+            // tierStems 루프는 「이미 교체 완료」로 명시한 건물만 검증한다 — 미교체 건물은 목록에 없어
+            // 조용히 통과한다(창고·병영·대장간·영묘가 실제로 나노바나나 티어를 달고도 몇 바퀴 안 걸림).
+            // 이 스캔은 core 전 건물을 돌며 _0/_1/_2 파일의 세대 혼재(ox-alpha ≈5KB vs 나노바나나 ≈4MB)를
+            // 가시화한다. 미교체는 _fail이 아니라 _pending으로 센다 — 남은 아트 작업 진행도이지 회귀가
+            // 아니므로 master 회귀 스위트를 빨간불로 오판시키지 않는다. 다 닫히면 미교체 0동으로 초록.
+            int _pending = 0;
+            var seenStem = new System.Collections.Generic.HashSet<string>();
+            // 8동 전부(cores 7 + Arrow→tower). Arrow/Magic는 같은 estate_tower라 stem으로 중복 제거.
+            var scanCells = new[]
+            {
+                EstateGrid.Cell.Keep, EstateGrid.Cell.Mine, EstateGrid.Cell.Warehouse,
+                EstateGrid.Cell.Barracks, EstateGrid.Cell.Smith, EstateGrid.Cell.Mausoleum,
+                EstateGrid.Cell.Auction, EstateGrid.Cell.Arrow,
+            };
+            foreach (var c in scanCells)
+            {
+                string stem = EstateBuildings.BaseNameOf(c);
+                if (string.IsNullOrEmpty(stem) || !seenStem.Add(stem)) continue;
+                long minB = long.MaxValue, maxB = 0;
+                bool all256 = true, allExist = true;
+                for (int t = 0; t <= 2; t++)
+                {
+                    string tp = Path.Combine(Application.dataPath, "Resources/props/" + stem + "_" + t + ".png");
+                    if (!File.Exists(tp)) { allExist = false; continue; }
+                    long b = new FileInfo(tp).Length;
+                    if (b < minB) minB = b;
+                    if (b > maxB) maxB = b;
+                    var kt = new Texture2D(2, 2);
+                    kt.LoadImage(File.ReadAllBytes(tp));
+                    if (kt.width != 256 || kt.height != 256) all256 = false;
+                    UnityEngine.Object.DestroyImmediate(kt);
+                }
+                bool consistent = allExist && all256 && minB > 0 && maxB <= minB * 3;
+                if (consistent)
+                    _log.AppendLine($"  INFO  {stem} 티어 세대 일관 (256×256 · {minB}~{maxB}B)");
+                else
+                {
+                    _pending++;
+                    _log.AppendLine($"  PEND  {stem} 티어 세대 미교체 — _0/_1/_2 화풍 튐 "
+                        + $"(256={all256} · 존재={allExist} · 크기 {minB}~{maxB}B, 편차 {(minB>0 ? maxB/(double)minB : 0):F0}×)");
+                }
+            }
+            _log.AppendLine($"  INFO  영지 티어 세대 미교체 {_pending}동 (0이면 8동 전부 ox-alpha 티어 반입 완료)");
+
             Check(EstateBuildings.TierName(EstateGrid.Cell.Keep, 1) == "estate_keep_1"
                 && EstateBuildings.TierName(EstateGrid.Cell.Keep, 2) == "estate_keep_2",
                 "PropOf 티어 접미사가 _1/_2를 가리킨다");
