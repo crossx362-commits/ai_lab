@@ -71,6 +71,7 @@ namespace AshesToStars
                 new Entry { Name = "소환수 상한", Run = SummonCapSelfCheck.Run },
                 new Entry { Name = "소환수 재소환", Run = ResummonSelfCheck.Run },
                 new Entry { Name = "동시 건설 슬롯", Run = BuildSlotsSelfCheck.Run },
+                new Entry { Name = "부지 확장", Run = EstateExpansionSelfCheck.Run },
                 new Entry { Name = "투사체 상한", Run = ProjCapSelfCheck.Run },
                 new Entry { Name = "G/h 앵커", Run = GhAnchorSelfCheck.Run },
                 new Entry { Name = "티어 배율", Run = TierMulSelfCheck.Run },

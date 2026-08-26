@@ -57,6 +57,9 @@ namespace AshesToStars
 
         [Header("영지 건설 (§18-12)")]
         [Tooltip("동시 건설 슬롯 상한(본성 라인 1 + 그 외 1). 소비처: BuildSlots.Cap → EstateBuild.WhyCannotUpgrade")] public int 동시건설슬롯 = 2;
+        [Tooltip("부지 확장 1단계 해금 층(§18-12, 격자 8×8→넓어짐). 소비처: EstateExpansion.Gates → EstateGrid.Size")] public int 부지확장해금층1 = 20;
+        [Tooltip("부지 확장 2단계 해금 층(§18-12). 소비처: EstateExpansion.Gates → EstateGrid.Size")] public int 부지확장해금층2 = 50;
+        [Tooltip("부지 확장 3단계 해금 층(§18-12, 최대 16×16 도달). 소비처: EstateExpansion.Gates → EstateGrid.Size")] public int 부지확장해금층3 = 80;
 
         [Header("쿼터뷰")]
         [Tooltip("월드 y를 화면에 그릴 때 곱하는 값 = sin(30°)")] public float ISO_Y = 0.5f;

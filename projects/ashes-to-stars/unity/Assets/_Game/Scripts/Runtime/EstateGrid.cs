@@ -11,7 +11,19 @@ namespace AshesToStars
     /// </summary>
     public static class EstateGrid
     {
-        public const int Size = 8;
+        // 초기 격자 폭(§18-12). 부지 확장 전 기본.
+        public const int BaseSize = 8;
+        // 부지 확장 최대 폭(§18-12). 저장·인덱싱은 항상 이 폭으로 고정한다(Stride).
+        public const int MaxSize = 16;
+        // 물리 배열의 행 간격 — 논리 격자가 커져도 저장 배치가 안 흔들리게 최대 폭 고정.
+        const int Stride = MaxSize;
+
+        // 논리 격자 폭(해금된 크기). 소비처: EstateExpansion.CurrentSize(층 기반).
+        // 렌더 핫패스에서 자주 불리니 호출부는 `int n = Size;`로 한 번만 받아 쓴다.
+        public static int Size => EstateExpansion.CurrentSize();
+
+        // (x,y) → 물리 배열 인덱스. 논리 폭이 아니라 고정 Stride로 잡아야 저장이 안 깨진다.
+        static int Idx(int x, int y) => y * Stride + x;
         // 2×2 본성이 (2,3)이면 창고 (3,3)을 덮는다. 자리는 (1,2)에서 연다.
         public const int KeepX = 1, KeepY = 2;
         public const int StoreX = 3, StoreY = 3;
@@ -36,7 +48,7 @@ namespace AshesToStars
 
         static bool _loaded;
         static bool _qaSeeded;
-        static readonly Cell[] _cells = new Cell[Size * Size];
+        static readonly Cell[] _cells = new Cell[Stride * Stride];
 
         public static bool Disabled()
         {
@@ -48,11 +60,14 @@ namespace AshesToStars
         {
             Load();
             if (!InBounds(x, y)) return Cell.Wall;
-            return _cells[y * Size + x];
+            return _cells[Idx(x, y)];
         }
 
-        public static bool InBounds(int x, int y) =>
-            x >= 0 && y >= 0 && x < Size && y < Size;
+        public static bool InBounds(int x, int y)
+        {
+            int n = Size;
+            return x >= 0 && y >= 0 && x < n && y < n;
+        }
 
         public static bool IsCore(Cell c) =>
             c == Cell.Keep || c == Cell.Mine || c == Cell.Warehouse
@@ -92,10 +107,11 @@ namespace AshesToStars
         {
             Load();
             if (!InBounds(x, y)) return false;
-            for (int oy = 0; oy < Size; oy++)
-            for (int ox = 0; ox < Size; ox++)
+            int n = Size;
+            for (int oy = 0; oy < n; oy++)
+            for (int ox = 0; ox < n; ox++)
             {
-                var c = _cells[oy * Size + ox];
+                var c = _cells[Idx(ox, oy)];
                 if (!IsCore(c)) continue;
                 if (Covers(ox, oy, x, y)) return true;
             }
@@ -109,10 +125,11 @@ namespace AshesToStars
             ox = -1;
             oy = -1;
             if (!InBounds(x, y)) return false;
-            for (int iy = 0; iy < Size; iy++)
-            for (int ix = 0; ix < Size; ix++)
+            int n = Size;
+            for (int iy = 0; iy < n; iy++)
+            for (int ix = 0; ix < n; ix++)
             {
-                if (_cells[iy * Size + ix] == Cell.Empty) continue;
+                if (_cells[Idx(ix, iy)] == Cell.Empty) continue;
                 if (!Covers(ix, iy, x, y)) continue;
                 ox = ix;
                 oy = iy;
@@ -196,7 +213,7 @@ namespace AshesToStars
         public static bool TryPlace(int x, int y, Cell c)
         {
             if (WhyCannotPlace(x, y, c) != null) return false;
-            _cells[y * Size + x] = c;
+            _cells[Idx(x, y)] = c;
             Save();
             return true;
         }
@@ -207,7 +224,7 @@ namespace AshesToStars
             if (Disabled()) return false;
             if (!InBounds(x, y)) return false;
             if (!IsDefense(At(x, y))) return false;
-            _cells[y * Size + x] = Cell.Empty;
+            _cells[Idx(x, y)] = Cell.Empty;
             Save();
             return true;
         }
@@ -215,16 +232,17 @@ namespace AshesToStars
         public static int PathLength(Side side)
         {
             Load();
-            var seen = new bool[Size * Size];
-            var qx = new int[Size * Size];
-            var qy = new int[Size * Size];
-            var qd = new int[Size * Size];
+            int n = Size;
+            var seen = new bool[Stride * Stride];
+            var qx = new int[Stride * Stride];
+            var qy = new int[Stride * Stride];
+            var qd = new int[Stride * Stride];
             int head = 0, tail = 0;
 
             void Enq(int x, int y, int d)
             {
                 if (!InBounds(x, y)) return;
-                int i = y * Size + x;
+                int i = Idx(x, y);
                 if (seen[i]) return;
                 if (!Walkable(_cells[i])) return;
                 seen[i] = true;
@@ -235,13 +253,13 @@ namespace AshesToStars
             }
 
             if (side == Side.북)
-                for (int x = 0; x < Size; x++) Enq(x, 0, 0);
+                for (int x = 0; x < n; x++) Enq(x, 0, 0);
             else if (side == Side.남)
-                for (int x = 0; x < Size; x++) Enq(x, Size - 1, 0);
+                for (int x = 0; x < n; x++) Enq(x, n - 1, 0);
             else if (side == Side.서)
-                for (int y = 0; y < Size; y++) Enq(0, y, 0);
+                for (int y = 0; y < n; y++) Enq(0, y, 0);
             else
-                for (int y = 0; y < Size; y++) Enq(Size - 1, y, 0);
+                for (int y = 0; y < n; y++) Enq(n - 1, y, 0);
 
             int[] dx = { 0, 1, 0, -1 };
             int[] dy = { -1, 0, 1, 0 };
@@ -288,28 +306,29 @@ namespace AshesToStars
 
         static int DistFromSide(Side side, int tx, int ty)
         {
-            var seen = new bool[Size * Size];
-            var qx = new int[Size * Size];
-            var qy = new int[Size * Size];
-            var qd = new int[Size * Size];
+            int n = Size;
+            var seen = new bool[Stride * Stride];
+            var qx = new int[Stride * Stride];
+            var qy = new int[Stride * Stride];
+            var qd = new int[Stride * Stride];
             int head = 0, tail = 0;
             void Enq(int x, int y, int d)
             {
                 if (!InBounds(x, y)) return;
-                int i = y * Size + x;
+                int i = Idx(x, y);
                 if (seen[i] || !Walkable(_cells[i])) return;
                 seen[i] = true;
                 qx[tail] = x; qy[tail] = y; qd[tail] = d;
                 tail++;
             }
             if (side == Side.북)
-                for (int x = 0; x < Size; x++) Enq(x, 0, 0);
+                for (int x = 0; x < n; x++) Enq(x, 0, 0);
             else if (side == Side.남)
-                for (int x = 0; x < Size; x++) Enq(x, Size - 1, 0);
+                for (int x = 0; x < n; x++) Enq(x, n - 1, 0);
             else if (side == Side.서)
-                for (int y = 0; y < Size; y++) Enq(0, y, 0);
+                for (int y = 0; y < n; y++) Enq(0, y, 0);
             else
-                for (int y = 0; y < Size; y++) Enq(Size - 1, y, 0);
+                for (int y = 0; y < n; y++) Enq(n - 1, y, 0);
             int[] dx = { 0, 1, 0, -1 };
             int[] dy = { -1, 0, 1, 0 };
             while (head < tail)
@@ -325,15 +344,15 @@ namespace AshesToStars
 
         static int DistToStore(int sx, int sy)
         {
-            var seen = new bool[Size * Size];
-            var qx = new int[Size * Size];
-            var qy = new int[Size * Size];
-            var qd = new int[Size * Size];
+            var seen = new bool[Stride * Stride];
+            var qx = new int[Stride * Stride];
+            var qy = new int[Stride * Stride];
+            var qd = new int[Stride * Stride];
             int head = 0, tail = 0;
             void Enq(int x, int y, int d)
             {
                 if (!InBounds(x, y)) return;
-                int i = y * Size + x;
+                int i = Idx(x, y);
                 if (seen[i] || !Walkable(_cells[i])) return;
                 seen[i] = true;
                 qx[tail] = x; qy[tail] = y; qd[tail] = d;
@@ -355,14 +374,14 @@ namespace AshesToStars
 
         static bool WouldSeal(int x, int y)
         {
-            var prev = _cells[y * Size + x];
-            _cells[y * Size + x] = Cell.Wall;
+            var prev = _cells[Idx(x, y)];
+            _cells[Idx(x, y)] = Cell.Wall;
             bool open = false;
             for (int i = 0; i < Sides.Length; i++)
             {
                 if (PathLength(Sides[i]) >= 0) { open = true; break; }
             }
-            _cells[y * Size + x] = prev;
+            _cells[Idx(x, y)] = prev;
             return !open;
         }
 
@@ -370,7 +389,7 @@ namespace AshesToStars
         {
             Load();
             if (!InBounds(x, y)) return;
-            _cells[y * Size + x] = c;
+            _cells[Idx(x, y)] = c;
             Save();
         }
 
@@ -386,18 +405,18 @@ namespace AshesToStars
             EstateDefense.SetLevelForTest(EstateDefense.Kind.성벽, 3);
             _loaded = true;
             ApplyDefault();
-            _cells[1 * Size + 2] = Cell.Wall;
-            _cells[1 * Size + 3] = Cell.Wall;
-            _cells[1 * Size + 4] = Cell.Wall;
+            _cells[Idx(2, 1)] = Cell.Wall;
+            _cells[Idx(3, 1)] = Cell.Wall;
+            _cells[Idx(4, 1)] = Cell.Wall;
             Save();
         }
 
         static void ApplyDefault()
         {
             for (int i = 0; i < _cells.Length; i++) _cells[i] = Cell.Empty;
-            _cells[KeepY * Size + KeepX] = Cell.Keep;
-            _cells[StoreY * Size + StoreX] = Cell.Warehouse;
-            _cells[MineY * Size + MineX] = Cell.Mine;
+            _cells[Idx(KeepX, KeepY)] = Cell.Keep;
+            _cells[Idx(StoreX, StoreY)] = Cell.Warehouse;
+            _cells[Idx(MineX, MineY)] = Cell.Mine;
             PlaceIfEmpty(SmithX, SmithY, Cell.Smith);
             PlaceIfEmpty(AuctionX, AuctionY, Cell.Auction);
             PlaceIfEmpty(MausoleumX, MausoleumY, Cell.Mausoleum);
@@ -407,7 +426,7 @@ namespace AshesToStars
         static void PlaceIfEmpty(int x, int y, Cell c)
         {
             if (!InBounds(x, y)) return;
-            if (_cells[y * Size + x] == Cell.Empty) _cells[y * Size + x] = c;
+            if (_cells[Idx(x, y)] == Cell.Empty) _cells[Idx(x, y)] = c;
         }
 
         /// <summary>옛 세이브에 허브 4동이 없으면 빈 칸에 앉힌다. 있으면 그대로.</summary>
@@ -423,16 +442,19 @@ namespace AshesToStars
         static void EnsureOne(Cell c, int px, int py)
         {
             if (Count(c) > 0) return;
-            if (InBounds(px, py) && _cells[py * Size + px] == Cell.Empty)
+            if (InBounds(px, py) && _cells[Idx(px, py)] == Cell.Empty)
             {
-                _cells[py * Size + px] = c;
+                _cells[Idx(px, py)] = c;
                 Save();
                 return;
             }
-            for (int i = 0; i < _cells.Length; i++)
+            // 폴백은 해금된 논리 격자 안에서만 — 잠긴 칸(확장 전)에 허브를 앉히지 않는다.
+            int n = Size;
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
             {
-                if (_cells[i] != Cell.Empty) continue;
-                _cells[i] = c;
+                if (_cells[Idx(x, y)] != Cell.Empty) continue;
+                _cells[Idx(x, y)] = c;
                 Save();
                 return;
             }
@@ -446,14 +468,31 @@ namespace AshesToStars
             string raw = PlayerPrefs.GetString(K_CELLS, "");
             if (string.IsNullOrEmpty(raw)) return;
             var parts = raw.Split(',');
-            if (parts.Length != _cells.Length) return;
             int max = (int)Cell.Barracks;
-            for (int i = 0; i < _cells.Length; i++)
+            if (parts.Length == _cells.Length)
             {
-                int n;
-                if (!int.TryParse(parts[i], out n)) continue;
-                if (n < 0 || n > max) continue;
-                _cells[i] = (Cell)n;
+                // 현행 포맷: 물리 배열(Stride×Stride)을 순서대로 저장했다 — 그대로 복원.
+                for (int i = 0; i < _cells.Length; i++)
+                {
+                    if (!int.TryParse(parts[i], out int v)) continue;
+                    if (v < 0 || v > max) continue;
+                    _cells[i] = (Cell)v;
+                }
+            }
+            else if (parts.Length == BaseSize * BaseSize)
+            {
+                // 옛 세이브(8×8, stride 8)를 16-stride 좌표로 이관 — 확장 전 배치 보존.
+                for (int oy = 0; oy < BaseSize; oy++)
+                for (int ox = 0; ox < BaseSize; ox++)
+                {
+                    if (!int.TryParse(parts[oy * BaseSize + ox], out int v)) continue;
+                    if (v < 0 || v > max) continue;
+                    _cells[Idx(ox, oy)] = (Cell)v;
+                }
+            }
+            else
+            {
+                return; // 알 수 없는 길이 — 기본 배치 유지.
             }
             EnsureHubBuildings();
         }
@@ -471,6 +510,10 @@ namespace AshesToStars
         {
             PlayerPrefs.DeleteKey(K_CELLS);
             PlayerPrefs.Save();
+            // 확장을 초기(8×8)로 고정한다 — 기존 영지 SelfCheck들이 논리 폭 8을 전제로
+            // 도는데, 앞선 테스트가 탑 층을 올려 놓으면 격자가 커져 오판한다. 부지 확장을
+            // 검증하는 테스트만 EstateExpansion.ResetForTest로 이 고정을 푼다.
+            EstateExpansion.ForceSizeForTest = BaseSize;
             ApplyDefault();
             _loaded = false;
             _qaSeeded = false;
