@@ -36,6 +36,7 @@ namespace AshesToStars
                 if (WorldExplore.ShowQa) return PlayerCopy(WorldExplore.Line());
                 if (WorldStar.ShowRangeQa) return PlayerCopy(WorldStar.SenseLine());
                 if (WorldStar.ShowQa) return PlayerCopy(WorldStar.SizeLine());
+                if (WorldStar.ShowDebuffCapQa) return PlayerCopy(WorldStar.DebuffCapLine());
                 if (WorldMapDockCap.ShowQa) return WorldMapDockCap.Line();
                 if (WorldMapHud.ShowQa) return WorldMapHud.Line();
                 string s = "내 별 " + WorldStar.SizeLabel(GameState.TowerFloor);
@@ -45,6 +46,9 @@ namespace AshesToStars
                     s += " · " + WorldExplore.Line();
                 if (WorldStar.EnemyPercent() == WorldStar.EnemyDebuffPercent)
                     s += " · " + WorldStar.EnemyLine();
+                string debuffCap = WorldStar.DebuffCapLine();
+                if (!string.IsNullOrEmpty(debuffCap))
+                    s += " · " + debuffCap;
                 if (Economy.RaceCostPercent() == Economy.DwarfCostPercent)
                     s += " · " + Economy.RaceCostLine();
                 if (Environment.GetEnvironmentVariable(InvasionState.EnvShowCap) == "1"
@@ -108,6 +112,7 @@ namespace AshesToStars
             WorldStar.SeedRangeQaIfRequested();
             WorldStar.SeedRaceSenseQaIfRequested();
             WorldStar.SeedAuraDebuffQaIfRequested();
+            WorldStar.SeedDebuffCapQaIfRequested();
             WorldExplore.SeedQaIfRequested();
             InvasionApproach.SeedQaIfRequested();
             EstateStore.SeedQaIfRequested();

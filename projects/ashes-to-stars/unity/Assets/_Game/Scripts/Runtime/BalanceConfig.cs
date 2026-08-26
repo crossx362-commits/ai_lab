@@ -55,6 +55,9 @@ namespace AshesToStars
         [Tooltip("처형자 후열 명중 폭딜 배율(≥1, 클수록 위협적). 원장 미확정. 소비처: EliteExecutioner.BurstMul → W3Party.TickMobs(근접 피해에 곱)")] public float 처형자폭딜배율 = 3.0f;
         [Tooltip("처형자 돌진 이동 배율(플레이어 대비, 정예 중 가장 빠름). 원장 미확정. 소비처: EliteExecutioner.RushMul → W3Party.TickMobs(이동 spd)")] public float 처형자돌진속도배율 = 0.95f;
 
+        [Header("침략·월드맵 (§18-13 · 담합 방지 §14)")]
+        [Tooltip("디버프 중첩 최대 별 수. 소비처: StarDebuffCap.Cap → WorldStar.AppliedStacks · HUD 부제")] public int 디버프중첩별상한 = 2;
+
         [Header("영지 건설 (§18-12)")]
         [Tooltip("동시 건설 슬롯 상한(본성 라인 1 + 그 외 1). 소비처: BuildSlots.Cap → EstateBuild.WhyCannotUpgrade")] public int 동시건설슬롯 = 2;
         [Tooltip("부지 확장 1단계 해금 층(§18-12, 격자 8×8→넓어짐). 소비처: EstateExpansion.Gates → EstateGrid.Size")] public int 부지확장해금층1 = 20;

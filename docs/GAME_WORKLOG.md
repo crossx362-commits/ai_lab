@@ -27,6 +27,20 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — §18-13 디버프 중첩 최대 2개 별 소비처 (Grok)
+
+원장 §18-13·담합 방지 §14 「디버프 중첩 최대 2개 별」이 authored인데 WorldStar는
+자기 별 EnemyDebuff on/off(−5%)만 있어 다별 중첩 모델이 없었다(클램프 대상 부재).
+`BalanceConfig.디버프중첩별상한=2`를 `StarDebuffCap`이 읽고, WorldStar가
+`AppliedStacks() = StarDebuffCap.Apply(StackedCount())`로 소비한다.
+지금은 0/1별이라 상한 2에 안 걸리지만 Cap·Apply·부제 줄로 소비처 0곳을 닫는다.
+표시 `디버프 중첩 최대 2개 별(§18-13)` — 월드맵 HUD 부제. `QA_NO_STAR_DEBUFF_CAP`면
+옛 동작(상한 줄 없음·Apply는 요청 그대로). 약탈 공식은 건드리지 않음 — W3Party 무접촉.
+
+`StarDebuffCapSelfCheck` PASS 38건 (`results/star_debuff_cap_selfcheck.log`).
+unity_meas batch 6000.5.6f1 exit 0.
+
+
 ## 완료 (2026-08-25) — §18-11 잡몹 피해 소비처 (Grok)
 
 직전 트랙 폴리싱(허브 본문-내비) → 원장 재스캔 한 칸. `MobDef.피해비율` 기본 0.03

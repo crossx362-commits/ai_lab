@@ -218,6 +218,7 @@ namespace AshesToStars
                 new Entry { Name = "SoloRaidClear", Run = SoloRaidClearSelfCheck.Run },
                 new Entry { Name = "SortieTime", Run = SortieTimeSelfCheck.Run },
                 new Entry { Name = "SpecialJob", Run = SpecialJobSelfCheck.Run },
+                new Entry { Name = "StarDebuffCap", Run = StarDebuffCapSelfCheck.Run },
                 new Entry { Name = "StarterSecond", Run = StarterSecondSelfCheck.Run },
                 new Entry { Name = "StatusVfx", Run = StatusVfxSelfCheck.Run },
                 new Entry { Name = "StyleToggle", Run = StyleToggleSelfCheck.Run },
