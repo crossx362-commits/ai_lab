@@ -32,6 +32,10 @@ namespace AshesToStars
         public int 소환수상한 = 50;
         public int 투사체상한 = 200; // 소비처: ProjCap.Limit → StressTest 풀 · 속성 탭 줄
 
+        [Header("안전장치 (§18-14)")]
+        [Tooltip("소환수 재소환 비용(실버). 원장 0.5G/h = T1 50실버 고정. 소비처: Resummon.CostSilver → 속성 탭 줄")] public float 재소환비용실버 = 50f;
+        [Tooltip("소환수 재소환 쿨다운(초). 소비처: Resummon.CooldownSeconds → 속성 탭 줄")] public float 재소환쿨다운초 = 30f;
+
         [Header("쿼터뷰")]
         [Tooltip("월드 y를 화면에 그릴 때 곱하는 값 = sin(30°)")] public float ISO_Y = 0.5f;
     }

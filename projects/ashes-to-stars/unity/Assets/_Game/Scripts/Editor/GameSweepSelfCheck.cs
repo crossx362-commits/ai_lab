@@ -62,6 +62,7 @@ namespace AshesToStars
                 One("PvE 회복", PveRecoverSelfCheck.Run, rows, errors);
                 One("잡몹 상한", PerfCapSelfCheck.Run, rows, errors);
                 One("소환수 상한", SummonCapSelfCheck.Run, rows, errors);
+                One("소환수 재소환", ResummonSelfCheck.Run, rows, errors);
                 One("투사체 상한", ProjCapSelfCheck.Run, rows, errors);
                 One("G/h 앵커", GhAnchorSelfCheck.Run, rows, errors);
                 One("티어 배율", TierMulSelfCheck.Run, rows, errors);
