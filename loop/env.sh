@@ -9,8 +9,11 @@ export LOOP_MODE="${LOOP_MODE:-session}"
 # 비워두면 loop/agent 파일이 실행기를 정한다(README 규칙). 기본값을 넣으면 파일 지정이 죽는다.
 export LOOP_AGENT="${LOOP_AGENT:-}"
 export LOOP_PROVIDERS="${LOOP_PROVIDERS:-grok}"
-# 실행기 체인(오너 지시 2026-08-25): 우선순위 없음 — 현재 실행기 스티키, 소진 시 링의 다음으로.
-export LOOP_PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude,grok,codex,opencode}"
+# 실행기 체인(오너 지시 2026-08-27): claude 단독. 「클로드 소진 시 opencode 등으로 넘어가지
+# 말고, 클로드 할당량이 회복될 때까지 대기」. 체인이 1개면 loop.sh가 소진 시 자멸하지 않고
+# PROVIDER_RETRY_SECONDS마다 회복을 무한 재확인한다(CHAIN_COUNT<=1 분기).
+# 다시 다중 공급자로 되돌리려면 여기에 쉼표로 실행기를 추가하면 옛 링 전환이 자동 복원된다.
+export LOOP_PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude}"
 export LOOP_MAX_PARALLEL="${LOOP_MAX_PARALLEL:-3}"
 
 # 강한 모델 고정. Claude는 Fable 사용량 소진/이용 불가 때만 Opus 5로 전환한다.
@@ -20,7 +23,13 @@ export LOOP_CODEX_MODEL="${LOOP_CODEX_MODEL:-gpt-5.6-sol}"
 export LOOP_CODEX_REASONING="${LOOP_CODEX_REASONING:-xhigh}"
 export LOOP_CODEX_PLANNING_REASONING="${LOOP_CODEX_PLANNING_REASONING:-medium}"
 export LOOP_GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
-export LOOP_OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/x-preview-f-free}"
+# opencode 모델. 2026-08-27 01:10 실측: x-preview-f-free만 서버 오류(UnknownError)로 죽어 있고
+# 다른 모델은 정상이었다 — 3시간 동안 바퀴가 한 번도 못 돈 원인. 살아 있고 무료이며 긴 컨텍스트
+# 과제도 27초에 정답을 낸 mimo-v2.5-free를 1순위로 바꾼다.
+export LOOP_OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/mimo-v2.5-free}"
+# 그 모델이 서버 장애로 죽으면 이 순서로 갈아탄다(모델 단위 페일오버). 공급자는 그대로 두고
+# 모델만 바꾸므로 대체 공급자가 없는 상황에서도 바퀴가 계속 돈다.
+export LOOP_OPENCODE_MODELS="${LOOP_OPENCODE_MODELS:-opencode/mimo-v2.5-free,opencode/hy3-free,opencode/nemotron-3.5-lightning-free,opencode/x-preview-f-free}"
 
 # 자가학습 회의 — N바퀴마다 역할(planner·builder·tester) 병렬 회의 소집 (오너 2026-08-23)
 export LOOP_COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"

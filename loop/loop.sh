@@ -30,10 +30,14 @@ AGENT_FILE="$TARGET_REPO/loop/agent"
 STATUS_FILE="$TARGET_REPO/docs/STATUS.md"
 MAIN_LOG="$TARGET_REPO/logs/loop_main.log"
 GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
-OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/x-preview-f-free}"
+OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/mimo-v2.5-free}"
 # 실행기 체인(오너 지시 2026-08-25): 우선순위 없음 — 현재 돌리는 실행기를 소진될 때까지 쓰고,
 # 소진되면 체인의 다음(링 회전)으로 넘어간다. 핀(codex/opencode 지정)은 전환 관여 없음.
-PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude,grok,codex,opencode}"
+PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude}"
+# 체인에 실행기가 몇 개인지(빈 항목 제외). 1개면 「그 하나가 회복될 때까지 대기」 모드 —
+# 소진돼도 다른 공급자로 넘어가지 않고 자멸하지도 않는다(오너 지시 2026-08-27:
+# "클로드 소진 시 opencode 가지 말고 클로드 할당량 회복될 때까지 대기").
+CHAIN_COUNT="$(printf '%s' "$PROVIDERS_CHAIN" | awk -F, '{c=0; for(i=1;i<=NF;i++){gsub(/[[:space:]]/,"",$i); if($i!="")c++} print c}')"
 COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
 
 # Claude↔Grok 사용량 자동전환 (오너 지시 2026-08-25). claude로 시작, 소진되면 grok, grok도
@@ -242,6 +246,27 @@ detect_infra_failure_in_log() {
   tail -40 "$logfile" | grep -qiE "$INFRA_PATTERN"
 }
 
+# 모델 단위 페일오버 — 지금 쓰는 opencode 모델이 서버 장애면 목록의 다음 모델로 갈아탄다.
+# 2026-08-27 01:10 실측: x-preview-f-free만 죽어 있고 mimo·big-pickle은 정상이었는데, 모델을
+# 고정해 둔 탓에 3시간 동안 바퀴가 한 번도 못 돌았다. 공급자가 하나뿐일 때의 마지막 방어선이다.
+rotate_opencode_model() {
+  [ "$AGENT" = "opencode" ] || return 0
+  local list="${LOOP_OPENCODE_MODELS:-}"
+  [ -n "$list" ] || return 0
+  local first="" next="" found=0 m
+  local IFS=,
+  for m in $list; do
+    [ -n "$m" ] || continue
+    [ -z "$first" ] && first="$m"
+    if [ "$found" = "1" ]; then next="$m"; break; fi
+    [ "$m" = "$OPENCODE_MODEL" ] && found=1
+  done
+  [ -z "$next" ] && next="$first"                  # 목록 끝이면 처음으로 순환
+  [ "$next" = "$OPENCODE_MODEL" ] && return 0      # 후보가 하나뿐이면 그대로
+  echo "opencode 모델 전환: $OPENCODE_MODEL → $next (서버 장애)" | tee -a "$MAIN_LOG" "$LAP_LOG"
+  OPENCODE_MODEL="$next"
+}
+
 # 자가검사용 후크 — `bash loop/loop.sh --self-test-infra <로그파일>`이면 판정만 하고 끝낸다
 # (종료 0=공급자 장애 · 1=아니다). 네거티브 컨트롤 없는 통과를 만들지 않기 위한 장치다.
 if [ -n "$SELFTEST_INFRA" ]; then
@@ -331,12 +356,19 @@ while true; do
         PICKED="$(pick_from_chain "" "$STATE_CURRENT")"
         if [ -z "$PICKED" ]; then
           PROVIDER_WAIT_ROUNDS=$((PROVIDER_WAIT_ROUNDS + 1))
-          echo "체인 전체 소진(${PROVIDER_WAIT_ROUNDS}/${MAX_PROVIDER_FAILURES}) — ${PROVIDER_RETRY_SECONDS}초 대기 후 재확인" | tee -a "$MAIN_LOG"
           provider_state_mark_retry "$STATE_CURRENT"
-          if [ "$PROVIDER_WAIT_ROUNDS" -ge "$MAX_PROVIDER_FAILURES" ]; then
-            echo "체인 소진 대기 ${MAX_PROVIDER_FAILURES}회 초과 — 정상 종료합니다(사용량 확인 자체가 고장났을 가능성 포함)." | tee -a "$MAIN_LOG"
-            touch "$STOP_FILE"
-            exit 0
+          if [ "$CHAIN_COUNT" -le 1 ]; then
+            # 단독 공급자 대기 모드 — 넘어갈 곳이 없다. 회복될 때까지 무한 대기(자멸 안 함).
+            # usage_check는 fail-open이라 조회 실패는 'unknown'→여기로 안 온다. 여기 도달은
+            # 진짜 소진(remain<=0)이나 '로그인 없음'뿐이므로 대기가 정답이다(오너 지시).
+            echo "$STATE_CURRENT 소진 — ${PROVIDER_RETRY_SECONDS}초 쉬고 할당량 회복 재확인(대기 ${PROVIDER_WAIT_ROUNDS}회, 종료 안 함·오너 지시)" | tee -a "$MAIN_LOG"
+          else
+            echo "체인 전체 소진(${PROVIDER_WAIT_ROUNDS}/${MAX_PROVIDER_FAILURES}) — ${PROVIDER_RETRY_SECONDS}초 대기 후 재확인" | tee -a "$MAIN_LOG"
+            if [ "$PROVIDER_WAIT_ROUNDS" -ge "$MAX_PROVIDER_FAILURES" ]; then
+              echo "체인 소진 대기 ${MAX_PROVIDER_FAILURES}회 초과 — 정상 종료합니다(사용량 확인 자체가 고장났을 가능성 포함)." | tee -a "$MAIN_LOG"
+              touch "$STOP_FILE"
+              exit 0
+            fi
           fi
           wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
           continue
@@ -394,6 +426,7 @@ while true; do
       wait_with_stop "$INFRA_COOLOFF" || { echo "STOP 감지 — 종료" | tee -a "$MAIN_LOG"; exit 0; }
       INFRA_FAILS=0
     else
+      rotate_opencode_model
       BACKOFF=$((INFRA_BACKOFF * INFRA_FAILS))
       echo "공급자 서버 장애로 죽은 바퀴 ($AGENT · ${INFRA_FAILS}/${INFRA_MAX}) — FAILS 미증가, ${BACKOFF}초 후 재시도" \
         | tee -a "$MAIN_LOG" "$LAP_LOG"
