@@ -115,6 +115,7 @@ namespace AshesToStars
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
             SeedCharLookQaIfRequested();
+            SeedRosterPickQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
             EquipLevel.SeedQaIfRequested();
@@ -655,13 +656,18 @@ namespace AshesToStars
             for (int i = 0; i < allCharacters.Count; i++)
             {
                 var cell = CharHud.RosterCell(board, i);
-                DrawRosterCell(cell, allCharacters[i], i == _selectedCharacter, i);
-                if (GUI.Button(cell, GUIContent.none, GUIStyle.none))
+                // 클릭을 슬라이스·초상·라벨보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
+                // 스크롤뷰·BeginGroup(LabelFit)에 먹혀 선택이 안 바뀌었다(INBOX 2026-08-25).
+                var ev = Event.current;
+                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                    && cell.Contains(ev.mousePosition))
                 {
                     _selectedCharacter = i;
                     _choosingAdvancement = false;
                     _detailPage = 0;
+                    ev.Use();
                 }
+                DrawRosterCell(cell, allCharacters[i], i == _selectedCharacter, i);
             }
             GUI.EndScrollView();
             if (CompactAction(partyRect, $"파티 {PartyState.Slots.Count}/5", "tank"))
@@ -769,6 +775,25 @@ namespace AshesToStars
             DrawCard(cards[1], "규칙",
                 $"슬롯 4 · {EstateStatusHud.ShortCopper(Fusion.CostCopper())} · 넘치면 본 뒤 교체/포기. 재료는 영묘에 안 간다",
                 "heart", locked: true);
+        }
+
+
+        void SeedRosterPickQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable("QA_CHAR_PICK");
+            if (string.IsNullOrEmpty(raw)) return;
+            FloorRecruit.ResetForTest();
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count < 2) return;
+            int pick = 0;
+            int.TryParse(raw, out pick);
+            if (pick < 0) pick = 0;
+            if (pick >= roster.Count) pick = roster.Count - 1;
+            _selectedCharacter = pick;
+            _listPage = 0;
+            _detailPage = 0;
+            _fusing = false;
+            _choosingAdvancement = false;
         }
 
         void SeedCharLookQaIfRequested()

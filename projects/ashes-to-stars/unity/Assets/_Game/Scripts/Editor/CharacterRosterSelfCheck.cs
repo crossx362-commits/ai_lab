@@ -79,6 +79,18 @@ namespace AshesToStars
                   && charSrc.IndexOf("FormatCurrency(cost)") < 0,
                 "소멸 비용은 ShortCopper만");
 
+            int split = charSrc.IndexOf("void DrawRosterSplit", StringComparison.Ordinal);
+            int cellFn = charSrc.IndexOf("void DrawRosterCell", StringComparison.Ordinal);
+            Check(split >= 0 && cellFn > split, "DrawRosterSplit·DrawRosterCell가 있다");
+            string splitSrc = (split >= 0 && cellFn > split)
+                ? charSrc.Substring(split, cellFn - split) : "";
+            Check(splitSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
+                  && splitSrc.IndexOf("cell.Contains", StringComparison.Ordinal) >= 0
+                  && splitSrc.IndexOf("_selectedCharacter = i", StringComparison.Ordinal) >= 0,
+                "로스터 셀 클릭은 MouseDown으로 _selectedCharacter를 바꾼다");
+            Check(splitSrc.IndexOf("GUI.Button(cell", StringComparison.Ordinal) < 0,
+                "DrawRosterCell 뒤 GUI.Button(none)을 안 쓴다");
+
             if (_fail == 0) Debug.Log("[CharacterRosterSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharacterRosterSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException(
