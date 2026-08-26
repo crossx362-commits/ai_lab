@@ -103,6 +103,31 @@ expect 0 "temp-index에는 내 분만 있으면 통과" guard_in "$R" docs/mine.
 unset GIT_INDEX_FILE
 expect 1 "env 없이 공유 인덱스로 돌리면 오염이 드러나 차단" guard_in "$R" docs/mine.md
 
+# 6) 낡은 스냅 스테이징 (2026-08-26 사고 재현) — 경로는 맞는데 내용이 되돌아간다
+R="$TMPROOT/r6"; mk_repo "$R"
+echo v1 > "$R/docs/mine.md"
+git -C "$R" add docs/mine.md
+git -C "$R" commit -qm v1                              # HEAD = v1
+echo v2 > "$R/docs/mine.md"
+git -C "$R" add docs/mine.md
+git -C "$R" commit -qm v2                              # HEAD = v2 (남이 진전시킴)
+git -C "$R" update-index --cacheinfo "100644,$(git -C "$R" hash-object -w <(echo v1)),docs/mine.md"
+expect 1 "낡은 블롭이 스테이지되면 차단(되돌림 방지)" guard_in "$R" docs/mine.md
+output_has "차단 시 낡은 경로를 지목" "작업 트리와 다름" guard_in "$R" docs/mine.md
+expect 0 "COMMIT_GUARD_ALLOW_PARTIAL=1이면 의도적 부분 스테이징 허용" \
+  run_in "$R" env COMMIT_GUARD_ALLOW_PARTIAL=1 bash "$GUARD" docs/mine.md
+
+# 7) 파일이 살아 있는데 삭제로 스테이지 (영지 아트 png 8종 사고 재현)
+R="$TMPROOT/r7"; mk_repo "$R"
+echo keep > "$R/docs/art.png"
+git -C "$R" add docs/art.png
+git -C "$R" commit -qm art
+git -C "$R" rm --cached -q docs/art.png                # 파일은 디스크에 그대로 남는다
+expect 1 "파일이 있는데 삭제만 스테이지되면 차단" guard_in "$R" docs/art.png
+output_has "차단 시 삭제 예약을 지목" "삭제로 스테이지됨" guard_in "$R" docs/art.png
+rm "$R/docs/art.png"
+expect 0 "실제로 지운 파일의 삭제 커밋은 통과" guard_in "$R" docs/art.png
+
 echo "----------------------------------------"
 echo "통과 ${PASS} · 실패 ${FAIL}"
 [ "$FAIL" -eq 0 ]
