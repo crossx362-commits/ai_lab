@@ -34,6 +34,17 @@
 
 ## 처리 완료
 
+### 📌 막힌 것 풀기 — STOP (오너, 2026-08-26 19:25)
+
+- 지시: 막힌 사유 「루프가 안 돈다」 — 다음 이터레이션에서 먼저 잡아라.
+- 진단(실측): ①19:29 바퀴가 Unity MCP `Endpoint is unavailable`로 code=1 중간사망→STATUS 미갱신
+  ②미갱신 3회 정상 종료(exit 0)에 launchd KeepAlive 재실행 불가 ③재기동 감시자 loop_watch가
+  pgrep 의존+침묵 설계라 회복 실패 → **12:11~19:27 약 7시간 공백**. 신규 발견: macOS pgrep -f가
+  launchd 자식 일부 procargs를 못 읽음(메인 루프 PID 살아있는데 rc=1).
+- 처리: `loop_watch.sh`를 lap 로그 mtime 단일 축으로 재설계(fresh 통과·stale 재기동·bootstrap 폴백·
+  매 실행 판정 근거 로그) + PROMPT.md에 「MCP 불능 시에도 커밋·STATUS 완주」 규칙 추가.
+  샌드박스 4시나리오+실환경 스모크 PASS · `d2410dcf`
+
 ### 📌 막힌것,사람이 판단할것 (오너, 2026-08-24 22:07)
 
 - 지시: 알아서 처리해, 사람이 판단할거는 회의해서 처리
