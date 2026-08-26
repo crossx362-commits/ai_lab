@@ -123,3 +123,14 @@ loop/board_keeper.json
 loop/.keeper_count
 loop/COUNCIL_NOW
 loop/.keeper_last_fix
+
+# 작업 트리 소음 정리 (2026-08-26) — 보드 「저장 안 된 변경」이 131개까지 불어난 원인.
+# 전부 산출물·로컬 설정이라 정본이 따로 있다. 지운 게 아니라 추적만 안 한다.
+.DS_Store
+.cursor/
+# 유니티가 뱉는 캡처·산출물. 시각 QA 정본은 output/qa/ashes-to-stars/
+projects/ashes-to-stars/unity/Captures/
+projects/ashes-to-stars/unity/output/
+projects/ashes-to-stars/unity/mono_crash.*.json
+# 잘못된 cwd로 만들어진 중복 QA 산출물 — 정본은 저장소 루트의 output/qa/ashes-to-stars/
+projects/ashes-to-stars/output/
