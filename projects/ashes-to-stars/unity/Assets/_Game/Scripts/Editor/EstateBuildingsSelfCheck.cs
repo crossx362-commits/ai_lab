@@ -244,6 +244,29 @@ namespace AshesToStars
                     $"화살탑 알파 유효 — 배경 잘림+실체 함께 (투명 {twClear} · 불투명 {twSolid}/{twpx.Length})");
                 UnityEngine.Object.DestroyImmediate(tw);
             }
+            var auRes = Resources.Load<Texture2D>("props/" + EstateBuildings.Auction);
+            Check(auRes != null, "경매장 PNG를 Resources에서 읽는다");
+            string auPath = Path.Combine(Application.dataPath,
+                "Resources/props/" + EstateBuildings.Auction + ".png");
+            Check(File.Exists(auPath), "경매장 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(auPath))
+            {
+                var au = new Texture2D(2, 2);
+                au.LoadImage(File.ReadAllBytes(auPath));
+                Check(au.width == 256 && au.height == 256,
+                    $"경매장 PNG가 oxalpha 256 세트 (실제 {au.width}×{au.height})");
+                var aupx = au.GetPixels();
+                int auClear = 0, auSolid = 0;
+                foreach (var p in aupx)
+                {
+                    if (p.a < 0.05f) auClear++;
+                    else if (p.a > 0.95f) auSolid++;
+                }
+                // 경매장은 천막·수레형이라 실체가 넓다(실측 26.0%) — 임계 1/8 여유.
+                Check(auClear > 0 && auSolid > aupx.Length / 8,
+                    $"경매장 알파 유효 — 배경 잘림+실체 함께 (투명 {auClear} · 불투명 {auSolid}/{aupx.Length})");
+                UnityEngine.Object.DestroyImmediate(au);
+            }
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "마을이 본성 전용을 읽는다");
             Check(EstateYard.PropOf(EstateGrid.Cell.Mine) == EstateBuildings.Mine,
