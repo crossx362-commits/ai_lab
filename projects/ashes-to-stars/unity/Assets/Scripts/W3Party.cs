@@ -1223,9 +1223,10 @@ public class W3Party : MonoBehaviour
             // 원거리형은 §10-2가 정한 **15~25%** 안에 둔다(많으면 접근 자체가 불가능해진다).
             // 돌진형은 「예고 표식 후 직선 돌진」이 §10-2의 4종 중 유일하게 없던 것이고,
             // 대시(§5)를 넣은 지금이라야 회피가 성립한다.
-            // 정예 10%는 3 치유·4 소환·6 수호자로 4/3/3 나눈다(수호자는 §10-2 탱 거울,
-            // 오라 밖 유인·선처치가 정답). 총 비율은 그대로라 측정 단일 경로가 안 흔들린다.
-            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 94 ? 3 : r < 97 ? 4 : 6;
+            // 정예 10%는 3 치유·4 소환·6 수호자·7 군단장으로 3/3/2/2 나눈다(§10-2 거울 4종).
+            // 군단장은 버퍼 거울 — 주변 몹 공속·이속 증가, 처치 우선순위 2순위.
+            // 총 비율(90~100=10%)은 그대로라 측정 단일 경로가 안 흔들린다.
+            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 93 ? 3 : r < 96 ? 4 : r < 98 ? 6 : 7;
             // 보스 소환 몹은 **근접 돌격형(kind 1)으로 고정**한다. 원거리(kind 2)로 나오면
             // 탄으로 때려 피해 귀속 지점이 갈라지고, 무엇보다 「달려드는 쫄」이라는 소환 기믹의
             // 뜻과도 어긋난다. 근접으로 고정하면 파티 피해가 근접 판정 한 곳에서 온전히 잡힌다.
@@ -1417,6 +1418,29 @@ public class W3Party : MonoBehaviour
             _gRadius = AshesToStars.EliteGuardian.AuraRadius();
             _gNearby = AshesToStars.EliteGuardian.NearbyTakenMul();
             _gSelf = AshesToStars.EliteGuardian.SelfTakenMul();
+        }
+    }
+
+    // §10-2 군단장 오라 — 살아있는 군단장(kind 7) 위치를 프레임마다 스냅해 둔다.
+    // TickMobs가 이동(spd)·공격 쿨다운마다 조회하는 핫패스라, 개체 수·수치를 미리
+    // 캐시해 두고 배율 계산은 순수 함수(EliteLegion.NearbyMul)로만 돌린다.
+    int _cmdN;
+    readonly Vector2[] _cmdAt = new Vector2[16];
+    float _cRadius = AshesToStars.EliteLegion.DefaultAuraRadius;
+    float _cAtk = AshesToStars.EliteLegion.DefaultAtkSpdMul;
+    float _cMove = AshesToStars.EliteLegion.DefaultMoveMul;
+
+    void RefreshCommanders()
+    {
+        _cmdN = 0;
+        if (AshesToStars.EliteLegion.Blocked) return;   // 네거티브 컨트롤 — 공속·이속 버프 전부 끔
+        for (int i = 0; i < MAXM && _cmdN < _cmdAt.Length; i++)
+            if (_mOn[i] && _mBossIndex[i] < 0 && _mKind[i] == 7) _cmdAt[_cmdN++] = _mPos[i];
+        if (_cmdN > 0)
+        {
+            _cRadius = AshesToStars.EliteLegion.AuraRadius();
+            _cAtk = AshesToStars.EliteLegion.AtkSpdMul();
+            _cMove = AshesToStars.EliteLegion.MoveMul();
         }
     }
 
@@ -1726,6 +1750,7 @@ public class W3Party : MonoBehaviour
         TickDashProbe(dt);
         UpdateCallouts(dt);
         RefreshGuardians();   // §10-2 수호자 오라 스냅 — 파티 피해(DamageMob) 전에 잡아야 이번 프레임에 반영된다
+        RefreshCommanders();  // §10-2 군단장 오라 스냅 — 몹 이동·공격(TickMobs) 전에 잡아야 이번 프레임에 반영된다
         TickParty(dt);
         TickMobs(dt);
 
@@ -2753,6 +2778,7 @@ public class W3Party : MonoBehaviour
         4 => SpriteBank.MobKindSummoner,   // 소환 정예 — 소환사
         5 => SpriteBank.MobKindCharger,    // 돌진형 — 뿔·덩치·앞으로 쏠린 무게중심
         6 => SpriteBank.MobKindGuardian,   // 수호자 정예 — 방패 든 수호기사 실루엣(§10-2 탱 거울)
+        7 => SpriteBank.MobKindBard,       // 군단장 정예 — 결집 나부낌 든 버퍼 실루엣(§10-2 버퍼 거울)
         _ => SpriteBank.MobKindBasic,      // 0 추적형
     };
 
@@ -2803,6 +2829,7 @@ public class W3Party : MonoBehaviour
             5 => Muted(new Color(1f, 0.82f, 0.30f), 0.30f, 0.86f), // 돌진형 — 예고를 봐야 하니 조금 진하게
             3 => Muted(new Color(1f, 0.30f, 0.30f), 0.34f, 0.84f), // 치유 정예 — 붉은기
             6 => Muted(new Color(0.60f, 0.80f, 0.95f), 0.32f, 0.92f), // 수호자 정예 — 강철빛(방패, 정예 중 가장 밝게)
+            7 => Muted(new Color(0.95f, 0.75f, 0.10f), 0.40f, 0.90f), // 군단장 정예 — 결집의 순금빛(돌진 금색보다 진하고 채도 높게)
             _ => Muted(new Color(0.78f, 0.40f, 1f), 0.34f, 0.84f), // 소환 정예 — 보랏기
         };
     }
@@ -3058,7 +3085,13 @@ public class W3Party : MonoBehaviour
                 want = dist > keep + 1f ? dir : (dist < keep - 1f ? -dir : new Vector2(-dir.y, dir.x));
                 spd = PlayerSpeed * RangedRatio;
                 _mCd[i] -= dt;
-                if (_mCd[i] <= 0f && dist < 12f) { _mCd[i] = 2.4f; Fire(p, dir); }
+                // §10-2 군단장 공속 버프 — 오라 안 원거리 몹은 더 자주 쏜다(쿨을 배율로 나눔).
+                if (_mCd[i] <= 0f && dist < 12f)
+                {
+                    _mCd[i] = 2.4f / (_cmdN > 0
+                        ? AshesToStars.EliteLegion.NearbyMul(p, false, _cmdAt, _cmdN, _cRadius, _cAtk) : 1f);
+                    Fire(p, dir);
+                }
             }
             else if (_mKind[i] == 3)                              // 정예: 주변 몹 치유
             {
@@ -3093,7 +3126,27 @@ public class W3Party : MonoBehaviour
                     FxParticles.Play(FxKind.광륜, ToScreen(p), 1.2f, _mTint[i]);
                 }
             }
+            else if (_mKind[i] == 7)                              // 정예: 군단장 — 공속·이속 증가 오라
+            {
+                // 느리게 다가와 무리 곁에서 지휘한다. 버프는 아래 이동 spd·공격 쿨다운이
+                // EliteLegion 배율로 처리한다 — 방치하면 물량 압력이 급상승(§10-2 버퍼 거울).
+                want = dir; spd = PlayerSpeed * 0.5f;
+                _mCd[i] -= dt;
+                if (_mCd[i] <= 0f)
+                {
+                    _mCd[i] = 1.2f;
+                    // 결집 표식 — **바닥 링이 아니라** 군단장 몸에 감기는 나부낌(작게).
+                    // 큰 바닥 원은 스킬 범위로 읽힌다(§6-A 오너 4회 지적) → 개체 광채로
+                    // "이 개체가 무리를 몰아친다"만 말하고 반경 원은 그리지 않는다.
+                    FxParticles.Play(FxKind.무적, ToScreen(p), 1.1f, _mTint[i]);
+                }
+            }
             else { want = dir; spd = PlayerSpeed * ChaserRatio; } // 추적형
+
+            // §10-2 군단장 이속 버프 — 오라 안 잡몹(군단장 자신 제외)은 더 빠르게 접근한다.
+            // 소비처 = 이동 단일 경로(step 계산 직전). 오라 밖·군단장 없으면 배율 1(무변).
+            if (_cmdN > 0)
+                spd *= AshesToStars.EliteLegion.NearbyMul(p, _mKind[i] == 7, _cmdAt, _cmdN, _cRadius, _cMove);
 
             Vector2 prev = _mPos[i];
             Vector2 step = want * spd * dt;
@@ -3130,7 +3183,9 @@ public class W3Party : MonoBehaviour
                 _mAtkCd[i] -= dt;
                 if (_mAtkCd[i] <= 0f)
                 {
-                    _mAtkCd[i] = 1.0f;
+                    // §10-2 군단장 공속 버프 — 오라 안 근접 몹은 더 자주 때린다(쿨을 배율로 나눔).
+                    _mAtkCd[i] = 1.0f / (_cmdN > 0
+                        ? AshesToStars.EliteLegion.NearbyMul(p, _mKind[i] == 7, _cmdAt, _cmdN, _cRadius, _cAtk) : 1f);
                     _meleeHits++;
                     float md = 6f * sp.TakenMul;
                     Damage(tgt, md, tgt.Role == Role.Tank);

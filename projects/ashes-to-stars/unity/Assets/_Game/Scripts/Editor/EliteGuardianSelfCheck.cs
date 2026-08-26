@@ -94,7 +94,8 @@ namespace AshesToStars
             {
                 string src = File.ReadAllText(w3);
                 Check(src.IndexOf(": 6;", StringComparison.Ordinal) >= 0
-                      || src.IndexOf("? 4 : 6", StringComparison.Ordinal) >= 0,
+                      || src.IndexOf("? 4 : 6", StringComparison.Ordinal) >= 0
+                      || src.IndexOf("? 6 : 7", StringComparison.Ordinal) >= 0,
                     "스폰 테이블에 수호자(kind 6)가 있다");
                 Check(src.IndexOf("_mKind[i] == 6", StringComparison.Ordinal) >= 0,
                     "TickMobs에 수호자(kind 6) 분기가 있다");
