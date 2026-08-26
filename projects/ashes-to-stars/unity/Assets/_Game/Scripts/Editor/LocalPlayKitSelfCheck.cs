@@ -114,6 +114,11 @@ namespace AshesToStars
             Check(screen.Contains("DebugAutoPilot.BootstrapIfRequested"),
                 "스모크를 시드보다 먼저 본다");
 
+            string kitSrc = File.ReadAllText(Path.Combine(runtime, "LocalPlayKit.cs"));
+            Check(kitSrc.Contains("ShortCopper(WantCopper)")
+                  && kitSrc.IndexOf("FormatCurrency(WantCopper)") < 0,
+                "로컬 테스트 골드는 ShortCopper만");
+
             if (_fail == 0) Debug.Log("[LocalPlayKitSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[LocalPlayKitSelfCheck] FAIL {_fail}\n" + _log);
         }
