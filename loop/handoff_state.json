@@ -1,11 +1,11 @@
 {
-  "phase": "review",
-  "updated": "2026-08-27 08:45",
+  "phase": "assign",
+  "updated": "2026-08-27 08:47",
   "last_commit": "952ddb40",
-  "review": "pending",
-  "task": "§18-13 디버프 중첩 최대 2개 별",
-  "routed_to": "재와별·루프검수",
-  "note": "STATUS 미갱신. PASS 후 보드가 STATUS·다음 1칸.",
+  "review": "pass",
+  "task": "§10-2 다음 웨이브 드랍 배율",
+  "routed_to": "재와별·개발",
+  "note": "루프 STOP 유지. 아트=village_haystack_0. UI=HuntGoldLine.",
   "commits": [
     "952ddb40"
   ]
