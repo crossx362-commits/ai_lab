@@ -51,6 +51,10 @@ namespace AshesToStars
         [Tooltip("오라 안 파티가 받는 회복 배율(0~1, 낮을수록 강한 저주). 원장 미확정. 소비처: EliteCurse.HealMul → W3Party.Heal")] public float 저주술사회복배율 = 0.7f;
         [Tooltip("오라 안 파티 이속 배율(0~1, 낮을수록 느려짐). 원장 미확정. 소비처: EliteCurse.MoveMul → W3Party.TickParty(이동 step에 곱)")] public float 저주술사이속배율 = 0.85f;
 
+        [Header("정예 처형자 (§10-2 — 원장은 「딜 거울·후열 돌진 폭딜」만 확정, 수치는 미확정)")]
+        [Tooltip("처형자 후열 명중 폭딜 배율(≥1, 클수록 위협적). 원장 미확정. 소비처: EliteExecutioner.BurstMul → W3Party.TickMobs(근접 피해에 곱)")] public float 처형자폭딜배율 = 3.0f;
+        [Tooltip("처형자 돌진 이동 배율(플레이어 대비, 정예 중 가장 빠름). 원장 미확정. 소비처: EliteExecutioner.RushMul → W3Party.TickMobs(이동 spd)")] public float 처형자돌진속도배율 = 0.95f;
+
         [Header("쿼터뷰")]
         [Tooltip("월드 y를 화면에 그릴 때 곱하는 값 = sin(30°)")] public float ISO_Y = 0.5f;
     }

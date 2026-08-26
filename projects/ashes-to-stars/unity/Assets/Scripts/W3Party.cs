@@ -1227,12 +1227,12 @@ public class W3Party : MonoBehaviour
             // 원거리형은 §10-2가 정한 **15~25%** 안에 둔다(많으면 접근 자체가 불가능해진다).
             // 돌진형은 「예고 표식 후 직선 돌진」이 §10-2의 4종 중 유일하게 없던 것이고,
             // 대시(§5)를 넣은 지금이라야 회피가 성립한다.
-            // 정예 10%는 3 치유·4 소환·8 저주술사·6 수호자·7 군단장으로 3/2/2/2/1 나눈다(§10-2 거울 5종).
-            // 저주술사는 디버퍼 거울 — 오라 안 파티 회복량·이속 감소, 사거리 밖 이탈 후 처치.
-            // 군단장·수호자 순서(…? 6 : 7)는 그대로 두고 저주(8)를 그 앞에 끼워 넣는다 —
-            // 정예 SelfCheck가 스폰 문자열을 보는데 `? 6 : 7`을 보존해야 회귀가 안 난다.
+            // 정예 10%는 3 치유·4 소환·8 저주술사·9 처형자·6 수호자·7 군단장으로 2/2/2/1/2/1 나눈다(§10-2 거울 6종).
+            // 처형자는 딜 거울 — 후열(힐·버퍼)로 돌진해 폭딜, 진로 차단·선처치가 정답.
+            // 군단장·수호자 순서(…? 6 : 7)는 그대로 두고 처형(9)을 그 앞에 끼워 넣는다 —
+            // 정예 SelfCheck가 스폰 문자열을 보는데 `? 6 : 7`·`? 8 :`을 보존해야 회귀가 안 난다.
             // 총 비율(90~100=10%)은 그대로라 측정 단일 경로가 안 흔들린다.
-            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 93 ? 3 : r < 95 ? 4 : r < 97 ? 8 : r < 99 ? 6 : 7;
+            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 92 ? 3 : r < 94 ? 4 : r < 96 ? 8 : r < 97 ? 9 : r < 99 ? 6 : 7;
             // 보스 소환 몹은 **근접 돌격형(kind 1)으로 고정**한다. 원거리(kind 2)로 나오면
             // 탄으로 때려 피해 귀속 지점이 갈라지고, 무엇보다 「달려드는 쫄」이라는 소환 기믹의
             // 뜻과도 어긋난다. 근접으로 고정하면 파티 피해가 근접 판정 한 곳에서 온전히 잡힌다.
@@ -1472,6 +1472,24 @@ public class W3Party : MonoBehaviour
             _curseHeal = AshesToStars.EliteCurse.HealMul();
             _curseMove = AshesToStars.EliteCurse.MoveMul();
         }
+    }
+
+    // §10-2 처형자 폭딜 — 위치 의존이 없어 반경 스냅은 필요 없고, 폭딜·돌진 배율만 캐시한다.
+    // 근접 피해 관문(TickMobs)이 이동 spd와 명중 피해에서 조회하는 핫패스라 프레임마다 한 번만 읽는다.
+    // 배율 계산은 순수 함수(EliteExecutioner.DamageMul)로만 돌린다.
+    float _execBurst = AshesToStars.EliteExecutioner.DefaultBurstMul;
+    float _execRush = AshesToStars.EliteExecutioner.DefaultRushMul;
+
+    void RefreshExecutioners()
+    {
+        if (AshesToStars.EliteExecutioner.Blocked)   // 네거티브 컨트롤 — 폭딜 끔(이동은 그대로, 측정선은 폭딜 배율)
+        {
+            _execBurst = 1f;
+            _execRush = AshesToStars.EliteExecutioner.DefaultRushMul;
+            return;
+        }
+        _execBurst = AshesToStars.EliteExecutioner.BurstMul();
+        _execRush = AshesToStars.EliteExecutioner.RushMul();
     }
 
     void DamageMob(int index, float amount)
@@ -1782,6 +1800,7 @@ public class W3Party : MonoBehaviour
         RefreshGuardians();   // §10-2 수호자 오라 스냅 — 파티 피해(DamageMob) 전에 잡아야 이번 프레임에 반영된다
         RefreshCommanders();  // §10-2 군단장 오라 스냅 — 몹 이동·공격(TickMobs) 전에 잡아야 이번 프레임에 반영된다
         RefreshCursers();     // §10-2 저주술사 오라 스냅 — 파티 회복(Heal)·이동(TickParty) 전에 잡아야 이번 프레임에 반영된다
+        RefreshExecutioners();// §10-2 처형자 폭딜 스냅 — 근접 명중(TickMobs) 전에 잡아야 이번 프레임에 반영된다
         TickParty(dt);
         TickMobs(dt);
 
@@ -2815,6 +2834,7 @@ public class W3Party : MonoBehaviour
         6 => SpriteBank.MobKindGuardian,   // 수호자 정예 — 방패 든 수호기사 실루엣(§10-2 탱 거울)
         7 => SpriteBank.MobKindBard,       // 군단장 정예 — 결집 나부낌 든 버퍼 실루엣(§10-2 버퍼 거울)
         8 => SpriteBank.MobKindShaman,     // 저주술사 정예 — 지팡이·후드 든 저주술사 실루엣(§10-2 디버퍼 거울)
+        9 => SpriteBank.MobKindBerserker,  // 처형자 정예 — 앞으로 쏠린 광전사 실루엣(§10-2 딜 거울, 후열 돌진)
         _ => SpriteBank.MobKindBasic,      // 0 추적형
     };
 
@@ -2867,6 +2887,7 @@ public class W3Party : MonoBehaviour
             6 => Muted(new Color(0.60f, 0.80f, 0.95f), 0.32f, 0.92f), // 수호자 정예 — 강철빛(방패, 정예 중 가장 밝게)
             7 => Muted(new Color(0.95f, 0.75f, 0.10f), 0.40f, 0.90f), // 군단장 정예 — 결집의 순금빛(돌진 금색보다 진하고 채도 높게)
             8 => Muted(new Color(0.42f, 0.62f, 0.28f), 0.55f, 0.60f), // 저주술사 정예 — 병색 독초록(정예 중 가장 어둡게, 소환 보라·치유 붉기와 다른 축)
+            9 => Muted(new Color(0.75f, 0.10f, 0.12f), 0.62f, 0.55f), // 처형자 정예 — 핏빛 진홍(치유의 옅은 붉기보다 진하고 어둡게 — 죽이러 오는 것이 읽히게)
             _ => Muted(new Color(0.78f, 0.40f, 1f), 0.34f, 0.84f), // 소환 정예 — 보랏기
         };
     }
@@ -3049,7 +3070,9 @@ public class W3Party : MonoBehaviour
 
             // 어그로: 근접은 최근접, 원거리는 **후열(위협 낮은 쪽) 저격**.
             // 단 탱의 도발(Threat 급등)이 그걸 끊는다 — 이 두 줄이 진형을 만든다.
-            Member tgt = _mKind[i] == 2 ? PickBackline() : PickNearestOrTaunt(p);   // §10-4 후열 저격은 원거리형만
+            // §10-4 후열 저격은 원거리형(2)만. §10-2 처형자(9)도 후열(힐·버퍼)로 돌진한다 —
+            // 단 탱 도발이 PickBackline 안에서 하드 락으로 그 진로를 끊는다(딜 거울의 정답=진로 차단).
+            Member tgt = (_mKind[i] == 2 || _mKind[i] == 9) ? PickBackline() : PickNearestOrTaunt(p);
             if (tgt == null) continue;
             var sp = Spec(StyleFor(tgt));   // 맞을 멤버의 스타일 피해배율 — 측정(UseFixedStyle)이면 파티 단일
 
@@ -3193,6 +3216,21 @@ public class W3Party : MonoBehaviour
                     FxParticles.Play(FxKind.먼지, ToScreen(p), 1.0f, _mTint[i]);
                 }
             }
+            else if (_mKind[i] == 9)                              // 정예: 처형자 — 후열 돌진 폭딜(§10-2 딜 거울)
+            {
+                // 후열(힐·버퍼)로 곧장 빠르게 돌진한다. 폭딜은 아래 근접 관문이
+                // EliteExecutioner 배율로 처리한다 — 진로를 몸으로 막거나 먼저 끊는 것이
+                // 정답이 되게(§10-2 딜 거울). 정예 중 가장 빠른 이동(_execRush).
+                want = dir; spd = PlayerSpeed * _execRush;
+                _mCd[i] -= dt;
+                if (_mCd[i] <= 0f)
+                {
+                    _mCd[i] = 1.0f;
+                    // 돌진 표식 — **바닥 링·초승달 금지**(§6-A 오너 4회 지적). 개체에 감기는
+                    // 핏빛 먼지로 "이 개체가 후열을 노린다"만 말하고 반경 원은 그리지 않는다.
+                    FxParticles.Play(FxKind.먼지, ToScreen(p), 1.1f, _mTint[i]);
+                }
+            }
             else { want = dir; spd = PlayerSpeed * ChaserRatio; } // 추적형
 
             // §10-2 군단장 이속 버프 — 오라 안 잡몹(군단장 자신 제외)은 더 빠르게 접근한다.
@@ -3240,6 +3278,8 @@ public class W3Party : MonoBehaviour
                         ? AshesToStars.EliteLegion.NearbyMul(p, _mKind[i] == 7, _cmdAt, _cmdN, _cRadius, _cAtk) : 1f);
                     _meleeHits++;
                     float md = 6f * sp.TakenMul;
+                    // §10-2 처형자 폭딜 — 후열 명중이면 폭딜 배율(그 밖엔 1). 진로 차단·선처치가 정답.
+                    if (_mKind[i] == 9) md *= AshesToStars.EliteExecutioner.DamageMul(true, _execBurst);
                     Damage(tgt, md, tgt.Role == Role.Tank);
                     // 소환 몹이 준 피해만 따로 센다 — 네거티브 컨트롤의 측정선(§10-5).
                     if (_mSummoned[i]) { _summonDmgToParty += md; _summonHits++; }
