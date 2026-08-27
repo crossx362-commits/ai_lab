@@ -529,6 +529,55 @@ namespace AshesToStars
             return framed;
         }
 
+        static string _vScrollDrag;
+        static float _vScrollGrab;
+
+        /// <summary>세로 스크롤 트랙/썸. 기본 GUI 스크롤바 대신 panel+DrawMeter.</summary>
+        public static Vector2 DrawVScroll(Rect view, Vector2 scroll, float contentH, string id)
+        {
+            const float barW = 14f;
+            float viewH = view.height;
+            float max = Mathf.Max(0f, contentH - viewH);
+            var track = new Rect(view.xMax - barW, view.y, barW, viewH);
+            DrawSliced(track, "panel", 8f, new Color(1f, 1f, 1f, 0.9f));
+            float thumbH = max <= 0f
+                ? viewH
+                : Mathf.Clamp(viewH * viewH / Mathf.Max(1f, contentH), 28f, viewH);
+            float travel = Mathf.Max(0f, track.height - thumbH);
+            float t = max > 0f ? Mathf.Clamp01(scroll.y / max) : 0f;
+            var thumb = new Rect(track.x + 1f, track.y + travel * t, track.width - 2f, thumbH);
+            DrawMeter(thumb, "hp_frame", 1f, new Color(0.92f, 0.72f, 0.28f));
+
+            var ev = Event.current;
+            if (ev != null && ev.button == 0)
+            {
+                if (ev.type == EventType.MouseDown && track.Contains(ev.mousePosition))
+                {
+                    _vScrollDrag = id;
+                    if (thumb.Contains(ev.mousePosition))
+                        _vScrollGrab = ev.mousePosition.y - thumb.y;
+                    else
+                    {
+                        _vScrollGrab = thumbH * 0.5f;
+                        float y = ev.mousePosition.y - track.y - _vScrollGrab;
+                        scroll.y = travel > 0f ? max * Mathf.Clamp01(y / travel) : 0f;
+                    }
+                    ev.Use();
+                }
+                if (ev.type == EventType.MouseDrag && _vScrollDrag == id)
+                {
+                    float y = ev.mousePosition.y - track.y - _vScrollGrab;
+                    scroll.y = travel > 0f ? max * Mathf.Clamp01(y / travel) : 0f;
+                    ev.Use();
+                }
+                if (ev.type == EventType.MouseUp && _vScrollDrag == id)
+                    _vScrollDrag = null;
+            }
+            scroll.x = 0f;
+            scroll.y = Mathf.Clamp(scroll.y, 0f, max);
+            return scroll;
+        }
+
         static Texture2D _pixel;
         static Texture2D Pixel
         {

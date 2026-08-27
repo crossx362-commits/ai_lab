@@ -121,6 +121,7 @@ namespace AshesToStars
             SeedRosterPickQaIfRequested();
             SeedCompactActionQaIfRequested();
             SeedDrawTabsQaIfRequested();
+            SeedCharScrollQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
             EquipLevel.SeedQaIfRequested();
@@ -656,7 +657,7 @@ namespace AshesToStars
             float contentH = Mathf.Max(listBody.height,
                 rows * (CharHud.CellH + UiPages.RosterRowGap));
             var view = new Rect(0f, 0f, Mathf.Max(40f, listBody.width - 16f), contentH);
-            _listScroll = GUI.BeginScrollView(listBody, _listScroll, view);
+            _listScroll = GUI.BeginScrollView(listBody, _listScroll, view, GUIStyle.none, GUIStyle.none);
             var board = new Rect(0f, 0f, view.width, contentH);
             for (int i = 0; i < allCharacters.Count; i++)
             {
@@ -675,6 +676,7 @@ namespace AshesToStars
                 DrawRosterCell(cell, allCharacters[i], i == _selectedCharacter, i);
             }
             GUI.EndScrollView();
+            _listScroll = UiAtlas.DrawVScroll(listBody, _listScroll, contentH, "roster");
             if (CompactAction(partyRect, $"파티 {PartyState.Slots.Count}/5", "tank"))
                 GameFlow.Go(GameFlow.Party);
 
@@ -715,10 +717,11 @@ namespace AshesToStars
             // 상한·예산 줄)를 조용히 지운다 — 접힘 한계를 가상 높이로 올리고, 빠져나오며
             // 반드시 되돌린다(같은 프레임 다음 그리기가 옛 한계를 기대한다).
             InfoFoldLimit = contentH;
-            _attrScroll = GUI.BeginScrollView(r, _attrScroll, view);
+            _attrScroll = GUI.BeginScrollView(r, _attrScroll, view, GUIStyle.none, GUIStyle.none);
             DrawAttributes(new Rect(0f, 0f, view.width, contentH), ch);
             GUI.EndScrollView();
             InfoFoldLimit = REF_H;
+            _attrScroll = UiAtlas.DrawVScroll(r, _attrScroll, contentH, "attr");
         }
 
         void DrawRosterCell(Rect cell, CharacterRecord ch, bool selected, int rosterIndex)
@@ -789,6 +792,14 @@ namespace AshesToStars
             if (raw != "0" && raw != "1") return;
             _listPage = 0;
             _detailPage = raw == "1" ? 1 : 0;
+        }
+
+        void SeedCharScrollQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_CHAR_SCROLL") != "1") return;
+            _listScroll = new Vector2(0f, 80f);
+            _attrScroll = new Vector2(0f, 420f);
+            _infoScroll = new Vector2(0f, 280f);
         }
 
         void SeedCompactActionQaIfRequested()
@@ -1503,9 +1514,10 @@ namespace AshesToStars
             // 표제~장비 6줄 ≈ 252px + 가방 60칸(4열 15행 × 50px) = 1002px — 여유 1400px.
             const float contentH = 1400f;
             var view = new Rect(0f, 0f, Mathf.Max(40f, r.width - 16f), contentH);
-            _infoScroll = GUI.BeginScrollView(r, _infoScroll, view);
+            _infoScroll = GUI.BeginScrollView(r, _infoScroll, view, GUIStyle.none, GUIStyle.none);
             DrawInspectInfo(new Rect(0f, 0f, view.width, contentH), ch);
             GUI.EndScrollView();
+            _infoScroll = UiAtlas.DrawVScroll(r, _infoScroll, contentH, "info");
         }
 
         void DrawInspectInfo(Rect r, CharacterRecord ch)
