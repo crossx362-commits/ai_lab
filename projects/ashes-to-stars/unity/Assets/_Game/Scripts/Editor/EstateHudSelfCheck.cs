@@ -217,6 +217,9 @@ namespace AshesToStars
                 "격자 칸 클릭은 MouseDown으로 선택/배치한다");
             Check(layoutSrc.IndexOf("GUI.Button(box", StringComparison.Ordinal) < 0,
                 "격자 칸이 GUI.Button(none)을 안 쓴다");
+            Check(layoutSrc.IndexOf("UiPages.LabelClip", StringComparison.Ordinal) >= 0
+                  && layoutSrc.IndexOf("GUI.Label(box", StringComparison.Ordinal) < 0,
+                "격자 칸·동서남북은 LabelClip이다");
             Check(estate.Contains("EstateHud.Line"), "자막이 Line을 읽는다");
             Check(estate.Contains("PlayerSubtitle(_sub switch"),
                 "영지의 모든 헤더 자막이 PlayerSubtitle을 거친다");

@@ -1017,7 +1017,7 @@ namespace AshesToStars
                 if (hit) ev.Use();
                 FillCell(box, CellTint(c, onPath));
                 mark.normal.textColor = CellInk(c, onPath);
-                GUI.Label(box, CellMark(c), mark);
+                UiPages.LabelClip(box, CellMark(c), mark);
                 if (!hit) continue;
                 if (EstateGrid.IsDefense(c))
                     EstateGrid.TryPickUp(x, y);
@@ -1047,7 +1047,7 @@ namespace AshesToStars
             return n < 0 ? "막힘" : n + "칸";
         }
 
-        static void DrawSideTag(Rect box, string text, bool hot)
+        void DrawSideTag(Rect box, string text, bool hot)
         {
             var st = new GUIStyle(GUI.skin.label)
             {
@@ -1055,11 +1055,12 @@ namespace AshesToStars
                 fontSize = 12,
                 fontStyle = hot ? FontStyle.Bold : FontStyle.Normal,
                 clipping = TextClipping.Clip,
+                wordWrap = true,
                 normal = { textColor = hot
                     ? new Color(0.92f, 0.42f, 0.22f)
-                    : new Color(0.35f, 0.28f, 0.22f) },
+                    : new Color(0.95f, 0.79f, 0.42f) },
             };
-            GUI.Label(box, text, st);
+            UiPages.LabelClip(box, text, st);
         }
 
         static string CellMark(EstateGrid.Cell c) => c switch
