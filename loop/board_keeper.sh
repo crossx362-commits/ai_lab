@@ -1,10 +1,9 @@
 #!/bin/bash
-# 개발 보드 지킴이 — 보드를 계속 검증하고, 망가졌으면 스스로 고치는 에이전트 (오너 2026-08-23).
+# 개발 보드 지킴이 — 무료 검증을 계속하고, 새 오류 지문만 한 번 수리한다.
 #
 # 매 주기: [검증] 보드 응답 · state API · 테스트 스위트 → loop/board_keeper.json 기록
-#         [수리] 검증 실패 시(시간당 1회 제한) opencode 새 세션으로 외과적 수리 → 테스트 → 커밋
-#         [개선] 건강해도 BOARD_KEEPER_IMPROVE_EVERY 주기마다 한 씽 개선 세션
-# 원칙은 loop/PROMPT.md와 같다: 새 세션 · 한 번에 하나 · 검사 통과 후 커밋 · 개선안 기록.
+#         [수리] 검증 실패 시 같은 오류 지문에 opencode 새 세션 최대 1회
+# 건강한 상태의 정기 AI 개선은 호출하지 않는다. 상태·테스트 확인은 항상 로컬에서 끝낸다.
 
 set -uo pipefail
 
@@ -18,11 +17,11 @@ fi
 
 BOARD_URL="${BOARD_KEEPER_URL:-http://127.0.0.1:8766}"
 RESULT_FILE="$TARGET_REPO/loop/board_keeper.json"
-COUNT_FILE="$TARGET_REPO/loop/.keeper_count"
-FIX_GUARD="$TARGET_REPO/loop/.keeper_last_fix"
-BIN="${LOOP_OPENCODE_BIN:-opencode}"
+STATE_TOOL="$DEPLOY_ROOT/runtime_state.py"
+STATE_FILE="${LOOP_RUNTIME_STATE_FILE:-$TARGET_REPO/loop/runtime_state.json}"
+FAILURE_CONTEXT="$TARGET_REPO/loop/board_keeper_failure.log"
+BIN="${BOARD_KEEPER_BIN:-${LOOP_OPENCODE_BIN:-opencode}}"
 MODEL="${LOOP_OPENCODE_MODEL:-opencode/x-preview-f-free}"
-IMPROVE_EVERY="${BOARD_KEEPER_IMPROVE_EVERY:-48}"
 mkdir -p "$TARGET_REPO/logs/board_keeper"
 
 # 이중 실행 방지 (수리 세션이 길어져도 다음 주기와 겹치지 않게)
@@ -61,7 +60,7 @@ for hook in 'id="glance"' 'id="ops-box"' 'id="usage-box"'; do
   grep -qF "$hook" "$TARGET_REPO/loop/board.html" || FAILED+=("HTML훅없음:$hook")
 done
 
-if ! pgrep -f "AI Lab Autonomous Loop/loop.sh" >/dev/null 2>&1 \
+if ! pgrep -f "$TARGET_REPO/loop/loop.sh" >/dev/null 2>&1 \
    && [ ! -f "$TARGET_REPO/loop/STOP" ] && [ ! -f "$TARGET_REPO/loop/HOLD" ]; then
   WARNS+=("루프꺼짐:STOP/HOLD 없는데 데몬 없음")
 fi
@@ -81,44 +80,45 @@ open(path, "w", encoding="utf-8").write(json.dumps(data, ensure_ascii=False, ind
 print(("정상" if data["ok"] else "이상") + " · " + ", ".join(data["failed"] or ["검사 전부 통과"]))
 PY
 
-# ── [3] 수리·개선 세션 ──────────────────────────────────────
-NTH=0; [ -f "$COUNT_FILE" ] && read -r NTH < "$COUNT_FILE"; NTH=$((NTH + 1)); echo "$NTH" > "$COUNT_FILE"
+# ── [3] 새 오류 지문만 수리 ─────────────────────────────────
+[ "${#FAILED[@]}" -gt 0 ] || exit 0
 
-MODE=""
-if [ "${#FAILED[@]}" -gt 0 ]; then
-  LAST_FIX=0; [ -f "$FIX_GUARD" ] && LAST_FIX=$(cat "$FIX_GUARD" 2>/dev/null || echo 0)
-  NOW=$(date +%s)
-  if [ $((NOW - LAST_FIX)) -ge 3600 ]; then
-    MODE="fix"; date +%s > "$FIX_GUARD"
-  else
-    echo "수리 요청이지만 시간당 1회 제한 — 다음 주기에 재시도"
-  fi
-elif [ "$IMPROVE_EVERY" -gt 0 ] && [ $((NTH % IMPROVE_EVERY)) -eq 0 ]; then
-  MODE="improve"
+if [ ! -f "$STATE_TOOL" ]; then
+  echo "수리 생략: runtime_state.py 없음"
+  exit 1
+fi
+if [ -x "$BIN" ]; then
+  AI_BIN="$BIN"
+else
+  AI_BIN="$(command -v "$BIN" 2>/dev/null || true)"
+fi
+if [ -z "$AI_BIN" ]; then
+  echo "수리 대기: 실행 가능한 복구 AI 없음 ($BIN)"
+  exit 0
 fi
 
-[ -z "$MODE" ] && exit 0
+printf '%s\n' "${FAILED[@]}" > "$FAILURE_CONTEXT"
+HEAD="$(git -C "$TARGET_REPO" rev-parse HEAD 2>/dev/null || echo nogit)"
+FINGERPRINT="$(python3 "$STATE_TOOL" --path "$STATE_FILE" fingerprint \
+  --provider "board_keeper:$BIN" --exit-code 1 --log "$FAILURE_CONTEXT" \
+  --context-version "$HEAD")"
+if ! python3 "$STATE_TOOL" --path "$STATE_FILE" claim "$FINGERPRINT"; then
+  echo "동일 오류 지문 — 복구 AI를 다시 호출하지 않음: $FINGERPRINT"
+  exit 0
+fi
 
-if [ "$MODE" = "fix" ]; then
-  TASK="너는 재와 별 개발 보드 지킴이다. 비대화형 새 세션이다. 저장소: $TARGET_REPO
+TASK="너는 재와 별 개발 보드 지킴이다. 비대화형 새 세션이다. 저장소: $TARGET_REPO
 직전 자동 검증에서 다른 점을 발견했다: ${FAILED[*]}
 먼저 읽어라: docs/feedback/INBOX.md → docs/STATUS.md → loop/board.py · loop/board.html (문제 지점 정독).
 그리고 하나만 고쳐라: 실패 항목의 근본 원인 1건을 외과적으로. board.py·board.html·test_board.py만 만질 수 있다.
 규칙: 고친 뒤 반드시 \`python3 loop/test_board.py\`가 OK로 끝나야 한다.
 통과하면 고친 파일만 명시해 add·commit한다(메시지 '보드지킴이: …'). 통과 못 하면 네 변경을 되돌리고
 docs/feedback/PROPOSALS.md에 관찰→제안 한 줄만 남긴다. 마지막에 결과 한 줄을 stdout으로."
-else
-  TASK="너는 재와 별 개발 보드 지킴이다. 비대화형 새 세션이다. 저장소: $TARGET_REPO
-보드는 현재 건강하다. 이번에는 정기 개선 바퀴다 — docs/feedback/PROPOSALS.md에서 보드 관련 미처리 항목을 찾거나,
-직접 화면·데이터를 살펴 가장 작은 가시적 개선 1씽을 하라. board.py·board.html 범위 안에서.
-규칙: 고친 뒤 \`python3 loop/test_board.py\` OK 확인 → 고친 파일만 add·commit('보드지킴이 개선: …') →
-PROPOSALS에 관찰→제안 한 줄 추가. 계획만 쓰면 실패다. 마지막에 결과 한 줄."
-fi
 
-echo "지킴이 세션 시작: 모드=$MODE"
+echo "새 오류 지문 1회 수리 시작: $FINGERPRINT"
 (
   cd "$TARGET_REPO" && \
-  "$BIN" run -m "$MODEL" "$TASK" >> "$TARGET_REPO/logs/board_keeper/session-$(date +%Y%m%d-%H%M%S).log" 2>&1
+  "$AI_BIN" run -m "$MODEL" "$TASK" >> "$TARGET_REPO/logs/board_keeper/session-$(date +%Y%m%d-%H%M%S).log" 2>&1
 ) || echo "지킴이 세션 비정상 종료 — 다음 주기에서 재판정"
 
 # 세션 후 재검증으로 마무리
