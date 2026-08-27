@@ -3,6 +3,7 @@
 # 루프 런타임 신호 — 빈 HOLD가 추적되면 재개할 때마다 30분을 잔다
 loop/HOLD
 loop/STOP
+loop/STOP_LANE
 loop/agent
 loop/board_checks.json
 loop/board_decisions.json

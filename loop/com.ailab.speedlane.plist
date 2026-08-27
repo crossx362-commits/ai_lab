@@ -8,7 +8,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/junholee/Library/Application Support/AI Lab Autonomous Loop/speed_lane.sh</string>
+        <string>/Users/junholee/ai_lab/loop/speed_lane.sh</string>
         <string>/Users/junholee/ai_lab</string>
     </array>
 
@@ -16,13 +16,7 @@
     <string>/Users/junholee/ai_lab</string>
 
     <key>RunAtLoad</key>
-    <true/>
-
-    <key>KeepAlive</key>
-    <dict>
-        <key>SuccessfulExit</key>
-        <false/>
-    </dict>
+    <false/>
 
     <key>ThrottleInterval</key>
     <integer>60</integer>
