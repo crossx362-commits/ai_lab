@@ -265,6 +265,7 @@ namespace AshesToStars
                 if (have > 0) GameState.Pay(have);
             }
             EstateGrid.SeedQaIfRequested();
+            SeedRecallQaIfRequested();
             EstateStore.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();
             EstateBuildings.SeedQaIfRequested();
@@ -593,6 +594,53 @@ namespace AshesToStars
             _selY = y;
         }
 
+        bool _recallQaSeeded;
+        int _recallQaX = -1, _recallQaY = -1;
+        void SeedRecallQaIfRequested()
+        {
+            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_RECALL");
+            if (raw != "0" && raw != "1") return;
+            _hubPage = 0;
+            if (!_recallQaSeeded)
+            {
+                _recallQaSeeded = true;
+                if (EstateDefense.Level(EstateDefense.Kind.성벽) < 1)
+                    EstateDefense.SetLevelForTest(EstateDefense.Kind.성벽, 1);
+                int n = EstateGrid.Size;
+                for (int y = 0; y < n && _recallQaX < 0; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    if (!EstateGrid.InBounds(x, y)) continue;
+                    if (!EstateGrid.IsDefense(EstateGrid.At(x, y))) continue;
+                    _recallQaX = x;
+                    _recallQaY = y;
+                    break;
+                }
+                if (_recallQaX < 0)
+                {
+                    for (int y = 0; y < n && _recallQaX < 0; y++)
+                    for (int x = 0; x < n; x++)
+                    {
+                        if (!EstateGrid.TryPlace(x, y, EstateGrid.Cell.Wall)) continue;
+                        _recallQaX = x;
+                        _recallQaY = y;
+                        break;
+                    }
+                }
+            }
+            if (raw == "1")
+            {
+                EstateGrid.TryPickUp(_recallQaX, _recallQaY);
+                _selX = -1;
+                _selY = -1;
+            }
+            else
+            {
+                _selX = _recallQaX;
+                _selY = _recallQaY;
+            }
+        }
+
         void DrawVillageInspect(Rect r)
         {
             if (!EstateHud.ShowInspectBar(_selX >= 0) && !EstateYard.FillBlocked)
@@ -617,16 +665,21 @@ namespace AshesToStars
                     Hint(new Rect(r.x, r.y, Mathf.Max(40f, r.width - 140f), r.height),
                         title + " · 한 번 더 누르면 거둔다");
                     var btn = new Rect(r.xMax - 128f, r.y, 128f, r.height);
-                    UiAtlas.DrawSliced(btn, UiAtlas.ButtonKey(false, false), 8f);
-                    if (!string.IsNullOrEmpty(icon))
-                        UiAtlas.DrawFit(new Rect(btn.x + 6f, btn.y + 4f, 28f, 28f), icon);
-                    Hint(new Rect(btn.x + 36f, btn.y, btn.width - 40f, btn.height), "회수");
-                    if (GUI.Button(btn, GUIContent.none, GUIStyle.none))
+                    // 클릭을 슬라이스·아이콘보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
+                    // 타이틀 직업 카드 옛 버그(77b56474)와 같이 크롬에 먹혀 거둠이 안 먹었다.
+                    var ev = Event.current;
+                    if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                        && btn.Contains(ev.mousePosition))
                     {
                         EstateGrid.TryPickUp(_selX, _selY);
                         _selX = -1;
                         _selY = -1;
+                        ev.Use();
                     }
+                    UiAtlas.DrawSliced(btn, UiAtlas.ButtonKey(false, false), 8f);
+                    if (!string.IsNullOrEmpty(icon))
+                        UiAtlas.DrawFit(new Rect(btn.x + 6f, btn.y + 4f, 28f, 28f), icon);
+                    Hint(new Rect(btn.x + 36f, btn.y, btn.width - 40f, btn.height), "회수");
                     return;
                 }
                 if (EstateGrid.IsCore(cell) && !EstateGrid.IsHub(cell))

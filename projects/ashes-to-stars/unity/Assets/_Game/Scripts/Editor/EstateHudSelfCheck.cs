@@ -175,6 +175,18 @@ namespace AshesToStars
             Check(estate.Contains("EstateHud.PaletteBar"), "팔레트가 PaletteBar를 읽는다");
             Check(estate.Contains("EstateHud.PaletteTiles"), "팔레트가 PaletteTiles를 읽는다");
             Check(estate.Contains("EstateHud.ShowInspectBar"), "안내가 ShowInspectBar를 읽는다");
+
+            int inspect = estate.IndexOf("void DrawVillageInspect", StringComparison.Ordinal);
+            int openHub = estate.IndexOf("void OpenHub", StringComparison.Ordinal);
+            Check(inspect >= 0 && openHub > inspect, "DrawVillageInspect가 있다");
+            string inspectSrc = (inspect >= 0 && openHub > inspect)
+                ? estate.Substring(inspect, openHub - inspect) : "";
+            Check(inspectSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
+                  && inspectSrc.IndexOf("btn.Contains", StringComparison.Ordinal) >= 0
+                  && inspectSrc.IndexOf("TryPickUp", StringComparison.Ordinal) >= 0,
+                "회수 버튼 클릭은 MouseDown으로 거둔다");
+            Check(inspectSrc.IndexOf("GUI.Button(btn", StringComparison.Ordinal) < 0,
+                "회수 버튼이 GUI.Button(none)을 안 쓴다");
             Check(estate.Contains("EstateHud.Line"), "자막이 Line을 읽는다");
             Check(estate.Contains("PlayerSubtitle(_sub switch"),
                 "영지의 모든 헤더 자막이 PlayerSubtitle을 거친다");
