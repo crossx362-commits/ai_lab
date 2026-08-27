@@ -336,6 +336,68 @@ maybe_run_game_fullcheck() {
   return 0
 }
 
+
+# last_test_report.json HEAD 재실행 — 회의 20260827-073515 채택 #2.
+# 성공 바퀴 뒤, 리포트가 없거나 `head` 가 현재 HEAD 와 다르면 refresh_test_report.sh 를 부른다.
+# Unity 부재는 비치명 스킵. GameSweep FAIL 도 루프는 계속(GameFullCheck 와 같은 약속).
+# GameFullCheck 는 여기서 부르지 않는다.
+maybe_refresh_test_report() {
+  local report="$DEPLOY_ROOT/last_test_report.json"
+  local root rc=0 wrap_out existing head
+  local main_log="${MAIN_LOG:-/dev/null}"
+  local lap_log="${LAP_LOG:-$main_log}"
+  root="$(cd "$DEPLOY_ROOT/.." && pwd)"
+  head="$(git -C "$root" rev-parse HEAD 2>/dev/null || true)"
+  if [ -z "$head" ]; then
+    echo "last_test_report 갱신 스킵 — git HEAD 없음" | tee -a "$main_log" "$lap_log"
+    return 0
+  fi
+  if [ -f "$report" ]; then
+    existing="$(python3 -c '
+import json, sys
+p = sys.argv[1]
+try:
+    with open(p, "r", encoding="utf-8-sig") as f:
+        d = json.load(f)
+    print((d.get("head") or "") if isinstance(d, dict) else "")
+except Exception:
+    print("")
+' "$report")"
+    if [ "$existing" = "$head" ]; then
+      echo "last_test_report.json 이미 현재 HEAD" | tee -a "$main_log" "$lap_log"
+      return 0
+    fi
+  fi
+
+  echo "last_test_report.json HEAD 재실행 ($head)" | tee -a "$main_log" "$lap_log"
+  if [ ! -f "$DEPLOY_ROOT/refresh_test_report.sh" ]; then
+    echo "last_test_report 스킵 — refresh_test_report.sh 없음" | tee -a "$main_log" "$lap_log"
+    return 0
+  fi
+
+  wrap_out="${LAP_DIR:-$root/projects/ashes-to-stars/results}/refresh-wrap.log"
+  mkdir -p "$(dirname "$wrap_out")"
+  bash "$DEPLOY_ROOT/refresh_test_report.sh" \
+    --report "$report" \
+    --project "$TARGET_REPO/projects/ashes-to-stars/unity_meas" \
+    --log "$root/projects/ashes-to-stars/results/refresh_test_report.log" \
+    > "$wrap_out" 2>&1 || rc=$?
+  if [ -f "$wrap_out" ] && [ -n "${LAP_LOG:-}" ]; then
+    cat "$wrap_out" >> "$LAP_LOG" || true
+  fi
+
+  if [ "$rc" -eq 0 ]; then
+    echo "last_test_report 갱신 완료" | tee -a "$main_log" "$lap_log"
+    return 0
+  fi
+  if [ -f "$wrap_out" ] && grep -Eq 'Unity 에디터를 찾지 못했다|Unity 가 없다|Unity 가 실행 파일이 아니다' "$wrap_out"; then
+    echo "last_test_report 스킵 — Unity 없음" | tee -a "$main_log" "$lap_log"
+    return 0
+  fi
+  echo "last_test_report 갱신 실패 (exit $rc) — 루프는 계속" | tee -a "$main_log" "$lap_log"
+  return 0
+}
+
 # 자가검사용 후크 — `bash loop/loop.sh --self-test-infra <로그파일>`이면 판정만 하고 끝낸다
 # (종료 0=공급자 장애 · 1=아니다). 네거티브 컨트롤 없는 통과를 만들지 않기 위한 장치다.
 if [ -n "$SELFTEST_INFRA" ]; then
@@ -390,6 +452,11 @@ run_session() {
       ;;
   esac
 }
+
+# 단위 테스트가 함수만 쓰도록 (LOOP_SOURCE_ONLY=1 source). 본 루프는 돌리지 않는다.
+if [ "${LOOP_SOURCE_ONLY:-0}" = "1" ]; then
+  return 0 2>/dev/null || exit 0
+fi
 
 STARTUP_AGENT="$(pick_agent)"
 if [ "$AUTO_SWITCH" = "1" ] && { [ "$STARTUP_AGENT" = "claude" ] || [ "$STARTUP_AGENT" = "grok" ]; }; then
@@ -528,6 +595,7 @@ while true; do
     FC_LAP=$((FC_LAP + 1))
     fullcheck_lap_write "$FC_LAP"
     maybe_run_game_fullcheck "$FC_LAP"
+    maybe_refresh_test_report
     # 자가학습 회의 — N바퀴마다 역할별 병렬 회의를 소집한다 (오너 2026-08-23).
     # 어떤 에이전트든 loop/COUNCIL_NOW 파일을 만들면 다음 바퀴 끝에 즉시 소집된다.
     if [ -f "$TARGET_REPO/loop/COUNCIL_NOW" ]; then

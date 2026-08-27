@@ -27,6 +27,19 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — last_test_report.json HEAD 재실행·기록 (Grok)
+
+회의 20260827-073515 채택 #2. `loop/refresh_test_report.sh` 가
+`run_selfcheck.sh AshesToStars.GameSweepSelfCheck.Run` 으로 리포트를 다시 돌리고
+JSON `head` 에 `git rev-parse HEAD` 를 찍는다. Unity 부재는 비치명 스킵
+(`ok: true` + 사유). 성공 바퀴마다 `loop.sh maybe_refresh_test_report` 가
+리포트 없음·head 불일치일 때만 호출한다(이미 현재면 Unity 안 부름).
+GameFullCheck 경로는 손대지 않음.
+
+`bash loop/test_refresh_test_report.sh` PASS 48/48
+(`projects/ashes-to-stars/results/refresh_test_report.log`). 실 Unity
+GameSweep 은 이번 슬롯에서 미실행.
+
 ## 완료 (2026-08-27) — loop 4바퀴마다 GameFullCheck 전수 — Unity 없으면 스킵 (Grok)
 
 회의 20260827-081437 채택 #3. 성공 바퀴를 `loop/fullcheck_lap.count`에 영속하고
