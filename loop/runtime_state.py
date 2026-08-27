@@ -29,6 +29,9 @@ QUOTA_RE = re.compile(
     r"할당량\s*초과|사용량.*(?:소진|초과)",
     re.IGNORECASE,
 )
+LAP_WRAPPER_RE = re.compile(
+    r"^(?:바퀴 시작:|바퀴 종료:|세션 비정상 종료 \(code=|랩 종료 가드 실패)",
+)
 
 
 def read_state(path: Path) -> dict[str, Any]:
@@ -113,7 +116,9 @@ def error_fingerprint(
     log_tail: str,
     context_version: str,
 ) -> str:
-    tail = "\n".join(log_tail.splitlines()[-80:]).strip()
+    lines = log_tail.splitlines()[-80:]
+    stable_lines = [line for line in lines if not LAP_WRAPPER_RE.match(line)]
+    tail = "\n".join(stable_lines).strip()
     raw = json.dumps(
         [provider, int(exit_code), tail, context_version],
         ensure_ascii=False,

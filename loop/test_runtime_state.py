@@ -89,6 +89,25 @@ class RuntimeStateTests(unittest.TestCase):
         self.assertNotEqual(first, changed)
         self.assertEqual(len(first), 64)
 
+    def test_error_fingerprint_ignores_volatile_lap_wrapper_lines(self) -> None:
+        state = load_module()
+        first = state.error_fingerprint(
+            "claude",
+            1,
+            "바퀴 시작: 20260828-010101-1 agent=claude\nsame provider error\n"
+            "바퀴 종료: 20260828-010101-1 code=1\n",
+            "head-a",
+        )
+        second = state.error_fingerprint(
+            "claude",
+            1,
+            "바퀴 시작: 20260828-020202-2 agent=claude\nsame provider error\n"
+            "바퀴 종료: 20260828-020202-2 code=1\n",
+            "head-a",
+        )
+
+        self.assertEqual(first, second)
+
     def test_cli_set_get_and_heartbeat(self) -> None:
         set_result = subprocess.run(
             [

@@ -129,14 +129,14 @@ status_stamp() {
 usage_check() {
   local name="$1"
   python3 "$BOARD_PY" usage "$name" 2>/dev/null | python3 -c '
-import json, sys
+import json, re, sys
 raw = sys.stdin.read()
 try:
     d = json.loads(raw)
 except Exception:
     print("unknown"); sys.exit()
 err = d.get("error")
-if err and "로그인 없음" in err:
+if err and re.search(r"로그인.*(?:없음|만료|필요)|login.*(?:expired|required)|authentication required", str(err), re.I):
     print("error"); sys.exit()
 remain = d.get("remain_pct")
 if d.get("ok") and remain is not None and remain <= 0:
@@ -394,9 +394,28 @@ write_recovery_context() {
 }
 
 wait_for_context_change() {
-  local failed_head="$1" delay="$RECOVERY_RETRY_SECONDS"
+  local failed_head="$1" failed_agent="${2:-}" wait_kind="${3:-head}"
+  local delay="$RECOVERY_RETRY_SECONDS" availability bin
   [ "$delay" -gt 0 ] || delay=1
   while [ "$(current_head)" = "$failed_head" ]; do
+    if [ "$wait_kind" = "usage" ]; then
+      availability="$(usage_check "$failed_agent")"
+      if [ "$availability" = "ok" ]; then
+        runtime_set running "$failed_agent" "인증/사용량 조회 회복" 0
+        return 0
+      fi
+      if [ "$availability" = "quota" ]; then
+        runtime_set quota_wait "$failed_agent" "인증 회복 뒤 사용량 한도" \
+          "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
+        return 0
+      fi
+    elif [ "$wait_kind" = "executable" ]; then
+      bin="$(find_bin "$failed_agent")"
+      if [ -n "$bin" ]; then
+        runtime_set running "$failed_agent" "실행기 경로 회복" 0
+        return 0
+      fi
+    fi
     echo "같은 오류 지문은 AI를 다시 부르지 않음 — ${delay}초 뒤 로컬 상태만 재확인" \
       | tee -a "$MAIN_LOG" "${LAP_LOG:-$MAIN_LOG}"
     wait_with_stop "$delay" || return 1
@@ -406,7 +425,7 @@ wait_for_context_change() {
 }
 
 run_recovery_once() {
-  local failed_agent="$1" exit_code="$2" logfile="$3"
+  local failed_agent="$1" exit_code="$2" logfile="$3" wait_kind="${4:-head}"
   local failed_head fingerprint recovery_agent recovery_bin recovery_rc after_head
   failed_head="$(current_head)"
   fingerprint="$(python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" fingerprint \
@@ -415,14 +434,14 @@ run_recovery_once() {
   runtime_set recovering "$failed_agent" "오류 복구: $fingerprint" 0
 
   if ! python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" claim "$fingerprint"; then
-    wait_for_context_change "$failed_head"
+    wait_for_context_change "$failed_head" "$failed_agent" "$wait_kind"
     return $?
   fi
 
   recovery_agent="$(select_recovery_agent "$failed_agent" "$logfile")"
   if [ -z "$recovery_agent" ]; then
     echo "사용 가능한 복구 실행기 없음 — AI 호출 없이 대기" | tee -a "$MAIN_LOG" "$logfile"
-    wait_for_context_change "$failed_head"
+    wait_for_context_change "$failed_head" "$failed_agent" "$wait_kind"
     return $?
   fi
   recovery_bin="$(find_bin "$recovery_agent")"
@@ -440,7 +459,7 @@ run_recovery_once() {
   fi
   echo "복구가 새 커밋을 만들지 못함(code=$recovery_rc) — 동일 지문 재호출 금지" \
     | tee -a "$MAIN_LOG" "$logfile"
-  wait_for_context_change "$failed_head"
+  wait_for_context_change "$failed_head" "$failed_agent" "$wait_kind"
   return $?
 }
 
@@ -482,7 +501,7 @@ while true; do
     LAP_LOG="$LAP_DIR/recovery-login-$AGENT.log"
     mkdir -p "$LAP_DIR"
     echo "$AGENT authentication required: usage API 로그인 없음" > "$LAP_LOG"
-    run_recovery_once "$AGENT" 77 "$LAP_LOG"
+    run_recovery_once "$AGENT" 77 "$LAP_LOG" usage
     RECOVERY_RESULT=$?
     [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
     continue
@@ -495,7 +514,7 @@ while true; do
     LAP_LOG="$LAP_DIR/recovery-missing-$AGENT.log"
     mkdir -p "$LAP_DIR"
     echo "$AGENT executable not found" > "$LAP_LOG"
-    run_recovery_once "$AGENT" 127 "$LAP_LOG"
+    run_recovery_once "$AGENT" 127 "$LAP_LOG" executable
     RECOVERY_RESULT=$?
     [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
     continue
