@@ -58,6 +58,7 @@ namespace AshesToStars
                 new Entry { Name = "하단 도크 탭 클릭", Run = GameNavDockSelfCheck.Run },
                 new Entry { Name = "허브 카드 클릭", Run = GameCardSelfCheck.Run },
                 new Entry { Name = "이펙트 테스트 HUD", Run = VfxTestHudSelfCheck.Run },
+                new Entry { Name = "전투 귀환 진행 바", Run = BattleLeaveBarSelfCheck.Run },
                 new Entry { Name = "캐릭터 3열·장비 라벨", Run = CharHudSelfCheck.Run },
                 new Entry { Name = "전투 스타일 HUD", Run = StyleHudSelfCheck.Run },
                 new Entry { Name = "멤버별 전투 스타일 배선", Run = MemberStyleSelfCheck.Run },

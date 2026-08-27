@@ -295,14 +295,19 @@ namespace AshesToStars
                     $"{RaidBossPool.BattleHint()}  {BossBattle.ActiveTotalHp:0}/{_bossMaxHp:0}  페이즈 {phases}");
                 y = bar.yMax + 26f;
             }
-            if (LowHpReturn.Leaving)
+            bool qaLeave = System.Environment.GetEnvironmentVariable("QA_BATTLE_LEAVE_BAR") == "1";
+            bool qaEsc = System.Environment.GetEnvironmentVariable("QA_BATTLE_ESCAPE_BAR") == "1";
+            if (LowHpReturn.Leaving || qaLeave)
             {
                 var leave = new Rect(340f, y + 8f, 600f, 28f);
-                UiAtlas.DrawSliced(leave, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
+                float fill = qaLeave
+                    ? 0.55f
+                    : 1f - Mathf.Clamp01(LowHpReturn.Remaining / LowHpReturn.LeaveSeconds);
+                UiAtlas.DrawMeter(leave, "panel", Mathf.Max(0.02f, fill),
+                    new Color(0.92f, 0.48f, 0.14f));
+                float remain = qaLeave ? 1.4f : LowHpReturn.Remaining;
                 Hint(UiAtlas.ContentRect(leave, "panel", 2f),
-                    PlayerCopy($"저체력 귀환 {LowHpReturn.Remaining:0.0}초 — 피격 가능 · 이번 판 보상 없음(§4)"));
-                float fill = 1f - Mathf.Clamp01(LowHpReturn.Remaining / LowHpReturn.LeaveSeconds);
-                GUI.Box(new Rect(leave.x, leave.y, leave.width * Mathf.Max(0.02f, fill), leave.height), "");
+                    PlayerCopy($"저체력 귀환 {remain:0.0}초 — 피격 가능 · 이번 판 보상 없음(§4)"));
                 y = leave.yMax + 8f;
             }
             if (DrawHuntBoonPick()) return;
@@ -313,13 +318,16 @@ namespace AshesToStars
                 Hint(UiAtlas.ContentRect(deny, "panel", 2f), EscapeManual.WhyNot());
                 y = deny.yMax + 8f;
             }
-            if (!EmergencyEscape.Casting) return;
-            float p = EmergencyEscape.Progress;
+            if (!EmergencyEscape.Casting && !qaEsc) return;
+            float p = qaEsc ? 0.40f : EmergencyEscape.Progress;
             var box = new Rect(340f, y + 8f, 600f, 28f);
-            UiAtlas.DrawSliced(box, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
+            UiAtlas.DrawMeter(box, "panel", Mathf.Max(0.02f, p),
+                new Color(0.78f, 0.16f, 0.18f));
+            float escRemain = qaEsc
+                ? 3.6f
+                : EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed;
             Hint(UiAtlas.ContentRect(box, "panel", 2f),
-                $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
-            GUI.Box(new Rect(box.x, box.y, box.width * Mathf.Max(0.02f, p), box.height), "");
+                $"귀환 {escRemain:0.0}초 — 피격 시 시전 취소");
         }
 
         bool DrawHuntBoonPick()
