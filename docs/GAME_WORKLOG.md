@@ -27,6 +27,18 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — loop/run_selfcheck.sh — Editor SelfCheck 배치 진입점 (Grok)
+
+회의 20260827-073515 채택 #1. 승인 대화상자·승격 프롬프트 없이 unity_meas
+배치 SelfCheck를 도는 저장소 안 단일 진입점. Unity 부재·로그 FAIL·컴파일
+오류면 non-zero. 단위 테스트는 mock Unity라 에디터 없이 CI가 돈다.
+
+`bash loop/test_run_selfcheck.sh` PASS 19/19
+(`projects/ashes-to-stars/results/run_selfcheck_wrapper.log`).
+BuildSlots 배치 보너스: 이번 세션에서 Unity 바이너리 실행이 게이트에 막혀
+미실행. 래퍼 `--dry-run` 은 Hub 6000.3.14f1 + unity_meas +
+`AshesToStars.BuildSlotsSelfCheck.Run` 경로를 고정함.
+
 ## 완료 (2026-08-27) — zip 실로드 검사 — Resources.Load/unzip null 커밋 전 차단 (Grok)
 
 회의 20260827-081437 보류 #5 (png 실로드 `d30a135c` 후속). 런타임 zip 파이프라인은
