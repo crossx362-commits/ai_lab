@@ -12,6 +12,9 @@ loop/grok_usage.cache.json
 loop/claude_usage.cache.json
 loop/codex_usage.cache.json
 loop/provider.state
+loop/runtime_state.json
+loop/runtime_state.json.lock
+loop/recovery_context.log
 loop/logs/
 .claude/
 .mcp.json
