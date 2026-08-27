@@ -301,7 +301,11 @@ namespace AshesToStars
             GUI.matrix = saved;
         }
 
-        protected virtual void Overlay() { }
+        protected virtual void Overlay()
+        {
+            V4ContinueOverlay.SeedQaIfRequested();
+            V4ContinueOverlay.Draw();
+        }
 
         /// <summary>등급 견본은 캐릭터 상세처럼 빈 칸이 있는 화면만. 대장간에 띄우면 명부를 덮는다.</summary>
         protected virtual bool ShowRarityPreview => false;
