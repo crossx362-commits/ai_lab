@@ -115,6 +115,7 @@ namespace AshesToStars
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
             SeedCharLookQaIfRequested();
+            SeedCharUnequipQaIfRequested();
             SeedRosterPickQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
@@ -810,6 +811,21 @@ namespace AshesToStars
             _choosingAdvancement = false;
         }
 
+        void SeedCharUnequipQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_CHAR_UNEQUIP") != "1") return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            var ch = roster[0];
+            Equipment.TryUnequip(ch, EquipSlot.Weapon);
+            _selectedCharacter = 0;
+            _listPage = 0;
+            _detailPage = 0;
+            _bagFilter = (int)EquipSlot.Weapon;
+            _fusing = false;
+            _choosingAdvancement = false;
+        }
+
         void SeedRarityQaIfRequested()
         {
             if (Environment.GetEnvironmentVariable("QA_UI_RARITY") != "1") return;
@@ -1365,6 +1381,16 @@ namespace AshesToStars
                 var slotRect = UiPages.ClampIn(stage,
                     UiPages.SlotOnRing(center, ringX, ringY, deg, UiPages.EquipSlotSize));
                 var worn = Equipment.Worn(ch, slot);
+                // 클릭을 DrawGear보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
+                // FieldScreen 옛 버그(caa5b84c)와 같이 아이콘에 먹혀 해제·필터가 안 먹었다.
+                var ev = Event.current;
+                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                    && slotRect.Contains(ev.mousePosition) && !ch.IsDeleted)
+                {
+                    if (worn != null) Equipment.TryUnequip(ch, slot);
+                    _bagFilter = (int)slot;
+                    ev.Use();
+                }
                 ItemAtlas.DrawGear(slotRect, worn);
                 if (worn == null)
                 {
@@ -1375,11 +1401,6 @@ namespace AshesToStars
                 }
                 var cap = CharHud.EquipLabel(stage, slotRect, flat);
                 Hint(cap, CharHud.SlotLabel(slot, worn));
-                if (GUI.Button(slotRect, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)
-                {
-                    if (worn != null) Equipment.TryUnequip(ch, slot);
-                    _bagFilter = (int)slot;
-                }
             }
 
             float infoX = Mathf.Max(face.xMax + 36f, stage.x + 300f);

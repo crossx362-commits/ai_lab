@@ -91,6 +91,19 @@ namespace AshesToStars
             Check(splitSrc.IndexOf("GUI.Button(cell", StringComparison.Ordinal) < 0,
                 "DrawRosterCell 뒤 GUI.Button(none)을 안 쓴다");
 
+            int studio = charSrc.IndexOf("void DrawEquipStudio", StringComparison.Ordinal);
+            int inspect = charSrc.IndexOf("void DrawInspectInfoScrolled", StringComparison.Ordinal);
+            Check(studio >= 0 && inspect > studio, "DrawEquipStudio가 있다");
+            string studioSrc = (studio >= 0 && inspect > studio)
+                ? charSrc.Substring(studio, inspect - studio) : "";
+            Check(studioSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
+                  && studioSrc.IndexOf("slotRect.Contains", StringComparison.Ordinal) >= 0
+                  && studioSrc.IndexOf("TryUnequip", StringComparison.Ordinal) >= 0
+                  && studioSrc.IndexOf("_bagFilter = (int)slot", StringComparison.Ordinal) >= 0,
+                "장비 링 슬롯 클릭은 MouseDown으로 해제·필터한다");
+            Check(studioSrc.IndexOf("GUI.Button(slotRect", StringComparison.Ordinal) < 0,
+                "DrawGear 뒤 GUI.Button(slotRect none)을 안 쓴다");
+
             if (_fail == 0) Debug.Log("[CharacterRosterSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharacterRosterSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException(
