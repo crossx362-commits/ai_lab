@@ -117,6 +117,7 @@ namespace AshesToStars
             SeedCharLookQaIfRequested();
             SeedCharUnequipQaIfRequested();
             SeedCharBagEquipQaIfRequested();
+            SeedCharBagFilterQaIfRequested();
             SeedRosterPickQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
@@ -848,6 +849,20 @@ namespace AshesToStars
             _choosingAdvancement = false;
         }
 
+        void SeedCharBagFilterQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable("QA_CHAR_BAG_FILTER");
+            if (string.IsNullOrEmpty(raw)) return;
+            if (!int.TryParse(raw, out int f)) return;
+            _bagFilter = f;
+            _selectedCharacter = 0;
+            _listPage = 0;
+            _detailPage = 0;
+            _infoScroll = new Vector2(0f, 90f);
+            _fusing = false;
+            _choosingAdvancement = false;
+        }
+
         void SeedRarityQaIfRequested()
         {
             if (Environment.GetEnvironmentVariable("QA_UI_RARITY") != "1") return;
@@ -1564,6 +1579,15 @@ namespace AshesToStars
             for (int i = 0; i < bag.Count; i++)
                 if (_bagFilter < 0 || (int)bag[i].Slot == _bagFilter) filled++;
             Line(BagSlots.Line() + (filled != bag.Count ? $" · 이 칸 {filled}" : ""));
+            const float tabH = 22f, tabGap = 4f;
+            int tabCount = 1 + Equipment.SlotCount;
+            float tabW = (r.width - tabGap * (tabCount - 1)) / tabCount;
+            DrawBagFilterTab(new Rect(r.x, y, tabW, tabH), "전체", -1);
+            for (int s = 0; s < Equipment.SlotCount; s++)
+                DrawBagFilterTab(
+                    new Rect(r.x + (s + 1) * (tabW + tabGap), y, tabW, tabH),
+                    Equipment.SlotName((EquipSlot)s), s);
+            y += tabH + 6f;
             const float cell = 44f, gap = 6f;
             int col = 0;
             int shown = 0;
@@ -1598,12 +1622,19 @@ namespace AshesToStars
 
         void DrawBagFilterTab(Rect tr, string label, int filter)
         {
+            // 클릭을 슬라이스보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
+            // 가방 셀 옛 버그(bcc04e45)와 같이 크롬에 먹혀 필터가 안 바뀌었다.
+            var ev = Event.current;
+            if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                && tr.Contains(ev.mousePosition))
+            {
+                _bagFilter = filter;
+                ev.Use();
+            }
             bool on = _bagFilter == filter;
             UiAtlas.DrawSliced(tr, UiAtlas.ButtonKey(false, on), 8f,
                 on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
             Hint(tr, label);
-            if (GUI.Button(tr, GUIContent.none, GUIStyle.none))
-                _bagFilter = filter;
         }
 
         bool CompactAction(Rect r, string label, string icon, bool locked = false)

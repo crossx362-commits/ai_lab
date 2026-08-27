@@ -116,6 +116,20 @@ namespace AshesToStars
             Check(inspectSrc.IndexOf("GUI.Button(gcell", StringComparison.Ordinal) < 0,
                 "DrawGear 뒤 GUI.Button(gcell none)을 안 쓴다");
 
+            Check(inspectSrc.IndexOf("DrawBagFilterTab", StringComparison.Ordinal) >= 0,
+                "가방 줄이 DrawBagFilterTab을 그린다");
+            int tabFn = charSrc.IndexOf("void DrawBagFilterTab", StringComparison.Ordinal);
+            int compact = charSrc.IndexOf("bool CompactAction", StringComparison.Ordinal);
+            Check(tabFn >= 0 && compact > tabFn, "DrawBagFilterTab이 있다");
+            string tabSrc = (tabFn >= 0 && compact > tabFn)
+                ? charSrc.Substring(tabFn, compact - tabFn) : "";
+            Check(tabSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
+                  && tabSrc.IndexOf("tr.Contains", StringComparison.Ordinal) >= 0
+                  && tabSrc.IndexOf("_bagFilter = filter", StringComparison.Ordinal) >= 0,
+                "가방 필터 탭 클릭은 MouseDown으로 _bagFilter를 바꾼다");
+            Check(tabSrc.IndexOf("GUI.Button(tr", StringComparison.Ordinal) < 0,
+                "DrawBagFilterTab이 GUI.Button(none)을 안 쓴다");
+
             if (_fail == 0) Debug.Log("[CharacterRosterSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharacterRosterSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException(
