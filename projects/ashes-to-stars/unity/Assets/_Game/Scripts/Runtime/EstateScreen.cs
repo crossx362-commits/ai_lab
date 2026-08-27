@@ -269,6 +269,7 @@ namespace AshesToStars
             SeedCellClickQaIfRequested();
             SeedHubClickQaIfRequested();
             SeedYardNameQaIfRequested();
+            SeedSmithOpenQaIfRequested();
             SeedDockClickQaIfRequested();
             SeedRowClickQaIfRequested();
             EstateStore.SeedQaIfRequested();
@@ -724,6 +725,17 @@ namespace AshesToStars
                 _selX = EstateGrid.MineX;
                 _selY = EstateGrid.MineY;
             }
+        }
+
+        void SeedSmithOpenQaIfRequested()
+        {
+            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_SMITH");
+            if (raw != "1" && raw != "2") return;
+            _sub = Sub.대장간;
+            if (raw != "2") return;
+            var items = ItemAtlas.SmithMaterials;
+            if (items.Length > 0 && GameState.Bag.GetCount(items[0]) < 9)
+                GameState.Gain(items[0], 9 - GameState.Bag.GetCount(items[0]));
         }
 
         void SeedArtScaffoldFrameQaIfRequested()
@@ -1778,10 +1790,16 @@ namespace AshesToStars
                 float ih = Mathf.Min(40f, well.height);
                 ItemAtlas.Draw(new Rect(x, well.y + (well.height - ih) * 0.5f, ih, ih),
                     ItemAtlas.KeyFor(items[i]));
+                Styles();
+                var gold = new GUIStyle(_panel)
+                {
+                    fontSize = 18,
+                    alignment = TextAnchor.MiddleLeft,
+                    clipping = TextClipping.Clip,
+                    wordWrap = false,
+                };
                 UiPages.LabelClip(new Rect(x + ih + 4f, well.y, Mathf.Max(12f, cell - ih - 6f), well.height),
-                    GameState.Bag.GetCount(items[i]).ToString(),
-                    new GUIStyle(GUI.skin.label) { fontSize = 18, clipping = TextClipping.Clip,
-                        normal = { textColor = new Color(0.95f, 0.79f, 0.42f) } });
+                    GameState.Bag.GetCount(items[i]).ToString(), gold);
             }
         }
     }

@@ -115,7 +115,8 @@ namespace AshesToStars
                     Mathf.Max(20f, panel.height - 12f));
         }
 
-        GUIStyle _h1, _h2, _h1Slim, _h2Slim, _btn, _btnLeft, _small, _navLabel, _panel, _cardTitle, _tab;
+        GUIStyle _h1, _h2, _h1Slim, _h2Slim, _btn, _btnLeft, _navLabel, _cardTitle, _tab;
+        protected GUIStyle _small, _panel;
         // 아이콘 없는 카드(예: 타이틀 「종료」)를 형제 카드와 어긋나 보이지 않게 중앙 정렬로 그린다.
         GUIStyle _cardTitleC, _h2C;
         Texture2D _bg, _line, _accent, _scrim;
@@ -164,7 +165,7 @@ namespace AshesToStars
             return t;
         }
 
-        void Styles()
+        protected void Styles()
         {
             if (_h1 != null) return;
             _h1 = new GUIStyle(GUI.skin.label) { fontSize = 32, fontStyle = FontStyle.Bold, normal = { textColor = Ink } };
