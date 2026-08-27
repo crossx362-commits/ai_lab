@@ -116,6 +116,7 @@ namespace AshesToStars
             FloorRecruit.SeedQaIfRequested();
             SeedCharLookQaIfRequested();
             SeedCharUnequipQaIfRequested();
+            SeedCharBagEquipQaIfRequested();
             SeedRosterPickQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
@@ -818,6 +819,27 @@ namespace AshesToStars
             if (roster.Count == 0) return;
             var ch = roster[0];
             Equipment.TryUnequip(ch, EquipSlot.Weapon);
+            _selectedCharacter = 0;
+            _listPage = 0;
+            _detailPage = 0;
+            _bagFilter = (int)EquipSlot.Weapon;
+            _fusing = false;
+            _choosingAdvancement = false;
+        }
+
+        void SeedCharBagEquipQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable("QA_CHAR_BAG_EQUIP") != "1") return;
+            var roster = LifeSystem.GetCharacters();
+            if (roster.Count == 0) return;
+            var ch = roster[0];
+            var bag = Equipment.Unequipped();
+            for (int i = 0; i < bag.Count; i++)
+            {
+                if (bag[i].Slot != EquipSlot.Weapon) continue;
+                Equipment.TryEquip(ch, bag[i].Id);
+                break;
+            }
             _selectedCharacter = 0;
             _listPage = 0;
             _detailPage = 0;
@@ -1550,8 +1572,11 @@ namespace AshesToStars
                 if (_bagFilter >= 0 && (int)bag[i].Slot != _bagFilter) continue;
                 var gcell = new Rect(r.x + col * (cell + gap), y, cell, cell);
                 if (gcell.yMax > r.yMax) break;
-                ItemAtlas.DrawGear(gcell, bag[i]);
-                if (GUI.Button(gcell, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)
+                // 클릭을 DrawGear보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
+                // 장비 링 옛 버그(6de8dd05)와 같이 아이콘에 먹혀 장착이 안 먹었다.
+                var ev = Event.current;
+                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                    && gcell.Contains(ev.mousePosition) && !ch.IsDeleted)
                 {
                     if (!EquipJob.CanWear(ch, bag[i]))
                         _equipMsg = EquipJob.WhyNot(ch, bag[i]);
@@ -1559,7 +1584,9 @@ namespace AshesToStars
                         _equipMsg = EquipLevel.WhyNot(ch, bag[i]);
                     else if (Equipment.TryEquip(ch, bag[i].Id))
                         _equipMsg = "";
+                    ev.Use();
                 }
+                ItemAtlas.DrawGear(gcell, bag[i]);
                 col++;
                 if (col >= 4) { col = 0; y += cell + gap; }
                 shown++;
