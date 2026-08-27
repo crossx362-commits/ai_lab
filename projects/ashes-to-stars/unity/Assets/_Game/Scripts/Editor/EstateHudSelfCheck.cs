@@ -187,6 +187,18 @@ namespace AshesToStars
                 "회수 버튼 클릭은 MouseDown으로 거둔다");
             Check(inspectSrc.IndexOf("GUI.Button(btn", StringComparison.Ordinal) < 0,
                 "회수 버튼이 GUI.Button(none)을 안 쓴다");
+
+            int layout = estate.IndexOf("void DrawLayout", StringComparison.Ordinal);
+            int fillFn = estate.IndexOf("static void FillCell", StringComparison.Ordinal);
+            Check(layout >= 0 && fillFn > layout, "DrawLayout가 있다");
+            string layoutSrc = (layout >= 0 && fillFn > layout)
+                ? estate.Substring(layout, fillFn - layout) : "";
+            Check(layoutSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
+                  && layoutSrc.IndexOf("box.Contains", StringComparison.Ordinal) >= 0
+                  && layoutSrc.IndexOf("TryPlace", StringComparison.Ordinal) >= 0,
+                "격자 칸 클릭은 MouseDown으로 선택/배치한다");
+            Check(layoutSrc.IndexOf("GUI.Button(box", StringComparison.Ordinal) < 0,
+                "격자 칸이 GUI.Button(none)을 안 쓴다");
             Check(estate.Contains("EstateHud.Line"), "자막이 Line을 읽는다");
             Check(estate.Contains("PlayerSubtitle(_sub switch"),
                 "영지의 모든 헤더 자막이 PlayerSubtitle을 거친다");

@@ -266,6 +266,7 @@ namespace AshesToStars
             }
             EstateGrid.SeedQaIfRequested();
             SeedRecallQaIfRequested();
+            SeedCellClickQaIfRequested();
             EstateStore.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();
             EstateBuildings.SeedQaIfRequested();
@@ -333,6 +334,12 @@ namespace AshesToStars
                 return;
             }
 
+            if (_layoutQa)
+            {
+                _hubPage = DrawTabs(r, new[] { "마을", "현황", "방어" }, 0);
+                DrawLayout(UiPages.AfterTabs(r));
+                return;
+            }
             if (_hubPage == 0 && !EstateYard.FillBlocked)
             {
                 DrawVillage(r);
@@ -641,6 +648,28 @@ namespace AshesToStars
             }
         }
 
+        bool _layoutQa;
+        bool _cellQaPlaced;
+        void SeedCellClickQaIfRequested()
+        {
+            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_CELL");
+            if (raw != "0" && raw != "1") return;
+            _layoutQa = true;
+            _hubPage = 0;
+            _placeKind = EstateGrid.Cell.Wall;
+            if (raw != "1" || _cellQaPlaced) return;
+            _cellQaPlaced = true;
+            if (EstateDefense.Level(EstateDefense.Kind.성벽) < 1)
+                EstateDefense.SetLevelForTest(EstateDefense.Kind.성벽, 3);
+            int n = EstateGrid.Size;
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                if (EstateGrid.TryPlace(x, y, EstateGrid.Cell.Wall))
+                    return;
+            }
+        }
+
         void DrawVillageInspect(Rect r)
         {
             if (!EstateHud.ShowInspectBar(_selX >= 0) && !EstateYard.FillBlocked)
@@ -917,10 +946,16 @@ namespace AshesToStars
                 var box = new Rect(gx + x * cell, gy + y * cell, cell - 2f, cell - 2f);
                 var c = EstateGrid.At(x, y);
                 bool onPath = EstateGrid.OnInvaderPath(x, y);
+                // 클릭을 FillCell·라벨보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
+                // 회수 버튼 옛 버그(cdfa4fbf)와 같이 칸 색에 먹혀 선택/배치가 안 먹었다.
+                var ev = Event.current;
+                bool hit = ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                    && box.Contains(ev.mousePosition);
+                if (hit) ev.Use();
                 FillCell(box, CellTint(c, onPath));
                 mark.normal.textColor = CellInk(c, onPath);
                 GUI.Label(box, CellMark(c), mark);
-                if (!GUI.Button(box, GUIContent.none, GUIStyle.none)) continue;
+                if (!hit) continue;
                 if (EstateGrid.IsDefense(c))
                     EstateGrid.TryPickUp(x, y);
                 else
