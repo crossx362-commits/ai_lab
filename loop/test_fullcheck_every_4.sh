@@ -73,6 +73,12 @@ mk_harness() {
     > "$TEST_ROOT/projects/ashes-to-stars/unity_meas/ProjectSettings/ProjectVersion.txt"
   printf '%s\n' "# status" > "$TEST_ROOT/docs/STATUS.md"
   touch "$TEST_ROOT/docs/feedback/INBOX.md"
+  cat > "$TEST_ROOT/loop/board.py" <<'PY'
+#!/usr/bin/env python3
+import json
+print(json.dumps({"ok": True, "remain_pct": 100}))
+PY
+  chmod 755 "$TEST_ROOT/loop/board.py"
 
   git init -q "$TEST_ROOT"
   git -C "$TEST_ROOT" config user.email t@t
@@ -130,12 +136,14 @@ run_loop() { # run_loop <max> [unity_path]
     TEST_ROOT="$TEST_ROOT" \
     LOOP_AGENT=codex \
     LOOP_CODEX_BIN="$TEST_ROOT/bin/codex" \
+    LOOP_BOARD_PY="$TEST_ROOT/loop/board.py" \
     LOOP_MAX_LOOPS="$max" \
     LOOP_COOLDOWN=0 \
     LOOP_MAX_FAILS=8 \
     LOOP_AUTO_SWITCH=0 \
     LOOP_COUNCIL_EVERY=0 \
     LOOP_FULLCHECK_EVERY=4 \
+    LOOP_REFRESH_TEST_REPORT=0 \
     UNITY_EDITOR_PATH="$unity" \
     bash "$LOOP" "$TEST_ROOT"
 }

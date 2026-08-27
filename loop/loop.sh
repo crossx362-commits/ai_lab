@@ -43,7 +43,7 @@ RUNTIME_STATE_FILE="${LOOP_RUNTIME_STATE_FILE:-$TARGET_REPO/loop/runtime_state.j
 RECOVERY_CONTEXT_FILE="$TARGET_REPO/loop/recovery_context.log"
 # GameFullCheck 주기 카운터 — loop/ 에만 영속 (STATUS.md 금지). git 미추적 런타임 파일.
 FULLCHECK_COUNT_FILE="$TARGET_REPO/loop/fullcheck_lap.count"
-BOARD_PY="$DEPLOY_ROOT/board.py"
+BOARD_PY="${LOOP_BOARD_PY:-$DEPLOY_ROOT/board.py}"
 PROVIDER_ERROR_PATTERN="${LOOP_PROVIDER_ERROR_PATTERN:-organization has disabled|authentication required|please (log|sign) in|로그인.*필요|executable not found}"
 # 공급자 인프라 장애 — 「인프라 실패 ≠ 이슈 실패」(CLAUDE.md 가드레일). 이런 바퀴는 우리 코드가
 # 틀린 게 아니라 상대 서버가 죽은 것이므로 STATUS 미갱신으로 세면 안 된다. 2026-08-26 22:23·22:38
@@ -234,6 +234,7 @@ maybe_refresh_test_report() {
   local root rc=0 wrap_out existing head
   local main_log="${MAIN_LOG:-/dev/null}"
   local lap_log="${LAP_LOG:-$main_log}"
+  [ "${LOOP_REFRESH_TEST_REPORT:-1}" = "1" ] || return 0
   root="$(cd "$DEPLOY_ROOT/.." && pwd)"
   head="$(git -C "$root" rev-parse HEAD 2>/dev/null || true)"
   if [ -z "$head" ]; then
