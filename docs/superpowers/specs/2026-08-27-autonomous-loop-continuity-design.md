@@ -121,6 +121,8 @@
 - 정상 개발은 한 바퀴에 새 AI 세션 하나만 연다.
 - `speed_lane.sh`의 병렬 worker/reviewer는 기본 중단한다.
 - `council.sh`의 planner·builder·tester·의장 다중 세션은 바퀴 수 기준으로 자동 호출하지 않는다.
+- `board_keeper.sh`의 무료 상태·테스트 검사는 유지하되 건강한 상태의 정기 AI 개선은 끈다.
+  보드 오류 수리도 같은 오류 지문에는 한 번만 AI를 호출한다.
 - 회의는 큰 이정표 또는 오너의 직접 지시 때만 연다. 필요하면 로컬 분석을 먼저 하고 구독 AI는
   합본 판단 한 세션으로 제한한다.
 - 테스트는 변경 범위의 표적 검사를 먼저 실행한다. 전체 Unity 검사는 관련 변경 또는 누적 주기에만
@@ -148,6 +150,7 @@
 - `loop/deploy_launchd.sh`: 단일 멱등 시작 경로, 저장소 원본 직접 실행
 - `loop/com.ailab.autonomous_loop.plist`: 저장소 원본 실행 및 비정상 종료 재기동
 - `loop/com.ailab.speedlane.plist`: 상시 자동 실행 해제
+- `loop/board_keeper.sh`: 정기 개선 AI 제거, 동일 오류 수리 호출 중복 제거
 - `loop/board.py`: 보드 재개도 동일 시작 경로 사용
 - `loop/README.md`: 실제 시작·중단 명령과 상태 의미
 - `loop/test_*.sh` 또는 `loop/test_*.py`: 아래 회귀 시나리오
@@ -172,8 +175,9 @@
 9. 한도 대기·heartbeat·감시 실행 동안 AI CLI 호출 횟수가 0이다.
 10. 같은 오류 지문을 반복 주입해도 복구 AI 호출 횟수가 1을 넘지 않는다.
 11. 정상 한 바퀴에서 개발 AI 호출은 1회이고 자동 council·speed lane 호출은 0회다.
-12. 기존 loop 단위 테스트와 `python3 projects/ai-team/harness/check_all.py`가 모두 통과한다.
-13. 실제 launchd 등록 후 PID·상태·heartbeat를 확인하고, 테스트용 한 바퀴가 정상 종료되는 것을
+12. 건강한 보드 지킴이 실행과 동일 보드 오류 재검사에서 AI 호출은 각각 0회다.
+13. 기존 loop 단위 테스트와 `python3 projects/ai-team/harness/check_all.py`가 모두 통과한다.
+14. 실제 launchd 등록 후 PID·상태·heartbeat를 확인하고, 테스트용 한 바퀴가 정상 종료되는 것을
     확인한 다음 무한 루프를 재개한다.
 
 ## 10. 비목표
