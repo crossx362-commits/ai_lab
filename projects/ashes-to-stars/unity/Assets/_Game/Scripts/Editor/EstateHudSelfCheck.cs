@@ -194,6 +194,18 @@ namespace AshesToStars
             Check(inspectSrc.IndexOf("GUI.Button(r,", StringComparison.Ordinal) < 0,
                 "허브 칸이 GUI.Button(none)을 안 쓴다");
 
+            int palAt = estate.IndexOf("void DrawVillagePalette", StringComparison.Ordinal);
+            int statusAt = estate.IndexOf("void DrawEstateStatus", StringComparison.Ordinal);
+            Check(palAt >= 0 && statusAt > palAt, "DrawVillagePalette가 있다");
+            string palSrc = (palAt >= 0 && statusAt > palAt)
+                ? estate.Substring(palAt, statusAt - palAt) : "";
+            Check(palSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
+                  && palSrc.IndexOf("b.Contains", StringComparison.Ordinal) >= 0
+                  && palSrc.IndexOf("_placeKind = cellKind", StringComparison.Ordinal) >= 0,
+                "방어 도크 클릭은 MouseDown으로 _placeKind를 고른다");
+            Check(palSrc.IndexOf("GUI.Button(b,", StringComparison.Ordinal) < 0,
+                "방어 도크가 GUI.Button(none)을 안 쓴다");
+
             int layout = estate.IndexOf("void DrawLayout", StringComparison.Ordinal);
             int fillFn = estate.IndexOf("static void FillCell", StringComparison.Ordinal);
             Check(layout >= 0 && fillFn > layout, "DrawLayout가 있다");

@@ -268,6 +268,7 @@ namespace AshesToStars
             SeedRecallQaIfRequested();
             SeedCellClickQaIfRequested();
             SeedHubClickQaIfRequested();
+            SeedDockClickQaIfRequested();
             EstateStore.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();
             EstateBuildings.SeedQaIfRequested();
@@ -673,6 +674,17 @@ namespace AshesToStars
             }
         }
 
+        void SeedDockClickQaIfRequested()
+        {
+            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_DOCK");
+            if (raw != "0" && raw != "1") return;
+            _layoutQa = false;
+            _hubPage = 0;
+            _selX = -1;
+            _selY = -1;
+            _placeKind = raw == "1" ? EstateGrid.Cell.Arrow : EstateGrid.Cell.Wall;
+        }
+
         void SeedHubClickQaIfRequested()
         {
             string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_HUB");
@@ -848,11 +860,17 @@ namespace AshesToStars
                 bool on = _placeKind == cellKind;
                 string title = on ? $"선택 {k}" : $"{k}";
                 string icon = UiAtlas.BuildingKey(k.ToString());
+                var palEv = Event.current;
+                if (palEv != null && palEv.type == EventType.MouseDown && palEv.button == 0
+                    && b.Contains(palEv.mousePosition))
+                {
+                    _placeKind = cellKind;
+                    palEv.Use();
+                }
                 if (EstateHud.Blocked || EstateYard.FillBlocked)
                 {
-                    if (DrawCard(b, $"{title} · {left}",
-                            left > 0 ? "빈 칸에 놓는다" : "레벨만큼만", icon))
-                        _placeKind = cellKind;
+                    DrawCard(b, $"{title} · {left}",
+                        left > 0 ? "빈 칸에 놓는다" : "레벨만큼만", icon);
                     continue;
                 }
 
@@ -865,7 +883,7 @@ namespace AshesToStars
                     if (oldIconH > 8f && !string.IsNullOrEmpty(icon))
                         UiAtlas.DrawFit(new Rect(inner.center.x - oldIconH * 0.5f, inner.y,
                             oldIconH, oldIconH), icon);
-                    Hint(new Rect(inner.x, inner.yMax - 18f, inner.width, 18f), $"{k} {left}");
+                    Hint(new Rect(inner.x, inner.yMax - 18f, inner.width, 18f), $"{title} {left}");
                 }
                 else
                 {
@@ -878,11 +896,9 @@ namespace AshesToStars
                             iconW, iconW), icon);
                     var label = new Rect(inner.x + iconW + 4f, inner.y,
                         Mathf.Max(20f, inner.width - iconW - 4f), inner.height);
-                    if (EstateHud.BrightLabelBlocked) Hint(label, $"{k} {left}");
-                    else DockLabel(label, $"{k} {left}");
+                    if (EstateHud.BrightLabelBlocked) Hint(label, $"{title} {left}");
+                    else DockLabel(label, $"{title} {left}");
                 }
-                if (GUI.Button(b, GUIContent.none, GUIStyle.none))
-                    _placeKind = cellKind;
             }
         }
 
