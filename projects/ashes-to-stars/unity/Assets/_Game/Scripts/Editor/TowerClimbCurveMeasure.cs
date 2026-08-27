@@ -26,7 +26,9 @@ namespace AshesToStars
     ///   G1. 층이 오르면 필요 DPS도 오른다(1층과 최상층이 같으면 곡선이 아니다)
     ///   G2. 5시간 사냥으로 도달하는 레벨이 최상층 요구에 닿는다
     ///   G3. 기대 레벨·전직 파티의 실DPS가 최상층 필요 DPS에 닿고(목표 시간 내 처치),
-    ///       약한 파티(Lv1 기본직)는 같은 게이트를 통과하지 못한다(판별력 네거티브)
+    ///       약한 파티(Lv1 기본직)는 같은 게이트를 통과하지 못한다(판별력 네거티브).
+    ///       권장 파티 픽스처는 장비(TryGrantDrop·TryEquip)와 합성(AbsorbedBoons→Fusion.CombatOf)
+    ///       실제 경로를 심는다. QA_NO_G3_GEAR=1이면 옛 베어 로스터.
     ///
     ///   Unity -batchmode -quit -nographics -projectPath &lt;unity_meas&gt; \
     ///         -executeMethod AshesToStars.TowerClimbCurveMeasure.Run
@@ -36,6 +38,8 @@ namespace AshesToStars
         public const int TopFloor = 50;
         /// <summary>관문 ②의 기준 — "5시간 연속 플레이가 지루하지 않은가"(§22).</summary>
         public const float SessionHours = 5f;
+        /// <summary>G3 권장 픽스처에서 장비·합성을 빼고 옛 베어 로스터로 되돌린다.</summary>
+        public const string EnvNoG3Gear = "QA_NO_G3_GEAR";
 
         struct Row
         {
@@ -90,8 +94,8 @@ namespace AshesToStars
                     $"G2 5시간 사냥 레벨이 {TopFloor}층 요구 레벨 이상이어야 한다: {lv5h} vs {lvNeed}");
 
                 // ── G3. 파티 실DPS 대조(ORDERS③) — 실판 시뮬로만 답한다 ─────────
-                // 권장 파티 = 그 층 도달 기대 레벨 + 진행 단계 전직(Lv20 1차·Lv50 2차 — 캐릭터창 관문과 같은 경계).
-                // 약한 파티 = Lv1 기본직. 게이트는 "같은 판정기에서 강한 파티는 살고 약한 파티는 죽는다"까지 본다.
+                // 권장 파티 = 기대 레벨·전직 + 장비·합성 CombatMuls(BossHp 권장 전투력이 흡수하는 칸).
+                // 약한 파티 = Lv1 기본직(베어). QA_NO_G3_GEAR면 권장도 옛 베어 로스터.
                 var strong = FightProbe(party, boss, TopFloor,
                     BossHp.ExpectedLevel(TopFloor), TierForLevel(BossHp.ExpectedLevel(TopFloor)));
                 var mid = FightProbe(party, boss, 25,
@@ -201,6 +205,70 @@ namespace AshesToStars
             : level >= 20 ? AdvancementTier.First
             : AdvancementTier.Basic;
 
+        /// <summary>QA_NO_G3_GEAR=1이면 장비·합성을 안 심어 옛 베어 로스터가 된다.</summary>
+        public static bool G3GearBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoG3Gear);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
+        /// G3 권장 파티 픽스처. 레벨·전직은 항상 심고, 기본직이 아니면 실제 장비·합성 경로를 심는다.
+        /// 가짜 배율을 SortieCombatant에 넣지 않는다 — Equipment.TryEquip과 AbsorbedBoons만 쓴다.
+        /// </summary>
+        public static void SeedRecommendedRoster(int level, AdvancementTier adv)
+        {
+            LifeSystem.ResetAll();
+            foreach (string job in LifeSystem.BasicJobs)
+            {
+                var c = LifeSystem.AddBasicRecruit(job);
+                if (c == null) continue;
+                c.Level = level;
+                c.Advancement = adv;
+                if (!G3GearBlocked && adv != AdvancementTier.Basic)
+                    PlantRecommendedLoadout(c);
+            }
+            LifeSystem.PersistRoster();
+            int n = LifeSystem.GetCharacters().Count;
+            int first = Mathf.Max(0, n - LifeSystem.BasicJobs.Length);
+            PartyState.SetSlotsForTest(first, first + 1, first + 2, first + 3, first + 4);
+        }
+
+        /// <summary>
+        /// 권장 전투력이 흡수하는 칸 — 보스 드랍 등급 장비 6부위 + 역할 계열 합성 패시브.
+        /// 배율은 Equipment.HpMulOf·Fusion.CombatOf가 계산한다.
+        /// </summary>
+        static void PlantRecommendedLoadout(CharacterRecord character)
+        {
+            if (character == null) return;
+            foreach (var rec in Equipment.Recipes)
+            {
+                if (rec.Slot == EquipSlot.Weapon)
+                {
+                    var probe = new GearItem { Slot = rec.Slot, RecipeId = rec.Id };
+                    if (!EquipJob.CanWear(character, probe)) continue;
+                }
+                var gear = Equipment.TryGrantDrop(rec.Id, GearDrop.BossGrade);
+                if (gear == null) continue;
+                Equipment.TryEquip(character, gear.Id);
+            }
+
+            BoonId[] want = Fusion.RoleFamilyOf(character.Job) switch
+            {
+                "Tank" => new[] { BoonId.강골, BoonId.방벽 },
+                "Dps" => new[] { BoonId.예리함, BoonId.집중, BoonId.분노 },
+                "Healer" => new[] { BoonId.치유의손, BoonId.강골 },
+                "Buffer" => new[] { BoonId.숙련, BoonId.발놀림 },
+                _ => new[] { BoonId.예리함 },
+            };
+            Fusion.ClearAbsorbed(character);
+            for (int i = 0; i < want.Length && character.AbsorbedBoons.Count < Fusion.SlotCap; i++)
+                character.AbsorbedBoons.Add((int)want[i]);
+        }
+
         struct DpsProbe
         {
             public int Floor;
@@ -232,7 +300,7 @@ namespace AshesToStars
 
         /// <summary>
         /// G3 실측 — 실판 시뮬(<see cref="W3Party.Step"/>)로 그 층 보스를 때려 실DPS를 뽑는다.
-        /// 스탯은 전부 런타임 경로에서 온다: 로스터 레벨→<c>ApplyGameParty</c>(LevelStatMultiplier),
+        /// 스탯은 전부 런타임 경로에서 온다: 로스터 레벨·장비·합성→<c>ApplyGameParty</c>,
         /// 보스 HP→<c>BossBattle.Begin</c>, 피해→<c>TickParty·DamageMob</c>. 여기서 공식을 다시 쓰지 않는다.
         /// </summary>
         static DpsProbe FightProbe(global::W3Party party, BossBattle boss, int floor, int level, AdvancementTier adv)
@@ -242,17 +310,9 @@ namespace AshesToStars
             float targetSec = RaidScale.TargetSeconds(floor);
             if (targetSec <= 0f) targetSec = RaidScale.TimeForFloor(floor);
 
-            // 편성 로스터를 기대 레벨·전직으로 심는다 — NextStyle의 실제 스탯 경로를 태우기 위해서다.
+            // 편성 로스터를 기대 레벨·전직·장비·합성으로 심는다 — NextStyle의 실제 스탯 경로.
             // EnsureLoaded가 폴백 기본 5인을 채울 수 있으므로 슬롯은 **내가 넣은 다섯**을 정확히 가린다.
-            LifeSystem.ResetAll();
-            foreach (string job in LifeSystem.BasicJobs)
-            {
-                var c = LifeSystem.AddBasicRecruit(job);
-                if (c != null) { c.Level = level; c.Advancement = adv; }
-            }
-            int n = LifeSystem.GetCharacters().Count;
-            int first = Mathf.Max(0, n - LifeSystem.BasicJobs.Length);
-            PartyState.SetSlotsForTest(first, first + 1, first + 2, first + 3, first + 4);
+            SeedRecommendedRoster(level, adv);
             party.ApplyGameParty();
 
             boss.Begin(floor, 1, targetSec);

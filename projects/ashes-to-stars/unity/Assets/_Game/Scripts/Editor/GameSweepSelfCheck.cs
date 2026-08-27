@@ -225,6 +225,7 @@ namespace AshesToStars
                 new Entry { Name = "StyleToggle", Run = StyleToggleSelfCheck.Run },
                 new Entry { Name = "TitlePlayerCopy", Run = TitlePlayerCopySelfCheck.Run },
                 new Entry { Name = "TokenPrice", Run = TokenPriceSelfCheck.Run },
+                new Entry { Name = "TowerClimbG3Fixture", Run = TowerClimbG3FixtureSelfCheck.Run },
                 new Entry { Name = "TowerDockCap", Run = TowerDockCapSelfCheck.Run },
                 new Entry { Name = "TowerEnding", Run = TowerEndingSelfCheck.Run },
                 new Entry { Name = "TowerHubCap", Run = TowerHubCapSelfCheck.Run },

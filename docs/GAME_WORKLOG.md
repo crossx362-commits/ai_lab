@@ -27,6 +27,25 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — G3 권장 파티 픽스처에 장비·합성 CombatMuls (Grok)
+
+BossHp 권장 전투력은 장비·합성·가호를 흡수하는데 G3 픽스처는 베어 로스터라
+정의가 어긋났다(첫 실측 0 vs 필요 3076). `SeedRecommendedRoster`가 기대 레벨·전직
+위에 실제 `Equipment.TryGrantDrop`·`TryEquip`과 `AbsorbedBoons`→`Fusion.CombatOf`를 심는다.
+가짜 배율은 출전 계약에 넣지 않는다. `QA_NO_G3_GEAR=1`이면 옛 베어 로스터.
+약한 파티(Lv1 기본직)는 환경 없이도 베어. W3Party 전투 로직·통과 막대·밸런스 표 무접촉.
+
+`TowerClimbG3FixtureSelfCheck` PASS 28/28 (`results/tower_climb_g3_fixture_selfcheck.log`).
+장비 HpMulOf 1.753 · 합성 예리함 Atk 1.20 · 권장 전투 HP 2358 vs 베어 1287.
+unity_meas batch 6000.5.6f1 exit 0.
+
+G3 재판정 **FAIL**(통과 막대 유지, 수치 조율 없음):
+- 50층 권장: 실측 0 vs 필요 3076 · 전멸
+- 25층 권장: 실측 0 vs 필요 542 · 전멸
+- 약한 파티 네거티브: PASS(실측 0, 게이트 미통과)
+JSON `output/qa/ashes-to-stars/curve/tower_climb_50.json` (09:15 KST).
+측정 로그 `results/tower_climb_50_measure.log`.
+
 ## 완료 (2026-08-27) — 필드 전투 요약에 정예 드랍 줄 노출 (Grok)
 
 던전 노드 통과(~474)는 `EliteDrop.LastLine`이 있으면 `EliteDrop.Line()`을 붙이는데
