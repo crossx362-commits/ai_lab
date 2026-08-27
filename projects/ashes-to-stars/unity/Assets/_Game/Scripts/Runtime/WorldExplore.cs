@@ -35,7 +35,6 @@ namespace AshesToStars
         }
 
         static bool _qaSeeded;
-        static Texture2D _disc;
 
         /// <summary>SelfCheck가 종족 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
         public static float ForceMul;
@@ -200,8 +199,10 @@ namespace AshesToStars
             if (!UiAtlas.DrawSliced(field, "panel", 8f, new Color(1f, 1f, 1f, 0.88f)))
                 UiAtlas.Draw(field, "panel", new Color(1f, 1f, 1f, 0.88f));
 
-            GUI.color = new Color(0.40f, 0.62f, 1f, 0.32f);
-            GUI.DrawTexture(new Rect(c.x - rPx, c.y - rPx, rPx * 2f, rPx * 2f), Disc());
+            var disc = new Rect(c.x - rPx, c.y - rPx, rPx * 2f, rPx * 2f);
+            var discTint = new Color(0.40f, 0.62f, 1f, 0.32f);
+            if (!UiAtlas.DrawFit(disc, "panel", discTint))
+                UiAtlas.DrawSliced(disc, "panel", 8f, discTint);
 
             float home = Mathf.Clamp(WorldStar.SizePx(floor) * 0.42f, 18f, 36f);
             GUI.color = Color.white;
@@ -240,32 +241,6 @@ namespace AshesToStars
             if (string.IsNullOrEmpty(cap)) return;
             var head = new Rect(field.x + 8f, field.y + 4f, field.width - 16f, 18f);
             UiPages.LabelFit(head, cap, capStyle);
-        }
-
-        static Texture2D Disc()
-        {
-            if (_disc != null) return _disc;
-            const int n = 64;
-            _disc = new Texture2D(n, n, TextureFormat.RGBA32, false)
-            {
-                filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Clamp,
-                hideFlags = HideFlags.HideAndDontSave
-            };
-            var px = new Color32[n * n];
-            float mid = (n - 1) * 0.5f;
-            for (int y = 0; y < n; y++)
-            for (int x = 0; x < n; x++)
-            {
-                float dx = x - mid, dy = y - mid;
-                float d = Mathf.Sqrt(dx * dx + dy * dy) / (mid + 0.01f);
-                float a = d >= 1f ? 0f : d <= 0.82f ? 1f : (1f - d) / 0.18f;
-                byte b = (byte)Mathf.Clamp(Mathf.RoundToInt(a * 255f), 0, 255);
-                px[y * n + x] = new Color32(255, 255, 255, b);
-            }
-            _disc.SetPixels32(px);
-            _disc.Apply(false, true);
-            return _disc;
         }
 
         static GUIStyle HubCap(GUIStyle hub)

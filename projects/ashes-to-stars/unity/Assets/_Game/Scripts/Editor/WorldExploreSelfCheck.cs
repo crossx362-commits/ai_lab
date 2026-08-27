@@ -206,6 +206,10 @@ namespace AshesToStars
             Check(expSrc.IndexOf("DrawSliced(field, \"panel\"", StringComparison.Ordinal) >= 0
                   && expSrc.IndexOf("whiteTexture", StringComparison.Ordinal) < 0,
                 "탐험 필드 배경은 아틀라스 panel이다");
+            Check(expSrc.IndexOf("DrawFit(disc, \"panel\"", StringComparison.Ordinal) >= 0
+                  && expSrc.IndexOf("static Texture2D Disc", StringComparison.Ordinal) < 0
+                  && expSrc.IndexOf("GUI.DrawTexture", StringComparison.Ordinal) < 0,
+                "탐험 반경은 아틀라스 panel이다");
             Check(dockSrc.Contains("WorldExplore.Caption"),
                 "도크가 Caption을 읽는다");
             Check(raceSrc.Contains("탐험범위배율"),
