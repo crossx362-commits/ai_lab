@@ -144,7 +144,8 @@ namespace AshesToStars
                 float dockTop = WorldMapHud.Dock(r).y;
                 var field = new Rect(after.x, after.y, after.width,
                     Mathf.Max(0f, dockTop - after.y));
-                WorldExplore.Draw(field);
+                Styles();
+                WorldExplore.Draw(field, _panel);
             }
 
             var cards = WorldMapHud.Cards(r);

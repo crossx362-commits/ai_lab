@@ -36,7 +36,6 @@ namespace AshesToStars
 
         static bool _qaSeeded;
         static Texture2D _disc;
-        static GUIStyle _cap;
 
         /// <summary>SelfCheck가 종족 배율을 고정할 때만. 0이면 RaceDef·계정 종족을 본다.</summary>
         public static float ForceMul;
@@ -183,7 +182,7 @@ namespace AshesToStars
             return $"탐험 {RevealedCount(floor)}/{Neighbors().Length}";
         }
 
-        public static void Draw(Rect field)
+        public static void Draw(Rect field, GUIStyle hubLabel)
         {
             if (Blocked) return;
             if (field.width < 48f || field.height < 48f) return;
@@ -209,7 +208,7 @@ namespace AshesToStars
             UiAtlas.DrawFit(new Rect(c.x - home * 0.5f, c.y - home * 0.5f, home, home),
                 "worldmap");
 
-            CapStyle();
+            var capStyle = HubCap(hubLabel);
             var stars = Neighbors();
             for (int i = 0; i < stars.Length; i++)
             {
@@ -233,14 +232,14 @@ namespace AshesToStars
                         UiAtlas.Draw(lab, "panel", new Color(0.80f, 0.88f, 1f, 0.82f));
                     lab = new Rect(lab.x + 2f, lab.y + 2f, lab.width - 4f, lab.height - 4f);
                 }
-                UiPages.LabelFit(lab, stars[i].Name, _cap);
+                UiPages.LabelFit(lab, stars[i].Name, capStyle);
             }
 
             GUI.color = prev;
             string cap = FieldCaption(floor);
             if (string.IsNullOrEmpty(cap)) return;
             var head = new Rect(field.x + 8f, field.y + 4f, field.width - 16f, 18f);
-            UiPages.LabelFit(head, cap, _cap);
+            UiPages.LabelFit(head, cap, capStyle);
         }
 
         static Texture2D Disc()
@@ -269,17 +268,16 @@ namespace AshesToStars
             return _disc;
         }
 
-        static void CapStyle()
+        static GUIStyle HubCap(GUIStyle hub)
         {
-            if (_cap != null) return;
-            _cap = new GUIStyle(GUI.skin.label)
+            var s = new GUIStyle(hub != null ? hub : GUIStyle.none)
             {
                 fontSize = 12,
                 alignment = TextAnchor.MiddleCenter,
                 clipping = TextClipping.Clip,
                 wordWrap = false
             };
-            _cap.normal.textColor = new Color(0.82f, 0.90f, 1f, 0.95f);
+            return s;
         }
 
         public static void SeedQaIfRequested()
