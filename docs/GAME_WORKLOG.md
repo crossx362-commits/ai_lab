@@ -27,6 +27,17 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — zip 실로드 검사 — Resources.Load/unzip null 커밋 전 차단 (Grok)
+
+회의 20260827-081437 보류 #5 (png 실로드 `d30a135c` 후속). 런타임 zip 파이프라인은
+아직 없다(Assets 아래 .zip 0, C# ZipFile/Load .zip 0). 검사기는 미래 반입을 막는다:
+C# 리터럴·`$"..."` 보간에서 `.zip` 경로를 뽑고, Resources/StreamingAssets 아래
+파일이 없거나 unzip 목록이 비면 커밋 전 실패. 커밋 가드는 Assets cs/zip 또는
+검사기 스테이징 때 `--zip-load` 를 돌린다. `QA_NO_ZIP_LOAD=1` 이면 건너뛴다.
+네거티브: `qa_missing_zip` (파일 없음, Resources 에 가짜 zip 커밋 안 함).
+
+`python3 game_asset_names.py --zip-self-test` PASS (`results/zip_load_selfcheck.log`).
+
 ## 완료 (2026-08-27) — SrcNoComments Editor 공용 — 주석 옛 문자열 FALSE-FAIL 차단 (Grok)
 
 회의 20260827-081437 채택 #4. 소스 계약 SelfCheck가 File.ReadAllText 뒤 Contains로

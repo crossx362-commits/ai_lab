@@ -137,6 +137,15 @@ else
   FAIL=$((FAIL + 1))
 fi
 
+# 9) zip 실로드 훅 (회의 20260827-081437 보류 #5)
+if grep -q -- '--zip-load' "$GUARD" && grep -q 'QA_NO_ZIP_LOAD' "$GUARD"; then
+  echo "ok   - zip 실로드 훅이 commit_guard 에 연결됨"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL - zip 실로드 훅이 commit_guard 에 없다"
+  FAIL=$((FAIL + 1))
+fi
+
 echo "----------------------------------------"
 echo "통과 ${PASS} · 실패 ${FAIL}"
 [ "$FAIL" -eq 0 ]

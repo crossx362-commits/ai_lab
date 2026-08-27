@@ -21,10 +21,12 @@
 3. **잡동사니** — 생성 폴더에 자산이 아닌 것이 섞였다 (개수 대조를 망친다)
 4. **미사용** — Resources에 있는데 코드가 안 읽는다 (빌드에 실리고 검사기는 침묵했다)
 
-사용: `python3 game_asset_names.py [--strict] [--png-load] [--self-test]`
-  --strict    문제 발견 시 exit 1
-  --png-load  보간 `$"..."` 접두 PNG 실로드만 (커밋 가드)
-  --self-test 접두 추출 + 네거티브(없는 보간 로드) + live
+사용: `python3 game_asset_names.py [--strict] [--png-load] [--zip-load] [--self-test] [--zip-self-test]`
+  --strict        문제 발견 시 exit 1
+  --png-load      보간 `$"..."` 접두 PNG 실로드만 (커밋 가드)
+  --zip-load      리터럴·보간 `.zip` 실로드/unzip만 (커밋 가드)
+  --self-test     접두 추출 + 네거티브(없는 보간 로드) + live
+  --zip-self-test zip 접두 + 네거티브(없는 zip·빈 unzip) + live
 """
 
 from __future__ import annotations
@@ -34,6 +36,7 @@ import filecmp
 import os
 import re
 import sys
+import zipfile
 from pathlib import Path
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -502,6 +505,241 @@ def png_load_problems(
     return out
 
 
+
+# zip 실로드 (회의 20260827-081437 보류 #5, png `d30a135c` 후속)
+# 런타임 zip 파이프라인은 아직 없다. C# 의 `.zip` 리터럴·보간만 뽑아
+# Resources/StreamingAssets 존재 + unzip 목록 비어있지 않음을 본다.
+_ZIP_LOAD = re.compile(
+    r'Resources\.Load(?:<(?P<type>[^>]+)>)?\s*\(\s*(?:\$)?"(?P<raw>[^"]*)"',
+    re.DOTALL | re.IGNORECASE,
+)
+_ZIP_QUOTED = re.compile(r'(?:\$)?"(?P<raw>[^"]+\.zip)"', re.IGNORECASE)
+_ZIP_API = re.compile(
+    r'(?:ZipFile|ZipArchive)\.\w+\s*\(\s*(?:\$)?"(?P<raw>[^"]*)"',
+    re.IGNORECASE,
+)
+
+
+def _is_zip_raw(raw: str) -> bool:
+    return ".zip" in raw.replace("\\", "/").lower()
+
+
+def _zip_stem_affix(prefix: str, suffix: str) -> tuple[str, str]:
+    """보간 접미·접두의 `.zip` 은 확장자라 stem 대조에서 뺀다."""
+    pre = prefix.replace("\\", "/")
+    suf = suffix.replace("\\", "/")
+    if pre.lower().endswith(".zip"):
+        pre = pre[:-4]
+    if suf.lower().endswith(".zip"):
+        suf = suf[:-4]
+    return pre, suf
+
+
+def _zip_roots(res: Path | None = None) -> list[Path]:
+    if res is not None:
+        return [res] if res.is_dir() else []
+    out: list[Path] = []
+    if RES.is_dir():
+        out.append(RES)
+    sa = ASSETS / "StreamingAssets"
+    if sa.is_dir():
+        out.append(sa)
+    return out
+
+
+def zip_resource_patterns(
+    assets: Path | None = None, extra_src: str = "",
+) -> list[dict]:
+    """소스에서 리터럴·보간 `.zip` 경로를 뽑는다.
+
+    런타임 zip 파이프라인이 없어도, 미래에 스테이징된 Load 경로가
+    빠지면 커밋을 막기 위해 검사한다. png 실로드와 같은 parse_interp 접두.
+    """
+    root = assets or ASSETS
+    blobs: list[str] = [extra_src] if extra_src else []
+    if root.is_dir():
+        for p in root.rglob("*.cs"):
+            blobs.append(_src(p))
+    out: list[dict] = []
+    seen: set[tuple] = set()
+    for src in blobs:
+        found: list[tuple[str, str]] = []
+        for m in _ZIP_LOAD.finditer(src):
+            raw = m.group("raw")
+            if _is_zip_raw(raw):
+                found.append((raw, (m.group("type") or "").strip()))
+        for m in _ZIP_API.finditer(src):
+            raw = m.group("raw")
+            if _is_zip_raw(raw):
+                found.append((raw, ""))
+        for m in _ZIP_QUOTED.finditer(src):
+            found.append((m.group("raw"), ""))
+        for raw, lt in found:
+            prefix, suffix = parse_interp(raw)
+            key = (prefix, suffix, raw)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({
+                "raw": raw, "prefix": prefix, "suffix": suffix, "load_type": lt,
+            })
+    return out
+
+
+def match_interp_zips(
+    prefix: str, suffix: str, res: Path | None = None,
+) -> list[str]:
+    """검색 루트 아래 접두·접미에 맞는 zip 상대경로."""
+    pre, suf = _zip_stem_affix(prefix, suffix)
+    pre = pre.lower()
+    suf = suf.lower()
+    hits: list[str] = []
+    for root in _zip_roots(res):
+        for p in root.rglob("*.zip"):
+            rel = p.relative_to(root).as_posix()
+            stem = rel[:-4] if rel.lower().endswith(".zip") else rel
+            low = stem.lower()
+            if low.startswith(pre) and low.endswith(suf):
+                hits.append(rel)
+    return sorted(hits)
+
+
+def _zip_null_reason(zip_rel: str, root: Path) -> str | None:
+    path = root / zip_rel
+    if not path.is_file():
+        return "파일 없음"
+    try:
+        with zipfile.ZipFile(path) as z:
+            names = [n for n in z.namelist() if n and not n.endswith("/")]
+    except zipfile.BadZipFile:
+        return "깨진 zip(unzip null)"
+    except OSError as e:
+        return f"unzip 실패({e})"
+    if not names:
+        return "unzip 목록 비어 있음"
+    return None
+
+
+def zip_load_problems(
+    res: Path | None = None,
+    assets: Path | None = None,
+    extra_src: str = "",
+) -> list[str]:
+    """C# zip 경로가 없거나 unzip 목록이 비면 보고.
+
+    파이썬은 Unity `Resources.Load` 를 못 부르니 파일 존재 + zipfile namelist
+    로 실로드/unzip null 을 근사한다.
+    `QA_NO_ZIP_LOAD=1` 이면 커밋 가드·live 검사를 건너뛴다(네거티브 픽스처·응급).
+    extra_src 네거티브는 env 와 무관하게 항상 본다.
+    """
+    skip_live = os.environ.get("QA_NO_ZIP_LOAD") == "1" and not extra_src
+    if skip_live:
+        return []
+    roots = _zip_roots(res)
+    out: list[str] = []
+    pats = zip_resource_patterns(assets, extra_src=extra_src)
+    for pat in pats:
+        hits: list[tuple[str, Path]] = []
+        for root in roots:
+            for rel in match_interp_zips(pat["prefix"], pat["suffix"], root):
+                hits.append((rel, root))
+        if not hits:
+            out.append(
+                f"zip 로드 누락: $\"{pat['raw']}\" "
+                f"(접두 {pat['prefix']} 접미 {pat['suffix']}) "
+                "→ Resources.Load/unzip null"
+            )
+            continue
+        for rel, root in hits:
+            why = _zip_null_reason(rel, root)
+            if why:
+                out.append(f"zip unzip null: {rel} — {why}")
+    seen_rel: set[str] = set()
+    for root in roots:
+        for p in root.rglob("*.zip"):
+            rel = p.relative_to(root).as_posix()
+            if rel in seen_rel:
+                continue
+            seen_rel.add(rel)
+            why = _zip_null_reason(rel, root)
+            if why:
+                msg = f"zip unzip null: {rel} — {why}"
+                if msg not in out:
+                    out.append(msg)
+    return out
+
+
+def zip_self_test() -> tuple[bool, str]:
+    """접두 추출 + temp 실파일 + 네거티브(없는 zip) + 빈 unzip + live."""
+    import tempfile as _tf
+
+    lines: list[str] = []
+    ok = True
+
+    cases = [
+        ("packs/{id}.zip", "packs/", ".zip"),
+        ("FX/pack_{i}.zip", "FX/pack_", ".zip"),
+        ("data.zip", "data.zip", ""),
+    ]
+    for raw, wp, ws in cases:
+        p, s = parse_interp(raw)
+        if (p, s) != (wp, ws):
+            ok = False
+            lines.append(
+                f"FAIL extract $\"{raw}\" → prefix={p!r} suffix={s!r} "
+                f"(want {wp!r},{ws!r})"
+            )
+        else:
+            lines.append(f"ok   extract $\"{raw}\" → prefix={p!r} suffix={s!r}")
+
+    with _tf.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "packs").mkdir()
+        good = root / "packs" / "data_0.zip"
+        with zipfile.ZipFile(good, "w") as z:
+            z.writestr("ok.txt", "x")
+        hits = match_interp_zips("packs/data_", "", root)
+        if hits != ["packs/data_0.zip"]:
+            ok = False
+            lines.append(f"FAIL temp prefix glob hits={hits}")
+        else:
+            lines.append(f"ok   temp packs/data_ → {hits}")
+        empty = root / "packs" / "qa_empty.zip"
+        with zipfile.ZipFile(empty, "w"):
+            pass
+        extra_empty = 'Resources.Load<TextAsset>("packs/qa_empty.zip");\n'
+        msgs_e = zip_load_problems(res=root, extra_src=extra_empty, assets=root)
+        blob_e = " ".join(msgs_e)
+        if "qa_empty" not in blob_e or "비어" not in blob_e:
+            ok = False
+            lines.append(f"FAIL 빈 unzip 미탐지: {msgs_e}")
+        else:
+            lines.append("ok   네거티브 빈 unzip qa_empty 탐지")
+
+    extra = 'Resources.Load<TextAsset>($"packs/qa_missing_zip_{i}.zip");\n'
+    msgs = zip_load_problems(extra_src=extra)
+    blob = " ".join(msgs)
+    if "qa_missing_zip" not in blob:
+        ok = False
+        lines.append(f"FAIL 네거티브 qa_missing_zip 미탐지: {msgs}")
+    else:
+        lines.append(
+            'ok   네거티브 $"packs/qa_missing_zip_{i}.zip" 탐지 (파일 없음 → null)'
+        )
+
+    live = zip_load_problems()
+    if live:
+        ok = False
+        lines.append("FAIL live zip 실로드:\n  " + "\n  ".join(live))
+    else:
+        n = len(zip_resource_patterns())
+        lines.append(
+            f"ok   live zip Resources.Load/unzip {n}건 전부 존재·비어있지 않음"
+        )
+
+    return ok, "\n".join(lines)
+
+
 def self_test() -> tuple[bool, str]:
     """접두 추출 + live 실파일 + 네거티브(없는 보간 로드가 잡히는지)."""
     lines: list[str] = []
@@ -572,6 +810,14 @@ def main() -> None:
         "--self-test", action="store_true",
         help="접두 추출 + 네거티브(없는 보간 로드) + live 실로드",
     )
+    ap.add_argument(
+        "--zip-load", action="store_true",
+        help="리터럴·보간 zip 실로드/unzip만 검사 (커밋 가드용)",
+    )
+    ap.add_argument(
+        "--zip-self-test", action="store_true",
+        help="zip 접두 추출 + 네거티브(없는 zip·빈 unzip) + live",
+    )
     args = ap.parse_args()
 
     if args.self_test:
@@ -588,6 +834,25 @@ def main() -> None:
         if not probs:
             n = len(interpolated_resource_patterns())
             print(f"✅ png 실로드 이상 없음 (보간 {n}건)")
+            return
+        for p in probs:
+            print(f"⚠️ {p}")
+        sys.exit(1)
+
+    if args.zip_self_test:
+        ok, note = zip_self_test()
+        print(note)
+        if ok:
+            print("판정: PASS — zip 접두 추출 + 실로드/unzip (네거티브 qa_missing_zip 탐지)")
+            return
+        print("판정: FAIL — zip 실로드 검사가 네거티브/live 를 통과하지 못했다")
+        sys.exit(1)
+
+    if args.zip_load:
+        probs = zip_load_problems()
+        if not probs:
+            n = len(zip_resource_patterns())
+            print(f"✅ zip 실로드 이상 없음 (경로 {n}건)")
             return
         for p in probs:
             print(f"⚠️ {p}")
@@ -646,6 +911,7 @@ def main() -> None:
     problems += art_trap_problems()
     problems += unused_resource_problems()
     problems += png_load_problems()
+    problems += zip_load_problems()
 
     if not problems:
         print("✅ 네이밍·반영 이상 없음")

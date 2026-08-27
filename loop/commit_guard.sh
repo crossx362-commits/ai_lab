@@ -107,6 +107,28 @@ if [ "${QA_NO_PNG_LOAD:-0}" != "1" ]; then
   fi
 fi
 
+# --- zip 실로드 (회의 20260827-081437 보류 #5, png `d30a135c` 후속) ----------
+# 리터럴·보간 `.zip` 경로가 Resources/StreamingAssets 에 없거나 unzip 목록이
+# 비면 Resources.Load / unzip 이 null 이다. 경로·내용 가드만으로는 안 잡힌다.
+# QA_NO_ZIP_LOAD=1 이면 건너뛴다(네거티브 픽스처·응급).
+if [ "${QA_NO_ZIP_LOAD:-0}" != "1" ]; then
+  ROOT="$(git rev-parse --show-toplevel)"
+  ZIP_TOOL=""
+  for f in "$ROOT"/projects/ai-team/skills/*/tools/game_asset_names.py; do
+    if [ -f "$f" ]; then ZIP_TOOL="$f"; break; fi
+  done
+  if [ -n "$ZIP_TOOL" ]; then
+    if printf '%s\n' "$ACTUAL" | grep -Eq \
+      'projects/ashes-to-stars/unity/Assets/.*\.(cs|zip)$|game_asset_names\.py$'; then
+      if ! python3 "$ZIP_TOOL" --zip-load; then
+        echo "[commit_guard] 중단: zip 실로드 검사 실패 — Resources.Load/unzip 가 null 이 될 경로가 있다" >&2
+        echo "[commit_guard]       (건너뛰려면 QA_NO_ZIP_LOAD=1 — 네거티브 픽스처·응급만)" >&2
+        exit 1
+      fi
+    fi
+  fi
+fi
+
 COUNT="$(printf '%s\n' "$ACTUAL" | wc -l | tr -d ' ')"
 echo "[commit_guard] PASS: 스테이지 ${COUNT}건 전부 허용 경로와 일치 · 내용도 작업 트리와 동일"
 exit 0
