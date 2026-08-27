@@ -17,6 +17,7 @@
 #   1) HEAD로 임시 인덱스를 만들고 지정 경로만 담는다(다른 세션 스테이징과 격리)
 #   2) commit_guard로 경로·내용 일치를 확인한다(낡은 스냅·혼입 차단)
 #   3) 커밋한다(메시지는 stdin — argv 개행 잘림 사고를 피한다)
+#   3b) 2단: HEAD에서 방금 경로를 재추출해 블롭=HEAD·커밋 경로=허용 목록을 확인
 #   4) 공유 인덱스에서 그 경로만 다시 add해 「낡은 스냅」이 남지 않게 한다
 #      (`git reset`은 남의 스테이징까지 날리므로 절대 쓰지 않는다)
 # 종료 코드: 0 커밋됨 · 1 가드 차단(커밋 안 함) · 2 사용법 오류
@@ -74,6 +75,17 @@ if ! printf '%s\n' "$MSG" | git commit -q -F -; then
   exit 1
 fi
 HASH="$(git rev-parse --short HEAD)"
+
+# 2단 검증 (회의 20260827-081437 채택 #2): 커밋이 HEAD에 남긴 블롭만 믿고
+# temp-index를 HEAD에서 재추출한다. 실패해도 커밋은 이미 됐으니 공유 인덱스는 정리한다.
+# shellcheck disable=SC2086
+if ! bash "$HERE/commit_guard.sh" --from-head $STAGED; then
+  echo "[safe_commit] 2단 가드(HEAD 재추출)가 막았다 — 커밋 $HASH 은 남겼다. 공유 인덱스는 정리한다." >&2
+  unset GIT_INDEX_FILE
+  cleanup
+  git add -A -- "${PATHS[@]}" 2>/dev/null || true
+  exit 1
+fi
 
 # 공유 인덱스 정리 — 이걸 빼먹으면 다음 맨몸 커밋이 방금 커밋을 되돌린다(2026-08-26 사고).
 unset GIT_INDEX_FILE

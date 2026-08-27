@@ -404,6 +404,12 @@ while true; do
 
   echo "바퀴 종료: $LAP_ID code=$RESULT" | tee -a "$MAIN_LOG" "$LAP_LOG"
 
+  # 회의 20260827-081437 채택 #2 — 랩 종료 전 커밋 가드 재실행.
+  # 빈 인덱스는 통과, 타 세션 스테이징은 존중, 낡은 스냅만 차단.
+  if ! (cd "$TARGET_REPO" && bash "$DEPLOY_ROOT/commit_guard.sh" --lap-end) >> "$LAP_LOG" 2>&1; then
+    echo "랩 종료 가드 실패 — 공유 인덱스에 낡은 스냅. 다음 맨몸 커밋이 되돌릴 수 있다" | tee -a "$MAIN_LOG" "$LAP_LOG"
+  fi
+
   EXHAUSTED_THIS_LAP=0
   if [ "$AUTO_SWITCH" = "1" ] && { [ "$AGENT" = "claude" ] || [ "$AGENT" = "grok" ]; } \
       && detect_exhaustion_in_log "$LAP_LOG"; then

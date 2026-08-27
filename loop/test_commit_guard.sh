@@ -146,6 +146,83 @@ else
   FAIL=$((FAIL + 1))
 fi
 
+# 10) 2단 검증 — HEAD 재추출 + 랩 종료 재실행 (회의 20260827-081437 채택 #2)
+R="$TMPROOT/r10"; mk_repo "$R"
+expect 2 "--from-head 경로 없으면 사용법 오류(2)" guard_in "$R" --from-head
+
+echo mine > "$R/docs/mine.md"
+export GIT_INDEX_FILE="$R/.git/tmpidx"
+git -C "$R" read-tree HEAD
+git -C "$R" add docs/mine.md
+git -C "$R" commit -qm mine
+expect 0 "2단: temp-index 커밋 뒤 HEAD 재추출 통과" guard_in "$R" --from-head docs/mine.md
+WRONG=$(printf 'wrong\n' | git -C "$R" hash-object -w --stdin)
+git -C "$R" update-index --add --cacheinfo "100644,$WRONG,docs/mine.md"
+expect 0 "2단: 인덱스 엉뚱한 블롭도 HEAD에서 재추출하면 통과" guard_in "$R" --from-head docs/mine.md
+GOT=$(git -C "$R" ls-files --stage -- docs/mine.md | awk '{print $2}')
+HEADB=$(git -C "$R" rev-parse HEAD:docs/mine.md)
+if [ "$GOT" = "$HEADB" ]; then
+  echo "ok   - 2단: 재추출 후 인덱스 블롭=HEAD"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL - 2단: 재추출 후 인덱스 블롭=HEAD (got $GOT want $HEADB)"
+  FAIL=$((FAIL + 1))
+fi
+unset GIT_INDEX_FILE
+
+R="$TMPROOT/r10b"; mk_repo "$R"
+echo a > "$R/docs/a.md"
+echo b > "$R/docs/b.md"
+git -C "$R" add docs/a.md docs/b.md
+git -C "$R" commit -qm both
+expect 1 "2단: 커밋에 허용 외 경로가 있으면 차단" guard_in "$R" --from-head docs/a.md
+output_has "2단 차단 시 혼입 커밋 경로를 지목" "docs/b.md" guard_in "$R" --from-head docs/a.md
+expect 1 "2단: 선언했지만 커밋에 없으면 차단" guard_in "$R" --from-head docs/a.md docs/b.md docs/c.md
+output_has "2단 차단 시 누락 커밋 경로를 지목" "docs/c.md" guard_in "$R" --from-head docs/a.md docs/b.md docs/c.md
+
+R="$TMPROOT/r10c"; mk_repo "$R"
+echo v1 > "$R/docs/mine.md"
+git -C "$R" add docs/mine.md
+git -C "$R" commit -qm v1
+echo v2 > "$R/docs/mine.md"
+expect 1 "2단: 작업 트리가 HEAD와 다르면 차단" guard_in "$R" --from-head docs/mine.md
+output_has "2단 차단 시 작업 트리≠HEAD를 지목" "작업 트리" guard_in "$R" --from-head docs/mine.md
+
+R="$TMPROOT/r10d"; mk_repo "$R"
+expect 0 "lap-end: 빈 인덱스는 통과" guard_in "$R" --lap-end
+echo fresh > "$R/docs/fresh.md"
+git -C "$R" add docs/fresh.md
+expect 0 "lap-end: 신선한 타 세션 스테이징은 통과" guard_in "$R" --lap-end
+git -C "$R" commit -qm fresh
+git -C "$R" update-index --cacheinfo "100644,$(printf 'old\n' | git -C "$R" hash-object -w --stdin),docs/fresh.md"
+expect 1 "lap-end: 낡은 스냅은 차단" guard_in "$R" --lap-end
+output_has "lap-end 차단 시 낡은 경로를 지목" "작업 트리와 다름" guard_in "$R" --lap-end
+
+R="$TMPROOT/r10e"; mk_repo "$R"
+echo gone > "$R/docs/gone.md"
+git -C "$R" add docs/gone.md
+git -C "$R" commit -qm addgone
+rm "$R/docs/gone.md"
+git -C "$R" add docs/gone.md
+git -C "$R" commit -qm delgone
+expect 0 "2단: 삭제 커밋도 HEAD 재추출 통과" guard_in "$R" --from-head docs/gone.md
+
+LOOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if grep -q -- '--lap-end' "$LOOP_DIR/loop.sh"; then
+  echo "ok   - loop.sh 랩 종료에 가드 재실행이 있다"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL - loop.sh 랩 종료에 --lap-end 가 없다"
+  FAIL=$((FAIL + 1))
+fi
+if grep -q -- '--from-head' "$LOOP_DIR/safe_commit.sh"; then
+  echo "ok   - safe_commit 이 커밋 뒤 --from-head 2단을 호출한다"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL - safe_commit 에 --from-head 가 없다"
+  FAIL=$((FAIL + 1))
+fi
+
 echo "----------------------------------------"
 echo "통과 ${PASS} · 실패 ${FAIL}"
 [ "$FAIL" -eq 0 ]

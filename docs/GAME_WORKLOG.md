@@ -27,6 +27,18 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — commit_guard 2단 검증 — 랩 종료 재실행·HEAD 재추출 (Grok)
+
+회의 20260827-081437 채택 #2. 커밋 전 허용 경로 검사(1단)에 더해, temp-index
+커밋 직후 `--from-head` 로 HEAD에서 경로를 재추출해 블롭=HEAD·커밋 경로=허용
+목록을 확인한다. `loop.sh` 랩 종료에 `--lap-end` 재실행(빈 인덱스 통과, 낡은
+스냅만 차단, 타 세션 스테이징 존중). `safe_commit.sh` 가 2단을 호출.
+
+`bash loop/test_commit_guard.sh` PASS 37/37
+(`projects/ashes-to-stars/results/commit_guard_two_stage.log`).
+기존 20 + 2단 신설 17(HEAD 재추출 통과·인덱스 복원·혼입/누락 커밋 차단·
+작업 트리≠HEAD·lap-end 빈/신선/낡은·삭제 커밋·loop.sh/safe_commit 훅).
+
 ## 완료 (2026-08-27) — 일일퀘·출석 문자열 0 SelfCheck — 숙제 없는 리텐션 시계 (Grok)
 
 GAME_DESIGN §1 숙제·일일입장 금지. Runtime UI cs를 SrcNoComments.Read로 스캔해
