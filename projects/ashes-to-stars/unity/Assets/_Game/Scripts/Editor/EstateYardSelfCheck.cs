@@ -78,6 +78,11 @@ namespace AshesToStars
             Check(estate.Contains("EstateYard.VillageRect"), "영지가 VillageRect를 읽는다");
             Check(estate.Contains("EstateYard.PropOf") || yardSrc.Contains("PropTex(PropOf"),
                 "마을이 집 프랍을 그린다");
+            int dn = yardSrc.IndexOf("static void DrawName", StringComparison.Ordinal);
+            string nameSrc = dn >= 0 ? yardSrc.Substring(dn, Math.Min(900, yardSrc.Length - dn)) : "";
+            Check(nameSrc.IndexOf("UiPages.LabelClip", StringComparison.Ordinal) >= 0
+                  && nameSrc.IndexOf("GUI.Label(tag", StringComparison.Ordinal) < 0,
+                "건물 이름표는 LabelClip이다");
             Check(estate.Contains("DrawVillage(r)") && estate.Contains("FillBlocked"),
                 "마을 탭이 본문을 채운다");
             Check(estate.Contains("EstateYard.SeedQaIfRequested"), "영지가 끌어 보기 시드를 읽는다");

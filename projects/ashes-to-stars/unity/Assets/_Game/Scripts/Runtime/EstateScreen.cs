@@ -268,6 +268,7 @@ namespace AshesToStars
             SeedRecallQaIfRequested();
             SeedCellClickQaIfRequested();
             SeedHubClickQaIfRequested();
+            SeedYardNameQaIfRequested();
             SeedDockClickQaIfRequested();
             SeedRowClickQaIfRequested();
             EstateStore.SeedQaIfRequested();
@@ -705,6 +706,24 @@ namespace AshesToStars
             _selX = EstateGrid.KeepX;
             _selY = EstateGrid.KeepY;
             if (raw == "1") OpenHub(EstateGrid.Cell.Keep);
+        }
+
+        void SeedYardNameQaIfRequested()
+        {
+            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_NAME");
+            if (raw != "keep" && raw != "mine") return;
+            _layoutQa = false;
+            _hubPage = 0;
+            if (raw == "keep")
+            {
+                _selX = EstateGrid.KeepX;
+                _selY = EstateGrid.KeepY;
+            }
+            else
+            {
+                _selX = EstateGrid.MineX;
+                _selY = EstateGrid.MineY;
+            }
         }
 
         void SeedArtScaffoldFrameQaIfRequested()

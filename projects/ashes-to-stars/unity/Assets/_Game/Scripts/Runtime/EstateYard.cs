@@ -666,8 +666,8 @@ namespace AshesToStars
                 fontStyle = FontStyle.Bold,
                 clipping = TextClipping.Clip,
             };
-            style.normal.textColor = new Color(1f, 0.94f, 0.72f, 1f);
-            GUI.Label(tag, name, style);
+            style.normal.textColor = new Color(0.95f, 0.79f, 0.42f, 1f);
+            UiPages.LabelClip(tag, name, style);
         }
 
         static bool InDiamond(Vector2 p, Rect tile)
