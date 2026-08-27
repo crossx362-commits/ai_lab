@@ -460,8 +460,11 @@ namespace AshesToStars
             var br = RowButtonRect(r, index);
             if (br.yMax > r.yMax) return false;              // 영역을 넘으면 그리지 않는다
 
+            var ev = Event.current;
+            bool hit = ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                && br.Contains(ev.mousePosition);
+            if (hit) ev.Use();
             DrawAtlasButton(br, label, iconKey: iconKey, leftPad: leftPad, rarity: rarity);
-            bool hit = GUI.Button(br, GUIContent.none, GUIStyle.none);
             if (!string.IsNullOrEmpty(desc))
                 UiPages.LabelClip(new Rect(br.xMax + 24, br.y + 8, r.width - RowBtnW - 24, RowHt - 12), desc, _h2);
             return hit;

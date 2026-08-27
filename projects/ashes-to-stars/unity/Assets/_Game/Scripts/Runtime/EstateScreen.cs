@@ -269,6 +269,7 @@ namespace AshesToStars
             SeedCellClickQaIfRequested();
             SeedHubClickQaIfRequested();
             SeedDockClickQaIfRequested();
+            SeedRowClickQaIfRequested();
             EstateStore.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();
             EstateBuildings.SeedQaIfRequested();
@@ -672,6 +673,15 @@ namespace AshesToStars
                 if (EstateGrid.TryPlace(x, y, EstateGrid.Cell.Wall))
                     return;
             }
+        }
+
+        void SeedRowClickQaIfRequested()
+        {
+            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_ROW");
+            if (raw != "0" && raw != "1") return;
+            _layoutQa = false;
+            _hubPage = 0;
+            _sub = raw == "0" ? Sub.본성 : Sub.없음;
         }
 
         void SeedDockClickQaIfRequested()
