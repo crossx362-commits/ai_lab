@@ -136,6 +136,9 @@ namespace AshesToStars
         /// <summary>누적 출전 초(§4). 전투·일정 사냥이 더한다. 옛 저장은 0.</summary>
         public long SortieSeconds { get; set; }
 
+        /// <summary>성장 시작 벽시계 Unix. V4 표본은 30분 가드. 0이면 미기록(옛 저장).</summary>
+        public long GrowthStartUnix { get; set; }
+
         /// <summary>환생 때 가져온 스킬 1개(§4). 없으면 직업 표 전체(옛 화면).</summary>
         public string KeptSkill { get; set; }
 
@@ -240,6 +243,7 @@ namespace AshesToStars
             IsRescue = false;
             SortieSeconds = 0;
             KeptSkill = "";
+            GrowthStartUnix = LifeSystem.NowUnix();
         }
     }
 
@@ -1021,6 +1025,7 @@ namespace AshesToStars
                 character.RecoveryEndTime = 0;
                 Memorial.Stamp(character);
                 Memorial.Open();
+                V4LoopLog.NotePermadeath(character);
                 Equipment.DestroyEquippedOn(character);
                 Sfx.Play(Sfx.Signal.LastLifeGone);   // §16-10 소멸은 별도 신호음
                 Debug.Log($"[목숨] {character.Name} 특수 직업 즉시 소멸(§3)");
@@ -1043,6 +1048,7 @@ namespace AshesToStars
                 character.DeathCount = cap;  // 상한 유지
                 Memorial.Stamp(character);
                 Memorial.Open();
+                V4LoopLog.NotePermadeath(character);
                 Equipment.DestroyEquippedOn(character);
                 Sfx.Play(Sfx.Signal.LastLifeGone);   // §16-10 소멸은 별도 신호음
                 Debug.Log($"[목숨] {character.Name}이(가) 삭제되었습니다. ({cap}회 사망)");
@@ -1149,6 +1155,7 @@ namespace AshesToStars
             var rescue = new CharacterRecord($"재건{n + 1}", "딜", 1) { IsRescue = true };
             _characters.Add(rescue);
             Save();
+            V4LoopLog.NoteRebuildOffer(rescue);
             Debug.Log($"[목숨] 긴급 재건 {rescue.Name} (딜 Lv1) — 생존 0명");
             return rescue;
         }

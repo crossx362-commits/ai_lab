@@ -27,6 +27,20 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — V4 루프 경계 로그 훅 (Grok)
+
+삭제 판정은 파티 카드 「삭제됨」Cap이 아니라 `LifeSystem`/`Memorial` 이벤트다.
+`V4LoopLog`가 `output/qa/ashes-to-stars/v4/session_<id>.log`에 jsonl로
+`session_id,build,t_utc,char_id,event,reason_enum`을 남긴다.
+event 다섯(`permadeath`·`rebuild_offer`·`rebuild_accept`·`rebuild_decline`·`session_end`),
+reason_enum 다섯(`조작 불명확`/`난이도`/`손실 분노`/`다시 키우기 지루함`/`기술 문제`).
+벽시계 30분 미만은 표본으로 안 남긴다(삭제 규칙은 그대로).
+`QA_NO_V4_LOOP_LOG`면 파일·새 줄 없음. 일시정지 오버레이·STATUS V4 PASS·W3Party 무접촉.
+
+`V4LoopBoundarySelfCheck` PASS 39/39 (`results/v4_loop_boundary_selfcheck.log`).
+표본 `output/qa/ashes-to-stars/v4/session_v4self_grown.log`.
+unity_meas batch 6000.5.6f1 exit 0.
+
 ## 완료 (2026-08-27) — AttachWithAwake Editor 공용 유틸 추출 (Grok)
 
 에디터 배치에서 AddComponent가 Awake를 안 불러 픽스처가 파일마다 Invoke("Awake")를

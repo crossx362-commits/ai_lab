@@ -231,6 +231,7 @@ namespace AshesToStars
                 new Entry { Name = "TowerEnding", Run = TowerEndingSelfCheck.Run },
                 new Entry { Name = "TowerHubCap", Run = TowerHubCapSelfCheck.Run },
                 new Entry { Name = "TowerPlayerCopy", Run = TowerPlayerCopySelfCheck.Run },
+                new Entry { Name = "V4LoopBoundary", Run = V4LoopBoundarySelfCheck.Run },
                 new Entry { Name = "VfxTestScreen", Run = VfxTestScreenSelfCheck.Run },
                 new Entry { Name = "WalletText", Run = WalletTextSelfCheck.Run },
                 new Entry { Name = "WorldMapDockCap", Run = WorldMapDockCapSelfCheck.Run },
