@@ -16,6 +16,9 @@ namespace AshesToStars
         const string SidYoung = "v4self_young";
         const string SidNo = "v4self_qano";
         const string SidEvents = "v4self_events";
+        const string SidRound = "v4self_round";
+        const string SidZero = "v4self_zero";
+        const string SidOld = "v4self_oldsave";
 
         static int _fail;
         static readonly StringBuilder _log = new StringBuilder();
@@ -73,6 +76,10 @@ namespace AshesToStars
                 "Memorial.Stamp가 permadeath를 건다");
             Check(life.IndexOf("GrowthStartUnix", StringComparison.Ordinal) >= 0,
                 "로스터가 성장 시작 벽시계를 갖는다");
+            Check(life.IndexOf("Append(c.GrowthStartUnix)", StringComparison.Ordinal) >= 0,
+                "StageRosterForSave가 GrowthStartUnix를 남긴다");
+            Check(life.IndexOf("p.Length > 17 ? SafeLong(p[17], 0) : 0", StringComparison.Ordinal) >= 0,
+                "옛 저장·0은 GrowthStartUnix를 Now로 안 채운다");
 
             // ── 30분 미만: 삭제는 되고 표본 로그는 없다 ──
             WipeSession(SidYoung);
@@ -218,6 +225,82 @@ namespace AshesToStars
                 "QA_NO 빈 세션은 파일을 안 만든다");
             Environment.SetEnvironmentVariable(V4LoopLog.EnvNo, null);
 
+            // ── 30분 경과 저장→로드: GrowthStartUnix 불변 · permadeath 1줄 ──
+            WipeSession(SidRound);
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            Memorial.ResetForTest();
+            V4LoopLog.ResetForTest();
+            LifeSystem.NowUnix = () => t0;
+            V4LoopLog.ForceSessionIdForTest(SidRound);
+            var rt = LifeSystem.GetCharacters()[0];
+            long grownStart = t0 - V4LoopLog.GrowthGuardSeconds;
+            rt.GrowthStartUnix = grownStart;
+            rt.DeathCount = 2;
+            LifeSystem.PersistRoster();
+            string rtId = rt.Id;
+            LifeSystem.ForgetInMemoryForTest();
+            LifeSystem.NowUnix = () => t0;
+            var rt2 = LifeSystem.GetCharacters()[0];
+            Check(rt2.Id == rtId, "왕복 후 같은 캐릭");
+            Check(rt2.GrowthStartUnix == grownStart,
+                $"왕복 후 GrowthStartUnix 불변 {rt2.GrowthStartUnix}");
+            Check(V4LoopLog.MeetsGrowthGuard(rt2), "왕복 후 가드 통과");
+            LifeSystem.RegisterDeath(rt2);
+            Check(rt2.IsDeleted, "왕복 후 삭제");
+            string rtPath = V4LoopLog.CurrentPath;
+            string rtBody = File.Exists(rtPath) ? File.ReadAllText(rtPath) : "";
+            Check(CountLines(rtBody) == 1
+                  && rtBody.IndexOf("\"event\":\"permadeath\"", StringComparison.Ordinal) >= 0,
+                $"왕복 permadeath 1줄 (실제 {CountLines(rtBody)})");
+
+            // ── 0 키 왕복: 표본 아님 · 가드 false · 로그 0줄 ──
+            WipeSession(SidZero);
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            Memorial.ResetForTest();
+            V4LoopLog.ResetForTest();
+            LifeSystem.NowUnix = () => t0;
+            V4LoopLog.ForceSessionIdForTest(SidZero);
+            var zero = LifeSystem.GetCharacters()[0];
+            zero.GrowthStartUnix = 0;
+            zero.DeathCount = 2;
+            LifeSystem.PersistRoster();
+            LifeSystem.ForgetInMemoryForTest();
+            LifeSystem.NowUnix = () => t0 + V4LoopLog.GrowthGuardSeconds + 1;
+            var zero2 = LifeSystem.GetCharacters()[0];
+            Check(zero2.GrowthStartUnix == 0, $"0 키 왕복은 0 (실제 {zero2.GrowthStartUnix})");
+            Check(!V4LoopLog.MeetsGrowthGuard(zero2), "0 키는 30분 후에도 가드 실패");
+            LifeSystem.RegisterDeath(zero2);
+            Check(zero2.IsDeleted, "0 키도 삭제는 된다");
+            Check(!File.Exists(V4LoopLog.CurrentPath),
+                "0 키는 표본 파일을 안 만든다");
+
+            // ── 키 없는 옛 저장: 표본 아님 · 가드 false · 로그 0줄 ──
+            WipeSession(SidOld);
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            Memorial.ResetForTest();
+            V4LoopLog.ResetForTest();
+            LifeSystem.NowUnix = () => t0;
+            V4LoopLog.ForceSessionIdForTest(SidOld);
+            var oldc = LifeSystem.GetCharacters()[0];
+            oldc.GrowthStartUnix = grownStart;
+            oldc.DeathCount = 2;
+            LifeSystem.PersistRoster();
+            string rosterRaw = PlayerPrefs.GetString("ats.roster", "");
+            PlayerPrefs.SetString("ats.roster", DropLastTabField(rosterRaw));
+            PlayerPrefs.Save();
+            LifeSystem.ForgetInMemoryForTest();
+            LifeSystem.NowUnix = () => t0 + V4LoopLog.GrowthGuardSeconds + 1;
+            var old2 = LifeSystem.GetCharacters()[0];
+            Check(old2.GrowthStartUnix == 0, $"키 없는 옛 저장은 0 (실제 {old2.GrowthStartUnix})");
+            Check(!V4LoopLog.MeetsGrowthGuard(old2), "옛 저장은 30분 후에도 가드 실패");
+            LifeSystem.RegisterDeath(old2);
+            Check(old2.IsDeleted, "옛 저장도 삭제는 된다");
+            Check(!File.Exists(V4LoopLog.CurrentPath),
+                "옛 저장은 표본 파일을 안 만든다");
+
             _ = nameof(V4LoopLog.NotePermadeath);
             _ = nameof(V4LoopLog.NoteRebuildOffer);
             _ = nameof(V4LoopLog.NoteRebuildAccept);
@@ -246,6 +329,21 @@ namespace AshesToStars
             else Debug.LogError($"[V4LoopBoundarySelfCheck] FAIL {_fail}건 → " + path + "\n" + _log);
             if (_fail > 0) throw new InvalidOperationException(
                 $"[V4LoopBoundarySelfCheck] FAIL {_fail}건");
+        }
+
+        static string DropLastTabField(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return "";
+            var sb = new StringBuilder();
+            foreach (string line in raw.Split('\n'))
+            {
+                if (string.IsNullOrEmpty(line)) continue;
+                int tab = line.LastIndexOf('\t');
+                if (tab >= 0) sb.Append(line.Substring(0, tab));
+                else sb.Append(line);
+                sb.Append('\n');
+            }
+            return sb.ToString();
         }
 
         static void WipeSession(string id)

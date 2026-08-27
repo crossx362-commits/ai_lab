@@ -388,6 +388,8 @@ namespace AshesToStars
                 c.SortieSeconds = p.Length > 15 ? SafeLong(p[15], 0) : 0;
                 // 17번째 필드는 환생 계승 스킬. 없던 저장은 빈 칸(직업 표 전체).
                 c.KeptSkill = p.Length > 16 ? RebirthSkill.Pack(p[16]) : "";
+                // 18번째 필드는 성장 시작 벽시계. 없던 저장·0은 미기록(표본 아님). Now는 신규만.
+                c.GrowthStartUnix = p.Length > 17 ? SafeLong(p[17], 0) : 0;
                 _characters.Add(c);
                 legacyIndex++;
             }
@@ -436,7 +438,8 @@ namespace AshesToStars
                   .Append('\t').Append(c.PackMemorial())
                   .Append('\t').Append(SanitizeMemorialParty(c.MemorialParty))
                   .Append('\t').Append(c.SortieSeconds)
-                  .Append('\t').Append(RebirthSkill.Pack(c.KeptSkill)).Append('\n');
+                  .Append('\t').Append(RebirthSkill.Pack(c.KeptSkill))
+                  .Append('\t').Append(c.GrowthStartUnix).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 
