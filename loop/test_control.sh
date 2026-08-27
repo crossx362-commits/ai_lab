@@ -68,6 +68,7 @@ run_control() {
   LOOP_LAUNCH_AGENTS_DIR="$TEST_ROOT/LaunchAgents" \
   LOOP_CONTROL_WAIT_ATTEMPTS=2 \
   LOOP_CONTROL_WAIT_SECONDS=0 \
+  LOOP_CONTROL_RESTART_STALE="${LOOP_CONTROL_RESTART_STALE:-0}" \
   bash "$TEST_ROOT/loop/control.sh" "$@"
 }
 
@@ -104,6 +105,14 @@ run_control start codex > "$TEST_ROOT/start-second.log"
 after="$(grep -c '^bootstrap ' "$TEST_ROOT/launchctl.calls")"
 if [ "$before" -ne "$after" ]; then
   echo "FAIL: 두 번째 start가 이미 실행 중인 서비스를 중복 등록했다"
+  exit 1
+fi
+
+before_force="$after"
+LOOP_CONTROL_RESTART_STALE=1 run_control start codex > "$TEST_ROOT/start-stale.log"
+after_force="$(grep -c '^bootstrap ' "$TEST_ROOT/launchctl.calls")"
+if [ "$after_force" -ne $((before_force + 1)) ]; then
+  echo "FAIL: stale 복구 start가 기존 서비스를 내리고 원본을 다시 등록하지 않았다"
   exit 1
 fi
 
@@ -153,5 +162,6 @@ fi
 
 echo "PASS: start는 정지 신호 해제·AI 지정·실행 확인을 한 번에 수행한다"
 echo "PASS: 반복 start는 서비스를 중복 등록하지 않는다"
+echo "PASS: stale 복구 start만 기존 서비스를 원본으로 강제 재기동한다"
 echo "PASS: stop만 STOP을 만들고 시작 확인 실패는 recovering으로 남긴다"
 echo "PASS: 메인 원본 직접 실행·speed lane 상시 중단 정책이 고정됐다"

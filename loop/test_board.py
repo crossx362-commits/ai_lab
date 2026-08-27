@@ -1641,7 +1641,9 @@ class LiveLogTests(unittest.TestCase):
         self.assertIn('tee -a "$MAIN_LOG"', sh)
         doc = (HERE / "board.py").read_text(encoding="utf-8")
         start = doc[doc.index("def start_loop"):doc.index("def resume_work")]
-        self.assertIn("stdout=subprocess.DEVNULL", start)
+        self.assertIn('HERE / "control.sh"', start)
+        self.assertIn("subprocess.run", start)
+        self.assertNotIn("subprocess.Popen", start)
 
 
 class BoardManageTests(unittest.TestCase):
@@ -2162,24 +2164,71 @@ class SliceBoardTests(unittest.TestCase):
 
 
 class ResumeTests(unittest.TestCase):
-    def test_resume_clears_hold_and_starts_if_down(self):
+    def test_start_loop_uses_the_single_control_command(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            here = root / "loop"
+            here.mkdir()
+            result = mock.Mock(
+                returncode=0,
+                stdout="시작 확인: provider=codex pid=99\n",
+                stderr="",
+            )
+            old = (board.HERE, board.ROOT)
+            board.HERE, board.ROOT = here, root
+            try:
+                with mock.patch.object(board.subprocess, "run", return_value=result) as run:
+                    with mock.patch.object(board, "find_loop_pids", return_value=[99]):
+                        pid = board.start_loop()
+            finally:
+                board.HERE, board.ROOT = old
+
+        self.assertEqual(pid, 99)
+        run.assert_called_once()
+        self.assertEqual(run.call_args.args[0], ["bash", str(here / "control.sh"), "start"])
+        self.assertEqual(run.call_args.kwargs["cwd"], str(root))
+
+    def test_resume_delegates_stop_and_hold_cleanup_to_control(self):
         with tempfile.TemporaryDirectory() as tmp:
             here = Path(tmp)
             (here / "HOLD").write_text("")
             (here / "STOP").write_text("")
             old = (board.HERE, board.find_loop_pids, board.start_loop)
-            started = []
             board.HERE = here
-            board.find_loop_pids = lambda: [99] if started else []
-            board.start_loop = lambda: started.append(1) or 99
+            calls = iter(([], [99], [99]))
+            board.find_loop_pids = lambda: next(calls)
+            start = mock.Mock(return_value=99)
+            board.start_loop = start
             try:
                 r = board.resume_work()
             finally:
                 board.HERE, board.find_loop_pids, board.start_loop = old
-            self.assertFalse((here / "HOLD").exists())
-            self.assertFalse((here / "STOP").exists())
+            start.assert_called_once_with()
             self.assertTrue(r["started"])
             self.assertEqual(r["pids"], [99])
+
+        source = (HERE / "board.py").read_text(encoding="utf-8")
+        resume = source[source.index("def resume_work"):source.index("def commit_allowed")]
+        self.assertNotIn('set_flag("HOLD"', resume)
+        self.assertNotIn('set_flag("STOP"', resume)
+
+    def test_stop_loop_uses_the_single_control_command(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            here = root / "loop"
+            here.mkdir()
+            result = mock.Mock(returncode=0, stdout="중단 확인\n", stderr="")
+            old = (board.HERE, board.ROOT)
+            board.HERE, board.ROOT = here, root
+            try:
+                with mock.patch.object(board.subprocess, "run", return_value=result) as run:
+                    board.stop_loop()
+            finally:
+                board.HERE, board.ROOT = old
+
+        run.assert_called_once()
+        self.assertEqual(run.call_args.args[0], ["bash", str(here / "control.sh"), "stop"])
+        self.assertEqual(run.call_args.kwargs["cwd"], str(root))
 
 
 

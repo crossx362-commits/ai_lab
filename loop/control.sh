@@ -22,9 +22,11 @@ PLIST="$LAUNCH_AGENTS/$LABEL.plist"
 WAIT_ATTEMPTS="${LOOP_CONTROL_WAIT_ATTEMPTS:-15}"
 WAIT_SECONDS="${LOOP_CONTROL_WAIT_SECONDS:-1}"
 STOP_WAIT_ATTEMPTS="${LOOP_CONTROL_STOP_WAIT_ATTEMPTS:-30}"
+FORCE_RESTART="${LOOP_CONTROL_RESTART_STALE:-0}"
 
 if ! [[ "$WAIT_ATTEMPTS" =~ ^[0-9]+$ && "$STOP_WAIT_ATTEMPTS" =~ ^[0-9]+$ \
-    && "$WAIT_SECONDS" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    && "$WAIT_SECONDS" =~ ^[0-9]+([.][0-9]+)?$ ]] \
+    || ! [[ "$FORCE_RESTART" =~ ^[01]$ ]]; then
   echo "제어 대기 설정이 숫자가 아닙니다." >&2
   exit 2
 fi
@@ -121,6 +123,11 @@ start_loop() {
 
   # 비용 정책상 speed lane은 항상 중단 상태를 유지한다.
   "$LAUNCHCTL" bootout "$SPEED_SERVICE" >/dev/null 2>&1 || true
+
+  if [ "$FORCE_RESTART" = "1" ]; then
+    state_set recovering "$provider" "heartbeat 정체로 원본 재기동" || true
+    "$LAUNCHCTL" bootout "$SERVICE" >/dev/null 2>&1 || true
+  fi
 
   if service_running; then
     pid="$(service_pid)"

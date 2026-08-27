@@ -50,7 +50,6 @@ COMMANDS_PATH = HERE / "owner_commands.json"
 COMMANDS_MAX = 80
 TEST_REPORT_PATH = HERE / "last_test_report.json"
 HANDOFF_STATE_PATH = HERE / "handoff_state.json"
-PID_PATH = HERE / "loop.pid"
 GROK_AUTH = Path.home() / ".grok" / "auth.json"
 GROK_USAGE_CACHE = HERE / "grok_usage.cache.json"
 CLAUDE_USAGE_CACHE = HERE / "claude_usage.cache.json"
@@ -2223,35 +2222,57 @@ def find_loop_pids() -> list[int]:
 
 
 def start_loop() -> int:
-    if find_loop_pids():
-        return find_loop_pids()[0]
-    log_path = HERE / "loop_main.log"
-    with open(log_path, "a", encoding="utf-8") as log:
-        log.write(f"\n▶ 보드에서 재개 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        log.flush()
-    # 로그는 loop.sh가 직접 tee 한다 — 여기서 또 리다이렉트하면 두 벌로 쌓인다.
-    proc = subprocess.Popen(
-        ["bash", str(HERE / "loop.sh")],
-        cwd=str(ROOT),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT,
-        start_new_session=True,
-    )
-    PID_PATH.write_text(str(proc.pid) + "\n", encoding="utf-8")
-    return proc.pid
+    """보드에서도 동일한 멱등 control start만 사용한다."""
+    try:
+        result = subprocess.run(
+            ["bash", str(HERE / "control.sh"), "start"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=25,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ValueError("루프 시작 명령을 실행하지 못했습니다") from exc
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "시작 확인 실패").strip()[-500:]
+        raise ValueError(f"루프 시작 실패: {detail}")
+
+    pids = find_loop_pids()
+    if pids:
+        return pids[0]
+    match = re.search(r"\bpid=([1-9][0-9]*)\b", result.stdout or "")
+    return int(match.group(1)) if match else 0
 
 
 def resume_work() -> dict:
-    """중단(HOLD/STOP/꺼짐)을 풀고 루프를 다시 돌린다."""
-    set_flag("HOLD", False)
-    set_flag("STOP", False)
+    """중단 신호 해제와 실행 확인을 control start 한 번에 맡긴다."""
+    before = find_loop_pids()
+    pid = start_loop()
     pids = find_loop_pids()
-    started = False
-    if not pids:
-        pid = start_loop()
+    if not pids and pid:
         pids = [pid]
-        started = True
-    return {"started": started, "pids": pids, "loop": loop_flags()}
+    return {"started": not bool(before), "pids": pids, "loop": loop_flags()}
+
+
+def stop_loop() -> None:
+    """오너의 보드 중단도 control stop으로 상태와 STOP을 함께 기록한다."""
+    try:
+        result = subprocess.run(
+            ["bash", str(HERE / "control.sh"), "stop"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=35,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ValueError("루프 중단 명령을 실행하지 못했습니다") from exc
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "중단 확인 실패").strip()[-500:]
+        raise ValueError(f"루프 중단 실패: {detail}")
 
 
 def commit_allowed(path: str) -> bool:
@@ -3822,7 +3843,7 @@ class Handler(BaseHTTPRequestHandler):
                 elif action == "unhold":
                     set_flag("HOLD", False)
                 elif action == "stop":
-                    set_flag("STOP", True)
+                    stop_loop()
                 elif action == "unstop":
                     set_flag("STOP", False)
                 else:
