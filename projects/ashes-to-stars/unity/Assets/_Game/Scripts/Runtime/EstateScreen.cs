@@ -267,6 +267,7 @@ namespace AshesToStars
             EstateGrid.SeedQaIfRequested();
             SeedRecallQaIfRequested();
             SeedCellClickQaIfRequested();
+            SeedHubClickQaIfRequested();
             EstateStore.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();
             EstateBuildings.SeedQaIfRequested();
@@ -672,6 +673,18 @@ namespace AshesToStars
             }
         }
 
+        void SeedHubClickQaIfRequested()
+        {
+            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_HUB");
+            if (raw != "0" && raw != "1") return;
+            _layoutQa = false;
+            _hubPage = 0;
+            EstateGrid.EnsureHubBuildings();
+            _selX = EstateGrid.KeepX;
+            _selY = EstateGrid.KeepY;
+            if (raw == "1") OpenHub(EstateGrid.Cell.Keep);
+        }
+
         void SeedArtScaffoldFrameQaIfRequested()
         {
             bool busy = System.Environment.GetEnvironmentVariable("QA_ESTATE_ART_TIERS") == "1";
@@ -729,9 +742,14 @@ namespace AshesToStars
                     DrawCoreBuildDock(r, cell, title, icon);
                     return;
                 }
-                Hint(r, title + " · " + sub);
-                if (EstateGrid.IsHub(cell) && GUI.Button(r, GUIContent.none, GUIStyle.none))
+                var hubEv = Event.current;
+                if (EstateGrid.IsHub(cell) && hubEv != null && hubEv.type == EventType.MouseDown
+                    && hubEv.button == 0 && r.Contains(hubEv.mousePosition))
+                {
                     OpenHub(cell);
+                    hubEv.Use();
+                }
+                Hint(r, title + " · " + sub);
                 return;
             }
             if (EstateGrid.IsDefense(cell))
@@ -746,8 +764,14 @@ namespace AshesToStars
             }
             if (EstateGrid.IsHub(cell))
             {
-                if (DrawCard(r, title, sub, icon))
+                var hubEv = Event.current;
+                if (hubEv != null && hubEv.type == EventType.MouseDown && hubEv.button == 0
+                    && r.Contains(hubEv.mousePosition))
+                {
                     OpenHub(cell);
+                    hubEv.Use();
+                }
+                DrawCard(r, title, sub, icon);
                 return;
             }
             if (EstateGrid.IsCore(cell))

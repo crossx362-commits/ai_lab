@@ -187,6 +187,12 @@ namespace AshesToStars
                 "회수 버튼 클릭은 MouseDown으로 거둔다");
             Check(inspectSrc.IndexOf("GUI.Button(btn", StringComparison.Ordinal) < 0,
                 "회수 버튼이 GUI.Button(none)을 안 쓴다");
+            Check(inspectSrc.IndexOf("OpenHub(cell)", StringComparison.Ordinal) >= 0
+                  && inspectSrc.IndexOf("r.Contains", StringComparison.Ordinal) >= 0
+                  && inspectSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0,
+                "허브 칸 클릭은 MouseDown으로 OpenHub한다");
+            Check(inspectSrc.IndexOf("GUI.Button(r,", StringComparison.Ordinal) < 0,
+                "허브 칸이 GUI.Button(none)을 안 쓴다");
 
             int layout = estate.IndexOf("void DrawLayout", StringComparison.Ordinal);
             int fillFn = estate.IndexOf("static void FillCell", StringComparison.Ordinal);
