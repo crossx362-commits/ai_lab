@@ -87,6 +87,19 @@ namespace AshesToStars
             Check(hud.Contains("NavPlateTop"),
                 "도크가 NavPlateTop을 읽는다 (body.yMax 붙이기 금지)");
 
+            int hunt = field.IndexOf("bool DrawHuntCard", StringComparison.Ordinal);
+            int leave = field.IndexOf("void TryLeavePick", StringComparison.Ordinal);
+            Check(hunt >= 0 && leave > hunt, "DrawHuntCard·TryLeavePick가 있다");
+            string huntSrc = (hunt >= 0 && leave > hunt)
+                ? field.Substring(hunt, leave - hunt) : "";
+            Check(huntSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
+                  && huntSrc.IndexOf("cell.Contains", StringComparison.Ordinal) >= 0,
+                "필드 셀 클릭은 MouseDown으로 먹는다");
+            Check(huntSrc.IndexOf("GUI.Button(cell", StringComparison.Ordinal) < 0,
+                "DrawHuntCard가 GUI.Button(none)을 안 쓴다");
+            Check(field.IndexOf("PartyState.Toggle", StringComparison.Ordinal) >= 0,
+                "셀 클릭이 PartyState.Toggle을 탄다");
+
             Environment.SetEnvironmentVariable(FieldHud.EnvShow, show);
             Environment.SetEnvironmentVariable(FieldHud.EnvNo, no);
             if (_fail == 0) Debug.Log("[FieldHudSelfCheck] PASS\n" + _log);

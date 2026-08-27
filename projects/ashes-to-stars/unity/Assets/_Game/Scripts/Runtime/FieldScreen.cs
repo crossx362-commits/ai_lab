@@ -94,6 +94,7 @@ namespace AshesToStars
             FieldDockCap.SeedHuntQaIfRequested();
             UiAtlas.SeedQaIfRequested();
             GameState.SeedWalletTextQaIfRequested();
+            SeedFieldToggleQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
                 _showLastLifeWarning = true;
@@ -286,6 +287,16 @@ namespace AshesToStars
 
         bool DrawHuntCard(Rect cell, CharacterRecord ch, bool inParty, string status)
         {
+            // 클릭을 슬라이스·초상보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
+            // PartyScreen 옛 버그(c8941f6f)와 같이 크롬에 먹혀 Toggle이 안 먹었다.
+            bool hit = false;
+            var ev = Event.current;
+            if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                && cell.Contains(ev.mousePosition))
+            {
+                hit = true;
+                ev.Use();
+            }
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : new Color(1f, 1f, 1f, 0.94f);
             if (!UiAtlas.DrawSliced(cell, "panel", 12f, tint))
                 UiAtlas.Draw(cell, "panel", tint);
@@ -296,7 +307,19 @@ namespace AshesToStars
             UiAtlas.Draw(new Rect(faceR.xMax - 8f, faceR.yMax - 8f, 20f, 20f), UiAtlas.RoleKey(ch.Job));
             UiAtlas.DrawHearts(marks, ch.DeathCount, ch.IsDeleted);
             Hint(nameR, (inParty ? "★ " : "") + ch.Name + " · " + status);
-            return GUI.Button(cell, GUIContent.none, GUIStyle.none);
+            return hit;
+        }
+
+        bool _toggleQaSeeded;
+        void SeedFieldToggleQaIfRequested()
+        {
+            if (_toggleQaSeeded) return;
+            string raw = Environment.GetEnvironmentVariable("QA_FIELD_TOGGLE");
+            if (raw != "0" && raw != "1") return;
+            _toggleQaSeeded = true;
+            bool wantOut = raw == "1";
+            if (wantOut == PartyState.Contains(0))
+                PartyState.Toggle(0);
         }
 
         void TryLeavePick()
