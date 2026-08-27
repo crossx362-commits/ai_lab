@@ -23,7 +23,6 @@ fi
 MAX_LOOPS="${LOOP_MAX_LOOPS:-0}"
 COOLDOWN="${LOOP_COOLDOWN:-10}"
 MAX_TURNS="${LOOP_MAX_TURNS:-30}"
-MAX_FAILS="${LOOP_MAX_FAILS:-3}"
 PROMPT_FILE="$DEPLOY_ROOT/PROMPT.md"
 STOP_FILE="$TARGET_REPO/loop/STOP"
 AGENT_FILE="$TARGET_REPO/loop/agent"
@@ -31,36 +30,25 @@ STATUS_FILE="$TARGET_REPO/docs/STATUS.md"
 MAIN_LOG="$TARGET_REPO/logs/loop_main.log"
 GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
 OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/mimo-v2.5-free}"
-# 실행기 체인(오너 지시 2026-08-25): 우선순위 없음 — 현재 돌리는 실행기를 소진될 때까지 쓰고,
-# 소진되면 체인의 다음(링 회전)으로 넘어간다. 핀(codex/opencode 지정)은 전환 관여 없음.
-PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude}"
-# 체인에 실행기가 몇 개인지(빈 항목 제외). 1개면 「그 하나가 회복될 때까지 대기」 모드 —
-# 소진돼도 다른 공급자로 넘어가지 않고 자멸하지도 않는다(오너 지시 2026-08-27:
-# "클로드 소진 시 opencode 가지 말고 클로드 할당량 회복될 때까지 대기").
-CHAIN_COUNT="$(printf '%s' "$PROVIDERS_CHAIN" | awk -F, '{c=0; for(i=1;i<=NF;i++){gsub(/[[:space:]]/,"",$i); if($i!="")c++} print c}')"
-COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
 # 회의 20260827-081437 채택 #3 — GameFullCheck 전수는 4바퀴마다 1회. 0 이면 끈다.
 FULLCHECK_EVERY="${LOOP_FULLCHECK_EVERY:-4}"
 FULLCHECK_METHOD="${LOOP_FULLCHECK_METHOD:-AshesToStars.GameFullCheck.Run}"
 
-# Claude↔Grok 사용량 자동전환 (오너 지시 2026-08-25). claude로 시작, 소진되면 grok, grok도
-# 소진되면 다시 claude. 코드 오류·테스트 실패로는 전환하지 않는다 — 소진 판정은 오직
-# board.py의 공식 사용량 API(claude_usage/grok_usage)와 랩 로그의 사후 폴백뿐이다.
-AUTO_SWITCH="${LOOP_AUTO_SWITCH:-1}"
 PROVIDER_RETRY_SECONDS="${PROVIDER_RETRY_SECONDS:-1800}"
-MAX_PROVIDER_FAILURES="${MAX_PROVIDER_FAILURES:-6}"
-PROVIDER_STATE_FILE="$TARGET_REPO/loop/provider.state"
+HEARTBEAT_SECONDS="${LOOP_HEARTBEAT_SECONDS:-30}"
+RECOVERY_RETRY_SECONDS="${LOOP_RECOVERY_RETRY_SECONDS:-900}"
+RECOVERY_PROVIDERS="${LOOP_RECOVERY_PROVIDERS:-codex,claude,grok,opencode}"
+RUNTIME_STATE_TOOL="$DEPLOY_ROOT/runtime_state.py"
+RUNTIME_STATE_FILE="${LOOP_RUNTIME_STATE_FILE:-$TARGET_REPO/loop/runtime_state.json}"
+RECOVERY_CONTEXT_FILE="$TARGET_REPO/loop/recovery_context.log"
 # GameFullCheck 주기 카운터 — loop/ 에만 영속 (STATUS.md 금지). git 미추적 런타임 파일.
 FULLCHECK_COUNT_FILE="$TARGET_REPO/loop/fullcheck_lap.count"
 BOARD_PY="$DEPLOY_ROOT/board.py"
-EXHAUST_PATTERN="${LOOP_EXHAUST_PATTERN:-usage limit|quota exceeded|rate limit exceeded|out of credits|사용량.*(소진|초과)|로그인.*필요|please (log|sign) in|authentication required}"
+PROVIDER_ERROR_PATTERN="${LOOP_PROVIDER_ERROR_PATTERN:-organization has disabled|authentication required|please (log|sign) in|로그인.*필요|executable not found}"
 # 공급자 인프라 장애 — 「인프라 실패 ≠ 이슈 실패」(CLAUDE.md 가드레일). 이런 바퀴는 우리 코드가
 # 틀린 게 아니라 상대 서버가 죽은 것이므로 STATUS 미갱신으로 세면 안 된다. 2026-08-26 22:23·22:38
 # 두 바퀴가 이 오류로 죽어 「미갱신 3회」에 걸려 루프 전체가 정상 종료했다.
 INFRA_PATTERN="${LOOP_INFRA_PATTERN:-Endpoint is unavailable|Unexpected server error|UnknownError|Upstream request failed|502 Bad Gateway|503 Service|504 Gateway|overloaded_error|Internal server error}"
-INFRA_MAX="${LOOP_INFRA_MAX:-6}"
-INFRA_BACKOFF="${LOOP_INFRA_BACKOFF:-120}"
-INFRA_COOLOFF="${LOOP_INFRA_COOLOFF:-1800}"
 
 if [ ! -f "$PROMPT_FILE" ]; then
   PROMPT_FILE="$TARGET_REPO/loop/PROMPT.md"
@@ -97,8 +85,10 @@ find_bin() {
   command -v "$name" 2>/dev/null || true
 }
 
-if ! [[ "$MAX_LOOPS" =~ ^[0-9]+$ && "$COOLDOWN" =~ ^[0-9]+$ && "$MAX_TURNS" =~ ^[0-9]+$ ]]; then
-  echo "LOOP_MAX_LOOPS/LOOP_COOLDOWN/LOOP_MAX_TURNS는 0 이상의 정수여야 합니다." >&2
+if ! [[ "$MAX_LOOPS" =~ ^[0-9]+$ && "$COOLDOWN" =~ ^[0-9]+$ && "$MAX_TURNS" =~ ^[0-9]+$ \
+    && "$PROVIDER_RETRY_SECONDS" =~ ^[0-9]+$ && "$RECOVERY_RETRY_SECONDS" =~ ^[0-9]+$ \
+    && "$HEARTBEAT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "루프 횟수·대기 시간은 0 이상, heartbeat는 1 이상의 정수여야 합니다." >&2
   exit 1
 fi
 if ! [[ "$FULLCHECK_EVERY" =~ ^[0-9]+$ ]]; then
@@ -109,16 +99,21 @@ fi
 mkdir -p "$TARGET_REPO/logs" "$TARGET_REPO/loop" "$TARGET_REPO/docs/feedback"
 export PYTHONUNBUFFERED=1
 COUNT=0
-FAILS=0
-INFRA_FAILS=0
 
 wait_with_stop() {
-  local remaining="$1"
+  local remaining="$1" step
   while [ "$remaining" -gt 0 ]; do
-    [ -f "$STOP_FILE" ] && return 1
-    sleep 1
-    remaining=$((remaining - 1))
+    if [ -f "$STOP_FILE" ]; then
+      runtime_set owner_stopped "$(pick_agent)" "오너 STOP" 0
+      return 1
+    fi
+    runtime_heartbeat
+    step="$HEARTBEAT_SECONDS"
+    [ "$remaining" -lt "$step" ] && step="$remaining"
+    sleep "$step"
+    remaining=$((remaining - step))
   done
+  runtime_heartbeat
   return 0
 }
 
@@ -130,49 +125,7 @@ status_stamp() {
   fi
 }
 
-other_provider() {
-  case "$1" in
-    claude) echo grok ;;
-    grok) echo claude ;;
-    *) echo "$1" ;;
-  esac
-}
-
-# 체인에서 find_bin 가능하고 usage_check가 exhausted가 아닌 첫 실행기를 고른다.
-# start <name>: 링 순회 시작점(보통 현재 실행기) — 그 자체부터 검사해 스티키 유지.
-# exclude <name>: 후보 제외(랩 로그 소진 직후 재선택 방지).
-# echo: 실행기명 | 전부 소진·부재면 빈 문자열(return 1).
-pick_from_chain() {
-  local exclude="${1:-}" start="${2:-}" p bin check order
-  if [ -n "$start" ]; then
-    order="$(printf '%s' "$PROVIDERS_CHAIN" | awk -F, -v s="$start" '
-      { n=split($0,a,","); idx=0
-        for(i=1;i<=n;i++){ gsub(/ /,"",a[i]); if(a[i]==s) idx=i }
-        if(idx<1) idx=1
-        out=""
-        for(i=0;i<n;i++) out=out (i?",":"") a[((idx-1+i)%n)+1]
-        print out }')"
-  else
-    order="$PROVIDERS_CHAIN"
-  fi
-  local IFS=','
-  for p in $order; do
-    p="$(printf '%s' "$p" | tr -d '[:space:]')"
-    [ -z "$p" ] && continue
-    [ -n "$exclude" ] && [ "$p" = "$exclude" ] && continue
-    bin="$(find_bin "$p")"
-    [ -z "$bin" ] && continue
-    check="$(usage_check "$p")"
-    [ "$check" = "exhausted" ] && continue
-    echo "$p"
-    return 0
-  done
-  return 1
-}
-
-# 공식 사용량 API(board.py usage)로 소진 여부를 확인한다. echo: ok | exhausted | unknown
-# unknown은 "조회 자체가 실패"(네트워크/키체인 일시 오류) — 소진으로 오판하지 않고
-# 이전 provider를 그대로 쓴다(fail-open).
+# 공식 사용량 API로만 확인한다. 프롬프트를 보내지 않는다. echo: ok | quota | error | unknown
 usage_check() {
   local name="$1"
   python3 "$BOARD_PY" usage "$name" 2>/dev/null | python3 -c '
@@ -184,67 +137,24 @@ except Exception:
     print("unknown"); sys.exit()
 err = d.get("error")
 if err and "로그인 없음" in err:
-    print("exhausted"); sys.exit()
+    print("error"); sys.exit()
 remain = d.get("remain_pct")
 if d.get("ok") and remain is not None and remain <= 0:
-    print("exhausted"); sys.exit()
+    print("quota"); sys.exit()
 if err:
     print("unknown"); sys.exit()
 print("ok")
 '
 }
 
-provider_state_read_current() {
-  python3 -c '
-import json, sys
-path = sys.argv[1]
-try:
-    with open(path, encoding="utf-8") as f:
-        cur = (json.load(f) or {}).get("current")
-except Exception:
-    cur = None
-print(cur or "claude")
-' "$PROVIDER_STATE_FILE"
+runtime_set() {
+  local phase="$1" provider="${2:-}" reason="${3:-}" retry_at="${4:-0}"
+  python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" set "$phase" \
+    --provider "$provider" --reason "$reason" --retry-at "$retry_at" >/dev/null
 }
 
-provider_state_write() {
-  # provider_state_write <current> <reason>
-  python3 -c '
-import json, sys, time
-path, current, reason = sys.argv[1:4]
-try:
-    with open(path, encoding="utf-8") as f:
-        d = json.load(f)
-except Exception:
-    d = {}
-d["current"] = current
-d["last_switch_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
-d["last_switch_reason"] = reason
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-' "$PROVIDER_STATE_FILE" "$1" "$2"
-}
-
-provider_state_mark_retry() {
-  # provider_state_mark_retry <name> — 그 실행기가 소진 감지된 시각을 기록만 한다(참고용).
-  python3 -c '
-import json, sys, time
-path, name = sys.argv[1:3]
-try:
-    with open(path, encoding="utf-8") as f:
-        d = json.load(f)
-except Exception:
-    d = {}
-d[f"{name}_retry_after"] = time.strftime("%Y-%m-%d %H:%M:%S")
-with open(path, "w", encoding="utf-8") as f:
-    json.dump(d, f, ensure_ascii=False, indent=2)
-' "$PROVIDER_STATE_FILE" "$1"
-}
-
-# 랩 로그에서 사후 소진 신호를 찾는다(usage_check가 못 잡는 세션 도중 소진 대비 폴백).
-detect_exhaustion_in_log() {
-  local logfile="$1"
-  [ -f "$logfile" ] && grep -qiE "$EXHAUST_PATTERN" "$logfile"
+runtime_heartbeat() {
+  python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" heartbeat >/dev/null
 }
 
 # 공급자 서버 장애로 죽은 바퀴인가 — 마지막 40줄만 본다(작업 중 인용한 문구를 장애로 오독하지
@@ -254,28 +164,6 @@ detect_infra_failure_in_log() {
   [ -f "$logfile" ] || return 1
   tail -40 "$logfile" | grep -qiE "$INFRA_PATTERN"
 }
-
-# 모델 단위 페일오버 — 지금 쓰는 opencode 모델이 서버 장애면 목록의 다음 모델로 갈아탄다.
-# 2026-08-27 01:10 실측: x-preview-f-free만 죽어 있고 mimo·big-pickle은 정상이었는데, 모델을
-# 고정해 둔 탓에 3시간 동안 바퀴가 한 번도 못 돌았다. 공급자가 하나뿐일 때의 마지막 방어선이다.
-rotate_opencode_model() {
-  [ "$AGENT" = "opencode" ] || return 0
-  local list="${LOOP_OPENCODE_MODELS:-}"
-  [ -n "$list" ] || return 0
-  local first="" next="" found=0 m
-  local IFS=,
-  for m in $list; do
-    [ -n "$m" ] || continue
-    [ -z "$first" ] && first="$m"
-    if [ "$found" = "1" ]; then next="$m"; break; fi
-    [ "$m" = "$OPENCODE_MODEL" ] && found=1
-  done
-  [ -z "$next" ] && next="$first"                  # 목록 끝이면 처음으로 순환
-  [ "$next" = "$OPENCODE_MODEL" ] && return 0      # 후보가 하나뿐이면 그대로
-  echo "opencode 모델 전환: $OPENCODE_MODEL → $next (서버 장애)" | tee -a "$MAIN_LOG" "$LAP_LOG"
-  OPENCODE_MODEL="$next"
-}
-
 
 # GameFullCheck 전수 주기 — 회의 20260827-081437 채택 #3.
 # 카운터는 프로세스 재시작 뒤에도 loop/fullcheck_lap.count 로 이어진다.
@@ -407,7 +295,8 @@ fi
 run_session() {
   local agent="$1"
   local bin="$2"
-  local header="너는 비대화형 자율 루프다. 별도 승인 질문 없이 구현한다. 대화를 이어 붙이지 않는다. loop/PROMPT.md 다섯 절을 따른다."
+  local prompt_file="${3:-$PROMPT_FILE}"
+  local header="${4:-너는 비대화형 자율 루프다. 별도 승인 질문 없이 구현한다. 대화를 이어 붙이지 않는다. loop/PROMPT.md 다섯 절을 따른다.}"
 
   case "$agent" in
     grok)
@@ -415,7 +304,7 @@ run_session() {
       "$bin" \
         --cwd "$TARGET_REPO" \
         --model "$GROK_MODEL" \
-        --prompt-file "$PROMPT_FILE" \
+        --prompt-file "$prompt_file" \
         --always-approve \
         --permission-mode auto \
         --max-turns "$MAX_TURNS" \
@@ -425,14 +314,14 @@ run_session() {
     codex)
       {
         printf '%s\n\n' "$header"
-        if [ -f "$PROMPT_FILE" ]; then cat "$PROMPT_FILE"; fi
+        if [ -f "$prompt_file" ]; then cat "$prompt_file"; fi
       } | "$bin" exec --ephemeral --ignore-user-config \
             --sandbox danger-full-access \
             --skip-git-repo-check \
             -
       ;;
     claude)
-      "$bin" -p "$(printf '%s\n\n' "$header"; [ -f "$PROMPT_FILE" ] && cat "$PROMPT_FILE")" \
+      "$bin" -p "$(printf '%s\n\n' "$header"; [ -f "$prompt_file" ] && cat "$prompt_file")" \
         --permission-mode acceptEdits \
         --no-session-persistence \
         --output-format text
@@ -440,7 +329,7 @@ run_session() {
     opencode)
       # 비대화형 단발 세션. resume 없음. 권한·MCP는 저장소 opencode.json이 결정한다.
       local prompt
-      prompt="$(printf '%s\n\n' "$header"; [ -f "$PROMPT_FILE" ] && cat "$PROMPT_FILE")"
+      prompt="$(printf '%s\n\n' "$header"; [ -f "$prompt_file" ] && cat "$prompt_file")"
       cd "$TARGET_REPO" || return 3
       "$bin" run \
         ${OPENCODE_MODEL:+-m "$OPENCODE_MODEL"} \
@@ -453,27 +342,124 @@ run_session() {
   esac
 }
 
+current_head() {
+  git -C "$TARGET_REPO" rev-parse HEAD 2>/dev/null || echo "nogit"
+}
+
+classify_lap() {
+  local logfile="$1" exit_code="$2"
+  python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" classify \
+    --log "$logfile" --exit-code "$exit_code"
+}
+
+provider_error_in_log() {
+  local logfile="$1"
+  [ -f "$logfile" ] && tail -80 "$logfile" | grep -qiE "$PROVIDER_ERROR_PATTERN"
+}
+
+select_recovery_agent() {
+  local failed_agent="$1" logfile="$2" skip_failed=0 candidate bin
+  provider_error_in_log "$logfile" && skip_failed=1
+  if [ "$skip_failed" = "0" ]; then
+    bin="$(find_bin "$failed_agent")"
+    if [ -n "$bin" ]; then
+      echo "$failed_agent"
+      return 0
+    fi
+  fi
+  local IFS=','
+  for candidate in $RECOVERY_PROVIDERS; do
+    candidate="$(printf '%s' "$candidate" | tr -d '[:space:]')"
+    [ -z "$candidate" ] && continue
+    [ "$skip_failed" = "1" ] && [ "$candidate" = "$failed_agent" ] && continue
+    bin="$(find_bin "$candidate")"
+    if [ -n "$bin" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+write_recovery_context() {
+  local failed_agent="$1" exit_code="$2" logfile="$3"
+  {
+    echo "실패 실행기: $failed_agent"
+    echo "종료 코드: $exit_code"
+    echo "현재 HEAD: $(current_head)"
+    echo
+    echo "오류 로그 끝 80줄:"
+    tail -80 "$logfile" 2>/dev/null || true
+  } > "$RECOVERY_CONTEXT_FILE"
+}
+
+wait_for_context_change() {
+  local failed_head="$1" delay="$RECOVERY_RETRY_SECONDS"
+  [ "$delay" -gt 0 ] || delay=1
+  while [ "$(current_head)" = "$failed_head" ]; do
+    echo "같은 오류 지문은 AI를 다시 부르지 않음 — ${delay}초 뒤 로컬 상태만 재확인" \
+      | tee -a "$MAIN_LOG" "${LAP_LOG:-$MAIN_LOG}"
+    wait_with_stop "$delay" || return 1
+  done
+  runtime_set running "$(pick_agent)" "코드 변경 감지 후 복구 재개" 0
+  return 0
+}
+
+run_recovery_once() {
+  local failed_agent="$1" exit_code="$2" logfile="$3"
+  local failed_head fingerprint recovery_agent recovery_bin recovery_rc after_head
+  failed_head="$(current_head)"
+  fingerprint="$(python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" fingerprint \
+    --provider "$failed_agent" --exit-code "$exit_code" --log "$logfile" \
+    --context-version "$failed_head")"
+  runtime_set recovering "$failed_agent" "오류 복구: $fingerprint" 0
+
+  if ! python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" claim "$fingerprint"; then
+    wait_for_context_change "$failed_head"
+    return $?
+  fi
+
+  recovery_agent="$(select_recovery_agent "$failed_agent" "$logfile")"
+  if [ -z "$recovery_agent" ]; then
+    echo "사용 가능한 복구 실행기 없음 — AI 호출 없이 대기" | tee -a "$MAIN_LOG" "$logfile"
+    wait_for_context_change "$failed_head"
+    return $?
+  fi
+  recovery_bin="$(find_bin "$recovery_agent")"
+  write_recovery_context "$failed_agent" "$exit_code" "$logfile"
+  echo "오류 지문 최초 1회 복구: $recovery_agent" | tee -a "$MAIN_LOG" "$logfile"
+  run_session "$recovery_agent" "$recovery_bin" "$RECOVERY_CONTEXT_FILE" \
+    "너는 자율 루프 오류 복구 세션이다. 새 기능을 만들지 않는다. 오류의 근본 원인과 직접 관련된 파일만 수정하고 재현 테스트를 통과시켜라. 성공하면 고친 파일만 즉시 커밋하고 게임 개발 작업은 시작하지 마라." \
+    >> "$logfile" 2>&1
+  recovery_rc=$?
+  runtime_heartbeat
+  after_head="$(current_head)"
+  if [ "$recovery_rc" -eq 0 ] && [ "$after_head" != "$failed_head" ]; then
+    echo "복구 커밋 확인 — 새 원본으로 재기동" | tee -a "$MAIN_LOG" "$logfile"
+    return 75
+  fi
+  echo "복구가 새 커밋을 만들지 못함(code=$recovery_rc) — 동일 지문 재호출 금지" \
+    | tee -a "$MAIN_LOG" "$logfile"
+  wait_for_context_change "$failed_head"
+  return $?
+}
+
 # 단위 테스트가 함수만 쓰도록 (LOOP_SOURCE_ONLY=1 source). 본 루프는 돌리지 않는다.
 if [ "${LOOP_SOURCE_ONLY:-0}" = "1" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
 STARTUP_AGENT="$(pick_agent)"
-if [ "$AUTO_SWITCH" = "1" ] && { [ "$STARTUP_AGENT" = "claude" ] || [ "$STARTUP_AGENT" = "grok" ]; }; then
-  echo "자율 개발 루프 시작: target=$TARGET_REPO agent=auto(${PROVIDERS_CHAIN}, 시작=$(provider_state_read_current)) max=${MAX_LOOPS:-0}"
-else
-  BIN="$(find_bin "$STARTUP_AGENT")"
-  if [ -z "$BIN" ]; then
-    echo "실행기를 찾지 못했다: $STARTUP_AGENT" >&2
-    exit 1
-  fi
-  echo "자율 개발 루프 시작: target=$TARGET_REPO agent=$STARTUP_AGENT max=${MAX_LOOPS:-0}"
+if [ ! -f "$RUNTIME_STATE_TOOL" ]; then
+  echo "런타임 상태 도구를 찾지 못했다: $RUNTIME_STATE_TOOL" >&2
+  exit 1
 fi
-
-PROVIDER_WAIT_ROUNDS=0
+runtime_set running "$STARTUP_AGENT" "루프 시작" 0
+echo "자율 개발 루프 시작: target=$TARGET_REPO agent=$STARTUP_AGENT max=${MAX_LOOPS:-0}"
 
 while true; do
   if [ -f "$STOP_FILE" ]; then
+    runtime_set owner_stopped "$(pick_agent)" "오너 STOP" 0
     echo "STOP 확인 — 새 바퀴를 시작하지 않고 정상 종료합니다."
     exit 0
   fi
@@ -483,46 +469,38 @@ while true; do
   fi
 
   AGENT="$(pick_agent)"
-  case "$AGENT" in
-    codex|opencode)
-      : ;;  # 수동 핀 — 전환 관여 없음(설계 유지)
-    *)
-      if [ "$AUTO_SWITCH" = "1" ]; then
-        STATE_CURRENT="$(provider_state_read_current)"
-        PICKED="$(pick_from_chain "" "$STATE_CURRENT")"
-        if [ -z "$PICKED" ]; then
-          PROVIDER_WAIT_ROUNDS=$((PROVIDER_WAIT_ROUNDS + 1))
-          provider_state_mark_retry "$STATE_CURRENT"
-          if [ "$CHAIN_COUNT" -le 1 ]; then
-            # 단독 공급자 대기 모드 — 넘어갈 곳이 없다. 회복될 때까지 무한 대기(자멸 안 함).
-            # usage_check는 fail-open이라 조회 실패는 'unknown'→여기로 안 온다. 여기 도달은
-            # 진짜 소진(remain<=0)이나 '로그인 없음'뿐이므로 대기가 정답이다(오너 지시).
-            echo "$STATE_CURRENT 소진 — ${PROVIDER_RETRY_SECONDS}초 쉬고 할당량 회복 재확인(대기 ${PROVIDER_WAIT_ROUNDS}회, 종료 안 함·오너 지시)" | tee -a "$MAIN_LOG"
-          else
-            echo "체인 전체 소진(${PROVIDER_WAIT_ROUNDS}/${MAX_PROVIDER_FAILURES}) — ${PROVIDER_RETRY_SECONDS}초 대기 후 재확인" | tee -a "$MAIN_LOG"
-            if [ "$PROVIDER_WAIT_ROUNDS" -ge "$MAX_PROVIDER_FAILURES" ]; then
-              echo "체인 소진 대기 ${MAX_PROVIDER_FAILURES}회 초과 — 정상 종료합니다(사용량 확인 자체가 고장났을 가능성 포함)." | tee -a "$MAIN_LOG"
-              touch "$STOP_FILE"
-              exit 0
-            fi
-          fi
-          wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
-          continue
-        fi
-        if [ "$PICKED" != "$STATE_CURRENT" ]; then
-          echo "$STATE_CURRENT 소진/부재 감지 — $PICKED(으)로 전환" | tee -a "$MAIN_LOG"
-          provider_state_write "$PICKED" "usage_check: $STATE_CURRENT exhausted"
-        fi
-        AGENT="$PICKED"
-        PROVIDER_WAIT_ROUNDS=0
-      fi
-      ;;
-  esac
+  USAGE_STATE="$(usage_check "$AGENT")"
+  if [ "$USAGE_STATE" = "quota" ]; then
+    runtime_set quota_wait "$AGENT" "사용량 한도" "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
+    echo "$AGENT 사용량 회복 대기 — ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회" | tee -a "$MAIN_LOG"
+    wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
+    continue
+  fi
+  if [ "$USAGE_STATE" = "error" ]; then
+    DATE_DIR="$(date +%Y-%m-%d)"
+    LAP_DIR="$TARGET_REPO/logs/$DATE_DIR"
+    LAP_LOG="$LAP_DIR/recovery-login-$AGENT.log"
+    mkdir -p "$LAP_DIR"
+    echo "$AGENT authentication required: usage API 로그인 없음" > "$LAP_LOG"
+    run_recovery_once "$AGENT" 77 "$LAP_LOG"
+    RECOVERY_RESULT=$?
+    [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
+    continue
+  fi
+
   BIN="$(find_bin "$AGENT")"
   if [ -z "$BIN" ]; then
-    echo "실행기를 찾지 못했다: $AGENT" | tee -a "$MAIN_LOG"
-    exit 1
+    DATE_DIR="$(date +%Y-%m-%d)"
+    LAP_DIR="$TARGET_REPO/logs/$DATE_DIR"
+    LAP_LOG="$LAP_DIR/recovery-missing-$AGENT.log"
+    mkdir -p "$LAP_DIR"
+    echo "$AGENT executable not found" > "$LAP_LOG"
+    run_recovery_once "$AGENT" 127 "$LAP_LOG"
+    RECOVERY_RESULT=$?
+    [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
+    continue
   fi
+  runtime_set running "$AGENT" "개발 바퀴 실행" 0
 
   DATE_DIR="$(date +%Y-%m-%d)"
   LAP_ID="$(date +%Y%m%d-%H%M%S)-$((COUNT + 1))"
@@ -546,50 +524,34 @@ while true; do
     echo "랩 종료 가드 실패 — 공유 인덱스에 낡은 스냅. 다음 맨몸 커밋이 되돌릴 수 있다" | tee -a "$MAIN_LOG" "$LAP_LOG"
   fi
 
-  EXHAUSTED_THIS_LAP=0
-  if [ "$AUTO_SWITCH" = "1" ] && { [ "$AGENT" = "claude" ] || [ "$AGENT" = "grok" ]; } \
-      && detect_exhaustion_in_log "$LAP_LOG"; then
-    EXHAUSTED_THIS_LAP=1
-    NEXT_PROVIDER="$(pick_from_chain "$AGENT" "$AGENT")"
-    [ -z "$NEXT_PROVIDER" ] && NEXT_PROVIDER="$(other_provider "$AGENT")"
-    echo "랩 로그에서 소진 신호 감지 — $AGENT 소진, 다음 바퀴부터 $NEXT_PROVIDER (FAILS 미증가)" | tee -a "$MAIN_LOG" "$LAP_LOG"
-    provider_state_write "$NEXT_PROVIDER" "log-detect: $AGENT exhaustion phrase in $LAP_ID"
+  LAP_CLASS="$(classify_lap "$LAP_LOG" "$RESULT")"
+  if [ "$LAP_CLASS" = "quota" ]; then
+    runtime_set quota_wait "$AGENT" "사용량 한도" "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
+    echo "$AGENT 사용량 회복 대기 — ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회" \
+      | tee -a "$MAIN_LOG" "$LAP_LOG"
+    wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
+    continue
   fi
 
-  INFRA_THIS_LAP=0
-  if [ "$EXHAUSTED_THIS_LAP" = "0" ] && [ "$RESULT" -ne 0 ] && detect_infra_failure_in_log "$LAP_LOG"; then
-    INFRA_THIS_LAP=1
-    INFRA_FAILS=$((INFRA_FAILS + 1))
-    if [ "$INFRA_FAILS" -ge "$INFRA_MAX" ]; then
-      # 상대 서버가 오래 죽어 있는 상황이다. 여기서 종료하면 오너가 가장 싫어하는 「루프가
-      # 안 돈다」가 된다(loop_watch가 살리기까지 최대 90분 공백). 대신 길게 쉬고 다시 본다.
-      echo "공급자 장애 ${INFRA_MAX}회 연속 — ${INFRA_COOLOFF}초 길게 쉬고 재확인합니다(종료하지 않음)." \
-        | tee -a "$MAIN_LOG" "$LAP_LOG"
-      wait_with_stop "$INFRA_COOLOFF" || { echo "STOP 감지 — 종료" | tee -a "$MAIN_LOG"; exit 0; }
-      INFRA_FAILS=0
-    else
-      rotate_opencode_model
-      BACKOFF=$((INFRA_BACKOFF * INFRA_FAILS))
-      echo "공급자 서버 장애로 죽은 바퀴 ($AGENT · ${INFRA_FAILS}/${INFRA_MAX}) — FAILS 미증가, ${BACKOFF}초 후 재시도" \
-        | tee -a "$MAIN_LOG" "$LAP_LOG"
-      wait_with_stop "$BACKOFF" || { echo "STOP 감지 — 종료" | tee -a "$MAIN_LOG"; exit 0; }
-    fi
+  if [ "$RESULT" -ne 0 ]; then
+    echo "세션 비정상 종료 (code=$RESULT) — 오류 복구 우선" | tee -a "$MAIN_LOG" "$LAP_LOG"
+    run_recovery_once "$AGENT" "$RESULT" "$LAP_LOG"
+    RECOVERY_RESULT=$?
+    [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
+    continue
   fi
 
-  if [ "$EXHAUSTED_THIS_LAP" = "1" ] || [ "$INFRA_THIS_LAP" = "1" ]; then
-    : # 우리 코드가 틀린 게 아니라 공급자 사정이다 — FAILS/COUNT를 건드리지 않는다.
-  elif [ "$AFTER" = "$BEFORE" ]; then
+  if [ "$AFTER" = "$BEFORE" ]; then
     echo "STATUS.md 갱신 없음" | tee -a "$MAIN_LOG" "$LAP_LOG"
-    FAILS=$((FAILS + 1))
-    if [ "$FAILS" -ge "$MAX_FAILS" ]; then
-      echo "STATUS.md 미갱신이 ${MAX_FAILS}회 — 정상 종료합니다(재기동 루프 방지)." | tee -a "$MAIN_LOG" "$LAP_LOG"
-      touch "$STOP_FILE"
-      exit 0
-    fi
-  elif [ "$RESULT" -eq 0 ]; then
+    run_recovery_once "$AGENT" 70 "$LAP_LOG"
+    RECOVERY_RESULT=$?
+    [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
+    continue
+  fi
+
+  if [ "$RESULT" -eq 0 ]; then
     COUNT=$((COUNT + 1))
-    FAILS=0
-    INFRA_FAILS=0   # 한 바퀴라도 정상이면 공급자는 살아난 것이다
+    runtime_set running "$AGENT" "정상 바퀴 완료" 0
     # 회의 20260827-081437 채택 #3 — 성공 바퀴만 세고, 4바퀴마다 GameFullCheck 전수.
     FC_LAP="$(fullcheck_lap_read)"
     FC_LAP=$((FC_LAP + 1))
@@ -603,22 +565,12 @@ while true; do
       echo "즉시 회의 소집 신호 감지" | tee -a "$MAIN_LOG" "$LAP_LOG"
       bash "$DEPLOY_ROOT/council.sh" "$TARGET_REPO" >> "$LAP_LOG" 2>&1 || true
     fi
-    if [ "$COUNT" -gt 0 ] && [ "$COUNCIL_EVERY" -gt 0 ] && [ $((COUNT % COUNCIL_EVERY)) -eq 0 ]; then
-      echo "회의 소집: ${COUNT}바퀴 완료 — 역할 병렬 회의 시작" | tee -a "$MAIN_LOG" "$LAP_LOG"
-      bash "$DEPLOY_ROOT/council.sh" "$TARGET_REPO" >> "$LAP_LOG" 2>&1 \
-        || echo "회의 실패 — 루프는 계속" | tee -a "$MAIN_LOG" "$LAP_LOG"
-    fi
     # 속도 레인 적립분(autonomous/integration)을 master로 흡수
     bash "$DEPLOY_ROOT/merge_integration.sh" "$TARGET_REPO" >> "$MAIN_LOG" 2>&1 || true
-  else
-    echo "세션 비정상 종료 (code=$RESULT)" | tee -a "$MAIN_LOG" "$LAP_LOG"
-    FAILS=$((FAILS + 1))
-    if [ "$FAILS" -ge "$MAX_FAILS" ]; then
-      exit "$RESULT"
-    fi
   fi
 
   if [ -f "$STOP_FILE" ]; then
+    runtime_set owner_stopped "$AGENT" "오너 STOP" 0
     echo "현재 바퀴 완료 후 STOP 확인 — 정상 종료합니다." | tee -a "$MAIN_LOG"
     exit 0
   fi

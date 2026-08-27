@@ -7,6 +7,7 @@ trap 'rm -rf "$TEST_ROOT"' EXIT
 
 mkdir -p "$TEST_ROOT/loop/logs" "$TEST_ROOT/docs/feedback" "$TEST_ROOT/projects/ashes-to-stars" "$TEST_ROOT/bin"
 cp "$(dirname "$0")/loop.sh" "$TEST_ROOT/loop/loop.sh"
+cp "$(dirname "$0")/runtime_state.py" "$TEST_ROOT/loop/runtime_state.py"
 
 touch "$TEST_ROOT/docs/feedback/INBOX.md" \
       "$TEST_ROOT/docs/STATUS.md" \
@@ -43,28 +44,8 @@ touch "$TEST_ROOT/codex_called"
 touch "$TEST_ROOT/loop/STOP"
 FAKE_CODEX
 
-chmod +x "$TEST_ROOT/bin/claude" "$TEST_ROOT/bin/codex" "$TEST_ROOT/bin/grok" "$TEST_ROOT/loop/loop.sh"
-
-set +e
-PATH="$TEST_ROOT/bin:$PATH" \
-TEST_ROOT="$TEST_ROOT" \
-FAKE_MODE=missing_status \
-LOOP_AGENT=codex \
-LOOP_MAX_FAILS=1 \
-LOOP_COOLDOWN=0 \
-bash "$TEST_ROOT/loop/loop.sh" > "$TEST_ROOT/missing_status.log" 2>&1
-MISSING_STATUS_RESULT=$?
-set -e
-
-if [ "$MISSING_STATUS_RESULT" -eq 0 ]; then
-  echo "FAIL: STATUS.md를 갱신하지 않은 정상 종료를 완료로 판정했다"
-  exit 1
-fi
-
-if ! grep -q 'STATUS.md 갱신 없음' "$TEST_ROOT/missing_status.log"; then
-  echo "FAIL: STATUS.md 미갱신 실패 원인이 로그에 남지 않았다"
-  exit 1
-fi
+chmod +x "$TEST_ROOT/bin/claude" "$TEST_ROOT/bin/codex" "$TEST_ROOT/bin/grok" \
+  "$TEST_ROOT/loop/loop.sh" "$TEST_ROOT/loop/runtime_state.py"
 
 rm -f "$TEST_ROOT/loop/STOP"
 PATH="$TEST_ROOT/bin:$PATH" \
