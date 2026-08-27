@@ -50,6 +50,15 @@ namespace AshesToStars
                     Check(EstateBuildings.HasDedicated(b + "_" + t), b + "_" + t + " PNG");
             }
             Check(EstateBuildings.HasDedicated(EstateBuildings.Scaffold), "scaffold PNG");
+            string yardSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/EstateYard.cs"));
+            Check(yardSrc.IndexOf("DrawScaffoldIfBusy", StringComparison.Ordinal) >= 0
+                  && yardSrc.IndexOf("ScaffoldOf", StringComparison.Ordinal) >= 0,
+                "EstateYard가 DrawScaffoldIfBusy로 estate_scaffold_0을 소비한다");
+            string screenSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+                "_Game/Scripts/Runtime/EstateScreen.cs"));
+            Check(screenSrc.IndexOf("SeedArtDoneQaIfRequested", StringComparison.Ordinal) >= 0,
+                "영지가 공사완료 시드를 읽는다");
 
             EstateBuild.SetLevelForTest(3);
             Check(EstateBuildings.PropOf(EstateGrid.Cell.Keep) == "estate_keep_0"
@@ -98,6 +107,21 @@ namespace AshesToStars
                 $"Busy 중 PropOf는 티어(오버레이) 실제={pb}");
             Check(EstateBuildings.ScaffoldOf(EstateGrid.Cell.Keep) == null,
                 "비Busy Keep→ScaffoldOf null");
+            Environment.SetEnvironmentVariable("QA_ESTATE_ART_TIERS", null);
+
+            Environment.SetEnvironmentVariable("QA_ESTATE_ART_DONE", "1");
+            EstateBuild.ResetForTest();
+            EstateBuild.SeedArtDoneQaIfRequested();
+            Check(!EstateBuild.Busy(EstateGrid.Cell.Barracks), "완료 시드 Barracks 비Busy");
+            Check(EstateBuildings.ScaffoldOf(EstateGrid.Cell.Barracks) == null,
+                "완료→ScaffoldOf null (비계 사라짐)");
+            Check(EstateBuild.Level(EstateGrid.Cell.Barracks) == 7, "완료 Barracks Lv7");
+            string pd = EstateBuildings.PropOf(EstateGrid.Cell.Barracks);
+            Check(pd == "estate_barracks_1" || pd == "estate_barracks_0",
+                $"완료 PropOf 티어 PNG 실제={pd}");
+            if (EstateBuildings.HasDedicated("estate_barracks_1"))
+                Check(pd == "estate_barracks_1", "완료·_1있음→estate_barracks_1");
+            Environment.SetEnvironmentVariable("QA_ESTATE_ART_DONE", null);
             Environment.SetEnvironmentVariable("QA_ESTATE_ART_TIERS", artEnv);
 
             Environment.SetEnvironmentVariable(EstateBuildings.EnvNo, "1");

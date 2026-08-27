@@ -461,6 +461,19 @@ namespace AshesToStars
             }
         }
 
+        /// <summary>공사완료 시각 QA. ART_TIERS와 같은 구도·레벨인데 Barracks만 완료(Lv7·비계 없음).</summary>
+        public static void SeedArtDoneQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable("QA_ESTATE_ART_DONE");
+            if (raw != "1" && !string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+                return;
+            EstateGrid.EnsureHubBuildings();
+            SetLevelForTest(EstateGrid.Cell.Keep, 3);
+            SetLevelForTest(EstateGrid.Cell.Mine, 7);
+            SetLevelForTest(EstateGrid.Cell.Warehouse, 12);
+            SetLevelForTest(EstateGrid.Cell.Barracks, 7);
+        }
+
         public static void ResetForTest()
         {
             for (int i = 0; i < Cores.Length; i++)

@@ -271,6 +271,8 @@ namespace AshesToStars
             EstateHud.SeedQaIfRequested();
             EstateBuildings.SeedQaIfRequested();
             EstateBuild.SeedArtTierQaIfRequested();
+            EstateBuild.SeedArtDoneQaIfRequested();
+            SeedArtScaffoldFrameQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             AuctionState.SeedQaIfRequested();
             AuctionState.SeedBuyLockQaIfRequested();
@@ -668,6 +670,17 @@ namespace AshesToStars
                 if (EstateGrid.TryPlace(x, y, EstateGrid.Cell.Wall))
                     return;
             }
+        }
+
+        void SeedArtScaffoldFrameQaIfRequested()
+        {
+            bool busy = System.Environment.GetEnvironmentVariable("QA_ESTATE_ART_TIERS") == "1";
+            bool done = System.Environment.GetEnvironmentVariable("QA_ESTATE_ART_DONE") == "1";
+            if (!busy && !done) return;
+            _layoutQa = false;
+            _hubPage = 0;
+            _selX = EstateGrid.BarracksX;
+            _selY = EstateGrid.BarracksY;
         }
 
         void DrawVillageInspect(Rect r)
