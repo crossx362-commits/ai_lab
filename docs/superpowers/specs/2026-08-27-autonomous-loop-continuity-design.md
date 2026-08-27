@@ -140,6 +140,8 @@
 
 예상 변경 대상은 다음으로 제한한다.
 
+- `loop/control.sh`: 모든 AI·보드가 사용하는 멱등 `start|stop|status` 진입점
+- `loop/runtime_state.py`: 상태·heartbeat·오류 지문을 원자적으로 다루는 로컬 전용 도구
 - `loop/loop.sh`: 영구 종료 분기 제거, 한도 대기와 오류 복구 상태 전환
 - `loop/env.sh`: 충돌하는 실행기 기본값 정리, 재확인 간격 설정
 - `loop/loop_watch.sh`: 상태·heartbeat 기반 감시와 복구 실행
@@ -149,6 +151,7 @@
 - `loop/board.py`: 보드 재개도 동일 시작 경로 사용
 - `loop/README.md`: 실제 시작·중단 명령과 상태 의미
 - `loop/test_*.sh` 또는 `loop/test_*.py`: 아래 회귀 시나리오
+- `.gitignore`: 런타임 상태 파일 제외
 
 현재 작업 트리에 이미 존재하는 다른 세션의 변경은 보존한다. 수정 전 메인 루프와 속도 레인을
 정상 중단하고, 대상 파일의 기존 diff를 기준으로 좁은 패치만 적용한다.
