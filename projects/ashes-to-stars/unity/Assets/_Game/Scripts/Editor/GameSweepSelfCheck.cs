@@ -55,6 +55,7 @@ namespace AshesToStars
                 new Entry { Name = "캐릭터 명부", Run = CharacterRosterSelfCheck.Run },
                 new Entry { Name = "페이지 탭 클릭", Run = GameTabsSelfCheck.Run },
                 new Entry { Name = "본문 한 줄 클릭", Run = GameRowSelfCheck.Run },
+                new Entry { Name = "하단 도크 탭 클릭", Run = GameNavDockSelfCheck.Run },
                 new Entry { Name = "캐릭터 3열·장비 라벨", Run = CharHudSelfCheck.Run },
                 new Entry { Name = "전투 스타일 HUD", Run = StyleHudSelfCheck.Run },
                 new Entry { Name = "멤버별 전투 스타일 배선", Run = MemberStyleSelfCheck.Run },

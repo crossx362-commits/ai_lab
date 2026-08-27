@@ -315,8 +315,22 @@ namespace AshesToStars
 
         protected abstract void Body(Rect r);
 
+        bool _navDockQa;
+        void SeedNavDockQaIfRequested()
+        {
+            if (_navDockQa) return;
+            string raw = System.Environment.GetEnvironmentVariable("QA_NAV_DOCK");
+            if (string.IsNullOrEmpty(raw)) return;
+            if (raw != GameFlow.Field && raw != GameFlow.Tower
+                && raw != GameFlow.WorldMap && raw != GameFlow.Character)
+                return;
+            _navDockQa = true;
+            GameFlow.Go(raw);
+        }
+
         void BottomBar()
         {
+            SeedNavDockQaIfRequested();
             int n = GameFlow.BottomBar.Length;
             var tiles = UiPages.NavDock(n, REF_W, REF_H);
             float used = tiles[n - 1].xMax - tiles[0].x;
@@ -339,6 +353,13 @@ namespace AshesToStars
                 var r = tiles[i];
                 if (here) GUI.DrawTexture(new Rect(r.x + 12f, r.y - 4f, r.width - 24f, 3f), _accent);
                 GUI.enabled = !here;
+                var ev = Event.current;
+                if (!here && ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                    && r.Contains(ev.mousePosition))
+                {
+                    GameFlow.Go(scene);
+                    ev.Use();
+                }
                 DrawAtlasButton(r, null);
                 // 현재 탭도 아이콘·라벨은 선명하게 — GUI.enabled=false의 비활성 알파가 활성 탭
                 // 글자를 회색으로 지워 위 강조선(「여기가 현재」)과 정반대로 읽혔다(2026-08-24 실측).
@@ -348,7 +369,6 @@ namespace AshesToStars
                 string icon = UiPages.NavIcon(scene);
                 UiAtlas.DrawFit(new Rect(r.center.x - 18f, r.y + 4f, 36f, 36f), icon);
                 UiPages.LabelClip(new Rect(r.x + 2f, r.y + 42f, r.width - 4f, 24f), label, _navLabel);
-                if (!here && GUI.Button(r, GUIContent.none, GUIStyle.none)) GameFlow.Go(scene);
                 GUI.enabled = true;
             }
         }
