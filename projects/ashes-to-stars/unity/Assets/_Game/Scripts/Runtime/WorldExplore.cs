@@ -197,8 +197,8 @@ namespace AshesToStars
             float rPx = Mathf.Max(10f, radius * pxPer);
 
             var prev = GUI.color;
-            GUI.color = new Color(0.02f, 0.04f, 0.10f, 0.55f);
-            GUI.DrawTexture(field, Texture2D.whiteTexture);
+            if (!UiAtlas.DrawSliced(field, "panel", 8f, new Color(1f, 1f, 1f, 0.88f)))
+                UiAtlas.Draw(field, "panel", new Color(1f, 1f, 1f, 0.88f));
 
             GUI.color = new Color(0.40f, 0.62f, 1f, 0.32f);
             GUI.DrawTexture(new Rect(c.x - rPx, c.y - rPx, rPx * 2f, rPx * 2f), Disc());
