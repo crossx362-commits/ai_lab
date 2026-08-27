@@ -68,6 +68,7 @@ namespace AshesToStars
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
             StarterPick.SeedQaIfRequested();
+            SeedStarterChosenQaIfRequested();
             string localKitLine = LocalKitLine();
             if (!string.IsNullOrEmpty(localKitLine))
             {
@@ -147,6 +148,16 @@ namespace AshesToStars
             {
                 string job = jobs[i];
                 var card = cells[i];
+                // 클릭을 슬라이스·초상보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
+                // 가방 필터 옛 버그(43f316e9)와 같이 크롬에 먹혀 TryChoose가 안 먹었다.
+                var ev = Event.current;
+                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                    && card.Contains(ev.mousePosition))
+                {
+                    if (StarterPick.TryChoose(job))
+                        GameFlow.Go(GameFlow.Estate);
+                    ev.Use();
+                }
                 var tint = new Color(1f, 1f, 1f, 0.94f);
                 if (!UiAtlas.DrawSliced(card, "panel", 16f, tint))
                     UiAtlas.Draw(card, "panel", tint);
@@ -161,10 +172,16 @@ namespace AshesToStars
                     LifeSystem.BasicJobLabel(job));
                 Hint(new Rect(inner.x, labelTop + lineH, inner.width, lineH),
                     StarterPick.Blurb(job));
-                if (GUI.Button(card, GUIContent.none, GUIStyle.none)
-                    && StarterPick.TryChoose(job))
-                    GameFlow.Go(GameFlow.Estate);
             }
+        }
+
+        void SeedStarterChosenQaIfRequested()
+        {
+            if (Environment.GetEnvironmentVariable(StarterPick.EnvShow) == "1") return;
+            string job = Environment.GetEnvironmentVariable(StarterPick.EnvJob);
+            if (!LifeSystem.IsBasicJob(job)) return;
+            if (StarterPick.Open) return;
+            GameFlow.Go(GameFlow.Estate);
         }
     }
 }
