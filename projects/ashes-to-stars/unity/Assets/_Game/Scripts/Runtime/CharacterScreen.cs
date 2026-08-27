@@ -119,6 +119,7 @@ namespace AshesToStars
             SeedCharBagEquipQaIfRequested();
             SeedCharBagFilterQaIfRequested();
             SeedRosterPickQaIfRequested();
+            SeedCompactActionQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
             EquipLevel.SeedQaIfRequested();
@@ -780,6 +781,13 @@ namespace AshesToStars
                 "heart", locked: true);
         }
 
+
+        void SeedCompactActionQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable("QA_CHAR_COMPACT");
+            if (raw != "1") return;
+            GameFlow.Go(GameFlow.Party);
+        }
 
         void SeedRosterPickQaIfRequested()
         {
@@ -1639,12 +1647,23 @@ namespace AshesToStars
 
         bool CompactAction(Rect r, string label, string icon, bool locked = false)
         {
+            bool hit = false;
+            if (!locked)
+            {
+                var ev = Event.current;
+                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                    && r.Contains(ev.mousePosition))
+                {
+                    hit = true;
+                    ev.Use();
+                }
+            }
             var tint = locked ? new Color(1f, 1f, 1f, 0.55f) : (Color?)null;
             UiAtlas.DrawSliced(r, UiAtlas.ButtonKey(false, false), 10f, tint);
             ItemAtlas.DrawHud(new Rect(r.x + 8f, r.y + 6f, 32f, 32f), icon, tint);
             Hint(new Rect(r.x + 44f, r.y + 10f, r.width - 52f, 24f), label);
             if (locked) return false;
-            return GUI.Button(r, GUIContent.none, GUIStyle.none);
+            return hit;
         }
 
         static void AutoEquip(CharacterRecord ch)

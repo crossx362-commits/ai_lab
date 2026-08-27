@@ -130,6 +130,15 @@ namespace AshesToStars
             Check(tabSrc.IndexOf("GUI.Button(tr", StringComparison.Ordinal) < 0,
                 "DrawBagFilterTab이 GUI.Button(none)을 안 쓴다");
 
+            int autoEq = charSrc.IndexOf("static void AutoEquip", StringComparison.Ordinal);
+            Check(compact >= 0 && autoEq > compact, "CompactAction이 있다");
+            string compactSrc = (compact >= 0 && autoEq > compact)
+                ? charSrc.Substring(compact, autoEq - compact) : "";
+            Check(compactSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
+                  && compactSrc.IndexOf("r.Contains", StringComparison.Ordinal) >= 0,
+                "CompactAction 클릭은 MouseDown이다");
+            Check(compactSrc.IndexOf("GUI.Button", StringComparison.Ordinal) < 0,
+                "CompactAction이 GUI.Button(none)을 안 쓴다");
             if (_fail == 0) Debug.Log("[CharacterRosterSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharacterRosterSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException(
