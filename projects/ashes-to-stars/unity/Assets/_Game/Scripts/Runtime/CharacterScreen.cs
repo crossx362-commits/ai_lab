@@ -120,6 +120,7 @@ namespace AshesToStars
             SeedCharBagFilterQaIfRequested();
             SeedRosterPickQaIfRequested();
             SeedCompactActionQaIfRequested();
+            SeedDrawTabsQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
             EquipLevel.SeedQaIfRequested();
@@ -781,6 +782,14 @@ namespace AshesToStars
                 "heart", locked: true);
         }
 
+
+        void SeedDrawTabsQaIfRequested()
+        {
+            string raw = Environment.GetEnvironmentVariable("QA_CHAR_TAB");
+            if (raw != "0" && raw != "1") return;
+            _listPage = 0;
+            _detailPage = raw == "1" ? 1 : 0;
+        }
 
         void SeedCompactActionQaIfRequested()
         {

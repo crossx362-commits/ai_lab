@@ -497,11 +497,17 @@ namespace AshesToStars
             {
                 var t = new Rect(r.x + i * (w + UiPages.TabGap), r.y, w, UiPages.TabH);
                 bool on = i == selected;
+                var ev = Event.current;
+                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                    && t.Contains(ev.mousePosition))
+                {
+                    selected = i;
+                    ev.Use();
+                }
                 string tabKey = UiAtlas.ButtonKey(false, on);
                 UiAtlas.DrawSliced(t, tabKey, 8f,
                     on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
                 UiPages.LabelClip(UiAtlas.ContentRect(t, tabKey, 2f), names[i], _tab);
-                if (GUI.Button(t, GUIContent.none, GUIStyle.none)) selected = i;
             }
             return selected;
         }
