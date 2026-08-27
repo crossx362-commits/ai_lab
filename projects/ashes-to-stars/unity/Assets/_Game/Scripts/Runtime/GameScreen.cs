@@ -209,9 +209,20 @@ namespace AshesToStars
             return _bgArt;
         }
 
+        bool _drawCardQa;
+        void SeedDrawCardQaIfRequested()
+        {
+            if (_drawCardQa) return;
+            string raw = System.Environment.GetEnvironmentVariable("QA_DRAW_CARD");
+            if (raw != "1") return;
+            _drawCardQa = true;
+            LowHpReturn.Enabled = false;
+        }
+
         void OnGUI()
         {
             Styles();
+            SeedDrawCardQaIfRequested();
 
             // 기준 해상도로 스케일 — 비율은 유지하고 남는 쪽은 가운데 정렬한다
             float s = Mathf.Min(Screen.width / REF_W, Screen.height / REF_H);
@@ -545,6 +556,17 @@ namespace AshesToStars
             if (alpha < 1f) tint.a *= alpha;
             string chrome = UiPages.CardChrome(card);
             // 금테 두께는 CardLayout이 글씨 칸을 낼 때 쓰는 값과 **같아야** 한다(UiPages.CardPad).
+            bool hit = false;
+            if (!locked)
+            {
+                var ev = Event.current;
+                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
+                    && card.Contains(ev.mousePosition))
+                {
+                    hit = true;
+                    ev.Use();
+                }
+            }
             if (!UiAtlas.DrawSliced(card, chrome, 16f, tint, UiPages.CardPad(card)))
                 UiAtlas.Draw(card, chrome, tint);
             bool hasIcon = !string.IsNullOrEmpty(iconKey);
@@ -561,7 +583,7 @@ namespace AshesToStars
                 centerText ? _h2C : slim ? _h2Slim : locked ? _small : _h2);
             GUI.color = savedColor;
             if (locked) return false;
-            return GUI.Button(card, GUIContent.none, GUIStyle.none);
+            return hit;
         }
 
         /// <summary>경고·결과처럼 아래 두 장을 고르는 줄. 본문 Info는 위에 그대로 둔다.</summary>
