@@ -27,6 +27,18 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — 필드 전투 요약에 정예 드랍 줄 노출 (Grok)
+
+던전 노드 통과(~474)는 `EliteDrop.LastLine`이 있으면 `EliteDrop.Line()`을 붙이는데
+필드 생존 요약(~521)은 가죽 장수만 찍고 정예 줄을 숨겼다. 같은 LastLine 가드로
+`생존 — … 가죽 N장 · … EXP … · 정예 일반 장비(§10-8)`를 붙인다.
+가죽은 기존 `FieldHuntHideCount`(§10-2 배율 포함) 그대로 — 배율 재구현 없음.
+`QA_NO_ELITE_DROP`이면 LastLine 공란이라 옛 가죽만(던전과 동일).
+W3Party·드랍 수식·PartyScreen·PNG 무접촉. GameSweep 기존 행 「정예 드랍·필드 훅」.
+
+`EliteDropSelfCheck` PASS 48/48 (`results/elite_drop_selfcheck.log`).
+unity_meas batch 6000.5.6f1 exit 0.
+
 ## 완료 (2026-08-27) — §10-2 정예 처치 다음 웨이브 드랍 배율 (Grok)
 
 원장 §10-2 「정예를 처치해야 다음 웨이브 드랍 배율이 오른다」가 정성만 있고

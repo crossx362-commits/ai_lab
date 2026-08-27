@@ -518,8 +518,10 @@ namespace AshesToStars
                         _reward.GoldReward = GameState.Earn(huntGold);
                         long huntExp = Economy.WaveHuntExp(GameState.Tier, _t);
                         _reward.ExpGains = LifeSystem.AwardWaveHunt(_t);
+                        string elite = string.IsNullOrEmpty(EliteDrop.LastLine)
+                            ? "" : " · " + EliteDrop.Line();
                         GameFlow.LastBattleSummary =
-                            $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장 · {EstateStatusHud.ShortCopper(_reward.GoldReward)} · EXP {huntExp}";
+                            $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장 · {EstateStatusHud.ShortCopper(_reward.GoldReward)} · EXP {huntExp}{elite}";
                     }
                     else
                         GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";

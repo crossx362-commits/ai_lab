@@ -170,6 +170,29 @@ namespace AshesToStars
                 "QA_NO 지급 없음 — 기존 동작 유지");
             Environment.SetEnvironmentVariable(EliteDrop.EnvNo, null);
 
+            // 필드 생존 요약: LastLine 있으면 Line을 붙이고, QA_NO면 옛 가죽만(던전 노드와 같은 가드).
+            GameState.ResetAll();
+            LifeSystem.ResetAll();
+            Equipment.ResetAll();
+            EliteDrop.ResetForTest();
+            _ = LifeSystem.GetCharacters();
+            Environment.SetEnvironmentVariable(EliteDrop.EnvNo, "1");
+            EliteDrop.NoteFieldKill();
+            string noTail = string.IsNullOrEmpty(EliteDrop.LastLine)
+                ? "" : " · " + EliteDrop.Line();
+            Check(noTail.Length == 0
+                  && string.IsNullOrEmpty(EliteDrop.LastLine),
+                "QA_NO면 필드 생존 요약은 옛 가죽만 (정예 줄 숨김)");
+            Environment.SetEnvironmentVariable(EliteDrop.EnvNo, null);
+
+            EliteDrop.ResetForTest();
+            EliteDrop.NoteFieldKill();
+            string yesTail = string.IsNullOrEmpty(EliteDrop.LastLine)
+                ? "" : " · " + EliteDrop.Line();
+            Check(yesTail.IndexOf("정예", StringComparison.Ordinal) >= 0
+                  && yesTail.IndexOf(EliteDrop.Line(), StringComparison.Ordinal) >= 0,
+                $"필드 생존 요약이 정예 줄을 붙인다 (실제 '{yesTail}')");
+
             GameState.ResetAll();
             LifeSystem.ResetAll();
             Equipment.ResetAll();
@@ -198,6 +221,21 @@ namespace AshesToStars
                 "정예 노드가 Apply를 읽는다");
             Check(battleSrc.IndexOf("EliteDrop.Line", StringComparison.Ordinal) >= 0,
                 "전투가 줄을 읽는다");
+            int lineHits = 0;
+            int scan = 0;
+            while (true)
+            {
+                int at = battleSrc.IndexOf("EliteDrop.Line", scan, StringComparison.Ordinal);
+                if (at < 0) break;
+                lineHits++;
+                scan = at + 1;
+            }
+            Check(lineHits >= 2,
+                $"던전 노드·필드 생존이 둘 다 EliteDrop.Line (실제 {lineHits})");
+            Check(battleSrc.IndexOf("huntExp}{elite}", StringComparison.Ordinal) >= 0,
+                "필드 생존 요약이 정예 줄을 붙인다 (던전과 같은 LastLine 가드)");
+            Check(battleSrc.IndexOf("FieldHuntHideCount", StringComparison.Ordinal) >= 0,
+                "필드 가죽은 FieldHuntHideCount (배율 재구현 금지)");
             Check(mapSrc.IndexOf("EliteDrop.Line", StringComparison.Ordinal) >= 0,
                 "던전 지도가 줄을 읽는다");
             Check(charSrc.IndexOf("EliteDrop.SeedQaIfRequested", StringComparison.Ordinal) >= 0,
@@ -218,8 +256,15 @@ namespace AshesToStars
             GameState.ResetAll();
             LifeSystem.ResetAll();
 
-            if (_fail == 0) Debug.Log("[EliteDropSelfCheck] PASS\n" + _log);
-            else Debug.LogError($"[EliteDropSelfCheck] FAIL {_fail}건\n" + _log);
+            string dir = Path.Combine(Application.dataPath, "../..", "results");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "elite_drop_selfcheck.log");
+            var body = new StringBuilder();
+            body.AppendLine(_fail == 0 ? "PASS EliteDropSelfCheck" : "FAIL EliteDropSelfCheck");
+            body.Append(_log);
+            File.WriteAllText(path, body.ToString());
+            if (_fail == 0) Debug.Log("[EliteDropSelfCheck] PASS → " + path + "\n" + _log);
+            else Debug.LogError($"[EliteDropSelfCheck] FAIL {_fail}건 → " + path + "\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[EliteDropSelfCheck] FAIL {_fail}건");
         }
     }
