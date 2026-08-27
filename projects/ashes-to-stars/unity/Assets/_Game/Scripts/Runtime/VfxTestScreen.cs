@@ -21,9 +21,21 @@ namespace AshesToStars
         protected override void Update()
         {
             base.Update();
+            SeedVfxCtrlQaIfRequested();
             if (!_auto || Time.time < _next) return;
             Play(_keys[_cursor++ % _keys.Length]);
             _next = Time.time + .65f;
+        }
+
+        bool _ctrlQa;
+        void SeedVfxCtrlQaIfRequested()
+        {
+            if (_ctrlQa) return;
+            string raw = System.Environment.GetEnvironmentVariable("QA_VFX_CTRL");
+            if (raw != "1") return;
+            _ctrlQa = true;
+            _auto = false;
+            GameFlow.Go(GameFlow.Estate);
         }
 
         protected override void Body(Rect r)
@@ -35,15 +47,20 @@ namespace AshesToStars
             for (int i = start; i < Mathf.Min(start + perPage, _keys.Length); i++)
                 if (Row(r, row++, _keys[i])) Play(_keys[i]);
 
-            float x = r.x + 350f;
-            if (GUI.Button(new Rect(x, r.y + 88, 220, 42), _auto ? "자동 재생 중지" : "전체 자동 재생")) _auto = !_auto;
-            if (GUI.Button(new Rect(x, r.y + 140, 220, 42), "다음 페이지")) _page = (_page + 1) % 3;
-            if (GUI.Button(new Rect(x, r.y + 192, 220, 42), "이전 페이지")) _page = (_page + 2) % 3;
-            if (GUI.Button(new Rect(x, r.y + 244, 220, 42), "직업 이펙트 6종"))
+            var side = new Rect(r.x + 350f, r.y, Mathf.Max(220f, r.width - 360f), r.height);
+            int s = 1;
+            if (Row(side, s++, _auto ? "자동 재생 중지" : "전체 자동 재생", "개별/전체 전환"))
+                _auto = !_auto;
+            if (Row(side, s++, "다음 페이지", "키 목록을 넘긴다"))
+                _page = (_page + 1) % 3;
+            if (Row(side, s++, "이전 페이지", "키 목록을 되돌린다"))
+                _page = (_page + 2) % 3;
+            if (Row(side, s++, "직업 이펙트 6종", "한 번에 펼쳐 본다"))
                 for (int i = 0; i < 6; i++) FxPool.PlayJob(i, new Vector2((i - 2.5f) * 2f, 0f), 1.1f);
-            if (GUI.Button(new Rect(x, r.y + 296, 220, 42), "상태·보스 이펙트 7종"))
+            if (Row(side, s++, "상태·보스 이펙트 7종", "한 번에 펼쳐 본다"))
                 for (int i = 0; i < 7; i++) FxPool.PlayStatus(i, new Vector2((i - 3) * 2f, 0f), 1.1f);
-            if (GUI.Button(new Rect(x, r.y + 348, 220, 42), "영지로 돌아가기")) GameFlow.Go(GameFlow.Estate);
+            if (Row(side, s++, "영지로 돌아가기", "테스트 씬을 닫는다"))
+                GameFlow.Go(GameFlow.Estate);
         }
 
         static void Play(string key) => FxPool.PlayAtlas(key, Vector2.zero, 2f);
