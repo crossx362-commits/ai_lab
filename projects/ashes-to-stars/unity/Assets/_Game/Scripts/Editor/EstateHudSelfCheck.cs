@@ -220,6 +220,10 @@ namespace AshesToStars
             Check(layoutSrc.IndexOf("UiPages.LabelClip", StringComparison.Ordinal) >= 0
                   && layoutSrc.IndexOf("GUI.Label(box", StringComparison.Ordinal) < 0,
                 "격자 칸·동서남북은 LabelClip이다");
+            string fillSrc = fillFn >= 0 ? estate.Substring(fillFn, Math.Min(420, estate.Length - fillFn)) : "";
+            Check(layoutSrc.IndexOf("DrawSliced(new Rect(gx, gy, gridW, gridH), \"panel\"", StringComparison.Ordinal) >= 0
+                  && fillSrc.IndexOf("whiteTexture", StringComparison.Ordinal) < 0,
+                "격자 칸 채움은 아틀라스 panel이다");
             int smith = estate.IndexOf("void DrawSmithMaterials", StringComparison.Ordinal);
             string smithSrc = smith >= 0 ? estate.Substring(smith, Math.Min(1200, estate.Length - smith)) : "";
             Check(smithSrc.IndexOf("new GUIStyle(_panel)", StringComparison.Ordinal) >= 0

@@ -1027,6 +1027,11 @@ namespace AshesToStars
             DrawSideTag(new Rect(gx + gridW + 2f, gy, 42f, gridH),
                 $"동\n{Len(EstateGrid.Side.동)}", EstateGrid.Side.동 == side);
 
+            if (!UiAtlas.DrawSliced(new Rect(gx, gy, gridW, gridH), "panel", 12f,
+                    new Color(1f, 1f, 1f, 0.92f)))
+                UiAtlas.Draw(new Rect(gx, gy, gridW, gridH), "panel",
+                    new Color(1f, 1f, 1f, 0.92f));
+
             var mark = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
@@ -1117,7 +1122,7 @@ namespace AshesToStars
             EstateGrid.Cell.Trap => new Color(0.62f, 0.16f, 0.16f, 1f),
             _ => onPath
                 ? new Color(0.96f, 0.62f, 0.22f, 1f)
-                : new Color(0.88f, 0.82f, 0.70f, 1f),
+                : new Color(0.88f, 0.82f, 0.70f, 0f),
         };
 
         static Color CellInk(EstateGrid.Cell c, bool onPath)
@@ -1127,11 +1132,20 @@ namespace AshesToStars
             return Color.white;
         }
 
+        static Texture2D _cellFill;
         static void FillCell(Rect box, Color c)
         {
+            if (_cellFill == null)
+            {
+                _cellFill = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                _cellFill.SetPixel(0, 0, Color.white);
+                _cellFill.Apply();
+                _cellFill.hideFlags = HideFlags.HideAndDontSave;
+            }
+            c.a *= 0.62f;
             var prev = GUI.color;
             GUI.color = c;
-            GUI.DrawTexture(box, Texture2D.whiteTexture);
+            GUI.DrawTexture(box, _cellFill);
             GUI.color = prev;
         }
 
