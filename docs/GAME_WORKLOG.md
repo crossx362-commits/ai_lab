@@ -27,6 +27,17 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — 일일퀘·출석 문자열 0 SelfCheck — 숙제 없는 리텐션 시계 (Grok)
+
+GAME_DESIGN §1 숙제·일일입장 금지. Runtime UI cs를 SrcNoComments.Read로 스캔해
+일일퀘·출석·매일N회·매일 입장·daily quest 등 플레이어 문구 0건.
+OfflineSettle.EffectiveSeconds → EstateMine.Tick 소비처 단언(재구현 없음).
+레이드 출현·경매 시세 UI에 「오늘 의무/매일 해야/일일 숙제」 프레이밍 없음
+(시스템 존재는 OK). QA_NO_NO_DAILY=1이면 옛 스캔 없음(통과). 픽스처 일일퀘는 탐지.
+
+`NoDailyQuestSelfCheck` PASS 32/32 (`results/no_daily_quest_selfcheck.log`).
+unity_meas batch 6000.5.6f1.
+
 ## 완료 (2026-08-27) — loop/run_selfcheck.sh — Editor SelfCheck 배치 진입점 (Grok)
 
 회의 20260827-073515 채택 #1. 승인 대화상자·승격 프롬프트 없이 unity_meas
