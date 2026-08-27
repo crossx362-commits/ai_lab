@@ -27,6 +27,19 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — AttachWithAwake Editor 공용 유틸 추출 (Grok)
+
+에디터 배치에서 AddComponent가 Awake를 안 불러 픽스처가 파일마다 Invoke("Awake")를
+복제하고 있었다. `TestAttach.AttachWithAwake<T>`로 한 곳에 모은다.
+QA_NO_ATTACH_AWAKE=1이면 AddComponent만 하고 Invoke는 건너뛴다(옛 깨진 배치 경로).
+W3Party는 Awake 전에 GameMode를 넣어야 해서 beforeAwake 콜백을 둔다.
+원본 4파일(Aoe·Auto·Run·CurveMeasure) + 로컬 헬퍼가 있던 Dps·G3도 공용 경로로 교체.
+런타임·W3Party·전투 로직 무접촉.
+
+`AttachWithAwakeSelfCheck` PASS 30/30 (`results/attach_with_awake_selfcheck.log`).
+소비처 연기 `BossAutoAttackSelfCheck` PASS.
+unity_meas batch 6000.5.6f1 exit 0.
+
 ## 완료 (2026-08-27) — G3 권장 파티 픽스처에 장비·합성 CombatMuls (Grok)
 
 BossHp 권장 전투력은 장비·합성·가호를 흡수하는데 G3 픽스처는 베어 로스터라

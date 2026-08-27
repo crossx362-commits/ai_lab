@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -150,12 +149,7 @@ namespace AshesToStars
         {
             var go = new GameObject("TowerClimbG3FixtureSelfCheck");
             go.SetActive(false);
-            party = go.AddComponent<global::W3Party>();
-            party.GameMode = true;
-            var awake = typeof(global::W3Party).GetMethod("Awake",
-                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            if (awake == null) throw new MissingMethodException("W3Party.Awake");
-            awake.Invoke(party, null);
+            party = TestAttach.AttachWithAwake<global::W3Party>(go, p => { p.GameMode = true; });
             return go;
         }
     }

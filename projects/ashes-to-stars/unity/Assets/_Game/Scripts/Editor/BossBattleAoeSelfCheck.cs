@@ -62,14 +62,11 @@ namespace AshesToStars
         {
             var go = new GameObject("BossBattleAoeSelfCheck");
             go.SetActive(false);
-            party = go.AddComponent<global::W3Party>();
-            party.GameMode = true;
-            boss = go.AddComponent<BossBattle>();
             // 비활성 오브젝트에서는 Unity가 Awake를 예약만 하므로, 실행 QA가 두 컴포넌트를
             // GameMode=true 상태에서 정확히 한 번 초기화한다. 활성화하면 기본 판이 먼저 서서
             // ApplyGameParty 재진입과 섞이므로 이 검증에서는 계속 비활성으로 둔다.
-            Invoke(party, "Awake");
-            Invoke(boss, "Awake");
+            party = TestAttach.AttachWithAwake<global::W3Party>(go, p => { p.GameMode = true; });
+            boss = TestAttach.AttachWithAwake<BossBattle>(go);
             boss.Begin(5, 1);
             return go;
         }
@@ -96,13 +93,6 @@ namespace AshesToStars
             method.Invoke(boss, args);
         }
 
-        static void Invoke(object target, string name)
-        {
-            var method = target.GetType().GetMethod(name,
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            Require(method != null, $"{target.GetType().Name}.{name} 경계를 찾지 못했다");
-            method.Invoke(target, null);
-        }
 
         static void Require(bool condition, string message)
         {

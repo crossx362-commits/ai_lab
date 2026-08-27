@@ -191,11 +191,8 @@ namespace AshesToStars
             // BossBattleRunSelfCheck과 같은 픽스처. 비활성으로 붙여 Awake를 한 번만 돌린다.
             var go = new GameObject("TowerClimbCurveMeasure");
             go.SetActive(false);
-            party = go.AddComponent<global::W3Party>();
-            party.GameMode = true;
-            boss = go.AddComponent<BossBattle>();
-            Invoke(party, "Awake");
-            Invoke(boss, "Awake");
+            party = TestAttach.AttachWithAwake<global::W3Party>(go, p => { p.GameMode = true; });
+            boss = TestAttach.AttachWithAwake<BossBattle>(go);
             return go;
         }
 
@@ -355,15 +352,6 @@ namespace AshesToStars
             };
         }
 
-        static void Invoke(object target, string method, params object[] args)
-        {
-            var m = target.GetType().GetMethod(method,
-                System.Reflection.BindingFlags.Instance
-                | System.Reflection.BindingFlags.NonPublic
-                | System.Reflection.BindingFlags.Public);
-            if (m == null) throw new MissingMethodException(target.GetType().Name + "." + method);
-            m.Invoke(target, args);
-        }
 
         static string BuildCsv(Row[] rows)
         {

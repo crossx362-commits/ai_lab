@@ -19,7 +19,7 @@ namespace AshesToStars
                 liveGo = BuildParty("BossBattleDpsSelfCheck_Live");
                 var liveParty = liveGo.GetComponent<global::W3Party>();
                 liveParty.ApplyGameParty();
-                var live = AttachWithAwake<BossBattle>(liveGo);
+                var live = TestAttach.AttachWithAwake<BossBattle>(liveGo);
                 int defeated = 0;
                 int phases = 0;
                 live.OnBossDefeated += _ => defeated++;
@@ -45,7 +45,7 @@ namespace AshesToStars
                 blockedGo = BuildParty("BossBattleDpsSelfCheck_Blocked");
                 var blockedParty = blockedGo.GetComponent<global::W3Party>();
                 blockedParty.ApplyGameParty();
-                var blocked = AttachWithAwake<BossBattle>(blockedGo);
+                var blocked = TestAttach.AttachWithAwake<BossBattle>(blockedGo);
                 blocked.Begin(5, 1);
                 blocked.AttachCombatTargets();
                 DamageFirstW3Target(blockedParty, startHp);
@@ -81,28 +81,11 @@ namespace AshesToStars
         {
             var go = new GameObject(name);
             go.SetActive(false);
-            var party = go.AddComponent<global::W3Party>();
-            party.GameMode = true;
-            var awake = typeof(global::W3Party).GetMethod("Awake",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            Require(awake != null, "W3Party.Awake 경계를 찾지 못했다");
-            awake.Invoke(party, null);
+            TestAttach.AttachWithAwake<global::W3Party>(go, p => { p.GameMode = true; });
             go.SetActive(true);
             return go;
         }
 
-        /// <summary>
-        /// 에디터(비플레이) 배치에선 AddComponent가 Awake를 부르지 않는다 — BossBattle.Awake가
-        /// activeFloorAOEs 등을 채우므로 Begin 전에 수동으로 띄운다(위 BuildParty와 같은 경계).
-        /// </summary>
-        static T AttachWithAwake<T>(GameObject go) where T : Component
-        {
-            var comp = go.AddComponent<T>();
-            var awake = typeof(T).GetMethod("Awake",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            if (awake != null) awake.Invoke(comp, null);
-            return comp;
-        }
 
         static void DamageFirstW3Target(global::W3Party party, float amount)
         {

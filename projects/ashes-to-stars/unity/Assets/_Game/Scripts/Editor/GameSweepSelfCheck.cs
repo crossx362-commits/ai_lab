@@ -105,6 +105,7 @@ namespace AshesToStars
                 new Entry { Name = "할로우 배경 6장", Run = HollowBgSelfCheck.Run },
                 new Entry { Name = "전직 11종 모습", Run = AdvLookSelfCheck.Run },
                 new Entry { Name = "필드·던전 바닥", Run = GroundHollowSelfCheck.Run },
+                new Entry { Name = "AttachWithAwake", Run = AttachWithAwakeSelfCheck.Run },
                 new Entry { Name = "AuctionBuyLock", Run = AuctionBuyLockSelfCheck.Run },
                 new Entry { Name = "AuctionExpire", Run = AuctionExpireSelfCheck.Run },
                 new Entry { Name = "AuctionFee", Run = AuctionFeeSelfCheck.Run },
