@@ -67,7 +67,7 @@ namespace AshesToStars
 
             _ = nameof(CharacterScreen);
 
-            string charSrc = File.ReadAllText(Path.Combine(Application.dataPath,
+            string charSrc = SrcNoComments.Read(Path.Combine(Application.dataPath,
                 "_Game/Scripts/Runtime/CharacterScreen.cs"));
             Check(charSrc.Contains("ShortCopper(GameState.Wallet.Copper)")
                   && charSrc.IndexOf("FormatCurrency(GameState.Wallet.Copper)") < 0,

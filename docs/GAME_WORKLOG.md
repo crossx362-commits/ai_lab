@@ -27,6 +27,17 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — SrcNoComments Editor 공용 — 주석 옛 문자열 FALSE-FAIL 차단 (Grok)
+
+회의 20260827-081437 채택 #4. 소스 계약 SelfCheck가 File.ReadAllText 뒤 Contains로
+옛 API 부재를 보면, 같은 커밋의 doc 주석이 그 문자열을 담아 FALSE-FAIL 한다.
+`SrcNoComments.Read(path)`가 `//` 줄 주석·`/* */` 블록·`///` xml docs를 빼고,
+문자열 리터럴은 그대로 둔다. QA_NO_SRC_NO_COMMENTS=1이면 원문(옛 FALSE-FAIL 경로).
+전 소비처는 안 바꾸고, 부재 단언이 있는 GroundHollow·BossHp·CharacterRoster만 옮김.
+
+`SrcNoCommentsSelfCheck` PASS 26/26 (`results/src_no_comments_selfcheck.log`).
+unity_meas batch 6000.5.6f1.
+
 ## 완료 (2026-08-27) — png 실로드 검사 — 보간 접두 Resources.Load null 차단 (Grok)
 
 회의 20260827-081437 채택 #1. `Resources.Load($"FX/fx_dash_trail_{i}")` 처럼
