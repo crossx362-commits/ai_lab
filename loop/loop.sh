@@ -39,6 +39,9 @@ PROVIDERS_CHAIN="${LOOP_PROVIDERS_CHAIN:-claude}"
 # "클로드 소진 시 opencode 가지 말고 클로드 할당량 회복될 때까지 대기").
 CHAIN_COUNT="$(printf '%s' "$PROVIDERS_CHAIN" | awk -F, '{c=0; for(i=1;i<=NF;i++){gsub(/[[:space:]]/,"",$i); if($i!="")c++} print c}')"
 COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
+# 회의 20260827-081437 채택 #3 — GameFullCheck 전수는 4바퀴마다 1회. 0 이면 끈다.
+FULLCHECK_EVERY="${LOOP_FULLCHECK_EVERY:-4}"
+FULLCHECK_METHOD="${LOOP_FULLCHECK_METHOD:-AshesToStars.GameFullCheck.Run}"
 
 # Claude↔Grok 사용량 자동전환 (오너 지시 2026-08-25). claude로 시작, 소진되면 grok, grok도
 # 소진되면 다시 claude. 코드 오류·테스트 실패로는 전환하지 않는다 — 소진 판정은 오직
@@ -47,6 +50,8 @@ AUTO_SWITCH="${LOOP_AUTO_SWITCH:-1}"
 PROVIDER_RETRY_SECONDS="${PROVIDER_RETRY_SECONDS:-1800}"
 MAX_PROVIDER_FAILURES="${MAX_PROVIDER_FAILURES:-6}"
 PROVIDER_STATE_FILE="$TARGET_REPO/loop/provider.state"
+# GameFullCheck 주기 카운터 — loop/ 에만 영속 (STATUS.md 금지). git 미추적 런타임 파일.
+FULLCHECK_COUNT_FILE="$TARGET_REPO/loop/fullcheck_lap.count"
 BOARD_PY="$DEPLOY_ROOT/board.py"
 EXHAUST_PATTERN="${LOOP_EXHAUST_PATTERN:-usage limit|quota exceeded|rate limit exceeded|out of credits|사용량.*(소진|초과)|로그인.*필요|please (log|sign) in|authentication required}"
 # 공급자 인프라 장애 — 「인프라 실패 ≠ 이슈 실패」(CLAUDE.md 가드레일). 이런 바퀴는 우리 코드가
@@ -94,6 +99,10 @@ find_bin() {
 
 if ! [[ "$MAX_LOOPS" =~ ^[0-9]+$ && "$COOLDOWN" =~ ^[0-9]+$ && "$MAX_TURNS" =~ ^[0-9]+$ ]]; then
   echo "LOOP_MAX_LOOPS/LOOP_COOLDOWN/LOOP_MAX_TURNS는 0 이상의 정수여야 합니다." >&2
+  exit 1
+fi
+if ! [[ "$FULLCHECK_EVERY" =~ ^[0-9]+$ ]]; then
+  echo "LOOP_FULLCHECK_EVERY는 0 이상의 정수여야 합니다." >&2
   exit 1
 fi
 
@@ -265,6 +274,66 @@ rotate_opencode_model() {
   [ "$next" = "$OPENCODE_MODEL" ] && return 0      # 후보가 하나뿐이면 그대로
   echo "opencode 모델 전환: $OPENCODE_MODEL → $next (서버 장애)" | tee -a "$MAIN_LOG" "$LAP_LOG"
   OPENCODE_MODEL="$next"
+}
+
+
+# GameFullCheck 전수 주기 — 회의 20260827-081437 채택 #3.
+# 카운터는 프로세스 재시작 뒤에도 loop/fullcheck_lap.count 로 이어진다.
+fullcheck_lap_read() {
+  local n=""
+  if [ -f "$FULLCHECK_COUNT_FILE" ]; then
+    n="$(tr -d '[:space:]' < "$FULLCHECK_COUNT_FILE" || true)"
+  fi
+  case "$n" in
+    ''|*[!0-9]*) echo 0 ;;
+    *) echo "$n" ;;
+  esac
+}
+
+fullcheck_lap_write() {
+  mkdir -p "$(dirname "$FULLCHECK_COUNT_FILE")"
+  printf '%s\n' "$1" > "$FULLCHECK_COUNT_FILE"
+}
+
+# 성공 바퀴 번호가 N의 배수일 때만 run_selfcheck.sh 로 전수를 돌린다.
+# Unity 부재는 비치명 스킵 — 사유를 랩 로그에 남기고 루프는 계속.
+maybe_run_game_fullcheck() {
+  local lap="$1" rc=0 wrap_out
+  [ "$FULLCHECK_EVERY" -gt 0 ] || return 0
+  [ "$lap" -gt 0 ] || return 0
+  [ $((lap % FULLCHECK_EVERY)) -eq 0 ] || return 0
+
+  echo "GameFullCheck 전수: ${lap}바퀴 — ${FULLCHECK_EVERY}바퀴마다 1회 ($FULLCHECK_METHOD)" \
+    | tee -a "$MAIN_LOG" "$LAP_LOG"
+
+  if [ ! -f "$DEPLOY_ROOT/run_selfcheck.sh" ]; then
+    echo "GameFullCheck 스킵 — run_selfcheck.sh 없음: $DEPLOY_ROOT/run_selfcheck.sh" \
+      | tee -a "$MAIN_LOG" "$LAP_LOG"
+    return 0
+  fi
+
+  wrap_out="$LAP_DIR/fullcheck-wrap-$LAP_ID.log"
+  bash "$DEPLOY_ROOT/run_selfcheck.sh" "$FULLCHECK_METHOD" \
+    --project "$TARGET_REPO/projects/ashes-to-stars/unity_meas" \
+    --log "$TARGET_REPO/projects/ashes-to-stars/results/game_fullcheck.log" \
+    > "$wrap_out" 2>&1 || rc=$?
+  if [ -f "$wrap_out" ]; then
+    cat "$wrap_out" >> "$LAP_LOG"
+  fi
+
+  if [ "$rc" -eq 0 ]; then
+    echo "GameFullCheck PASS" | tee -a "$MAIN_LOG" "$LAP_LOG"
+    return 0
+  fi
+
+  if [ -f "$wrap_out" ] && grep -Eq 'Unity 에디터를 찾지 못했다|Unity 가 없다|Unity 가 실행 파일이 아니다' "$wrap_out"; then
+    echo "GameFullCheck 스킵 — Unity 없음" | tee -a "$MAIN_LOG" "$LAP_LOG"
+    grep -E '\[run_selfcheck\]' "$wrap_out" | head -5 | tee -a "$MAIN_LOG" "$LAP_LOG" || true
+    return 0
+  fi
+
+  echo "GameFullCheck 실패 (exit $rc) — 루프는 계속" | tee -a "$MAIN_LOG" "$LAP_LOG"
+  return 0
 }
 
 # 자가검사용 후크 — `bash loop/loop.sh --self-test-infra <로그파일>`이면 판정만 하고 끝낸다
@@ -454,6 +523,11 @@ while true; do
     COUNT=$((COUNT + 1))
     FAILS=0
     INFRA_FAILS=0   # 한 바퀴라도 정상이면 공급자는 살아난 것이다
+    # 회의 20260827-081437 채택 #3 — 성공 바퀴만 세고, 4바퀴마다 GameFullCheck 전수.
+    FC_LAP="$(fullcheck_lap_read)"
+    FC_LAP=$((FC_LAP + 1))
+    fullcheck_lap_write "$FC_LAP"
+    maybe_run_game_fullcheck "$FC_LAP"
     # 자가학습 회의 — N바퀴마다 역할별 병렬 회의를 소집한다 (오너 2026-08-23).
     # 어떤 에이전트든 loop/COUNCIL_NOW 파일을 만들면 다음 바퀴 끝에 즉시 소집된다.
     if [ -f "$TARGET_REPO/loop/COUNCIL_NOW" ]; then

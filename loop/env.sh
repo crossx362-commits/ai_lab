@@ -33,6 +33,8 @@ export LOOP_OPENCODE_MODELS="${LOOP_OPENCODE_MODELS:-opencode/mimo-v2.5-free,ope
 
 # 자가학습 회의 — N바퀴마다 역할(planner·builder·tester) 병렬 회의 소집 (오너 2026-08-23)
 export LOOP_COUNCIL_EVERY="${LOOP_COUNCIL_EVERY:-4}"
+# GameFullCheck 전수 — N바퀴마다 1회 (회의 20260827-081437 채택 #3). Unity 없으면 스킵.
+export LOOP_FULLCHECK_EVERY="${LOOP_FULLCHECK_EVERY:-4}"
 
 # Claude↔Grok 사용량 자동전환 (오너 2026-08-25). 기본은 Claude로 시작, 소진되면 Grok, Grok도
 # 소진되면 다시 Claude — pick_agent()가 claude/grok을 고를 때만 적용된다(codex/opencode로

@@ -27,6 +27,16 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — loop 4바퀴마다 GameFullCheck 전수 — Unity 없으면 스킵 (Grok)
+
+회의 20260827-081437 채택 #3. 성공 바퀴를 `loop/fullcheck_lap.count`에 영속하고
+4바퀴마다 `run_selfcheck.sh AshesToStars.GameFullCheck.Run`을 돌린다. Unity
+부재·실행파일 아님은 비치명 스킵(사유를 랩 로그에 남김). 루프는 계속.
+
+`bash loop/test_fullcheck_every_4.sh` PASS 29/29
+(`projects/ashes-to-stars/results/fullcheck_every_4.log`). mock Unity라 에디터
+불필요. 실 Unity 전수는 이번 세션에서 미실행(보너스, 테스트 통과 조건 아님).
+
 ## 완료 (2026-08-27) — commit_guard 2단 검증 — 랩 종료 재실행·HEAD 재추출 (Grok)
 
 회의 20260827-081437 채택 #2. 커밋 전 허용 경로 검사(1단)에 더해, temp-index
