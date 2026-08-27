@@ -21,13 +21,17 @@
 3. **잡동사니** — 생성 폴더에 자산이 아닌 것이 섞였다 (개수 대조를 망친다)
 4. **미사용** — Resources에 있는데 코드가 안 읽는다 (빌드에 실리고 검사기는 침묵했다)
 
-사용: `python3 game_asset_names.py [--strict]`   (--strict면 문제 발견 시 exit 1)
+사용: `python3 game_asset_names.py [--strict] [--png-load] [--self-test]`
+  --strict    문제 발견 시 exit 1
+  --png-load  보간 `$"..."` 접두 PNG 실로드만 (커밋 가드)
+  --self-test 접두 추출 + 네거티브(없는 보간 로드) + live
 """
 
 from __future__ import annotations
 
 import argparse
 import filecmp
+import os
 import re
 import sys
 from pathlib import Path
@@ -43,6 +47,17 @@ GEN = GAME / "art" / "out_ai"
 
 # 자산이 아닌 산출물 — 생성 폴더에 있어도 반입 대상이 아니다.
 JUNK = re.compile(r"^(_|compare|sheet_all|.*_sheet_scaled)")
+
+# 보간 `$"FX/fx_dash_trail_{i}"` · `$"props/{id}_0"` (회의 20260827-081437 채택 #1)
+_RES_HEAD = re.compile(r"^(props|sprites|fx|ui|ground|bg)(/|$)", re.I)
+_INTERP_LOAD = re.compile(
+    r'Resources\.Load(?:<(?P<type>[^>]+)>)?\s*\(\s*\$"(?P<raw>[^"]*)"',
+    re.DOTALL,
+)
+_INTERP_RES = re.compile(
+    r'\$"((?:props|sprites|fx|FX|ui|ground|bg)/[^"]*)"',
+)
+
 
 
 def _src(path: Path) -> str:
@@ -190,6 +205,13 @@ def consumed_relpaths() -> set[str]:
         folder_n = _norm_res_rel(folder)
         for n in names:
             out.add(f"{folder_n}/{n.lower()}")
+    # `$"FX/fx_dash_trail_{i}"` 처럼 배열에 없는 보간 로드도 소비로 친다.
+    # 폴더만(`sprites/` + 빈 접미)은 너무 넓어 미사용 고아를 가린다 — 접두 줄기나 접미가 있을 때만.
+    for pat in interpolated_resource_patterns():
+        if not _interp_specific_enough(pat["prefix"], pat["suffix"]):
+            continue
+        for rel in match_interp_pngs(pat["prefix"], pat["suffix"]):
+            out.add(_norm_res_rel(rel))
     return out
 
 
@@ -334,10 +356,242 @@ def untracked_asset_problems() -> list[str]:
     return msgs
 
 
+
+def parse_interp(raw: str) -> tuple[str, str]:
+    """C# `$"props/{id}_0"` → (`props/`, `_0`). 첫 `{` 앞 리터럴 접두 + 마지막 `}` 뒤 접미.
+
+    회의 20260827-081437 채택 #1: 보간 접두를 뽑아 새 PNG `Resources.Load` 가
+    null 이 될 경로를 커밋 전에 차단한다. `{id}` 구멍은 glob 와일드카드다.
+    """
+    raw = raw.replace("\\", "/")
+    first = raw.find("{")
+    if first < 0:
+        return raw, ""
+    last = raw.rfind("}")
+    prefix = raw[:first]
+    suffix = raw[last + 1 :] if last >= 0 else ""
+    return prefix, suffix
+
+
+def _looks_like_res_prefix(prefix: str) -> bool:
+    return bool(prefix) and bool(_RES_HEAD.match(prefix.replace("\\", "/")))
+
+
+def _interp_specific_enough(prefix: str, suffix: str) -> bool:
+    """폴더만(`sprites/` + 빈 접미)은 미사용 대조에 쓰면 전부를 삼킨다."""
+    stem = prefix.replace("\\", "/").split("/")[-1]
+    return bool(stem) or bool(suffix)
+
+
+def interpolated_resource_patterns(
+    assets: Path | None = None, extra_src: str = "",
+) -> list[dict]:
+    """소스에서 `$"..."` 보간 리소스 경로를 뽑는다.
+
+    `Resources.Load($"...")` 를 우선하고, `props/`·`FX/` 로 시작하는 보간
+    문자열도 포함한다(경로를 변수에 담아 나중에 Load 하는 경우).
+    """
+    root = assets or ASSETS
+    blobs: list[str] = [extra_src] if extra_src else []
+    if root.is_dir():
+        for p in root.rglob("*.cs"):
+            blobs.append(_src(p))
+    out: list[dict] = []
+    seen: set[tuple] = set()
+    for src in blobs:
+        for m in _INTERP_LOAD.finditer(src):
+            raw = m.group("raw")
+            prefix, suffix = parse_interp(raw)
+            if not _looks_like_res_prefix(prefix):
+                continue
+            lt = (m.group("type") or "").strip()
+            key = (prefix, suffix, lt, raw)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({
+                "raw": raw, "prefix": prefix, "suffix": suffix, "load_type": lt,
+            })
+        for m in _INTERP_RES.finditer(src):
+            raw = m.group(1)
+            prefix, suffix = parse_interp(raw)
+            if not _looks_like_res_prefix(prefix):
+                continue
+            if any(
+                x["prefix"] == prefix and x["suffix"] == suffix and x["raw"] == raw
+                for x in out
+            ):
+                continue
+            key = (prefix, suffix, "", raw)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({
+                "raw": raw, "prefix": prefix, "suffix": suffix, "load_type": "",
+            })
+    return out
+
+
+def match_interp_pngs(
+    prefix: str, suffix: str, res: Path | None = None,
+) -> list[str]:
+    """Resources 아래에서 접두·접미에 맞는 PNG 상대경로 (확장자 포함)."""
+    root = res or RES
+    if not root.is_dir():
+        return []
+    pre = prefix.replace("\\", "/").lower()
+    suf = suffix.replace("\\", "/").lower()
+    hits: list[str] = []
+    for p in root.rglob("*.png"):
+        rel = p.relative_to(root).as_posix()
+        stem = rel[:-4] if rel.lower().endswith(".png") else rel
+        low = stem.lower()
+        if low.startswith(pre) and low.endswith(suf):
+            hits.append(rel)
+    return sorted(hits)
+
+
+def _sprite_null_reason(png_rel: str, res: Path) -> str | None:
+    """Load<Sprite> 가 null 이 될 .meta 사유. 파일 실존은 호출 쪽에서 본다."""
+    meta = res / (png_rel + ".meta")
+    if not meta.exists():
+        return "meta 없음"
+    txt = meta.read_text(encoding="utf-8", errors="replace")
+    if not re.search(r"textureType:\s*8\b", txt):
+        return "textureType이 Sprite 아님(Load<Sprite> null)"
+    m = re.search(r"spriteMode:\s*(\d+)", txt)
+    if m and m.group(1) == "2":
+        return "spriteMode=Multiple(Load<Sprite> null 실측)"
+    return None
+
+
+def png_load_problems(
+    res: Path | None = None,
+    assets: Path | None = None,
+    extra_src: str = "",
+) -> list[str]:
+    """보간 Resources.Load 가 가리키는 PNG 가 없거나 Sprite 로드가 null 이면 보고.
+
+    파이썬은 Unity `Resources.Load` 를 못 부르니 파일 존재(+ `Load<Sprite>` 면
+    .meta textureType/spriteMode)로 실로드 null 을 근사한다.
+    `QA_NO_PNG_LOAD=1` 이면 커밋 가드·live 검사를 건너뛴다(네거티브 픽스처·응급).
+    extra_src 네거티브는 env 와 무관하게 항상 본다.
+    """
+    skip_live = os.environ.get("QA_NO_PNG_LOAD") == "1" and not extra_src
+    if skip_live:
+        return []
+    root = res or RES
+    out: list[str] = []
+    pats = interpolated_resource_patterns(assets, extra_src=extra_src)
+    for pat in pats:
+        hits = match_interp_pngs(pat["prefix"], pat["suffix"], root)
+        if not hits:
+            out.append(
+                f"보간 로드 누락: $\"{pat['raw']}\" "
+                f"(접두 {pat['prefix']} 접미 {pat['suffix']}) "
+                "→ Resources.Load null"
+            )
+            continue
+        if "Sprite" in pat["load_type"] and _interp_specific_enough(
+            pat["prefix"], pat["suffix"]
+        ):
+            for rel in hits:
+                why = _sprite_null_reason(rel, root)
+                if why:
+                    out.append(f"보간 Load<Sprite> null: {rel} — {why}")
+    return out
+
+
+def self_test() -> tuple[bool, str]:
+    """접두 추출 + live 실파일 + 네거티브(없는 보간 로드가 잡히는지)."""
+    lines: list[str] = []
+    ok = True
+
+    cases = [
+        ("FX/fx_dash_trail_{i}", "FX/fx_dash_trail_", ""),
+        ("props/{id}_0", "props/", "_0"),
+        ("sprites/{d}/{d}_idle_00", "sprites/", "_idle_00"),
+        (
+            "sprites/{JOB_DIRS[j]}/{JOB_DIRS[j]}_{JOB_FRAMES[0]}",
+            "sprites/",
+            "",
+        ),
+    ]
+    for raw, wp, ws in cases:
+        p, s = parse_interp(raw)
+        if (p, s) != (wp, ws):
+            ok = False
+            lines.append(
+                f"FAIL extract $\"{raw}\" → prefix={p!r} suffix={s!r} "
+                f"(want {wp!r},{ws!r})"
+            )
+        else:
+            lines.append(f"ok   extract $\"{raw}\" → prefix={p!r} suffix={s!r}")
+
+    hits = match_interp_pngs("FX/fx_dash_trail_", "")
+    names = {Path(h).name for h in hits}
+    need = {"fx_dash_trail_0.png", "fx_dash_trail_1.png", "fx_dash_trail_2.png"}
+    if not need <= names:
+        ok = False
+        lines.append(f"FAIL live dash_trail hits={sorted(names)}")
+    else:
+        lines.append(
+            f"ok   live FX/fx_dash_trail_ → {len(hits)} files {sorted(names)}"
+        )
+
+    extra = 'Resources.Load<Sprite>($"FX/qa_missing_interp_{i}");\n'
+    msgs = png_load_problems(extra_src=extra)
+    blob = " ".join(msgs)
+    if "qa_missing_interp" not in blob:
+        ok = False
+        lines.append(f"FAIL 네거티브 qa_missing_interp 미탐지: {msgs}")
+    else:
+        lines.append(
+            'ok   네거티브 $"FX/qa_missing_interp_{i}" 탐지 (파일 없음 → null)'
+        )
+
+    live = png_load_problems()
+    if live:
+        ok = False
+        lines.append("FAIL live png 실로드:\n  " + "\n  ".join(live))
+    else:
+        n = len(interpolated_resource_patterns())
+        lines.append(f"ok   live 보간 Resources.Load {n}건 전부 파일 존재")
+
+    return ok, "\n".join(lines)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--strict", action="store_true")
+    ap.add_argument(
+        "--png-load", action="store_true",
+        help="보간 접두 png 실로드만 검사 (커밋 가드용)",
+    )
+    ap.add_argument(
+        "--self-test", action="store_true",
+        help="접두 추출 + 네거티브(없는 보간 로드) + live 실로드",
+    )
     args = ap.parse_args()
+
+    if args.self_test:
+        ok, note = self_test()
+        print(note)
+        if ok:
+            print("판정: PASS — 보간 접두 추출 + png 실로드 (네거티브 qa_missing_interp 탐지)")
+            return
+        print("판정: FAIL — 보간 접두 png 실로드 검사가 네거티브/live 를 통과하지 못했다")
+        sys.exit(1)
+
+    if args.png_load:
+        probs = png_load_problems()
+        if not probs:
+            n = len(interpolated_resource_patterns())
+            print(f"✅ png 실로드 이상 없음 (보간 {n}건)")
+            return
+        for p in probs:
+            print(f"⚠️ {p}")
+        sys.exit(1)
 
     problems: list[str] = []
     exp = expected()
@@ -391,6 +645,7 @@ def main() -> None:
     problems += untracked_asset_problems()
     problems += art_trap_problems()
     problems += unused_resource_problems()
+    problems += png_load_problems()
 
     if not problems:
         print("✅ 네이밍·반영 이상 없음")

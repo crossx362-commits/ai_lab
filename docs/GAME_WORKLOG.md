@@ -27,6 +27,19 @@
 
 생성 파이프라인은 `art/aigen.py` = 힉스필드 `nano_banana_flash`. `loop/PROMPT.md` ③: 그림은 힉스필드 또는 그록 이매진. 재와별 반입은 aigen.py가 기본, 힉스필드가 막히면 이매진.
 
+## 완료 (2026-08-27) — png 실로드 검사 — 보간 접두 Resources.Load null 차단 (Grok)
+
+회의 20260827-081437 채택 #1. `Resources.Load($"FX/fx_dash_trail_{i}")` 처럼
+C# 보간으로 부르면 배열 추출이 이름을 못 뽑아, 새 PNG 가 없어도 커밋이 통과했다.
+`game_asset_names.parse_interp` 가 `$"..."` 에서 첫 `{` 앞 리터럴 접두와 마지막 `}` 뒤
+접미를 뽑는다 (`$"props/{id}_0"` → `props/` + `_0`). Resources 아래 매칭 PNG 가
+없으면 실패하고, `Load<Sprite>` 면 .meta textureType/spriteMode 로 null 을 근사한다.
+커밋 가드는 유니티 Assets cs/png 또는 검사기 자체 스테이징 때 `--png-load` 를 돌린다.
+`QA_NO_PNG_LOAD=1` 이면 건너뛴다. 네거티브: `$"FX/qa_missing_interp_{i}"` (파일 없음).
+
+`python3 game_asset_names.py --self-test` PASS (`results/png_interp_load_selfcheck.log`).
+
+
 ## 완료 (2026-08-27) — V4 루프 경계 로그 훅 (Grok)
 
 삭제 판정은 파티 카드 「삭제됨」Cap이 아니라 `LifeSystem`/`Memorial` 이벤트다.
@@ -1450,3 +1463,21 @@ SelfCheck PASS.
 
 ## 정기 회의 20260825-203200
 - 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260825-203200.md (rc=0, 파트 3/3)
+
+## 정기 회의 20260826-095813
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260826-095813.md (rc=0, 파트 3/3)
+
+## 정기 회의 20260827-021705
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260827-021705.md (rc=0, 파트 2/3)
+
+## 정기 회의 20260827-030031
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260827-030031.md (rc=0, 파트 1/3)
+
+## 정기 회의 20260827-065728
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260827-065728.md (rc=0, 파트 1/3)
+
+## 정기 회의 20260827-073515
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260827-073515.md (rc=0, 파트 3/3)
+
+## 정기 회의 20260827-081437
+- 역할 병렬 회의(planner·builder·tester+의장) 종료. 산출: docs/meetings/COUNCIL-20260827-081437.md (rc=0, 파트 1/3)

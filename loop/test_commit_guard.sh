@@ -128,6 +128,15 @@ output_has "차단 시 삭제 예약을 지목" "삭제로 스테이지됨" guar
 rm "$R/docs/art.png"
 expect 0 "실제로 지운 파일의 삭제 커밋은 통과" guard_in "$R" docs/art.png
 
+# 8) png 실로드 훅이 가드에 물려 있는지 (회의 20260827-081437 #1)
+if grep -q -- '--png-load' "$GUARD" && grep -q 'game_asset_names.py' "$GUARD"; then
+  echo "ok   - png 실로드 훅이 commit_guard 에 연결됨"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL - png 실로드 훅이 commit_guard 에 없다"
+  FAIL=$((FAIL + 1))
+fi
+
 echo "----------------------------------------"
 echo "통과 ${PASS} · 실패 ${FAIL}"
 [ "$FAIL" -eq 0 ]
