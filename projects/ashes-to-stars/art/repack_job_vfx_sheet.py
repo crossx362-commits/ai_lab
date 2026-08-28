@@ -17,6 +17,7 @@ SHEETS = {
     "tank_slash": "tank_slash_sheet.png",
     "mage_fire": "mage_fire_sheet.png",
     "priest_heal": "priest_heal_sheet.png",
+    "tank_barrier": "tank_barrier_sheet.png",
 }
 COLS, ROWS, CELL, PADDING = 4, 2, 256, 8
 SOURCE_SIZE = (1774, 887)

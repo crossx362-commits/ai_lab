@@ -25,6 +25,9 @@ namespace AshesToStars
             var priest = Resources.Load<Texture2D>("fx/priest_heal_sheet");
             Debug.Assert(priest != null && priest.width == 1024 && priest.height == 512,
                 "[JobVfxSelfCheck] 사제 치유 시트는 정수 256px 4x2 격자여야 한다");
+            var barrier = Resources.Load<Texture2D>("fx/tank_barrier_sheet");
+            Debug.Assert(barrier != null && barrier.width == 1024 && barrier.height == 512,
+                "[JobVfxSelfCheck] 탱커 방어막 시트는 정수 256px 4x2 격자여야 한다");
             Debug.Log("[JobVfxSelfCheck] PASS");
         }
     }
