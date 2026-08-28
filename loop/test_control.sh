@@ -4,6 +4,7 @@ set -euo pipefail
 
 SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/loop-control.XXXXXX")"
+TEST_ROOT="$(cd "$TEST_ROOT" && pwd)"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 
 mkdir -p "$TEST_ROOT/loop" "$TEST_ROOT/bin" "$TEST_ROOT/LaunchAgents" "$TEST_ROOT/logs"
@@ -21,14 +22,19 @@ case "${1:-}" in
       rm -f "$TEST_ROOT/service.running"
     fi
     if [ -f "$TEST_ROOT/service.running" ]; then
+      [ -f "$TEST_ROOT/service.path" ] && echo "    $(cat "$TEST_ROOT/service.path")"
       echo '    pid = 4242'
       exit 0
     fi
-    [ -f "$TEST_ROOT/service.loaded" ] && exit 0
+    if [ -f "$TEST_ROOT/service.loaded" ]; then
+      [ -f "$TEST_ROOT/service.path" ] && echo "    $(cat "$TEST_ROOT/service.path")"
+      exit 0
+    fi
     exit 113
     ;;
   bootstrap)
     touch "$TEST_ROOT/service.loaded"
+    printf '%s\n' "$TEST_ROOT/loop/loop.sh" > "$TEST_ROOT/service.path"
     exit 0
     ;;
   kickstart)
@@ -41,7 +47,10 @@ case "${1:-}" in
   bootout)
     case "${2:-}" in
       *com.ailab.autonomous_loop)
-        rm -f "$TEST_ROOT/service.loaded" "$TEST_ROOT/service.running"
+        if [ -f "$TEST_ROOT/fail_bootout" ]; then
+          exit 1
+        fi
+        rm -f "$TEST_ROOT/service.loaded" "$TEST_ROOT/service.running" "$TEST_ROOT/service.path"
         ;;
     esac
     exit 0
@@ -68,6 +77,8 @@ run_control() {
   LOOP_LAUNCH_AGENTS_DIR="$TEST_ROOT/LaunchAgents" \
   LOOP_CONTROL_WAIT_ATTEMPTS=2 \
   LOOP_CONTROL_WAIT_SECONDS=0 \
+  LOOP_CONTROL_LOCK_ATTEMPTS=100 \
+  LOOP_CONTROL_LOCK_WAIT_SECONDS=0.02 \
   LOOP_CONTROL_RESTART_STALE="${LOOP_CONTROL_RESTART_STALE:-0}" \
   bash "$TEST_ROOT/loop/control.sh" "$@"
 }
@@ -108,11 +119,42 @@ if [ "$before" -ne "$after" ]; then
   exit 1
 fi
 
-before_force="$after"
+printf '%s\n' '/Users/junholee/Library/Application Support/ai_lab_loop/loop.sh' \
+  > "$TEST_ROOT/service.path"
+before_stale_path="$after"
+run_control start codex > "$TEST_ROOT/start-old-path.log"
+after_stale_path="$(grep -c '^bootstrap ' "$TEST_ROOT/launchctl.calls")"
+if [ "$after_stale_path" -ne $((before_stale_path + 1)) ]; then
+  echo "FAIL: 이미 실행 중인 예전 Application Support 정의를 원본 경로로 다시 등록하지 않았다"
+  exit 1
+fi
+if [ "$(cat "$TEST_ROOT/service.path")" != "$TEST_ROOT/loop/loop.sh" ]; then
+  echo "FAIL: 재등록 뒤 실제 launchd 실행 경로가 저장소 원본이 아니다"
+  exit 1
+fi
+
+before_force="$after_stale_path"
 LOOP_CONTROL_RESTART_STALE=1 run_control start codex > "$TEST_ROOT/start-stale.log"
 after_force="$(grep -c '^bootstrap ' "$TEST_ROOT/launchctl.calls")"
 if [ "$after_force" -ne $((before_force + 1)) ]; then
   echo "FAIL: stale 복구 start가 기존 서비스를 내리고 원본을 다시 등록하지 않았다"
+  exit 1
+fi
+
+touch "$TEST_ROOT/fail_bootout"
+before_failed_bootout="$after_force"
+set +e
+LOOP_CONTROL_RESTART_STALE=1 run_control start codex > "$TEST_ROOT/start-bootout-failure.log" 2>&1
+failed_bootout_rc=$?
+set -e
+rm -f "$TEST_ROOT/fail_bootout"
+after_failed_bootout="$(grep -c '^bootstrap ' "$TEST_ROOT/launchctl.calls")"
+if [ "$failed_bootout_rc" -eq 0 ]; then
+  echo "FAIL: bootout 실패로 예전 PID가 남았는데 시작 성공으로 보고했다"
+  exit 1
+fi
+if [ "$after_failed_bootout" -ne "$before_failed_bootout" ]; then
+  echo "FAIL: 기존 서비스 소멸 확인 전에 bootstrap을 시도했다"
   exit 1
 fi
 
@@ -125,6 +167,46 @@ phase="$(python3 "$TEST_ROOT/loop/runtime_state.py" \
   --path "$TEST_ROOT/loop/runtime_state.json" get phase)"
 if [ "$phase" != "owner_stopped" ]; then
   echo "FAIL: stop 뒤 phase가 owner_stopped가 아니다: $phase"
+  exit 1
+fi
+
+before_ensure="$(grep -c '^bootstrap ' "$TEST_ROOT/launchctl.calls")"
+run_control ensure-running codex > "$TEST_ROOT/ensure-stopped.log"
+after_ensure="$(grep -c '^bootstrap ' "$TEST_ROOT/launchctl.calls")"
+if [ ! -e "$TEST_ROOT/loop/STOP" ]; then
+  echo "FAIL: 감시용 ensure-running이 오너 STOP을 해제했다"
+  exit 1
+fi
+if [ "$before_ensure" -ne "$after_ensure" ]; then
+  echo "FAIL: 감시용 ensure-running이 owner_stopped 서비스를 다시 등록했다"
+  exit 1
+fi
+
+rm -f "$TEST_ROOT/loop/STOP"
+python3 "$TEST_ROOT/loop/runtime_state.py" \
+  --path "$TEST_ROOT/loop/runtime_state.json" set running \
+  --provider codex --reason test >/dev/null
+touch "$TEST_ROOT/service.loaded" "$TEST_ROOT/service.running"
+printf '%s\n' "$TEST_ROOT/loop/loop.sh" > "$TEST_ROOT/service.path"
+mkdir "$TEST_ROOT/loop/.control-lock"
+printf '%s\n' "$$" > "$TEST_ROOT/loop/.control-lock/pid"
+run_control ensure-running codex > "$TEST_ROOT/ensure-race.log" 2>&1 &
+ensure_pid=$!
+sleep 0.1
+if ! kill -0 "$ensure_pid" 2>/dev/null; then
+  echo "FAIL: 감시용 재개와 stop이 공유 제어 잠금으로 직렬화되지 않았다"
+  wait "$ensure_pid" 2>/dev/null || true
+  exit 1
+fi
+touch "$TEST_ROOT/loop/STOP"
+python3 "$TEST_ROOT/loop/runtime_state.py" \
+  --path "$TEST_ROOT/loop/runtime_state.json" set owner_stopped \
+  --provider codex --reason test >/dev/null
+rm -f "$TEST_ROOT/loop/.control-lock/pid"
+rmdir "$TEST_ROOT/loop/.control-lock"
+wait "$ensure_pid"
+if [ ! -e "$TEST_ROOT/loop/STOP" ]; then
+  echo "FAIL: 잠금 대기 중 생긴 오너 STOP을 감시용 재개가 지웠다"
   exit 1
 fi
 

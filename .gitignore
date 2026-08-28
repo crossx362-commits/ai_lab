@@ -16,6 +16,7 @@ loop/provider.state
 loop/runtime_state.json
 loop/runtime_state.json.lock
 loop/recovery_context.log
+loop/.control-lock/
 loop/logs/
 .claude/
 .mcp.json

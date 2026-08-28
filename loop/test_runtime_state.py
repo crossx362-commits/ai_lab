@@ -53,16 +53,17 @@ class RuntimeStateTests(unittest.TestCase):
         self.assertEqual(got["recovery_claims"], ["loop:abc"])
         self.assertEqual(list(self.path.parent.glob("*.tmp")), [])
 
-    def test_claim_keeps_only_the_latest_32_fingerprints(self) -> None:
+    def test_claim_never_reopens_an_old_fingerprint_after_many_errors(self) -> None:
         state = load_module()
 
         for index in range(35):
             self.assertTrue(state.claim_recovery(self.path, f"board:{index}"))
 
         claims = state.read_state(self.path)["recovery_claims"]
-        self.assertEqual(len(claims), 32)
-        self.assertEqual(claims[0], "board:3")
+        self.assertEqual(len(claims), 35)
+        self.assertEqual(claims[0], "board:0")
         self.assertEqual(claims[-1], "board:34")
+        self.assertFalse(state.claim_recovery(self.path, "board:0"))
 
     def test_usage_limit_is_quota_but_access_denial_is_error(self) -> None:
         state = load_module()

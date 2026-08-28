@@ -28,11 +28,11 @@ control_pid() {
 resume_main() {
   local provider="$1" force="$2"
   if [ "$DRY" = "1" ]; then
-    log "DRY: LOOP_CONTROL_RESTART_STALE=$force bash $CONTROL start $provider"
+    log "DRY: LOOP_CONTROL_RESTART_STALE=$force bash $CONTROL ensure-running $provider"
     return 0
   fi
   if LOOP_CONTROL_RESTART_STALE="$force" \
-      bash "$CONTROL" start "$provider" >> "$LOG" 2>&1; then
+      bash "$CONTROL" ensure-running "$provider" >> "$LOG" 2>&1; then
     log "메인 재개 확인: provider=$provider force=$force"
   else
     log "메인 재개 실패: provider=$provider force=$force — 다음 주기 재확인"

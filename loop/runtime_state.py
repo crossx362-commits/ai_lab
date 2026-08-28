@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import sys
 import tempfile
 import time
 from typing import Any
@@ -136,7 +137,7 @@ def claim_recovery(path: Path, fingerprint: str) -> bool:
         if fingerprint in claims:
             return
         claims.append(fingerprint)
-        data["recovery_claims"] = claims[-32:]
+        data["recovery_claims"] = claims
         data["last_error_fingerprint"] = fingerprint
         data["heartbeat_at"] = int(time.time())
         claimed = True
@@ -177,6 +178,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     args = _parser().parse_args()
     if args.command == "set":
         value = update_state(

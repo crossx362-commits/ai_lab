@@ -3294,20 +3294,11 @@ def latest_lap_info() -> dict:
     }
 
 def provider_health() -> dict:
-    """env LOOP_PROVIDERS + 간단 바이너리/한도 힌트."""
-    raw = os.environ.get("LOOP_PROVIDERS", "claude,codex,grok")
+    """고정 선택 실행기와 간단 바이너리/한도 힌트."""
+    configured = _read(HERE / "agent").strip()
+    raw = os.environ.get("LOOP_PROVIDERS", configured or "grok")
     names = [x.strip() for x in raw.replace("·", ",").split(",") if x.strip()]
-    # also check App Support env if present
-    app_env = Path.home() / "Library/Application Support/AI Lab Autonomous Loop/env.sh"
-    if app_env.is_file():
-        for line in app_env.read_text(encoding="utf-8", errors="replace").splitlines():
-            if line.startswith("export LOOP_PROVIDERS="):
-                val = line.split("=", 1)[1].split("#", 1)[0].strip().strip('"').strip("'")
-                m = re.search(r"\$\{LOOP_PROVIDERS:-([^}]+)\}", val)
-                if m:
-                    val = m.group(1)
-                names = [x.strip().strip('"').strip("'") for x in val.split(",") if x.strip()]
-    return {"providers": names, "note": "Claude 주간 한도 시 codex·grok만 쓰는 게 안전"}
+    return {"providers": names, "note": "선택한 AI를 유지하며 한도·외부 장애는 무료 조회로 대기"}
 
 
 
@@ -3845,7 +3836,9 @@ class Handler(BaseHTTPRequestHandler):
                 elif action == "stop":
                     stop_loop()
                 elif action == "unstop":
-                    set_flag("STOP", False)
+                    result = resume_work()
+                    self._json(200, {"ok": True, **result, "loop": loop_flags()})
+                    return
                 else:
                     self._json(400, {"ok": False, "error": "알 수 없는 action"})
                     return

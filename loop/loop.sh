@@ -99,6 +99,7 @@ fi
 mkdir -p "$TARGET_REPO/logs" "$TARGET_REPO/loop" "$TARGET_REPO/docs/feedback"
 export PYTHONUNBUFFERED=1
 COUNT=0
+QUOTA_CONFIRMED=0
 
 wait_with_stop() {
   local remaining="$1" step
@@ -142,7 +143,7 @@ remain = d.get("remain_pct")
 if d.get("ok") and remain is not None and remain <= 0:
     print("quota"); sys.exit()
 if err:
-    print("unknown"); sys.exit()
+    print("error"); sys.exit()
 print("ok")
 '
 }
@@ -155,6 +156,10 @@ runtime_set() {
 
 runtime_heartbeat() {
   python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" heartbeat >/dev/null
+}
+
+runtime_get() {
+  python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" get "$1" 2>/dev/null || true
 }
 
 # 공급자 서버 장애로 죽은 바퀴인가 — 마지막 40줄만 본다(작업 중 인용한 문구를 장애로 오독하지
@@ -347,6 +352,16 @@ current_head() {
   git -C "$TARGET_REPO" rev-parse HEAD 2>/dev/null || echo "nogit"
 }
 
+recovery_commit_matches() {
+  local failed_head="$1" recovery_token="$2" after_head message
+  after_head="$(current_head)"
+  [ "$after_head" != "$failed_head" ] || return 1
+  git -C "$TARGET_REPO" merge-base --is-ancestor "$failed_head" "$after_head" \
+    2>/dev/null || return 1
+  message="$(git -C "$TARGET_REPO" show -s --format=%B "$after_head" 2>/dev/null)"
+  printf '%s\n' "$message" | grep -Fq "[$recovery_token]"
+}
+
 classify_lap() {
   local logfile="$1" exit_code="$2"
   python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" classify \
@@ -356,6 +371,35 @@ classify_lap() {
 provider_error_in_log() {
   local logfile="$1"
   [ -f "$logfile" ] && tail -80 "$logfile" | grep -qiE "$PROVIDER_ERROR_PATTERN"
+}
+
+provider_unavailable_in_log() {
+  local logfile="$1"
+  provider_error_in_log "$logfile" || detect_infra_failure_in_log "$logfile"
+}
+
+wait_for_provider_recovery() {
+  local provider="$1" reason="$2" availability
+  while true; do
+    runtime_set recovering "$provider" "$reason — 무료 상태 재확인 대기" \
+      "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
+    echo "$provider 공급자 회복 대기 — ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회(AI 호출 없음)" \
+      | tee -a "$MAIN_LOG" "${LAP_LOG:-$MAIN_LOG}"
+    wait_with_stop "$PROVIDER_RETRY_SECONDS" || return 1
+    availability="$(usage_check "$provider")"
+    case "$availability" in
+      ok)
+        runtime_set running "$provider" "공급자 무료 상태 조회 회복" 0
+        return 0
+        ;;
+      quota)
+        QUOTA_CONFIRMED=1
+        runtime_set quota_wait "$provider" "공급자 회복 뒤 사용량 한도" \
+          "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
+        return 0
+        ;;
+    esac
+  done
 }
 
 select_recovery_agent() {
@@ -395,8 +439,8 @@ write_recovery_context() {
 }
 
 wait_for_context_change() {
-  local failed_head="$1" failed_agent="${2:-}" wait_kind="${3:-head}"
-  local delay="$RECOVERY_RETRY_SECONDS" availability bin
+  local failed_head="$1" failed_agent="${2:-}" wait_kind="${3:-head}" logfile="${4:-}"
+  local delay="$RECOVERY_RETRY_SECONDS" availability bin recovery_agent
   [ "$delay" -gt 0 ] || delay=1
   while [ "$(current_head)" = "$failed_head" ]; do
     if [ "$wait_kind" = "usage" ]; then
@@ -416,6 +460,12 @@ wait_for_context_change() {
         runtime_set running "$failed_agent" "실행기 경로 회복" 0
         return 0
       fi
+    elif [ "$wait_kind" = "recovery" ]; then
+      recovery_agent="$(select_recovery_agent "$failed_agent" "$logfile")"
+      if [ -n "$recovery_agent" ]; then
+        runtime_set recovering "$failed_agent" "복구 실행기 감지: $recovery_agent" 0
+        return 0
+      fi
     fi
     echo "같은 오류 지문은 AI를 다시 부르지 않음 — ${delay}초 뒤 로컬 상태만 재확인" \
       | tee -a "$MAIN_LOG" "${LAP_LOG:-$MAIN_LOG}"
@@ -427,34 +477,33 @@ wait_for_context_change() {
 
 run_recovery_once() {
   local failed_agent="$1" exit_code="$2" logfile="$3" wait_kind="${4:-head}"
-  local failed_head fingerprint recovery_agent recovery_bin recovery_rc after_head
+  local failed_head fingerprint recovery_token recovery_agent recovery_bin recovery_rc
   failed_head="$(current_head)"
   fingerprint="$(python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" fingerprint \
     --provider "$failed_agent" --exit-code "$exit_code" --log "$logfile" \
     --context-version "$failed_head")"
+  recovery_token="loop-recovery:${fingerprint:0:12}"
   runtime_set recovering "$failed_agent" "오류 복구: $fingerprint" 0
-
-  if ! python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" claim "$fingerprint"; then
-    wait_for_context_change "$failed_head" "$failed_agent" "$wait_kind"
-    return $?
-  fi
 
   recovery_agent="$(select_recovery_agent "$failed_agent" "$logfile")"
   if [ -z "$recovery_agent" ]; then
     echo "사용 가능한 복구 실행기 없음 — AI 호출 없이 대기" | tee -a "$MAIN_LOG" "$logfile"
-    wait_for_context_change "$failed_head" "$failed_agent" "$wait_kind"
+    wait_for_context_change "$failed_head" "$failed_agent" recovery "$logfile"
     return $?
   fi
   recovery_bin="$(find_bin "$recovery_agent")"
+  if ! python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" claim "$fingerprint"; then
+    wait_for_context_change "$failed_head" "$failed_agent" "$wait_kind" "$logfile"
+    return $?
+  fi
   write_recovery_context "$failed_agent" "$exit_code" "$logfile"
   echo "오류 지문 최초 1회 복구: $recovery_agent" | tee -a "$MAIN_LOG" "$logfile"
   run_session "$recovery_agent" "$recovery_bin" "$RECOVERY_CONTEXT_FILE" \
-    "너는 자율 루프 오류 복구 세션이다. 새 기능을 만들지 않는다. 오류의 근본 원인과 직접 관련된 파일만 수정하고 재현 테스트를 통과시켜라. 성공하면 고친 파일만 즉시 커밋하고 게임 개발 작업은 시작하지 마라." \
+    "너는 자율 루프 오류 복구 세션이다. 새 기능을 만들지 않는다. 오류의 근본 원인과 직접 관련된 파일만 수정하고 재현 테스트를 통과시켜라. 성공하면 고친 파일만 즉시 커밋하고 커밋 메시지에 [$recovery_token]을 정확히 포함하라. 게임 개발 작업은 시작하지 마라." \
     >> "$logfile" 2>&1
   recovery_rc=$?
   runtime_heartbeat
-  after_head="$(current_head)"
-  if [ "$recovery_rc" -eq 0 ] && [ "$after_head" != "$failed_head" ]; then
+  if [ "$recovery_rc" -eq 0 ] && recovery_commit_matches "$failed_head" "$recovery_token"; then
     echo "복구 커밋 확인 — 새 원본으로 재기동" | tee -a "$MAIN_LOG" "$logfile"
     return 75
   fi
@@ -474,7 +523,12 @@ if [ ! -f "$RUNTIME_STATE_TOOL" ]; then
   echo "런타임 상태 도구를 찾지 못했다: $RUNTIME_STATE_TOOL" >&2
   exit 1
 fi
-runtime_set running "$STARTUP_AGENT" "루프 시작" 0
+PREVIOUS_PHASE="$(runtime_get phase)"
+if [ "$PREVIOUS_PHASE" = "quota_wait" ]; then
+  QUOTA_CONFIRMED=1
+else
+  runtime_set running "$STARTUP_AGENT" "루프 시작" 0
+fi
 echo "자율 개발 루프 시작: target=$TARGET_REPO agent=$STARTUP_AGENT max=${MAX_LOOPS:-0}"
 
 while true; do
@@ -491,8 +545,17 @@ while true; do
   AGENT="$(pick_agent)"
   USAGE_STATE="$(usage_check "$AGENT")"
   if [ "$USAGE_STATE" = "quota" ]; then
+    QUOTA_CONFIRMED=1
     runtime_set quota_wait "$AGENT" "사용량 한도" "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
     echo "$AGENT 사용량 회복 대기 — ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회" | tee -a "$MAIN_LOG"
+    wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
+    continue
+  fi
+  if [ "$USAGE_STATE" = "unknown" ] && [ "$QUOTA_CONFIRMED" = "1" ]; then
+    runtime_set quota_wait "$AGENT" "한도 뒤 사용량 조회 불명" \
+      "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
+    echo "$AGENT 사용량 판정 불명 — 확인된 한도 상태를 유지하고 ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회" \
+      | tee -a "$MAIN_LOG"
     wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
     continue
   fi
@@ -501,12 +564,11 @@ while true; do
     LAP_DIR="$TARGET_REPO/logs/$DATE_DIR"
     LAP_LOG="$LAP_DIR/recovery-login-$AGENT.log"
     mkdir -p "$LAP_DIR"
-    echo "$AGENT authentication required: usage API 로그인 없음" > "$LAP_LOG"
-    run_recovery_once "$AGENT" 77 "$LAP_LOG" usage
-    RECOVERY_RESULT=$?
-    [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
+    echo "$AGENT provider unavailable: usage API 오류" > "$LAP_LOG"
+    wait_for_provider_recovery "$AGENT" "사용량 조회 오류" || exit 0
     continue
   fi
+  [ "$USAGE_STATE" = "ok" ] && QUOTA_CONFIRMED=0
 
   BIN="$(find_bin "$AGENT")"
   if [ -z "$BIN" ]; then
@@ -546,6 +608,7 @@ while true; do
 
   LAP_CLASS="$(classify_lap "$LAP_LOG" "$RESULT")"
   if [ "$LAP_CLASS" = "quota" ]; then
+    QUOTA_CONFIRMED=1
     runtime_set quota_wait "$AGENT" "사용량 한도" "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
     echo "$AGENT 사용량 회복 대기 — ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회" \
       | tee -a "$MAIN_LOG" "$LAP_LOG"
@@ -554,6 +617,12 @@ while true; do
   fi
 
   if [ "$RESULT" -ne 0 ]; then
+    if provider_unavailable_in_log "$LAP_LOG"; then
+      echo "공급자 외부 오류 (code=$RESULT) — 복구 AI 없이 무료 상태 재확인" \
+        | tee -a "$MAIN_LOG" "$LAP_LOG"
+      wait_for_provider_recovery "$AGENT" "공급자 외부 오류" || exit 0
+      continue
+    fi
     echo "세션 비정상 종료 (code=$RESULT) — 오류 복구 우선" | tee -a "$MAIN_LOG" "$LAP_LOG"
     run_recovery_once "$AGENT" "$RESULT" "$LAP_LOG"
     RECOVERY_RESULT=$?
