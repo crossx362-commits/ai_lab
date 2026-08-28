@@ -77,6 +77,23 @@ namespace AshesToStars
                 Debug.Assert(clear > 1000, "[FxPool] fx_heal 배경은 투명해야 한다");
                 Debug.Assert(visible > 500, "[FxPool] fx_heal 치유 고리 실루엣이 비어 있지 않아야 한다");
             }
+            var shield = Resources.Load<Texture2D>("fx/fx_shield");
+            Debug.Assert(shield != null, "[FxPool] fx_shield 런타임 리소스가 있어야 한다");
+            Debug.Assert(shield != null && shield.width == 512 && shield.height == 512,
+                "[FxPool] fx_shield는 투명 512×512 런타임 심볼이어야 한다");
+            if (shield != null && shield.isReadable)
+            {
+                var pixels = shield.GetPixels32();
+                int clear = 0;
+                int visible = 0;
+                for (int i = 0; i < pixels.Length; i += 31)
+                {
+                    if (pixels[i].a < 16) clear++;
+                    if (pixels[i].a > 64) visible++;
+                }
+                Debug.Assert(clear > 1000, "[FxPool] fx_shield 배경은 투명해야 한다");
+                Debug.Assert(visible > 500, "[FxPool] fx_shield 보호 고리 실루엣이 비어 있지 않아야 한다");
+            }
             Debug.Log("[FxPoolSelfCheck] PASS");
         }
     }
