@@ -6,6 +6,8 @@
 
 > 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브·WORKLOG 기준으로 복구.
 
+최신 바퀴(2026-08-29 01:30): **일반 HP 프레임 ox-alpha 화풍 통일**(`3d542ab2`) — UI·아트 미완료 재탐색에서 `ui/chrome/hp_frame.png`가 구형 261KB 회화식 자산으로 남아 좌우 검은 잔상·잘린 동물 문양이 보이고, 채택된 panel·portrait·boss HP 크롬과 재질이 갈리는 것을 원본 육안으로 확인했다. 신규 `gen_oxalpha_ui_chrome_hp_frame.py`로 원본 1194×206·RGBA와 GUID·소비 경로를 유지한 채 웜톤 5색 대칭 9-slice 프레임으로 교체하고 구판을 백업했다. 일반 체력바는 보스판보다 얇은 황동 테두리와 작은 좌우 표식만 써 위계를 낮췄다. 생성기 계약(크기·팔레트·좌우/상하 대칭·37px 밖 가로 늘림 균일·결정론) PASS, `UiAtlasSelfCheck` 배치 exit 0·최종 PASS. PNG를 실제 원본 크기로 확인해 잔상 제거·대칭·깨끗한 중앙 채움 영역을 확인했다. 전수 스윕은 공유 작업 트리의 미커밋 `EstateBuildingsSelfCheck` 알파 기준과 기존 보스 벽 배율 때문에 4/216 FAIL(이번 UiAtlas는 PASS). 오너 Unity가 꺼져 있어 인게임 캡처는 생략. **다음: 남은 구형 크롬 중 상시 노출 `xp_frame`을 우선 육안 진단하되 기존 변경과 겹치지 않는다.**
+
 최신 바퀴(2026-08-28 21:20): **보스 HP 프레임 ox-alpha 화풍 통일**(`df4be602`) — UI·아트 미완료 재탐색에서 `ui/chrome/boss_hp_frame.png`의 양끝 문양에 검은 뭉침·잘린 잔상이 남고 채택된 ox-alpha 패널과 재질이 갈리는 것을 원본 육안으로 확인했다. 신규 `gen_oxalpha_ui_chrome_boss_hp_frame.py`로 원본 크기 1194×206·RGBA와 GUID·독립 크롬 소비 경로를 유지한 채 웜톤 5색 대칭 9-slice 프레임으로 교체하고 구판을 백업했다. 생성기 계약(크기·팔레트·좌우/상하 대칭·37px 밖 가로 늘림 균일) PASS, `UiAtlasSelfCheck` 배치 exit 0·PASS. 커밋 후 PNG를 실제 확인해 잔상 제거·대칭·깨끗한 중앙 채움 영역을 확인했다. 전수 스윕은 타 작업의 미커밋 `EstateBuildingsSelfCheck` 알파 기준 때문에 4/216 FAIL(이번 UiAtlas는 PASS). 오너 Unity가 꺼져 있어 인게임 캡처는 생략. **다음: UI·아트 미완료 1건을 새로 발굴하되 기존 변경과 겹치지 않는다.**
 
 
