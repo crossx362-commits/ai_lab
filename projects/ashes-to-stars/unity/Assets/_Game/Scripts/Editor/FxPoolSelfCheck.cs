@@ -9,6 +9,23 @@ namespace AshesToStars
         {
             Debug.Assert(FxPool.FrontSortingOrder > 1100,
                 "[FxPool] 전면 이펙트 정렬값은 몬스터·보스 깊이 정렬(최대 1100)보다 커야 한다");
+            var hit = Resources.Load<Texture2D>("fx/fx_hit");
+            Debug.Assert(hit != null, "[FxPool] fx_hit 런타임 리소스가 있어야 한다");
+            Debug.Assert(hit != null && hit.width == 512 && hit.height == 512,
+                "[FxPool] fx_hit는 투명 512×512 런타임 심볼이어야 한다");
+            if (hit != null && hit.isReadable)
+            {
+                var pixels = hit.GetPixels32();
+                int clear = 0;
+                int visible = 0;
+                for (int i = 0; i < pixels.Length; i += 31)
+                {
+                    if (pixels[i].a < 16) clear++;
+                    if (pixels[i].a > 64) visible++;
+                }
+                Debug.Assert(clear > 1000, "[FxPool] fx_hit 배경은 투명해야 한다");
+                Debug.Assert(visible > 500, "[FxPool] fx_hit 충격 실루엣이 비어 있지 않아야 한다");
+            }
             Debug.Log("[FxPoolSelfCheck] PASS");
         }
     }
