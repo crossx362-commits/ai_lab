@@ -7,6 +7,7 @@ namespace AshesToStars
     {
         public const int FrameCount = 8;
         static readonly string[] Keys = { "tank_slash_sheet", "dps_slash_sheet", "mage_fire_sheet", "priest_heal_sheet", "tank_barrier_sheet", "bard_aura_sheet" };
+        public static readonly string[] RequiredKeys = Keys;
         static Texture2D[] _textures;
 
         static void Load()
