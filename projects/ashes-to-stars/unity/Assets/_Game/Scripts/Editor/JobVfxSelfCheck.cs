@@ -22,6 +22,9 @@ namespace AshesToStars
             var mage = Resources.Load<Texture2D>("fx/mage_fire_sheet");
             Debug.Assert(mage != null && mage.width == 1024 && mage.height == 512,
                 "[JobVfxSelfCheck] 마법사 화염 시트는 정수 256px 4x2 격자여야 한다");
+            var priest = Resources.Load<Texture2D>("fx/priest_heal_sheet");
+            Debug.Assert(priest != null && priest.width == 1024 && priest.height == 512,
+                "[JobVfxSelfCheck] 사제 치유 시트는 정수 256px 4x2 격자여야 한다");
             Debug.Log("[JobVfxSelfCheck] PASS");
         }
     }
