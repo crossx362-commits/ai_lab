@@ -13,6 +13,9 @@ namespace AshesToStars
             var bard = Resources.Load<Texture2D>("fx/bard_aura_sheet");
             Debug.Assert(bard != null && bard.width == 1024 && bard.height == 512,
                 "[JobVfxSelfCheck] 음유시인 오라 시트는 정수 256px 4x2 격자여야 한다");
+            var dps = Resources.Load<Texture2D>("fx/dps_slash_sheet");
+            Debug.Assert(dps != null && dps.width == 1024 && dps.height == 512,
+                "[JobVfxSelfCheck] 물리 딜러 베기 시트는 정수 256px 4x2 격자여야 한다");
             Debug.Log("[JobVfxSelfCheck] PASS");
         }
     }
