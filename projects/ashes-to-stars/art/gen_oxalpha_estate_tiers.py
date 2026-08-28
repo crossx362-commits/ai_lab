@@ -12,6 +12,7 @@ ox-alpha 코드합성으로 교체(256×256, ~5KB)됐으나 레벨 티어 _1/_2�
 글로우 없음. 티어는 깃발 수·첨탑 높이로만 읽힌다.
 
 사용: python3 gen_oxalpha_estate_tiers.py <building>   (기본: keep)
+      python3 gen_oxalpha_estate_tiers.py --self-test
 출력: art/out_oxalpha_estate_<building>_1.png, _2.png
 """
 from pathlib import Path
@@ -27,6 +28,35 @@ GOLD_DK = (150, 110, 52, 255)
 BANNER = (150, 34, 34, 255)
 BANNER_DK = (86, 20, 20, 255)
 OUTLINE = (40, 24, 20, 255)
+OVERLAY_COLORS = {GOLD, GOLD_DK, BANNER, BANNER_DK, OUTLINE}
+
+
+def validate_output(im, base, label):
+    """반입 전 출력 계약: 256 RGBA·투명 여백·팔레트·면적 단조."""
+    errors = []
+    if im.mode != "RGBA":
+        errors.append(f"모드 {im.mode} != RGBA")
+    if im.size != (256, 256):
+        errors.append(f"크기 {im.size} != 256x256")
+    if errors:
+        return errors
+
+    pixels = list(im.get_flattened_data())
+    base_data = list(base.get_flattened_data())
+    base_pixels = set(base_data)
+    clear = sum(px[3] == 0 for px in pixels)
+    solid = sum(px[3] > 16 for px in pixels)
+    base_solid = sum(px[3] > 16 for px in base_data)
+    if clear == 0:
+        errors.append("투명 여백 0픽셀")
+    if solid == 0:
+        errors.append("불투명 실체 0픽셀")
+    if solid < base_solid:
+        errors.append(f"불투명 면적 감소 {solid} < 베이스 {base_solid}")
+    unexpected = {px for px in pixels if px not in base_pixels and px not in OVERLAY_COLORS}
+    if unexpected:
+        errors.append(f"팔레트 밖 신규 색 {len(unexpected)}개")
+    return errors
 
 
 def _opaque_bbox(im):
@@ -98,7 +128,29 @@ def make_tier(base, tier):
     return im
 
 
+def self_test():
+    """정상 출력과 크기·알파·팔레트 네거티브를 실제 판정한다."""
+    base = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+    ImageDraw.Draw(base).rectangle([72, 72, 184, 220], fill=(120, 90, 60, 255))
+    good = make_tier(base, 1)
+    checks = [
+        (not validate_output(good, base, "정상"), "정상 티어 통과"),
+        (bool(validate_output(good.resize((128, 128)), base, "크기")), "네거티브 크기 탐지"),
+        (bool(validate_output(Image.new("RGBA", (256, 256), (1, 2, 3, 255)), base, "알파")),
+         "네거티브 투명 여백 탐지"),
+    ]
+    bad_color = good.copy()
+    bad_color.putpixel((0, 0), (1, 255, 1, 255))
+    checks.append((bool(validate_output(bad_color, base, "색")), "네거티브 팔레트 탐지"))
+    failed = [name for ok, name in checks if not ok]
+    for ok, name in checks:
+        print(f"{'ok' if ok else 'FAIL'} - {name}")
+    return not failed
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--self-test":
+        sys.exit(0 if self_test() else 1)
     building = sys.argv[1] if len(sys.argv) > 1 else "keep"
     src = HERE / f"out_oxalpha_estate_{building}.png"
     if not src.exists():
@@ -110,8 +162,13 @@ def main():
         sys.exit(2)
     for tier in (1, 2):
         out = HERE / f"out_oxalpha_estate_{building}_{tier}.png"
-        make_tier(base, tier).save(out)
-        print(f"→ {out.name}")
+        image = make_tier(base, tier)
+        errors = validate_output(image, base, out.name)
+        if errors:
+            print(f"ERR: {out.name}: {'; '.join(errors)}")
+            sys.exit(2)
+        image.save(out)
+        print(f"→ {out.name} (256 RGBA·알파·팔레트 PASS)")
 
 
 if __name__ == "__main__":
