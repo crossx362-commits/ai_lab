@@ -12,7 +12,9 @@ import knock_bg
 
 
 HERE = Path(__file__).resolve().parent
-SOURCE = HERE / "out_p23_fx" / "fx_fire.png"
+# P23 동명 원본은 육안상 회색 꽃무늬라 화염으로 읽히지 않는다. 이미 생성돼 있던
+# P4 픽셀 불꽃 원본을 사용하고, 신규 생성은 하지 않는다.
+SOURCE = HERE / "out_p4_fx" / "fx_fire.png"
 TARGET = HERE.parent / "unity" / "Assets" / "Resources" / "fx" / "fx_fire.png"
 SIZE = 512
 CONTENT_SIZE = 480
