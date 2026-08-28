@@ -24,7 +24,6 @@ namespace AshesToStars
         static bool _open;
         static bool _seeded;
         static string _last;
-        static Texture2D _dim;
         static GUIStyle _title;
         static GUIStyle _body;
         static GUIStyle _btn;
@@ -84,7 +83,9 @@ namespace AshesToStars
             if (!Open) return;
             Ensure();
             var dim = new Rect(0f, 0f, RefW, RefH);
-            GUI.DrawTexture(dim, _dim);
+            var dimTint = new Color(0.06f, 0.04f, 0.02f, 0.72f);
+            if (!UiAtlas.DrawSliced(dim, "panel", 16f, dimTint))
+                UiAtlas.DrawFit(dim, "panel", dimTint);
             var card = new Rect((RefW - 520f) * 0.5f, (RefH - 240f) * 0.5f, 520f, 240f);
             if (!UiAtlas.DrawSliced(card, "panel", 16f, new Color(1f, 1f, 1f, 0.96f)))
                 UiAtlas.Draw(card, "panel", new Color(1f, 1f, 1f, 0.96f));
@@ -124,17 +125,6 @@ namespace AshesToStars
 
         static void Ensure()
         {
-            if (_dim == null)
-            {
-                _dim = new Texture2D(1, 1, TextureFormat.RGBA32, false)
-                {
-                    hideFlags = HideFlags.HideAndDontSave,
-                    filterMode = FilterMode.Point,
-                    wrapMode = TextureWrapMode.Clamp,
-                };
-                _dim.SetPixel(0, 0, new Color(0f, 0f, 0f, 0.62f));
-                _dim.Apply(false, true);
-            }
             if (_title != null) return;
             _title = new GUIStyle(GUI.skin.label)
             {

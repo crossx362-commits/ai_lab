@@ -59,6 +59,10 @@ namespace AshesToStars
                 "제목 바로 이어서");
             Check(overlaySrc.IndexOf(V4ContinueOverlay.ContinueText, StringComparison.Ordinal) >= 0,
                 "계속 버튼");
+            Check(overlaySrc.IndexOf("DrawSliced(dim, \"panel\"", StringComparison.Ordinal) >= 0
+                  && overlaySrc.IndexOf("GUI.DrawTexture(dim", StringComparison.Ordinal) < 0
+                  && overlaySrc.IndexOf("new Texture2D(1, 1", StringComparison.Ordinal) < 0,
+                "dim은 아틀라스 panel이다");
 
             V4ContinueOverlay.ResetForTest();
             Check(!V4ContinueOverlay.Open, "기본은 닫힘");
