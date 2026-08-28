@@ -94,6 +94,23 @@ namespace AshesToStars
                 Debug.Assert(clear > 1000, "[FxPool] fx_shield 배경은 투명해야 한다");
                 Debug.Assert(visible > 500, "[FxPool] fx_shield 보호 고리 실루엣이 비어 있지 않아야 한다");
             }
+            var taunt = Resources.Load<Texture2D>("fx/fx_taunt");
+            Debug.Assert(taunt != null, "[FxPool] fx_taunt 런타임 리소스가 있어야 한다");
+            Debug.Assert(taunt != null && taunt.width == 512 && taunt.height == 512,
+                "[FxPool] fx_taunt는 투명 512×512 런타임 심볼이어야 한다");
+            if (taunt != null && taunt.isReadable)
+            {
+                var pixels = taunt.GetPixels32();
+                int clear = 0;
+                int visible = 0;
+                for (int i = 0; i < pixels.Length; i += 31)
+                {
+                    if (pixels[i].a < 16) clear++;
+                    if (pixels[i].a > 64) visible++;
+                }
+                Debug.Assert(clear > 1000, "[FxPool] fx_taunt 배경은 투명해야 한다");
+                Debug.Assert(visible > 500, "[FxPool] fx_taunt 동심 충격파 실루엣이 비어 있지 않아야 한다");
+            }
             Debug.Log("[FxPoolSelfCheck] PASS");
         }
     }
