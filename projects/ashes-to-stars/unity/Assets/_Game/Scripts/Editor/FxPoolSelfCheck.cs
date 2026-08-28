@@ -128,6 +128,23 @@ namespace AshesToStars
                 Debug.Assert(clear > 1000, "[FxPool] fx_summon 배경은 투명해야 한다");
                 Debug.Assert(visible > 500, "[FxPool] fx_summon 룬 마법진 실루엣이 비어 있지 않아야 한다");
             }
+            var death = Resources.Load<Texture2D>("fx/fx_death");
+            Debug.Assert(death != null, "[FxPool] fx_death 런타임 리소스가 있어야 한다");
+            Debug.Assert(death != null && death.width == 512 && death.height == 512,
+                "[FxPool] fx_death는 투명 512×512 런타임 심볼이어야 한다");
+            if (death != null && death.isReadable)
+            {
+                var pixels = death.GetPixels32();
+                int clear = 0;
+                int visible = 0;
+                for (int i = 0; i < pixels.Length; i += 31)
+                {
+                    if (pixels[i].a < 16) clear++;
+                    if (pixels[i].a > 64) visible++;
+                }
+                Debug.Assert(clear > 1000, "[FxPool] fx_death 배경은 투명해야 한다");
+                Debug.Assert(visible > 500, "[FxPool] fx_death 연기 확산 실루엣이 비어 있지 않아야 한다");
+            }
             Debug.Log("[FxPoolSelfCheck] PASS");
         }
     }
