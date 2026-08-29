@@ -39,11 +39,8 @@ def find_real_cli(name: str) -> str | None:
 def write_wrapper(name: str, script: Path) -> Path:
     wrapper = RUNTIME_BIN / name
     wrapper.write_text(
-        "#!/bin/sh\nexec "
-        + shlex.quote(sys.executable)
-        + " "
-        + shlex.quote(str(script))
-        + ' "$@"\n',
+        "#!/bin/sh\nexec " + shlex.quote(sys.executable) + " "
+        + shlex.quote(str(script)) + ' "$@"\n',
         encoding="utf-8",
     )
     wrapper.chmod(0o755)
@@ -51,7 +48,6 @@ def write_wrapper(name: str, script: Path) -> Path:
 
 
 def compat_env() -> dict[str, str] | None:
-    """AutoDev 프로세스 안에서만 provider 보호 래퍼를 PATH 앞에 둔다."""
     grok = find_real_cli("grok")
     if not grok:
         print("Grok CLI를 찾을 수 없습니다. `grok version`을 먼저 확인하세요.")
@@ -75,7 +71,7 @@ def compat_env() -> dict[str, str] | None:
         "AUTODEV_GROK_QUOTA_STATE",
         str(REPO / "output" / "autodev_v2" / "grok_quota_exhausted.json"),
     )
-    env.setdefault("AUTODEV_CODEX_QUOTA_COOLDOWN_SECONDS", "3600")
+    env.setdefault("AUTODEV_CODEX_QUOTA_COOLDOWN_SECONDS", "300")
     env.setdefault(
         "AUTODEV_CODEX_QUOTA_STATE",
         str(REPO / "output" / "autodev_v2" / "codex_quota_exhausted.json"),
@@ -84,7 +80,7 @@ def compat_env() -> dict[str, str] | None:
     print(f"Grok CLI: {grok}")
     print(f"Codex CLI: {codex or '(미설치/미발견)'}")
     print("Director 라우팅: 로컬 Ollama 우선, 유효한 결과가 없을 때만 Grok")
-    print("Provider 쿼터 보호: Grok/Codex 한도 소진 감지 시 1시간 실제 재호출 차단")
+    print("Provider 쿼터 보호: Grok 1시간 / Codex 5분 후 실제 재확인")
     print("Grok CLI 호환 모드: 설치 버전에 없는 선택 절약 옵션은 자동 생략")
     return env
 
