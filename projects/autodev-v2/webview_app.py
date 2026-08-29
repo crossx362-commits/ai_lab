@@ -5,8 +5,9 @@
 표준 라이브러리만 사용한다.
 - 브라우저에서 시작/중지/업데이트/상태/오류 확인
 - 엔진 PID를 파일에 기록해 대시보드 재시작 뒤에도 실제 실행 상태를 추적
-- 업데이트는 Git hook을 우회
-- 업데이트 버튼 한 번으로 엔진 중지 -> git pull -> 대시보드 재시작
+- 상태 API는 매 요청마다 PID/state/git/quota를 실제 소스에서 다시 읽는다
+- 업데이트는 Git hook을 우회하고 Codex quota cache를 재확인 상태로 만든다
+- 업데이트 버튼 한 번으로 엔진 중지 -> git pull -> 전체 상태 재수집 -> 대시보드 재시작
 - 업데이트 전 엔진이 실행 중이었다면 새 서버에서 자동 재개
 """
 from __future__ import annotations
@@ -17,6 +18,7 @@ import os
 import re
 import secrets
 import shlex
+import shutil
 import signal
 import socket
 import subprocess
@@ -42,9 +44,12 @@ QUOTA_FILES = {
     "grok": OUTPUT / "grok_quota_exhausted.json",
     "codex": OUTPUT / "codex_quota_exhausted.json",
 }
+QUOTA_COOLDOWNS = {
+    "grok": 3600,
+    "codex": 300,
+}
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("AUTODEV_HTML_PORT", "8765"))
-COOLDOWN_SECONDS = 3600
 ERROR_RE = re.compile(
     r"(error|exception|traceback|failed|failure|timeout|blocked|quota|402|rc=[1-9]|실패|오류|막힘|한도\s*소진)",
     re.IGNORECASE,
@@ -120,16 +125,68 @@ def state_path() -> Path | None:
         return None
 
 
-def quota_status(path: Path) -> dict[str, Any]:
+def quota_status(provider: str) -> dict[str, Any]:
+    path = QUOTA_FILES[provider]
     data = read_json(path)
     ts = float(data.get("detected_at", 0) or 0)
     age = max(0, int(time.time() - ts)) if ts else None
+    cooldown = int(QUOTA_COOLDOWNS[provider])
+    active = bool(ts and age is not None and age < cooldown)
+    remaining = max(0, cooldown - int(age or 0)) if active else 0
     return {
         "detected": bool(ts),
-        "active": bool(ts and age is not None and age < COOLDOWN_SECONDS),
+        "active": active,
         "age_seconds": age,
+        "cooldown_seconds": cooldown,
+        "remaining_seconds": remaining,
         "reason": str(data.get("reason", "")),
+        "source_file": str(path),
     }
+
+
+def find_cli(name: str) -> str | None:
+    exe = shutil.which(name)
+    if exe:
+        return exe
+    for p in (
+        f"/usr/local/bin/{name}",
+        f"/opt/homebrew/bin/{name}",
+        str(Path.home() / ".local" / "bin" / name),
+    ):
+        if os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
+
+def cli_status(name: str) -> dict[str, Any]:
+    exe = find_cli(name)
+    if not exe:
+        return {"installed": False, "path": "", "version": ""}
+    version = ""
+    for args in (["--version"], ["version"]):
+        try:
+            r = subprocess.run(
+                [exe, *args], cwd=REPO, capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=4,
+            )
+            text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+            if r.returncode == 0 and text:
+                version = text.splitlines()[0][:160]
+                break
+        except Exception:
+            continue
+    return {"installed": True, "path": exe, "version": version}
+
+
+def cleanup_expired_quota(provider: str) -> bool:
+    q = quota_status(provider)
+    if not q.get("detected") or q.get("active"):
+        return False
+    try:
+        QUOTA_FILES[provider].unlink()
+        return True
+    except OSError:
+        return False
 
 
 def server_alive(port: int) -> bool:
@@ -302,10 +359,6 @@ class Controller:
                 pass
             with self.lock:
                 if self.proc is not None and self.proc.pid == pid:
-                    try:
-                        self.proc.poll()
-                    except Exception:
-                        pass
                     self.proc = None
             self.log(f"[HTML] AutoDev 중지 완료 PID {pid}")
             return {"ok": True, "message": "중지했습니다."}
@@ -317,9 +370,8 @@ class Controller:
         if provider not in QUOTA_FILES:
             return {"ok": False, "message": "알 수 없는 provider"}
         p = QUOTA_FILES[provider]
-        existed = p.exists()
         try:
-            if existed:
+            if p.exists():
                 p.unlink()
             self.log(f"[QUOTA] {provider} 한도 대기 기록 해제")
             return {"ok": True, "message": f"{provider.upper()} 한도 대기 기록을 해제했습니다. 다음 실제 호출에서 재확인합니다."}
@@ -333,7 +385,13 @@ class Controller:
             if not stopped.get("ok"):
                 return {"ok": False, "message": "AutoDev 중지 실패: " + str(stopped.get("message", ""))}
 
-        self.log("[UPDATE] AutoDev 중지 완료")
+        # 업데이트 자체가 전체 실시간 갱신 트리거다.
+        # Codex는 짧은 보호 상태를 지우고 다음 실제 호출에서 현재 한도를 재확인한다.
+        self.clear_quota("codex")
+        if cleanup_expired_quota("grok"):
+            self.log("[UPDATE] 만료된 Grok quota 기록 정리")
+
+        self.log("[UPDATE] AutoDev 중지/실제 PID 확인 완료")
         self.log("[UPDATE] Git hook 없이 fast-forward 업데이트")
         try:
             r = subprocess.run(
@@ -354,6 +412,16 @@ class Controller:
                     self.start()
                 return {"ok": False, "message": out[-1500:] or "업데이트 실패"}
 
+            # pull 직후 현재 시스템 상태를 실제 소스에서 다시 읽어 로그에 남긴다.
+            snap = self.status()
+            self.log(
+                "[UPDATE] 실시간 상태 재수집 완료 · "
+                f"queue={snap['queue_count']} done={snap['completed_count']} "
+                f"blocked={snap['blocked_count']} git={snap['git']['branch']} "
+                f"grok={'wait' if snap['grok_quota']['active'] else 'ready'} "
+                f"codex={'wait' if snap['codex_quota']['active'] else 'ready'}"
+            )
+
             ok, err = launch_replacement_server(resume_engine)
             if not ok:
                 if resume_engine:
@@ -364,7 +432,7 @@ class Controller:
             self.log("[UPDATE] 새 코드로 대시보드 재시작 예약")
             return {
                 "ok": True,
-                "message": "업데이트 완료. 대시보드를 자동 재시작합니다.",
+                "message": "전체 실시간 갱신 완료. 새 코드/상태로 대시보드를 다시 엽니다.",
                 "restarting": True,
                 "resume_engine": resume_engine,
             }
@@ -392,6 +460,8 @@ class Controller:
         return result
 
     def status(self) -> dict[str, Any]:
+        # 중요: 캐시된 dashboard 값을 쓰지 않고 매번 실제 소스에서 다시 읽는다.
+        checked_at = time.time()
         expected_state = configured_state_path()
         sp = state_path()
         state_exists = sp is not None and sp.exists()
@@ -425,8 +495,13 @@ class Controller:
                 capture_output=True, text=True, timeout=6,
                 encoding="utf-8", errors="replace",
             ).stdout.splitlines())
+            head = subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"], cwd=REPO,
+                capture_output=True, text=True, timeout=4,
+                encoding="utf-8", errors="replace",
+            ).stdout.strip()
         except Exception:
-            branch, dirty = "?", -1
+            branch, dirty, head = "?", -1, "?"
 
         recent_errors = self.recent_errors()
         if not state_exists:
@@ -434,10 +509,12 @@ class Controller:
         elif not state_read_ok:
             recent_errors.append({"time": "STATE", "text": f"상태파일 읽기 실패/빈 상태: {sp}"})
 
-        grok_q = quota_status(QUOTA_FILES["grok"])
-        codex_q = quota_status(QUOTA_FILES["codex"])
+        grok_q = quota_status("grok")
+        codex_q = quota_status("codex")
         pid = engine_pid()
         running = pid is not None
+        grok_cli = cli_status("grok")
+        codex_cli = cli_status("codex")
         with self.lock:
             last_exit = self.last_exit
 
@@ -446,11 +523,16 @@ class Controller:
             issue_count += 1
         if codex_q.get("active"):
             issue_count += 1
+        if not grok_cli.get("installed"):
+            issue_count += 1
+        if not codex_cli.get("installed"):
+            issue_count += 1
         if last_exit not in (None, 0) and not running:
             issue_count += 1
 
         return {
             "ok": True,
+            "checked_at": checked_at,
             "running": running,
             "pid": pid,
             "last_exit": last_exit,
@@ -471,7 +553,9 @@ class Controller:
             },
             "grok_quota": grok_q,
             "codex_quota": codex_q,
-            "git": {"branch": branch or "?", "dirty_count": dirty},
+            "grok_cli": grok_cli,
+            "codex_cli": codex_cli,
+            "git": {"branch": branch or "?", "dirty_count": dirty, "head": head or "?"},
             "state_file": str(sp) if sp else str(expected_state),
             "state_exists": state_exists,
             "state_read_ok": state_read_ok,
@@ -488,7 +572,7 @@ TOKEN = secrets.token_urlsafe(24)
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "AutoDevHTML/2"
+    server_version = "AutoDevHTML/3"
 
     def log_message(self, fmt: str, *args: Any) -> None:
         return
@@ -497,7 +581,9 @@ class Handler(BaseHTTPRequestHandler):
         data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -515,7 +601,7 @@ class Handler(BaseHTTPRequestHandler):
             supplied = query.get("token", [""])[0]
             if not secrets.compare_digest(supplied, TOKEN):
                 self.send_response(302)
-                self.send_header("Location", f"/?token={urllib.parse.quote(TOKEN)}")
+                self.send_header("Location", f"/?token={urllib.parse.quote(TOKEN)}&r={int(time.time())}")
                 self.send_header("Cache-Control", "no-store")
                 self.end_headers()
                 return
@@ -526,7 +612,9 @@ class Handler(BaseHTTPRequestHandler):
             data = html.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Cache-Control", "no-store")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -599,7 +687,7 @@ def open_existing_if_any() -> bool:
     port = int(old.get("port", PORT) or PORT)
     token = str(old.get("token", ""))
     if token and server_alive(port):
-        webbrowser.open(f"http://{HOST}:{port}/?token={urllib.parse.quote(token)}")
+        webbrowser.open(f"http://{HOST}:{port}/?token={urllib.parse.quote(token)}&r={int(time.time())}")
         return True
     return False
 
@@ -610,12 +698,12 @@ def main() -> int:
     try:
         server = ThreadingHTTPServer((HOST, PORT), Handler)
     except OSError:
-        webbrowser.open(f"http://{HOST}:{PORT}/")
+        webbrowser.open(f"http://{HOST}:{PORT}/?r={int(time.time())}")
         return 0
 
     write_server_state()
     atexit.register(cleanup)
-    url = f"http://{HOST}:{PORT}/?token={urllib.parse.quote(TOKEN)}"
+    url = f"http://{HOST}:{PORT}/?token={urllib.parse.quote(TOKEN)}&r={int(time.time())}"
     CTRL.log(f"[HTML] 대시보드 {url}")
 
     resume = os.environ.pop("AUTODEV_RESUME_ENGINE", "0").strip() == "1"
