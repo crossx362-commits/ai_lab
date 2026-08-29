@@ -106,6 +106,14 @@ namespace AshesToStars
             Check(!HasLandscapeScreenShape(1200, 800),
                 "3:2 던전 노드맵 배경 대표 결함을 거부한다");
 
+            var result = Resources.Load<Texture2D>("bg/bg_result");
+            GetSourceSize(result, out sourceWidth, out sourceHeight);
+            Check(HasLandscapeScreenShape(sourceWidth, sourceHeight),
+                "전투 결과 배경 원본은 16:9 가로 화면이어야 한다 (실제 "
+                + sourceWidth + "x" + sourceHeight + ")");
+            Check(!HasLandscapeScreenShape(1600, 1200),
+                "4:3 전투 결과 배경 대표 결함을 거부한다");
+
             if (fail == 0) Debug.Log("[HollowBgSelfCheck] PASS");
             else Debug.LogError("[HollowBgSelfCheck] FAIL " + fail);
         }
