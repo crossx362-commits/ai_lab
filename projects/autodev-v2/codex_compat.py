@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """AutoDev v2용 Codex CLI 쿼터 보호 래퍼.
 
-Codex 구독 한도 소진 문구를 감지하면 짧은 쿨다운을 두어 반복 호출을 막는다.
-쿨다운 뒤 실제 호출이 성공하면 과거 한도 기록을 즉시 지운다.
+- 한도 소진 시 5분 보호시간
+- 성공 시 오래된 한도 기록 자동 삭제
+- 실제 Codex stdout/stderr를 합쳐 즉시 전달해 HTML에서 진행 상황이 보이게 함
 """
 from __future__ import annotations
 
@@ -81,17 +82,29 @@ def clear_exhausted() -> None:
 
 
 def run_real(exe: str, args: list[str]) -> tuple[int, str]:
+    """실제 Codex 출력을 줄 단위로 즉시 흘려보내면서 한도 문구도 수집한다."""
+    lines: list[str] = []
     try:
-        r = subprocess.run([exe, *args], capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", env=os.environ.copy())
-        if r.stdout:
-            sys.stdout.write(r.stdout)
-        if r.stderr:
-            sys.stderr.write(r.stderr)
-        return r.returncode, ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+        p = subprocess.Popen(
+            [exe, *args],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+            env=os.environ.copy(),
+        )
+        assert p.stdout is not None
+        for line in p.stdout:
+            text = line.rstrip("\n")
+            lines.append(text)
+            print(text, flush=True)
+        rc = p.wait()
+        return rc, "\n".join(lines)
     except Exception as e:
         text = f"codex compat exec error: {type(e).__name__}: {e}"
-        print(text, file=sys.stderr)
+        print(text, file=sys.stderr, flush=True)
         return 125, text
 
 
@@ -99,19 +112,19 @@ def main() -> int:
     try:
         exe = real_codex()
     except RuntimeError as e:
-        print(f"codex compat error: {e}", file=sys.stderr)
+        print(f"codex compat error: {e}", file=sys.stderr, flush=True)
         return 127
 
     args = sys.argv[1:]
     local_only = any(x in args for x in ("--help", "-h", "--version", "version"))
     if not local_only and cooldown_active():
-        print("[CODEX-QUOTA] 최근 한도 소진 감지. 5분 보호시간 동안 실제 호출을 생략합니다.", file=sys.stderr)
+        print("[CODEX-QUOTA] 최근 한도 소진 감지. 5분 보호시간 동안 실제 호출을 생략합니다.", file=sys.stderr, flush=True)
         return 88
 
     rc, output = run_real(exe, args)
     if not local_only and rc != 0 and looks_like_quota_error(output):
         mark_exhausted(output)
-        print("[CODEX-QUOTA] 사용 한도 소진 감지. 5분 후 자동 재확인합니다.", file=sys.stderr)
+        print("[CODEX-QUOTA] 사용 한도 소진 감지. 5분 후 자동 재확인합니다.", file=sys.stderr, flush=True)
         return 88
     if not local_only and rc == 0:
         clear_exhausted()
