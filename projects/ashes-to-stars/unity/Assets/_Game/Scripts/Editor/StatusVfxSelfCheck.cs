@@ -84,6 +84,6 @@ namespace AshesToStars
         }
 
         static bool RepackerContractPasses(HashSet<string> repackerFiles, HashSet<string> runtimeKeys)
-            => repackerFiles.Count == 3 && repackerFiles.IsSubsetOf(runtimeKeys);
+            => repackerFiles.Count == 4 && repackerFiles.IsSubsetOf(runtimeKeys);
     }
 }
