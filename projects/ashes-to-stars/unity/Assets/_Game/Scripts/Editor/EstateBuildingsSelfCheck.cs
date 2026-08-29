@@ -88,6 +88,10 @@ namespace AshesToStars
             // 0.70유닛의 작은 골편도 긴 뼈와 구분되는 실루엣을 유지하므로 최소 1/16은 채워야 한다.
             HasAlphaSilhouette(pixels, 16, out clear, out solid);
 
+        static bool HasAshCharredAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            // 0.50유닛의 작은 탄화목도 잿벌 바닥에서 읽혀야 하므로 최소 1/32는 채워야 한다.
+            HasAlphaSilhouette(pixels, 32, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -146,6 +150,37 @@ namespace AshesToStars
                 Check(!HasAshBoneAlphaSilhouette(opaqueSquare, out _, out _),
                     $"QA_NO_ASH_BONE_ALPHA: 잿벌 뼈 {ashBoneName}의 불투명 사각 배경 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(ashBone);
+            }
+
+            // 잿벌 자연물 산포의 탄화목 한 역할 세트. 0.90/0.50/0.85유닛으로 표시되는
+            // 그루터기·잔가지·불탄 통나무가 서로 구분돼야 한다. 이름·고체 장애물 검사만으로는
+            // 불투명 배경이나 빈 실루엣 회귀를 잡지 못하므로 실제 Resources PNG를 함께 고정한다.
+            var sparseAshCharredSilhouette = SparseSilhouetteAtBoundary(256 * 256, 32);
+            Check(!HasAshCharredAlphaSilhouette(sparseAshCharredSilhouette, out _, out _),
+                "QA_NO_ASH_CHARRED_SPARSE_ALPHA: 잿벌 탄화목의 1/32 희박 실루엣 회귀를 거부한다");
+            foreach (string ashCharredName in new[] { "ash_charred_0", "ash_charred_1", "ash_charred_2" })
+            {
+                string ashCharredPath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + ashCharredName + ".png");
+                Check(File.Exists(ashCharredPath),
+                    $"잿벌 탄화목 {ashCharredName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(ashCharredPath)) continue;
+
+                var ashCharred = new Texture2D(2, 2);
+                ashCharred.LoadImage(File.ReadAllBytes(ashCharredPath));
+                Check(ashCharred.width == 256 && ashCharred.height == 256,
+                    $"잿벌 탄화목 {ashCharredName}이 oxalpha 256 세트 " +
+                    $"(실제 {ashCharred.width}×{ashCharred.height})");
+                var ashCharredPx = ashCharred.GetPixels();
+                Check(HasAshCharredAlphaSilhouette(ashCharredPx,
+                        out int ashCharredClear, out int ashCharredSolid),
+                    $"잿벌 탄화목 {ashCharredName} 알파 유효 — 투명 배경+목재 실루엣 " +
+                    $"(투명 {ashCharredClear} · 불투명 {ashCharredSolid}/{ashCharredPx.Length})");
+                var opaqueSquare = new Color[ashCharredPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasAshCharredAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_ASH_CHARRED_ALPHA: 잿벌 탄화목 {ashCharredName}의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(ashCharred);
             }
 
             Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
