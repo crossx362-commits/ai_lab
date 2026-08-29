@@ -6,6 +6,7 @@ ELI5 원칙:
 - 사용자는 '지금 잘 도는가 / 뭘 하는가 / 얼마나 남았나 / 뭐가 막혔나'만 먼저 본다.
 - 모든 숫자는 실제 PID/state/git/quota/CLI에서 다시 읽는다.
 - Codex 5시간/주간 사용량은 공식 app-server rate-limit 응답을 사용한다.
+- 업데이트는 로컬 작업을 autostash로 보존하고, 새 화면을 먼저 띄운 뒤 무거운 조회를 백그라운드에서 한다.
 """
 from __future__ import annotations
 
@@ -88,11 +89,7 @@ def engine_info() -> dict[str, Any]:
     except Exception:
         pid = 0
     if pid and pid_alive(pid):
-        return {
-            "running": True,
-            "pid": pid,
-            "started_at": float(data.get("started_at", 0) or 0),
-        }
+        return {"running": True, "pid": pid, "started_at": float(data.get("started_at", 0) or 0)}
     if ENGINE_STATE.exists():
         try:
             ENGINE_STATE.unlink()
@@ -144,10 +141,7 @@ def find_cli(name: str) -> str | None:
     exe = shutil.which(name)
     if exe:
         return exe
-    for p in (
-        f"/opt/homebrew/bin/{name}", f"/usr/local/bin/{name}",
-        str(Path.home() / ".local" / "bin" / name),
-    ):
+    for p in (f"/opt/homebrew/bin/{name}", f"/usr/local/bin/{name}", str(Path.home() / ".local" / "bin" / name)):
         if os.path.isfile(p) and os.access(p, os.X_OK):
             return p
     return None
@@ -183,11 +177,7 @@ def norm_blocked(item: Any) -> dict[str, Any]:
     if not isinstance(item, dict):
         return {"id": "", "title": str(item), "reason": "원인을 기록하지 못했습니다."}
     reason = item.get("last_error") or item.get("error") or item.get("reason") or item.get("blocked_reason") or item.get("message") or "원인을 기록하지 못했습니다."
-    return {
-        "id": str(item.get("id", "")),
-        "title": str(item.get("title") or item.get("goal") or "이름 없는 작업"),
-        "reason": str(reason)[-2500:],
-    }
+    return {"id": str(item.get("id", "")), "title": str(item.get("title") or item.get("goal") or "이름 없는 작업"), "reason": str(reason)[-2500:]}
 
 
 def friendly_stage(text: str, running: bool) -> str:
@@ -200,7 +190,7 @@ def friendly_stage(text: str, running: bool) -> str:
         return "Grok이 코드를 고치는 중"
     if "verify" in s or "검증" in s or "compile" in s or "build" in s:
         return "고친 코드가 제대로 되는지 검사 중"
-    if "director" in s or "계획" in s or "task" in s and "생성" in s:
+    if "director" in s or "계획" in s or ("task" in s and "생성" in s):
         return "다음에 할 일을 고르는 중"
     if "git" in s:
         return "변경된 코드를 정리하는 중"
@@ -212,6 +202,7 @@ def launch_replacement_server(resume_engine: bool) -> tuple[bool, str]:
         SERVER_LOG.parent.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
         env["AUTODEV_RESUME_ENGINE"] = "1" if resume_engine else "0"
+        env["AUTODEV_REFRESH_CODEX_USAGE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
         command = "sleep 1; exec " + shlex.quote(sys.executable) + " " + shlex.quote(str(HERE / "webview_app.py"))
         log = SERVER_LOG.open("a", encoding="utf-8")
@@ -346,45 +337,66 @@ class Controller:
         return self._cli_cache
 
     def refresh_codex_meter(self) -> dict[str, Any]:
-        self.log("[UPDATE] Codex 5시간/주간 실제 사용량 확인 중")
+        self.log("[USAGE] Codex 5시간/주간 실제 사용량 확인 중")
         snap = refresh_codex_usage()
         if snap.get("ok"):
             names = ", ".join(f"{x.get('name')} {x.get('remaining_percent')}% 남음" for x in snap.get("windows", []))
-            self.log("[UPDATE] Codex 사용량 확인 완료 · " + names)
+            self.log("[USAGE] Codex 사용량 확인 완료 · " + names)
         else:
-            self.log("[UPDATE] Codex 사용량 확인 실패 · " + str(snap.get("error", "알 수 없는 이유")))
+            self.log("[USAGE] Codex 사용량 확인 실패 · " + str(snap.get("error", "알 수 없는 이유")))
         return snap
+
+    def _git_update(self) -> tuple[bool, str]:
+        """로컬 개발 내용을 보존하면서 master를 최신으로 맞춘다."""
+        commands = [
+            ["git", "-c", "core.hooksPath=/dev/null", "fetch", "origin", "master"],
+            ["git", "-c", "core.hooksPath=/dev/null", "-c", "rebase.autoStash=true", "rebase", "origin/master"],
+        ]
+        output: list[str] = []
+        for cmd in commands:
+            r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=120)
+            text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+            if text:
+                output.extend(text.splitlines())
+            if r.returncode != 0:
+                # rebase가 시작된 상태라면 안전하게 원상복구한다.
+                if "rebase" in cmd:
+                    subprocess.run(["git", "rebase", "--abort"], cwd=REPO,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
+                return False, "\n".join(output[-80:])
+        return True, "\n".join(output[-80:])
 
     def update(self) -> dict[str, Any]:
         was_running = self.running()
+        self.log("[UPDATE 1/4] 실행 상태 확인")
         if was_running:
+            self.log("[UPDATE 1/4] 작업을 잠깐 멈추는 중")
             stopped = self.stop()
             if not stopped.get("ok"):
                 return {"ok": False, "message": "업데이트 전에 개발 엔진을 멈추지 못했습니다."}
+
         self.clear_quota("codex")
-        self.log("[UPDATE] 최신 코드 확인 중")
+        self.log("[UPDATE 2/4] 로컬 작업을 보존하고 최신 코드 받는 중")
         try:
-            r = subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "pull", "--ff-only"],
-                               cwd=REPO, capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", timeout=120)
-            out = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+            ok_git, out = self._git_update()
             for line in out.splitlines()[-80:]:
-                self.log("[UPDATE] " + line)
-            if r.returncode != 0:
+                self.log("[GIT] " + line)
+            if not ok_git:
                 if was_running:
                     self.start()
-                return {"ok": False, "message": out[-1200:] or "코드 업데이트 실패"}
+                return {"ok": False, "message": (out[-1400:] or "Git 업데이트 실패")}
 
             self._cli(force=True)
-            self.refresh_codex_meter()
-            snap = self.status()
-            self.log(f"[UPDATE] 전체 상태 새로 읽음 · 남은 일 {snap['queue_count']} / 완료 {snap['completed_count']} / 막힘 {snap['blocked_count']}")
+            self.log("[UPDATE 3/4] 새 화면 서버 준비")
             ok, err = launch_replacement_server(was_running)
             if not ok:
                 if was_running:
                     self.start()
                 return {"ok": False, "message": "코드는 최신이지만 화면 재시작 실패: " + err}
-            return {"ok": True, "message": "최신 코드와 실제 상태를 모두 다시 읽었습니다.", "restarting": True}
+
+            self.log("[UPDATE 4/4] 완료 · 새 화면에서 AI 사용량을 백그라운드 확인합니다")
+            return {"ok": True, "message": "업데이트 완료. 작업 내용은 보존했고 새 화면으로 바꿉니다.", "restarting": True}
         except Exception as e:
             if was_running:
                 self.start()
@@ -458,30 +470,15 @@ class Controller:
             issue_count += 1
 
         return {
-            "ok": True,
-            "checked_at": now,
-            "running": info["running"],
-            "pid": info["pid"],
-            "started_at": info["started_at"],
-            "last_exit": last_exit,
-            "last_activity_at": last_activity or None,
-            "quiet_seconds": quiet_seconds,
-            "stage": friendly_stage(last_text, info["running"]),
-            "last_log": last_text[-800:],
-            "goal": str(st.get("goal", "")),
-            "current": current if isinstance(current, dict) else {},
-            "queue_count": len(tasks),
-            "completed_count": len(completed),
-            "blocked_count": len(blocked_raw),
-            "blocked_items": blocked,
-            "recent_errors": recent_errors,
-            "issue_count": issue_count,
+            "ok": True, "checked_at": now, "running": info["running"], "pid": info["pid"],
+            "started_at": info["started_at"], "last_exit": last_exit, "last_activity_at": last_activity or None,
+            "quiet_seconds": quiet_seconds, "stage": friendly_stage(last_text, info["running"]), "last_log": last_text[-800:],
+            "goal": str(st.get("goal", "")), "current": current if isinstance(current, dict) else {},
+            "queue_count": len(tasks), "completed_count": len(completed), "blocked_count": len(blocked_raw),
+            "blocked_items": blocked, "recent_errors": recent_errors, "issue_count": issue_count,
             "stats": {k: int(stats.get(k, 0) or 0) for k in ("grok_calls", "codex_calls", "director_local_calls", "tasks_done", "tasks_blocked")},
-            "grok_quota": grok_q,
-            "codex_quota": codex_q,
-            "codex_usage": usage,
-            "grok_cli": cli.get("grok", {}),
-            "codex_cli": cli.get("codex", {}),
+            "grok_quota": grok_q, "codex_quota": codex_q, "codex_usage": usage,
+            "grok_cli": cli.get("grok", {}), "codex_cli": cli.get("codex", {}),
             "git": {"branch": branch or "?", "head": head or "?", "dirty_count": dirty},
             "state_file": str(sp) if sp else str(expected),
         }
@@ -497,7 +494,7 @@ TOKEN = secrets.token_urlsafe(24)
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "AutoDevELI5/4"
+    server_version = "AutoDevELI5/5"
 
     def log_message(self, fmt: str, *args: Any) -> None:
         return
@@ -615,11 +612,12 @@ def main() -> int:
     CTRL.log(f"[HTML] 대시보드 {url}")
 
     resume = os.environ.pop("AUTODEV_RESUME_ENGINE", "0").strip() == "1"
+    refresh_usage = os.environ.pop("AUTODEV_REFRESH_CODEX_USAGE", "0").strip() == "1"
     if resume and not CTRL.running():
         CTRL.log("[UPDATE] 업데이트 전 개발 상태를 다시 이어갑니다.")
         threading.Timer(1.0, CTRL.start).start()
 
-    if not cached_codex_usage() and find_cli("codex"):
+    if refresh_usage or (not cached_codex_usage() and find_cli("codex")):
         threading.Thread(target=CTRL.refresh_codex_meter, daemon=True).start()
 
     threading.Timer(0.45, lambda: webbrowser.open(url)).start()
