@@ -4,6 +4,7 @@
 
 표준 라이브러리만 사용한다.
 - 브라우저에서 시작/중지/업데이트/상태/오류 확인
+- 엔진 PID를 파일에 기록해 대시보드 재시작 뒤에도 실제 실행 상태를 추적
 - 업데이트는 Git hook을 우회
 - 업데이트 버튼 한 번으로 엔진 중지 -> git pull -> 대시보드 재시작
 - 업데이트 전 엔진이 실행 중이었다면 새 서버에서 자동 재개
@@ -34,6 +35,7 @@ REPO = HERE.parents[1]
 OUTPUT = REPO / "output" / "autodev_v2"
 HTML_FILE = HERE / "dashboard.html"
 SERVER_STATE = OUTPUT / "html_server.json"
+ENGINE_STATE = OUTPUT / "html_engine.json"
 CONFIG_FILE = HERE / "config.json"
 SERVER_LOG = Path.home() / "Library" / "Logs" / "AutoDevV2-HTML.log"
 QUOTA_FILES = {
@@ -55,6 +57,43 @@ def read_json(path: Path) -> dict[str, Any]:
         return value if isinstance(value, dict) else {}
     except Exception:
         return {}
+
+
+def write_json(path: Path, value: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
+
+
+def pid_alive(pid: int) -> bool:
+    if pid <= 1:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
+def engine_pid() -> int | None:
+    data = read_json(ENGINE_STATE)
+    try:
+        pid = int(data.get("pid", 0) or 0)
+    except Exception:
+        pid = 0
+    if pid and pid_alive(pid):
+        return pid
+    if ENGINE_STATE.exists():
+        try:
+            ENGINE_STATE.unlink()
+        except OSError:
+            pass
+    return None
 
 
 def configured_state_path() -> Path:
@@ -123,7 +162,6 @@ def norm_blocked(item: Any) -> dict[str, Any]:
 
 
 def launch_replacement_server(resume_engine: bool) -> tuple[bool, str]:
-    """현재 HTTP 응답이 끝난 뒤 새 코드로 대시보드 서버를 다시 띄울 프로세스를 예약한다."""
     try:
         SERVER_LOG.parent.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
@@ -169,7 +207,7 @@ class Controller:
             })
 
     def running(self) -> bool:
-        return self.proc is not None and self.proc.poll() is None
+        return engine_pid() is not None
 
     def _reader(self, proc: subprocess.Popen[str]) -> None:
         try:
@@ -189,12 +227,19 @@ class Controller:
                 if self.proc is proc:
                     self.last_exit = rc
                     self.proc = None
+            state = read_json(ENGINE_STATE)
+            if int(state.get("pid", 0) or 0) == proc.pid:
+                try:
+                    ENGINE_STATE.unlink()
+                except OSError:
+                    pass
             self.log(f"[HTML] AutoDev 종료 rc={rc}")
 
     def start(self) -> dict[str, Any]:
         with self.lock:
-            if self.running():
-                return {"ok": True, "message": "이미 실행 중입니다."}
+            existing = engine_pid()
+            if existing:
+                return {"ok": True, "message": f"이미 실행 중입니다. PID {existing}"}
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
             env["PATH"] = (
@@ -219,28 +264,66 @@ class Controller:
                 return {"ok": False, "message": str(e)}
             self.proc = p
             self.last_exit = None
+            write_json(ENGINE_STATE, {"pid": p.pid, "started_at": time.time()})
             self.log(f"[HTML] AutoDev 시작 PID {p.pid}")
             threading.Thread(target=self._reader, args=(p,), daemon=True).start()
             return {"ok": True, "message": f"시작됨 PID {p.pid}"}
 
     def stop(self) -> dict[str, Any]:
-        with self.lock:
-            p = self.proc
-            if p is None or p.poll() is not None:
-                self.proc = None
-                return {"ok": True, "message": "이미 중지되어 있습니다."}
-            pid = p.pid
+        pid = engine_pid()
+        if not pid:
+            return {"ok": True, "message": "이미 중지되어 있습니다."}
+
+        self.log(f"[HTML] AutoDev 중지 요청 PID {pid}")
         try:
-            os.killpg(pid, signal.SIGTERM)
             try:
-                p.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                os.killpg(pid, signal.SIGKILL)
-                p.wait(timeout=2)
-            self.log(f"[HTML] AutoDev 중지 PID {pid}")
+                os.killpg(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+
+            deadline = time.time() + 5
+            while pid_alive(pid) and time.time() < deadline:
+                time.sleep(0.1)
+            if pid_alive(pid):
+                try:
+                    os.killpg(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                deadline = time.time() + 2
+                while pid_alive(pid) and time.time() < deadline:
+                    time.sleep(0.1)
+
+            if pid_alive(pid):
+                return {"ok": False, "message": f"PID {pid} 종료 실패"}
+
+            try:
+                ENGINE_STATE.unlink()
+            except OSError:
+                pass
+            with self.lock:
+                if self.proc is not None and self.proc.pid == pid:
+                    try:
+                        self.proc.poll()
+                    except Exception:
+                        pass
+                    self.proc = None
+            self.log(f"[HTML] AutoDev 중지 완료 PID {pid}")
             return {"ok": True, "message": "중지했습니다."}
         except Exception as e:
             self.log(f"[HTML] 중지 실패: {type(e).__name__}: {e}")
+            return {"ok": False, "message": str(e)}
+
+    def clear_quota(self, provider: str) -> dict[str, Any]:
+        if provider not in QUOTA_FILES:
+            return {"ok": False, "message": "알 수 없는 provider"}
+        p = QUOTA_FILES[provider]
+        existed = p.exists()
+        try:
+            if existed:
+                p.unlink()
+            self.log(f"[QUOTA] {provider} 한도 대기 기록 해제")
+            return {"ok": True, "message": f"{provider.upper()} 한도 대기 기록을 해제했습니다. 다음 실제 호출에서 재확인합니다."}
+        except Exception as e:
             return {"ok": False, "message": str(e)}
 
     def update(self) -> dict[str, Any]:
@@ -333,25 +416,15 @@ class Controller:
 
         try:
             branch = subprocess.run(
-                ["git", "branch", "--show-current"],
-                cwd=REPO,
-                capture_output=True,
-                text=True,
-                timeout=4,
-                encoding="utf-8",
-                errors="replace",
+                ["git", "branch", "--show-current"], cwd=REPO,
+                capture_output=True, text=True, timeout=4,
+                encoding="utf-8", errors="replace",
             ).stdout.strip()
-            dirty = len(
-                subprocess.run(
-                    ["git", "status", "--porcelain"],
-                    cwd=REPO,
-                    capture_output=True,
-                    text=True,
-                    timeout=6,
-                    encoding="utf-8",
-                    errors="replace",
-                ).stdout.splitlines()
-            )
+            dirty = len(subprocess.run(
+                ["git", "status", "--porcelain"], cwd=REPO,
+                capture_output=True, text=True, timeout=6,
+                encoding="utf-8", errors="replace",
+            ).stdout.splitlines())
         except Exception:
             branch, dirty = "?", -1
 
@@ -363,9 +436,9 @@ class Controller:
 
         grok_q = quota_status(QUOTA_FILES["grok"])
         codex_q = quota_status(QUOTA_FILES["codex"])
+        pid = engine_pid()
+        running = pid is not None
         with self.lock:
-            p = self.proc
-            running = self.running()
             last_exit = self.last_exit
 
         issue_count = len(blocked_items) + len(recent_errors)
@@ -379,7 +452,7 @@ class Controller:
         return {
             "ok": True,
             "running": running,
-            "pid": p.pid if running and p else None,
+            "pid": pid,
             "last_exit": last_exit,
             "goal": str(st.get("goal", "")),
             "current": current if isinstance(current, dict) else {},
@@ -481,17 +554,19 @@ class Handler(BaseHTTPRequestHandler):
             return
         path = urllib.parse.urlparse(self.path).path
         if path == "/api/start":
-            self._json(CTRL.start())
-            return
+            self._json(CTRL.start()); return
         if path == "/api/stop":
-            self._json(CTRL.stop())
-            return
+            self._json(CTRL.stop()); return
         if path == "/api/update":
             result = CTRL.update()
             self._json(result)
             if result.get("restarting"):
                 threading.Timer(0.35, lambda: os._exit(0)).start()
             return
+        if path == "/api/quota/codex/clear":
+            self._json(CTRL.clear_quota("codex")); return
+        if path == "/api/quota/grok/clear":
+            self._json(CTRL.clear_quota("grok")); return
         if path == "/api/open-repo":
             try:
                 subprocess.Popen(["open", str(REPO)])
@@ -502,17 +577,13 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/clear-logs":
             with CTRL.lock:
                 CTRL.logs.clear()
-            self._json({"ok": True})
-            return
+            self._json({"ok": True}); return
         self._json({"ok": False, "error": "not found"}, 404)
 
 
 def write_server_state() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    SERVER_STATE.write_text(
-        json.dumps({"pid": os.getpid(), "port": PORT, "token": TOKEN}, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    write_json(SERVER_STATE, {"pid": os.getpid(), "port": PORT, "token": TOKEN})
 
 
 def cleanup() -> None:
@@ -548,7 +619,7 @@ def main() -> int:
     CTRL.log(f"[HTML] 대시보드 {url}")
 
     resume = os.environ.pop("AUTODEV_RESUME_ENGINE", "0").strip() == "1"
-    if resume:
+    if resume and not CTRL.running():
         CTRL.log("[UPDATE] 업데이트 전 실행 상태를 복원합니다.")
         threading.Timer(1.0, CTRL.start).start()
 
