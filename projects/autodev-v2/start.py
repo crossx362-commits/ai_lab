@@ -4,9 +4,9 @@
 
 1) v1 토큰 소모 루프 비활성화
 2) Grok/Codex 실제 CLI를 찾아 호환/쿼터 보호 래퍼 준비
-3) runner.py가 Director를 로컬 Ollama 우선으로 라우팅
-4) preflight로 안전/예산/핵심 CLI 기능 확인
-5) v2 연속 실행
+3) 로컬 Ollama Director 우선
+4) preflight 안전/예산/핵심 CLI 확인
+5) Codex/Grok 작업 진행을 실시간 로그로 내보내며 연속 실행
 """
 from __future__ import annotations
 
@@ -81,7 +81,7 @@ def compat_env() -> dict[str, str] | None:
     print(f"Codex CLI: {codex or '(미설치/미발견)'}")
     print("Director 라우팅: 로컬 Ollama 우선, 유효한 결과가 없을 때만 Grok")
     print("Provider 쿼터 보호: Grok 1시간 / Codex 5분 후 실제 재확인")
-    print("Grok CLI 호환 모드: 설치 버전에 없는 선택 절약 옵션은 자동 생략")
+    print("Codex 진행 로그: 실시간 스트리밍")
     return env
 
 
@@ -101,7 +101,7 @@ def main() -> int:
         return audit.returncode
 
     return subprocess.run(
-        [sys.executable, str(HERE / "runner.py"), "run", "--continuous"],
+        [sys.executable, str(HERE / "runner_entry.py"), "run", "--continuous"],
         env=env,
     ).returncode
 
