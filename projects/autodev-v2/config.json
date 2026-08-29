@@ -1,0 +1,19 @@
+{
+  "project_root": "projects/ashes-to-stars/unity",
+  "design_file": "docs/GAME_DESIGN_ASHES_TO_STARS.md",
+  "handoff_file": "docs/GAME_DEV_HANDOFF.md",
+  "state_file": "output/autodev_v2/ashes-to-stars/state.json",
+  "max_tasks_per_director_batch": 6,
+  "max_tasks_per_run": 6,
+  "max_cloud_calls_per_run": 12,
+  "max_grok_attempts_per_task": 2,
+  "max_codex_attempts_per_task": 1,
+  "max_context_chars": 16000,
+  "max_candidate_files": 5,
+  "max_verify_output_chars": 6000,
+  "grok_worker_max_turns": 8,
+  "grok_director_max_turns": 3,
+  "prefer_subscription_oauth": true,
+  "full_verify_on_milestone": false,
+  "stop_on_blocked": true
+}
