@@ -188,7 +188,7 @@ namespace AshesToStars
             }
 
             // 던전 산포의 고체 기둥 한 역할 세트. 2.40/2.40/2.20유닛으로 표시되는
-            // 온전한 석주·갈라진 석주·무너진 석주가 전투 엄폐물로 구분돼야 한다.
+            // 직선 석주·고리형 석주·쌍첨탑 석주가 전투 엄폐물로 구분돼야 한다.
             // 이름·고체 판정만으로는 불투명 배경이나 빈 실루엣 회귀를 잡지 못한다.
             var sparseDungeonPillarSilhouette = SparseSilhouetteAtBoundary(256 * 256, 10);
             Check(!HasDungeonPillarAlphaSilhouette(sparseDungeonPillarSilhouette, out _, out _),
