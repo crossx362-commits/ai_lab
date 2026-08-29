@@ -33,6 +33,9 @@ namespace AshesToStars
             var poison = Resources.Load<Texture2D>("fx/poison_status_sheet");
             Debug.Assert(poison != null && poison.width == 1024 && poison.height == 512,
                 "[StatusVfx] 독 상태 시트는 정수 256px 4x2 격자여야 한다");
+            var freeze = Resources.Load<Texture2D>("fx/freeze_status_sheet");
+            Debug.Assert(freeze != null && freeze.width == 1024 && freeze.height == 512,
+                "[StatusVfx] 빙결 상태 시트는 정수 256px 4x2 격자여야 한다");
 
             Debug.Log("[StatusVfxSelfCheck] PASS");
         }
