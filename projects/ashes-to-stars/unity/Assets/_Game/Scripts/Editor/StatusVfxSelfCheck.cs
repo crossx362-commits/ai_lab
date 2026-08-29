@@ -1,3 +1,7 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Text.RegularExpressions;
+using UnityEditor;
 using UnityEngine;
 
 namespace AshesToStars
@@ -9,6 +13,7 @@ namespace AshesToStars
         {
             Debug.Assert(StatusIconAtlas.IsReady, "[StatusVfx] 상태 아이콘 아틀라스 로드 실패");
             Debug.Assert(StatusVfxSheets.SourceCount == 7, "[StatusVfx] 상태·보스 기믹 시트 7종이 등록돼야 한다");
+            AssertRepackerKeysBelongToRuntime();
             foreach (var key in StatusIconAtlas.RequiredKeys)
                 Debug.Assert(StatusIconAtlas.RectFor(key).width > 0, $"[StatusVfx] 상태 아이콘 누락: {key}");
             var live = StatusIconAtlas.LiveKeys(true, true, true, true);
@@ -31,5 +36,33 @@ namespace AshesToStars
 
             Debug.Log("[StatusVfxSelfCheck] PASS");
         }
+
+        static void AssertRepackerKeysBelongToRuntime()
+        {
+            string projectRoot = Directory.GetParent(Directory.GetParent(Application.dataPath).FullName).FullName;
+            string repackerPath = Path.Combine(projectRoot, "art/repack_job_vfx_sheet.py");
+            Debug.Assert(File.Exists(repackerPath), "[StatusVfx] VFX 재패커를 찾지 못했다: " + repackerPath);
+            if (!File.Exists(repackerPath)) return;
+
+            string source = File.ReadAllText(repackerPath);
+            Match block = Regex.Match(source, @"STATUS_SHEETS\s*=\s*\{(?<body>[\s\S]*?)\}");
+            Debug.Assert(block.Success, "[StatusVfx] 재패커 STATUS_SHEETS 계약을 읽지 못했다");
+            if (!block.Success) return;
+
+            var repackerFiles = new HashSet<string>();
+            foreach (Match entry in Regex.Matches(block.Groups["body"].Value,
+                         "\"[^\"]+\"\\s*:\\s*\"(?<file>[^\"]+\\.png)\""))
+                repackerFiles.Add(Path.GetFileNameWithoutExtension(entry.Groups["file"].Value));
+
+            var runtimeKeys = new HashSet<string>(StatusVfxSheets.RequiredKeys);
+            Debug.Assert(KeysBelongToRuntime(repackerFiles, runtimeKeys),
+                "[StatusVfx] 재패커/런타임 키 드리프트: repacker="
+                + string.Join(",", repackerFiles) + " runtime=" + string.Join(",", runtimeKeys));
+            Debug.Assert(!KeysBelongToRuntime(new HashSet<string> { "missing_status_sheet" }, runtimeKeys),
+                "[StatusVfx] 네거티브 컨트롤이 등록되지 않은 재패커 키를 탐지하지 못했다");
+        }
+
+        static bool KeysBelongToRuntime(HashSet<string> repackerFiles, HashSet<string> runtimeKeys)
+            => repackerFiles.Count > 0 && repackerFiles.IsSubsetOf(runtimeKeys);
     }
 }

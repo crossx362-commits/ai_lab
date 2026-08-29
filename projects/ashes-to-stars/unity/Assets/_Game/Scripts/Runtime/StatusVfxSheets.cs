@@ -13,6 +13,7 @@ namespace AshesToStars
         static readonly Texture2D[] Textures = new Texture2D[Files.Length];
         static bool _loaded;
 
+        public static readonly string[] RequiredKeys = Files;
         public static int SourceCount => Files.Length;
 
         static void Load()
