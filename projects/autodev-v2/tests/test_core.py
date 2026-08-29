@@ -12,6 +12,10 @@ SPEC = importlib.util.spec_from_file_location("autodev_v2", ROOT / "autodev.py")
 M = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(M)
 
+GSPEC = importlib.util.spec_from_file_location("grok_compat", ROOT / "grok_compat.py")
+GC = importlib.util.module_from_spec(GSPEC)
+GSPEC.loader.exec_module(GC)
+
 MSPEC = importlib.util.spec_from_file_location("migrate_v1", ROOT / "migrate_v1.py")
 MG = importlib.util.module_from_spec(MSPEC)
 MSPEC.loader.exec_module(MG)
@@ -148,6 +152,21 @@ class CoreTests(unittest.TestCase):
                 max_turns=2, allow_edits=False, help_text=old_help,
             )
         self.assertIn("절약 옵션", str(cm.exception))
+
+    def test_grok_compat_drops_only_missing_optional_flags(self):
+        old_help = "Usage: grok --single <PROMPT> --cwd <CWD> --output-format <FMT> --max-turns <N> --no-subagents --disable-web-search --always-approve"
+        args = [
+            "--single", "x", "--cwd", "/tmp", "--output-format", "plain",
+            "--max-turns", "2", "--no-plan", "--no-subagents", "--no-memory",
+            "--disable-web-search", "--always-approve",
+        ]
+        filtered, dropped = GC.filter_args(args, old_help)
+        self.assertNotIn("--no-plan", filtered)
+        self.assertNotIn("--no-memory", filtered)
+        self.assertIn("--no-subagents", filtered)
+        self.assertIn("--disable-web-search", filtered)
+        self.assertIn("--max-turns", filtered)
+        self.assertEqual(set(dropped), {"--no-plan", "--no-memory"})
 
     def test_autodev_source_has_no_agent_profile_argv(self):
         source = (ROOT / "autodev.py").read_text(encoding="utf-8")
