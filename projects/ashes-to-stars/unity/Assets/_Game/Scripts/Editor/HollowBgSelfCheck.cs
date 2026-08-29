@@ -61,6 +61,20 @@ namespace AshesToStars
             Check(!HasLandscapeScreenShape(800, 800),
                 "정사각형 캐릭터 배경 대표 결함을 거부한다");
 
+            var party = Resources.Load<Texture2D>("bg/bg_party");
+            sourceWidth = 0;
+            sourceHeight = 0;
+            if (party != null)
+            {
+                var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(party)) as TextureImporter;
+                importer?.GetSourceTextureWidthAndHeight(out sourceWidth, out sourceHeight);
+            }
+            Check(HasLandscapeScreenShape(sourceWidth, sourceHeight),
+                "파티·전투 스타일 공용 배경 원본은 16:9 가로 화면이어야 한다 (실제 "
+                + sourceWidth + "x" + sourceHeight + ")");
+            Check(!HasLandscapeScreenShape(720, 1280),
+                "세로형 파티 배경 대표 결함을 거부한다");
+
             if (fail == 0) Debug.Log("[HollowBgSelfCheck] PASS");
             else Debug.LogError("[HollowBgSelfCheck] FAIL " + fail);
         }
