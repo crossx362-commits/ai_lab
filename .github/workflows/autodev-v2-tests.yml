@@ -18,6 +18,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Python syntax check
+        run: |
+          python3 -m py_compile \
+            projects/autodev-v2/webview_app.py \
+            projects/autodev-v2/codex_usage.py \
+            projects/autodev-v2/codex_compat.py \
+            projects/autodev-v2/runner_entry.py \
+            projects/autodev-v2/runner.py \
+            projects/autodev-v2/start.py
       - name: Core tests
         run: python3 projects/autodev-v2/tests/test_core.py
       - name: Autonomous loop tests
