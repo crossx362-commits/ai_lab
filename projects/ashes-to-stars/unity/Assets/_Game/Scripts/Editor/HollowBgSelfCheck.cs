@@ -46,6 +46,15 @@ namespace AshesToStars
                 }
             }
 
+            Check(HasLandscapeScreenShape(1750, 1000),
+                "16:9 화면 비율 하한 1.75를 포함해야 한다");
+            Check(HasLandscapeScreenShape(1800, 1000),
+                "16:9 화면 비율 상한 1.80을 포함해야 한다");
+            Check(!HasLandscapeScreenShape(1749, 1000),
+                "16:9 화면 비율 하한 바로 아래 1.749를 거부한다");
+            Check(!HasLandscapeScreenShape(1801, 1000),
+                "16:9 화면 비율 상한 바로 위 1.801을 거부한다");
+
             for (int i = 0; i < Keys.Length; i++)
             {
                 var tex = Resources.Load<Texture2D>("bg/" + Keys[i]);
