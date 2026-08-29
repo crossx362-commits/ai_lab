@@ -20,7 +20,8 @@ namespace AshesToStars
             _log.AppendLine((cond ? "  PASS  " : "  FAIL  ") + what);
         }
 
-        static bool HasCartAlphaSilhouette(Color[] pixels, out int clear, out int solid)
+        static bool HasAlphaSilhouette(Color[] pixels, int solidDenominator,
+            out int clear, out int solid)
         {
             clear = 0;
             solid = 0;
@@ -29,68 +30,34 @@ namespace AshesToStars
                 if (p.a < 0.05f) clear++;
                 else if (p.a > 0.95f) solid++;
             }
-            return clear > pixels.Length / 2 && solid > pixels.Length / 8;
+            return clear > pixels.Length / 2 && solid > pixels.Length / solidDenominator;
         }
 
-        static bool HasHaystackAlphaSilhouette(Color[] pixels, out int clear, out int solid)
+        static Color[] SparseSilhouetteAtBoundary(int pixelCount, int solidDenominator)
         {
-            clear = 0;
-            solid = 0;
-            foreach (var p in pixels)
-            {
-                if (p.a < 0.05f) clear++;
-                else if (p.a > 0.95f) solid++;
-            }
-            return clear > pixels.Length / 2 && solid > pixels.Length / 10;
+            var pixels = new Color[pixelCount];
+            for (int i = 0; i < pixels.Length / solidDenominator; i++)
+                pixels[i] = Color.white;
+            return pixels;
         }
 
-        static bool HasWellAlphaSilhouette(Color[] pixels, out int clear, out int solid)
-        {
-            clear = 0;
-            solid = 0;
-            foreach (var p in pixels)
-            {
-                if (p.a < 0.05f) clear++;
-                else if (p.a > 0.95f) solid++;
-            }
-            return clear > pixels.Length / 2 && solid > pixels.Length / 6;
-        }
+        static bool HasCartAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            HasAlphaSilhouette(pixels, 8, out clear, out solid);
 
-        static bool HasBarnAlphaSilhouette(Color[] pixels, out int clear, out int solid)
-        {
-            clear = 0;
-            solid = 0;
-            foreach (var p in pixels)
-            {
-                if (p.a < 0.05f) clear++;
-                else if (p.a > 0.95f) solid++;
-            }
-            return clear > pixels.Length / 2 && solid > pixels.Length / 4;
-        }
+        static bool HasHaystackAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            HasAlphaSilhouette(pixels, 10, out clear, out solid);
 
-        static bool HasLampAlphaSilhouette(Color[] pixels, out int clear, out int solid)
-        {
-            clear = 0;
-            solid = 0;
-            foreach (var p in pixels)
-            {
-                if (p.a < 0.05f) clear++;
-                else if (p.a > 0.95f) solid++;
-            }
-            return clear > pixels.Length / 2 && solid > pixels.Length / 10;
-        }
+        static bool HasWellAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            HasAlphaSilhouette(pixels, 6, out clear, out solid);
 
-        static bool HasFenceAlphaSilhouette(Color[] pixels, out int clear, out int solid)
-        {
-            clear = 0;
-            solid = 0;
-            foreach (var p in pixels)
-            {
-                if (p.a < 0.05f) clear++;
-                else if (p.a > 0.95f) solid++;
-            }
-            return clear > pixels.Length / 2 && solid > pixels.Length / 5;
-        }
+        static bool HasBarnAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            HasAlphaSilhouette(pixels, 4, out clear, out solid);
+
+        static bool HasLampAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            HasAlphaSilhouette(pixels, 10, out clear, out solid);
+
+        static bool HasFenceAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            HasAlphaSilhouette(pixels, 5, out clear, out solid);
 
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
@@ -161,9 +128,7 @@ namespace AshesToStars
                 Check(HasBarnAlphaSilhouette(barnPx, out int barnClear, out int barnSolid),
                     $"마을 헛간 알파 유효 — 투명 배경+대형 월드 실루엣 " +
                     $"(투명 {barnClear} · 불투명 {barnSolid}/{barnPx.Length})");
-                var sparseSilhouette = new Color[barnPx.Length];
-                for (int i = 0; i < sparseSilhouette.Length / 4; i++)
-                    sparseSilhouette[i] = Color.white;
+                var sparseSilhouette = SparseSilhouetteAtBoundary(barnPx.Length, 4);
                 Check(!HasBarnAlphaSilhouette(sparseSilhouette, out _, out _),
                     "QA_NO_BARN_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(barn);
@@ -184,9 +149,7 @@ namespace AshesToStars
                 Check(HasWellAlphaSilhouette(wellPx, out int wellClear, out int wellSolid),
                     $"마을 우물 알파 유효 — 투명 배경+작은 월드 실루엣 " +
                     $"(투명 {wellClear} · 불투명 {wellSolid}/{wellPx.Length})");
-                var sparseSilhouette = new Color[wellPx.Length];
-                for (int i = 0; i < sparseSilhouette.Length / 6; i++)
-                    sparseSilhouette[i] = Color.white;
+                var sparseSilhouette = SparseSilhouetteAtBoundary(wellPx.Length, 6);
                 Check(!HasWellAlphaSilhouette(sparseSilhouette, out _, out _),
                     "QA_NO_WELL_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(well);
@@ -234,9 +197,7 @@ namespace AshesToStars
                 for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
                 Check(!HasHaystackAlphaSilhouette(opaqueSquare, out _, out _),
                     "QA_NO_HAYSTACK_ALPHA: 불투명 사각 배경 회귀를 거부한다");
-                var sparseSilhouette = new Color[haystackPx.Length];
-                for (int i = 0; i < sparseSilhouette.Length / 10; i++)
-                    sparseSilhouette[i] = Color.white;
+                var sparseSilhouette = SparseSilhouetteAtBoundary(haystackPx.Length, 10);
                 Check(!HasHaystackAlphaSilhouette(sparseSilhouette, out _, out _),
                     "QA_NO_HAYSTACK_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(haystack);
@@ -257,9 +218,7 @@ namespace AshesToStars
                 Check(HasLampAlphaSilhouette(lampPx, out int lampClear, out int lampSolid),
                     $"마을 가로등 알파 유효 — 투명 배경+세로 월드 실루엣 " +
                     $"(투명 {lampClear} · 불투명 {lampSolid}/{lampPx.Length})");
-                var sparseSilhouette = new Color[lampPx.Length];
-                for (int i = 0; i < sparseSilhouette.Length / 10; i++)
-                    sparseSilhouette[i] = Color.white;
+                var sparseSilhouette = SparseSilhouetteAtBoundary(lampPx.Length, 10);
                 Check(!HasLampAlphaSilhouette(sparseSilhouette, out _, out _),
                     "QA_NO_LAMP_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(lamp);
@@ -282,6 +241,10 @@ namespace AshesToStars
                 Check(HasFenceAlphaSilhouette(fencePx, out int fenceClear, out int fenceSolid),
                     $"마을 목책 {fenceName} 알파 유효 — 투명 배경+가로 경계 실루엣 " +
                     $"(투명 {fenceClear} · 불투명 {fenceSolid}/{fencePx.Length})");
+                var sparseSilhouette = SparseSilhouetteAtBoundary(fencePx.Length, 5);
+                Check(!HasFenceAlphaSilhouette(sparseSilhouette, out _, out _),
+                    $"QA_NO_FENCE_SPARSE_ALPHA: 마을 목책 {fenceName}의 지나치게 희박한 " +
+                    "실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(fence);
             }
 
