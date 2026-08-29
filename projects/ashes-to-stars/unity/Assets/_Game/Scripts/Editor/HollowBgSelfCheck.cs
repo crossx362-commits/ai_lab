@@ -9,6 +9,13 @@ namespace AshesToStars
     /// </summary>
     public static class HollowBgSelfCheck
     {
+        static bool HasLandscapeScreenShape(int width, int height)
+        {
+            if (width <= 0 || height <= 0) return false;
+            float aspect = width / (float)height;
+            return aspect >= 1.75f && aspect <= 1.80f;
+        }
+
         static readonly string[] Keys =
         {
             "bg_estate", "bg_field", "bg_tower",
@@ -39,6 +46,20 @@ namespace AshesToStars
                 Check(tex.filterMode == FilterMode.Bilinear,
                     Keys[i] + " 필터가 Point라 손그림에 계단이 생긴다");
             }
+
+            var character = Resources.Load<Texture2D>("bg/bg_character");
+            int sourceWidth = 0;
+            int sourceHeight = 0;
+            if (character != null)
+            {
+                var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(character)) as TextureImporter;
+                importer?.GetSourceTextureWidthAndHeight(out sourceWidth, out sourceHeight);
+            }
+            Check(HasLandscapeScreenShape(sourceWidth, sourceHeight),
+                "캐릭터 배경 원본은 16:9 가로 화면이어야 한다 (실제 "
+                + sourceWidth + "x" + sourceHeight + ")");
+            Check(!HasLandscapeScreenShape(800, 800),
+                "정사각형 캐릭터 배경 대표 결함을 거부한다");
 
             if (fail == 0) Debug.Log("[HollowBgSelfCheck] PASS");
             else Debug.LogError("[HollowBgSelfCheck] FAIL " + fail);
