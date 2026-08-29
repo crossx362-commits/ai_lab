@@ -75,6 +75,20 @@ namespace AshesToStars
             Check(!HasLandscapeScreenShape(720, 1280),
                 "세로형 파티 배경 대표 결함을 거부한다");
 
+            var worldmap = Resources.Load<Texture2D>("bg/bg_worldmap");
+            sourceWidth = 0;
+            sourceHeight = 0;
+            if (worldmap != null)
+            {
+                var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(worldmap)) as TextureImporter;
+                importer?.GetSourceTextureWidthAndHeight(out sourceWidth, out sourceHeight);
+            }
+            Check(HasLandscapeScreenShape(sourceWidth, sourceHeight),
+                "월드맵 배경 원본은 16:9 가로 화면이어야 한다 (실제 "
+                + sourceWidth + "x" + sourceHeight + ")");
+            Check(!HasLandscapeScreenShape(1280, 800),
+                "16:10 월드맵 배경 대표 결함을 거부한다");
+
             if (fail == 0) Debug.Log("[HollowBgSelfCheck] PASS");
             else Debug.LogError("[HollowBgSelfCheck] FAIL " + fail);
         }
