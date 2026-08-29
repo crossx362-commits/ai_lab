@@ -62,6 +62,9 @@ namespace AshesToStars
         static bool HasVillageTreeAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
             HasAlphaSilhouette(pixels, 5, out clear, out solid);
 
+        static bool HasVillageHouseAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            HasAlphaSilhouette(pixels, 6, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -115,6 +118,32 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
+
+            // 필드 마을의 고체 장애물로 함께 배치되는 큰 집·작은 집 한 세트. 각각 4.60/2.80유닛으로
+            // 표시되고 큰 집은 본성 QA_NO, 작은 집은 대장간 QA_NO도 소비한다. 이름 매핑만으로는
+            // 옛 고해상도 생성본이나 불투명 사각 배경 회귀를 잡지 못하므로 실제 PNG를 함께 고정한다.
+            foreach (string houseName in new[] { "village_house_1", "village_house_2" })
+            {
+                string housePath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + houseName + ".png");
+                Check(File.Exists(housePath), $"마을 집 {houseName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(housePath)) continue;
+
+                var house = new Texture2D(2, 2);
+                house.LoadImage(File.ReadAllBytes(housePath));
+                Check(house.width == 256 && house.height == 256,
+                    $"마을 집 {houseName}이 oxalpha 256 세트 (실제 {house.width}×{house.height})");
+                var housePx = house.GetPixels();
+                Check(HasVillageHouseAlphaSilhouette(housePx,
+                        out int houseClear, out int houseSolid),
+                    $"마을 집 {houseName} 알파 유효 — 투명 배경+건물 실루엣 " +
+                    $"(투명 {houseClear} · 불투명 {houseSolid}/{housePx.Length})");
+                var opaqueSquare = new Color[housePx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasVillageHouseAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_VILLAGE_HOUSE_ALPHA: 마을 집 {houseName}의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(house);
+            }
 
             // 필드 마을 과수원 자리에만 세우고 길·유닛 충돌도 막는 3.40유닛 나무.
             // 이름·충돌 검사만으로는 불투명 사각 배경이나 빈 수관 회귀를 잡지 못하므로
