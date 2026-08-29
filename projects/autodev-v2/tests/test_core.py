@@ -52,6 +52,15 @@ class CoreTests(unittest.TestCase):
         self.assertFalse(data["schedules"][1]["run"])
         self.assertTrue(data["schedules"][2]["enabled"])
 
+    def test_repo_keeps_legacy_game_schedules_off(self):
+        path = REPO / "projects/ai-team/skills/영숙_비서/tools/schedules.json"
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+        for job in data["schedules"]:
+            jid = job.get("id", "")
+            if jid in MG.HEAVY_IDS or jid.startswith("game_agent_"):
+                self.assertFalse(job.get("enabled", True), jid)
+                self.assertFalse(job.get("run", True), jid)
+
     def test_normalize_tasks_assigns_dependencies(self):
         cfg = {"max_tasks_per_director_batch": 6}
         st = M.new_state()
@@ -75,6 +84,11 @@ class CoreTests(unittest.TestCase):
         self.assertIn("Claude는 사용하지 않는다", rules)
         self.assertIn("ORDERS.md", rules)
         self.assertIn("state.json", rules)
+
+    def test_codex_stop_autopilot_hook_is_removed(self):
+        hooks = json.loads((REPO / ".codex/hooks.json").read_text(encoding="utf-8"))
+        stop = (hooks.get("hooks") or {}).get("Stop") or []
+        self.assertNotIn("autopilot_stop_hook.py", json.dumps(stop, ensure_ascii=False))
 
     def test_legacy_claude_helper_is_off_by_default(self):
         with mock.patch.dict(os.environ, {}, clear=False):
