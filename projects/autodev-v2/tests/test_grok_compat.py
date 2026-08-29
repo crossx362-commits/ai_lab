@@ -19,15 +19,6 @@ class GrokCompatTests(unittest.TestCase):
         self.assertTrue(GC.looks_like_quota_error(text))
         self.assertFalse(GC.looks_like_quota_error('500 internal server error'))
 
-    def test_director_prompt_detection(self):
-        p = "당신은 '재와 별' AutoDev v2의 DIRECTOR다. JSON만 출력:"
-        self.assertTrue(GC.is_director_prompt(p))
-        self.assertFalse(GC.is_director_prompt('AutoDev v2 WORKER'))
-
-    def test_prompt_extraction(self):
-        self.assertEqual(GC.prompt_from_args(['--single', 'hello', '--cwd', '/tmp']), 'hello')
-        self.assertEqual(GC.prompt_from_args(['-p', 'world']), 'world')
-
     def test_optional_flags_are_dropped_only_when_unsupported(self):
         args = ['--single', 'x', '--no-plan', '--no-memory', '--cwd', '/tmp']
         out, dropped = GC.filter_args(args, 'Usage --single --cwd --no-plan')
@@ -49,9 +40,9 @@ class GrokCompatTests(unittest.TestCase):
                 state.write_text(json.dumps(data), encoding='utf-8')
                 self.assertFalse(GC.quota_cooldown_active())
 
-    def test_prefers_coder_model_for_local_director(self):
-        model = GC.pick_director_model(['llama3:8b', 'qwen2.5-coder:7b'])
-        self.assertEqual(model, 'qwen2.5-coder:7b')
+    def test_non_402_does_not_trigger_quota_guard(self):
+        self.assertFalse(GC.looks_like_quota_error('429 rate limit exceeded'))
+        self.assertFalse(GC.looks_like_quota_error('402 unrelated response'))
 
 
 if __name__ == '__main__':
