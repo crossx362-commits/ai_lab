@@ -80,6 +80,10 @@ namespace AshesToStars
             // field_stump_1은 0.75유닛의 가는 꺾인 줄기라 캔버스의 약 14.5%를 차지한다.
             HasAlphaSilhouette(pixels, 8, out clear, out solid);
 
+        static bool HasFieldShrubRowAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            // 1.10유닛 생울타리는 네 포기의 잎 실루엣으로 캔버스의 약 12.6%를 차지한다.
+            HasAlphaSilhouette(pixels, 8, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -133,6 +137,31 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
+
+            // 평원 자연물 산포의 1.10유닛 생울타리. 네 포기가 가로로 이어진 낮은 경계라
+            // 단일 덤불과 구분돼야 하며, 이름·산포 검사만으로는 불투명 배경이나 빈 실루엣
+            // 회귀를 잡지 못하므로 실제 ox-alpha PNG의 캔버스와 알파를 함께 고정한다.
+            const string fieldShrubRowName = "field_shrub_row_0";
+            string fieldShrubRowPath = Path.Combine(Application.dataPath,
+                "Resources/props/" + fieldShrubRowName + ".png");
+            Check(File.Exists(fieldShrubRowPath), "평원 생울타리 field_shrub_row_0 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(fieldShrubRowPath))
+            {
+                var fieldShrubRow = new Texture2D(2, 2);
+                fieldShrubRow.LoadImage(File.ReadAllBytes(fieldShrubRowPath));
+                Check(fieldShrubRow.width == 256 && fieldShrubRow.height == 256,
+                    $"평원 생울타리가 oxalpha 256 세트 (실제 {fieldShrubRow.width}×{fieldShrubRow.height})");
+                var fieldShrubRowPx = fieldShrubRow.GetPixels();
+                Check(HasFieldShrubRowAlphaSilhouette(fieldShrubRowPx,
+                        out int fieldShrubRowClear, out int fieldShrubRowSolid),
+                    $"평원 생울타리 알파 유효 — 투명 배경+가로 잎 실루엣 " +
+                    $"(투명 {fieldShrubRowClear} · 불투명 {fieldShrubRowSolid}/{fieldShrubRowPx.Length})");
+                var opaqueSquare = new Color[fieldShrubRowPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasFieldShrubRowAlphaSilhouette(opaqueSquare, out _, out _),
+                    "QA_NO_FIELD_SHRUB_ROW_ALPHA: 평원 생울타리의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(fieldShrubRow);
+            }
 
             // 평원 자연물 산포에서 충돌을 막는 낮은 그루터기 한 역할 세트. 0.80/0.75유닛으로
             // 표시되며 잘린 나이테형과 꺾인 줄기형이 작은 크기에서도 구분돼야 한다. 이름·충돌
