@@ -76,6 +76,10 @@ namespace AshesToStars
             // field_bush_2는 0.65유닛 작은 한 덩이라 캔버스의 약 6.3%만 차지한다.
             HasAlphaSilhouette(pixels, 16, out clear, out solid);
 
+        static bool HasFieldStumpAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            // field_stump_1은 0.75유닛의 가는 꺾인 줄기라 캔버스의 약 14.5%를 차지한다.
+            HasAlphaSilhouette(pixels, 8, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -129,6 +133,32 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
+
+            // 평원 자연물 산포에서 충돌을 막는 낮은 그루터기 한 역할 세트. 0.80/0.75유닛으로
+            // 표시되며 잘린 나이테형과 꺾인 줄기형이 작은 크기에서도 구분돼야 한다. 이름·충돌
+            // 검사만으로는 옛 대형 생성본이나 불투명 사각 배경 회귀를 잡지 못해 실제 PNG도 고정한다.
+            foreach (string fieldStumpName in new[] { "field_stump_0", "field_stump_1" })
+            {
+                string fieldStumpPath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + fieldStumpName + ".png");
+                Check(File.Exists(fieldStumpPath), $"평원 그루터기 {fieldStumpName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(fieldStumpPath)) continue;
+
+                var fieldStump = new Texture2D(2, 2);
+                fieldStump.LoadImage(File.ReadAllBytes(fieldStumpPath));
+                Check(fieldStump.width == 256 && fieldStump.height == 256,
+                    $"평원 그루터기 {fieldStumpName}이 oxalpha 256 세트 (실제 {fieldStump.width}×{fieldStump.height})");
+                var fieldStumpPx = fieldStump.GetPixels();
+                Check(HasFieldStumpAlphaSilhouette(fieldStumpPx,
+                        out int fieldStumpClear, out int fieldStumpSolid),
+                    $"평원 그루터기 {fieldStumpName} 알파 유효 — 투명 배경+목재 실루엣 " +
+                    $"(투명 {fieldStumpClear} · 불투명 {fieldStumpSolid}/{fieldStumpPx.Length})");
+                var opaqueSquare = new Color[fieldStumpPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasFieldStumpAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_FIELD_STUMP_ALPHA: 평원 그루터기 {fieldStumpName}의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(fieldStump);
+            }
 
             // 평원 자연물 산포의 낮은 통과 가능 장식 한 역할 세트. 세 변형은 0.65~0.75유닛으로
             // 표시되어 전투 이동을 막지 않으면서 빈 지면을 끊는다. 이름·산포 검사만으로는 옛
