@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 """AutoDev v2 localhost HTML dashboard server.
 
-No pywebview dependency. The already-installed macOS app launcher can keep
-calling this file; it opens a normal browser at a localhost-only dashboard.
+표준 라이브러리만 사용한다. 브라우저 대시보드에서 시작/중지/업데이트/상태/오류를
+확인하며, 저장소의 post-merge 훅은 업데이트 시 실행하지 않는다.
 """
 from __future__ import annotations
 
 import atexit
 import json
 import os
+import re
 import secrets
 import signal
 import socket
@@ -33,36 +34,46 @@ QUOTA_FILES = {
     "grok": OUTPUT / "grok_quota_exhausted.json",
     "codex": OUTPUT / "codex_quota_exhausted.json",
 }
-PORT = int(os.environ.get("AUTODEV_HTML_PORT", "8765"))
 HOST = "127.0.0.1"
+PORT = int(os.environ.get("AUTODEV_HTML_PORT", "8765"))
 COOLDOWN_SECONDS = 3600
+ERROR_RE = re.compile(
+    r"(error|exception|traceback|failed|failure|timeout|blocked|quota|402|rc=[1-9]|실패|오류|막힘|한도\s*소진)",
+    re.IGNORECASE,
+)
 
 
 def read_json(path: Path) -> dict[str, Any]:
     try:
-        v = json.loads(path.read_text(encoding="utf-8"))
-        return v if isinstance(v, dict) else {}
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
     except Exception:
         return {}
 
 
 def state_path() -> Path | None:
-    for p in (OUTPUT / "ashes-to-stars" / "state.json", OUTPUT / "ashes_to_stars" / "state.json"):
+    for p in (
+        OUTPUT / "ashes-to-stars" / "state.json",
+        OUTPUT / "ashes_to_stars" / "state.json",
+    ):
         if p.exists():
             return p
-    hits = sorted(OUTPUT.glob("*/state.json"))
-    return hits[0] if hits else None
+    try:
+        hits = sorted(OUTPUT.glob("*/state.json"))
+        return hits[0] if hits else None
+    except Exception:
+        return None
 
 
 def quota_status(path: Path) -> dict[str, Any]:
-    d = read_json(path)
-    ts = float(d.get("detected_at", 0) or 0)
+    data = read_json(path)
+    ts = float(data.get("detected_at", 0) or 0)
     age = max(0, int(time.time() - ts)) if ts else None
     return {
         "detected": bool(ts),
         "active": bool(ts and age is not None and age < COOLDOWN_SECONDS),
         "age_seconds": age,
-        "reason": str(d.get("reason", "")),
+        "reason": str(data.get("reason", "")),
     }
 
 
@@ -74,18 +85,43 @@ def server_alive(port: int) -> bool:
         return False
 
 
+def norm_blocked(item: Any) -> dict[str, Any]:
+    if not isinstance(item, dict):
+        return {"id": "", "title": str(item), "reason": "상세 원인 없음"}
+    reason = (
+        item.get("last_error")
+        or item.get("error")
+        or item.get("reason")
+        or item.get("blocked_reason")
+        or item.get("message")
+        or "상세 원인 없음"
+    )
+    return {
+        "id": str(item.get("id", "")),
+        "title": str(item.get("title") or item.get("goal") or "이름 없는 작업"),
+        "reason": str(reason)[-3000:],
+        "attempts": int(item.get("attempts", item.get("tries", 0)) or 0),
+        "status": str(item.get("status", "blocked")),
+        "updated_at": str(item.get("updated_at") or item.get("blocked_at") or ""),
+    }
+
+
 class Controller:
     def __init__(self) -> None:
         self.lock = threading.RLock()
         self.proc: subprocess.Popen[str] | None = None
-        self.logs: deque[dict[str, Any]] = deque(maxlen=2200)
+        self.logs: deque[dict[str, Any]] = deque(maxlen=2500)
         self.seq = 0
         self.last_exit: int | None = None
 
     def log(self, text: str) -> None:
         with self.lock:
             self.seq += 1
-            self.logs.append({"seq": self.seq, "time": time.strftime("%H:%M:%S"), "text": text.rstrip()})
+            self.logs.append({
+                "seq": self.seq,
+                "time": time.strftime("%H:%M:%S"),
+                "text": text.rstrip(),
+            })
 
     def running(self) -> bool:
         return self.proc is not None and self.proc.poll() is None
@@ -95,6 +131,8 @@ class Controller:
             assert proc.stdout is not None
             for line in proc.stdout:
                 self.log(line.rstrip("\n"))
+        except Exception as e:
+            self.log(f"[HTML] 로그 읽기 오류: {type(e).__name__}: {e}")
         finally:
             rc = proc.poll()
             if rc is None:
@@ -114,13 +152,22 @@ class Controller:
                 return {"ok": True, "message": "이미 실행 중입니다."}
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
-            env["PATH"] = f"{Path.home() / '.local/bin'}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:" + env.get("PATH", "")
+            env["PATH"] = (
+                f"{Path.home() / '.local/bin'}:/opt/homebrew/bin:/usr/local/bin:"
+                "/usr/bin:/bin:/usr/sbin:/sbin:" + env.get("PATH", "")
+            )
             try:
                 p = subprocess.Popen(
-                    [sys.executable, str(HERE / "start.py")], cwd=REPO,
-                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                    text=True, encoding="utf-8", errors="replace", bufsize=1,
-                    env=env, start_new_session=True,
+                    [sys.executable, str(HERE / "start.py")],
+                    cwd=REPO,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    bufsize=1,
+                    env=env,
+                    start_new_session=True,
                 )
             except Exception as e:
                 self.log(f"[HTML] 시작 실패: {type(e).__name__}: {e}")
@@ -147,7 +194,7 @@ class Controller:
             self.log(f"[HTML] AutoDev 중지 PID {pid}")
             return {"ok": True, "message": "중지했습니다."}
         except Exception as e:
-            self.log(f"[HTML] 중지 실패: {e}")
+            self.log(f"[HTML] 중지 실패: {type(e).__name__}: {e}")
             return {"ok": False, "message": str(e)}
 
     def update(self) -> dict[str, Any]:
@@ -157,15 +204,41 @@ class Controller:
         try:
             r = subprocess.run(
                 ["git", "-c", "core.hooksPath=/dev/null", "pull", "--ff-only"],
-                cwd=REPO, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
+                cwd=REPO,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
             )
             out = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
             for line in out.splitlines()[-100:]:
                 self.log("[UPDATE] " + line)
-            return {"ok": r.returncode == 0, "message": out[-1500:] or "업데이트 완료", "restart_recommended": r.returncode == 0}
+            return {
+                "ok": r.returncode == 0,
+                "message": out[-1500:] or "업데이트 완료",
+                "restart_recommended": r.returncode == 0,
+            }
         except Exception as e:
-            self.log(f"[UPDATE] 실패: {e}")
+            self.log(f"[UPDATE] 실패: {type(e).__name__}: {e}")
             return {"ok": False, "message": str(e)}
+
+    def recent_errors(self, limit: int = 12) -> list[dict[str, Any]]:
+        with self.lock:
+            candidates = [x for x in self.logs if ERROR_RE.search(str(x.get("text", "")))]
+        seen: set[str] = set()
+        result: list[dict[str, Any]] = []
+        for row in reversed(candidates):
+            text = str(row.get("text", "")).strip()
+            key = text[-500:]
+            if not text or key in seen:
+                continue
+            seen.add(key)
+            result.append({"time": row.get("time", ""), "text": text[-2500:]})
+            if len(result) >= limit:
+                break
+        result.reverse()
+        return result
 
     def status(self) -> dict[str, Any]:
         sp = state_path()
@@ -173,26 +246,70 @@ class Controller:
         stats = st.get("stats") if isinstance(st.get("stats"), dict) else {}
         tasks = st.get("tasks") if isinstance(st.get("tasks"), list) else []
         completed = st.get("completed") if isinstance(st.get("completed"), list) else []
-        blocked = st.get("blocked") if isinstance(st.get("blocked"), list) else []
-        current = next((x for x in tasks if x.get("status") == "working"), None)
+        blocked_raw = st.get("blocked") if isinstance(st.get("blocked"), list) else []
+        blocked_items = [norm_blocked(x) for x in blocked_raw[-8:]]
+
+        current = next((x for x in tasks if isinstance(x, dict) and x.get("status") == "working"), None)
         if current is None:
-            current = next((x for x in tasks if x.get("status") == "pending"), tasks[0] if tasks else {})
+            current = next(
+                (x for x in tasks if isinstance(x, dict) and x.get("status") == "pending"),
+                tasks[0] if tasks else {},
+            )
+
         try:
-            branch = subprocess.run(["git", "branch", "--show-current"], cwd=REPO, capture_output=True, text=True, timeout=4).stdout.strip()
-            dirty = len(subprocess.run(["git", "status", "--porcelain"], cwd=REPO, capture_output=True, text=True, timeout=6).stdout.splitlines())
+            branch = subprocess.run(
+                ["git", "branch", "--show-current"], cwd=REPO,
+                capture_output=True, text=True, timeout=4,
+                encoding="utf-8", errors="replace",
+            ).stdout.strip()
+            dirty = len(subprocess.run(
+                ["git", "status", "--porcelain"], cwd=REPO,
+                capture_output=True, text=True, timeout=6,
+                encoding="utf-8", errors="replace",
+            ).stdout.splitlines())
         except Exception:
             branch, dirty = "?", -1
+
+        recent_errors = self.recent_errors()
+        grok_q = quota_status(QUOTA_FILES["grok"])
+        codex_q = quota_status(QUOTA_FILES["codex"])
         with self.lock:
             p = self.proc
             running = self.running()
-            return {
-                "running": running, "pid": p.pid if running and p else None, "last_exit": self.last_exit,
-                "goal": str(st.get("goal", "")), "current": current or {},
-                "queue_count": len(tasks), "completed_count": len(completed), "blocked_count": len(blocked),
-                "stats": {k: int(stats.get(k, 0) or 0) for k in ("grok_calls", "codex_calls", "director_calls", "director_local_calls", "tasks_done", "tasks_blocked")},
-                "grok_quota": quota_status(QUOTA_FILES["grok"]), "codex_quota": quota_status(QUOTA_FILES["codex"]),
-                "git": {"branch": branch or "?", "dirty_count": dirty},
-            }
+            last_exit = self.last_exit
+
+        issue_count = len(blocked_items) + len(recent_errors)
+        if grok_q.get("active"):
+            issue_count += 1
+        if codex_q.get("active"):
+            issue_count += 1
+        if last_exit not in (None, 0) and not running:
+            issue_count += 1
+
+        return {
+            "running": running,
+            "pid": p.pid if running and p else None,
+            "last_exit": last_exit,
+            "goal": str(st.get("goal", "")),
+            "current": current if isinstance(current, dict) else {},
+            "queue_count": len(tasks),
+            "completed_count": len(completed),
+            "blocked_count": len(blocked_raw),
+            "blocked_items": blocked_items,
+            "recent_errors": recent_errors,
+            "issue_count": issue_count,
+            "stats": {
+                k: int(stats.get(k, 0) or 0)
+                for k in (
+                    "grok_calls", "codex_calls", "director_calls",
+                    "director_local_calls", "tasks_done", "tasks_blocked",
+                )
+            },
+            "grok_quota": grok_q,
+            "codex_quota": codex_q,
+            "git": {"branch": branch or "?", "dirty_count": dirty},
+            "state_file": str(sp) if sp else "",
+        }
 
     def log_rows(self, after: int) -> dict[str, Any]:
         with self.lock:
@@ -221,8 +338,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _authorized(self) -> bool:
         parsed = urllib.parse.urlparse(self.path)
-        q = urllib.parse.parse_qs(parsed.query)
-        supplied = self.headers.get("X-AutoDev-Token", "") or (q.get("token", [""])[0])
+        query = urllib.parse.parse_qs(parsed.query)
+        supplied = self.headers.get("X-AutoDev-Token", "") or query.get("token", [""])[0]
         return secrets.compare_digest(supplied, TOKEN)
 
     def do_GET(self) -> None:
@@ -237,45 +354,66 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(data)))
-            self.end_headers(); self.wfile.write(data); return
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
         if not self._authorized():
-            self._json({"ok": False, "error": "unauthorized"}, 403); return
-        if parsed.path == "/api/status": self._json(CTRL.status()); return
+            self._json({"ok": False, "error": "unauthorized"}, 403)
+            return
+        if parsed.path == "/api/status":
+            self._json(CTRL.status())
+            return
         if parsed.path == "/api/logs":
-            q = urllib.parse.parse_qs(parsed.query)
-            try: after = int(q.get("after", ["0"])[0])
-            except Exception: after = 0
-            self._json(CTRL.log_rows(after)); return
+            query = urllib.parse.parse_qs(parsed.query)
+            try:
+                after = int(query.get("after", ["0"])[0])
+            except Exception:
+                after = 0
+            self._json(CTRL.log_rows(after))
+            return
         self._json({"ok": False, "error": "not found"}, 404)
 
     def do_POST(self) -> None:
         if not self._authorized():
-            self._json({"ok": False, "error": "unauthorized"}, 403); return
+            self._json({"ok": False, "error": "unauthorized"}, 403)
+            return
         path = urllib.parse.urlparse(self.path).path
-        if path == "/api/start": self._json(CTRL.start()); return
-        if path == "/api/stop": self._json(CTRL.stop()); return
-        if path == "/api/update": self._json(CTRL.update()); return
+        if path == "/api/start":
+            self._json(CTRL.start()); return
+        if path == "/api/stop":
+            self._json(CTRL.stop()); return
+        if path == "/api/update":
+            self._json(CTRL.update()); return
         if path == "/api/open-repo":
             try:
                 subprocess.Popen(["open", str(REPO)])
                 self._json({"ok": True})
-            except Exception as e: self._json({"ok": False, "message": str(e)}, 500)
+            except Exception as e:
+                self._json({"ok": False, "message": str(e)}, 500)
             return
         if path == "/api/clear-logs":
-            with CTRL.lock: CTRL.logs.clear()
-            self._json({"ok": True}); return
+            with CTRL.lock:
+                CTRL.logs.clear()
+            self._json({"ok": True})
+            return
         self._json({"ok": False, "error": "not found"}, 404)
 
 
 def write_server_state() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    SERVER_STATE.write_text(json.dumps({"pid": os.getpid(), "port": PORT, "token": TOKEN}, ensure_ascii=False), encoding="utf-8")
+    SERVER_STATE.write_text(
+        json.dumps({"pid": os.getpid(), "port": PORT, "token": TOKEN}, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
 
 def cleanup() -> None:
     try:
-        if SERVER_STATE.exists() and read_json(SERVER_STATE).get("pid") == os.getpid(): SERVER_STATE.unlink()
-    except Exception: pass
+        if SERVER_STATE.exists() and read_json(SERVER_STATE).get("pid") == os.getpid():
+            SERVER_STATE.unlink()
+    except Exception:
+        pass
 
 
 def open_existing_if_any() -> bool:
@@ -289,19 +427,25 @@ def open_existing_if_any() -> bool:
 
 
 def main() -> int:
-    if open_existing_if_any(): return 0
+    if open_existing_if_any():
+        return 0
     try:
         server = ThreadingHTTPServer((HOST, PORT), Handler)
     except OSError:
         webbrowser.open(f"http://{HOST}:{PORT}/")
         return 0
-    write_server_state(); atexit.register(cleanup)
+    write_server_state()
+    atexit.register(cleanup)
     url = f"http://{HOST}:{PORT}/?token={urllib.parse.quote(TOKEN)}"
     threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     CTRL.log(f"[HTML] 대시보드 {url}")
-    try: server.serve_forever(poll_interval=0.5)
-    except KeyboardInterrupt: pass
-    finally: server.server_close(); cleanup()
+    try:
+        server.serve_forever(poll_interval=0.5)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+        cleanup()
     return 0
 
 
