@@ -25,6 +25,22 @@ LLM = importlib.util.module_from_spec(LSPEC)
 LSPEC.loader.exec_module(LLM)
 
 
+CURRENT_GROK_HELP = """
+Usage: grok --single <PROMPT> --cwd <CWD> --output-format <OUTPUT_FORMAT>
+  --no-auto-update
+  -p, --single <PROMPT>
+  --cwd <PATH>
+  --output-format <FMT>
+  --max-turns <N>
+  --no-plan
+  --no-subagents
+  --no-memory
+  --disable-web-search
+  --always-approve
+  --deny <RULE>
+"""
+
+
 class CoreTests(unittest.TestCase):
     def test_extract_json_with_noise(self):
         x = M.extract_json("설명\n```json\n{\"tasks\":[1]}\n```")
@@ -101,6 +117,41 @@ class CoreTests(unittest.TestCase):
         self.assertIsNone(LLM.claude_code("테스트"))
         source = (REPO / "projects/ai-team/_shared/llm.py").read_text(encoding="utf-8")
         self.assertIn("Ollama(로컬) → Grok Build 구독 CLI → Codex 구독 CLI → Gemini", source)
+
+    def test_grok_command_never_uses_removed_agent_profile(self):
+        cmd = M.build_grok_command(
+            "/usr/local/bin/grok", "x", REPO,
+            max_turns=2, allow_edits=False, help_text=CURRENT_GROK_HELP,
+        )
+        self.assertNotIn("--agent-profile", cmd)
+        self.assertIn("--single", cmd)
+        self.assertIn("--no-plan", cmd)
+        self.assertIn("--no-subagents", cmd)
+        self.assertIn("--no-memory", cmd)
+        self.assertIn("--disable-web-search", cmd)
+
+    def test_grok_worker_command_has_approval_and_deny_guards(self):
+        cmd = M.build_grok_command(
+            "/usr/local/bin/grok", "x", REPO,
+            max_turns=6, allow_edits=True, help_text=CURRENT_GROK_HELP,
+        )
+        self.assertIn("--always-approve", cmd)
+        self.assertIn("--deny", cmd)
+        self.assertIn("Bash(git push *)", cmd)
+        self.assertIn("Bash(git reset --hard*)", cmd)
+
+    def test_grok_command_fails_closed_when_saving_flags_are_missing(self):
+        old_help = "Usage: grok --single <PROMPT> --cwd <CWD> --output-format <FMT> --max-turns <N> --always-approve"
+        with self.assertRaises(RuntimeError) as cm:
+            M.build_grok_command(
+                "/usr/local/bin/grok", "x", REPO,
+                max_turns=2, allow_edits=False, help_text=old_help,
+            )
+        self.assertIn("절약 옵션", str(cm.exception))
+
+    def test_autodev_source_has_no_agent_profile_argv(self):
+        source = (ROOT / "autodev.py").read_text(encoding="utf-8")
+        self.assertNotIn('cmd += ["--agent-profile"', source)
 
 
 if __name__ == "__main__":
