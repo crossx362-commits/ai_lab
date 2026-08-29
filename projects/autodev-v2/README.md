@@ -1,95 +1,75 @@
 # AutoDev v2 — 재와별 자율개발 코어
 
-기존 AutoDev의 문제였던 **회의 → 상시 감사 → 여러 모델 폴백 → 최대 20턴 강제연장** 구조를 사용하지 않습니다.
+기존 AutoDev의 **회의 → 상시 감사 → 여러 모델 중복 호출 → 턴 강제연장 → 문서 반복 로드** 구조를 사용하지 않습니다.
 
-## 구조
+## 현재 구조
+`Director(Grok, 가끔)` → `Task Queue(로컬)` → `Worker(Grok)` → `Unity 검증(로컬)` → 실패 시 `Grok 재시도` → 그래도 실패할 때만 `Codex 1회` → STOP.
 
-`Director(Grok, 가끔)` → `Task Queue(로컬)` → `Worker(Grok)` → `Unity 검증(로컬)` → 실패 시 `Grok 재시도 1회` → 그래도 실패할 때만 `Codex 1회`.
+Claude는 AutoDev v2에서 사용하지 않습니다.
 
-Claude는 AutoDev v2에서 전혀 호출하지 않습니다.
+## 지침·지식·상태를 분리
+- 행동 규칙: `projects/autodev-v2/CORE_RULES.md`
+- 안정 지식: `projects/autodev-v2/KNOWLEDGE.md`
+- 동적 진행상태/작업 큐: `output/autodev_v2/ashes-to-stars/state.json`
+- 게임 기획 권위: `docs/GAME_DESIGN_ASHES_TO_STARS.md`
+
+과거 `GAME_WORKLOG.md`, `GAME_DEV_HANDOFF.md`, `ORDERS.md`, 회의록은 자동 컨텍스트가 아닙니다. 필요한 과거 사실을 조사할 때만 부분적으로 참고합니다.
 
 ## 토큰 절약 장치
+- Director는 큐가 빌 때만 4~6개 작업을 생성
+- 매 작업은 새 Grok 세션
+- memory/subagent/자동 웹검색 비활성
+- 관련 파일 후보 최대 5개
+- 컨텍스트 기본 최대 12K 문자
+- Unity 컴파일은 로컬 도구로 검증
+- 같은 실패 반복 시 조기 중단
+- 한 실행 최대 6작업 / 클라우드 최대 10호출
+- Worker의 STATUS/WORKLOG/회의록 작성 금지
+- 프로젝트 전체 자동 첨부 금지
 
-- Director는 큐가 빌 때만 호출하고 한 번에 4~6개 작업을 생성합니다.
-- 매 작업은 새 Grok headless 세션입니다. 이전 대화를 이어붙이지 않습니다.
-- `--no-memory`, `--no-subagents`, `--disable-web-search`를 기본 적용합니다.
-- 작업 파일 후보는 로컬 `rg`가 최대 5개로 좁힙니다.
-- Unity 컴파일 검증은 기존 로컬 `game_compile_check.py`를 직접 실행합니다.
-- 같은 검증 실패가 반복되면 Grok 재시도를 조기 종료합니다.
-- 한 실행당 기본 최대 6작업 / 클라우드 12호출에서 강제 종료합니다.
-- 문서/회의록/STATUS 작성은 Worker가 하지 않습니다.
-
-## 가장 간단한 시작
-
-Grok Build CLI에 한 번 로그인된 상태에서 아래 한 줄만 실행하면 됩니다.
+## 원클릭 실행
+Grok Build CLI가 로그인된 상태에서:
 
 ```bash
 python3 projects/autodev-v2/start.py
 ```
 
-`start.py`가 먼저 기존 게임 회의/상시 감사 스케줄을 백업 후 비활성화하고, macOS launchd를 동기화한 다음 AutoDev v2 연속 루프를 시작합니다.
+`start.py`는 먼저 v1의 게임 회의/상시 감사 스케줄을 백업 후 비활성화하고 macOS launchd를 동기화한 뒤 v2 연속 루프를 시작합니다.
 
-## 수동 전환
-
-전환만 따로 하려면:
-
-```bash
-python3 projects/autodev-v2/migrate_v1.py --apply
-```
-
-이 명령은 기존 파일을 삭제하지 않고 `schedules.json`을 백업한 다음 게임 회의/상시 감사 잡만 비활성화합니다. macOS에서는 `schedule_sync.py sync`까지 실행해 기존 launchd 등록도 정리합니다.
-
-## 개별 실행
-
-Grok 확인:
-
-```bash
-grok --version
-grok login
-```
-
+## 수동 명령
 상태 확인:
 
 ```bash
 python3 projects/autodev-v2/autodev.py status
 ```
 
-작업 하나만:
+작업 하나:
 
 ```bash
 python3 projects/autodev-v2/autodev.py run
 ```
 
-예산 상한까지 자율 연속 개발:
+예산 상한까지 연속 개발:
 
 ```bash
 python3 projects/autodev-v2/autodev.py run --continuous
 ```
 
-막힌 작업을 다시 시도하려면:
+막힌 작업 재개:
 
 ```bash
 python3 projects/autodev-v2/autodev.py unblock T0001
 ```
 
-## 중요한 운영 원칙
+v1 전환만 별도로:
 
-AutoDev v2의 자율성은 "AI가 계속 생각한다"가 아니라 **로컬 프로그램이 계속 진행하고 판단이 필요한 순간에만 AI를 부른다**는 뜻입니다.
+```bash
+python3 projects/autodev-v2/migrate_v1.py --apply
+```
 
-Director는 다음 작업을 한 번에 묶어서 정합니다. 그 뒤 다음 작업 선택, Git 상태, 파일 후보 검색, Unity 컴파일 판정은 모두 로컬에서 처리됩니다.
+## 핵심 운영 철학
+AutoDev v2의 자율성은 **AI를 계속 돌리는 것**이 아닙니다.
 
-기본 모델 흐름은 `Grok → Grok 재시도 → Codex 1회 → STOP`입니다. 여러 모델에게 같은 문제를 동시에 묻지 않습니다.
+프로그램이 다음 작업 선택, 파일 후보 검색, Git 상태, 컴파일/테스트를 계속 처리하고, **새로운 판단이나 코드 작성이 필요한 순간에만 AI를 호출**합니다.
 
-## 설정
-
-`projects/autodev-v2/config.json`
-
-기본값:
-- Grok 재시도: 작업당 최대 2회
-- Codex: Grok 실패 후 최대 1회
-- 관련 파일 후보: 최대 5개
-- 한 실행: 최대 6개 작업
-- 한 실행 클라우드 호출: 최대 12회
-- milestone 전체 Unity 빌드: 기본 OFF
-
-`full_verify_on_milestone=true`로 바꾸면 milestone 작업에서 `game_build_verify.py`까지 실행합니다. 전체 빌드는 느리고 Unity 에디터 락 영향이 있으므로 기본은 꺼져 있습니다.
+기본 모델 흐름은 `Grok → Grok 재시도 → Codex 1회 → STOP`이며 여러 모델에게 같은 문제를 동시에 묻지 않습니다.

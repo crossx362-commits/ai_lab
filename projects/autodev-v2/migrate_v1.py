@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""AutoDev v1의 토큰 소모형 게임 루프를 안전하게 끄는 1회 전환 도구."""
+"""AutoDev v1의 토큰 소모형 게임 루프를 안전하게 끄는 전환 도구."""
 from __future__ import annotations
+
 import argparse
 import json
 import shutil
@@ -49,6 +50,14 @@ def patch_schedule(data: dict) -> list[str]:
     return changed
 
 
+def _archive_if_exists(path: Path, backup_dir: Path, name: str) -> None:
+    if not path.exists():
+        return
+    dst = backup_dir / name
+    shutil.move(str(path), str(dst))
+    print(f"레거시 상태 격리: {path} -> {dst}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="실제로 변경")
@@ -56,31 +65,35 @@ def main() -> int:
 
     repo = root()
     sched = repo / "projects/ai-team/skills/영숙_비서/tools/schedules.json"
-    if not sched.exists():
-        print("schedules.json 없음 — 스케줄 전환 생략")
-        return 0
-
-    data = json.loads(sched.read_text(encoding="utf-8-sig"))
-    changed = patch_schedule(data)
+    data = None
+    changed: list[str] = []
+    if sched.exists():
+        data = json.loads(sched.read_text(encoding="utf-8-sig"))
+        changed = patch_schedule(data)
     print("비활성 대상:", ", ".join(changed) if changed else "(이미 비활성 또는 없음)")
+
     if not args.apply:
         print("DRY RUN입니다. 적용하려면 --apply")
         return 0
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_dir = repo / "output/autodev_v2/backups"
+    backup_dir = repo / "output/autodev_v2/backups" / ts
     backup_dir.mkdir(parents=True, exist_ok=True)
-    backup = backup_dir / f"schedules.{ts}.json"
-    shutil.copy2(sched, backup)
-    sched.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("백업:", backup)
+
+    if sched.exists() and data is not None:
+        shutil.copy2(sched, backup_dir / "schedules.json")
+        sched.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     opt = repo / ".claude/autopilot_sessions.txt"
     if opt.exists():
-        opt_backup = backup_dir / f"autopilot_sessions.{ts}.txt"
-        shutil.copy2(opt, opt_backup)
+        shutil.copy2(opt, backup_dir / "autopilot_sessions.txt")
         opt.write_text("# AutoDev v2 전환으로 비움 — 턴 강제연장 사용 안 함\n", encoding="utf-8")
-        print("autopilot 강제연장 해제:", opt_backup)
+        print("autopilot 강제연장 목록 해제")
+
+    # ORDERS가 남아 있으면 옛 세션/Stop 훅이 계속 할 일이 있다고 오인할 수 있다.
+    qa = repo / "output/qa/ashes-to-stars"
+    _archive_if_exists(qa / "ORDERS.md", backup_dir, "ORDERS.md")
+    _archive_if_exists(qa / "autopilot_state.json", backup_dir, "autopilot_state.json")
 
     sync = repo / "projects/ai-team/skills/영숙_비서/tools/schedule_sync.py"
     if sys.platform == "darwin" and sync.exists():
@@ -89,7 +102,8 @@ def main() -> int:
         if r.returncode != 0:
             print("경고: schedule_sync 실패. schedules.json 변경은 적용됐습니다.")
             return r.returncode
-    print("AutoDev v1 게임 회의/상시감사 루프를 비활성화했습니다.")
+
+    print("AutoDev v1 게임 회의/상시감사/ORDERS/autopilot 상태를 비활성·격리했습니다.")
     return 0
 
 
