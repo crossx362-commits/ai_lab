@@ -9,6 +9,9 @@ namespace AshesToStars
     /// <summary>상태 아이콘과 독·빙결·보스 경고 스프라이트 시트의 로드·분할을 검사한다.</summary>
     public static class StatusVfxSelfCheck
     {
+        const int RuntimePixels = 64;
+        const int ContactCell = 88;
+
         public static void Run()
         {
             Debug.Assert(StatusIconAtlas.IsReady, "[StatusVfx] 상태 아이콘 아틀라스 로드 실패");
@@ -32,6 +35,7 @@ namespace AshesToStars
                         $"[StatusVfx] 시트 {sheet} 프레임 {frame} 누락");
 
             AssertPackedStatusSheets(repackerFiles);
+            WriteRuntimeContactSheet();
 
             Debug.Log("[StatusVfxSelfCheck] PASS");
         }
@@ -84,6 +88,48 @@ namespace AshesToStars
                 Debug.Assert(texture != null && texture.width == 1024 && texture.height == 512,
                     $"[StatusVfx] {file} 시트는 정수 256px 4x2 격자여야 한다");
             }
+        }
+
+        static void WriteRuntimeContactSheet()
+        {
+            const int columns = 8, rows = 7;
+            var sheet = new Texture2D(columns * ContactCell, rows * ContactCell, TextureFormat.RGBA32, false);
+            var background = new Color32[sheet.width * sheet.height];
+            for (int i = 0; i < background.Length; i++) background[i] = new Color32(8, 9, 13, 255);
+            sheet.SetPixels32(background);
+
+            for (int style = 0; style < rows; style++)
+            for (int frame = 0; frame < columns; frame++)
+            {
+                Sprite sprite = StatusVfxSheets.Frame(style, frame);
+                if (sprite == null || !sprite.texture.isReadable) continue;
+                float u = (frame + .5f) / columns;
+                float eased = 1f - (1f - u) * (1f - u);
+                int size = Mathf.RoundToInt(RuntimePixels * Mathf.Lerp(.65f, 1.15f, eased));
+                float opacity = u < .5f ? 1f : 1f - (u - .5f) * 2f;
+                int cellX = frame * ContactCell + (ContactCell - size) / 2;
+                int cellY = (rows - 1 - style) * ContactCell + (ContactCell - size) / 2;
+                Rect rect = sprite.rect;
+                for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float tx = (rect.x + (x + .5f) / size * rect.width) / sprite.texture.width;
+                    float ty = (rect.y + (y + .5f) / size * rect.height) / sprite.texture.height;
+                    Color fg = sprite.texture.GetPixelBilinear(tx, ty);
+                    fg.a *= opacity;
+                    Color bg = sheet.GetPixel(cellX + x, cellY + y);
+                    sheet.SetPixel(cellX + x, cellY + y, Color.Lerp(bg, fg, fg.a));
+                }
+            }
+
+            sheet.Apply();
+            string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "../..", "results"));
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "status_vfx_runtime_frames.png");
+            File.WriteAllBytes(path, sheet.EncodeToPNG());
+            Object.DestroyImmediate(sheet);
+            Debug.Log("[StatusVfx] 실소비 64px·시간 스케일 견본(열=프레임 0→7, 행="
+                + string.Join("/", StatusVfxSheets.RequiredKeys) + "): " + path);
         }
 
         static bool RepackerContractPasses(HashSet<string> repackerFiles, HashSet<string> runtimeKeys)
