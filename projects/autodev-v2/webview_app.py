@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 """AutoDev v2 localhost HTML dashboard server.
 
-표준 라이브러리만 사용한다. 브라우저 대시보드에서 시작/중지/업데이트/상태/오류를
-확인하며, 저장소의 post-merge 훅은 업데이트 시 실행하지 않는다.
+표준 라이브러리만 사용한다.
+- 브라우저에서 시작/중지/업데이트/상태/오류 확인
+- 업데이트는 Git hook을 우회
+- 업데이트 버튼 한 번으로 엔진 중지 -> git pull -> 대시보드 재시작
+- 업데이트 전 엔진이 실행 중이었다면 새 서버에서 자동 재개
 """
 from __future__ import annotations
 
@@ -12,6 +15,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import signal
 import socket
 import subprocess
@@ -31,6 +35,7 @@ OUTPUT = REPO / "output" / "autodev_v2"
 HTML_FILE = HERE / "dashboard.html"
 SERVER_STATE = OUTPUT / "html_server.json"
 CONFIG_FILE = HERE / "config.json"
+SERVER_LOG = Path.home() / "Library" / "Logs" / "AutoDevV2-HTML.log"
 QUOTA_FILES = {
     "grok": OUTPUT / "grok_quota_exhausted.json",
     "codex": OUTPUT / "codex_quota_exhausted.json",
@@ -115,6 +120,35 @@ def norm_blocked(item: Any) -> dict[str, Any]:
         "status": str(item.get("status", "blocked")),
         "updated_at": str(item.get("updated_at") or item.get("blocked_at") or ""),
     }
+
+
+def launch_replacement_server(resume_engine: bool) -> tuple[bool, str]:
+    """현재 HTTP 응답이 끝난 뒤 새 코드로 대시보드 서버를 다시 띄울 프로세스를 예약한다."""
+    try:
+        SERVER_LOG.parent.mkdir(parents=True, exist_ok=True)
+        env = os.environ.copy()
+        env["AUTODEV_RESUME_ENGINE"] = "1" if resume_engine else "0"
+        env["PYTHONUNBUFFERED"] = "1"
+        command = (
+            "sleep 1; exec "
+            + shlex.quote(sys.executable)
+            + " "
+            + shlex.quote(str(HERE / "webview_app.py"))
+        )
+        log = SERVER_LOG.open("a", encoding="utf-8")
+        subprocess.Popen(
+            ["/bin/sh", "-c", command],
+            cwd=REPO,
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+            env=env,
+        )
+        log.close()
+        return True, ""
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
 
 
 class Controller:
@@ -202,6 +236,7 @@ class Controller:
                 p.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 os.killpg(pid, signal.SIGKILL)
+                p.wait(timeout=2)
             self.log(f"[HTML] AutoDev 중지 PID {pid}")
             return {"ok": True, "message": "중지했습니다."}
         except Exception as e:
@@ -209,8 +244,13 @@ class Controller:
             return {"ok": False, "message": str(e)}
 
     def update(self) -> dict[str, Any]:
-        if self.running():
-            return {"ok": False, "message": "업데이트 전에 AutoDev를 중지하세요."}
+        resume_engine = self.running()
+        if resume_engine:
+            stopped = self.stop()
+            if not stopped.get("ok"):
+                return {"ok": False, "message": "AutoDev 중지 실패: " + str(stopped.get("message", ""))}
+
+        self.log("[UPDATE] AutoDev 중지 완료")
         self.log("[UPDATE] Git hook 없이 fast-forward 업데이트")
         try:
             r = subprocess.run(
@@ -225,12 +265,29 @@ class Controller:
             out = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
             for line in out.splitlines()[-100:]:
                 self.log("[UPDATE] " + line)
+            if r.returncode != 0:
+                if resume_engine:
+                    self.log("[UPDATE] 실패해 기존 AutoDev를 다시 시작합니다.")
+                    self.start()
+                return {"ok": False, "message": out[-1500:] or "업데이트 실패"}
+
+            ok, err = launch_replacement_server(resume_engine)
+            if not ok:
+                if resume_engine:
+                    self.start()
+                self.log("[UPDATE] 대시보드 재시작 예약 실패: " + err)
+                return {"ok": False, "message": "코드는 업데이트됐지만 대시보드 재시작 실패: " + err}
+
+            self.log("[UPDATE] 새 코드로 대시보드 재시작 예약")
             return {
-                "ok": r.returncode == 0,
-                "message": out[-1500:] or "업데이트 완료",
-                "restart_recommended": r.returncode == 0,
+                "ok": True,
+                "message": "업데이트 완료. 대시보드를 자동 재시작합니다.",
+                "restarting": True,
+                "resume_engine": resume_engine,
             }
         except Exception as e:
+            if resume_engine:
+                self.start()
             self.log(f"[UPDATE] 실패: {type(e).__name__}: {e}")
             return {"ok": False, "message": str(e)}
 
@@ -264,7 +321,10 @@ class Controller:
         blocked_raw = st.get("blocked") if isinstance(st.get("blocked"), list) else []
         blocked_items = [norm_blocked(x) for x in blocked_raw[-8:]]
 
-        current = next((x for x in tasks if isinstance(x, dict) and x.get("status") == "working"), None)
+        current = next(
+            (x for x in tasks if isinstance(x, dict) and x.get("status") == "working"),
+            None,
+        )
         if current is None:
             current = next(
                 (x for x in tasks if isinstance(x, dict) and x.get("status") == "pending"),
@@ -273,15 +333,25 @@ class Controller:
 
         try:
             branch = subprocess.run(
-                ["git", "branch", "--show-current"], cwd=REPO,
-                capture_output=True, text=True, timeout=4,
-                encoding="utf-8", errors="replace",
+                ["git", "branch", "--show-current"],
+                cwd=REPO,
+                capture_output=True,
+                text=True,
+                timeout=4,
+                encoding="utf-8",
+                errors="replace",
             ).stdout.strip()
-            dirty = len(subprocess.run(
-                ["git", "status", "--porcelain"], cwd=REPO,
-                capture_output=True, text=True, timeout=6,
-                encoding="utf-8", errors="replace",
-            ).stdout.splitlines())
+            dirty = len(
+                subprocess.run(
+                    ["git", "status", "--porcelain"],
+                    cwd=REPO,
+                    capture_output=True,
+                    text=True,
+                    timeout=6,
+                    encoding="utf-8",
+                    errors="replace",
+                ).stdout.splitlines()
+            )
         except Exception:
             branch, dirty = "?", -1
 
@@ -371,9 +441,8 @@ class Handler(BaseHTTPRequestHandler):
             query = urllib.parse.parse_qs(parsed.query)
             supplied = query.get("token", [""])[0]
             if not secrets.compare_digest(supplied, TOKEN):
-                target = f"/?token={urllib.parse.quote(TOKEN)}"
                 self.send_response(302)
-                self.send_header("Location", target)
+                self.send_header("Location", f"/?token={urllib.parse.quote(TOKEN)}")
                 self.send_header("Cache-Control", "no-store")
                 self.end_headers()
                 return
@@ -412,11 +481,17 @@ class Handler(BaseHTTPRequestHandler):
             return
         path = urllib.parse.urlparse(self.path).path
         if path == "/api/start":
-            self._json(CTRL.start()); return
+            self._json(CTRL.start())
+            return
         if path == "/api/stop":
-            self._json(CTRL.stop()); return
+            self._json(CTRL.stop())
+            return
         if path == "/api/update":
-            self._json(CTRL.update()); return
+            result = CTRL.update()
+            self._json(result)
+            if result.get("restarting"):
+                threading.Timer(0.35, lambda: os._exit(0)).start()
+            return
         if path == "/api/open-repo":
             try:
                 subprocess.Popen(["open", str(REPO)])
@@ -466,11 +541,18 @@ def main() -> int:
     except OSError:
         webbrowser.open(f"http://{HOST}:{PORT}/")
         return 0
+
     write_server_state()
     atexit.register(cleanup)
     url = f"http://{HOST}:{PORT}/?token={urllib.parse.quote(TOKEN)}"
-    threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     CTRL.log(f"[HTML] 대시보드 {url}")
+
+    resume = os.environ.pop("AUTODEV_RESUME_ENGINE", "0").strip() == "1"
+    if resume:
+        CTRL.log("[UPDATE] 업데이트 전 실행 상태를 복원합니다.")
+        threading.Timer(1.0, CTRL.start).start()
+
+    threading.Timer(0.45, lambda: webbrowser.open(url)).start()
     try:
         server.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:
