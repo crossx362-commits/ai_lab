@@ -68,6 +68,18 @@ namespace AshesToStars
             return clear > pixels.Length / 2 && solid > pixels.Length / 4;
         }
 
+        static bool HasLampAlphaSilhouette(Color[] pixels, out int clear, out int solid)
+        {
+            clear = 0;
+            solid = 0;
+            foreach (var p in pixels)
+            {
+                if (p.a < 0.05f) clear++;
+                else if (p.a > 0.95f) solid++;
+            }
+            return clear > pixels.Length / 2 && solid > pixels.Length / 10;
+        }
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -216,6 +228,24 @@ namespace AshesToStars
                 Check(!HasHaystackAlphaSilhouette(sparseSilhouette, out _, out _),
                     "QA_NO_HAYSTACK_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(haystack);
+            }
+
+            // 필드 마을 큰길 가장자리와 화살탑·마법탑 QA_NO가 함께 소비하는 가로등.
+            // 2.60유닛 높이에서도 기둥·걸이·등롱·석조 기단이 읽히는 ox-alpha 그림을 고정한다.
+            string lampPath = Path.Combine(Application.dataPath,
+                "Resources/props/village_lamp_0.png");
+            Check(File.Exists(lampPath), "마을 가로등 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(lampPath))
+            {
+                var lamp = new Texture2D(2, 2);
+                lamp.LoadImage(File.ReadAllBytes(lampPath));
+                Check(lamp.width == 256 && lamp.height == 256,
+                    $"마을 가로등이 oxalpha 256 세트 (실제 {lamp.width}×{lamp.height})");
+                var lampPx = lamp.GetPixels();
+                Check(HasLampAlphaSilhouette(lampPx, out int lampClear, out int lampSolid),
+                    $"마을 가로등 알파 유효 — 투명 배경+세로 월드 실루엣 " +
+                    $"(투명 {lampClear} · 불투명 {lampSolid}/{lampPx.Length})");
+                UnityEngine.Object.DestroyImmediate(lamp);
             }
 
             Check(EstateBuildings.HasDedicated(EstateBuildings.Keep), "본성 PNG");
