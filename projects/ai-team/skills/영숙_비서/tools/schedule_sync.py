@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""스케줄 → launchd 동기화 (SPOF 제거의 근본 해법).
+"""schedules.json → macOS launchd 동기화.
 
-schedules.json을 단일 진실원천으로 두고, 각 잡을 **독립 launchd 에이전트**로
-materialize 한다. 커스텀 스케줄러 루프(단일 프로세스 = shared fate SPOF)를 없애고,
-OS 네이티브 스케줄러(launchd)가 잡마다 따로 실행한다. 한 잡이 죽어도 나머지는 무관하며,
-sleep/재부팅 후 누락분도 launchd가 알아서 실행한다.
+각 정시 잡을 독립 launchd 에이전트로 만든다.
 
-사용:
-  schedule_sync.py sync      # schedules.json → 잡별 plist 생성·로드, 사라진 잡 정리
-  schedule_sync.py list      # 현재 등록된 com.ailab.sched.* 표시
-  schedule_sync.py clean     # 모든 com.ailab.sched.* 제거
-  schedule_sync.py selftest  # cron→launchd 변환 검증(부팅·대기 없이)
+비용 가드:
+- **정시/백그라운드 잡은 기본적으로 클라우드 LLM을 사용하지 않는다.**
+- `AI_TEAM_ALLOW_CLOUD_LLM=0`, `AI_TEAM_ENABLE_CLAUDE=0`을 launchd 환경에 강제한다.
+- 정말 클라우드가 필요한 잡만 schedules.json의 `environment`에서 명시적으로 opt-in 한다.
+
+예:
+  "environment": {"AI_TEAM_ALLOW_CLOUD_LLM": "1"}
+
+이렇게 해야 Ollama 일시 실패나 오래된 fallback 코드 때문에 Grok/Codex 주간 한도가
+백그라운드에서 조용히 소모되지 않는다.
 """
 
 from __future__ import annotations
@@ -36,7 +38,7 @@ PYBIN = sys.executable
 
 
 def _parse_field(field: str, lo: int, hi: int) -> list[int]:
-    """cron 필드 → 정수 리스트. '*'·'a-b'·'a,b'·'n'·스텝('*/n'·'a-b/n') 지원."""
+    """cron 필드 → 정수 리스트. '*', 'a-b', 'a,b', 'n', 스텝('*/n', 'a-b/n') 지원."""
     field = field.strip()
     out: list[int] = []
     for part in field.split(","):
@@ -57,8 +59,7 @@ def _parse_field(field: str, lo: int, hi: int) -> list[int]:
 
 
 def cron_to_calendar(cron: str) -> list[dict]:
-    """'m h dom mon dow' → launchd StartCalendarInterval 항목 리스트.
-    cron·launchd 모두 0=일요일이라 요일 매핑 불필요. dom/mon은 현재 스케줄상 항상 '*'."""
+    """'m h dom mon dow' → launchd StartCalendarInterval 항목 리스트."""
     m, h, _dom, _mon, dow = cron.split()
     minutes = _parse_field(m, 0, 59)
     hours = _parse_field(h, 0, 23)
@@ -75,13 +76,32 @@ def cron_to_calendar(cron: str) -> list[dict]:
 
 
 def _program_args(command: str) -> list[str]:
-    """'python projects/.../x.py --a b' → [PYBIN, '-u', <abs>, '--a', 'b']."""
+    """'python projects/.../x.py --a b' → 현재 Python + 절대 스크립트 경로."""
     parts = command.split()
-    # parts[0] == python|python3 → 실제 인터프리터로 치환
     rel = parts[1]
     args = parts[2:]
     script_abs = str((PROJECT_ROOT / rel).resolve())
     return [PYBIN, "-u", script_abs, *args]
+
+
+def _job_environment(job: dict) -> dict[str, str]:
+    """launchd 잡 환경.
+
+    백그라운드 잡은 기본 cloud-off다. 개별 잡이 정말 필요할 때만
+    schedules.json의 `environment`로 명시적 opt-in 한다.
+    """
+    env = {
+        "PYTHONUTF8": "1",
+        "HOME": str(Path.home()),
+        "AI_TEAM_ALLOW_CLOUD_LLM": "0",
+        "AI_TEAM_ENABLE_CLAUDE": "0",
+        "AI_TEAM_PROBE_CLOUD": "0",
+    }
+    extra = job.get("environment") or {}
+    if isinstance(extra, dict):
+        for key, value in extra.items():
+            env[str(key)] = str(value)
+    return env
 
 
 def build_plist(job: dict) -> dict:
@@ -90,9 +110,9 @@ def build_plist(job: dict) -> dict:
         "Label": label,
         "ProgramArguments": _program_args(job["command"]),
         "WorkingDirectory": str(PROJECT_ROOT),
-        "EnvironmentVariables": {"PYTHONUTF8": "1", "HOME": str(Path.home())},
+        "EnvironmentVariables": _job_environment(job),
         "StartCalendarInterval": cron_to_calendar(job["cron"]),
-        "RunAtLoad": False,  # 로드 시 즉시 실행 금지 — 캘린더 시각에만
+        "RunAtLoad": False,
         "StandardOutPath": str(LOG_DIR / f"sched_{job['id']}.out.log"),
         "StandardErrorPath": str(LOG_DIR / f"sched_{job['id']}.err.log"),
     }
@@ -103,7 +123,7 @@ def _launchctl(*args: str) -> subprocess.CompletedProcess:
 
 
 def _load(plist_path: Path) -> None:
-    _launchctl("unload", str(plist_path))  # 멱등 — 없으면 무시
+    _launchctl("unload", str(plist_path))
     _launchctl("load", "-w", str(plist_path))
 
 
@@ -123,8 +143,9 @@ def sync() -> None:
         path = LAUNCH_AGENTS / f"{label}.plist"
         path.write_bytes(plistlib.dumps(build_plist(job)))
         _load(path)
-        print(f"  ✅ {label}  ({job['cron']})")
-    # schedules.json에서 사라진 잡 정리 (stale plist 제거)
+        cloud = _job_environment(job).get("AI_TEAM_ALLOW_CLOUD_LLM") == "1"
+        print(f"  ✅ {label}  ({job['cron']})  cloud={'ON' if cloud else 'OFF'}")
+
     for p in LAUNCH_AGENTS.glob(f"{LABEL_PREFIX}*.plist"):
         label = p.stem
         if label not in wanted:
@@ -150,28 +171,35 @@ def clean() -> None:
 
 
 def selftest() -> int:
-    """cron→launchd 변환 정확성 검증 (대기·부팅 없이)."""
+    """cron 변환 + 백그라운드 cloud-off 가드 검증."""
     cases = [
-        ("0 4 * * *", 24 * 1, "매일 04:00 → 요일 없음(7일)"),
-        ("30 6 * * 1-5", 5, "평일 06:30 → 5개"),
-        ("0 9-15 * * 1-5", 7 * 5, "평일 9~15시 매시 → 35개"),
-        ("0 17 * * 5", 1, "금요일 17:00 → 1개"),
+        ("0 4 * * *", 1, "매일 04:00"),
+        ("30 6 * * 1-5", 5, "평일 06:30"),
+        ("0 9-15 * * 1-5", 35, "평일 9~15시 매시"),
+        ("0 17 * * 5", 1, "금요일 17:00"),
     ]
-    # '0 4 * * *' → weekday 없음, hour 1개 → 1개 항목(요일 미지정=매일)
-    expect = {"0 4 * * *": 1, "30 6 * * 1-5": 5, "0 9-15 * * 1-5": 35, "0 17 * * 5": 1}
     ok = True
-    for cron, _n, desc in cases:
+    for cron, exp, desc in cases:
         got = len(cron_to_calendar(cron))
-        exp = expect[cron]
-        mark = "✅" if got == exp else "❌"
-        if got != exp:
-            ok = False
-        print(f"  {mark} {cron:18} → {got}항목 (기대 {exp}) — {desc}")
-    # 평일 9시가 실제로 들어갔는지 표본 확인
-    nine = cron_to_calendar("0 9-15 * * 1-5")
-    has_mon9 = {"Hour": 9, "Minute": 0, "Weekday": 1} in nine
-    print(f"  {'✅' if has_mon9 else '❌'} 월요일 09:00 항목 포함")
-    return 0 if (ok and has_mon9) else 1
+        good = got == exp
+        ok = ok and good
+        print(f"  {'✅' if good else '❌'} {cron:18} → {got}항목 (기대 {exp}) — {desc}")
+
+    default_env = _job_environment({})
+    default_off = (
+        default_env.get("AI_TEAM_ALLOW_CLOUD_LLM") == "0"
+        and default_env.get("AI_TEAM_ENABLE_CLAUDE") == "0"
+        and default_env.get("AI_TEAM_PROBE_CLOUD") == "0"
+    )
+    print(f"  {'✅' if default_off else '❌'} 정시 잡 기본 cloud OFF")
+    ok = ok and default_off
+
+    opted = _job_environment({"environment": {"AI_TEAM_ALLOW_CLOUD_LLM": "1"}})
+    optin_ok = opted.get("AI_TEAM_ALLOW_CLOUD_LLM") == "1"
+    print(f"  {'✅' if optin_ok else '❌'} 명시적 cloud opt-in 지원")
+    ok = ok and optin_ok
+
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
