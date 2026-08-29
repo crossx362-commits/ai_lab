@@ -142,6 +142,9 @@ namespace AshesToStars
                 for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
                 Check(!HasVillageHouseAlphaSilhouette(opaqueSquare, out _, out _),
                     $"QA_NO_VILLAGE_HOUSE_ALPHA: 마을 집 {houseName}의 불투명 사각 배경 회귀를 거부한다");
+                var sparseSilhouette = SparseSilhouetteAtBoundary(housePx.Length, 6);
+                Check(!HasVillageHouseAlphaSilhouette(sparseSilhouette, out _, out _),
+                    $"QA_NO_VILLAGE_HOUSE_SPARSE_ALPHA: 마을 집 {houseName}의 지나치게 희박한 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(house);
             }
 
