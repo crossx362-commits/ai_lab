@@ -1,6 +1,14 @@
 #!/bin/sh
-# git pull 후 함대 자동 기동. 관문(BOTS_OFF·운영기·playwright)은 fleet_bootstrap.py가 판단한다.
-# pull 자체는 절대 실패시키지 않는다.
+# AutoDev v2 정책: git pull/update는 코드만 갱신하고 봇 함대를 자동 기동하지 않는다.
+# 과거 post-merge가 나무/미오/백호/봄이/수리/영숙/예원/테오 등을 자동 기동해
+# WebView 설치·업데이트만 해도 불필요한 백그라운드 작업이 살아나는 문제가 있었다.
+# 정말 함대 자동기동이 필요한 운영 환경에서만 명시적으로 opt-in 한다.
+
+case "${AI_TEAM_FLEET_BOOTSTRAP_ON_PULL:-0}" in
+  1|true|TRUE|yes|YES|on|ON) ;;
+  *) exit 0 ;;
+esac
+
 ROOT="$(git rev-parse --show-toplevel)"
 PIN="$ROOT/output/cache/BOOTSTRAP_PYTHON"
 if [ -f "$PIN" ]; then PY="$(cat "$PIN")"; \
