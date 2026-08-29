@@ -74,6 +74,31 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
 
+            // 경매장 QA_NO와 필드 마을이 함께 소비하는 수레. 719ead9e에서 ox-alpha 256으로
+            // 반입했지만 이름 매핑만 검사하면 옛 1740×1310 나노바나나나 불투명 사각 배경이
+            // 되돌아와도 통과한다. 실제 Resources 파일의 캔버스와 알파를 함께 고정한다.
+            string cartPath = Path.Combine(Application.dataPath,
+                "Resources/props/village_cart_0.png");
+            Check(File.Exists(cartPath), "마을 수레 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(cartPath))
+            {
+                var cart = new Texture2D(2, 2);
+                cart.LoadImage(File.ReadAllBytes(cartPath));
+                Check(cart.width == 256 && cart.height == 256,
+                    $"마을 수레가 oxalpha 256 세트 (실제 {cart.width}×{cart.height})");
+                var cartPx = cart.GetPixels();
+                int cartClear = 0, cartSolid = 0;
+                foreach (var p in cartPx)
+                {
+                    if (p.a < 0.05f) cartClear++;
+                    else if (p.a > 0.95f) cartSolid++;
+                }
+                Check(cartClear > cartPx.Length / 2 && cartSolid > cartPx.Length / 8,
+                    $"마을 수레 알파 유효 — 투명 배경+작은 월드 실루엣 " +
+                    $"(투명 {cartClear} · 불투명 {cartSolid}/{cartPx.Length})");
+                UnityEngine.Object.DestroyImmediate(cart);
+            }
+
             Check(EstateBuildings.HasDedicated(EstateBuildings.Keep), "본성 PNG");
             Check(EstateBuildings.HasDedicated(EstateBuildings.Mine), "광산 PNG");
             Check(EstateBuildings.HasDedicated(EstateBuildings.Warehouse), "창고 PNG");
