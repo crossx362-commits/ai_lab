@@ -32,6 +32,18 @@ namespace AshesToStars
             return clear > pixels.Length / 2 && solid > pixels.Length / 8;
         }
 
+        static bool HasHaystackAlphaSilhouette(Color[] pixels, out int clear, out int solid)
+        {
+            clear = 0;
+            solid = 0;
+            foreach (var p in pixels)
+            {
+                if (p.a < 0.05f) clear++;
+                else if (p.a > 0.95f) solid++;
+            }
+            return clear > pixels.Length / 2 && solid > pixels.Length / 10;
+        }
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -107,6 +119,28 @@ namespace AshesToStars
                 Check(!HasCartAlphaSilhouette(opaqueSquare, out _, out _),
                     "QA_NO_CART_ALPHA: 불투명 사각 배경 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(cart);
+            }
+
+            // 필드 마을 생활 프랍과 함정 QA_NO가 함께 소비하는 건초더미. 2.20유닛 높이로
+            // 표시되는 기존 ox-alpha 그림의 256 캔버스·투명 배경·가시 실루엣을 고정한다.
+            string haystackPath = Path.Combine(Application.dataPath,
+                "Resources/props/village_haystack_0.png");
+            Check(File.Exists(haystackPath), "마을 건초더미 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(haystackPath))
+            {
+                var haystack = new Texture2D(2, 2);
+                haystack.LoadImage(File.ReadAllBytes(haystackPath));
+                Check(haystack.width == 256 && haystack.height == 256,
+                    $"마을 건초더미가 oxalpha 256 세트 (실제 {haystack.width}×{haystack.height})");
+                var haystackPx = haystack.GetPixels();
+                Check(HasHaystackAlphaSilhouette(haystackPx, out int hayClear, out int haySolid),
+                    $"마을 건초더미 알파 유효 — 투명 배경+작은 월드 실루엣 " +
+                    $"(투명 {hayClear} · 불투명 {haySolid}/{haystackPx.Length})");
+                var opaqueSquare = new Color[haystackPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasHaystackAlphaSilhouette(opaqueSquare, out _, out _),
+                    "QA_NO_HAYSTACK_ALPHA: 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(haystack);
             }
 
             Check(EstateBuildings.HasDedicated(EstateBuildings.Keep), "본성 PNG");
