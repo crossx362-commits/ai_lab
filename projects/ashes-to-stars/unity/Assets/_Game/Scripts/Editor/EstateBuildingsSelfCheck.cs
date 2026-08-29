@@ -56,6 +56,18 @@ namespace AshesToStars
             return clear > pixels.Length / 2 && solid > pixels.Length / 6;
         }
 
+        static bool HasBarnAlphaSilhouette(Color[] pixels, out int clear, out int solid)
+        {
+            clear = 0;
+            solid = 0;
+            foreach (var p in pixels)
+            {
+                if (p.a < 0.05f) clear++;
+                else if (p.a > 0.95f) solid++;
+            }
+            return clear > pixels.Length / 2 && solid > pixels.Length / 4;
+        }
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -109,6 +121,24 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
+
+            // 필드 마을의 고체 건물이자 광산·수비대 QA_NO가 함께 소비하는 헛간. 4.00유닛의
+            // 큰 랜드마크에서도 지붕·쌍문·창·석조 기단이 읽히는 ox-alpha 그림을 고정한다.
+            string barnPath = Path.Combine(Application.dataPath,
+                "Resources/props/village_barn_0.png");
+            Check(File.Exists(barnPath), "마을 헛간 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(barnPath))
+            {
+                var barn = new Texture2D(2, 2);
+                barn.LoadImage(File.ReadAllBytes(barnPath));
+                Check(barn.width == 256 && barn.height == 256,
+                    $"마을 헛간이 oxalpha 256 세트 (실제 {barn.width}×{barn.height})");
+                var barnPx = barn.GetPixels();
+                Check(HasBarnAlphaSilhouette(barnPx, out int barnClear, out int barnSolid),
+                    $"마을 헛간 알파 유효 — 투명 배경+대형 월드 실루엣 " +
+                    $"(투명 {barnClear} · 불투명 {barnSolid}/{barnPx.Length})");
+                UnityEngine.Object.DestroyImmediate(barn);
+            }
 
             // 필드 마을 중앙 장식과 영묘 QA_NO가 함께 소비하는 우물. 1.60유닛에서도
             // 지붕·기둥·석조 통이 읽히는 기존 ox-alpha 그림의 캔버스와 실루엣을 고정한다.
