@@ -176,7 +176,7 @@ def _grok_help(exe: str) -> str:
                 encoding="utf-8", errors="replace", **_NOWIN
             )
             text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
-            if text:
+            if r.returncode == 0 and text:
                 _cache[key] = text
                 return text
         except Exception:
