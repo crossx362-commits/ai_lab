@@ -80,6 +80,18 @@ namespace AshesToStars
             return clear > pixels.Length / 2 && solid > pixels.Length / 10;
         }
 
+        static bool HasFenceAlphaSilhouette(Color[] pixels, out int clear, out int solid)
+        {
+            clear = 0;
+            solid = 0;
+            foreach (var p in pixels)
+            {
+                if (p.a < 0.05f) clear++;
+                else if (p.a > 0.95f) solid++;
+            }
+            return clear > pixels.Length / 2 && solid > pixels.Length / 5;
+        }
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -246,6 +258,26 @@ namespace AshesToStars
                     $"마을 가로등 알파 유효 — 투명 배경+세로 월드 실루엣 " +
                     $"(투명 {lampClear} · 불투명 {lampSolid}/{lampPx.Length})");
                 UnityEngine.Object.DestroyImmediate(lamp);
+            }
+
+            // 필드 마을 부지 경계와 성벽 QA_NO가 소비하는 목책 한 세트. 런타임에서
+            // 0.90/0.95유닛으로 작게 표시되므로 두 변형 모두 256 캔버스와 충분한 실체를 고정한다.
+            foreach (string fenceName in new[] { "village_fence_0", "village_fence_1" })
+            {
+                string fencePath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + fenceName + ".png");
+                Check(File.Exists(fencePath), $"마을 목책 {fenceName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(fencePath)) continue;
+
+                var fence = new Texture2D(2, 2);
+                fence.LoadImage(File.ReadAllBytes(fencePath));
+                Check(fence.width == 256 && fence.height == 256,
+                    $"마을 목책 {fenceName}이 oxalpha 256 세트 (실제 {fence.width}×{fence.height})");
+                var fencePx = fence.GetPixels();
+                Check(HasFenceAlphaSilhouette(fencePx, out int fenceClear, out int fenceSolid),
+                    $"마을 목책 {fenceName} 알파 유효 — 투명 배경+가로 경계 실루엣 " +
+                    $"(투명 {fenceClear} · 불투명 {fenceSolid}/{fencePx.Length})");
+                UnityEngine.Object.DestroyImmediate(fence);
             }
 
             Check(EstateBuildings.HasDedicated(EstateBuildings.Keep), "본성 PNG");
