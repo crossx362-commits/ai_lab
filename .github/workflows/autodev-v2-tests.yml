@@ -1,0 +1,24 @@
+name: AutoDev v2 Tests
+
+on:
+  push:
+    paths:
+      - 'projects/autodev-v2/**'
+      - 'projects/ai-team/_shared/**'
+      - '.github/workflows/autodev-v2-tests.yml'
+  pull_request:
+    paths:
+      - 'projects/autodev-v2/**'
+      - 'projects/ai-team/_shared/**'
+      - '.github/workflows/autodev-v2-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core tests
+        run: python3 projects/autodev-v2/tests/test_core.py
+      - name: Autonomous loop tests
+        run: python3 projects/autodev-v2/tests/test_autonomous_loop.py
