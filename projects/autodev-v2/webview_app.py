@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 """AutoDev v2 localhost dashboard server.
 
-ELI5 원칙:
-- 사용자는 '지금 잘 도는가 / 뭘 하는가 / 얼마나 남았나 / 뭐가 막혔나'만 먼저 본다.
-- 모든 숫자는 실제 PID/state/git/quota/CLI에서 다시 읽는다.
-- Codex 5시간/주간 사용량은 공식 app-server rate-limit 응답을 사용한다.
-- 업데이트는 로컬 작업을 autostash로 보존하고, 새 화면을 먼저 띄운 뒤 무거운 조회를 백그라운드에서 한다.
+The dashboard is intentionally dumb and file-backed:
+- engine truth = OS process list + html_engine.json
+- progress truth = engine_heartbeat.json
+- logs truth = engine.log
+- game work truth = configured state.json
+This means restarting the dashboard cannot make it forget a running engine.
 """
 from __future__ import annotations
 
@@ -15,7 +16,6 @@ import json
 import os
 import re
 import secrets
-import shlex
 import shutil
 import signal
 import socket
@@ -25,7 +25,6 @@ import threading
 import time
 import urllib.parse
 import webbrowser
-from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -38,19 +37,23 @@ OUTPUT = REPO / "output" / "autodev_v2"
 HTML_FILE = HERE / "dashboard.html"
 SERVER_STATE = OUTPUT / "html_server.json"
 ENGINE_STATE = OUTPUT / "html_engine.json"
+HEARTBEAT = OUTPUT / "engine_heartbeat.json"
+ENGINE_LOG = OUTPUT / "engine.log"
 CONFIG_FILE = HERE / "config.json"
 SERVER_LOG = Path.home() / "Library" / "Logs" / "AutoDevV2-HTML.log"
+CONTROL_VERSION = "6"
+HOST = "127.0.0.1"
+PORT = int(os.environ.get("AUTODEV_HTML_PORT", "8765"))
 QUOTA_FILES = {
     "grok": OUTPUT / "grok_quota_exhausted.json",
     "codex": OUTPUT / "codex_quota_exhausted.json",
 }
 QUOTA_COOLDOWNS = {"grok": 3600, "codex": 300}
-HOST = "127.0.0.1"
-PORT = int(os.environ.get("AUTODEV_HTML_PORT", "8765"))
 ERROR_RE = re.compile(
     r"(error|exception|traceback|failed|failure|timeout|blocked|quota|402|rc=[1-9]|실패|오류|막힘|한도\s*소진)",
     re.IGNORECASE,
 )
+ENGINE_RE = re.compile(r"projects/autodev-v2/(?:start|runner_entry)\.py(?:\s|$)")
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -68,6 +71,16 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
+def git_head() -> str:
+    try:
+        r = subprocess.run(["git", "rev-parse", "--short=12", "HEAD"], cwd=REPO,
+                           capture_output=True, text=True, timeout=4,
+                           encoding="utf-8", errors="replace")
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
 def pid_alive(pid: int) -> bool:
     if pid <= 1:
         return False
@@ -82,20 +95,59 @@ def pid_alive(pid: int) -> bool:
         return False
 
 
-def engine_info() -> dict[str, Any]:
-    data = read_json(ENGINE_STATE)
+def process_rows() -> list[tuple[int, str]]:
+    if os.name == "nt":
+        return []
     try:
-        pid = int(data.get("pid", 0) or 0)
+        r = subprocess.run(["ps", "-Ao", "pid=,command="], capture_output=True, text=True,
+                           timeout=4, encoding="utf-8", errors="replace")
     except Exception:
-        pid = 0
-    if pid and pid_alive(pid):
-        return {"running": True, "pid": pid, "started_at": float(data.get("started_at", 0) or 0)}
-    if ENGINE_STATE.exists():
-        try:
-            ENGINE_STATE.unlink()
-        except OSError:
-            pass
-    return {"running": False, "pid": None, "started_at": 0.0}
+        return []
+    rows: list[tuple[int, str]] = []
+    for line in r.stdout.splitlines():
+        m = re.match(r"\s*(\d+)\s+(.*)$", line)
+        if m:
+            rows.append((int(m.group(1)), m.group(2)))
+    return rows
+
+
+def engine_pids() -> list[int]:
+    found: set[int] = set()
+    st = read_json(ENGINE_STATE)
+    try:
+        p = int(st.get("pid", 0) or 0)
+        if p and pid_alive(p):
+            found.add(p)
+    except Exception:
+        pass
+    repo_norm = str(REPO).replace("\\", "/")
+    for pid, cmd in process_rows():
+        norm = cmd.replace("\\", "/")
+        if repo_norm in norm and ENGINE_RE.search(norm):
+            found.add(pid)
+    return sorted(found)
+
+
+def engine_info() -> dict[str, Any]:
+    st = read_json(ENGINE_STATE)
+    pids = engine_pids()
+    running = bool(pids)
+    current = git_head()
+    engine_head = str(st.get("repo_head", ""))
+    protocol = str(st.get("control_version", ""))
+    stale = bool(running and (protocol != CONTROL_VERSION or not engine_head or (current and engine_head != current)))
+    duplicate = len(pids) > 2  # normally parent start.py + child runner_entry.py
+    return {
+        "running": running,
+        "pid": pids[0] if pids else None,
+        "pids": pids,
+        "started_at": float(st.get("started_at", 0) or 0),
+        "repo_head": engine_head,
+        "current_head": current,
+        "control_version": protocol,
+        "stale": stale,
+        "duplicate": duplicate,
+    }
 
 
 def configured_state_path() -> Path:
@@ -109,19 +161,11 @@ def state_path() -> Path | None:
     configured = configured_state_path()
     if configured.exists():
         return configured
-    for p in (OUTPUT / "ashes-to-stars" / "state.json", OUTPUT / "ashes_to_stars" / "state.json"):
-        if p.exists():
-            return p
-    try:
-        hits = sorted(OUTPUT.glob("*/state.json"))
-        return hits[0] if hits else None
-    except Exception:
-        return None
+    return None
 
 
 def quota_status(provider: str) -> dict[str, Any]:
-    path = QUOTA_FILES[provider]
-    data = read_json(path)
+    data = read_json(QUOTA_FILES[provider])
     try:
         ts = float(data.get("detected_at", 0) or 0)
     except Exception:
@@ -130,8 +174,7 @@ def quota_status(provider: str) -> dict[str, Any]:
     cooldown = QUOTA_COOLDOWNS[provider]
     active = bool(ts and age is not None and age < cooldown)
     return {
-        "detected": bool(ts),
-        "active": active,
+        "detected": bool(ts), "active": active,
         "remaining_seconds": max(0, cooldown - int(age or 0)) if active else 0,
         "reason": str(data.get("reason", "")),
     }
@@ -155,10 +198,10 @@ def cli_status(name: str) -> dict[str, Any]:
     for args in (["--version"], ["version"]):
         try:
             r = subprocess.run([exe, *args], cwd=REPO, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=4)
-            out = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
-            if r.returncode == 0 and out:
-                version = out.splitlines()[0][:160]
+                               timeout=4, encoding="utf-8", errors="replace")
+            text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+            if r.returncode == 0 and text:
+                version = text.splitlines()[0][:160]
                 break
         except Exception:
             pass
@@ -167,164 +210,153 @@ def cli_status(name: str) -> dict[str, Any]:
 
 def server_alive(port: int) -> bool:
     try:
-        with socket.create_connection((HOST, port), timeout=0.35):
+        with socket.create_connection((HOST, port), timeout=0.3):
             return True
     except OSError:
         return False
 
 
+def tail_lines(path: Path, max_lines: int = 600) -> list[str]:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        return text.splitlines()[-max_lines:]
+    except Exception:
+        return []
+
+
 def norm_blocked(item: Any) -> dict[str, Any]:
     if not isinstance(item, dict):
         return {"id": "", "title": str(item), "reason": "원인을 기록하지 못했습니다."}
-    reason = item.get("last_error") or item.get("error") or item.get("reason") or item.get("blocked_reason") or item.get("message") or "원인을 기록하지 못했습니다."
+    reason = item.get("last_error") or item.get("error") or item.get("reason") or item.get("blocked_reason") or "원인을 기록하지 못했습니다."
     return {"id": str(item.get("id", "")), "title": str(item.get("title") or item.get("goal") or "이름 없는 작업"), "reason": str(reason)[-2500:]}
 
 
-def friendly_stage(text: str, running: bool) -> str:
-    s = (text or "").lower()
+def friendly_stage(hb: dict[str, Any], running: bool) -> str:
     if not running:
         return "쉬는 중"
-    if "codex" in s:
+    stage = str(hb.get("stage", "")).lower()
+    message = str(hb.get("message", ""))
+    if "codex" in stage:
         return "Codex가 코드를 고치는 중"
-    if "grok" in s:
-        return "Grok이 코드를 고치는 중"
-    if "verify" in s or "검증" in s or "compile" in s or "build" in s:
-        return "고친 코드가 제대로 되는지 검사 중"
-    if "director" in s or "계획" in s or ("task" in s and "생성" in s):
-        return "다음에 할 일을 고르는 중"
-    if "git" in s:
-        return "변경된 코드를 정리하는 중"
-    return "개발 작업 진행 중"
+    if "grok" in stage or stage == "director":
+        return "Grok이 생각하거나 코드를 고치는 중"
+    if "waiting_verification" in stage:
+        return "Unity 검증이 가능해지기를 기다리는 중"
+    if "verify" in stage:
+        return "고친 코드가 실제로 되는지 검사 중"
+    if stage == "task":
+        return "작업을 준비하는 중"
+    return message[:100] or "개발 작업 진행 중"
 
 
-def launch_replacement_server(resume_engine: bool) -> tuple[bool, str]:
+def kill_process_group(pid: int, sig: int) -> None:
     try:
-        SERVER_LOG.parent.mkdir(parents=True, exist_ok=True)
-        env = os.environ.copy()
-        env["AUTODEV_RESUME_ENGINE"] = "1" if resume_engine else "0"
-        env["AUTODEV_REFRESH_CODEX_USAGE"] = "1"
-        env["PYTHONUNBUFFERED"] = "1"
-        command = "sleep 1; exec " + shlex.quote(sys.executable) + " " + shlex.quote(str(HERE / "webview_app.py"))
-        log = SERVER_LOG.open("a", encoding="utf-8")
-        subprocess.Popen(["/bin/sh", "-c", command], cwd=REPO, stdin=subprocess.DEVNULL,
-                         stdout=log, stderr=subprocess.STDOUT, start_new_session=True, env=env)
-        log.close()
-        return True, ""
-    except Exception as e:
-        return False, f"{type(e).__name__}: {e}"
+        if os.name != "nt":
+            os.killpg(os.getpgid(pid), sig)
+        else:
+            os.kill(pid, sig)
+    except (ProcessLookupError, PermissionError, OSError):
+        pass
 
 
 class Controller:
     def __init__(self) -> None:
         self.lock = threading.RLock()
-        self.proc: subprocess.Popen[str] | None = None
-        self.logs: deque[dict[str, Any]] = deque(maxlen=3000)
-        self.seq = 0
         self.last_exit: int | None = None
         self._cli_cache: dict[str, Any] = {}
         self._cli_checked = 0.0
+        OUTPUT.mkdir(parents=True, exist_ok=True)
 
     def log(self, text: str) -> None:
-        with self.lock:
-            self.seq += 1
-            self.logs.append({"seq": self.seq, "time": time.strftime("%H:%M:%S"), "ts": time.time(), "text": text.rstrip()})
+        stamp = time.strftime("%H:%M:%S")
+        try:
+            with self.lock:
+                with ENGINE_LOG.open("a", encoding="utf-8") as f:
+                    f.write(f"{stamp} {text}\n")
+        except Exception:
+            pass
+        print(text, flush=True)
 
     def running(self) -> bool:
         return bool(engine_info()["running"])
 
-    def _reader(self, proc: subprocess.Popen[str]) -> None:
-        try:
-            assert proc.stdout is not None
-            for line in proc.stdout:
-                self.log(line.rstrip("\n"))
-        except Exception as e:
-            self.log(f"[HTML] 로그 읽기 오류: {type(e).__name__}: {e}")
-        finally:
-            rc = proc.poll()
-            if rc is None:
-                try:
-                    rc = proc.wait(timeout=2)
-                except Exception:
-                    rc = None
-            with self.lock:
-                if self.proc is proc:
-                    self.proc = None
-                self.last_exit = rc
-            state = read_json(ENGINE_STATE)
-            if int(state.get("pid", 0) or 0) == proc.pid:
-                try:
-                    ENGINE_STATE.unlink()
-                except OSError:
-                    pass
-            self.log(f"[HTML] AutoDev 종료 rc={rc}")
+    def stop(self) -> dict[str, Any]:
+        pids = engine_pids()
+        if not pids:
+            for p in (ENGINE_STATE, HEARTBEAT):
+                try: p.unlink()
+                except OSError: pass
+            return {"ok": True, "message": "이미 쉬고 있습니다."}
+        self.log("[HTML] AutoDev 중지 요청 · PID " + ",".join(map(str, pids)))
+        groups: set[int] = set()
+        for pid in pids:
+            try:
+                groups.add(os.getpgid(pid) if os.name != "nt" else pid)
+            except Exception:
+                groups.add(pid)
+        for g in groups:
+            try:
+                if os.name != "nt": os.killpg(g, signal.SIGTERM)
+                else: os.kill(g, signal.SIGTERM)
+            except Exception: pass
+        deadline = time.time() + 6
+        while engine_pids() and time.time() < deadline:
+            time.sleep(0.1)
+        if engine_pids():
+            for pid in engine_pids():
+                kill_process_group(pid, signal.SIGKILL)
+            time.sleep(0.4)
+        left = engine_pids()
+        if left:
+            return {"ok": False, "message": "엔진을 끄지 못했습니다: " + ",".join(map(str, left))}
+        for p in (ENGINE_STATE, HEARTBEAT):
+            try: p.unlink()
+            except OSError: pass
+        self.log("[HTML] AutoDev 중지 완료")
+        return {"ok": True, "message": "자율 개발을 멈췄습니다."}
 
     def start(self) -> dict[str, Any]:
         info = engine_info()
-        if info["running"]:
+        if info["running"] and not info["stale"] and not info["duplicate"]:
             return {"ok": True, "message": f"이미 개발 중입니다. PID {info['pid']}"}
+        if info["running"]:
+            self.log("[SELF-HEAL] 구버전/중복 엔진을 정리하고 최신 엔진으로 교체합니다.")
+            stopped = self.stop()
+            if not stopped.get("ok"):
+                return stopped
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
         env["PATH"] = f"{Path.home() / '.local/bin'}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:" + env.get("PATH", "")
         try:
+            log = ENGINE_LOG.open("a", encoding="utf-8")
             p = subprocess.Popen([sys.executable, str(HERE / "start.py")], cwd=REPO,
-                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                 encoding="utf-8", errors="replace", bufsize=1, env=env,
+                                 stdout=log, stderr=subprocess.STDOUT, env=env,
                                  start_new_session=True)
+            log.close()
         except Exception as e:
             self.log(f"[HTML] 시작 실패: {type(e).__name__}: {e}")
             return {"ok": False, "message": str(e)}
-        with self.lock:
-            self.proc = p
-            self.last_exit = None
-        write_json(ENGINE_STATE, {"pid": p.pid, "started_at": time.time()})
-        self.log(f"[HTML] AutoDev 시작 PID {p.pid}")
-        threading.Thread(target=self._reader, args=(p,), daemon=True).start()
+        write_json(ENGINE_STATE, {
+            "pid": p.pid, "started_at": time.time(),
+            "repo_head": git_head(), "control_version": CONTROL_VERSION,
+        })
+        self.log(f"[HTML] AutoDev 시작 PID {p.pid} · {git_head()}")
+        time.sleep(0.55)
+        rc = p.poll()
+        if rc is not None:
+            self.last_exit = rc
+            try: ENGINE_STATE.unlink()
+            except OSError: pass
+            tail = "\n".join(tail_lines(ENGINE_LOG, 30)[-12:])
+            return {"ok": False, "message": f"엔진이 시작 직후 종료됐습니다. rc={rc}\n{tail[-1800:]}"}
         return {"ok": True, "message": "자율 개발을 시작했습니다."}
-
-    def stop(self) -> dict[str, Any]:
-        info = engine_info()
-        pid = info.get("pid")
-        if not pid:
-            return {"ok": True, "message": "이미 쉬고 있습니다."}
-        self.log(f"[HTML] AutoDev 중지 요청 PID {pid}")
-        try:
-            try:
-                os.killpg(int(pid), signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-            deadline = time.time() + 5
-            while pid_alive(int(pid)) and time.time() < deadline:
-                time.sleep(0.1)
-            if pid_alive(int(pid)):
-                try:
-                    os.killpg(int(pid), signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                deadline = time.time() + 2
-                while pid_alive(int(pid)) and time.time() < deadline:
-                    time.sleep(0.1)
-            if pid_alive(int(pid)):
-                return {"ok": False, "message": f"프로세스 {pid}를 끄지 못했습니다."}
-            try:
-                ENGINE_STATE.unlink()
-            except OSError:
-                pass
-            with self.lock:
-                if self.proc is not None and self.proc.pid == pid:
-                    self.proc = None
-            self.log(f"[HTML] AutoDev 중지 완료 PID {pid}")
-            return {"ok": True, "message": "자율 개발을 멈췄습니다."}
-        except Exception as e:
-            self.log(f"[HTML] 중지 실패: {type(e).__name__}: {e}")
-            return {"ok": False, "message": str(e)}
 
     def clear_quota(self, provider: str) -> dict[str, Any]:
         p = QUOTA_FILES.get(provider)
         if p is None:
             return {"ok": False, "message": "알 수 없는 AI입니다."}
         try:
-            if p.exists():
-                p.unlink()
+            if p.exists(): p.unlink()
             self.log(f"[QUOTA] {provider} 오래된 한도 기록 삭제")
             return {"ok": True, "message": f"{provider.upper()} 한도를 다음 실제 호출에서 다시 확인합니다."}
         except Exception as e:
@@ -347,7 +379,6 @@ class Controller:
         return snap
 
     def _git_update(self) -> tuple[bool, str]:
-        """로컬 개발 내용을 보존하면서 master를 최신으로 맞춘다."""
         commands = [
             ["git", "-c", "core.hooksPath=/dev/null", "fetch", "origin", "master"],
             ["git", "-c", "core.hooksPath=/dev/null", "-c", "rebase.autoStash=true", "rebase", "origin/master"],
@@ -355,75 +386,64 @@ class Controller:
         output: list[str] = []
         for cmd in commands:
             r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=120)
+                               encoding="utf-8", errors="replace", timeout=180)
             text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
-            if text:
-                output.extend(text.splitlines())
+            if text: output.extend(text.splitlines())
             if r.returncode != 0:
-                # rebase가 시작된 상태라면 안전하게 원상복구한다.
                 if "rebase" in cmd:
                     subprocess.run(["git", "rebase", "--abort"], cwd=REPO,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
-                return False, "\n".join(output[-80:])
-        return True, "\n".join(output[-80:])
+                return False, "\n".join(output[-100:])
+        return True, "\n".join(output[-100:])
 
     def update(self) -> dict[str, Any]:
         was_running = self.running()
-        self.log("[UPDATE 1/4] 실행 상태 확인")
+        self.log("[UPDATE 1/4] 실제 엔진 상태 확인")
         if was_running:
-            self.log("[UPDATE 1/4] 작업을 잠깐 멈추는 중")
             stopped = self.stop()
             if not stopped.get("ok"):
-                return {"ok": False, "message": "업데이트 전에 개발 엔진을 멈추지 못했습니다."}
-
+                return {"ok": False, "message": "업데이트 전에 엔진을 멈추지 못했습니다."}
         self.clear_quota("codex")
-        self.log("[UPDATE 2/4] 로컬 작업을 보존하고 최신 코드 받는 중")
+        self.log("[UPDATE 2/4] 작업 보존 + 최신 코드 받는 중")
+        ok, out = self._git_update()
+        for line in out.splitlines()[-80:]: self.log("[GIT] " + line)
+        if not ok:
+            if was_running: self.start()
+            return {"ok": False, "message": out[-1800:] or "Git 업데이트 실패"}
+        self.log("[UPDATE 3/4] 새 서버로 안전하게 인계")
         try:
-            ok_git, out = self._git_update()
-            for line in out.splitlines()[-80:]:
-                self.log("[GIT] " + line)
-            if not ok_git:
-                if was_running:
-                    self.start()
-                return {"ok": False, "message": (out[-1400:] or "Git 업데이트 실패")}
-
-            self._cli(force=True)
-            self.log("[UPDATE 3/4] 새 화면 서버 준비")
-            ok, err = launch_replacement_server(was_running)
-            if not ok:
-                if was_running:
-                    self.start()
-                return {"ok": False, "message": "코드는 최신이지만 화면 재시작 실패: " + err}
-
-            self.log("[UPDATE 4/4] 완료 · 새 화면에서 AI 사용량을 백그라운드 확인합니다")
-            return {"ok": True, "message": "업데이트 완료. 작업 내용은 보존했고 새 화면으로 바꿉니다.", "restarting": True}
+            log = SERVER_LOG.open("a", encoding="utf-8")
+            subprocess.Popen(
+                [sys.executable, str(HERE / "restart_server.py"), str(os.getpid()), str(PORT), "1" if was_running else "0"],
+                cwd=REPO, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                start_new_session=True, env=os.environ.copy(),
+            )
+            log.close()
         except Exception as e:
-            if was_running:
-                self.start()
-            self.log(f"[UPDATE] 실패: {type(e).__name__}: {e}")
-            return {"ok": False, "message": str(e)}
+            if was_running: self.start()
+            return {"ok": False, "message": "새 서버 인계 실패: " + str(e)}
+        self.log("[UPDATE 4/4] 완료 · 새 코드로 서버가 교체됩니다")
+        return {"ok": True, "message": "업데이트 완료. 새 코드로 갈아타는 중입니다.", "restarting": True}
 
-    def recent_errors(self, limit: int = 10) -> list[dict[str, Any]]:
-        with self.lock:
-            rows = [x for x in self.logs if ERROR_RE.search(str(x.get("text", "")))]
-        result: list[dict[str, Any]] = []
+    def recent_errors(self, max_items: int = 8) -> list[dict[str, str]]:
+        result: list[dict[str, str]] = []
         seen: set[str] = set()
-        for row in reversed(rows):
-            text = str(row.get("text", "")).strip()
-            key = text[-500:]
-            if not text or key in seen:
+        for line in reversed(tail_lines(ENGINE_LOG, 500)):
+            if not ERROR_RE.search(line):
                 continue
+            key = line[-500:]
+            if key in seen: continue
             seen.add(key)
-            result.append({"time": row.get("time", ""), "text": text[-1800:]})
-            if len(result) >= limit:
-                break
+            result.append({"time": "로그", "text": line[-1800:]})
+            if len(result) >= max_items: break
         result.reverse()
         return result
 
     def status(self) -> dict[str, Any]:
         now = time.time()
-        expected = configured_state_path()
+        info = engine_info()
         sp = state_path()
+        expected = configured_state_path()
         state_exists = bool(sp and sp.exists())
         st = read_json(sp) if state_exists and sp else {}
         stats = st.get("stats") if isinstance(st.get("stats"), dict) else {}
@@ -433,60 +453,68 @@ class Controller:
         blocked = [norm_blocked(x) for x in blocked_raw[-8:]]
         current = next((x for x in tasks if isinstance(x, dict) and x.get("status") == "working"), None)
         if current is None:
-            current = next((x for x in tasks if isinstance(x, dict) and x.get("status") == "pending"), tasks[0] if tasks else {})
+            current = next((x for x in tasks if isinstance(x, dict) and x.get("status") in {"pending","waiting_verification"}), tasks[0] if tasks else {})
 
-        try:
-            branch = subprocess.run(["git", "branch", "--show-current"], cwd=REPO, capture_output=True, text=True, timeout=3).stdout.strip()
-            head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True, text=True, timeout=3).stdout.strip()
-            dirty = len(subprocess.run(["git", "status", "--porcelain"], cwd=REPO, capture_output=True, text=True, timeout=4).stdout.splitlines())
-        except Exception:
-            branch, head, dirty = "?", "?", -1
-
-        info = engine_info()
-        with self.lock:
-            last_log = self.logs[-1] if self.logs else None
-            last_exit = self.last_exit
-        state_mtime = sp.stat().st_mtime if state_exists and sp else 0
-        last_activity = max(float(last_log.get("ts", 0)) if last_log else 0, state_mtime, float(info.get("started_at", 0) or 0))
-        quiet_seconds = int(max(0, now - last_activity)) if info["running"] and last_activity else None
-        last_text = str(last_log.get("text", "")) if last_log else ""
+        hb = read_json(HEARTBEAT)
+        try: hb_at = float(hb.get("heartbeat_at", 0) or 0)
+        except Exception: hb_at = 0.0
+        try: output_at = float(hb.get("last_output_at", 0) or 0)
+        except Exception: output_at = 0.0
+        heartbeat_age = int(max(0, now - hb_at)) if hb_at else None
+        quiet_seconds = int(max(0, now - output_at)) if info["running"] and output_at else None
 
         recent_errors = self.recent_errors()
         if not state_exists:
             recent_errors.append({"time": "상태", "text": f"개발 상태 파일을 찾지 못했습니다: {expected}"})
-        elif not st:
-            recent_errors.append({"time": "상태", "text": f"개발 상태 파일을 읽지 못했습니다: {sp}"})
+        if info["stale"]:
+            recent_errors.append({"time": "버전", "text": f"구버전 엔진 감지 · 실행 {info['repo_head'] or '?'} / 현재 {info['current_head'] or '?'} · 시작 버튼을 누르면 자동 교체합니다."})
+        if info["duplicate"]:
+            recent_errors.append({"time": "엔진", "text": "중복 AutoDev 프로세스가 감지되었습니다. 시작 버튼을 누르면 하나로 정리합니다."})
+        if info["running"] and (heartbeat_age is None or heartbeat_age > 20):
+            recent_errors.append({"time": "심박", "text": "엔진 프로세스는 있지만 20초 넘게 심박이 없습니다. 구버전 또는 멈춘 엔진일 수 있습니다."})
+
+        try:
+            branch = subprocess.run(["git", "branch", "--show-current"], cwd=REPO, capture_output=True, text=True, timeout=3).stdout.strip()
+            head = git_head()
+            dirty = len(subprocess.run(["git", "status", "--porcelain"], cwd=REPO, capture_output=True, text=True, timeout=4).stdout.splitlines())
+        except Exception:
+            branch, head, dirty = "?", "?", -1
 
         cli = self._cli()
         grok_q = quota_status("grok")
         codex_q = quota_status("codex")
         usage = cached_codex_usage()
         issue_count = len(blocked) + len(recent_errors)
-        if grok_q["active"] or codex_q["active"]:
-            issue_count += 1
-        if not cli.get("grok", {}).get("installed") or not cli.get("codex", {}).get("installed"):
-            issue_count += 1
-        if last_exit not in (None, 0) and not info["running"]:
-            issue_count += 1
+        if grok_q["active"] or codex_q["active"]: issue_count += 1
+        if not cli.get("grok", {}).get("installed") or not cli.get("codex", {}).get("installed"): issue_count += 1
+        last_message = str(hb.get("message", ""))
 
         return {
             "ok": True, "checked_at": now, "running": info["running"], "pid": info["pid"],
-            "started_at": info["started_at"], "last_exit": last_exit, "last_activity_at": last_activity or None,
-            "quiet_seconds": quiet_seconds, "stage": friendly_stage(last_text, info["running"]), "last_log": last_text[-800:],
+            "started_at": info["started_at"], "last_exit": self.last_exit,
+            "last_activity_at": output_at or hb_at or None, "quiet_seconds": quiet_seconds,
+            "heartbeat_age": heartbeat_age, "stage": friendly_stage(hb, info["running"]), "last_log": last_message[-800:],
             "goal": str(st.get("goal", "")), "current": current if isinstance(current, dict) else {},
             "queue_count": len(tasks), "completed_count": len(completed), "blocked_count": len(blocked_raw),
             "blocked_items": blocked, "recent_errors": recent_errors, "issue_count": issue_count,
-            "stats": {k: int(stats.get(k, 0) or 0) for k in ("grok_calls", "codex_calls", "director_local_calls", "tasks_done", "tasks_blocked")},
+            "stats": {k: int(stats.get(k, 0) or 0) for k in ("grok_calls", "codex_calls", "director_local_calls", "director_calls", "tasks_done", "tasks_blocked")},
             "grok_quota": grok_q, "codex_quota": codex_q, "codex_usage": usage,
             "grok_cli": cli.get("grok", {}), "codex_cli": cli.get("codex", {}),
             "git": {"branch": branch or "?", "head": head or "?", "dirty_count": dirty},
+            "engine": info, "control_version": CONTROL_VERSION,
             "state_file": str(sp) if sp else str(expected),
         }
 
     def log_rows(self, after: int) -> dict[str, Any]:
-        with self.lock:
-            rows = [x for x in self.logs if int(x["seq"]) > after]
-            return {"rows": rows[-500:], "last_seq": self.seq}
+        lines = tail_lines(ENGINE_LOG, 1000)
+        total = len(lines)
+        base = max(0, total - len(lines))
+        rows = []
+        for i, line in enumerate(lines, start=base + 1):
+            if i <= after: continue
+            m = re.match(r"(\d{2}:\d{2}:\d{2})\s+(.*)$", line)
+            rows.append({"seq": i, "time": m.group(1) if m else "", "text": m.group(2) if m else line})
+        return {"rows": rows[-500:], "last_seq": total}
 
 
 CTRL = Controller()
@@ -494,7 +522,7 @@ TOKEN = secrets.token_urlsafe(24)
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "AutoDevELI5/5"
+    server_version = "AutoDevELI5/6"
 
     def log_message(self, fmt: str, *args: Any) -> None:
         return
@@ -510,8 +538,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _authorized(self) -> bool:
         parsed = urllib.parse.urlparse(self.path)
-        query = urllib.parse.parse_qs(parsed.query)
-        supplied = self.headers.get("X-AutoDev-Token", "") or query.get("token", [""])[0]
+        q = urllib.parse.parse_qs(parsed.query)
+        supplied = self.headers.get("X-AutoDev-Token", "") or q.get("token", [""])[0]
         return secrets.compare_digest(supplied, TOKEN)
 
     def do_GET(self) -> None:
@@ -522,112 +550,96 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_response(302)
                 self.send_header("Location", f"/?token={urllib.parse.quote(TOKEN)}&r={int(time.time())}")
                 self.send_header("Cache-Control", "no-store")
-                self.end_headers()
-                return
-            try:
-                data = HTML_FILE.read_bytes()
-            except Exception as e:
-                data = f"<h1>화면 파일을 읽지 못했습니다</h1><pre>{e}</pre>".encode("utf-8")
+                self.end_headers(); return
+            try: data = HTML_FILE.read_bytes()
+            except Exception as e: data = f"<h1>화면 파일을 읽지 못했습니다</h1><pre>{e}</pre>".encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
             self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
-            return
-        if not self._authorized():
-            self._json({"ok": False, "message": "대시보드 인증 오류"}, 403); return
-        if parsed.path == "/api/status":
-            self._json(CTRL.status()); return
+            self.end_headers(); self.wfile.write(data); return
+        if not self._authorized(): self._json({"ok": False, "message": "대시보드 인증 오류"}, 403); return
+        if parsed.path == "/api/status": self._json(CTRL.status()); return
         if parsed.path == "/api/logs":
-            try:
-                after = int(urllib.parse.parse_qs(parsed.query).get("after", ["0"])[0])
-            except Exception:
-                after = 0
+            try: after = int(urllib.parse.parse_qs(parsed.query).get("after", ["0"])[0])
+            except Exception: after = 0
             self._json(CTRL.log_rows(after)); return
         self._json({"ok": False, "message": "없는 주소입니다."}, 404)
 
     def do_POST(self) -> None:
-        if not self._authorized():
-            self._json({"ok": False, "message": "대시보드 인증 오류"}, 403); return
+        if not self._authorized(): self._json({"ok": False, "message": "대시보드 인증 오류"}, 403); return
         path = urllib.parse.urlparse(self.path).path
         if path == "/api/start": self._json(CTRL.start()); return
         if path == "/api/stop": self._json(CTRL.stop()); return
         if path == "/api/update":
             result = CTRL.update(); self._json(result)
-            if result.get("restarting"):
-                threading.Timer(0.35, lambda: os._exit(0)).start()
+            if result.get("restarting"): threading.Timer(0.4, lambda: os._exit(0)).start()
             return
         if path == "/api/quota/codex/clear": self._json(CTRL.clear_quota("codex")); return
         if path == "/api/quota/grok/clear": self._json(CTRL.clear_quota("grok")); return
         if path == "/api/open-repo":
-            try:
-                subprocess.Popen(["open", str(REPO)]); self._json({"ok": True, "message": "폴더를 열었습니다."})
-            except Exception as e:
-                self._json({"ok": False, "message": str(e)}, 500)
+            try: subprocess.Popen(["open", str(REPO)]); self._json({"ok": True, "message": "폴더를 열었습니다."})
+            except Exception as e: self._json({"ok": False, "message": str(e)}, 500)
             return
         if path == "/api/clear-logs":
-            with CTRL.lock: CTRL.logs.clear()
+            try: ENGINE_LOG.write_text("", encoding="utf-8")
+            except Exception: pass
             self._json({"ok": True, "message": "로그를 비웠습니다."}); return
         self._json({"ok": False, "message": "없는 기능입니다."}, 404)
 
 
 def write_server_state() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    write_json(SERVER_STATE, {"pid": os.getpid(), "port": PORT, "token": TOKEN})
+    write_json(SERVER_STATE, {"pid": os.getpid(), "port": PORT, "token": TOKEN,
+                              "control_version": CONTROL_VERSION, "repo_head": git_head()})
 
 
 def cleanup() -> None:
     try:
-        if SERVER_STATE.exists() and read_json(SERVER_STATE).get("pid") == os.getpid():
-            SERVER_STATE.unlink()
+        if SERVER_STATE.exists() and read_json(SERVER_STATE).get("pid") == os.getpid(): SERVER_STATE.unlink()
     except Exception:
         pass
 
 
 def open_existing_if_any() -> bool:
     old = read_json(SERVER_STATE)
-    try:
-        port = int(old.get("port", PORT) or PORT)
-    except Exception:
-        port = PORT
+    try: port = int(old.get("port", PORT) or PORT)
+    except Exception: port = PORT
     token = str(old.get("token", ""))
-    if token and server_alive(port):
+    if not (token and server_alive(port)):
+        return False
+    if str(old.get("control_version", "")) == CONTROL_VERSION:
         webbrowser.open(f"http://{HOST}:{port}/?token={urllib.parse.quote(token)}&r={int(time.time())}")
         return True
+    # New code was launched while an old dashboard is still alive. Replace only the old dashboard.
+    try:
+        old_pid = int(old.get("pid", 0) or 0)
+        if old_pid and old_pid != os.getpid(): os.kill(old_pid, signal.SIGTERM)
+    except Exception:
+        pass
+    deadline = time.time() + 5
+    while server_alive(port) and time.time() < deadline: time.sleep(0.1)
     return False
 
 
 def main() -> int:
-    if open_existing_if_any():
-        return 0
-    try:
-        server = ThreadingHTTPServer((HOST, PORT), Handler)
+    if open_existing_if_any(): return 0
+    try: server = ThreadingHTTPServer((HOST, PORT), Handler)
     except OSError:
-        webbrowser.open(f"http://{HOST}:{PORT}/")
-        return 0
-    write_server_state()
-    atexit.register(cleanup)
+        webbrowser.open(f"http://{HOST}:{PORT}/"); return 0
+    write_server_state(); atexit.register(cleanup)
     url = f"http://{HOST}:{PORT}/?token={urllib.parse.quote(TOKEN)}&r={int(time.time())}"
-    CTRL.log(f"[HTML] 대시보드 {url}")
+    CTRL.log(f"[HTML] 대시보드 v{CONTROL_VERSION} · {git_head()} · {url}")
 
     resume = os.environ.pop("AUTODEV_RESUME_ENGINE", "0").strip() == "1"
     refresh_usage = os.environ.pop("AUTODEV_REFRESH_CODEX_USAGE", "0").strip() == "1"
-    if resume and not CTRL.running():
-        CTRL.log("[UPDATE] 업데이트 전 개발 상태를 다시 이어갑니다.")
-        threading.Timer(1.0, CTRL.start).start()
-
+    if resume:
+        threading.Timer(0.8, CTRL.start).start()
     if refresh_usage or (not cached_codex_usage() and find_cli("codex")):
         threading.Thread(target=CTRL.refresh_codex_meter, daemon=True).start()
-
-    threading.Timer(0.45, lambda: webbrowser.open(url)).start()
-    try:
-        server.serve_forever(poll_interval=0.5)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        server.server_close()
-        cleanup()
+    threading.Timer(0.35, lambda: webbrowser.open(url)).start()
+    try: server.serve_forever(poll_interval=0.25)
+    finally: server.server_close()
     return 0
 
 
