@@ -145,6 +145,9 @@ namespace AshesToStars
             string fieldShrubRowPath = Path.Combine(Application.dataPath,
                 "Resources/props/" + fieldShrubRowName + ".png");
             Check(File.Exists(fieldShrubRowPath), "평원 생울타리 field_shrub_row_0 PNG 파일이 Assets/Resources에 있다");
+            var sparseFieldShrubRowSilhouette = SparseSilhouetteAtBoundary(256 * 256, 8);
+            Check(!HasFieldShrubRowAlphaSilhouette(sparseFieldShrubRowSilhouette, out _, out _),
+                "QA_NO_FIELD_SHRUB_ROW_SPARSE_ALPHA: 평원 생울타리의 1/8 희박 실루엣 회귀를 거부한다");
             if (File.Exists(fieldShrubRowPath))
             {
                 var fieldShrubRow = new Texture2D(2, 2);
