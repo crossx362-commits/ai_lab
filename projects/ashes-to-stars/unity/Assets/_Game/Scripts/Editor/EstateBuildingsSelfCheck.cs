@@ -129,6 +129,9 @@ namespace AshesToStars
             // 평원 산포에서 충돌까지 막는 바위 세트. 0.90/0.70/0.30유닛의 작은 표시 크기에서도
             // 단일 큰 바위·쌍석·잔돌 세 알이 구분돼야 하므로 실제 ox-alpha PNG의 캔버스와
             // 투명 배경, 충분한 암석 실루엣을 함께 고정한다.
+            var sparseFieldRockSilhouette = SparseSilhouetteAtBoundary(256 * 256, 64);
+            Check(!HasFieldRockAlphaSilhouette(sparseFieldRockSilhouette, out _, out _),
+                "QA_NO_FIELD_ROCK_SPARSE_ALPHA: 평원 바위의 1/64 희박 실루엣 회귀를 거부한다");
             foreach (string fieldRockName in new[]
                      { "field_rock_0", "field_rock_1", "field_rock_2" })
             {
