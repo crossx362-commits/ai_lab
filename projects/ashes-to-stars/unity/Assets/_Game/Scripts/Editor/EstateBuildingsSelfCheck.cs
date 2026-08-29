@@ -137,6 +137,9 @@ namespace AshesToStars
             // 평원 자연물 산포에서 충돌을 막는 낮은 그루터기 한 역할 세트. 0.80/0.75유닛으로
             // 표시되며 잘린 나이테형과 꺾인 줄기형이 작은 크기에서도 구분돼야 한다. 이름·충돌
             // 검사만으로는 옛 대형 생성본이나 불투명 사각 배경 회귀를 잡지 못해 실제 PNG도 고정한다.
+            var sparseFieldStumpSilhouette = SparseSilhouetteAtBoundary(256 * 256, 8);
+            Check(!HasFieldStumpAlphaSilhouette(sparseFieldStumpSilhouette, out _, out _),
+                "QA_NO_FIELD_STUMP_SPARSE_ALPHA: 평원 그루터기의 1/8 희박 실루엣 회귀를 거부한다");
             foreach (string fieldStumpName in new[] { "field_stump_0", "field_stump_1" })
             {
                 string fieldStumpPath = Path.Combine(Application.dataPath,
