@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """AutoDev v2용 Codex CLI 쿼터 보호 래퍼.
 
-Codex 구독 한도 소진 문구를 감지하면 쿨다운 파일을 만들고,
-같은 시간대의 반복 실행이 이미 소진된 Codex를 계속 호출하지 않게 한다.
+Codex 구독 한도 소진 문구를 감지하면 짧은 쿨다운을 두어 반복 호출을 막는다.
+쿨다운 뒤 실제 호출이 성공하면 과거 한도 기록을 즉시 지운다.
 """
 from __future__ import annotations
 
@@ -15,14 +15,8 @@ import time
 from pathlib import Path
 
 QUOTA_MARKERS = (
-    "usage limit",
-    "usage limits",
-    "weekly limit",
-    "quota exceeded",
-    "quota exhausted",
-    "limit reached",
-    "you've hit your",
-    "you have hit your",
+    "usage limit", "usage limits", "weekly limit", "quota exceeded",
+    "quota exhausted", "limit reached", "you've hit your", "you have hit your",
     "insufficient quota",
 )
 
@@ -46,9 +40,9 @@ def quota_state_path() -> Path:
 
 def cooldown_seconds() -> int:
     try:
-        return max(60, int(os.environ.get("AUTODEV_CODEX_QUOTA_COOLDOWN_SECONDS", "3600")))
+        return max(60, int(os.environ.get("AUTODEV_CODEX_QUOTA_COOLDOWN_SECONDS", "300")))
     except ValueError:
-        return 3600
+        return 300
 
 
 def cooldown_active() -> bool:
@@ -68,32 +62,28 @@ def mark_exhausted(output: str) -> None:
     p = quota_state_path()
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(
-            json.dumps(
-                {
-                    "detected_at": time.time(),
-                    "reason": "Codex subscription usage exhausted",
-                    "sample": output[-1200:],
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
+        p.write_text(json.dumps({
+            "detected_at": time.time(),
+            "reason": "Codex subscription usage exhausted",
+            "sample": output[-1200:],
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception:
+        pass
+
+
+def clear_exhausted() -> None:
+    try:
+        p = quota_state_path()
+        if p.exists():
+            p.unlink()
+    except OSError:
         pass
 
 
 def run_real(exe: str, args: list[str]) -> tuple[int, str]:
     try:
-        r = subprocess.run(
-            [exe, *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            env=os.environ.copy(),
-        )
+        r = subprocess.run([exe, *args], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", env=os.environ.copy())
         if r.stdout:
             sys.stdout.write(r.stdout)
         if r.stderr:
@@ -112,24 +102,19 @@ def main() -> int:
         print(f"codex compat error: {e}", file=sys.stderr)
         return 127
 
-    # help/version 같은 로컬 명령은 쿼터와 무관하므로 그대로 통과시킨다.
     args = sys.argv[1:]
     local_only = any(x in args for x in ("--help", "-h", "--version", "version"))
     if not local_only and cooldown_active():
-        print(
-            "[CODEX-QUOTA] 최근 사용 한도 소진을 감지해 실제 Codex 재호출을 생략합니다.",
-            file=sys.stderr,
-        )
+        print("[CODEX-QUOTA] 최근 한도 소진 감지. 5분 보호시간 동안 실제 호출을 생략합니다.", file=sys.stderr)
         return 88
 
     rc, output = run_real(exe, args)
     if not local_only and rc != 0 and looks_like_quota_error(output):
         mark_exhausted(output)
-        print(
-            "[CODEX-QUOTA] 사용 한도 소진 감지. 이후 호출은 쿨다운 동안 차단합니다.",
-            file=sys.stderr,
-        )
+        print("[CODEX-QUOTA] 사용 한도 소진 감지. 5분 후 자동 재확인합니다.", file=sys.stderr)
         return 88
+    if not local_only and rc == 0:
+        clear_exhausted()
     return rc
 
 
