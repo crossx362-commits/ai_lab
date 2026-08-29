@@ -24,6 +24,7 @@ STATUS_SHEETS = {
     "freeze_status": "freeze_status_sheet.png",
     "boss_aoe_warning": "boss_aoe_warning_sheet.png",
     "boss_charge_warning": "boss_charge_warning_sheet.png",
+    "boss_summon_portal": "boss_summon_portal_sheet.png",
     "boss_cone_warning": "boss_cone_warning_sheet.png",
 }
 COLS, ROWS, CELL, PADDING = 4, 2, 256, 8
