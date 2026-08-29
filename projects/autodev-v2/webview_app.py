@@ -30,6 +30,7 @@ REPO = HERE.parents[1]
 OUTPUT = REPO / "output" / "autodev_v2"
 HTML_FILE = HERE / "dashboard.html"
 SERVER_STATE = OUTPUT / "html_server.json"
+CONFIG_FILE = HERE / "config.json"
 QUOTA_FILES = {
     "grok": OUTPUT / "grok_quota_exhausted.json",
     "codex": OUTPUT / "codex_quota_exhausted.json",
@@ -51,7 +52,17 @@ def read_json(path: Path) -> dict[str, Any]:
         return {}
 
 
+def configured_state_path() -> Path:
+    cfg = read_json(CONFIG_FILE)
+    raw = str(cfg.get("state_file", "output/autodev_v2/ashes-to-stars/state.json"))
+    p = Path(raw)
+    return p if p.is_absolute() else (REPO / p).resolve()
+
+
 def state_path() -> Path | None:
+    configured = configured_state_path()
+    if configured.exists():
+        return configured
     for p in (
         OUTPUT / "ashes-to-stars" / "state.json",
         OUTPUT / "ashes_to_stars" / "state.json",
@@ -241,8 +252,12 @@ class Controller:
         return result
 
     def status(self) -> dict[str, Any]:
+        expected_state = configured_state_path()
         sp = state_path()
-        st = read_json(sp) if sp else {}
+        state_exists = sp is not None and sp.exists()
+        st = read_json(sp) if state_exists and sp else {}
+        state_read_ok = bool(st) if state_exists else False
+
         stats = st.get("stats") if isinstance(st.get("stats"), dict) else {}
         tasks = st.get("tasks") if isinstance(st.get("tasks"), list) else []
         completed = st.get("completed") if isinstance(st.get("completed"), list) else []
@@ -271,6 +286,11 @@ class Controller:
             branch, dirty = "?", -1
 
         recent_errors = self.recent_errors()
+        if not state_exists:
+            recent_errors.append({"time": "STATE", "text": f"상태파일 없음: {expected_state}"})
+        elif not state_read_ok:
+            recent_errors.append({"time": "STATE", "text": f"상태파일 읽기 실패/빈 상태: {sp}"})
+
         grok_q = quota_status(QUOTA_FILES["grok"])
         codex_q = quota_status(QUOTA_FILES["codex"])
         with self.lock:
@@ -287,6 +307,7 @@ class Controller:
             issue_count += 1
 
         return {
+            "ok": True,
             "running": running,
             "pid": p.pid if running and p else None,
             "last_exit": last_exit,
@@ -308,7 +329,9 @@ class Controller:
             "grok_quota": grok_q,
             "codex_quota": codex_q,
             "git": {"branch": branch or "?", "dirty_count": dirty},
-            "state_file": str(sp) if sp else "",
+            "state_file": str(sp) if sp else str(expected_state),
+            "state_exists": state_exists,
+            "state_read_ok": state_read_ok,
         }
 
     def log_rows(self, after: int) -> dict[str, Any]:
@@ -345,6 +368,15 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/":
+            query = urllib.parse.parse_qs(parsed.query)
+            supplied = query.get("token", [""])[0]
+            if not secrets.compare_digest(supplied, TOKEN):
+                target = f"/?token={urllib.parse.quote(TOKEN)}"
+                self.send_response(302)
+                self.send_header("Location", target)
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                return
             try:
                 html = HTML_FILE.read_text(encoding="utf-8")
             except Exception as e:
@@ -359,7 +391,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if not self._authorized():
-            self._json({"ok": False, "error": "unauthorized"}, 403)
+            self._json({"ok": False, "error": "unauthorized", "message": "대시보드 인증 오류"}, 403)
             return
         if parsed.path == "/api/status":
             self._json(CTRL.status())
@@ -376,7 +408,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         if not self._authorized():
-            self._json({"ok": False, "error": "unauthorized"}, 403)
+            self._json({"ok": False, "error": "unauthorized", "message": "대시보드 인증 오류"}, 403)
             return
         path = urllib.parse.urlparse(self.path).path
         if path == "/api/start":
