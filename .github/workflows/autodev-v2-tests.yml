@@ -24,6 +24,7 @@ jobs:
         run: |
           python3 -m py_compile \
             projects/autodev-v2/webview_app.py \
+            projects/autodev-v2/restart_server.py \
             projects/autodev-v2/codex_usage.py \
             projects/autodev-v2/codex_compat.py \
             projects/autodev-v2/functional_verify.py \
