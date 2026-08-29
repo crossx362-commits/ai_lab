@@ -461,10 +461,10 @@ namespace AshesToStars
                 UnityEngine.Object.DestroyImmediate(fieldTree);
             }
 
-            // 필드 마을의 고체 장애물로 함께 배치되는 큰 집·작은 집 한 세트. 각각 4.60/2.80유닛으로
-            // 표시되고 큰 집은 본성 QA_NO, 작은 집은 대장간 QA_NO도 소비한다. 이름 매핑만으로는
+            // 필드 마을의 고체 장애물로 함께 배치되는 집 세트. 각각 3.60/4.60/2.80유닛으로
+            // 표시되고 보통 집은 창고, 큰 집은 본성, 작은 집은 대장간 QA_NO도 소비한다. 이름 매핑만으로는
             // 옛 고해상도 생성본이나 불투명 사각 배경 회귀를 잡지 못하므로 실제 PNG를 함께 고정한다.
-            foreach (string houseName in new[] { "village_house_1", "village_house_2" })
+            foreach (string houseName in new[] { "village_house_0", "village_house_1", "village_house_2" })
             {
                 string housePath = Path.Combine(Application.dataPath,
                     "Resources/props/" + houseName + ".png");
