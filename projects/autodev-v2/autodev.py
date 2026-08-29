@@ -9,6 +9,7 @@
 - 파일 검색, Git 상태, Unity 컴파일/검증은 로컬 프로세스가 처리한다.
 - 작업마다 새 headless 세션을 사용한다. 이전 대화는 넘기지 않는다.
 - 동일 상태에서 무한 재시도하지 않는다.
+- Grok CLI 옵션은 실행 전 로컬 --help로 확인하고 지원되는 공식 옵션만 사용한다.
 """
 from __future__ import annotations
 
@@ -16,11 +17,14 @@ import argparse
 import hashlib
 import json
 import os
+import queue
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +32,7 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_CONFIG = HERE / "config.json"
+_GROK_HELP_CACHE: dict[str, str] = {}
 
 
 def now_iso() -> str:
@@ -215,32 +220,178 @@ def subscription_env(cfg: dict[str, Any], provider: str) -> dict[str, str]:
     return env
 
 
+def find_grok_cli() -> str | None:
+    """터미널/launchd 모두에서 Grok CLI를 찾는다."""
+    exe = shutil.which("grok")
+    if exe:
+        return exe
+    for p in (
+        "/usr/local/bin/grok",
+        "/opt/homebrew/bin/grok",
+        str(Path.home() / ".local" / "bin" / "grok"),
+    ):
+        if os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
+
+def grok_help(exe: str) -> str:
+    """모델 호출 없이 현재 설치 CLI의 지원 옵션을 확인한다."""
+    cached = _GROK_HELP_CACHE.get(exe)
+    if cached is not None:
+        return cached
+    attempts = ([exe, "--no-auto-update", "--help"], [exe, "--help"])
+    text = ""
+    for cmd in attempts:
+        try:
+            r = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=15,
+                encoding="utf-8", errors="replace"
+            )
+            text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+            if text:
+                break
+        except Exception:
+            continue
+    _GROK_HELP_CACHE[exe] = text
+    return text
+
+
+def _has_flag(help_text: str, flag: str) -> bool:
+    return flag in help_text
+
+
+def build_grok_command(
+    exe: str,
+    prompt: str,
+    cwd: Path,
+    max_turns: int,
+    allow_edits: bool,
+    help_text: str | None = None,
+) -> list[str]:
+    """현재 Grok CLI가 실제 지원하는 공식 플래그만 사용해 명령을 만든다.
+
+    과거 `--agent-profile`은 Grok Build 옵션이 아니어서 즉시 rc=2로 종료됐다.
+    v2 역할 규칙은 이미 Director/Worker 프롬프트에 들어 있으므로 별도 agent profile을
+    CLI에 넘기지 않는다. 이것이 중복 컨텍스트도 줄인다.
+    """
+    help_text = help_text if help_text is not None else grok_help(exe)
+    if not help_text:
+        raise RuntimeError("grok --help 출력을 읽지 못했습니다.")
+
+    if "--single" in help_text:
+        single = "--single"
+    elif "-p" in help_text:
+        single = "-p"
+    else:
+        raise RuntimeError("현재 Grok CLI에 headless 단일 프롬프트(-p/--single)가 없습니다.")
+
+    cmd = [exe]
+    if _has_flag(help_text, "--no-auto-update"):
+        cmd.append("--no-auto-update")
+    cmd += [single, prompt]
+
+    required_values = [
+        ("--cwd", str(cwd)),
+        ("--output-format", "plain"),
+        ("--max-turns", str(max_turns)),
+    ]
+    for flag, value in required_values:
+        if not _has_flag(help_text, flag):
+            raise RuntimeError(f"현재 Grok CLI가 필수 옵션 {flag}를 지원하지 않습니다. `grok update`가 필요합니다.")
+        cmd += [flag, value]
+
+    for flag in ("--no-plan", "--no-subagents", "--no-memory", "--disable-web-search"):
+        if not _has_flag(help_text, flag):
+            raise RuntimeError(f"현재 Grok CLI가 절약 옵션 {flag}를 지원하지 않습니다. `grok update`가 필요합니다.")
+        cmd.append(flag)
+
+    if allow_edits:
+        if _has_flag(help_text, "--always-approve"):
+            cmd.append("--always-approve")
+        elif _has_flag(help_text, "--yolo"):
+            cmd.append("--yolo")
+        else:
+            raise RuntimeError("Worker 자동수정을 위한 --always-approve/--yolo 옵션이 없습니다. `grok update`가 필요합니다.")
+
+        if _has_flag(help_text, "--deny"):
+            for rule in (
+                "Bash(git push *)",
+                "Bash(git push --force*)",
+                "Bash(git reset --hard*)",
+                "Bash(rm -rf *)",
+            ):
+                cmd += ["--deny", rule]
+
+    return cmd
+
+
+def _terminate_process(p: subprocess.Popen[str]) -> None:
+    """타임아웃 시 Grok과 자식 툴 프로세스를 가능한 범위에서 함께 종료한다."""
+    try:
+        if os.name != "nt":
+            os.killpg(p.pid, signal.SIGTERM)
+        else:
+            p.terminate()
+        p.wait(timeout=2)
+        return
+    except Exception:
+        pass
+    try:
+        if os.name != "nt":
+            os.killpg(p.pid, signal.SIGKILL)
+        else:
+            p.kill()
+    except Exception:
+        pass
+    try:
+        p.wait(timeout=2)
+    except Exception:
+        pass
+
+
 def stream_process(cmd: list[str], cwd: Path, timeout: int, env: dict[str, str], tag: str) -> tuple[int, str]:
-    """출력은 실시간으로 보여주되 최종 파싱을 위해 보관한다."""
+    """출력은 실시간 표시하고, 출력이 멈춰도 실제 timeout이 작동한다."""
     print(f"\n[{tag}] 시작")
-    started = time.time()
+    started = time.monotonic()
     lines: list[str] = []
+    q: queue.Queue[str | None] = queue.Queue()
     try:
         p = subprocess.Popen(
             cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, encoding="utf-8", errors="replace", bufsize=1, env=env
+            text=True, encoding="utf-8", errors="replace", bufsize=1, env=env,
+            start_new_session=(os.name != "nt"),
         )
         assert p.stdout is not None
+
+        def reader() -> None:
+            try:
+                for line in p.stdout:
+                    q.put(line.rstrip("\n"))
+            finally:
+                q.put(None)
+
+        threading.Thread(target=reader, daemon=True).start()
+        stream_done = False
         while True:
-            if time.time() - started > timeout:
-                p.kill()
+            if time.monotonic() - started > timeout:
+                _terminate_process(p)
                 lines.append(f"TIMEOUT after {timeout}s")
                 return 124, "\n".join(lines)
-            line = p.stdout.readline()
-            if line:
-                line = line.rstrip("\n")
-                lines.append(line)
-                print(f"[{tag}] {line}", flush=True)
-            elif p.poll() is not None:
-                break
-            else:
-                time.sleep(0.05)
-        return p.wait(), "\n".join(lines)
+            try:
+                item = q.get(timeout=0.1)
+            except queue.Empty:
+                if p.poll() is not None and stream_done:
+                    break
+                continue
+            if item is None:
+                stream_done = True
+                if p.poll() is not None:
+                    break
+                continue
+            lines.append(item)
+            print(f"[{tag}] {item}", flush=True)
+        return p.wait(timeout=5), "\n".join(lines)
     except Exception as e:
         return 125, f"{type(e).__name__}: {e}"
 
@@ -255,25 +406,16 @@ def grok_call(
     max_turns: int,
     allow_edits: bool,
 ) -> tuple[int, str]:
-    exe = shutil.which("grok")
+    exe = find_grok_cli()
     if not exe:
         return 127, "grok CLI를 찾을 수 없습니다. 먼저 grok 로그인/설치를 확인하세요."
-    root = Path(cfg["_repo_root"])
-    profile = root / ".grok" / "agents" / f"autodev-v2-{role}.md"
-    cmd = [
-        exe, "--no-auto-update",
-        "-p", prompt,
-        "--cwd", str(cwd),
-        "--output-format", "plain",
-        "--max-turns", str(max_turns),
-        "--no-subagents",
-        "--no-memory",
-        "--disable-web-search",
-    ]
-    if profile.exists():
-        cmd += ["--agent-profile", str(profile)]
-    if allow_edits:
-        cmd += ["--always-approve"]
+    try:
+        cmd = build_grok_command(
+            exe, prompt, cwd, max_turns=max_turns, allow_edits=allow_edits
+        )
+    except RuntimeError as e:
+        return 126, f"Grok CLI 호환성 검사 실패: {e}"
+
     st["stats"]["grok_calls"] = int(st["stats"].get("grok_calls", 0)) + 1
     if role == "director":
         st["stats"]["director_calls"] = int(st["stats"].get("director_calls", 0)) + 1
@@ -398,7 +540,7 @@ def director_fill(cfg: dict[str, Any], st: dict[str, Any]) -> bool:
 [기획서 압축본]
 {compact_design(cfg)}
 
-[최근 핸드오프]
+[안정 지식]
 {compact_handoff(cfg)}
 
 [현재 상태]
