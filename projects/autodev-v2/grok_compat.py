@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 """AutoDev v2용 Grok CLI 호환/쿼터 래퍼.
 
-목적:
-- Grok Build CLI 버전별 선택 옵션 차이 때문에 AutoDev가 rc=2로 죽지 않게 한다.
-- Director는 가능한 경우 로컬 Ollama로 처리해 Grok 주간 사용량을 아낀다.
-- Grok이 402/usage balance exhausted를 반환하면 짧은 쿨다운 파일을 만들고
-  같은 실행에서 동일한 실패 호출을 반복하지 않는다.
-- 핵심 headless 옵션은 그대로 요구하고, 절약용 선택 옵션은 지원할 때만 전달한다.
+책임은 두 가지뿐이다.
+1) Grok Build CLI 버전별 선택 옵션 차이를 흡수한다.
+2) 402/usage balance exhausted를 감지해 짧은 쿨다운 동안 실제 Grok 재호출을 막는다.
 
+Director 라우팅은 runner.py가 담당한다.
 실제 Grok 바이너리는 AUTODEV_REAL_GROK 환경변수로 전달받는다.
 """
 from __future__ import annotations
@@ -18,7 +16,6 @@ import os
 import subprocess
 import sys
 import time
-import urllib.request
 from pathlib import Path
 
 OPTIONAL_FLAGS = (
@@ -80,21 +77,6 @@ def filter_args(args: list[str], supported_help: str) -> tuple[list[str], list[s
     return out, dropped
 
 
-def prompt_from_args(args: list[str]) -> str:
-    for flag in ("--single", "-p"):
-        try:
-            i = args.index(flag)
-        except ValueError:
-            continue
-        if i + 1 < len(args):
-            return args[i + 1]
-    return ""
-
-
-def is_director_prompt(prompt: str) -> bool:
-    return "AutoDev v2" in prompt and "DIRECTOR" in prompt and "JSON만 출력" in prompt
-
-
 def quota_state_path() -> Path:
     explicit = os.environ.get("AUTODEV_GROK_QUOTA_STATE", "").strip()
     if explicit:
@@ -144,69 +126,6 @@ def looks_like_quota_error(text: str) -> bool:
     return "402" in lower and any(marker in lower for marker in QUOTA_MARKERS)
 
 
-def ollama_base() -> str:
-    raw = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
-    for suffix in ("/v1/chat/completions", "/api/chat", "/v1", "/api"):
-        if raw.endswith(suffix):
-            raw = raw[: -len(suffix)]
-            break
-    return raw.rstrip("/")
-
-
-def list_ollama_models() -> list[str]:
-    try:
-        with urllib.request.urlopen(ollama_base() + "/api/tags", timeout=3) as r:
-            data = json.loads(r.read())
-        return [str(x.get("name", "")) for x in data.get("models", []) if x.get("name")]
-    except Exception:
-        return []
-
-
-def pick_director_model(models: list[str]) -> str | None:
-    pinned = os.environ.get("AUTODEV_DIRECTOR_OLLAMA_MODEL", "").strip() or os.environ.get("OLLAMA_MODEL", "").strip()
-    if pinned and pinned in models:
-        return pinned
-    for key in ("coder", "qwen", "deepseek", "code"):
-        for model in models:
-            if key in model.lower():
-                return model
-    return models[0] if models else None
-
-
-def run_local_director(prompt: str) -> bool:
-    if os.environ.get("AUTODEV_LOCAL_DIRECTOR", "1").strip().lower() not in {"1", "true", "yes", "on"}:
-        return False
-    models = list_ollama_models()
-    model = pick_director_model(models)
-    if not model:
-        return False
-    payload = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-        "think": False,
-        "format": "json",
-        "options": {"temperature": 0.2, "num_predict": 2600},
-    }
-    try:
-        req = urllib.request.Request(
-            ollama_base() + "/api/chat",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=180) as r:
-            data = json.loads(r.read())
-        content = str((data.get("message") or {}).get("content") or "").strip()
-        if not content:
-            return False
-        print(f"[DIRECTOR:LOCAL] Ollama {model} 사용, Grok 주간 한도 0 사용", file=sys.stderr)
-        print(content)
-        return True
-    except Exception as e:
-        print(f"[DIRECTOR:LOCAL] 실패, Grok fallback: {type(e).__name__}: {e}", file=sys.stderr)
-        return False
-
-
 def run_real_grok(exe: str, args: list[str]) -> tuple[int, str]:
     """실시간 출력을 전달하면서 마지막 결과를 모아 쿼터 오류를 판별한다."""
     collected: list[str] = []
@@ -249,8 +168,6 @@ def main() -> int:
         print("grok compat error: 실제 Grok --help를 읽지 못했습니다.", file=sys.stderr)
         return 126
 
-    # autodev.py가 자신의 명령을 구성할 때 보는 help에는 선택 절약 플래그를 노출한다.
-    # 실제 실행 때는 아래 filter_args가 현재 바이너리 미지원 플래그를 제거한다.
     if args in (["--help"], ["--no-auto-update", "--help"]):
         print(h)
         print("\n[AutoDev compatibility flags]")
@@ -265,10 +182,6 @@ def main() -> int:
             "[GROK-COMPAT] 현재 CLI 미지원 선택 옵션 생략: " + ", ".join(dropped),
             file=sys.stderr,
         )
-
-    prompt = prompt_from_args(filtered)
-    if prompt and is_director_prompt(prompt) and run_local_director(prompt):
-        return 0
 
     if quota_cooldown_active():
         print(
