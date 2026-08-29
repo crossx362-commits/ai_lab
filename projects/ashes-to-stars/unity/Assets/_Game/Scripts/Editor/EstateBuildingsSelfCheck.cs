@@ -125,6 +125,7 @@ namespace AshesToStars
             // 평원 자연물 산포의 키 큰 고체 장애물 한 역할 세트. 네 변형은 2.40~6.00유닛으로
             // 표시되어 마을 밖 실루엣과 엄폐 리듬을 만든다. 이름·충돌 검사만으로는 옛 대형 생성본,
             // 불투명 사각 배경, 빈 수관 회귀를 잡지 못하므로 실제 PNG 품질을 함께 고정한다.
+            var sparseFieldTreeSilhouette = SparseSilhouetteAtBoundary(256 * 256, 8);
             foreach (string fieldTreeName in new[]
                      { "field_tree_0", "field_tree_1", "field_tree_2", "field_tree_3" })
             {
@@ -146,6 +147,8 @@ namespace AshesToStars
                 for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
                 Check(!HasFieldTreeAlphaSilhouette(opaqueSquare, out _, out _),
                     $"QA_NO_FIELD_TREE_ALPHA: 평원 나무 {fieldTreeName}의 불투명 사각 배경 회귀를 거부한다");
+                Check(!HasFieldTreeAlphaSilhouette(sparseFieldTreeSilhouette, out _, out _),
+                    $"QA_NO_FIELD_TREE_SPARSE_ALPHA: 평원 나무 {fieldTreeName}의 1/8 희박 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(fieldTree);
             }
 
