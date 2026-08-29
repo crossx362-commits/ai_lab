@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -7,12 +8,14 @@ import unittest
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def load(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
@@ -40,7 +43,6 @@ class ControlPlaneTests(unittest.TestCase):
     def test_dashboard_starts_only_engine_entrypoint(self):
         source = (ROOT / "webview_app.py").read_text(encoding="utf-8")
         self.assertIn('str(ENGINE_FILE)', source)
-        # start/runner_entry may be mentioned for legacy cleanup only, never as Popen target.
         self.assertNotIn('Popen([sys.executable, str(HERE / "start.py")]', source)
         self.assertNotIn('Popen([sys.executable, str(HERE / "runner_entry.py")]', source)
 
@@ -99,12 +101,13 @@ class ControlPlaneTests(unittest.TestCase):
                 return {"pid": fake.pid}
             return {}
 
+        fake_log = mock.mock_open()
         with mock.patch.object(WEB, "engine_info", return_value={"running": False, "stale": False, "legacy_pids": []}), \
              mock.patch.object(WEB.subprocess, "Popen", return_value=fake), \
              mock.patch.object(WEB, "read_json", side_effect=fake_read), \
              mock.patch.object(WEB, "tail_lines", return_value=[]), \
              mock.patch.object(WEB.Controller, "log", return_value=None), \
-             mock.patch.object(WEB.ENGINE_LOG, "open", mock.mock_open()):
+             mock.patch("pathlib.Path.open", fake_log):
             result = ctl.start()
         self.assertTrue(result["ok"])
         self.assertIn("43210", result["message"])
