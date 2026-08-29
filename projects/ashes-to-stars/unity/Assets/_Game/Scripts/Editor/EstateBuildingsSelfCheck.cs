@@ -44,6 +44,18 @@ namespace AshesToStars
             return clear > pixels.Length / 2 && solid > pixels.Length / 10;
         }
 
+        static bool HasWellAlphaSilhouette(Color[] pixels, out int clear, out int solid)
+        {
+            clear = 0;
+            solid = 0;
+            foreach (var p in pixels)
+            {
+                if (p.a < 0.05f) clear++;
+                else if (p.a > 0.95f) solid++;
+            }
+            return clear > pixels.Length / 2 && solid > pixels.Length / 6;
+        }
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -97,6 +109,24 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
+
+            // 필드 마을 중앙 장식과 영묘 QA_NO가 함께 소비하는 우물. 1.60유닛에서도
+            // 지붕·기둥·석조 통이 읽히는 기존 ox-alpha 그림의 캔버스와 실루엣을 고정한다.
+            string wellPath = Path.Combine(Application.dataPath,
+                "Resources/props/village_well_0.png");
+            Check(File.Exists(wellPath), "마을 우물 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(wellPath))
+            {
+                var well = new Texture2D(2, 2);
+                well.LoadImage(File.ReadAllBytes(wellPath));
+                Check(well.width == 256 && well.height == 256,
+                    $"마을 우물이 oxalpha 256 세트 (실제 {well.width}×{well.height})");
+                var wellPx = well.GetPixels();
+                Check(HasWellAlphaSilhouette(wellPx, out int wellClear, out int wellSolid),
+                    $"마을 우물 알파 유효 — 투명 배경+작은 월드 실루엣 " +
+                    $"(투명 {wellClear} · 불투명 {wellSolid}/{wellPx.Length})");
+                UnityEngine.Object.DestroyImmediate(well);
+            }
 
             // 경매장 QA_NO와 필드 마을이 함께 소비하는 수레. 719ead9e에서 ox-alpha 256으로
             // 반입했지만 이름 매핑만 검사하면 옛 1740×1310 나노바나나나 불투명 사각 배경이
