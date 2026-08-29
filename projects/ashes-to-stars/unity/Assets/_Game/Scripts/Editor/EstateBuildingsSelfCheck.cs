@@ -532,6 +532,10 @@ namespace AshesToStars
                 Check(HasBarnAlphaSilhouette(barnPx, out int barnClear, out int barnSolid),
                     $"마을 헛간 알파 유효 — 투명 배경+대형 월드 실루엣 " +
                     $"(투명 {barnClear} · 불투명 {barnSolid}/{barnPx.Length})");
+                var opaqueSquare = new Color[barnPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasBarnAlphaSilhouette(opaqueSquare, out _, out _),
+                    "QA_NO_BARN_ALPHA: 마을 헛간의 불투명 사각 배경 회귀를 거부한다");
                 var sparseSilhouette = SparseSilhouetteAtBoundary(barnPx.Length, 4);
                 Check(!HasBarnAlphaSilhouette(sparseSilhouette, out _, out _),
                     "QA_NO_BARN_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
