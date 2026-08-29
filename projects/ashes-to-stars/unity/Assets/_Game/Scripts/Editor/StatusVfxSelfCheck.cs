@@ -25,6 +25,10 @@ namespace AshesToStars
                     Debug.Assert(StatusVfxSheets.Frame(sheet, frame) != null,
                         $"[StatusVfx] 시트 {sheet} 프레임 {frame} 누락");
 
+            var poison = Resources.Load<Texture2D>("fx/poison_status_sheet");
+            Debug.Assert(poison != null && poison.width == 1024 && poison.height == 512,
+                "[StatusVfx] 독 상태 시트는 정수 256px 4x2 격자여야 한다");
+
             Debug.Log("[StatusVfxSelfCheck] PASS");
         }
     }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""허용된 직업 VFX 4x2 시트를 정수 256px 셀로 안전하게 재패킹한다."""
+"""허용된 런타임 VFX 4x2 시트를 정수 256px 셀로 안전하게 재패킹한다."""
 
 import argparse
 import hashlib
@@ -18,6 +18,9 @@ SHEETS = {
     "mage_fire": "mage_fire_sheet.png",
     "priest_heal": "priest_heal_sheet.png",
     "tank_barrier": "tank_barrier_sheet.png",
+}
+STATUS_SHEETS = {
+    "poison_status": "poison_status_sheet.png",
 }
 COLS, ROWS, CELL, PADDING = 4, 2, 256, 8
 SOURCE_SIZE = (1774, 887)
@@ -65,11 +68,12 @@ def assert_contract(image: Image.Image) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("sheet", choices=sorted(SHEETS), help="재패킹할 허용 시트 키")
+    allowed = SHEETS | STATUS_SHEETS
+    parser.add_argument("sheet", choices=sorted(allowed), help="재패킹할 허용 시트 키")
     parser.add_argument("source", nargs="?", type=Path, help="1774x887 원본 PNG. 생략하면 완료본을 검증")
     args = parser.parse_args()
 
-    target = FX_DIR / SHEETS[args.sheet]
+    target = FX_DIR / allowed[args.sheet]
     source_path = args.source or target
     with Image.open(source_path) as opened:
         source = opened.convert("RGBA")
