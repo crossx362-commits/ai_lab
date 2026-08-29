@@ -557,6 +557,10 @@ namespace AshesToStars
                 Check(HasWellAlphaSilhouette(wellPx, out int wellClear, out int wellSolid),
                     $"마을 우물 알파 유효 — 투명 배경+작은 월드 실루엣 " +
                     $"(투명 {wellClear} · 불투명 {wellSolid}/{wellPx.Length})");
+                var opaqueSquare = new Color[wellPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasWellAlphaSilhouette(opaqueSquare, out _, out _),
+                    "QA_NO_WELL_ALPHA: 마을 우물의 불투명 사각 배경 회귀를 거부한다");
                 var sparseSilhouette = SparseSilhouetteAtBoundary(wellPx.Length, 6);
                 Check(!HasWellAlphaSilhouette(sparseSilhouette, out _, out _),
                     "QA_NO_WELL_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
