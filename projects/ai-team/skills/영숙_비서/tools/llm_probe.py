@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""LLM 생존 프로브 — 장전에 로컬·클라우드 LLM을 실제 챗 호출로 점검.
+"""LLM 생존 프로브.
 
-배경(가드레일 2026-07-03): Ollama가 '모델 목록엔 보이지만' 매니페스트 파손·thinking
-누수로 빈 응답을 뱉으며 조용히 죽어 있었고, 클라우드 429(크레딧 소진)와 겹치면
-issue_impact가 통째로 유실됐다. 판정 기준은 '모델 존재'가 아니라 '챗 응답 성공'.
-
-동작: 로컬(ollama)·클라우드(gpt) 각 1회 초소형 챗 → 실패한 쪽만 텔레그램 경보.
-정상이면 무발송(스팸 방지). 스케줄: 평일 07:25 (조사 파이프라인 07:30 직전).
+기본은 로컬 Ollama만 실제 챗 호출한다.
+클라우드 구독/할당량은 생존 확인만으로 태우지 않는다.
+정말 클라우드 경로까지 점검해야 할 때만 AI_TEAM_PROBE_CLOUD=1을 명시한다.
 """
 import os
 import sys
@@ -25,15 +22,14 @@ if _root not in sys.path:
     sys.path.insert(0, _root)
 
 from _shared.env import load_env
-from _shared.llm import ollama, claude_code, gemini
+from _shared.llm import ollama, grok_build, gpt_codex, gemini
 from _shared.telegram import send
 
 load_env()
-
 PROMPT = "상태 점검입니다. '정상' 한 단어로만 답하세요."
 
 
-def _probe(name, fn):
+def _probe(fn):
     try:
         out = (fn(PROMPT) or "").strip()
         return (True, "") if out else (False, "빈 응답")
@@ -41,29 +37,31 @@ def _probe(name, fn):
         return False, str(e)[:120]
 
 
+def _env_on(name: str) -> bool:
+    return os.getenv(name, "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def run() -> list[str]:
     fails = []
-    ok, why = _probe("ollama", ollama)
+    ok, why = _probe(ollama)
     if not ok:
-        fails.append(f"로컬(Ollama) 챗 실패: {why} — `ollama show`로 매니페스트 확인")
-    # GPT는 기본 체인에서 제거(오너 지시 2026-07-05) — 클로드가 클라우드 1선
-    # 클로드는 구독(claude -p)으로 점검 — 실제 운영 체인 1순위와 동일 경로(2026-07-06)
-    ok, why = _probe("claude_code", claude_code)
-    if not ok:
-        fails.append(f"클라우드(Claude 구독) 실패: {why}")
-    ok, why = _probe("gemini", gemini)
-    if not ok:
-        fails.append(f"클라우드(Gemini) 실패: {why}")
+        fails.append(f"로컬(Ollama) 챗 실패: {why} — `ollama show`로 확인")
+
+    # 기본 OFF. 상태 점검 때문에 Grok/Codex/Gemini 한도를 소모하지 않는다.
+    if _env_on("AI_TEAM_PROBE_CLOUD"):
+        for name, fn in (("Grok", grok_build), ("Codex", gpt_codex), ("Gemini", gemini)):
+            ok, why = _probe(fn)
+            if not ok:
+                fails.append(f"클라우드({name}) 실패: {why}")
     return fails
 
 
 if __name__ == "__main__":
     failures = run()
     if failures:
-        msg = "🚨 [LLM프로브] 장전 점검 실패\n" + "\n".join("- " + f for f in failures)
-        if len(failures) == 3:
-            msg += "\n⚠️ 로컬·클라우드 동시 다운 = issue_impact 유실 위험(가드레일 7/3)"
+        msg = "🚨 [LLM프로브] 점검 실패\n" + "\n".join("- " + f for f in failures)
         print(msg)
         send(msg)
     else:
-        print("llm_probe: 로컬·클라우드 모두 정상")
+        mode = "로컬+클라우드" if _env_on("AI_TEAM_PROBE_CLOUD") else "로컬만(클라우드 호출 0)"
+        print(f"llm_probe: 정상 — {mode}")
