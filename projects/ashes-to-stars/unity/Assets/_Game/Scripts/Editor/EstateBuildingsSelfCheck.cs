@@ -59,6 +59,9 @@ namespace AshesToStars
         static bool HasFenceAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
             HasAlphaSilhouette(pixels, 5, out clear, out solid);
 
+        static bool HasVillageTreeAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            HasAlphaSilhouette(pixels, 5, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -112,6 +115,30 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
+
+            // 필드 마을 과수원 자리에만 세우고 길·유닛 충돌도 막는 3.40유닛 나무.
+            // 이름·충돌 검사만으로는 불투명 사각 배경이나 빈 수관 회귀를 잡지 못하므로
+            // 실제 Resources PNG의 캔버스와 알파 실루엣을 함께 고정한다.
+            string villageTreePath = Path.Combine(Application.dataPath,
+                "Resources/props/village_tree_0.png");
+            Check(File.Exists(villageTreePath), "마을 과수나무 PNG 파일이 Assets/Resources에 있다");
+            if (File.Exists(villageTreePath))
+            {
+                var villageTree = new Texture2D(2, 2);
+                villageTree.LoadImage(File.ReadAllBytes(villageTreePath));
+                Check(villageTree.width == 256 && villageTree.height == 256,
+                    $"마을 과수나무가 oxalpha 256 세트 (실제 {villageTree.width}×{villageTree.height})");
+                var villageTreePx = villageTree.GetPixels();
+                Check(HasVillageTreeAlphaSilhouette(villageTreePx,
+                        out int villageTreeClear, out int villageTreeSolid),
+                    $"마을 과수나무 알파 유효 — 투명 배경+수관·줄기 실루엣 " +
+                    $"(투명 {villageTreeClear} · 불투명 {villageTreeSolid}/{villageTreePx.Length})");
+                var opaqueSquare = new Color[villageTreePx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasVillageTreeAlphaSilhouette(opaqueSquare, out _, out _),
+                    "QA_NO_VILLAGE_TREE_ALPHA: 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(villageTree);
+            }
 
             // 필드 마을의 고체 건물이자 광산·수비대 QA_NO가 함께 소비하는 헛간. 4.00유닛의
             // 큰 랜드마크에서도 지붕·쌍문·창·석조 기단이 읽히는 ox-alpha 그림을 고정한다.
