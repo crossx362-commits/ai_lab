@@ -257,6 +257,11 @@ namespace AshesToStars
                 Check(HasLampAlphaSilhouette(lampPx, out int lampClear, out int lampSolid),
                     $"마을 가로등 알파 유효 — 투명 배경+세로 월드 실루엣 " +
                     $"(투명 {lampClear} · 불투명 {lampSolid}/{lampPx.Length})");
+                var sparseSilhouette = new Color[lampPx.Length];
+                for (int i = 0; i < sparseSilhouette.Length / 10; i++)
+                    sparseSilhouette[i] = Color.white;
+                Check(!HasLampAlphaSilhouette(sparseSilhouette, out _, out _),
+                    "QA_NO_LAMP_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(lamp);
             }
 
