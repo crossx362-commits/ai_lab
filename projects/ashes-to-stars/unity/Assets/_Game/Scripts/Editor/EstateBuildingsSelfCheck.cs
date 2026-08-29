@@ -153,7 +153,7 @@ namespace AshesToStars
             }
 
             // 잿벌 자연물 산포의 탄화목 한 역할 세트. 0.90/0.50/0.85유닛으로 표시되는
-            // 그루터기·잔가지·불탄 통나무가 서로 구분돼야 한다. 이름·고체 장애물 검사만으로는
+            // 쪼개진 그루터기·수레바퀴·탄 판재 더미가 서로 구분돼야 한다. 이름·고체 장애물 검사만으로는
             // 불투명 배경이나 빈 실루엣 회귀를 잡지 못하므로 실제 Resources PNG를 함께 고정한다.
             var sparseAshCharredSilhouette = SparseSilhouetteAtBoundary(256 * 256, 32);
             Check(!HasAshCharredAlphaSilhouette(sparseAshCharredSilhouette, out _, out _),
