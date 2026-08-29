@@ -5,11 +5,13 @@ on:
     paths:
       - 'projects/autodev-v2/**'
       - 'projects/ai-team/_shared/**'
+      - 'projects/ashes-to-stars/unity/Assets/Editor/AutoDevAcceptance/**'
       - '.github/workflows/autodev-v2-tests.yml'
   pull_request:
     paths:
       - 'projects/autodev-v2/**'
       - 'projects/ai-team/_shared/**'
+      - 'projects/ashes-to-stars/unity/Assets/Editor/AutoDevAcceptance/**'
       - '.github/workflows/autodev-v2-tests.yml'
 
 jobs:
@@ -24,6 +26,7 @@ jobs:
             projects/autodev-v2/webview_app.py \
             projects/autodev-v2/codex_usage.py \
             projects/autodev-v2/codex_compat.py \
+            projects/autodev-v2/functional_verify.py \
             projects/autodev-v2/runner_entry.py \
             projects/autodev-v2/runner.py \
             projects/autodev-v2/start.py
@@ -31,3 +34,5 @@ jobs:
         run: python3 projects/autodev-v2/tests/test_core.py
       - name: Autonomous loop tests
         run: python3 projects/autodev-v2/tests/test_autonomous_loop.py
+      - name: Functional acceptance tests
+        run: python3 projects/autodev-v2/tests/test_functional_verify.py
