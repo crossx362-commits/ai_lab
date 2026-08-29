@@ -5,6 +5,7 @@
 Runtime integrations:
 - Grok/Codex subprocess output streams live.
 - A heartbeat survives long provider silences so the dashboard can tell alive from dead.
+- Stopping AutoDev also stops the currently active provider child process.
 - Gameplay/system tasks must pass task-specific Unity acceptance verification.
 """
 from __future__ import annotations
@@ -37,6 +38,8 @@ REPO = HERE.parents[1]
 OUTPUT = REPO / "output" / "autodev_v2"
 HEARTBEAT = OUTPUT / "engine_heartbeat.json"
 _HB_LOCK = threading.RLock()
+_PROVIDER_LOCK = threading.RLock()
+_ACTIVE_PROVIDER: subprocess.Popen[str] | None = None
 _RUNTIME: dict[str, Any] = {
     "stage": "starting",
     "message": "엔진 시작 중",
@@ -83,6 +86,8 @@ def heartbeat_loop() -> None:
 
 def _terminate_process(p: subprocess.Popen[str]) -> None:
     try:
+        if p.poll() is not None:
+            return
         if os.name != "nt":
             os.killpg(p.pid, signal.SIGTERM)
         else:
@@ -100,8 +105,18 @@ def _terminate_process(p: subprocess.Popen[str]) -> None:
         pass
 
 
+def _shutdown(signum: int, _frame: Any) -> None:
+    set_runtime(stage="stopping", message="중지 요청을 받아 AI 자식 프로세스까지 정리 중", provider="local", output=True)
+    with _PROVIDER_LOCK:
+        child = _ACTIVE_PROVIDER
+    if child is not None:
+        _terminate_process(child)
+    raise SystemExit(128 + int(signum))
+
+
 def stream_process(cmd: list[str], cwd: Path, timeout: int, env: dict[str, str], tag: str) -> tuple[int, str]:
     """Stream output and emit a visible pulse every 5s while the provider is quiet."""
+    global _ACTIVE_PROVIDER
     print(f"\n[{tag}] 시작", flush=True)
     provider = "codex" if "codex" in tag.lower() else "grok" if "grok" in tag.lower() else "local"
     set_runtime(stage=tag, message="작업 시작", provider=provider, output=True)
@@ -109,12 +124,15 @@ def stream_process(cmd: list[str], cwd: Path, timeout: int, env: dict[str, str],
     last_pulse = started
     lines: list[str] = []
     q: queue.Queue[str | None] = queue.Queue()
+    p: subprocess.Popen[str] | None = None
     try:
         p = subprocess.Popen(
             cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace", bufsize=1, env=env,
             start_new_session=(os.name != "nt"),
         )
+        with _PROVIDER_LOCK:
+            _ACTIVE_PROVIDER = p
         assert p.stdout is not None
 
         def reader() -> None:
@@ -163,6 +181,10 @@ def stream_process(cmd: list[str], cwd: Path, timeout: int, env: dict[str, str],
         msg = f"{type(e).__name__}: {e}"
         set_runtime(stage="provider_error", message=msg, provider=provider, output=True)
         return 125, msg
+    finally:
+        with _PROVIDER_LOCK:
+            if _ACTIVE_PROVIDER is p:
+                _ACTIVE_PROVIDER = None
 
 
 def codex_call(cfg: dict[str, Any], st: dict[str, Any], prompt: str, cwd: Path) -> tuple[int, str]:
@@ -283,6 +305,9 @@ def director_fill(cfg: dict[str, Any], st: dict[str, Any]) -> bool:
 
 def main() -> int:
     OUTPUT.mkdir(parents=True, exist_ok=True)
+    if os.name != "nt":
+        signal.signal(signal.SIGTERM, _shutdown)
+        signal.signal(signal.SIGINT, _shutdown)
     threading.Thread(target=heartbeat_loop, daemon=True).start()
     set_runtime(stage="starting", message="Grok Director + Supervisor 시작", provider="local", output=True)
     AUTODEV.stream_process = stream_process
