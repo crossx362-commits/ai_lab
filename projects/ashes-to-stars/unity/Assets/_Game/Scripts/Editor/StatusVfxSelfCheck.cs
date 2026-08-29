@@ -13,6 +13,7 @@ namespace AshesToStars
         {
             "poison_status_sheet",
             "freeze_status_sheet",
+            "boss_aoe_warning_sheet",
         };
 
         public static void Run()
@@ -68,7 +69,7 @@ namespace AshesToStars
                 "[StatusVfx] 재패커/런타임 키 드리프트: repacker="
                 + string.Join(",", repackerFiles) + " runtime=" + string.Join(",", runtimeKeys));
             Debug.Assert(repackerFiles.SetEquals(PackedStatusSheets),
-                "[StatusVfx] 정수 격자 강제 대상은 독·빙결 2종이어야 한다: "
+                "[StatusVfx] 정수 격자 강제 대상은 독·빙결·보스 장판 예고 3종이어야 한다: "
                 + string.Join(",", repackerFiles));
             Debug.Assert(!KeysBelongToRuntime(new HashSet<string> { "missing_status_sheet" }, runtimeKeys),
                 "[StatusVfx] 네거티브 컨트롤이 등록되지 않은 재패커 키를 탐지하지 못했다");

@@ -22,6 +22,7 @@ SHEETS = {
 STATUS_SHEETS = {
     "poison_status": "poison_status_sheet.png",
     "freeze_status": "freeze_status_sheet.png",
+    "boss_aoe_warning": "boss_aoe_warning_sheet.png",
 }
 COLS, ROWS, CELL, PADDING = 4, 2, 256, 8
 SOURCE_SIZE = (1774, 887)
