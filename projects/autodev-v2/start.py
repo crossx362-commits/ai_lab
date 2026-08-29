@@ -4,7 +4,7 @@
 
 1) v1 토큰 소모 루프 비활성화
 2) 실제 Grok CLI를 찾아 버전/쿼터 호환 래퍼 준비
-3) Director는 로컬 Ollama 우선으로 실행해 Grok 주간 사용량 절약
+3) runner.py가 Director를 로컬 Ollama 우선으로 라우팅
 4) preflight로 안전/예산/핵심 CLI 기능 확인
 5) v2 연속 실행
 """
@@ -68,7 +68,7 @@ def compat_env() -> dict[str, str] | None:
 
     print(f"Grok CLI: {real}")
     print("Grok CLI 호환 모드: 설치 버전에 없는 선택 절약 옵션은 자동 생략")
-    print("Director 라우팅: 로컬 Ollama 우선, 없을 때만 Grok")
+    print("Director 라우팅: 로컬 Ollama 우선, 유효한 결과가 없을 때만 Grok")
     print("Grok 402 보호: usage balance exhausted 감지 시 1시간 실제 재호출 차단")
     return env
 
@@ -89,7 +89,7 @@ def main() -> int:
         return audit.returncode
 
     return subprocess.run(
-        [sys.executable, str(HERE / "autodev.py"), "run", "--continuous"],
+        [sys.executable, str(HERE / "runner.py"), "run", "--continuous"],
         env=env,
     ).returncode
 
