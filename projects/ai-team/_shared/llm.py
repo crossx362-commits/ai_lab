@@ -164,6 +164,51 @@ def _subscription_env(provider: str) -> dict[str, str]:
     return env
 
 
+def _grok_help(exe: str) -> str:
+    key = "grok_help:" + exe
+    cached = _cache.get(key)
+    if isinstance(cached, str):
+        return cached
+    for cmd in ([exe, "--no-auto-update", "--help"], [exe, "--help"]):
+        try:
+            r = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=15,
+                encoding="utf-8", errors="replace", **_NOWIN
+            )
+            text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+            if text:
+                _cache[key] = text
+                return text
+        except Exception:
+            continue
+    _cache[key] = ""
+    return ""
+
+
+def _grok_command(exe: str, prompt: str) -> list[str] | None:
+    """설치된 Grok가 지원하는 옵션만 사용해 1턴 절약형 명령을 만든다."""
+    h = _grok_help(exe)
+    if not h:
+        return None
+    single = "--single" if "--single" in h else ("-p" if "-p" in h else None)
+    if single is None:
+        return None
+    for required in ("--cwd", "--output-format", "--max-turns"):
+        if required not in h:
+            return None
+
+    cmd = [exe]
+    if "--no-auto-update" in h:
+        cmd.append("--no-auto-update")
+    cmd += [single, prompt, "--cwd", os.getcwd(), "--output-format", "plain", "--max-turns", "1"]
+
+    # 버전별 선택 절약 플래그. 없으면 생략하고 새 headless 세션 자체로 격리한다.
+    for flag in ("--no-plan", "--no-subagents", "--no-memory", "--disable-web-search"):
+        if flag in h:
+            cmd.append(flag)
+    return cmd
+
+
 def _grok_build(prompt: str, system: str = "", max_tokens: int = 2000,
                 temperature: float = 0.7, json_mode: bool = False) -> str | None:
     """Grok Build CLI 구독 세션. 일반 공용 작업은 읽기/판단 1턴만 사용한다."""
@@ -175,9 +220,10 @@ def _grok_build(prompt: str, system: str = "", max_tokens: int = 2000,
     full = ((system + "\n\n") if system else "") + prompt
     if json_mode:
         full += "\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지."
-    cmd = [exe, "--no-auto-update", "--single", full,
-           "--cwd", os.getcwd(), "--output-format", "plain",
-           "--max-turns", "1", "--no-plan", "--no-subagents", "--no-memory", "--disable-web-search"]
+    cmd = _grok_command(exe, full)
+    if not cmd:
+        print("  ⚠️ [Grok] 현재 CLI에 필요한 headless 핵심 옵션이 없습니다.")
+        return None
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=180,
                            encoding="utf-8", errors="replace",
