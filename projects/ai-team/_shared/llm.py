@@ -175,9 +175,9 @@ def _grok_build(prompt: str, system: str = "", max_tokens: int = 2000,
     full = ((system + "\n\n") if system else "") + prompt
     if json_mode:
         full += "\n\n반드시 유효한 JSON만 출력하라. 설명·코드펜스 금지."
-    cmd = [exe, "--no-auto-update", "-p", full,
+    cmd = [exe, "--no-auto-update", "--single", full,
            "--cwd", os.getcwd(), "--output-format", "plain",
-           "--max-turns", "1", "--no-subagents", "--no-memory", "--disable-web-search"]
+           "--max-turns", "1", "--no-plan", "--no-subagents", "--no-memory", "--disable-web-search"]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=180,
                            encoding="utf-8", errors="replace",
