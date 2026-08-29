@@ -38,3 +38,5 @@ jobs:
         run: python3 projects/autodev-v2/tests/test_autonomous_loop.py
       - name: Functional acceptance tests
         run: python3 projects/autodev-v2/tests/test_functional_verify.py
+      - name: Control-plane tests
+        run: python3 projects/autodev-v2/tests/test_control_plane.py
