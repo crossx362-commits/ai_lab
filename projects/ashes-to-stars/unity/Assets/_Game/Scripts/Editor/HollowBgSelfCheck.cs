@@ -151,6 +151,14 @@ namespace AshesToStars
             Check(!HasLandscapeScreenShape(1200, 1200),
                 "정사각형 영지 허브 배경 대표 결함을 거부한다");
 
+            var field = Resources.Load<Texture2D>("bg/bg_field");
+            GetSourceSize(field, out sourceWidth, out sourceHeight);
+            Check(HasLandscapeScreenShape(sourceWidth, sourceHeight),
+                "필드 자동사냥 배경 원본은 16:9 가로 화면이어야 한다 (실제 "
+                + sourceWidth + "x" + sourceHeight + ")");
+            Check(!HasLandscapeScreenShape(1024, 1024),
+                "정사각형 필드 자동사냥 배경 대표 결함을 거부한다");
+
             if (fail == 0) Debug.Log("[HollowBgSelfCheck] PASS");
             else Debug.LogError("[HollowBgSelfCheck] FAIL " + fail);
         }
