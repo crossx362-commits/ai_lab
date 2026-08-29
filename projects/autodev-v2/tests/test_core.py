@@ -1,8 +1,13 @@
 import importlib.util
+import json
+import os
 from pathlib import Path
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO = ROOT.parents[1]
+
 SPEC = importlib.util.spec_from_file_location("autodev_v2", ROOT / "autodev.py")
 M = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(M)
@@ -10,6 +15,14 @@ SPEC.loader.exec_module(M)
 MSPEC = importlib.util.spec_from_file_location("migrate_v1", ROOT / "migrate_v1.py")
 MG = importlib.util.module_from_spec(MSPEC)
 MSPEC.loader.exec_module(MG)
+
+CSPEC = importlib.util.spec_from_file_location("shared_cc", REPO / "projects/ai-team/_shared/cc.py")
+CC = importlib.util.module_from_spec(CSPEC)
+CSPEC.loader.exec_module(CC)
+
+LSPEC = importlib.util.spec_from_file_location("shared_llm", REPO / "projects/ai-team/_shared/llm.py")
+LLM = importlib.util.module_from_spec(LSPEC)
+LSPEC.loader.exec_module(LLM)
 
 
 class CoreTests(unittest.TestCase):
@@ -49,6 +62,31 @@ class CoreTests(unittest.TestCase):
         out = M.normalize_director_tasks(cfg, st, raw)
         self.assertEqual(out[0]["id"], "T0001")
         self.assertEqual(out[1]["depends_on"], ["T0001"])
+
+    def test_v2_uses_compact_knowledge_not_legacy_handoff(self):
+        cfg = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
+        self.assertEqual(cfg["handoff_file"], "projects/autodev-v2/KNOWLEDGE.md")
+        self.assertLessEqual(cfg["max_candidate_files"], 5)
+        self.assertLessEqual(cfg["max_context_chars"], 16000)
+        self.assertLessEqual(cfg["max_cloud_calls_per_run"], 12)
+
+    def test_core_rules_disable_claude_and_legacy_queue(self):
+        rules = (ROOT / "CORE_RULES.md").read_text(encoding="utf-8")
+        self.assertIn("Claude는 사용하지 않는다", rules)
+        self.assertIn("ORDERS.md", rules)
+        self.assertIn("state.json", rules)
+
+    def test_legacy_claude_helper_is_off_by_default(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("AI_TEAM_ENABLE_CLAUDE", None)
+            ok, msg = CC.run_claude("x", REPO)
+        self.assertFalse(ok)
+        self.assertIn("Claude 비활성", msg)
+
+    def test_shared_llm_has_no_claude_fallback(self):
+        self.assertIsNone(LLM.claude_code("테스트"))
+        source = (REPO / "projects/ai-team/_shared/llm.py").read_text(encoding="utf-8")
+        self.assertIn("Ollama(로컬) → Grok Build 구독 CLI → Codex 구독 CLI → Gemini", source)
 
 
 if __name__ == "__main__":
