@@ -20,6 +20,18 @@ namespace AshesToStars
             _log.AppendLine((cond ? "  PASS  " : "  FAIL  ") + what);
         }
 
+        static bool HasCartAlphaSilhouette(Color[] pixels, out int clear, out int solid)
+        {
+            clear = 0;
+            solid = 0;
+            foreach (var p in pixels)
+            {
+                if (p.a < 0.05f) clear++;
+                else if (p.a > 0.95f) solid++;
+            }
+            return clear > pixels.Length / 2 && solid > pixels.Length / 8;
+        }
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -87,15 +99,13 @@ namespace AshesToStars
                 Check(cart.width == 256 && cart.height == 256,
                     $"마을 수레가 oxalpha 256 세트 (실제 {cart.width}×{cart.height})");
                 var cartPx = cart.GetPixels();
-                int cartClear = 0, cartSolid = 0;
-                foreach (var p in cartPx)
-                {
-                    if (p.a < 0.05f) cartClear++;
-                    else if (p.a > 0.95f) cartSolid++;
-                }
-                Check(cartClear > cartPx.Length / 2 && cartSolid > cartPx.Length / 8,
+                Check(HasCartAlphaSilhouette(cartPx, out int cartClear, out int cartSolid),
                     $"마을 수레 알파 유효 — 투명 배경+작은 월드 실루엣 " +
                     $"(투명 {cartClear} · 불투명 {cartSolid}/{cartPx.Length})");
+                var opaqueSquare = new Color[cartPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasCartAlphaSilhouette(opaqueSquare, out _, out _),
+                    "QA_NO_CART_ALPHA: 불투명 사각 배경 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(cart);
             }
 
