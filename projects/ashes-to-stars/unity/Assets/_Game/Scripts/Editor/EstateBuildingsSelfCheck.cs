@@ -72,6 +72,10 @@ namespace AshesToStars
             // field_rock_2는 0.30유닛 잔돌 세 알이라 의도적으로 캔버스의 약 1.9%만 차지한다.
             HasAlphaSilhouette(pixels, 64, out clear, out solid);
 
+        static bool HasFieldBushAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            // field_bush_2는 0.65유닛 작은 한 덩이라 캔버스의 약 6.3%만 차지한다.
+            HasAlphaSilhouette(pixels, 16, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -125,6 +129,33 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
+
+            // 평원 자연물 산포의 낮은 통과 가능 장식 한 역할 세트. 세 변형은 0.65~0.75유닛으로
+            // 표시되어 전투 이동을 막지 않으면서 빈 지면을 끊는다. 이름·산포 검사만으로는 옛
+            // 대형 생성본이나 불투명 사각 배경 회귀를 잡지 못하므로 실제 PNG 품질도 고정한다.
+            foreach (string fieldBushName in new[]
+                     { "field_bush_0", "field_bush_1", "field_bush_2" })
+            {
+                string fieldBushPath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + fieldBushName + ".png");
+                Check(File.Exists(fieldBushPath), $"평원 덤불 {fieldBushName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(fieldBushPath)) continue;
+
+                var fieldBush = new Texture2D(2, 2);
+                fieldBush.LoadImage(File.ReadAllBytes(fieldBushPath));
+                Check(fieldBush.width == 256 && fieldBush.height == 256,
+                    $"평원 덤불 {fieldBushName}이 oxalpha 256 세트 (실제 {fieldBush.width}×{fieldBush.height})");
+                var fieldBushPx = fieldBush.GetPixels();
+                Check(HasFieldBushAlphaSilhouette(fieldBushPx,
+                        out int fieldBushClear, out int fieldBushSolid),
+                    $"평원 덤불 {fieldBushName} 알파 유효 — 투명 배경+잎 실루엣 " +
+                    $"(투명 {fieldBushClear} · 불투명 {fieldBushSolid}/{fieldBushPx.Length})");
+                var opaqueSquare = new Color[fieldBushPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasFieldBushAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_FIELD_BUSH_ALPHA: 평원 덤불 {fieldBushName}의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(fieldBush);
+            }
 
             // 평원 산포에서 충돌까지 막는 바위 세트. 0.90/0.70/0.30유닛의 작은 표시 크기에서도
             // 단일 큰 바위·쌍석·잔돌 세 알이 구분돼야 하므로 실제 ox-alpha PNG의 캔버스와
