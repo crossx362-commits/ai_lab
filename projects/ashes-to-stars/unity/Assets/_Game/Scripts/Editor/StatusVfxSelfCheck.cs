@@ -9,11 +9,18 @@ namespace AshesToStars
     /// <summary>상태 아이콘과 독·빙결·보스 경고 스프라이트 시트의 로드·분할을 검사한다.</summary>
     public static class StatusVfxSelfCheck
     {
+        static readonly HashSet<string> PackedStatusSheets = new HashSet<string>
+        {
+            "poison_status_sheet",
+            "freeze_status_sheet",
+        };
+
         public static void Run()
         {
             Debug.Assert(StatusIconAtlas.IsReady, "[StatusVfx] 상태 아이콘 아틀라스 로드 실패");
             Debug.Assert(StatusVfxSheets.SourceCount == 7, "[StatusVfx] 상태·보스 기믹 시트 7종이 등록돼야 한다");
-            AssertRepackerKeysBelongToRuntime();
+            var repackerFiles = ReadRepackerStatusFiles();
+            AssertRepackerContract(repackerFiles);
             foreach (var key in StatusIconAtlas.RequiredKeys)
                 Debug.Assert(StatusIconAtlas.RectFor(key).width > 0, $"[StatusVfx] 상태 아이콘 누락: {key}");
             var live = StatusIconAtlas.LiveKeys(true, true, true, true);
@@ -30,39 +37,53 @@ namespace AshesToStars
                     Debug.Assert(StatusVfxSheets.Frame(sheet, frame) != null,
                         $"[StatusVfx] 시트 {sheet} 프레임 {frame} 누락");
 
-            var poison = Resources.Load<Texture2D>("fx/poison_status_sheet");
-            Debug.Assert(poison != null && poison.width == 1024 && poison.height == 512,
-                "[StatusVfx] 독 상태 시트는 정수 256px 4x2 격자여야 한다");
-            var freeze = Resources.Load<Texture2D>("fx/freeze_status_sheet");
-            Debug.Assert(freeze != null && freeze.width == 1024 && freeze.height == 512,
-                "[StatusVfx] 빙결 상태 시트는 정수 256px 4x2 격자여야 한다");
+            AssertPackedStatusSheets(repackerFiles);
 
             Debug.Log("[StatusVfxSelfCheck] PASS");
         }
 
-        static void AssertRepackerKeysBelongToRuntime()
+        static HashSet<string> ReadRepackerStatusFiles()
         {
             string projectRoot = Directory.GetParent(Directory.GetParent(Application.dataPath).FullName).FullName;
             string repackerPath = Path.Combine(projectRoot, "art/repack_job_vfx_sheet.py");
             Debug.Assert(File.Exists(repackerPath), "[StatusVfx] VFX 재패커를 찾지 못했다: " + repackerPath);
-            if (!File.Exists(repackerPath)) return;
+            if (!File.Exists(repackerPath)) return new HashSet<string>();
 
             string source = File.ReadAllText(repackerPath);
             Match block = Regex.Match(source, @"STATUS_SHEETS\s*=\s*\{(?<body>[\s\S]*?)\}");
             Debug.Assert(block.Success, "[StatusVfx] 재패커 STATUS_SHEETS 계약을 읽지 못했다");
-            if (!block.Success) return;
+            if (!block.Success) return new HashSet<string>();
 
             var repackerFiles = new HashSet<string>();
             foreach (Match entry in Regex.Matches(block.Groups["body"].Value,
                          "\"[^\"]+\"\\s*:\\s*\"(?<file>[^\"]+\\.png)\""))
                 repackerFiles.Add(Path.GetFileNameWithoutExtension(entry.Groups["file"].Value));
+            return repackerFiles;
+        }
 
+        static void AssertRepackerContract(HashSet<string> repackerFiles)
+        {
             var runtimeKeys = new HashSet<string>(StatusVfxSheets.RequiredKeys);
             Debug.Assert(KeysBelongToRuntime(repackerFiles, runtimeKeys),
                 "[StatusVfx] 재패커/런타임 키 드리프트: repacker="
                 + string.Join(",", repackerFiles) + " runtime=" + string.Join(",", runtimeKeys));
+            Debug.Assert(repackerFiles.SetEquals(PackedStatusSheets),
+                "[StatusVfx] 정수 격자 강제 대상은 독·빙결 2종이어야 한다: "
+                + string.Join(",", repackerFiles));
             Debug.Assert(!KeysBelongToRuntime(new HashSet<string> { "missing_status_sheet" }, runtimeKeys),
                 "[StatusVfx] 네거티브 컨트롤이 등록되지 않은 재패커 키를 탐지하지 못했다");
+            Debug.Assert(!new HashSet<string> { "poison_status_sheet" }.SetEquals(PackedStatusSheets),
+                "[StatusVfx] 네거티브 컨트롤이 정수 격자 대상 누락을 탐지하지 못했다");
+        }
+
+        static void AssertPackedStatusSheets(HashSet<string> repackerFiles)
+        {
+            foreach (string file in repackerFiles)
+            {
+                var texture = Resources.Load<Texture2D>("fx/" + file);
+                Debug.Assert(texture != null && texture.width == 1024 && texture.height == 512,
+                    $"[StatusVfx] {file} 시트는 정수 256px 4x2 격자여야 한다");
+            }
         }
 
         static bool KeysBelongToRuntime(HashSet<string> repackerFiles, HashSet<string> runtimeKeys)
