@@ -68,6 +68,10 @@ namespace AshesToStars
         static bool HasFieldTreeAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
             HasAlphaSilhouette(pixels, 8, out clear, out solid);
 
+        static bool HasFieldRockAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            // field_rock_2는 0.30유닛 잔돌 세 알이라 의도적으로 캔버스의 약 1.9%만 차지한다.
+            HasAlphaSilhouette(pixels, 64, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -121,6 +125,33 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
+
+            // 평원 산포에서 충돌까지 막는 바위 세트. 0.90/0.70/0.30유닛의 작은 표시 크기에서도
+            // 단일 큰 바위·쌍석·잔돌 세 알이 구분돼야 하므로 실제 ox-alpha PNG의 캔버스와
+            // 투명 배경, 충분한 암석 실루엣을 함께 고정한다.
+            foreach (string fieldRockName in new[]
+                     { "field_rock_0", "field_rock_1", "field_rock_2" })
+            {
+                string fieldRockPath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + fieldRockName + ".png");
+                Check(File.Exists(fieldRockPath), $"평원 바위 {fieldRockName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(fieldRockPath)) continue;
+
+                var fieldRock = new Texture2D(2, 2);
+                fieldRock.LoadImage(File.ReadAllBytes(fieldRockPath));
+                Check(fieldRock.width == 256 && fieldRock.height == 256,
+                    $"평원 바위 {fieldRockName}이 oxalpha 256 세트 (실제 {fieldRock.width}×{fieldRock.height})");
+                var fieldRockPx = fieldRock.GetPixels();
+                Check(HasFieldRockAlphaSilhouette(fieldRockPx,
+                        out int fieldRockClear, out int fieldRockSolid),
+                    $"평원 바위 {fieldRockName} 알파 유효 — 투명 배경+암석 실루엣 " +
+                    $"(투명 {fieldRockClear} · 불투명 {fieldRockSolid}/{fieldRockPx.Length})");
+                var opaqueSquare = new Color[fieldRockPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasFieldRockAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_FIELD_ROCK_ALPHA: 평원 바위 {fieldRockName}의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(fieldRock);
+            }
 
             // 평원 자연물 산포의 키 큰 고체 장애물 한 역할 세트. 네 변형은 2.40~6.00유닛으로
             // 표시되어 마을 밖 실루엣과 엄폐 리듬을 만든다. 이름·충돌 검사만으로는 옛 대형 생성본,
