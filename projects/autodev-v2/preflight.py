@@ -4,7 +4,7 @@
 
 프롬프트가 아니라 코드로 다음을 강제한다.
 - v1 게임 회의/상시감사 스케줄이 꺼져 있어야 한다.
-- autopilot 강제연장 목록이 비어 있어야 한다.
+- autopilot 강제연장 목록/Stop 훅이 없어야 한다.
 - Claude 직접 호출은 기본 비활성이어야 한다.
 - v2 컨텍스트/호출 상한이 비정상적으로 풀려 있지 않아야 한다.
 """
@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -85,6 +84,18 @@ def check() -> list[str]:
         if active:
             problems.append("autopilot 강제연장 세션이 남아 있음")
 
+    hooks = root / ".codex/hooks.json"
+    if hooks.exists():
+        try:
+            hook_data = json.loads(hooks.read_text(encoding="utf-8"))
+            stop_hooks = (hook_data.get("hooks") or {}).get("Stop") or []
+            if stop_hooks:
+                text = json.dumps(stop_hooks, ensure_ascii=False)
+                if "autopilot_stop_hook.py" in text:
+                    problems.append("Codex Stop 훅에 autopilot 강제연장이 남아 있음")
+        except Exception as e:
+            problems.append(f".codex/hooks.json 읽기 실패: {e}")
+
     # Claude는 사용자가 명시적으로 다시 켜기 전까지 기본 비활성이어야 한다.
     if os.getenv("AI_TEAM_ENABLE_CLAUDE", "0").strip().lower() in {"1", "true", "yes", "on"}:
         problems.append("AI_TEAM_ENABLE_CLAUDE가 활성화되어 있음")
@@ -99,7 +110,7 @@ def main() -> int:
         for p in problems:
             print(" - " + p)
         return 1
-    print("[PREFLIGHT] PASS — v1 토큰 소모 루프 OFF / v2 예산 가드 정상")
+    print("[PREFLIGHT] PASS — v1 토큰 소모 루프 OFF / Stop 강제연장 OFF / v2 예산 가드 정상")
     return 0
 
 
