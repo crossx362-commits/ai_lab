@@ -65,6 +65,9 @@ namespace AshesToStars
         static bool HasVillageHouseAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
             HasAlphaSilhouette(pixels, 6, out clear, out solid);
 
+        static bool HasFieldTreeAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            HasAlphaSilhouette(pixels, 8, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -118,6 +121,33 @@ namespace AshesToStars
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Mine) == "village_barn_0", "옛 광산=헛간");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Warehouse) == "village_house_0", "옛 창고=집");
             Check(EstateBuildings.OldOf(EstateGrid.Cell.Barracks) == "village_barn_0", "옛 수비대=헛간");
+
+            // 평원 자연물 산포의 키 큰 고체 장애물 한 역할 세트. 네 변형은 2.40~6.00유닛으로
+            // 표시되어 마을 밖 실루엣과 엄폐 리듬을 만든다. 이름·충돌 검사만으로는 옛 대형 생성본,
+            // 불투명 사각 배경, 빈 수관 회귀를 잡지 못하므로 실제 PNG 품질을 함께 고정한다.
+            foreach (string fieldTreeName in new[]
+                     { "field_tree_0", "field_tree_1", "field_tree_2", "field_tree_3" })
+            {
+                string fieldTreePath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + fieldTreeName + ".png");
+                Check(File.Exists(fieldTreePath), $"평원 나무 {fieldTreeName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(fieldTreePath)) continue;
+
+                var fieldTree = new Texture2D(2, 2);
+                fieldTree.LoadImage(File.ReadAllBytes(fieldTreePath));
+                Check(fieldTree.width == 256 && fieldTree.height == 256,
+                    $"평원 나무 {fieldTreeName}이 oxalpha 256 세트 (실제 {fieldTree.width}×{fieldTree.height})");
+                var fieldTreePx = fieldTree.GetPixels();
+                Check(HasFieldTreeAlphaSilhouette(fieldTreePx,
+                        out int fieldTreeClear, out int fieldTreeSolid),
+                    $"평원 나무 {fieldTreeName} 알파 유효 — 투명 배경+수관·줄기 실루엣 " +
+                    $"(투명 {fieldTreeClear} · 불투명 {fieldTreeSolid}/{fieldTreePx.Length})");
+                var opaqueSquare = new Color[fieldTreePx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasFieldTreeAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_FIELD_TREE_ALPHA: 평원 나무 {fieldTreeName}의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(fieldTree);
+            }
 
             // 필드 마을의 고체 장애물로 함께 배치되는 큰 집·작은 집 한 세트. 각각 4.60/2.80유닛으로
             // 표시되고 큰 집은 본성 QA_NO, 작은 집은 대장간 QA_NO도 소비한다. 이름 매핑만으로는
