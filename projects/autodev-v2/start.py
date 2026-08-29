@@ -4,9 +4,9 @@
 
 1) v1 토큰 소모 루프 비활성화
 2) Grok/Codex 실제 CLI를 찾아 호환/쿼터 보호 래퍼 준비
-3) 로컬 Ollama Director 우선
+3) Grok Director + 로컬 Anti-Loop/rollback 가드 사용
 4) preflight 안전/예산/핵심 CLI 확인
-5) Codex/Grok 작업 진행을 실시간 로그로 내보내며 연속 실행
+5) Codex/Grok 작업 진행을 실시간 로그로 내보내며 Supervisor 연속 실행
 """
 from __future__ import annotations
 
@@ -64,7 +64,6 @@ def compat_env() -> dict[str, str] | None:
     if codex:
         env["AUTODEV_REAL_CODEX"] = codex
     env["PATH"] = str(RUNTIME_BIN) + os.pathsep + env.get("PATH", "")
-    env.setdefault("AUTODEV_LOCAL_DIRECTOR", "1")
 
     env.setdefault("AUTODEV_GROK_QUOTA_COOLDOWN_SECONDS", "3600")
     env.setdefault(
@@ -79,7 +78,10 @@ def compat_env() -> dict[str, str] | None:
 
     print(f"Grok CLI: {grok}")
     print(f"Codex CLI: {codex or '(미설치/미발견)'}")
-    print("Director 라우팅: 로컬 Ollama 우선, 유효한 결과가 없을 때만 Grok")
+    print("Director: Grok 전담 · Ollama 계획 사용 안 함")
+    print("Anti-Loop: 중복 작업/같은 영역 반복/같은 실패를 로컬 코드로 차단")
+    print("Rollback: 실패 작업의 변경만 복원하고 기존 사용자 변경은 보존")
+    print("Supervisor: 배치 상한 후에도 계속 실행 · 시간당 클라우드 상한 적용")
     print("Provider 쿼터 보호: Grok 1시간 / Codex 5분 후 실제 재확인")
     print("Codex 진행 로그: 실시간 스트리밍")
     return env
