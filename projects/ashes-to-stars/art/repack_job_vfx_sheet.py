@@ -26,6 +26,7 @@ STATUS_SHEETS = {
     "boss_charge_warning": "boss_charge_warning_sheet.png",
     "boss_summon_portal": "boss_summon_portal_sheet.png",
     "boss_cone_warning": "boss_cone_warning_sheet.png",
+    "boss_interrupt": "boss_interrupt_sheet.png",
 }
 COLS, ROWS, CELL, PADDING = 4, 2, 256, 8
 SOURCE_SIZE = (1774, 887)

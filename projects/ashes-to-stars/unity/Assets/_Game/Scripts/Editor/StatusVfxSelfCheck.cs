@@ -9,8 +9,6 @@ namespace AshesToStars
     /// <summary>상태 아이콘과 독·빙결·보스 경고 스프라이트 시트의 로드·분할을 검사한다.</summary>
     public static class StatusVfxSelfCheck
     {
-        const int PackedStatusSheetCount = 6;
-
         public static void Run()
         {
             Debug.Assert(StatusIconAtlas.IsReady, "[StatusVfx] 상태 아이콘 아틀라스 로드 실패");
@@ -60,11 +58,10 @@ namespace AshesToStars
         static void AssertRepackerContract(HashSet<string> repackerFiles)
         {
             var runtimeKeys = new HashSet<string>(StatusVfxSheets.RequiredKeys);
-            Debug.Assert(RepackerContractPasses(repackerFiles, runtimeKeys, PackedStatusSheetCount),
+            Debug.Assert(RepackerContractPasses(repackerFiles, runtimeKeys),
                 "[StatusVfx] 재패커/런타임 키 드리프트: repacker="
                 + string.Join(",", repackerFiles) + " runtime=" + string.Join(",", runtimeKeys));
-            Debug.Assert(!RepackerContractPasses(new HashSet<string> { "missing_status_sheet" }, runtimeKeys,
-                    PackedStatusSheetCount),
+            Debug.Assert(!RepackerContractPasses(new HashSet<string> { "missing_status_sheet" }, runtimeKeys),
                 "[StatusVfx] 네거티브 컨트롤이 등록되지 않은 재패커 키를 탐지하지 못했다");
             var missingOne = new HashSet<string>(repackerFiles);
             foreach (string file in repackerFiles)
@@ -72,20 +69,11 @@ namespace AshesToStars
                 missingOne.Remove(file);
                 break;
             }
-            Debug.Assert(!RepackerContractPasses(missingOne, runtimeKeys, PackedStatusSheetCount),
-                "[StatusVfx] 네거티브 컨트롤이 신규 정수 격자 대상 누락을 탐지하지 못했다");
-            Debug.Assert(!RepackerContractPasses(repackerFiles, runtimeKeys, PackedStatusSheetCount + 1),
-                "[StatusVfx] 네거티브 컨트롤이 완료 수 선증가 드리프트를 탐지하지 못했다");
-            var expandedWithUnpackedRuntimeSheet = new HashSet<string>(repackerFiles);
-            foreach (string key in runtimeKeys)
-            {
-                if (expandedWithUnpackedRuntimeSheet.Add(key)) break;
-            }
-            Debug.Assert(expandedWithUnpackedRuntimeSheet.Count == PackedStatusSheetCount + 1,
-                "[StatusVfx] 네거티브용 미완료 런타임 시트를 찾지 못했다");
-            Debug.Assert(!RepackerContractPasses(expandedWithUnpackedRuntimeSheet, runtimeKeys,
-                    PackedStatusSheetCount),
-                "[StatusVfx] 네거티브 컨트롤이 완료 수 상수와 Python 목록 확장 드리프트를 탐지하지 못했다");
+            Debug.Assert(!RepackerContractPasses(missingOne, runtimeKeys),
+                "[StatusVfx] 네거티브 컨트롤이 런타임 시트 누락을 탐지하지 못했다");
+            var extraOne = new HashSet<string>(repackerFiles) { "extra_status_sheet" };
+            Debug.Assert(!RepackerContractPasses(extraOne, runtimeKeys),
+                "[StatusVfx] 네거티브 컨트롤이 재패커 여분 시트를 탐지하지 못했다");
         }
 
         static void AssertPackedStatusSheets(HashSet<string> repackerFiles)
@@ -98,8 +86,7 @@ namespace AshesToStars
             }
         }
 
-        static bool RepackerContractPasses(HashSet<string> repackerFiles, HashSet<string> runtimeKeys,
-            int expectedPackedCount)
-            => repackerFiles.Count == expectedPackedCount && repackerFiles.IsSubsetOf(runtimeKeys);
+        static bool RepackerContractPasses(HashSet<string> repackerFiles, HashSet<string> runtimeKeys)
+            => repackerFiles.SetEquals(runtimeKeys);
     }
 }
