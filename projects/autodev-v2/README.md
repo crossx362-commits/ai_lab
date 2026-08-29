@@ -19,9 +19,19 @@ Claude는 AutoDev v2에서 전혀 호출하지 않습니다.
 - 한 실행당 기본 최대 6작업 / 클라우드 12호출에서 강제 종료합니다.
 - 문서/회의록/STATUS 작성은 Worker가 하지 않습니다.
 
-## 첫 전환
+## 가장 간단한 시작
 
-먼저 현재 토큰을 태우는 게임 회의/감사 스케줄을 끕니다.
+Grok Build CLI에 한 번 로그인된 상태에서 아래 한 줄만 실행하면 됩니다.
+
+```bash
+python3 projects/autodev-v2/start.py
+```
+
+`start.py`가 먼저 기존 게임 회의/상시 감사 스케줄을 백업 후 비활성화하고, macOS launchd를 동기화한 다음 AutoDev v2 연속 루프를 시작합니다.
+
+## 수동 전환
+
+전환만 따로 하려면:
 
 ```bash
 python3 projects/autodev-v2/migrate_v1.py --apply
@@ -29,9 +39,9 @@ python3 projects/autodev-v2/migrate_v1.py --apply
 
 이 명령은 기존 파일을 삭제하지 않고 `schedules.json`을 백업한 다음 게임 회의/상시 감사 잡만 비활성화합니다. macOS에서는 `schedule_sync.py sync`까지 실행해 기존 launchd 등록도 정리합니다.
 
-## 실행
+## 개별 실행
 
-Grok Build CLI에 한 번 로그인되어 있어야 합니다.
+Grok 확인:
 
 ```bash
 grok --version
