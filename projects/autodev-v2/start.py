@@ -6,7 +6,8 @@
 2) Grok/Codex 실제 CLI를 찾아 호환/쿼터 보호 래퍼 준비
 3) Grok Director + 로컬 Anti-Loop/rollback 가드 사용
 4) preflight 안전/예산/핵심 CLI 확인
-5) Codex/Grok 작업 진행을 실시간 로그로 내보내며 Supervisor 연속 실행
+5) 컴파일 + 작업별 실제 Unity Acceptance 검증을 통과해야 완료
+6) Codex/Grok 작업 진행을 실시간 로그로 내보내며 Supervisor 연속 실행
 """
 from __future__ import annotations
 
@@ -81,6 +82,8 @@ def compat_env() -> dict[str, str] | None:
     print("Director: Grok 전담 · Ollama 계획 사용 안 함")
     print("Anti-Loop: 중복 작업/같은 영역 반복/같은 실패를 로컬 코드로 차단")
     print("Rollback: 실패 작업의 변경만 복원하고 기존 사용자 변경은 보존")
+    print("검증: 컴파일 PASS + 작업별 실제 Unity Acceptance PASS 필수")
+    print("검증 대기: Unity가 열려 있으면 AI를 낭비하지 않고 잠시 기다림")
     print("Supervisor: 배치 상한 후에도 계속 실행 · 시간당 클라우드 상한 적용")
     print("Provider 쿼터 보호: Grok 1시간 / Codex 5분 후 실제 재확인")
     print("Codex 진행 로그: 실시간 스트리밍")
