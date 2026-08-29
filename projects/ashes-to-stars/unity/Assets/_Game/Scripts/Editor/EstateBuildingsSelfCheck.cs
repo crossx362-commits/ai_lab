@@ -137,6 +137,11 @@ namespace AshesToStars
                 Check(HasBarnAlphaSilhouette(barnPx, out int barnClear, out int barnSolid),
                     $"마을 헛간 알파 유효 — 투명 배경+대형 월드 실루엣 " +
                     $"(투명 {barnClear} · 불투명 {barnSolid}/{barnPx.Length})");
+                var sparseSilhouette = new Color[barnPx.Length];
+                for (int i = 0; i < sparseSilhouette.Length / 4; i++)
+                    sparseSilhouette[i] = Color.white;
+                Check(!HasBarnAlphaSilhouette(sparseSilhouette, out _, out _),
+                    "QA_NO_BARN_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(barn);
             }
 
