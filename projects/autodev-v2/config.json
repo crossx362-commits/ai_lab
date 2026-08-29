@@ -15,5 +15,5 @@
   "grok_director_max_turns": 2,
   "prefer_subscription_oauth": true,
   "full_verify_on_milestone": false,
-  "stop_on_blocked": true
+  "stop_on_blocked": false
 }
