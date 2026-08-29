@@ -133,6 +133,9 @@ namespace AshesToStars
             // 평원 자연물 산포의 낮은 통과 가능 장식 한 역할 세트. 세 변형은 0.65~0.75유닛으로
             // 표시되어 전투 이동을 막지 않으면서 빈 지면을 끊는다. 이름·산포 검사만으로는 옛
             // 대형 생성본이나 불투명 사각 배경 회귀를 잡지 못하므로 실제 PNG 품질도 고정한다.
+            var sparseFieldBushSilhouette = SparseSilhouetteAtBoundary(256 * 256, 16);
+            Check(!HasFieldBushAlphaSilhouette(sparseFieldBushSilhouette, out _, out _),
+                "QA_NO_FIELD_BUSH_SPARSE_ALPHA: 평원 덤불의 1/16 희박 실루엣 회귀를 거부한다");
             foreach (string fieldBushName in new[]
                      { "field_bush_0", "field_bush_1", "field_bush_2" })
             {
