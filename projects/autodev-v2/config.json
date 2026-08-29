@@ -26,5 +26,18 @@
   "supervisor_pause_seconds": 15,
   "provider_pause_seconds": 60,
   "stalled_pause_seconds": 180,
-  "max_no_progress_batches": 2
+  "max_no_progress_batches": 2,
+  "functional_verify_enabled": true,
+  "functional_verify_areas": [
+    "combat",
+    "character",
+    "progression",
+    "items",
+    "ui",
+    "stage",
+    "systems"
+  ],
+  "functional_verify_min_assertions": 1,
+  "functional_verify_wait_seconds": 120,
+  "functional_verify_timeout_seconds": 900
 }
