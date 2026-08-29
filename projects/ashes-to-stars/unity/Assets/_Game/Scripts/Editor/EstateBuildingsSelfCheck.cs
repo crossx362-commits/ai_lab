@@ -579,6 +579,9 @@ namespace AshesToStars
                 for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
                 Check(!HasCartAlphaSilhouette(opaqueSquare, out _, out _),
                     "QA_NO_CART_ALPHA: 불투명 사각 배경 회귀를 거부한다");
+                var sparseSilhouette = SparseSilhouetteAtBoundary(cartPx.Length, 8);
+                Check(!HasCartAlphaSilhouette(sparseSilhouette, out _, out _),
+                    "QA_NO_CART_SPARSE_ALPHA: 마을 수레의 1/8 희박 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(cart);
             }
 
