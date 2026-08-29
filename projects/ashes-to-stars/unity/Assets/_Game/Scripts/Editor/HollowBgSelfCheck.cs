@@ -16,6 +16,16 @@ namespace AshesToStars
             return aspect >= 1.75f && aspect <= 1.80f;
         }
 
+        static void GetSourceSize(Texture2D texture, out int width, out int height)
+        {
+            width = 0;
+            height = 0;
+            if (texture == null) return;
+
+            var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(texture)) as TextureImporter;
+            importer?.GetSourceTextureWidthAndHeight(out width, out height);
+        }
+
         static readonly string[] Keys =
         {
             "bg_estate", "bg_field", "bg_tower",
@@ -48,13 +58,7 @@ namespace AshesToStars
             }
 
             var character = Resources.Load<Texture2D>("bg/bg_character");
-            int sourceWidth = 0;
-            int sourceHeight = 0;
-            if (character != null)
-            {
-                var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(character)) as TextureImporter;
-                importer?.GetSourceTextureWidthAndHeight(out sourceWidth, out sourceHeight);
-            }
+            GetSourceSize(character, out int sourceWidth, out int sourceHeight);
             Check(HasLandscapeScreenShape(sourceWidth, sourceHeight),
                 "캐릭터 배경 원본은 16:9 가로 화면이어야 한다 (실제 "
                 + sourceWidth + "x" + sourceHeight + ")");
@@ -62,13 +66,7 @@ namespace AshesToStars
                 "정사각형 캐릭터 배경 대표 결함을 거부한다");
 
             var party = Resources.Load<Texture2D>("bg/bg_party");
-            sourceWidth = 0;
-            sourceHeight = 0;
-            if (party != null)
-            {
-                var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(party)) as TextureImporter;
-                importer?.GetSourceTextureWidthAndHeight(out sourceWidth, out sourceHeight);
-            }
+            GetSourceSize(party, out sourceWidth, out sourceHeight);
             Check(HasLandscapeScreenShape(sourceWidth, sourceHeight),
                 "파티·전투 스타일 공용 배경 원본은 16:9 가로 화면이어야 한다 (실제 "
                 + sourceWidth + "x" + sourceHeight + ")");
@@ -76,13 +74,7 @@ namespace AshesToStars
                 "세로형 파티 배경 대표 결함을 거부한다");
 
             var worldmap = Resources.Load<Texture2D>("bg/bg_worldmap");
-            sourceWidth = 0;
-            sourceHeight = 0;
-            if (worldmap != null)
-            {
-                var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(worldmap)) as TextureImporter;
-                importer?.GetSourceTextureWidthAndHeight(out sourceWidth, out sourceHeight);
-            }
+            GetSourceSize(worldmap, out sourceWidth, out sourceHeight);
             Check(HasLandscapeScreenShape(sourceWidth, sourceHeight),
                 "월드맵 배경 원본은 16:9 가로 화면이어야 한다 (실제 "
                 + sourceWidth + "x" + sourceHeight + ")");
@@ -90,13 +82,7 @@ namespace AshesToStars
                 "16:10 월드맵 배경 대표 결함을 거부한다");
 
             var title = Resources.Load<Texture2D>("bg/bg_title");
-            sourceWidth = 0;
-            sourceHeight = 0;
-            if (title != null)
-            {
-                var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(title)) as TextureImporter;
-                importer?.GetSourceTextureWidthAndHeight(out sourceWidth, out sourceHeight);
-            }
+            GetSourceSize(title, out sourceWidth, out sourceHeight);
             Check(HasLandscapeScreenShape(sourceWidth, sourceHeight),
                 "타이틀 배경 원본은 16:9 가로 화면이어야 한다 (실제 "
                 + sourceWidth + "x" + sourceHeight + ")");
