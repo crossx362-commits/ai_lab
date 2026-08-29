@@ -96,6 +96,10 @@ namespace AshesToStars
             // 무너진 dungeon_pillar_2도 2.20유닛 엄폐물로 읽혀야 하므로 최소 1/10은 채워야 한다.
             HasAlphaSilhouette(pixels, 10, out clear, out solid);
 
+        static bool HasDungeonCrystalAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            // 0.90유닛의 작은 수정도 던전 바닥에서 읽혀야 하므로 최소 1/10은 채워야 한다.
+            HasAlphaSilhouette(pixels, 10, out clear, out solid);
+
         static bool HasDungeonRubbleAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
             // 0.60유닛 파편 무더기인 dungeon_rubble_0도 바닥에서 읽히므로 최소 1/10은 채워야 한다.
             HasAlphaSilhouette(pixels, 10, out clear, out solid);
@@ -189,6 +193,38 @@ namespace AshesToStars
                 Check(!HasAshCharredAlphaSilhouette(opaqueSquare, out _, out _),
                     $"QA_NO_ASH_CHARRED_ALPHA: 잿벌 탄화목 {ashCharredName}의 불투명 사각 배경 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(ashCharred);
+            }
+
+            // 던전 자연물 산포의 수정 한 역할 세트. 0.90/1.40/1.00유닛으로 표시되는
+            // 세 변형이 발광 지형 장식으로 구분돼야 한다. 이름·고체 판정만으로는
+            // 불투명 배경이나 빈 실루엣 회귀를 잡지 못한다.
+            var sparseDungeonCrystalSilhouette = SparseSilhouetteAtBoundary(256 * 256, 10);
+            Check(!HasDungeonCrystalAlphaSilhouette(sparseDungeonCrystalSilhouette, out _, out _),
+                "QA_NO_DUNGEON_CRYSTAL_SPARSE_ALPHA: 던전 수정의 1/10 희박 실루엣 회귀를 거부한다");
+            foreach (string dungeonCrystalName in new[]
+                     { "dungeon_crystal_0", "dungeon_crystal_1", "dungeon_crystal_2" })
+            {
+                string dungeonCrystalPath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + dungeonCrystalName + ".png");
+                Check(File.Exists(dungeonCrystalPath),
+                    $"던전 수정 {dungeonCrystalName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(dungeonCrystalPath)) continue;
+
+                var dungeonCrystal = new Texture2D(2, 2);
+                dungeonCrystal.LoadImage(File.ReadAllBytes(dungeonCrystalPath));
+                Check(dungeonCrystal.width == 256 && dungeonCrystal.height == 256,
+                    $"던전 수정 {dungeonCrystalName}이 oxalpha 256 세트 " +
+                    $"(실제 {dungeonCrystal.width}×{dungeonCrystal.height})");
+                var dungeonCrystalPx = dungeonCrystal.GetPixels();
+                Check(HasDungeonCrystalAlphaSilhouette(dungeonCrystalPx,
+                        out int dungeonCrystalClear, out int dungeonCrystalSolid),
+                    $"던전 수정 {dungeonCrystalName} 알파 유효 — 투명 배경+수정 실루엣 " +
+                    $"(투명 {dungeonCrystalClear} · 불투명 {dungeonCrystalSolid}/{dungeonCrystalPx.Length})");
+                var opaqueSquare = new Color[dungeonCrystalPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasDungeonCrystalAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_DUNGEON_CRYSTAL_ALPHA: 던전 수정 {dungeonCrystalName}의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(dungeonCrystal);
             }
 
             // 던전 산포의 고체 기둥 한 역할 세트. 2.40/2.40/2.20유닛으로 표시되는
