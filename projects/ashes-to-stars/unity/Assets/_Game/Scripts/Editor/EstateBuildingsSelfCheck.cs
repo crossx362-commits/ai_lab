@@ -652,6 +652,10 @@ namespace AshesToStars
                 Check(HasFenceAlphaSilhouette(fencePx, out int fenceClear, out int fenceSolid),
                     $"마을 목책 {fenceName} 알파 유효 — 투명 배경+가로 경계 실루엣 " +
                     $"(투명 {fenceClear} · 불투명 {fenceSolid}/{fencePx.Length})");
+                var opaqueSquare = new Color[fencePx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasFenceAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_FENCE_ALPHA: 마을 목책 {fenceName}의 불투명 사각 배경 회귀를 거부한다");
                 var sparseSilhouette = SparseSilhouetteAtBoundary(fencePx.Length, 5);
                 Check(!HasFenceAlphaSilhouette(sparseSilhouette, out _, out _),
                     $"QA_NO_FENCE_SPARSE_ALPHA: 마을 목책 {fenceName}의 지나치게 희박한 " +
