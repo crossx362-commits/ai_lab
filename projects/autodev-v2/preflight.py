@@ -7,7 +7,8 @@
 - autopilot 강제연장 목록/Stop 훅이 없어야 한다.
 - Claude 직접 호출은 기본 비활성이어야 한다.
 - v2 컨텍스트/호출 상한이 비정상적으로 풀려 있지 않아야 한다.
-- 설치된 Grok CLI가 v2 절약형 headless 옵션을 실제 지원해야 한다.
+- Grok의 핵심 headless/수정 옵션은 반드시 있어야 한다.
+- 버전별 절약 옵션은 없더라도 호환 래퍼가 생략하므로 경고만 한다.
 
 Grok 검사는 `--help`/`version`만 사용하므로 모델 토큰을 소비하지 않는다.
 """
@@ -32,15 +33,22 @@ HEAVY_IDS = {
     "game_agent_teo",
 }
 
+# 이 셋은 AutoDev의 headless 실행 자체에 필요하다.
 GROK_REQUIRED_FLAGS = (
     "--cwd",
     "--output-format",
     "--max-turns",
+)
+
+# 버전에 따라 없을 수 있다. start.py의 grok_compat.py가 미지원 항목만 제거한다.
+GROK_OPTIONAL_SAVING_FLAGS = (
     "--no-plan",
     "--no-subagents",
     "--no-memory",
     "--disable-web-search",
 )
+
+_LAST_GROK_WARNINGS: list[str] = []
 
 
 def repo_root() -> Path:
@@ -60,12 +68,23 @@ def _load_autodev_module():
     return mod
 
 
+def _real_grok(mod) -> str | None:
+    """start.py 호환 래퍼 안에서도 실제 설치 Grok을 검사한다."""
+    pinned = os.getenv("AUTODEV_REAL_GROK", "").strip()
+    if pinned and Path(pinned).exists():
+        return pinned
+    return mod.find_grok_cli()
+
+
 def check_grok_cli() -> list[str]:
-    """실제 설치된 Grok CLI가 v2가 쓰는 옵션과 맞는지 0토큰으로 검사한다."""
+    """실제 설치 Grok CLI를 0토큰 검사. 선택 절약 옵션 누락은 경고만 한다."""
+    global _LAST_GROK_WARNINGS
+    _LAST_GROK_WARNINGS = []
     problems: list[str] = []
+
     try:
         mod = _load_autodev_module()
-        exe = mod.find_grok_cli()
+        exe = _real_grok(mod)
     except Exception as e:
         return [f"Grok CLI 검사기 로드 실패: {e}"]
 
@@ -78,25 +97,31 @@ def check_grok_cli() -> list[str]:
 
     if "--single" not in help_text and "-p" not in help_text:
         problems.append("Grok CLI에 headless -p/--single 옵션이 없음")
+
     for flag in GROK_REQUIRED_FLAGS:
         if flag not in help_text:
-            problems.append(f"Grok CLI 필수 옵션 미지원: {flag}")
+            problems.append(f"Grok CLI 핵심 옵션 미지원: {flag}")
+
     if "--always-approve" not in help_text and "--yolo" not in help_text:
         problems.append("Grok CLI Worker 자동수정 옵션(--always-approve/--yolo) 미지원")
 
-    try:
-        probe = mod.build_grok_command(
-            exe,
-            "AutoDev v2 CLI 호환성 검사. 실제 모델 호출은 하지 않음.",
-            HERE,
-            max_turns=1,
-            allow_edits=False,
-            help_text=help_text,
+    missing_optional = [f for f in GROK_OPTIONAL_SAVING_FLAGS if f not in help_text]
+    if missing_optional:
+        _LAST_GROK_WARNINGS.append(
+            "현재 Grok CLI 미지원 선택 절약 옵션: " + ", ".join(missing_optional)
+            + " — AutoDev 호환 모드에서 자동 생략"
         )
-        if "--agent-profile" in probe:
-            problems.append("AutoDev가 폐기된 --agent-profile 옵션을 생성함")
+
+    # 과거 장애를 낸 폐기 옵션이 코드에 다시 들어오지 않았는지만 정적으로 확인한다.
+    try:
+        source = (HERE / "autodev.py").read_text(encoding="utf-8", errors="replace")
+        if 'cmd += ["--agent-profile"' in source:
+            problems.append("AutoDev 실행 argv에 폐기된 --agent-profile이 다시 들어옴")
     except Exception as e:
-        problems.append(f"Grok 명령 생성 실패: {e}")
+        problems.append(f"autodev.py CLI 소스 검사 실패: {e}")
+
+    if not (HERE / "grok_compat.py").exists():
+        problems.append("Grok 버전 호환 래퍼(grok_compat.py) 없음")
 
     return problems
 
@@ -170,7 +195,7 @@ def check() -> list[str]:
 def _grok_version_text() -> str:
     try:
         mod = _load_autodev_module()
-        exe = mod.find_grok_cli()
+        exe = _real_grok(mod)
         if not exe:
             return "미발견"
         for cmd in ([exe, "version"], [exe, "--version"]):
@@ -186,15 +211,20 @@ def _grok_version_text() -> str:
 
 def main() -> int:
     problems = check()
+
+    for warning in _LAST_GROK_WARNINGS:
+        print(f"[PREFLIGHT] WARN — {warning}")
+
     if problems:
         print("[PREFLIGHT] FAIL")
         for p in problems:
             print(" - " + p)
         if any("Grok" in p or "grok" in p for p in problems):
-            print("\nGrok CLI 문제면 먼저 `grok update` 후 다시 실행하세요.")
+            print("\nGrok 핵심 CLI 기능이 빠져 있습니다. `grok update` 또는 재설치를 확인하세요.")
         return 1
+
     print(f"[PREFLIGHT] Grok: {_grok_version_text()}")
-    print("[PREFLIGHT] PASS — CLI 호환 / v1 루프 OFF / Stop 강제연장 OFF / v2 예산 가드 정상")
+    print("[PREFLIGHT] PASS — 핵심 CLI 호환 / v1 루프 OFF / Stop 강제연장 OFF / v2 예산 가드 정상")
     return 0
 
 
