@@ -76,6 +76,26 @@ def _real_grok(mod) -> str | None:
     return mod.find_grok_cli()
 
 
+def _successful_help(exe: str) -> str:
+    """return code 0인 help만 인정한다. 실패 Usage를 정상 help로 오인하지 않는다."""
+    for cmd in ([exe, "--no-auto-update", "--help"], [exe, "--help"]):
+        try:
+            r = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                encoding="utf-8",
+                errors="replace",
+            )
+            text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
+            if r.returncode == 0 and text:
+                return text
+        except Exception:
+            continue
+    return ""
+
+
 def check_grok_cli() -> list[str]:
     """실제 설치 Grok CLI를 0토큰 검사. 선택 절약 옵션 누락은 경고만 한다."""
     global _LAST_GROK_WARNINGS
@@ -91,7 +111,7 @@ def check_grok_cli() -> list[str]:
     if not exe:
         return ["grok CLI를 찾지 못함. 설치/로그인 상태를 확인하세요."]
 
-    help_text = mod.grok_help(exe)
+    help_text = _successful_help(exe)
     if not help_text:
         return ["grok --help 출력 확인 실패"]
 
