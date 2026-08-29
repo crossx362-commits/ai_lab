@@ -165,16 +165,18 @@ def last_life_gone():
 def main():
     DST.mkdir(parents=True, exist_ok=True)
     for name, gen in [
-        ("danger_zone", danger_zone),
-        ("boss_enrage", boss_enrage),
-        ("last_life_enter", last_life_enter),
-        ("escape_cast", escape_cast),
-        ("level_up", level_up),
-        ("death_low", death_low),
-        ("last_life_gone", last_life_gone),
+        # 위험 신호군은 일반 징글보다 크게 — 묻히지 않게(§16-10).
+        ("danger_zone", (danger_zone, 1.55)),
+        ("boss_enrage", (boss_enrage, 1.35)),
+        ("last_life_enter", (last_life_enter, 1.15)),
+        ("escape_cast", (escape_cast, 1.0)),
+        ("level_up", (level_up, 0.8)),
+        ("death_low", (death_low, 1.0)),
+        ("last_life_gone", (last_life_gone, 1.0)),
     ]:
+        name, (gen, gain) = name, gen
         dur, fn = gen()
-        render(name, dur, fn)
+        render(name, dur, fn, gain)
 
 
 if __name__ == "__main__":

@@ -140,6 +140,11 @@ namespace AshesToStars
                 for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
                 Check(!HasHaystackAlphaSilhouette(opaqueSquare, out _, out _),
                     "QA_NO_HAYSTACK_ALPHA: 불투명 사각 배경 회귀를 거부한다");
+                var sparseSilhouette = new Color[haystackPx.Length];
+                for (int i = 0; i < sparseSilhouette.Length / 10; i++)
+                    sparseSilhouette[i] = Color.white;
+                Check(!HasHaystackAlphaSilhouette(sparseSilhouette, out _, out _),
+                    "QA_NO_HAYSTACK_SPARSE_ALPHA: 지나치게 희박한 실루엣 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(haystack);
             }
 

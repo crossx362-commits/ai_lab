@@ -96,7 +96,9 @@ namespace AshesToStars
             Check(charSrc.Contains("ProjCap.Line"),
                 "CharacterScreen이 Line을 속성 탭에 그린다");
             Check(charSrc.Contains("budget + \" · \" + projCap"),
-                "상한 줄을 잡몹 행에 붙인다 — 맨 뒤면 화면에서 잘린다");
+                "상한 줄을 잡몹 행에 붙인다");
+            Check(charSrc.Contains("ProjCap.ShowQa ? ProjCap.Line()"),
+                "부제에 상한 줄을 올린다 — 속성 패널 맨 뒤는 샷에 안 나온다");
             Check(charSrc.Contains("ProjCap.SeedQaIfRequested"),
                 "CharacterScreen이 SeedQa를 부른다");
             Check(charSrc.Contains("!roster[i].IsDeleted"),

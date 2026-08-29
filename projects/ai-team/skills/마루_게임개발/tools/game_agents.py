@@ -39,7 +39,7 @@ from _shared.env import load_env        # noqa: E402
 from _shared.telegram import send       # noqa: E402
 from _shared.process import advisory_lock  # noqa: E402
 from _shared.cc import run_claude, extract_json  # noqa: E402
-from _shared.llm import ollama  # noqa: E402
+from _shared.llm import ollama, gpt_codex  # noqa: E402
 from _shared.assignment import people_for, current_project  # noqa: E402
 
 import importlib.util as _u             # noqa: E402
@@ -127,6 +127,10 @@ def _beat(lens: str, focus: str, situation: str) -> tuple[str, str, list]:
     )
     ok, out = run_claude(prompt, PROJECT_ROOT, timeout=420,
                          allowed_tools="Read,Grep,Glob", permission_mode="plan")
+    if not ok or not out:
+        # 조직 정책 등으로 Claude 구독이 막혀도, 공용 체인의 다음 구독 경로로 역할 점검을 계속한다.
+        out = gpt_codex(prompt + "\n\n읽기 전용 점검이다. 파일을 수정·생성·삭제하지 마라.")
+        ok = bool(out)
     if not ok or not out:
         return lens, _gc.FAIL, []
     items = extract_json(out)
