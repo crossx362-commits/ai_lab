@@ -84,6 +84,10 @@ namespace AshesToStars
             // 1.10유닛 생울타리는 네 포기의 잎 실루엣으로 캔버스의 약 12.6%를 차지한다.
             HasAlphaSilhouette(pixels, 8, out clear, out solid);
 
+        static bool HasAshBoneAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            // 0.70유닛의 작은 골편도 긴 뼈와 구분되는 실루엣을 유지하므로 최소 1/16은 채워야 한다.
+            HasAlphaSilhouette(pixels, 16, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -114,6 +118,35 @@ namespace AshesToStars
             PlayerPrefs.DeleteKey("ats.estate.keep_orig");
             PlayerPrefs.DeleteKey("ats.estate.keep_job");
             PlayerPrefs.Save();
+
+            // 잿벌 자연물 산포의 뼈 장식 한 역할 세트. 1.20/0.70유닛으로 표시되는 긴 뼈와
+            // 굽은 골편이 작은 크기에서도 구분돼야 한다. 이름·산포 검사만으로는 불투명 배경이나
+            // 빈 실루엣 회귀를 잡지 못하므로 실제 Resources PNG의 캔버스와 알파를 함께 고정한다.
+            var sparseAshBoneSilhouette = SparseSilhouetteAtBoundary(256 * 256, 16);
+            Check(!HasAshBoneAlphaSilhouette(sparseAshBoneSilhouette, out _, out _),
+                "QA_NO_ASH_BONE_SPARSE_ALPHA: 잿벌 뼈의 1/16 희박 실루엣 회귀를 거부한다");
+            foreach (string ashBoneName in new[] { "ash_bone_0", "ash_bone_1" })
+            {
+                string ashBonePath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + ashBoneName + ".png");
+                Check(File.Exists(ashBonePath), $"잿벌 뼈 {ashBoneName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(ashBonePath)) continue;
+
+                var ashBone = new Texture2D(2, 2);
+                ashBone.LoadImage(File.ReadAllBytes(ashBonePath));
+                Check(ashBone.width == 256 && ashBone.height == 256,
+                    $"잿벌 뼈 {ashBoneName}이 oxalpha 256 세트 (실제 {ashBone.width}×{ashBone.height})");
+                var ashBonePx = ashBone.GetPixels();
+                Check(HasAshBoneAlphaSilhouette(ashBonePx,
+                        out int ashBoneClear, out int ashBoneSolid),
+                    $"잿벌 뼈 {ashBoneName} 알파 유효 — 투명 배경+골편 실루엣 " +
+                    $"(투명 {ashBoneClear} · 불투명 {ashBoneSolid}/{ashBonePx.Length})");
+                var opaqueSquare = new Color[ashBonePx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasAshBoneAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_ASH_BONE_ALPHA: 잿벌 뼈 {ashBoneName}의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(ashBone);
+            }
 
             Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
                 "본성 전용 이름");
