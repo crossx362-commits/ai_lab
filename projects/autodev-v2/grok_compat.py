@@ -36,6 +36,7 @@ def real_grok() -> str:
 
 
 def help_text(exe: str) -> str:
+    """성공한 help 출력만 인정한다. 실패 에러/Usage를 옵션 목록으로 오인하지 않는다."""
     for cmd in ([exe, "--no-auto-update", "--help"], [exe, "--help"]):
         try:
             r = subprocess.run(
@@ -47,7 +48,7 @@ def help_text(exe: str) -> str:
                 timeout=15,
             )
             text = ((r.stdout or "") + "\n" + (r.stderr or "")).strip()
-            if text:
+            if r.returncode == 0 and text:
                 return text
         except Exception:
             continue
