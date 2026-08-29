@@ -9,7 +9,7 @@ namespace AshesToStars
     /// <summary>상태 아이콘과 독·빙결·보스 경고 스프라이트 시트의 로드·분할을 검사한다.</summary>
     public static class StatusVfxSelfCheck
     {
-        const int PackedStatusSheetCount = 4;
+        const int PackedStatusSheetCount = 5;
 
         public static void Run()
         {
