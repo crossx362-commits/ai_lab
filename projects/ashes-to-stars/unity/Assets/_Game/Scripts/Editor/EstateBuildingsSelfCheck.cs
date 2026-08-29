@@ -92,6 +92,10 @@ namespace AshesToStars
             // 0.50유닛의 작은 탄화목도 잿벌 바닥에서 읽혀야 하므로 최소 1/32는 채워야 한다.
             HasAlphaSilhouette(pixels, 32, out clear, out solid);
 
+        static bool HasDungeonPillarAlphaSilhouette(Color[] pixels, out int clear, out int solid) =>
+            // 무너진 dungeon_pillar_2도 2.20유닛 엄폐물로 읽혀야 하므로 최소 1/10은 채워야 한다.
+            HasAlphaSilhouette(pixels, 10, out clear, out solid);
+
         [MenuItem("Ashes to Stars/QA/Estate Buildings Self Check")]
         public static void Run()
         {
@@ -181,6 +185,38 @@ namespace AshesToStars
                 Check(!HasAshCharredAlphaSilhouette(opaqueSquare, out _, out _),
                     $"QA_NO_ASH_CHARRED_ALPHA: 잿벌 탄화목 {ashCharredName}의 불투명 사각 배경 회귀를 거부한다");
                 UnityEngine.Object.DestroyImmediate(ashCharred);
+            }
+
+            // 던전 산포의 고체 기둥 한 역할 세트. 2.40/2.40/2.20유닛으로 표시되는
+            // 온전한 석주·갈라진 석주·무너진 석주가 전투 엄폐물로 구분돼야 한다.
+            // 이름·고체 판정만으로는 불투명 배경이나 빈 실루엣 회귀를 잡지 못한다.
+            var sparseDungeonPillarSilhouette = SparseSilhouetteAtBoundary(256 * 256, 10);
+            Check(!HasDungeonPillarAlphaSilhouette(sparseDungeonPillarSilhouette, out _, out _),
+                "QA_NO_DUNGEON_PILLAR_SPARSE_ALPHA: 던전 기둥의 1/10 희박 실루엣 회귀를 거부한다");
+            foreach (string dungeonPillarName in new[]
+                     { "dungeon_pillar_0", "dungeon_pillar_1", "dungeon_pillar_2" })
+            {
+                string dungeonPillarPath = Path.Combine(Application.dataPath,
+                    "Resources/props/" + dungeonPillarName + ".png");
+                Check(File.Exists(dungeonPillarPath),
+                    $"던전 기둥 {dungeonPillarName} PNG 파일이 Assets/Resources에 있다");
+                if (!File.Exists(dungeonPillarPath)) continue;
+
+                var dungeonPillar = new Texture2D(2, 2);
+                dungeonPillar.LoadImage(File.ReadAllBytes(dungeonPillarPath));
+                Check(dungeonPillar.width == 256 && dungeonPillar.height == 256,
+                    $"던전 기둥 {dungeonPillarName}이 oxalpha 256 세트 " +
+                    $"(실제 {dungeonPillar.width}×{dungeonPillar.height})");
+                var dungeonPillarPx = dungeonPillar.GetPixels();
+                Check(HasDungeonPillarAlphaSilhouette(dungeonPillarPx,
+                        out int dungeonPillarClear, out int dungeonPillarSolid),
+                    $"던전 기둥 {dungeonPillarName} 알파 유효 — 투명 배경+석주 실루엣 " +
+                    $"(투명 {dungeonPillarClear} · 불투명 {dungeonPillarSolid}/{dungeonPillarPx.Length})");
+                var opaqueSquare = new Color[dungeonPillarPx.Length];
+                for (int i = 0; i < opaqueSquare.Length; i++) opaqueSquare[i] = Color.white;
+                Check(!HasDungeonPillarAlphaSilhouette(opaqueSquare, out _, out _),
+                    $"QA_NO_DUNGEON_PILLAR_ALPHA: 던전 기둥 {dungeonPillarName}의 불투명 사각 배경 회귀를 거부한다");
+                UnityEngine.Object.DestroyImmediate(dungeonPillar);
             }
 
             Check(EstateBuildings.DedicatedOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep,
