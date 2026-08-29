@@ -60,10 +60,11 @@ namespace AshesToStars
         static void AssertRepackerContract(HashSet<string> repackerFiles)
         {
             var runtimeKeys = new HashSet<string>(StatusVfxSheets.RequiredKeys);
-            Debug.Assert(RepackerContractPasses(repackerFiles, runtimeKeys),
+            Debug.Assert(RepackerContractPasses(repackerFiles, runtimeKeys, PackedStatusSheetCount),
                 "[StatusVfx] 재패커/런타임 키 드리프트: repacker="
                 + string.Join(",", repackerFiles) + " runtime=" + string.Join(",", runtimeKeys));
-            Debug.Assert(!RepackerContractPasses(new HashSet<string> { "missing_status_sheet" }, runtimeKeys),
+            Debug.Assert(!RepackerContractPasses(new HashSet<string> { "missing_status_sheet" }, runtimeKeys,
+                    PackedStatusSheetCount),
                 "[StatusVfx] 네거티브 컨트롤이 등록되지 않은 재패커 키를 탐지하지 못했다");
             var missingOne = new HashSet<string>(repackerFiles);
             foreach (string file in repackerFiles)
@@ -71,8 +72,10 @@ namespace AshesToStars
                 missingOne.Remove(file);
                 break;
             }
-            Debug.Assert(!RepackerContractPasses(missingOne, runtimeKeys),
+            Debug.Assert(!RepackerContractPasses(missingOne, runtimeKeys, PackedStatusSheetCount),
                 "[StatusVfx] 네거티브 컨트롤이 신규 정수 격자 대상 누락을 탐지하지 못했다");
+            Debug.Assert(!RepackerContractPasses(repackerFiles, runtimeKeys, PackedStatusSheetCount + 1),
+                "[StatusVfx] 네거티브 컨트롤이 완료 수 선증가 드리프트를 탐지하지 못했다");
             var expandedWithUnpackedRuntimeSheet = new HashSet<string>(repackerFiles);
             foreach (string key in runtimeKeys)
             {
@@ -80,7 +83,8 @@ namespace AshesToStars
             }
             Debug.Assert(expandedWithUnpackedRuntimeSheet.Count == PackedStatusSheetCount + 1,
                 "[StatusVfx] 네거티브용 미완료 런타임 시트를 찾지 못했다");
-            Debug.Assert(!RepackerContractPasses(expandedWithUnpackedRuntimeSheet, runtimeKeys),
+            Debug.Assert(!RepackerContractPasses(expandedWithUnpackedRuntimeSheet, runtimeKeys,
+                    PackedStatusSheetCount),
                 "[StatusVfx] 네거티브 컨트롤이 완료 수 상수와 Python 목록 확장 드리프트를 탐지하지 못했다");
         }
 
@@ -94,7 +98,8 @@ namespace AshesToStars
             }
         }
 
-        static bool RepackerContractPasses(HashSet<string> repackerFiles, HashSet<string> runtimeKeys)
-            => repackerFiles.Count == PackedStatusSheetCount && repackerFiles.IsSubsetOf(runtimeKeys);
+        static bool RepackerContractPasses(HashSet<string> repackerFiles, HashSet<string> runtimeKeys,
+            int expectedPackedCount)
+            => repackerFiles.Count == expectedPackedCount && repackerFiles.IsSubsetOf(runtimeKeys);
     }
 }
