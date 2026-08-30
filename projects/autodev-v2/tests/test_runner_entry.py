@@ -41,12 +41,15 @@ class RunnerEntryTests(unittest.TestCase):
              mock.patch.object(E.runner, "checkpoint", return_value=cp), \
              mock.patch.object(E.runner, "task_delta_paths", return_value={"projects/game/Foo.cs"}), \
              mock.patch.object(E, "ORIGINAL_SAFE_EXECUTE", side_effect=E.FV.FunctionalVerificationWait("Unity locked")), \
+             mock.patch.object(E, "load_hold_checkpoint", return_value=None), \
+             mock.patch.object(E, "save_hold_checkpoint") as save_hold, \
              mock.patch.object(E.runner, "rollback_checkpoint") as rollback, \
              mock.patch.object(E.AUTODEV, "save_state"):
             outcome = E.safe_execute_one(cfg, st, task, {"cloud_calls": 0, "tasks": 0})
         self.assertEqual(outcome, "waiting_verification")
         self.assertTrue(task["verification_only"])
         self.assertEqual(task["implementation_delta_files"], ["projects/game/Foo.cs"])
+        save_hold.assert_called_once_with("T1000", cp)
         rollback.assert_not_called()
 
     def test_verification_only_retry_does_not_call_worker(self):
@@ -112,10 +115,62 @@ class RunnerEntryTests(unittest.TestCase):
             state["tasks"] = []
 
         with mock.patch.object(E, "ORIGINAL_FINISH_TASK", side_effect=fake_finish), \
+             mock.patch.object(E, "load_hold_checkpoint", return_value=None), \
+             mock.patch.object(E, "clear_hold_checkpoint"), \
              mock.patch.object(E.runner, "task_delta_paths", return_value={"game/W3Party.cs"}), \
              mock.patch.object(E.AUTODEV, "save_state"):
             E.finish_task(cfg, st, task, "pass")
         self.assertEqual(st["completed"][-1]["changed_files"], ["game/W3Party.cs"])
+
+    def test_hold_checkpoint_roundtrip_preserves_owner_snapshot(self):
+        cp = {
+            "dirty": {"owner.cs"},
+            "untracked": {"note.txt"},
+            "staged": {"owner.cs"},
+            "snapshots": {
+                "owner.cs": (True, b"owner-before"),
+                "note.txt": (True, b""),
+                "new.cs": (False, None),
+            },
+        }
+        with tempfile.TemporaryDirectory() as td, mock.patch.object(E, "HOLD_DIR", Path(td)):
+            E.save_hold_checkpoint("T1005", cp)
+            loaded = E.load_hold_checkpoint("T1005")
+            self.assertEqual(loaded, cp)
+            self.assertTrue(E._hold_path("T1005").exists())
+            E.clear_hold_checkpoint("T1005")
+            self.assertFalse(E._hold_path("T1005").exists())
+
+    def test_final_block_rolls_back_persisted_hold_checkpoint(self):
+        cfg = self.base_cfg("/tmp")
+        task = {"id": "T1006", "title": "영지 수정", "area": "estate", "status": "pending"}
+        st = {"tasks": [task], "completed": [], "blocked": [], "stats": {}}
+        current_cp = {"dirty": {"held.cs"}, "untracked": set(), "staged": set(), "snapshots": {}}
+        held_cp = {
+            "dirty": {"owner.cs"}, "untracked": set(), "staged": set(),
+            "snapshots": {"owner.cs": (True, b"owner-before")},
+        }
+
+        def fake_block(_cfg, state, item, _run_stats):
+            item["status"] = "blocked"
+            state["blocked"].append(dict(item))
+            state["tasks"] = []
+            return "blocked"
+
+        with tempfile.TemporaryDirectory() as td, \
+             mock.patch.object(E, "HOLD_DIR", Path(td)), \
+             mock.patch.object(E.FV, "requires_functional", return_value=True), \
+             mock.patch.object(E.FV, "environment_ready", return_value=(True, "ready")), \
+             mock.patch.object(E.runner, "checkpoint", return_value=current_cp), \
+             mock.patch.object(E, "ORIGINAL_SAFE_EXECUTE", side_effect=fake_block), \
+             mock.patch.object(E.runner, "rollback_checkpoint", return_value=["held.cs"]) as rollback, \
+             mock.patch.object(E.AUTODEV, "save_state"):
+            E.save_hold_checkpoint("T1006", held_cp)
+            outcome = E.safe_execute_one(cfg, st, task, {"cloud_calls": 0, "tasks": 0})
+            self.assertFalse(E._hold_path("T1006").exists())
+        self.assertEqual(outcome, "blocked")
+        rollback.assert_called_once_with(Path("/tmp"), held_cp)
+        self.assertEqual(st["blocked"][-1]["hold_rollback_files"], ["held.cs"])
 
 
 if __name__ == "__main__":
