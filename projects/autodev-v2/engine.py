@@ -79,6 +79,14 @@ def run_startup() -> tuple[bool, str]:
     return True, ""
 
 
+def install_loop_ext() -> None:
+    try:
+        import loop_ext
+        loop_ext.install()
+    except Exception as e:
+        print(f"[LOOP_EXT] install skipped: {type(e).__name__}: {e}", flush=True)
+
+
 def main() -> int:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     write_state(status="starting", exit_code=None)
@@ -88,13 +96,13 @@ def main() -> int:
         ok, reason = run_startup()
         if not ok:
             heartbeat("startup_failed", reason)
+            print(f"[ENGINE] startup failed: {reason}", flush=True)
             rc = 2
             return rc
 
         write_state(status="running")
         heartbeat("starting", "Grok Director + Supervisor 시작")
-        import loop_ext
-        loop_ext.install()
+        install_loop_ext()
         import runner_entry
         old_argv = sys.argv[:]
         sys.argv = [str(HERE / "engine.py"), "run", "--continuous"]
