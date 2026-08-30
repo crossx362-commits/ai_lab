@@ -35,8 +35,16 @@
     "items",
     "ui",
     "stage",
-    "systems"
+    "system",
+    "systems",
+    "estate",
+    "formation",
+    "raid",
+    "fusion",
+    "class_change"
   ],
+  "implement_while_unity_locked": true,
+  "max_waiting_verification_tasks": 2,
   "functional_verify_min_assertions": 1,
   "functional_verify_wait_seconds": 120,
   "functional_verify_timeout_seconds": 900
