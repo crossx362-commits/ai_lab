@@ -14,7 +14,6 @@ Update copies only AutoDev infrastructure from origin/master. Game work is untou
 from __future__ import annotations
 
 import atexit
-import hashlib
 import io
 import json
 import os
@@ -35,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from codex_usage import cached_codex_usage, refresh_codex_usage
+from runtime_contract import CONTROL_FILES, CONTROL_PROTOCOL, control_fingerprint
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -49,11 +49,6 @@ SERVER_LOG = Path.home() / "Library" / "Logs" / "AutoDevV2-HTML.log"
 ENGINE_FILE = HERE / "engine.py"
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("AUTODEV_HTML_PORT", "8765"))
-CONTROL_PROTOCOL = 7
-CONTROL_FILES = (
-    "engine.py", "runner_entry.py", "runner.py", "autodev.py",
-    "functional_verify.py", "config.json", "start.py",
-)
 INFRA_PATHS = (
     "projects/autodev-v2",
     ".github/workflows/autodev-v2-tests.yml",
@@ -83,14 +78,6 @@ def write_json(path: Path, obj: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
-def control_fingerprint() -> str:
-    h = hashlib.sha256()
-    for name in CONTROL_FILES:
-        p = HERE / name
-        h.update(name.encode())
-        try: h.update(p.read_bytes())
-        except OSError: h.update(b"MISSING")
-    return h.hexdigest()[:16]
 
 
 def pid_alive(pid: int) -> bool:
@@ -132,7 +119,7 @@ def engine_info() -> dict[str, Any]:
     running = bool(pid and pid_alive(pid))
     fp = str(st.get("control_fingerprint", ""))
     protocol = int(st.get("control_protocol", 0) or 0)
-    current_fp = control_fingerprint()
+    current_fp = control_fingerprint(HERE)
     stale = bool(running and (protocol != CONTROL_PROTOCOL or not fp or fp != current_fp))
     legacy = legacy_pids()
     return {
@@ -390,7 +377,7 @@ class Controller:
             "recent_errors":errs,"issue_count":issue,"engine":info,"control_version":CONTROL_PROTOCOL,
             "stats":{k:int(stats.get(k,0) or 0) for k in ("grok_calls","codex_calls","director_calls","tasks_done","tasks_blocked")},
             "grok_quota":gq,"codex_quota":cq,"codex_usage":usage,"grok_cli":cli.get("grok",{}),"codex_cli":cli.get("codex",{}),
-            "git":{"branch":"master","head":control_fingerprint(),"dirty_count":0},"state_file":str(sp),
+            "git":{"branch":"master","head":control_fingerprint(HERE),"dirty_count":0},"state_file":str(sp),
         }
 
     def log_rows(self, after:int)->dict[str,Any]:

@@ -443,7 +443,7 @@ def _project_scope_problem(cfg: dict[str, Any], root: Path, cp: dict[str, Any]) 
 def _safe_worker_prompt(cfg: dict[str, Any], task: dict[str, Any], verify_text: str) -> str:
     return AUTODEV.worker_prompt(cfg, task, verify_text) + """
 
-[AutoDev v3 추가 안전 규칙]
+[AutoDev v2 추가 안전 규칙]
 - git add/commit/push/reset/checkout/restore/stash 금지. Git 상태는 읽기만 한다.
 - 이 작업과 직접 관련 없는 파일은 수정하지 않는다.
 - 완료 조건을 충족하지 못했으면 성공했다고 주장하지 않는다.

@@ -301,10 +301,11 @@ def build_grok_command(
             raise RuntimeError(f"현재 Grok CLI가 필수 옵션 {flag}를 지원하지 않습니다. `grok update`가 필요합니다.")
         cmd += [flag, value]
 
+    # Savings flags are optional across Grok CLI versions. Preflight warns when
+    # missing; runtime must follow the same policy instead of crashing.
     for flag in ("--no-plan", "--no-subagents", "--no-memory", "--disable-web-search"):
-        if not _has_flag(help_text, flag):
-            raise RuntimeError(f"현재 Grok CLI가 절약 옵션 {flag}를 지원하지 않습니다. `grok update`가 필요합니다.")
-        cmd.append(flag)
+        if _has_flag(help_text, flag):
+            cmd.append(flag)
 
     if allow_edits:
         if _has_flag(help_text, "--always-approve"):
@@ -911,7 +912,11 @@ def main() -> int:
         print_status(cfg, st)
         return 0
     if a.cmd == "run":
-        return run_loop(cfg, bool(a.continuous))
+        # Direct CLI is compatibility-only. Replace this process with the canonical
+        # engine so the stale legacy execute_one/run_loop path is unreachable.
+        print("autodev.py run은 호환 진입점입니다. 단일 engine.py로 전환합니다.")
+        os.execv(sys.executable, [sys.executable, str(HERE / "engine.py")])
+        return 0
     if a.cmd == "unblock":
         if not unblock(cfg, st, a.task_id):
             print("해당 BLOCKED 작업을 찾지 못했습니다.")
