@@ -30,8 +30,11 @@ KILL_MARKERS = (
     "projects/autodev-v2/loop.py",
     "projects/autodev-v2/boot.py",
     "projects/autodev-v2/migrate_v1.py",
+    "projects/autodev-v2/preflight.py",
     "autodev-v2/engine.py",
     "autodev-v2/runner_entry.py",
+    "output/autodev_v2/runtime_bin/grok",
+    "output/autodev_v2/runtime_bin/codex",
 )
 
 UNITY_MARKERS = ("Unity.app", "Unity", "UnityHub")
@@ -73,11 +76,15 @@ def is_keep(cmd: str, pid: int, keep_pids: set[int]) -> bool:
 def is_target(cmd: str) -> bool:
     n = _norm(cmd)
     repo = str(REPO).replace("\\", "/")
-    if repo not in n and "autodev-v2" not in n:
-        return False
     if is_unity(n):
         return False
-    return any(m in n for m in KILL_MARKERS)
+    if any(m in n for m in KILL_MARKERS):
+        return True
+    if "autodev-v2" in n and any(name in n for name in KEEP_NAMES):
+        return False
+    if repo in n and "autodev-v2" in n and ("python" in n.lower() or "grok" in n.lower()):
+        return True
+    return False
 
 
 def classify(keep_pids: set[int] | None = None) -> dict[str, list[dict[str, str | int]]]:
