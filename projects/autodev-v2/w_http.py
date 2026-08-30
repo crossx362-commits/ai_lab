@@ -1,4 +1,30 @@
 from w_ctrl import *
+import infra_update
+
+def _update(self):
+    was_running = engine_info()["running"]
+    if was_running or legacy_pids():
+        r = self.stop()
+        if not r.get("ok"):
+            return r
+    try:
+        ok, msg = infra_update.apply(REPO)
+        if not ok:
+            if was_running:
+                self.start()
+            return {"ok": False, "message": msg}
+        log = SERVER_LOG.open("a", encoding="utf-8")
+        popen_retry(
+            [sys.executable, str(HERE / "restart_server.py"), str(os.getpid()), str(PORT), "1" if was_running else "0"],
+            cwd=REPO, stdout=log, stderr=log, start_new_session=True, env=os.environ.copy(),
+        )
+    except Exception as e:
+        if was_running:
+            self.start()
+        return {"ok": False, "message": f"{type(e).__name__}: {e}"}
+    return {"ok": True, "message": "AutoDev 시스템 업데이트 완료.", "restarting": True}
+
+Controller.update = _update
 CTRL = Controller()
 TOKEN = secrets.token_urlsafe(24)
 
@@ -123,7 +149,7 @@ def main() -> int:
         return 0
     write_server_state()
     atexit.register(lambda: None)
-    url = f"http://{HOST}:{port}/?token={urllib.parse.quote(TOKEN)}&r={int(time.time())}"
+    url = f"http://{HOST}:{PORT}/?token={urllib.parse.quote(TOKEN)}&r={int(time.time())}"
     if os.environ.pop("AUTODEV_RESUME_ENGINE", "0") == "1":
         threading.Timer(0.8, CTRL.start).start()
     threading.Timer(0.3, lambda: webbrowser.open(url)).start()
