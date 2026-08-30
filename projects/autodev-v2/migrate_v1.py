@@ -90,7 +90,6 @@ def main() -> int:
         opt.write_text("# AutoDev v2 전환으로 비움 — 턴 강제연장 사용 안 함\n", encoding="utf-8")
         print("autopilot 강제연장 목록 해제")
 
-    # ORDERS가 남아 있으면 옛 세션/Stop 훅이 계속 할 일이 있다고 오인할 수 있다.
     qa = repo / "output/qa/ashes-to-stars"
     _archive_if_exists(qa / "ORDERS.md", backup_dir, "ORDERS.md")
     _archive_if_exists(qa / "autopilot_state.json", backup_dir, "autopilot_state.json")
@@ -98,10 +97,24 @@ def main() -> int:
     sync = repo / "projects/ai-team/skills/영숙_비서/tools/schedule_sync.py"
     if sys.platform == "darwin" and sync.exists():
         print("launchd 스케줄 동기화 중...")
-        r = subprocess.run([sys.executable, str(sync), "sync"], cwd=repo)
-        if r.returncode != 0:
-            print("경고: schedule_sync 실패. schedules.json 변경은 적용됐습니다.")
-            return r.returncode
+        try:
+            r = subprocess.run(
+                [sys.executable, str(sync), "sync"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            if r.returncode != 0:
+                detail = ((r.stderr or "") + "\n" + (r.stdout or "")).strip()[-800:]
+                print("경고: schedule_sync 실패. schedules.json 변경은 이미 적용됐습니다.")
+                if detail:
+                    print(detail)
+                print("경고: launchd 동기 실패는 엔진 시작을 막지 않습니다.")
+        except Exception as e:
+            print(f"경고: schedule_sync 실행 오류 {type(e).__name__}: {e}")
+            print("경고: launchd 동기 실패는 엔진 시작을 막지 않습니다.")
 
     print("AutoDev v1 게임 회의/상시감사/ORDERS/autopilot 상태를 비활성·격리했습니다.")
     return 0
