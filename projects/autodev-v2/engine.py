@@ -70,7 +70,6 @@ def run_startup() -> tuple[bool, str]:
     env = start.compat_env()
     if env is None:
         return False, "Grok CLI를 찾지 못했습니다."
-    # Preserve launchd/terminal environment and only overlay wrapper/auth routing.
     os.environ.update(env)
 
     heartbeat("preflight", "AI CLI와 안전장치 확인 중")
@@ -94,6 +93,8 @@ def main() -> int:
 
         write_state(status="running")
         heartbeat("starting", "Grok Director + Supervisor 시작")
+        import loop_ext
+        loop_ext.install()
         import runner_entry
         old_argv = sys.argv[:]
         sys.argv = [str(HERE / "engine.py"), "run", "--continuous"]
