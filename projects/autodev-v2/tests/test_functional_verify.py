@@ -22,7 +22,9 @@ class FunctionalVerifyTests(unittest.TestCase):
             "_repo_root": str(root),
             "project_root": str(project),
             "functional_verify_enabled": True,
-            "functional_verify_areas": ["combat", "character", "systems"],
+            "functional_verify_areas": ["combat", "character", "systems", "estate", "formation", "raid"],
+            "implement_while_unity_locked": True,
+            "max_waiting_verification_tasks": 2,
             "functional_verify_min_assertions": 1,
             "functional_verify_wait_seconds": 120,
             "functional_verify_timeout_seconds": 900,
@@ -106,20 +108,25 @@ public static class AutoDev_T0042_Acceptance { public static void Run() { AutoDe
             )
             self.assertEqual("", problem)
 
-    def test_environment_lock_waits_without_calling_ai(self):
+    def test_environment_lock_allows_implementation_then_holds_verification(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td); cfg = self.make_cfg(root); task = self.task()
             st = {"tasks": [task], "completed": [], "blocked": [], "stats": {"grok_calls": 0, "codex_calls": 0}}
             run_stats = {"cloud_calls": 0, "tasks": 0}
+            cp = {"dirty": set(), "untracked": set(), "staged": set(), "snapshots": {}}
             with mock.patch.object(E.FV, "environment_ready", return_value=(False, "Unity editor open")), \
-                 mock.patch.object(E, "ORIGINAL_SAFE_EXECUTE") as execute, \
+                 mock.patch.object(E.runner, "checkpoint", return_value=cp), \
+                 mock.patch.object(E.runner, "task_delta_paths", return_value={"projects/ashes-to-stars/unity/Assets/Scripts/EnemyHealth.cs"}), \
+                 mock.patch.object(E, "ORIGINAL_SAFE_EXECUTE", side_effect=F.FunctionalVerificationWait("Unity editor open")) as execute, \
+                 mock.patch.object(E.runner, "rollback_checkpoint") as rollback, \
                  mock.patch.object(E.AUTODEV, "save_state"):
                 outcome = E.safe_execute_one(cfg, st, task, run_stats)
             self.assertEqual("waiting_verification", outcome)
             self.assertEqual("waiting_verification", task["status"])
+            self.assertTrue(task["verification_only"])
             self.assertGreater(task["verification_retry_at"], time.time())
-            self.assertEqual(0, run_stats["cloud_calls"])
-            execute.assert_not_called()
+            execute.assert_called_once()
+            rollback.assert_not_called()
 
     def test_waiting_task_becomes_ready_after_retry_time(self):
         task = self.task()
