@@ -12,6 +12,8 @@ CONTROL_FILES = (
     "engine.py",
     "boot.py",
     "loop.py",
+    "procutil.py",
+    "webview_app.py",
     "config.json",
     "start.py",
 )
