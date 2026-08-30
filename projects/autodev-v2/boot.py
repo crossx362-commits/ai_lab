@@ -7,6 +7,11 @@ import os
 
 
 def prepare() -> tuple[bool, str]:
+    try:
+        import reap
+        reap.reap()
+    except Exception as e:
+        print(f"[BOOT] reap skipped: {type(e).__name__}: {e}", flush=True)
     import start
     env = start.compat_env()
     if env is None:
