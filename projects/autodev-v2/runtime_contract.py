@@ -1,26 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Shared control-plane contract for AutoDev v2.
-
-Dashboard, engine and runner heartbeat must import these values instead of
-copying protocol/fingerprint rules independently.
-"""
+"""Shared control-plane contract for AutoDev v2."""
 from __future__ import annotations
 
 import hashlib
 from pathlib import Path
 
-CONTROL_PROTOCOL = 8
+CONTROL_PROTOCOL = 9
 CONTROL_FILES = (
     "runtime_contract.py",
     "engine.py",
-    "runner_entry.py",
-    "runner.py",
-    "autodev.py",
-    "functional_verify.py",
+    "boot.py",
+    "loop.py",
     "config.json",
     "start.py",
-    "loop_ext.py",
 )
 
 
