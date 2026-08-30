@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -19,6 +20,10 @@ OUTPUT = REPO / "output" / "autodev_v2"
 ENGINE_STATE = OUTPUT / "html_engine.json"
 HEARTBEAT = OUTPUT / "engine_heartbeat.json"
 
+_STAGE = "starting"
+_MESSAGE = "AutoDev 엔진 시작 중"
+_PULSE_STOP = threading.Event()
+
 
 def atomic_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -28,15 +33,26 @@ def atomic_json(path: Path, data: dict) -> None:
 
 
 def heartbeat(stage: str, message: str) -> None:
+    global _STAGE, _MESSAGE
+    _STAGE = stage or _STAGE
+    _MESSAGE = message or _MESSAGE
     atomic_json(HEARTBEAT, {
         "heartbeat_at": time.time(),
         "last_output_at": time.time(),
         "pid": os.getpid(),
         "engine_protocol": CONTROL_PROTOCOL,
-        "stage": stage,
-        "message": message,
+        "stage": _STAGE,
+        "message": _MESSAGE,
         "provider": "local",
     })
+
+
+def _pulse() -> None:
+    while not _PULSE_STOP.wait(5):
+        try:
+            heartbeat(_STAGE, _MESSAGE)
+        except Exception:
+            pass
 
 
 def write_state(**extra) -> None:
@@ -61,6 +77,8 @@ def main() -> int:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     write_state(status="starting", exit_code=None)
     heartbeat("starting", "AutoDev 엔진 시작 중")
+    pulser = threading.Thread(target=_pulse, name="engine-heartbeat", daemon=True)
+    pulser.start()
     rc = 1
     try:
         import boot
@@ -72,7 +90,7 @@ def main() -> int:
             rc = 2
             return rc
         write_state(status="running")
-        heartbeat("starting", "Grok Director + Supervisor 시작")
+        heartbeat("loop", "자율 루프 실행 중")
         rc = int(boot.run_supervisor())
         return rc
     except KeyboardInterrupt:
@@ -85,6 +103,7 @@ def main() -> int:
             pass
         raise
     finally:
+        _PULSE_STOP.set()
         try:
             write_state(status="stopped", exited_at=time.time(), exit_code=rc)
         except Exception:
