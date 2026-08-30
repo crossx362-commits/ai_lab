@@ -2,15 +2,12 @@
 # -*- coding: utf-8 -*-
 """Single long-lived AutoDev engine process.
 
-The dashboard starts only this file. Startup checks and runner execution happen
-inside the same process so PID/state/heartbeat all describe one engine.
+Clean boot: no v1 migrate, no launchd sync. Dashboard starts only this file.
 """
 from __future__ import annotations
 
 import json
 import os
-import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -60,56 +57,23 @@ def write_state(**extra) -> None:
     atomic_json(ENGINE_STATE, current)
 
 
-def run_startup() -> tuple[bool, str]:
-    heartbeat("bootstrap", "이전 루프 정리 및 실행 준비 중")
-    mig = subprocess.run([sys.executable, str(HERE / "migrate_v1.py"), "--apply"], cwd=REPO)
-    if mig.returncode != 0:
-        print(f"[ENGINE] v1 정리 경고 rc={mig.returncode} — 엔진은 계속 시작합니다.", flush=True)
-
-    import start
-    env = start.compat_env()
-    if env is None:
-        return False, "Grok CLI를 찾지 못했습니다."
-    os.environ.update(env)
-
-    heartbeat("preflight", "AI CLI와 안전장치 확인 중")
-    audit = subprocess.run([sys.executable, str(HERE / "preflight.py")], cwd=REPO, env=os.environ.copy())
-    if audit.returncode != 0:
-        return False, f"preflight 실패 rc={audit.returncode}"
-    return True, ""
-
-
-def install_loop_ext() -> None:
-    try:
-        import loop_ext
-        loop_ext.install()
-    except Exception as e:
-        print(f"[LOOP_EXT] install skipped: {type(e).__name__}: {e}", flush=True)
-
-
 def main() -> int:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     write_state(status="starting", exit_code=None)
     heartbeat("starting", "AutoDev 엔진 시작 중")
     rc = 1
     try:
-        ok, reason = run_startup()
+        import boot
+        heartbeat("bootstrap", "Grok 루프 준비 중")
+        ok, reason = boot.prepare()
         if not ok:
             heartbeat("startup_failed", reason)
             print(f"[ENGINE] startup failed: {reason}", flush=True)
             rc = 2
             return rc
-
         write_state(status="running")
         heartbeat("starting", "Grok Director + Supervisor 시작")
-        install_loop_ext()
-        import runner_entry
-        old_argv = sys.argv[:]
-        sys.argv = [str(HERE / "engine.py"), "run", "--continuous"]
-        try:
-            rc = int(runner_entry.main())
-        finally:
-            sys.argv = old_argv
+        rc = int(boot.run_supervisor())
         return rc
     except KeyboardInterrupt:
         rc = 130
