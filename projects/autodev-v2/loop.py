@@ -271,6 +271,14 @@ git commit/push 금지. Unity 프로세스 종료 금지.
     return "fail"
 
 
+def beat(stage: str, message: str) -> None:
+    try:
+        import engine
+        engine.heartbeat(stage, message)
+    except Exception:
+        pass
+
+
 def print_status(st: dict[str, Any]) -> None:
     live = live_tasks(st)
     print(
@@ -278,6 +286,7 @@ def print_status(st: dict[str, Any]) -> None:
         % (len(live), len(st.get("completed") or []), len(st.get("blocked") or [])),
         flush=True,
     )
+    beat("loop", "큐 %s · 완료 %s" % (len(live), len(st.get("completed") or [])))
 
 
 def run_loop() -> int:
@@ -304,6 +313,7 @@ def run_loop() -> int:
 
 def main() -> int:
     print("[LOOP] AutoDev 새 루프 시작", flush=True)
+    beat("starting", "새 루프 시작")
     try:
         return run_loop()
     except KeyboardInterrupt:
