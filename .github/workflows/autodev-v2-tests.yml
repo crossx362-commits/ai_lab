@@ -23,10 +23,14 @@ jobs:
             projects/autodev-v2/engine.py \
             projects/autodev-v2/boot.py \
             projects/autodev-v2/loop.py \
+            projects/autodev-v2/reap.py \
+            projects/autodev-v2/procutil.py \
             projects/autodev-v2/start.py \
             projects/autodev-v2/webview_app.py
       - name: New loop tests
         run: python3 projects/autodev-v2/tests/test_loop.py
+      - name: Reap tests
+        run: python3 projects/autodev-v2/tests/test_reap.py
       - name: Provider-free test guard
         run: |
           python3 - <<'PY'

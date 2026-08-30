@@ -74,6 +74,11 @@ def write_state(**extra) -> None:
 
 
 def main() -> int:
+    try:
+        import reap
+        reap.reap(keep_pids={os.getpid()})
+    except Exception as e:
+        print(f"[ENGINE] reap skipped: {type(e).__name__}: {e}", flush=True)
     OUTPUT.mkdir(parents=True, exist_ok=True)
     write_state(status="starting", exit_code=None)
     heartbeat("starting", "AutoDev 엔진 시작 중")
