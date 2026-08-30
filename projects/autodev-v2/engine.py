@@ -7,7 +7,6 @@ inside the same process so PID/state/heartbeat all describe one engine.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import subprocess
@@ -15,16 +14,13 @@ import sys
 import time
 from pathlib import Path
 
+from runtime_contract import CONTROL_PROTOCOL, control_fingerprint
+
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 OUTPUT = REPO / "output" / "autodev_v2"
 ENGINE_STATE = OUTPUT / "html_engine.json"
 HEARTBEAT = OUTPUT / "engine_heartbeat.json"
-CONTROL_FILES = (
-    "engine.py", "runner_entry.py", "runner.py", "autodev.py",
-    "functional_verify.py", "config.json", "start.py",
-)
-CONTROL_PROTOCOL = 7
 
 
 def atomic_json(path: Path, data: dict) -> None:
@@ -32,18 +28,6 @@ def atomic_json(path: Path, data: dict) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
-
-
-def control_fingerprint() -> str:
-    h = hashlib.sha256()
-    for name in CONTROL_FILES:
-        p = HERE / name
-        h.update(name.encode())
-        try:
-            h.update(p.read_bytes())
-        except OSError:
-            h.update(b"MISSING")
-    return h.hexdigest()[:16]
 
 
 def heartbeat(stage: str, message: str) -> None:
@@ -70,7 +54,7 @@ def write_state(**extra) -> None:
         "pid": os.getpid(),
         "started_at": current.get("started_at") or time.time(),
         "control_protocol": CONTROL_PROTOCOL,
-        "control_fingerprint": control_fingerprint(),
+        "control_fingerprint": control_fingerprint(HERE),
     })
     current.update(extra)
     atomic_json(ENGINE_STATE, current)
@@ -86,11 +70,11 @@ def run_startup() -> tuple[bool, str]:
     env = start.compat_env()
     if env is None:
         return False, "Grok CLI를 찾지 못했습니다."
-    os.environ.clear()
+    # Preserve launchd/terminal environment and only overlay wrapper/auth routing.
     os.environ.update(env)
 
     heartbeat("preflight", "AI CLI와 안전장치 확인 중")
-    audit = subprocess.run([sys.executable, str(HERE / "preflight.py")], cwd=REPO, env=env)
+    audit = subprocess.run([sys.executable, str(HERE / "preflight.py")], cwd=REPO, env=os.environ.copy())
     if audit.returncode != 0:
         return False, f"preflight 실패 rc={audit.returncode}"
     return True, ""
