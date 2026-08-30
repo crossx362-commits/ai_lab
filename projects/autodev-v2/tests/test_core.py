@@ -144,14 +144,15 @@ class CoreTests(unittest.TestCase):
         self.assertIn("Bash(git push *)", cmd)
         self.assertIn("Bash(git reset --hard*)", cmd)
 
-    def test_grok_command_fails_closed_when_saving_flags_are_missing(self):
+    def test_grok_command_skips_missing_optional_saving_flags(self):
         old_help = "Usage: grok --single <PROMPT> --cwd <CWD> --output-format <FMT> --max-turns <N> --always-approve"
-        with self.assertRaises(RuntimeError) as cm:
-            M.build_grok_command(
-                "/usr/local/bin/grok", "x", REPO,
-                max_turns=2, allow_edits=False, help_text=old_help,
-            )
-        self.assertIn("절약 옵션", str(cm.exception))
+        cmd = M.build_grok_command(
+            "/usr/local/bin/grok", "x", REPO,
+            max_turns=2, allow_edits=False, help_text=old_help,
+        )
+        self.assertIn("--single", cmd)
+        self.assertNotIn("--no-plan", cmd)
+        self.assertNotIn("--no-memory", cmd)
 
     def test_grok_compat_drops_only_missing_optional_flags(self):
         old_help = "Usage: grok --single <PROMPT> --cwd <CWD> --output-format <FMT> --max-turns <N> --no-subagents --disable-web-search --always-approve"
