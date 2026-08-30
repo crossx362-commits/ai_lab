@@ -4,9 +4,10 @@
 
 Runtime integrations:
 - Grok/Codex subprocess output streams live.
-- A heartbeat survives long provider silences so the dashboard can tell alive from dead.
+- Shared heartbeat contract keeps dashboard/engine/runner in sync.
 - Stopping AutoDev also stops the currently active provider child process.
-- Gameplay/system tasks must pass task-specific Unity acceptance verification.
+- Unity may be open while implementation proceeds; completion waits for acceptance.
+- Task completion records only that task's delta, not the owner's pre-existing dirty tree.
 """
 from __future__ import annotations
 
@@ -24,14 +25,37 @@ from typing import Any
 
 import functional_verify as FV
 import runner
+from runtime_contract import CONTROL_PROTOCOL
 
 AUTODEV = runner.AUTODEV
 ORIGINAL_WORKER_PROMPT = AUTODEV.worker_prompt
 ORIGINAL_VERIFY_TASK = AUTODEV.verify_task
+ORIGINAL_CANDIDATE_FILES = AUTODEV.candidate_files
+ORIGINAL_FINISH_TASK = AUTODEV.finish_task
 ORIGINAL_SAFE_EXECUTE = runner.safe_execute_one
 ORIGINAL_NEXT_READY = runner.next_ready
 ORIGINAL_DIRECTOR_FILL = runner.director_fill
 _ACTIVE_CHECKPOINTS: dict[str, dict[str, Any]] = {}
+_ACTIVE_DELTA_OVERRIDES: dict[str, set[str]] = {}
+_LAST_CFG: dict[str, Any] | None = None
+
+PROJECT_AREAS: dict[str, tuple[str, ...]] = {
+    "estate": ("estate", "estatescreen", "territory", "영지"),
+    "formation": ("formation", "w3party", "party formation", "편성"),
+    "raid": ("raid", "bossbattle", "boss battle", "레이드", "보스전"),
+    "fusion": ("fusion", "merge", "combine", "합성"),
+    "class_change": ("class change", "job change", "promotion", "전직"),
+}
+# Project-specific areas must win before broad generic categories such as combat/character.
+runner.AREA_KEYWORDS = {**PROJECT_AREAS, **runner.AREA_KEYWORDS}
+
+ANCHORS: dict[str, tuple[str, ...]] = {
+    "estate": ("EstateScreen", "Estate"),
+    "formation": ("W3Party", "Formation"),
+    "raid": ("BossBattle", "Raid"),
+    "fusion": ("Fusion", "Merge", "Combine"),
+    "class_change": ("ClassChange", "JobChange", "Promotion"),
+}
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -70,7 +94,7 @@ def set_runtime(*, stage: str | None = None, message: str | None = None,
         payload.update({
             "heartbeat_at": time.time(),
             "pid": os.getpid(),
-            "engine_protocol": 6,
+            "engine_protocol": CONTROL_PROTOCOL,
         })
         try:
             _atomic_json(HEARTBEAT, payload)
@@ -217,6 +241,50 @@ def worker_prompt(cfg: dict[str, Any], task: dict[str, Any], verify_text: str = 
     return ORIGINAL_WORKER_PROMPT(cfg, task, verify_text) + FV.worker_instructions(cfg, task)
 
 
+def _task_text(task: dict[str, Any]) -> str:
+    return " ".join([
+        str(task.get("title", "")), str(task.get("goal", "")),
+        " ".join(str(x) for x in task.get("done_when", [])),
+    ]).lower()
+
+
+def candidate_files(cfg: dict[str, Any], task: dict[str, Any], verify_text: str = "") -> list[str]:
+    """Add Ashes-to-Stars filename anchors before the generic rg/recent-diff candidates."""
+    base = ORIGINAL_CANDIDATE_FILES(cfg, task, verify_text)
+    maxn = int(cfg.get("max_candidate_files", 5))
+    text = _task_text(task)
+    area = str(task.get("area") or runner.infer_area(task))
+    terms: list[str] = list(ANCHORS.get(area, ()))
+    if "영지" in text or "estate" in text:
+        terms += ["EstateScreen"]
+    if "편성" in text or "w3party" in text or "formation" in text:
+        terms += ["W3Party"]
+    if "레이드" in text or "보스전" in text or "bossbattle" in text or "boss battle" in text:
+        terms += ["BossBattle"]
+
+    anchors: list[str] = []
+    if terms:
+        root = Path(cfg["_repo_root"])
+        project = Path(cfg["project_root"])
+        lowered = tuple(x.lower() for x in terms)
+        try:
+            for path in project.rglob("*.cs"):
+                rel = str(path.resolve().relative_to(root)).replace("\\", "/")
+                probe = rel.lower()
+                if any(term in probe for term in lowered):
+                    anchors.append(rel)
+        except Exception:
+            pass
+
+    out: list[str] = []
+    for rel in anchors + base:
+        if rel not in out:
+            out.append(rel)
+        if len(out) >= maxn:
+            break
+    return out
+
+
 def verify_task(cfg: dict[str, Any], task: dict[str, Any]) -> tuple[str, str]:
     set_runtime(stage="verify", message=f"{task.get('id','')} 로컬/Unity 검증 중", provider="local", output=True)
     status, base = ORIGINAL_VERIFY_TASK(cfg, task)
@@ -225,11 +293,37 @@ def verify_task(cfg: dict[str, Any], task: dict[str, Any]) -> tuple[str, str]:
     if not FV.requires_functional(cfg, task):
         return status, base
 
-    cp = _ACTIVE_CHECKPOINTS.get(str(task.get("id", "")))
-    delta = runner.task_delta_paths(Path(cfg["_repo_root"]), cp) if cp else None
+    tid = str(task.get("id", ""))
+    override = _ACTIVE_DELTA_OVERRIDES.get(tid)
+    cp = _ACTIVE_CHECKPOINTS.get(tid)
+    delta = set(override) if override is not None else runner.task_delta_paths(Path(cfg["_repo_root"]), cp) if cp else None
     fstatus, functional = FV.verify_functional(cfg, task, delta_paths=delta)
     joined = (base.rstrip() + "\n\n" + functional.rstrip()).strip()
     return fstatus, joined
+
+
+def finish_task(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, Any], verify_out: str) -> None:
+    """Record only this task's delta, excluding owner changes that existed before it started."""
+    tid = str(task.get("id", ""))
+    override = _ACTIVE_DELTA_OVERRIDES.get(tid)
+    cp = _ACTIVE_CHECKPOINTS.get(tid)
+    if override is not None:
+        delta = set(override)
+    elif cp is not None:
+        delta = runner.task_delta_paths(Path(cfg["_repo_root"]), cp)
+    else:
+        delta = {str(x) for x in task.get("implementation_delta_files", [])}
+
+    ORIGINAL_FINISH_TASK(cfg, st, task, verify_out)
+    for item in reversed(st.get("completed", [])):
+        if isinstance(item, dict) and str(item.get("id", "")) == tid:
+            item["changed_files"] = sorted(delta)[:30]
+            item.pop("verification_only", None)
+            item.pop("implementation_delta_files", None)
+            item.pop("verification_retry_at", None)
+            item.pop("wait_reason", None)
+            break
+    AUTODEV.save_state(cfg, st)
 
 
 def _mark_verification_wait(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, Any], reason: str) -> None:
@@ -240,25 +334,92 @@ def _mark_verification_wait(cfg: dict[str, Any], st: dict[str, Any], task: dict[
     task["wait_reason"] = task["last_error"]
     AUTODEV.save_state(cfg, st)
     set_runtime(stage="waiting_verification", message=task["last_error"], provider="local", output=True)
-    print(f"[FUNCTIONAL] {task.get('id')} · {retry}초 후 다시 확인 · {reason[:700]}", flush=True)
+    print(f"[FUNCTIONAL] {task.get('id')} · 구현 보존 · {retry}초 후 검증만 다시 확인 · {reason[:700]}", flush=True)
+
+
+def _mark_capacity_wait(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, Any], reason: str) -> None:
+    retry = max(30, int(cfg.get("functional_verify_wait_seconds", 120)))
+    task["status"] = "waiting_verification_capacity"
+    task["verification_retry_at"] = time.time() + retry
+    task["last_error"] = reason
+    task["wait_reason"] = reason
+    AUTODEV.save_state(cfg, st)
+    set_runtime(stage="waiting_verification", message=reason, provider="local")
+
+
+def _waiting_count(st: dict[str, Any]) -> int:
+    return sum(1 for t in st.get("tasks", []) if isinstance(t, dict) and t.get("status") == "waiting_verification")
+
+
+def _waiting_cap(cfg: dict[str, Any] | None = None) -> int:
+    cfg = cfg or _LAST_CFG or {}
+    return max(1, int(cfg.get("max_waiting_verification_tasks", 2)))
+
+
+def _verification_only_pass(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, Any]) -> tuple[bool, str]:
+    """Retry acceptance without calling Grok/Codex. False means repair is needed."""
+    tid = str(task.get("id", ""))
+    ready, reason = FV.environment_ready(cfg)
+    if not ready:
+        _mark_verification_wait(cfg, st, task, reason)
+        return True, "waiting_verification"
+
+    delta = {str(x) for x in task.get("implementation_delta_files", [])}
+    _ACTIVE_DELTA_OVERRIDES[tid] = delta
+    try:
+        status, out = verify_task(cfg, task)
+    except FV.FunctionalVerificationWait as e:
+        _mark_verification_wait(cfg, st, task, str(e))
+        return True, "waiting_verification"
+    finally:
+        _ACTIVE_DELTA_OVERRIDES.pop(tid, None)
+
+    print(f"\n[VERIFY-ONLY] {status.upper()}\n{out[-2500:]}")
+    if status == "pass":
+        _ACTIVE_DELTA_OVERRIDES[tid] = delta
+        try:
+            AUTODEV.finish_task(cfg, st, task, out)
+        finally:
+            _ACTIVE_DELTA_OVERRIDES.pop(tid, None)
+        return True, "done"
+
+    task["verification_only"] = False
+    task["status"] = "pending"
+    task["last_error"] = "보류했던 Unity 기능 검증 실패. 구현을 보존한 채 수리 필요.\n" + out[-2400:]
+    task.pop("wait_reason", None)
+    task.pop("verification_retry_at", None)
+    AUTODEV.save_state(cfg, st)
+    return False, task["last_error"]
 
 
 def safe_execute_one(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, Any], run_stats: dict[str, int]) -> str:
+    global _LAST_CFG
+    _LAST_CFG = cfg
     set_runtime(stage="task", message=f"{task.get('id','')} {task.get('title','')} 시작", provider="local", output=True)
     needs = FV.requires_functional(cfg, task)
+
+    if needs and bool(task.get("verification_only")):
+        handled, outcome = _verification_only_pass(cfg, st, task)
+        if handled:
+            return outcome
+        # Acceptance really failed, so continue below into the normal repair worker.
+
     if needs:
         ready, reason = FV.environment_ready(cfg)
-        if not ready:
+        implement_locked = bool(cfg.get("implement_while_unity_locked", True))
+        if not ready and not implement_locked:
             _mark_verification_wait(cfg, st, task, reason)
+            return "waiting_verification"
+        if not ready and implement_locked and _waiting_count(st) >= _waiting_cap(cfg):
+            _mark_capacity_wait(
+                cfg, st, task,
+                f"Unity 검증 대기 작업이 {_waiting_cap(cfg)}개라 새 구현을 잠시 보류합니다. 기존 검증이 끝나면 자동 재개합니다.",
+            )
             return "waiting_verification"
 
     root = Path(cfg["_repo_root"])
     outer_cp = runner.checkpoint(root)
     tid = str(task.get("id", ""))
-    attempts_before = (
-        int(task.get("attempts_grok", 0) or 0),
-        int(task.get("attempts_codex", 0) or 0),
-    )
     if needs:
         _ACTIVE_CHECKPOINTS[tid] = outer_cp
     try:
@@ -267,8 +428,11 @@ def safe_execute_one(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, An
                     message=f"{tid} 결과: {outcome}", provider="local", output=True)
         return outcome
     except FV.FunctionalVerificationWait as e:
-        runner.rollback_checkpoint(root, outer_cp)
-        task["attempts_grok"], task["attempts_codex"] = attempts_before
+        # The implementation is valuable. Do not roll it back merely because Unity
+        # is open/unavailable. Hold completion and retry acceptance without AI later.
+        delta = runner.task_delta_paths(root, outer_cp)
+        task["implementation_delta_files"] = sorted(delta)
+        task["verification_only"] = True
         _mark_verification_wait(cfg, st, task, str(e))
         return "waiting_verification"
     finally:
@@ -277,27 +441,37 @@ def safe_execute_one(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, An
 
 def next_ready(st: dict[str, Any]) -> dict[str, Any] | None:
     now = time.time()
+    cap = _waiting_cap()
+    waiting = _waiting_count(st)
     for task in st.get("tasks", []):
-        if not isinstance(task, dict) or task.get("status") != "waiting_verification":
+        if not isinstance(task, dict):
             continue
+        status = task.get("status")
         try:
             retry_at = float(task.get("verification_retry_at", 0) or 0)
         except Exception:
             retry_at = 0.0
-        if retry_at <= now:
+        if status == "waiting_verification" and retry_at <= now:
             task["status"] = "pending"
             task.pop("wait_reason", None)
             print(f"[FUNCTIONAL] {task.get('id')} Unity 기능 검증 재시도 가능", flush=True)
+        elif status == "waiting_verification_capacity" and retry_at <= now and waiting < cap:
+            task["status"] = "pending"
+            task.pop("wait_reason", None)
+            print(f"[FUNCTIONAL] {task.get('id')} 대기 슬롯이 생겨 구현 재개 가능", flush=True)
     return ORIGINAL_NEXT_READY(st)
 
 
 def director_fill(cfg: dict[str, Any], st: dict[str, Any]) -> bool:
+    global _LAST_CFG
+    _LAST_CFG = cfg
     waiting = [t for t in st.get("tasks", []) if isinstance(t, dict) and t.get("status") == "waiting_verification"]
+    capacity = [t for t in st.get("tasks", []) if isinstance(t, dict) and t.get("status") == "waiting_verification_capacity"]
     pending = [t for t in st.get("tasks", []) if isinstance(t, dict) and t.get("status") == "pending"]
-    if waiting and not pending:
+    if len(waiting) >= _waiting_cap(cfg) or capacity or (waiting and not pending):
         runner._LAST_DIRECTOR_META = {"status": "provider_wait", "cloud_used": 0}
-        set_runtime(stage="waiting_verification", message="Unity 기능 검증 대기 중", provider="local")
-        print("[FUNCTIONAL] Unity 기능 검증을 기다리는 작업이 있어 새 계획을 만들지 않습니다.", flush=True)
+        set_runtime(stage="waiting_verification", message="Unity 완료 검증 대기 중 · 새 계획 생성 보류", provider="local")
+        print("[FUNCTIONAL] 검증 대기 큐를 먼저 비우기 위해 새 Director 계획을 만들지 않습니다.", flush=True)
         return False
     set_runtime(stage="director", message="Grok Director가 다음 작업을 계획 중", provider="grok", output=True)
     return ORIGINAL_DIRECTOR_FILL(cfg, st)
@@ -313,7 +487,9 @@ def main() -> int:
     AUTODEV.stream_process = stream_process
     AUTODEV.codex_call = codex_call
     AUTODEV.worker_prompt = worker_prompt
+    AUTODEV.candidate_files = candidate_files
     AUTODEV.verify_task = verify_task
+    AUTODEV.finish_task = finish_task
     runner.safe_execute_one = safe_execute_one
     runner.next_ready = next_ready
     runner.director_fill = director_fill
