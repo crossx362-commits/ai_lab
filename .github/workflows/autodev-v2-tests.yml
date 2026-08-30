@@ -23,11 +23,15 @@ jobs:
       - name: Python syntax check
         run: |
           python3 -m py_compile \
+            projects/autodev-v2/runtime_contract.py \
             projects/autodev-v2/webview_app.py \
             projects/autodev-v2/restart_server.py \
             projects/autodev-v2/engine.py \
+            projects/autodev-v2/autodev.py \
+            projects/autodev-v2/preflight.py \
             projects/autodev-v2/codex_usage.py \
             projects/autodev-v2/codex_compat.py \
+            projects/autodev-v2/grok_compat.py \
             projects/autodev-v2/functional_verify.py \
             projects/autodev-v2/runner_entry.py \
             projects/autodev-v2/runner.py \
@@ -36,7 +40,25 @@ jobs:
         run: python3 projects/autodev-v2/tests/test_core.py
       - name: Autonomous loop tests
         run: python3 projects/autodev-v2/tests/test_autonomous_loop.py
+      - name: Runner tests
+        run: python3 projects/autodev-v2/tests/test_runner.py
+      - name: Runner entry / Unity hold tests
+        run: python3 projects/autodev-v2/tests/test_runner_entry.py
       - name: Functional acceptance tests
         run: python3 projects/autodev-v2/tests/test_functional_verify.py
+      - name: Grok compatibility tests
+        run: python3 projects/autodev-v2/tests/test_grok_compat.py
+      - name: Codex compatibility tests
+        run: python3 projects/autodev-v2/tests/test_codex_compat.py
       - name: Control-plane tests
         run: python3 projects/autodev-v2/tests/test_control_plane.py
+      - name: Provider-free test guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          wf = Path('.github/workflows/autodev-v2-tests.yml').read_text(encoding='utf-8')
+          forbidden = ['grok --single', 'grok -p ', 'codex exec']
+          for token in forbidden:
+              assert token not in wf, f'CI must not invoke live provider: {token}'
+          print('provider-free CI guard: PASS')
+          PY
