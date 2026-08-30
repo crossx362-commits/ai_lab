@@ -18,6 +18,9 @@
 - 안정 지식: `projects/autodev-v2/KNOWLEDGE.md`
 - 진행상태/작업 큐: `output/autodev_v2/ashes-to-stars/state.json`
 - 게임 기획 권위: `docs/GAME_DESIGN_ASHES_TO_STARS.md`
+- 활성 프로젝트 프로필: `projects/autodev-v2/profiles/<active_project>.json`
+
+큐가 비고 Director가 실패해도 프로필의 `seed_tasks`로 루프가 계속 돕니다. STATUS/loop 보드는 큐가 아닙니다.
 
 과거 WORKLOG/회의록은 자동 컨텍스트가 아닙니다.
 

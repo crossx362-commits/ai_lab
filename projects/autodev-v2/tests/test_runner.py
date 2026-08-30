@@ -73,6 +73,33 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("[AutoDev v2 추가 안전 규칙]", source)
         self.assertNotIn("[AutoDev v3 추가 안전 규칙]", source)
 
+    def test_estate_text_is_not_generic_systems(self):
+        self.assertEqual(R.infer_area({"title": "영지 건물 4종 동작", "goal": "EstateScreen에서 성장"}), "estate")
+        self.assertEqual(R.infer_area({"title": "출전 편성", "goal": "W3Party 파티 편성"}), "formation")
+        self.assertEqual(R.infer_area({"title": "보스전 쪹 소환", "goal": "BossBattle 레이드"}), "raid")
+
+    def test_director_prompt_prefers_play_loop_over_status_art(self):
+        source = (ROOT / "runner.py").read_text(encoding="utf-8")
+        self.assertIn("STATUS 전체와 아트/ox-alpha/폴리싱 로그는 작업이 아니다", source)
+        self.assertIn("compact_status_next", source)
+
+    def test_project_profile_loads_seed_tasks(self):
+        profile = R.load_project_profile({"active_project": "ashes-to-stars"})
+        self.assertTrue(profile.get("seed_tasks"))
+
+    def test_seed_play_loop_fills_empty_queue(self):
+        cfg = {
+            "active_project": "ashes-to-stars",
+            "max_tasks_per_director_batch": 6,
+            "duplicate_task_similarity": 0.88,
+            "dedupe_history_limit": 40,
+            "max_same_area_per_director_batch": 2,
+        }
+        st = R.AUTODEV.new_state()
+        self.assertTrue(R.seed_play_loop_if_empty(cfg, st))
+        self.assertGreaterEqual(len(st["tasks"]), 1)
+        self.assertFalse(R.seed_play_loop_if_empty(cfg, st))
+
 
 if __name__ == "__main__":
     unittest.main()
