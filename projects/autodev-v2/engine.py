@@ -64,7 +64,7 @@ def run_startup() -> tuple[bool, str]:
     heartbeat("bootstrap", "이전 루프 정리 및 실행 준비 중")
     mig = subprocess.run([sys.executable, str(HERE / "migrate_v1.py"), "--apply"], cwd=REPO)
     if mig.returncode != 0:
-        return False, f"v1 정리 실패 rc={mig.returncode}"
+        print(f"[ENGINE] v1 정리 경고 rc={mig.returncode} — 엔진은 계속 시작합니다.", flush=True)
 
     import start
     env = start.compat_env()
