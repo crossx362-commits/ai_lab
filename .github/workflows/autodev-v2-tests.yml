@@ -35,6 +35,7 @@ jobs:
             projects/autodev-v2/functional_verify.py \
             projects/autodev-v2/runner_entry.py \
             projects/autodev-v2/runner.py \
+            projects/autodev-v2/loop_ext.py \
             projects/autodev-v2/start.py
       - name: Core tests
         run: python3 projects/autodev-v2/tests/test_core.py

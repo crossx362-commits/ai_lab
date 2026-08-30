@@ -1,5 +1,4 @@
 import importlib.util
-import json
 from pathlib import Path
 import unittest
 
@@ -8,6 +7,11 @@ SPEC = importlib.util.spec_from_file_location("autodev_v2_runner_test", ROOT / "
 R = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
 SPEC.loader.exec_module(R)
+
+ESPEC = importlib.util.spec_from_file_location("autodev_v2_loop_ext_test", ROOT / "loop_ext.py")
+E = importlib.util.module_from_spec(ESPEC)
+assert ESPEC and ESPEC.loader
+ESPEC.loader.exec_module(E)
 
 
 class RunnerTests(unittest.TestCase):
@@ -78,16 +82,18 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(R.infer_area({"title": "출전 편성", "goal": "W3Party 파티 편성"}), "formation")
         self.assertEqual(R.infer_area({"title": "보스전 쪹 소환", "goal": "BossBattle 레이드"}), "raid")
 
-    def test_director_prompt_prefers_play_loop_over_status_art(self):
-        source = (ROOT / "runner.py").read_text(encoding="utf-8")
-        self.assertIn("STATUS 전체와 아트/ox-alpha/폴리싱 로그는 작업이 아니다", source)
+    def test_loop_ext_has_status_compact_and_seed(self):
+        source = (ROOT / "loop_ext.py").read_text(encoding="utf-8")
         self.assertIn("compact_status_next", source)
+        self.assertIn("seed_play_loop_if_empty", source)
+        self.assertIn("STATUS 전체와 아트/ox-alpha/폴리싱 로그는 작업이 아니다", source)
 
     def test_project_profile_loads_seed_tasks(self):
-        profile = R.load_project_profile({"active_project": "ashes-to-stars"})
+        profile = E.load_project_profile({"active_project": "ashes-to-stars"})
         self.assertTrue(profile.get("seed_tasks"))
 
-    def test_seed_play_loop_fills_empty_queue(self):
+    def test_seed_play_loop_fills_empty_queue_after_install(self):
+        E.install()
         cfg = {
             "active_project": "ashes-to-stars",
             "max_tasks_per_director_batch": 6,

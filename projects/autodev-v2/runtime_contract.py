@@ -20,6 +20,7 @@ CONTROL_FILES = (
     "functional_verify.py",
     "config.json",
     "start.py",
+    "loop_ext.py",
 )
 
 
