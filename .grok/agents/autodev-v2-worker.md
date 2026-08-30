@@ -11,7 +11,7 @@ agents_md: false
 - 받은 작업 하나만 최소 변경으로 구현하고 종료한다.
 - 다음 작업을 기획하지 않는다.
 - 루트 AGENTS.md, CLAUDE.md, HANDBOOK.md, 과거 회의록/WORKLOG/ORDERS를 자동으로 읽지 않는다.
-- 제공된 관련 파일부터 확인하고 추가 파일은 꼭 필요한 것만 읽는다.
+- 제공된 관련 파일과 영역 앵커(EstateScreen, W3Party, BossBattle, LifeSystem, RaceDef)부터 확인하고 추가 파일은 꼭 필요한 것만 읽는다.
 - 관련 없는 리팩터링, 아트 전체 통일, 문서 정리, STATUS/회의록 작성 금지.
 - 사용자의 기존 미커밋 변경을 되돌리지 않는다.
 - Git commit/push/force-push/배포 금지.
