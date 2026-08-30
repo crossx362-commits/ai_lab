@@ -1,0 +1,31 @@
+name: AutoDev audit fix once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/autodev-audit-fix-once.yml'
+      - 'projects/autodev-v2/tools/apply_audit_fixes_once.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply deterministic fixes
+        run: python3 projects/autodev-v2/tools/apply_audit_fixes_once.py
+      - name: Commit fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add projects/autodev-v2/webview_app.py projects/autodev-v2/autodev.py projects/autodev-v2/functional_verify.py projects/autodev-v2/runner.py
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "fix(AutoDev v2): resolve audit control-plane drift"
+            git push origin HEAD:master
+          fi
