@@ -20,6 +20,7 @@ def load(name: str, path: Path):
     return mod
 
 
+CONTRACT = load("autodev_runtime_contract_test", ROOT / "runtime_contract.py")
 ENGINE = load("autodev_engine_test", ROOT / "engine.py")
 WEB = load("autodev_web_test", ROOT / "webview_app.py")
 
@@ -35,10 +36,17 @@ class FakeProc:
 
 
 class ControlPlaneTests(unittest.TestCase):
-    def test_dashboard_and_engine_share_protocol_and_fingerprint(self):
-        self.assertEqual(WEB.CONTROL_PROTOCOL, ENGINE.CONTROL_PROTOCOL)
-        self.assertEqual(tuple(WEB.CONTROL_FILES), tuple(ENGINE.CONTROL_FILES))
-        self.assertEqual(WEB.control_fingerprint(), ENGINE.control_fingerprint())
+    def test_dashboard_engine_and_contract_share_protocol_and_fingerprint(self):
+        self.assertEqual(WEB.CONTROL_PROTOCOL, CONTRACT.CONTROL_PROTOCOL)
+        self.assertEqual(ENGINE.CONTROL_PROTOCOL, CONTRACT.CONTROL_PROTOCOL)
+        self.assertEqual(WEB.control_fingerprint(ROOT), CONTRACT.control_fingerprint(ROOT))
+        self.assertEqual(ENGINE.control_fingerprint(ROOT), CONTRACT.control_fingerprint(ROOT))
+
+    def test_runner_heartbeat_uses_shared_protocol_not_literal(self):
+        source = (ROOT / "runner_entry.py").read_text(encoding="utf-8")
+        self.assertIn("from runtime_contract import CONTROL_PROTOCOL", source)
+        self.assertIn('"engine_protocol": CONTROL_PROTOCOL', source)
+        self.assertNotIn('"engine_protocol": 6', source)
 
     def test_dashboard_starts_only_engine_entrypoint(self):
         source = (ROOT / "webview_app.py").read_text(encoding="utf-8")
@@ -46,10 +54,17 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertNotIn('Popen([sys.executable, str(HERE / "start.py")]', source)
         self.assertNotIn('Popen([sys.executable, str(HERE / "runner_entry.py")]', source)
 
-    def test_engine_runs_runner_in_same_process(self):
+    def test_legacy_entrypoints_delegate_to_engine(self):
+        start = (ROOT / "start.py").read_text(encoding="utf-8")
+        core = (ROOT / "autodev.py").read_text(encoding="utf-8")
+        self.assertIn("return engine.main()", start)
+        self.assertIn('os.execv(sys.executable, [sys.executable, str(HERE / "engine.py")])', core)
+
+    def test_engine_runs_runner_in_same_process_and_preserves_environment(self):
         source = (ROOT / "engine.py").read_text(encoding="utf-8")
         self.assertIn("import runner_entry", source)
         self.assertIn("runner_entry.main()", source)
+        self.assertNotIn("os.environ.clear()", source)
         self.assertNotIn('subprocess.run([sys.executable, str(HERE / "runner_entry.py")]', source)
 
     def test_update_scope_does_not_replace_game_project(self):
@@ -61,7 +76,7 @@ class ControlPlaneTests(unittest.TestCase):
         )
 
     def test_stale_detection_uses_control_fingerprint_not_git_head(self):
-        current = WEB.control_fingerprint()
+        current = WEB.control_fingerprint(ROOT)
         state = {
             "pid": 1234,
             "control_protocol": WEB.CONTROL_PROTOCOL,
@@ -128,7 +143,7 @@ class ControlPlaneTests(unittest.TestCase):
                 ENGINE.heartbeat("test", "alive")
             data = __import__("json").loads(p.read_text(encoding="utf-8"))
         self.assertEqual(data["pid"], os.getpid())
-        self.assertEqual(data["engine_protocol"], ENGINE.CONTROL_PROTOCOL)
+        self.assertEqual(data["engine_protocol"], CONTRACT.CONTROL_PROTOCOL)
         self.assertEqual(data["stage"], "test")
 
 
