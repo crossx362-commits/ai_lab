@@ -11,6 +11,7 @@ Runtime integrations:
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import queue
@@ -61,6 +62,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 OUTPUT = REPO / "output" / "autodev_v2"
 HEARTBEAT = OUTPUT / "engine_heartbeat.json"
+HOLD_DIR = OUTPUT / "verification_holds"
 _HB_LOCK = threading.RLock()
 _PROVIDER_LOCK = threading.RLock()
 _ACTIVE_PROVIDER: subprocess.Popen[str] | None = None
@@ -77,6 +79,68 @@ def _atomic_json(path: Path, data: dict[str, Any]) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
+
+
+def _hold_path(tid: str) -> Path:
+    safe = "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in tid) or "TASK"
+    return HOLD_DIR / f"{safe}.json"
+
+
+def _checkpoint_json(cp: dict[str, Any]) -> dict[str, Any]:
+    snapshots: dict[str, Any] = {}
+    for rel, snap in cp.get("snapshots", {}).items():
+        existed, data = snap
+        snapshots[str(rel)] = {
+            "existed": bool(existed),
+            "data_b64": base64.b64encode(data).decode("ascii") if data is not None else None,
+        }
+    return {
+        "dirty": sorted(str(x) for x in cp.get("dirty", set())),
+        "untracked": sorted(str(x) for x in cp.get("untracked", set())),
+        "staged": sorted(str(x) for x in cp.get("staged", set())),
+        "snapshots": snapshots,
+    }
+
+
+def _checkpoint_from_json(raw: dict[str, Any]) -> dict[str, Any] | None:
+    try:
+        snapshots: dict[str, tuple[bool, bytes | None]] = {}
+        for rel, item in raw.get("snapshots", {}).items():
+            if not isinstance(item, dict):
+                return None
+            encoded = item.get("data_b64")
+            data = base64.b64decode(encoded.encode("ascii")) if isinstance(encoded, str) else None
+            snapshots[str(rel)] = (bool(item.get("existed")), data)
+        return {
+            "dirty": {str(x) for x in raw.get("dirty", [])},
+            "untracked": {str(x) for x in raw.get("untracked", [])},
+            "staged": {str(x) for x in raw.get("staged", [])},
+            "snapshots": snapshots,
+        }
+    except Exception:
+        return None
+
+
+def save_hold_checkpoint(tid: str, cp: dict[str, Any]) -> None:
+    path = _hold_path(tid)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_json(path, _checkpoint_json(cp))
+
+
+def load_hold_checkpoint(tid: str) -> dict[str, Any] | None:
+    path = _hold_path(tid)
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return _checkpoint_from_json(raw) if isinstance(raw, dict) else None
+
+
+def clear_hold_checkpoint(tid: str) -> None:
+    try:
+        _hold_path(tid).unlink()
+    except OSError:
+        pass
 
 
 def set_runtime(*, stage: str | None = None, message: str | None = None,
@@ -306,9 +370,12 @@ def finish_task(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, Any], v
     """Record only this task's delta, excluding owner changes that existed before it started."""
     tid = str(task.get("id", ""))
     override = _ACTIVE_DELTA_OVERRIDES.get(tid)
+    held_cp = load_hold_checkpoint(tid)
     cp = _ACTIVE_CHECKPOINTS.get(tid)
     if override is not None:
         delta = set(override)
+    elif held_cp is not None:
+        delta = runner.task_delta_paths(Path(cfg["_repo_root"]), held_cp)
     elif cp is not None:
         delta = runner.task_delta_paths(Path(cfg["_repo_root"]), cp)
     else:
@@ -324,6 +391,7 @@ def finish_task(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, Any], v
             item.pop("wait_reason", None)
             break
     AUTODEV.save_state(cfg, st)
+    clear_hold_checkpoint(tid)
 
 
 def _mark_verification_wait(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, Any], reason: str) -> None:
@@ -424,13 +492,29 @@ def safe_execute_one(cfg: dict[str, Any], st: dict[str, Any], task: dict[str, An
         _ACTIVE_CHECKPOINTS[tid] = outer_cp
     try:
         outcome = ORIGINAL_SAFE_EXECUTE(cfg, st, task, run_stats)
+        if outcome == "blocked":
+            held_cp = load_hold_checkpoint(tid)
+            if held_cp is not None:
+                restored = runner.rollback_checkpoint(root, held_cp)
+                clear_hold_checkpoint(tid)
+                for item in reversed(st.get("blocked", [])):
+                    if isinstance(item, dict) and str(item.get("id", "")) == tid:
+                        item["hold_rollback_files"] = restored[:30]
+                        item.pop("verification_only", None)
+                        item.pop("implementation_delta_files", None)
+                        break
+                AUTODEV.save_state(cfg, st)
         set_runtime(stage="task_done" if outcome == "done" else "task_result",
                     message=f"{tid} 결과: {outcome}", provider="local", output=True)
         return outcome
     except FV.FunctionalVerificationWait as e:
         # The implementation is valuable. Do not roll it back merely because Unity
         # is open/unavailable. Hold completion and retry acceptance without AI later.
-        delta = runner.task_delta_paths(root, outer_cp)
+        held_cp = load_hold_checkpoint(tid)
+        if held_cp is None:
+            save_hold_checkpoint(tid, outer_cp)
+            held_cp = outer_cp
+        delta = runner.task_delta_paths(root, held_cp)
         task["implementation_delta_files"] = sorted(delta)
         task["verification_only"] = True
         _mark_verification_wait(cfg, st, task, str(e))
