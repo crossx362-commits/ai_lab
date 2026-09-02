@@ -39,7 +39,14 @@ AUTODEV = load_module("autodev_v2_core", HERE / "autodev.py")
 ORIGINAL_NORMALIZE = AUTODEV.normalize_director_tasks
 _LAST_DIRECTOR_META: dict[str, Any] = {"status": "idle", "cloud_used": 0}
 
+PROJECT_AREA_NAMES = ("estate", "formation", "raid", "fusion", "class_change")
+
 AREA_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "estate": ("estate", "estatescreen", "territory", "영지"),
+    "formation": ("formation", "w3party", "party formation", "편성"),
+    "raid": ("raid", "bossbattle", "boss battle", "레이드", "보스전"),
+    "fusion": ("fusion", "merge", "combine", "합성"),
+    "class_change": ("class change", "job change", "promotion", "전직"),
     "combat": ("combat", "battle", "attack", "skill", "damage", "enemy", "boss", "전투", "공격", "스킬", "피해", "적", "보스", "투사체"),
     "character": ("character", "player", "job", "class", "stat", "캐릭터", "플레이어", "직업", "스탯", "능력치"),
     "progression": ("progress", "level", "upgrade", "reward", "growth", "성장", "레벨", "강화", "보상", "진행"),
@@ -72,9 +79,20 @@ def text_similarity(a: str, b: str) -> float:
 
 def infer_area(item: dict[str, Any]) -> str:
     explicit = _norm_text(str(item.get("area", ""))).replace(" ", "_")
+    text = _task_text(item)
+
+    # Ashes-to-Stars core areas override a broad Director label such as systems/combat
+    # when the task text itself clearly names the domain.
+    project_scores = []
+    for area in PROJECT_AREA_NAMES:
+        words = AREA_KEYWORDS[area]
+        project_scores.append((sum(1 for w in words if w.lower() in text), area))
+    project_score, project_area = max(project_scores)
+    if project_score > 0:
+        return project_area
+
     if explicit in AREA_KEYWORDS:
         return explicit
-    text = _task_text(item)
     scores: list[tuple[int, str]] = []
     for area, words in AREA_KEYWORDS.items():
         score = sum(1 for w in words if w.lower() in text)
@@ -213,7 +231,7 @@ JSON만 출력:
     {{
       "title": "작업명",
       "goal": "무엇을 구현하는지",
-      "area": "combat|character|progression|items|ui|stage|systems|qa 중 하나",
+      "area": "estate|formation|raid|fusion|class_change|combat|character|progression|items|ui|stage|systems|qa 중 하나",
       "done_when": ["검증 가능한 조건1", "조건2"],
       "priority": 1,
       "depends_on": [1],
@@ -443,7 +461,7 @@ def _project_scope_problem(cfg: dict[str, Any], root: Path, cp: dict[str, Any]) 
 def _safe_worker_prompt(cfg: dict[str, Any], task: dict[str, Any], verify_text: str) -> str:
     return AUTODEV.worker_prompt(cfg, task, verify_text) + """
 
-[AutoDev v3 추가 안전 규칙]
+[AutoDev v2 추가 안전 규칙]
 - git add/commit/push/reset/checkout/restore/stash 금지. Git 상태는 읽기만 한다.
 - 이 작업과 직접 관련 없는 파일은 수정하지 않는다.
 - 완료 조건을 충족하지 못했으면 성공했다고 주장하지 않는다.

@@ -21,7 +21,7 @@ REPO = HERE.parents[1]
 TOOLS = REPO / "projects" / "ai-team" / "skills" / "마루_게임개발" / "tools"
 RUNNER_REL = Path("Assets/Editor/AutoDevAcceptance/AutoDevAcceptanceRunner.cs")
 ACCEPT_DIR_REL = Path("Assets/Editor/AutoDevAcceptance")
-DEFAULT_AREAS = {"combat", "character", "progression", "items", "ui", "stage", "systems"}
+DEFAULT_AREAS = {"combat", "character", "progression", "items", "ui", "stage", "system", "systems", "estate", "formation", "raid", "fusion", "class_change"}
 
 
 class FunctionalVerificationWait(RuntimeError):
@@ -56,7 +56,7 @@ def requires_functional(cfg: dict[str, Any], task: dict[str, Any]) -> bool:
         return False
     if bool(task.get("milestone", False)):
         return True
-    configured = cfg.get("functional_verify_areas")
+    configured = cfg.get("functional_verify_areas", cfg.get("functional_verify_categories"))
     areas = {str(x) for x in configured} if isinstance(configured, list) else DEFAULT_AREAS
     return str(task.get("area", "systems")) in areas
 

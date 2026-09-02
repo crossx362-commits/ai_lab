@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""AutoDev v2 원클릭 진입점.
+"""AutoDev v2 compatibility helpers.
 
-1) v1 토큰 소모 루프 비활성화
-2) Grok/Codex 실제 CLI를 찾아 호환/쿼터 보호 래퍼 준비
-3) Grok Director + 로컬 Anti-Loop/rollback 가드 사용
-4) preflight 안전/예산/핵심 CLI 확인
-5) 컴파일 + 작업별 실제 Unity Acceptance 검증을 통과해야 완료
-6) Codex/Grok 작업 진행을 실시간 로그로 내보내며 Supervisor 연속 실행
+Canonical runtime entrypoint is engine.py (normally started by the dashboard).
+This module only keeps CLI-wrapper preparation helpers and delegates old
+`start.py` launches to engine.main().
 """
 from __future__ import annotations
 
 import os
 import shlex
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
@@ -83,32 +79,16 @@ def compat_env() -> dict[str, str] | None:
     print("Anti-Loop: 중복 작업/같은 영역 반복/같은 실패를 로컬 코드로 차단")
     print("Rollback: 실패 작업의 변경만 복원하고 기존 사용자 변경은 보존")
     print("검증: 컴파일 PASS + 작업별 실제 Unity Acceptance PASS 필수")
-    print("검증 대기: Unity가 열려 있으면 AI를 낭비하지 않고 잠시 기다림")
+    print("Unity 사용 중: 구현은 진행할 수 있고 완료 판정만 검증 대기")
     print("Supervisor: 배치 상한 후에도 계속 실행 · 시간당 클라우드 상한 적용")
     print("Provider 쿼터 보호: Grok 1시간 / Codex 5분 후 실제 재확인")
-    print("Codex 진행 로그: 실시간 스트리밍")
     return env
 
 
 def main() -> int:
-    mig = subprocess.run([sys.executable, str(HERE / "migrate_v1.py"), "--apply"])
-    if mig.returncode != 0:
-        print("v1 전환 단계가 실패해 v2 시작을 중단합니다.")
-        return mig.returncode
-
-    env = compat_env()
-    if env is None:
-        return 127
-
-    audit = subprocess.run([sys.executable, str(HERE / "preflight.py")], env=env)
-    if audit.returncode != 0:
-        print("preflight가 실패했습니다. 핵심 CLI/안전 가드를 확인한 뒤 v2를 다시 실행하세요.")
-        return audit.returncode
-
-    return subprocess.run(
-        [sys.executable, str(HERE / "runner_entry.py"), "run", "--continuous"],
-        env=env,
-    ).returncode
+    print("start.py는 호환 진입점입니다. 단일 engine.py로 위임합니다.")
+    import engine
+    return engine.main()
 
 
 if __name__ == "__main__":

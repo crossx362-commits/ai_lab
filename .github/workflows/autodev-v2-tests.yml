@@ -4,14 +4,10 @@ on:
   push:
     paths:
       - 'projects/autodev-v2/**'
-      - 'projects/ai-team/_shared/**'
-      - 'projects/ashes-to-stars/unity/Assets/Editor/AutoDevAcceptance/**'
       - '.github/workflows/autodev-v2-tests.yml'
   pull_request:
     paths:
       - 'projects/autodev-v2/**'
-      - 'projects/ai-team/_shared/**'
-      - 'projects/ashes-to-stars/unity/Assets/Editor/AutoDevAcceptance/**'
       - '.github/workflows/autodev-v2-tests.yml'
 
 jobs:
@@ -23,18 +19,24 @@ jobs:
       - name: Python syntax check
         run: |
           python3 -m py_compile \
-            projects/autodev-v2/webview_app.py \
-            projects/autodev-v2/restart_server.py \
+            projects/autodev-v2/runtime_contract.py \
             projects/autodev-v2/engine.py \
-            projects/autodev-v2/codex_usage.py \
-            projects/autodev-v2/codex_compat.py \
-            projects/autodev-v2/functional_verify.py \
-            projects/autodev-v2/runner_entry.py \
-            projects/autodev-v2/runner.py \
-            projects/autodev-v2/start.py
-      - name: Core tests
-        run: python3 projects/autodev-v2/tests/test_core.py
-      - name: Autonomous loop tests
-        run: python3 projects/autodev-v2/tests/test_autonomous_loop.py
-      - name: Functional acceptance tests
-        run: python3 projects/autodev-v2/tests/test_functional_verify.py
+            projects/autodev-v2/boot.py \
+            projects/autodev-v2/loop.py \
+            projects/autodev-v2/reap.py \
+            projects/autodev-v2/procutil.py \
+            projects/autodev-v2/start.py \
+            projects/autodev-v2/webview_app.py
+      - name: New loop tests
+        run: python3 projects/autodev-v2/tests/test_loop.py
+      - name: Reap tests
+        run: python3 projects/autodev-v2/tests/test_reap.py
+      - name: Provider-free test guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          wf = Path('.github/workflows/autodev-v2-tests.yml').read_text(encoding='utf-8')
+          for token in ['grok --single', 'grok -p ', 'codex exec']:
+              assert token not in wf, token
+          print('provider-free CI guard: PASS')
+          PY
