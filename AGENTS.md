@@ -2,13 +2,6 @@
 
 이 저장소의 비-Claude AI 도구 공통 지침이다. **필요한 것만 읽고 필요한 것만 고친다.**
 
-## AutoDev v2 예외
-`projects/autodev-v2/` 또는 재와별 자율개발 작업은 이 파일보다 아래 두 파일을 우선한다.
-- `projects/autodev-v2/CORE_RULES.md`
-- `projects/autodev-v2/KNOWLEDGE.md`
-
-AutoDev v2에서는 루트 `CLAUDE.md`, `HANDBOOK.md`, 과거 회의록, `ORDERS.md`, `GAME_WORKLOG.md`를 자동 정독하지 않는다. 필요성이 확인된 부분만 찾아 읽는다.
-
 ## 기본 원칙
 - 요청과 직접 관련된 파일만 읽는다. 광범위 스캔은 명확한 필요가 있을 때만.
 - 기존 패턴을 유지하고 최소 변경한다.
@@ -18,8 +11,6 @@ AutoDev v2에서는 루트 `CLAUDE.md`, `HANDBOOK.md`, 과거 회의록, `ORDERS
 - 같은 실패를 근거 없이 반복하지 않는다.
 
 ## 모델 정책
-- AutoDev v2: Grok 기본 → Grok 재시도 → Codex 최대 1회 → STOP.
-- Claude는 AutoDev v2에서 사용하지 않는다.
 - 같은 작업을 여러 모델에 동시에 보내지 않는다.
 - 파일 검색, Git 상태, 로그 필터, 컴파일/테스트는 가능한 한 로컬 도구로 처리한다.
 
@@ -42,7 +33,6 @@ AutoDev v2에서는 루트 `CLAUDE.md`, `HANDBOOK.md`, 과거 회의록, `ORDERS
 ## Git
 - 필요한 파일만 add/commit한다. `git add -A`를 기본으로 쓰지 않는다.
 - 커밋 전 diff가 예상 범위인지 확인한다.
-- AutoDev v2 Worker는 commit/push를 하지 않는다. 상태 관리는 v2 코어가 맡는다.
 
 ## 검증
 - 재와별 빠른 C# 검사: `projects/ai-team/skills/마루_게임개발/tools/game_compile_check.py`

@@ -1,27 +1,14 @@
-# 재와 별 — AutoDev v2 프로젝트 지침
+# 재와 별 — 프로젝트 지침
 
-이 파일은 `projects/ashes-to-stars/` 아래 작업의 **짧은 프로젝트 규칙**이다. 과거의 회의/WORKLOG/ORDERS/상시감사 운영 방식은 더 이상 기본 경로가 아니다.
+이 파일은 `projects/ashes-to-stars/` 아래 작업의 **짧은 프로젝트 규칙**이다.
 
 ## 권위 순서
 1. 사용자의 현재 직접 지시
 2. `docs/GAME_DESIGN_ASHES_TO_STARS.md`의 확정 사항
 3. 관련 `docs/GAME_SPEC_*.md`
-4. `projects/autodev-v2/CORE_RULES.md`
-5. 현재 코드와 실제 검증 결과
+4. 현재 코드와 실제 검증 결과
 
 문서와 코드가 다르면 현재 작업과 직접 관련된 차이만 확인한다. 전체 정합성 감사를 시작하지 않는다.
-
-## 현재 개발 구조
-- 자율개발 코어: `projects/autodev-v2/`
-- 다음 작업 결정: Grok Director가 큐가 비었을 때만 4~6개 생성
-- 다음 작업 선택: 로컬 Task Queue
-- 구현: Grok Worker
-- Grok 동일 작업 최대 2회
-- 실패 시 Codex 최대 1회
-- Claude 사용 안 함
-- 상태 단일 진실원천: `output/autodev_v2/ashes-to-stars/state.json`
-
-`output/qa/ashes-to-stars/ORDERS.md`, `docs/GAME_WORKLOG.md`, 과거 회의록은 AutoDev v2의 실행 큐나 진행상태 원천이 아니다. 필요할 때 사람이 참고하는 역사 자료다.
 
 ## 작업 원칙
 - 한 번에 플레이 가능한 기능 하나를 앞으로 보낸다.
@@ -40,10 +27,8 @@
 - 에디터 락 때문에 검증이 불가능하면 강제 종료 대신 검증을 보류하거나 안전한 사본/로컬 검사 경로를 쓴다.
 
 ## Git
-- AutoDev Worker는 commit/push를 하지 않는다.
 - force-push 금지.
 - 다른 작업의 변경을 되돌리거나 한꺼번에 정리하지 않는다.
-- 완료 기록은 AutoDev v2 state가 담당한다.
 
 ## 아트
 - 실제 코드 소비처가 있는 리소스만 만든다.

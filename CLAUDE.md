@@ -13,22 +13,9 @@
 ## Claude 사용 정책
 현재 사용자는 Claude 구독을 운영하지 않는다.
 
-- AutoDev v2에서 Claude를 호출하지 않는다.
 - 공용 LLM fallback에서도 Claude를 기본 경로로 사용하지 않는다.
 - 과거 `run_claude`, `claude -p`, Claude Max를 전제로 한 기록은 레거시다.
 - 특정 오래된 도구가 Claude를 직접 요구하면 자동 반복하지 말고 다른 지원 경로를 사용하거나 명시적으로 실패시킨다.
-
-## 재와별 AutoDev v2
-재와별 자율개발의 현재 원천은 다음이다.
-- `projects/autodev-v2/CORE_RULES.md`
-- `projects/autodev-v2/KNOWLEDGE.md`
-- `projects/autodev-v2/config.json`
-- `output/autodev_v2/ashes-to-stars/state.json`
-
-모델 흐름:
-`Grok → Grok 재시도 → Codex 최대 1회 → STOP`
-
-다음 작업은 Director가 큐가 빌 때만 묶음으로 만들고, 그 뒤 선택은 로컬 Task Queue가 한다. `game_council.py`, 역할별 `game_agents.py`, `ORDERS.md`, `GAME_WORKLOG.md`, `autopilot_stop_hook.py`는 AutoDev v2 기본 루프가 아니다.
 
 ## 기본 개발 원칙
 - 실제 기능 완성 우선
