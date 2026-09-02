@@ -1,0 +1,6 @@
+pack: Kenney Fantasy Town Kit 2.0
+license: CC0
+url: https://kenney.nl/assets/fantasy-town-kit
+zip: https://kenney.nl/media/pages/assets/fantasy-town-kit/efe948d309-1754222374/kenney_fantasy-town-kit_2.0.zip
+downloaded: 2026-08-31
+subset: tree, tree-high, rock-large, rock-small, stall, windmill, fountain-round, fence, cart, wall-block, wall-door, wall-window-glass, wall-corner, roof, roof-gable, chimney, lantern, hedge, fence-gate, planks, wall-wood-block, wall-wood-window-glass, roof-high

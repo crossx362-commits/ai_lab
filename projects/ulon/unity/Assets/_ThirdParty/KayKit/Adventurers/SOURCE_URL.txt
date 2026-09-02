@@ -1,0 +1,6 @@
+pack: KayKit Character Pack Adventurers 1.0
+license: CC0 1.0
+url: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+itch: https://kaylousberg.itch.io/kaykit-adventurers
+downloaded: 2026-08-31
+files: Knight.fbx, Barbarian.fbx, sword_1handed.fbx, shield_round.fbx + textures

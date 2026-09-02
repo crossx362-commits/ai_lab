@@ -1,0 +1,5 @@
+pack: KayKit Character Pack Skeletons 1.0
+license: CC0 1.0
+url: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0
+downloaded: 2026-08-31
+files: Skeleton_Warrior.fbx + texture

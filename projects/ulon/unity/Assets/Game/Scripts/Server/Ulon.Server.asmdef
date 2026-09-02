@@ -1,0 +1,17 @@
+{
+    "name": "Ulon.Server",
+    "rootNamespace": "Ulon.Server",
+    "references": [
+        "Ulon.Shared",
+        "FishNet.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

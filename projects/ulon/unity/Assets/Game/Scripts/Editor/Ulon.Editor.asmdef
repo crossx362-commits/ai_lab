@@ -1,0 +1,21 @@
+{
+    "name": "Ulon.Editor",
+    "rootNamespace": "Ulon.Editor",
+    "references": [
+        "Ulon.Shared",
+        "Ulon.Client",
+        "Ulon.Server",
+        "FishNet.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,6 @@
+pack: Kenney Nature Kit
+license: CC0
+url: https://kenney.nl/assets/nature-kit
+zip: https://kenney.nl/media/pages/assets/nature-kit/37ac38a37b-1677698939/kenney_nature-kit.zip
+downloaded: 2026-08-31
+subset: grass, plant_bush, plant_bushLarge, rock_largeA, rock_smallA, ground_grass, ground_pathTile, ground_pathStraight, ground_pathCross, ground_pathCorner, ground_pathEnd, grass_large, grass_leafs
