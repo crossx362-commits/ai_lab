@@ -26,14 +26,5 @@ for asset in style.css site.js posts.js works.js; do
   fi
 done
 
-DEPLOYMENT_URL=$(vercel deploy --prod --yes 2> >(tee /dev/stderr) | tail -n 1 | tr -d '\r')
-case "$DEPLOYMENT_URL" in
-  https://*.vercel.app) ;;
-  *)
-    echo "!! 배포 URL을 확인할 수 없습니다: $DEPLOYMENT_URL" >&2
-    exit 1
-    ;;
-esac
-
-vercel alias set "$DEPLOYMENT_URL" crossx362.vercel.app
+vercel deploy --prod --yes
 echo "배포 완료: https://crossx362.vercel.app"
