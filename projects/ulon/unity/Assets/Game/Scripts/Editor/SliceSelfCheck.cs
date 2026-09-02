@@ -1213,7 +1213,8 @@ namespace Ulon.Editor
 
             AssertMeditationSlice();
             AssertMagicResistSlice();
-            Debug.Log("[Ulon] Slice self-check PASS — 몬스터 2종(스켈레톤+도적), 검술/채광/제작, 목공, 궁술/나무활, 전술 0.0→0.1, 방패술 0.0→0.1, 해부학 0.0→0.1, 치유 붕대 0.0→0.1, 명상 마나 0.0→0.1, 마법 저항 0.0→0.1, STR/HP, 700캡↓, 은행, 캐릭터 생성, 주문책, 시체/부활, 무게/도구, 리스폰/시약, 상점, 훈련, 운영툴, 명성/가드존");
+            AssertEvalIntSlice();
+            Debug.Log("[Ulon] Slice self-check PASS — 몬스터 2종(스켈레톤+도적), 검술/채광/제작, 목공, 궁술/나무활, 전술 0.0→0.1, 방패술 0.0→0.1, 해부학 0.0→0.1, 치유 붕대 0.0→0.1, 명상 마나 0.0→0.1, 마법 저항 0.0→0.1, 지능 평가 0.0→0.1, STR/HP, 700캡↓, 은행, 캐릭터 생성, 주문책, 시체/부활, 무게/도구, 리스폰/시약, 상점, 훈련, 운영툴, 명성/가드존");
         }
 
         static void AssertMeditationSlice()
@@ -1453,6 +1454,169 @@ namespace Ulon.Editor
                     UnityEngine.Object.DestroyImmediate(casterGo);
                 if (plateGo != null)
                     UnityEngine.Object.DestroyImmediate(plateGo);
+                if (worldGo != null)
+                    UnityEngine.Object.DestroyImmediate(worldGo);
+            }
+        }
+
+        static void AssertEvalIntSlice()
+        {
+            if (StatSet.PrimaryOf(SkillId.EvaluateIntelligence) != StatId.Int)
+                throw new InvalidOperationException("지능 평가 Primary는 INT이어야 합니다.");
+
+            var noneSkills = new SkillSet();
+            var none = EvalIntResolve.Resolve(new EvalIntRequest
+            {
+                Now = 1f,
+                Skills = noneSkills,
+                TargetStats = null
+            });
+            if (none.Applied)
+                throw new InvalidOperationException("대상 없는 지능 평가는 실패해야 합니다.");
+            if (Math.Abs(noneSkills.Get(SkillId.EvaluateIntelligence)) > 0.0001f)
+                throw new InvalidOperationException("실패한 지능 평가는 스킬을 올리면 안 됩니다.");
+
+            var farSkills = new SkillSet();
+            var far = EvalIntResolve.Resolve(new EvalIntRequest
+            {
+                Distance = 20f,
+                Now = 1f,
+                Skills = farSkills,
+                TargetStats = new StatSet(),
+                TargetAlive = true
+            });
+            if (far.Applied)
+                throw new InvalidOperationException("사거리 밖 지능 평가는 들어가면 안 됩니다.");
+            if (Math.Abs(farSkills.Get(SkillId.EvaluateIntelligence)) > 0.0001f)
+                throw new InvalidOperationException("실패한 지능 평가는 스킬을 올리면 안 됩니다.");
+
+            var skills = new SkillSet();
+            var stats = new StatSet();
+            var targetStats = new StatSet();
+            targetStats.ForceSet(20, 20, 40);
+            int intWas = stats.Int;
+            var ok = EvalIntResolve.Resolve(new EvalIntRequest
+            {
+                Distance = 1f,
+                Now = 1f,
+                Skills = skills,
+                Stats = stats,
+                TargetStats = targetStats,
+                TargetAlive = true,
+                TargetMana = 12f,
+                TargetMaxMana = 50f,
+                Difficulty = EvalIntResolve.Difficulty
+            });
+            if (!ok.Applied || ok.Intelligence != 40 || ok.Mana != 12 || ok.MaxMana != 50)
+                throw new InvalidOperationException("지능 평가는 대상 INT/마나를 밝혀야 합니다.");
+            if (Math.Abs(skills.Get(SkillId.EvaluateIntelligence) - 0.1f) > 0.0001f)
+                throw new InvalidOperationException("성공 지능 평가 후 0.1이어야 합니다.");
+            if (stats.Int != intWas + 1)
+                throw new InvalidOperationException("지능 평가 상승 시 INT가 올라야 합니다.");
+
+            var locked = new SkillSet();
+            locked.SetLock(SkillId.EvaluateIntelligence, SkillLock.Locked);
+            var lockedOk = EvalIntResolve.Resolve(new EvalIntRequest
+            {
+                Distance = 1f,
+                Now = 1f,
+                Skills = locked,
+                TargetStats = targetStats,
+                TargetAlive = true,
+                TargetMana = 12f,
+                TargetMaxMana = 50f
+            });
+            if (!lockedOk.Applied || lockedOk.Intelligence != 40)
+                throw new InvalidOperationException("잠긴 지능 평가도 정보는 보여야 합니다.");
+            if (Math.Abs(locked.Get(SkillId.EvaluateIntelligence)) > 0.0001f)
+                throw new InvalidOperationException("잠긴 지능 평가는 오르면 안 됩니다.");
+
+            int plain = SpellCast.EmberDamage(new StatSet(), new SkillSet());
+            var boosted = new SkillSet();
+            boosted.ForceSet(SkillId.EvaluateIntelligence, 40f, SkillLock.Up);
+            int withEval = SpellCast.EmberDamage(new StatSet(), boosted);
+            if (withEval <= plain)
+                throw new InvalidOperationException("지능 평가가 공격 마법 위력에 반영되어야 합니다.");
+
+            var melee = new SkillSet();
+            var phys = AttackResolve.Resolve(new AttackRequest
+            {
+                Distance = 1.2f,
+                Now = 1f,
+                Skills = melee,
+                TargetAlive = true
+            });
+            if (!phys.Applied)
+                throw new InvalidOperationException("물리 공격 대조 실패");
+            if (Math.Abs(melee.Get(SkillId.EvaluateIntelligence)) > 0.0001f)
+                throw new InvalidOperationException("물리 공격은 지능 평가를 올리면 안 됩니다.");
+
+            var go = new GameObject("selfcheck-evalint");
+            GameObject worldGo = null;
+            GameObject tgtGo = null;
+            GameObject casterGo = null;
+            try
+            {
+                var world = OfflineWorld.Instance;
+                if (world == null)
+                {
+                    worldGo = new GameObject("selfcheck-evalint-world");
+                    world = worldGo.AddComponent<OfflineWorld>();
+                }
+                var body = go.AddComponent<WorldBody>();
+                body.IsAvatar = true;
+                body.RecalcFromInt(world.StatsOf(body).Int);
+
+                var missing = world.TryEvaluate(body, null);
+                if (missing.Applied)
+                    throw new InvalidOperationException("서버 대상 없는 지능 평가는 실패해야 합니다.");
+                if (Math.Abs(world.SkillsOf(body).Get(SkillId.EvaluateIntelligence)) > 0.0001f)
+                    throw new InvalidOperationException("실패한 서버 지능 평가는 스킬을 올리면 안 됩니다.");
+
+                tgtGo = new GameObject("selfcheck-evalint-tgt");
+                tgtGo.transform.position = go.transform.position;
+                var tgt = tgtGo.AddComponent<WorldBody>();
+                tgt.IsEnemy = true;
+                tgt.DisplayName = "스켈레톤";
+                tgt.MaxHp = 30f;
+                tgt.ResetHp();
+                world.StatsOf(tgt).ForceSet(20, 20, 40);
+                tgt.RecalcFromInt(40);
+                tgt.SetMana(18f);
+
+                var hit = world.TryEvaluate(body, tgt);
+                if (!hit.Applied)
+                    throw new InvalidOperationException("서버 지능 평가 실패: " + hit.FailReason);
+                if (hit.Intelligence != 40 || hit.Mana != 18 || hit.MaxMana != StatSet.MaxManaOf(40))
+                    throw new InvalidOperationException("서버 지능 평가는 대상 INT/마나를 밝혀야 합니다.");
+                if (Math.Abs(world.SkillsOf(body).Get(SkillId.EvaluateIntelligence) - 0.1f) > 0.0001f)
+                    throw new InvalidOperationException("성공 지능 평가 후 서버 스킬 0.1이어야 합니다.");
+                if (string.IsNullOrEmpty(world.LastEvalMessage) || world.LastEvalMessage.IndexOf("INT 40", StringComparison.Ordinal) < 0)
+                    throw new InvalidOperationException("지능 평가 메시지가 INT를 포함해야 합니다.");
+
+                casterGo = new GameObject("selfcheck-evalint-caster");
+                casterGo.transform.position = go.transform.position;
+                var caster = casterGo.AddComponent<WorldBody>();
+                caster.IsAvatar = true;
+                caster.RecalcFromInt(world.StatsOf(caster).Int);
+                caster.SetMana(40f);
+                var bag = casterGo.AddComponent<InventoryBag>();
+                bag.Add(SpellCast.Reagent, 4);
+                world.BookOf(caster).Learn(SpellId.Ember);
+                float evalBeforeCast = world.SkillsOf(caster).Get(SkillId.EvaluateIntelligence);
+                var ember = world.TryCast(caster, SpellId.Ember, tgt);
+                if (!ember.Applied)
+                    throw new InvalidOperationException("불씨 대조 실패: " + ember.FailReason);
+                if (Math.Abs(world.SkillsOf(caster).Get(SkillId.EvaluateIntelligence) - evalBeforeCast) > 0.0001f)
+                    throw new InvalidOperationException("주문 시전은 지능 평가를 올리면 안 됩니다.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+                if (tgtGo != null)
+                    UnityEngine.Object.DestroyImmediate(tgtGo);
+                if (casterGo != null)
+                    UnityEngine.Object.DestroyImmediate(casterGo);
                 if (worldGo != null)
                     UnityEngine.Object.DestroyImmediate(worldGo);
             }

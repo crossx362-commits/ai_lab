@@ -54,6 +54,8 @@ namespace Ulon.Client
             string targetLine = target == null || !target.Alive
                 ? "대상 없음"
                 : $"{target.DisplayName}  HP {target.Hp:0}/{target.MaxHp:0}";
+            if (!string.IsNullOrEmpty(world.LastEvalMessage))
+                targetLine += "  " + world.LastEvalMessage;
 
             var bag = world.Player != null ? world.Player.GetComponent<InventoryBag>() : null;
             string inv = "가방 비움";
@@ -88,10 +90,11 @@ namespace Ulon.Client
             float healing = world.PlayerSkills.Get(SkillId.Healing);
             float meditation = world.PlayerSkills.Get(SkillId.Meditation);
             float resist = world.PlayerSkills.Get(SkillId.MagicResist);
+            float evalInt = world.PlayerSkills.Get(SkillId.EvaluateIntelligence);
             GUI.Box(new Rect(16, 16, 340, 256), "");
             var st = world.PlayerStats;
             var sk = world.PlayerSkills;
-            GUI.Label(new Rect(28, 24, 320, 22), $"{SkillNames.KoreanOf(SkillId.Swordsmanship)} {skill:0.0}  {SkillNames.KoreanOf(SkillId.Archery)} {archery:0.0}  {SkillNames.KoreanOf(SkillId.Tactics)} {tactics:0.0}  {SkillNames.KoreanOf(SkillId.Parrying)} {parry:0.0}  {SkillNames.KoreanOf(SkillId.Anatomy)} {anatomy:0.0}  {SkillNames.KoreanOf(SkillId.Healing)} {healing:0.0}  {SkillNames.KoreanOf(SkillId.Meditation)} {meditation:0.0}  {SkillNames.KoreanOf(SkillId.MagicResist)} {resist:0.0}  채광 {mining:0.0}  벌목 {lumber:0.0}  대장 {smith:0.0}  목공 {carp:0.0}  마법 {magery:0.0}");
+            GUI.Label(new Rect(28, 24, 320, 22), $"{SkillNames.KoreanOf(SkillId.Swordsmanship)} {skill:0.0}  {SkillNames.KoreanOf(SkillId.Archery)} {archery:0.0}  {SkillNames.KoreanOf(SkillId.Tactics)} {tactics:0.0}  {SkillNames.KoreanOf(SkillId.Parrying)} {parry:0.0}  {SkillNames.KoreanOf(SkillId.Anatomy)} {anatomy:0.0}  {SkillNames.KoreanOf(SkillId.Healing)} {healing:0.0}  {SkillNames.KoreanOf(SkillId.Meditation)} {meditation:0.0}  {SkillNames.KoreanOf(SkillId.MagicResist)} {resist:0.0}  {SkillNames.KoreanOf(SkillId.EvaluateIntelligence)} {evalInt:0.0}  채광 {mining:0.0}  벌목 {lumber:0.0}  대장 {smith:0.0}  목공 {carp:0.0}  마법 {magery:0.0}");
             string ghost = world.Player != null && world.Player.Ghost ? "  유령" : "";
             string noto = world.Player != null ? NotorietyId.Korean(world.Player.Notoriety) : "";
             bool town = world.Player != null && GuardZone.Contains(world.Player.transform.position.x, world.Player.transform.position.z);
@@ -114,6 +117,8 @@ namespace Ulon.Client
                     Bandage(net);
                 if (GUI.Button(new Rect(256, 186, 70, 24), SkillNames.KoreanOf(SkillId.Meditation)))
                     Meditate(net);
+                if (GUI.Button(new Rect(256, 162, 70, 24), SkillNames.KoreanOf(SkillId.EvaluateIntelligence)))
+                    Evaluate(net);
             }
             if (LockButton(28, 112, SkillNames.KoreanOf(SkillId.Swordsmanship), sk.GetLock(SkillId.Swordsmanship)))
                 sk.CycleLock(SkillId.Swordsmanship);
@@ -131,6 +136,8 @@ namespace Ulon.Client
                 sk.CycleLock(SkillId.Meditation);
             if (LockButton(298, 206, SkillNames.KoreanOf(SkillId.MagicResist), sk.GetLock(SkillId.MagicResist)))
                 sk.CycleLock(SkillId.MagicResist);
+            if (LockButton(208, 206, SkillNames.KoreanOf(SkillId.EvaluateIntelligence), sk.GetLock(SkillId.EvaluateIntelligence)))
+                sk.CycleLock(SkillId.EvaluateIntelligence);
             if (LockButton(298, 112, "채광", sk.GetLock(SkillId.Mining)))
                 sk.CycleLock(SkillId.Mining);
             if (LockButton(298, 138, "대장", sk.GetLock(SkillId.Blacksmithing)))
@@ -188,6 +195,8 @@ namespace Ulon.Client
                     Train(net, SkillId.Meditation);
                 if (GUI.Button(new Rect(28, 484, 90, 24), SkillNames.KoreanOf(SkillId.MagicResist)))
                     Train(net, SkillId.MagicResist);
+                if (GUI.Button(new Rect(124, 484, 90, 24), SkillNames.KoreanOf(SkillId.EvaluateIntelligence)))
+                    Train(net, SkillId.EvaluateIntelligence);
                 if (GUI.Button(new Rect(256, 398, 70, 22), "닫기"))
                     world.CloseTrainer();
             }
@@ -434,6 +443,14 @@ namespace Ulon.Client
                 net.RpcMeditate();
             else if (OfflineWorld.Instance != null)
                 OfflineWorld.Instance.TryMeditate(OfflineWorld.Instance.Player);
+        }
+
+        static void Evaluate(NetAvatar net)
+        {
+            if (net != null && net.IsClientInitialized)
+                net.RpcEvaluate();
+            else if (OfflineWorld.Instance != null)
+                OfflineWorld.Instance.TryEvaluate(OfflineWorld.Instance.Player, OfflineWorld.Instance.Selected);
         }
 
         static void Bandage(NetAvatar net)

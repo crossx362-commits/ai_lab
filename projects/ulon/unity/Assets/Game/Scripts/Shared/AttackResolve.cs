@@ -208,7 +208,10 @@ namespace Ulon.Shared
             if (stats != null)
                 dmg += stats.Int / 10;
             if (skills != null)
+            {
                 dmg += (int)(skills.Get(SkillId.Magery) / 20f);
+                dmg += (int)(skills.Get(SkillId.EvaluateIntelligence) / 20f);
+            }
             return dmg;
         }
 
@@ -310,5 +313,66 @@ namespace Ulon.Shared
         }
 
         static AttackResult Fail(string reason) => new AttackResult { FailReason = reason };
+    }
+
+    public sealed class EvalIntRequest
+    {
+        public float Distance;
+        public float Range = EvalIntResolve.Range;
+        public float Now;
+        public float NextEvalAt;
+        public bool TargetAlive = true;
+        public bool TargetGhost;
+        public SkillSet Skills;
+        public StatSet Stats;
+        public StatSet TargetStats;
+        public float TargetMana;
+        public float TargetMaxMana = 35f;
+        public float Difficulty = EvalIntResolve.Difficulty;
+    }
+
+    public struct EvalIntResult
+    {
+        public bool Applied;
+        public int Intelligence;
+        public int Mana;
+        public int MaxMana;
+        public float SkillBefore;
+        public float SkillAfter;
+        public string FailReason;
+    }
+
+    public static class EvalIntResolve
+    {
+        public const float Difficulty = 12f;
+        public const float Range = 8f;
+        public const float CooldownSeconds = 2f;
+
+        public static EvalIntResult Resolve(EvalIntRequest req)
+        {
+            if (req == null || req.Skills == null)
+                return Fail("bad_request");
+            if (req.TargetStats == null)
+                return Fail("no_target");
+            if (!req.TargetAlive || req.TargetGhost)
+                return Fail("dead");
+            if (req.Distance > req.Range)
+                return Fail("range");
+            if (req.Now < req.NextEvalAt)
+                return Fail("cooldown");
+
+            SkillGain.TryRaise(req.Skills, SkillId.EvaluateIntelligence, req.Difficulty, out float before, out float after, req.Stats);
+            return new EvalIntResult
+            {
+                Applied = true,
+                Intelligence = req.TargetStats.Int,
+                Mana = (int)req.TargetMana,
+                MaxMana = (int)req.TargetMaxMana,
+                SkillBefore = before,
+                SkillAfter = after
+            };
+        }
+
+        static EvalIntResult Fail(string reason) => new EvalIntResult { FailReason = reason };
     }
 }

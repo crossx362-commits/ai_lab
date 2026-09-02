@@ -264,6 +264,16 @@ namespace Ulon.Client
         }
 
         [ServerRpc]
+        public void RpcEvaluate()
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryEvaluate(GetComponent<WorldBody>(), OfflineWorld.Instance.Selected);
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
         public void RpcResurrect(string stationId)
         {
             if (OfflineWorld.Instance == null)

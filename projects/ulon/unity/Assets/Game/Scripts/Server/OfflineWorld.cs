@@ -27,6 +27,8 @@ namespace Ulon.Server
         readonly Dictionary<int, float> nextAttackAt = new Dictionary<int, float>();
         readonly Dictionary<int, float> nextHealAt = new Dictionary<int, float>();
         readonly Dictionary<int, float> nextMeditateAt = new Dictionary<int, float>();
+        readonly Dictionary<int, float> nextEvalAt = new Dictionary<int, float>();
+        public string LastEvalMessage { get; private set; } = "";
         WorldBody[] bodies = System.Array.Empty<WorldBody>();
 
         public WorldBody Player { get; private set; }
@@ -328,6 +330,45 @@ namespace Ulon.Server
             if (body.IsAvatar)
                 body.RecalcFromInt(StatsOf(body).Int);
             OpLog.Write("meditate", PersistDriver.AccountKey(), body.DisplayName, "mana +" + result.Damage);
+            return result;
+        }
+
+        public EvalIntResult TryEvaluate(WorldBody body, WorldBody target)
+        {
+            if (body == null)
+                return new EvalIntResult { FailReason = "no_body" };
+            if (body.Ghost)
+                return new EvalIntResult { FailReason = "ghost" };
+            if (target == null)
+                return new EvalIntResult { FailReason = "no_target" };
+            int id = body.GetInstanceID();
+            if (!nextEvalAt.TryGetValue(id, out float ready))
+                ready = 0f;
+            var targetStats = StatsOf(target);
+            target.RecalcFromInt(targetStats.Int);
+            var req = new EvalIntRequest
+            {
+                Distance = Vector3.Distance(body.transform.position, target.transform.position),
+                Range = EvalIntResolve.Range,
+                Now = Time.time,
+                NextEvalAt = ready,
+                TargetAlive = target.Alive,
+                TargetGhost = target.Ghost,
+                Skills = SkillsOf(body),
+                Stats = StatsOf(body),
+                TargetStats = targetStats,
+                TargetMana = target.Mana,
+                TargetMaxMana = target.MaxMana,
+                Difficulty = EvalIntResolve.Difficulty
+            };
+            EvalIntResult result = EvalIntResolve.Resolve(req);
+            if (!result.Applied)
+                return result;
+            nextEvalAt[id] = Time.time + EvalIntResolve.CooldownSeconds;
+            LastEvalMessage = target.DisplayName + " INT " + result.Intelligence + " MP " + result.Mana + "/" + result.MaxMana;
+            if (body.IsAvatar)
+                body.RecalcFromInt(StatsOf(body).Int);
+            OpLog.Write("evalint", PersistDriver.AccountKey(), target.DisplayName, LastEvalMessage);
             return result;
         }
 
