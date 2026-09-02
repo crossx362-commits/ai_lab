@@ -523,6 +523,9 @@ namespace AshesToStars
         /// <summary>기본직업 5종. 층 클리어 보상·시작 로스터가 같은 이름을 쓴다(오너 21:38·§3).</summary>
         public static readonly string[] BasicJobs = { "탱", "딜", "마딜", "힐", "버퍼" };
 
+        /// <summary>특수 직업 4종(§3). 레이드 확률 영입·증표 전직이 같은 이름을 쓴다.</summary>
+        public static readonly string[] SpecialJobs = { "사신", "성기사", "시간술사", "용기사" };
+
         public static bool IsBasicJob(string job)
         {
             if (string.IsNullOrEmpty(job)) return false;
@@ -530,6 +533,23 @@ namespace AshesToStars
                 if (BasicJobs[i] == job) return true;
             return false;
         }
+
+        public static bool IsNamedSpecialJob(string job)
+        {
+            if (string.IsNullOrEmpty(job)) return false;
+            for (int i = 0; i < SpecialJobs.Length; i++)
+                if (SpecialJobs[i] == job) return true;
+            return false;
+        }
+
+        public static string SpecialJobFrom(string job) => job switch
+        {
+            "탱" or "수호기사" or "성기사" => "성기사",
+            "힐" or "사제" or "드루이드" => "성기사",
+            "마딜" or "마법사" or "소환사" or "용기사" => "용기사",
+            "버퍼" or "음유시인" or "주술사" or "정령사" or "시간술사" => "시간술사",
+            _ => "사신",
+        };
 
         public static string BasicJobLabel(string job) => job switch
         {
@@ -595,19 +615,21 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 레이드 확률 보상. 기본 역할 + 특수 직업 플래그.
-        /// 직업명(사신 등)은 💡라 안 붙인다. 목숨 1·부활초/환생석 불가(§3).
+        /// 레이드 확률 보상. 특수 직업명(사신·성기사·시간술사·용기사) + 1목숨 플래그.
+        /// 목숨 1·부활초/환생석 불가(§3).
         /// </summary>
         public static CharacterRecord AddSpecialRecruit(string job)
         {
-            if (!IsBasicJob(job)) return null;
+            if (!IsNamedSpecialJob(job)) job = SpecialJobFrom(job);
+            if (!IsNamedSpecialJob(job)) return null;
             EnsureLoaded();
             int n = 0;
             for (int i = 0; i < _characters.Count; i++)
                 if (_characters[i].Name != null && _characters[i].Name.StartsWith("영입특수"))
                     n++;
-            var recruit = new CharacterRecord($"영입특수{BasicJobLabel(job)}{n + 1}", job, 1);
+            var recruit = new CharacterRecord($"영입특수{job}{n + 1}", job, 1);
             recruit.IsSpecialJob = true;
+            recruit.Advancement = AdvancementTier.First;
             _characters.Add(recruit);
             Save();
             return recruit;
@@ -701,6 +723,46 @@ namespace AshesToStars
         }
 
         /// <summary>역할 목표 1회를 기록한다. 추후 전투 이벤트가 이 진입점을 호출한다.</summary>
+        public static bool HasActiveTrial => ActiveFirstTrial != null || ActiveSecondTrial != null;
+        public static bool TrialObjectiveMet =>
+            (ActiveFirstTrial != null && ActiveFirstTrial.ObjectiveMet)
+            || (ActiveSecondTrial != null && ActiveSecondTrial.ObjectiveMet);
+
+        public const string EnvNoTrialBattle = "QA_NO_ADV_BATTLE";
+        public static bool TrialBattleBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoTrialBattle);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>전투 스킬·처치가 시험 목표와 같으면 진행. 다른 행동은 무시(UI 오답 실패와 다름).</summary>
+        public static void NoteCombatSkill(string skillName)
+        {
+            if (!HasActiveTrial || string.IsNullOrEmpty(skillName)) return;
+            FirstTrialAction? mapped = skillName switch
+            {
+                "도발의 함성" or "도발" => FirstTrialAction.Taunt,
+                "성채 방패" or "방패벽" => FirstTrialAction.Guard,
+                "광폭화" => FirstTrialAction.Brace,
+                "일섬" or "강타" or "처치" => FirstTrialAction.Strike,
+                "화염폭풍" or "관통 사격" => FirstTrialAction.Execute,
+                "집중" or "집중 사격" => FirstTrialAction.Mark,
+                "치유의 파동" or "치유" => FirstTrialAction.Heal,
+                "정화" => FirstTrialAction.Cleanse,
+                "기적" or "재생" => FirstTrialAction.Stabilize,
+                "고양" or "진군가" => FirstTrialAction.Inspire,
+                "쇠약" or "저주 중첩" => FirstTrialAction.Weaken,
+                "수호가" => FirstTrialAction.Sustain,
+                _ => (FirstTrialAction?)null,
+            };
+            if (!mapped.HasValue) return;
+            if (ActiveFirstTrial != null) ReportFirstTrialProgress(mapped.Value);
+            if (ActiveSecondTrial != null) ReportSecondTrialProgress(mapped.Value);
+        }
+
         public static bool ReportFirstTrialProgress(FirstTrialAction action)
         {
             if (ActiveFirstTrial == null || ActiveFirstTrial.ObjectiveMet
@@ -1067,7 +1129,7 @@ namespace AshesToStars
             Save();
         }
 
-        /// <summary>살아있는 일반 캐릭터에 증표 1장으로 특수 직업을 붙인다(§3). 직업명은 💡라 안 바꾼다.</summary>
+        /// <summary>살아있는 일반 캐릭터에 증표 1장으로 특수 직업을 붙인다(§3).</summary>
         public static bool CanBecomeSpecial(CharacterRecord character)
         {
             if (character == null || character.IsDeleted || character.IsSpecialJob || character.IsRescue)
@@ -1082,8 +1144,11 @@ namespace AshesToStars
             if (!GameState.Consume(Economy.LifeItem.SpecialJobToken))
                 return false;
             character.IsSpecialJob = true;
+            character.Job = SpecialJobFrom(character.Job);
+            if (character.Advancement == AdvancementTier.Basic)
+                character.Advancement = AdvancementTier.First;
             Save();
-            Debug.Log($"[특수직업] {character.Name} 증표 전직 — 1회 사망 시 소멸(§3)");
+            Debug.Log($"[특수직업] {character.Name} → {character.Job} — 1회 사망 시 소멸(§3)");
             return true;
         }
 

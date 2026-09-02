@@ -153,6 +153,10 @@ namespace AshesToStars
             Check(estate.Contains("EstateStatusHud.KeepCaption"), "본성이 KeepCaption을 읽는다");
             Check(estate.Contains("EstateStatusHud.MineCaption"), "광산이 MineCaption을 읽는다");
             Check(estate.Contains("EstateStatusHud.StoreCaption"), "창고가 StoreCaption을 읽는다");
+            Check(estate.Contains("_sub = Sub.광산") && estate.Contains("_sub = Sub.창고"),
+                "현황 광산·창고 카드가 건물 화면을 연다");
+            Check(estate.Contains("명부 · 전직 · 합성") && estate.Contains("GameFlow.Character"),
+                "본성이 명부 화면으로 간다");
             Check(estate.Contains("EstateStatusHud.SeedQaIfRequested"), "시드를 읽는다");
             string hud = File.ReadAllText(Path.Combine(runtime, "EstateStatusHud.cs"));
             Check(hud.Contains("NavPlateTop"),

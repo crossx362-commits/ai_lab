@@ -243,6 +243,32 @@ namespace AshesToStars
             UiPages.LabelFit(head, cap, capStyle);
         }
 
+        /// <summary>밝힌 별 아이콘·표찰 클릭. 안개·필드 밖은 -1.</summary>
+        public static int HitStar(Rect field, Vector2 mouse)
+        {
+            if (Blocked) return -1;
+            if (field.width < 48f || field.height < 48f) return -1;
+            int floor = Mathf.Max(1, GameState.TowerFloor);
+            var c = new Vector2(field.x + field.width * 0.5f,
+                                field.y + field.height * 0.5f);
+            float maxR = WorldStar.SenseMul(WorldStar.MaxFloor);
+            if (maxR < 0.01f) maxR = 11f;
+            float pxPer = Mathf.Min(field.width, field.height) * 0.42f / maxR;
+            var stars = Neighbors();
+            for (int i = 0; i < stars.Length; i++)
+            {
+                if (!Revealed(stars[i].Dist, floor)) continue;
+                float dPx = stars[i].Dist * pxPer;
+                float x = c.x + Mathf.Cos(stars[i].Angle) * dPx;
+                float y = c.y + Mathf.Sin(stars[i].Angle) * dPx;
+                float s = 22f;
+                var ir = new Rect(x - s * 0.5f, y - s * 0.5f, s, s);
+                var lab = LabelPlate(field, ir, i);
+                if (ir.Contains(mouse) || lab.Contains(mouse)) return i;
+            }
+            return -1;
+        }
+
         static GUIStyle HubCap(GUIStyle hub)
         {
             var s = new GUIStyle(hub != null ? hub : GUIStyle.none)

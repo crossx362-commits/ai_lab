@@ -46,7 +46,8 @@ namespace AshesToStars
             hero.Job = "수호기사";
             Check(LifeSystem.CanBecomeSpecial(hero), "증표가 있으면 전직 가능");
             Check(LifeSystem.TryBecomeSpecial(hero), "증표로 특수 직업이 된다");
-            Check(hero.IsSpecialJob, "플래그가 붙는다");
+            Check(hero.IsSpecialJob && hero.Job == "성기사",
+                $"수호기사 증표 전직은 성기사 (실제 {hero.Job})");
             Check(hero.MaxLives == 1, "특수 직업 목숨 상한 1");
             Check(GameState.Bag.GetCount(Economy.LifeItem.SpecialJobToken) == 0, "전직이 증표를 소비한다");
 

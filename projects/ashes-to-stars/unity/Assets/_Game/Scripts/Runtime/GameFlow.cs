@@ -147,6 +147,12 @@ namespace AshesToStars
         /// </summary>
         public static PveDefeatReport ApplyPveDefeat(bool isPvp = false)
         {
+            if (LifeSystem.HasActiveTrial)
+            {
+                var trial = new PveDefeatReport { TrainingReturn = true };
+                LastDefeatReport = trial;
+                return trial;
+            }
             if (!isPvp && DeathTraining.IsTraining)
             {
                 var training = DeathTraining.ApplyReturn(PartyState.SortieRecords());

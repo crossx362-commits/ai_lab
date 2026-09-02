@@ -21,6 +21,10 @@ namespace AshesToStars
         public const float SlimBodyTop = 56f;
         public const float OldIcon = 60f;
         public const float SlimIcon = 36f;
+        public const string EnvNoWallet = "QA_NO_HUB_WALLET";
+        public const float WalletW = 220f;
+        public const float WalletH = 36f;
+        public const float WalletPad = 12f;
 
         static bool _qaSeeded;
 
@@ -57,6 +61,29 @@ namespace AshesToStars
                 ? new Color(0.62f, 0.65f, 0.75f)
                 : new Color(0.76f, 0.79f, 0.87f);
 
+        /// <summary>
+        /// 허브 제목판 오른쪽 지갑. 필드·탑 부제에만 골드가 있어 영지·캐릭터에서는
+        /// 보유량을 보려면 화면을 옮겨야 했다. QA_NO면 옛 전폭 제목.
+        /// </summary>
+        public static bool WalletBlocked
+        {
+            get
+            {
+                string raw = Environment.GetEnvironmentVariable(EnvNoWallet);
+                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool ShowWallet => !Blocked && !WalletBlocked;
+
+        public static float TextRightPad => ShowWallet ? WalletW + WalletPad * 2f : 40f;
+
+        public static Rect WalletRect()
+        {
+            if (!ShowWallet) return new Rect(0f, 0f, 0f, 0f);
+            return new Rect(ScreenW - WalletW - WalletPad, (H - WalletH) * 0.5f, WalletW, WalletH);
+        }
+
         public static float OpenH(float navReserve) => ScreenH - BodyTop - navReserve;
 
         public static string Line() => Blocked
@@ -75,14 +102,20 @@ namespace AshesToStars
         {
             if (Blocked)
                 return new Rect(atlas ? 90f : 28f, 10f, ScreenW - (atlas ? 120f : 56f), 42f);
-            return new Rect(atlas ? 56f : 20f, 4f, ScreenW - (atlas ? 80f : 40f), 24f);
+            if (!ShowWallet)
+                return new Rect(atlas ? 56f : 20f, 4f, ScreenW - (atlas ? 80f : 40f), 24f);
+            float x = atlas ? 56f : 20f;
+            return new Rect(x, 4f, Mathf.Max(80f, ScreenW - x - TextRightPad), 24f);
         }
 
         public static Rect SubtitleRect(bool atlas)
         {
             if (Blocked)
                 return new Rect(atlas ? 90f : 28f, 52f, ScreenW - 80f, 30f);
-            return new Rect(atlas ? 56f : 20f, 28f, ScreenW - 40f, 20f);
+            if (!ShowWallet)
+                return new Rect(atlas ? 56f : 20f, 28f, ScreenW - 40f, 20f);
+            float x = atlas ? 56f : 20f;
+            return new Rect(x, 28f, Mathf.Max(80f, ScreenW - x - TextRightPad), 20f);
         }
 
         public static void SeedQaIfRequested()

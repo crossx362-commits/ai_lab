@@ -22,6 +22,10 @@ namespace AshesToStars
         public static bool HasScroll() =>
             GameState.Bag.GetCount(Economy.LifeItem.ScrollOfReturn) > 0;
 
+        /// <summary>피격 취소나 마지막 소모 실패는 유예 중 탈출하지 못한 사망 경로다.</summary>
+        public static bool IsFatalFailure(Phase phase) =>
+            phase == Phase.Cancelled || phase == Phase.Rejected;
+
         public static bool TryBegin()
         {
             if (_casting || !HasScroll()) return false;

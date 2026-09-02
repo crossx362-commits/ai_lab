@@ -229,7 +229,21 @@ namespace AshesToStars
         /// 그리고 딕셔너리를 순회하며 **첫 히트 하나만** 돌려줘, 한 판에 두 종류가 나올 수 없었고
         /// 우선순위가 딕셔너리 순회 순서에 달려 있었다(§3-2 규칙 3이 금지한 것).
         /// </summary>
-        public static List<LifeItem> RollBattleDrops(DropSource source, int bossCount, ref Rng rng, int towerFloor = 0)
+        /// <summary>
+        /// 필드·던전 보상표는 현재 세계 티어 수익 배율을 함께 쓴다.
+        /// 탑 보상은 최고 기록 자체가 난이도이므로 이 선택값으로 바꾸지 않는다.
+        /// </summary>
+        public static float DropRateForTier(DropSource source, LifeItem item, int tier)
+        {
+            if (!DropRates.TryGetValue((source, item), out float rate)) return 0f;
+            if (source != DropSource.FieldDungeonBoss && source != DropSource.RaidDungeon) return rate;
+            var table = TierRevenueMultiplier;
+            if (table == null || table.Length == 0) return rate;
+            return Mathf.Min(1f, rate * table[Mathf.Clamp(tier, 0, table.Length - 1)]);
+        }
+
+        public static List<LifeItem> RollBattleDrops(DropSource source, int bossCount, ref Rng rng,
+            int towerFloor = 0, int tier = 0)
         {
             var results = new List<LifeItem>();
             if (bossCount < 1) bossCount = 1;
@@ -239,7 +253,8 @@ namespace AshesToStars
             {
                 if (it == LifeItem.SpecialJobToken && !CanDropSpecialJobToken(towerFloor))
                     continue;
-                if (!DropRates.TryGetValue((source, it), out float rate)) continue;
+                float rate = DropRateForTier(source, it, tier);
+                if (rate <= 0f) continue;
                 float chance = ApplyDropRate(rate);
                 if (it == LifeItem.AdvancementMaterial)
                     chance = ApplyAdvMatRate(chance);

@@ -69,6 +69,7 @@ namespace AshesToStars
         protected override void Awake()
         {
             base.Awake();
+            EscapeForfeit.ClearForNewRun();
 
             // 전투 아레나(반경 14)가 화면에 다 들어오게 잡는다.
             // 메뉴 화면 기준(size 8)이면 파티만 크게 잡히고 몰려오는 물량이 안 보인다.
@@ -263,12 +264,14 @@ namespace AshesToStars
             var phase = EmergencyEscape.Tick(Time.deltaTime, hit);
             if (phase == EmergencyEscape.Phase.Escaped)
                 LeaveByEscape();
+            else if (EmergencyEscape.IsFatalFailure(phase))
+                DieFromFailedEscape();
 
             if (_leftForSafety || _defeatApplied) return;
-            bool watch = LowHpReturn.ShouldWatch(GameFlow.Kind, GameFlow.ReturnTo);
-            var leave = LowHpReturn.Tick(
-                Time.deltaTime, global::W3Party.ActivePartyLowestHpRatio, watch);
-            if (leave == LowHpReturn.Phase.Left) LeaveForLowHp();
+            var directive = AutomationSchedule.EvaluateBattle(
+                Time.deltaTime, global::W3Party.ActivePartyLowestHpRatio);
+            if (directive == AutomationSchedule.Directive.ReturnForLowHp) LeaveForLowHp();
+            else if (directive == AutomationSchedule.Directive.ReturnForBagFull) LeaveForBagFull();
         }
 
         protected override void Overlay()
@@ -372,6 +375,16 @@ namespace AshesToStars
             GameFlow.Go(GameFlow.Estate);
         }
 
+        void LeaveForBagFull()
+        {
+            if (_leftForSafety || _defeatApplied) return;
+            _leftForSafety = true;
+            RecordSortie();
+            _reward.Clear();
+            GameFlow.LastBattleSummary = PlayerCopy("가방 가득 참 — 이번 판 보상 없음(§11)");
+            GameFlow.Go(GameFlow.Estate);
+        }
+
         void LeaveByEscape()
         {
             if (_leftForSafety || _defeatApplied) return;
@@ -380,6 +393,17 @@ namespace AshesToStars
             EscapeForfeit.Apply(_reward);
             // QA_NO·옛 경로는 결과 없이 영지. 소비처가 있을 때만 포기를 보여 준다.
             GameFlow.Go(EscapeForfeit.Blocked ? GameFlow.Estate : GameFlow.Result);
+        }
+
+        /// <summary>6초 유예 중 피격돼 탈출하지 못하면 일반 패배와 같은 사망 정산을 한다.</summary>
+        void DieFromFailedEscape()
+        {
+            if (_leftForSafety || _defeatApplied) return;
+            _leftForSafety = true;
+            RecordSortie();
+            ApplyDefeatOnce("긴급 탈출 실패 — 사망", GameFlow.Kind == GameFlow.BattleKind.침략);
+            if (DungeonRun.Active) DungeonRun.End();
+            GameFlow.Go(GameFlow.Result);
         }
 
         /// <summary>
@@ -431,8 +455,9 @@ namespace AshesToStars
                 ? DungeonRun.Plan.RunSeed
                 : (uint)(bossFloor * 2654435761u ^ (uint)System.DateTime.UtcNow.Ticks);
             var dropRng = Rng.Stream(dropSeed, bossFloor, SeedChannel.Drop);
+            int dropTier = inDungeon ? DungeonRun.Plan.Tier : GameState.Tier;
             foreach (var drop in Economy.RollBattleDrops(dropSource, bossCount, ref dropRng,
-                         dropFloor))
+                         dropFloor, dropTier))
             {
                 // 상한 판정은 **실제 소지품**이 한다(§18-4). 예전엔 보유량을 0으로 두고
                 // 판정해 상한이 영원히 안 걸렸다 — 상한이 있다는 말만 있고 없는 것과 같았다.
@@ -445,12 +470,45 @@ namespace AshesToStars
             if (gear != null) _reward.DroppedGear.Add(GearDrop.Format(gear));
         }
 
+        void FinishTrialBattle(bool survived)
+        {
+            bool met = LifeSystem.TrialObjectiveMet;
+            if (!survived)
+            {
+                LifeSystem.CancelFirstAdvancementTrial();
+                LifeSystem.CancelSecondAdvancementTrial();
+                GameFlow.LastBattleSummary = "시험 실패 — 목숨과 재료는 그대로다";
+            }
+            else
+            {
+                GameFlow.LastBattleSummary = met
+                    ? "시험 목표 달성 — 캐릭터에서 전직을 확정한다"
+                    : "훈련 종료 — 역할 목표가 아직 남았다";
+            }
+            GameFlow.Go(GameFlow.Result);
+        }
+
         void OnBattleEnd(bool survived)
         {
             if (_leftForSafety) return;
             RecordSortie();
+            if (LifeSystem.HasActiveTrial)
+            {
+                FinishTrialBattle(survived);
+                return;
+            }
             if (GameFlow.Kind == GameFlow.BattleKind.침략)
             {
+                if (InboundRaid.Fighting)
+                {
+                    int pts = InboundRaid.SettleFromBattle(survived);
+                    if (survived)
+                        GameFlow.LastBattleSummary = $"수비 성공 — 명예 +{pts} ({_t:F1}초)";
+                    else
+                        ApplyDefeatOnce($"수비 패배 — {_t:F1}초", isPvp: true);
+                    GameFlow.Go(GameFlow.Result);
+                    return;
+                }
                 string repeatLine = InvasionState.RepeatLootLine();
                 int repeatPct = InvasionState.RepeatPercent();
                 long loot = InvasionState.Settle(survived);

@@ -203,7 +203,7 @@ namespace AshesToStars
             return new Rect(stage.x + EquipLookPad, y, w, h);
         }
 
-        /// <summary>1차 전직 전용 폴더. 파일이 없으면 기본 5직업으로 돌아간다.</summary>
+        /// <summary>1차 전직·특수 직업 전용 폴더. 파일이 없으면 기본 5직업으로 돌아간다.</summary>
         public static string DedicatedLookDir(string job) => job switch
         {
             "수호기사" => "guardian",
@@ -216,6 +216,10 @@ namespace AshesToStars
             "음유시인" => "bard",
             "주술사" => "shaman",
             "정령사" => "elemental",
+            "사신" => "reaper",
+            "성기사" => "paladin",
+            "시간술사" => "chrono",
+            "용기사" => "dragonknight",
             _ => null,
         };
 
@@ -251,19 +255,26 @@ namespace AshesToStars
         public static string LookDir(string job) => BaseLookDir(job);
 
         /// <summary>
-        /// ⚠️ 티어를 받지만 **지금은 항상 기본 그림**이다(2026-08-18).
-        ///
-        /// 전직 폴더(guardian·priest…)의 그림은 오너 지시로 **몹 계열로 돌렸다**
-        /// (`mob_guardian` 등). 그걸 캐릭터가 계속 쓰면 화면에 "옛 캐릭터 이미지"가
-        /// 그대로 나온다 — 오너가 전직한 캐릭터를 보고 반복해서 지적한 것이 이것이다.
-        /// 캐릭터 아트는 오너가 준 기본 5직업 픽셀아트뿐이므로 전직도 그걸 쓴다.
-        /// 전직 전용 그림이 새로 생기면 이 분기를 되살릴 것 — 인자는 그래서 남겨 둔다.
+        /// 전직 전용 폴더가 있으면 1차·2차가 그걸 쓴다. QA_BASE_LOOK=1이면 옛 기본 5장.
         /// </summary>
-        public static string LookDir(string job, AdvancementTier tier) => BaseLookDir(job);
-
-        public static string LookPath(string job, string frame)
+        public static string LookDir(string job, AdvancementTier tier)
         {
-            string dir = LookDir(job);
+            if (BaseLookForced || tier == AdvancementTier.Basic)
+                return BaseLookDir(job);
+            string dedicated = DedicatedLookDir(job);
+            if (string.IsNullOrEmpty(dedicated))
+                return BaseLookDir(job);
+            if (Resources.Load<Texture2D>($"sprites/{dedicated}/{dedicated}_{IdleFrame}") == null)
+                return BaseLookDir(job);
+            return dedicated;
+        }
+
+        public static string LookPath(string job, string frame) =>
+            LookPath(job, frame, AdvancementTier.Basic);
+
+        public static string LookPath(string job, string frame, AdvancementTier tier)
+        {
+            string dir = LookDir(job, tier);
             return $"sprites/{dir}/{dir}_{frame}";
         }
 
@@ -291,13 +302,17 @@ namespace AshesToStars
         }
 
         /// <summary>전신. 스프라이트 비율로만 그린다. 빈 베이지 판을 넓게 깔지 않는다.</summary>
-        public static void DrawJobLook(Rect target, string job, bool walk, Color? tint = null)
+        public static void DrawJobLook(Rect target, string job, bool walk, Color? tint = null) =>
+            DrawJobLook(target, job, walk, AdvancementTier.Basic, tint);
+
+        public static void DrawJobLook(Rect target, string job, bool walk, AdvancementTier tier,
+                                       Color? tint = null)
         {
             var saved = GUI.color;
             string frame = JobLookFrame(walk);
-            var tex = Resources.Load<Texture2D>(LookPath(job, frame));
+            var tex = Resources.Load<Texture2D>(LookPath(job, frame, tier));
             if (tex == null && walk)
-                tex = Resources.Load<Texture2D>(LookPath(job, IdleFrame));
+                tex = Resources.Load<Texture2D>(LookPath(job, IdleFrame, tier));
             float sw = tex != null ? tex.width : LookSrcW;
             float sh = tex != null ? tex.height : LookSrcH;
             var dest = LookDest(target, sw, sh);

@@ -160,6 +160,8 @@ namespace AshesToStars
             }
             if (_pendingSpecialPick)
             {
+                if (!LifeSystem.IsNamedSpecialJob(job) && !LifeSystem.IsBasicJob(job))
+                    return false;
                 var ch = LifeSystem.AddSpecialRecruit(job);
                 if (ch == null) return false;
                 _pendingSpecialPick = false;

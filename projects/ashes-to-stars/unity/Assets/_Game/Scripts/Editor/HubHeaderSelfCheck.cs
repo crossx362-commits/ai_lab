@@ -26,9 +26,11 @@ namespace AshesToStars
             string show = Environment.GetEnvironmentVariable(HubHeader.EnvShow);
             string no = Environment.GetEnvironmentVariable(HubHeader.EnvNo);
             string noContrast = Environment.GetEnvironmentVariable(HubHeader.EnvNoSubtitleContrast);
+            string noWallet = Environment.GetEnvironmentVariable(HubHeader.EnvNoWallet);
             Environment.SetEnvironmentVariable(HubHeader.EnvShow, null);
             Environment.SetEnvironmentVariable(HubHeader.EnvNo, null);
             Environment.SetEnvironmentVariable(HubHeader.EnvNoSubtitleContrast, null);
+            Environment.SetEnvironmentVariable(HubHeader.EnvNoWallet, null);
             HubHeader.ResetForTest();
 
             Check(Mathf.Approximately(HubHeader.H, HubHeader.SlimH),
@@ -50,6 +52,19 @@ namespace AshesToStars
             var title = HubHeader.TitleRect(true);
             Check(title.yMax <= HubHeader.H, $"제목 바닥 {title.yMax:0} ≤ 제목판");
             Check(title.x > icon.x, "제목이 아이콘 오른쪽");
+            Check(HubHeader.ShowWallet, "슬림 제목판은 지갑을 켠다");
+            var wallet = HubHeader.WalletRect();
+            Check(wallet.width > 1f && wallet.height > 1f, $"지갑 칸 {wallet.width:0}×{wallet.height:0}");
+            Check(wallet.yMax <= HubHeader.H + 0.01f, $"지갑 바닥 {wallet.yMax:0} ≤ 제목판 {HubHeader.H:0}");
+            Check(wallet.x >= title.xMax - 0.01f, $"지갑 x {wallet.x:0} ≥ 제목 끝 {title.xMax:0}");
+            var sub = HubHeader.SubtitleRect(true);
+            Check(wallet.x >= sub.xMax - 0.01f, $"지갑 x {wallet.x:0} ≥ 부제 끝 {sub.xMax:0}");
+            Environment.SetEnvironmentVariable(HubHeader.EnvNoWallet, "1");
+            Check(!HubHeader.ShowWallet, "QA_NO_HUB_WALLET이면 지갑 숨김");
+            var oldTitle = HubHeader.TitleRect(true);
+            Check(oldTitle.width > title.width, $"지갑 끄면 제목이 넓다 {oldTitle.width:0} > {title.width:0}");
+            Check(HubHeader.WalletRect().width < 1f, "지갑 끄면 칸이 비어 있다");
+            Environment.SetEnvironmentVariable(HubHeader.EnvNoWallet, null);
             Check(HubHeader.Line().Contains("가리지 않는다"),
                 $"줄 (실제 {HubHeader.Line()})");
             Color subtitle = HubHeader.SubtitleColor;
@@ -90,10 +105,15 @@ namespace AshesToStars
             Check(screen.Contains("HubHeader.Line"), "자막이 Line을 읽는다");
             Check(screen.Contains("HubHeader.SeedQaIfRequested"), "시드를 읽는다");
             Check(screen.Contains("HubHeader.SubtitleColor"), "슬림 부제가 대비 색을 읽는다");
+            Check(screen.Contains("_headerPlate"), "제목판이 어두운 판을 깐다");
+            Check(screen.Contains("HubHeader.WalletRect"), "제목판이 지갑 칸을 읽는다");
+            Check(screen.Contains("HubHeader.ShowWallet") || screen.Contains("ShowWalletChip"),
+                "제목판이 지갑 표시를 읽는다");
 
             Environment.SetEnvironmentVariable(HubHeader.EnvShow, show);
             Environment.SetEnvironmentVariable(HubHeader.EnvNo, no);
             Environment.SetEnvironmentVariable(HubHeader.EnvNoSubtitleContrast, noContrast);
+            Environment.SetEnvironmentVariable(HubHeader.EnvNoWallet, noWallet);
             if (_fail == 0) Debug.Log("[HubHeaderSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[HubHeaderSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[HubHeaderSelfCheck] FAIL {_fail}건");

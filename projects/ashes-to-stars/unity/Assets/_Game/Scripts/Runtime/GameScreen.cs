@@ -119,11 +119,11 @@ namespace AshesToStars
         protected GUIStyle _small, _panel;
         // 아이콘 없는 카드(예: 타이틀 「종료」)를 형제 카드와 어긋나 보이지 않게 중앙 정렬로 그린다.
         GUIStyle _cardTitleC, _h2C;
-        Texture2D _bg, _line, _accent, _scrim;
+        Texture2D _bg, _line, _accent, _scrim, _headerPlate;
 
         static readonly Color Ink = new Color(0.93f, 0.94f, 0.98f);
         static readonly Color Dim = new Color(0.62f, 0.65f, 0.75f);
-        static readonly Color Gold = new Color(0.95f, 0.79f, 0.42f);
+        static readonly Color Gold = new Color(0.98f, 0.88f, 0.58f);
 
         protected virtual void Awake()
         {
@@ -176,7 +176,14 @@ namespace AshesToStars
                 fontSize = UiPages.SlimSubFont,
                 normal = { textColor = HubHeader.SubtitleColor },
             };
-            _btn = new GUIStyle(GUI.skin.button) { fontSize = 22, alignment = TextAnchor.MiddleCenter };
+            // 버튼 글씨는 아틀라스 위에 얹는다. GUI.skin.button을 쓰면 기본 회색 바탕이
+            // Label 뒤에 남아 금테를 덮는다.
+            _btn = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
+                wordWrap = false, clipping = TextClipping.Clip,
+                normal = { textColor = Ink },
+            };
             _btnLeft = new GUIStyle(_btn) { alignment = TextAnchor.MiddleLeft, fontSize = 20, padding = new RectOffset(4, 8, 0, 0) };
             _small = new GUIStyle(GUI.skin.label) { fontSize = 16, wordWrap = true, normal = { textColor = Dim } };
             _cardTitle = new GUIStyle(_h1) { fontSize = UiPages.CardTitleFont, alignment = TextAnchor.MiddleLeft };
@@ -195,6 +202,7 @@ namespace AshesToStars
             _line = Solid(new Color(1f, 1f, 1f, 0.10f));
             _accent = Solid(new Color(0.95f, 0.79f, 0.42f, 0.85f));
             _scrim = Solid(new Color(0.04f, 0.04f, 0.06f, 0.38f));
+            _headerPlate = Solid(new Color(0.03f, 0.03f, 0.06f, 0.86f));
         }
 
         Texture2D _bgArt;
@@ -249,8 +257,10 @@ namespace AshesToStars
             {
                 HubHeader.SeedQaIfRequested();
                 float h = HeaderH;
-                // 제목판 — 배경을 안 깔 때는 글자가 묻히지 않게 살짝 어둡게 받쳐 준다
-                if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, h), _scrim);
+                // 제목판 — 슬림 높이(52)는 유지하고, 마을·방 그림 위에 글자가 묻히지 않게
+                // 불투명 판을 깐다. QA_NO_HUB_HEADER면 옛 얇은 막.
+                if (!HubHeader.Blocked) GUI.DrawTexture(new Rect(0, 0, REF_W, h), _headerPlate);
+                else if (!OpaqueBackground) GUI.DrawTexture(new Rect(0, 0, REF_W, h), _scrim);
                 GUI.DrawTexture(new Rect(0, 0, REF_W, h), _line);
                 GUI.DrawTexture(new Rect(0, h - 2, REF_W, 2), _accent);
                 var icon = HubHeader.IconRect();
@@ -262,6 +272,11 @@ namespace AshesToStars
                 UiPages.LabelClip(HubHeader.TitleRect(atlas), Title, titleStyle);
                 if (!string.IsNullOrEmpty(shownSub))
                     UiPages.LabelClip(HubHeader.SubtitleRect(atlas), shownSub, subStyle);
+                if (ShowWalletChip)
+                {
+                    var wr = HubHeader.WalletRect();
+                    if (wr.width > 1f) InfoAt(wr, "보유 " + GameState.WalletText);
+                }
             }
 
             float bottom = ShowBottomBar ? UiPages.NavReserve : 36f;
@@ -325,6 +340,10 @@ namespace AshesToStars
         /// <summary>보스 HP 견본은 탑처럼 보스전이 다음인 화면만. 영지에 띄우면 건물 줄을 덮는다.</summary>
         protected virtual bool ShowBossHpPreview => false;
 
+        /// <summary>허브 하단바가 있는 화면만 제목판 오른쪽에 보유 골드를 둔다. 타이틀·전투는 제외.</summary>
+        protected virtual bool ShowWalletChip =>
+            ShowHeader && ShowBottomBar && HubHeader.ShowWallet;
+
         protected abstract void Body(Rect r);
 
         bool _navDockQa;
@@ -372,7 +391,7 @@ namespace AshesToStars
                     GameFlow.Go(scene);
                     ev.Use();
                 }
-                DrawAtlasButton(r, null);
+                DrawAtlasButton(r, null, forcePressed: here);
                 // 현재 탭도 아이콘·라벨은 선명하게 — GUI.enabled=false의 비활성 알파가 활성 탭
                 // 글자를 회색으로 지워 위 강조선(「여기가 현재」)과 정반대로 읽혔다(2026-08-24 실측).
                 // 클릭 금지는 아래 !here 가드가 담당한다. QA_NO_DOCK_ACTIVE_BRIGHT=1이면 옛 경로.
@@ -541,7 +560,8 @@ namespace AshesToStars
                 }
                 string tabKey = UiAtlas.ButtonKey(false, on);
                 UiAtlas.DrawSliced(t, tabKey, 8f,
-                    on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
+                    on ? (Color?)null : new Color(1f, 1f, 1f, 0.55f));
+                if (on) GUI.DrawTexture(new Rect(t.x + 10f, t.y - 3f, t.width - 20f, 3f), _accent);
                 UiPages.LabelClip(UiAtlas.ContentRect(t, tabKey, 2f), names[i], _tab);
             }
             return selected;
@@ -558,6 +578,8 @@ namespace AshesToStars
             string chrome = UiPages.CardChrome(card);
             // 금테 두께는 CardLayout이 글씨 칸을 낼 때 쓰는 값과 **같아야** 한다(UiPages.CardPad).
             bool hit = false;
+            bool hover = !locked && Event.current != null && card.Contains(Event.current.mousePosition);
+            if (hover) tint = new Color(1f, 1f, 1f, tint.a);
             if (!locked)
             {
                 var ev = Event.current;
@@ -570,6 +592,8 @@ namespace AshesToStars
             }
             if (!UiAtlas.DrawSliced(card, chrome, 16f, tint, UiPages.CardPad(card)))
                 UiAtlas.Draw(card, chrome, tint);
+            if (hover)
+                GUI.DrawTexture(new Rect(card.x + 14f, card.y - 2f, card.width - 28f, 3f), _accent);
             bool hasIcon = !string.IsNullOrEmpty(iconKey);
             UiPages.CardLayout(card, hasIcon, out var icon, out var titleR, out var subR);
             if (hasIcon) UiAtlas.DrawFit(icon, iconKey, tint);

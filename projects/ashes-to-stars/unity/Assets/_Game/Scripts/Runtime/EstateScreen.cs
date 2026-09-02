@@ -16,7 +16,7 @@ namespace AshesToStars
     /// </summary>
     public class EstateScreen : GameScreen
     {
-        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어, 본성, 영공 }
+        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어, 본성, 영공, 광산, 창고 }
         Sub _sub = Sub.없음;
         int _hubPage;
         EstateGrid.Cell _placeKind = EstateGrid.Cell.Wall;
@@ -53,6 +53,8 @@ namespace AshesToStars
                 : DefenseState.LockLine(),
             Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
             Sub.본성 => "본성 레벨이 다른 건물 상한과 창고 용량이다. 공사는 끝나면 자동 적용(§13-2)",
+            Sub.광산 => "시간이 지나면 골드가 쌓인다. 레벨이 생산량을 올린다(§13-2)",
+            Sub.창고 => "골드 보관 상한. 본성 레벨과 같이 커진다(§18-12)",
             Sub.영공 => "층을 오를수록 인식 범위가 넓어진다. 아군 버프·적 디버프를 켠다(§14)",
             _ => SoftCapHubSubtitle(),
         });
@@ -128,6 +130,7 @@ namespace AshesToStars
 
         protected override void Update()
         {
+            if (AutomationSchedule.TryResumeFieldSortie()) return;
             // 하위 화면에서 ESC는 영지로 — 허브 밖으로 튕겨나가지 않게
             if (_sub != Sub.없음 && Input.GetKeyDown(KeyCode.Escape)) { _sub = Sub.없음; return; }
             base.Update();
@@ -326,6 +329,8 @@ namespace AshesToStars
                 return;
             }
             if (_sub == Sub.본성) { Keep(r); return; }
+            if (_sub == Sub.광산) { CoreBuilding(r, EstateGrid.Cell.Mine, "광산"); return; }
+            if (_sub == Sub.창고) { CoreBuilding(r, EstateGrid.Cell.Warehouse, "창고"); return; }
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
             if (_sub == Sub.대장간) { Smith(r); return; }
             if (_sub == Sub.수비대) { Barracks(r); return; }
@@ -971,8 +976,10 @@ namespace AshesToStars
                     EstateStatusHud.WorldCaption(),
                     "tower", locked: !canPick))
                 _sub = Sub.월드티어;
-            DrawCard(cards[3], "광산", EstateStatusHud.MineCaption(), "field");
-            DrawCard(cards[4], "창고", EstateStatusHud.StoreCaption(), "building_auction");
+            if (DrawCard(cards[3], "광산", EstateStatusHud.MineCaption(), "field"))
+                _sub = Sub.광산;
+            if (DrawCard(cards[4], "창고", EstateStatusHud.StoreCaption(), "building_auction"))
+                _sub = Sub.창고;
         }
 
         void Aura(Rect r)
@@ -1210,6 +1217,21 @@ namespace AshesToStars
                 else if (Row(r, row++, label, desc, "territory"))
                     EstateBuild.TryStartUpgrade(c);
             }
+            if (Row(r, row++, "명부 · 전직 · 합성", "캐릭터 화면으로 간다", "characters"))
+                GameFlow.Go(GameFlow.Character);
+            if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
+        }
+
+        void CoreBuilding(Rect r, EstateGrid.Cell c, string title)
+        {
+            EstateBuild.Tick();
+            int lv = EstateBuild.Level(c);
+            string extra = c == EstateGrid.Cell.Mine
+                ? EstateStatusHud.MineCaption()
+                : EstateStatusHud.StoreCaption();
+            Info(r, 0, $"{title} Lv{lv} · {extra}");
+            int row = 1;
+            DrawHubUpgradeRow(r, ref row, c);
             if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
         }
 

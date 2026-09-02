@@ -119,7 +119,7 @@ namespace AshesToStars
                 1, 3, 14f);
             if (DrawCard(cells[0], "게임 시작",
                     StarterPick.ShouldOffer()
-                        ? "기본직업 5종 중 첫 캐릭터를 고른다(오너 21:38)"
+                        ? "기본직업 5종 중 첫 캐릭터를 고른다"
                         : "영지에서 모든 콘텐츠가 출발한다",
                     "territory"))
             {

@@ -1,7 +1,7 @@
 ﻿{
-  "at": "2026-08-29 12:56",
+  "at": "2026-08-30 08:03",
   "ok": false,
-  "summary": "4개 실패 / 216",
+  "summary": "7개 실패 / 216",
   "items": [
     {"name":"사냥 강화 3택","ok":true,"note":"통과"},
     {"name":"전투 오디오 문법","ok":true,"note":"통과"},
@@ -40,7 +40,7 @@
     {"name":"정예 군단장 오라","ok":true,"note":"통과"},
     {"name":"정예 저주술사 오라","ok":true,"note":"통과"},
     {"name":"정예 처형자 폭딜","ok":true,"note":"통과"},
-    {"name":"정예 분류(IsElite)","ok":true,"note":"통과"},
+    {"name":"정예 분류(IsElite)","ok":false,"note":"[EliteClassifySelfCheck] FAIL 1건"},
     {"name":"본문 내비 절단","ok":true,"note":"통과"},
     {"name":"부활초 소지 상한","ok":true,"note":"통과"},
     {"name":"사망 상한","ok":true,"note":"통과"},
@@ -120,9 +120,9 @@
     {"name":"EquipJob","ok":true,"note":"통과"},
     {"name":"EquipLevel","ok":true,"note":"통과"},
     {"name":"Equipment","ok":true,"note":"통과"},
-    {"name":"EscapeForfeit","ok":true,"note":"통과"},
+    {"name":"EscapeForfeit","ok":false,"note":"[EscapeForfeitSelfCheck] FAIL 1건"},
     {"name":"EscapeHintHud","ok":true,"note":"통과"},
-    {"name":"EscapeManual","ok":true,"note":"통과"},
+    {"name":"EscapeManual","ok":false,"note":"[EscapeManualSelfCheck] FAIL 8건"},
     {"name":"EstateArtTier","ok":true,"note":"통과"},
     {"name":"EstateBuild","ok":true,"note":"통과"},
     {"name":"EstateBuildings","ok":false,"note":"[EstateBuildingsSelfCheck] FAIL 15건"},
@@ -218,6 +218,6 @@
     {"name":"WorldMapPlayerCopy","ok":true,"note":"통과"},
     {"name":"WorldStar","ok":true,"note":"통과"},
     {"name":"WorldTier","ok":true,"note":"통과"},
-    {"name":"스윕 등록 대조","ok":false,"note":"FAIL 스윕 등록 불일치 — 미등록 1종: V4ContinueOverlaySelfCheck"}
+    {"name":"스윕 등록 대조","ok":false,"note":"FAIL 스윕 등록 불일치 — 미등록 5종: BagFullReturnSelfCheck, BossCommandSelfCheck, FieldTierDropSelfCheck, FieldTierSelfCheck, V4ContinueOverlaySelfCheck"}
   ]
 }

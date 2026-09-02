@@ -82,7 +82,7 @@ public class W3Party : MonoBehaviour
     // ── 파티원 ───────────────────────────────────────────
     enum Role { Tank, Dps, Healer, Buffer }
     /// <summary>기획서 §3의 1차 전직 — 각자 고유 메커니즘 1개 + 대표 스킬</summary>
-    enum Job { 수호기사, 광전사, 검사, 궁수, 마법사, 소환사, 사제, 드루이드, 음유시인, 주술사, 정령사 }
+    enum Job { 수호기사, 광전사, 검사, 궁수, 마법사, 소환사, 사제, 드루이드, 음유시인, 주술사, 정령사, 사신, 성기사, 시간술사, 용기사 }
     enum Chant { 진군가, 수호가 }        // 음유시인 악장 (§3 악장 전환)
 
     class Member
@@ -155,7 +155,48 @@ public class W3Party : MonoBehaviour
 
     // ── 수동 지휘 상태 (§5 "보스는 수동 지휘") ──
     int _sel = -1;                     // 선택된 파티 슬롯. -1이면 선택 없음
-    GUIStyle _cmdBtn, _cmdLabel;
+    GUIStyle _cmdLabel;
+
+    /// <summary>살아 있는 보스 개체가 있을 때만 수동 지휘를 허용한다.</summary>
+    public static bool CommandModeActive => AshesToStars.BossBattle.IsActive;
+    public static bool CommandMoveEnabled => _game != null && _game.HasCommandSelection;
+    public static bool CommandSkillEnabled => _game != null && _game.HasCommandSelection;
+    /// <summary>현재 선택된 파티원에게 대기 중인 스킬 슬롯. 없으면 0이다.</summary>
+    public static int SelectedCommandSkill => _game != null && _game.HasCommandSelection
+        ? _game._party[_game._sel].ForceSkill : 0;
+
+    /// <summary>필드·던전의 선택 티어가 일반 몬스터 HP와 공격력에 쓰는 공통 배율.</summary>
+    public static float EnemyStatMultiplierForTier(int tier)
+    {
+        var table = AshesToStars.Economy.TierRevenueMultiplier;
+        if (table == null || table.Length == 0) return 1f;
+        return table[Mathf.Clamp(tier, 0, table.Length - 1)];
+    }
+
+    float EnemyStatMultiplier => EnemyStatMultiplierForTier(
+        AshesToStars.DungeonRun.Active
+            ? AshesToStars.DungeonRun.Plan.Tier
+            : AshesToStars.GameState.Tier);
+
+    bool HasCommandSelection => CommandModeActive
+        && _sel >= 0 && _sel < _party.Length && _party[_sel].Alive;
+
+    /// <summary>지휘 모드에서만 살아 있는 파티원을 선택한다. HUD와 입력이 같은 경계를 쓴다.</summary>
+    public static bool TrySelectCommandMember(int index)
+    {
+        if (_game == null || !CommandModeActive || index < 0 || index >= _game._party.Length
+            || !_game._party[index].Alive) return false;
+        _game._sel = index;
+        return true;
+    }
+
+    /// <summary>보스전 지휘 입력을 선택한 파티원의 실제 행동 대기열에 넣는다.</summary>
+    public static bool TryQueueSelectedSkill(int slot)
+    {
+        if (_game == null || (slot != 1 && slot != 2) || !_game.HasCommandSelection) return false;
+        _game._party[_game._sel].ForceSkill = slot;
+        return true;
+    }
 
     // HUD는 이 세 안전 영역만 쓴다. 월드 이펙트·전투 콜아웃과 겹치는 좌표를 만들지 않는다.
     public const float CombatHudTopHeight = 72f;
@@ -491,6 +532,8 @@ public class W3Party : MonoBehaviour
         _ => Style.Balanced,
     };
     float _t;
+    float _invArrowCd, _invMagicCd;
+    int _invArrowSlot;
     int _kills, _tauntUses, _backlineHits, _frontlineHits, _healsCast;
     float _shieldAbsorbed;
     int _supportHits;       // 힐·버퍼가 맞은 횟수 — 「후열 저격」이 실제로 일어나는지의 유일한 증거
@@ -921,9 +964,9 @@ public class W3Party : MonoBehaviour
 
     public static string FirstAdvancementRole(string job) => job switch
     {
-        "수호기사" or "광전사" => "Tank",
+        "수호기사" or "광전사" or "성기사" => "Tank",
         "사제" or "드루이드" => "Healer",
-        "음유시인" or "주술사" or "정령사" => "Buffer",
+        "음유시인" or "주술사" or "정령사" or "시간술사" => "Buffer",
         _ => "Dps",
     };
 
@@ -933,21 +976,25 @@ public class W3Party : MonoBehaviour
     {
         "수호기사" => 1.5f, "광전사" => 1.8f, "검사" => 1.9f, "궁수" => 8.0f,
         "마법사" => 5.5f, "소환사" => 7.0f, "사제" => 6.5f, "드루이드" => 6.0f,
-        "음유시인" => 6.0f, "주술사" => 6.0f, "정령사" => 6.5f, _ => 1.9f,
+        "음유시인" => 6.0f, "주술사" => 6.0f, "정령사" => 6.5f,
+        "사신" => 1.9f, "성기사" => 1.6f, "시간술사" => 6.5f, "용기사" => 6.0f, _ => 1.9f,
     };
 
     /// <summary>
     /// 근접 직업인가(§3). 근접은 투사체를 쏘지 않는다 —
     /// 예전엔 전 직업이 FireAlly로 탄을 날려 탱커·검사가 원거리처럼 보였다.
     /// </summary>
-    static bool IsMelee(Job j) => j == Job.수호기사 || j == Job.광전사 || j == Job.검사;
+    static bool IsMelee(Job j) =>
+        j == Job.수호기사 || j == Job.광전사 || j == Job.검사 || j == Job.사신 || j == Job.성기사;
 
     public static string FirstAdvancementMechanic(string job) => job switch
     {
         "수호기사" => "guard_gauge", "광전사" => "low_hp_rage", "검사" => "combo_stack",
         "궁수" => "stationary_focus", "마법사" => "density_aoe", "소환사" => "summon_slot",
         "사제" => "healing_faith", "드루이드" => "nature_mark", "음유시인" => "chant_swap",
-        "주술사" => "curse_stack", "정령사" => "element_attach", _ => "swordsman_fallback",
+        "주술사" => "curse_stack", "정령사" => "element_attach",
+        "사신" => "life_steal", "성기사" => "tank_heal", "시간술사" => "cooldown_warp",
+        "용기사" => "dragon_breath", _ => "swordsman_fallback",
     };
 
     public static string[] FirstAdvancementSkillLabels(string job) => job switch
@@ -963,6 +1010,10 @@ public class W3Party : MonoBehaviour
         "음유시인" => new[] { "진군가", "수호가" },
         "주술사" => new[] { "저주 중첩", "쇠약 의식" },
         "정령사" => new[] { "화염 정령", "물 정령" },
+        "사신" => new[] { "흡혈", "—" },
+        "성기사" => new[] { "성격", "축복" },
+        "시간술사" => new[] { "시간 왜곡", "—" },
+        "용기사" => new[] { "용숨", "—" },
         _ => new[] { "일섬", "연격" },
     };
 
@@ -1048,6 +1099,8 @@ public class W3Party : MonoBehaviour
         o.Hp = Mathf.Min(o.MaxHp, o.Hp + amount);
         float healed = o.Hp - before;
         AshesToStars.BossBattle.ReportHealingToActive(healed);
+        if (healed > 0f && _game != null && _game.GameMode)
+            AshesToStars.LifeSystem.NoteCombatSkill("치유");
         return healed;
     }
 
@@ -1063,10 +1116,10 @@ public class W3Party : MonoBehaviour
     /// </summary>
     static SpriteBank.Job ArtOf(Job j) => j switch
     {
-        Job.수호기사 or Job.광전사 => SpriteBank.Job.Tank,
-        Job.마법사 => SpriteBank.Job.Mage,
+        Job.수호기사 or Job.광전사 or Job.성기사 => SpriteBank.Job.Tank,
+        Job.마법사 or Job.용기사 => SpriteBank.Job.Mage,
         Job.사제 or Job.드루이드 => SpriteBank.Job.Healer,
-        Job.음유시인 or Job.주술사 or Job.정령사 => SpriteBank.Job.Buffer,
+        Job.음유시인 or Job.주술사 or Job.정령사 or Job.시간술사 => SpriteBank.Job.Buffer,
         _ => SpriteBank.Job.Dps,
     };
 
@@ -1145,8 +1198,12 @@ public class W3Party : MonoBehaviour
                 _setup.HpMuls != null && i < _setup.HpMuls.Length ? _setup.HpMuls[i] : 1f);
             var fuse = _setup.Fuse != null && i < _setup.Fuse.Length
                 ? _setup.Fuse[i] : Fusion.CombatMuls.Identity;
-            m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp * levelMul * gearMul;
-            m.Atk = (m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f)
+            float roleHp = m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f;
+            float roleAtk = m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f;
+            // JobDef 표(수호기사 320/10, 광전사 260/20, 마법사 110/26, 소환사 120/14…)를 전투가 읽는다.
+            // 역할 버킷만 쓰면 광전사가 탱처럼 두껍고 소환사 본체가 딜러처럼 때린다. QA_NO면 옛 버킷.
+            m.MaxHp = AshesToStars.JobInfo.CombatHp(job.ToString(), roleHp) * _bHp * levelMul * gearMul;
+            m.Atk = AshesToStars.JobInfo.CombatAtk(job.ToString(), roleAtk)
                     * _bAtk * levelMul * FusionStatMultiplier(fuse.Atk);
             // 사거리는 **역할이 아니라 직업**으로 정한다(§3).
             // Role.Dps로 묶으면 검사(근접)와 마법사(원거리)가 같은 사거리를 갖게 되어
@@ -1196,7 +1253,8 @@ public class W3Party : MonoBehaviour
             for (int i = 0; i < 시작웨이브; i++) SpawnMob();
         }
 
-        _t = 0f; _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
+        _t = 0f; _invArrowCd = 0f; _invMagicCd = 0f; _invArrowSlot = 0;
+        _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f; _supportHits = 0;
         _deadJobs.Clear();          // 판마다 새로 센다 — 안 비우면 구성 순회 때 누적된다
         _meleeHits = 0; _shotHits = 0; _framesThisRun = 0; _aiDashUses = 0; _chargeTells = 0; _chargeRushes = 0;
@@ -1254,7 +1312,8 @@ public class W3Party : MonoBehaviour
             if (summoned) _summonedAlive++;
             // 소환 몹은 잡몹보다 훨씬 단단하게(220) — 파티 한복판에 떨어지면 순식간에 포커싱되므로,
             // 즉사하면 「달려들어 후열을 문다」는 위협이 성립하지 않는다(실측: 90도 첫 타 전에 죽었다).
-            _mHp[i] = _mMaxHp[i] = summoned ? 220f : IsElite(_mKind[i]) ? 90f : 26f;
+            float baseHp = summoned ? 220f : IsElite(_mKind[i]) ? 90f : 26f;
+            _mHp[i] = _mMaxHp[i] = baseHp * EnemyStatMultiplier;
             _mCd[i] = Random.value * 2f;
             // 소환 몹은 사거리 안에 나타나므로 **곧바로** 한 대 문다 — 예고 후 대응할 수 있는 위협이 된다.
             _mAtkCd[i] = summoned ? 0.15f : Random.value * 0.8f; _mFlash[i] = 0f;
@@ -1282,6 +1341,16 @@ public class W3Party : MonoBehaviour
             _mBarBg[i].gameObject.SetActive(false);      // 다시 스폰됐으니 만피 — 바 숨김
             _mBarFg[i].gameObject.SetActive(false);
             _mTr[i].gameObject.SetActive(true);
+            if (GameMode && !summoned)
+            {
+                float burst = AshesToStars.InvasionTowers.TrapBurst;
+                if (burst > 0f)
+                {
+                    DamageMob(i, burst);
+                    FlashMob(i);
+                    if (_mHp[i] <= 0f) KillMob(i);
+                }
+            }
             return;
         }
     }
@@ -1619,6 +1688,7 @@ public class W3Party : MonoBehaviour
             _callouts.Add(new Callout { Text = name, At = m.Pos, T = 0f, C = tint });
         if (hitstop > 0) Hitstop(hitstop);
         if (shake > 0f) Shake(shake);
+        if (GameMode) AshesToStars.LifeSystem.NoteCombatSkill(name);
     }
 
     void UpdateCallouts(float dt)
@@ -1803,6 +1873,7 @@ public class W3Party : MonoBehaviour
         RefreshExecutioners();// §10-2 처형자 폭딜 스냅 — 근접 명중(TickMobs) 전에 잡아야 이번 프레임에 반영된다
         TickParty(dt);
         TickMobs(dt);
+        TickInvasionTowers(dt);
 
         // 겹침 해소 — 유닛이 서로 파고들면 실루엣이 먹혀 무엇이 몇 마리인지 안 읽힌다.
         // 이동을 계산한 **뒤에** 한 번만 민다(이동 중에 밀면 추적이 흔들린다).
@@ -1981,16 +2052,17 @@ public class W3Party : MonoBehaviour
     void TickCommand()
     {
         if (_party == null) return;
+        if (!CommandModeActive) { _sel = -1; return; }
 
         for (int i = 0; i < _party.Length && i < 5; i++)
-            if (Input.GetKeyDown(KeyCode.Alpha1 + i) && _party[i].Alive) _sel = i;
+            if (Input.GetKeyDown(KeyCode.Alpha1 + i)) TrySelectCommandMember(i);
         if (Input.GetKeyDown(KeyCode.Alpha0)) _sel = -1;
 
         // 스페이스 = 1번 스킬, Q = 2번 스킬. 마우스를 안 떼고 쓸 수 있어야 지휘가 빠르다(§5)
         if (_sel >= 0 && _party[_sel].Alive)
         {
-            if (Input.GetKeyDown(KeyCode.Space)) _party[_sel].ForceSkill = 1;
-            if (Input.GetKeyDown(KeyCode.Q)) _party[_sel].ForceSkill = 2;
+            if (Input.GetKeyDown(KeyCode.Space)) TryQueueSelectedSkill(1);
+            if (Input.GetKeyDown(KeyCode.Q)) TryQueueSelectedSkill(2);
             if (Input.GetKeyDown(KeyCode.E)) _party[_sel].ForceUltimate = true;
             // 이동기(§5) — Shift. 방향은 이동 입력, 없으면 가장 가까운 위협의 **반대쪽**으로.
             // "피하려고 쓰는 것"이 기본 용도라 아무 방향도 안 주면 도망 방향이 맞다.
@@ -2023,7 +2095,7 @@ public class W3Party : MonoBehaviour
                 float d = (_party[i].Pos - world).magnitude;
                 if (d < best) { best = d; hit = i; }
             }
-            if (hit >= 0) _sel = hit;
+            if (hit >= 0) TrySelectCommandMember(hit);
             else if (_sel >= 0) _party[_sel].Order = world;   // 선택 중이면 빈 땅 클릭 = 이동
         }
         if (Input.GetMouseButtonDown(1) && _sel >= 0 && _party[_sel].Alive)
@@ -2031,6 +2103,101 @@ public class W3Party : MonoBehaviour
     }
 
     // ── 파티 자동 전투 ────────────────────────────────────
+    void TickInvasionTowers(float dt)
+    {
+        if (!GameMode || !AshesToStars.InvasionTowers.InPlay) return;
+        bool friendly = AshesToStars.InvasionTowers.FriendlyNow();
+        _invArrowCd -= dt;
+        _invMagicCd -= dt;
+        float arrowDmg = AshesToStars.InvasionTowers.ArrowDmg;
+        if (_invArrowCd <= 0f && arrowDmg > 0f)
+        {
+            _invArrowCd = AshesToStars.InvasionTowers.ArrowInterval;
+            int slot = _invArrowSlot;
+            _invArrowSlot = 1 - _invArrowSlot;
+            Vector2 from = AshesToStars.InvasionTowers.ArrowPos(slot, friendly);
+            if (friendly)
+            {
+                int t = NearestMob(from, AshesToStars.InvasionTowers.ArrowRange);
+                if (t >= 0)
+                {
+                    FireAlly(from, _mPos[t]);
+                    DamageMob(t, arrowDmg);
+                    FlashMob(t);
+                    if (_mHp[t] <= 0f) KillMob(t);
+                }
+            }
+            else
+            {
+                Member m = NearestPartyMember(from, AshesToStars.InvasionTowers.ArrowRange);
+                if (m != null)
+                {
+                    FireAlly(from, m.Pos);
+                    Damage(m, arrowDmg, m.Role == Role.Tank);
+                }
+            }
+        }
+        float magicDmg = AshesToStars.InvasionTowers.MagicDmg;
+        if (_invMagicCd <= 0f && magicDmg > 0f)
+        {
+            _invMagicCd = AshesToStars.InvasionTowers.MagicInterval;
+            Vector2 from = AshesToStars.InvasionTowers.MagicPos(friendly);
+            if (friendly)
+            {
+                int t = NearestMob(from, AshesToStars.InvasionTowers.MagicRange);
+                if (t >= 0)
+                {
+                    FireAlly(from, _mPos[t]);
+                    float r2 = AshesToStars.InvasionTowers.MagicRadius
+                        * AshesToStars.InvasionTowers.MagicRadius;
+                    int hits = 0;
+                    for (int i = 0; i < MAXM && hits < AshesToStars.InvasionTowers.MagicMaxTargets; i++)
+                    {
+                        if (!_mOn[i]) continue;
+                        if ((_mPos[i] - _mPos[t]).sqrMagnitude > r2) continue;
+                        DamageMob(i, magicDmg);
+                        FlashMob(i);
+                        if (_mHp[i] <= 0f) KillMob(i);
+                        hits++;
+                    }
+                }
+            }
+            else
+            {
+                Member m = NearestPartyMember(from, AshesToStars.InvasionTowers.MagicRange);
+                if (m != null)
+                {
+                    FireAlly(from, m.Pos);
+                    float r2 = AshesToStars.InvasionTowers.MagicRadius
+                        * AshesToStars.InvasionTowers.MagicRadius;
+                    int hits = 0;
+                    foreach (var ally in _party)
+                    {
+                        if (hits >= AshesToStars.InvasionTowers.MagicMaxTargets) break;
+                        if (!ally.Alive) continue;
+                        if ((ally.Pos - m.Pos).sqrMagnitude > r2) continue;
+                        Damage(ally, magicDmg, ally.Role == Role.Tank);
+                        hits++;
+                    }
+                }
+            }
+        }
+    }
+
+    Member NearestPartyMember(Vector2 p, float maxR)
+    {
+        Member best = null;
+        float bd = maxR * maxR;
+        if (_party == null) return null;
+        foreach (var m in _party)
+        {
+            if (!m.Alive) continue;
+            float d = (m.Pos - p).sqrMagnitude;
+            if (d < bd) { bd = d; best = m; }
+        }
+        return best;
+    }
+
     void TickParty(float dt)
     {
         Member tank = null;
@@ -2080,7 +2247,7 @@ public class W3Party : MonoBehaviour
                 else { want = d.normalized; commanded = true; }
             }
 
-            if (m.Job == Job.수호기사)
+            if (m.Job == Job.수호기사 || m.Job == Job.성기사)
             {
                 // ⚠️ 이동과 스킬을 **분리**한다. 예전엔 이 둘이 한 분기에 묶여 있어서
                 //    이동 명령을 내리는 순간 탱커가 도발·방패를 못 쓰게 됐다.
@@ -2090,6 +2257,8 @@ public class W3Party : MonoBehaviour
                     int t2 = NearestMob(m.Pos, 99f);
                     if (t2 >= 0) want = (_mPos[t2] - m.Pos).normalized;
                 }
+                if (m.Job == Job.수호기사)
+                {
                 // 수호 게이지는 §3대로 **피격·아군 보호**로 찬다(Damage에서 더한다).
                 // 예전에는 시간으로 찼다(dt*14) — 그러면 탱이 가만히 서 있어도 방패가 나가고,
                 // "맞아주는 것이 곧 자원"이라는 탱의 정체성이 성립하지 않는다.
@@ -2129,6 +2298,7 @@ public class W3Party : MonoBehaviour
                                                       new Color(0.55f, 0.82f, 1f));
                     foreach (var o in _party) if (o.Alive) FxParticles.Play(FxKind.무적, ToScreen(o.Pos));
                 }
+                }
             }
             else if (commanded)
             {
@@ -2150,6 +2320,7 @@ public class W3Party : MonoBehaviour
                 {
                     case Job.광전사:
                     case Job.검사:
+                    case Job.사신:
                     {
                         // 근접 딜 — **탱이 모아둔 무리**를 친다. 혼자 먼 몹을 쫓아가면
                         // 탱의 보호를 벗어나 §10-4의 어그로 구조가 성립하지 않는다
@@ -2163,6 +2334,7 @@ public class W3Party : MonoBehaviour
                     case Job.궁수:
                     case Job.마법사:
                     case Job.소환사:
+                    case Job.용기사:
                     {
                         // 원거리 딜 — 밀집한 무리를 사거리 끝에서 노린다. 너무 붙으면 물러선다.
                         // 기준점을 탱으로 잡아 **탱이 모아둔 무리**가 우선 후보가 되게 한다.
@@ -2435,6 +2607,58 @@ public class W3Party : MonoBehaviour
                     SkillCast(m, "화염 정령", new Color(1f, 0.45f, 0.2f), 1);
                 }
                 m.Cd = 1.2f;
+            }
+            else if (m.Job == Job.사신 && target >= 0)
+            {
+                float dmg = m.Atk * (m.ForceSkill == 1 ? 2.4f : 1.35f);
+                if (m.ForceSkill != 0) { m.ForceSkill = 0; SkillCast(m, "흡혈", new Color(0.75f, 0.15f, 0.2f), 2); }
+                DamageMob(target, dmg * sp.DmgMul * ChantAtk());
+                Heal(m, dmg * 0.4f);
+                m.Cd = 0.42f / AtkSpdOf(m);
+                AttackFx(m, _mPos[target]); FlashMob(target);
+                if (_mHp[target] <= 0f) KillMob(target);
+            }
+            else if (m.Job == Job.성기사 && target >= 0)
+            {
+                float dmg = m.Atk * (m.ForceSkill == 1 ? 1.8f : 1.05f);
+                if (m.ForceSkill == 2)
+                {
+                    m.ForceSkill = 0;
+                    foreach (var o in _party)
+                        if (o.Alive) Heal(o, 16f * HealOf(m));
+                    SkillCast(m, "축복", new Color(1f, 0.92f, 0.55f), 1);
+                }
+                else if (m.ForceSkill == 1) { m.ForceSkill = 0; SkillCast(m, "성격", new Color(1f, 0.85f, 0.4f), 2); }
+                DamageMob(target, dmg * sp.DmgMul * ChantAtk());
+                Member worst = null;
+                foreach (var o in _party)
+                    if (o.Alive && (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp)) worst = o;
+                if (worst != null) Heal(worst, 10f * HealOf(m));
+                m.Cd = 0.55f / AtkSpdOf(m);
+                AttackFx(m, _mPos[target]); FlashMob(target);
+                if (_mHp[target] <= 0f) KillMob(target);
+            }
+            else if (m.Job == Job.시간술사)
+            {
+                foreach (var o in _party)
+                    if (o.Alive) o.Cd = Mathf.Min(o.Cd, m.ForceSkill == 1 ? 0.05f : 0.2f);
+                if (m.ForceSkill != 0) { m.ForceSkill = 0; SkillCast(m, "시간 왜곡", new Color(0.65f, 0.85f, 1f), 1); }
+                m.Cd = 1.1f;
+            }
+            else if (m.Job == Job.용기사 && target >= 0)
+            {
+                Vector2 c = _mPos[target];
+                float rad = m.ForceSkill == 1 ? 3.4f : 2.2f;
+                if (m.ForceSkill != 0) { m.ForceSkill = 0; SkillCast(m, "용숨", new Color(1f, 0.45f, 0.15f), 3, 0.22f); }
+                for (int j = 0; j < MAXM; j++)
+                    if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < rad * rad)
+                    {
+                        DamageMob(j, m.Atk * 1.3f * sp.DmgMul * ChantAtk());
+                        FlashMob(j);
+                        if (_mHp[j] <= 0f) KillMob(j);
+                    }
+                m.Cd = 0.7f / AtkSpdOf(m);
+                AttackFx(m, c);
             }
             else if (m.Job == Job.마법사 && target >= 0)
             {
@@ -2932,6 +3156,7 @@ public class W3Party : MonoBehaviour
             return;
         }
         _kills++;
+        if (GameMode) AshesToStars.LifeSystem.NoteCombatSkill("처치");
         if (GameMode) AshesToStars.HuntBoon.NoteKill();
         // 필드 정예 훅(큐#1, 오너 위임 승인) — 던전 정예는 노드 Complete가 이미 지급하므로 필드만.
         if (GameMode && !AshesToStars.DungeonRun.Active && IsElite(_mKind[i]))
@@ -3173,7 +3398,7 @@ public class W3Party : MonoBehaviour
                     _mCd[i] = 1.5f;
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - p).sqrMagnitude < 16f)
-                            _mHp[j] = Mathf.Min(IsElite(_mKind[j]) ? 90f : 26f, _mHp[j] + 8f);
+                            _mHp[j] = Mathf.Min(_mMaxHp[j], _mHp[j] + 8f * EnemyStatMultiplier);
                 }
             }
             else if (_mKind[i] == 4)                              // 정예: 잡몹 소환
@@ -3288,7 +3513,7 @@ public class W3Party : MonoBehaviour
                     _mAtkCd[i] = 1.0f / (_cmdN > 0
                         ? AshesToStars.EliteLegion.NearbyMul(p, _mKind[i] == 7, _cmdAt, _cmdN, _cRadius, _cAtk) : 1f);
                     _meleeHits++;
-                    float md = 6f * sp.TakenMul;
+                    float md = 6f * EnemyStatMultiplier * sp.TakenMul;
                     // §10-2 처형자 폭딜 — 후열 명중이면 폭딜 배율(그 밖엔 1). 진로 차단·선처치가 정답.
                     if (_mKind[i] == 9) md *= AshesToStars.EliteExecutioner.DamageMul(true, _execBurst);
                     Damage(tgt, md, tgt.Role == Role.Tank);
@@ -3422,6 +3647,7 @@ public class W3Party : MonoBehaviour
         if (m.IFrame > 0f) return;
         float incoming = dmg;
         dmg *= _raceDmgTakenMul;                             // 종족 방어배율(§18-9) — 파티 전체 받는 피해 배율(엘프 ×1.20)
+        dmg *= AshesToStars.InvasionTowers.WallTakenMul;     // 수비 침략 성벽 — 출정·비침략은 1
         if (_partyChant == Chant.수호가) dmg *= 0.82f;      // 음유시인 수호가 오라
         if (m.Shield > 0f)                                   // 수호기사 성채 방패가 먼저 깎인다
         {
@@ -3547,7 +3773,7 @@ public class W3Party : MonoBehaviour
                 if ((m.Pos - _pPos[i]).sqrMagnitude < 0.36f)
                 {
                     _shotHits++;
-                    Damage(m, 9f * sp.TakenMul, m.Role == Role.Tank);
+                    Damage(m, 9f * EnemyStatMultiplier * sp.TakenMul, m.Role == Role.Tank);
                     _pOn[i] = false; _pTr[i].gameObject.SetActive(false);
                     break;
                 }
@@ -3795,7 +4021,7 @@ public class W3Party : MonoBehaviour
     /// </summary>
     void CommandBar()
     {
-        _cmdBtn ??= new GUIStyle(GUI.skin.button) { fontSize = 15 };
+        if (!CommandModeActive) return;
         _cmdLabel ??= new GUIStyle(GUI.skin.label)
         { fontSize = 16, alignment = TextAnchor.MiddleCenter,
           normal = { textColor = new Color(.95f, .96f, 1f) } };
@@ -3868,7 +4094,8 @@ public class W3Party : MonoBehaviour
 
             GUI.enabled = m.Alive;
             if (GUI.Button(pr, GUIContent.none, GUIStyle.none))
-                _sel = picked ? -1 : i;
+                if (picked) _sel = -1;
+                else TrySelectCommandMember(i);
             GUI.enabled = true;
         }
     }
@@ -3894,17 +4121,22 @@ public class W3Party : MonoBehaviour
         float s = Mathf.Max(CombatHudSkillMin, (col.height - gap) * 0.5f);
         s = Mathf.Min(s, col.width);
         if (SkillIcon(new Rect(col.x, col.y, col.width, s), a, IconFor(m.Role, 1), m, index, 1) && m.Alive)
-        { _sel = index; m.ForceSkill = 1; }
+        { TrySelectCommandMember(index); TryQueueSelectedSkill(1); }
         if (b != "—" && SkillIcon(new Rect(col.x, col.y + s + gap, col.width, s), b, IconFor(m.Role, 2), m, index, 2) && m.Alive)
-        { _sel = index; m.ForceSkill = 2; }
+        { TrySelectCommandMember(index); TryQueueSelectedSkill(2); }
         if (m.Advancement == AdvancementTier.Second)
         {
             bool ready = CanUseUltimate(m.Advancement, m.UltimateGauge, m.UltimateCd);
             var ur = new Rect(col.x, col.y + (s + gap) * 2f, col.width, 22f);
-            GUI.enabled = m.Alive && ready;
-            if (GUI.Button(ur, ready ? "각성" : "쿨", _cmdBtn))
-            { _sel = index; m.ForceUltimate = true; }
-            GUI.enabled = true;
+            bool ultHover = Event.current != null && ur.Contains(Event.current.mousePosition);
+            string ultKey = AshesToStars.UiAtlas.ButtonKey(ultHover, ready);
+            var ultTint = m.Alive && ready ? (Color?)null : new Color(1f, 1f, 1f, 0.45f);
+            if (!AshesToStars.UiAtlas.DrawSliced(ur, ultKey, 6f, ultTint)
+                && !AshesToStars.UiAtlas.Draw(ur, ultKey, ultTint))
+                GUI.DrawTexture(ur, Tint(ready ? new Color(.42f, .27f, .08f, .96f) : new Color(.16f, .18f, .22f, .55f)));
+            AshesToStars.UiPages.LabelClip(ur, ready ? "각성" : "쿨", _cmdLabel);
+            if (m.Alive && ready && GUI.Button(ur, GUIContent.none, GUIStyle.none))
+            { TrySelectCommandMember(index); m.ForceUltimate = true; }
         }
     }
 
@@ -3921,9 +4153,8 @@ public class W3Party : MonoBehaviour
                 label, _cmdLabel);
         if (m.Alive && GUI.Button(r, GUIContent.none, GUIStyle.none))
         {
-            _sel = index;
-            m.ForceSkill = slot;
-            return true;
+            TrySelectCommandMember(index);
+            return TryQueueSelectedSkill(slot);
         }
         return false;
     }

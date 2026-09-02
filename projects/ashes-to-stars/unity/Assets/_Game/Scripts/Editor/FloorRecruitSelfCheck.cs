@@ -117,9 +117,9 @@ namespace AshesToStars
             Check(!FloorRecruit.AwaitingPick, "특수까지 고르면 닫힌다");
             Check(LifeSystem.GetCharacters().Count == beforeRaidRoster + 3, "특수까지 3명");
             var special = LifeSystem.GetCharacters()[beforeRaidRoster + 2];
-            Check(special.IsSpecialJob && special.Job == "힐" && special.MaxLives == 1
+            Check(special.IsSpecialJob && special.Job == "성기사" && special.MaxLives == 1
                   && special.Name.StartsWith("영입특수"),
-                $"특수 영입은 힐 1목숨 (실제 {special.Name} {special.Job} lives={special.MaxLives})");
+                $"특수 영입은 성기사 1목숨 (실제 {special.Name} {special.Job} lives={special.MaxLives})");
             Check(!LifeSystem.UseRevivePotion(special), "살아있는 특수는 부활초 거부");
             special.IsDeleted = true;
             GameState.Gain(Economy.LifeItem.RebornStone);
@@ -163,7 +163,7 @@ namespace AshesToStars
             FloorRecruit.ForgetInMemoryForTest();
             Check(FloorRecruit.OfferedJob(1) && FloorRecruit.OfferedJob(5)
                   && FloorRecruit.RolledSpecial(5) && FloorRecruit.LastGrantedJob == "버퍼"
-                  && FloorRecruit.LastSpecialJob == "힐",
+                  && FloorRecruit.LastSpecialJob == "성기사",
                 "층 보상·마지막 영입·특수 영입이 저장에서 되살아난다");
 
             Environment.SetEnvironmentVariable("QA_NO_FLOOR_REWARD", "1");

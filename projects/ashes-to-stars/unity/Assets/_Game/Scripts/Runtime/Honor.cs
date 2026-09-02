@@ -26,11 +26,13 @@ namespace AshesToStars
 
         const string K_POINTS = "ats.honor.points";
         const string K_LAST = "ats.honor.last";
+        const string K_GUARD_WINS = "ats.honor.guardwins";
 
         static bool _loaded;
         static bool _qaSeeded;
         static int _points;
         static int _last;
+        static int _guardWins;
 
         public static bool Blocked
         {
@@ -71,6 +73,7 @@ namespace AshesToStars
 
         public static int Points { get { Load(); return _points; } }
         public static int LastGain { get { Load(); return _last; } }
+        public static int GuardWins { get { Load(); return _guardWins; } }
 
         /// <summary>Cut 0=15 · 20=30 · 40=45. QA_NO_HONOR_DEFENSE면 30.</summary>
         public static int WinForCut(int cut)
@@ -90,13 +93,16 @@ namespace AshesToStars
             _loaded = true;
             int.TryParse(PlayerPrefs.GetString(K_POINTS, "0"), out _points);
             int.TryParse(PlayerPrefs.GetString(K_LAST, "0"), out _last);
+            int.TryParse(PlayerPrefs.GetString(K_GUARD_WINS, "0"), out _guardWins);
             if (_points < 0) _points = 0;
+            if (_guardWins < 0) _guardWins = 0;
         }
 
         static void Save()
         {
             PlayerPrefs.SetString(K_POINTS, _points.ToString());
             PlayerPrefs.SetString(K_LAST, _last.ToString());
+            PlayerPrefs.SetString(K_GUARD_WINS, _guardWins.ToString());
             PlayerPrefs.Save();
         }
 
@@ -143,6 +149,7 @@ namespace AshesToStars
             int add = held ? Guard : Lose;
             _points += add;
             _last = add;
+            if (held) _guardWins++;
             Save();
             return add;
         }
@@ -211,9 +218,11 @@ namespace AshesToStars
         {
             PlayerPrefs.DeleteKey(K_POINTS);
             PlayerPrefs.DeleteKey(K_LAST);
+            PlayerPrefs.DeleteKey(K_GUARD_WINS);
             PlayerPrefs.Save();
             _points = 0;
             _last = 0;
+            _guardWins = 0;
             _qaSeeded = false;
             _loaded = false;
         }
@@ -222,6 +231,7 @@ namespace AshesToStars
         {
             _points = 0;
             _last = 0;
+            _guardWins = 0;
             _loaded = false;
         }
     }

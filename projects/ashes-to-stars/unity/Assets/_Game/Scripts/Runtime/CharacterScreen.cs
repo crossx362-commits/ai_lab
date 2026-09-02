@@ -158,6 +158,7 @@ namespace AshesToStars
                 DrawFusion(r);
                 return;
             }
+            RestoreAdvancementUi();
             if (_choosingAdvancement && _selectedCharacter >= 0)
             {
                 var characters = LifeSystem.GetCharacters();
@@ -176,6 +177,24 @@ namespace AshesToStars
             DrawRosterSplit(page);
         }
 
+        void RestoreAdvancementUi()
+        {
+            var trial = LifeSystem.ActiveFirstTrial ?? LifeSystem.ActiveSecondTrial;
+            if (trial == null || _choosingAdvancement) return;
+            var roster = LifeSystem.GetCharacters();
+            int idx = roster.IndexOf(trial.Character);
+            if (idx < 0)
+            {
+                for (int i = 0; i < roster.Count; i++)
+                    if (roster[i] != null && roster[i].Id == trial.Character.Id) { idx = i; break; }
+            }
+            if (idx >= 0)
+            {
+                _selectedCharacter = idx;
+                _choosingAdvancement = true;
+            }
+        }
+
         void DrawAdvancement(Rect r, CharacterRecord ch)
         {
                         var secondTrial = LifeSystem.ActiveSecondTrial;
@@ -185,10 +204,17 @@ namespace AshesToStars
                             Info(r, 1, $"역할 목표: {secondTrial.Objective} {secondTrial.Progress}/{secondTrial.Required}");
                             if (!secondTrial.ObjectiveMet)
                             {
+                                int row = 2;
+                                if (!LifeSystem.TrialBattleBlocked
+                                    && Row(r, row++, "훈련장 입장", "비살상 전투 — 역할 스킬로 목표를 채운다"))
+                                {
+                                    GameFlow.GoBattle(GameFlow.Character, GameFlow.BattleKind.잡몹웨이브, 1);
+                                    return;
+                                }
                                 for (int i = 0; i < secondTrial.Actions.Count; i++)
                                 {
                                     var action = secondTrial.Actions[i];
-                                    if (Row(r, i + 2, TrialActionText(action), "각성 시험 상황에 맞는 행동을 선택한다"))
+                                    if (Row(r, row++, TrialActionText(action), "각성 시험 상황에 맞는 행동을 선택한다"))
                                     {
                                         if (!LifeSystem.ReportSecondTrialProgress(action))
                                         {
@@ -218,10 +244,17 @@ namespace AshesToStars
                             Info(r, 1, $"역할 목표: {trial.Objective} {trial.Progress}/{trial.Required}");
                             if (!trial.ObjectiveMet)
                             {
+                                int row = 2;
+                                if (!LifeSystem.TrialBattleBlocked
+                                    && Row(r, row++, "훈련장 입장", "비살상 전투 — 역할 스킬로 목표를 채운다"))
+                                {
+                                    GameFlow.GoBattle(GameFlow.Character, GameFlow.BattleKind.잡몹웨이브, 1);
+                                    return;
+                                }
                                 for (int i = 0; i < trial.Actions.Count; i++)
                                 {
                                     var action = trial.Actions[i];
-                                    if (Row(r, i + 2, TrialActionText(action), "훈련 상황에 맞는 행동을 선택한다"))
+                                    if (Row(r, row++, TrialActionText(action), "훈련 상황에 맞는 행동을 선택한다"))
                                     {
                                         // 정답을 화면이 대신 넣지 않는다. 패턴과 다른 행동은 즉시 시험 실패.
                                         if (!LifeSystem.ReportFirstTrialProgress(action))
@@ -359,7 +392,7 @@ namespace AshesToStars
                         statusMax = Math.Max(statusMax, 3);
                     }
 
-                    // §3·§4 기본 전투 스탯(JobDef 최대체력·공격력·사거리·공격간격의 유일한 소비처).
+                    // §3·§4 기본 전투 스탯(JobDef 최대체력·공격력 — 전투 W3Party도 같은 에셋을 읽는다).
                     // **속성** 탭의 표제 데이터라 이동기 프로필·종족 특성보다 우선순위가 높다 — 그래서
                     // 관례(새 조각은 맨 뒤)와 달리 전직 블록 **앞**(status 바로 뒤)에 두어 패널이 꽉 차도
                     // 항상 보이게 한다. 매칭 직업이 없으면(기본직 또는 에셋 미로드) 빈 문자열이라 줄을
@@ -619,12 +652,14 @@ namespace AshesToStars
                     Hint(new Rect(r.x, r.y + 26f, r.width, 22f), special);
                     pickTop = 52f;
                 }
+                var jobs = FloorRecruit.PendingSpecialPick && FloorRecruit.PendingPicks <= 0
+                    ? LifeSystem.SpecialJobs : LifeSystem.BasicJobs;
                 var picks = UiPages.JobPickCards(new Rect(r.x, r.y + pickTop, r.width, r.height - pickTop),
-                    LifeSystem.BasicJobs.Length);
-                for (int i = 0; i < LifeSystem.BasicJobs.Length && i < picks.Length; i++)
+                    jobs.Length);
+                for (int i = 0; i < jobs.Length && i < picks.Length; i++)
                 {
-                    string job = LifeSystem.BasicJobs[i];
-                    if (DrawCard(picks[i], LifeSystem.BasicJobLabel(job),
+                    string job = jobs[i];
+                    if (DrawCard(picks[i], LifeSystem.JobFace(job),
                             FloorRecruit.PickSubtitle()))
                         FloorRecruit.TryClaim(job);
                 }
@@ -1426,7 +1461,7 @@ namespace AshesToStars
 
             var face = CharHud.EquipPortrait(stage);
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
-            DrawSelectedLook(face, ch.Job, tint);
+            DrawSelectedLook(face, ch.Job, ch.Advancement, tint);
             UiAtlas.Draw(new Rect(face.center.x - 16f, face.yMax - 18f, 32f, 32f),
                 UiAtlas.RoleKey(ch.Job));
 
@@ -1646,8 +1681,8 @@ namespace AshesToStars
             }
         }
 
-        static void DrawSelectedLook(Rect target, string job, Color? tint) =>
-            UiPages.DrawJobLook(target, job, false, tint);
+        static void DrawSelectedLook(Rect target, string job, AdvancementTier tier, Color? tint) =>
+            UiPages.DrawJobLook(target, job, false, tier, tint);
 
         void DrawBagFilterTab(Rect tr, string label, int filter)
         {
