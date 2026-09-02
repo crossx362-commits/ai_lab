@@ -1,0 +1,49 @@
+# Unity가 다시 만드는 것
+unity/Library/
+unity/Temp/
+unity/Obj/
+unity/obj/
+unity/Build/
+unity/Builds/
+unity/Logs/
+unity/UserSettings/
+unity/MemoryCaptures/
+unity/Recordings/
+unity/.vsconfig
+unity/*.csproj
+unity/*.sln
+unity/*.user
+unity/unity_create.log
+
+# 로컬 생성 로그
+unity_create.log
+*.log
+
+# 큰 원본 zip. 라이선스·출처 기록은 docs와 _ThirdParty에 남긴다.
+art/**/*.zip
+art/**/*.rar
+art/**/*.7z
+
+# persist
+data/*.sqlite
+data/*.sqlite-*
+data/accounts/
+data/backups/
+data/*.jsonl
+data/*.log
+data/*.txt
+data/*.json
+data/pgdata/
+
+# 가상환경
+server/.venv/
+
+# 빌드·실행 산출
+build_*/
+builds/
+results/
+output/
+
+art/KayKit-Adventurers.git/
+art/KayKit-Skeletons.git/
+

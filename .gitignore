@@ -124,6 +124,9 @@ projects/ashes-to-stars/results/
 # 시각 QA의 정본은 `output/qa/ashes-to-stars/shots/`(qa_shot.sh)다.
 projects/ashes-to-stars/unity/Assets/Screenshots/
 projects/ashes-to-stars/unity/Assets/Screenshots.meta
+projects/ulon/server/.venv/
+projects/ulon/data/pgdata/
+projects/ulon/builds/
 loop/board_keeper.json
 loop/.keeper_count
 loop/COUNCIL_NOW
