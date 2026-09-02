@@ -22,7 +22,14 @@ for asset in style.css site.js posts.js works.js; do
   fi
 done
 
-vercel --prod --yes
-LATEST=$(vercel ls --yes 2>&1 | grep -oE 'https://crossx362-[a-z0-9]+-crossx362-s-projects\.vercel\.app' | head -1)
-vercel alias set "$LATEST" homepage-two-opal.vercel.app
-echo "배포 완료: https://homepage-two-opal.vercel.app"
+DEPLOYMENT_URL=$(vercel deploy --prod --yes 2> >(tee /dev/stderr) | tail -n 1 | tr -d '\r')
+case "$DEPLOYMENT_URL" in
+  https://*.vercel.app) ;;
+  *)
+    echo "!! 배포 URL을 확인할 수 없습니다: $DEPLOYMENT_URL" >&2
+    exit 1
+    ;;
+esac
+
+vercel alias set "$DEPLOYMENT_URL" crossx362.vercel.app
+echo "배포 완료: https://crossx362.vercel.app"
