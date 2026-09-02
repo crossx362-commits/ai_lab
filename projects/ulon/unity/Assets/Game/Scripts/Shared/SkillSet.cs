@@ -119,6 +119,8 @@ namespace Ulon.Shared
     {
         public const string Pickaxe = "pickaxe";
         public const string Hatchet = "hatchet";
+        public const string FishingPole = "fishing_pole";
+        public const string Fish = "fish";
         public const string IronSword = "iron_sword";
         public const string WoodenClub = "wooden_club";
         public const string WoodenBow = "wooden_bow";
@@ -133,11 +135,12 @@ namespace Ulon.Shared
             if (id == "iron_ore") return 2f;
             if (id == "wood") return 2f;
             if (id == "resin") return 0.2f;
+            if (id == Fish) return 1f;
             if (id == IronSword) return 8f;
             if (id == WoodenClub) return 5f;
             if (id == WoodenBow) return 6f;
             if (id == WoodenShield) return 6f;
-            if (id == Pickaxe || id == Hatchet) return 6f;
+            if (id == Pickaxe || id == Hatchet || id == FishingPole) return 6f;
             if (id == Cloth) return 0.5f;
             if (id == Bandage) return 0.1f;
             return 1f;
@@ -165,7 +168,7 @@ namespace Ulon.Shared
 
         public static int MaxUsesOf(string id)
         {
-            if (id == Pickaxe || id == Hatchet) return 20;
+            if (id == Pickaxe || id == Hatchet || id == FishingPole) return 20;
             if (id == IronSword) return 40;
             if (id == WoodenClub) return 30;
             if (id == WoodenBow) return 30;
@@ -177,7 +180,7 @@ namespace Ulon.Shared
 
         public static int BuyPrice(string id)
         {
-            if (id == Pickaxe || id == Hatchet) return 25;
+            if (id == Pickaxe || id == Hatchet || id == FishingPole) return 25;
             if (id == IronSword) return 40;
             if (id == WoodenClub) return 18;
             if (id == WoodenBow) return 22;
@@ -187,6 +190,7 @@ namespace Ulon.Shared
             if (id == "resin") return 4;
             if (id == "iron_ore") return 6;
             if (id == "wood") return 5;
+            if (id == Fish) return 6;
             return 0;
         }
 
@@ -200,6 +204,7 @@ namespace Ulon.Shared
         {
             if (gather == SkillId.Mining) return Pickaxe;
             if (gather == SkillId.Lumberjacking) return Hatchet;
+            if (gather == SkillId.Fishing) return FishingPole;
             return "";
         }
 
@@ -453,6 +458,8 @@ namespace Ulon.Shared
                 list.Add(Tool(ItemCatalog.Pickaxe));
             if (HasPick(picks, SkillId.Lumberjacking))
                 list.Add(Tool(ItemCatalog.Hatchet));
+            if (HasPick(picks, SkillId.Fishing))
+                list.Add(Tool(ItemCatalog.FishingPole));
             if (HasPick(picks, SkillId.Blacksmithing))
                 list.Add(new ItemRecord { Slot = list.Count, TemplateId = "iron_ore", Amount = 2 });
             if (HasPick(picks, SkillId.Carpentry))

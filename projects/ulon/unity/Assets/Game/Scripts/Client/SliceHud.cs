@@ -91,10 +91,11 @@ namespace Ulon.Client
             float meditation = world.PlayerSkills.Get(SkillId.Meditation);
             float resist = world.PlayerSkills.Get(SkillId.MagicResist);
             float evalInt = world.PlayerSkills.Get(SkillId.EvaluateIntelligence);
+            float fishing = world.PlayerSkills.Get(SkillId.Fishing);
             GUI.Box(new Rect(16, 16, 340, 256), "");
             var st = world.PlayerStats;
             var sk = world.PlayerSkills;
-            GUI.Label(new Rect(28, 24, 320, 22), $"{SkillNames.KoreanOf(SkillId.Swordsmanship)} {skill:0.0}  {SkillNames.KoreanOf(SkillId.Archery)} {archery:0.0}  {SkillNames.KoreanOf(SkillId.Tactics)} {tactics:0.0}  {SkillNames.KoreanOf(SkillId.Parrying)} {parry:0.0}  {SkillNames.KoreanOf(SkillId.Anatomy)} {anatomy:0.0}  {SkillNames.KoreanOf(SkillId.Healing)} {healing:0.0}  {SkillNames.KoreanOf(SkillId.Meditation)} {meditation:0.0}  {SkillNames.KoreanOf(SkillId.MagicResist)} {resist:0.0}  {SkillNames.KoreanOf(SkillId.EvaluateIntelligence)} {evalInt:0.0}  채광 {mining:0.0}  벌목 {lumber:0.0}  대장 {smith:0.0}  목공 {carp:0.0}  마법 {magery:0.0}");
+            GUI.Label(new Rect(28, 24, 320, 22), $"{SkillNames.KoreanOf(SkillId.Swordsmanship)} {skill:0.0}  {SkillNames.KoreanOf(SkillId.Archery)} {archery:0.0}  {SkillNames.KoreanOf(SkillId.Tactics)} {tactics:0.0}  {SkillNames.KoreanOf(SkillId.Parrying)} {parry:0.0}  {SkillNames.KoreanOf(SkillId.Anatomy)} {anatomy:0.0}  {SkillNames.KoreanOf(SkillId.Healing)} {healing:0.0}  {SkillNames.KoreanOf(SkillId.Meditation)} {meditation:0.0}  {SkillNames.KoreanOf(SkillId.MagicResist)} {resist:0.0}  {SkillNames.KoreanOf(SkillId.EvaluateIntelligence)} {evalInt:0.0}  채광 {mining:0.0}  벌목 {lumber:0.0}  대장 {smith:0.0}  목공 {carp:0.0}  낚시 {fishing:0.0}  마법 {magery:0.0}");
             string ghost = world.Player != null && world.Player.Ghost ? "  유령" : "";
             string noto = world.Player != null ? NotorietyId.Korean(world.Player.Notoriety) : "";
             bool town = world.Player != null && GuardZone.Contains(world.Player.transform.position.x, world.Player.transform.position.z);
@@ -142,6 +143,8 @@ namespace Ulon.Client
                 sk.CycleLock(SkillId.Mining);
             if (LockButton(298, 138, "대장", sk.GetLock(SkillId.Blacksmithing)))
                 sk.CycleLock(SkillId.Blacksmithing);
+            if (LockButton(208, 162, "낚시", sk.GetLock(SkillId.Fishing)))
+                sk.CycleLock(SkillId.Fishing);
             if (LockButton(28, 138, "STR", st.GetLock(StatId.Str)))
                 st.CycleLock(StatId.Str);
             if (LockButton(118, 138, "DEX", st.GetLock(StatId.Dex)))
@@ -160,7 +163,9 @@ namespace Ulon.Client
                     Shop(net, true, ItemCatalog.Pickaxe);
                 if (GUI.Button(new Rect(134, 284, 100, 24), "도끼 25"))
                     Shop(net, true, ItemCatalog.Hatchet);
-                if (GUI.Button(new Rect(240, 284, 90, 24), "시약 4"))
+                if (GUI.Button(new Rect(240, 284, 90, 24), "낚싯대 25"))
+                    Shop(net, true, ItemCatalog.FishingPole);
+                if (GUI.Button(new Rect(240, 344, 90, 24), "시약 4"))
                     Shop(net, true, "resin");
                 if (GUI.Button(new Rect(28, 344, 100, 24), "붕대 5"))
                     Shop(net, true, ItemCatalog.Bandage);
@@ -170,6 +175,8 @@ namespace Ulon.Client
                     Shop(net, false, "iron_ore");
                 if (GUI.Button(new Rect(134, 314, 100, 24), "나무팔기"))
                     Shop(net, false, "wood");
+                if (GUI.Button(new Rect(240, 398, 90, 24), "생선팔기"))
+                    Shop(net, false, ItemCatalog.Fish);
                 if (GUI.Button(new Rect(240, 314, 90, 24), "닫기"))
                     world.CloseVendor();
             }

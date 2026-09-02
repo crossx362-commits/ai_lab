@@ -54,6 +54,7 @@ namespace Ulon.Server
             EnsureBanker();
             EnsureHealer();
             EnsureResinBush();
+            EnsureFishSpot();
             EnsureVendor();
             EnsureTrainer();
             EnsureCarpenter();
@@ -468,6 +469,28 @@ namespace Ulon.Server
             node.Capacity = 8;
             node.Difficulty = 8f;
             node.RespawnSeconds = 8f;
+            if (go.GetComponentInChildren<Collider>() == null)
+                go.AddComponent<BoxCollider>();
+        }
+
+        static void EnsureFishSpot()
+        {
+            var go = GameObject.Find("FishingSpot");
+            if (go == null)
+                go = GameObject.Find("watermill");
+            if (go == null)
+                return;
+            go.name = "FishingSpot";
+            var node = go.GetComponent<ResourceNode>() ?? go.AddComponent<ResourceNode>();
+            node.ResourceId = ItemCatalog.Fish;
+            node.DisplayName = "물가";
+            node.GatherSkill = SkillId.Fishing;
+            if (node.Remaining <= 0)
+                node.Remaining = 12;
+            node.Capacity = 12;
+            node.Difficulty = 10f;
+            node.RespawnSeconds = 8f;
+            node.InteractRange = 2.8f;
             if (go.GetComponentInChildren<Collider>() == null)
                 go.AddComponent<BoxCollider>();
         }

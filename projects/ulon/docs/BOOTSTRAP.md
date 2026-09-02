@@ -10,7 +10,7 @@
 7. Dedicated Server로 두 클라이언트가 같은 몬스터를 보고 공격. (헤드리스 `-ulon-server` + 클라 2. two_client_check.sh PASS, HP 30→22)
 8. PostgreSQL에 캐릭터/스킬/인벤토리 저장, 재접속 복원. (persist HTTP driver=postgres. persist_pg_check.py PASS, Unity CharacterStore 재로드 PASS)
 9. 채광 1 + 철검 제작 1 + 플레이어 거래 1. (광맥, 대장간 2광석→철검, 클릭 후 양측 수락 거래창. PlayLoopCheck hunt/mine/craft/trade PASS)
-10. 이 Vertical Slice가 안정적일 때만 스킬/몬스터/지역 확대. (목공/궁술/전술/방패술/해부학/치유/명상 1. 마법 저항 1: MagicResistResolve 적대 주문 피해 감소·장비 저항·0.0→0.1/INT, HUD/TryCast. SliceSelfCheck 2026-09-02 21:52 KST batch PASS (마법 저항 포함). 필드/던전/추가 몬스터·지능 평가/낚시 루프는 아직)
+10. 이 Vertical Slice가 안정적일 때만 스킬/몬스터/지역 확대. (목공/궁술/전술/방패술/해부학/치유/명상 1. 마법 저항 1. 지능 평가 1: EvalIntResolve 대상 INT/마나 공개·성공 0.0→0.1/INT, Ember 위력, HUD/TryEvaluate. SliceSelfCheck 2026-09-02 22:00 KST batch PASS (지능 평가 포함). 필드/던전/추가 몬스터·낚시 루프는 아직)
 
 에디터: Unity Hub에서 `projects/ulon/unity` 를 Unity 6000.3.14f1로 연다.
 메뉴 `Ulon/Create Bootstrap Scene` 으로 바닥+플레이스홀더+쿼터뷰 카메라를 만들 수 있다.

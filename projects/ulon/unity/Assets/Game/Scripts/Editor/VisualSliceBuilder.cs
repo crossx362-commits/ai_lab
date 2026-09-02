@@ -433,6 +433,7 @@ namespace Ulon.Editor
                 node.Difficulty = 8f;
                 EnsureCollider(resinGo);
             }
+            EnsureFishSpot();
         }
 
         static void EnsureTrainerNpc()
@@ -513,6 +514,30 @@ namespace Ulon.Editor
             var station = go.GetComponent<CraftStation>() ?? go.AddComponent<CraftStation>();
             station.RecipeId = "wooden_club";
             station.DisplayName = "목공소";
+            EnsureCollider(go);
+        }
+
+        public static void EnsureFishSpot()
+        {
+            const string fbx = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/watermill.fbx";
+            Vector3 pos = new Vector3(-11.5f, 0f, -8.5f);
+            var go = GameObject.Find("FishingSpot");
+            if (go == null)
+                go = GameObject.Find("watermill");
+            if (go == null)
+                go = Place(fbx, pos, Vector3.zero);
+            if (go == null)
+                return;
+            go.name = "FishingSpot";
+            var node = go.GetComponent<ResourceNode>() ?? go.AddComponent<ResourceNode>();
+            node.ResourceId = ItemCatalog.Fish;
+            node.DisplayName = "물가";
+            node.GatherSkill = SkillId.Fishing;
+            node.Remaining = 12;
+            node.Capacity = 12;
+            node.Difficulty = 10f;
+            node.RespawnSeconds = 8f;
+            node.InteractRange = 2.8f;
             EnsureCollider(go);
         }
 
