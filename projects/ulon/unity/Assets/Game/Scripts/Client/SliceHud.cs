@@ -165,19 +165,19 @@ namespace Ulon.Client
                     Shop(net, true, ItemCatalog.Hatchet);
                 if (GUI.Button(new Rect(240, 284, 90, 24), "낚싯대 25"))
                     Shop(net, true, ItemCatalog.FishingPole);
-                if (GUI.Button(new Rect(240, 344, 90, 24), "시약 4"))
-                    Shop(net, true, "resin");
-                if (GUI.Button(new Rect(28, 344, 100, 24), "붕대 5"))
-                    Shop(net, true, ItemCatalog.Bandage);
-                if (GUI.Button(new Rect(134, 344, 100, 24), "천 3"))
-                    Shop(net, true, ItemCatalog.Cloth);
                 if (GUI.Button(new Rect(28, 314, 100, 24), "광석팔기"))
                     Shop(net, false, "iron_ore");
                 if (GUI.Button(new Rect(134, 314, 100, 24), "나무팔기"))
                     Shop(net, false, "wood");
-                if (GUI.Button(new Rect(240, 398, 90, 24), "생선팔기"))
+                if (GUI.Button(new Rect(240, 314, 90, 24), "생선팔기"))
                     Shop(net, false, ItemCatalog.Fish);
-                if (GUI.Button(new Rect(240, 314, 90, 24), "닫기"))
+                if (GUI.Button(new Rect(28, 344, 100, 24), "붕대 5"))
+                    Shop(net, true, ItemCatalog.Bandage);
+                if (GUI.Button(new Rect(134, 344, 100, 24), "천 3"))
+                    Shop(net, true, ItemCatalog.Cloth);
+                if (GUI.Button(new Rect(240, 344, 44, 24), "시약"))
+                    Shop(net, true, "resin");
+                if (GUI.Button(new Rect(286, 344, 44, 24), "닫기"))
                     world.CloseVendor();
             }
             if (world.ActiveTrainer != null && !me.Ghost)
@@ -204,6 +204,8 @@ namespace Ulon.Client
                     Train(net, SkillId.MagicResist);
                 if (GUI.Button(new Rect(124, 484, 90, 24), SkillNames.KoreanOf(SkillId.EvaluateIntelligence)))
                     Train(net, SkillId.EvaluateIntelligence);
+                if (GUI.Button(new Rect(220, 484, 70, 24), "낚시"))
+                    Train(net, SkillId.Fishing);
                 if (GUI.Button(new Rect(256, 398, 70, 22), "닫기"))
                     world.CloseTrainer();
             }

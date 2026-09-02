@@ -19,6 +19,7 @@ namespace Ulon.Editor
             if (scene.path != scenePath)
                 scene = EditorSceneManager.OpenScene(scenePath);
             VisualSliceBuilder.EnsureHuntMobs();
+            VisualSliceBuilder.EnsureFishSpot();
             NetworkSliceSetup.WireMob("Skeleton");
             NetworkSliceSetup.WireMob("Bandit");
 
@@ -1214,7 +1215,8 @@ namespace Ulon.Editor
             AssertMeditationSlice();
             AssertMagicResistSlice();
             AssertEvalIntSlice();
-            Debug.Log("[Ulon] Slice self-check PASS — 몬스터 2종(스켈레톤+도적), 검술/채광/제작, 목공, 궁술/나무활, 전술 0.0→0.1, 방패술 0.0→0.1, 해부학 0.0→0.1, 치유 붕대 0.0→0.1, 명상 마나 0.0→0.1, 마법 저항 0.0→0.1, 지능 평가 0.0→0.1, STR/HP, 700캡↓, 은행, 캐릭터 생성, 주문책, 시체/부활, 무게/도구, 리스폰/시약, 상점, 훈련, 운영툴, 명성/가드존");
+            AssertFishingSlice();
+            Debug.Log("[Ulon] Slice self-check PASS — 몬스터 2종(스켈레톤+도적), 검술/채광/제작, 목공, 궁술/나무활, 전술 0.0→0.1, 방패술 0.0→0.1, 해부학 0.0→0.1, 치유 붕대 0.0→0.1, 명상 마나 0.0→0.1, 마법 저항 0.0→0.1, 지능 평가 0.0→0.1, 낚시 0.0→0.1, STR/HP, 700캡↓, 은행, 캐릭터 생성, 주문책, 시체/부활, 무게/도구, 리스폰/시약, 상점, 훈련, 운영툴, 명성/가드존");
         }
 
         static void AssertMeditationSlice()
@@ -1617,6 +1619,103 @@ namespace Ulon.Editor
                     UnityEngine.Object.DestroyImmediate(tgtGo);
                 if (casterGo != null)
                     UnityEngine.Object.DestroyImmediate(casterGo);
+                if (worldGo != null)
+                    UnityEngine.Object.DestroyImmediate(worldGo);
+            }
+        }
+
+        static void AssertFishingSlice()
+        {
+            if (StatSet.PrimaryOf(SkillId.Fishing) != StatId.Dex)
+                throw new InvalidOperationException("낚시 Primary는 DEX이어야 합니다.");
+            if (ItemCatalog.ToolFor(SkillId.Fishing) != ItemCatalog.FishingPole)
+                throw new InvalidOperationException("낚시는 낚싯대가 도구여야 합니다.");
+            if (ItemCatalog.MaxUsesOf(ItemCatalog.FishingPole) != 20)
+                throw new InvalidOperationException("낚싯대 내구 20");
+            if (ItemCatalog.BuyPrice(ItemCatalog.FishingPole) <= 0 || ItemCatalog.SellPrice(ItemCatalog.Fish) <= 0)
+                throw new InvalidOperationException("낚싯대/생선 상점 가격이 없습니다.");
+
+            var gain = new SkillSet();
+            var stats = new StatSet();
+            int dexWas = stats.Dex;
+            SkillGain.TryRaise(gain, SkillId.Fishing, 10f, out _, out float after, stats);
+            if (Math.Abs(after - 0.1f) > 0.0001f)
+                throw new InvalidOperationException("낚시 0.0→0.1이어야 합니다.");
+            if (stats.Dex != dexWas + 1)
+                throw new InvalidOperationException("낚시 상승 시 DEX가 올라야 합니다.");
+
+            var created = CharacterCreate.Build("fish-check", "낚시", 0, 20, 40, 20,
+                new[] { SkillId.Fishing, SkillId.Mining, SkillId.Swordsmanship },
+                new[] { 50f, 30f, 20f });
+            bool hasPole = false;
+            for (int i = 0; i < created.Inventory.Length; i++)
+                if (created.Inventory[i].TemplateId == ItemCatalog.FishingPole && created.Inventory[i].Uses == 20)
+                    hasPole = true;
+            if (!hasPole)
+                throw new InvalidOperationException("낚시 시작은 낚싯대를 줘야 합니다.");
+
+            var spot = GameObject.Find("FishingSpot");
+            if (spot == null)
+                throw new InvalidOperationException("마을에 물가(FishingSpot)가 있어야 합니다.");
+            var sceneNode = spot.GetComponent<ResourceNode>();
+            if (sceneNode == null || sceneNode.GatherSkill != SkillId.Fishing || sceneNode.ResourceId != ItemCatalog.Fish)
+                throw new InvalidOperationException("물가는 낚시 ResourceNode여야 합니다.");
+
+            var go = new GameObject("selfcheck-fish");
+            GameObject worldGo = null;
+            GameObject nodeGo = null;
+            try
+            {
+                var world = OfflineWorld.Instance;
+                if (world == null)
+                {
+                    worldGo = new GameObject("selfcheck-fish-world");
+                    world = worldGo.AddComponent<OfflineWorld>();
+                }
+                var body = go.AddComponent<WorldBody>();
+                body.IsAvatar = true;
+                var bag = go.AddComponent<InventoryBag>();
+                nodeGo = new GameObject("selfcheck-fish-node");
+                nodeGo.transform.position = go.transform.position;
+                var node = nodeGo.AddComponent<ResourceNode>();
+                node.ResourceId = ItemCatalog.Fish;
+                node.DisplayName = "물가";
+                node.GatherSkill = SkillId.Fishing;
+                node.Remaining = 5;
+                node.Capacity = 5;
+                node.Difficulty = 10f;
+                var noTool = world.TryGather(body, node);
+                if (noTool.Applied)
+                    throw new InvalidOperationException("낚싯대 없이 낚시되면 안 됩니다.");
+                if (Math.Abs(world.SkillsOf(body).Get(SkillId.Fishing)) > 0.0001f)
+                    throw new InvalidOperationException("실패한 낚시는 스킬을 올리면 안 됩니다.");
+                bag.Add(new ItemRecord { TemplateId = ItemCatalog.FishingPole, Amount = 1, Uses = 1 });
+                var ok = world.TryGather(body, node);
+                if (!ok.Applied)
+                    throw new InvalidOperationException("낚싯대 낚시 실패: " + ok.FailReason);
+                if (Math.Abs(world.SkillsOf(body).Get(SkillId.Fishing) - 0.1f) > 0.0001f)
+                    throw new InvalidOperationException("성공 낚시 후 0.1이어야 합니다.");
+                int fish = 0;
+                for (int i = 0; i < bag.Items.Count; i++)
+                    if (bag.Items[i].TemplateId == ItemCatalog.Fish)
+                        fish += bag.Items[i].Amount;
+                if (fish < 1)
+                    throw new InvalidOperationException("잡은 생선이 가방에 있어야 합니다.");
+                var broken = world.TryGather(body, node);
+                if (broken.Applied)
+                    throw new InvalidOperationException("내구 0 낚싯대로 낚시되면 안 됩니다.");
+
+                var locked = new SkillSet();
+                locked.SetLock(SkillId.Fishing, SkillLock.Locked);
+                SkillGain.TryRaise(locked, SkillId.Fishing, 10f, out _, out _);
+                if (Math.Abs(locked.Get(SkillId.Fishing)) > 0.0001f)
+                    throw new InvalidOperationException("잠긴 낚시는 오르면 안 됩니다.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+                if (nodeGo != null)
+                    UnityEngine.Object.DestroyImmediate(nodeGo);
                 if (worldGo != null)
                     UnityEngine.Object.DestroyImmediate(worldGo);
             }
