@@ -334,7 +334,7 @@ v1.1  |  기준일 2026-08-31  |  UO Classic 핵심 시스템 보완판
 - 원본 에셋 팩 자체를 게임 밖에서 재배포하지 않습니다.
 # 12. Unity 프로젝트/리소스 관리 규칙
 ## 12.1 권장 폴더
-| Assets/├─ _ThirdParty/│  ├─ KayKit/│  ├─ Kenney/│  └─ Quaternius/├─ Game/│  ├─ Art/Characters/│  ├─ Art/Monsters/│  ├─ Art/Environment/│  ├─ Art/VFX/│  ├─ Audio/│  ├─ Data/│  ├─ Prefabs/│  ├─ Scenes/│  ├─ Scripts/Client/│  ├─ Scripts/Server/│  ├─ Scripts/Shared/│  └─ UI/└─ Tests/ |
+| Assets/├─ _ThirdParty/│  ├─ KayKit/│  ├─ Kenney/│  └─ Quaternius/├─ Game/│  ├─ Art/Characters/│  ├─ Art/Monsters/│  ├─ Art/Env/│  ├─ Art/VFX/│  ├─ Audio/│  ├─ Data/│  ├─ Prefabs/│  ├─ Scenes/│  ├─ Scripts/Client/│  ├─ Scripts/Server/│  ├─ Scripts/Shared/│  └─ UI/└─ Tests/ |
 | --- |
 
 ## 12.2 데이터 기반 원칙
