@@ -1,3 +1,4 @@
+using System.Collections;
 using FishNet.Component.Spawning;
 using FishNet.Managing;
 using FishNet.Object;
@@ -36,6 +37,7 @@ namespace Ulon.Client
                 ApplyListen(manager, true);
                 manager.ServerManager.StartConnection();
                 Debug.Log("[Ulon] Dedicated server listening UDP 7770 bind 0.0.0.0 host=" + Host());
+                StartCoroutine(WaitServerStarted());
                 return;
             }
 
@@ -149,6 +151,20 @@ namespace Ulon.Client
             var mat = new Material(renderer.sharedMaterial);
             mat.color = color;
             renderer.material = mat;
+        }
+
+        IEnumerator WaitServerStarted()
+        {
+            float until = Time.realtimeSinceStartup + 15f;
+            while (Time.realtimeSinceStartup < until)
+            {
+                if (manager != null && manager.IsServerStarted)
+                {
+                    Debug.Log("Local server is started");
+                    yield break;
+                }
+                yield return null;
+            }
         }
 
         void EnsureSpawns()

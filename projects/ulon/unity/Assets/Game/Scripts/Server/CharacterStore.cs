@@ -86,7 +86,7 @@ namespace Ulon.Server
                 {
                     using var resp = Get("/character/" + Uri.EscapeDataString(accountId));
                     if (resp != null && (int)resp.StatusCode == 200)
-                        return JsonUtility.FromJson<CharacterSnapshot>(ReadBody(resp));
+                        return UnpackSnap(JsonUtility.FromJson<CharacterSnapshot>(ReadBody(resp)));
                 }
                 catch (WebException ex)
                 {
@@ -105,13 +105,17 @@ namespace Ulon.Server
         {
             if (snap == null || string.IsNullOrEmpty(snap.AccountId))
                 return snap;
+            PackSnap(snap);
             SaveFile(snap);
+            UnpackSnap(snap);
             EnsureRunning();
             if (!Health())
                 return snap;
             try
             {
+                PackSnap(snap);
                 string json = JsonUtility.ToJson(snap);
+                UnpackSnap(snap);
                 var req = (HttpWebRequest)WebRequest.Create(BaseUrl + "/character/" + Uri.EscapeDataString(snap.AccountId));
                 req.Method = "PUT";
                 req.ContentType = "application/json; charset=utf-8";
@@ -121,11 +125,109 @@ namespace Ulon.Server
                 using (var s = req.GetRequestStream())
                     s.Write(bytes, 0, bytes.Length);
                 using var resp = (HttpWebResponse)req.GetResponse();
-                return JsonUtility.FromJson<CharacterSnapshot>(ReadBody(resp)) ?? snap;
+                return UnpackSnap(JsonUtility.FromJson<CharacterSnapshot>(ReadBody(resp))) ?? snap;
             }
             catch (Exception e)
             {
                 UnityEngine.Debug.LogWarning("[Ulon] persist HTTP save 실패, 파일은 저장됨: " + e.Message);
+                return snap;
+            }
+        }
+
+        public static HouseSnapshot LoadHouse(string plotId)
+        {
+            if (string.IsNullOrEmpty(plotId))
+                return null;
+            EnsureRunning();
+            if (!Health())
+                return null;
+            try
+            {
+                using var resp = Get("/house/" + Uri.EscapeDataString(plotId));
+                if (resp != null && (int)resp.StatusCode == 200)
+                    return UnpackHouse(JsonUtility.FromJson<HouseSnapshot>(ReadBody(resp)));
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogWarning("[Ulon] house load 실패: " + e.Message);
+            }
+            return null;
+        }
+
+        public static HouseSnapshot SaveHouse(HouseSnapshot snap)
+        {
+            if (snap == null || string.IsNullOrEmpty(snap.PlotId))
+                return snap;
+            EnsureRunning();
+            if (!Health())
+                return snap;
+            try
+            {
+                PackHouse(snap);
+                string json = JsonUtility.ToJson(snap);
+                UnpackHouse(snap);
+                var req = (HttpWebRequest)WebRequest.Create(BaseUrl + "/house/" + Uri.EscapeDataString(snap.PlotId));
+                req.Method = "PUT";
+                req.ContentType = "application/json; charset=utf-8";
+                req.Timeout = 2000;
+                byte[] bytes = Encoding.UTF8.GetBytes(json);
+                req.ContentLength = bytes.Length;
+                using (var s = req.GetRequestStream())
+                    s.Write(bytes, 0, bytes.Length);
+                using var resp = (HttpWebResponse)req.GetResponse();
+                return UnpackHouse(JsonUtility.FromJson<HouseSnapshot>(ReadBody(resp))) ?? snap;
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogWarning("[Ulon] house save 실패: " + e.Message);
+                return snap;
+            }
+        }
+
+        public static StableSnapshot LoadStable(string characterId)
+        {
+            if (string.IsNullOrEmpty(characterId))
+                return null;
+            EnsureRunning();
+            if (!Health())
+                return null;
+            try
+            {
+                using var resp = Get("/stable/" + Uri.EscapeDataString(characterId));
+                if (resp != null && (int)resp.StatusCode == 200)
+                    return JsonUtility.FromJson<StableSnapshot>(ReadBody(resp));
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogWarning("[Ulon] stable load 실패: " + e.Message);
+            }
+            return null;
+        }
+
+        public static StableSnapshot SaveStable(StableSnapshot snap)
+        {
+            if (snap == null || string.IsNullOrEmpty(snap.CharacterId))
+                return snap;
+            EnsureRunning();
+            if (!Health())
+                return snap;
+            try
+            {
+                string json = JsonUtility.ToJson(snap);
+                var req = (HttpWebRequest)WebRequest.Create(BaseUrl + "/stable/" + Uri.EscapeDataString(snap.CharacterId));
+                req.Method = "PUT";
+                req.ContentType = "application/json; charset=utf-8";
+                req.Timeout = 2000;
+                byte[] bytes = Encoding.UTF8.GetBytes(json);
+                req.ContentLength = bytes.Length;
+                using (var s = req.GetRequestStream())
+                    s.Write(bytes, 0, bytes.Length);
+                using var resp = (HttpWebResponse)req.GetResponse();
+                return JsonUtility.FromJson<StableSnapshot>(ReadBody(resp)) ?? snap;
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogWarning("[Ulon] stable save 실패: " + e.Message);
                 return snap;
             }
         }
@@ -137,7 +239,7 @@ namespace Ulon.Server
                 return null;
             try
             {
-                return JsonUtility.FromJson<CharacterSnapshot>(File.ReadAllText(path, Encoding.UTF8));
+                return UnpackSnap(JsonUtility.FromJson<CharacterSnapshot>(File.ReadAllText(path, Encoding.UTF8)));
             }
             catch (Exception e)
             {
@@ -150,6 +252,70 @@ namespace Ulon.Server
         {
             string path = Path.Combine(DataDir, snap.AccountId + ".json");
             File.WriteAllText(path, JsonUtility.ToJson(snap, true), Encoding.UTF8);
+        }
+
+
+        static void PackItems(ItemRecord[] items)
+        {
+            if (items == null)
+                return;
+            for (int i = 0; i < items.Length; i++)
+            {
+                var it = items[i];
+                it.MakerId = ExceptionalCraft.PackMaker(it.MakerId, it.Exceptional);
+                items[i] = it;
+            }
+        }
+
+        static void UnpackItems(ItemRecord[] items)
+        {
+            if (items == null)
+                return;
+            for (int i = 0; i < items.Length; i++)
+            {
+                var it = items[i];
+                ExceptionalCraft.UnpackMaker(it.MakerId, out string maker, out bool ex);
+                it.MakerId = maker;
+                if (ex)
+                    it.Exceptional = true;
+                items[i] = it;
+            }
+        }
+
+        static CharacterSnapshot PackSnap(CharacterSnapshot snap)
+        {
+            if (snap == null)
+                return null;
+            PackItems(snap.Inventory);
+            PackItems(snap.Bank);
+            PackItems(snap.Corpse);
+            return snap;
+        }
+
+        static CharacterSnapshot UnpackSnap(CharacterSnapshot snap)
+        {
+            if (snap == null)
+                return null;
+            UnpackItems(snap.Inventory);
+            UnpackItems(snap.Bank);
+            UnpackItems(snap.Corpse);
+            return snap;
+        }
+
+        static HouseSnapshot PackHouse(HouseSnapshot snap)
+        {
+            if (snap == null)
+                return null;
+            PackItems(snap.Items);
+            return snap;
+        }
+
+        static HouseSnapshot UnpackHouse(HouseSnapshot snap)
+        {
+            if (snap == null)
+                return null;
+            UnpackItems(snap.Items);
+            return snap;
         }
 
         static HttpWebResponse Get(string path)

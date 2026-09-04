@@ -42,6 +42,7 @@ namespace Ulon.Server
             }
             CharacterBinder.Apply(world.Player, snap, world.SkillsOf(world.Player), world.StatsOf(world.Player));
             world.RestoreCorpse(AccountKey(), snap);
+            world.LoadPlot(HousingPlot.Id);
         }
 
         public static void Commit(CharacterSnapshot snap)

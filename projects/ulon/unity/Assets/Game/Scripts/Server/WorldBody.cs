@@ -8,6 +8,8 @@ namespace Ulon.Server
         public bool IsEnemy;
         public bool IsAvatar;
         public string MobId;
+        public string CharacterId;
+        public string AccountId;
         public string DisplayName = "대상";
         public int Appearance;
         public float MaxHp = 30f;
@@ -19,10 +21,61 @@ namespace Ulon.Server
         public int Notoriety;
         public int MurderCount;
         public float CriminalUntil;
+        public float CalmUntil;
+        public float ProvokeUntil;
+        public WorldBody ProvokePartner;
+        public float HiddenUntil;
+        public float CampSafeUntil;
+        public float StealthUntil;
+        public bool Tameable;
+        public int ControlSlots = 1;
+        public string OwnerCharacterId = "";
+        public bool PetFollow;
+        public bool PetGuard;
+        public WorldBody PetAttackTarget;
+        public bool PetStabled;
+        public bool Bonded;
+        public bool HasMark;
+        public string GuildId = "";
+        public string GuildName = "";
+        public float MarkX;
+        public float MarkZ;
+        public float CombatUntil;
+        public float CastingUntil;
+        public SpellId PendingSpell;
+        public WorldBody PendingCastTarget;
+        public WorldBody DuelOpponent;
+        public WorldBody PendingDuel;
+        public int PoisonTicks;
+        public float NextPoisonAt;
+        public float WardUntil;
+        public float RootUntil;
+        public float WeakenUntil;
+        public float BlessUntil;
+        public string ActiveCraftOrder = "";
 
         public float Hp { get; private set; }
         public float Mana { get; private set; }
         public bool Alive => Hp > 0f && !Ghost;
+        public bool IsHidden(float now) => now < HiddenUntil;
+        public bool IsCampSafe(float now) => now < CampSafeUntil;
+        public bool IsWarded(float now) => now < WardUntil;
+        public bool IsRooted(float now) => now < RootUntil;
+        public bool IsWeakened(float now) => now < WeakenUntil;
+        public bool IsBlessed(float now) => now < BlessUntil;
+        public bool CanMoveHidden(float now) => now < StealthUntil && IsHidden(now);
+        public bool InCombat(float now) => now < CombatUntil;
+        public bool IsCasting(float now) => CastingUntil > 0f && now < CastingUntil;
+        public void ClearCast()
+        {
+            CastingUntil = 0f;
+            PendingCastTarget = null;
+        }
+        public void BreakHide()
+        {
+            HiddenUntil = 0f;
+            StealthUntil = 0f;
+        }
 
         public void ApplyMobCatalog()
         {
@@ -72,7 +125,17 @@ namespace Ulon.Server
                 if (OfflineWorld.Instance != null)
                     OfflineWorld.Instance.HandleDeath(this, PersistDriver.AccountKey());
             }
-            bool hide = Hp <= 0f && !IsAvatar;
+            // Bonded pet: Ghost remains (no corpse loot). Unbonded mob/pet just hides.
+            bool petBondDeath = !IsAvatar && Bonded && !string.IsNullOrEmpty(OwnerCharacterId)
+                && Hp <= 0f && !Ghost;
+            if (petBondDeath)
+            {
+                Ghost = true;
+                PetFollow = false;
+                PetGuard = false;
+                PetAttackTarget = null;
+            }
+            bool hide = Hp <= 0f && !IsAvatar && !Ghost;
             var cols = GetComponentsInChildren<Collider>();
             for (int i = 0; i < cols.Length; i++)
                 cols[i].enabled = !hide;

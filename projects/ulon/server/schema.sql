@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS inventories (
     item_template TEXT NOT NULL,
     amount INTEGER NOT NULL DEFAULT 1,
     uses INTEGER NOT NULL DEFAULT 0,
+    maker_id TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (owner_id, slot)
 );
 
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS bank_items (
     item_template TEXT NOT NULL,
     amount INTEGER NOT NULL DEFAULT 1,
     uses INTEGER NOT NULL DEFAULT 0,
+    maker_id TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (owner_id, slot)
 );
 
@@ -76,5 +78,30 @@ CREATE TABLE IF NOT EXISTS corpse_items (
     item_template TEXT NOT NULL,
     amount INTEGER NOT NULL DEFAULT 1,
     uses INTEGER NOT NULL DEFAULT 0,
+    maker_id TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (corpse_id, slot)
+);
+
+CREATE TABLE IF NOT EXISTS houses (
+    plot_id TEXT PRIMARY KEY,
+    owner_character_id TEXT NOT NULL DEFAULT '',
+    account_id TEXT NOT NULL DEFAULT '',
+    public_flag INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS house_items (
+    plot_id TEXT NOT NULL,
+    slot INTEGER NOT NULL,
+    item_template TEXT NOT NULL,
+    amount INTEGER NOT NULL DEFAULT 1,
+    uses INTEGER NOT NULL DEFAULT 0,
+    maker_id TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (plot_id, slot)
+);
+
+CREATE TABLE IF NOT EXISTS stables (
+    character_id TEXT PRIMARY KEY,
+    pet_id TEXT NOT NULL DEFAULT '',
+    control_slots INTEGER NOT NULL DEFAULT 1,
+    display_name TEXT NOT NULL DEFAULT ''
 );

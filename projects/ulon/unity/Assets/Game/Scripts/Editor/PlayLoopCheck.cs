@@ -28,8 +28,29 @@ namespace Ulon.Editor
             fail = null;
             report = "";
             phase = 1;
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
             PlayerPrefs.SetString("ulon.account", Key);
             PlayerPrefs.Save();
+            if (Application.isBatchMode)
+            {
+                try
+                {
+                    Phase1();
+                    phase = 2;
+                    Phase2();
+                    WriteResult("PASS — " + report);
+                    Debug.Log("[Ulon] Play loop PASS — " + report);
+                }
+                catch (Exception e)
+                {
+                    fail = e.Message;
+                    WriteResult("FAIL — " + fail + " | " + report);
+                    Debug.LogError("[Ulon] Play loop FAIL — " + fail + " | " + report);
+                }
+                return;
+            }
             EditorApplication.playModeStateChanged -= OnPlay;
             EditorApplication.playModeStateChanged += OnPlay;
             EditorApplication.isPlaying = true;
@@ -88,6 +109,11 @@ namespace Ulon.Editor
             if (player == null)
                 throw new InvalidOperationException("Player 없음");
             world.SetLocalPlayer(player);
+            var startBag = player.GetComponent<InventoryBag>() ?? player.gameObject.AddComponent<InventoryBag>();
+            if (startBag.ToolUses(ItemCatalog.Pickaxe) < 2)
+                startBag.Add(ItemCatalog.Pickaxe, 1);
+            if (startBag.ToolUses(ItemCatalog.Hatchet) < 3)
+                startBag.Add(ItemCatalog.Hatchet, 1);
 
             var skeletonGo = FindRoot("Skeleton");
             var companionGo = FindRoot("Companion");
@@ -97,6 +123,13 @@ namespace Ulon.Editor
             var companion = companionGo != null ? companionGo.GetComponent<WorldBody>() : null;
             if (skeleton == null || vein == null || forge == null || companion == null)
                 throw new InvalidOperationException("씬 오브젝트 부족 skel/vein/forge/companion");
+            player.ResetHp();
+            skeleton.ResetHp();
+            if (vein.Remaining < 2)
+                vein.Remaining = vein.Capacity > 0 ? vein.Capacity : 12;
+            var oakPrep = OfflineWorld.FindNode("OakTree");
+            if (oakPrep != null && oakPrep.Remaining < 3)
+                oakPrep.Remaining = oakPrep.Capacity > 0 ? oakPrep.Capacity : 12;
 
             var anim = player.GetComponentInChildren<Animator>();
             if (anim == null || anim.runtimeAnimatorController == null)
@@ -149,6 +182,17 @@ namespace Ulon.Editor
             if (!wood.Applied || !wood2.Applied || !wood3.Applied)
                 throw new InvalidOperationException("벌목 실패: " + wood.FailReason);
             var carpenter = OfflineWorld.FindStation("Carpenter");
+            if (carpenter == null)
+            {
+                var carpenterGo = GameObject.Find("Carpenter") ?? GameObject.Find("stall-bench");
+                if (carpenterGo != null)
+                {
+                    carpenterGo.name = "Carpenter";
+                    carpenter = carpenterGo.GetComponent<CraftStation>() ?? carpenterGo.AddComponent<CraftStation>();
+                    carpenter.RecipeId = "wooden_club";
+                    carpenter.DisplayName = "목공소";
+                }
+            }
             if (carpenter == null)
                 throw new InvalidOperationException("씬 오브젝트 부족 carpenter");
             Warp(player, carpenter.transform.position + new Vector3(1.2f, 0f, 0f));

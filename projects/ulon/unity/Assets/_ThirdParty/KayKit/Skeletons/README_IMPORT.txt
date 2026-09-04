@@ -1,1 +1,1 @@
-Used: Skeleton_Warrior as slice enemy.
+Used: Skeleton_Warrior, Skeleton_Mage, Skeleton_Minion, Skeleton_Rogue as hunt enemies.

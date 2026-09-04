@@ -499,6 +499,7 @@ PvP Full Loot는 범죄/명성 시스템이 완성된 뒤 별도 단계에서 �
 | Ground Drop | 월드에 떨어진 일반 아이템은 decay_at을 갖고 일정 시간 후 삭제. 집의 Lockdown 아이템은 예외 |
 | Bank | 마을 Banker를 통해 안전 보관. 죽음/Corpse와 분리 |
 ## 18.6 Magic: Spellbook, Circle, Reagent, Meditation
+슬라이스 주문: Ember/Mend/Bolt/Cleanse/Ward/Bind(속박·RootUntil~4s)/Weaken(약화·WeakenUntil~6s·출격 피해×0.5)/Spark(섬광·사거리6·불씨보다 낮은 피해)/Restore(회복·자가/근처 아군·봉합보다 높은 HP·마나/시약 약간 높음)/Blink(도약·자가 전방~3.5m·Ember급·유령/전투 실패)/Bless(축복·자가/근처 아군·BlessUntil~8s·출격 피해×1.25·Ward와 별개). leftover 던전3.
 | 요소 | MVP/확장 방향 |
 | --- | --- |
 | Spellbook | 캐릭터가 배운 주문 목록을 저장. 클래스 선택 없이 Magery Skill로 사용 |
@@ -518,6 +519,7 @@ UO의 PvP를 그대로 넣기 전에, “누가 무고한가 / 범죄자인가 /
 | War/Enemy | 정식 길드전/결투 관계 | 범죄 판정 없이 상호 전투 가능 |
 Fame은 몬스터 처치와 고난도 제작 의뢰 등 사회적 성취, Karma는 선/악 행동으로 변화시킵니다. 캐릭터 이름에는 “직업 숙련 칭호”와 별도로 Reputation Title을 표시할 수 있습니다. Guard Zone은 범죄 행위에 강력한 NPC Guard 개입을 제공합니다.
 MVP에서는 자유 PK를 끄고 이 필드들만 DB에 준비합니다. Closed Alpha 이후 Guard Zone → 결투/길드전 → 범죄/살인 → 야외 Open PvP 순으로 단계적으로 엽니다.
+야외 Open PvP 1 (마을 가드존은 기존).
 ## 18.8 Resource Vein, Tool Uses, Respawn
 | 요소 | 설계 |
 | --- | --- |

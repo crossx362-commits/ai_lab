@@ -42,20 +42,57 @@ namespace Ulon.Editor
 
         public static string BuildClient()
         {
+            if (!File.Exists(Scene))
+                throw new System.InvalidOperationException("missing scene: " + Scene);
+            RejectGuidlessScripts(Scene);
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(Scene, true) };
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+
+            string project = Directory.GetParent(Application.dataPath)!.FullName;
+            PurgeStalePlayerData(project);
+
+            var opened = EditorSceneManager.OpenScene(Scene, OpenSceneMode.Single);
+            EditorSceneManager.MarkSceneDirty(opened);
+            EditorSceneManager.SaveScene(opened);
+            AssetDatabase.ForceReserializeAssets(new[] { Scene }, ForceReserializeAssetsOptions.ReserializeAssets);
+
             string dest = Path.GetFullPath(Path.Combine(Directory.GetParent(Application.dataPath)!.Parent!.FullName, ClientOut));
+            if (Directory.Exists(dest))
+                Directory.Delete(dest, true);
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
                 scenes = new[] { Scene },
                 locationPathName = dest,
                 target = BuildTarget.StandaloneOSX,
                 subtarget = (int)StandaloneBuildSubtarget.Player,
-                options = BuildOptions.Development
+                options = BuildOptions.Development | BuildOptions.CleanBuildCache
             });
             if (report.summary.result != BuildResult.Succeeded)
                 throw new System.InvalidOperationException("클라 빌드 실패: " + report.summary.result);
             return dest;
+        }
+
+        static void RejectGuidlessScripts(string scenePath)
+        {
+            foreach (string line in File.ReadAllLines(scenePath))
+            {
+                if (line.Contains("m_Script:") && !line.Contains("guid:"))
+                    throw new System.InvalidOperationException("scene has m_Script without guid (extra MonoBehaviour in one .cs file): " + scenePath);
+            }
+        }
+
+        static void PurgeStalePlayerData(string project)
+        {
+            foreach (string rel in new[] { "Library/PlayerDataCache", "Library/BuildPlayerData" })
+            {
+                string folder = Path.Combine(project, rel);
+                if (!Directory.Exists(folder))
+                    continue;
+                Directory.Delete(folder, true);
+                Debug.Log("[Ulon] purged stale " + rel);
+            }
         }
     }
 }

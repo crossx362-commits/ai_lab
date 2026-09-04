@@ -21,4 +21,15 @@ namespace Ulon.Client
         public static string Roster = "";
         public static string Chat = "";
     }
+
+    public static class GuildView
+    {
+        public static bool Open;
+        public static bool PendingMe;
+        public static string GuildId = "";
+        public static string GuildName = "";
+        public static string Leader = "";
+        public static string Roster = "";
+        public static string WarName = "";
+    }
 }

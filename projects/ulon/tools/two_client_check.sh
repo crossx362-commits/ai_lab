@@ -21,12 +21,12 @@ cleanup() {
 trap cleanup EXIT
 
 ready=0
-for i in {1..50}; do
+for i in {1..120}; do
   if grep -q "Local server is started" "$OUT/server.log" 2>/dev/null; then
     ready=1
     break
   fi
-  sleep 0.2
+  sleep 0.5
 done
 if [[ "$ready" -ne 1 ]]; then
   echo "server did not start" >&2

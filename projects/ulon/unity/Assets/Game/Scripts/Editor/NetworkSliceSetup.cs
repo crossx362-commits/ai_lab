@@ -6,6 +6,7 @@ using FishNet.Object;
 using FishNet.Transporting.Tugboat;
 using Ulon.Client;
 using Ulon.Server;
+using Ulon.Shared;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -45,6 +46,17 @@ namespace Ulon.Editor
 
             WireMob("Skeleton");
             WireMob("Bandit");
+            WireMob("Raider");
+            WireMob("Rogue");
+            WireMob("Knight");
+            WireMob("Acolyte");
+            WireMob("Minion");
+            WireMob("SkelRogue");
+            WireMob(Dungeon1.MobObject);
+            WireMob(Dungeon1.BossObject);
+            WireMob(Dungeon2.MobObject);
+            WireMob(Dungeon2.BossObject);
+            WireMob(FieldBoss.Object);
 
             var nmGo = GameObject.Find("NetworkManager");
             if (nmGo == null)

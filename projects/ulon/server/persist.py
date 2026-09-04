@@ -160,6 +160,65 @@ def migrate(cur):
                 cur.execute(f"ALTER TABLE {table} ADD COLUMN uses INTEGER NOT NULL DEFAULT 0")
         except Exception:
             pass
+        try:
+            if POSTGRES:
+                cur.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS maker_id TEXT NOT NULL DEFAULT ''")
+            else:
+                cur.execute(f"ALTER TABLE {table} ADD COLUMN maker_id TEXT NOT NULL DEFAULT ''")
+        except Exception:
+            pass
+
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS houses (
+            plot_id TEXT PRIMARY KEY,
+            owner_character_id TEXT NOT NULL DEFAULT '',
+            account_id TEXT NOT NULL DEFAULT '',
+            public_flag INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS house_items (
+            plot_id TEXT NOT NULL,
+            slot INTEGER NOT NULL,
+            item_template TEXT NOT NULL,
+            amount INTEGER NOT NULL DEFAULT 1,
+            uses INTEGER NOT NULL DEFAULT 0,
+            maker_id TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (plot_id, slot)
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS stables (
+            character_id TEXT PRIMARY KEY,
+            pet_id TEXT NOT NULL DEFAULT '',
+            control_slots INTEGER NOT NULL DEFAULT 1,
+            display_name TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+
+
+EX_PREFIX = "EX:"
+
+
+def _truthy(v):
+    return v is True or v == 1 or v == "true" or v == "True"
+
+
+def _pack_maker(it):
+    if not isinstance(it, dict):
+        return ""
+    maker = str(it.get("makerId", it.get("MakerId", "")) or "")
+    exceptional = _truthy(it.get("exceptional", it.get("Exceptional", False)))
+    if exceptional and not maker.startswith(EX_PREFIX):
+        return EX_PREFIX + maker
+    return maker
 
 
 def _item(r):
@@ -168,11 +227,22 @@ def _item(r):
         uses = int(r["uses"] or 0)
     except Exception:
         uses = 0
+    maker = ""
+    try:
+        maker = str(r["maker_id"] or "")
+    except Exception:
+        maker = ""
+    exceptional = False
+    if maker.startswith(EX_PREFIX):
+        exceptional = True
+        maker = maker[len(EX_PREFIX):]
     return {
         "Slot": r["slot"],
         "TemplateId": r["item_template"],
         "Amount": r["amount"],
         "Uses": uses,
+        "MakerId": maker,
+        "Exceptional": exceptional,
     }
 
 
@@ -212,12 +282,12 @@ def get_character(account_id: str) -> dict | None:
         )
         skills = [{"Id": r["skill_id"], "Value": r["value"], "Lock": r["lock_state"]} for r in _all(cur)]
         cur.execute(
-            sql("SELECT slot, item_template, amount, uses FROM inventories WHERE owner_id = ?"),
+            sql("SELECT slot, item_template, amount, uses, maker_id FROM inventories WHERE owner_id = ?"),
             (char["character_id"],),
         )
         inv = [_item(r) for r in _all(cur)]
         cur.execute(
-            sql("SELECT slot, item_template, amount, uses FROM bank_items WHERE owner_id = ?"),
+            sql("SELECT slot, item_template, amount, uses, maker_id FROM bank_items WHERE owner_id = ?"),
             (char["character_id"],),
         )
         bank = [_item(r) for r in _all(cur)]
@@ -234,7 +304,7 @@ def get_character(account_id: str) -> dict | None:
             cy = float(corpse_row["pos_y"])
             cz = float(corpse_row["pos_z"])
             cur.execute(
-                sql("SELECT slot, item_template, amount FROM corpse_items WHERE corpse_id = ?"),
+                sql("SELECT slot, item_template, amount, uses, maker_id FROM corpse_items WHERE corpse_id = ?"),
                 (corpse_id,),
             )
             corpse_items = [_item(r) for r in _all(cur)]
@@ -345,25 +415,27 @@ def put_character(body: dict) -> dict:
         cur.execute(sql("DELETE FROM inventories WHERE owner_id = ?"), (character_id,))
         for it in inventory:
             cur.execute(
-                sql("INSERT INTO inventories(owner_id, slot, item_template, amount, uses) VALUES (?, ?, ?, ?, ?)"),
+                sql("INSERT INTO inventories(owner_id, slot, item_template, amount, uses, maker_id) VALUES (?, ?, ?, ?, ?, ?)"),
                 (
                     character_id,
                     int(it.get("slot", it.get("Slot", 0))),
                     str(it.get("templateId", it.get("TemplateId", ""))),
                     int(it.get("amount", it.get("Amount", 1))),
                     int(it.get("uses", it.get("Uses", 0))),
+                    _pack_maker(it),
                 ),
             )
         cur.execute(sql("DELETE FROM bank_items WHERE owner_id = ?"), (character_id,))
         for it in bank:
             cur.execute(
-                sql("INSERT INTO bank_items(owner_id, slot, item_template, amount, uses) VALUES (?, ?, ?, ?, ?)"),
+                sql("INSERT INTO bank_items(owner_id, slot, item_template, amount, uses, maker_id) VALUES (?, ?, ?, ?, ?, ?)"),
                 (
                     character_id,
                     int(it.get("slot", it.get("Slot", 0))),
                     str(it.get("templateId", it.get("TemplateId", ""))),
                     int(it.get("amount", it.get("Amount", 1))),
                     int(it.get("uses", it.get("Uses", 0))),
+                    _pack_maker(it),
                 ),
             )
         cur.execute(sql("DELETE FROM spellbook WHERE character_id = ?"), (character_id,))
@@ -382,13 +454,14 @@ def put_character(body: dict) -> dict:
             )
             for it in corpse:
                 cur.execute(
-                    sql("INSERT INTO corpse_items(corpse_id, slot, item_template, amount, uses) VALUES (?, ?, ?, ?, ?)"),
+                    sql("INSERT INTO corpse_items(corpse_id, slot, item_template, amount, uses, maker_id) VALUES (?, ?, ?, ?, ?, ?)"),
                     (
                         corpse_id,
                         int(it.get("slot", it.get("Slot", 0))) if isinstance(it, dict) else 0,
                         str(it.get("templateId", it.get("TemplateId", ""))) if isinstance(it, dict) else "",
                         int(it.get("amount", it.get("Amount", 1))) if isinstance(it, dict) else 1,
                         int(it.get("uses", it.get("Uses", 0))) if isinstance(it, dict) else 0,
+                        _pack_maker(it) if isinstance(it, dict) else "",
                     ),
                 )
         if not POSTGRES:
@@ -396,6 +469,131 @@ def put_character(body: dict) -> dict:
     finally:
         conn.close()
     return get_character(account) or {}
+
+
+
+def get_house(plot_id: str) -> dict:
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(sql("SELECT plot_id, owner_character_id, account_id, public_flag FROM houses WHERE plot_id = ?"), (plot_id,))
+        row = _one(cur)
+        if row is None:
+            return {
+                "PlotId": plot_id,
+                "OwnerCharacterId": "",
+                "AccountId": "",
+                "PublicFlag": 0,
+                "Items": [],
+            }
+        cur.execute(
+            sql("SELECT slot, item_template, amount, uses, maker_id FROM house_items WHERE plot_id = ? ORDER BY slot"),
+            (plot_id,),
+        )
+        items = [_item(r) for r in _all(cur)]
+        return {
+            "PlotId": row["plot_id"],
+            "OwnerCharacterId": row["owner_character_id"] or "",
+            "AccountId": row["account_id"] or "",
+            "PublicFlag": int(row["public_flag"] or 0),
+            "Items": items,
+        }
+    finally:
+        conn.close()
+
+
+def put_house(plot_id: str, body: dict) -> dict:
+    owner = str(body.get("ownerCharacterId") or body.get("OwnerCharacterId") or "")
+    account = str(body.get("accountId") or body.get("AccountId") or "")
+    public_flag = int(body.get("publicFlag", body.get("PublicFlag", 0)))
+    items = body.get("items") or body.get("Items") or []
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            sql(
+                """
+                INSERT INTO houses(plot_id, owner_character_id, account_id, public_flag)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(plot_id) DO UPDATE SET
+                    owner_character_id=excluded.owner_character_id,
+                    account_id=excluded.account_id,
+                    public_flag=excluded.public_flag
+                """
+            ),
+            (plot_id, owner, account, public_flag),
+        )
+        cur.execute(sql("DELETE FROM house_items WHERE plot_id = ?"), (plot_id,))
+        for it in items:
+            cur.execute(
+                sql("INSERT INTO house_items(plot_id, slot, item_template, amount, uses, maker_id) VALUES (?, ?, ?, ?, ?, ?)"),
+                (
+                    plot_id,
+                    int(it.get("slot", it.get("Slot", 0))),
+                    str(it.get("templateId", it.get("TemplateId", ""))),
+                    int(it.get("amount", it.get("Amount", 1))),
+                    int(it.get("uses", it.get("Uses", 0))),
+                    _pack_maker(it),
+                ),
+            )
+        if not POSTGRES:
+            conn.commit()
+    finally:
+        conn.close()
+    return get_house(plot_id)
+
+
+def get_stable(character_id: str) -> dict:
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            sql("SELECT character_id, pet_id, control_slots, display_name FROM stables WHERE character_id = ?"),
+            (character_id,),
+        )
+        row = _one(cur)
+        if row is None:
+            return {
+                "CharacterId": character_id,
+                "PetId": "",
+                "ControlSlots": 1,
+                "DisplayName": "",
+            }
+        return {
+            "CharacterId": row["character_id"] or character_id,
+            "PetId": row["pet_id"] or "",
+            "ControlSlots": int(row["control_slots"] or 1),
+            "DisplayName": row["display_name"] or "",
+        }
+    finally:
+        conn.close()
+
+
+def put_stable(character_id: str, body: dict) -> dict:
+    pet_id = str(body.get("petId") or body.get("PetId") or "")
+    slots = int(body.get("controlSlots", body.get("ControlSlots", 1)) or 1)
+    display = str(body.get("displayName") or body.get("DisplayName") or "")
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            sql(
+                """
+                INSERT INTO stables(character_id, pet_id, control_slots, display_name)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(character_id) DO UPDATE SET
+                    pet_id=excluded.pet_id,
+                    control_slots=excluded.control_slots,
+                    display_name=excluded.display_name
+                """
+            ),
+            (character_id, pet_id, slots, display),
+        )
+        if not POSTGRES:
+            conn.commit()
+    finally:
+        conn.close()
+    return get_stable(character_id)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -430,9 +628,42 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._send(200, found)
             return
+        if self.path.startswith("/house/"):
+            plot_id = unquote(self.path.split("/house/", 1)[1].strip("/"))
+            self._send(200, get_house(plot_id))
+            return
+        if self.path.startswith("/stable/"):
+            character_id = unquote(self.path.split("/stable/", 1)[1].strip("/"))
+            self._send(200, get_stable(character_id))
+            return
         self._send(404, {"ok": False})
 
     def do_PUT(self):
+        if self.path.startswith("/house/"):
+            length = int(self.headers.get("Content-Length", "0") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+                plot_id = unquote(self.path.split("/house/", 1)[1].strip("/"))
+                saved = put_house(plot_id, body)
+                self._send(200, saved)
+            except Exception as e:
+                traceback.print_exc()
+                self._send(400, {"ok": False, "message": str(e)})
+            return
+        if self.path.startswith("/stable/"):
+            length = int(self.headers.get("Content-Length", "0") or 0)
+            raw = self.rfile.read(length) if length else b"{}"
+            try:
+                body = json.loads(raw.decode() or "{}")
+                character_id = unquote(self.path.split("/stable/", 1)[1].strip("/"))
+                body["characterId"] = body.get("characterId") or body.get("CharacterId") or character_id
+                saved = put_stable(character_id, body)
+                self._send(200, saved)
+            except Exception as e:
+                traceback.print_exc()
+                self._send(400, {"ok": False, "message": str(e)})
+            return
         if not self.path.startswith("/character/"):
             self._send(404, {"ok": False})
             return

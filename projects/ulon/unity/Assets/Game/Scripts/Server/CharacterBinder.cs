@@ -11,6 +11,12 @@ namespace Ulon.Server
         {
             if (body == null || snap == null)
                 return;
+            if (!string.IsNullOrEmpty(snap.CharacterId))
+                body.CharacterId = snap.CharacterId;
+            else if (!string.IsNullOrEmpty(snap.AccountId))
+                body.CharacterId = snap.AccountId;
+            if (!string.IsNullOrEmpty(snap.AccountId))
+                body.AccountId = snap.AccountId;
             if (!string.IsNullOrEmpty(snap.Name))
                 body.DisplayName = snap.Name;
             body.Appearance = snap.Appearance;
@@ -68,7 +74,7 @@ namespace Ulon.Server
             var snap = new CharacterSnapshot
             {
                 AccountId = accountId,
-                CharacterId = accountId,
+                CharacterId = body != null && !string.IsNullOrEmpty(body.CharacterId) ? body.CharacterId : accountId,
                 Name = body != null ? body.DisplayName : "나",
                 X = pos.x,
                 Y = pos.y,

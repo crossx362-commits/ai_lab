@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Ulon.Shared;
@@ -30,12 +31,15 @@ namespace Ulon.Server
         {
             if (string.IsNullOrEmpty(rec.TemplateId) || rec.Amount <= 0)
                 return;
+            string parent = rec.ParentContainerId ?? "";
             if (ItemCatalog.Stackable(rec.TemplateId))
             {
                 for (int i = 0; i < Items.Count; i++)
                 {
                     var it = Items[i];
                     if (it.TemplateId != rec.TemplateId)
+                        continue;
+                    if ((it.ParentContainerId ?? "") != parent)
                         continue;
                     it.Amount += rec.Amount;
                     Items[i] = it;
@@ -45,12 +49,25 @@ namespace Ulon.Server
             rec.Slot = Items.Count;
             if (rec.Uses <= 0)
                 rec.Uses = ItemCatalog.MaxUsesOf(rec.TemplateId);
+            if (string.IsNullOrEmpty(rec.InstanceId))
+                rec.InstanceId = Guid.NewGuid().ToString("N");
             Items.Add(rec);
         }
 
         public float TotalWeight() => ItemCatalog.WeightOf(Items);
 
         public bool Overweight(int str) => TotalWeight() > ItemCatalog.CarryCap(str);
+
+        public bool CanCarry(int str, string templateId, int amount = 1)
+        {
+            int n = amount < 1 ? 1 : amount;
+            return TotalWeight() + ItemCatalog.WeightOf(templateId) * n <= ItemCatalog.CarryCap(str);
+        }
+
+        public bool CanCarryWeight(int str, float extra)
+        {
+            return TotalWeight() + extra <= ItemCatalog.CarryCap(str);
+        }
 
         public int ToolUses(string templateId)
         {
@@ -83,7 +100,7 @@ namespace Ulon.Server
             int missing = 0;
             for (int i = 0; i < Items.Count; i++)
             {
-                int max = ItemCatalog.MaxUsesOf(Items[i].TemplateId);
+                int max = ExceptionalCraft.MaxUsesOf(Items[i]);
                 if (max <= 0 || Items[i].Uses >= max)
                     continue;
                 int need = max - Items[i].Uses;
@@ -96,7 +113,7 @@ namespace Ulon.Server
             if (best < 0)
                 return false;
             var it = Items[best];
-            int maxUses = ItemCatalog.MaxUsesOf(it.TemplateId);
+            int maxUses = ExceptionalCraft.MaxUsesOf(it);
             it.Uses += restore;
             if (it.Uses > maxUses)
                 it.Uses = maxUses;
@@ -124,6 +141,133 @@ namespace Ulon.Server
                 return true;
             }
             return false;
+        }
+
+
+        public string PouchInstanceId()
+        {
+            for (int i = 0; i < Items.Count; i++)
+            {
+                if (!ItemCatalog.IsContainer(Items[i].TemplateId))
+                    continue;
+                if (!string.IsNullOrEmpty(Items[i].ParentContainerId))
+                    continue;
+                if (string.IsNullOrEmpty(Items[i].InstanceId))
+                {
+                    var it = Items[i];
+                    it.InstanceId = Guid.NewGuid().ToString("N");
+                    Items[i] = it;
+                }
+                return Items[i].InstanceId;
+            }
+            return "";
+        }
+
+        public bool TryMoveToPouch(string templateId, string pouchInstanceId)
+        {
+            if (string.IsNullOrEmpty(templateId) || string.IsNullOrEmpty(pouchInstanceId))
+                return false;
+            if (ItemCatalog.IsContainer(templateId))
+                return false;
+            int pouchIdx = -1;
+            for (int i = 0; i < Items.Count; i++)
+            {
+                var it = Items[i];
+                if (it.InstanceId != pouchInstanceId || !ItemCatalog.IsContainer(it.TemplateId))
+                    continue;
+                if (!string.IsNullOrEmpty(it.ParentContainerId))
+                    return false;
+                pouchIdx = i;
+                break;
+            }
+            if (pouchIdx < 0)
+                return false;
+            int itemIdx = -1;
+            for (int i = Items.Count - 1; i >= 0; i--)
+            {
+                var it = Items[i];
+                if (it.TemplateId != templateId)
+                    continue;
+                if (!string.IsNullOrEmpty(it.ParentContainerId))
+                    continue;
+                if (ItemCatalog.IsContainer(it.TemplateId))
+                    continue;
+                itemIdx = i;
+                break;
+            }
+            if (itemIdx < 0)
+                return false;
+            var item = Items[itemIdx];
+            if (ItemCatalog.Stackable(templateId) && item.Amount > 1)
+            {
+                item.Amount -= 1;
+                Items[itemIdx] = item;
+                Add(new ItemRecord
+                {
+                    TemplateId = templateId,
+                    Amount = 1,
+                    Uses = item.Uses,
+                    ParentContainerId = pouchInstanceId
+                });
+                return true;
+            }
+            item.ParentContainerId = pouchInstanceId;
+            Items[itemIdx] = item;
+            return true;
+        }
+
+        public bool TryTakeFromPouch(string templateId, string pouchInstanceId)
+        {
+            if (string.IsNullOrEmpty(templateId) || string.IsNullOrEmpty(pouchInstanceId))
+                return false;
+            int itemIdx = -1;
+            for (int i = Items.Count - 1; i >= 0; i--)
+            {
+                var it = Items[i];
+                if (it.TemplateId != templateId)
+                    continue;
+                if ((it.ParentContainerId ?? "") != pouchInstanceId)
+                    continue;
+                itemIdx = i;
+                break;
+            }
+            if (itemIdx < 0)
+                return false;
+            var taken = Items[itemIdx];
+            if (ItemCatalog.Stackable(templateId) && taken.Amount > 1)
+            {
+                taken.Amount -= 1;
+                Items[itemIdx] = taken;
+                Add(new ItemRecord
+                {
+                    TemplateId = templateId,
+                    Amount = 1,
+                    Uses = taken.Uses,
+                    ParentContainerId = ""
+                });
+                return true;
+            }
+            Items.RemoveAt(itemIdx);
+            taken.ParentContainerId = "";
+            Add(taken);
+            return true;
+        }
+
+        public int CountInPouch(string templateId, string pouchInstanceId)
+        {
+            int n = 0;
+            if (string.IsNullOrEmpty(pouchInstanceId))
+                return 0;
+            for (int i = 0; i < Items.Count; i++)
+            {
+                var it = Items[i];
+                if (it.TemplateId != templateId)
+                    continue;
+                if ((it.ParentContainerId ?? "") != pouchInstanceId)
+                    continue;
+                n += it.Amount < 1 ? 1 : it.Amount;
+            }
+            return n;
         }
 
         public ItemRecord[] ToArray() => Items.ToArray();
@@ -155,12 +299,15 @@ namespace Ulon.Server
         {
             if (string.IsNullOrEmpty(rec.TemplateId) || rec.Amount <= 0)
                 return;
+            string parent = rec.ParentContainerId ?? "";
             if (ItemCatalog.Stackable(rec.TemplateId))
             {
                 for (int i = 0; i < Items.Count; i++)
                 {
                     var it = Items[i];
                     if (it.TemplateId != rec.TemplateId)
+                        continue;
+                    if ((it.ParentContainerId ?? "") != parent)
                         continue;
                     it.Amount += rec.Amount;
                     Items[i] = it;
@@ -170,6 +317,8 @@ namespace Ulon.Server
             rec.Slot = Items.Count;
             if (rec.Uses <= 0)
                 rec.Uses = ItemCatalog.MaxUsesOf(rec.TemplateId);
+            if (string.IsNullOrEmpty(rec.InstanceId))
+                rec.InstanceId = Guid.NewGuid().ToString("N");
             Items.Add(rec);
         }
 

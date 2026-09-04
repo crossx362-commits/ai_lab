@@ -113,6 +113,10 @@ namespace Ulon.Shared
         public string TemplateId;
         public int Amount;
         public int Uses;
+        public string MakerId;
+        public bool Exceptional;
+        public string InstanceId;
+        public string ParentContainerId;
     }
 
     public static class ItemCatalog
@@ -121,13 +125,27 @@ namespace Ulon.Shared
         public const string Hatchet = "hatchet";
         public const string FishingPole = "fishing_pole";
         public const string Fish = "fish";
+        public const string CookedFood = "cooked_food";
+        public const string HealthPotion = "health_potion";
+        public const string PoisonVial = "poison_vial";
+        public const string Lute = "lute";
+        public const string Lockpick = "lockpick";
         public const string IronSword = "iron_sword";
         public const string WoodenClub = "wooden_club";
         public const string WoodenBow = "wooden_bow";
+        public const string WoodenSpear = "wooden_spear";
         public const string WoodenShield = "wooden_shield";
+        public const string IronPlate = "iron_plate";
         public const string Cloth = "cloth";
+        public const string Blank = "blank";
+        public const string ScrollEmber = "scroll_ember";
         public const string Bandage = "bandage";
+        public const string WardenCrest = "warden_crest";
+        public const string CaptainSigil = "captain_sigil";
+        public const string HexSeal = "hex_seal";
+        public const string Pouch = "pouch";
         public const float MeleeRange = 2.4f;
+        public const float FencingRange = 5.2f;
         public const float ArcheryRange = 8f;
 
         public static float WeightOf(string id)
@@ -136,13 +154,26 @@ namespace Ulon.Shared
             if (id == "wood") return 2f;
             if (id == "resin") return 0.2f;
             if (id == Fish) return 1f;
+            if (id == CookedFood) return 0.5f;
+            if (id == HealthPotion) return 0.3f;
+            if (id == PoisonVial) return 0.3f;
+            if (id == Lute) return 3f;
+            if (id == Lockpick) return 0.2f;
             if (id == IronSword) return 8f;
             if (id == WoodenClub) return 5f;
             if (id == WoodenBow) return 6f;
+            if (id == WoodenSpear) return 6f;
             if (id == WoodenShield) return 6f;
+            if (id == IronPlate) return 14f;
             if (id == Pickaxe || id == Hatchet || id == FishingPole) return 6f;
             if (id == Cloth) return 0.5f;
+            if (id == Blank) return 0.2f;
+            if (id == ScrollEmber) return 0.2f;
             if (id == Bandage) return 0.1f;
+            if (id == WardenCrest) return 0.2f;
+            if (id == CaptainSigil) return 0.2f;
+            if (id == HexSeal) return 0.2f;
+            if (id == Pouch) return 2f;
             return 1f;
         }
 
@@ -172,11 +203,16 @@ namespace Ulon.Shared
             if (id == IronSword) return 40;
             if (id == WoodenClub) return 30;
             if (id == WoodenBow) return 30;
+            if (id == WoodenSpear) return 30;
             if (id == WoodenShield) return 30;
+            if (id == IronPlate) return 40;
+            if (id == Lute) return 20;
             return 0;
         }
 
-        public static bool Stackable(string id) => MaxUsesOf(id) <= 0;
+        public static bool IsContainer(string id) => id == Pouch;
+
+        public static bool Stackable(string id) => !IsContainer(id) && MaxUsesOf(id) <= 0;
 
         public static int BuyPrice(string id)
         {
@@ -184,13 +220,21 @@ namespace Ulon.Shared
             if (id == IronSword) return 40;
             if (id == WoodenClub) return 18;
             if (id == WoodenBow) return 22;
+            if (id == WoodenSpear) return 20;
             if (id == WoodenShield) return 20;
+            if (id == Lute) return 20;
+            if (id == Lockpick) return 8;
             if (id == Cloth) return 3;
+            if (id == Blank) return 4;
+            if (id == ScrollEmber) return 16;
             if (id == Bandage) return 5;
             if (id == "resin") return 4;
             if (id == "iron_ore") return 6;
             if (id == "wood") return 5;
             if (id == Fish) return 6;
+            if (id == CookedFood) return 8;
+            if (id == HealthPotion) return 12;
+            if (id == PoisonVial) return 10;
             return 0;
         }
 
@@ -220,7 +264,17 @@ namespace Ulon.Shared
 
         public static bool HasShield(IList<ItemRecord> items) => Has(items, WoodenShield);
 
-        public static bool IsHeavyArmor(string id) => id == "iron_plate";
+        public static bool IsMeleeWeapon(string id)
+        {
+            return id == IronSword || id == WoodenClub || id == WoodenSpear;
+        }
+
+        public static bool HasMelee(IList<ItemRecord> items)
+        {
+            return IsMeleeWeapon(CombatWeaponOf(items));
+        }
+
+        public static bool IsHeavyArmor(string id) => id == IronPlate;
 
         public static bool HasHeavyArmor(IList<ItemRecord> items)
         {
@@ -241,19 +295,38 @@ namespace Ulon.Shared
         {
             if (Has(items, WoodenBow))
                 return WoodenBow;
+            if (Has(items, WoodenSpear))
+                return WoodenSpear;
             if (Has(items, IronSword))
                 return IronSword;
+            if (Has(items, WoodenClub))
+                return WoodenClub;
             return "";
+        }
+
+        public static bool IsExceptional(IList<ItemRecord> items, string id)
+        {
+            if (items == null || string.IsNullOrEmpty(id))
+                return false;
+            for (int i = 0; i < items.Count; i++)
+                if (items[i].TemplateId == id && items[i].Amount > 0 && items[i].Exceptional)
+                    return true;
+            return false;
         }
 
         public static SkillId CombatSkillOf(string weapon)
         {
-            return weapon == WoodenBow ? SkillId.Archery : SkillId.Swordsmanship;
+            if (weapon == WoodenBow) return SkillId.Archery;
+            if (weapon == WoodenSpear) return SkillId.Fencing;
+            if (weapon == WoodenClub) return SkillId.Mace;
+            return SkillId.Swordsmanship;
         }
 
         public static float CombatRangeOf(SkillId skill)
         {
-            return skill == SkillId.Archery ? ArcheryRange : MeleeRange;
+            if (skill == SkillId.Archery) return ArcheryRange;
+            if (skill == SkillId.Fencing) return FencingRange;
+            return MeleeRange;
         }
     }
 
@@ -290,7 +363,8 @@ namespace Ulon.Shared
                 Count = 2,
                 Output = ItemCatalog.WoodenClub,
                 Skill = SkillId.Carpentry,
-                Difficulty = 12f
+                Difficulty = 12f,
+                CanRepair = true
             },
             new CraftRecipe
             {
@@ -299,7 +373,37 @@ namespace Ulon.Shared
                 Count = 3,
                 Output = ItemCatalog.WoodenBow,
                 Skill = SkillId.Carpentry,
-                Difficulty = 14f
+                Difficulty = 14f,
+                CanRepair = true
+            },
+            new CraftRecipe
+            {
+                Id = "wooden_spear",
+                Ingredient = "wood",
+                Count = 2,
+                Output = ItemCatalog.WoodenSpear,
+                Skill = SkillId.Carpentry,
+                Difficulty = 13f,
+                CanRepair = true
+            },
+            new CraftRecipe
+            {
+                Id = "lute",
+                Ingredient = "wood",
+                Count = 2,
+                Output = ItemCatalog.Lute,
+                Skill = SkillId.Carpentry,
+                Difficulty = 12f,
+                CanRepair = true
+            },
+            new CraftRecipe
+            {
+                Id = "lockpick",
+                Ingredient = "iron_ore",
+                Count = 1,
+                Output = ItemCatalog.Lockpick,
+                Skill = SkillId.Blacksmithing,
+                Difficulty = 10f
             },
             new CraftRecipe
             {
@@ -309,6 +413,42 @@ namespace Ulon.Shared
                 Output = ItemCatalog.Bandage,
                 Skill = SkillId.Tailoring,
                 Difficulty = 8f
+            },
+            new CraftRecipe
+            {
+                Id = "cooked_fish",
+                Ingredient = ItemCatalog.Fish,
+                Count = 1,
+                Output = ItemCatalog.CookedFood,
+                Skill = SkillId.Cooking,
+                Difficulty = 10f
+            },
+            new CraftRecipe
+            {
+                Id = "cooked_wrap",
+                Ingredient = ItemCatalog.Cloth,
+                Count = 1,
+                Output = ItemCatalog.CookedFood,
+                Skill = SkillId.Cooking,
+                Difficulty = 10f
+            },
+            new CraftRecipe
+            {
+                Id = "health_potion",
+                Ingredient = ItemCatalog.Cloth,
+                Count = 1,
+                Output = ItemCatalog.HealthPotion,
+                Skill = SkillId.Alchemy,
+                Difficulty = 10f
+            },
+            new CraftRecipe
+            {
+                Id = "poison_vial",
+                Ingredient = ItemCatalog.Cloth,
+                Count = 1,
+                Output = ItemCatalog.PoisonVial,
+                Skill = SkillId.Poisoning,
+                Difficulty = 10f
             }
         };
 
@@ -352,6 +492,16 @@ namespace Ulon.Shared
         public int Karma;
         public int Notoriety;
         public int MurderCount;
+    }
+
+    [Serializable]
+    public sealed class HouseSnapshot
+    {
+        public string PlotId = "";
+        public string OwnerCharacterId = "";
+        public string AccountId = "";
+        public int PublicFlag;
+        public ItemRecord[] Items = Array.Empty<ItemRecord>();
     }
 
     public static class NotorietyId
@@ -439,7 +589,7 @@ namespace Ulon.Shared
                 Inventory = StarterItems(picks),
                 Bank = Array.Empty<ItemRecord>(),
                 Appearance = appearance,
-                Spells = HasPick(picks, SkillId.Magery) ? new[] { (int)SpellId.Ember, (int)SpellId.Mend } : Array.Empty<int>(),
+                Spells = HasPick(picks, SkillId.Magery) ? new[] { (int)SpellId.Ember, (int)SpellId.Mend, (int)SpellId.Bolt } : Array.Empty<int>(),
                 Mana = StatSet.MaxManaOf(intel),
                 Gold = 40
             };
@@ -452,6 +602,10 @@ namespace Ulon.Shared
                 list.Add(Tool(ItemCatalog.IronSword));
             if (HasPick(picks, SkillId.Archery))
                 list.Add(Tool(ItemCatalog.WoodenBow));
+            if (HasPick(picks, SkillId.Fencing))
+                list.Add(Tool(ItemCatalog.WoodenSpear));
+            if (HasPick(picks, SkillId.Mace))
+                list.Add(Tool(ItemCatalog.WoodenClub));
             if (HasPick(picks, SkillId.Parrying))
                 list.Add(Tool(ItemCatalog.WoodenShield));
             if (HasPick(picks, SkillId.Mining))
@@ -466,10 +620,24 @@ namespace Ulon.Shared
                 list.Add(new ItemRecord { Slot = list.Count, TemplateId = "wood", Amount = 2 });
             if (HasPick(picks, SkillId.Magery))
                 list.Add(new ItemRecord { Slot = list.Count, TemplateId = SpellCast.Reagent, Amount = 8 });
-            if (HasPick(picks, SkillId.Healing))
+            if (HasPick(picks, SkillId.Healing) || HasPick(picks, SkillId.Veterinary))
                 list.Add(new ItemRecord { Slot = list.Count, TemplateId = ItemCatalog.Bandage, Amount = 10 });
             if (HasPick(picks, SkillId.Tailoring))
                 list.Add(new ItemRecord { Slot = list.Count, TemplateId = ItemCatalog.Cloth, Amount = 4 });
+            if (HasPick(picks, SkillId.Cooking))
+                list.Add(new ItemRecord { Slot = list.Count, TemplateId = ItemCatalog.Fish, Amount = 1 });
+            if (HasPick(picks, SkillId.Alchemy))
+                list.Add(new ItemRecord { Slot = list.Count, TemplateId = ItemCatalog.Cloth, Amount = 1 });
+            if (HasPick(picks, SkillId.Inscription))
+                list.Add(new ItemRecord { Slot = list.Count, TemplateId = ItemCatalog.Cloth, Amount = 1 });
+            if (HasPick(picks, SkillId.Poisoning))
+                list.Add(new ItemRecord { Slot = list.Count, TemplateId = ItemCatalog.Cloth, Amount = 1 });
+            if (HasPick(picks, SkillId.Musicianship) || HasPick(picks, SkillId.Peacemaking) || HasPick(picks, SkillId.Provocation))
+                list.Add(Tool(ItemCatalog.Lute));
+            if (HasPick(picks, SkillId.Lockpicking))
+                list.Add(new ItemRecord { Slot = list.Count, TemplateId = ItemCatalog.Lockpick, Amount = 1 });
+            if (HasPick(picks, SkillId.Camping))
+                list.Add(new ItemRecord { Slot = list.Count, TemplateId = "wood", Amount = 1 });
             for (int i = 0; i < list.Count; i++)
             {
                 var it = list[i];

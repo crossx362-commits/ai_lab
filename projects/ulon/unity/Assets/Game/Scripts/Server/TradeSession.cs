@@ -63,4 +63,34 @@ namespace Ulon.Server
                 Chat.RemoveAt(0);
         }
     }
+
+    public sealed class Guild
+    {
+        public string Id = "";
+        public string Name = "";
+        public string WarWithId = "";
+        public WorldBody Leader;
+        public WorldBody Pending;
+        public readonly System.Collections.Generic.List<WorldBody> Members = new System.Collections.Generic.List<WorldBody>();
+
+        public bool Contains(WorldBody body)
+        {
+            if (body == null)
+                return false;
+            if (body == Leader)
+                return true;
+            for (int i = 0; i < Members.Count; i++)
+                if (Members[i] == body)
+                    return true;
+            return false;
+        }
+
+        public void Add(WorldBody body)
+        {
+            if (body == null || Contains(body))
+                return;
+            Members.Add(body);
+            Pending = null;
+        }
+    }
 }

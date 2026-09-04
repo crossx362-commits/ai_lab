@@ -40,6 +40,9 @@
 
 물리 충돌로 베지 않는다. 대상·거리·스킬·장비를 서버가 판정하고 3D는 표현만 한다.
 
+1차 몬스터: 스켈레톤, 도적, 야만인, 자객, 기사. 카탈로그(MobCatalog)와 NetMob은 서버 권한.
+보스 MVP(사냥 8종과 별도): 던전 1 본워든(KayKit Skeleton_Warrior, HP 120, warden_crest), 던전 2 섀도우캡틴(KayKit Rogue 1.38배 HP 150, captain_sigil), 동쪽 필드 헥사크(KayKit Mage 1.5배 HP 180, hex_seal). 던전 3은 캡 밖.
+
 ## 경제
 
 제작품 중심(설계 목표 약 70%) + 드랍. 내구도/수리/Maker Mark. NPC는 초급만 판다.
@@ -59,3 +62,41 @@ Unity Dedicated Server + FishNet 후보 + PostgreSQL. 클라이언트가 보내�
 ## 후순위
 
 하우징, 길드전, Open PvP, 조련, 선박, 공성은 MVP 이후. 데이터 구조만 먼저 열어 둔다.
+
+하우징 1차: 지정 Housing Zone/Plot 1(가드존 밖, 계정당 1채, lockdown/secure). Player Vendor 1(Public House Vendor Slot, 가방 1개 등록/골드 구매). 자유 배치·미접속 회수는 아직 없음.
+
+조련 1차: SkillId.AnimalTaming(조련/조련사, DEX), 가드존 밖 야생하트 1(Kenney plant_bushLarge), follow/release, Follower cap 1. Open PvP/던전3 없음.
+
+마구간 1차: 마을 Stable Master(Kenney stall/poles Prefab, 광장 남동 잔디). TryStable은 팔로워 펫 despawn+슬롯 해제, TryClaimStable은 회수. 골드 2. 조련 스킬과 별개. 던전3 없음.
+
+여행 1차: 공개 문게이트 1(Kenney arch/lantern, 광장 워프, 골드 비용).
+여행 2차: Mark/Recall 1(한 슬롯 x,z, 골드 5, 유령/전투 중 실패). Runebook·주문 추가·던전3 없음. 문게이트는 광장.
+
+야외 Open PvP 1: 가드존 밖 아바타끼리 TryAttack, 공격자 Criminal. 마을 가드존은 기존.
+
+길드전 1: TryGuildWarDeclare(길드 A→B) 후 야외에서만 합의 PvP. 무고 공격이 적용되고 Notoriety는 Innocent(Criminal 아님). GuardZone은 차단. TryGuildWarPeace로 종료. 비길드 야외는 Open PvP. 던전3 없음.
+
+도둑질 1: SkillId.Stealing(훔치기/도둑, DEX). TrySteal 마을 LockedCrate 팩, 최저가 골드/천 1, 0.0→0.1, 가드존/목격 실패→Criminal. leftover 던전3.
+붕대 부활 1: TryResurrectBandage(비유령 시술자·붕대1·근접·아바타 Ghost→Resurrect, Healing 0.0→0.1). HealerStation 유지. leftover 던전3.
+펫 Attack 1: TryPetAttack(주인·팔로워 펫·근처 몹), 추격·공격(Stay/Guard 키패턴 A). 아바타 Open PvP 없음. leftover 던전3.
+펫 Come 1: TryPetCome(주인·팔로워, Attack 해제→Follow·주인으로 이동, 키 C/펫호출). leftover 던전3.
+Strength Requirement 1: iron_sword StrReq 25(catalog), TryEquip 저STR 실패/고STR 성공. leftover 던전3.
+중갑 명상 패널티 1: iron_plate HeavyArmor, 명상 틱 마나 회복 ½. leftover 던전3.
+시전 중단 1: Bolt CastingUntil 풍업, TryAttack Applied 피격 취소·효과 없음·마나 소모 유지. leftover 던전3.
+정화 1: SpellId.Cleanse 즉시, 자가/근처 아군 독 틱 해제, Ember급 마나/시약, Magery 0.0→0.1. leftover 던전3.
+붕대 해독 1: TryCurePoison(비유령·붕대1·근접·생존·PoisonTicks→해제, Healing 0.0→0.1). Magery Cleanse 아님. leftover 던전3.
+Bonded Pet+Veterinary 부활 1: 조련 Bonded, HP0→pet Ghost·슬롯유지, TryVetResurrect 붕대1·Veterinary 0.0→0.1. leftover 던전3.
+Weight/과적 1: CarryCap=STR*4, pickup/buy/craft 가방+아이템>한도 실패. leftover 던전3.
+수호 1: SpellId.Ward 즉시·자가 WardUntil~8s·TryAttack 피해×0.5, Ember급 마나/시약, Magery 0.0→0.1. leftover 던전3.
+속박 1: SpellId.Bind 즉시·근처 적 몹 RootUntil~4s·추격/이동·반격 불가, Ember급 마나/시약, Magery 0.0→0.1. leftover 던전3.
+Nested Container 1: pouch parent_container_id(backpack→pouch→item depth1), TryMoveToPouch/TryTakeFromPouch, 내용물 무게 Carry 합산. leftover 던전3.
+Ground Drop 1: 월드 GroundItem DecayAt(기본 30s)·TickGroundItems 만료 삭제, 집 Lockdown/secure 예외, AssertGroundDecay. leftover 던전3.
+Reputation Title 1: Murderer→살인자/Criminal→범죄자/Fame≥100→유명인, HUD 이름 옆 SkillTitles와 별개, AssertReputationTitle. leftover 던전3.
+Keyword Speech 1: TrySpeechKeyword(bank/은행·guards/경비·vendor/상점) 기존 Banker/GuardStrike/Vendor, AssertKeywordSpeech. leftover 던전3.
+약화 1: SpellId.Weaken 즉시·근처 적 몹 WeakenUntil~6s·출격 TryAttack/strike 피해×0.5, Ember급 마나/시약, Magery 0.0→0.1. leftover 던전3.
+섬광 1: SpellId.Spark 즉시·근처 적 몹 짧은 사거리·불씨보다 낮은 피해, Ember급 마나/시약, Magery 0.0→0.1. leftover 던전3.
+회복 1: SpellId.Restore 즉시·자가/근처 아군 아바타 HP(봉합보다 높음), 마나/시약 봉합보다 약간 높음, Magery 0.0→0.1. leftover 던전3.
+도약 1: SpellId.Blink 즉시·자가 전방 ~3.5m 텔레포트, Ember급 마나/시약, 유령/전투 실패, Mark/Recall과 별개, Magery 0.0→0.1. leftover 던전3.
+축복 1: SpellId.Bless 즉시·자가/근처 아군 BlessUntil~8s·출격 TryAttack 피해×1.25, Ward와 별개·Weaken 반대, Ember급 마나/시약, Magery 0.0→0.1. leftover 던전3.
+Follower Control Slots 1: MaxControlSlots=2, 야생하트/야생멧돼지 ControlCost=1, 둘 조련 OK·셋째 no_slot, release/stable 슬롯 해제. leftover 던전3.
+CraftOrder/제작의뢰 1: Forge/Vendor TryAcceptOrder·TryTurnInOrder(직접 제작 iron_sword 1·골드10·한 건), AssertCraftOrder. leftover 던전3.
