@@ -57,7 +57,27 @@
 오너에게 보여주는 화면은 플레이 3/4만. Kenney 샘플 밀도(건물·돌길·나무·소품이 붙을 것).
 
 ## 방금 고른 다음 일
-셀프체크 PASS 복구(BindMob 침묵 실패 수리) 들어 있음. 다음은 던전3.
+던전3(남서 입구/내부 (80,-80)/출구/잡몹 야만인) 들어 있음. leftover는 이제 없다.
+남은 것: 던전3 보스 IronTyrant — 전용 캐릭터 에셋 대기 중이다.
+
+## 던전3 보스가 막힌 이유 (2026-09-05)
+KayKit 캐릭터 FBX 8종이 전부 다른 몹에 쓰이고 있어 보스에 줄 모델이 없다.
+오너가 "새 무료 에셋 받기"로 정했고, `_ThirdParty/README.md`의 1차 필수 목록에
+이미 적혀 있으나 임포트가 안 된 Quaternius 두 팩이 후보다(CC0 확인):
+- https://quaternius.itch.io/universal-base-characters
+- https://quaternius.itch.io/modular-character-outfits-fantasy
+itch.io 로그인이 필요해 오너가 받아 `projects/ulon/art/`에 zip으로 넣기로 했다.
+도착하면 `_ThirdParty/Quaternius/<팩>/RAW/`에 풀고 LICENSE/SOURCE_URL을 두고
+`docs/ASSET_REGISTER.md`에 한 줄 남긴 뒤 IronTyrant를 얹는다.
+AssertDungeon3Slice가 "보스가 있으면 안 된다"로 현 상태를 못박고 있으니,
+보스를 넣을 때 그 줄부터 실제 보스 검사(이름/HP/키/드랍/방 이격)로 바꿔라.
+
+## C# 블록을 잘라 옮길 때 (2026-09-05, 같은 실수 두 번)
+메서드/클래스 본문을 잘라 다른 파일로 옮기거나 복제할 땐 끝을 **중괄호 깊이로
+찾아라**. "다음 메서드 이름"이나 눈으로 센 줄 번호를 경계로 삼았다가 두 번 깨졌다:
+partial 분할 때는 본문 꼬리 16줄이 footer로 밀려 22개 파일에 복제됐고, 던전2를
+복제할 땐 사이에 낀 EnsureFieldBoss까지 따라와 중복 정의로 컴파일이 죽었다.
+둘 다 배치 검증이 잡았지만 한 번에 갈 수 있는 일이었다.
 
 ## 검증은 배치모드로 (2026-09-05)
 `tools/slice_selfcheck.sh`가 완전 헤드리스다 — 에디터를 닫고 돌리면 사람 개입이 없다.
