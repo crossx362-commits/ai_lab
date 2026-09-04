@@ -117,3 +117,23 @@ projects/ashes-to-stars/results/
 # 시각 QA의 정본은 `output/qa/ashes-to-stars/shots/`(qa_shot.sh)다.
 projects/ashes-to-stars/unity/Assets/Screenshots/
 projects/ashes-to-stars/unity/Assets/Screenshots.meta
+
+# macOS 파인더 부산물 — 저장소 전역
+.DS_Store
+
+# 에디터/툴 로컬 설정·런타임 상태 (기계마다 다름, 공유 대상 아님)
+.cursor/
+logs/
+loop/.keeper_count
+loop/.keeper_last_fix
+loop/STOP_LANE
+loop/board_keeper.json
+loop/provider.state
+loop/runtime_state.json
+loop/runtime_state.json.lock
+
+# 재와별: 유니티 크래시 덤프·런타임 산출 (소스 아님, 매 실행 새로 생김)
+projects/ashes-to-stars/output/
+projects/ashes-to-stars/unity/output/
+projects/ashes-to-stars/unity/Captures/
+projects/ashes-to-stars/unity/mono_crash.*.json
