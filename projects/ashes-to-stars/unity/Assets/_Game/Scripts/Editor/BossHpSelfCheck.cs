@@ -122,8 +122,8 @@ namespace AshesToStars
             BossHp.ResetForTest();
 
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime");
-            string battle = SrcNoComments.Read(Path.Combine(runtime, "BossBattle.cs"));
-            string tower = SrcNoComments.Read(Path.Combine(runtime, "TowerScreen.cs"));
+            string battle = File.ReadAllText(Path.Combine(runtime, "BossBattle.cs"));
+            string tower = File.ReadAllText(Path.Combine(runtime, "TowerScreen.cs"));
             Check(battle.Contains("BossHp.Hp"), "보스가 Hp를 읽는다");
             Check(battle.Contains("WallMul"), "보스가 벽 배율을 안다");
             Check(battle.IndexOf("BossHp.Hp(currentFloor, targetClearTime, bossCount)",
@@ -138,7 +138,7 @@ namespace AshesToStars
             Check(tower.Contains("BossHp.Line"), "탑이 Line을 읽는다");
             Check(tower.Contains("BossHp.CountLine"), "탑이 CountLine을 읽는다");
             Check(tower.Contains("BossHp.SeedQaIfRequested"), "탑이 시드를 읽는다");
-            string hpSrc = SrcNoComments.Read(Path.Combine(runtime, "BossHp.cs"));
+            string hpSrc = File.ReadAllText(Path.Combine(runtime, "BossHp.cs"));
             Check(hpSrc.IndexOf("WallMul(floor)", StringComparison.Ordinal) >= 0
                   && hpSrc.IndexOf("* WallMul", StringComparison.Ordinal) >= 0,
                 "Hp가 WallMul을 곱한다");

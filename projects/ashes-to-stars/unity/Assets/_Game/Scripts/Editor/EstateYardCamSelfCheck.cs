@@ -62,9 +62,8 @@ namespace AshesToStars
             Check(EstateYard.Pan == Vector2.zero, "차단 팬 0");
             Check(Mathf.Abs(frozen.x - home.x) < 0.5f && Mathf.Abs(frozen.y - home.y) < 0.5f,
                 "차단하면 Origin이 제자리");
-            // 2026-08-26 계약 갱신 — §2-2 드래그(6d9b4fae)가 줄을 선점한다. pan이 막혀도 drag 안내가
-            // 남는 게 새 정상이고, 고정 자체는 위 Origin·팬 0 실측으로 확인한다.
-            Check(EstateYard.Line().Contains("건물을 끌면 옮긴다"),
+            Check(EstateYard.Line().Contains("화면을 채운다")
+                    && !EstateYard.Line().Contains("끌어 본다"),
                 $"차단 줄 (실제 {EstateYard.Line()})");
             Environment.SetEnvironmentVariable(EstateYard.EnvNoPan, null);
             EstateYard.ResetForTest();

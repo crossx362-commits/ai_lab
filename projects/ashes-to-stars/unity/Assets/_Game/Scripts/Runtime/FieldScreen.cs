@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -13,17 +12,6 @@ namespace AshesToStars
     /// <summary>필드 — 자동사냥. 코어 루프의 시작점(§2·§6).</summary>
     public class FieldScreen : GameScreen
     {
-        public const string EnvNoPlayerCopy = "QA_NO_FIELD_PLAYER_COPY";
-
-        public static string PlayerCopy(string value)
-        {
-            if (string.IsNullOrEmpty(value)
-                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
-                return value;
-            return System.Text.RegularExpressions.Regex.Replace(
-                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
-        }
-
         protected override string Title => "필드";
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Field);
         protected override string BackgroundArt => "bg_field";
@@ -32,8 +20,6 @@ namespace AshesToStars
             get
             {
                 if (UiAtlas.ShowQa) return UiAtlas.Line();
-                if (HuntPickHud.ShowQa) return HuntPickHud.Line();
-                if (FieldWarnHud.ShowQa) return FieldWarnHud.Line();
                 if (FieldHud.ShowQa) return FieldHud.Line();
                 if (EscapeManual.ShowQa) return EscapeManual.Line();
                 if (BagTextFmt.ShowQa) return BagTextFmt.Line();
@@ -41,10 +27,9 @@ namespace AshesToStars
                 if (FieldDockCap.ShowBossQa) return FieldDockCap.BossLine();
                 if (FieldDockCap.ShowRaidQa) return FieldDockCap.RaidLine();
                 if (FieldDockCap.ShowDungeonQa) return FieldDockCap.DungeonLine();
-                if (FieldDockCap.ShowHuntQa) return FieldDockCap.HuntLine();
                 string train = DeathTraining.Line();
-                string rest = PlayerCopy(
-                    $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}");
+                string rest =
+                    $"자동사냥으로 재화를 번다(§2·§6) — 세계 T{GameState.Tier + 1} · {Economy.HuntGoldHourLine()} · 보유 {GameState.WalletText} · {GameState.BagText()}";
                 if (HuntSchedule.Running) rest = HuntSchedule.Line() + " · " + rest;
                 if (FieldBoss.Active) rest = FieldBoss.Line() + " · " + rest;
                 if (EmergencyEscape.HasScroll()) rest = EscapeManual.Line() + " · " + rest;
@@ -78,8 +63,6 @@ namespace AshesToStars
         protected override void Body(Rect r)
         {
             HuntStart.SeedQaIfRequested();
-            HuntPickHud.SeedQaIfRequested();
-            FieldWarnHud.SeedQaIfRequested();
             Economy.SeedHuntGoldQaIfRequested();
             LastLifeWarn.SeedQaIfRequested();
             HuntSchedule.SeedQaIfRequested();
@@ -91,31 +74,17 @@ namespace AshesToStars
             FieldDockCap.SeedBossQaIfRequested();
             FieldDockCap.SeedRaidQaIfRequested();
             FieldDockCap.SeedDungeonQaIfRequested();
-            FieldDockCap.SeedHuntQaIfRequested();
             UiAtlas.SeedQaIfRequested();
-            GameState.SeedWalletTextQaIfRequested();
-            SeedFieldToggleQaIfRequested();
             if (LastLifeWarn.QaPrompt)
             {
                 _showLastLifeWarning = true;
                 LastLifeWarn.AckQaPrompt();
             }
-            if (FieldWarnHud.QaGoldPrompt)
-            {
-                _showInsufficientGold = true;
-                FieldWarnHud.AckGold();
-            }
-            if (FieldWarnHud.QaLifePrompt)
-            {
-                _showLastLifeWarning = true;
-                FieldWarnHud.AckLife();
-            }
 
             if (_showInsufficientGold)
             {
-                r = FieldWarnHud.Content(r);
                 Info(r, 0, "[주의] 골드가 부족합니다");
-                Info(r, 1, PlayerCopy("던전 입장에는 골드가 필요합니다(§18-2)\n필드 사냥으로 먼저 재화를 모으세요(§2)"));
+                Info(r, 1, "던전 입장에는 골드가 필요합니다(§18-2)\n필드 사냥으로 먼저 재화를 모으세요(§2)");
                 if (DrawChoice(r, "확인", "돌아간다", "field",
                                "영지로", "허브로 간다", "territory", out bool home)
                     || home)
@@ -128,12 +97,10 @@ namespace AshesToStars
 
             if (_showLastLifeWarning)
             {
-                r = FieldWarnHud.Content(r);
                 Info(r, 0, LastLifeWarn.Title());
                 Info(r, 1, LastLifeWarn.Body());
                 Info(r, 2, LastLifeWarn.GearLine());
-                string gearRest = LastLifeWarn.GearRest();
-                if (!string.IsNullOrEmpty(gearRest)) Info(r, 3, gearRest);
+                Info(r, 3, LastLifeWarn.GearRest());
                 if (DrawChoice(r, "계속 진행", "입장한다", "field",
                                "취소", "파티를 다시 편성한다", "characters", out bool cancel))
                 {
@@ -170,7 +137,7 @@ namespace AshesToStars
             }
 
             var cards = FieldHud.Cards(r);
-            if (DrawCard(cards[0], "사냥 시작", FieldDockCap.Hunt(), "field"))
+            if (DrawCard(cards[0], "사냥 시작", "잡몹은 자동, 보스는 수동 지휘(§5)", "field"))
             {
                 if (HuntStart.Blocked)
                 {
@@ -258,12 +225,9 @@ namespace AshesToStars
 
         void DrawHuntPick(Rect r)
         {
-            r = HuntPickHud.Content(r);
             Hint(new Rect(r.x, r.y, r.width, 24f), HuntStart.PickTitle);
             Hint(new Rect(r.x, r.y + 26f, r.width, 22f), HuntStart.PickSubtitle);
-            var actionBand = HuntPickHud.Actions(r);
-            var board = new Rect(r.x, r.y + 56f, r.width,
-                Mathf.Max(80f, actionBand.y - (r.y + 56f) - 12f));
+            var board = new Rect(r.x, r.y + 56f, r.width, Mathf.Max(80f, r.height - 56f - 180f));
             var roster = LifeSystem.GetCharacters();
             for (int i = 0; i < roster.Count; i++)
             {
@@ -275,7 +239,7 @@ namespace AshesToStars
                     PartyState.Toggle(i);
             }
 
-            var actions = UiPages.Grid(actionBand, 2, 1, 16f);
+            var actions = UiPages.Grid(new Rect(r.x, r.yMax - 168f, r.width, 168f), 2, 1, 16f);
             bool can = PartyState.CanSortie;
             if (DrawCard(actions[0], "스타트",
                     can ? "전장으로 들어간다 — 들어가서 배치한다" : "한 명도 편성되지 않았다",
@@ -287,16 +251,6 @@ namespace AshesToStars
 
         bool DrawHuntCard(Rect cell, CharacterRecord ch, bool inParty, string status)
         {
-            // 클릭을 슬라이스·초상보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
-            // PartyScreen 옛 버그(c8941f6f)와 같이 크롬에 먹혀 Toggle이 안 먹었다.
-            bool hit = false;
-            var ev = Event.current;
-            if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                && cell.Contains(ev.mousePosition))
-            {
-                hit = true;
-                ev.Use();
-            }
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : new Color(1f, 1f, 1f, 0.94f);
             if (!UiAtlas.DrawSliced(cell, "panel", 12f, tint))
                 UiAtlas.Draw(cell, "panel", tint);
@@ -307,19 +261,7 @@ namespace AshesToStars
             UiAtlas.Draw(new Rect(faceR.xMax - 8f, faceR.yMax - 8f, 20f, 20f), UiAtlas.RoleKey(ch.Job));
             UiAtlas.DrawHearts(marks, ch.DeathCount, ch.IsDeleted);
             Hint(nameR, (inParty ? "★ " : "") + ch.Name + " · " + status);
-            return hit;
-        }
-
-        bool _toggleQaSeeded;
-        void SeedFieldToggleQaIfRequested()
-        {
-            if (_toggleQaSeeded) return;
-            string raw = Environment.GetEnvironmentVariable("QA_FIELD_TOGGLE");
-            if (raw != "0" && raw != "1") return;
-            _toggleQaSeeded = true;
-            bool wantOut = raw == "1";
-            if (wantOut == PartyState.Contains(0))
-                PartyState.Toggle(0);
+            return GUI.Button(cell, GUIContent.none, GUIStyle.none);
         }
 
         void TryLeavePick()

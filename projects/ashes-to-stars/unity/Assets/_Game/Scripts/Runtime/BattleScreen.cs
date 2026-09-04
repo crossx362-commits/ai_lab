@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -17,23 +16,12 @@ namespace AshesToStars
     /// </summary>
     public class BattleScreen : GameScreen
     {
-        public const string EnvNoPlayerCopy = "QA_NO_BATTLE_PLAYER_COPY";
-
-        public static string PlayerCopy(string value)
-        {
-            if (string.IsNullOrEmpty(value)
-                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
-                return value;
-            return System.Text.RegularExpressions.Regex.Replace(
-                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
-        }
-
         protected override string Title => FieldBoss.Fighting
             ? FieldBoss.BattleTitle()
             : GameFlow.Kind == GameFlow.BattleKind.보스
             ? RaidBossPool.BattleTitle()
             : GameFlow.Kind == GameFlow.BattleKind.침략 ? "침략" : "전투";
-        protected override string Subtitle => PlayerCopy(FieldBoss.Fighting
+        protected override string Subtitle => FieldBoss.Fighting
             ? "필드 배회 보스 — 준비 없이 만나면 위험. 환생석 없음(§10-1·§10-8)"
             : GameFlow.Kind == GameFlow.BattleKind.보스
             ? (string.IsNullOrEmpty(RaidBossPool.PickedLine())
@@ -41,7 +29,7 @@ namespace AshesToStars
                 : RaidBossPool.PickedLine() + " · 기믹은 출현 보스(§9)")
             : GameFlow.Kind == GameFlow.BattleKind.침략
                 ? "로컬 별 수비대. PvP 사망은 목숨을 깎지 않는다(§15)"
-                : "잡몹은 자동. " + EscapeManual.Line());
+                : "잡몹은 자동. " + EscapeManual.Line();
         protected override bool ShowBottomBar => false;
         protected override bool ShowHeader => false;
         // 전투 장면을 보여줘야 하므로 배경을 깔지 않는다 — 깔면 카메라 렌더가 통째로 가려진다
@@ -69,7 +57,6 @@ namespace AshesToStars
         protected override void Awake()
         {
             base.Awake();
-            EscapeForfeit.ClearForNewRun();
 
             // 전투 아레나(반경 14)가 화면에 다 들어오게 잡는다.
             // 메뉴 화면 기준(size 8)이면 파티만 크게 잡히고 몰려오는 물량이 안 보인다.
@@ -126,9 +113,9 @@ namespace AshesToStars
                         return;
                     }
                     RecordSortie();
-                    GameFlow.LastBattleSummary = PlayerCopy(FieldBoss.Fighting
+                    GameFlow.LastBattleSummary = FieldBoss.Fighting
                         ? $"필드 배회 보스 격파 — {FieldBoss.Name()}(§10-1)"
-                        : $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층");
+                        : $"보스 격파 — {GameFlow.BossFloor}층 ({_t:F1}초) · 다음 {GameState.TowerFloor}층";
                     GameFlow.Go(GameFlow.Result);
                 };
                 boss.OnPartyWiped += () =>
@@ -181,10 +168,6 @@ namespace AshesToStars
                 HuntBoon.BindDungeon(DungeonRun.State.Boons, DungeonRun.Plan.RunSeed);
             else
                 HuntBoon.BeginField((uint)(20260817 ^ GameState.Tier * 2654435761u));
-
-            // §10-2 정예 처치 → 다음 웨이브 드랍. 이번 웨이브는 시작 시점 FieldKills.
-            if (GameFlow.Kind == GameFlow.BattleKind.잡몹웨이브)
-                EliteWaveDrop.BeginWave();
 
             // 던전 노드는 **편성이 계획에서 온다**(§3-5 밀도 곡선). 여기서 꽂지 않으면
             // 어느 노드를 들어가든 같은 판이 돌아 "던전이 매번 바뀐다"가 거짓말이 된다.
@@ -264,14 +247,12 @@ namespace AshesToStars
             var phase = EmergencyEscape.Tick(Time.deltaTime, hit);
             if (phase == EmergencyEscape.Phase.Escaped)
                 LeaveByEscape();
-            else if (EmergencyEscape.IsFatalFailure(phase))
-                DieFromFailedEscape();
 
             if (_leftForSafety || _defeatApplied) return;
-            var directive = AutomationSchedule.EvaluateBattle(
-                Time.deltaTime, global::W3Party.ActivePartyLowestHpRatio);
-            if (directive == AutomationSchedule.Directive.ReturnForLowHp) LeaveForLowHp();
-            else if (directive == AutomationSchedule.Directive.ReturnForBagFull) LeaveForBagFull();
+            bool watch = LowHpReturn.ShouldWatch(GameFlow.Kind, GameFlow.ReturnTo);
+            var leave = LowHpReturn.Tick(
+                Time.deltaTime, global::W3Party.ActivePartyLowestHpRatio, watch);
+            if (leave == LowHpReturn.Phase.Left) LeaveForLowHp();
         }
 
         protected override void Overlay()
@@ -298,19 +279,14 @@ namespace AshesToStars
                     $"{RaidBossPool.BattleHint()}  {BossBattle.ActiveTotalHp:0}/{_bossMaxHp:0}  페이즈 {phases}");
                 y = bar.yMax + 26f;
             }
-            bool qaLeave = System.Environment.GetEnvironmentVariable("QA_BATTLE_LEAVE_BAR") == "1";
-            bool qaEsc = System.Environment.GetEnvironmentVariable("QA_BATTLE_ESCAPE_BAR") == "1";
-            if (LowHpReturn.Leaving || qaLeave)
+            if (LowHpReturn.Leaving)
             {
                 var leave = new Rect(340f, y + 8f, 600f, 28f);
-                float fill = qaLeave
-                    ? 0.55f
-                    : 1f - Mathf.Clamp01(LowHpReturn.Remaining / LowHpReturn.LeaveSeconds);
-                UiAtlas.DrawMeter(leave, "panel", Mathf.Max(0.02f, fill),
-                    new Color(0.92f, 0.48f, 0.14f));
-                float remain = qaLeave ? 1.4f : LowHpReturn.Remaining;
+                UiAtlas.DrawSliced(leave, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
                 Hint(UiAtlas.ContentRect(leave, "panel", 2f),
-                    PlayerCopy($"저체력 귀환 {remain:0.0}초 — 피격 가능 · 이번 판 보상 없음(§4)"));
+                    $"저체력 귀환 {LowHpReturn.Remaining:0.0}초 — 피격 가능 · 이번 판 보상 없음(§4)");
+                float fill = 1f - Mathf.Clamp01(LowHpReturn.Remaining / LowHpReturn.LeaveSeconds);
+                GUI.Box(new Rect(leave.x, leave.y, leave.width * Mathf.Max(0.02f, fill), leave.height), "");
                 y = leave.yMax + 8f;
             }
             if (DrawHuntBoonPick()) return;
@@ -321,16 +297,13 @@ namespace AshesToStars
                 Hint(UiAtlas.ContentRect(deny, "panel", 2f), EscapeManual.WhyNot());
                 y = deny.yMax + 8f;
             }
-            if (!EmergencyEscape.Casting && !qaEsc) return;
-            float p = qaEsc ? 0.40f : EmergencyEscape.Progress;
+            if (!EmergencyEscape.Casting) return;
+            float p = EmergencyEscape.Progress;
             var box = new Rect(340f, y + 8f, 600f, 28f);
-            UiAtlas.DrawMeter(box, "panel", Mathf.Max(0.02f, p),
-                new Color(0.78f, 0.16f, 0.18f));
-            float escRemain = qaEsc
-                ? 3.6f
-                : EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed;
+            UiAtlas.DrawSliced(box, "panel", 8f, new Color(1f, 1f, 1f, 0.88f));
             Hint(UiAtlas.ContentRect(box, "panel", 2f),
-                $"귀환 {escRemain:0.0}초 — 피격 시 시전 취소");
+                $"귀환 {(EmergencyEscape.CastSeconds - EmergencyEscape.Elapsed):0.0}초 — 피격 시 시전 취소");
+            GUI.Box(new Rect(box.x, box.y, box.width * Mathf.Max(0.02f, p), box.height), "");
         }
 
         bool DrawHuntBoonPick()
@@ -371,17 +344,7 @@ namespace AshesToStars
             _leftForSafety = true;
             RecordSortie();
             _reward.Clear();
-            GameFlow.LastBattleSummary = PlayerCopy("저체력 귀환 — 이번 판 보상 없음(§4)");
-            GameFlow.Go(GameFlow.Estate);
-        }
-
-        void LeaveForBagFull()
-        {
-            if (_leftForSafety || _defeatApplied) return;
-            _leftForSafety = true;
-            RecordSortie();
-            _reward.Clear();
-            GameFlow.LastBattleSummary = PlayerCopy("가방 가득 참 — 이번 판 보상 없음(§11)");
+            GameFlow.LastBattleSummary = "저체력 귀환 — 이번 판 보상 없음(§4)";
             GameFlow.Go(GameFlow.Estate);
         }
 
@@ -393,17 +356,6 @@ namespace AshesToStars
             EscapeForfeit.Apply(_reward);
             // QA_NO·옛 경로는 결과 없이 영지. 소비처가 있을 때만 포기를 보여 준다.
             GameFlow.Go(EscapeForfeit.Blocked ? GameFlow.Estate : GameFlow.Result);
-        }
-
-        /// <summary>6초 유예 중 피격돼 탈출하지 못하면 일반 패배와 같은 사망 정산을 한다.</summary>
-        void DieFromFailedEscape()
-        {
-            if (_leftForSafety || _defeatApplied) return;
-            _leftForSafety = true;
-            RecordSortie();
-            ApplyDefeatOnce("긴급 탈출 실패 — 사망", GameFlow.Kind == GameFlow.BattleKind.침략);
-            if (DungeonRun.Active) DungeonRun.End();
-            GameFlow.Go(GameFlow.Result);
         }
 
         /// <summary>
@@ -455,9 +407,8 @@ namespace AshesToStars
                 ? DungeonRun.Plan.RunSeed
                 : (uint)(bossFloor * 2654435761u ^ (uint)System.DateTime.UtcNow.Ticks);
             var dropRng = Rng.Stream(dropSeed, bossFloor, SeedChannel.Drop);
-            int dropTier = inDungeon ? DungeonRun.Plan.Tier : GameState.Tier;
             foreach (var drop in Economy.RollBattleDrops(dropSource, bossCount, ref dropRng,
-                         dropFloor, dropTier))
+                         dropFloor))
             {
                 // 상한 판정은 **실제 소지품**이 한다(§18-4). 예전엔 보유량을 0으로 두고
                 // 판정해 상한이 영원히 안 걸렸다 — 상한이 있다는 말만 있고 없는 것과 같았다.
@@ -470,45 +421,12 @@ namespace AshesToStars
             if (gear != null) _reward.DroppedGear.Add(GearDrop.Format(gear));
         }
 
-        void FinishTrialBattle(bool survived)
-        {
-            bool met = LifeSystem.TrialObjectiveMet;
-            if (!survived)
-            {
-                LifeSystem.CancelFirstAdvancementTrial();
-                LifeSystem.CancelSecondAdvancementTrial();
-                GameFlow.LastBattleSummary = "시험 실패 — 목숨과 재료는 그대로다";
-            }
-            else
-            {
-                GameFlow.LastBattleSummary = met
-                    ? "시험 목표 달성 — 캐릭터에서 전직을 확정한다"
-                    : "훈련 종료 — 역할 목표가 아직 남았다";
-            }
-            GameFlow.Go(GameFlow.Result);
-        }
-
         void OnBattleEnd(bool survived)
         {
             if (_leftForSafety) return;
             RecordSortie();
-            if (LifeSystem.HasActiveTrial)
-            {
-                FinishTrialBattle(survived);
-                return;
-            }
             if (GameFlow.Kind == GameFlow.BattleKind.침략)
             {
-                if (InboundRaid.Fighting)
-                {
-                    int pts = InboundRaid.SettleFromBattle(survived);
-                    if (survived)
-                        GameFlow.LastBattleSummary = $"수비 성공 — 명예 +{pts} ({_t:F1}초)";
-                    else
-                        ApplyDefeatOnce($"수비 패배 — {_t:F1}초", isPvp: true);
-                    GameFlow.Go(GameFlow.Result);
-                    return;
-                }
                 string repeatLine = InvasionState.RepeatLootLine();
                 int repeatPct = InvasionState.RepeatPercent();
                 long loot = InvasionState.Settle(survived);
@@ -521,7 +439,7 @@ namespace AshesToStars
                         lootLine += " · " + repeatLine;
                     string honorLine = Honor.Blocked ? "" : " · " + Honor.WinLine();
                     GameFlow.LastBattleSummary =
-                        $"침략 성공 — 약탈 {EstateStatusHud.ShortCopper(loot)}{lootLine}{honorLine} ({_t:F1}초)";
+                        $"침략 성공 — 약탈 {Economy.FormatCurrency(loot)}{lootLine}{honorLine} ({_t:F1}초)";
                 }
                 else
                     ApplyDefeatOnce($"침략 패배 — {_t:F1}초", isPvp: true);
@@ -584,10 +502,8 @@ namespace AshesToStars
                         _reward.GoldReward = GameState.Earn(huntGold);
                         long huntExp = Economy.WaveHuntExp(GameState.Tier, _t);
                         _reward.ExpGains = LifeSystem.AwardWaveHunt(_t);
-                        string elite = string.IsNullOrEmpty(EliteDrop.LastLine)
-                            ? "" : " · " + EliteDrop.Line();
                         GameFlow.LastBattleSummary =
-                            $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장 · {EstateStatusHud.ShortCopper(_reward.GoldReward)} · EXP {huntExp}{elite}";
+                            $"생존 — {_t:F1}초 · 사냥 가죽 {hides}장 · {Economy.FormatCurrency(_reward.GoldReward)} · EXP {huntExp}";
                     }
                     else
                         GameFlow.LastBattleSummary = $"생존 — {_t:F1}초";
@@ -706,14 +622,6 @@ namespace AshesToStars
         }
 
         /// <summary>QA_HUNT_GOLD=1이면 결과 화면에 T1 1시간 = 1골드를 심는다.</summary>
-        /// <summary>QA_INVASION_LOOT=1이면 결과 화면에 침략 성공 약탈 줄을 심는다.</summary>
-        public static void SeedInvasionLootQaIfRequested()
-        {
-            if (System.Environment.GetEnvironmentVariable("QA_INVASION_LOOT") != "1") return;
-            GameFlow.LastBattleSummary =
-                $"침략 성공 — 약탈 {EstateStatusHud.ShortCopper(50_000)} (1.0초)";
-        }
-
         public static void SeedHuntGoldRewardQaIfRequested()
         {
             if (System.Environment.GetEnvironmentVariable(Economy.EnvShowHuntGold) != "1") return;
@@ -724,8 +632,7 @@ namespace AshesToStars
             _reward.Survived = true;
             _reward.BattleDurationSeconds = Economy.HuntGoldHourSeconds;
             _reward.GoldReward = gold;
-            GameFlow.LastBattleSummary =
-                $"생존 — {Economy.HuntGoldHourSeconds:0.0}초 · 사냥 가죽 0장 · {EstateStatusHud.ShortCopper(gold)} · EXP 0";
+            GameFlow.LastBattleSummary = "생존 — " + Economy.HuntGoldLine(gold);
         }
     }
 }

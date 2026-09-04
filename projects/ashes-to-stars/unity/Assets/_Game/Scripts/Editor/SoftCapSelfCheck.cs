@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -57,8 +56,8 @@ namespace AshesToStars
             Check(GameState.Wallet.Copper == 16_500, $"지갑 16500 (실제 {GameState.Wallet.Copper})");
             Check(SoftCap.EarnedThisHour == 16_500, $"시간창 16500 (실제 {SoftCap.EarnedThisHour})");
             Check(SoftCap.Line().Contains("150%"), $"문구 150% (실제 {SoftCap.Line()})");
-            Check(SoftCap.Line().Contains("1골드") && SoftCap.Line().Contains("/h"),
-                $"문구 한도 ShortCopper (실제 {SoftCap.Line()})");
+            Check(SoftCap.Line().Contains("1골드 50실버"),
+                $"문구 한도 1골드 50실버 (실제 {SoftCap.Line()})");
 
             long extra = GameState.Earn(10_000);
             Check(extra == 3_000, $"문턱 위 Earn(10000)=3000 (실제 {extra})");
@@ -133,23 +132,14 @@ namespace AshesToStars
             Check(GameState.Tier == 0, $"시드는 T1 (실제 T{GameState.Tier + 1})");
             Check(GameState.Wallet.Copper == 16_500, $"시드 지갑 16500 (실제 {GameState.Wallet.Copper})");
             Check(SoftCap.HourLine().Contains("150%"), "시드 문구 150%");
-            Check(SoftCap.HourLine().Contains("1골드") && SoftCap.HourLine().Contains("이번 시간"),
-                $"시드 이번 시간 ShortCopper (실제 {SoftCap.HourLine()})");
+            Check(SoftCap.HourLine().Contains("1골드 65실버"),
+                $"시드 이번 시간 1골드 65실버 (실제 {SoftCap.HourLine()})");
             Environment.SetEnvironmentVariable(SoftCap.EnvShow, null);
 
             _ = nameof(SoftCap.Apply);
             _ = nameof(SoftCap.Preview);
             _ = nameof(SoftCap.Line);
             _ = nameof(SoftCap.SeedQaIfRequested);
-
-            string capSrc = File.ReadAllText(Path.Combine(Application.dataPath,
-                "_Game/Scripts/Runtime/SoftCap.cs"));
-            Check(capSrc.Contains("ShortCopper(ThresholdCopper())")
-                  && capSrc.IndexOf("FormatCurrency(ThresholdCopper())") < 0,
-                "SoftCap.Line 한도는 ShortCopper만");
-            Check(capSrc.Contains("ShortCopper(EarnedThisHour)")
-                  && capSrc.IndexOf("FormatCurrency(EarnedThisHour)") < 0,
-                "HourLine 이번 시간은 ShortCopper만");
             _ = nameof(GameState.Earn);
             _ = nameof(GameState.Grant);
 

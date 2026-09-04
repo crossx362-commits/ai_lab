@@ -137,11 +137,6 @@ namespace AshesToStars
             _ = nameof(HuntSchedule.Line);
             _ = nameof(HuntSchedule.SeedQaIfRequested);
 
-            string huntSrc = File.ReadAllText(Path.Combine(runtime, "HuntSchedule.cs"));
-            Check(huntSrc.Contains("ShortCopper(PendingGold())")
-                  && huntSrc.IndexOf("FormatCurrency(PendingGold())") < 0,
-                "예정 골드는 ShortCopper만");
-
             Environment.SetEnvironmentVariable(HuntSchedule.EnvShow, show);
             Environment.SetEnvironmentVariable(HuntSchedule.EnvNo, no);
             HuntSchedule.ResetForTest();

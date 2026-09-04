@@ -22,7 +22,7 @@ namespace AshesToStars
 
         public static string Line =>
             _applied
-                ? $"로컬 테스트 · {EstateStatusHud.ShortCopper(WantCopper)} · {PlayFloor}층 · Lv{PlayLevel}"
+                ? $"로컬 테스트 · {Economy.FormatCurrency(WantCopper)} · {PlayFloor}층 · Lv{PlayLevel}"
                 : "";
 
         public static bool Blocked

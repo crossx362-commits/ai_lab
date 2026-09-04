@@ -1,5 +1,4 @@
 using UnityEngine;
-using System;
 
 namespace AshesToStars
 {
@@ -22,14 +21,6 @@ namespace AshesToStars
         protected override string Subtitle => DungeonRun.Active
             ? (FamilyAdv.ShowQa ? FamilyAdv.Line() + " · " : "") +
               (EliteKinds.ShowQa ? EliteKinds.Line() + " · " : "") +
-              (MobSpeed.ShowQa ? MobSpeed.Line() + " · " : "") +
-              (MobHp.ShowQa ? MobHp.Line() + " · " : "") +
-              (MobDmg.ShowQa ? MobDmg.Line() + " · " : "") +
-              (MobRangedDistance.ShowQa ? MobRangedDistance.Line() + " · " : "") +
-              (MobMeleeCadence.ShowQa ? MobMeleeCadence.Line() + " · " : "") +
-              (MobShotCadence.ShowQa ? MobShotCadence.Line() + " · " : "") +
-              (MobProjectileSpeed.ShowQa ? MobProjectileSpeed.Line() + " · " : "") +
-              (MobSize.ShowQa ? MobSize.Line() + " · " : "") +
               $"시드 {DungeonRun.Plan.RunSeed} · T{DungeonRun.Plan.Tier + 1} · " +
               $"노드 {DungeonRun.State.Cleared.Count}/{DungeonRun.Plan.Nodes.Length} · " +
               $"{DungeonRun.Plan.Kind} · 보유 {GameState.WalletText}"
@@ -37,31 +28,14 @@ namespace AshesToStars
 
         protected override bool ShowBottomBar => false;
 
-        public static Rect EmptyCardRect(Rect r)
-        {
-            bool old = Environment.GetEnvironmentVariable("QA_NO_DUNGEON_EMPTY_CENTER") == "1";
-            float h = Mathf.Min(180f, r.height - 96f);
-            float y = old ? r.y + 88f : r.y + (r.height - h) * 0.5f + 24f;
-            float w = old ? r.width : Mathf.Min(760f, r.width);
-            return new Rect(r.center.x - w * 0.5f, y, w, h);
-        }
-
         protected override void Body(Rect r)
         {
             FamilyAdv.SeedQaIfRequested();
             EliteKinds.SeedQaIfRequested();
-            MobSpeed.SeedQaIfRequested();
-            MobHp.SeedQaIfRequested();
-            MobDmg.SeedQaIfRequested();
-            MobRangedDistance.SeedQaIfRequested();
-            MobMeleeCadence.SeedQaIfRequested();
-            MobShotCadence.SeedQaIfRequested();
-            MobProjectileSpeed.SeedQaIfRequested();
-            MobSize.SeedQaIfRequested();
             if (!DungeonRun.Active)
             {
                 Info(r, 0, "진행 중인 던전이 없다. 필드에서 던전에 입장할 수 있다(§7).");
-                var empty = UiPages.Grid(EmptyCardRect(r), 1, 1, 12f);
+                var empty = UiPages.Grid(new Rect(r.x, r.y + 88f, r.width, Mathf.Min(180f, r.height - 96f)), 1, 1, 12f);
                 if (DrawCard(empty[0], "필드로", "돌아간다", "field")) GameFlow.Go(GameFlow.Field);
                 return;
             }
@@ -149,7 +123,7 @@ namespace AshesToStars
                 }
             }
             int last = Mathf.Min(next.Count, nodes.Length - 1);
-            if (last >= 0 && DrawCard(nodes[last], "던전 포기", DungeonAbandonCopy.Text(), "heart_broken"))
+            if (last >= 0 && DrawCard(nodes[last], "던전 포기", "여기서 나간다 — 강화는 사라진다(§7)", "heart_broken"))
             {
                 DungeonRun.End();
                 GameFlow.Go(DungeonRun.ReturnScene);
@@ -203,7 +177,7 @@ namespace AshesToStars
                 case NodeKind.정예:
                     return EliteKinds.Caption(n);
                 default:
-                    return DungeonEncounterCopy.Text(n);
+                    return $"동시 {n.Wave?.TargetCount ?? 0}체 · 원거리 {n.Wave?.RangedPercent ?? 0:F0}% · {TemplateKo(n.Template)}";
             }
         }
     }

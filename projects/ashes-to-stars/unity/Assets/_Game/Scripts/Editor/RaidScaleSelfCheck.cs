@@ -60,7 +60,7 @@ namespace AshesToStars
 
             string line = RaidScale.Line();
             Check(line.Contains("0.65") && line.Contains("§18-10") && line.Contains("5층")
-                  && line.Contains("T1→T5") && line.Contains("1골드"),
+                  && line.Contains("T1→T5") && line.Contains("1골드 15실버 23쿠퍼"),
                 $"문구 (실제 {line})");
 
             RaidScale.ForceScalePercent = 50;
@@ -94,7 +94,7 @@ namespace AshesToStars
             RaidScale.ResetForTest();
             RaidScale.SeedQaIfRequested();
             Check(GameState.TowerFloor == 51 && GameState.Tier == 4, "시드는 51층·T5");
-            Check(RaidScale.Line().Contains("1골드"),
+            Check(RaidScale.Line().Contains("1골드 15실버 23쿠퍼"),
                 $"시드 문구 (실제 {RaidScale.Line()})");
             Environment.SetEnvironmentVariable(RaidScale.EnvShow, null);
 
@@ -116,10 +116,6 @@ namespace AshesToStars
             _ = nameof(RaidScale.TargetSeconds);
             _ = nameof(RaidScale.Line);
             _ = nameof(RaidScale.SeedQaIfRequested);
-
-            Check(scaleSrc.Contains("ShortCopper(Gold(floor))")
-                  && scaleSrc.IndexOf("FormatCurrency(Gold(floor))") < 0,
-                "하위 레이드 스케일 골드는 ShortCopper만");
             _ = nameof(BalanceConfig.스케일링계수);
 
             Environment.SetEnvironmentVariable(RaidScale.EnvShow, show);

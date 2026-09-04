@@ -16,10 +16,11 @@ namespace AshesToStars
             try
             {
                 Environment.SetEnvironmentVariable("BOSS_NO_DPS", null);
-                liveGo = BuildParty("BossBattleDpsSelfCheck_Live");
-                var liveParty = liveGo.GetComponent<global::W3Party>();
+                liveGo = new GameObject("BossBattleDpsSelfCheck_Live");
+                var liveParty = liveGo.AddComponent<global::W3Party>();
+                liveParty.GameMode = true;
                 liveParty.ApplyGameParty();
-                var live = TestAttach.AttachWithAwake<BossBattle>(liveGo);
+                var live = liveGo.AddComponent<BossBattle>();
                 int defeated = 0;
                 int phases = 0;
                 live.OnBossDefeated += _ => defeated++;
@@ -42,10 +43,11 @@ namespace AshesToStars
                 liveGo = null;
 
                 Environment.SetEnvironmentVariable("BOSS_NO_DPS", "1");
-                blockedGo = BuildParty("BossBattleDpsSelfCheck_Blocked");
-                var blockedParty = blockedGo.GetComponent<global::W3Party>();
+                blockedGo = new GameObject("BossBattleDpsSelfCheck_Blocked");
+                var blockedParty = blockedGo.AddComponent<global::W3Party>();
+                blockedParty.GameMode = true;
                 blockedParty.ApplyGameParty();
-                var blocked = TestAttach.AttachWithAwake<BossBattle>(blockedGo);
+                var blocked = blockedGo.AddComponent<BossBattle>();
                 blocked.Begin(5, 1);
                 blocked.AttachCombatTargets();
                 DamageFirstW3Target(blockedParty, startHp);
@@ -70,22 +72,6 @@ namespace AshesToStars
         {
             if (!condition) throw new InvalidOperationException("[BossDps] " + message);
         }
-
-        /// <summary>
-        /// W3Party 검증 판 세우기 — BossAutoAttackSelfCheck.Build와 같은 경계.
-        /// 에디터(비플레이) 배치에선 AddComponent가 Awake를 부르지 않아 _slots가 null이고,
-        /// ApplyGameParty→NextStyle이 슬롯 접근에서 NRE로 죽었다(전수 실측 2026-08-26).
-        /// 비활성 생성 → GameMode 대입 → 수동 Awake(BuildWorld 포함) 순서로 런타임과 같은 상태를 만든다.
-        /// </summary>
-        static GameObject BuildParty(string name)
-        {
-            var go = new GameObject(name);
-            go.SetActive(false);
-            TestAttach.AttachWithAwake<global::W3Party>(go, p => { p.GameMode = true; });
-            go.SetActive(true);
-            return go;
-        }
-
 
         static void DamageFirstW3Target(global::W3Party party, float amount)
         {

@@ -19,7 +19,7 @@ namespace AshesToStars
                 }
             }
 
-            string src = SrcNoComments.Read(
+            string src = System.IO.File.ReadAllText(
                 "Assets/Scripts/GroundBuilder.cs");
             Check(src.Contains("FilterMode.Bilinear"),
                 "GroundBuilder가 바닥을 Point로 강제한다");

@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace AshesToStars
@@ -19,21 +18,15 @@ namespace AshesToStars
         protected override string Title => "파티 편성";
         protected override string BackgroundArt => "bg_party";
         protected override string Subtitle =>
-            PartyFormHud.ShowQa ? PartyFormHud.Line()
-            : PartyHud.ShowQa ? PartyHud.Line()
-            : PartyHudCap.ShowQa ? PartyHudCap.Line()
-            : PartyHudCap.Caption();
+            $"최대 {PartyState.MaxSlots}인(§9) · 편성 {PartyState.Slots.Count}명 · " +
+            $"1번 자리가 탱 자리다(§10-4 진형) · 부활초 {LifeSystem.GetRevivePotions()}/3";
 
         string _msg = "";
         int _page;
 
         protected override void Body(Rect r)
         {
-            PartyHudCap.SeedQaIfRequested();
-            PartyHud.SeedQaIfRequested();
-            PartyFormHud.SeedQaIfRequested();
             DefenseState.SeedQaIfRequested();
-            SeedPartyToggleQaIfRequested();
             _page = DrawTabs(r, new[] { "편성", "출전" }, _page);
             var page = UiPages.AfterTabs(r);
             if (_page == 1)
@@ -42,7 +35,6 @@ namespace AshesToStars
                 return;
             }
 
-            page = PartyFormHud.Content(page);
             var roster = LifeSystem.GetCharacters();
             if (roster.Count == 0)
             {
@@ -60,35 +52,24 @@ namespace AshesToStars
                 {
                     if (!PartyState.Toggle(i))
                         _msg = LifeSystem.GetRecoveryTimeRemaining(ch) > 0
-                            ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(LifeSystem.GetRecoveryTimeRemaining(ch))} — 출전 불가"
+                            ? $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(LifeSystem.GetRecoveryTimeRemaining(ch))} — 출전 불가(§15)"
                             : DefenseState.Contains(i)
-                                ? "수비 배치 중이다 — 영지 수비대에서 해임해야 출전한다"
+                                ? "수비 배치 중이다 — 영지 수비대에서 해임해야 출전한다(§13-5)"
                                 : HuntSchedule.Contains(i)
-                                    ? "일정 사냥 중이다 — 필드에서 일정을 꺼야 출전한다"
+                                    ? "일정 사냥 중이다 — 필드에서 일정을 꺼야 출전한다(§6)"
                                 : LifeSystem.IsAvailable(ch)
-                                    ? $"자리가 없다 — {PartyState.MaxSlots}인이 상한이다"
-                                    : "출전할 수 없는 캐릭터다 — 회복 중이거나 삭제됐다";
+                                    ? $"자리가 없다 — {PartyState.MaxSlots}인이 상한이다(§9)"
+                                    : "출전할 수 없는 캐릭터다(회복 중이거나 삭제됐다, §4)";
                     else _msg = "";
                 }
             }
 
-            string hint = PartyFormHud.ShowQa ? PartyFormHud.Line() : _msg;
-            if (!string.IsNullOrEmpty(hint))
-                Info(PartyFormHud.Hint(page), 0, hint);
+            if (!string.IsNullOrEmpty(_msg))
+                Info(new Rect(page.x, page.yMax - RowH, page.width, RowH), 0, _msg);
         }
 
         bool DrawPartyCard(Rect cell, CharacterRecord ch, bool inParty, string status)
         {
-            // 클릭을 슬라이스·초상보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
-            // CharacterScreen 옛 버그(952662fa)와 같이 크롬에 먹혀 Toggle이 안 먹었다.
-            bool hit = false;
-            var ev = Event.current;
-            if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                && cell.Contains(ev.mousePosition))
-            {
-                hit = true;
-                ev.Use();
-            }
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.45f) : new Color(1f, 1f, 1f, 0.94f);
             if (!UiAtlas.DrawSliced(cell, "panel", 12f, tint))
                 UiAtlas.Draw(cell, "panel", tint);
@@ -101,22 +82,12 @@ namespace AshesToStars
             UiAtlas.Draw(new Rect(faceR.xMax - 22f, faceR.yMax - 22f, 20f, 20f), UiAtlas.RoleKey(ch.Job));
             UiAtlas.DrawHearts(marks, ch.DeathCount, ch.IsDeleted);
             Hint(nameR, (inParty ? "★ " : "") + ch.Name + " · " + status);
-            return hit;
-        }
-
-        bool _toggleQaSeeded;
-        void SeedPartyToggleQaIfRequested()
-        {
-            if (_toggleQaSeeded) return;
-            if (Environment.GetEnvironmentVariable("QA_PARTY_TOGGLE") != "1") return;
-            _toggleQaSeeded = true;
-            if (PartyState.Contains(0))
-                PartyState.Toggle(0);
+            return GUI.Button(cell, GUIContent.none, GUIStyle.none);
         }
 
         void DrawSortiePage(Rect r)
         {
-            var cards = PartyHud.Cards(r);
+            var cards = UiPages.Grid(r, 2, 2, 16f);
             if (DrawCard(cards[0], "필드 출전",
                     PartyState.CanSortie ? "이 편성으로 사냥에 나간다" : "한 명도 편성되지 않았다",
                     "field", locked: !PartyState.CanSortie))
@@ -131,18 +102,18 @@ namespace AshesToStars
 
         static string StatusOf(CharacterRecord ch, int rosterIndex, bool inParty)
         {
-            if (ch.IsDeleted) return PartyHudCap.Deleted();
+            if (ch.IsDeleted) return "삭제됨 — 환생석으로만 복구(§4)";
             int left = LifeSystem.GetRecoveryTimeRemaining(ch);
             if (left > 0 && DefenseState.Contains(rosterIndex))
-                return $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가";
+                return $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§15)";
             if (DefenseState.Contains(rosterIndex))
-                return "수비 배치 — 출전 불가";
+                return "수비 배치 — 출전 불가(§13-5)";
             if (HuntSchedule.Contains(rosterIndex))
-                return "일정 사냥 — 출전 불가";
-            if (left > 0) return $"회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가";
+                return "일정 사냥 — 출전 불가(§6)";
+            if (left > 0) return $"회복 {LifeSystem.FormatRecoveryPhrase(left)} — 출전 불가(§4·§18-8)";
 
             string mark = inParty ? "편성됨" : "대기";
-            if (ch.DeathCount >= 2) return $"{mark} · [주의] 마지막 목숨 — 죽으면 영구 삭제";
+            if (ch.DeathCount >= 2) return $"{mark} · [주의] 마지막 목숨 — 죽으면 영구 삭제(§4)";
             return mark;
         }
     }

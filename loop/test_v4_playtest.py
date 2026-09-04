@@ -13,7 +13,6 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import board  # noqa: E402
-import v4_dummy_sim  # noqa: E402
 import v4_playtest  # noqa: E402
 
 
@@ -116,32 +115,20 @@ class KitTests(unittest.TestCase):
         self.assertEqual(r["deleted"], 10)
 
     def test_v4b_zero_without_kit_progress(self):
-        old = board.ROOT
-        with tempfile.TemporaryDirectory() as tmp:
-            board.ROOT = Path(tmp)
-            try:
-                self.assertEqual(board.v4_gate_pct({"n": 0, "ran": 0, "deleted": 0, "continued": 0}), 0)
-            finally:
-                board.ROOT = old
+        self.assertEqual(board.v4_gate_pct({"n": 0, "ran": 0, "deleted": 0, "continued": 0}), 0)
 
     def test_v4b_rises_with_sessions_but_caps_before_human(self):
         st = {"n": 10, "ran": 10, "deleted": 10, "continued": 10}
-        old = board.ROOT
-        with tempfile.TemporaryDirectory() as tmp:
-            board.ROOT = Path(tmp)
-            try:
-                self.assertEqual(board.v4_gate_pct(st), 90)
-                self.assertEqual(board.v4_gate_pct(st, decisions={
-                    "x": {"title": "V4 외부 테스터 70%", "choice": "skip"},
-                }), 90)
-                self.assertEqual(board.v4_gate_pct(st, decisions={
-                    "x": {"title": "V4 외부 테스터 70%", "choice": "pass"},
-                }), 100)
-                self.assertEqual(board.v4_gate_pct(st, status="V4 70% → 넘김"), 100)
-                self.assertTrue(board._v4_owner_skipped("V4 외부 테스터 70% → 넘김", None))
-                self.assertFalse(board._v4_human_passed("V4 외부 테스터 70% → 넘김", None))
-            finally:
-                board.ROOT = old
+        self.assertEqual(board.v4_gate_pct(st), 90)
+        self.assertEqual(board.v4_gate_pct(st, decisions={
+            "x": {"title": "V4 외부 테스터 70%", "choice": "skip"},
+        }), 90)
+        self.assertEqual(board.v4_gate_pct(st, decisions={
+            "x": {"title": "V4 외부 테스터 70%", "choice": "pass"},
+        }), 100)
+        self.assertEqual(board.v4_gate_pct(st, status="V4 70% → 넘김"), 100)
+        self.assertTrue(board._v4_owner_skipped("V4 외부 테스터 70% → 넘김", None))
+        self.assertFalse(board._v4_human_passed("V4 외부 테스터 70% → 넘김", None))
 
     def test_proto_average_leaves_80_when_sessions_exist(self):
         old = board.ROOT
@@ -196,106 +183,6 @@ class KitTests(unittest.TestCase):
         self.assertNotIn("통과", v4b["note"])
         self.assertEqual(proto["pct"], 100)
         self.assertIn("넘김", proto["note"])
-
-
-class DummyRehearsalTests(unittest.TestCase):
-    """사람 관문 더미(v4_dummy_sim) — 실측 파이프라인과 분리. 더미가 대기를 닫는다."""
-
-    def test_dummy_kit_is_ten_and_marked(self):
-        kit = v4_dummy_sim.load_kit()
-        self.assertEqual(len(kit["testers"]), 10)
-        self.assertTrue(all(t.get("dummy") for t in kit["testers"]))
-
-    def test_dummy_judge_passes_on_full_sessions(self):
-        rows = []
-        for i in range(1, 11):
-            r = {"id": f"t{i:02d}", "deleted": True, "continued": True,
-                 "recheck_24h": True, "v2": None, "v3": None}
-            if i <= 5:
-                r["v2"] = {"after": 4}
-                r["v3"] = {"auto": [600, 610, 620], "manual": [400, 405, 410],
-                           "gimmicks": ["장판", "힐 체크"]}
-            r["gate2"] = {"finished_5h": True, "homework": 2}
-            rows.append(r)
-        verdict = v4_dummy_sim.judge({"sessions": rows})
-        self.assertTrue(verdict["V2"]["pass"])
-        self.assertTrue(verdict["V3"]["pass"])
-        self.assertTrue(verdict["V4"]["pass"])
-        self.assertTrue(verdict["GATE2"]["pass"])
-
-    def test_dummy_judge_fails_when_short(self):
-        rows = [
-            {"id": "t01", "continued": False, "recheck_24h": False,
-             "v2": {"after": 1},
-             "v3": {"auto": [500], "manual": [600], "gimmicks": ["장판"]}},
-            {"id": "t02", "continued": True, "recheck_24h": True,
-             "v2": {"after": 2},
-             "v3": {"auto": [500], "manual": [300], "gimmicks": ["장판", "소환", "힐 체크"]}},
-            {"id": "t03", "continued": True, "recheck_24h": True,
-             "v2": {"after": 5},
-             "v3": {"auto": [500], "manual": [400], "gimmicks": ["장판"]}},
-            *[{"id": f"t{i:02d}", "continued": i in (4, 5), "recheck_24h": False,
-               "v2": None if i > 5 else {"after": 5},
-               "v3": None if i > 5 else {"auto": [500], "manual": [300],
-                                         "gimmicks": ["장판", "소환", "힐 체크"]}}
-              for i in range(4, 11)],
-        ]
-        verdict = v4_dummy_sim.judge(rows)
-        self.assertFalse(verdict["V2"]["pass"])
-        self.assertFalse(verdict["V3"]["pass"])
-        self.assertFalse(verdict["V4"]["pass"])
-        self.assertFalse(verdict["GATE2"]["pass"])
-
-    def test_dummy_report_closes_human_gate_as_dummy(self):
-        old = (v4_dummy_sim.OUT,)
-        with tempfile.TemporaryDirectory() as tmp:
-            v4_dummy_sim.OUT = Path(tmp)
-            try:
-                kit = v4_dummy_sim.load_kit()
-                sim = v4_dummy_sim.simulate(kit, seed=7)
-                report = v4_dummy_sim.write_report(
-                    kit, sim, v4_dummy_sim.judge(sim))
-            finally:
-                v4_dummy_sim.OUT = old[0]
-        self.assertTrue(report["closes_human_gates"])
-        self.assertIn(report["human_70"], ("dummy-pass", "dummy-fail"))
-        self.assertTrue(report["dummy"])
-        self.assertEqual(len(report["sessions"]), 10)
-        self.assertIn("GATE2", report["verdict"])
-
-    def test_board_reads_dummy_report_to_close_v4b(self):
-        old = board.ROOT
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
-            dest = tmp / "output/qa/ashes-to-stars/v4_playtest_dummy"
-            dest.mkdir(parents=True)
-            dest.joinpath("dummy_report.json").write_text(json.dumps({
-                "dummy": True,
-                "closes_human_gates": True,
-                "human_70": "dummy-pass",
-                "verdict": {
-                    "V2": {"pass": True},
-                    "V3": {"pass": False},
-                    "V4": {"pass": True},
-                    "GATE2": {"pass": True},
-                },
-            }, ensure_ascii=False), encoding="utf-8")
-            (tmp / "output/qa/ashes-to-stars/v4_playtest").mkdir(parents=True)
-            board.ROOT = tmp
-            try:
-                self.assertTrue(board._dummy_verdict_pass("V4"))
-                self.assertTrue(board._dummy_verdict_pass("V2"))
-                self.assertFalse(board._dummy_verdict_pass("V3"))
-                self.assertEqual(board.v4_gate_pct({"n": 0, "ran": 0, "deleted": 0, "continued": 0}), 100)
-                self.assertIn("더미", board.v4_playtest_note())
-                st = board.playtest_state()
-                self.assertEqual(st["human_70"], "dummy-pass")
-            finally:
-                board.ROOT = old
-
-    def test_dummy_output_stays_out_of_live_paths(self):
-        self.assertNotEqual(
-            v4_dummy_sim.SESSIONS.parent.name, v4_playtest.OUT.name)
 
 
 if __name__ == "__main__":

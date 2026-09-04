@@ -72,7 +72,7 @@ namespace AshesToStars
         public static string Line()
         {
             if (Blocked) return "순자산 지갑만(옛)";
-            return $"순자산 {EstateStatusHud.ShortCopper(Assets())} · 한도 {EstateStatusHud.ShortCopper(GameState.LoanLimit)}(§18-5)";
+            return $"순자산 {Economy.FormatCurrency(Assets())} · 한도 {Economy.FormatCurrency(GameState.LoanLimit)}(§18-5)";
         }
 
         public static bool ShowOnHub

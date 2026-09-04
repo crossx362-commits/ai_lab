@@ -52,21 +52,6 @@ namespace AshesToStars
             Check(GameState.Tier == 0, "거부하면 선택이 안 바뀐다");
             Check(!GameState.TrySelectTier(-1), "음수 티어는 거부");
 
-            var body = new Rect(36f, 112f, 1208f, 528f);
-            string oldBackFit = Environment.GetEnvironmentVariable(EstateScreen.EnvNoWorldTierBackFit);
-            Environment.SetEnvironmentVariable(EstateScreen.EnvNoWorldTierBackFit, null);
-            Rect fitted = EstateScreen.WorldTierBackBand(body);
-            Check(Mathf.Approximately(fitted.width, EstateScreen.WorldTierBackMaxW)
-                  && Mathf.Approximately(fitted.center.x, body.center.x),
-                $"영지로 단일 카드는 {EstateScreen.WorldTierBackMaxW:0}px·가로 중앙 (실제 {fitted})");
-            Check(fitted.xMin >= body.xMin && fitted.xMax <= body.xMax && fitted.yMax <= body.yMax,
-                "영지로 단일 카드는 본문 경계 안");
-            Environment.SetEnvironmentVariable(EstateScreen.EnvNoWorldTierBackFit, "1");
-            Rect oldWide = EstateScreen.WorldTierBackBand(body);
-            Check(Mathf.Approximately(oldWide.width, body.width),
-                $"QA_NO는 옛 전폭 카드를 재현 (실제 {oldWide.width:0}px)");
-            Environment.SetEnvironmentVariable(EstateScreen.EnvNoWorldTierBackFit, oldBackFit);
-
             GameState.ForgetInMemoryForTest();
             Check(GameState.Tier == 0 && GameState.UnlockedTier == 2,
                 "선택 T1이 저장에서 되살아난다");

@@ -530,54 +530,8 @@ namespace AshesToStars
             Save();
         }
 
-        public const string EnvShowWallet = "QA_WALLET_TEXT";
-        public const string EnvNoWallet = "QA_NO_WALLET_TEXT";
-        /// <summary>FormatCurrency면 「123골드 45실버 67쿠퍼」가 되는 혼합 단위. ShortCopper는 「123골드」.</summary>
-        public const long MixCopper = 1_234_567;
-
-        static bool _qaWalletSeeded;
-
-        public static bool WalletTextBlocked
-        {
-            get
-            {
-                string raw = System.Environment.GetEnvironmentVariable(EnvNoWallet);
-                return raw == "1" || string.Equals(raw, "true", System.StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        public static bool WalletTextShowQa
-        {
-            get
-            {
-                string raw = System.Environment.GetEnvironmentVariable(EnvShowWallet);
-                return raw == "1" || string.Equals(raw, "true", System.StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>옛 줄은 FormatCurrency 풀표기(553골드 30실버 8쿠퍼)라 필드 자막이 잘렸다.</summary>
-        public static string OldWalletText => Economy.FormatCurrency(Wallet.Copper);
-
-        /// <summary>
-        /// 지금 보유량을 화면에 쓸 짧은 문자열. 예: "12골드".
-        /// 필드·던전·탑 자막의 「보유 {WalletText}」와 레이드 미출현 시 필드 카드 제목이 읽는다.
-        /// HuntGoldHourLine·TokenPrice와 같이 ShortCopper만. QA_NO면 옛 풀표기.
-        /// </summary>
-        public static string WalletText => WalletTextBlocked
-            ? OldWalletText
-            : EstateStatusHud.ShortCopper(Wallet.Copper);
-
-        /// <summary>시각 QA. 혼합 단위 1234567쿠퍼를 심어 자막이 「보유 123골드」가 보이게 한다.</summary>
-        public static void SeedWalletTextQaIfRequested()
-        {
-            if (!WalletTextShowQa) return;
-            if (WalletTextBlocked) return;
-            if (_qaWalletSeeded) return;
-            _qaWalletSeeded = true;
-            Load();
-            if (Wallet.Copper < MixCopper)
-                Grant(MixCopper - Wallet.Copper);
-        }
+        /// <summary>지금 보유량을 화면에 쓸 문자열로. 예: "12골드 30실버".</summary>
+        public static string WalletText => Economy.FormatCurrency(Wallet.Copper);
 
         /// <summary>소지품 요약. 0개인 것은 빼고 보여준다.</summary>
         public static string BagText()
@@ -631,7 +585,6 @@ namespace AshesToStars
             _bankruptThisLoan = false;
             _auctionBanUntil = _reloanUntil = 0;
             _qaLoanSeeded = false;
-            _qaWalletSeeded = false;
             _selectedTier = -1;
             _loaded = false;
             Equipment.ResetAll();
@@ -650,8 +603,6 @@ namespace AshesToStars
             EstateStore.ResetForTest();
             SoftCap.ResetForTest();
             Honor.ResetForTest();
-            InboundRaid.ResetForTest();
-            WorldExplore.ResetForTest();
             DeathTraining.ResetForTest();
             RaidScale.ResetForTest();
             RaidBossPool.ResetForTest();
@@ -659,14 +610,12 @@ namespace AshesToStars
             RaidCost.ResetForTest();
             BankruptcySeize.ResetForTest();
             Rebirth.ResetForTest();
-            RebirthSkill.ResetForTest();
             Memorial.ResetForTest();
             HuntSchedule.ResetForTest();
             NetWorth.ResetForTest();
             BagSlots.ResetForTest();
             GearDrop.ResetForTest();
             EliteDrop.ResetForTest();
-            EliteWaveDrop.ResetForTest();
             EliteKinds.ResetForTest();
         }
 

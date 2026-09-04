@@ -44,8 +44,6 @@ namespace AshesToStars
             Check(diamond >= 900f, $"마름모 폭 {diamond:0}");
             Check(EstateYard.Line().Contains("끌어 본다"),
                 $"줄 (실제 {EstateYard.Line()})");
-            Check(!EstateYard.Line().Contains("§"),
-                $"플레이어 부제에 내부 절 번호 없음 (실제 {EstateYard.Line()})");
 
             Check(EstateYard.PropOf(EstateGrid.Cell.Keep) == EstateBuildings.Keep, "본성=전용");
             Check(EstateYard.PropOf(EstateGrid.Cell.Warehouse) == EstateBuildings.Warehouse, "창고=전용");
@@ -68,8 +66,6 @@ namespace AshesToStars
             Check(oldYard.height < yard.height, $"차단 높이 {oldYard.height:0} < 전면 {yard.height:0}");
             Check(EstateYard.Line().Contains("빈 칸에 놓는다"),
                 $"차단 줄 (실제 {EstateYard.Line()})");
-            Check(!EstateYard.Line().Contains("§"),
-                $"차단 부제에도 내부 절 번호 없음 (실제 {EstateYard.Line()})");
             Environment.SetEnvironmentVariable(EstateYard.EnvNo, null);
 
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime");
@@ -78,11 +74,6 @@ namespace AshesToStars
             Check(estate.Contains("EstateYard.VillageRect"), "영지가 VillageRect를 읽는다");
             Check(estate.Contains("EstateYard.PropOf") || yardSrc.Contains("PropTex(PropOf"),
                 "마을이 집 프랍을 그린다");
-            int dn = yardSrc.IndexOf("static void DrawName", StringComparison.Ordinal);
-            string nameSrc = dn >= 0 ? yardSrc.Substring(dn, Math.Min(900, yardSrc.Length - dn)) : "";
-            Check(nameSrc.IndexOf("UiPages.LabelClip", StringComparison.Ordinal) >= 0
-                  && nameSrc.IndexOf("GUI.Label(tag", StringComparison.Ordinal) < 0,
-                "건물 이름표는 LabelClip이다");
             Check(estate.Contains("DrawVillage(r)") && estate.Contains("FillBlocked"),
                 "마을 탭이 본문을 채운다");
             Check(estate.Contains("EstateYard.SeedQaIfRequested"), "영지가 끌어 보기 시드를 읽는다");

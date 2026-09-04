@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -13,17 +12,6 @@ namespace AshesToStars
     /// <summary>결과 — 전투가 끝나고 들어온 곳으로 돌아간다.</summary>
     public class ResultScreen : GameScreen
     {
-        public const string EnvNoPlayerCopy = "QA_NO_RESULT_PLAYER_COPY";
-
-        public static string PlayerCopy(string value)
-        {
-            if (string.IsNullOrEmpty(value)
-                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
-                return value;
-            return System.Text.RegularExpressions.Regex.Replace(
-                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
-        }
-
         protected override string Title => "결과";
         protected override string Subtitle =>
             GearDrop.ShowQa ? GearDrop.Line() : "보상 정산 후 원래 화면으로";
@@ -44,7 +32,6 @@ namespace AshesToStars
             RaidBossPool.SeedQaIfRequested();
             BattleScreen.SeedHuntExpRewardQaIfRequested();
             BattleScreen.SeedHuntGoldRewardQaIfRequested();
-            BattleScreen.SeedInvasionLootQaIfRequested();
             BattleScreen.SeedRaceDropRewardQaIfRequested();
             BattleScreen.SeedRaceAdvMatRewardQaIfRequested();
             BattleScreen.SeedGearDropRewardQaIfRequested();
@@ -76,7 +63,7 @@ namespace AshesToStars
 
             if (TowerEnding.PendingEpilogue && !showRaceDrop && !showAdvMat)
             {
-                Info(r, _rowIndex++, PlayerCopy($"{TowerEnding.TitleName} — 100층 최초 클리어(§8)"));
+                Info(r, _rowIndex++, $"{TowerEnding.TitleName} — 100층 최초 클리어(§8)");
                 Info(r, _rowIndex++, TowerEnding.EpilogueBody);
                 Info(r, _rowIndex++, $"{TowerEnding.LookName} · 전투력 변화 없음 · 100층 재도전 가능");
                 if (SoloRaidClear.PendingBanner)
@@ -146,7 +133,7 @@ namespace AshesToStars
                 Info(r, _rowIndex++, $"[사망] {string.Join(", ", defeat.FallenNames)}");
             if (defeat != null && defeat.DeletedNames.Count > 0)
             {
-                Info(r, _rowIndex++, PlayerCopy($"[삭제] {string.Join(", ", defeat.DeletedNames)} — 재가 되어 영묘에 기록됩니다(§16-6)"));
+                Info(r, _rowIndex++, $"[삭제] {string.Join(", ", defeat.DeletedNames)} — 재가 되어 영묘에 기록됩니다(§16-6)");
                 var dead = LifeSystem.GetDeletedCharacters();
                 for (int i = 0; i < dead.Count; i++)
                 {
@@ -162,7 +149,7 @@ namespace AshesToStars
             if (reward != null && reward.Survived)
             {
                 _rowIndex++;  // 빈 줄 — 프레임 없이 세로 간격만(빈 패널 방지)
-                RewardInfo(r, _rowIndex++, "gold", $"획득 골드: {EstateStatusHud.ShortCopper(reward.GoldReward)}");
+                RewardInfo(r, _rowIndex++, "gold", $"획득 골드: {Economy.FormatCurrency(reward.GoldReward)}");
                 bool showHuntGold = System.Environment.GetEnvironmentVariable(Economy.EnvShowHuntGold) == "1";
                 if (showHuntGold || GameFlow.ReturnTo == GameFlow.Field)
                     Info(r, _rowIndex++, Economy.HuntGoldLine(reward.GoldReward));
@@ -214,7 +201,7 @@ namespace AshesToStars
             }
 
             if (DrawChoice(full, "계속", "들어온 화면으로 복귀", "field",
-                           "영지로", PlayerCopy("허브 복귀(§16)"), "territory", out bool home))
+                           "영지로", "허브 복귀(§16)", "territory", out bool home))
             {
                 SoloRaidClear.AckBanner();
                 FloorRecruit.AckSpecialBanner();
@@ -230,7 +217,7 @@ namespace AshesToStars
 
         string FormatLifeItem(Economy.LifeItem item)
         {
-            return PlayerCopy(item switch
+            return item switch
             {
                 Economy.LifeItem.RevivalTea => "부활초 — 사망 카운트 1 차감 (§4)",
                 Economy.LifeItem.ScrollOfReturn => "귀환의 두루마리 — 긴급 탈출 아이템 (§4)",
@@ -245,7 +232,7 @@ namespace AshesToStars
                 Economy.LifeItem.CraftDemonite => "마정석 — 대장간 장신구 재료 (§11)",
                 Economy.LifeItem.EnhanceStone => "강화석 — 장비 강화. 실패해도 파괴 없음 (§11)",
                 _ => "알 수 없는 아이템"
-            });
+            };
         }
 
         void RewardInfo(Rect r, int index, string iconKey, string text)

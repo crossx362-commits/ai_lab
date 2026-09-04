@@ -3,7 +3,7 @@ using System;
 namespace AshesToStars
 {
     /// <summary>
-    /// 필드 도크 사냥 시작·일정·저체력·사망없음·배회 보스·레이드급·던전 입장 부제. 옛 줄은 한 칸에 두 줄로 잘렸다.
+    /// 필드 도크 일정·저체력·사망없음·배회 보스·레이드급·던전 입장 부제. 옛 줄은 한 칸에 두 줄로 잘렸다.
     /// QA_NO면 옛 긴 줄. FieldScreen이 읽는다.
     /// </summary>
     public static class FieldDockCap
@@ -12,14 +12,11 @@ namespace AshesToStars
         public const string EnvBoss = "QA_FIELD_BOSS_CAP";
         public const string EnvRaid = "QA_FIELD_RAID_CAP";
         public const string EnvDungeon = "QA_FIELD_DUNGEON_CAP";
-        public const string EnvHunt = "QA_FIELD_HUNT_CAP";
         public const string EnvNo = "QA_NO_FIELD_DOCK";
         /// <summary>필드 도크 한 칸. 「잠김 — 」을 붙여도 한 줄.</summary>
         public const int CaptionMaxRunes = 18;
         public const string RaidShort = "5인 · 환생석 없음";
         public const string DungeonShort = "랜덤 · 종점 보스";
-        public const string HuntShort = "잡몹 자동 · 보스 수동";
-        public const string OldHunt = "잡몹은 자동, 보스는 수동 지휘(§5)";
 
         public const string OldLowHp = "HP 30%면 3초 뒤 영지. 이번 판 보상 없음(§4·§6)";
         public const string OldSchedule = "편성을 보내 두면 영지에서도 돈다. 사망 없음 · 상한 12시간(§6)";
@@ -31,7 +28,6 @@ namespace AshesToStars
         static bool _bossSeeded;
         static bool _raidSeeded;
         static bool _dungeonSeeded;
-        static bool _huntSeeded;
 
         public static bool Blocked
         {
@@ -82,16 +78,6 @@ namespace AshesToStars
             }
         }
 
-        public static bool ShowHuntQa
-        {
-            get
-            {
-                if (Blocked) return false;
-                string raw = Environment.GetEnvironmentVariable(EnvHunt);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
         public static string Line() => Blocked
             ? "부제가 두 줄이다"
             : "일정·저체력 부제는 한 줄이다(§16)";
@@ -107,10 +93,6 @@ namespace AshesToStars
         public static string DungeonLine() => Blocked
             ? "부제가 두 줄이다"
             : "던전 입장 부제는 한 줄이다(§16)";
-
-        public static string HuntLine() => Blocked
-            ? "부제가 두 줄이다"
-            : "사냥 시작 부제는 한 줄이다(§16)";
 
         public static int RuneCount(string text)
         {
@@ -159,7 +141,7 @@ namespace AshesToStars
         public static string OldRaid()
         {
             long cost = Economy.GetActionCost("RaidDungeon", GameState.Tier);
-            return $"5인 전제 · {EstateStatusHud.ShortCopper(cost)} · 환생석·증표 없음(§10-8)";
+            return $"5인 전제 · {Economy.FormatCurrency(cost)} · 환생석·증표 없음(§10-8)";
         }
 
         public static string Raid() => Blocked ? OldRaid() : RaidShort;
@@ -168,15 +150,10 @@ namespace AshesToStars
         public static string OldDungeon()
         {
             long cost = Economy.GetActionCost("DungeonEntry", GameState.Tier);
-            return $"랜덤 생성 + 종점 보스 · {EstateStatusHud.ShortCopper(cost)}(§7)";
+            return $"랜덤 생성 + 종점 보스 · {Economy.FormatCurrency(cost)}(§7)";
         }
 
         public static string Dungeon() => Blocked ? OldDungeon() : DungeonShort;
-
-        /// <summary>옛 줄은 잡몹·보스 지휘를 이어 붙여 슬림 칸에서 잘렸다.</summary>
-        public static string OldHuntStatus() => OldHunt;
-
-        public static string Hunt() => Blocked ? OldHunt : HuntShort;
 
         /// <summary>시각 QA. 레이드·배회 보스를 걷어 일정·저체력 칸을 연다.</summary>
         public static void SeedQaIfRequested()
@@ -221,24 +198,12 @@ namespace AshesToStars
             if (FieldBoss.Active) FieldBoss.Consume();
         }
 
-        /// <summary>시각 QA. 사냥 시작 칸의 짧은 부제를 보여 준다.</summary>
-        public static void SeedHuntQaIfRequested()
-        {
-            if (!ShowHuntQa) return;
-            if (_huntSeeded) return;
-            _huntSeeded = true;
-            GameState.TrySelectTier(0);
-            if (RaidSpawn.Active) RaidSpawn.Consume();
-            if (FieldBoss.Active) FieldBoss.Consume();
-        }
-
         public static void ResetForTest()
         {
             _qaSeeded = false;
             _bossSeeded = false;
             _raidSeeded = false;
             _dungeonSeeded = false;
-            _huntSeeded = false;
         }
     }
 }

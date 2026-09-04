@@ -62,8 +62,6 @@ namespace AshesToStars
             Check(reward.GoldReward == 0 && !reward.Survived && reward.ExpGains.Count == 0
                   && reward.DroppedItems.Count == 0,
                 $"보상 비움 (골드 {reward.GoldReward} 생존 {reward.Survived})");
-            EscapeForfeit.ClearForNewRun();
-            Check(!EscapeForfeit.Active, "새 런 시작 시 이전 보상 포기 플래그를 지운다");
             Check(GameState.Wallet.Copper == gold, $"지갑 불변 (실제 {GameState.Wallet.Copper})");
             Check(ch.DeathCount == deaths, $"목숨 불변 (실제 {ch.DeathCount})");
             Check(ch.Exp == exp, $"경험 불변 (실제 {ch.Exp})");

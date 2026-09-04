@@ -8,11 +8,7 @@ cd "$(dirname "$0")"
 for asset in style.css site.js posts.js works.js; do
   [ -f "$asset" ] || continue
   h=$(git hash-object "$asset" | cut -c1-8)
-  if sed --version >/dev/null 2>&1; then
-    sed -i "s|$asset?v=[A-Za-z0-9]*|$asset?v=$h|g" ./*.html
-  else
-    sed -i '' "s|$asset?v=[A-Za-z0-9]*|$asset?v=$h|g" ./*.html
-  fi
+  sed -i "s|$asset?v=[A-Za-z0-9]*|$asset?v=$h|g" ./*.html
 done
 
 # 검증: 참조가 방금 계산한 해시와 다르면(패턴 불일치로 sed가 놓친 페이지) 배포 중단
@@ -26,5 +22,7 @@ for asset in style.css site.js posts.js works.js; do
   fi
 done
 
-vercel deploy --prod --yes
-echo "배포 완료: https://crossx362.vercel.app"
+vercel --prod --yes
+LATEST=$(vercel ls --yes 2>&1 | grep -oE 'https://crossx362-[a-z0-9]+-crossx362-s-projects\.vercel\.app' | head -1)
+vercel alias set "$LATEST" homepage-two-opal.vercel.app
+echo "배포 완료: https://homepage-two-opal.vercel.app"

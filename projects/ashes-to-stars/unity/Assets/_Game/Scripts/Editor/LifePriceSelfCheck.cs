@@ -180,14 +180,6 @@ namespace AshesToStars
             _ = nameof(LifePrice.BelowFloor);
             _ = nameof(LifePrice.AboveCeil);
             _ = nameof(LifePrice.Line);
-
-            string lifeSrc = File.ReadAllText(Path.Combine(Application.dataPath,
-                "_Game/Scripts/Runtime/LifePrice.cs"));
-            Check(lifeSrc.Contains("ShortCopper(stone)")
-                  && lifeSrc.Contains("ShortCopper(hi)")
-                  && lifeSrc.IndexOf("FormatCurrency(stone)") < 0
-                  && lifeSrc.IndexOf("FormatCurrency(hi)") < 0,
-                "목숨 시세 환생석·상한은 ShortCopper만");
             _ = nameof(AuctionTrade.ListPrice);
             _ = nameof(AuctionState.TryListItem);
 

@@ -108,7 +108,7 @@ namespace AshesToStars
         {
             if (Blocked) return "일정 사냥 없음";
             if (!Running) return "일정 사냥 꺼짐";
-            return $"일정 사냥 {Count}명 · {FormatTime(_sec)} · {EstateStatusHud.ShortCopper(PendingGold())}(§6)";
+            return $"일정 사냥 {Count}명 · {FormatTime(_sec)} · {Economy.FormatCurrency(PendingGold())}(§6)";
         }
 
         public static string CardTitle() =>

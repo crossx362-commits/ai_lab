@@ -125,7 +125,6 @@ public class SpriteBank
     {
         "guardian", "berserker", "swordsman", "archer", "summoner",
         "priest", "druid", "bard", "shaman", "elemental",
-        "reaper", "paladin", "chrono", "dragonknight",
     };
     Sprite[][] _extra;
     static readonly string[] JOB_FRAMES =

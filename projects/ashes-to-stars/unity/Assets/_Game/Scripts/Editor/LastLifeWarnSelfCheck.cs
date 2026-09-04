@@ -120,16 +120,14 @@ namespace AshesToStars
             string tower = File.ReadAllText(Path.Combine(runtime, "TowerScreen.cs"));
             Check(field.Contains("LastLifeWarn.GearLine")
                   && field.Contains("LastLifeWarn.GearRest")
-                  && field.Contains("!string.IsNullOrEmpty(gearRest)")
                   && field.Contains("LastLifeWarn.HasAny")
                   && field.Contains("LastLifeWarn.SeedQaIfRequested"),
-                "필드가 경고·시드를 읽고 빈 장비 뒷줄은 그리지 않는다");
+                "필드가 경고·시드를 읽는다");
             Check(tower.Contains("LastLifeWarn.GearLine")
                   && tower.Contains("LastLifeWarn.GearRest")
-                  && tower.Contains("!string.IsNullOrEmpty(gearRest)")
                   && tower.Contains("LastLifeWarn.HasAny")
                   && tower.Contains("LastLifeWarn.SeedQaIfRequested"),
-                "탑이 경고·시드를 읽고 빈 장비 뒷줄은 그리지 않는다");
+                "탑이 경고·시드를 읽는다");
 
             _ = nameof(LastLifeWarn.GearLine);
             _ = nameof(LastLifeWarn.SeedQaIfRequested);

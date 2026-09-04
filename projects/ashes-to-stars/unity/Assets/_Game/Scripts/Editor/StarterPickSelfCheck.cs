@@ -84,16 +84,6 @@ namespace AshesToStars
                 "타이틀이 StarterPickCards를 쓴다 — Grid 3×2로 되돌리면 FAIL");
             Check(titleSrc.Contains("StarterPick.Blurb(job)"),
                 "타이틀이 StarterPick.Blurb(job)를 카드에 그린다 — 빼면 역할 설명이 사라진다");
-
-            int pick = titleSrc.IndexOf("void DrawStarterPick", StringComparison.Ordinal);
-            Check(pick >= 0, "DrawStarterPick가 있다");
-            string pickSrc = pick >= 0 ? titleSrc.Substring(pick) : "";
-            Check(pickSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
-                  && pickSrc.IndexOf("card.Contains", StringComparison.Ordinal) >= 0
-                  && pickSrc.IndexOf("StarterPick.TryChoose", StringComparison.Ordinal) >= 0,
-                "직업 카드 클릭은 MouseDown으로 TryChoose한다");
-            Check(pickSrc.IndexOf("GUI.Button(card", StringComparison.Ordinal) < 0,
-                "DrawStarterPick가 GUI.Button(none)을 안 쓴다");
             Check(!titleSrc.Contains("card.height - 88f"),
                 "카드 안 가로 여백을 다시 88px 라벨로 열면 FAIL");
             Check(UiPages.JobLookFrame(false) == UiPages.IdleFrame

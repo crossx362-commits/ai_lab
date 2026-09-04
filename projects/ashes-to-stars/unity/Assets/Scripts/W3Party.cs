@@ -82,7 +82,7 @@ public class W3Party : MonoBehaviour
     // ── 파티원 ───────────────────────────────────────────
     enum Role { Tank, Dps, Healer, Buffer }
     /// <summary>기획서 §3의 1차 전직 — 각자 고유 메커니즘 1개 + 대표 스킬</summary>
-    enum Job { 수호기사, 광전사, 검사, 궁수, 마법사, 소환사, 사제, 드루이드, 음유시인, 주술사, 정령사, 사신, 성기사, 시간술사, 용기사 }
+    enum Job { 수호기사, 광전사, 검사, 궁수, 마법사, 소환사, 사제, 드루이드, 음유시인, 주술사, 정령사 }
     enum Chant { 진군가, 수호가 }        // 음유시인 악장 (§3 악장 전환)
 
     class Member
@@ -155,48 +155,7 @@ public class W3Party : MonoBehaviour
 
     // ── 수동 지휘 상태 (§5 "보스는 수동 지휘") ──
     int _sel = -1;                     // 선택된 파티 슬롯. -1이면 선택 없음
-    GUIStyle _cmdLabel;
-
-    /// <summary>살아 있는 보스 개체가 있을 때만 수동 지휘를 허용한다.</summary>
-    public static bool CommandModeActive => AshesToStars.BossBattle.IsActive;
-    public static bool CommandMoveEnabled => _game != null && _game.HasCommandSelection;
-    public static bool CommandSkillEnabled => _game != null && _game.HasCommandSelection;
-    /// <summary>현재 선택된 파티원에게 대기 중인 스킬 슬롯. 없으면 0이다.</summary>
-    public static int SelectedCommandSkill => _game != null && _game.HasCommandSelection
-        ? _game._party[_game._sel].ForceSkill : 0;
-
-    /// <summary>필드·던전의 선택 티어가 일반 몬스터 HP와 공격력에 쓰는 공통 배율.</summary>
-    public static float EnemyStatMultiplierForTier(int tier)
-    {
-        var table = AshesToStars.Economy.TierRevenueMultiplier;
-        if (table == null || table.Length == 0) return 1f;
-        return table[Mathf.Clamp(tier, 0, table.Length - 1)];
-    }
-
-    float EnemyStatMultiplier => EnemyStatMultiplierForTier(
-        AshesToStars.DungeonRun.Active
-            ? AshesToStars.DungeonRun.Plan.Tier
-            : AshesToStars.GameState.Tier);
-
-    bool HasCommandSelection => CommandModeActive
-        && _sel >= 0 && _sel < _party.Length && _party[_sel].Alive;
-
-    /// <summary>지휘 모드에서만 살아 있는 파티원을 선택한다. HUD와 입력이 같은 경계를 쓴다.</summary>
-    public static bool TrySelectCommandMember(int index)
-    {
-        if (_game == null || !CommandModeActive || index < 0 || index >= _game._party.Length
-            || !_game._party[index].Alive) return false;
-        _game._sel = index;
-        return true;
-    }
-
-    /// <summary>보스전 지휘 입력을 선택한 파티원의 실제 행동 대기열에 넣는다.</summary>
-    public static bool TryQueueSelectedSkill(int slot)
-    {
-        if (_game == null || (slot != 1 && slot != 2) || !_game.HasCommandSelection) return false;
-        _game._party[_game._sel].ForceSkill = slot;
-        return true;
-    }
+    GUIStyle _cmdBtn, _cmdLabel;
 
     // HUD는 이 세 안전 영역만 쓴다. 월드 이펙트·전투 콜아웃과 겹치는 좌표를 만들지 않는다.
     public const float CombatHudTopHeight = 72f;
@@ -410,47 +369,6 @@ public class W3Party : MonoBehaviour
     int _chargeTells, _chargeRushes;
     public static (int tell, int rush) ChargeStatsOnActive()
         => _game != null ? (_game._chargeTells, _game._chargeRushes) : (-1, -1);
-
-    /// <summary>
-    /// 멤버별 전투 스타일 배선 실측용(§3·ORDERS ②). 활성 판의 각 멤버가
-    /// StyleFor로 확정한 스타일과 소비 배율을 한 줄 요약으로 돌린다.
-    /// 게임 모드에선 직업별 값이 서로 다르고(멤버별 적용), UseFixedStyle·
-    /// QA_NO_MEMBER_STYLE 판에선 전원이 같아야 한다(측정 단일 경로).
-    /// </summary>
-    public static string MemberStyleSummaryOnActive()
-    {
-        var g = _game;
-        if (g == null || g._party == null || g._party.Length == 0) return "";
-        var sb = new System.Text.StringBuilder();
-        foreach (var m in g._party)
-        {
-            if (!m.Alive && m.Hp <= 0f && m.MaxHp <= 0f) continue;   // 빈 슬롯 건너뜀
-            var st = g.StyleFor(m);
-            var sp = Spec(st);
-            sb.Append($"{m.Job}={st}(딜×{sp.DmgMul:0.00}·받음×{sp.TakenMul:0.00}) ");
-        }
-        return sb.ToString().TrimEnd();
-    }
-
-    /// <summary>
-    /// 멤버별 배선 판정(ORDERS ② 실측·순수 함수). 요약에 3인 이상이 있고,
-    /// 게임 모드(blocked=false)에선 서로 다른 스타일 2종 이상, 네거티브
-    /// (blocked=true — 옛 단일 경로)에선 전원이 같아야 통과다.
-    /// </summary>
-    public static bool MemberStyleVerdict(string summary, bool blocked)
-    {
-        if (string.IsNullOrWhiteSpace(summary)) return false;
-        int entries = 0;
-        var distinct = new System.Collections.Generic.HashSet<string>();
-        foreach (var tok in summary.Split(' '))
-        {
-            int eq = tok.IndexOf('='), pa = tok.IndexOf('(');
-            if (eq <= 0 || pa <= eq) continue;
-            entries++;
-            distinct.Add(tok.Substring(eq + 1, pa - eq - 1));
-        }
-        return entries >= 3 && (blocked ? distinct.Count <= 1 : distinct.Count >= 2);
-    }
     /// <summary>4프레임 × 0.1초(SpriteBank가 그렇게 끊는다) + 마지막 장을 잠깐 남긴다.</summary>
     const float DEATH_ANIM_SEC = 0.55f;
     Transform[] _mTr; SpriteRenderer[] _mSr;
@@ -509,20 +427,6 @@ public class W3Party : MonoBehaviour
     /// </summary>
     public static bool UseFixedStyle;
 
-    /// <summary>
-    /// 전투 소비부가 실제로 쓰는 스타일(§3). 게임 모드에선 멤버별 고른 값(m.Style),
-    /// 측정 모드(UseFixedStyle)에선 파티 단일 `_style`로 되돌려 구성 비교의 결정론을 지킨다.
-    /// QA_NO_MEMBER_STYLE=1은 옛 단일 경로(`Spec(_style)`)를 재현하는 네거티브 컨트롤이다.
-    /// </summary>
-    Style StyleFor(Member m) =>
-        ResolveStyle(UseFixedStyle,
-            System.Environment.GetEnvironmentVariable("QA_NO_MEMBER_STYLE") == "1",
-            _style, m == null ? _style : m.Style);
-
-    /// <summary>삼항 본체 — 자가검사(MemberStyleSelfCheck)가 리플렉션으로 직접 판정한다.</summary>
-    public static Style ResolveStyle(bool fixedMode, bool blocked, Style partyStyle, Style memberStyle) =>
-        fixedMode || blocked ? partyStyle : memberStyle;
-
     /// <summary>직업별 저장된 선택을 전투 스타일로 옮긴다(§3).</summary>
     static Style StyleOf(Job job) => AshesToStars.CombatStylePrefs.Get(job.ToString()) switch
     {
@@ -532,8 +436,6 @@ public class W3Party : MonoBehaviour
         _ => Style.Balanced,
     };
     float _t;
-    float _invArrowCd, _invMagicCd;
-    int _invArrowSlot;
     int _kills, _tauntUses, _backlineHits, _frontlineHits, _healsCast;
     float _shieldAbsorbed;
     int _supportHits;       // 힐·버퍼가 맞은 횟수 — 「후열 저격」이 실제로 일어나는지의 유일한 증거
@@ -964,9 +866,9 @@ public class W3Party : MonoBehaviour
 
     public static string FirstAdvancementRole(string job) => job switch
     {
-        "수호기사" or "광전사" or "성기사" => "Tank",
+        "수호기사" or "광전사" => "Tank",
         "사제" or "드루이드" => "Healer",
-        "음유시인" or "주술사" or "정령사" or "시간술사" => "Buffer",
+        "음유시인" or "주술사" or "정령사" => "Buffer",
         _ => "Dps",
     };
 
@@ -976,25 +878,21 @@ public class W3Party : MonoBehaviour
     {
         "수호기사" => 1.5f, "광전사" => 1.8f, "검사" => 1.9f, "궁수" => 8.0f,
         "마법사" => 5.5f, "소환사" => 7.0f, "사제" => 6.5f, "드루이드" => 6.0f,
-        "음유시인" => 6.0f, "주술사" => 6.0f, "정령사" => 6.5f,
-        "사신" => 1.9f, "성기사" => 1.6f, "시간술사" => 6.5f, "용기사" => 6.0f, _ => 1.9f,
+        "음유시인" => 6.0f, "주술사" => 6.0f, "정령사" => 6.5f, _ => 1.9f,
     };
 
     /// <summary>
     /// 근접 직업인가(§3). 근접은 투사체를 쏘지 않는다 —
     /// 예전엔 전 직업이 FireAlly로 탄을 날려 탱커·검사가 원거리처럼 보였다.
     /// </summary>
-    static bool IsMelee(Job j) =>
-        j == Job.수호기사 || j == Job.광전사 || j == Job.검사 || j == Job.사신 || j == Job.성기사;
+    static bool IsMelee(Job j) => j == Job.수호기사 || j == Job.광전사 || j == Job.검사;
 
     public static string FirstAdvancementMechanic(string job) => job switch
     {
         "수호기사" => "guard_gauge", "광전사" => "low_hp_rage", "검사" => "combo_stack",
         "궁수" => "stationary_focus", "마법사" => "density_aoe", "소환사" => "summon_slot",
         "사제" => "healing_faith", "드루이드" => "nature_mark", "음유시인" => "chant_swap",
-        "주술사" => "curse_stack", "정령사" => "element_attach",
-        "사신" => "life_steal", "성기사" => "tank_heal", "시간술사" => "cooldown_warp",
-        "용기사" => "dragon_breath", _ => "swordsman_fallback",
+        "주술사" => "curse_stack", "정령사" => "element_attach", _ => "swordsman_fallback",
     };
 
     public static string[] FirstAdvancementSkillLabels(string job) => job switch
@@ -1010,10 +908,6 @@ public class W3Party : MonoBehaviour
         "음유시인" => new[] { "진군가", "수호가" },
         "주술사" => new[] { "저주 중첩", "쇠약 의식" },
         "정령사" => new[] { "화염 정령", "물 정령" },
-        "사신" => new[] { "흡혈", "—" },
-        "성기사" => new[] { "성격", "축복" },
-        "시간술사" => new[] { "시간 왜곡", "—" },
-        "용기사" => new[] { "용숨", "—" },
         _ => new[] { "일섬", "연격" },
     };
 
@@ -1091,16 +985,10 @@ public class W3Party : MonoBehaviour
     /// </summary>
     static float Heal(Member o, float amount)
     {
-        // §10-2 저주술사 오라 — 오라 안 파티원은 받는 회복이 준다(소비처 = 이 단일 관문).
-        // 오라 밖·저주술사 없으면 배율 1(무변). 캐시는 RefreshCursers가 프레임마다 스냅한다.
-        if (_curseN > 0 && o != null)
-            amount *= AshesToStars.EliteCurse.NearbyMul(o.Pos, false, _curseAt, _curseN, _curseRadius, _curseHeal);
         float before = o.Hp;
         o.Hp = Mathf.Min(o.MaxHp, o.Hp + amount);
         float healed = o.Hp - before;
         AshesToStars.BossBattle.ReportHealingToActive(healed);
-        if (healed > 0f && _game != null && _game.GameMode)
-            AshesToStars.LifeSystem.NoteCombatSkill("치유");
         return healed;
     }
 
@@ -1116,10 +1004,10 @@ public class W3Party : MonoBehaviour
     /// </summary>
     static SpriteBank.Job ArtOf(Job j) => j switch
     {
-        Job.수호기사 or Job.광전사 or Job.성기사 => SpriteBank.Job.Tank,
-        Job.마법사 or Job.용기사 => SpriteBank.Job.Mage,
+        Job.수호기사 or Job.광전사 => SpriteBank.Job.Tank,
+        Job.마법사 => SpriteBank.Job.Mage,
         Job.사제 or Job.드루이드 => SpriteBank.Job.Healer,
-        Job.음유시인 or Job.주술사 or Job.정령사 or Job.시간술사 => SpriteBank.Job.Buffer,
+        Job.음유시인 or Job.주술사 or Job.정령사 => SpriteBank.Job.Buffer,
         _ => SpriteBank.Job.Dps,
     };
 
@@ -1198,12 +1086,8 @@ public class W3Party : MonoBehaviour
                 _setup.HpMuls != null && i < _setup.HpMuls.Length ? _setup.HpMuls[i] : 1f);
             var fuse = _setup.Fuse != null && i < _setup.Fuse.Length
                 ? _setup.Fuse[i] : Fusion.CombatMuls.Identity;
-            float roleHp = m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f;
-            float roleAtk = m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f;
-            // JobDef 표(수호기사 320/10, 광전사 260/20, 마법사 110/26, 소환사 120/14…)를 전투가 읽는다.
-            // 역할 버킷만 쓰면 광전사가 탱처럼 두껍고 소환사 본체가 딜러처럼 때린다. QA_NO면 옛 버킷.
-            m.MaxHp = AshesToStars.JobInfo.CombatHp(job.ToString(), roleHp) * _bHp * levelMul * gearMul;
-            m.Atk = AshesToStars.JobInfo.CombatAtk(job.ToString(), roleAtk)
+            m.MaxHp = (m.Role == Role.Tank ? 320f : m.Role == Role.Dps ? 130f : 150f) * _bHp * levelMul * gearMul;
+            m.Atk = (m.Role == Role.Dps ? 26f : m.Role == Role.Tank ? 10f : m.Role == Role.Buffer ? 8f : 6f)
                     * _bAtk * levelMul * FusionStatMultiplier(fuse.Atk);
             // 사거리는 **역할이 아니라 직업**으로 정한다(§3).
             // Role.Dps로 묶으면 검사(근접)와 마법사(원거리)가 같은 사거리를 갖게 되어
@@ -1253,8 +1137,7 @@ public class W3Party : MonoBehaviour
             for (int i = 0; i < 시작웨이브; i++) SpawnMob();
         }
 
-        _t = 0f; _invArrowCd = 0f; _invMagicCd = 0f; _invArrowSlot = 0;
-        _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
+        _t = 0f; _kills = 0; _tauntUses = 0; _backlineHits = 0; _frontlineHits = 0;
         _healsCast = 0; _healerDeadT = -1f; _shieldAbsorbed = 0f; _faithPeak = 0f; _supportHits = 0;
         _deadJobs.Clear();          // 판마다 새로 센다 — 안 비우면 구성 순회 때 누적된다
         _meleeHits = 0; _shotHits = 0; _framesThisRun = 0; _aiDashUses = 0; _chargeTells = 0; _chargeRushes = 0;
@@ -1280,17 +1163,12 @@ public class W3Party : MonoBehaviour
             float a = Random.value * Mathf.PI * 2f;
             _mPos[i] = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Random.Range(Arena * 0.6f, Arena);
             int r = Random.Range(0, 100);
-            // §10-2 AI 4종 + 정예 3종.
-            //   0 추적형 30% · 1 포위형 20% · 5 돌진형 25% · 2 원거리형 15% · 3/4/6 정예 10%
+            // §10-2 AI 4종 + 정예 2종.
+            //   0 추적형 30% · 1 포위형 20% · 5 돌진형 25% · 2 원거리형 15% · 3/4 정예 10%
             // 원거리형은 §10-2가 정한 **15~25%** 안에 둔다(많으면 접근 자체가 불가능해진다).
-            // 돌진형은 「예고 표식 후 직선 돌진」이 §10-2의 4종 중 유일하게 없던 것이고,
-            // 대시(§5)를 넣은 지금이라야 회피가 성립한다.
-            // 정예 10%는 3 치유·4 소환·8 저주술사·9 처형자·6 수호자·7 군단장으로 2/2/2/1/2/1 나눈다(§10-2 거울 6종).
-            // 처형자는 딜 거울 — 후열(힐·버퍼)로 돌진해 폭딜, 진로 차단·선처치가 정답.
-            // 군단장·수호자 순서(…? 6 : 7)는 그대로 두고 처형(9)을 그 앞에 끼워 넣는다 —
-            // 정예 SelfCheck가 스폰 문자열을 보는데 `? 6 : 7`·`? 8 :`을 보존해야 회귀가 안 난다.
-            // 총 비율(90~100=10%)은 그대로라 측정 단일 경로가 안 흔들린다.
-            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 92 ? 3 : r < 94 ? 4 : r < 96 ? 8 : r < 97 ? 9 : r < 99 ? 6 : 7;
+            // 돌진형은 이번에 신설했다 — 「예고 표식 후 직선 돌진」이 §10-2의 4종 중
+            // 유일하게 **없던** 것이고, 대시(§5)를 넣은 지금이라야 회피가 성립한다.
+            _mKind[i] = r < 30 ? 0 : r < 50 ? 1 : r < 75 ? 5 : r < 90 ? 2 : r < 96 ? 3 : 4;
             // 보스 소환 몹은 **근접 돌격형(kind 1)으로 고정**한다. 원거리(kind 2)로 나오면
             // 탄으로 때려 피해 귀속 지점이 갈라지고, 무엇보다 「달려드는 쫄」이라는 소환 기믹의
             // 뜻과도 어긋난다. 근접으로 고정하면 파티 피해가 근접 판정 한 곳에서 온전히 잡힌다.
@@ -1312,8 +1190,7 @@ public class W3Party : MonoBehaviour
             if (summoned) _summonedAlive++;
             // 소환 몹은 잡몹보다 훨씬 단단하게(220) — 파티 한복판에 떨어지면 순식간에 포커싱되므로,
             // 즉사하면 「달려들어 후열을 문다」는 위협이 성립하지 않는다(실측: 90도 첫 타 전에 죽었다).
-            float baseHp = summoned ? 220f : IsElite(_mKind[i]) ? 90f : 26f;
-            _mHp[i] = _mMaxHp[i] = baseHp * EnemyStatMultiplier;
+            _mHp[i] = _mMaxHp[i] = summoned ? 220f : _mKind[i] >= 3 ? 90f : 26f;
             _mCd[i] = Random.value * 2f;
             // 소환 몹은 사거리 안에 나타나므로 **곧바로** 한 대 문다 — 예고 후 대응할 수 있는 위협이 된다.
             _mAtkCd[i] = summoned ? 0.15f : Random.value * 0.8f; _mFlash[i] = 0f;
@@ -1337,20 +1214,10 @@ public class W3Party : MonoBehaviour
             //    정예가 캐릭터(2.0u)보다 커져 "주인공이 안 보인다"의 실제 원인이 됐는데,
             //    크기표에도 SpriteBank에도 이 곱셈은 안 적혀 있어 누구도 못 봤다.
             //    이제 배율을 표에서 역산한다 — 비율을 바꾸려면 `prop_scale.json`만 고친다.
-            _mTr[i].localScale = Vector3.one * (IsElite(_mKind[i]) ? EliteScale : 1.0f);
+            _mTr[i].localScale = Vector3.one * (_mKind[i] >= 3 ? EliteScale : 1.0f);
             _mBarBg[i].gameObject.SetActive(false);      // 다시 스폰됐으니 만피 — 바 숨김
             _mBarFg[i].gameObject.SetActive(false);
             _mTr[i].gameObject.SetActive(true);
-            if (GameMode && !summoned)
-            {
-                float burst = AshesToStars.InvasionTowers.TrapBurst;
-                if (burst > 0f)
-                {
-                    DamageMob(i, burst);
-                    FlashMob(i);
-                    if (_mHp[i] <= 0f) KillMob(i);
-                }
-            }
             return;
         }
     }
@@ -1472,102 +1339,9 @@ public class W3Party : MonoBehaviour
         }
     }
 
-    // §10-2 수호자 오라 — 살아있는 수호자(kind 6) 위치를 프레임마다 스냅해 둔다.
-    // DamageMob은 매 타 호출되는 핫패스라, 여기서 개체 수·수치를 미리 캐시해 두고
-    // 피해 배율 계산은 순수 함수(EliteGuardian.Multiplier)로만 돌린다.
-    int _guardianN;
-    readonly Vector2[] _guardianAt = new Vector2[16];
-    float _gRadius = AshesToStars.EliteGuardian.DefaultAuraRadius;
-    float _gNearby = AshesToStars.EliteGuardian.DefaultNearbyTakenMul;
-    float _gSelf = AshesToStars.EliteGuardian.DefaultSelfTakenMul;
-
-    void RefreshGuardians()
-    {
-        _guardianN = 0;
-        if (AshesToStars.EliteGuardian.Blocked) return;   // 네거티브 컨트롤 — 오라·고방어 전부 끔
-        for (int i = 0; i < MAXM && _guardianN < _guardianAt.Length; i++)
-            if (_mOn[i] && _mBossIndex[i] < 0 && _mKind[i] == 6) _guardianAt[_guardianN++] = _mPos[i];
-        if (_guardianN > 0)
-        {
-            // 설정은 판 중 안 바뀌므로 개체가 있을 때만 한 번 읽는다(ScriptableObject 생성 비용 회피).
-            _gRadius = AshesToStars.EliteGuardian.AuraRadius();
-            _gNearby = AshesToStars.EliteGuardian.NearbyTakenMul();
-            _gSelf = AshesToStars.EliteGuardian.SelfTakenMul();
-        }
-    }
-
-    // §10-2 군단장 오라 — 살아있는 군단장(kind 7) 위치를 프레임마다 스냅해 둔다.
-    // TickMobs가 이동(spd)·공격 쿨다운마다 조회하는 핫패스라, 개체 수·수치를 미리
-    // 캐시해 두고 배율 계산은 순수 함수(EliteLegion.NearbyMul)로만 돌린다.
-    int _cmdN;
-    readonly Vector2[] _cmdAt = new Vector2[16];
-    float _cRadius = AshesToStars.EliteLegion.DefaultAuraRadius;
-    float _cAtk = AshesToStars.EliteLegion.DefaultAtkSpdMul;
-    float _cMove = AshesToStars.EliteLegion.DefaultMoveMul;
-
-    void RefreshCommanders()
-    {
-        _cmdN = 0;
-        if (AshesToStars.EliteLegion.Blocked) return;   // 네거티브 컨트롤 — 공속·이속 버프 전부 끔
-        for (int i = 0; i < MAXM && _cmdN < _cmdAt.Length; i++)
-            if (_mOn[i] && _mBossIndex[i] < 0 && _mKind[i] == 7) _cmdAt[_cmdN++] = _mPos[i];
-        if (_cmdN > 0)
-        {
-            _cRadius = AshesToStars.EliteLegion.AuraRadius();
-            _cAtk = AshesToStars.EliteLegion.AtkSpdMul();
-            _cMove = AshesToStars.EliteLegion.MoveMul();
-        }
-    }
-
-    // §10-2 저주술사 오라 — 살아있는 저주술사(kind 8) 위치를 프레임마다 스냅해 둔다.
-    // 소비처가 **정적** 회복 관문(Heal)이라 캐시도 static이어야 Heal에서 읽을 수 있다.
-    // (군단장·수호자는 인스턴스 관문 TickMobs/DamageMob이라 인스턴스 필드였다.)
-    // 배율 계산은 순수 함수(EliteCurse.NearbyMul)로만 돌린다.
-    static int _curseN;
-    static readonly Vector2[] _curseAt = new Vector2[16];
-    static float _curseRadius = AshesToStars.EliteCurse.DefaultAuraRadius;
-    static float _curseHeal = AshesToStars.EliteCurse.DefaultHealMul;
-    static float _curseMove = AshesToStars.EliteCurse.DefaultMoveMul;
-
-    void RefreshCursers()
-    {
-        _curseN = 0;
-        if (AshesToStars.EliteCurse.Blocked) return;   // 네거티브 컨트롤 — 회복·이속 저주 전부 끔
-        for (int i = 0; i < MAXM && _curseN < _curseAt.Length; i++)
-            if (_mOn[i] && _mBossIndex[i] < 0 && _mKind[i] == 8) _curseAt[_curseN++] = _mPos[i];
-        if (_curseN > 0)
-        {
-            _curseRadius = AshesToStars.EliteCurse.AuraRadius();
-            _curseHeal = AshesToStars.EliteCurse.HealMul();
-            _curseMove = AshesToStars.EliteCurse.MoveMul();
-        }
-    }
-
-    // §10-2 처형자 폭딜 — 위치 의존이 없어 반경 스냅은 필요 없고, 폭딜·돌진 배율만 캐시한다.
-    // 근접 피해 관문(TickMobs)이 이동 spd와 명중 피해에서 조회하는 핫패스라 프레임마다 한 번만 읽는다.
-    // 배율 계산은 순수 함수(EliteExecutioner.DamageMul)로만 돌린다.
-    float _execBurst = AshesToStars.EliteExecutioner.DefaultBurstMul;
-    float _execRush = AshesToStars.EliteExecutioner.DefaultRushMul;
-
-    void RefreshExecutioners()
-    {
-        if (AshesToStars.EliteExecutioner.Blocked)   // 네거티브 컨트롤 — 폭딜 끔(이동은 그대로, 측정선은 폭딜 배율)
-        {
-            _execBurst = 1f;
-            _execRush = AshesToStars.EliteExecutioner.DefaultRushMul;
-            return;
-        }
-        _execBurst = AshesToStars.EliteExecutioner.BurstMul();
-        _execRush = AshesToStars.EliteExecutioner.RushMul();
-    }
-
     void DamageMob(int index, float amount)
     {
         if (index < 0 || index >= MAXM || !_mOn[index] || amount <= 0f) return;
-        // §10-2 수호자 오라 — 오라 안 잡몹·수호자 자신은 받는 피해가 준다(소비처 = 이 관문).
-        if (_guardianN > 0)
-            amount *= AshesToStars.EliteGuardian.Multiplier(
-                _mPos[index], _mKind[index] == 6, _guardianAt, _guardianN, _gRadius, _gNearby, _gSelf);
         float dealt = Mathf.Min(_mHp[index], amount);
         if (_mBossIndex[index] >= 0
             && !AshesToStars.BossBattle.TryReportPartyDamageToActive(_mBossIndex[index], dealt))
@@ -1688,7 +1462,6 @@ public class W3Party : MonoBehaviour
             _callouts.Add(new Callout { Text = name, At = m.Pos, T = 0f, C = tint });
         if (hitstop > 0) Hitstop(hitstop);
         if (shake > 0f) Shake(shake);
-        if (GameMode) AshesToStars.LifeSystem.NoteCombatSkill(name);
     }
 
     void UpdateCallouts(float dt)
@@ -1867,13 +1640,8 @@ public class W3Party : MonoBehaviour
         }
         TickDashProbe(dt);
         UpdateCallouts(dt);
-        RefreshGuardians();   // §10-2 수호자 오라 스냅 — 파티 피해(DamageMob) 전에 잡아야 이번 프레임에 반영된다
-        RefreshCommanders();  // §10-2 군단장 오라 스냅 — 몹 이동·공격(TickMobs) 전에 잡아야 이번 프레임에 반영된다
-        RefreshCursers();     // §10-2 저주술사 오라 스냅 — 파티 회복(Heal)·이동(TickParty) 전에 잡아야 이번 프레임에 반영된다
-        RefreshExecutioners();// §10-2 처형자 폭딜 스냅 — 근접 명중(TickMobs) 전에 잡아야 이번 프레임에 반영된다
         TickParty(dt);
         TickMobs(dt);
-        TickInvasionTowers(dt);
 
         // 겹침 해소 — 유닛이 서로 파고들면 실루엣이 먹혀 무엇이 몇 마리인지 안 읽힌다.
         // 이동을 계산한 **뒤에** 한 번만 민다(이동 중에 밀면 추적이 흔들린다).
@@ -2052,17 +1820,16 @@ public class W3Party : MonoBehaviour
     void TickCommand()
     {
         if (_party == null) return;
-        if (!CommandModeActive) { _sel = -1; return; }
 
         for (int i = 0; i < _party.Length && i < 5; i++)
-            if (Input.GetKeyDown(KeyCode.Alpha1 + i)) TrySelectCommandMember(i);
+            if (Input.GetKeyDown(KeyCode.Alpha1 + i) && _party[i].Alive) _sel = i;
         if (Input.GetKeyDown(KeyCode.Alpha0)) _sel = -1;
 
         // 스페이스 = 1번 스킬, Q = 2번 스킬. 마우스를 안 떼고 쓸 수 있어야 지휘가 빠르다(§5)
         if (_sel >= 0 && _party[_sel].Alive)
         {
-            if (Input.GetKeyDown(KeyCode.Space)) TryQueueSelectedSkill(1);
-            if (Input.GetKeyDown(KeyCode.Q)) TryQueueSelectedSkill(2);
+            if (Input.GetKeyDown(KeyCode.Space)) _party[_sel].ForceSkill = 1;
+            if (Input.GetKeyDown(KeyCode.Q)) _party[_sel].ForceSkill = 2;
             if (Input.GetKeyDown(KeyCode.E)) _party[_sel].ForceUltimate = true;
             // 이동기(§5) — Shift. 방향은 이동 입력, 없으면 가장 가까운 위협의 **반대쪽**으로.
             // "피하려고 쓰는 것"이 기본 용도라 아무 방향도 안 주면 도망 방향이 맞다.
@@ -2095,7 +1862,7 @@ public class W3Party : MonoBehaviour
                 float d = (_party[i].Pos - world).magnitude;
                 if (d < best) { best = d; hit = i; }
             }
-            if (hit >= 0) TrySelectCommandMember(hit);
+            if (hit >= 0) _sel = hit;
             else if (_sel >= 0) _party[_sel].Order = world;   // 선택 중이면 빈 땅 클릭 = 이동
         }
         if (Input.GetMouseButtonDown(1) && _sel >= 0 && _party[_sel].Alive)
@@ -2103,103 +1870,9 @@ public class W3Party : MonoBehaviour
     }
 
     // ── 파티 자동 전투 ────────────────────────────────────
-    void TickInvasionTowers(float dt)
-    {
-        if (!GameMode || !AshesToStars.InvasionTowers.InPlay) return;
-        bool friendly = AshesToStars.InvasionTowers.FriendlyNow();
-        _invArrowCd -= dt;
-        _invMagicCd -= dt;
-        float arrowDmg = AshesToStars.InvasionTowers.ArrowDmg;
-        if (_invArrowCd <= 0f && arrowDmg > 0f)
-        {
-            _invArrowCd = AshesToStars.InvasionTowers.ArrowInterval;
-            int slot = _invArrowSlot;
-            _invArrowSlot = 1 - _invArrowSlot;
-            Vector2 from = AshesToStars.InvasionTowers.ArrowPos(slot, friendly);
-            if (friendly)
-            {
-                int t = NearestMob(from, AshesToStars.InvasionTowers.ArrowRange);
-                if (t >= 0)
-                {
-                    FireAlly(from, _mPos[t]);
-                    DamageMob(t, arrowDmg);
-                    FlashMob(t);
-                    if (_mHp[t] <= 0f) KillMob(t);
-                }
-            }
-            else
-            {
-                Member m = NearestPartyMember(from, AshesToStars.InvasionTowers.ArrowRange);
-                if (m != null)
-                {
-                    FireAlly(from, m.Pos);
-                    Damage(m, arrowDmg, m.Role == Role.Tank);
-                }
-            }
-        }
-        float magicDmg = AshesToStars.InvasionTowers.MagicDmg;
-        if (_invMagicCd <= 0f && magicDmg > 0f)
-        {
-            _invMagicCd = AshesToStars.InvasionTowers.MagicInterval;
-            Vector2 from = AshesToStars.InvasionTowers.MagicPos(friendly);
-            if (friendly)
-            {
-                int t = NearestMob(from, AshesToStars.InvasionTowers.MagicRange);
-                if (t >= 0)
-                {
-                    FireAlly(from, _mPos[t]);
-                    float r2 = AshesToStars.InvasionTowers.MagicRadius
-                        * AshesToStars.InvasionTowers.MagicRadius;
-                    int hits = 0;
-                    for (int i = 0; i < MAXM && hits < AshesToStars.InvasionTowers.MagicMaxTargets; i++)
-                    {
-                        if (!_mOn[i]) continue;
-                        if ((_mPos[i] - _mPos[t]).sqrMagnitude > r2) continue;
-                        DamageMob(i, magicDmg);
-                        FlashMob(i);
-                        if (_mHp[i] <= 0f) KillMob(i);
-                        hits++;
-                    }
-                }
-            }
-            else
-            {
-                Member m = NearestPartyMember(from, AshesToStars.InvasionTowers.MagicRange);
-                if (m != null)
-                {
-                    FireAlly(from, m.Pos);
-                    float r2 = AshesToStars.InvasionTowers.MagicRadius
-                        * AshesToStars.InvasionTowers.MagicRadius;
-                    int hits = 0;
-                    foreach (var ally in _party)
-                    {
-                        if (hits >= AshesToStars.InvasionTowers.MagicMaxTargets) break;
-                        if (!ally.Alive) continue;
-                        if ((ally.Pos - m.Pos).sqrMagnitude > r2) continue;
-                        Damage(ally, magicDmg, ally.Role == Role.Tank);
-                        hits++;
-                    }
-                }
-            }
-        }
-    }
-
-    Member NearestPartyMember(Vector2 p, float maxR)
-    {
-        Member best = null;
-        float bd = maxR * maxR;
-        if (_party == null) return null;
-        foreach (var m in _party)
-        {
-            if (!m.Alive) continue;
-            float d = (m.Pos - p).sqrMagnitude;
-            if (d < bd) { bd = d; best = m; }
-        }
-        return best;
-    }
-
     void TickParty(float dt)
     {
+        var sp = Spec(_style);
         Member tank = null;
         foreach (var candidate in _party)
             if (candidate.Alive && candidate.Role == Role.Tank && (tank == null || candidate.Job == Job.수호기사))
@@ -2209,7 +1882,6 @@ public class W3Party : MonoBehaviour
         foreach (var m in _party)
         {
             if (!m.Alive) continue;
-            var sp = Spec(StyleFor(m));   // §3 멤버별 전투 스타일 — 측정(UseFixedStyle)이면 파티 단일로 되돌린다
             m.Cd -= dt; m.SkillCd -= dt; m.UltimateCd -= dt;
             if (m.AutoArmed != 0 && m.ForceSkill == 0)
             {
@@ -2247,7 +1919,7 @@ public class W3Party : MonoBehaviour
                 else { want = d.normalized; commanded = true; }
             }
 
-            if (m.Job == Job.수호기사 || m.Job == Job.성기사)
+            if (m.Job == Job.수호기사)
             {
                 // ⚠️ 이동과 스킬을 **분리**한다. 예전엔 이 둘이 한 분기에 묶여 있어서
                 //    이동 명령을 내리는 순간 탱커가 도발·방패를 못 쓰게 됐다.
@@ -2257,8 +1929,6 @@ public class W3Party : MonoBehaviour
                     int t2 = NearestMob(m.Pos, 99f);
                     if (t2 >= 0) want = (_mPos[t2] - m.Pos).normalized;
                 }
-                if (m.Job == Job.수호기사)
-                {
                 // 수호 게이지는 §3대로 **피격·아군 보호**로 찬다(Damage에서 더한다).
                 // 예전에는 시간으로 찼다(dt*14) — 그러면 탱이 가만히 서 있어도 방패가 나가고,
                 // "맞아주는 것이 곧 자원"이라는 탱의 정체성이 성립하지 않는다.
@@ -2298,7 +1968,6 @@ public class W3Party : MonoBehaviour
                                                       new Color(0.55f, 0.82f, 1f));
                     foreach (var o in _party) if (o.Alive) FxParticles.Play(FxKind.무적, ToScreen(o.Pos));
                 }
-                }
             }
             else if (commanded)
             {
@@ -2320,7 +1989,6 @@ public class W3Party : MonoBehaviour
                 {
                     case Job.광전사:
                     case Job.검사:
-                    case Job.사신:
                     {
                         // 근접 딜 — **탱이 모아둔 무리**를 친다. 혼자 먼 몹을 쫓아가면
                         // 탱의 보호를 벗어나 §10-4의 어그로 구조가 성립하지 않는다
@@ -2334,7 +2002,6 @@ public class W3Party : MonoBehaviour
                     case Job.궁수:
                     case Job.마법사:
                     case Job.소환사:
-                    case Job.용기사:
                     {
                         // 원거리 딜 — 밀집한 무리를 사거리 끝에서 노린다. 너무 붙으면 물러선다.
                         // 기준점을 탱으로 잡아 **탱이 모아둔 무리**가 우선 후보가 되게 한다.
@@ -2408,11 +2075,7 @@ public class W3Party : MonoBehaviour
 
             if (m.DashT <= 0f)
             {
-                // §10-2 저주술사 이속 감소 — 오라 안 파티원은 더 느리게 움직인다(소비처 = 이동 단일 경로).
-                // 오라 밖·저주술사 없으면 배율 1(무변). 대시는 이동기라 위 DashT 분기에서 제외된다.
-                float curseMove = _curseN > 0
-                    ? AshesToStars.EliteCurse.NearbyMul(m.Pos, false, _curseAt, _curseN, _curseRadius, _curseMove) : 1f;
-                Vector2 step = want * PlayerSpeed * 0.85f * SpdOf(m) * curseMove * dt;
+                Vector2 step = want * PlayerSpeed * 0.85f * SpdOf(m) * dt;
                 if (ArenaLayout.Any) step = ArenaLayout.Around(m.Pos, step, UnitSeparation.AllyRadius);
                 m.Pos += step;
                 if (ArenaLayout.Any) m.Pos = ArenaLayout.Resolve(m.Pos, UnitSeparation.AllyRadius);
@@ -2607,58 +2270,6 @@ public class W3Party : MonoBehaviour
                     SkillCast(m, "화염 정령", new Color(1f, 0.45f, 0.2f), 1);
                 }
                 m.Cd = 1.2f;
-            }
-            else if (m.Job == Job.사신 && target >= 0)
-            {
-                float dmg = m.Atk * (m.ForceSkill == 1 ? 2.4f : 1.35f);
-                if (m.ForceSkill != 0) { m.ForceSkill = 0; SkillCast(m, "흡혈", new Color(0.75f, 0.15f, 0.2f), 2); }
-                DamageMob(target, dmg * sp.DmgMul * ChantAtk());
-                Heal(m, dmg * 0.4f);
-                m.Cd = 0.42f / AtkSpdOf(m);
-                AttackFx(m, _mPos[target]); FlashMob(target);
-                if (_mHp[target] <= 0f) KillMob(target);
-            }
-            else if (m.Job == Job.성기사 && target >= 0)
-            {
-                float dmg = m.Atk * (m.ForceSkill == 1 ? 1.8f : 1.05f);
-                if (m.ForceSkill == 2)
-                {
-                    m.ForceSkill = 0;
-                    foreach (var o in _party)
-                        if (o.Alive) Heal(o, 16f * HealOf(m));
-                    SkillCast(m, "축복", new Color(1f, 0.92f, 0.55f), 1);
-                }
-                else if (m.ForceSkill == 1) { m.ForceSkill = 0; SkillCast(m, "성격", new Color(1f, 0.85f, 0.4f), 2); }
-                DamageMob(target, dmg * sp.DmgMul * ChantAtk());
-                Member worst = null;
-                foreach (var o in _party)
-                    if (o.Alive && (worst == null || o.Hp / o.MaxHp < worst.Hp / worst.MaxHp)) worst = o;
-                if (worst != null) Heal(worst, 10f * HealOf(m));
-                m.Cd = 0.55f / AtkSpdOf(m);
-                AttackFx(m, _mPos[target]); FlashMob(target);
-                if (_mHp[target] <= 0f) KillMob(target);
-            }
-            else if (m.Job == Job.시간술사)
-            {
-                foreach (var o in _party)
-                    if (o.Alive) o.Cd = Mathf.Min(o.Cd, m.ForceSkill == 1 ? 0.05f : 0.2f);
-                if (m.ForceSkill != 0) { m.ForceSkill = 0; SkillCast(m, "시간 왜곡", new Color(0.65f, 0.85f, 1f), 1); }
-                m.Cd = 1.1f;
-            }
-            else if (m.Job == Job.용기사 && target >= 0)
-            {
-                Vector2 c = _mPos[target];
-                float rad = m.ForceSkill == 1 ? 3.4f : 2.2f;
-                if (m.ForceSkill != 0) { m.ForceSkill = 0; SkillCast(m, "용숨", new Color(1f, 0.45f, 0.15f), 3, 0.22f); }
-                for (int j = 0; j < MAXM; j++)
-                    if (_mOn[j] && (_mPos[j] - c).sqrMagnitude < rad * rad)
-                    {
-                        DamageMob(j, m.Atk * 1.3f * sp.DmgMul * ChantAtk());
-                        FlashMob(j);
-                        if (_mHp[j] <= 0f) KillMob(j);
-                    }
-                m.Cd = 0.7f / AtkSpdOf(m);
-                AttackFx(m, c);
             }
             else if (m.Job == Job.마법사 && target >= 0)
             {
@@ -3044,17 +2655,6 @@ public class W3Party : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// §10-2 정예 여부. **번호 비교(`>= 3`)가 아니라 명시 술어로 판정한다.**
-    /// 정예 = {3 치유·4 소환·6 수호자·7 군단장·8 저주술사·9 처형자}.
-    /// kind 5(돌진형)는 3·4 정예 **뒤에** 추가된 잡몹인데, 번호가 3보다 커서
-    /// 옛 「kind ＞= 3」 번호 관용구가 정예로 오분류했다 — 돌진형이 정예 HP(90 vs 26)·
-    /// EliteScale·필드 정예 드랍(EliteDrop.NoteFieldKill)·정예 사망 FX를 4바퀴 동안
-    /// 잘못 받고 있었다(번호 순서 ≠ 의미 순서). 새 정예 종을 추가하면 여기 한 곳만
-    /// 고치고 HP·스케일·드랍·FX 호출부는 이 술어를 재사용한다(가드레일 「같은 로직 여러 곳」).
-    /// </summary>
-    public static bool IsElite(int kind) => kind == 3 || kind == 4 || (kind >= 6 && kind <= 9);
-
     static int MobSpriteKind(int kind) => kind switch
     {
         1 => SpriteBank.MobKindSwarmer,    // 포위형 — 낮고 넓게 벌어진 군집형
@@ -3066,10 +2666,6 @@ public class W3Party : MonoBehaviour
         3 => SpriteBank.MobKindPriest,     // 치유 정예 — 사제
         4 => SpriteBank.MobKindSummoner,   // 소환 정예 — 소환사
         5 => SpriteBank.MobKindCharger,    // 돌진형 — 뿔·덩치·앞으로 쏠린 무게중심
-        6 => SpriteBank.MobKindGuardian,   // 수호자 정예 — 방패 든 수호기사 실루엣(§10-2 탱 거울)
-        7 => SpriteBank.MobKindBard,       // 군단장 정예 — 결집 나부낌 든 버퍼 실루엣(§10-2 버퍼 거울)
-        8 => SpriteBank.MobKindShaman,     // 저주술사 정예 — 지팡이·후드 든 저주술사 실루엣(§10-2 디버퍼 거울)
-        9 => SpriteBank.MobKindBerserker,  // 처형자 정예 — 앞으로 쏠린 광전사 실루엣(§10-2 딜 거울, 후열 돌진)
         _ => SpriteBank.MobKindBasic,      // 0 추적형
     };
 
@@ -3119,10 +2715,6 @@ public class W3Party : MonoBehaviour
             2 => Muted(TintOf(MobFamily.언데드), 0.22f, 0.80f), // 원거리형 — 초록기
             5 => Muted(new Color(1f, 0.82f, 0.30f), 0.30f, 0.86f), // 돌진형 — 예고를 봐야 하니 조금 진하게
             3 => Muted(new Color(1f, 0.30f, 0.30f), 0.34f, 0.84f), // 치유 정예 — 붉은기
-            6 => Muted(new Color(0.60f, 0.80f, 0.95f), 0.32f, 0.92f), // 수호자 정예 — 강철빛(방패, 정예 중 가장 밝게)
-            7 => Muted(new Color(0.95f, 0.75f, 0.10f), 0.40f, 0.90f), // 군단장 정예 — 결집의 순금빛(돌진 금색보다 진하고 채도 높게)
-            8 => Muted(new Color(0.42f, 0.62f, 0.28f), 0.55f, 0.60f), // 저주술사 정예 — 병색 독초록(정예 중 가장 어둡게, 소환 보라·치유 붉기와 다른 축)
-            9 => Muted(new Color(0.75f, 0.10f, 0.12f), 0.62f, 0.55f), // 처형자 정예 — 핏빛 진홍(치유의 옅은 붉기보다 진하고 어둡게 — 죽이러 오는 것이 읽히게)
             _ => Muted(new Color(0.78f, 0.40f, 1f), 0.34f, 0.84f), // 소환 정예 — 보랏기
         };
     }
@@ -3156,27 +2748,23 @@ public class W3Party : MonoBehaviour
             return;
         }
         _kills++;
-        if (GameMode) AshesToStars.LifeSystem.NoteCombatSkill("처치");
         if (GameMode) AshesToStars.HuntBoon.NoteKill();
-        // 필드 정예 훅(큐#1, 오너 위임 승인) — 던전 정예는 노드 Complete가 이미 지급하므로 필드만.
-        if (GameMode && !AshesToStars.DungeonRun.Active && IsElite(_mKind[i]))
-            AshesToStars.EliteDrop.NoteFieldKill();
-        PushReward(IsElite(_mKind[i]) ? "정예 처치 · 희귀 전리품" : CombatHudRewardLine(12, 4, 1),
-                   IsElite(_mKind[i]) ? new Color(0.86f, 0.50f, 1f) : new Color(1f, 0.78f, 0.30f));
+        PushReward(_mKind[i] >= 3 ? "정예 처치 · 희귀 전리품" : CombatHudRewardLine(12, 4, 1),
+                   _mKind[i] >= 3 ? new Color(0.86f, 0.50f, 1f) : new Color(1f, 0.78f, 0.30f));
         if (_mSummoned[i]) { _mSummoned[i] = false; _summonedAlive = Mathf.Max(0, _summonedAlive - 1); }
         // 죽은 자리에 먼지 — 다만 **초당 처치가 수십 건**이므로 전부 뿌리면 화면이 먼지밭이 된다.
         // 5마리에 한 번만 낸다(파티클 풀 24개를 잡몹 사망이 독점하지 않게).
         // 5마리에 1번은 지나치게 성겼다 — 처치가 화면에서 거의 안 읽혔다.
         // 3마리에 1번으로 올리고, 정예는 매번 크게 터뜨린다(드물게 죽으므로 비용도 작다).
         if ((_kills % 3) == 0) MobDeathPuff(_mPos[i]);
-        if (IsElite(_mKind[i]))
+        if (_mKind[i] >= 3)
         {
             FxParticles.Play(FxKind.쇼크웨이브, ToScreen(_mPos[i]), 1.2f);
             FxParticles.Play(FxKind.광륜, ToScreen(_mPos[i]), 0.9f, _mTint[i]);
         }
         // 정예는 매번 — 드물게 죽는 데다, 죽은 것이 화면에서 확실히 읽혀야 한다.
-        if (IsElite(_mKind[i]) || (_kills % 3) == 0)
-            FxPool.Play(FxPool.Kind.Death, _mPos[i], IsElite(_mKind[i]) ? 1.5f : 0.9f);
+        if (_mKind[i] >= 3 || (_kills % 3) == 0)
+            FxPool.Play(FxPool.Kind.Death, _mPos[i], _mKind[i] >= 3 ? 1.5f : 0.9f);
 
         // 오브젝트를 여기서 끄지 않는다 — 사망 모션이 돌 시간을 준다.
         // `_mOn[i]`는 이미 false라 AI·타겟팅·피격 판정에서는 즉시 빠진다(시체가 싸우지 않는다).
@@ -3298,6 +2886,7 @@ public class W3Party : MonoBehaviour
 
     void TickMobs(float dt)
     {
+        var sp = Spec(_style);
         for (int i = 0; i < MAXM; i++)
         {
             if (!_mOn[i]) continue;
@@ -3306,11 +2895,8 @@ public class W3Party : MonoBehaviour
 
             // 어그로: 근접은 최근접, 원거리는 **후열(위협 낮은 쪽) 저격**.
             // 단 탱의 도발(Threat 급등)이 그걸 끊는다 — 이 두 줄이 진형을 만든다.
-            // §10-4 후열 저격은 원거리형(2)만. §10-2 처형자(9)도 후열(힐·버퍼)로 돌진한다 —
-            // 단 탱 도발이 PickBackline 안에서 하드 락으로 그 진로를 끊는다(딜 거울의 정답=진로 차단).
-            Member tgt = (_mKind[i] == 2 || _mKind[i] == 9) ? PickBackline() : PickNearestOrTaunt(p);
+            Member tgt = _mKind[i] == 2 ? PickBackline() : PickNearestOrTaunt(p);   // §10-4 후열 저격은 원거리형만
             if (tgt == null) continue;
-            var sp = Spec(StyleFor(tgt));   // 맞을 멤버의 스타일 피해배율 — 측정(UseFixedStyle)이면 파티 단일
 
             Vector2 to = tgt.Pos - p;
             float dist = to.magnitude + 1e-4f;
@@ -3381,13 +2967,7 @@ public class W3Party : MonoBehaviour
                 want = dist > keep + 1f ? dir : (dist < keep - 1f ? -dir : new Vector2(-dir.y, dir.x));
                 spd = PlayerSpeed * RangedRatio;
                 _mCd[i] -= dt;
-                // §10-2 군단장 공속 버프 — 오라 안 원거리 몹은 더 자주 쏜다(쿨을 배율로 나눔).
-                if (_mCd[i] <= 0f && dist < 12f)
-                {
-                    _mCd[i] = 2.4f / (_cmdN > 0
-                        ? AshesToStars.EliteLegion.NearbyMul(p, false, _cmdAt, _cmdN, _cRadius, _cAtk) : 1f);
-                    Fire(p, dir);
-                }
+                if (_mCd[i] <= 0f && dist < 12f) { _mCd[i] = 2.4f; Fire(p, dir); }
             }
             else if (_mKind[i] == 3)                              // 정예: 주변 몹 치유
             {
@@ -3398,7 +2978,7 @@ public class W3Party : MonoBehaviour
                     _mCd[i] = 1.5f;
                     for (int j = 0; j < MAXM; j++)
                         if (_mOn[j] && (_mPos[j] - p).sqrMagnitude < 16f)
-                            _mHp[j] = Mathf.Min(_mMaxHp[j], _mHp[j] + 8f * EnemyStatMultiplier);
+                            _mHp[j] = Mathf.Min(_mKind[j] >= 3 ? 90f : 26f, _mHp[j] + 8f);
                 }
             }
             else if (_mKind[i] == 4)                              // 정예: 잡몹 소환
@@ -3407,72 +2987,7 @@ public class W3Party : MonoBehaviour
                 _mCd[i] -= dt;
                 if (_mCd[i] <= 0f && _mAlive < MAXM - 20) { _mCd[i] = 5.0f; SpawnMob(); }
             }
-            else if (_mKind[i] == 6)                              // 정예: 수호자 — 피해 감소 오라·고방어
-            {
-                // 느리게 다가와 잡몹 곁을 지킨다. 피해 감소는 DamageMob(단일 피해 관문)이
-                // EliteGuardian 배율로 처리한다 — 오라 밖 유인·선처치가 정답이 되게(§10-2).
-                want = dir; spd = PlayerSpeed * 0.5f;
-                _mCd[i] -= dt;
-                if (_mCd[i] <= 0f)
-                {
-                    _mCd[i] = 1.2f;
-                    // 오라 표식 — **바닥 링이 아니라** 수호자 몸에 감기는 방패빛(작게).
-                    // 큰 바닥 원은 스킬 범위로 읽힌다(§6-A 오너 4회 지적) → 개체에 붙인 광륜으로
-                    // "이 개체가 지킨다"만 말하고 반경 원은 그리지 않는다(돌진 예고가 먼지뿐인 것과 같은 원칙).
-                    FxParticles.Play(FxKind.광륜, ToScreen(p), 1.2f, _mTint[i]);
-                }
-            }
-            else if (_mKind[i] == 7)                              // 정예: 군단장 — 공속·이속 증가 오라
-            {
-                // 느리게 다가와 무리 곁에서 지휘한다. 버프는 아래 이동 spd·공격 쿨다운이
-                // EliteLegion 배율로 처리한다 — 방치하면 물량 압력이 급상승(§10-2 버퍼 거울).
-                want = dir; spd = PlayerSpeed * 0.5f;
-                _mCd[i] -= dt;
-                if (_mCd[i] <= 0f)
-                {
-                    _mCd[i] = 1.2f;
-                    // 결집 표식 — **바닥 링이 아니라** 군단장 몸에 감기는 나부낌(작게).
-                    // 큰 바닥 원은 스킬 범위로 읽힌다(§6-A 오너 4회 지적) → 개체 광채로
-                    // "이 개체가 무리를 몰아친다"만 말하고 반경 원은 그리지 않는다.
-                    FxParticles.Play(FxKind.무적, ToScreen(p), 1.1f, _mTint[i]);
-                }
-            }
-            else if (_mKind[i] == 8)                              // 정예: 저주술사 — 회복량·이속 감소 오라
-            {
-                // 느리게 다가와 파티 곁을 맴돈다. 저주는 Heal(회복 단일 관문)·TickParty(이동)이
-                // EliteCurse 배율로 처리한다 — 사거리 밖 이탈 후 처치가 정답이 되게(§10-2 디버퍼 거울).
-                want = dir; spd = PlayerSpeed * 0.5f;
-                _mCd[i] -= dt;
-                if (_mCd[i] <= 0f)
-                {
-                    _mCd[i] = 1.2f;
-                    // 저주 표식 — **바닥 링이 아니라** 저주술사 몸에 감기는 검보라 그을음(작게).
-                    // 큰 바닥 원은 스킬 범위로 읽힌다(§6-A 오너 4회 지적) → 개체에 붙인 어두운
-                    // 먼지로 "이 개체가 저주한다"만 말하고 반경 원은 그리지 않는다.
-                    FxParticles.Play(FxKind.먼지, ToScreen(p), 1.0f, _mTint[i]);
-                }
-            }
-            else if (_mKind[i] == 9)                              // 정예: 처형자 — 후열 돌진 폭딜(§10-2 딜 거울)
-            {
-                // 후열(힐·버퍼)로 곧장 빠르게 돌진한다. 폭딜은 아래 근접 관문이
-                // EliteExecutioner 배율로 처리한다 — 진로를 몸으로 막거나 먼저 끊는 것이
-                // 정답이 되게(§10-2 딜 거울). 정예 중 가장 빠른 이동(_execRush).
-                want = dir; spd = PlayerSpeed * _execRush;
-                _mCd[i] -= dt;
-                if (_mCd[i] <= 0f)
-                {
-                    _mCd[i] = 1.0f;
-                    // 돌진 표식 — **바닥 링·초승달 금지**(§6-A 오너 4회 지적). 개체에 감기는
-                    // 핏빛 먼지로 "이 개체가 후열을 노린다"만 말하고 반경 원은 그리지 않는다.
-                    FxParticles.Play(FxKind.먼지, ToScreen(p), 1.1f, _mTint[i]);
-                }
-            }
             else { want = dir; spd = PlayerSpeed * ChaserRatio; } // 추적형
-
-            // §10-2 군단장 이속 버프 — 오라 안 잡몹(군단장 자신 제외)은 더 빠르게 접근한다.
-            // 소비처 = 이동 단일 경로(step 계산 직전). 오라 밖·군단장 없으면 배율 1(무변).
-            if (_cmdN > 0)
-                spd *= AshesToStars.EliteLegion.NearbyMul(p, _mKind[i] == 7, _cmdAt, _cmdN, _cRadius, _cMove);
 
             Vector2 prev = _mPos[i];
             Vector2 step = want * spd * dt;
@@ -3509,13 +3024,9 @@ public class W3Party : MonoBehaviour
                 _mAtkCd[i] -= dt;
                 if (_mAtkCd[i] <= 0f)
                 {
-                    // §10-2 군단장 공속 버프 — 오라 안 근접 몹은 더 자주 때린다(쿨을 배율로 나눔).
-                    _mAtkCd[i] = 1.0f / (_cmdN > 0
-                        ? AshesToStars.EliteLegion.NearbyMul(p, _mKind[i] == 7, _cmdAt, _cmdN, _cRadius, _cAtk) : 1f);
+                    _mAtkCd[i] = 1.0f;
                     _meleeHits++;
-                    float md = 6f * EnemyStatMultiplier * sp.TakenMul;
-                    // §10-2 처형자 폭딜 — 후열 명중이면 폭딜 배율(그 밖엔 1). 진로 차단·선처치가 정답.
-                    if (_mKind[i] == 9) md *= AshesToStars.EliteExecutioner.DamageMul(true, _execBurst);
+                    float md = 6f * sp.TakenMul;
                     Damage(tgt, md, tgt.Role == Role.Tank);
                     // 소환 몹이 준 피해만 따로 센다 — 네거티브 컨트롤의 측정선(§10-5).
                     if (_mSummoned[i]) { _summonDmgToParty += md; _summonHits++; }
@@ -3647,7 +3158,6 @@ public class W3Party : MonoBehaviour
         if (m.IFrame > 0f) return;
         float incoming = dmg;
         dmg *= _raceDmgTakenMul;                             // 종족 방어배율(§18-9) — 파티 전체 받는 피해 배율(엘프 ×1.20)
-        dmg *= AshesToStars.InvasionTowers.WallTakenMul;     // 수비 침략 성벽 — 출정·비침략은 1
         if (_partyChant == Chant.수호가) dmg *= 0.82f;      // 음유시인 수호가 오라
         if (m.Shield > 0f)                                   // 수호기사 성채 방패가 먼저 깎인다
         {
@@ -3760,6 +3270,7 @@ public class W3Party : MonoBehaviour
 
     void TickShots(float dt)
     {
+        var sp = Spec(_style);
         for (int i = 0; i < MAXP; i++)
         {
             if (!_pOn[i]) continue;
@@ -3769,11 +3280,10 @@ public class W3Party : MonoBehaviour
             foreach (var m in _party)
             {
                 if (!m.Alive) continue;
-                var sp = Spec(StyleFor(m));   // 맞은 멤버의 스타일 피해배율 — 측정이면 파티 단일
                 if ((m.Pos - _pPos[i]).sqrMagnitude < 0.36f)
                 {
                     _shotHits++;
-                    Damage(m, 9f * EnemyStatMultiplier * sp.TakenMul, m.Role == Role.Tank);
+                    Damage(m, 9f * sp.TakenMul, m.Role == Role.Tank);
                     _pOn[i] = false; _pTr[i].gameObject.SetActive(false);
                     break;
                 }
@@ -4021,7 +3531,7 @@ public class W3Party : MonoBehaviour
     /// </summary>
     void CommandBar()
     {
-        if (!CommandModeActive) return;
+        _cmdBtn ??= new GUIStyle(GUI.skin.button) { fontSize = 15 };
         _cmdLabel ??= new GUIStyle(GUI.skin.label)
         { fontSize = 16, alignment = TextAnchor.MiddleCenter,
           normal = { textColor = new Color(.95f, .96f, 1f) } };
@@ -4094,8 +3604,7 @@ public class W3Party : MonoBehaviour
 
             GUI.enabled = m.Alive;
             if (GUI.Button(pr, GUIContent.none, GUIStyle.none))
-                if (picked) _sel = -1;
-                else TrySelectCommandMember(i);
+                _sel = picked ? -1 : i;
             GUI.enabled = true;
         }
     }
@@ -4121,22 +3630,17 @@ public class W3Party : MonoBehaviour
         float s = Mathf.Max(CombatHudSkillMin, (col.height - gap) * 0.5f);
         s = Mathf.Min(s, col.width);
         if (SkillIcon(new Rect(col.x, col.y, col.width, s), a, IconFor(m.Role, 1), m, index, 1) && m.Alive)
-        { TrySelectCommandMember(index); TryQueueSelectedSkill(1); }
+        { _sel = index; m.ForceSkill = 1; }
         if (b != "—" && SkillIcon(new Rect(col.x, col.y + s + gap, col.width, s), b, IconFor(m.Role, 2), m, index, 2) && m.Alive)
-        { TrySelectCommandMember(index); TryQueueSelectedSkill(2); }
+        { _sel = index; m.ForceSkill = 2; }
         if (m.Advancement == AdvancementTier.Second)
         {
             bool ready = CanUseUltimate(m.Advancement, m.UltimateGauge, m.UltimateCd);
             var ur = new Rect(col.x, col.y + (s + gap) * 2f, col.width, 22f);
-            bool ultHover = Event.current != null && ur.Contains(Event.current.mousePosition);
-            string ultKey = AshesToStars.UiAtlas.ButtonKey(ultHover, ready);
-            var ultTint = m.Alive && ready ? (Color?)null : new Color(1f, 1f, 1f, 0.45f);
-            if (!AshesToStars.UiAtlas.DrawSliced(ur, ultKey, 6f, ultTint)
-                && !AshesToStars.UiAtlas.Draw(ur, ultKey, ultTint))
-                GUI.DrawTexture(ur, Tint(ready ? new Color(.42f, .27f, .08f, .96f) : new Color(.16f, .18f, .22f, .55f)));
-            AshesToStars.UiPages.LabelClip(ur, ready ? "각성" : "쿨", _cmdLabel);
-            if (m.Alive && ready && GUI.Button(ur, GUIContent.none, GUIStyle.none))
-            { TrySelectCommandMember(index); m.ForceUltimate = true; }
+            GUI.enabled = m.Alive && ready;
+            if (GUI.Button(ur, ready ? "각성" : "쿨", _cmdBtn))
+            { _sel = index; m.ForceUltimate = true; }
+            GUI.enabled = true;
         }
     }
 
@@ -4153,8 +3657,9 @@ public class W3Party : MonoBehaviour
                 label, _cmdLabel);
         if (m.Alive && GUI.Button(r, GUIContent.none, GUIStyle.none))
         {
-            TrySelectCommandMember(index);
-            return TryQueueSelectedSkill(slot);
+            _sel = index;
+            m.ForceSkill = slot;
+            return true;
         }
         return false;
     }

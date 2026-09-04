@@ -49,18 +49,8 @@ namespace AshesToStars
                 $"지갑 1골드 (실제 {GameState.Wallet.Copper})");
             Check(Economy.HuntGoldLine(earned).Contains("1골드"),
                 $"줄 1골드 (실제 {Economy.HuntGoldLine(earned)})");
-            Check(Economy.HuntGoldHourLine().Contains("1골드")
-                  && !Economy.HuntGoldHourLine().Contains("실버"),
-                $"시간당 1골드 ShortCopper (실제 {Economy.HuntGoldHourLine()})");
-            GameState.SetTowerFloorForTest(11);
-            Check(GameState.TrySelectTier(1) && GameState.Tier == 1,
-                $"T2 선택 (실제 T{GameState.Tier + 1})");
-            Check(Economy.HuntGoldHourLine().Contains("1골드")
-                  && !Economy.HuntGoldHourLine().Contains("실버")
-                  && !Economy.HuntGoldHourLine().Contains("60"),
-                $"T2 시간당 ShortCopper (실제 {Economy.HuntGoldHourLine()})");
-            GameState.SetTowerFloorForTest(1);
-            GameState.TrySelectTier(0);
+            Check(Economy.HuntGoldHourLine().Contains("1골드"),
+                $"시간당 1골드 (실제 {Economy.HuntGoldHourLine()})");
 
             GameState.ForgetInMemoryForTest();
             Check(GameState.Wallet.Copper == 10_000, "재기동 뒤에도 1골드");
@@ -114,14 +104,6 @@ namespace AshesToStars
             _ = nameof(Economy.WaveHuntGold);
             _ = nameof(Economy.HuntGoldHourLine);
             _ = nameof(BattleScreen.SeedHuntGoldRewardQaIfRequested);
-
-            string ecoSrc = File.ReadAllText(Path.Combine(runtime, "Economy.cs"));
-            Check(ecoSrc.Contains("ShortCopper(hour)")
-                  && ecoSrc.IndexOf("FormatCurrency(hour)") < 0,
-                "HuntGoldHourLine은 ShortCopper만");
-            Check(ecoSrc.Contains("ShortCopper(copper)")
-                  && ecoSrc.IndexOf("필드 사냥 {FormatCurrency(copper)}") < 0,
-                "HuntGoldLine 획득은 ShortCopper만");
 
             GameState.ResetAll();
             SoftCap.ResetForTest();

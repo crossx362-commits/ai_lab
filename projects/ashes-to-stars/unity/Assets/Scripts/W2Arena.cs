@@ -61,21 +61,6 @@ public class W2Arena : MonoBehaviour
     float _hitCd;                          // 피격 무적(연타 방지)
     float _lastAuraT = -1f;                // 무적 오라를 마지막으로 뿌린 시각
 
-    // ── 대시 잔상 (VFX 스펙 §6-P1 #5 · INBOX 2026-08-23 21:59) ──
-    //   fx_dash_trail_0~2.png가 blender/out_effects에 있었지만 로드하는 코드가 0곳이었다.
-    //   Celeste TrailManager(S4)처럼 파티클이 아니라 **스프라이트 스냅샷**으로 남긴다:
-    //   대시 지속 중 TrailGap 간격으로 현재 자리에 잔상을 놓고, TrailLife 동안 알파 0.6→0.
-    const int TrailPool = 8;               // 동시 상한 — 대시 1회 ≈ 5장(DashTime/TrailGap), 수명 0.15s면 최대 7장
-    const float TrailLife = 0.15f;         // INBOX: "뒤에 0.15초 남았다 사라지는"
-    const float TrailGap = 0.04f;          // 스펙 §6-P1#5 명세값
-    const float TrailAlpha0 = 0.6f;        // 스펙: 알파 0.6에서 시작해 0으로
-    const float TrailScale = 0.85f;        // PNG 타원이 스프라이트 면적의 16%(실측) — 실질 폭 ≈1.5유닛, 캐릭터 몸통과 비슷게
-    SpriteRenderer[] _trailSr;
-    float[] _trailAge;                     // 출생 시각(_t 기준)
-    Sprite[] _trailFrames;                 // 0=진함 → 2=옅음
-    int _trailCur;
-    float _lastTrailT = -99f;
-
     // ── 몹·투사체 ────────────────────────────────────────
     const int MAXM = 300, MAXP = 300;
     Transform[] _mTr; SpriteRenderer[] _mSr;
@@ -174,33 +159,6 @@ public class W2Arena : MonoBehaviour
             _pTr[i] = go.transform;
         }
 
-        // ── 대시 잔상 풀 (VFX 스펙 §6-P1 #5) ──
-        //   로드 실패 시 경고 한 번 + 기능 생략. 절차 폴백을 그리면 "나온다"로 보이는
-        //   낯선 결함(§6-A 임시 대체물 교훈)이 되므로 흰 원 따위 만들지 않는다.
-        _trailFrames = new Sprite[3];
-        for (int i = 0; i < 3; i++)
-            _trailFrames[i] = Resources.Load<Sprite>($"FX/fx_dash_trail_{i}");
-        if (_trailFrames[0] == null || _trailFrames[1] == null || _trailFrames[2] == null)
-            Debug.LogWarning("[W2] FX/fx_dash_trail_0~2 로드 실패 — 대시 잔상 생략");
-        else
-        {
-            _trailSr = new SpriteRenderer[TrailPool];
-            _trailAge = new float[TrailPool];
-            var trRoot = new GameObject("DashTrails").transform;
-            for (int i = 0; i < TrailPool; i++)
-            {
-                var go = new GameObject("trail", typeof(SpriteRenderer));
-                go.transform.SetParent(trRoot, false);
-                var sr = go.GetComponent<SpriteRenderer>();
-                sr.sharedMaterial = bank.Mat;      // 플레이어·몹과 같은 머티리얼 — 배칭 유지
-                sr.sortingOrder = 210;             // 유닛 뒤(§4-3): 그림자 200과 플레이어 500 사이
-                // PNG가 이미 눌린 타원으로 구워져 있다(gen_effects). TrailScale로 실질 폭을 캐릭터 몸통 크기에 맞춘다.
-                go.transform.localScale = Vector3.one * TrailScale;
-                go.SetActive(false);
-                _trailSr[i] = sr;
-            }
-        }
-
         for (int i = 0; i < MobCount; i++) Spawn(i);
         _events.AppendLine("t,event,detail");
     }
@@ -276,12 +234,6 @@ public class W2Arena : MonoBehaviour
         {
             _dashT -= dt;
             _plPos += _dashDir * (DashDistance / DashTime) * dt;
-            // 대시 궤적을 따라 잔상을 남긴다(§6-P1#5 — 0.04초 간격 스냅샷)
-            if (_trailSr != null && _t - _lastTrailT >= TrailGap)
-            {
-                _lastTrailT = _t;
-                DropTrail();
-            }
         }
         else
         {
@@ -323,37 +275,6 @@ public class W2Arena : MonoBehaviour
         _plSr.sprite = SpriteBank.Cached.CharAnim(SpriteBank.Job.Tank, motion, Time.time);
         // 좌우 반전 — 방향별 스프라이트가 아직 없으므로 진행 방향만 뒤집어 표현한다
         if (Mathf.Abs(_plPos.x - prev.x) > 1e-5f) _plSr.flipX = _plPos.x < prev.x;
-
-        TickTrails();
-    }
-
-    /// <summary>현재 자리에 잔상 하나를 놓는다. 풀이 가득하면 가장 오래된 것을 재사용한다.</summary>
-    void DropTrail()
-    {
-        int i = _trailCur; _trailCur = (_trailCur + 1) % TrailPool;
-        var sr = _trailSr[i];
-        _trailAge[i] = _t;
-        sr.transform.position = ToScreen(_plPos);
-        sr.flipX = _dashDir.x < 0f;            // 진행 방향으로 읽히게 — 회전 금지(§3-1), 미러만
-        sr.gameObject.SetActive(true);
-    }
-
-    /// <summary>
-    /// 잔상 수명 관리. 나이에 따라 프레임(진함→옅음)을 바꾸고 알파를 0.6→0으로 뺀 뒤 끈다.
-    /// </summary>
-    void TickTrails()
-    {
-        if (_trailSr == null) return;
-        for (int i = 0; i < TrailPool; i++)
-        {
-            if (!_trailSr[i].gameObject.activeSelf) continue;
-            float k = (_t - _trailAge[i]) / TrailLife;
-            if (k >= 1f) { _trailSr[i].gameObject.SetActive(false); continue; }
-            _trailSr[i].sprite = _trailFrames[k < 1f / 3f ? 0 : k < 2f / 3f ? 1 : 2];
-            var c = _trailSr[i].color;
-            c.a = TrailAlpha0 * (1f - k);
-            _trailSr[i].color = c;
-        }
     }
 
     /// <summary>자동 회피 봇 — 사람 없이 기계적으로 메커니즘을 검증한다</summary>

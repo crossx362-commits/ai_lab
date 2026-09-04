@@ -73,32 +73,32 @@ namespace AshesToStars
         public static string OldOpen()
         {
             string open = InvasionApproach.Blocked
-                ? $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {EstateStatusHud.ShortCopper(InvasionState.SortieCost())} (§13-3·§15)"
-                : $"{InvasionApproach.Line()} · 출정 {EstateStatusHud.ShortCopper(InvasionState.SortieCost())}";
+                ? $"진입 {EstateGrid.InvaderSide()} {EstateGrid.InvaderPath()}칸 · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())} (§13-3·§15)"
+                : $"{InvasionApproach.Line()} · 출정 {Economy.FormatCurrency(InvasionState.SortieCost())}";
             if (EstateStore.ShowQa)
                 open = EstateStore.Line() + " · " + open;
             if (Economy.RaceCostPercent() == Economy.DwarfCostPercent)
                 open = $"{Economy.RaceCostLine()} · " + open;
             else if (InvasionState.RaceLootPercent() == InvasionState.BeastLootPercent)
-                open = $"{InvasionState.RaceLootLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.RaceLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
             else if (WorldStar.EnemyPercent() == WorldStar.EnemyDebuffPercent)
-                open = $"{WorldStar.EnemyLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
+                open = $"{WorldStar.EnemyLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowCap) == "1"
                      && !InvasionState.LootCapBlocked)
-                open = $"{InvasionState.LootCapLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.LootCapLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowFloor) == "1"
                      && !InvasionState.LootFloorBlocked)
-                open = $"{InvasionState.LootFloorLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.LootFloorLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowWarehouse) == "1"
                      && !InvasionState.LootWarehouseBlocked)
-                open = $"{InvasionState.WarehouseLootLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.WarehouseLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
             else if ((Environment.GetEnvironmentVariable(Honor.EnvShow) == "1"
                       || Environment.GetEnvironmentVariable(Honor.EnvShowDefense) == "1")
                      && !Honor.Blocked)
                 open = $"{Honor.WinLine()} · " + open;
             else if (Environment.GetEnvironmentVariable(InvasionState.EnvShowRepeat) == "1"
                      && !InvasionState.RepeatLootBlocked)
-                open = $"{InvasionState.RepeatLootLine()} · 예상 {EstateStatusHud.ShortCopper(InvasionState.LootCopper())} · " + open;
+                open = $"{InvasionState.RepeatLootLine()} · 예상 {Economy.FormatCurrency(InvasionState.LootCopper())} · " + open;
             return open;
         }
 
@@ -123,24 +123,14 @@ namespace AshesToStars
         /// <summary>잠기면 Lock, 아니면 Open. DrawCard가 잠김 접두를 붙인다.</summary>
         public static string Caption() => IsLocked ? Lock() : Open();
 
-        /// <summary>전장의 안개(§14). QA_NO면 옛 긴 줄, QA_NO_EXPLORE_FOG면 「로컬 허브만」.</summary>
-        public static string Star()
-        {
-            if (Blocked) return OldStar;
-            if (WorldExplore.Blocked) return StarCap;
-            return WorldExplore.Caption();
-        }
+        /// <summary>옛 소비처 — 미구현 설명을 통째로 붙였다.</summary>
+        public static string Star() => Blocked ? OldStar : StarCap;
 
         /// <summary>옛 소비처 — 서버 부재 설명을 통째로 붙였다.</summary>
         public static string Rank() => Blocked ? OldRank : RankCap;
 
-        /// <summary>수비 성공 +20(§18-13). QA_NO면 옛 긴 줄, QA_NO_HONOR_GUARD면 「침략 없음」.</summary>
-        public static string Defense()
-        {
-            if (Blocked) return OldDefense;
-            if (Honor.Blocked || Honor.GuardBlocked) return DefenseCap;
-            return Honor.GuardCap;
-        }
+        /// <summary>옛 소비처 — 침략 본게임이 없다는 문장을 통째로 붙였다.</summary>
+        public static string Defense() => Blocked ? OldDefense : DefenseCap;
 
         /// <summary>시각 QA. 30층이라 카드가 열리고 최단 면 부제가 한 줄.</summary>
         public static void SeedQaIfRequested()

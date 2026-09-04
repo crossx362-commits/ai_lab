@@ -16,20 +16,11 @@ namespace AshesToStars
     /// </summary>
     public class EstateScreen : GameScreen
     {
-        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어, 본성, 영공, 광산, 창고 }
+        enum Sub { 없음, 대장간, 경매장, 영묘, 수비대, 월드티어, 본성, 영공 }
         Sub _sub = Sub.없음;
         int _hubPage;
         EstateGrid.Cell _placeKind = EstateGrid.Cell.Wall;
         int _selX = -1, _selY = -1;
-        bool _moveDown;
-        bool _moveDragging;
-        bool _suppressClick;
-        int _moveFromX = -1, _moveFromY = -1;
-        int _dropX = -1, _dropY = -1;
-        EstateGrid.Cell _moveCell = EstateGrid.Cell.Empty;
-        string _moveHint;
-        Vector2 _moveFromMouse;
-        CharacterRecord _rebornPick;
 
         /// <summary>경매장 해금 층(§12). 침략과 동시 해금이다.</summary>
         public const int AuctionUnlockFloor = 30;
@@ -37,7 +28,7 @@ namespace AshesToStars
         protected override string Title => _sub == Sub.없음 ? "영지" : $"영지 · {_sub}";
         protected override string HeaderIcon => UiAtlas.HeaderKey(GameFlow.Estate);
         protected override string BackgroundArt => "bg_estate";
-        protected override string Subtitle => PlayerSubtitle(_sub switch
+        protected override string Subtitle => _sub switch
         {
             Sub.대장간 => Equipment.SmithUnlocked()
                 ? "사냥해서 얻은 재료로 만든다. 강화는 실패해도 파괴되지 않는다(§11)"
@@ -46,41 +37,16 @@ namespace AshesToStars
                 ? AuctionHud.Line()
                 : AuctionHubLockReason() ?? AuctionTrade.TradeLine(),
             Sub.영묘 => Memorial.Unlocked
-                ? RebirthSkill.MausoleumSubtitle()
+                ? Rebirth.MausoleumSubtitle()
                 : Memorial.LockLine(),
             Sub.수비대 => DefenseState.Unlocked
                 ? "최대 5명. 침략 때 수비가 적으면 약탈이 늘어난다(§13-5·§15)"
                 : DefenseState.LockLine(),
             Sub.월드티어 => "해금한 티어 중 하나를 고르면 필드·던전·하위 레이드가 함께 움직인다(§6)",
             Sub.본성 => "본성 레벨이 다른 건물 상한과 창고 용량이다. 공사는 끝나면 자동 적용(§13-2)",
-            Sub.광산 => "시간이 지나면 골드가 쌓인다. 레벨이 생산량을 올린다(§13-2)",
-            Sub.창고 => "골드 보관 상한. 본성 레벨과 같이 커진다(§18-12)",
             Sub.영공 => "층을 오를수록 인식 범위가 넓어진다. 아군 버프·적 디버프를 켠다(§14)",
             _ => SoftCapHubSubtitle(),
-        });
-
-        public const string EnvNoHeaderPlayerCopy = "QA_NO_ESTATE_HEADER_PLAYER_COPY";
-
-        /// <summary>
-        /// 영지 헤더는 플레이어 화면이다. 구현 근거인 (섹션 번호) 표기는 QA 자막에도 내보내지 않는다.
-        /// QA_NO면 최신 정상 화면에서 발견한 옛 노출을 재현한다.
-        /// </summary>
-        public static string PlayerSubtitle(string value)
-        {
-            if (string.IsNullOrEmpty(value)
-                || System.Environment.GetEnvironmentVariable(EnvNoHeaderPlayerCopy) == "1")
-                return value;
-
-            int mark = value.IndexOf("(§", System.StringComparison.Ordinal);
-            while (mark >= 0)
-            {
-                int end = value.IndexOf(')', mark);
-                if (end < 0) break;
-                value = value.Remove(mark, end - mark + 1);
-                mark = value.IndexOf("(§", System.StringComparison.Ordinal);
-            }
-            return value.Trim();
-        }
+        };
 
         static string SoftCapHubSubtitle()
         {
@@ -102,8 +68,6 @@ namespace AshesToStars
                 return $"{TowerEnding.TitleName} · 모든 콘텐츠의 출발점(§8·§16)";
             if (SoloRaidClear.HasAny)
                 return $"{SoloRaidClear.LastTitle} · 모든 콘텐츠의 출발점(§8·§16)";
-            if (EstateYard.ShowDragQa)
-                return EstateYard.Line();
             if (EstateYard.ShowQa)
                 return EstateYard.Line();
             if (EstateBuildings.ShowQa)
@@ -123,14 +87,9 @@ namespace AshesToStars
         /// 이 프로젝트에서 "렌더는 되는데 아무도 안 본 화면"이 반복해서 나온 이유다.
         /// </summary>
         public static string AutoOpen;
-        bool _pendingDefenseRushShot;
-        bool _pendingMineRushShot;
-        bool _pendingKeepPoorShot;
-        bool _pendingDefensePoorShot;
 
         protected override void Update()
         {
-            if (AutomationSchedule.TryResumeFieldSortie()) return;
             // 하위 화면에서 ESC는 영지로 — 허브 밖으로 튕겨나가지 않게
             if (_sub != Sub.없음 && Input.GetKeyDown(KeyCode.Escape)) { _sub = Sub.없음; return; }
             base.Update();
@@ -148,46 +107,6 @@ namespace AshesToStars
                     _hubPage = 2;
                 else if (AutoOpen == "배치")
                     _hubPage = 0;
-                else if (AutoOpen == "본성칸")
-                {
-                    // QA 샷: 마을 허브에서 본성 선택 → YardInspectLine 부제 노출
-                    _hubPage = 0;
-                    _selX = EstateGrid.KeepX;
-                    _selY = EstateGrid.KeepY;
-                }
-                else if (AutoOpen == "광산칸")
-                {
-                    // QA 샷: 광산 선택 → DrawCoreBuildDock 업비 부제
-                    _hubPage = 0;
-                    _selX = EstateGrid.MineX;
-                    _selY = EstateGrid.MineY;
-                }
-                else if (AutoOpen == "방어단축")
-                {
-                    // QA 샷: 방어 탭 + 화살탑 공사 중 → 골드 단축 줄
-                    _hubPage = 2;
-                    _pendingDefenseRushShot = true;
-                }
-                else if (AutoOpen == "광산단축")
-                {
-                    // QA 샷: 광산 선택 + 공사 중 → DrawCoreBuildDock 골드 단축
-                    _hubPage = 0;
-                    _selX = EstateGrid.MineX;
-                    _selY = EstateGrid.MineY;
-                    _pendingMineRushShot = true;
-                }
-                else if (AutoOpen == "본성부족")
-                {
-                    // QA 샷: 본성 업비 골드 부족 문구
-                    _sub = Sub.본성;
-                    _pendingKeepPoorShot = true;
-                }
-                else if (AutoOpen == "방어부족")
-                {
-                    // QA 샷: 방어 업비 골드 부족 문구
-                    _hubPage = 2;
-                    _pendingDefensePoorShot = true;
-                }
                 else if (System.Enum.TryParse(AutoOpen, out Sub want))
                 {
                     _sub = want;
@@ -236,51 +155,11 @@ namespace AshesToStars
             BankruptcySeize.SeedQaIfRequested();
             NetWorth.SeedQaIfRequested();
             EstateDefense.SeedQaIfRequested();
-            if (_pendingDefenseRushShot)
-            {
-                _pendingDefenseRushShot = false;
-                EstateDefense.ResetForTest();
-                GameState.SetTowerFloorForTest(EstateDefense.UnlockFloor);
-                long cost = EstateDefense.UpgradeCost(0);
-                GameState.Grant(cost * 4 + 10_000);
-                EstateDefense.TryStart(EstateDefense.Kind.화살탑);
-            }
-            if (_pendingMineRushShot)
-            {
-                _pendingMineRushShot = false;
-                long cost = EstateBuild.UpgradeCost(EstateGrid.Cell.Mine, EstateBuild.Level(EstateGrid.Cell.Mine));
-                GameState.Grant(cost * 4 + 10_000);
-                EstateBuild.TryStartUpgrade(EstateGrid.Cell.Mine);
-            }
             EstateBuild.SeedRushQaIfRequested();
-            if (_pendingKeepPoorShot)
-            {
-                _pendingKeepPoorShot = false;
-                long have = GameState.Wallet.Copper;
-                if (have > 0) GameState.Pay(have);
-            }
-            if (_pendingDefensePoorShot)
-            {
-                _pendingDefensePoorShot = false;
-                EstateDefense.ResetForTest();
-                GameState.SetTowerFloorForTest(EstateDefense.UnlockFloor);
-                long have = GameState.Wallet.Copper;
-                if (have > 0) GameState.Pay(have);
-            }
             EstateGrid.SeedQaIfRequested();
-            SeedRecallQaIfRequested();
-            SeedCellClickQaIfRequested();
-            SeedHubClickQaIfRequested();
-            SeedYardNameQaIfRequested();
-            SeedSmithOpenQaIfRequested();
-            SeedDockClickQaIfRequested();
-            SeedRowClickQaIfRequested();
             EstateStore.SeedQaIfRequested();
             EstateHud.SeedQaIfRequested();
             EstateBuildings.SeedQaIfRequested();
-            EstateBuild.SeedArtTierQaIfRequested();
-            EstateBuild.SeedArtDoneQaIfRequested();
-            SeedArtScaffoldFrameQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             AuctionState.SeedQaIfRequested();
             AuctionState.SeedBuyLockQaIfRequested();
@@ -288,24 +167,13 @@ namespace AshesToStars
             AuctionTrade.SeedQaIfRequested();
             AuctionHud.SeedQaIfRequested();
             Rebirth.SeedQaIfRequested();
-            RebirthSkill.SeedQaIfRequested();
             Memorial.SeedQaIfRequested();
             Memorial.SeedUnlockQaIfRequested();
             DefenseState.SeedUnlockQaIfRequested();
             Equipment.SeedUnlockQaIfRequested();
             if (System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "1"
-                || System.Environment.GetEnvironmentVariable(RebirthSkill.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(Memorial.EnvShow) == "1")
                 _sub = Sub.영묘;
-            if (RebirthSkill.SeedPick && _rebornPick == null)
-            {
-                var wait = LifeSystem.GetDeletedCharacters();
-                if (wait.Count > 0)
-                {
-                    _rebornPick = wait[0];
-                    RebirthSkill.ConsumeSeedPick();
-                }
-            }
             if (System.Environment.GetEnvironmentVariable(AuctionState.EnvShow) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowBuyLock) == "1"
                 || System.Environment.GetEnvironmentVariable(AuctionState.EnvShowExpire) == "1"
@@ -329,8 +197,6 @@ namespace AshesToStars
                 return;
             }
             if (_sub == Sub.본성) { Keep(r); return; }
-            if (_sub == Sub.광산) { CoreBuilding(r, EstateGrid.Cell.Mine, "광산"); return; }
-            if (_sub == Sub.창고) { CoreBuilding(r, EstateGrid.Cell.Warehouse, "창고"); return; }
             if (_sub == Sub.영묘) { Mausoleum(r); return; }
             if (_sub == Sub.대장간) { Smith(r); return; }
             if (_sub == Sub.수비대) { Barracks(r); return; }
@@ -346,12 +212,6 @@ namespace AshesToStars
                 return;
             }
 
-            if (_layoutQa)
-            {
-                _hubPage = DrawTabs(r, new[] { "마을", "현황", "방어" }, 0);
-                DrawLayout(UiPages.AfterTabs(r));
-                return;
-            }
             if (_hubPage == 0 && !EstateYard.FillBlocked)
             {
                 DrawVillage(r);
@@ -395,18 +255,8 @@ namespace AshesToStars
             if (EstateYard.FillBlocked)
                 Info(r, 0, hud);
 
-            HandleBuildingDrag(yard);
             if (EstateYard.Draw(yard, _selX, _selY, out int hx, out int hy))
-            {
-                if (!_suppressClick)
-                    OnYardClick(hx, hy);
-            }
-            _suppressClick = false;
-            if (_moveDragging && EstateGrid.IsCore(_moveCell) && EstateGrid.InBounds(_dropX, _dropY))
-            {
-                bool ok = string.IsNullOrEmpty(_moveHint);
-                EstateYard.DrawMovePreview(yard, _moveCell, _dropX, _dropY, ok);
-            }
+                OnYardClick(hx, hy);
 
             if (EstateYard.FillBlocked)
             {
@@ -418,15 +268,8 @@ namespace AshesToStars
                 return;
             }
 
-            var chip = EstateHud.ChipRect(r);
-            string chipText = (_moveDragging && !string.IsNullOrEmpty(_moveHint)) ? _moveHint
-                : (_selX < 0 ? hud : null);
-            if (!string.IsNullOrEmpty(chipText))
-            {
-                // QA_NO면 옛 Hint(배경에 글씨만). 새 길은 InfoAt 금테 — 마을 그림에 묻히지 않는다.
-                if (EstateHud.Blocked) Hint(chip, chipText);
-                else InfoAt(chip, chipText);
-            }
+            if (_selX < 0)
+                Hint(new Rect(r.x, r.y + UiPages.TabH + 8f, Mathf.Min(520f, r.width * 0.55f), 22f), hud);
             bool selected = _selX >= 0;
             float insH = EstateHud.InspectH(selected);
             var paletteOn = EstateHud.PaletteBar(r);
@@ -437,130 +280,6 @@ namespace AshesToStars
             }
             DrawVillagePalette(paletteOn);
         }
-
-        void HandleBuildingDrag(Rect yard)
-        {
-            if (!EstateYard.DragEnabled)
-            {
-                ClearMoveDrag();
-                return;
-            }
-            var ev = Event.current;
-            if (ev == null) return;
-            var mouse = ev.mousePosition;
-            if (ev.type == EventType.MouseDown && ev.button == 0 && yard.Contains(mouse)
-                && EstateYard.TryHitCoreOrigin(yard, mouse, out int ox, out int oy))
-            {
-                _moveDown = true;
-                _moveDragging = false;
-                _suppressClick = false;
-                _moveFromX = ox;
-                _moveFromY = oy;
-                _moveCell = EstateGrid.At(ox, oy);
-                _dropX = ox;
-                _dropY = oy;
-                _moveHint = null;
-                _moveFromMouse = mouse;
-                _selX = ox;
-                _selY = oy;
-                return;
-            }
-            if (!_moveDown) return;
-            if (ev.type == EventType.MouseDrag && ev.button == 0)
-            {
-                Vector2 d = mouse - _moveFromMouse;
-                if (!_moveDragging && d.sqrMagnitude >= EstateYard.DragSlop * EstateYard.DragSlop)
-                    _moveDragging = true;
-                if (_moveDragging)
-                {
-                    if (EstateYard.TryHitCell(yard, mouse, out int hx, out int hy))
-                    {
-                        _dropX = hx;
-                        _dropY = hy;
-                    }
-                    _moveHint = WhyCannotDragMove(_moveFromX, _moveFromY, _dropX, _dropY);
-                    ev.Use();
-                }
-                return;
-            }
-            if (ev.type == EventType.MouseUp && ev.button == 0)
-            {
-                if (_moveDragging)
-                {
-                    if (TryDragMove(_moveFromX, _moveFromY, _dropX, _dropY))
-                    {
-                        _selX = _dropX;
-                        _selY = _dropY;
-                        _moveHint = null;
-                    }
-                    _suppressClick = true;
-                    ev.Use();
-                }
-                else
-                    _moveHint = null;
-                ClearMoveDrag();
-            }
-        }
-
-        void ClearMoveDrag()
-        {
-            _moveDown = false;
-            _moveDragging = false;
-            _moveFromX = -1;
-            _moveFromY = -1;
-            _dropX = -1;
-            _dropY = -1;
-            _moveCell = EstateGrid.Cell.Empty;
-            _moveHint = null;
-        }
-
-        /// <summary>핵심 건물 자리 옮김 거부 사유(§2-2). 창고는 EstateStore.</summary>
-        public static string WhyCannotDragMove(int ox, int oy, int nx, int ny)
-        {
-            if (EstateYard.DragBlocked) return "건물 이동이 꺼져 있다";
-            if (!EstateGrid.InBounds(ox, oy)) return "격자 밖이다";
-            var cell = EstateGrid.At(ox, oy);
-            if (!EstateGrid.IsCore(cell)) return "핵심 건물만 옮긴다";
-            if (ox == nx && oy == ny) return null;
-            if (EstateBuild.Busy(cell)) return "건설 중이다";
-            if (cell == EstateGrid.Cell.Warehouse)
-                return EstateStore.WhyCannotMove(nx, ny);
-            if (!EstateGrid.InBounds(nx, ny)) return "격자 밖이다";
-            var f = EstateGrid.FootprintOf(cell);
-            if (nx + f.x > EstateGrid.Size || ny + f.y > EstateGrid.Size)
-                return "격자 밖이다";
-            for (int y = ny; y < ny + f.y; y++)
-            for (int x = nx; x < nx + f.x; x++)
-            {
-                if (!EstateGrid.TryOwner(x, y, out int px, out int py)) continue;
-                if (px == ox && py == oy) continue;
-                return "자리 크기가 겹친다";
-            }
-            return null;
-        }
-
-        /// <summary>핵심 건물 원점 이동. 창고는 EstateStore.TryMove.</summary>
-        public static bool TryDragMove(int ox, int oy, int nx, int ny)
-        {
-            if (WhyCannotDragMove(ox, oy, nx, ny) != null) return false;
-            var cell = EstateGrid.At(ox, oy);
-            if (!EstateGrid.IsCore(cell)) return false;
-            if (ox == nx && oy == ny) return true;
-            if (cell == EstateGrid.Cell.Warehouse)
-                return EstateStore.TryMove(nx, ny);
-            EstateGrid.SetCellForTest(ox, oy, EstateGrid.Cell.Empty);
-            EstateGrid.SetCellForTest(nx, ny, cell);
-            return EstateGrid.At(nx, ny) == cell
-                && EstateGrid.At(ox, oy) == EstateGrid.Cell.Empty;
-        }
-
-        /// <summary>UI·SelfCheck 공용 — 미리보기 거부 사유(§2-2).</summary>
-        public static string PreviewWhy(int ox, int oy, int nx, int ny) =>
-            WhyCannotDragMove(ox, oy, nx, ny);
-
-        /// <summary>UI·SelfCheck 공용 — 놓을 수 있으면 true.</summary>
-        public static bool WouldAccept(int ox, int oy, int nx, int ny) =>
-            WhyCannotDragMove(ox, oy, nx, ny) == null;
 
         void OnYardClick(int x, int y)
         {
@@ -613,147 +332,6 @@ namespace AshesToStars
             _selY = y;
         }
 
-        bool _recallQaSeeded;
-        int _recallQaX = -1, _recallQaY = -1;
-        void SeedRecallQaIfRequested()
-        {
-            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_RECALL");
-            if (raw != "0" && raw != "1") return;
-            _hubPage = 0;
-            if (!_recallQaSeeded)
-            {
-                _recallQaSeeded = true;
-                if (EstateDefense.Level(EstateDefense.Kind.성벽) < 1)
-                    EstateDefense.SetLevelForTest(EstateDefense.Kind.성벽, 1);
-                int n = EstateGrid.Size;
-                for (int y = 0; y < n && _recallQaX < 0; y++)
-                for (int x = 0; x < n; x++)
-                {
-                    if (!EstateGrid.InBounds(x, y)) continue;
-                    if (!EstateGrid.IsDefense(EstateGrid.At(x, y))) continue;
-                    _recallQaX = x;
-                    _recallQaY = y;
-                    break;
-                }
-                if (_recallQaX < 0)
-                {
-                    for (int y = 0; y < n && _recallQaX < 0; y++)
-                    for (int x = 0; x < n; x++)
-                    {
-                        if (!EstateGrid.TryPlace(x, y, EstateGrid.Cell.Wall)) continue;
-                        _recallQaX = x;
-                        _recallQaY = y;
-                        break;
-                    }
-                }
-            }
-            if (raw == "1")
-            {
-                EstateGrid.TryPickUp(_recallQaX, _recallQaY);
-                _selX = -1;
-                _selY = -1;
-            }
-            else
-            {
-                _selX = _recallQaX;
-                _selY = _recallQaY;
-            }
-        }
-
-        bool _layoutQa;
-        bool _cellQaPlaced;
-        void SeedCellClickQaIfRequested()
-        {
-            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_CELL");
-            if (raw != "0" && raw != "1") return;
-            _layoutQa = true;
-            _hubPage = 0;
-            _placeKind = EstateGrid.Cell.Wall;
-            if (raw != "1" || _cellQaPlaced) return;
-            _cellQaPlaced = true;
-            if (EstateDefense.Level(EstateDefense.Kind.성벽) < 1)
-                EstateDefense.SetLevelForTest(EstateDefense.Kind.성벽, 3);
-            int n = EstateGrid.Size;
-            for (int y = 0; y < n; y++)
-            for (int x = 0; x < n; x++)
-            {
-                if (EstateGrid.TryPlace(x, y, EstateGrid.Cell.Wall))
-                    return;
-            }
-        }
-
-        void SeedRowClickQaIfRequested()
-        {
-            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_ROW");
-            if (raw != "0" && raw != "1") return;
-            _layoutQa = false;
-            _hubPage = 0;
-            _sub = raw == "0" ? Sub.본성 : Sub.없음;
-        }
-
-        void SeedDockClickQaIfRequested()
-        {
-            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_DOCK");
-            if (raw != "0" && raw != "1") return;
-            _layoutQa = false;
-            _hubPage = 0;
-            _selX = -1;
-            _selY = -1;
-            _placeKind = raw == "1" ? EstateGrid.Cell.Arrow : EstateGrid.Cell.Wall;
-        }
-
-        void SeedHubClickQaIfRequested()
-        {
-            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_HUB");
-            if (raw != "0" && raw != "1") return;
-            _layoutQa = false;
-            _hubPage = 0;
-            EstateGrid.EnsureHubBuildings();
-            _selX = EstateGrid.KeepX;
-            _selY = EstateGrid.KeepY;
-            if (raw == "1") OpenHub(EstateGrid.Cell.Keep);
-        }
-
-        void SeedYardNameQaIfRequested()
-        {
-            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_NAME");
-            if (raw != "keep" && raw != "mine") return;
-            _layoutQa = false;
-            _hubPage = 0;
-            if (raw == "keep")
-            {
-                _selX = EstateGrid.KeepX;
-                _selY = EstateGrid.KeepY;
-            }
-            else
-            {
-                _selX = EstateGrid.MineX;
-                _selY = EstateGrid.MineY;
-            }
-        }
-
-        void SeedSmithOpenQaIfRequested()
-        {
-            string raw = System.Environment.GetEnvironmentVariable("QA_ESTATE_SMITH");
-            if (raw != "1" && raw != "2") return;
-            _sub = Sub.대장간;
-            if (raw != "2") return;
-            var items = ItemAtlas.SmithMaterials;
-            if (items.Length > 0 && GameState.Bag.GetCount(items[0]) < 9)
-                GameState.Gain(items[0], 9 - GameState.Bag.GetCount(items[0]));
-        }
-
-        void SeedArtScaffoldFrameQaIfRequested()
-        {
-            bool busy = System.Environment.GetEnvironmentVariable("QA_ESTATE_ART_TIERS") == "1";
-            bool done = System.Environment.GetEnvironmentVariable("QA_ESTATE_ART_DONE") == "1";
-            if (!busy && !done) return;
-            _layoutQa = false;
-            _hubPage = 0;
-            _selX = EstateGrid.BarracksX;
-            _selY = EstateGrid.BarracksY;
-        }
-
         void DrawVillageInspect(Rect r)
         {
             if (!EstateHud.ShowInspectBar(_selX >= 0) && !EstateYard.FillBlocked)
@@ -766,9 +344,7 @@ namespace AshesToStars
             }
             var cell = EstateGrid.At(_selX, _selY);
             string title = EstateYard.LabelOf(cell);
-            string sub = _moveDragging && !string.IsNullOrEmpty(_moveHint) && EstateGrid.IsCore(cell)
-                ? _moveHint
-                : YardInspectLine(cell);
+            string sub = YardInspectLine(cell);
             string icon = EstateYard.IconOf(cell);
             bool fat = EstateHud.Blocked || EstateYard.FillBlocked;
             if (!fat)
@@ -778,36 +354,21 @@ namespace AshesToStars
                     Hint(new Rect(r.x, r.y, Mathf.Max(40f, r.width - 140f), r.height),
                         title + " · 한 번 더 누르면 거둔다");
                     var btn = new Rect(r.xMax - 128f, r.y, 128f, r.height);
-                    // 클릭을 슬라이스·아이콘보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
-                    // 타이틀 직업 카드 옛 버그(77b56474)와 같이 크롬에 먹혀 거둠이 안 먹었다.
-                    var ev = Event.current;
-                    if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                        && btn.Contains(ev.mousePosition))
-                    {
-                        EstateGrid.TryPickUp(_selX, _selY);
-                        _selX = -1;
-                        _selY = -1;
-                        ev.Use();
-                    }
                     UiAtlas.DrawSliced(btn, UiAtlas.ButtonKey(false, false), 8f);
                     if (!string.IsNullOrEmpty(icon))
                         UiAtlas.DrawFit(new Rect(btn.x + 6f, btn.y + 4f, 28f, 28f), icon);
                     Hint(new Rect(btn.x + 36f, btn.y, btn.width - 40f, btn.height), "회수");
+                    if (GUI.Button(btn, GUIContent.none, GUIStyle.none))
+                    {
+                        EstateGrid.TryPickUp(_selX, _selY);
+                        _selX = -1;
+                        _selY = -1;
+                    }
                     return;
-                }
-                if (EstateGrid.IsCore(cell) && !EstateGrid.IsHub(cell))
-                {
-                    DrawCoreBuildDock(r, cell, title, icon);
-                    return;
-                }
-                var hubEv = Event.current;
-                if (EstateGrid.IsHub(cell) && hubEv != null && hubEv.type == EventType.MouseDown
-                    && hubEv.button == 0 && r.Contains(hubEv.mousePosition))
-                {
-                    OpenHub(cell);
-                    hubEv.Use();
                 }
                 Hint(r, title + " · " + sub);
+                if (EstateGrid.IsHub(cell) && GUI.Button(r, GUIContent.none, GUIStyle.none))
+                    OpenHub(cell);
                 return;
             }
             if (EstateGrid.IsDefense(cell))
@@ -822,19 +383,8 @@ namespace AshesToStars
             }
             if (EstateGrid.IsHub(cell))
             {
-                var hubEv = Event.current;
-                if (hubEv != null && hubEv.type == EventType.MouseDown && hubEv.button == 0
-                    && r.Contains(hubEv.mousePosition))
-                {
+                if (DrawCard(r, title, sub, icon))
                     OpenHub(cell);
-                    hubEv.Use();
-                }
-                DrawCard(r, title, sub, icon);
-                return;
-            }
-            if (EstateGrid.IsCore(cell))
-            {
-                DrawCoreBuildDock(r, cell, title, icon);
                 return;
             }
             DrawCard(r, title, sub, icon, locked: true);
@@ -851,46 +401,32 @@ namespace AshesToStars
 
         string YardInspectLine(EstateGrid.Cell cell)
         {
-            string build = CoreBuildCaption(cell);
             switch (cell)
             {
                 case EstateGrid.Cell.Keep:
-                    return EstateBuild.Busy(EstateGrid.Cell.Keep)
-                        ? build
-                        : $"{build} · 창고 {EstateStatusHud.ShortCopper(EstateBuild.WarehouseCapCopper())}";
+                    return EstateBuild.KeepBusy
+                        ? $"Lv{EstateBuild.KeepLevel} → {EstateBuild.KeepTarget} · {EstateBuild.RemainingText()}"
+                        : $"Lv{EstateBuild.KeepLevel} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
                 case EstateGrid.Cell.Mine:
-                    return $"{build} · {EstateStatusHud.ShortCopper(EstateMine.CopperPerHourEffective())}/h";
+                    return Economy.FormatCurrency(EstateMine.CopperPerHourEffective()) + "/h · 자동 적립";
                 case EstateGrid.Cell.Warehouse:
-                {
-                    string a = EstateStatusHud.ShortCopper(GameState.Wallet.Copper);
-                    string b = EstateStatusHud.ShortCopper(EstateBuild.WarehouseCapCopper());
-                    return $"{build} · {a}/{b}";
-                }
+                    return $"{Economy.FormatCurrency(GameState.Wallet.Copper)} / {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}";
                 case EstateGrid.Cell.Smith:
-                    return build + " · " + (Equipment.LockReason() ?? "제작·강화. 실패해도 장비는 남는다");
+                    return Equipment.LockReason() ?? "제작·강화. 실패해도 장비는 남는다";
                 case EstateGrid.Cell.Auction:
-                    return build + " · " + (AuctionHubLockReason() ?? AuctionState.FeeLine());
+                    return AuctionHubLockReason() ?? AuctionState.FeeLine();
                 case EstateGrid.Cell.Mausoleum:
-                    return build + " · " + (Memorial.LockReason()
-                        ?? $"환생석 {LifeSystem.GetRebornStones()}개");
+                    return Memorial.LockReason()
+                        ?? $"환생석 {LifeSystem.GetRebornStones()}개";
                 case EstateGrid.Cell.Barracks:
-                    return build + " · " + (DefenseState.LockReason()
-                        ?? $"배치 {DefenseState.Count}/{DefenseState.MaxSlots}");
+                    return DefenseState.LockReason()
+                        ?? $"배치 {DefenseState.Count}/{DefenseState.MaxSlots}";
                 case EstateGrid.Cell.Empty:
                     return EstateGrid.WhyCannotPlace(_selX, _selY, _placeKind)
                         ?? $"여기에 {EstateYard.LabelOf(_placeKind)}을(를) 놓는다";
                 default:
                     return "방어 건물";
             }
-        }
-
-        static string CoreBuildCaption(EstateGrid.Cell cell)
-        {
-            if (!EstateGrid.IsCore(cell)) return "";
-            int lv = EstateBuild.Level(cell);
-            if (EstateBuild.Busy(cell))
-                return $"Lv{lv} → {EstateBuild.Target(cell)} · {EstateBuild.RemainingText(cell)}";
-            return $"Lv{lv}";
         }
 
         void DrawVillagePalette(Rect r)
@@ -906,45 +442,26 @@ namespace AshesToStars
                 bool on = _placeKind == cellKind;
                 string title = on ? $"선택 {k}" : $"{k}";
                 string icon = UiAtlas.BuildingKey(k.ToString());
-                var palEv = Event.current;
-                if (palEv != null && palEv.type == EventType.MouseDown && palEv.button == 0
-                    && b.Contains(palEv.mousePosition))
-                {
-                    _placeKind = cellKind;
-                    palEv.Use();
-                }
                 if (EstateHud.Blocked || EstateYard.FillBlocked)
                 {
-                    DrawCard(b, $"{title} · {left}",
-                        left > 0 ? "빈 칸에 놓는다" : "레벨만큼만", icon);
+                    if (DrawCard(b, $"{title} · {left}",
+                            left > 0 ? "빈 칸에 놓는다" : "레벨만큼만", icon))
+                        _placeKind = cellKind;
                     continue;
                 }
 
                 string btnKey = UiAtlas.ButtonKey(false, on);
-                UiAtlas.DrawSliced(b, btnKey, 8f, EstateHud.PaletteTint(on));
+                UiAtlas.DrawSliced(b, btnKey, 8f,
+                    on ? (Color?)null : new Color(1f, 1f, 1f, 0.72f));
                 var inner = UiAtlas.ContentRect(b, btnKey, 2f);
-                if (EstateHud.ReadablePaletteBlocked)
-                {
-                    float oldIconH = Mathf.Min(16f, inner.height - 20f);
-                    if (oldIconH > 8f && !string.IsNullOrEmpty(icon))
-                        UiAtlas.DrawFit(new Rect(inner.center.x - oldIconH * 0.5f, inner.y,
-                            oldIconH, oldIconH), icon);
-                    Hint(new Rect(inner.x, inner.yMax - 18f, inner.width, 18f), $"{title} {left}");
-                }
-                else
-                {
-                    // 44px 타일에 아이콘 위·글씨 아래를 쌓으면 둘이 10px 넘게 겹쳐
-                    // 「화살탑 0」이 작은 회색 얼룩으로 읽혔다. 가로 배치로 클릭 높이는
-                    // 유지하고 이름·개수에 한 줄 전체 높이를 준다.
-                    float iconW = Mathf.Min(16f, inner.height - 4f);
-                    if (iconW > 8f && !string.IsNullOrEmpty(icon))
-                        UiAtlas.DrawFit(new Rect(inner.x, inner.center.y - iconW * 0.5f,
-                            iconW, iconW), icon);
-                    var label = new Rect(inner.x + iconW + 4f, inner.y,
-                        Mathf.Max(20f, inner.width - iconW - 4f), inner.height);
-                    if (EstateHud.BrightLabelBlocked) Hint(label, $"{title} {left}");
-                    else DockLabel(label, $"{title} {left}");
-                }
+                // 14px 글씨 띠에서는 LabelFit이 3글자 이름(화살탑·마법탑)을 12px 밑으로 줄여
+                // 안 읽혔다 — 아이콘을 줄여 글씨 띠를 18px로 넓힌다(폴리싱 2026-08-20, 표시 전용).
+                float ih = Mathf.Min(16f, inner.height - 20f);
+                if (ih > 8f && !string.IsNullOrEmpty(icon))
+                    UiAtlas.DrawFit(new Rect(inner.center.x - ih * 0.5f, inner.y, ih, ih), icon);
+                Hint(new Rect(inner.x, inner.yMax - 18f, inner.width, 18f), $"{k} {left}");
+                if (GUI.Button(b, GUIContent.none, GUIStyle.none))
+                    _placeKind = cellKind;
             }
         }
 
@@ -976,10 +493,8 @@ namespace AshesToStars
                     EstateStatusHud.WorldCaption(),
                     "tower", locked: !canPick))
                 _sub = Sub.월드티어;
-            if (DrawCard(cards[3], "광산", EstateStatusHud.MineCaption(), "field"))
-                _sub = Sub.광산;
-            if (DrawCard(cards[4], "창고", EstateStatusHud.StoreCaption(), "building_auction"))
-                _sub = Sub.창고;
+            DrawCard(cards[3], "광산", EstateStatusHud.MineCaption(), "field");
+            DrawCard(cards[4], "창고", EstateStatusHud.StoreCaption(), "building_auction");
         }
 
         void Aura(Rect r)
@@ -1034,11 +549,6 @@ namespace AshesToStars
             DrawSideTag(new Rect(gx + gridW + 2f, gy, 42f, gridH),
                 $"동\n{Len(EstateGrid.Side.동)}", EstateGrid.Side.동 == side);
 
-            if (!UiAtlas.DrawSliced(new Rect(gx, gy, gridW, gridH), "panel", 12f,
-                    new Color(1f, 1f, 1f, 0.92f)))
-                UiAtlas.Draw(new Rect(gx, gy, gridW, gridH), "panel",
-                    new Color(1f, 1f, 1f, 0.92f));
-
             var mark = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
@@ -1052,16 +562,10 @@ namespace AshesToStars
                 var box = new Rect(gx + x * cell, gy + y * cell, cell - 2f, cell - 2f);
                 var c = EstateGrid.At(x, y);
                 bool onPath = EstateGrid.OnInvaderPath(x, y);
-                // 클릭을 FillCell·라벨보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
-                // 회수 버튼 옛 버그(cdfa4fbf)와 같이 칸 색에 먹혀 선택/배치가 안 먹었다.
-                var ev = Event.current;
-                bool hit = ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                    && box.Contains(ev.mousePosition);
-                if (hit) ev.Use();
                 FillCell(box, CellTint(c, onPath));
                 mark.normal.textColor = CellInk(c, onPath);
-                UiPages.LabelClip(box, CellMark(c), mark);
-                if (!hit) continue;
+                GUI.Label(box, CellMark(c), mark);
+                if (!GUI.Button(box, GUIContent.none, GUIStyle.none)) continue;
                 if (EstateGrid.IsDefense(c))
                     EstateGrid.TryPickUp(x, y);
                 else
@@ -1090,7 +594,7 @@ namespace AshesToStars
             return n < 0 ? "막힘" : n + "칸";
         }
 
-        void DrawSideTag(Rect box, string text, bool hot)
+        static void DrawSideTag(Rect box, string text, bool hot)
         {
             var st = new GUIStyle(GUI.skin.label)
             {
@@ -1098,12 +602,11 @@ namespace AshesToStars
                 fontSize = 12,
                 fontStyle = hot ? FontStyle.Bold : FontStyle.Normal,
                 clipping = TextClipping.Clip,
-                wordWrap = true,
                 normal = { textColor = hot
                     ? new Color(0.92f, 0.42f, 0.22f)
-                    : new Color(0.95f, 0.79f, 0.42f) },
+                    : new Color(0.35f, 0.28f, 0.22f) },
             };
-            UiPages.LabelClip(box, text, st);
+            GUI.Label(box, text, st);
         }
 
         static string CellMark(EstateGrid.Cell c) => c switch
@@ -1129,7 +632,7 @@ namespace AshesToStars
             EstateGrid.Cell.Trap => new Color(0.62f, 0.16f, 0.16f, 1f),
             _ => onPath
                 ? new Color(0.96f, 0.62f, 0.22f, 1f)
-                : new Color(0.88f, 0.82f, 0.70f, 0f),
+                : new Color(0.88f, 0.82f, 0.70f, 1f),
         };
 
         static Color CellInk(EstateGrid.Cell c, bool onPath)
@@ -1139,20 +642,11 @@ namespace AshesToStars
             return Color.white;
         }
 
-        static Texture2D _cellFill;
         static void FillCell(Rect box, Color c)
         {
-            if (_cellFill == null)
-            {
-                _cellFill = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-                _cellFill.SetPixel(0, 0, Color.white);
-                _cellFill.Apply();
-                _cellFill.hideFlags = HideFlags.HideAndDontSave;
-            }
-            c.a *= 0.62f;
             var prev = GUI.color;
             GUI.color = c;
-            GUI.DrawTexture(box, _cellFill);
+            GUI.DrawTexture(box, Texture2D.whiteTexture);
             GUI.color = prev;
         }
 
@@ -1186,7 +680,7 @@ namespace AshesToStars
                     continue;
                 }
                 string why = EstateDefense.WhyCannotStart(k);
-                string desc = $"{EstateStatusHud.ShortCopper(EstateDefense.UpgradeCost(lv))} · {FormatWait(EstateDefense.UpgradeSeconds(lv))}";
+                string desc = $"{Economy.FormatCurrency(EstateDefense.UpgradeCost(lv))} · {FormatWait(EstateDefense.UpgradeSeconds(lv))}";
                 if (why != null)
                     DrawCard(cards[i], title, why, icon, locked: true);
                 else if (DrawCard(cards[i], title, desc, icon))
@@ -1196,57 +690,41 @@ namespace AshesToStars
 
         void Keep(Rect r)
         {
-            var c = EstateGrid.Cell.Keep;
             EstateBuild.Tick();
-            int lv = EstateBuild.Level(c);
-            Info(r, 0, $"본성 Lv{lv} · 창고 {EstateStatusHud.ShortCopper(EstateBuild.WarehouseCapCopper())}(§18-12)");
+            int lv = EstateBuild.KeepLevel;
+            Info(r, 0, $"본성 Lv{lv} · 창고 {Economy.FormatCurrency(EstateBuild.WarehouseCapCopper())}(§18-12)");
             int row = 1;
-            if (EstateBuild.Busy(c))
+            if (EstateBuild.KeepBusy)
             {
-                Info(r, row++, $"공사 중 Lv{lv} → {EstateBuild.Target(c)} · 남은 {EstateBuild.RemainingText(c)}");
+                Info(r, row++, $"공사 중 Lv{lv} → {EstateBuild.KeepTarget} · 남은 {EstateBuild.RemainingText()}");
                 Info(r, row++, "끝나면 자동 적용 — 수령할 필요 없다. 단축은 남은 50%까지(§13-2)");
-                DrawCoreRush(r, ref row, c);
+                DrawKeepRush(r, ref row);
             }
             else
             {
-                string why = EstateBuild.WhyCannotUpgrade(c);
+                string why = EstateBuild.WhyCannotUpgrade();
                 string label = $"Lv{lv} → {lv + 1}";
-                string desc = $"{EstateStatusHud.ShortCopper(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
+                string desc = $"{Economy.FormatCurrency(EstateBuild.UpgradeCost(lv))} · {FormatWait(EstateBuild.UpgradeSeconds(lv))}";
                 if (why != null)
                     Locked(r, row++, label, why, "territory");
                 else if (Row(r, row++, label, desc, "territory"))
-                    EstateBuild.TryStartUpgrade(c);
+                    EstateBuild.TryStartKeep();
             }
-            if (Row(r, row++, "명부 · 전직 · 합성", "캐릭터 화면으로 간다", "characters"))
-                GameFlow.Go(GameFlow.Character);
             if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
         }
 
-        void CoreBuilding(Rect r, EstateGrid.Cell c, string title)
+        void DrawKeepRush(Rect r, ref int row)
         {
-            EstateBuild.Tick();
-            int lv = EstateBuild.Level(c);
-            string extra = c == EstateGrid.Cell.Mine
-                ? EstateStatusHud.MineCaption()
-                : EstateStatusHud.StoreCaption();
-            Info(r, 0, $"{title} Lv{lv} · {extra}");
-            int row = 1;
-            DrawHubUpgradeRow(r, ref row, c);
-            if (Row(r, row, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
-        }
-
-        void DrawCoreRush(Rect r, ref int row, EstateGrid.Cell c)
-        {
-            long cut = EstateBuild.RushableSeconds(c);
-            string goldWhy = EstateBuild.WhyCannotRushGold(c);
-            string goldLabel = $"골드 단축 · {EstateStatusHud.ShortCopper(EstateBuild.GoldCostToFloor(c))}";
+            long cut = EstateBuild.RushableSeconds();
+            string goldWhy = EstateBuild.WhyCannotRushGold();
+            string goldLabel = $"골드 단축 · {Economy.FormatCurrency(EstateBuild.GoldCostToFloor())}";
             string goldDesc = cut > 0
                 ? $"남은 {cut}초를 당긴다. 바닥은 원 소요의 50%(§13-2)"
                 : "남은 시간의 50%가 바닥이다 — 완전 스킵 불가";
             if (goldWhy != null)
                 Locked(r, row++, goldLabel, goldWhy, "gold");
             else if (Row(r, row++, goldLabel, goldDesc, "gold"))
-                EstateBuild.TryRushGold(c);
+                EstateBuild.TryRushGold();
 
             var mat = EstateRush.FirstOwnedFamilyMaterial();
             if (mat == null)
@@ -1257,67 +735,20 @@ namespace AshesToStars
                 return;
             }
             var item = mat.Value;
-            string matWhy = EstateBuild.WhyCannotRushMaterial(c, item);
+            string matWhy = EstateBuild.WhyCannotRushMaterial(item);
             string matLabel = $"{GameState.Label(item)} 1장 단축";
             string matDesc = $"남은 시간의 2% · {GameState.Bag.GetCount(item)}장";
             if (matWhy != null)
                 Locked(r, row++, matLabel, matWhy, ItemAtlas.KeyFor(item));
             else if (Row(r, row++, matLabel, matDesc, ItemAtlas.KeyFor(item)))
-                EstateBuild.TryRushMaterial(c, item, 1);
-        }
-
-        /// <summary>허브 화면 상단 — 건물 Lv·업그레이드/단축 한 줄(SPEC §2-3).</summary>
-        void DrawHubUpgradeRow(Rect r, ref int row, EstateGrid.Cell c)
-        {
-            EstateBuild.Tick();
-            int lv = EstateBuild.Level(c);
-            if (EstateBuild.Busy(c))
-            {
-                Info(r, row++, $"건물 Lv{lv} → {EstateBuild.Target(c)} · 남은 {EstateBuild.RemainingText(c)}");
-                DrawCoreRush(r, ref row, c);
-                return;
-            }
-            string why = EstateBuild.WhyCannotUpgrade(c);
-            string label = $"건물 Lv{lv} → {lv + 1}";
-            string desc = $"{EstateStatusHud.ShortCopper(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
-            if (why != null)
-                Locked(r, row++, label, why, EstateYard.IconOf(c));
-            else if (Row(r, row++, label, desc, EstateYard.IconOf(c)))
-                EstateBuild.TryStartUpgrade(c);
-        }
-
-        /// <summary>광산·창고 안내 도크 — 업그레이드·골드 단축(SPEC §2-3).</summary>
-        void DrawCoreBuildDock(Rect r, EstateGrid.Cell c, string title, string icon)
-        {
-            EstateBuild.Tick();
-            int lv = EstateBuild.Level(c);
-            if (EstateBuild.Busy(c))
-            {
-                string goldWhy = EstateBuild.WhyCannotRushGold(c);
-                string label = $"{title} Lv{lv}→{EstateBuild.Target(c)} · 골드 단축";
-                string desc = goldWhy
-                    ?? $"{EstateBuild.RemainingText(c)} · {EstateStatusHud.ShortCopper(EstateBuild.GoldCostToFloor(c))}";
-                if (goldWhy != null)
-                    DrawCard(r, label, desc, icon, locked: true);
-                else if (DrawCard(r, label, desc, "gold"))
-                    EstateBuild.TryRushGold(c);
-                return;
-            }
-            string why = EstateBuild.WhyCannotUpgrade(c);
-            string upLabel = $"{title} Lv{lv} → {lv + 1}";
-            string upDesc = why
-                ?? $"{EstateStatusHud.ShortCopper(EstateBuild.UpgradeCost(c, lv))} · {FormatWait(EstateBuild.UpgradeSeconds(c, lv))}";
-            if (why != null)
-                DrawCard(r, upLabel, upDesc, icon, locked: true);
-            else if (DrawCard(r, upLabel, upDesc, icon))
-                EstateBuild.TryStartUpgrade(c);
+                EstateBuild.TryRushMaterial(item, 1);
         }
 
         void DrawDefenseRush(Rect r, ref int row)
         {
             long cut = EstateDefense.RushableSeconds();
             string goldWhy = EstateDefense.WhyCannotRushGold();
-            string goldLabel = $"골드 단축 · {EstateStatusHud.ShortCopper(EstateDefense.GoldCostToFloor())}";
+            string goldLabel = $"골드 단축 · {Economy.FormatCurrency(EstateDefense.GoldCostToFloor())}";
             if (goldWhy != null)
                 Locked(r, row++, goldLabel, goldWhy, "gold");
             else if (Row(r, row++, goldLabel,
@@ -1354,7 +785,7 @@ namespace AshesToStars
             var cells = UiPages.Grid(new Rect(r.x, r.y + 80f, r.width, r.height - 180f), 5, 2, 10f);
             for (int i = 0; i < cells.Length; i++)
             {
-                string pay = EstateStatusHud.ShortCopper((long)(Economy.TierRevenueMultiplier[i] * 10000f)) + "/h";
+                string pay = Economy.FormatCurrency((long)(Economy.TierRevenueMultiplier[i] * 10000f)) + "/h";
                 if (i > unlocked)
                 {
                     DrawCard(cells[i], $"T{i + 1}",
@@ -1368,23 +799,8 @@ namespace AshesToStars
                         "tower"))
                     GameState.TrySelectTier(i);
             }
-            var back = UiPages.Grid(WorldTierBackBand(r), 1, 1, 10f);
+            var back = UiPages.Grid(new Rect(r.x, r.yMax - 88f, r.width, 80f), 1, 1, 10f);
             if (DrawCard(back[0], "영지로", "건물에서 나온다", "territory")) _sub = Sub.없음;
-        }
-
-        public const string EnvNoWorldTierBackFit = "QA_NO_WORLD_TIER_BACK_FIT";
-        public const float WorldTierBackMaxW = 520f;
-
-        /// <summary>
-        /// 월드 티어의 단일 「영지로」 카드는 1208px 전폭 그리드에 넣으면 내용은 왼쪽에
-        /// 몰리고 오른쪽은 빈 액자가 된다. 행동 하나는 최대폭으로 가운데 모아 선택지처럼 읽힌다.
-        /// QA_NO면 옛 전폭 카드로 돌아가 A/B를 남긴다.
-        /// </summary>
-        public static Rect WorldTierBackBand(Rect body)
-        {
-            bool blocked = System.Environment.GetEnvironmentVariable(EnvNoWorldTierBackFit) == "1";
-            float w = blocked ? body.width : Mathf.Min(WorldTierBackMaxW, body.width);
-            return new Rect(body.center.x - w * 0.5f, body.yMax - 88f, w, 80f);
         }
 
         /// <summary>
@@ -1414,16 +830,13 @@ namespace AshesToStars
             string lockReason = AuctionHubLockReason();
             if (lockReason != null)
             {
-                string bar = AuctionHud.LockBarLine();
-                if (bar != null)
-                    InfoAt(AuctionHud.BarRect(r, info++), bar);
+                InfoAt(AuctionHud.BarRect(r, info++), lockReason);
                 var back = AuctionHud.LotsBody(r, info);
                 if (Row(back, 0, "← 영지로", "건물에서 나온다")) _sub = Sub.없음;
                 return;
             }
 
-            InfoAt(AuctionHud.BarRect(r, info++),
-                CoreBuildCaption(EstateGrid.Cell.Auction) + " · " + AuctionHud.StatusLine());
+            InfoAt(AuctionHud.BarRect(r, info++), AuctionHud.StatusLine());
             string buyLock = AuctionState.BuyLockLine();
             if (!string.IsNullOrEmpty(buyLock))
                 InfoAt(AuctionHud.BarRect(r, info++), buyLock);
@@ -1437,7 +850,6 @@ namespace AshesToStars
         void AuctionHouseOld(Rect r)
         {
             int row = 0;
-            DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Auction);
             string lockReason = AuctionHubLockReason();
             if (lockReason != null)
             {
@@ -1447,7 +859,7 @@ namespace AshesToStars
             }
 
             Info(r, row++,
-                $"로컬 장 · {EstateStatusHud.ShortCopper(GameState.Wallet.Copper)} · {AuctionTrade.TradeLine()}");
+                $"로컬 장 · {Economy.FormatCurrency(GameState.Wallet.Copper)} · {AuctionTrade.TradeLine()}");
             Info(r, row++, AuctionState.MineLine());
             string buyLock = AuctionState.BuyLockLine();
             if (!string.IsNullOrEmpty(buyLock))
@@ -1469,7 +881,7 @@ namespace AshesToStars
                 if (lot.Npc)
                 {
                     if (Row(r, row++, $"구매 {lot.Label}",
-                            buyWhy ?? $"{who} · {EstateStatusHud.ShortCopper(lot.Price)}",
+                            buyWhy ?? $"{who} · {Economy.FormatCurrency(lot.Price)}",
                             ItemAtlas.KeyFor(ParseLotItem(lot))))
                     {
                         _msg = AuctionState.TryBuy(lot.Id)
@@ -1479,7 +891,7 @@ namespace AshesToStars
                     return;
                 }
                 if (Row(r, row++, $"취소 {lot.Label}",
-                        $"{who} · {EstateStatusHud.ShortCopper(lot.Price)} · {AuctionState.LotTimeLine(lot)}"))
+                        $"{who} · {Economy.FormatCurrency(lot.Price)} · {AuctionState.LotTimeLine(lot)}"))
                     _msg = AuctionState.TryCancel(lot.Id) ? "등록 취소 · 수수료는 소각" : "취소 실패";
             }
             for (int i = 0; i < lots.Count; i++)
@@ -1494,7 +906,7 @@ namespace AshesToStars
                 var g = bag[0];
                 long price = 12_000 + g.Enhance * 2_000;
                 if (Row(r, row++, $"등록 {g.Name}",
-                        $"수수료 {EstateStatusHud.ShortCopper(AuctionState.ListFee(price))} · {EstateStatusHud.ShortCopper(price)}"))
+                        $"수수료 {Economy.FormatCurrency(AuctionState.ListFee(price))} · {Economy.FormatCurrency(price)}"))
                 {
                     _msg = AuctionState.TryListGear(g.Id, price)
                         ? $"{g.Name} 등록"
@@ -1505,7 +917,7 @@ namespace AshesToStars
             {
                 long price = AuctionTrade.ListPrice(bagItem);
                 if (Row(r, row++, $"등록 {GameState.Label(bagItem)} {bagQty}",
-                        $"수수료 {EstateStatusHud.ShortCopper(AuctionState.ListFee(price))} · {EstateStatusHud.ShortCopper(price)}"))
+                        $"수수료 {Economy.FormatCurrency(AuctionState.ListFee(price))} · {Economy.FormatCurrency(price)}"))
                 {
                     _msg = AuctionState.TryListItem(bagItem, bagQty, price)
                         ? $"{GameState.Label(bagItem)} 등록" : "등록 실패";
@@ -1539,46 +951,11 @@ namespace AshesToStars
         void Mausoleum(Rect r)
         {
             int row = 0;
-            if (_rebornPick == null)
-                DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Mausoleum);
             string lockReason = Memorial.LockReason();
             if (lockReason != null)
             {
                 Info(r, row++, lockReason);
-                if (Row(r, row, "← 영지로", "건물에서 나온다"))
-                { _sub = Sub.없음; _msg = ""; _rebornPick = null; }
-                return;
-            }
-
-            if (_rebornPick != null && (!_rebornPick.IsDeleted || _rebornPick.IsSpecialJob))
-                _rebornPick = null;
-            if (_rebornPick != null)
-            {
-                var pickNames = RebirthSkill.NamesOf(_rebornPick.Job);
-                Info(r, row++, RebirthSkill.PickTitle(_rebornPick));
-                Info(r, row++, "생전 스킬 중 하나만 남고 나머지는 소실된다(§4)");
-                if (Row(r, row++, "← 선택 취소", "영묘 목록으로"))
-                { _rebornPick = null; _msg = ""; return; }
-                for (int i = 0; i < pickNames.Length; i++)
-                {
-                    string skill = pickNames[i];
-                    if (Row(r, row++, skill, "이 스킬만 가져간다(§4)",
-                            ItemAtlas.KeyFor(Economy.LifeItem.RebornStone)))
-                    {
-                        if (!RebirthSkill.Apply(_rebornPick, skill))
-                            _msg = "그 스킬은 가져갈 수 없다";
-                        else if (LifeSystem.UseRebornStone(_rebornPick))
-                        {
-                            _msg = string.IsNullOrEmpty(RebirthSkill.Line(_rebornPick))
-                                ? $"{_rebornPick.Name}이(가) 돌아왔다 — 사망 0에서 다시 시작한다"
-                                : $"{_rebornPick.Name}이(가) 돌아왔다 — {Rebirth.DoneLine()} · {RebirthSkill.Line(_rebornPick)}";
-                            _rebornPick = null;
-                            return;
-                        }
-                        else _msg = "환생에 실패했다 — 환생석 소모를 확인할 것";
-                    }
-                }
-                if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
+                if (Row(r, row, "← 영지로", "건물에서 나온다")) { _sub = Sub.없음; _msg = ""; }
                 return;
             }
 
@@ -1624,8 +1001,6 @@ namespace AshesToStars
                             ItemAtlas.KeyFor(Economy.LifeItem.RebornStone)))
                     {
                         if (stones <= 0) _msg = "환생석이 없다. 10층 보스를 잡아야 한다(§4)";
-                        else if (RebirthSkill.NeedsPick(ch))
-                        { _rebornPick = ch; _msg = ""; return; }
                         else if (LifeSystem.UseRebornStone(ch))
                         {
                             _msg = string.IsNullOrEmpty(Rebirth.DoneLine())
@@ -1649,8 +1024,7 @@ namespace AshesToStars
             }
 
             if (!string.IsNullOrEmpty(_msg)) Info(r, row++, _msg);
-            if (Row(r, row, "← 영지로", "건물에서 나온다"))
-            { _sub = Sub.없음; _msg = ""; _rebornPick = null; }
+            if (Row(r, row, "← 영지로", "건물에서 나온다")) { _sub = Sub.없음; _msg = ""; }
         }
 
         /// <summary>
@@ -1660,7 +1034,6 @@ namespace AshesToStars
         void Barracks(Rect r)
         {
             int row = 0;
-            DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Barracks);
             string lockReason = DefenseState.LockReason();
             if (lockReason != null)
             {
@@ -1710,7 +1083,6 @@ namespace AshesToStars
         void Smith(Rect r)
         {
             int row = 0;
-            DrawHubUpgradeRow(r, ref row, EstateGrid.Cell.Smith);
             DrawSmithMaterials(r, row++);
 
             string lockReason = Equipment.LockReason();
@@ -1797,8 +1169,6 @@ namespace AshesToStars
                 {
                     if (!EquipJob.CanWear(ch, bag[0]))
                         _msg = EquipJob.WhyNot(ch, bag[0]);
-                    else if (!EquipLevel.CanWear(ch, bag[0]))
-                        _msg = EquipLevel.WhyNot(ch, bag[0]);
                     else
                         _msg = Equipment.TryEquip(ch, bag[0].Id)
                             ? $"{ch.Name}이(가) {bag[0].Name}을(를) 입었다"
@@ -1826,16 +1196,10 @@ namespace AshesToStars
                 float ih = Mathf.Min(40f, well.height);
                 ItemAtlas.Draw(new Rect(x, well.y + (well.height - ih) * 0.5f, ih, ih),
                     ItemAtlas.KeyFor(items[i]));
-                Styles();
-                var gold = new GUIStyle(_panel)
-                {
-                    fontSize = 18,
-                    alignment = TextAnchor.MiddleLeft,
-                    clipping = TextClipping.Clip,
-                    wordWrap = false,
-                };
                 UiPages.LabelClip(new Rect(x + ih + 4f, well.y, Mathf.Max(12f, cell - ih - 6f), well.height),
-                    GameState.Bag.GetCount(items[i]).ToString(), gold);
+                    GameState.Bag.GetCount(items[i]).ToString(),
+                    new GUIStyle(GUI.skin.label) { fontSize = 18, clipping = TextClipping.Clip,
+                        normal = { textColor = new Color(0.95f, 0.79f, 0.42f) } });
             }
         }
     }

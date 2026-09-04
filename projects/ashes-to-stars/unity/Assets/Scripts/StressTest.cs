@@ -29,9 +29,6 @@ public class StressTest : MonoBehaviour
     public int SummonCount = 50;
     public int ProjectileBudget = 200;
 
-    /// <summary>§10-9 투사체 풀 크기. BalanceConfig.투사체상한을 읽는다. QA_NO면 옛 200.</summary>
-    public static int ProjectileHardCap => AshesToStars.ProjCap.Limit();
-
     [Header("월드")]
     public float WorldRadius = 26f;
 
@@ -134,8 +131,6 @@ public class StressTest : MonoBehaviour
             _sr[i] = sr;
         }
 
-        // 상한만 ProjCap(BalanceConfig.투사체상한)을 읽는다. QA_NO면 옛 200.
-        ProjectileBudget = ProjectileHardCap;
         _pTr = new Transform[ProjectileBudget];
         _pPos = new Vector2[ProjectileBudget];
         _pVel = new Vector2[ProjectileBudget];

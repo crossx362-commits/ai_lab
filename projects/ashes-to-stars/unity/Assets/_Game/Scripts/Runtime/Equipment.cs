@@ -39,8 +39,6 @@ namespace AshesToStars
         public float BaseHpMul;
         /// <summary>무기만. 빈 칸=공용. 물리=탱·딜(§11).</summary>
         public string JobLine = "";
-        /// <summary>캐릭터 레벨 하한. 0=제한 없음(§11). 오너 확정치 전까지 레시피는 전부 0.</summary>
-        public int 요구레벨;
     }
 
     public static class Equipment
@@ -437,7 +435,6 @@ namespace AshesToStars
             var gear = Find(gearId);
             if (gear == null) return false;
             if (!EquipJob.CanWear(character, gear)) return false;
-            if (!EquipLevel.CanWear(character, gear)) return false;
 
             var roster = LifeSystem.GetCharacters();
             for (int i = 0; i < roster.Count; i++)

@@ -64,64 +64,14 @@ namespace AshesToStars
                 $"영공 부제 (실제 {EstateStatusHud.AuraCaption()})");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.KeepCaption()),
                 $"본성 부제 (실제 {EstateStatusHud.KeepCaption()})");
-            Check(!EstateStatusHud.CaptionFits("Lv10 · 915골드 7실버 50쿠퍼"),
-                "옛 본성 FormatCurrency 풀표기는 안 맞음");
-            string keepSrc = File.ReadAllText(Path.Combine(
-                Application.dataPath, "_Game/Scripts/Runtime/EstateStatusHud.cs"));
-            int keepMethod = keepSrc.IndexOf("public static string KeepCaption()", StringComparison.Ordinal);
-            int nextMethod = keepSrc.IndexOf("public static string WorldCaption()", StringComparison.Ordinal);
-            Check(keepMethod >= 0 && nextMethod > keepMethod
-                  && keepSrc.IndexOf("ShortCopper(EstateBuild.WarehouseCapCopper())", keepMethod, nextMethod - keepMethod) >= 0
-                  && keepSrc.IndexOf("FormatCurrency", keepMethod, nextMethod - keepMethod) < 0,
-                "KeepCaption은 ShortCopper만 쓴다");
-            Check(keepSrc.IndexOf("OldKeepCaption", StringComparison.Ordinal) >= 0,
-                "OldKeepCaption이 남아 있다");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.WorldCaption()),
                 $"세계 부제 (실제 {EstateStatusHud.WorldCaption()})");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.MineCaption()),
                 $"광산 부제 (실제 {EstateStatusHud.MineCaption()})");
-            Check(!EstateStatusHud.CaptionFits("9150골드 7실버 50쿠퍼/h"),
-                "옛 광산 FormatCurrency+/h 풀표기는 안 맞음");
-            string mineSrc = File.ReadAllText(Path.Combine(
-                Application.dataPath, "_Game/Scripts/Runtime/EstateStatusHud.cs"));
-            int mineMethod = mineSrc.IndexOf("public static string MineCaption()", StringComparison.Ordinal);
-            int nextMine = mineSrc.IndexOf("public static string OldStoreCaption()", StringComparison.Ordinal);
-            if (nextMine < 0) nextMine = mineSrc.IndexOf("public static string StoreCaption()", StringComparison.Ordinal);
-            Check(mineMethod >= 0 && nextMine > mineMethod
-                  && mineSrc.IndexOf("ShortCopper(EstateMine.CopperPerHourEffective())", mineMethod, nextMine - mineMethod) >= 0
-                  && mineSrc.IndexOf("FormatCurrency", mineMethod, nextMine - mineMethod) < 0,
-                "MineCaption은 ShortCopper만 쓴다");
-            Check(mineSrc.IndexOf("OldMineCaption", StringComparison.Ordinal) >= 0,
-                "OldMineCaption이 남아 있다");
             Check(EstateStatusHud.CaptionFits(EstateStatusHud.StoreCaption()),
                 $"창고 부제 (실제 {EstateStatusHud.StoreCaption()})");
-            Check(!EstateStatusHud.CaptionFits("9150골드 7실버 50쿠퍼 / 12골드 0실버 0쿠퍼"),
-                "옛 창고 FormatCurrency 풀표기는 안 맞음");
-            string storeSrc = File.ReadAllText(Path.Combine(
-                Application.dataPath, "_Game/Scripts/Runtime/EstateStatusHud.cs"));
-            int storeMethod = storeSrc.IndexOf("public static string StoreCaption()", StringComparison.Ordinal);
-            int nextStore = storeSrc.IndexOf("public static string ShortCopper(", StringComparison.Ordinal);
-            if (nextStore < 0) nextStore = storeSrc.IndexOf("public static bool CaptionFits(", StringComparison.Ordinal);
-            Check(storeMethod >= 0 && nextStore > storeMethod
-                  && storeSrc.IndexOf("FormatCurrency", storeMethod, nextStore - storeMethod) < 0
-                  && storeSrc.IndexOf("ShortCopper", storeMethod, nextStore - storeMethod) >= 0,
-                "StoreCaption은 ShortCopper만 쓴다");
-            Check(storeSrc.IndexOf("OldStoreCaption", StringComparison.Ordinal) >= 0,
-                "OldStoreCaption이 남아 있다");
             Check(EstateStatusHud.Line().Contains("부제"),
                 $"줄 (실제 {EstateStatusHud.Line()})");
-            Check(EstateStatusHud.Line().Contains("내비"),
-                $"줄에 내비 (실제 {EstateStatusHud.Line()})");
-
-            // GameScreen 본문 yMax=640. OldBodyH=540 상자는 내비(636)와 yMax가 달라 겹침이 안 잡힌다.
-            var hub = new Rect(36f, 56f, 1208f, 720f - 56f - UiPages.NavReserve);
-            var hubCards = EstateStatusHud.Cards(hub);
-            float dockBottom = hubCards[hubCards.Length - 1].yMax;
-            float navTop = EstateStatusHud.NavPlateTop();
-            Check(dockBottom <= navTop - EstateStatusHud.NavGap + 0.01f,
-                $"도크 아랫변 {dockBottom:0} ≤ 내비-간격 {navTop - EstateStatusHud.NavGap:0}");
-            Check(navTop - dockBottom >= 10f,
-                $"도크-내비 간격 {navTop - dockBottom:0} ≥ 10 (전폭 카드가 내비와 한 덩어리가 되지 않게)");
 
             Environment.SetEnvironmentVariable(EstateStatusHud.EnvNo, "1");
             Check(EstateStatusHud.Blocked, "QA_NO면 차단");
@@ -132,9 +82,6 @@ namespace AshesToStars
                 $"차단 영공 {old[0].width:0}×{old[0].height:0} 전폭");
             Check(old[1].height > 150f, $"차단 칸 {old[1].height:0} 전폭 카드");
             Check(old[0].y < body.y + 4f, "차단하면 본문 위에서 시작");
-            var oldHub = EstateStatusHud.Cards(hub);
-            Check(oldHub[oldHub.Length - 1].yMax > EstateStatusHud.NavPlateTop() - 1f,
-                $"차단 아랫변 {oldHub[oldHub.Length - 1].yMax:0} 이 내비와 겹친다");
             Check(EstateStatusHud.Line().Contains("가린다"),
                 $"차단 줄 (실제 {EstateStatusHud.Line()})");
             Environment.SetEnvironmentVariable(EstateStatusHud.EnvNo, null);
@@ -153,199 +100,7 @@ namespace AshesToStars
             Check(estate.Contains("EstateStatusHud.KeepCaption"), "본성이 KeepCaption을 읽는다");
             Check(estate.Contains("EstateStatusHud.MineCaption"), "광산이 MineCaption을 읽는다");
             Check(estate.Contains("EstateStatusHud.StoreCaption"), "창고가 StoreCaption을 읽는다");
-            Check(estate.Contains("_sub = Sub.광산") && estate.Contains("_sub = Sub.창고"),
-                "현황 광산·창고 카드가 건물 화면을 연다");
-            Check(estate.Contains("명부 · 전직 · 합성") && estate.Contains("GameFlow.Character"),
-                "본성이 명부 화면으로 간다");
             Check(estate.Contains("EstateStatusHud.SeedQaIfRequested"), "시드를 읽는다");
-            string hud = File.ReadAllText(Path.Combine(runtime, "EstateStatusHud.cs"));
-            Check(hud.Contains("NavPlateTop"),
-                "도크가 NavPlateTop을 읽는다 (body.yMax 붙이기 금지)");
-            Check(hud.Contains("NavGap"),
-                "도크가 NavGap을 읽는다");
-
-            // 건물 칸 상세 미리보기(YardInspectLine): 본성·광산·창고는 ShortCopper만
-            // 끝은 바로 다음 메서드(CoreBuildCaption). AuctionHubLockReason 호출/정의로 자르면 안 됨.
-            int yi = estate.IndexOf("string YardInspectLine");
-            Check(yi >= 0, "YardInspectLine이 있다");
-            int yiEnd = estate.IndexOf("static string CoreBuildCaption", yi);
-            string yiSrc = yi >= 0 && yiEnd > yi ? estate.Substring(yi, yiEnd - yi) : "";
-            Check(yiSrc.Contains("EstateStatusHud.ShortCopper")
-                  && yiSrc.IndexOf("FormatCurrency") < 0,
-                "YardInspectLine 본성·광산·창고는 ShortCopper만 (FormatCurrency 없음)");
-            Check(yiSrc.Contains("WarehouseCapCopper()")
-                  && yiSrc.Contains("CopperPerHourEffective()")
-                  && yiSrc.Contains("GameState.Wallet.Copper"),
-                "YardInspectLine이 본성·광산·창고 값을 읽는다");
-
-            // 본성 상세 Info: 창고 칸만 ShortCopper (업그레이드 비용 줄은 다음 결함)
-            int keepFn = estate.IndexOf("void Keep(Rect");
-            Check(keepFn >= 0, "Keep 상세가 있다");
-            int keepEnd = estate.IndexOf("void DrawCoreRush", keepFn);
-            string keepDetailSrc = keepFn >= 0 && keepEnd > keepFn
-                ? estate.Substring(keepFn, keepEnd - keepFn) : "";
-            int infoWh = keepDetailSrc.IndexOf("창고 ");
-            Check(infoWh >= 0, "본성 Info에 창고 줄이 있다");
-            // Info 첫 줄만: FormatCurrency(WarehouseCap) 금지 · ShortCopper(WarehouseCap) 필수
-            int infoLine = keepDetailSrc.IndexOf("Info(r, 0");
-            int infoSemi = infoLine >= 0 ? keepDetailSrc.IndexOf(";", infoLine) : -1;
-            string info0 = infoLine >= 0 && infoSemi > infoLine
-                ? keepDetailSrc.Substring(infoLine, infoSemi - infoLine) : "";
-            Check(info0.Contains("EstateStatusHud.ShortCopper")
-                  && info0.Contains("WarehouseCapCopper()")
-                  && info0.IndexOf("FormatCurrency") < 0,
-                "본성 Info 창고는 ShortCopper만");
-
-            // Keep 업그레이드 비용 줄: ShortCopper(UpgradeCost) · Info/업그레이드 desc만 범위
-            int upDesc = keepDetailSrc.IndexOf("string desc =");
-            int upSemi = upDesc >= 0 ? keepDetailSrc.IndexOf(";", upDesc) : -1;
-            string up0 = upDesc >= 0 && upSemi > upDesc
-                ? keepDetailSrc.Substring(upDesc, upSemi - upDesc) : "";
-            Check(up0.Contains("EstateStatusHud.ShortCopper")
-                  && up0.Contains("UpgradeCost")
-                  && up0.IndexOf("FormatCurrency") < 0,
-                "본성 업그레이드 비용은 ShortCopper만");
-
-            // DrawCoreRush 골드 단축: ShortCopper(GoldCostToFloor) — 업비 줄과 별개
-            int rushFn = estate.IndexOf("void DrawCoreRush(Rect");
-            Check(rushFn >= 0, "DrawCoreRush가 있다");
-            int rushEnd = estate.IndexOf("void DrawHubUpgradeRow", rushFn);
-            string rushSrc = rushFn >= 0 && rushEnd > rushFn
-                ? estate.Substring(rushFn, rushEnd - rushFn) : "";
-            int gl = rushSrc.IndexOf("골드 단축");
-            int glSemi = gl >= 0 ? rushSrc.IndexOf(";", gl) : -1;
-            string gl0 = gl >= 0 && glSemi > gl ? rushSrc.Substring(gl, glSemi - gl) : "";
-            Check(gl0.Contains("EstateStatusHud.ShortCopper")
-                  && gl0.Contains("GoldCostToFloor")
-                  && gl0.IndexOf("FormatCurrency") < 0,
-                "본성 골드 단축은 ShortCopper만");
-
-            // 광산·창고 도크 업비: DrawCoreBuildDock UpgradeCost → ShortCopper
-            int dockFn = estate.IndexOf("void DrawCoreBuildDock(Rect");
-            Check(dockFn >= 0, "DrawCoreBuildDock이 있다");
-            int dockEnd = estate.IndexOf("void DrawDefenseRush", dockFn);
-            string dockSrc = dockFn >= 0 && dockEnd > dockFn
-                ? estate.Substring(dockFn, dockEnd - dockFn) : "";
-            // upDesc 줄만 (GoldCostToFloor 줄과 구분)
-            int dockUpLine = dockSrc.LastIndexOf("string upDesc");
-            int dockUpSemi = dockUpLine >= 0 ? dockSrc.IndexOf(";", dockUpLine) : -1;
-            string dockUp0 = dockUpLine >= 0 && dockUpSemi > dockUpLine
-                ? dockSrc.Substring(dockUpLine, dockUpSemi - dockUpLine) : "";
-            Check(dockUp0.Contains("EstateStatusHud.ShortCopper")
-                  && dockUp0.Contains("UpgradeCost")
-                  && dockUp0.IndexOf("FormatCurrency") < 0,
-                "광산·창고 업비는 ShortCopper만");
-
-            // 방어 업비: DrawDefense UpgradeCost → ShortCopper
-            int defFn = estate.IndexOf("void DrawDefense(Rect");
-            Check(defFn >= 0, "DrawDefense가 있다");
-            int defEnd = estate.IndexOf("void Keep(Rect", defFn);
-            string defSrc = defFn >= 0 && defEnd > defFn
-                ? estate.Substring(defFn, defEnd - defFn) : "";
-            int dUp = defSrc.IndexOf("string desc =");
-            int dSemi = dUp >= 0 ? defSrc.IndexOf(";", dUp) : -1;
-            string d0 = dUp >= 0 && dSemi > dUp ? defSrc.Substring(dUp, dSemi - dUp) : "";
-            Check(d0.Contains("EstateStatusHud.ShortCopper")
-                  && d0.Contains("EstateDefense.UpgradeCost")
-                  && d0.IndexOf("FormatCurrency") < 0,
-                "방어 업비는 ShortCopper만");
-
-            // 방어 골드 단축: DrawDefenseRush GoldCostToFloor → ShortCopper
-            int drFn = estate.IndexOf("void DrawDefenseRush(Rect");
-            Check(drFn >= 0, "DrawDefenseRush가 있다");
-            int drEnd = estate.IndexOf("static string FormatWait", drFn);
-            string drSrc = drFn >= 0 && drEnd > drFn
-                ? estate.Substring(drFn, drEnd - drFn) : "";
-            int drGl = drSrc.IndexOf("골드 단축");
-            int drGlSemi = drGl >= 0 ? drSrc.IndexOf(";", drGl) : -1;
-            string drGl0 = drGl >= 0 && drGlSemi > drGl ? drSrc.Substring(drGl, drGlSemi - drGl) : "";
-            Check(drGl0.Contains("EstateStatusHud.ShortCopper")
-                  && drGl0.Contains("EstateDefense.GoldCostToFloor")
-                  && drGl0.IndexOf("FormatCurrency") < 0,
-                "방어 골드 단축은 ShortCopper만");
-
-            // 광산·창고 Busy 골드 단축: DrawCoreBuildDock GoldCostToFloor → ShortCopper
-            int dockFn2 = estate.IndexOf("void DrawCoreBuildDock(Rect");
-            Check(dockFn2 >= 0, "DrawCoreBuildDock(Busy)이 있다");
-            int dockEnd2 = estate.IndexOf("void DrawDefenseRush", dockFn2);
-            string dockSrc2 = dockFn2 >= 0 && dockEnd2 > dockFn2
-                ? estate.Substring(dockFn2, dockEnd2 - dockFn2) : "";
-            int rem = dockSrc2.IndexOf("RemainingText");
-            int remSemi = rem >= 0 ? dockSrc2.IndexOf(";", rem) : -1;
-            string rem0 = rem >= 0 && remSemi > rem ? dockSrc2.Substring(rem, remSemi - rem) : "";
-            Check(rem0.Contains("EstateStatusHud.ShortCopper")
-                  && rem0.Contains("GoldCostToFloor")
-                  && rem0.IndexOf("FormatCurrency") < 0,
-                "광산·창고 Busy 골드 단축은 ShortCopper만");
-
-            // 허브 업비 잔여: DrawHubUpgradeRow UpgradeCost → ShortCopper
-            int hubFn = estate.IndexOf("void DrawHubUpgradeRow(Rect");
-            Check(hubFn >= 0, "DrawHubUpgradeRow가 있다");
-            int hubEnd = estate.IndexOf("void DrawCoreBuildDock", hubFn);
-            string hubSrc = hubFn >= 0 && hubEnd > hubFn
-                ? estate.Substring(hubFn, hubEnd - hubFn) : "";
-            int hDesc = hubSrc.IndexOf("string desc =");
-            int hSemi = hDesc >= 0 ? hubSrc.IndexOf(";", hDesc) : -1;
-            string h0 = hDesc >= 0 && hSemi > hDesc ? hubSrc.Substring(hDesc, hSemi - hDesc) : "";
-            Check(h0.Contains("EstateStatusHud.ShortCopper")
-                  && h0.Contains("UpgradeCost")
-                  && h0.IndexOf("FormatCurrency") < 0,
-                "허브 업비(DrawHubUpgradeRow)는 ShortCopper만");
-
-            // 경매 로컬 장 지갑: AuctionHouseOld
-            int auc = estate.IndexOf("void AuctionHouseOld");
-            Check(auc >= 0, "AuctionHouseOld가 있다");
-            int aucEnd = estate.IndexOf("void DrawAuctionLots", auc);
-            string aucSrc = auc >= 0 && aucEnd > auc
-                ? estate.Substring(auc, aucEnd - auc) : "";
-            int loc = aucSrc.IndexOf("로컬 장");
-            int locSemi = loc >= 0 ? aucSrc.IndexOf(";", loc) : -1;
-            string loc0 = loc >= 0 && locSemi > loc ? aucSrc.Substring(loc, locSemi - loc) : "";
-            Check(loc0.Contains("EstateStatusHud.ShortCopper")
-                  && loc0.Contains("Wallet.Copper")
-                  && loc0.IndexOf("FormatCurrency") < 0,
-                "경매 로컬 장 지갑은 ShortCopper만");
-
-            // 경매 호가 lot.Price
-            Check(estate.Contains("void DrawAuctionLots"), "DrawAuctionLots가 있다");
-            Check(estate.Contains("EstateStatusHud.ShortCopper(lot.Price)")
-                  && estate.IndexOf("FormatCurrency(lot.Price)") < 0,
-                "경매 호가 lot.Price는 ShortCopper만");
-
-            // 경매 등록 수수료·가격
-            Check(estate.Contains("EstateStatusHud.ShortCopper(AuctionState.ListFee(price))")
-                  && estate.Contains("EstateStatusHud.ShortCopper(price)")
-                  && estate.IndexOf("FormatCurrency(AuctionState.ListFee") < 0
-                  && estate.IndexOf("FormatCurrency(price)") < 0,
-                "경매 등록 수수료·가격은 ShortCopper만");
-
-            // 월드티어 /h
-            int wt = estate.IndexOf("void WorldTier(Rect");
-            Check(wt >= 0, "WorldTier가 있다");
-            int wtEnd = estate.IndexOf("허브 경매 버튼 잠금", wt);
-            string wtSrc = wt >= 0 && wtEnd > wt ? estate.Substring(wt, wtEnd - wt) : "";
-            Check(wtSrc.Contains("EstateStatusHud.ShortCopper")
-                  && wtSrc.Contains("TierRevenueMultiplier")
-                  && wtSrc.IndexOf("FormatCurrency") < 0,
-                "월드티어 /h는 ShortCopper만");
-
-            // EstateBuild 골드 부족 메시지
-            string build = File.ReadAllText(Path.Combine(runtime, "EstateBuild.cs"));
-            Check(build.Contains("WhyCannotUpgrade")
-                  && build.Contains("WhyCannotRushGold"),
-                "EstateBuild 골드 부족 메서드가 있다");
-            Check(build.Contains("골드가 부족하다 — {EstateStatusHud.ShortCopper")
-                  && build.IndexOf("골드가 부족하다 — {Economy.FormatCurrency") < 0,
-                "EstateBuild 골드 부족은 ShortCopper만");
-
-            // EstateDefense 골드 부족 메시지
-            string defense = File.ReadAllText(Path.Combine(runtime, "EstateDefense.cs"));
-            Check(defense.Contains("WhyCannotStart")
-                  && defense.Contains("WhyCannotRushGold"),
-                "EstateDefense 골드 부족 메서드가 있다");
-            Check(defense.Contains("골드가 부족하다 — {EstateStatusHud.ShortCopper")
-                  && defense.IndexOf("골드가 부족하다 — {Economy.FormatCurrency") < 0,
-                "EstateDefense 골드 부족은 ShortCopper만");
             // 순자산 줄(§18-5)은 파산·광산 압류와 동형으로 ShowOnHub 게이트 뒤 statusRow에서만
             // 그린다 — 도크 5칸(DockH 하단)은 상시 슬림이다. NetWorthSelfCheck가 배선을 요구하므로
             // 「NetWorth.Line 문자열 부재」는 이제 틀린 단언이다. 게이트 존재로 상시 슬림을 지킨다.

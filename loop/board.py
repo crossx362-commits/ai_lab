@@ -28,14 +28,13 @@ import re
 import subprocess
 import sys
 import threading
-import time
 import urllib.error
 import urllib.request
 import webbrowser
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, quote, unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 from zoneinfo import ZoneInfo
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -49,7 +48,7 @@ DECISIONS_PATH = HERE / "board_decisions.json"
 COMMANDS_PATH = HERE / "owner_commands.json"
 COMMANDS_MAX = 80
 TEST_REPORT_PATH = HERE / "last_test_report.json"
-HANDOFF_STATE_PATH = HERE / "handoff_state.json"
+PID_PATH = HERE / "loop.pid"
 GROK_AUTH = Path.home() / ".grok" / "auth.json"
 GROK_USAGE_CACHE = HERE / "grok_usage.cache.json"
 CLAUDE_USAGE_CACHE = HERE / "claude_usage.cache.json"
@@ -69,14 +68,6 @@ _GROK_PRODUCTS = {
 _usage_lock = threading.Lock()
 _usage_mem: dict | None = None
 _usage_at = 0.0
-_git_sync_lock = threading.Lock()
-_git_sync_last = {
-    "busy": False,
-    "ok": None,
-    "action": "",
-    "at": "",
-    "message": "최근 동기화 없음",
-}
 
 CHOICES = {
     "do": "이걸로 진행 — 큐 맨 위에서 이것만 잡아라",
@@ -86,9 +77,6 @@ CHOICES = {
 }
 
 STATUS = ROOT / "docs" / "STATUS.md"
-WORKLOG = ROOT / "docs" / "GAME_WORKLOG.md"
-HANDOFF = ROOT / "docs" / "GAME_DEV_HANDOFF.md"
-LOGS = ROOT / "logs"
 DESIGN = ROOT / "docs" / "DESIGN.md"
 GAME_DESIGN = ROOT / "docs" / "GAME_DESIGN_ASHES_TO_STARS.md"
 INBOX = ROOT / "docs" / "feedback" / "INBOX.md"
@@ -122,7 +110,6 @@ _COMMIT_ALLOW = (
     "loop/board.py",
     "loop/board.html",
     "loop/test_board.py",
-    "loop/handoff_state.json",
     "loop/last_test_report.json",
     "loop/v4_playtest.py",
     "loop/v4_testers.json",
@@ -179,19 +166,11 @@ def humanize_title(title: str, detail: str = "") -> str:
     t = re.sub(r"^INBOX\s+\d{1,2}:\d{2}\s+", "", t)
     t = re.sub(r"\s*\(오너[^)]*\)\s*$", "", t)
     t = re.sub(r"\s*§[0-9.\-]+", "", t)
-    t = re.sub(r"\*+", "", t)
     for pat, label in _TITLE_HINTS:
         if pat.search(t):
             t = label
             break
     t = re.sub(r"`[^`]+`", "", t)
-    # infoBottom·AuctionHud 같은 내부 식별자는 제목에서 빼되 UI·V2 같은 약어는 남긴다.
-    t = re.sub(
-        r"\b(?=[A-Za-z0-9_]*[a-z])(?=[A-Za-z0-9_]*[A-Z])[A-Za-z][A-Za-z0-9_]*\b",
-        "",
-        t,
-    )
-    t = re.sub(r"\b[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9_]+\b", "", t)
     t = re.sub(r"\s+", " ", t).strip(" ·,;—-")
     return _now_short(t, 36) if t else "할 일"
 
@@ -246,33 +225,14 @@ def _plain_list(items: list, detail_key: str = "detail") -> list:
     return [_plain_item(it, detail_key) for it in (items or [])]
 
 
-def _heading_block(status: str, pred) -> str:
-    """Return body of the first ## heading for which pred(heading) is true."""
-    for m in re.finditer(r"^##\s+(.+?)\s*$", status, re.M):
-        if not pred(m.group(1)):
-            continue
-        rest = status[m.end():]
-        end = re.search(r"^## ", rest, re.M)
-        return rest[: end.start()] if end else rest
-    return ""
-
-
 def parse_queue(status: str) -> list[dict]:
-    """STATUS 「다음 할 일」 번호 목록 (구 포맷 + 2026-08-23 템플릿)."""
-    def want(h: str) -> bool:
-        if "다음 할 일" not in h:
-            return False
-        # Prefer numbered-list section over the markdown table section.
-        if "큐" in h and "원장" not in h:
-            return False
-        return True
-
-    block = _heading_block(status, want)
-    if not block:
-        # New template often names the only queue section with 큐.
-        block = _heading_block(status, lambda h: "다음 할 일" in h)
-    if not block:
+    """STATUS 「다음 할 일」 번호 목록."""
+    m = re.search(r"^## 다음 할 일[^\n]*\n", status, re.M)
+    if not m:
         return []
+    rest = status[m.end():]
+    end = re.search(r"^## |\n최종 갱신:", rest)
+    block = rest[: end.start()] if end else rest
     out = []
     for line in block.splitlines():
         parsed = parse_numbered_item(line)
@@ -282,31 +242,15 @@ def parse_queue(status: str) -> list[dict]:
 
 
 def parse_numbered_item(line: str) -> dict | None:
-    """`1. **제목** (메모) — 설명`, checkbox `- [ ] 1. 제목`, or plain `1. 제목`."""
-    raw = line.strip()
-    # New template: "- [ ] 1. title" / "- [x] 1. title"
-    raw = re.sub(r"^-\s*\[[ xX]\]\s*", "", raw)
+    """`1. **제목** (메모) — 설명` 또는 대시 없는 한 줄."""
     hit = re.match(
         r"^(\d+)\.\s+\*\*(.+?)\*\*(?:\s*\([^)]*\))?\s*(?:[—–-]\s*(.*))?$",
-        raw,
+        line.strip(),
     )
     if not hit:
-        hit = re.match(
-            r"^(\d+)\.\s+(.+?)(?:\s*[—–-]\s*(.*))?$",
-            raw,
-        )
-        if not hit:
-            return None
-        title = hit.group(2).strip()
-        detail = (hit.group(3) or "").strip()
-        # skip empty template placeholders
-        if not title or title in (".", "…", "..."):
-            return None
-    else:
-        title = hit.group(2).strip()
-        detail = (hit.group(3) or "").strip()
-    if not title:
         return None
+    title = hit.group(2).strip()
+    detail = (hit.group(3) or "").strip()
     return {
         "n": int(hit.group(1)),
         "id": item_id(title),
@@ -318,9 +262,12 @@ def parse_numbered_item(line: str) -> dict | None:
 
 def parse_queue_table(status: str) -> list[dict]:
     """STATUS 하단 「다음 할 일 큐」 표. 취소선(완료) 행은 뺀다."""
-    block = _heading_block(status, lambda h: "다음 할 일 큐" in h)
-    if not block:
+    m = re.search(r"^## 다음 할 일 큐[^\n]*\n", status, re.M)
+    if not m:
         return []
+    rest = status[m.end():]
+    end = re.search(r"^## |\n### ", rest)
+    block = rest[: end.start()] if end else rest
     out = []
     for line in block.splitlines():
         if "| ~~" in line or not line.startswith("|"):
@@ -346,9 +293,12 @@ def parse_queue_table(status: str) -> list[dict]:
 
 def parse_queue_table_all(status: str) -> list[dict]:
     """큐 표 전체. 취소선 행도 남겨 완료/미완 비율을 센다."""
-    block = _heading_block(status, lambda h: "다음 할 일 큐" in h)
-    if not block:
+    m = re.search(r"^## 다음 할 일 큐[^\n]*\n", status, re.M)
+    if not m:
         return []
+    rest = status[m.end():]
+    end = re.search(r"^## |\n### ", rest)
+    block = rest[: end.start()] if end else rest
     out = []
     for line in block.splitlines():
         if not line.startswith("|"):
@@ -412,8 +362,8 @@ def parse_weeks(game_design: str) -> list[dict]:
         out.append({
             "id": week.split()[0],
             "label": week,
-            "goal": goal[:72],
-            "gate": re.sub(r"<[^>]+>", "", gate)[:100],
+            "goal": goal[:48],
+            "gate": re.sub(r"<[^>]+>", "", gate)[:80],
             "state": state,
             "pct": pct,
         })
@@ -442,9 +392,9 @@ def parse_roadmap_table(game_design: str) -> list[dict]:
             continue
         out.append({
             "id": num.group(1),
-            "label": label[:40],
+            "label": label[:24],
             "pct": 0,
-            "note": re.sub(r"<[^>]+>", "", cells[-1])[:120],
+            "note": re.sub(r"<[^>]+>", "", cells[-1])[:80],
         })
     return out
 
@@ -523,28 +473,7 @@ def mark_now_closed(now_list: list[dict], design: str, status: str,
     return now_list
 
 
-def dummy_human_report() -> dict:
-    """오너 2026-08-24 사람 관문 더미 보고서. ROOT를 옮겨 테스트가 실파일을 안 읽게 한다."""
-    p = ROOT / "output" / "qa" / "ashes-to-stars" / "v4_playtest_dummy" / "dummy_report.json"
-    if not p.is_file():
-        return {}
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    if not data.get("dummy") or not data.get("closes_human_gates"):
-        return {}
-    return data
-
-
-def _dummy_verdict_pass(gate: str) -> bool:
-    v = (dummy_human_report().get("verdict") or {}).get(gate) or {}
-    return bool(v.get("pass"))
-
-
 def _v2_passed(status: str, decisions: dict) -> bool:
-    if _dummy_verdict_pass("V2"):
-        return True
     if "V2 사람 판정 → 통과" in status:
         return True
     return any(
@@ -554,11 +483,7 @@ def _v2_passed(status: str, decisions: dict) -> bool:
 
 
 def _v3_closed(design: str) -> bool:
-    if any(m.get("done") and "V3" in m["title"] for m in parse_milestones(design)):
-        return True
-    # 요약 틀 DESIGN.md가 비어도 원장 증거가 있으면 한 판은 닫힘
-    game = _read(GAME_DESIGN)
-    return "한 판 종단을 코드·화면·네거티브로 닫음" in game
+    return any(m.get("done") and "V3" in m["title"] for m in parse_milestones(design))
 
 
 def _v4_human_passed(status: str, decisions: dict | None) -> bool:
@@ -584,48 +509,8 @@ def _v4_owner_skipped(status: str, decisions: dict | None) -> bool:
     return False
 
 
-def gate_override(gate_id: str, decisions: dict | None) -> dict | None:
-    """관문 철회·보류 (오너 2026-08-26).
-
-    관문은 「통과/미통과」 두 값만으로는 표현이 안 되는 상태를 가진다:
-      - **철회(retire)** — 그 축을 이 게임에서 판정하지 않기로 했다(V2·W2 손맛).
-      - **보류(defer)** — 판정 시점이 아직 아니다(V3 — 구현 밀도가 낮아 측정 불가).
-    둘 다 「막힌 관문」이 아니므로 진척 평균·닫힘 수에서 빼야 한다. 빼지 않으면 보드가
-    영원히 「사람 70% 전 상한 90」을 띄워 실제로 막힌 것과 구분이 안 된다.
-
-    board_decisions.json에 choice가 retire·defer인 항목으로 기록한다.
-    """
-    for v in (decisions or {}).values():
-        if str(v.get("choice") or "") not in ("retire", "defer"):
-            continue
-        title = str(v.get("title") or "")
-        if not title.startswith(gate_id):
-            continue
-        return {
-            "state": "retired" if v["choice"] == "retire" else "deferred",
-            "note": str(v.get("note") or "") or (
-                "철회 — 판정하지 않음" if v["choice"] == "retire" else "보류 — 판정 시점 아님"),
-        }
-    return None
-
-
-def apply_gate_overrides(gates: list[dict], decisions: dict | None) -> list[dict]:
-    """철회·보류 관문에 상태·문구를 입히고 `counted=False`로 평균에서 뺀다."""
-    for g in gates:
-        g.setdefault("counted", True)
-        ov = gate_override(str(g.get("id") or ""), decisions)
-        if not ov:
-            continue
-        g["state"] = ov["state"]
-        g["note"] = ov["note"]
-        g["counted"] = False
-    return gates
-
-
 def v4_released(status: str = "", decisions: dict | None = None) -> bool:
-    return (_v4_human_passed(status, decisions)
-            or _v4_owner_skipped(status, decisions)
-            or _dummy_verdict_pass("V4"))
+    return _v4_human_passed(status, decisions) or _v4_owner_skipped(status, decisions)
 
 
 def v4_gate_pct(st: dict | None = None, decisions: dict | None = None,
@@ -717,13 +602,8 @@ def progress_charts(status: str | None = None, design: str | None = None,
             w.update(state="done", pct=100, note="V4 관문 열림")
         elif w["id"] == "W6":
             if v4_released(status, decisions):
-                if _v4_owner_skipped(status, decisions):
-                    wnote = "오너 넘김"
-                elif _dummy_verdict_pass("V4"):
-                    wnote = "더미 관문 통과"
-                else:
-                    wnote = "사람 70% 통과"
-                w.update(state="done", pct=100, note=wnote)
+                w.update(state="done", pct=100,
+                         note="오너 넘김" if _v4_owner_skipped(status, decisions) else "사람 70% 통과")
             else:
                 w.update(state="open", pct=0, note="V4 70% 사람 관문")
 
@@ -732,29 +612,22 @@ def progress_charts(status: str | None = None, design: str | None = None,
     gates = [
         {"id": "V1", "label": "V1 성능", "pct": 100, "note": "W1 통과 · DOTS 불필요"},
         {"id": "V2", "label": "V2 조작감", "pct": 100 if v2 else 0,
-         "note": ("더미 관문 통과 · 실측 아님" if _dummy_verdict_pass("V2")
-                  else ("오너 보드 통과" if v2 else "사람 판정 남음"))},
+         "note": "오너 보드 통과" if v2 else "사람 판정 남음"},
         {"id": "V3", "label": "V3 보스 한 판", "pct": 100 if v3 else 0,
          "note": "HP·페이즈·처치·층" if v3 else "한 판 미연결"},
         {"id": "V4a", "label": "V4 패배→삭제 경계", "pct": 100, "note": "자동 경계 닫힘"},
         {"id": "V4b", "label": "V4 외부 테스터 70%", "pct": v4b_pct, "note": v4b_note},
     ]
-    apply_gate_overrides(gates, decisions)
-    counted = [g for g in gates if g.get("counted", True)]
-    proto_pct = round(sum(g["pct"] for g in counted) / max(len(counted), 1))
-    proto_closed = sum(1 for g in counted if g["pct"] >= 100)
-    if any(g["pct"] < 100 for g in counted):
+    proto_pct = round(sum(g["pct"] for g in gates) / max(len(gates), 1))
+    proto_closed = sum(1 for g in gates if g["pct"] >= 100)
+    if any(g["pct"] < 100 for g in gates):
         proto_pct = min(proto_pct, 90)
     if _v4_owner_skipped(status, decisions):
         proto_note = "오너가 사람 70%를 넘김 · 측정 안 함"
     elif proto_pct >= 100:
-        proto_note = f"관문 {proto_closed}/{len(counted)} 닫힘"
+        proto_note = f"관문 {proto_closed}/{len(gates)} 닫힘"
     else:
-        proto_note = f"관문 평균 · {proto_closed}/{len(counted)}닫힘 · 사람 70% 전 상한 90"
-    off = [g for g in gates if not g.get("counted", True)]
-    if off:
-        proto_note += " · 제외 " + "·".join(
-            f"{g['id']}({'철회' if g.get('state') == 'retired' else '보류'})" for g in off)
+        proto_note = f"관문 평균 · {proto_closed}/{len(gates)}닫힘 · 사람 70% 전 상한 90"
     slice_rows = slice_checks(status, design, game_design)
     slice_done = sum(1 for r in slice_rows if r["done"])
     slice_n = max(len(slice_rows), 1)
@@ -793,9 +666,6 @@ def progress_charts(status: str | None = None, design: str | None = None,
         queue_stat = {"done": done_n, "open": open_n, "blocked": blocked_n, "total": len(rows)}
     current = pick_current_stage(roadmap)
     focus = focus_bars(current, gates, slice_rows)
-    for w in weeks:
-        if not w.get("note"):
-            w["note"] = w.get("gate") or w.get("goal") or ""
     return {
         "gates": gates,
         "focus": focus,
@@ -857,13 +727,11 @@ def focus_bars(current: dict, gates: list[dict], slice_rows: list[dict]) -> list
         return list(gates)
     if str(current.get("id")) == "1":
         done_n = sum(1 for r in slice_rows if r.get("done"))
-        # 요약 막대는 실제 비율이어야 한다. 「100 if slice_rows」는 0/14인데도 막대를 꽉 채워
-        # 「다 됐다」로 읽히게 만들던 버그다(오너 2026-08-26 「뭐가 뭔지 알 수가 없다」의 한 원인).
         bars = [{
             "id": "slice-done",
             "label": f"끝낸 것 {done_n}/{len(slice_rows)}",
-            "pct": round(100 * done_n / len(slice_rows)) if slice_rows else 0,
-            "note": f"{done_n}칸 닫힘" if done_n else "아직 0칸",
+            "pct": 100 if slice_rows else 0,
+            "note": "끝",
         }]
         for r in slice_rows:
             if r.get("done"):
@@ -872,7 +740,7 @@ def focus_bars(current: dict, gates: list[dict], slice_rows: list[dict]) -> list
                 "id": str(r.get("id") or r.get("title") or "open"),
                 "label": r.get("title") or "남음",
                 "pct": 0,
-                "note": str(r.get("detail") or "남음")[:80],
+                "note": "남음",
             })
         return bars
     return [{
@@ -1041,22 +909,8 @@ _SHOT_MIME = {
 }
 
 
-_SHOT_BLACK_CACHE: dict[tuple[str, int, int], bool] = {}
-
-
 def shot_is_black(path: Path, mean_max: float = 14.0, dark_min: float = 0.90) -> bool:
-    """거의 검은 화면은 끝난 일 증거로 쓰지 않는다.
-    같은 파일(mtime·크기 불변) 재판정은 메모 캐시로 건너뛴다 — 상태 1건마다
-    QA 샷 수십 장을 다시 디코딩해 렌더가 수 초로 늘어 서버 테스트 3초
-    타임아웃 flake(테스트스위트:FAIL 재발)의 근본 원인이었다 (2026-08-24)."""
-    try:
-        st = path.stat()
-    except OSError:
-        return False
-    key = (str(path), st.st_mtime_ns, st.st_size)
-    hit = _SHOT_BLACK_CACHE.get(key)
-    if hit is not None:
-        return hit
+    """거의 검은 화면은 끝난 일 증거로 쓰지 않는다."""
     try:
         from PIL import Image
     except ImportError:
@@ -1081,11 +935,7 @@ def shot_is_black(path: Path, mean_max: float = 14.0, dark_min: float = 0.90) ->
             if s <= 24:
                 dark += 1
     mean = total / (3 * n)
-    result = mean < mean_max and (dark / n) >= dark_min
-    if len(_SHOT_BLACK_CACHE) > 1024:
-        _SHOT_BLACK_CACHE.clear()
-    _SHOT_BLACK_CACHE[key] = result
-    return result
+    return mean < mean_max and (dark / n) >= dark_min
 
 
 def usable_shot(rel: str) -> bool:
@@ -1221,9 +1071,7 @@ def playtest_state() -> dict:
         "ran": hist_n if hist_n else sum(1 for r in rows if r["ran"]),
         "deleted": hist_del if hist_n else sum(1 for r in rows if r["deleted"]),
         "continued": hist_cont if hist_n else sum(1 for r in rows if r["continued"]),
-        "human_70": (dummy_human_report().get("human_70")
-                     or script.get("human_70") or "pending"),
-        "dummy": dummy_human_report(),
+        "human_70": "pending",
         "ran_at": ran_at,
         "sessions": rows,
         "script": script,
@@ -1267,10 +1115,6 @@ def v4_playtest_note(st: dict | None = None, status: str = "",
                     decisions: dict | None = None) -> str:
     if _v4_owner_skipped(status, decisions):
         return "오너가 사람 70%를 넘김 · 측정 안 함"
-    if _dummy_verdict_pass("V4"):
-        return "더미 관문 통과 · 실측 아님"
-    if dummy_human_report().get("human_70") == "dummy-fail":
-        return "더미 관문 FAIL · 사람 대기 종료"
     if _v4_human_passed(status, decisions):
         return "사람 70% 통과"
     st = st if st is not None else playtest_state()
@@ -1282,54 +1126,8 @@ def v4_playtest_note(st: dict | None = None, status: str = "",
     return "사람 관문 · 자동 완료 금지"
 
 
-def parse_history_table(status: str) -> list[dict]:
-    """STATUS 「최근 완료 내역 (History)」 표. 최신이 앞."""
-    block = _heading_block(
-        status,
-        lambda h: ("완료" in h and ("History" in h or "내역" in h))
-        or h.strip().startswith("최근 완료"),
-    )
-    if not block:
-        return []
-    out: list[dict] = []
-    for line in block.splitlines():
-        line = line.strip()
-        if not line.startswith("|"):
-            continue
-        cells = [c.strip() for c in line.strip("|").split("|")]
-        joined = "".join(cells)
-        if set(joined) <= set("-:| ") or any(
-            k in line for k in ("작업 내용", "검증 결과", "일시")
-        ):
-            continue
-        if len(cells) < 3:
-            continue
-        if len(cells) >= 4:
-            lap, when, title, verify = cells[0], cells[1], cells[2], cells[3]
-        else:
-            when, title, verify = cells[0], cells[1], cells[2]
-            lap = ""
-        title = re.sub(r"\*\*([^*]+)\*\*", r"\1", title).strip()
-        if not title or title in ("—", "-", "…", "..."):
-            continue
-        commit = ""
-        cm = re.search(r"`([0-9a-f]{7,40})`|\b([0-9a-f]{7,40})\b", verify or "")
-        if cm:
-            commit = (cm.group(1) or cm.group(2) or "")[:8]
-        bits = [x for x in (when, verify) if x and x not in ("—", "-")]
-        if lap and lap not in ("—", "-"):
-            bits.append("바퀴 " + lap)
-        out.append({
-            "title": title[:160],
-            "detail": " · ".join(bits)[:300],
-            "commit": commit,
-            "body": (verify or "")[:300],
-        })
-    return out
-
-
 def completed_posts(status: str, limit: int = 12) -> list[dict]:
-    """완료된 개발 — History 표 + STATUS 결과 + 실측 샷. 끝난 행만."""
+    """완료된 개발 — STATUS 근거 + 실측 샷. 끝난 행만."""
     posts: list[dict] = []
     seen: set[str] = set()
 
@@ -1351,8 +1149,6 @@ def completed_posts(status: str, limit: int = 12) -> list[dict]:
         })
         seen.add(title)
 
-    for it in parse_history_table(status):
-        add(it["title"], it.get("detail") or it.get("body") or "", it.get("commit") or "")
     for it in parse_results(status, limit=24):
         add(it["title"], it.get("body") or "", it.get("commit") or "")
     for row in parse_queue_table_all(status):
@@ -1360,6 +1156,7 @@ def completed_posts(status: str, limit: int = 12) -> list[dict]:
             continue
         add(row["title"], row.get("detail") or "")
     return posts[:limit]
+
 
 def parse_milestones(design: str) -> list[dict]:
     m = re.search(r"### 현재 핵심 미완.*?\n\n(.*?)(?=\n## |\Z)", design, re.S)
@@ -1412,35 +1209,8 @@ def parse_inbox(inbox: str) -> dict:
 
 
 def parse_updated(status: str) -> str:
-    """머리글의 **시각만**. STATUS의 「최종 갱신」 줄은 한 문단짜리 바퀴 보고서라,
-    통째로 헤더에 박으면 보드 첫 화면이 읽을 수 없는 글벽이 된다(오너 2026-08-26).
-    본문은 parse_updated_note가 한 줄로 줄여서 따로 준다."""
     m = re.search(r"^최종 갱신:\s*(.+)$", status, re.M)
-    if not m:
-        return ""
-    raw = m.group(1).strip()
-    head = re.match(r"^\s*(\d{4}-\d{2}-\d{2}(?:\s*\([^)]{1,12}\))?)", raw)
-    return head.group(1).strip() if head else raw[:24].strip()
-
-
-def parse_updated_note(status: str, limit: int = 110) -> str:
-    """「최종 갱신」 문단을 한 줄 요약으로. 마크다운·해시·경로를 걷어낸다."""
-    m = re.search(r"^최종 갱신:\s*(.+)$", status, re.M)
-    if not m:
-        return ""
-    raw = m.group(1).strip()
-    raw = re.sub(r"^\s*\d{4}-\d{2}-\d{2}(?:\s*\([^)]{1,12}\))?\s*[·—-]*\s*", "", raw)
-    raw = re.sub(r"\*\*([^*]+)\*\*", r"\1", raw)
-    raw = re.sub(r"`([^`]*)`", r"\1", raw)
-    raw = re.sub(r"\s+", " ", raw).strip()
-    if len(raw) <= limit:
-        return raw
-    cut = raw[:limit]
-    for sep in ("—", "·", ". ", ", "):
-        i = cut.rfind(sep)
-        if i > limit * 0.5:
-            return cut[:i].strip(" ·—,.") + "…"
-    return cut.strip() + "…"
+    return m.group(1).strip() if m else ""
 
 
 def load_checks() -> dict:
@@ -1457,39 +1227,6 @@ def load_decisions() -> dict:
         return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError):
         return {}
-
-
-
-def load_handoff_state() -> dict:
-    """코디네이터 핸드오프 상태. 없거나 깨져도 보드가 죽지 않게 기본값."""
-    default = {
-        "phase": "idle",
-        "updated": "",
-        "last_commit": "",
-        "last_files": [],
-        "review": "",
-        "note": "준호 완료 보고 대기",
-    }
-    try:
-        raw = json.loads(HANDOFF_STATE_PATH.read_text(encoding="utf-8-sig"))
-    except (OSError, json.JSONDecodeError):
-        return dict(default)
-    if not isinstance(raw, dict):
-        return dict(default)
-    phase = str(raw.get("phase") or "idle").strip()
-    if phase not in ("idle", "awaiting_review", "pass", "fail"):
-        phase = "idle"
-    files = raw.get("last_files") or []
-    if not isinstance(files, list):
-        files = []
-    return {
-        "phase": phase,
-        "updated": str(raw.get("updated") or ""),
-        "last_commit": str(raw.get("last_commit") or ""),
-        "last_files": [str(x) for x in files if str(x).strip()],
-        "review": str(raw.get("review") or ""),
-        "note": str(raw.get("note") or default["note"]),
-    }
 
 
 def save_decisions(data: dict) -> None:
@@ -1768,166 +1505,9 @@ def _hhmm(ts: float) -> str:
     return datetime.fromtimestamp(ts).strftime("%H:%M:%S")
 
 
-def _main_log_path() -> Path:
-    current = ROOT / "logs" / "loop_main.log"
-    legacy = HERE / "loop_main.log"
-    return current if current.exists() or not legacy.exists() else legacy
-
-
-def _lap_records(limit: int = 40) -> list[dict]:
-    """`logs/loop_main.log`의 「바퀴 시작/종료」에서 바퀴 기록을 뽑는다.
-
-    시각은 바퀴 id(YYYYMMDD-HHMMSS-n)에서, 끝난 시각은 그 바퀴의 lap 로그 mtime에서 온다
-    (종료 줄에는 시각이 없다). 반환은 오래된 것부터.
-    """
-    text = _read(_main_log_path())
-    if not text:
-        return []
-    starts: dict[str, str] = {}
-    order: list[str] = []
-    ends: dict[str, int] = {}
-    for line in text.splitlines():
-        m = re.match(r"바퀴 시작:\s*(\S+)\s*(?:agent=(\S+))?", line.strip())
-        if m:
-            lap_id = m.group(1)
-            if lap_id not in starts:
-                order.append(lap_id)
-            starts[lap_id] = m.group(2) or ""
-            continue
-        m = re.match(r"바퀴 종료:\s*(\S+)\s*code=(-?\d+)", line.strip())
-        if m:
-            ends[m.group(1)] = int(m.group(2))
-    out = []
-    for lap_id in order[-limit:]:
-        try:
-            began = datetime.strptime(lap_id.split("-")[0] + lap_id.split("-")[1], "%Y%m%d%H%M%S")
-        except (ValueError, IndexError):
-            continue
-        log = ROOT / "logs" / began.strftime("%Y-%m-%d") / f"lap-{lap_id}.log"
-        secs = None
-        if log.exists():
-            secs = max(0, int(log.stat().st_mtime - began.timestamp()))
-        out.append({
-            "id": lap_id,
-            "agent": starts.get(lap_id, ""),
-            "began": began,
-            "code": ends.get(lap_id),
-            "secs": secs,
-            "running": lap_id not in ends,
-        })
-    return out
-
-
-def lap_costs(laps: list[dict], sample: int = 5) -> dict:
-    """바퀴 하나가 무엇 때문에 오래 걸리는지 — 최근 몇 바퀴의 왕복 비용을 센다.
-
-    실측(2026-08-26 재측정): 바퀴당 셸 명령 35~48회. 유니티 배치는 **싸다** — 단일 SelfCheck
-    3~4초 · 전수 스윕 195종 74초(로그 파일 생성~마지막 기록). 비싼 것은 왕복 자체다(명령 1회당
-    약 1분: 57분 바퀴에 명령 43회). 그래서 「무엇을 하는가」가 아니라 **몇 번 왕복하는가**를 센다.
-    로그가 큰 편이라 최근 sample개만 읽는다.
-
-    세는 방법: ANSI를 벗긴 뒤 **줄머리** `$ `만 명령으로 센다(문자열 안의 "$ "를 세면 부풀려진다).
-    유니티·가드는 그 명령 줄에서만 센다 — grep 인자로 등장한 단어를 실행으로 오독하지 않는다.
-    """
-    cmds = unity = guard = 0
-    seen = 0
-    ansi = re.compile(r"\x1b\[[0-9;]*m")
-    for lap in reversed(laps):
-        if seen >= sample:
-            break
-        path = (ROOT / "logs" / lap["began"].strftime("%Y-%m-%d") / f"lap-{lap['id']}.log")
-        if not path.exists():
-            continue
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        seen += 1
-        lines = [l for l in ansi.sub("", text).split("\n") if l.startswith("$ ")]
-        cmds += len(lines)
-        unity += sum(1 for l in lines if "executeMethod" in l)
-        guard += sum(1 for l in lines if "commit_guard.sh" in l or "safe_commit.sh" in l)
-    if not seen:
-        return {"laps": 0, "cmds": 0, "unity": 0, "guard": 0}
-    return {
-        "laps": seen,
-        "cmds": round(cmds / seen),
-        "unity": round(unity / seen),
-        "guard": round(guard / seen),
-    }
-
-
-def _median(nums: list[int]) -> int:
-    if not nums:
-        return 0
-    s = sorted(nums)
-    mid = len(s) // 2
-    return s[mid] if len(s) % 2 else (s[mid - 1] + s[mid]) // 2
-
-
-def loop_health(limit: int = 20, now: datetime | None = None) -> dict:
-    """루프판 DORA 4키 (웹 조사 2026-08-26 반영).
-
-    소프트웨어 배포 지표를 이 루프에 그대로 대응시킨다 — 처리량과 안정성을 **나란히** 본다:
-      배포 빈도  → 24시간 커밋 수          (throughput)
-      리드 타임  → 바퀴 소요 **중앙값**     (평균은 꼬리에 끌려간다 → 중앙값·p90)
-      변경 실패율 → 바퀴 실패율(code≠0)     (stability)
-      복구 시간  → 마지막 실패 뒤 다시 성공하기까지 (오늘 7시간 공백을 숫자로 드러낸다)
-    여기에 「마지막 활동 이후 경과」를 같이 준다 — 멈춘 보드의 초록불은 보드가 없느니만 못하다.
-    """
-    now = now or datetime.now()
-    laps = _lap_records(max(limit * 2, 40))
-    done = [l for l in laps if l["code"] is not None][-limit:]
-    fails = [l for l in done if l["code"] != 0]
-    durs = [l["secs"] for l in done if l["secs"]]
-    ok_n = len(done) - len(fails)
-
-    recover = None
-    for i, lap in enumerate(done):
-        if lap["code"] == 0:
-            continue
-        for nxt in done[i + 1:]:
-            if nxt["code"] == 0 and nxt["secs"] is not None:
-                recover = int((nxt["began"] - lap["began"]).total_seconds())
-                break
-    last = laps[-1] if laps else None
-    idle = (int(now.timestamp() - (last["began"].timestamp() + (last["secs"] or 0)))
-            if last else None)
-
-    since = now - timedelta(hours=24)
-    commits24 = 0
-    try:
-        raw = subprocess.run(
-            ["git", "log", "--since", since.strftime("%Y-%m-%d %H:%M:%S"), "--format=%h"],
-            cwd=ROOT, capture_output=True, text=True, timeout=6)
-        commits24 = len([x for x in raw.stdout.splitlines() if x.strip()])
-    except (OSError, subprocess.SubprocessError):
-        commits24 = 0
-
-    return {
-        "laps": len(done),
-        "ok": ok_n,
-        "fail": len(fails),
-        "success_pct": round(100 * ok_n / len(done)) if done else 0,
-        "median_secs": _median(durs),
-        "p90_secs": sorted(durs)[int(len(durs) * 0.9)] if durs else 0,
-        "recover_secs": recover,
-        "idle_secs": idle,
-        "stale": bool(idle is not None and idle > 90 * 60),
-        "commits24": commits24,
-        "cost": lap_costs(laps),
-        "last_id": done[-1]["id"] if done else "",
-        "last_code": done[-1]["code"] if done else None,
-        "spark": [
-            {"id": l["id"][-8:], "code": l["code"], "secs": l["secs"] or 0}
-            for l in done[-14:]
-        ],
-    }
-
-
 def loop_flags() -> dict:
-    agent = os.getenv("LOOP_PROVIDERS", "claude · codex · grok").replace(",", " · ")
-    main = _main_log_path()
+    agent = _read(HERE / "agent").strip() or os.getenv("LOOP_AGENT", "grok")
+    main = ROOT / "loop" / "loop_main.log"
     latest = _latest_iter_path()
     latest_iter = latest.name if latest else ""
     main_at = main.stat().st_mtime if main.is_file() else 0.0
@@ -1966,49 +1546,26 @@ def loop_flags() -> dict:
 
 
 def _latest_iter_path() -> Path | None:
-    logs_root = ROOT / "logs"
-    iters = list(logs_root.glob("*/lap-*.log")) if logs_root.is_dir() else []
-    old_log_dir = HERE / "logs"
-    if not iters and old_log_dir.is_dir():
-        iters = list(old_log_dir.glob("iter_*.log"))
-    iters.sort(key=lambda p: p.stat().st_mtime)
+    log_dir = HERE / "logs"
+    if not log_dir.is_dir():
+        return None
+    iters = sorted(log_dir.glob("iter_*.log"), key=lambda p: p.stat().st_mtime)
     return iters[-1] if iters else None
 
 
 _NOW_SKIP = re.compile(
     r"이터레이션을 시작|지시대로|STATUS\.md|인수인계|함정 목록|DIRECTIVES|"
     r"먼저 읽|대조합|큐 1|사람 육안|오너 보류|대기하지|최근 커밋|"
-    r"한 일|남긴 것|다음 세션|큐에만 올리|\*\*코드\*\*|증거|///|"
-    r"바퀴 시작|바퀴 종료|회의 소집|커밋:"
+    r"한 일|남긴 것|다음 세션|큐에만 올리|\*\*코드\*\*|증거"
 )
 _NOW_WORK = re.compile(
     r"구현|넣겠|고치|고칩|붙이|나누|찍|검증|커밋|배치|"
     r"SelfCheck|만듭|바꿉|나눕|검사기|동기화"
 )
-_ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
-_NOW_TECHNICAL = re.compile(
-    r"(?:[/\\]|\.cs\b|[A-Za-z][A-Za-z0-9]*_|"
-    r"(?=[A-Za-z0-9_]*[a-z])(?=[A-Za-z0-9_]*[A-Z])[A-Za-z][A-Za-z0-9_]*|"
-    r"\b[a-z]{3,}\b|"   # 소문자 코드 낱말(void, env 등)이 낀 문장은 제목으로 안 쓴다
-    r"<!--|-->)"        # HTML 주석 조각도 문서 흔적이다
-)
-_NOW_TOPIC_HINTS = (
-    (re.compile(r"AuctionHud|경매장", re.I), "경매장 화면을 보기 쉽게 다듬는 중"),
-    (re.compile(r"Estate|영지", re.I), "영지 화면을 보기 쉽게 다듬는 중"),
-    (re.compile(r"Character|캐릭터", re.I), "캐릭터 화면을 보기 쉽게 다듬는 중"),
-    (re.compile(r"Dungeon|던전", re.I), "던전 화면과 기능을 다듬는 중"),
-    (re.compile(r"Boss|보스", re.I), "보스 전투를 제대로 작동하게 만드는 중"),
-    (re.compile(r"Party|파티|편성", re.I), "파티 편성 화면을 다듬는 중"),
-    (re.compile(r"WorldMap|월드맵", re.I), "월드맵 화면을 보기 쉽게 다듬는 중"),
-    (re.compile(r"Field|필드", re.I), "필드 화면과 전투를 다듬는 중"),
-)
 
 
 def _now_sentences(text: str) -> list[str]:
-    # 인용문(>)·제목줄(#)·diff(+/-)·태그(<) 줄은 문서 발췌라 제목 후보에서 뺀다.
-    lines = [ln for ln in (text or "").splitlines()
-             if not ln.lstrip().startswith((">", "#", "+", "-", "<"))]
-    blob = re.sub(r"\s+", " ", "\n".join(lines)).strip()
+    blob = re.sub(r"\s+", " ", text or "").strip()
     parts = re.split(r"(?<=[다요])\.\s*|(?<=니다)\.\s*|(?<=까)\.\s*", blob)
     out = []
     for part in parts:
@@ -2038,16 +1595,10 @@ def _now_short(text: str, limit: int = 52) -> str:
 
 def infer_now_title(log_text: str, queue: list[dict], inbox_waiting: list[dict]) -> str:
     """지금 손에 든 일 한 줄. 읽기·계획 로그는 제목으로 안 쓴다."""
-    clean_log = _ANSI_ESCAPE.sub("", log_text or "")
-    sents = _now_sentences(clean_log)
+    sents = _now_sentences(log_text)
     work = [s for s in sents if _NOW_WORK.search(s) and not _NOW_SKIP.search(s)]
-    for sentence in reversed(work):
-        candidate = _now_short(_now_ing(sentence))
-        if re.search(r"[가-힣]", candidate) and not _NOW_TECHNICAL.search(candidate):
-            return candidate
-    for pattern, label in _NOW_TOPIC_HINTS:
-        if pattern.search(clean_log):
-            return label
+    if work:
+        return _now_short(_now_ing(work[-1]))
     if inbox_waiting:
         title = re.sub(r"^[📌⭐✅]\s*", "", inbox_waiting[0]["title"])
         title = re.sub(r"\s*\(오너[^)]*\)\s*$", "", title)
@@ -2057,94 +1608,15 @@ def infer_now_title(log_text: str, queue: list[dict], inbox_waiting: list[dict])
     return "다음 일을 고르는 중"
 
 
-def _queue_item_closed(item: dict) -> bool:
-    """보드 상단의 '다음 작업'에서 이미 닫힌 행만 뺀다."""
-    title = str(item.get("title") or "").strip()
-    detail = str(item.get("detail") or "").strip()
-    closed_marker = re.compile(r"^(?:닫음|완료)(?:\s*[.!。]|$)")
-    closed_tail = re.compile(r"(?:닫음|완료)\s*[.!。]?$")
-    return bool(item.get("done")) or bool(
-        closed_marker.match(detail) or closed_marker.match(title)
-        or closed_tail.search(detail)
-    )
-
-
-def _focus_explanation(title: str, detail: str = "") -> tuple[str, str]:
-    """기술 문서 대신 비개발자가 읽을 수 있는 이유·완료 기준을 만든다."""
-    blob = f"{title} {detail}"
-    if any(k in blob for k in ("화면", "UI", "글씨", "경매장", "영지", "캐릭터", "월드맵")):
-        return (
-            "게임 화면에서 필요한 정보를 한눈에 알아보고 불편 없이 조작할 수 있게 만드는 일이에요.",
-            "실제 화면에서 글자와 배치가 자연스럽게 보이고 관련 검사가 통과하면 끝나요.",
-        )
-    if any(k in blob for k in ("아트", "그림", "그래픽", "스프라이트")):
-        return (
-            "게임 속 대상이 더 분명하고 보기 좋게 보이도록 다듬는 일이에요.",
-            "그림이 실제 화면에 표시되고 깨짐이나 겹침이 없는지 확인하면 끝나요.",
-        )
-    if any(k in blob for k in ("전투", "보스", "기능", "움직임", "던전")):
-        return (
-            "플레이에 필요한 기능이 실제 게임에서 자연스럽게 작동하도록 만드는 일이에요.",
-            "기능을 직접 실행해 보고 관련 검사가 통과하면 끝나요.",
-        )
-    return (
-        "다음 개발 단계를 막힘없이 이어가기 위해 지금 필요한 일을 처리하고 있어요.",
-        "결과를 직접 실행해 확인하고 관련 검사가 통과하면 끝나요.",
-    )
-
-
-def build_overview(loop: dict, queue: list[dict], completed: list[dict],
-                   stuck: list[dict], choices: list[dict]) -> dict:
-    """한눈 카드용 데이터. 원문 형식은 바꾸지 않고 표시만 쉽게 정리한다."""
-    open_queue = [_plain_item(it) for it in (queue or []) if not _queue_item_closed(it)]
-    now = dict((loop or {}).get("now") or {})
-    raw_title = str(now.get("title") or "").strip()
-    title = humanize_title(raw_title) if raw_title else ""
-    if title == "할 일" or re.search(r"코드를 찾아.*(?:한 건|고치)", title):
-        title = ""
-    if not title and open_queue:
-        title = open_queue[0]["title"] + " 하는 중"
-    if not title:
-        title = "다음 일을 고르는 중"
-    match = next((it for it in open_queue if it.get("title") and it["title"] in title), None)
-    why, done_when = _focus_explanation(title, (match or {}).get("detail") or "")
-    return {
-        "current": {
-            "phase": now.get("phase") or "지금",
-            "title": title,
-            "why": why,
-            "done_when": done_when,
-        },
-        # 닫힌 행은 제외하고 STATUS의 큐 번호 순서를 유지한 전체 표시용 목록.
-        "queue": open_queue,
-        "next": open_queue[:3],
-        "recent": [dict(it) for it in (completed or [])[:3]],
-        "blocked": [dict(it) for it in (stuck or [])[:3]],
-        "needs_human": [dict(it) for it in (choices or [])[:3]],
-    }
-
-
 def current_work(running: bool, hold: bool, stop: bool,
                  latest_iter: str, main_log: str) -> dict:
     """지금 루프가 손에 든 일. 끝난 이터는 작업 중으로 안 속인다."""
-    full_main = _read(_main_log_path())
+    full_main = _read(HERE / "loop_main.log")
     latest = _latest_iter_path()
     iter_text = _read(latest) if latest else ""
-    number, started, agent = "", "", ""
+    number, started = "", ""
     finished = False
-    lap = re.match(r"lap-(\d{8}-\d{6}-(\d+))\.log$", latest.name) if latest else None
-    if lap:
-        # 새 형식: loop.sh가 "바퀴 시작/종료: LAP_ID agent=X"를 메인·랩 로그에 남긴다.
-        lap_id, number = lap.group(1), lap.group(2)
-        blob = full_main + "\n" + iter_text
-        m = re.search(r"바퀴 시작:\s*" + re.escape(lap_id) + r"\s+agent=(\S+)", blob)
-        if m:
-            agent = m.group(1)
-        finished = bool(re.search(r"바퀴 종료:\s*" + re.escape(lap_id) + r"\b", blob))
-        t = re.search(r"\d{8}-(\d{2})(\d{2})(\d{2})", lap_id)
-        if t:
-            started = ":".join(t.groups())
-    elif latest:
+    if latest:
         last = None
         for m in re.finditer(
             r"▶ 이터레이션 #(\d+)\s+(\d{2}:\d{2}:\d{2})\s+→\s+(\S+)",
@@ -2158,11 +1630,11 @@ def current_work(running: bool, hold: bool, stop: bool,
             finished = bool(re.search(
                 rf"(?:✅|❌|⚠️|⏸)\s+#{{0,1}}{number}\b", after
             ))
-        if not started:
-            # 메인 로그가 낡아도 시작 시각은 이터 로그 이름에 있다(iter_YYYYmmdd_HHMMSS.log).
-            m = re.search(r"iter_\d{8}_(\d{2})(\d{2})(\d{2})", latest.name)
-            if m:
-                started = ":".join(m.groups())
+    if latest and not started:
+        # 메인 로그가 낡아도 시작 시각은 이터 로그 이름에 있다(iter_YYYYmmdd_HHMMSS.log).
+        m = re.search(r"iter_\d{8}_(\d{2})(\d{2})(\d{2})", latest.name)
+        if m:
+            started = ":".join(m.groups())
     generating = _read(ROOT / "projects" / "ashes-to-stars" / "art" / ".generating").strip()
     queue = parse_queue(_read(STATUS))
     inbox = parse_inbox(_read(INBOX)).get("waiting") or []
@@ -2189,7 +1661,6 @@ def current_work(running: bool, hold: bool, stop: bool,
         "iter": latest.name if latest else "",
         "number": number,
         "started": started,
-        "agent": agent,
         "generating": generating,
         "activity": [],
     }
@@ -2212,7 +1683,7 @@ def find_loop_pids() -> list[int]:
         if "board.py" in line or "test_board" in line:
             continue
         # argv가 실제로 loop.sh 를 실행하는 줄만
-        if not re.search(r"(?:^|\s)(?:/bin/)?(?:bash|sh)\s+.+?loop(?:/loop)?\.sh(?:\s|$)", line):
+        if not re.search(r"(?:^|\s)(?:/bin/)?(?:bash|sh)\s+\S*loop(?:/loop)?\.sh(?:\s|$)", line):
             continue
         try:
             pids.append(int(line.split(None, 1)[0]))
@@ -2222,57 +1693,35 @@ def find_loop_pids() -> list[int]:
 
 
 def start_loop() -> int:
-    """보드에서도 동일한 멱등 control start만 사용한다."""
-    try:
-        result = subprocess.run(
-            ["bash", str(HERE / "control.sh"), "start"],
-            cwd=str(ROOT),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=25,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise ValueError("루프 시작 명령을 실행하지 못했습니다") from exc
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout or "시작 확인 실패").strip()[-500:]
-        raise ValueError(f"루프 시작 실패: {detail}")
-
-    pids = find_loop_pids()
-    if pids:
-        return pids[0]
-    match = re.search(r"\bpid=([1-9][0-9]*)\b", result.stdout or "")
-    return int(match.group(1)) if match else 0
+    if find_loop_pids():
+        return find_loop_pids()[0]
+    log_path = HERE / "loop_main.log"
+    with open(log_path, "a", encoding="utf-8") as log:
+        log.write(f"\n▶ 보드에서 재개 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log.flush()
+    # 로그는 loop.sh가 직접 tee 한다 — 여기서 또 리다이렉트하면 두 벌로 쌓인다.
+    proc = subprocess.Popen(
+        ["bash", str(HERE / "loop.sh")],
+        cwd=str(ROOT),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    PID_PATH.write_text(str(proc.pid) + "\n", encoding="utf-8")
+    return proc.pid
 
 
 def resume_work() -> dict:
-    """중단 신호 해제와 실행 확인을 control start 한 번에 맡긴다."""
-    before = find_loop_pids()
-    pid = start_loop()
+    """중단(HOLD/STOP/꺼짐)을 풀고 루프를 다시 돌린다."""
+    set_flag("HOLD", False)
+    set_flag("STOP", False)
     pids = find_loop_pids()
-    if not pids and pid:
+    started = False
+    if not pids:
+        pid = start_loop()
         pids = [pid]
-    return {"started": not bool(before), "pids": pids, "loop": loop_flags()}
-
-
-def stop_loop() -> None:
-    """오너의 보드 중단도 control stop으로 상태와 STOP을 함께 기록한다."""
-    try:
-        result = subprocess.run(
-            ["bash", str(HERE / "control.sh"), "stop"],
-            cwd=str(ROOT),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            timeout=35,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise ValueError("루프 중단 명령을 실행하지 못했습니다") from exc
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout or "중단 확인 실패").strip()[-500:]
-        raise ValueError(f"루프 중단 실패: {detail}")
+        started = True
+    return {"started": started, "pids": pids, "loop": loop_flags()}
 
 
 def commit_allowed(path: str) -> bool:
@@ -2284,198 +1733,38 @@ def commit_allowed(path: str) -> bool:
     name = Path(norm).name
     if name in (".env", ".env.encrypted") or name.endswith(".log"):
         return False
-    return any(
-        norm.startswith(p) if p.endswith("/") else norm == p
-        for p in _COMMIT_ALLOW
-    )
-
-
-def _dirty_files(strict: bool = False) -> tuple[list[dict], str]:
-    try:
-        raw = subprocess.check_output(
-            ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
-            cwd=ROOT,
-            timeout=8,
-        )
-    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-        message = "Git 작업 트리 상태 확인 실패"
-        if strict:
-            raise ValueError(message) from e
-        return [], message
-    out = []
-    records = raw.split(b"\0")
-    i = 0
-    while i < len(records):
-        record = records[i]
-        i += 1
-        if len(record) < 4:
-            continue
-        code = record[:2].decode("ascii", errors="replace")
-        path = os.fsdecode(record[3:])
-        source_path = ""
-        if "R" in code or "C" in code:
-            if i < len(records):
-                source_path = os.fsdecode(records[i])
-                i += 1
-        if code == "??":
-            kind = "untracked"
-        elif "D" in code:
-            kind = "deleted"
-        elif "R" in code or "C" in code:
-            kind = "renamed"
-        elif "A" in code:
-            kind = "added"
-        else:
-            kind = "modified"
-        allowed = commit_allowed(path)
-        if source_path:
-            allowed = allowed and commit_allowed(source_path)
-        out.append({
-            "path": path,
-            "code": code.strip() or "M",
-            "allowed": allowed,
-            "kind": kind,
-            "staged": code[0] not in (" ", "?"),
-            "unstaged": code[1] != " ",
-            "source_path": source_path,
-        })
-    return out, ""
+    return any(norm == p.rstrip("/") or norm.startswith(p) for p in _COMMIT_ALLOW)
 
 
 def dirty_files() -> list[dict]:
-    files, _error = _dirty_files()
-    return files
-
-
-def _git_commit_info(ref: str) -> dict:
-    if not ref:
-        return {"hash": "", "when": "", "subject": ""}
     try:
         raw = subprocess.check_output(
-            [
-                "git", "log", "-1", "--pretty=format:%h%x09%ad%x09%s",
-                "--date=format:%m-%d %H:%M", ref,
-            ],
-            cwd=ROOT, text=True, encoding="utf-8", timeout=8,
-            stderr=subprocess.DEVNULL,
-        ).strip()
+            ["git", "status", "--porcelain", "-u"],
+            cwd=ROOT,
+            text=True,
+            encoding="utf-8",
+            timeout=8,
+        )
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        raw = ""
-    parts = raw.split("\t", 2)
-    if len(parts) != 3:
-        return {"hash": "", "when": "", "subject": ""}
-    return {"hash": parts[0], "when": parts[1], "subject": parts[2]}
+        return []
+    out = []
+    for line in raw.splitlines():
+        if len(line) < 4:
+            continue
+        code, rest = line[:2], line[3:]
+        if " -> " in rest:
+            rest = rest.split(" -> ", 1)[1]
+        path = rest.strip().strip('"')
+        out.append({
+            "path": path,
+            "code": code.strip() or "M",
+            "allowed": commit_allowed(path),
+        })
+    return out
 
 
-def git_detail(strict: bool = False) -> dict:
-    """현재 worktree와 추적 원격의 차이를 보드 표시용으로 계산한다."""
-    branch_error = ""
-    try:
-        branch = subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=ROOT, text=True, encoding="utf-8", timeout=5,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-        if strict:
-            raise ValueError("Git 브랜치 확인 실패") from e
-        branch = ""
-        branch_error = "Git 브랜치 확인 실패"
-
-    upstream_error = ""
-    try:
-        upstream = subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
-            cwd=ROOT, text=True, encoding="utf-8", timeout=5,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except subprocess.CalledProcessError:
-        upstream = ""
-    except (OSError, subprocess.TimeoutExpired) as e:
-        if strict:
-            raise ValueError("Git 원격 추적 확인 실패") from e
-        upstream = ""
-        upstream_error = "Git 원격 추적 확인 실패"
-
-    ahead = behind = 0
-    relation_error = ""
-    if upstream:
-        try:
-            raw = subprocess.check_output(
-                ["git", "rev-list", "--left-right", "--count", f"HEAD...{upstream}"],
-                cwd=ROOT, text=True, encoding="utf-8", timeout=8,
-                stderr=subprocess.DEVNULL,
-            ).strip().split()
-            if len(raw) == 2:
-                ahead, behind = int(raw[0]), int(raw[1])
-        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError) as e:
-            if strict:
-                raise ValueError("Git 원격 차이 확인 실패") from e
-            ahead = behind = 0
-            relation_error = "Git 원격 차이 확인 실패"
-
-    files, worktree_error = _dirty_files(strict=strict)
-    counts = {key: 0 for key in ("modified", "added", "deleted", "renamed", "untracked")}
-    for item in files:
-        counts[item["kind"]] += 1
-    allowed = sum(1 for item in files if item["allowed"])
-    error = branch_error or upstream_error or relation_error or worktree_error
-    if error:
-        status = error
-    elif not branch:
-        status = "Git 상태 확인 불가"
-    elif not upstream:
-        status = "원격 추적 없음"
-    elif ahead and behind:
-        status = f"로컬 {ahead}개·원격 {behind}개로 갈라짐"
-    elif behind:
-        status = f"원격 {behind}개 앞섬"
-    elif ahead:
-        status = f"로컬 {ahead}개 앞섬"
-    else:
-        status = "origin과 같음"
-    change_id = hashlib.sha1(json.dumps(sorted(
-        (item["code"], item["path"], item["source_path"], item["allowed"])
-        for item in files
-    ), ensure_ascii=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:12]
-    return {
-        "ok": not error,
-        "error": error,
-        "branch": branch,
-        "upstream": upstream,
-        "ahead": ahead,
-        "behind": behind,
-        "diverged": ahead > 0 and behind > 0,
-        "status": status,
-        "changed": len(files),
-        "allowed": allowed,
-        "blocked": len(files) - allowed,
-        "staged": sum(1 for item in files if item["staged"]),
-        "unstaged": sum(1 for item in files if item["unstaged"]),
-        "change_id": change_id,
-        "counts": counts,
-        "files": files,
-        "local": _git_commit_info("HEAD"),
-        "remote": _git_commit_info(upstream),
-    }
-
-
-def git_summary() -> dict:
-    summary = git_detail()
-    summary.pop("files", None)
-    return summary
-
-
-def _commit_work(message: str) -> dict:
-    dirty, _error = _dirty_files(strict=True)
-    staged_blocked = [
-        item for item in dirty if item.get("staged") and not item.get("allowed")
-    ]
-    if staged_blocked:
-        raise ValueError(
-            f"제외 파일 {len(staged_blocked)}개가 이미 스테이징되어 있다 — "
-            "다른 커밋에 섞지 않는다")
-    files = [f["path"] for f in dirty if f["allowed"]]
+def commit_work(message: str) -> dict:
+    files = [f["path"] for f in dirty_files() if f["allowed"]]
     if not files:
         raise ValueError("커밋할 허용 파일이 없다")
     msg = re.sub(r"\s+", " ", (message or "").strip())
@@ -2486,11 +1775,7 @@ def _commit_work(message: str) -> dict:
     # add와 commit을 한 호흡 — 스테이징 방치 금지
     subprocess.check_call(["git", "add", "--"] + files, cwd=ROOT, timeout=20)
     try:
-        # --only: 검사 뒤 다른 세션이 stage해도 이 경로 밖 파일은 새 커밋에 넣지 않는다.
-        subprocess.check_call(
-            ["git", "commit", "-m", msg, "--only", "--"] + files,
-            cwd=ROOT, timeout=20,
-        )
+        subprocess.check_call(["git", "commit", "-m", msg], cwd=ROOT, timeout=20)
     except subprocess.CalledProcessError:
         subprocess.call(["git", "reset", "HEAD", "--"] + files, cwd=ROOT)
         raise ValueError("커밋 실패 — 스테이징을 되돌렸다")
@@ -2499,16 +1784,6 @@ def _commit_work(message: str) -> dict:
         cwd=ROOT, text=True, encoding="utf-8", timeout=5,
     ).strip()
     return {"hash": head.split()[0], "subject": head[len(head.split()[0]) + 1:], "files": files}
-
-
-def commit_work(message: str) -> dict:
-    """수동 커밋도 동기화와 같은 잠금으로 index·HEAD 경합을 막는다."""
-    if not _git_sync_lock.acquire(blocking=False):
-        raise ValueError("다른 깃 작업이 이미 진행 중이다")
-    try:
-        return _commit_work(message)
-    finally:
-        _git_sync_lock.release()
 
 
 def push_state() -> dict:
@@ -2527,7 +1802,7 @@ def push_state() -> dict:
     return {"branch": branch, "ahead": ahead}
 
 
-def _push_work() -> dict:
+def push_work() -> dict:
     """지금 브랜치를 origin으로 올린다. **강제 푸시는 하지 않는다** — 남의 커밋을 지운다.
 
     보드 버튼 전용(오너 지시 2026-08-18). 사람이 눌렀을 때만 돈다 — 자동 루프는 이걸 안 부른다.
@@ -2540,13 +1815,11 @@ def _push_work() -> dict:
         raise ValueError("브랜치가 없다(detached HEAD) — 푸시하지 않는다")
     if state.get("ahead", 0) <= 0:
         raise ValueError("올릴 커밋이 없다")
-    env = dict(os.environ)
-    env["GIT_TERMINAL_PROMPT"] = "0"
     try:
         out = subprocess.run(
             ["git", "push", "origin", branch],
             cwd=ROOT, text=True, encoding="utf-8", timeout=180,
-            capture_output=True, env=env)
+            capture_output=True)
     except (OSError, subprocess.TimeoutExpired) as e:
         raise ValueError(f"푸시 실패 — {e}") from e
     if out.returncode != 0:
@@ -2555,125 +1828,6 @@ def _push_work() -> dict:
         raise ValueError(f"푸시 거절 — {why[:160]}")
     after = push_state()
     return {"branch": branch, "pushed": state["ahead"], "ahead": after.get("ahead", 0)}
-
-
-def push_work() -> dict:
-    """수동 푸시도 동기화와 같은 잠금으로 원격 변경 경합을 막는다."""
-    if not _git_sync_lock.acquire(blocking=False):
-        raise ValueError("다른 깃 작업이 이미 진행 중이다")
-    try:
-        return _push_work()
-    finally:
-        _git_sync_lock.release()
-
-
-def _fetch_origin(branch: str) -> None:
-    """원격 상태만 갱신한다. worktree와 브랜치는 바꾸지 않는다."""
-    env = dict(os.environ)
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    try:
-        out = subprocess.run(
-            [
-                "git", "fetch", "--prune", "--no-tags",
-                "--no-recurse-submodules", "origin", branch,
-            ],
-            cwd=ROOT, text=True, encoding="utf-8", timeout=180,
-            capture_output=True, env=env,
-        )
-    except (OSError, subprocess.TimeoutExpired) as e:
-        raise ValueError(f"원격 확인 실패 — {e}") from e
-    if out.returncode != 0:
-        tail = (out.stderr or out.stdout or "").strip().splitlines()
-        why = tail[-1] if tail else f"exit {out.returncode}"
-        raise ValueError(f"원격 확인 실패 — {why[:160]}")
-
-
-def _sync_work(message: str = "") -> dict:
-    """원격을 확인한 뒤 허용 변경을 한 커밋으로 묶어 origin에 올린다."""
-    before = git_detail(strict=True)
-    branch = before.get("branch") or ""
-    if not branch or branch == "HEAD":
-        raise ValueError("브랜치가 없다(detached HEAD) — 동기화하지 않는다")
-    upstream = before.get("upstream") or ""
-    if not upstream:
-        raise ValueError(f"origin/{branch} 원격 추적이 없다 — 동기화하지 않는다")
-    if not upstream.startswith("origin/"):
-        raise ValueError(f"origin이 아닌 원격({upstream})을 추적 중이다 — 동기화하지 않는다")
-    expected_upstream = f"origin/{branch}"
-    if upstream != expected_upstream:
-        raise ValueError(
-            f"현재 브랜치와 다른 원격 브랜치({upstream})를 추적 중이다 — "
-            "동기화하지 않는다")
-    _fetch_origin(branch)
-    checked = git_detail(strict=True)
-    if checked.get("behind", 0) > 0:
-        raise ValueError(
-            f"원격이 {checked['behind']}개 앞서 있다 — 자동 병합하지 않는다")
-    staged_blocked = [
-        item for item in checked.get("files", [])
-        if item.get("staged") and not item.get("allowed")
-    ]
-    if staged_blocked:
-        raise ValueError(
-            f"제외 파일 {len(staged_blocked)}개가 이미 스테이징되어 있다 — "
-            "다른 커밋에 섞지 않는다")
-
-    commit = None
-    if checked.get("allowed", 0) > 0:
-        commit = _commit_work(message)
-
-    pushed = 0
-    state = git_detail(strict=True)
-    if state.get("ahead", 0) > 0:
-        pushed = _push_work()["pushed"]
-    return {
-        "action": "synced" if commit or pushed else "noop",
-        "branch": branch,
-        "commit": commit,
-        "pushed": pushed,
-        "at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "git": git_detail(strict=True),
-    }
-
-
-def sync_work(message: str = "") -> dict:
-    """동기화 요청을 직렬화해 여러 탭의 중복 커밋·푸시를 막는다."""
-    if not _git_sync_lock.acquire(blocking=False):
-        raise ValueError("깃 동기화가 이미 진행 중이다")
-    _git_sync_last.update({
-        "busy": True, "ok": None, "action": "running",
-        "message": "원격 확인 중…",
-    })
-    try:
-        result = _sync_work(message)
-    except Exception as e:
-        _git_sync_last.update({
-            "busy": False,
-            "ok": False,
-            "action": "error",
-            "at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "message": str(e),
-        })
-        raise
-    else:
-        message_out = (
-            "이미 최신 상태" if result["action"] == "noop"
-            else f"동기화 완료 · {result['pushed']}개 올림"
-        )
-        _git_sync_last.update({
-            "busy": False,
-            "ok": True,
-            "action": result["action"],
-            "at": result["at"],
-            "message": message_out,
-        })
-        return result
-    finally:
-        _git_sync_lock.release()
-
-
-def git_sync_status() -> dict:
-    return dict(_git_sync_last)
 
 
 def recent_commits() -> list[dict]:
@@ -3154,366 +2308,6 @@ def codex_usage(now: float | None = None, fetch=None, force: bool = False) -> di
         return summarize_codex_usage({}, error=err)
 
 
-
-def parse_worklog_todos(text: str, limit: int = 80) -> list[dict]:
-    """GAME_WORKLOG 「아직 안 한 것」 번호 목록."""
-    m = re.search(r"^##\s+아직 안 한 것[^\n]*\n(.*?)(?=^##\s|\Z)", text, re.M | re.S)
-    if not m:
-        return []
-    out = []
-    for line in m.group(1).splitlines():
-        hit = re.match(r"^(\d+)\.\s+\*\*(.+?)\*\*\s*(?:—|-)?\s*(.*)$", line.strip())
-        if not hit:
-            hit = re.match(r"^(\d+)\.\s+(.+)$", line.strip())
-            if not hit:
-                continue
-            title, detail = hit.group(2).strip(), ""
-        else:
-            title, detail = hit.group(2).strip(), (hit.group(3) or "").strip()
-        if not title:
-            continue
-        out.append({
-            "n": int(hit.group(1)),
-            "id": item_id("wl:" + title),
-            "title": title[:160],
-            "detail": detail[:300],
-        })
-        if len(out) >= limit:
-            break
-    return out
-
-
-def parse_blockers(status: str) -> list[dict]:
-    """STATUS 「막힌 것」 불릿."""
-    m = re.search(r"^##\s+막힌[^\n]*\n(.*?)(?=^##\s|\Z)", status, re.M | re.S)
-    if not m:
-        return []
-    out = []
-    for line in m.group(1).splitlines():
-        line = line.strip()
-        if not line.startswith("-"):
-            continue
-        body = line.lstrip("- ").strip()
-        if not body:
-            continue
-        title = body.split("—")[0].split("-")[0].strip()[:120]
-        out.append({
-            "id": item_id("blk:" + title),
-            "title": title,
-            "detail": body[:300],
-        })
-    return out
-
-
-def _lap_role_error(stem: str, raw: str) -> str:
-    """역할 로그에서 Claude/API 오류 메시지 추출. JSON result 우선."""
-    for line in raw.splitlines():
-        line = line.strip()
-        if not line.startswith("{"):
-            continue
-        try:
-            obj = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(obj, dict):
-            continue
-        result = obj.get("result")
-        status = obj.get("api_error_status")
-        is_err = bool(obj.get("is_error"))
-        terminal = str(obj.get("terminal_reason") or "")
-        if not (is_err or status or terminal == "api_error"):
-            continue
-        msg = result.strip() if isinstance(result, str) and result.strip() else ""
-        if msg:
-            return msg[:220]
-        if status:
-            return f"API {status}"
-        if terminal:
-            return terminal[:120]
-    low = raw.lower()
-    if stem.endswith("claude") and (
-        "weekly limit" in low or "hit your weekly" in low or "주간 한도" in raw
-        or '"api_error_status":429' in raw
-    ):
-        return "Claude 주간 한도"
-    if stem.endswith("claude") and '"is_error":true' in raw and "api_error" in low:
-        return "Claude API 오류"
-    if "traceback (most recent" in low:
-        return "예외"
-    return ""
-
-
-def latest_lap_info() -> dict:
-    """logs/YYYY-MM-DD/ 아래 최신 바퀴 폴더와 role 로그 요약."""
-    logs = ROOT / "logs"
-    if not logs.is_dir():
-        return {"ok": False, "error": "logs 없음"}
-    dated = sorted([p for p in logs.iterdir() if p.is_dir() and re.match(r"\d{4}-\d{2}-\d{2}$", p.name)])
-    if not dated:
-        return {"ok": False, "error": "날짜 로그 없음"}
-    day = dated[-1]
-    laps = sorted(
-        [p for p in day.iterdir() if p.is_dir() and not p.name.startswith("smoke")],
-        key=lambda p: p.stat().st_mtime,
-    )
-    if not laps:
-        # flat lap-*.log only
-        laps_files = sorted(day.glob("lap-*.log"), key=lambda p: p.stat().st_mtime)
-        return {
-            "ok": True,
-            "day": day.name,
-            "id": laps_files[-1].name if laps_files else "",
-            "path": str(day.relative_to(ROOT)) if laps_files else str(day),
-            "roles": [],
-            "errors": [],
-            "mtime": _hhmm(laps_files[-1].stat().st_mtime) if laps_files else "",
-        }
-    lap = laps[-1]
-    roles = []
-    errors = []
-    for f in sorted(lap.glob("*.log")):
-        raw = _read(f)
-        tail = "\n".join(raw.strip().splitlines()[-8:]) if raw.strip() else ""
-        err = _lap_role_error(f.stem, raw)
-        roles.append({
-            "name": f.stem,
-            "bytes": f.stat().st_size,
-            "tail": humanize_detail(tail, 220) if tail else "(비어 있음)",
-            "error": err,
-        })
-        if err:
-            errors.append(f"{f.stem}: {err}")
-    return {
-        "ok": True,
-        "day": day.name,
-        "id": lap.name,
-        "path": str(lap.relative_to(ROOT)),
-        "roles": roles,
-        "errors": errors,
-        "mtime": _hhmm(lap.stat().st_mtime),
-    }
-
-def provider_health() -> dict:
-    """고정 선택 실행기와 간단 바이너리/한도 힌트."""
-    configured = _read(HERE / "agent").strip()
-    raw = os.environ.get("LOOP_PROVIDERS", configured or "grok")
-    names = [x.strip() for x in raw.replace("·", ",").split(",") if x.strip()]
-    return {"providers": names, "note": "선택한 AI를 유지하며 한도·외부 장애는 무료 조회로 대기"}
-
-
-
-
-def make_status_snip(status: str, limit: int = 400) -> str:
-    """보드용 요약 — 큐 맨 위·막힘·History 한 줄을 우선."""
-    bits: list[str] = []
-    q = parse_queue(status)
-    if q:
-        bits.append("다음: " + (q[0].get("title") or ""))
-        if len(q) > 1:
-            bits.append("외 " + str(len(q) - 1) + "건")
-    hist = parse_history_table(status)
-    if hist:
-        bits.append("완료: " + (hist[0].get("title") or ""))
-    blockers = parse_blockers(status)
-    if blockers:
-        bits.append("막힘: " + (blockers[0].get("title") or ""))
-    if bits:
-        return humanize_detail(" · ".join(bits), limit)
-    return humanize_detail(status[:1200], limit)
-
-
-def _tcp_open(port: int, host: str = "127.0.0.1", timeout: float = 0.5) -> bool:
-    import socket
-    s = socket.socket()
-    s.settimeout(timeout)
-    try:
-        s.connect((host, port))
-        return True
-    except OSError:
-        return False
-    finally:
-        s.close()
-
-
-def _pgrep(pattern: str) -> bool:
-    try:
-        r = subprocess.run(["pgrep", "-f", pattern], capture_output=True, timeout=5)
-        return r.returncode == 0
-    except (OSError, subprocess.SubprocessError):
-        return False
-
-
-def mcp_health() -> dict:
-    """에이전트가 쓰는 MCP 연결 상태 — 유니티(6400)·블렌더(앱+브리지 9876)."""
-    unity = _tcp_open(6400)
-    blender_app = _pgrep(r"Blender\.app/Contents/MacOS/Blender")
-    blender_bridge = _tcp_open(9876) if blender_app else False
-    return {
-        "unity": unity,
-        "blender_app": blender_app,
-        "blender_bridge": blender_bridge,
-        "note": ("유니티 MCP 연결됨" if unity else "유니티 에디터 꺼짐/브리지 없음")
-        + " · "
-        + ("블렌더 브리지 연결됨" if blender_bridge else "블렌더 꺼짐(3D 작업 시 켜라)"),
-    }
-
-
-_ENV_LINE = re.compile(r"^export (LOOP_[A-Z_]+)=")
-
-
-def _env_defaults(path: Path) -> dict[str, str]:
-    out: dict[str, str] = {}
-    if not path.is_file():
-        return out
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        m = _ENV_LINE.match(line.strip())
-        if not m:
-            continue
-        val = line.split("=", 1)[1].split("#", 1)[0].strip()
-        dm = re.search(r"\$\{[^:}]+:-([^}]*)\}", val)
-        out[m.group(1)] = (dm.group(1) if dm else val).strip("\"'")
-    return out
-
-
-def runner_info() -> dict:
-    """루프 실행기 — 어떤 에이전트·모델로 도는지 + 살아 있는 세션 수."""
-    vals: dict[str, str] = {}
-    for base in (Path.home() / "Library/Application Support/AI Lab Autonomous Loop/env.sh",
-                 HERE / "env.sh"):
-        vals.update(_env_defaults(base))
-    live_opencode = _pgrep(r"opencode run -m")
-    live_grok = _pgrep(r"grok .*--model") or _pgrep(r"/grok --model")
-    return {
-        "agent": vals.get("LOOP_AGENT", "?"),
-        "model": vals.get("LOOP_OPENCODE_MODEL", ""),
-        "council_every": vals.get("LOOP_COUNCIL_EVERY", "4"),
-        "live": {"opencode": live_opencode, "grok": live_grok},
-    }
-
-
-def council_info() -> dict:
-    """최근 정기 회의 문서."""
-    meet = ROOT / "docs" / "meetings"
-    files = sorted(meet.glob("COUNCIL_*.md"), key=lambda p: p.stat().st_mtime) if meet.is_dir() else []
-    latest = files[-1] if files else None
-    info: dict = {"count": len(files), "latest": "", "when": "", "title": ""}
-    if latest:
-        info["latest"] = str(latest.relative_to(ROOT))
-        ts = datetime.fromtimestamp(latest.stat().st_mtime, ZoneInfo("Asia/Seoul"))
-        info["when"] = ts.strftime("%m-%d %H:%M")
-        head = latest.read_text(encoding="utf-8", errors="replace").splitlines()
-        for line in head[:6]:
-            if line.startswith("#"):
-                info["title"] = humanize_title(line.lstrip("# ").strip())
-                break
-    return info
-
-
-def proposals_info() -> dict:
-    """자가학습 개선안 수함대 — 미처리(표식 없음) 건수와 최근 1건.
-
-    제안은 연속 행으로 이어질 수 있고 ✅·⏸ 표식이 마지막 행에 붙으므로
-    항목 전체를 묶어 판정한다(첫 행만 보면 미처리가 부풀어 올랐다 — 2026-08-25).
-    """
-    path = ROOT / "docs" / "feedback" / "PROPOSALS.md"
-    total = open_count = 0
-    last = ""
-    if path.is_file():
-        entries: list[list[str]] = []
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-            t = line.strip()
-            if t.startswith("- [") or re.match(r"^- \d{4}-", t):
-                entries.append([t])
-            elif entries and t:
-                entries[-1].append(t)
-        for entry in entries:
-            head = entry[0]
-            if head.startswith("- [시각]") or "없음:" in head:
-                continue
-            total += 1
-            joined = "\n".join(entry)
-            if "✅" not in joined and "⏸" not in joined:
-                open_count += 1
-                last = head.lstrip("- ")
-    return {"total": total, "open": open_count, "last": humanize_detail(last)}
-
-
-def keeper_info() -> dict:
-    """보드 지킴이 최근 검증 결과 — loop/board_keeper.json."""
-    path = HERE / "board_keeper.json"
-    if not path.is_file():
-        return {"ok": None, "when": "", "failed": []}
-    try:
-        d = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {"ok": None, "when": "", "failed": ["기록 파싱 실패"]}
-    return {
-        "ok": bool(d.get("ok")),
-        "when": str(d.get("at", "")),
-        "failed": [str(x) for x in (d.get("failed") or [])][:4],
-        "warns": [str(x) for x in (d.get("warns") or [])][:2],
-    }
-
-
-def _usages_parallel(budget: float = 3.0) -> dict:
-    """사용량 3종(grok·claude·codex)을 병렬로, 전체 예산(기본 3초) 안에서만 기다린다.
-    느리면 그 항목만 빈 값으로 보여 주고 화면 전체가 막히는 일을 없앤다 (2026-08-23).
-    2026-08-24(보드응답:000 재발 차단): 옛 구현은 항목당 result(timeout=6)가 순차 누적되어
-    최악 18초, with 블록 종료 시 잔여 스레드까지 기다려 실질 상한이 없었다.
-    마감시간 하나로 묶고 예산 초과분은 기다리지 않는다 — 남은 스레드는 각자 타임아웃 안에서
-    조용히 끝나며 다음 요청이 쓸 메모리 캐시만 채우고 간다."""
-    import concurrent.futures
-    out: dict[str, dict] = {}
-    jobs = {"grok": grok_usage, "claude": claude_usage, "codex": codex_usage}
-    deadline = time.monotonic() + budget
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=len(jobs))
-    try:
-        futs = {key: pool.submit(fn) for key, fn in jobs.items()}
-        for key, fut in futs.items():
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                out[key] = {}
-                continue
-            try:
-                out[key] = fut.result(timeout=remaining)
-            except Exception:
-                out[key] = {}
-    finally:
-        pool.shutdown(wait=False)
-    return out
-
-
-def _live_stamp() -> str:
-    """보드가 화면에 그리는 입력들의 지문. 하나라도 바뀌면 SSE가 즉시 refresh를 보낸다."""
-    paths = [
-        STATUS, INBOX, WORKLOG, DESIGN, GAME_DESIGN,
-        ROOT / "logs" / "loop_main.log",
-        ROOT / ".git" / "HEAD",
-        ROOT / ".git" / "refs" / "heads" / "master",
-        HERE / "board_keeper.json",
-        HERE / "STOP",
-        HERE / "HOLD",
-        HERE / "last_test_report.json",
-        ROOT / "output" / "qa" / "ashes-to-stars" / "v4_playtest_dummy" / "dummy_report.json",
-    ]
-    day = ROOT / "logs" / datetime.now().strftime("%Y-%m-%d")
-    if day.is_dir():
-        laps = list(day.glob("lap-*.log"))
-        if laps:
-            try:
-                paths.append(max(laps, key=lambda p: p.stat().st_mtime))
-            except OSError:
-                pass
-    bits: list[str] = []
-    for p in paths:
-        try:
-            st = p.stat()
-            bits.append(f"{st.st_mtime_ns}:{st.st_size}")
-        except OSError:
-            bits.append("-")
-    return ",".join(bits)
-
-
 def build_state() -> dict:
     status = _read(STATUS)
     design = _read(DESIGN)
@@ -3535,112 +2329,30 @@ def build_state() -> dict:
     inbox_box = parse_inbox(inbox)
     inbox_box["waiting"] = _plain_list(inbox_box.get("waiting") or [], "body")
     inbox_box["done"] = _plain_list(inbox_box.get("done") or [], "body")
-    git = git_summary()
-    worklog = _read(WORKLOG)
-    lap = latest_lap_info()
-    usages = _usages_parallel()
-    plain_queue = _plain_list(queue)
-    choices = _plain_list(pending_choices(queue, miles, decisions, extra))
-    stuck = _plain_list(stuck_items(status, flags))
-    completed = _plain_list(completed_posts(status))
     return {
         "updated": parse_updated(status),
-        "updated_note": parse_updated_note(status),
-        "health": loop_health(),
-        "queue": plain_queue,
-        "queue_table": _plain_list(table),
+        "queue": _plain_list(queue),
         "results": _plain_list(parse_results(status), "body"),
         "milestones": _plain_list(miles),
         "inbox": inbox_box,
         "checks": checks,
         "decisions": decisions,
-        "choices": choices,
+        "choices": _plain_list(pending_choices(queue, miles, decisions, extra)),
         "loop": flags,
-        "overview": build_overview(flags, plain_queue, completed, stuck, choices),
         "commits": recent_commits(),
-        "push": {"branch": git.get("branch", ""), "ahead": git.get("ahead", 0)},
-        "git": git,
-        "sync": git_sync_status(),
+        "push": push_state(),
+        "git": dirty_files(),
         "charts": progress_charts(status, design, _read(GAME_DESIGN), decisions),
         "slice": _plain_list(slice_checks(status, design, _read(GAME_DESIGN))),
-        "stuck": stuck,
-        "blockers": _plain_list(parse_blockers(status)),
-        "worklog": _plain_list(parse_worklog_todos(worklog)),
-        "lap": lap,
-        "handoff": load_handoff_state(),
-        "providers": provider_health(),
-        "mcp": mcp_health(),
-        "runner": runner_info(),
-        "council": council_info(),
-        "proposals": proposals_info(),
-        "keeper": keeper_info(),
-        "completed": completed,
+        "stuck": _plain_list(stuck_items(status, flags)),
+        "completed": _plain_list(completed_posts(status)),
         "playtest": playtest_state(),
-        "grok": usages.get("grok", {}),
-        "claude": usages.get("claude", {}),
-        "codex": usages.get("codex", {}),
-        "commands": _plain_list(load_commands()[:40], "body"),
+        "grok": grok_usage(),
+        "claude": claude_usage(),
+        "codex": codex_usage(),
+        "commands": _plain_list(load_commands()[:24], "body"),
         "tests": load_test_report(),
-        "status_snip": make_status_snip(status),
     }
-
-
-_STATE_BUDGET = 3.5  # 지킴이 curl 한도 5초 — HTML 읽기·심기·쓰기 여유를 남긴다
-_state_good: dict | None = None
-_state_gate = threading.Lock()
-
-
-def _minimal_state(reason: str) -> dict:
-    """조립이 마감을 넘었을 때도 화면·/api/state가 성립하는 최소 골격."""
-    return {
-        "updated": "", "updated_note": "", "health": {}, "queue": [], "queue_table": [], "results": [],
-        "milestones": [], "inbox": {"waiting": [], "done": []},
-        "checks": {}, "decisions": {}, "choices": [],
-        "loop": {}, "overview": {}, "commits": [],
-        "push": {"branch": "", "ahead": 0}, "git": {}, "sync": {},
-        "charts": {}, "slice": [], "stuck": [], "blockers": [],
-        "worklog": [], "lap": {}, "handoff": {}, "providers": [],
-        "mcp": {}, "runner": {}, "council": {}, "proposals": {},
-        "keeper": {}, "completed": [], "playtest": {},
-        "grok": {}, "claude": {}, "codex": {}, "commands": [],
-        "tests": {}, "status_snip": "", "degraded": reason,
-    }
-
-
-def state_snapshot(budget: float = _STATE_BUDGET) -> dict:
-    """build_state를 예산 안에서만 기다린다 (2026-08-25 보드응답:000 재발 차단).
-
-    사용량 프로브(3초 상한)만 묶어서는 부족했다: 개발 루프 바퀴 같은 기계
-    부하와 겹치면 git 서브프로세스·QA 샷 디코드·문서 파싱의 합이 늘어
-    지킴이 curl 5초 한도를 넘겼다. 페이지 전체 조립에도 단일 마감을 걸고,
-    넘기거나 실패하면 직전 성공 스냅숏을 즉시 내준다. 마감 후 남은 조립
-    스레드는 각자 타임아웃 안에서 조용히 끝나며 다음 요청이 쓸 스냅숏
-    (_state_good)만 채우고 간다 (_usages_parallel과 같은 원칙). 조립 중인
-    요청은 새로 파지 않는다 — 부하가 몰릴수록 조립을 늘려 느려지는
-    악순환을 끊는다.
-    """
-    global _state_good
-    if not _state_gate.acquire(blocking=False):
-        return dict(_state_good) if _state_good else _minimal_state("조립 진행 중")
-    import concurrent.futures
-    try:
-        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        try:
-            fut = pool.submit(build_state)
-            try:
-                out = fut.result(timeout=budget)
-                _state_good = out
-                return out
-            except concurrent.futures.TimeoutError:
-                pass
-            except Exception:
-                import traceback
-                traceback.print_exc()
-        finally:
-            pool.shutdown(wait=False)
-    finally:
-        _state_gate.release()
-    return dict(_state_good) if _state_good else _minimal_state("조립 마감 초과")
 
 
 def set_flag(name: str, on: bool) -> None:
@@ -3677,54 +2389,8 @@ class Handler(BaseHTTPRequestHandler):
             return {}
         return data if isinstance(data, dict) else {}
 
-    def _events(self, once: bool = False) -> None:
-        """파일·깃·바퀴 로그가 바뀌면 바로 신호를 보낸다. 브라우저 타이머에 의존하지 않는다."""
-        self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("X-Accel-Buffering", "no")
-        self.end_headers()
-        limit = 1 if once else 1200  # 0.5초 × 1200 ≈ 10분 뒤 EventSource가 재연결
-        stamp = ""
-        last_emit = -10**9
-        try:
-            for sequence in range(limit):
-                now = _live_stamp()
-                changed = now != stamp
-                stamp = now
-                heartbeat = (sequence - last_emit) >= 10
-                if sequence == 0 or changed or heartbeat:
-                    last_emit = sequence
-                    payload = (
-                        f"event: refresh\n"
-                        f"data: {{\"sequence\":{sequence},\"changed\":{str(changed).lower()}}}\n\n"
-                    ).encode("utf-8")
-                    self.wfile.write(payload)
-                    self.wfile.flush()
-                if once:
-                    return
-                time.sleep(0.5)
-        except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
-            return
-
-    def _post_is_trusted(self) -> bool:
-        """브라우저 form/교차 출처 요청이 로컬 Git을 바꾸지 못하게 한다."""
-        if self.headers.get_content_type() != "application/json":
-            self._json(415, {"ok": False, "error": "JSON 요청만 허용한다"})
-            return False
-        origin = (self.headers.get("Origin") or "").strip()
-        if not origin:
-            return True  # 로컬 CLI·테스트 클라이언트
-        parsed = urlparse(origin)
-        host = (self.headers.get("Host") or "").strip().lower()
-        if parsed.scheme not in ("http", "https") or parsed.netloc.lower() != host:
-            self._json(403, {"ok": False, "error": "다른 출처의 변경 요청을 거부한다"})
-            return False
-        return True
-
     def do_GET(self) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path
+        path = urlparse(self.path).path
         if path in ("/", "/index.html"):
             html = HERE / "board.html"
             try:
@@ -3733,18 +2399,6 @@ class Handler(BaseHTTPRequestHandler):
                 body = f"board.html 없음: {e}".encode("utf-8")
                 self.send_response(500)
             else:
-                # 첫 화면에 상태를 직접 심는다 — 브라우저 fetch가 어떤 사정으로
-                # 막혀도 보드는 반드시 그려진다 (2026-08-23, 조용한 빈 화면 재발 방지)
-                try:
-                    seed = json.dumps(state_snapshot(), ensure_ascii=False).replace("<", "\\u003c")
-                    injected = (f'<script>window.__STATE__={seed};</script>'
-                                ).encode("utf-8")
-                    marker = b"<script>"
-                    idx = body.find(marker)
-                    if idx != -1:
-                        body = body[:idx] + injected + body[idx:]
-                except Exception:
-                    pass  # 심기 실패 시에도 기존 방식(fetch)으로 동작한다
                 self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
@@ -3753,17 +2407,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         if path == "/api/state":
-            self._json(200, state_snapshot())
-            return
-        if path == "/api/git":
-            self._json(200, {
-                "ok": True,
-                "git": git_detail(),
-                "sync": git_sync_status(),
-            })
-            return
-        if path == "/api/events":
-            self._events(parse_qs(parsed.query).get("once") == ["1"])
+            self._json(200, build_state())
             return
         if path.startswith("/shots/"):
             rel = unquote(path[len("/shots/"):])
@@ -3784,8 +2428,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
-        if not self._post_is_trusted():
-            return
         data = self._read_json()
         try:
             if path == "/api/decide":
@@ -3834,11 +2476,9 @@ class Handler(BaseHTTPRequestHandler):
                 elif action == "unhold":
                     set_flag("HOLD", False)
                 elif action == "stop":
-                    stop_loop()
+                    set_flag("STOP", True)
                 elif action == "unstop":
-                    result = resume_work()
-                    self._json(200, {"ok": True, **result, "loop": loop_flags()})
-                    return
+                    set_flag("STOP", False)
                 else:
                     self._json(400, {"ok": False, "error": "알 수 없는 action"})
                     return
@@ -3846,10 +2486,6 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path == "/api/commit":
                 result = commit_work(str(data.get("message") or ""))
-                self._json(200, {"ok": True, **result})
-                return
-            if path == "/api/sync":
-                result = sync_work(str(data.get("message") or ""))
                 self._json(200, {"ok": True, **result})
                 return
             if path == "/api/push":
@@ -3875,15 +2511,14 @@ def _lan_ip() -> str:
 
 
 def main() -> None:
-    host = os.getenv("BOARD_HOST", "127.0.0.1")
+    host = os.getenv("BOARD_HOST", "0.0.0.0")
     srv = ThreadingHTTPServer((host, PORT), Handler)
     print(f"재와 별 개발 보드  (ROOT={ROOT})")
     print(f"  이 기기: http://127.0.0.1:{PORT}/")
     if host != "127.0.0.1":
         print(f"  다른 기기: http://{_lan_ip()}:{PORT}/")
     print("  Ctrl+C 로 종료")
-    if os.getenv("BOARD_NO_BROWSER") != "1" and sys.stdin.isatty():
-        threading.Timer(0.5, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}/")).start()
+    threading.Timer(0.5, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}/")).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
@@ -3930,35 +2565,7 @@ def cli_command(argv: list[str]) -> int:
     return 0
 
 
-def cli_usage(argv: list[str]) -> int:
-    """python3 loop/board.py usage <claude|grok|codex|opencode> — 캐시된 공식 사용량 JSON을 stdout에 찍는다.
-
-    loop.sh의 자동전환 로직이 이 서브커먼드로 소진 여부를 확인한다(문자열 grep 대신
-    공식 API 응답을 그대로 재사용 — claude_usage()/grok_usage()/codex_usage()는 이미
-    board.html이 상시 쓰는 검증된 경로).
-    """
-    name = argv[2] if len(argv) > 2 else ""
-    if name == "claude":
-        out = claude_usage()
-    elif name == "grok":
-        out = grok_usage()
-    elif name == "codex":
-        out = codex_usage()
-    elif name == "opencode":
-        # 무료 프리뷰 실행기 — 사용량 한도 개념이 없어 항상 가용으로 판정한다.
-        out = {"ok": True, "used_pct": 0.0, "remain_pct": 100.0, "period": "",
-               "products": [], "plan": "Free", "fetched_at": "", "stale": False,
-               "error": None}
-    else:
-        print("usage: python3 loop/board.py usage <claude|grok|codex|opencode>", file=sys.stderr)
-        return 2
-    print(json.dumps(out, ensure_ascii=False))
-    return 0
-
-
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "command":
         raise SystemExit(cli_command(sys.argv))
-    if len(sys.argv) > 1 and sys.argv[1] == "usage":
-        raise SystemExit(cli_usage(sys.argv))
     main()

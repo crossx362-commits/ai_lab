@@ -107,7 +107,6 @@ namespace AshesToStars
             ch.MemorialCause = CauseOf(ch, GameFlow.Kind);
             ch.MemorialGear = FormatGear(ch);
             ch.MemorialParty = FormatParty(ch);
-            V4LoopLog.NotePermadeath(ch);
         }
 
         public static void NoteRebirth(CharacterRecord ch)

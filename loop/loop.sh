@@ -1,668 +1,383 @@
 #!/bin/bash
-# 매 바퀴마다 헤드리스 세션을 "새로" 연다. 대화를 이어 붙이지 않는다.
+# 재와 별 — 자동 개발 루프
 #
-# 운영 규칙 (오너 지시, PROMPT.md와 함께 매 바퀴 적용):
-# - 상시 폴리싱: 코드 구멍 다음 이터레이션에는 UI·아트 폴리싱을 섞는다. 영지 화면·EstateYard는
-#   docs/GAME_SPEC_ESTATE_BUILD.md대로. 할로우 나이트 화풍 강제는 취소.
-# - 중복 리소스 재생성 금지 — 이미 있는 에셋은 다시 뽑지 않는다.
+#   ./loop/loop.sh              # 무한 반복
+#   LOOP_AGENT=grok ./loop/loop.sh   # Grok 헤드리스 (클로드·코덱스 한도일 때)
+#   LOOP_AGENT=codex ./loop/loop.sh  # Codex 새 세션으로 반복
+#   python3 loop/board.py       # 진행·체크·요청 페이지 (http://127.0.0.1:8766)
+#   touch loop/STOP             # 다음 이터레이션 시작 전에 멈춘다
+#   rm loop/STOP                # 다시 시작
+#
+# 설계 원칙 (오너 지침 2026-08-15):
+#   **매번 기억이 없는 새 세션이다.** `--continue`를 쓰지 않는다 — 그게 핵심이다.
+#   맥락이 이어지면 세션이 자기 기억에 의존하게 되고, 그러면 문서가 낡아도 아무도 모른다.
+#   기억을 끊으면 **상태는 전부 파일에 있어야만** 하고, 그 강제가 인수인계 품질을 만든다.
+#
+#   상태 파일 3종:
+#     docs/feedback/INBOX.md  — 오너 지시. 최우선
+#     docs/STATUS.md          — 지금 위치·다음 할 일 큐·완료 기록
+#     docs/DESIGN.md          — 무엇을 만드는가(헌법)
+#
+# 안전장치:
+#   - STOP 파일: 이터레이션 **경계**에서만 본다. 작업 중간에 죽이지 않는다
+#   - 연속 실패 상한: 같은 자리에서 계속 넘어지면 사람을 부른다
+#   - 이터레이션 간 유예: 크레딧·레이트리밋을 몰아치지 않는다
 
 set -uo pipefail
+cd "$(dirname "$0")/.."
 
-DEPLOY_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# 자가검사 모드는 저장소 인자를 먹지 않는다 — 판정 함수만 쓰고 끝낸다(아래 후크).
-SELFTEST_INFRA=""
-if [ "${1:-}" = "--self-test-infra" ]; then SELFTEST_INFRA="${2:-}"; set --; fi
-TARGET_REPO="${1:-$(cd "$DEPLOY_ROOT/.." && pwd)}"
-TARGET_REPO="$(cd "$TARGET_REPO" && pwd)"
-
-if [ -f "$DEPLOY_ROOT/env.sh" ]; then
-  # shellcheck source=/dev/null
-  source "$DEPLOY_ROOT/env.sh"
+ROOT="$PWD"
+MAIN_LOG="$ROOT/loop/loop_main.log"
+# 메인 로그는 루프가 직접 쓴다(2026-08-18 사고: 터미널에서 파이프로 띄운 루프의
+# 출력이 loop_main.log에 안 들어가 보드의 "지금 하는 일"이 하루 전에 멈췄다).
+# 띄우는 쪽이 리다이렉트해 주기를 기대하지 마라 — 보드는 이제 리다이렉트하지 않는다.
+exec > >(tee -a "$MAIN_LOG") 2>&1
+STOP="$ROOT/loop/STOP"
+HOLD="$ROOT/loop/HOLD"
+LOG_DIR="$ROOT/loop/logs"
+MAX_FAILS="${LOOP_MAX_FAILS:-3}"
+COOLDOWN="${LOOP_COOLDOWN:-20}"
+# 실행기: 환경변수 > loop/agent > grok.
+# 클로드·코덱스 둘 다 한도면 그록으로 간다(오너 2026-08-16).
+if [ -n "${LOOP_AGENT:-}" ]; then
+  AGENT="$LOOP_AGENT"
+elif [ -f "$ROOT/loop/agent" ]; then
+  AGENT=$(tr -d ' \t\r\n' < "$ROOT/loop/agent")
+else
+  AGENT=grok
 fi
+[ -n "$AGENT" ] || AGENT=grok
+# 기동 시점의 에이전트를 기억한다. 한도 폴백은 **이 프로세스 안에서만** 유효하고
+# loop/agent에 영구 기록하지 않는다(2026-08-20 사고: 그록 전환이 파일에 박혀
+# 클로드 한도가 풀린 뒤에도 재기동하면 곧장 죽은 그록으로 갔다).
+AGENT_BASE="$AGENT"
 
-MAX_LOOPS="${LOOP_MAX_LOOPS:-0}"
-COOLDOWN="${LOOP_COOLDOWN:-10}"
-MAX_TURNS="${LOOP_MAX_TURNS:-30}"
-PROMPT_FILE="$DEPLOY_ROOT/PROMPT.md"
-STOP_FILE="$TARGET_REPO/loop/STOP"
-AGENT_FILE="$TARGET_REPO/loop/agent"
-STATUS_FILE="$TARGET_REPO/docs/STATUS.md"
-MAIN_LOG="$TARGET_REPO/logs/loop_main.log"
-GROK_MODEL="${LOOP_GROK_MODEL:-grok-4.6}"
-OPENCODE_MODEL="${LOOP_OPENCODE_MODEL:-opencode/mimo-v2.5-free}"
-# 회의 20260827-081437 채택 #3 — GameFullCheck 전수는 4바퀴마다 1회. 0 이면 끈다.
-FULLCHECK_EVERY="${LOOP_FULLCHECK_EVERY:-4}"
-FULLCHECK_METHOD="${LOOP_FULLCHECK_METHOD:-AshesToStars.GameFullCheck.Run}"
-
-PROVIDER_RETRY_SECONDS="${PROVIDER_RETRY_SECONDS:-1800}"
-HEARTBEAT_SECONDS="${LOOP_HEARTBEAT_SECONDS:-30}"
-RECOVERY_RETRY_SECONDS="${LOOP_RECOVERY_RETRY_SECONDS:-900}"
-RECOVERY_PROVIDERS="${LOOP_RECOVERY_PROVIDERS:-codex,claude,grok,opencode}"
-RUNTIME_STATE_TOOL="$DEPLOY_ROOT/runtime_state.py"
-RUNTIME_STATE_FILE="${LOOP_RUNTIME_STATE_FILE:-$TARGET_REPO/loop/runtime_state.json}"
-RECOVERY_CONTEXT_FILE="$TARGET_REPO/loop/recovery_context.log"
-# GameFullCheck 주기 카운터 — loop/ 에만 영속 (STATUS.md 금지). git 미추적 런타임 파일.
-FULLCHECK_COUNT_FILE="$TARGET_REPO/loop/fullcheck_lap.count"
-BOARD_PY="${LOOP_BOARD_PY:-$DEPLOY_ROOT/board.py}"
-PROVIDER_ERROR_PATTERN="${LOOP_PROVIDER_ERROR_PATTERN:-organization has disabled|authentication required|please (log|sign) in|로그인.*필요|executable not found}"
-# 공급자 인프라 장애 — 「인프라 실패 ≠ 이슈 실패」(CLAUDE.md 가드레일). 이런 바퀴는 우리 코드가
-# 틀린 게 아니라 상대 서버가 죽은 것이므로 STATUS 미갱신으로 세면 안 된다. 2026-08-26 22:23·22:38
-# 두 바퀴가 이 오류로 죽어 「미갱신 3회」에 걸려 루프 전체가 정상 종료했다.
-INFRA_PATTERN="${LOOP_INFRA_PATTERN:-Endpoint is unavailable|Unexpected server error|UnknownError|Upstream request failed|502 Bad Gateway|503 Service|504 Gateway|overloaded_error|Internal server error}"
-
-if [ ! -f "$PROMPT_FILE" ]; then
-  PROMPT_FILE="$TARGET_REPO/loop/PROMPT.md"
-fi
-
-pick_agent() {
-  if [ -n "${LOOP_AGENT:-}" ]; then
-    echo "$LOOP_AGENT"
-    return
-  fi
-  if [ -f "$AGENT_FILE" ]; then
-    tr -d '[:space:]' < "$AGENT_FILE"
-    return
-  fi
-  echo "${LOOP_PROVIDERS:-grok}" | awk -F, '{print $1}' | tr -d '[:space:]'
+# 그록 잔량 소진(402) 표식. 최근이면 폴백 대상에서 제외한다(2026-08-20 사고:
+# 주간 한도가 소진된 그록으로 전환해 402를 12회 태운 뒤에야 멈췄다).
+GROK_DEAD="$ROOT/loop/grok_dead"
+grok_alive() {
+  [ -f "$GROK_DEAD" ] || return 0
+  local age=$(( $(date +%s) - $(stat -f %m "$GROK_DEAD" 2>/dev/null || echo 0) ))
+  if [ "$age" -ge "${LOOP_GROK_DEAD_TTL:-43200}" ]; then rm -f "$GROK_DEAD"; return 0; fi
+  return 1
 }
 
-find_bin() {
-  local name="$1"
-  case "$name" in
-    grok)
-      if [ -n "${LOOP_GROK_BIN:-}" ] && [ -x "${LOOP_GROK_BIN}" ]; then echo "$LOOP_GROK_BIN"; return; fi
-      ;;
-    codex)
-      if [ -n "${LOOP_CODEX_BIN:-}" ] && [ -x "${LOOP_CODEX_BIN}" ]; then echo "$LOOP_CODEX_BIN"; return; fi
-      ;;
-    claude)
-      if [ -n "${LOOP_CLAUDE_BIN:-}" ] && [ -x "${LOOP_CLAUDE_BIN}" ]; then echo "$LOOP_CLAUDE_BIN"; return; fi
-      ;;
-    opencode)
-      if [ -n "${LOOP_OPENCODE_BIN:-}" ] && [ -x "${LOOP_OPENCODE_BIN}" ]; then echo "$LOOP_OPENCODE_BIN"; return; fi
-      ;;
-  esac
-  command -v "$name" 2>/dev/null || true
-}
-
-if ! [[ "$MAX_LOOPS" =~ ^[0-9]+$ && "$COOLDOWN" =~ ^[0-9]+$ && "$MAX_TURNS" =~ ^[0-9]+$ \
-    && "$PROVIDER_RETRY_SECONDS" =~ ^[0-9]+$ && "$RECOVERY_RETRY_SECONDS" =~ ^[0-9]+$ \
-    && "$HEARTBEAT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
-  echo "루프 횟수·대기 시간은 0 이상, heartbeat는 1 이상의 정수여야 합니다." >&2
-  exit 1
-fi
-if ! [[ "$FULLCHECK_EVERY" =~ ^[0-9]+$ ]]; then
-  echo "LOOP_FULLCHECK_EVERY는 0 이상의 정수여야 합니다." >&2
-  exit 1
-fi
-
-mkdir -p "$TARGET_REPO/logs" "$TARGET_REPO/loop" "$TARGET_REPO/docs/feedback"
-export PYTHONUNBUFFERED=1
-COUNT=0
-QUOTA_CONFIRMED=0
-
-wait_with_stop() {
-  local remaining="$1" step
-  while [ "$remaining" -gt 0 ]; do
-    if [ -f "$STOP_FILE" ]; then
-      runtime_set owner_stopped "$(pick_agent)" "오너 STOP" 0
-      return 1
-    fi
-    runtime_heartbeat
-    step="$HEARTBEAT_SECONDS"
-    [ "$remaining" -lt "$step" ] && step="$remaining"
-    sleep "$step"
-    remaining=$((remaining - step))
-  done
-  runtime_heartbeat
-  return 0
-}
-
-status_stamp() {
-  if [ -f "$STATUS_FILE" ]; then
-    cksum "$STATUS_FILE" | awk '{print $1"-"$2}'
-  else
-    echo none
-  fi
-}
-
-# 공식 사용량 API로만 확인한다. 프롬프트를 보내지 않는다. echo: ok | quota | error | unknown
-usage_check() {
-  local name="$1"
-  python3 "$BOARD_PY" usage "$name" 2>/dev/null | python3 -c '
-import json, re, sys
-raw = sys.stdin.read()
-try:
-    d = json.loads(raw)
-except Exception:
-    print("unknown"); sys.exit()
-err = d.get("error")
-if err and re.search(r"로그인.*(?:없음|만료|필요)|login.*(?:expired|required)|authentication required", str(err), re.I):
-    print("error"); sys.exit()
-remain = d.get("remain_pct")
-if d.get("ok") and remain is not None and remain <= 0:
-    print("quota"); sys.exit()
-if err:
-    print("error"); sys.exit()
-print("ok")
-'
-}
-
-runtime_set() {
-  local phase="$1" provider="${2:-}" reason="${3:-}" retry_at="${4:-0}"
-  python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" set "$phase" \
-    --provider "$provider" --reason "$reason" --retry-at "$retry_at" >/dev/null
-}
-
-runtime_heartbeat() {
-  python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" heartbeat >/dev/null
-}
-
-runtime_get() {
-  python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" get "$1" 2>/dev/null || true
-}
-
-# 공급자 서버 장애로 죽은 바퀴인가 — 마지막 40줄만 본다(작업 중 인용한 문구를 장애로 오독하지
-# 않기 위해서다. 실제 장애는 세션 끝에서 터진다).
-detect_infra_failure_in_log() {
-  local logfile="$1"
-  [ -f "$logfile" ] || return 1
-  tail -40 "$logfile" | grep -qiE "$INFRA_PATTERN"
-}
-
-# GameFullCheck 전수 주기 — 회의 20260827-081437 채택 #3.
-# 카운터는 프로세스 재시작 뒤에도 loop/fullcheck_lap.count 로 이어진다.
-fullcheck_lap_read() {
-  local n=""
-  if [ -f "$FULLCHECK_COUNT_FILE" ]; then
-    n="$(tr -d '[:space:]' < "$FULLCHECK_COUNT_FILE" || true)"
-  fi
-  case "$n" in
-    ''|*[!0-9]*) echo 0 ;;
-    *) echo "$n" ;;
-  esac
-}
-
-fullcheck_lap_write() {
-  mkdir -p "$(dirname "$FULLCHECK_COUNT_FILE")"
-  printf '%s\n' "$1" > "$FULLCHECK_COUNT_FILE"
-}
-
-# 성공 바퀴 번호가 N의 배수일 때만 run_selfcheck.sh 로 전수를 돌린다.
-# Unity 부재는 비치명 스킵 — 사유를 랩 로그에 남기고 루프는 계속.
-maybe_run_game_fullcheck() {
-  local lap="$1" rc=0 wrap_out
-  [ "$FULLCHECK_EVERY" -gt 0 ] || return 0
-  [ "$lap" -gt 0 ] || return 0
-  [ $((lap % FULLCHECK_EVERY)) -eq 0 ] || return 0
-
-  echo "GameFullCheck 전수: ${lap}바퀴 — ${FULLCHECK_EVERY}바퀴마다 1회 ($FULLCHECK_METHOD)" \
-    | tee -a "$MAIN_LOG" "$LAP_LOG"
-
-  if [ ! -f "$DEPLOY_ROOT/run_selfcheck.sh" ]; then
-    echo "GameFullCheck 스킵 — run_selfcheck.sh 없음: $DEPLOY_ROOT/run_selfcheck.sh" \
-      | tee -a "$MAIN_LOG" "$LAP_LOG"
-    return 0
-  fi
-
-  wrap_out="$LAP_DIR/fullcheck-wrap-$LAP_ID.log"
-  bash "$DEPLOY_ROOT/run_selfcheck.sh" "$FULLCHECK_METHOD" \
-    --project "$TARGET_REPO/projects/ashes-to-stars/unity_meas" \
-    --log "$TARGET_REPO/projects/ashes-to-stars/results/game_fullcheck.log" \
-    > "$wrap_out" 2>&1 || rc=$?
-  if [ -f "$wrap_out" ]; then
-    cat "$wrap_out" >> "$LAP_LOG"
-  fi
-
-  if [ "$rc" -eq 0 ]; then
-    echo "GameFullCheck PASS" | tee -a "$MAIN_LOG" "$LAP_LOG"
-    return 0
-  fi
-
-  if [ -f "$wrap_out" ] && grep -Eq 'Unity 에디터를 찾지 못했다|Unity 가 없다|Unity 가 실행 파일이 아니다' "$wrap_out"; then
-    echo "GameFullCheck 스킵 — Unity 없음" | tee -a "$MAIN_LOG" "$LAP_LOG"
-    grep -E '\[run_selfcheck\]' "$wrap_out" | head -5 | tee -a "$MAIN_LOG" "$LAP_LOG" || true
-    return 0
-  fi
-
-  echo "GameFullCheck 실패 (exit $rc) — 루프는 계속" | tee -a "$MAIN_LOG" "$LAP_LOG"
-  return 0
-}
-
-
-# last_test_report.json HEAD 재실행 — 회의 20260827-073515 채택 #2.
-# 성공 바퀴 뒤, 리포트가 없거나 `head` 가 현재 HEAD 와 다르면 refresh_test_report.sh 를 부른다.
-# Unity 부재는 비치명 스킵. GameSweep FAIL 도 루프는 계속(GameFullCheck 와 같은 약속).
-# GameFullCheck 는 여기서 부르지 않는다.
-maybe_refresh_test_report() {
-  local report="$DEPLOY_ROOT/last_test_report.json"
-  local root rc=0 wrap_out existing head
-  local main_log="${MAIN_LOG:-/dev/null}"
-  local lap_log="${LAP_LOG:-$main_log}"
-  [ "${LOOP_REFRESH_TEST_REPORT:-1}" = "1" ] || return 0
-  root="$(cd "$DEPLOY_ROOT/.." && pwd)"
-  head="$(git -C "$root" rev-parse HEAD 2>/dev/null || true)"
-  if [ -z "$head" ]; then
-    echo "last_test_report 갱신 스킵 — git HEAD 없음" | tee -a "$main_log" "$lap_log"
-    return 0
-  fi
-  if [ -f "$report" ]; then
-    existing="$(python3 -c '
-import json, sys
-p = sys.argv[1]
-try:
-    with open(p, "r", encoding="utf-8-sig") as f:
-        d = json.load(f)
-    print((d.get("head") or "") if isinstance(d, dict) else "")
-except Exception:
-    print("")
-' "$report")"
-    if [ "$existing" = "$head" ]; then
-      echo "last_test_report.json 이미 현재 HEAD" | tee -a "$main_log" "$lap_log"
-      return 0
-    fi
-  fi
-
-  echo "last_test_report.json HEAD 재실행 ($head)" | tee -a "$main_log" "$lap_log"
-  if [ ! -f "$DEPLOY_ROOT/refresh_test_report.sh" ]; then
-    echo "last_test_report 스킵 — refresh_test_report.sh 없음" | tee -a "$main_log" "$lap_log"
-    return 0
-  fi
-
-  wrap_out="${LAP_DIR:-$root/projects/ashes-to-stars/results}/refresh-wrap.log"
-  mkdir -p "$(dirname "$wrap_out")"
-  bash "$DEPLOY_ROOT/refresh_test_report.sh" \
-    --report "$report" \
-    --project "$TARGET_REPO/projects/ashes-to-stars/unity_meas" \
-    --log "$root/projects/ashes-to-stars/results/refresh_test_report.log" \
-    > "$wrap_out" 2>&1 || rc=$?
-  if [ -f "$wrap_out" ] && [ -n "${LAP_LOG:-}" ]; then
-    cat "$wrap_out" >> "$LAP_LOG" || true
-  fi
-
-  if [ "$rc" -eq 0 ]; then
-    echo "last_test_report 갱신 완료" | tee -a "$main_log" "$lap_log"
-    return 0
-  fi
-  if [ -f "$wrap_out" ] && grep -Eq 'Unity 에디터를 찾지 못했다|Unity 가 없다|Unity 가 실행 파일이 아니다' "$wrap_out"; then
-    echo "last_test_report 스킵 — Unity 없음" | tee -a "$main_log" "$lap_log"
-    return 0
-  fi
-  echo "last_test_report 갱신 실패 (exit $rc) — 루프는 계속" | tee -a "$main_log" "$lap_log"
-  return 0
-}
-
-# 자가검사용 후크 — `bash loop/loop.sh --self-test-infra <로그파일>`이면 판정만 하고 끝낸다
-# (종료 0=공급자 장애 · 1=아니다). 네거티브 컨트롤 없는 통과를 만들지 않기 위한 장치다.
-if [ -n "$SELFTEST_INFRA" ]; then
-  detect_infra_failure_in_log "$SELFTEST_INFRA" && exit 0 || exit 1
-fi
-
-run_session() {
-  local agent="$1"
-  local bin="$2"
-  local prompt_file="${3:-$PROMPT_FILE}"
-  local header="${4:-너는 비대화형 자율 루프다. 별도 승인 질문 없이 구현한다. 대화를 이어 붙이지 않는다. loop/PROMPT.md 다섯 절을 따른다.}"
-
-  case "$agent" in
-    grok)
-      cd "$TARGET_REPO" || return 3
-      "$bin" \
-        --cwd "$TARGET_REPO" \
-        --model "$GROK_MODEL" \
-        --prompt-file "$prompt_file" \
-        --always-approve \
-        --permission-mode auto \
-        --max-turns "$MAX_TURNS" \
-        --no-subagents \
-        --output-format plain
-      ;;
-    codex)
-      {
-        printf '%s\n\n' "$header"
-        if [ -f "$prompt_file" ]; then cat "$prompt_file"; fi
-      } | "$bin" exec --ephemeral --ignore-user-config \
-            --sandbox danger-full-access \
-            --skip-git-repo-check \
-            -
-      ;;
-    claude)
-      "$bin" -p "$(printf '%s\n\n' "$header"; [ -f "$prompt_file" ] && cat "$prompt_file")" \
-        --permission-mode acceptEdits \
-        --no-session-persistence \
-        --output-format text
-      ;;
-    opencode)
-      # 비대화형 단발 세션. resume 없음. 권한·MCP는 저장소 opencode.json이 결정한다.
-      local prompt
-      prompt="$(printf '%s\n\n' "$header"; [ -f "$prompt_file" ] && cat "$prompt_file")"
-      cd "$TARGET_REPO" || return 3
-      "$bin" run \
-        ${OPENCODE_MODEL:+-m "$OPENCODE_MODEL"} \
-        "$prompt"
-      ;;
-    *)
-      echo "알 수 없는 실행기: $agent" >&2
-      return 2
-      ;;
-  esac
-}
-
-current_head() {
-  git -C "$TARGET_REPO" rev-parse HEAD 2>/dev/null || echo "nogit"
-}
-
-recovery_commit_matches() {
-  local failed_head="$1" recovery_token="$2" after_head message
-  after_head="$(current_head)"
-  [ "$after_head" != "$failed_head" ] || return 1
-  git -C "$TARGET_REPO" merge-base --is-ancestor "$failed_head" "$after_head" \
-    2>/dev/null || return 1
-  message="$(git -C "$TARGET_REPO" show -s --format=%B "$after_head" 2>/dev/null)"
-  printf '%s\n' "$message" | grep -Fq "[$recovery_token]"
-}
-
-classify_lap() {
-  local logfile="$1" exit_code="$2"
-  python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" classify \
-    --log "$logfile" --exit-code "$exit_code"
-}
-
-provider_error_in_log() {
-  local logfile="$1"
-  [ -f "$logfile" ] && tail -80 "$logfile" | grep -qiE "$PROVIDER_ERROR_PATTERN"
-}
-
-provider_unavailable_in_log() {
-  local logfile="$1"
-  provider_error_in_log "$logfile" || detect_infra_failure_in_log "$logfile"
-}
-
-wait_for_provider_recovery() {
-  local provider="$1" reason="$2" availability
-  while true; do
-    runtime_set recovering "$provider" "$reason — 무료 상태 재확인 대기" \
-      "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
-    echo "$provider 공급자 회복 대기 — ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회(AI 호출 없음)" \
-      | tee -a "$MAIN_LOG" "${LAP_LOG:-$MAIN_LOG}"
-    wait_with_stop "$PROVIDER_RETRY_SECONDS" || return 1
-    availability="$(usage_check "$provider")"
-    case "$availability" in
-      ok)
-        runtime_set running "$provider" "공급자 무료 상태 조회 회복" 0
-        return 0
-        ;;
-      quota)
-        QUOTA_CONFIRMED=1
-        runtime_set quota_wait "$provider" "공급자 회복 뒤 사용량 한도" \
-          "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
-        return 0
-        ;;
-    esac
-  done
-}
-
-select_recovery_agent() {
-  local failed_agent="$1" logfile="$2" skip_failed=0 candidate bin
-  provider_error_in_log "$logfile" && skip_failed=1
-  if [ "$skip_failed" = "0" ]; then
-    bin="$(find_bin "$failed_agent")"
-    if [ -n "$bin" ]; then
-      echo "$failed_agent"
-      return 0
-    fi
-  fi
-  local IFS=','
-  for candidate in $RECOVERY_PROVIDERS; do
-    candidate="$(printf '%s' "$candidate" | tr -d '[:space:]')"
-    [ -z "$candidate" ] && continue
-    [ "$skip_failed" = "1" ] && [ "$candidate" = "$failed_agent" ] && continue
-    bin="$(find_bin "$candidate")"
-    if [ -n "$bin" ]; then
-      echo "$candidate"
-      return 0
-    fi
+grok_bin() {
+  if [ -n "${GROK_BIN:-}" ] && [ -x "$GROK_BIN" ]; then printf '%s\n' "$GROK_BIN"; return 0; fi
+  if command -v grok >/dev/null 2>&1; then command -v grok; return 0; fi
+  for p in "$HOME/.grok/bin/grok" /opt/homebrew/bin/grok /usr/local/bin/grok; do
+    if [ -x "$p" ]; then printf '%s\n' "$p"; return 0; fi
   done
   return 1
 }
 
-write_recovery_context() {
-  local failed_agent="$1" exit_code="$2" logfile="$3"
-  {
-    echo "실패 실행기: $failed_agent"
-    echo "종료 코드: $exit_code"
-    echo "현재 HEAD: $(current_head)"
-    echo
-    echo "오류 로그 끝 80줄:"
-    tail -80 "$logfile" 2>/dev/null || true
-  } > "$RECOVERY_CONTEXT_FILE"
-}
+mkdir -p "$LOG_DIR"
 
-wait_for_context_change() {
-  local failed_head="$1" failed_agent="${2:-}" wait_kind="${3:-head}" logfile="${4:-}"
-  local delay="$RECOVERY_RETRY_SECONDS" availability bin recovery_agent
-  [ "$delay" -gt 0 ] || delay=1
-  while [ "$(current_head)" = "$failed_head" ]; do
-    if [ "$wait_kind" = "usage" ]; then
-      availability="$(usage_check "$failed_agent")"
-      if [ "$availability" = "ok" ]; then
-        runtime_set running "$failed_agent" "인증/사용량 조회 회복" 0
-        return 0
-      fi
-      if [ "$availability" = "quota" ]; then
-        runtime_set quota_wait "$failed_agent" "인증 회복 뒤 사용량 한도" \
-          "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
-        return 0
-      fi
-    elif [ "$wait_kind" = "executable" ]; then
-      bin="$(find_bin "$failed_agent")"
-      if [ -n "$bin" ]; then
-        runtime_set running "$failed_agent" "실행기 경로 회복" 0
-        return 0
-      fi
-    elif [ "$wait_kind" = "recovery" ]; then
-      recovery_agent="$(select_recovery_agent "$failed_agent" "$logfile")"
-      if [ -n "$recovery_agent" ]; then
-        runtime_set recovering "$failed_agent" "복구 실행기 감지: $recovery_agent" 0
-        return 0
-      fi
-    fi
-    echo "같은 오류 지문은 AI를 다시 부르지 않음 — ${delay}초 뒤 로컬 상태만 재확인" \
-      | tee -a "$MAIN_LOG" "${LAP_LOG:-$MAIN_LOG}"
-    wait_with_stop "$delay" || return 1
-  done
-  runtime_set running "$(pick_agent)" "코드 변경 감지 후 복구 재개" 0
-  return 0
-}
+PROMPT='너는 재와 별(Ashes to Stars) 유니티 게임을 개발하는 자동 루프의 한 이터레이션이다.
+너에게는 이전 세션의 기억이 없다. 상태는 전부 파일에 있다.
 
-run_recovery_once() {
-  local failed_agent="$1" exit_code="$2" logfile="$3" wait_kind="${4:-head}"
-  local failed_head fingerprint recovery_token recovery_agent recovery_bin recovery_rc
-  failed_head="$(current_head)"
-  fingerprint="$(python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" fingerprint \
-    --provider "$failed_agent" --exit-code "$exit_code" --log "$logfile" \
-    --context-version "$failed_head")"
-  recovery_token="loop-recovery:${fingerprint:0:12}"
-  runtime_set recovering "$failed_agent" "오류 복구: $fingerprint" 0
+## 시작 전에 반드시 이 순서로 읽어라
+1. docs/feedback/INBOX.md  — 오너 지시. **최우선**이며 다른 모든 계획을 덮는다
+2. docs/STATUS.md          — 지금 위치·다음 할 일 큐·완료 기록
+3. docs/DESIGN.md          — 무엇을 만드는가(헌법). 원장은 docs/GAME_DESIGN_ASHES_TO_STARS.md
+4. projects/ashes-to-stars/CLAUDE.md — 이 프로젝트의 함정 목록
+5. `python3 loop/ollama_split.py classify` — 카피·분류는 로컬 올라마. owner=ollama면
+   `copy --kind`로 문구를 받아 소비처에만 넣고, Unity 전투/게이트 코드는 네가 한다.
+   `:cloud` 모델·유료 API는 쓰지 마라.
 
-  recovery_agent="$(select_recovery_agent "$failed_agent" "$logfile")"
-  if [ -z "$recovery_agent" ]; then
-    echo "사용 가능한 복구 실행기 없음 — AI 호출 없이 대기" | tee -a "$MAIN_LOG" "$logfile"
-    wait_for_context_change "$failed_head" "$failed_agent" recovery "$logfile"
-    return $?
-  fi
-  recovery_bin="$(find_bin "$recovery_agent")"
-  if ! python3 "$RUNTIME_STATE_TOOL" --path "$RUNTIME_STATE_FILE" claim "$fingerprint"; then
-    wait_for_context_change "$failed_head" "$failed_agent" "$wait_kind" "$logfile"
-    return $?
-  fi
-  write_recovery_context "$failed_agent" "$exit_code" "$logfile"
-  echo "오류 지문 최초 1회 복구: $recovery_agent" | tee -a "$MAIN_LOG" "$logfile"
-  run_session "$recovery_agent" "$recovery_bin" "$RECOVERY_CONTEXT_FILE" \
-    "너는 자율 루프 오류 복구 세션이다. 새 기능을 만들지 않는다. 오류의 근본 원인과 직접 관련된 파일만 수정하고 재현 테스트를 통과시켜라. 성공하면 고친 파일만 즉시 커밋하고 커밋 메시지에 [$recovery_token]을 정확히 포함하라. 게임 개발 작업은 시작하지 마라." \
-    >> "$logfile" 2>&1
-  recovery_rc=$?
-  runtime_heartbeat
-  if [ "$recovery_rc" -eq 0 ] && recovery_commit_matches "$failed_head" "$recovery_token"; then
-    echo "복구 커밋 확인 — 새 원본으로 재기동" | tee -a "$MAIN_LOG" "$logfile"
-    return 75
-  fi
-  echo "복구가 새 커밋을 만들지 못함(code=$recovery_rc) — 동일 지문 재호출 금지" \
-    | tee -a "$MAIN_LOG" "$logfile"
-  wait_for_context_change "$failed_head" "$failed_agent" "$wait_kind"
-  return $?
-}
+## 오너의 자동 실행 승인
+오너는 "기획서 반영해서 개발 가능한 부분 개발 루프 시작"을 명시적으로 지시했고,
+확정 문서 안의 세부 구현 판단도 이 무인 루프에 위임했다. 이것이 이번 이터레이션의 사용자 승인이다.
+문서에 확정된 안전한 저장소 내부 작업은 짧은 설계를 로그에 남긴 뒤 **별도 승인 질문 없이 구현**하고,
+테스트·시각 QA·STATUS 인계·관련 파일 커밋까지 끝내라.
+외부 결제·계정 권한·되돌리기 어려운 삭제처럼 새 권한이 정말 필요한 일만 막힘으로 기록하고,
+그 경우에는 질문으로 이터레이션을 끝내지 말고 다음으로 실행 가능한 안전한 항목을 잡아라.
+오너 2026-08-16 「간단한건 알아서」: 이미 있는 UI 조각 연결·헤더 아이콘·버튼 3상태·
+확정된 소비처 0곳 배선은 보드 체크를 기다리지 말고 바로 한다.
+오너 2026-08-16 「내 선택은 정말 중요한 것만」: 대장간·레벨업·캐스트 타이밍·UI 크롬·
+외부 테스터/V4 70%는 세션이 정하고 진행한다. 사람 관문은 되돌릴 수 없는 OUT과
+오너가 명시한 설계 분기뿐이다.
 
-# 단위 테스트가 함수만 쓰도록 (LOOP_SOURCE_ONLY=1 source). 본 루프는 돌리지 않는다.
-if [ "${LOOP_SOURCE_ONLY:-0}" = "1" ]; then
-  return 0 2>/dev/null || exit 0
-fi
+## 이번 이터레이션에 할 일
+INBOX.md에 구체 지시가 있으면 그것이 큐보다 앞선다.
+없으면 STATUS.md 「마지막 트랙」을 본다.
 
-STARTUP_AGENT="$(pick_agent)"
-if [ ! -f "$RUNTIME_STATE_TOOL" ]; then
-  echo "런타임 상태 도구를 찾지 못했다: $RUNTIME_STATE_TOOL" >&2
-  exit 1
-fi
-PREVIOUS_PHASE="$(runtime_get phase)"
-if [ "$PREVIOUS_PHASE" = "quota_wait" ]; then
-  QUOTA_CONFIRMED=1
-else
-  runtime_set running "$STARTUP_AGENT" "루프 시작" 0
-fi
-echo "자율 개발 루프 시작: target=$TARGET_REPO agent=$STARTUP_AGENT max=${MAX_LOOPS:-0}"
+### 상시 폴리싱 (오너 2026-08-18 「ui/아트는 상시 폴리싱」)
+UI·아트는 끊지 않는다. 기획서 구멍만 닫다 화면이 낡는 것을 막는다.
+- STATUS `마지막 트랙`이 `코드`이면 이번은 **폴리싱 한 칸**.
+  `폴리싱 다음` 화면을 `./tools/qa_shot.sh`로 찍고 **한 결함만** 고친다
+  (잘림·겹침·흰 종이·낡은 텍스처·안 읽히는 글씨).
+  끝나면 `마지막 트랙: 폴리싱`, `폴리싱 다음`을 다음 화면으로 돌린다.
+  순서: 타이틀 → 영지 → 필드 → 캐릭터 → 파티 → 월드맵 → 던전 → 결과 → 전투HUD → 타이틀
+- `마지막 트랙`이 `폴리싱`이거나 없으면 이번은 기획서 ✅ · 소비처 0곳 **한 칸**.
+  끝나면 `마지막 트랙: 코드`
+「다른 게임만큼」으로 트랙을 닫지 마라. 한 화면 한 결함 + 샷이 완료다.
+할로우 나이트 화풍 강제는 취소다. 이미 만든 장을 화풍 맞추려 다시 뽑지 마라.
+**중복 리소스 재생성 금지** — `ARTIFACT_INDEX`·Resources·out_*에 같은 대상이 있으면 반입·연결만 한다.
+없는 것만 새로 뽑는다. 힉스필드는 Nano Banana 2만. 생성은 떼어내 띄우고 이터는 반입·코드로 끝낸다.
+W3Party는 전투 HUD 크롬(글씨·여백)만. 전투 수치·AI는 안 건드린다.
+영지 화면·EstateYard·영지 재설계는 클로드 설계 문서가 생기기 전 금지(오너 2026-08-18).
+문서는 `docs/*estate*`·`docs/*영지*`·`docs/GAME_SPEC_ESTATE*`·`docs/superpowers/**/*estate*`.
+생기면 원장보다 그 문서를 읽고 같이 구현한다. 문서 없이 영지를 폴리싱하지 마라.
+
+### 잡을 것이 없으면 (오너 지시 2026-08-15 「대기 상태가 될 경우 기획서를 읽고 다른 일을 생각해서 진행」)
+**대기하지 마라.** 큐가 비었거나 맨 위 항목이 남의 손을 기다리는 상태라면,
+`docs/GAME_DESIGN_ASHES_TO_STARS.md`(원장)를 읽고 **✅ 확정인데 코드에 없는 것**을 찾아
+직접 큐에 올린 뒤 그것을 한다. 찾는 방법:
+- ✅ 항목의 핵심 낱말로 `grep -rn` 해서 **소비처가 0곳**인 것을 찾는다.
+  이 저장소는 "정의만 있고 부르는 곳이 없다"가 반복해서 나왔다(CombatStyleDef·보스 기믹·
+  RaceDef·prop_scale.json 전부 그랬다) — 그게 가장 확실한 미구현 신호다
+- 화면 관련이면 `./tools/qa_shot.sh`로 **먼저 찍어 보고** 실제로 비어 있는지 확인한다.
+  문서가 "있다"고 해도 화면에 없으면 없는 것이다
+새 항목을 STATUS.md 큐에 적을 때 **통과 기준과 네거티브 컨트롤을 같이 적어라** —
+그게 없으면 다음 세션이 완료 판정을 못 한다.
+
+### 먼저 확인할 것 — 사람이 같은 걸 하고 있을 수 있다
+오너와 대화하는 세션이 이 저장소에서 **동시에** 작업한다. 시작할 때 `git log --oneline -12`를
+보고, 잡으려는 항목이 방금 처리됐는지 확인하라. 실제로 나무 반입을 두 쪽이 동시에 해서
+`prop_scale.json`에 같은 키가 두 벌 들어간 적이 있다(2026-08-15).
+
+## 완료의 정의 (DESIGN.md §3)
+1. 통과 기준이 수치나 화면으로 표현될 것 — "잘 된다"는 완료가 아니다
+2. 네거티브 컨트롤 — 되돌리면 다시 깨지는지 확인
+3. 증거가 파일로 남을 것 — CSV·스크린샷·로그
+
+## 아트 생성을 걸 때 (실측 사고 2026-08-15)
+이미지 생성은 힉스필드 **Nano Banana 2** (`aigen.py` 기본 `nano_banana_flash`, 2k)만.
+`nano_banana_2` 별칭은 Pro다. Gemini·Imagine 금지. 웹이면 Unlimited ON.
+이미지 생성은 한 계열에 20~40분 걸린다. 그런데 **네가 백그라운드로 띄우고 이터레이션을
+끝내면 그 프로세스는 세션과 함께 죽는다** — 실제로 charger 시트 A만 나오고 B는 영영
+안 왔다(크레딧은 이미 나갔다). 다음을 지켜라:
+
+1. **떼어내서 띄운다.** 맥에는 `setsid`가 없다(실측 — `nohup: setsid: No such file or directory`).
+   파이썬으로 세션을 분리해 띄운다:
+   ```
+   python3 -c "import subprocess; f=open(\"/tmp/gen.log\",\"w\"); \
+   subprocess.Popen([\"python3\",\"aigen.py\",\"--spec\",\"<spec>\",\"--out-dir\",\"<dir>\"], \
+   stdout=f, stderr=subprocess.STDOUT, start_new_session=True)"
+   ```
+   `run_in_background`나 그냥 `&`로는 세션이 끝날 때 같이 죽는다.
+   확인법: `ps -o pid,pgid -p <PID>`에서 **PGID == PID**여야 분리된 것이다
+2. **표시를 남긴다.** 띄운 직후 `projects/ashes-to-stars/art/.generating`에
+   `<spec 이름> <시작시각>`을 적는다
+3. **다음 이터레이션은 먼저 그 표시와 출력 폴더를 본다.** 판정 순서를 지켜라:
+   - 표시에 적힌 **PID가 죽었으면 그 표시는 낡은 것**이다 → 지우고 진행한다
+     (`ps -p <PID>`). 생성이 끝나면 프로세스는 사라지는데 표시는 남는다 —
+     실측 2026-08-15: 보스 4종이 다 나왔는데 낡은 표시 때문에 아트 트랙이 막힐 뻔했다
+   - PID가 살아 있고 2시간이 안 지났으면 **절대 다시 걸지 마라**(크레딧 이중 소모)
+   - 산출물이 다 나왔으면 표시를 지우고 반입 단계로 간다
+   ⚠️ `pgrep -f aigen.py`로 확인하지 마라 — **이 프롬프트 본문에 그 문자열이 있어서
+      루프 자신이 잡힌다**(실측). `pgrep -f "python3 aigen.py"`처럼 좁혀서 볼 것
+4. 생성이 도는 동안 대기하지 말고 **코드 트랙의 다른 항목**을 진행한다
+
+## 화면을 바꿨으면 반드시 눈으로 봐라
+  ./tools/qa_shot.sh [dungeon|hunt|boss|raid|party] [프레임]
+이 프로젝트는 "500체 700fps PASS"를 낸 화면이 텅 비어 있던 전례가 있다.
+수치만 보고 통과라고 말하지 마라.
+
+## 끝낼 때 (이걸 안 하면 다음 세션이 처음부터 다시 판단한다)
+- docs/STATUS.md를 **인수인계서처럼** 갱신한다: 무엇을 했나(근거·커밋 해시),
+  지금 어디까지 왔나, 다음 할 일 큐, 막힌 것과 그 이유
+- 고친 파일만 지정해서 git add하고 곧바로 commit한다(git add -A 금지 —
+  자동화 크론도 이 저장소에 직접 커밋한다)
+
+## 하지 마라
+- 유니티 에디터를 죽이지 마라(오너가 열어둔 것일 수 있다)
+- 한 이터레이션에 여러 항목을 벌이지 마라
+- 검증 없이 "완료"라고 STATUS.md에 적지 마라
+- 프로토 80%를 작업 항목으로 두고 「여기 유지」하지 마라. 안 오르면 `loop/board.py` 집계다.
+  V4b를 0으로 고정하지 마라. 사람 70% 통과 또는 오너 「넘김」만 100이다.
+  오너가 넘긴 것을 테스터 통과로 쓰지 마라.'
+
+echo "🔁 재와 별 자동 루프 시작 ($AGENT) — 멈추려면: touch loop/STOP"
+ITER=0
+FAILS=0
+INFRA=0
 
 while true; do
-  if [ -f "$STOP_FILE" ]; then
-    runtime_set owner_stopped "$(pick_agent)" "오너 STOP" 0
-    echo "STOP 확인 — 새 바퀴를 시작하지 않고 정상 종료합니다."
-    exit 0
-  fi
-  if [ "$MAX_LOOPS" -gt 0 ] && [ "$COUNT" -ge "$MAX_LOOPS" ]; then
-    echo "지정된 ${MAX_LOOPS}바퀴를 마쳤습니다."
+  if [ -f "$STOP" ]; then
+    echo "⏹  STOP 파일 발견 — 정지. 재개하려면: rm loop/STOP"
     exit 0
   fi
 
-  AGENT="$(pick_agent)"
-  USAGE_STATE="$(usage_check "$AGENT")"
-  if [ "$USAGE_STATE" = "quota" ]; then
-    QUOTA_CONFIRMED=1
-    runtime_set quota_wait "$AGENT" "사용량 한도" "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
-    echo "$AGENT 사용량 회복 대기 — ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회" | tee -a "$MAIN_LOG"
-    wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
-    continue
-  fi
-  if [ "$USAGE_STATE" = "unknown" ] && [ "$QUOTA_CONFIRMED" = "1" ]; then
-    runtime_set quota_wait "$AGENT" "한도 뒤 사용량 조회 불명" \
-      "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
-    echo "$AGENT 사용량 판정 불명 — 확인된 한도 상태를 유지하고 ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회" \
-      | tee -a "$MAIN_LOG"
-    wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
-    continue
-  fi
-  if [ "$USAGE_STATE" = "error" ]; then
-    DATE_DIR="$(date +%Y-%m-%d)"
-    LAP_DIR="$TARGET_REPO/logs/$DATE_DIR"
-    LAP_LOG="$LAP_DIR/recovery-login-$AGENT.log"
-    mkdir -p "$LAP_DIR"
-    echo "$AGENT provider unavailable: usage API 오류" > "$LAP_LOG"
-    wait_for_provider_recovery "$AGENT" "사용량 조회 오류" || exit 0
-    continue
-  fi
-  [ "$USAGE_STATE" = "ok" ] && QUOTA_CONFIRMED=0
-
-  BIN="$(find_bin "$AGENT")"
-  if [ -z "$BIN" ]; then
-    DATE_DIR="$(date +%Y-%m-%d)"
-    LAP_DIR="$TARGET_REPO/logs/$DATE_DIR"
-    LAP_LOG="$LAP_DIR/recovery-missing-$AGENT.log"
-    mkdir -p "$LAP_DIR"
-    echo "$AGENT executable not found" > "$LAP_LOG"
-    run_recovery_once "$AGENT" 127 "$LAP_LOG" executable
-    RECOVERY_RESULT=$?
-    [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
-    continue
-  fi
-  runtime_set running "$AGENT" "개발 바퀴 실행" 0
-
-  DATE_DIR="$(date +%Y-%m-%d)"
-  LAP_ID="$(date +%Y%m%d-%H%M%S)-$((COUNT + 1))"
-  LAP_DIR="$TARGET_REPO/logs/$DATE_DIR"
-  LAP_LOG="$LAP_DIR/lap-$LAP_ID.log"
-  mkdir -p "$LAP_DIR"
-
-  echo "바퀴 시작: $LAP_ID agent=$AGENT" | tee -a "$MAIN_LOG" "$LAP_LOG"
-  BEFORE="$(status_stamp)"
-
-  # 새 세션 — resume/continue 없음
-  run_session "$AGENT" "$BIN" >> "$LAP_LOG" 2>&1
-  RESULT=$?
-  AFTER="$(status_stamp)"
-
-  echo "바퀴 종료: $LAP_ID code=$RESULT" | tee -a "$MAIN_LOG" "$LAP_LOG"
-
-  # 회의 20260827-081437 채택 #2 — 랩 종료 전 커밋 가드 재실행.
-  # 빈 인덱스는 통과, 타 세션 스테이징은 존중, 낡은 스냅만 차단.
-  if ! (cd "$TARGET_REPO" && bash "$DEPLOY_ROOT/commit_guard.sh" --lap-end) >> "$LAP_LOG" 2>&1; then
-    echo "랩 종료 가드 실패 — 공유 인덱스에 낡은 스냅. 다음 맨몸 커밋이 되돌릴 수 있다" | tee -a "$MAIN_LOG" "$LAP_LOG"
+  # ── HOLD: 잠깐 비켜 준다(정지가 아니다) ────────────────
+  # 왜 STOP과 따로 있나: STOP은 사람이 다시 켜야 하는 **종료**다. 그런데 필요한 건
+  # "대화 세션이 공유 파일을 만지는 동안만 손을 떼는 것"이라, 끝나면 **스스로 재개**해야 한다.
+  # 실제 사고(2026-08-15): 대화 세션이 W3Party.cs를 고치는 중에 루프가 같은 파일을
+  # 커밋해 **남의 미커밋 변경을 자기 커밋에 쓸어담았다**(귀속이 어긋남, 내용 손실은 없었다).
+  # CLAUDE.md §7이 경고한 「커밋 오염」이 그대로 재발한 것이다.
+  if [ -f "$HOLD" ]; then
+    echo "⏸  HOLD — 다른 세션이 작업 중이다. 풀릴 때까지 기다린다($(date '+%H:%M:%S'))"
+    WAITED=0
+    while [ -f "$HOLD" ]; do
+      sleep 15
+      WAITED=$((WAITED + 15))
+      # 누가 HOLD를 만들어 놓고 잊으면 루프가 영원히 선다. 상한을 두고 스스로 푼다.
+      if [ "$WAITED" -ge "${LOOP_HOLD_MAX:-1800}" ]; then
+        echo "⚠️ HOLD가 ${WAITED}초째다 — 방치로 보고 해제한다(loop/HOLD 삭제)"
+        rm -f "$HOLD"
+        break
+      fi
+    done
+    echo "▶ HOLD 해제 — 재개"
   fi
 
-  LAP_CLASS="$(classify_lap "$LAP_LOG" "$RESULT")"
-  if [ "$LAP_CLASS" = "quota" ]; then
-    QUOTA_CONFIRMED=1
-    runtime_set quota_wait "$AGENT" "사용량 한도" "$(( $(date +%s) + PROVIDER_RETRY_SECONDS ))"
-    echo "$AGENT 사용량 회복 대기 — ${PROVIDER_RETRY_SECONDS}초 뒤 무료 조회" \
-      | tee -a "$MAIN_LOG" "$LAP_LOG"
-    wait_with_stop "$PROVIDER_RETRY_SECONDS" || exit 0
-    continue
-  fi
+  ITER=$((ITER + 1))
+  TS=$(date +%Y%m%d_%H%M%S)
+  LOG="$LOG_DIR/iter_${TS}.log"
+  STATUS_BEFORE=$(cksum < "$ROOT/docs/STATUS.md")
+  echo "─────────────────────────────────────────"
+  echo "▶ 이터레이션 #$ITER  $(date '+%H:%M:%S')  → $LOG"
 
-  if [ "$RESULT" -ne 0 ]; then
-    if provider_unavailable_in_log "$LAP_LOG"; then
-      echo "공급자 외부 오류 (code=$RESULT) — 복구 AI 없이 무료 상태 재확인" \
-        | tee -a "$MAIN_LOG" "$LAP_LOG"
-      wait_for_provider_recovery "$AGENT" "공급자 외부 오류" || exit 0
-      continue
+  # --continue를 쓰지 않는다. 매번 새 세션인 것이 이 루프의 핵심이다.
+  # `< /dev/null` — 무인 실행이라 stdin이 없다. 안 막으면 매번 3초를 기다리며
+  # "no stdin data received" 경고를 낸다(실측).
+  # ⚠️ `--allowedTools`가 없으면 **시각 QA가 통째로 막힌다.** `acceptEdits`는 파일 편집만
+  #    자동 승인하고 Bash는 여전히 승인을 묻는데, 무인 세션에는 답할 사람이 없어
+  #    `This command requires approval`로 거부된다. 실제로 charger 검증이 그렇게 막혀
+  #    "GUI 세션 대기"로 인계됐다(2026-08-15). 이 프로젝트는 **화면 확인이 완료 기준**이라
+  #    그게 막히면 루프가 완료 판정을 스스로 못 한다.
+  #    `settings.local.json`의 allow 목록만으로는 안 됐다 — 실측으로 확인했고,
+  #    `--allowedTools`로 넘긴 패턴은 통과했다(878KB 캡처 생성 확인).
+  if [ "$AGENT" = "grok" ]; then
+    # 그록 헤드리스는 stdin을 프롬프트로 읽지 않는다(실측 문서). --prompt-file 필수.
+    # -p/--single 이어도 도구를 여러 번 돌릴 수 있다. --continue 금지.
+    GB=$(grok_bin) || { echo "❌ grok CLI 없음" | tee -a "$LOG"; RESULT=127; GB=""; }
+    if [ -n "$GB" ]; then
+      printf '%s\n' "$PROMPT" > "$LOG_DIR/.prompt.txt"
+      "$GB" --prompt-file "$LOG_DIR/.prompt.txt" \
+        --cwd "$ROOT" \
+        --always-approve \
+        --permission-mode bypassPermissions \
+        --output-format plain \
+        --no-plan \
+        --max-turns "${LOOP_GROK_MAX_TURNS:-80}" \
+        >"$LOG" 2>&1
+      RESULT=$?
     fi
-    echo "세션 비정상 종료 (code=$RESULT) — 오류 복구 우선" | tee -a "$MAIN_LOG" "$LAP_LOG"
-    run_recovery_once "$AGENT" "$RESULT" "$LAP_LOG"
-    RECOVERY_RESULT=$?
-    [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
-    continue
+  elif [ "$AGENT" = "codex" ]; then
+    # `codex exec`는 호출마다 새 세션이다. --ephemeral로 세션 파일도 남기지 않는다.
+    # 실제 창 QA의 UPM IPC와 지정 파일 커밋은 workspace-write에서 차단됐다(2026-08-16 실측).
+    # 이 저장소 전용 자동 개발 승인 범위에서 danger-full-access를 사용한다.
+    printf '%s\n' "$PROMPT" | codex exec --ephemeral --sandbox danger-full-access \
+      --cd "$ROOT" --color never - >"$LOG" 2>&1
+    RESULT=$?
+  else
+    printf '%s\n' "$PROMPT" | claude -p --permission-mode acceptEdits \
+         --allowedTools \
+           "Bash(./tools/qa_shot.sh:*)" \
+           "Bash(tools/qa_shot.sh:*)" \
+           "Bash(GAME_SHOT_SEC=*)" \
+           "Bash(GAME_START=*)" \
+           "Bash(GAME_SHOT_DIR=*)" \
+           "Bash(/Applications/Unity/Hub/Editor/*)" \
+           "Bash(python3:*)" \
+           "Bash(git:*)" \
+         >"$LOG" 2>&1
+    RESULT=$?
   fi
 
-  if [ "$AFTER" = "$BEFORE" ]; then
-    echo "STATUS.md 갱신 없음" | tee -a "$MAIN_LOG" "$LAP_LOG"
-    run_recovery_once "$AGENT" 70 "$LAP_LOG"
-    RECOVERY_RESULT=$?
-    [ "$RECOVERY_RESULT" -eq 75 ] && exit 75
-    continue
+  # 종료 코드 0만으로 완료라 하지 않는다. 실제 재현(2026-08-16): 에이전트가 설계 승인만
+  # 질문하고 정상 종료해 같은 질문을 반복했다. 인수인계 파일 갱신이 완료의 최소 증거다.
+  STATUS_AFTER=$(cksum < "$ROOT/docs/STATUS.md")
+  if [ "$RESULT" -eq 0 ] && [ "$STATUS_BEFORE" = "$STATUS_AFTER" ]; then
+    echo "[loop-guard] STATUS.md 갱신 없음 — 구현 없는 정상 종료를 실패로 분류" >> "$LOG"
+    RESULT=86
   fi
 
   if [ "$RESULT" -eq 0 ]; then
-    COUNT=$((COUNT + 1))
-    runtime_set running "$AGENT" "정상 바퀴 완료" 0
-    # 회의 20260827-081437 채택 #3 — 성공 바퀴만 세고, 4바퀴마다 GameFullCheck 전수.
-    FC_LAP="$(fullcheck_lap_read)"
-    FC_LAP=$((FC_LAP + 1))
-    fullcheck_lap_write "$FC_LAP"
-    maybe_run_game_fullcheck "$FC_LAP"
-    maybe_refresh_test_report
-    # 자가학습 회의 — N바퀴마다 역할별 병렬 회의를 소집한다 (오너 2026-08-23).
-    # 어떤 에이전트든 loop/COUNCIL_NOW 파일을 만들면 다음 바퀴 끝에 즉시 소집된다.
-    if [ -f "$TARGET_REPO/loop/COUNCIL_NOW" ]; then
-      rm -f "$TARGET_REPO/loop/COUNCIL_NOW"
-      echo "즉시 회의 소집 신호 감지" | tee -a "$MAIN_LOG" "$LAP_LOG"
-      bash "$DEPLOY_ROOT/council.sh" "$TARGET_REPO" >> "$LAP_LOG" 2>&1 || true
+    FAILS=0
+    INFRA=0
+    echo "✅ #$ITER 완료"
+    tail -5 "$LOG" | sed 's/^/   /'
+  elif grep -qiE 'not logged in|please run /login|oauth|api error|rate.?limit|session limit|usage limit|limit .*resets|quota|overloaded|insufficient_quota|credit|network|timed out|ECONN|ENOTFOUND' "$LOG"; then
+    # ── 그록 잔량 소진(402) → 표식을 남기고 원래 에이전트로 복귀.
+    #    복귀 후에도 한도면 아래 복구 시각 대기 로직이 처리한다.
+    if [ "$AGENT" = "grok" ] && grep -qiE 'usage balance exhausted|status.? *402|error.? *402' "$LOG"; then
+      touch "$GROK_DEAD"
+      if [ "$AGENT_BASE" != "grok" ]; then
+        echo "🔀 그록 잔량 소진(402) — 표식을 남기고 ${AGENT_BASE}로 복귀"
+        AGENT="$AGENT_BASE"
+      fi
     fi
-    # 속도 레인 적립분(autonomous/integration)을 master로 흡수
-    bash "$DEPLOY_ROOT/merge_integration.sh" "$TARGET_REPO" >> "$MAIN_LOG" 2>&1 || true
+    # 클로드·코덱스 한도 → 그록으로 즉시 전환. 복구 시각까지 자면 개발이 멈춘다.
+    # 전환은 이 프로세스 안에서만 유효하다 — loop/agent에 쓰지 않는다.
+    if [ "$AGENT" != "grok" ] && grok_alive && grok_bin >/dev/null && \
+       grep -qiE 'weekly limit|session limit|usage limit|limit .*resets|try again at' "$LOG"; then
+      echo "🔀 $AGENT 한도 — Grok으로 전환하고 바로 재개(이 프로세스 한정)"
+      AGENT=grok
+      ITER=$((ITER - 1))
+      continue
+    fi
+    # ── 인프라 장애는 **작업 실패로 세지 않는다.**
+    #    2026-08-15 실측: 인증이 잠깐 흔들린 44초 사이에 재시도 3회가 전부 소진돼
+    #    루프가 자멸했다(직후 `claude -p`는 정상 동작). 크레딧·레이트리밋·네트워크도
+    #    같은 계열이다 — 이건 "같은 자리에서 계속 넘어지는 것"이 아니라 **기다리면
+    #    풀리는 것**이므로, 횟수를 태우지 말고 물러섰다 다시 온다.
+    #    (이 저장소가 펫나 엔진에서 이미 배운 규칙이다: 인프라 실패 ≠ 이슈 실패)
+    INFRA=$((INFRA + 1))
+    WAIT=$((60 * INFRA * INFRA))
+    [ "$WAIT" -gt 900 ] && WAIT=900          # 상한 15분 — 더 벌리면 복구를 놓친다
+
+    # ── 언제 풀리는지 **서버가 알려주면** 그때까지 기다린다.
+    #    구독 한도는 `You've hit your session limit · resets 8:10pm` 형태로 복구 시각을
+    #    준다. 이걸 무시하고 제곱 백오프만 돌면 풀리지도 않은 채 재시도를 반복하거나,
+    #    반대로 풀린 뒤에도 한참 자고 있게 된다.
+    #    실측 2026-08-15: 18:26에 한도에 걸렸는데 분류기가 'session limit'을 몰라
+    #    작업 실패로 세어 3회 만에 루프가 죽었고, 20:10 복구 뒤에도 **1시간 44분간
+    #    아무도 재개하지 않았다.**
+    RESET=$(grep -oiE 'resets? +[0-9]{1,2}(:[0-9]{2})? *(am|pm)' "$LOG" | head -1 \
+            | grep -oiE '[0-9]{1,2}(:[0-9]{2})? *(am|pm)')
+    if [ -n "$RESET" ]; then
+      NOW_S=$(date +%s)
+      # 오늘 그 시각. 이미 지났으면 내일로 넘긴다(자정을 넘긴 한도).
+      TGT_S=$(date -j -f "%Y-%m-%d %I:%M %p" "$(date +%Y-%m-%d) $(echo "$RESET" | tr 'a-z' 'A-Z' | sed -E 's/^([0-9]{1,2})( *)(AM|PM)$/\1:00 \3/; s/ +/ /g')" +%s 2>/dev/null || echo "")
+      if [ -n "$TGT_S" ]; then
+        [ "$TGT_S" -le "$NOW_S" ] && TGT_S=$((TGT_S + 86400))
+        UNTIL=$((TGT_S - NOW_S + 60))        # 1분 여유 — 경계에서 다시 걸리지 않게
+        if [ "$UNTIL" -gt 0 ] && [ "$UNTIL" -lt 43200 ]; then
+          WAIT=$UNTIL
+          echo "   ↳ 서버가 복구 시각을 알려줬다($RESET) — 그때까지 ${WAIT}초 기다린다"
+        fi
+      fi
+    fi
+    echo "⏸  #$ITER 인프라 장애 (${INFRA}회) — ${WAIT}초 뒤 재시도. 실패로 세지 않는다"
+    grep -iE 'not logged in|api error|rate.?limit|overloaded|credit|network' "$LOG" | head -2 | sed 's/^/   /'
+    if [ "$INFRA" -ge "${LOOP_MAX_INFRA:-12}" ]; then
+      echo "❌ $AGENT 실행기 인프라 장애가 ${INFRA}회 연속 — 사람이 봐야 한다"
+      {
+        echo ""
+        echo "## ⚠️ 루프 정지 — 인프라 장애 지속 ($(date '+%Y-%m-%d %H:%M'))"
+        echo "\`$AGENT\` 실행기가 ${INFRA}회 연속 실패했다. 마지막 로그: \`$LOG\`"
+        echo "구독 한도·로그인·네트워크 상태를 확인한 뒤 \`rm loop/STOP\`으로 재개할 것."
+      } >> "$ROOT/docs/STATUS.md"
+      touch "$STOP"
+      exit 1
+    fi
+    sleep "$WAIT"
+    ITER=$((ITER - 1))                        # 인프라 장애는 이터레이션을 소비하지 않는다
+    continue
+  else
+    FAILS=$((FAILS + 1))
+    INFRA=0
+    echo "⚠️ #$ITER 실패 ($FAILS/$MAX_FAILS)"
+    tail -15 "$LOG" | sed 's/^/   /'
+    if [ "$FAILS" -ge "$MAX_FAILS" ]; then
+      # 조용히 계속 돌면 실패가 쌓이는 걸 아무도 모른다. 멈추고 흔적을 남긴다.
+      echo "❌ 연속 $MAX_FAILS회 실패 — 정지한다. 로그: $LOG"
+      {
+        echo ""
+        echo "## ⚠️ 루프 자동 정지 ($(date '+%Y-%m-%d %H:%M'))"
+        echo "연속 $MAX_FAILS회 실패로 멈췄다. 마지막 로그: \`$LOG\`"
+        echo "원인을 확인하고 \`rm loop/STOP\` 후 재개할 것."
+      } >> "$ROOT/docs/STATUS.md"
+      touch "$STOP"
+      exit 1
+    fi
+    # 작업 실패도 곧바로 다시 던지지 않는다 — 같은 실패를 20초 간격으로 반복하면
+    # 상한만 빨리 태우고 아무것도 달라지지 않는다.
+    sleep $((COOLDOWN * FAILS * 3))
   fi
 
-  if [ -f "$STOP_FILE" ]; then
-    runtime_set owner_stopped "$AGENT" "오너 STOP" 0
-    echo "현재 바퀴 완료 후 STOP 확인 — 정상 종료합니다." | tee -a "$MAIN_LOG"
-    exit 0
-  fi
-
-  wait_with_stop "$COOLDOWN" || exit 0
+  sleep "$COOLDOWN"
 done

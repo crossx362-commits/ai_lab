@@ -136,9 +136,7 @@ namespace AshesToStars
         public static void ArmShield()
         {
             if (ShieldBlocked) return;
-            Load();
             _shieldUntil = NowUnix() + GuardSeconds;
-            Save();
         }
 
         public static long SortieCost() =>
@@ -222,7 +220,7 @@ namespace AshesToStars
         public static string LootCapLine()
         {
             if (LootCapBlocked) return "약탈 상한 없음";
-            return $"약탈 상한 6 G/h(§18-13) · {EstateStatusHud.ShortCopper(CapCopper())}";
+            return $"약탈 상한 6 G/h(§18-13) · {Economy.FormatCurrency(CapCopper())}";
         }
 
         /// <summary>§18-13 승자 최소. 상대 본성 레벨 × 0.5 G/h. 로컬 별은 내 본성.
@@ -247,7 +245,7 @@ namespace AshesToStars
         public static string LootFloorLine()
         {
             if (LootFloorBlocked) return "승자 최소 없음";
-            return $"승자 최소 0.5 G/h(§18-13) · {EstateStatusHud.ShortCopper(FloorCopper())}";
+            return $"승자 최소 0.5 G/h(§18-13) · {Economy.FormatCurrency(FloorCopper())}";
         }
 
         /// <summary>로컬 별의 창고=지갑. 출정 비용을 뺀 뒤에는 낸 돈을 다시 더해
@@ -270,7 +268,7 @@ namespace AshesToStars
         public static string WarehouseLootLine()
         {
             if (LootWarehouseBlocked) return "창고 약탈 없음";
-            return $"창고 20%(§18-13) · {EstateStatusHud.ShortCopper(ApplyWarehouseLoot(WarehouseCopper()))}";
+            return $"창고 20%(§18-13) · {Economy.FormatCurrency(ApplyWarehouseLoot(WarehouseCopper()))}";
         }
 
         /// <summary>§18-13 동일 상대 24h. 직전 침략이 창 밖이면 1회차. 정산 전에 다음 회차를 본다.</summary>

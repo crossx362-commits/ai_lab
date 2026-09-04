@@ -34,14 +34,9 @@ namespace AshesToStars
             Check(cells.Length == 3 && UiPages.IsWideCard(cells[0]),
                 "3택 카드는 가로여야 금테가 안 늘어난다");
             UiPages.CardLayout(cells[0], true, out var ic, out var tt, out var sb);
-            // 67664c3a부터 그려진 금테는 CardPad로 얇게 캡핑된다(큰 카드 36.5→18).
-            // 판정도 DrawSliced·CardLayout과 같은 인자로 재야 한다 — 무캡 panel 절편은
-            // 실제 테두리보다 두 배 두껍게 잡아 통과가 불가능한 스타일 검증이 됐었다.
-            string chrome = UiPages.CardChrome(cells[0]);
-            float cardPad = UiPages.CardPad(cells[0]);
-            Check(UiAtlas.FitsInContent(cells[0], ic, chrome, UiAtlas.ContentExtra, cardPad)
-                  && UiAtlas.FitsInContent(cells[0], tt, chrome, UiAtlas.ContentExtra, cardPad)
-                  && UiAtlas.FitsInContent(cells[0], sb, chrome, UiAtlas.ContentExtra, cardPad)
+            Check(UiAtlas.FitsInContent(cells[0], ic)
+                  && UiAtlas.FitsInContent(cells[0], tt)
+                  && UiAtlas.FitsInContent(cells[0], sb)
                   && ic.x < tt.x,
                 "가로 카드 아이콘·글씨가 금테 안에 있어야 한다");
 

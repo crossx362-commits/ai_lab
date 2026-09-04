@@ -122,11 +122,22 @@ namespace AshesToStars
             // 켜고 Awake를 한 번만 돌리면 _game과 보스 타깃이 같은 판에 선다.
             var go = new GameObject("BossBattleRunSelfCheck");
             go.SetActive(false);
-            party = TestAttach.AttachWithAwake<global::W3Party>(go, p => { p.GameMode = true; });
-            boss = TestAttach.AttachWithAwake<BossBattle>(go);
+            party = go.AddComponent<global::W3Party>();
+            party.GameMode = true;
+            boss = go.AddComponent<BossBattle>();
+            Invoke(party, "Awake");
+            Invoke(boss, "Awake");
             boss.Begin(5, 1);
             boss.AttachCombatTargets();
             return go;
+        }
+
+        static void Invoke(object target, string name)
+        {
+            var method = target.GetType().GetMethod(name,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Require(method != null, $"{target.GetType().Name}.{name} 경계를 찾지 못했다");
+            method.Invoke(target, null);
         }
 
         static void DamageFirstW3Target(global::W3Party party, float amount)

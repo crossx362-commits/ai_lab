@@ -132,67 +132,6 @@ namespace AshesToStars
                     $"Complete 줄 (실제 {EliteDrop.LastLine})");
             }
 
-            // ── 필드 정예 훅(STATUS 큐#1, 오너 위임 승인) — KillMob → NoteFieldKill ──
-            GameState.ResetAll();
-            LifeSystem.ResetAll();
-            Equipment.ResetAll();
-            EliteDrop.ResetForTest();
-            _ = LifeSystem.GetCharacters();
-            Check(EliteDrop.FieldKills == 0, "필드 훅 기본 0");
-            int fkGear = Equipment.Unequipped().Count;
-            int fkStone = GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone);
-            EliteDrop.NoteFieldKill();
-            Check(EliteDrop.FieldKills == 1, $"필드 처치 카운트 1 (실제 {EliteDrop.FieldKills})");
-            Check(GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone) == fkStone + EliteDrop.Stones,
-                "필드 훅 강화석");
-            Check(Equipment.Unequipped().Count == fkGear + 1, "필드 훅 일반 장비");
-            Check(EliteDrop.LastLine.IndexOf("일반", StringComparison.Ordinal) >= 0,
-                $"필드 훅 줄 (실제 {EliteDrop.LastLine})");
-            EliteDrop.NoteFieldKill();
-            Check(EliteDrop.FieldKills == 2, $"두 번째 카운트 2 (실제 {EliteDrop.FieldKills})");
-
-            string w3Src = File.ReadAllText(Path.Combine(Application.dataPath, "Scripts/W3Party.cs"));
-            Check(w3Src.IndexOf("EliteDrop.NoteFieldKill", StringComparison.Ordinal) >= 0,
-                "W3Party가 필드 훅을 건다");
-            Check(w3Src.IndexOf("!AshesToStars.DungeonRun.Active", StringComparison.Ordinal) >= 0,
-                "훅은 던전 중 제외(노드 Complete 이중 지급 방지)");
-            Check(w3Src.IndexOf("GameMode && !AshesToStars.DungeonRun.Active", StringComparison.Ordinal) >= 0,
-                "훅은 실플레이 판 한정(검증 보드 무영향)");
-
-            Environment.SetEnvironmentVariable(EliteDrop.EnvNo, "1");
-            int noFk = EliteDrop.FieldKills;
-            int noGear = Equipment.Unequipped().Count;
-            int noStone = GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone);
-            EliteDrop.NoteFieldKill();
-            Check(EliteDrop.FieldKills == noFk, "QA_NO 카운트 고정");
-            Check(Equipment.Unequipped().Count == noGear
-                  && GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone) == noStone,
-                "QA_NO 지급 없음 — 기존 동작 유지");
-            Environment.SetEnvironmentVariable(EliteDrop.EnvNo, null);
-
-            // 필드 생존 요약: LastLine 있으면 Line을 붙이고, QA_NO면 옛 가죽만(던전 노드와 같은 가드).
-            GameState.ResetAll();
-            LifeSystem.ResetAll();
-            Equipment.ResetAll();
-            EliteDrop.ResetForTest();
-            _ = LifeSystem.GetCharacters();
-            Environment.SetEnvironmentVariable(EliteDrop.EnvNo, "1");
-            EliteDrop.NoteFieldKill();
-            string noTail = string.IsNullOrEmpty(EliteDrop.LastLine)
-                ? "" : " · " + EliteDrop.Line();
-            Check(noTail.Length == 0
-                  && string.IsNullOrEmpty(EliteDrop.LastLine),
-                "QA_NO면 필드 생존 요약은 옛 가죽만 (정예 줄 숨김)");
-            Environment.SetEnvironmentVariable(EliteDrop.EnvNo, null);
-
-            EliteDrop.ResetForTest();
-            EliteDrop.NoteFieldKill();
-            string yesTail = string.IsNullOrEmpty(EliteDrop.LastLine)
-                ? "" : " · " + EliteDrop.Line();
-            Check(yesTail.IndexOf("정예", StringComparison.Ordinal) >= 0
-                  && yesTail.IndexOf(EliteDrop.Line(), StringComparison.Ordinal) >= 0,
-                $"필드 생존 요약이 정예 줄을 붙인다 (실제 '{yesTail}')");
-
             GameState.ResetAll();
             LifeSystem.ResetAll();
             Equipment.ResetAll();
@@ -221,21 +160,6 @@ namespace AshesToStars
                 "정예 노드가 Apply를 읽는다");
             Check(battleSrc.IndexOf("EliteDrop.Line", StringComparison.Ordinal) >= 0,
                 "전투가 줄을 읽는다");
-            int lineHits = 0;
-            int scan = 0;
-            while (true)
-            {
-                int at = battleSrc.IndexOf("EliteDrop.Line", scan, StringComparison.Ordinal);
-                if (at < 0) break;
-                lineHits++;
-                scan = at + 1;
-            }
-            Check(lineHits >= 2,
-                $"던전 노드·필드 생존이 둘 다 EliteDrop.Line (실제 {lineHits})");
-            Check(battleSrc.IndexOf("huntExp}{elite}", StringComparison.Ordinal) >= 0,
-                "필드 생존 요약이 정예 줄을 붙인다 (던전과 같은 LastLine 가드)");
-            Check(battleSrc.IndexOf("FieldHuntHideCount", StringComparison.Ordinal) >= 0,
-                "필드 가죽은 FieldHuntHideCount (배율 재구현 금지)");
             Check(mapSrc.IndexOf("EliteDrop.Line", StringComparison.Ordinal) >= 0,
                 "던전 지도가 줄을 읽는다");
             Check(charSrc.IndexOf("EliteDrop.SeedQaIfRequested", StringComparison.Ordinal) >= 0,
@@ -245,8 +169,6 @@ namespace AshesToStars
             _ = nameof(EliteDrop.Applies);
             _ = nameof(EliteDrop.Line);
             _ = nameof(EliteDrop.SeedQaIfRequested);
-            _ = nameof(EliteDrop.NoteFieldKill);
-            _ = nameof(EliteDrop.FieldKills);
 
             Environment.SetEnvironmentVariable(EliteDrop.EnvShow, show);
             Environment.SetEnvironmentVariable(EliteDrop.EnvNo, no);
@@ -256,15 +178,8 @@ namespace AshesToStars
             GameState.ResetAll();
             LifeSystem.ResetAll();
 
-            string dir = Path.Combine(Application.dataPath, "../..", "results");
-            Directory.CreateDirectory(dir);
-            string path = Path.Combine(dir, "elite_drop_selfcheck.log");
-            var body = new StringBuilder();
-            body.AppendLine(_fail == 0 ? "PASS EliteDropSelfCheck" : "FAIL EliteDropSelfCheck");
-            body.Append(_log);
-            File.WriteAllText(path, body.ToString());
-            if (_fail == 0) Debug.Log("[EliteDropSelfCheck] PASS → " + path + "\n" + _log);
-            else Debug.LogError($"[EliteDropSelfCheck] FAIL {_fail}건 → " + path + "\n" + _log);
+            if (_fail == 0) Debug.Log("[EliteDropSelfCheck] PASS\n" + _log);
+            else Debug.LogError($"[EliteDropSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException($"[EliteDropSelfCheck] FAIL {_fail}건");
         }
     }

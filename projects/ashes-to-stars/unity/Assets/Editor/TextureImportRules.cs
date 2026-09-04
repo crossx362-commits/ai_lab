@@ -52,20 +52,6 @@ public class TextureImportRules : AssetPostprocessor
             }
             // 이펙트는 중앙 피벗 — 대상 위에 겹쳐 그린다
         }
-        else if (assetPath.Contains("/ground/estate/") || assetPath.Contains("/Ground/estate/"))
-        {
-            // 2026-08-18: 영지(EstateYard) 다이아몬드 바닥 타일 — 아래 seamless 타일링
-            // 규칙(alphaSource=None, wrapMode=Repeat)을 그대로 쓰면 알파가 통째로
-            // 버려져 GUI.DrawTexture가 타일 바깥(투명해야 할 영역)을 불투명 검정으로
-            // 그린다(실측 사고 — 알파 채널이 있는 마름모 컷아웃 텍스처인데 seamless
-            // 무한 타일링 바닥과 같은 규칙을 적용받고 있었다). 다이아몬드 실루엣은
-            // 알파로 만드므로 From Input + Clamp가 맞다.
-            ti.filterMode = FilterMode.Bilinear;
-            ti.textureType = TextureImporterType.Default;
-            ti.wrapMode = TextureWrapMode.Clamp;
-            ti.alphaSource = TextureImporterAlphaSource.FromInput;
-            ti.alphaIsTransparency = true;
-        }
         else if (assetPath.Contains("/ground/") || assetPath.Contains("/Ground/"))
         {
             ti.filterMode = FilterMode.Bilinear   /* 화풍 전환 2026-08-18: HK 손그림, Point면 계단 */;      // 바닥도 픽셀아트 타일 — Bilinear면 도트가 뭉개진다

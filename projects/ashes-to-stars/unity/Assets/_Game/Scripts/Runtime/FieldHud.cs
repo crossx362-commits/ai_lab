@@ -15,11 +15,6 @@ namespace AshesToStars
         public const float OldBodyH = 540f;
         public const float DockH = 200f;
         public const float DockGap = 10f;
-        /// <summary>
-        /// 전폭 3×2 카드는 영지 가운데 팔레트와 달리 좌우가 내비 옆으로 빠진다.
-        /// 2px면 금테가 내비 윗변에 붙어 한 덩어리로 읽힌다(실측 2026-08-24 field_hud_nav_after).
-        /// </summary>
-        public const float NavGap = 12f;
         public const int DockCols = 3;
         public const int DockRows = 2;
         public const int OldCols = 2;
@@ -52,24 +47,17 @@ namespace AshesToStars
 
         public static string Line() => Blocked
             ? "카드가 필드를 가린다"
-            : "HUD는 필드를 가리지 않는다 — 도크는 내비 위(§16)";
-
-        /// <summary>내비 플레이트 윗변. 도크 아랫변이 이보다 아래면 금테가 먹힌다(§16).</summary>
-        public static float NavPlateTop(float screenH = 720f) =>
-            UiPages.NavPlateTop(GameFlow.BottomBar.Length, 1280f, screenH);
+            : "HUD는 필드를 가리지 않는다(§16)";
 
         /// <summary>
         /// 사냥·던전·레이드·저체력·일정·배회 보스 순서.
         /// 막히면 옛 2×3 전폭, 아니면 아래 3×2 도크.
-        /// 새 길은 영지 PaletteBar와 같이 내비 플레이트 위에 둔다 —
-        /// body.yMax에 붙이면 하단 금테가 도크에 먹힌다(실측 1280×720, 카드 yMax 640 · 플레이트 636).
         /// </summary>
-        public static Rect[] Cards(Rect body, float screenH = 720f)
+        public static Rect[] Cards(Rect body)
         {
             if (Blocked)
                 return UiPages.Grid(body, OldCols, OldRows, 16f);
-            float yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - NavGap);
-            var dock = new Rect(body.x, yMax - DockH, body.width, DockH);
+            var dock = new Rect(body.x, body.yMax - DockH, body.width, DockH);
             return UiPages.Grid(dock, DockCols, DockRows, DockGap);
         }
 

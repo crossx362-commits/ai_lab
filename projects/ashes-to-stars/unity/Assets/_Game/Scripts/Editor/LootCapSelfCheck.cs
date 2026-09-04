@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -115,14 +114,6 @@ namespace AshesToStars
             _ = nameof(InvasionState.CapCopper);
             _ = nameof(InvasionState.ApplyLootCap);
             _ = nameof(InvasionState.LootCapLine);
-
-            string invSrc = File.ReadAllText(Path.Combine(Application.dataPath,
-                "_Game/Scripts/Runtime/InvasionState.cs"));
-            Check(invSrc.Contains("ShortCopper(CapCopper())")
-                  && invSrc.IndexOf("FormatCurrency(CapCopper())") < 0,
-                "CapCopper은 ShortCopper만");
-            Check(invSrc.Contains("ShortCopper(FloorCopper())"),
-                "하한도 ShortCopper");
             _ = nameof(InvasionState.SeedLootCapQaIfRequested);
             _ = nameof(InvasionState.ForceLootBeforeCap);
 

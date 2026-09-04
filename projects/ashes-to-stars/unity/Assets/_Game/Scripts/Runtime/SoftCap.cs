@@ -122,13 +122,13 @@ namespace AshesToStars
         {
             if (Blocked) return "시간당 수익 소프트캡 없음";
             return "시간당 수익 소프트캡 150%(§18-14) · 한도 "
-                + EstateStatusHud.ShortCopper(ThresholdCopper()) + "/h";
+                + Economy.FormatCurrency(ThresholdCopper()) + "/h";
         }
 
         public static string HourLine()
         {
             if (Blocked) return Line();
-            return Line() + " · 이번 시간 " + EstateStatusHud.ShortCopper(EarnedThisHour);
+            return Line() + " · 이번 시간 " + Economy.FormatCurrency(EarnedThisHour);
         }
 
         /// <summary>시각 QA. QA_SOFT_CAP=1이면 T1에서 20000을 넣어 16500이 남게 한다.</summary>

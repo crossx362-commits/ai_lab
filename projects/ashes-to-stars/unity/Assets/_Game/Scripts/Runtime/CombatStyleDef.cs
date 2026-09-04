@@ -21,9 +21,8 @@ namespace AshesToStars
         [TextArea] public string 행동설명;
 
         [Header("토글 기본값")]
-        [Tooltip("정예 우선 타겟(§10-2). 기본 false=가까운 적. 소비처 StyleScreen.ToggleLine")]
         public bool 정예우선타겟 = false;
-        [Tooltip("부활초·귀환의두루마리는 항상 false — 자동 사용 금지(§4). 소비처 StyleScreen.ToggleLine")]
+        [Tooltip("부활초·귀환의두루마리는 항상 false — 자동 사용 금지(§4)")]
         public bool 소모품자동사용 = false;
     }
 }

@@ -229,21 +229,7 @@ namespace AshesToStars
         /// 그리고 딕셔너리를 순회하며 **첫 히트 하나만** 돌려줘, 한 판에 두 종류가 나올 수 없었고
         /// 우선순위가 딕셔너리 순회 순서에 달려 있었다(§3-2 규칙 3이 금지한 것).
         /// </summary>
-        /// <summary>
-        /// 필드·던전 보상표는 현재 세계 티어 수익 배율을 함께 쓴다.
-        /// 탑 보상은 최고 기록 자체가 난이도이므로 이 선택값으로 바꾸지 않는다.
-        /// </summary>
-        public static float DropRateForTier(DropSource source, LifeItem item, int tier)
-        {
-            if (!DropRates.TryGetValue((source, item), out float rate)) return 0f;
-            if (source != DropSource.FieldDungeonBoss && source != DropSource.RaidDungeon) return rate;
-            var table = TierRevenueMultiplier;
-            if (table == null || table.Length == 0) return rate;
-            return Mathf.Min(1f, rate * table[Mathf.Clamp(tier, 0, table.Length - 1)]);
-        }
-
-        public static List<LifeItem> RollBattleDrops(DropSource source, int bossCount, ref Rng rng,
-            int towerFloor = 0, int tier = 0)
+        public static List<LifeItem> RollBattleDrops(DropSource source, int bossCount, ref Rng rng, int towerFloor = 0)
         {
             var results = new List<LifeItem>();
             if (bossCount < 1) bossCount = 1;
@@ -253,8 +239,7 @@ namespace AshesToStars
             {
                 if (it == LifeItem.SpecialJobToken && !CanDropSpecialJobToken(towerFloor))
                     continue;
-                float rate = DropRateForTier(source, it, tier);
-                if (rate <= 0f) continue;
+                if (!DropRates.TryGetValue((source, it), out float rate)) continue;
                 float chance = ApplyDropRate(rate);
                 if (it == LifeItem.AdvancementMaterial)
                     chance = ApplyAdvMatRate(chance);
@@ -361,14 +346,8 @@ namespace AshesToStars
         /// 필드 사냥(보스 테이블이 아닌 잡몹 웨이브)에서 가죽만 판정한다.
         /// 보스 테이블을 그대로 쓰면 필드에서 부활초가 나와 목숨 경제가 풀린다.
         /// 프로토타입 검증값: 생존 1회에 가죽 1장 — 대장간 루프가 화면에 보여야 한다.
-        /// §10-2 정예 처치 다음 웨이브 드랍 배율을 곱한다. QA_NO면 옛 1장.
         /// </summary>
-        public static int FieldHuntHideCount()
-        {
-            float n = 1f * EliteWaveDrop.Mul();
-            int hides = (int)Math.Round(n);
-            return hides < 1 ? 1 : hides;
-        }
+        public static int FieldHuntHideCount() => 1;
 
         /// <summary>
         /// 잡몹 웨이브(필드·탑 일반층·던전 노드) 초당 경험치(T1, 종족 1.0).
@@ -433,7 +412,7 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 필드 잡몹 생존 골드(§18-1). T1 1시간 = GhAnchor.Hours() 골드.
+        /// 필드 잡몹 생존 골드(§18-1). T1 1시간 = 1골드 = 10,000쿠퍼.
         /// G/h 앵커의 생산 소비처. 던전·탑 일반층은 안 탄다(필드만).
         /// 초가 0이하거나 QA_NO면 0. 저체력 귀환·전멸은 호출부가 안 부른다.
         /// </summary>
@@ -444,7 +423,7 @@ namespace AshesToStars
             int t = tier;
             if (t < 0) t = 0;
             if (t >= TierRevenueMultiplier.Length) t = TierRevenueMultiplier.Length - 1;
-            double raw = COPPER_PER_GOLD * GhAnchor.Hours() * (double)seconds * TierRevenueMultiplier[t]
+            double raw = COPPER_PER_GOLD * (double)seconds * TierRevenueMultiplier[t]
                 / HuntGoldHourSeconds;
             long gold = (long)raw;
             return gold < 1 ? 1 : gold;
@@ -454,13 +433,13 @@ namespace AshesToStars
         {
             if (HuntGoldBlocked) return "필드 골드 없음";
             long hour = WaveHuntGold(GameState.Tier, HuntGoldHourSeconds);
-            return $"필드 {EstateStatusHud.ShortCopper(hour)}/h(§18-1)";
+            return $"필드 {FormatCurrency(hour)}/h(§18-1)";
         }
 
         public static string HuntGoldLine(long copper)
         {
             if (HuntGoldBlocked) return "필드 골드 없음";
-            return $"필드 사냥 {EstateStatusHud.ShortCopper(copper)}(§18-1)";
+            return $"필드 사냥 {FormatCurrency(copper)}(§18-1)";
         }
 
         /// <summary>QA_HUNT_GOLD=1이면 티어를 T1로 맞춰 1골드/h가 화면에 보이게 한다.</summary>
@@ -496,16 +475,6 @@ namespace AshesToStars
         };
 
         /// <summary>
-        /// 소지 상한. 부활초는 <see cref="ReviveCap.Limit"/>가 BalanceConfig를 읽는다.
-        /// 나머지 아이템은 ItemCapacity 표.
-        /// </summary>
-        public static int Capacity(LifeItem item)
-        {
-            if (item == LifeItem.RevivalTea) return ReviveCap.Limit();
-            return ItemCapacity.TryGetValue(item, out int cap) ? cap : 0;
-        }
-
-        /// <summary>
         /// 인벤토리 - 목숨 아이템 보유 현황
         /// </summary>
         public class LifeItemInventory
@@ -538,7 +507,7 @@ namespace AshesToStars
                     return false;
 
                 int current = GetCount(item);
-                int cap = Capacity(item);
+                int cap = ItemCapacity[item];
 
                 // 상한 초과면 거부
                 if (current + amount > cap)
@@ -570,9 +539,21 @@ namespace AshesToStars
         /// <summary>
         /// 티어별 기준 수익 (G/h 배수)
         /// 기준: T1 = 1 G/h = 100 실버 (§18-1)
-        /// 티어당 ×BalanceConfig.티어배율 (기본 1.6). QA_NO면 옛 하드코드 표.
+        /// 티어당 ×1.6 배율
         /// </summary>
-        public static float[] TierRevenueMultiplier => TierMul.Table();
+        public static readonly float[] TierRevenueMultiplier = new float[]
+        {
+            1.0f,      // T1: 1 G/h
+            1.6f,      // T2: 1.6 G/h
+            2.56f,     // T3: 2.56 G/h
+            4.096f,    // T4: 4.096 G/h
+            6.5536f,   // T5: 6.5536 G/h
+            10.48576f, // T6: 10.48576 G/h
+            16.777216f,    // T7: 16.777216 G/h
+            26.8435456f,   // T8: 26.8435456 G/h
+            42.94967296f,  // T9: 42.94967296 G/h
+            68.71947674f   // T10: 68.71947674 G/h (≈69)
+        };
 
         /// <summary>
         /// 행위별 골드 비용 (G/h 배수, §18-2)

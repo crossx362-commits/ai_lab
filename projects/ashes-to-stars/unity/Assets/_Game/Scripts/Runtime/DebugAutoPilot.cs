@@ -111,29 +111,6 @@ namespace AshesToStars
             // 진입 비용을 낼 수 있게 지갑을 채운다 — 스모크의 목적은 경제 검증이 아니다
             GameState.Grant(500000);
 
-            if (_mode == "character")
-            {
-                // 캐릭터창 시각 QA — GAME_SHOT_FRAME이 공통 경로로 현재 화면을 찍는다.
-                // 에디터 게임뷰는 백그라운드 스티키 GUI 이벤트로 탭 전환이 막힐 수 있어(2026-08-26 실측),
-                // 빌드 실행으로 눈확인할 때 이 모드를 쓴다.
-                GameFlow.Go(GameFlow.Character);
-                return;
-            }
-
-            if (_mode == "member_style")
-            {
-                // ORDERS ② 실측 — 직업별로 다른 스타일을 저장해 파티 배선을 수치로 본다.
-                // 사제는 저장값(기본 균형형) 그대로 둬 실제 세이브와 섞인 구성을 재현한다.
-                CombatStylePrefs.Set("수호기사", StyleId.공격형);
-                CombatStylePrefs.Set("검사", StyleId.방어형);
-                CombatStylePrefs.Set("마법사", StyleId.생존형);
-                CombatStylePrefs.Set("음유시인", StyleId.공격형);
-                System.Environment.SetEnvironmentVariable("QA_PARTY5", "1");
-                MaybeFillParty();
-                GameFlow.GoBattle(GameFlow.Field);
-                return;
-            }
-
             if (_mode == "dash")
             {
                 // 이동기 자가검사 — 전투를 띄우고 W3Party가 스스로 재고 판정한다.
@@ -323,22 +300,6 @@ namespace AshesToStars
                     Debug.Log($"[QA] AI 이동기 사용 {aiDash}회 · 돌진형 예고 {chg.tell}회 → 돌진 {chg.rush}회 " +
                               $"(-1이면 전투가 안 돌고 있다는 뜻)");
                     Shot($"qa_{_mode}"); _step = 1; _t = 0f;
-                }
-                else if (_step == 1 && _t > 0.5f) Finish();
-                return;
-            }
-
-            if (_mode == "member_style")
-            {
-                // ORDERS ② 판정 — 활성 판 요약으로 멤버별 적용(ON)·단일 경로(NEG)를 가른다.
-                if (_step == 0 && _t > 8f)
-                {
-                    string sum = global::W3Party.MemberStyleSummaryOnActive();
-                    bool blocked = System.Environment.GetEnvironmentVariable("QA_NO_MEMBER_STYLE") == "1";
-                    bool pass = global::W3Party.MemberStyleVerdict(sum, blocked);
-                    Debug.Log($"[QA-멤버스타일] {sum} · 차단={blocked} 판정={(pass ? "PASS" : "FAIL")}");
-                    Shot("qa_member_style"); _step = 1; _t = 0f;
-                    if (!pass) Debug.LogError($"[QA-멤버스타일] 판정 FAIL — 요약 \"{sum}\"");
                 }
                 else if (_step == 1 && _t > 0.5f) Finish();
                 return;

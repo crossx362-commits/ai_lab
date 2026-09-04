@@ -197,12 +197,6 @@ namespace AshesToStars
                   && estate.Contains("SeedQaIfRequested"),
                 "영지 현황이 강등·압류 문구·시드를 읽는다");
 
-            string seize = File.ReadAllText(Path.Combine(Application.dataPath,
-                "_Game/Scripts/Runtime/BankruptcySeize.cs"));
-            Check(seize.Contains("EstateStatusHud.ShortCopper(_copper)")
-                  && seize.IndexOf("FormatCurrency(_copper)") < 0,
-                "압류·상환은 ShortCopper만");
-
             _ = nameof(BankruptcySeize.Apply);
             _ = nameof(BankruptcySeize.SeedQaIfRequested);
             _ = nameof(EstateBuild.DowngradeOne);

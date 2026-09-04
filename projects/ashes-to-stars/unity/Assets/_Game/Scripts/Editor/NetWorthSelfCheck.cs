@@ -139,13 +139,6 @@ namespace AshesToStars
             _ = nameof(NetWorth.Line);
             _ = nameof(NetWorth.SeedQaIfRequested);
 
-            string nwSrc = File.ReadAllText(Path.Combine(runtime, "NetWorth.cs"));
-            Check(nwSrc.Contains("ShortCopper(Assets())")
-                  && nwSrc.Contains("ShortCopper(GameState.LoanLimit)")
-                  && nwSrc.IndexOf("FormatCurrency(Assets())") < 0
-                  && nwSrc.IndexOf("FormatCurrency(GameState.LoanLimit)") < 0,
-                "순자산·한도는 ShortCopper만");
-
             Environment.SetEnvironmentVariable(NetWorth.EnvShow, show);
             Environment.SetEnvironmentVariable(NetWorth.EnvNo, no);
             NetWorth.ResetForTest();

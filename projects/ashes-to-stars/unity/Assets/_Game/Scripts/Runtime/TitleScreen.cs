@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -13,43 +12,6 @@ namespace AshesToStars
     /// <summary>타이틀 — 시작과 종료. 하단바 없음.</summary>
     public class TitleScreen : GameScreen
     {
-        public const string EnvNoLocalKitLane = "QA_NO_TITLE_LOCAL_KIT_LANE";
-        public const string EnvNoIntroPanel = "QA_NO_TITLE_INTRO_PANEL";
-        public const string EnvNoPlayerCopy = "QA_NO_TITLE_PLAYER_COPY";
-
-        public static string PlayerCopy(string value)
-        {
-            if (string.IsNullOrEmpty(value)
-                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
-                return value;
-            return System.Text.RegularExpressions.Regex.Replace(
-                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
-        }
-
-        /// <summary>소개 문구를 배경 위에 띄우지 않고 시작 카드와 같은 금테 패널에 묶는다.</summary>
-        public static Rect IntroPanelRect(Rect body)
-        {
-            const float h = 260f;
-            return new Rect(body.x, body.y + (body.height - h) * 0.5f,
-                body.width * 0.54f - 14f, h);
-        }
-
-        /// <summary>로컬 테스트 안내는 소개 열의 금테 상태 패널로 읽힌다. QA_NO는 옛 생텍스트.</summary>
-        public static Rect LocalKitRect(Rect body)
-        {
-            bool blocked = System.Environment.GetEnvironmentVariable(EnvNoLocalKitLane) == "1";
-            float h = blocked ? 20f : 40f;
-            return new Rect(body.x, body.yMax - h, blocked ? body.width : body.width * 0.54f, h);
-        }
-
-        public static string LocalKitLine()
-        {
-            if (!string.IsNullOrEmpty(LocalPlayKit.Line)) return LocalPlayKit.Line;
-            return System.Environment.GetEnvironmentVariable(LocalPlayKit.EnvShow) == "1"
-                ? "로컬 테스트 · 타이틀 안내 배치 QA"
-                : "";
-        }
-
         protected override void Awake()
         {
             base.Awake();
@@ -68,16 +30,8 @@ namespace AshesToStars
             TowerEnding.SeedQaIfRequested();
             SoloRaidClear.SeedQaIfRequested();
             StarterPick.SeedQaIfRequested();
-            SeedStarterChosenQaIfRequested();
-            string localKitLine = LocalKitLine();
-            if (!string.IsNullOrEmpty(localKitLine))
-            {
-                var kitRect = LocalKitRect(r);
-                if (System.Environment.GetEnvironmentVariable(EnvNoLocalKitLane) == "1")
-                    Hint(kitRect, localKitLine);
-                else
-                    InfoAt(kitRect, localKitLine);
-            }
+            if (!string.IsNullOrEmpty(LocalPlayKit.Line))
+                Hint(new Rect(r.x, r.y + r.height - 22f, r.width, 20f), LocalPlayKit.Line);
             if (StarterPick.Open)
             {
                 DrawStarterPick(r);
@@ -85,15 +39,6 @@ namespace AshesToStars
             }
 
             var copy = new Rect(r.x, r.y + 8f, r.width * 0.54f, r.height - 16f);
-            if (System.Environment.GetEnvironmentVariable(EnvNoIntroPanel) != "1")
-            {
-                var introPanel = IntroPanelRect(r);
-                UiAtlas.DrawSliced(introPanel, "panel", 16f, new Color(1f, 1f, 1f, 0.68f));
-                // panel 아트의 굵은 좌우 문양은 약 42px를 차지한다. 22px만 띄우면
-                // 설명 끝 글자가 금테 아래로 들어가므로 문양 안쪽 50px를 안전영역으로 쓴다.
-                copy = new Rect(introPanel.x + 50f, introPanel.y + 18f,
-                    introPanel.width - 100f, introPanel.height - 36f);
-            }
             // 소개 두 줄이 헤더 바로 아래에 붙어 좌측 열이 통째로 비어 화면이 위로 쏠려
             // 보였다(폴리싱 2026-08-20). 오른쪽 3카드는 열 전체 높이를 채우는데 왼쪽만
             // 상단에 몰려 균형이 깨졌다. 소개 블록을 좌측 열 세로 중앙에 놓아 맞춘다.
@@ -110,16 +55,16 @@ namespace AshesToStars
                  : "아직 정상에 오른 파티가 없다");
             Hint(new Rect(copy.x, by + titleH + gap, copy.width, descH),
                  TowerEnding.HasTitle
-                     ? PlayerCopy($"{TowerEnding.LookName} · 전투력은 그대로 · 100층을 다시 오를 수 있다(§8)")
+                     ? $"{TowerEnding.LookName} · 전투력은 그대로 · 100층을 다시 오를 수 있다(§8)"
                      : SoloRaidClear.HasAny
-                         ? PlayerCopy($"{SoloRaidClear.LookName} · 홀로 깬 레이드 {SoloRaidClear.Count} · 전투력은 그대로(§8)")
+                         ? $"{SoloRaidClear.LookName} · 홀로 깬 레이드 {SoloRaidClear.Count} · 전투력은 그대로(§8)"
                          : "5인 파티를 키워 탑을 오른다. 목숨 3번이면 캐릭터와 장비가 영구 삭제된다.");
 
             var cells = UiPages.Grid(new Rect(r.x + r.width * 0.56f, r.y + 8f, r.width * 0.44f, r.height - 16f),
                 1, 3, 14f);
             if (DrawCard(cells[0], "게임 시작",
                     StarterPick.ShouldOffer()
-                        ? "기본직업 5종 중 첫 캐릭터를 고른다"
+                        ? "기본직업 5종 중 첫 캐릭터를 고른다(오너 21:38)"
                         : "영지에서 모든 콘텐츠가 출발한다",
                     "territory"))
             {
@@ -148,16 +93,6 @@ namespace AshesToStars
             {
                 string job = jobs[i];
                 var card = cells[i];
-                // 클릭을 슬라이스·초상보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
-                // 가방 필터 옛 버그(43f316e9)와 같이 크롬에 먹혀 TryChoose가 안 먹었다.
-                var ev = Event.current;
-                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                    && card.Contains(ev.mousePosition))
-                {
-                    if (StarterPick.TryChoose(job))
-                        GameFlow.Go(GameFlow.Estate);
-                    ev.Use();
-                }
                 var tint = new Color(1f, 1f, 1f, 0.94f);
                 if (!UiAtlas.DrawSliced(card, "panel", 16f, tint))
                     UiAtlas.Draw(card, "panel", tint);
@@ -172,16 +107,10 @@ namespace AshesToStars
                     LifeSystem.BasicJobLabel(job));
                 Hint(new Rect(inner.x, labelTop + lineH, inner.width, lineH),
                     StarterPick.Blurb(job));
+                if (GUI.Button(card, GUIContent.none, GUIStyle.none)
+                    && StarterPick.TryChoose(job))
+                    GameFlow.Go(GameFlow.Estate);
             }
-        }
-
-        void SeedStarterChosenQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable(StarterPick.EnvShow) == "1") return;
-            string job = Environment.GetEnvironmentVariable(StarterPick.EnvJob);
-            if (!LifeSystem.IsBasicJob(job)) return;
-            if (StarterPick.Open) return;
-            GameFlow.Go(GameFlow.Estate);
         }
     }
 }

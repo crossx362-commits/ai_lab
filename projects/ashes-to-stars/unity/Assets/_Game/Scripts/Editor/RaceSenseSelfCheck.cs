@@ -73,10 +73,8 @@ namespace AshesToStars
             Check(Near(elf30, base30 * WorldStar.ElfSensePercent / 100f),
                 $"엘프가 같은 층 인간의 120% (인간 {base30:0.000} / 엘프 {elf30:0.000})");
             Check(Near(WorldStar.ApplyRaceSense(10f), 12f), "엘프 10→12");
-            Check(WorldStar.RaceSenseLine() == "내 별 영공 +20%"
-                  && !WorldStar.RaceSenseLine().Contains("탐험")
-                  && !WorldStar.RaceSenseLine().Contains("§"),
-                $"엘프 문구가 내 별 감지 영공 역할을 설명 (실제 {WorldStar.RaceSenseLine()})");
+            Check(WorldStar.RaceSenseLine().Contains("+20%"),
+                $"엘프 문구 +20% (실제 {WorldStar.RaceSenseLine()})");
             Check(WorldStar.SizeLabel(30).Contains("4.8"),
                 $"엘프 라벨 영공 4.8 (실제 {WorldStar.SizeLabel(30)})");
             Check(Near(WorldStar.Sense(1), WorldStar.SenseMul(1) * 1.2f),

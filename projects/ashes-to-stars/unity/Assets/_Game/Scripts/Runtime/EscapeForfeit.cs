@@ -37,9 +37,6 @@ namespace AshesToStars
         public static string Body() =>
             "목숨은 그대로. 전리품·경험치는 없다(§3·§4)";
 
-        /// <summary>결과를 본 뒤 새 전투에 들어갈 때만 이전 런의 포기 표식을 지운다.</summary>
-        public static void ClearForNewRun() => _active = false;
-
         /// <summary>
         /// 정산 없이 런을 끝낸다. 골드 Earn·경험·목숨은 안 건드린다.
         /// 던전은 End. 침략 대기는 패배 추가 소모 없이 취소.

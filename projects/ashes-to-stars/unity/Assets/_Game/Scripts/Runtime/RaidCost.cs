@@ -50,7 +50,7 @@ namespace AshesToStars
         {
             if (!IsMega(floor)) return "";
             if (Blocked) return "대보스 가산 없음";
-            return $"대보스 {EstateStatusHud.ShortCopper(Copper(floor))}(§18-2)";
+            return $"대보스 {Economy.FormatCurrency(Copper(floor))}(§18-2)";
         }
 
         public static string Line() => FormatLine(CurrentRaidFloor());

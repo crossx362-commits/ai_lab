@@ -52,6 +52,7 @@
 | `reports/` | 14 |
 | `projects/petnna/` | 10 |
 | 루트 | 8 |
+| `projects/bboggl/` | 1 |
 
 **루트 8개 — `DESIGN.md` 뺀 7개는 하네스가 존재를 강제**
 | 파일 | 대상 독자 | 상태 |
@@ -87,6 +88,8 @@
 **projects/petnna/ — 10개**
 `README.md` · `CHANGELOG.md` · `DEVELOPMENT_REPORT.md` · `SETUP_SUPABASE.md` ·
 `PRIVACY_POLICY.md` 🔒 · `TERMS_OF_SERVICE.md` 🔒 (웹앱이 `/`에서 서빙 — 이동 금지) · `docs/` 4종
+
+**projects/bboggl/README.md** — 1개
 
 **reports/ — 14개, 전부 C등급 기록**
 `README.md` · `channel_registration_status.md` · `research/` 2 · `history/` 5 · `meetings/` 4 · `inspection/` 1

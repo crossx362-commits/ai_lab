@@ -25,24 +25,15 @@ namespace AshesToStars
             _log.Length = 0;
             string show = Environment.GetEnvironmentVariable(WorldMapDockCap.EnvShow);
             string no = Environment.GetEnvironmentVariable(WorldMapDockCap.EnvNo);
-            string honorNo = Environment.GetEnvironmentVariable(Honor.EnvNo);
-            string guardNo = Environment.GetEnvironmentVariable(Honor.EnvNoGuard);
-            string exploreNo = Environment.GetEnvironmentVariable(WorldExplore.EnvNo);
-            RaceId oldRace = RacePrefs.Get();
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvShow, null);
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, null);
-            Environment.SetEnvironmentVariable(Honor.EnvNo, null);
-            Environment.SetEnvironmentVariable(Honor.EnvNoGuard, null);
-            Environment.SetEnvironmentVariable(WorldExplore.EnvNo, null);
 
             GameState.ResetAll();
             InvasionState.ResetForTest();
             InvasionApproach.ResetForTest();
             EstateStore.ResetForTest();
             Honor.ResetForTest();
-            WorldExplore.ResetForTest();
             WorldMapDockCap.ResetForTest();
-            RacePrefs.Set(RaceId.인간);
 
             Check(!WorldMapDockCap.Blocked, "기본은 켜짐");
             Check(GameState.TowerFloor < WorldMapScreen.InvasionUnlockFloor, "기본 층은 잠김");
@@ -72,12 +63,11 @@ namespace AshesToStars
             Check(WorldMapDockCap.Line().IndexOf("한 줄", StringComparison.Ordinal) >= 0,
                 $"줄 (실제 {WorldMapDockCap.Line()})");
 
-            Check(WorldMapDockCap.Star() == WorldExplore.Caption()
-                  && WorldMapDockCap.Star() == "탐험 2/3",
+            Check(WorldMapDockCap.Star() == WorldMapDockCap.StarCap,
                 $"성계 부제 (실제 {WorldMapDockCap.Star()})");
             Check(WorldMapDockCap.Rank() == WorldMapDockCap.RankCap,
                 $"랭킹 부제 (실제 {WorldMapDockCap.Rank()})");
-            Check(WorldMapDockCap.Defense() == Honor.GuardCap,
+            Check(WorldMapDockCap.Defense() == WorldMapDockCap.DefenseCap,
                 $"수비대 부제 (실제 {WorldMapDockCap.Defense()})");
             string starLocked = "잠김 — " + WorldMapDockCap.Star();
             string rankLocked = "잠김 — " + WorldMapDockCap.Rank();
@@ -148,26 +138,13 @@ namespace AshesToStars
             _ = nameof(WorldMapDockCap.Line);
             _ = nameof(WorldMapDockCap.SeedQaIfRequested);
 
-            string dockSrc = File.ReadAllText(Path.Combine(runtime, "WorldMapDockCap.cs"));
-            Check(dockSrc.Contains("ShortCopper(InvasionState.SortieCost())")
-                  && dockSrc.IndexOf("FormatCurrency(InvasionState.SortieCost())") < 0,
-                "출정 비용은 ShortCopper만");
-            Check(dockSrc.Contains("ShortCopper(InvasionState.LootCopper())")
-                  && dockSrc.IndexOf("FormatCurrency(InvasionState.LootCopper())") < 0,
-                "예상 약탈은 ShortCopper만");
-
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvShow, show);
             Environment.SetEnvironmentVariable(WorldMapDockCap.EnvNo, no);
-            Environment.SetEnvironmentVariable(Honor.EnvNo, honorNo);
-            Environment.SetEnvironmentVariable(Honor.EnvNoGuard, guardNo);
-            Environment.SetEnvironmentVariable(WorldExplore.EnvNo, exploreNo);
             WorldMapDockCap.ResetForTest();
             InvasionApproach.ResetForTest();
             InvasionState.ResetForTest();
             EstateStore.ResetForTest();
             Honor.ResetForTest();
-            WorldExplore.ResetForTest();
-            RacePrefs.Set(oldRace);
             GameState.ResetAll();
 
             if (_fail == 0) Debug.Log("[WorldMapDockCapSelfCheck] PASS\n" + _log);

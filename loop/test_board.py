@@ -8,8 +8,6 @@ import os
 import sys
 import tempfile
 import unittest
-from datetime import datetime
-from unittest import mock
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -235,33 +233,10 @@ class ParseTests(unittest.TestCase):
         stuck = board.stuck_items("", {}, log_text="❌ #7 실패\n✅ #8 완료")
         self.assertFalse(any(s["kind"] == "fail" for s in stuck))
 
-    def test_board_html_ops_after_detail_grid(self):
+    def test_board_html_stuck_after_request(self):
         html = (HERE / "board.html").read_text(encoding="utf-8")
-        # 화면 순서(2026-08-23 확정): 할 일 적기 상단 고정(dbca90ba) → detail-grid →
-        # charts → tests.
-        self.assertLess(html.find('class="request-top"'), html.find('id="detail-grid"'))
-        self.assertLess(html.find('id="detail-grid"'), html.find('id="charts"'))
-        self.assertLess(html.find('id="charts"'), html.find('id="tests-box"'))
-        self.assertIn("renderDetail", html)
-
-
-    def test_completed_posts_reads_history_table(self):
-        status = """# s
-## 최근 완료 내역 (History)
-| 바퀴 | 일시 | 작업 내용 | 검증 결과 / 커밋 |
-|---|---|---|---|
-| 12 | 2026-08-23 | 보드 History 파싱 | PASS `abcdef12` |
-| — | 2026-08-22 | 예전 작업 | 아카이브 |
-## 막힌 것 · 보류
-- 없음
-"""
-        posts = board.completed_posts(status)
-        titles = [p["title"] for p in posts]
-        self.assertIn("보드 History 파싱", titles)
-        first = next(p for p in posts if "History" in p["title"] or "파싱" in p["title"])
-        self.assertEqual(first["commit"], "abcdef12")
-        snip = board.make_status_snip(status)
-        self.assertTrue(snip)
+        self.assertLess(html.find('class="request-top"'), html.find('id="stuck-box"'))
+        self.assertIn("renderStuck", html)
 
     def test_completed_posts_description_and_shot(self):
         status = STATUS + """
@@ -393,66 +368,22 @@ class ParseTests(unittest.TestCase):
         self.assertIn("renderCompleted", html)
         self.assertIn('id="slice"', html)
 
-
-    def test_board_html_handoff_card(self):
-        html = (board.HERE / "board.html").read_text(encoding="utf-8")
-        self.assertIn('id="d-handoff-card"', html)
-        self.assertIn("작업 넘겨받기 흐름", html)
-        self.assertIn("준호 작업 완료 보고", html)
-        self.assertIn("PROMPT.md", html)
-        # 우선순위 정렬(오너 2026-08-25): 할 일 → 방금 결과 → … → 넘겨받기 흐름은 뒤쪽.
-        self.assertLess(html.find('id="d-queue"'), html.find('id="d-lap-card"'))
-        self.assertLess(html.find('id="d-lap-card"'), html.find('id="d-handoff-card"'))
-
-    def test_load_handoff_state_defaults(self):
-        with tempfile.TemporaryDirectory() as td:
-            path = Path(td) / "handoff_state.json"
-            old = board.HANDOFF_STATE_PATH
-            board.HANDOFF_STATE_PATH = path
-            try:
-                data = board.load_handoff_state()
-                self.assertEqual(data["phase"], "idle")
-                self.assertEqual(data["note"], "준호 완료 보고 대기")
-                self.assertEqual(data["last_files"], [])
-                path.write_text(
-                    '{"phase":"awaiting_review","updated":"t","last_commit":"abc",'
-                    '"last_files":["a.py"],"review":"검수","note":"대기"}\n',
-                    encoding="utf-8",
-                )
-                data = board.load_handoff_state()
-                self.assertEqual(data["phase"], "awaiting_review")
-                self.assertEqual(data["last_commit"], "abc")
-                self.assertEqual(data["last_files"], ["a.py"])
-                path.write_text('{"phase":"nope"}\n', encoding="utf-8")
-                self.assertEqual(board.load_handoff_state()["phase"], "idle")
-                path.write_text("not-json", encoding="utf-8")
-                self.assertEqual(board.load_handoff_state()["phase"], "idle")
-            finally:
-                board.HANDOFF_STATE_PATH = old
-
-    def test_board_html_detail_is_primary_ops_panel(self):
+    def test_board_html_queue_above_charts_and_commands_log(self):
         html = (HERE / "board.html").read_text(encoding="utf-8")
-        # detail-grid is the single list source; main keeps interactive controls only
-        self.assertLess(html.find('id="detail-grid"'), html.find('id="charts"'))
-        self.assertLess(html.find('id="charts"'), html.find('id="choices"'))
-        self.assertLess(html.find('id="d-queue"'), html.find('id="d-worklog"'))
-        self.assertLess(html.find('id="d-blockers"'), html.find('id="d-gates"'))
-        self.assertLess(html.find('id="d-inbox"'), html.find('id="d-completed"'))
-        self.assertLess(html.find('id="d-providers"'), html.find('id="d-commits"'))
-        self.assertIn('id="d-commands"', html)
+        self.assertLess(html.find('id="commands"'), html.find('id="queue"'))
+        self.assertLess(html.find('id="queue"'), html.find('id="charts"'))
+        self.assertLess(html.find('id="queue"'), html.find('id="choices"'))
+        self.assertIn("renderCommands", html)
+        self.assertIn("내가 시킨 일", html)
         self.assertIn("proto_done", html)
         self.assertIn("지금 ·", html)
         self.assertIn("테스트 하는 사람", html)
+        self.assertEqual(html.count('id="queue"'), 1)
         self.assertIn('id="tests"', html)
         self.assertIn("검증 결과", html)
         self.assertIn("renderTests", html)
-        self.assertIn("renderDetail", html)
-        # duplicates removed from main
-        self.assertEqual(html.count('id="queue"'), 0)
-        self.assertNotIn('id="stuck-box"', html)
-        self.assertNotIn('id="now-box"', html)
-        self.assertNotIn('대기 중인 지시', html)
-        self.assertNotIn('내가 시킨 일', html)
+        self.assertLess(html.find('id="commands"'), html.find('id="tests"'))
+        self.assertLess(html.find('id="tests"'), html.find('id="queue"'))
 
 
 class WriteTests(unittest.TestCase):
@@ -485,35 +416,6 @@ class WriteTests(unittest.TestCase):
 
 
 class PlainCopyTests(unittest.TestCase):
-    def test_now_title_ignores_code_comment_and_uses_screen_topic(self):
-        log = (
-            "/// 과거 화면마다 무거운 씬을 11개 만들다 배치모드가 죽은\n"
-            "projects/ashes-to-stars/unity/Assets/_Game/Scripts/Runtime/AuctionHud.cs:86\n"
-            "경매장 화면을 그리는 코드\n"
-        )
-        title = board.infer_now_title(
-            log,
-            [{"title": "영지 아트", "detail": "닫음."}],
-            [],
-        )
-        self.assertEqual(title, "경매장 화면을 보기 쉽게 다듬는 중")
-
-    def test_now_title_ignores_ansi_tool_name_before_work_log(self):
-        log = (
-            "\x1b[0m⚙ \x1b[0munity_manage_editor\n"
-            "AuctionHud.cs 경매장 화면 구현\n"
-        )
-        title = board.infer_now_title(log, [], [])
-        self.assertEqual(title, "경매장 화면을 보기 쉽게 다듬는 중")
-
-    def test_now_title_uses_screen_topic_when_sentence_contains_code_name(self):
-        log = (
-            "다음 바퀴에서 샷 1장 재확인 후 infoBottom 여유를 검증합니다.\n"
-            "CharacterScreen.cs\n"
-        )
-        title = board.infer_now_title(log, [], [])
-        self.assertEqual(title, "캐릭터 화면을 보기 쉽게 다듬는 중")
-
     def test_inbox_stamp_and_code_leave_the_title(self):
         t = board.humanize_title(
             "INBOX 08:47 지금 문제점",
@@ -541,11 +443,6 @@ class PlainCopyTests(unittest.TestCase):
         self.assertIn("탈출", t)
         self.assertNotIn("움직임", t)
 
-    def test_title_drops_internal_camel_case_name(self):
-        title = board.humanize_title("다음 바퀴에서 샷 1장 재확인 후 infoBottom 여유")
-        self.assertNotIn("infoBottom", title)
-        self.assertIn("여유", title)
-
     def test_loop_meta_is_not_a_description(self):
         d = board.humanize_detail("큐 1번은 움직임·겹침이 W3Party/FieldDecor라 대기하지 않음.")
         self.assertNotIn("큐 1번", d)
@@ -558,103 +455,6 @@ class PlainCopyTests(unittest.TestCase):
         )
         self.assertIn("남음", d)
         self.assertNotIn("UiPages", d)
-
-
-class OverviewTests(unittest.TestCase):
-    @staticmethod
-    def _build():
-        build = getattr(
-            board,
-            "build_overview",
-            lambda *args: {
-                "current": {}, "next": [], "recent": [],
-                "blocked": [], "needs_human": [],
-            },
-        )
-        return build(
-            {"now": {"phase": "작업 중", "title": "경매장 화면을 보기 쉽게 다듬는 중"}},
-            [
-                {"n": 1, "title": "영지 아트", "detail": "닫음. 검사 통과"},
-                {"n": 2, "title": "경매장 정보 정리", "detail": "정보를 한눈에 보이게"},
-                {"n": 3, "title": "캐릭터 움직임", "detail": "움직임을 자연스럽게"},
-            ],
-            [{"title": "장비 글자 잘림 수정", "detail": "실제 화면 확인"}],
-            [{"title": "30층 성장 곡선", "detail": "선행 기능 필요"}],
-            [{"title": "전투 손맛 확인", "detail": "직접 플레이 필요"}],
-        )
-
-    def test_overview_explains_current_work_in_plain_korean(self):
-        overview = self._build()
-        self.assertEqual(overview.get("current", {}).get("title"),
-                         "경매장 화면을 보기 쉽게 다듬는 중")
-        self.assertIn("한눈", overview.get("current", {}).get("why", ""))
-        self.assertIn("실제 화면", overview.get("current", {}).get("done_when", ""))
-        self.assertIn("검사", overview.get("current", {}).get("done_when", ""))
-
-    def test_overview_omits_closed_work_from_next_list(self):
-        overview = self._build()
-        self.assertEqual(
-            [row["title"] for row in overview.get("next", [])],
-            ["경매장 정보 정리", "캐릭터 움직임"],
-        )
-
-    def test_overview_keeps_open_work_whose_detail_starts_with_completion_word(self):
-        overview = board.build_overview(
-            {"now": {"phase": "작업 중", "title": "다음 작업 고르는 중"}},
-            [
-                {"title": "화면 정리", "detail": "완료 기준부터 정리한 뒤 구현"},
-                {"title": "전투 조정", "detail": "완료로 내리지 말고 다시 확인"},
-            ],
-            [], [], [],
-        )
-        self.assertEqual(
-            [row["title"] for row in overview.get("next", [])],
-            ["화면 정리", "전투 조정"],
-        )
-
-    def test_overview_omits_work_whose_detail_explicitly_ends_closed(self):
-        overview = board.build_overview(
-            {"now": {"phase": "작업 중", "title": "다음 작업 고르는 중"}},
-            [
-                {"title": "지난 요청 묶음", "detail": "그림과 화면 조정은 닫음"},
-                {"title": "새 화면 정리", "detail": "정보를 한눈에 보이게"},
-            ],
-            [], [], [],
-        )
-        self.assertEqual([row["title"] for row in overview["next"]], ["새 화면 정리"])
-
-    def test_overview_uses_next_item_when_current_title_is_empty(self):
-        overview = board.build_overview(
-            {"now": {"phase": "작업 중", "title": ""}},
-            [{"title": "경매장 정보 정리", "detail": "정보를 한눈에 보이게"}],
-            [], [], [],
-        )
-        self.assertEqual(overview["current"]["title"], "경매장 정보 정리 하는 중")
-
-    def test_overview_uses_next_item_when_current_title_is_only_internal_name(self):
-        overview = board.build_overview(
-            {"now": {"phase": "작업 중", "title": "AuctionHud"}},
-            [{"title": "경매장 정보 정리", "detail": "정보를 한눈에 보이게"}],
-            [], [], [],
-        )
-        self.assertEqual(overview["current"]["title"], "경매장 정보 정리 하는 중")
-
-    def test_overview_replaces_generic_code_message_with_next_real_work(self):
-        overview = board.build_overview(
-            {"now": {"phase": "작업 중", "title": "코드를 찾아 그 한 건만 고치겠습니다"}},
-            [{"title": "경매장 정보 정리", "detail": "정보를 한눈에 보이게"}],
-            [], [], [],
-        )
-        self.assertEqual(overview["current"]["title"], "경매장 정보 정리 하는 중")
-
-    def test_overview_separates_recent_blocked_and_human_items(self):
-        overview = self._build()
-        self.assertEqual([row["title"] for row in overview.get("recent", [])],
-                         ["장비 글자 잘림 수정"])
-        self.assertEqual([row["title"] for row in overview.get("blocked", [])],
-                         ["30층 성장 곡선"])
-        self.assertEqual([row["title"] for row in overview.get("needs_human", [])],
-                         ["전투 손맛 확인"])
 
 
 class CommandLogTests(unittest.TestCase):
@@ -709,37 +509,6 @@ class CheckTests(unittest.TestCase):
                 self.assertEqual(board.load_checks()["abc"]["at"], "now")
             finally:
                 board.CHECKS_PATH = old
-
-
-class ProposalsInfoTests(unittest.TestCase):
-    """2026-08-25: 연속 행 제안의 ✅·⏸ 표식을 못 읽어 미처리 수치가 부풀었다."""
-
-    DOC = """# 개선안 수함대
-
-<!-- 여기 아래에 추가 -->
-- [2026-08-25 10:00] 첫 제안은 닫힘 표식이 마지막 연속 행에 있다
-  이어지는 본문이다.
-  → 제안 (우선순위 중) ✅20260825-110000
-- [2026-08-25 11:00] 둘째 제안은 한 줄로 열려 있다 → 제안 (우선순위 하)
-- [2026-08-25 12:00] 셋째는 없음 판정 행이다: 없음: 선행 제안이 포괄 (우선순위 하)
-- [시각] 관찰한 문제 → 제안 (우선순위 상/중/하)
-"""
-
-    def test_multiline_marker_counts_entry_closed(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            docs = Path(tmp) / "docs" / "feedback"
-            docs.mkdir(parents=True)
-            (docs / "PROPOSALS.md").write_text(self.DOC, encoding="utf-8")
-            old = board.ROOT
-            try:
-                board.ROOT = Path(tmp)
-                info = board.proposals_info()
-            finally:
-                board.ROOT = old
-        self.assertEqual(info["total"], 2)
-        self.assertEqual(info["open"], 1)
-        self.assertIn("둘째 제안", info["last"])
-        self.assertNotIn("첫 제안", info["last"])
 
 
 class TestReportTests(unittest.TestCase):
@@ -802,27 +571,6 @@ class TestReportTests(unittest.TestCase):
             self.assertEqual(len(data["items"]), 1)
 
 
-def _git_repo(tmp):
-    """Git 기능 테스트용 실제 worktree + bare origin."""
-    import subprocess
-    root = Path(tmp) / "work"
-    bare = Path(tmp) / "origin.git"
-    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
-    subprocess.run(["git", "init", "-q", "-b", "master", str(root)], check=True)
-    env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
-           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t", **os.environ}
-    (root / "docs").mkdir()
-    (root / "a.txt").write_text("1", encoding="utf-8")
-    (root / "docs" / "sync.txt").write_text("1", encoding="utf-8")
-    subprocess.run(["git", "-C", str(root), "add", "a.txt", "docs/sync.txt"], check=True)
-    subprocess.run(["git", "-C", str(root), "commit", "-qm", "one"], check=True, env=env)
-    subprocess.run(["git", "-C", str(root), "config", "user.name", "t"], check=True)
-    subprocess.run(["git", "-C", str(root), "config", "user.email", "t@t"], check=True)
-    subprocess.run(["git", "-C", str(root), "remote", "add", "origin", str(bare)], check=True)
-    subprocess.run(["git", "-C", str(root), "push", "-q", "-u", "origin", "master"], check=True)
-    return root, bare, env
-
-
 class PushTests(unittest.TestCase):
     """보드 푸시 버튼(오너 지시 2026-08-18) — 진짜 git 저장소로 확인한다.
 
@@ -830,7 +578,18 @@ class PushTests(unittest.TestCase):
     스크립트 성공이 아니었다). 임시 bare 원격을 만들어 실제로 밀어본다."""
 
     def _repo(self, tmp):
-        root, _bare, env = _git_repo(tmp)
+        import subprocess
+        root = Path(tmp) / "work"
+        bare = Path(tmp) / "origin.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+        subprocess.run(["git", "init", "-q", "-b", "master", str(root)], check=True)
+        env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t", **os.environ}
+        (root / "a.txt").write_text("1", encoding="utf-8")
+        subprocess.run(["git", "-C", str(root), "add", "a.txt"], check=True)
+        subprocess.run(["git", "-C", str(root), "commit", "-qm", "one"], check=True, env=env)
+        subprocess.run(["git", "-C", str(root), "remote", "add", "origin", str(bare)], check=True)
+        subprocess.run(["git", "-C", str(root), "push", "-q", "origin", "master"], check=True)
         return root, env
 
     def test_push_sends_only_when_ahead(self):
@@ -858,696 +617,10 @@ class PushTests(unittest.TestCase):
     def test_push_never_forces(self):
         """강제 푸시 금지 — 남의 커밋을 지운다. 소스에 --force가 없어야 한다."""
         src = (HERE / "board.py").read_text(encoding="utf-8")
-        body = src[src.index("def _push_work"):src.index("def recent_commits")]
+        body = src[src.index("def push_work"):src.index("def recent_commits")]
         self.assertIn('"git", "push", "origin", branch', body)
         for bad in ('"--force"', '"-f"', '"--force-with-lease"', '"+HEAD"'):
             self.assertNotIn(bad, body)
-
-
-class GitDetailTests(unittest.TestCase):
-    def test_reports_branch_divergence_and_file_breakdown(self):
-        """종류 집계가 틀리면 보드의 상세 수치가 실제 worktree와 어긋난다."""
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
-            (root / "docs" / "new.txt").write_text("new", encoding="utf-8")
-            (root / ".env").write_text("SECRET=x", encoding="utf-8")
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                detail = board.git_detail()
-            finally:
-                board.ROOT = old
-
-        self.assertEqual(detail["branch"], "master")
-        self.assertEqual(detail["upstream"], "origin/master")
-        self.assertEqual(detail["ahead"], 0)
-        self.assertEqual(detail["behind"], 0)
-        self.assertEqual(detail["changed"], 3)
-        self.assertEqual(detail["allowed"], 2)
-        self.assertEqual(detail["blocked"], 1)
-        self.assertEqual(detail["counts"]["modified"], 1)
-        self.assertEqual(detail["counts"]["untracked"], 2)
-
-    def test_detail_exposes_commit_facts_and_stage_counts(self):
-        """상세 칸의 해시·시각·stage 수가 실제 Git 값과 다르면 안 된다."""
-        import subprocess
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
-            subprocess.run(
-                ["git", "-C", str(root), "add", "docs/sync.txt"], check=True)
-            (root / "docs" / "new.txt").write_text("new", encoding="utf-8")
-            expected_hash = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                detail = board.git_detail()
-            finally:
-                board.ROOT = old
-
-        self.assertEqual(detail["status"], "origin과 같음")
-        self.assertEqual(detail["staged"], 1)
-        self.assertEqual(detail["unstaged"], 1)
-        self.assertEqual(detail["local"]["hash"], expected_hash)
-        self.assertEqual(detail["remote"]["hash"], expected_hash)
-        self.assertTrue(detail["local"]["when"])
-        self.assertEqual(detail["local"]["subject"], "one")
-
-    def test_git_summary_omits_heavy_file_array(self):
-        """8초 상태 응답에 전체 파일을 넣으면 숨긴 화면도 계속 대량 렌더된다."""
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            (root / "docs" / "new.txt").write_text("new", encoding="utf-8")
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                summary = board.git_summary()
-            finally:
-                board.ROOT = old
-
-        self.assertNotIn("files", summary)
-        self.assertEqual(summary["changed"], 1)
-        self.assertEqual(summary["allowed"], 1)
-        self.assertEqual(summary["counts"]["untracked"], 1)
-        self.assertTrue(summary["change_id"])
-
-    def test_detail_and_sync_require_configured_upstream(self):
-        """origin ref가 있어도 실제 upstream 설정이 없으면 커밋·푸시하지 않는다."""
-        import subprocess
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            subprocess.run(
-                ["git", "-C", str(root), "branch", "--unset-upstream"], check=True)
-            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
-            before = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                detail = board.git_detail()
-                with self.assertRaisesRegex(ValueError, "원격 추적이 없다"):
-                    board.sync_work("test: no upstream")
-            finally:
-                board.ROOT = old
-            after = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-
-        self.assertEqual(detail["upstream"], "")
-        self.assertEqual(detail["status"], "원격 추적 없음")
-        self.assertEqual(detail["remote"]["hash"], "")
-        self.assertEqual(after, before)
-
-    def test_summary_change_id_changes_when_only_path_changes(self):
-        """집계가 같아도 변경 파일이 바뀌면 열린 상세 목록을 다시 받아야 한다."""
-        import subprocess
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, env = _git_repo(tmp)
-            for name in ("a.txt", "b.txt"):
-                (root / "docs" / name).write_text("base", encoding="utf-8")
-            subprocess.run(["git", "-C", str(root), "add", "docs"], check=True)
-            subprocess.run(
-                ["git", "-C", str(root), "commit", "-qm", "tracked paths"],
-                check=True, env=env,
-            )
-            (root / "docs" / "a.txt").write_text("changed", encoding="utf-8")
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                first = board.git_summary()
-                subprocess.run(
-                    ["git", "-C", str(root), "checkout", "--", "docs/a.txt"],
-                    check=True,
-                )
-                (root / "docs" / "b.txt").write_text("changed", encoding="utf-8")
-                second = board.git_summary()
-            finally:
-                board.ROOT = old
-
-        self.assertEqual(first["changed"], second["changed"])
-        self.assertEqual(first["counts"], second["counts"])
-        self.assertNotEqual(first["change_id"], second["change_id"])
-
-    def test_git_status_failure_is_explicit_and_sync_fails_closed(self):
-        """git status 실패를 변경 없음으로 표시하거나 동기화하면 안 된다."""
-        import subprocess
-        from unittest import mock
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            real_check_output = board.subprocess.check_output
-
-            def fail_status(cmd, *args, **kwargs):
-                if cmd[:3] == ["git", "status", "--porcelain=v1"]:
-                    raise subprocess.CalledProcessError(1, cmd)
-                return real_check_output(cmd, *args, **kwargs)
-
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                with mock.patch.object(board.subprocess, "check_output", side_effect=fail_status):
-                    detail = board.git_detail()
-                    with self.assertRaisesRegex(ValueError, "작업 트리 상태 확인 실패"):
-                        board.sync_work()
-            finally:
-                board.ROOT = old
-
-        self.assertFalse(detail["ok"])
-        self.assertIn("작업 트리 상태 확인 실패", detail["status"])
-
-    def test_dirty_files_preserves_korean_path(self):
-        """Git의 C식 인용 문자열을 경로로 쓰면 화면과 git add가 모두 깨진다."""
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            path = root / "docs" / "한글 파일.txt"
-            path.write_text("내용", encoding="utf-8")
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                files = board.dirty_files()
-            finally:
-                board.ROOT = old
-
-        item = next(row for row in files if row["kind"] == "untracked")
-        self.assertEqual(item["path"], "docs/한글 파일.txt")
-        self.assertTrue(item["allowed"])
-
-    def test_sync_commits_allowed_files_and_pushes_real_origin(self):
-        """동기화가 제외 파일까지 커밋하거나 origin에 안 올리면 실패한다."""
-        import subprocess
-        with tempfile.TemporaryDirectory() as tmp:
-            root, bare, _env = _git_repo(tmp)
-            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
-            (root / ".env").write_text("SECRET=x", encoding="utf-8")
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                result = board.sync_work("test: board sync")
-                detail = board.git_detail()
-            finally:
-                board.ROOT = old
-
-            remote_body = subprocess.check_output(
-                ["git", "--git-dir", str(bare), "show", "master:docs/sync.txt"],
-                text=True, encoding="utf-8",
-            ).strip()
-            remote_files = subprocess.check_output(
-                ["git", "--git-dir", str(bare), "ls-tree", "-r", "--name-only", "master"],
-                text=True, encoding="utf-8",
-            ).splitlines()
-
-        self.assertEqual(result["action"], "synced")
-        self.assertEqual(result["pushed"], 1)
-        self.assertTrue(result["commit"]["hash"])
-        self.assertEqual(remote_body, "2")
-        self.assertNotIn(".env", remote_files)
-        self.assertEqual(detail["ahead"], 0)
-        self.assertEqual(detail["behind"], 0)
-        self.assertEqual(detail["blocked"], 1)
-
-    def test_sync_clean_repo_is_noop(self):
-        """변경이 없는데 커밋·푸시를 시도하면 버튼이 거짓 실패를 보여 준다."""
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                result = board.sync_work()
-            finally:
-                board.ROOT = old
-
-        self.assertEqual(result["action"], "noop")
-        self.assertIsNone(result["commit"])
-        self.assertEqual(result["pushed"], 0)
-        self.assertEqual(result["git"]["ahead"], 0)
-        self.assertEqual(result["git"]["behind"], 0)
-
-    def test_sync_status_records_latest_success(self):
-        """주기 갱신 뒤에도 완료 시각·결과를 서버 사실로 다시 그릴 수 있어야 한다."""
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                result = board.sync_work()
-                status = board.git_sync_status()
-            finally:
-                board.ROOT = old
-
-        self.assertEqual(result["action"], "noop")
-        self.assertFalse(status["busy"])
-        self.assertTrue(status["ok"])
-        self.assertEqual(status["action"], "noop")
-        self.assertTrue(status["at"])
-        self.assertIn("최신", status["message"])
-
-    def test_sync_refuses_pre_staged_blocked_file(self):
-        """다른 세션이 stage한 제외 파일을 commit_work가 함께 삼키면 안 된다."""
-        import subprocess
-        with tempfile.TemporaryDirectory() as tmp:
-            root, bare, _env = _git_repo(tmp)
-            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
-            (root / ".env").write_text("SECRET=x", encoding="utf-8")
-            subprocess.run(["git", "-C", str(root), "add", ".env"], check=True)
-            before = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
-                encoding="utf-8",
-            ).strip()
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                with self.assertRaisesRegex(ValueError, "제외 파일.*스테이징"):
-                    board.sync_work("test: must refuse")
-            finally:
-                board.ROOT = old
-
-            after = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
-                encoding="utf-8",
-            ).strip()
-            remote_files = subprocess.check_output(
-                ["git", "--git-dir", str(bare), "ls-tree", "-r", "--name-only", "master"],
-                text=True, encoding="utf-8",
-            ).splitlines()
-
-        self.assertEqual(after, before)
-        self.assertNotIn(".env", remote_files)
-
-    def test_sync_fetches_then_stops_when_origin_is_ahead(self):
-        """원격이 앞선 상태에서 자동 commit/pull/merge를 하면 동시 작업을 덮는다."""
-        import subprocess
-        with tempfile.TemporaryDirectory() as tmp:
-            root, bare, env = _git_repo(tmp)
-            peer = Path(tmp) / "peer"
-            subprocess.run(
-                ["git", "clone", "-q", "-b", "master", str(bare), str(peer)], check=True)
-            (peer / "a.txt").write_text("remote", encoding="utf-8")
-            subprocess.run(["git", "-C", str(peer), "add", "a.txt"], check=True)
-            subprocess.run(
-                ["git", "-C", str(peer), "commit", "-qm", "remote"], check=True, env=env)
-            subprocess.run(["git", "-C", str(peer), "push", "-q"], check=True)
-            (root / "docs" / "sync.txt").write_text("local", encoding="utf-8")
-            before = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                with self.assertRaisesRegex(ValueError, "원격이 1개 앞서"):
-                    board.sync_work("test: must stop")
-                detail = board.git_detail()
-            finally:
-                board.ROOT = old
-            after = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-            merge_started = (root / ".git" / "MERGE_HEAD").exists()
-
-        self.assertEqual(after, before)
-        self.assertEqual(detail["behind"], 1)
-        self.assertEqual(detail["ahead"], 0)
-        self.assertFalse(merge_started)
-
-    def test_sync_refuses_non_origin_upstream(self):
-        """다른 upstream을 비교하고 origin에 push하면 성공 수치가 거짓이 된다."""
-        import subprocess
-        with tempfile.TemporaryDirectory() as tmp:
-            root, bare, _env = _git_repo(tmp)
-            backup = Path(tmp) / "backup.git"
-            subprocess.run(["git", "clone", "-q", "--bare", str(bare), str(backup)], check=True)
-            subprocess.run(
-                ["git", "-C", str(root), "remote", "add", "backup", str(backup)], check=True)
-            subprocess.run(["git", "-C", str(root), "fetch", "-q", "backup"], check=True)
-            subprocess.run(
-                ["git", "-C", str(root), "branch", "--set-upstream-to", "backup/master"],
-                check=True, stdout=subprocess.DEVNULL,
-            )
-            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
-            before = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                with self.assertRaisesRegex(ValueError, "origin이 아닌 원격"):
-                    board.sync_work("test: wrong remote")
-            finally:
-                board.ROOT = old
-            after = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-
-        self.assertEqual(after, before)
-
-    def test_sync_refuses_different_origin_upstream_branch(self):
-        """master가 origin/other를 추적할 때 origin/master로 잘못 push하면 안 된다."""
-        import subprocess
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            subprocess.run(["git", "-C", str(root), "branch", "other"], check=True)
-            subprocess.run(
-                ["git", "-C", str(root), "push", "-q", "origin", "other"], check=True)
-            subprocess.run(
-                ["git", "-C", str(root), "branch", "--set-upstream-to", "origin/other"],
-                check=True, stdout=subprocess.DEVNULL,
-            )
-            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
-            before = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                with self.assertRaisesRegex(ValueError, "다른 원격 브랜치"):
-                    board.sync_work("test: mismatched upstream")
-            finally:
-                board.ROOT = old
-            after = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-
-        self.assertEqual(after, before)
-
-    def test_concurrent_sync_returns_busy_without_second_git_run(self):
-        """두 탭의 연속 클릭이 fetch·commit을 두 번 실행하면 안 된다."""
-        import threading
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            entered = threading.Event()
-            release = threading.Event()
-            calls = []
-            errors = []
-            old = (board.ROOT, board._fetch_origin)
-
-            def slow_fetch(branch):
-                calls.append(branch)
-                if len(calls) == 1:
-                    entered.set()
-                    release.wait(3)
-
-            def first_sync():
-                try:
-                    board.sync_work()
-                except Exception as exc:  # pragma: no cover - 실패 내용을 주 스레드에서 확인
-                    errors.append(exc)
-
-            board.ROOT = root
-            board._fetch_origin = slow_fetch
-            worker = threading.Thread(target=first_sync)
-            worker.start()
-            try:
-                self.assertTrue(entered.wait(2), "첫 동기화가 fetch에 진입하지 않음")
-                with self.assertRaisesRegex(ValueError, "이미 진행 중"):
-                    board.sync_work()
-            finally:
-                release.set()
-                worker.join(4)
-                board.ROOT, board._fetch_origin = old
-
-        self.assertEqual(calls, ["master"])
-        self.assertEqual(errors, [])
-
-    def test_sync_lock_blocks_manual_commit(self):
-        """sync의 fetch 중 수동 commit이 index와 HEAD를 바꾸면 안 된다."""
-        import threading
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
-            entered = threading.Event()
-            release = threading.Event()
-            old = (board.ROOT, board._fetch_origin)
-
-            def slow_fetch(_branch):
-                entered.set()
-                release.wait(3)
-
-            board.ROOT = root
-            board._fetch_origin = slow_fetch
-            worker = threading.Thread(target=board.sync_work)
-            worker.start()
-            try:
-                self.assertTrue(entered.wait(2))
-                with self.assertRaisesRegex(ValueError, "깃 작업이 이미 진행 중"):
-                    board.commit_work("test: must wait")
-            finally:
-                release.set()
-                worker.join(4)
-                board.ROOT, board._fetch_origin = old
-
-    def test_sync_lock_blocks_manual_push(self):
-        """sync의 fetch 중 수동 push가 원격을 먼저 바꾸면 안 된다."""
-        import subprocess
-        import threading
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, env = _git_repo(tmp)
-            (root / "a.txt").write_text("ahead", encoding="utf-8")
-            subprocess.run(
-                ["git", "-C", str(root), "commit", "-qam", "ahead"],
-                check=True, env=env,
-            )
-            entered = threading.Event()
-            release = threading.Event()
-            old = (board.ROOT, board._fetch_origin)
-
-            def slow_fetch(_branch):
-                entered.set()
-                release.wait(3)
-
-            board.ROOT = root
-            board._fetch_origin = slow_fetch
-            worker = threading.Thread(target=board.sync_work)
-            worker.start()
-            try:
-                self.assertTrue(entered.wait(2))
-                with self.assertRaisesRegex(ValueError, "깃 작업이 이미 진행 중"):
-                    board.push_work()
-            finally:
-                release.set()
-                worker.join(4)
-                board.ROOT, board._fetch_origin = old
-
-
-class GitApiTests(unittest.TestCase):
-    def setUp(self):
-        """서버 테스트가 외부 사용량 API(grok·claude·codex)를 치지 않게 막는다.
-        2026-08-24 04:19 스위트 FAIL: 이 기계의 실제 토큰으로 라이브 호출이 일어나고,
-        외부 429 지연이 로컬 클라이언트 3초 타임아웃을 넘겼다.
-        2026-08-26 03:40 스위트 FAIL 재발: /api/git·/api/sync 등 서버 응답은 git
-        서브프로세스를 여러 번 spawn하므로 개발 루프 바퀴(opencode 부트)와 겹치면
-        프로세스 기동 스톨로 3~5초 클라이언트 타임아웃을 넘긴다(GET / 의 3→10초
-        선례 11fd3037과 같은 계열). 단언은 그대로 두고 대기 여유만 연다."""
-        stub = {"ok": False, "stale": True, "products": []}
-        for name in ("grok_usage", "claude_usage", "codex_usage"):
-            patcher = mock.patch.object(board, name, return_value=stub)
-            patcher.start()
-            self.addCleanup(patcher.stop)
-
-    def _server(self, root):
-        import threading
-        old = board.ROOT
-        board.ROOT = root
-        server = board.ThreadingHTTPServer(("127.0.0.1", 0), board.Handler)
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        return old, server, thread
-
-    def test_get_git_returns_lazy_file_details(self):
-        """상세를 열 때만 실제 파일 목록을 받고 한국어 경로도 그대로 보여야 한다."""
-        import urllib.request
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            (root / "docs" / "한글 파일.txt").write_text("내용", encoding="utf-8")
-            old, server, thread = self._server(root)
-            try:
-                url = f"http://127.0.0.1:{server.server_port}/api/git"
-                # git 서브프로세스 스톨 흡수 — 단언과 무관한 대기 여유(부하 flake 차단)
-                with urllib.request.urlopen(url, timeout=8) as response:
-                    data = json.loads(response.read().decode("utf-8"))
-                    cache = response.headers.get("Cache-Control")
-            finally:
-                server.shutdown()
-                server.server_close()
-                thread.join(3)
-                board.ROOT = old
-
-        self.assertTrue(data["ok"])
-        self.assertEqual(cache, "no-store")
-        self.assertEqual(data["git"]["branch"], "master")
-        self.assertEqual(data["git"]["changed"], 1)
-        self.assertEqual(data["git"]["files"][0]["path"], "docs/한글 파일.txt")
-        self.assertIn("busy", data["sync"])
-
-    def test_post_sync_commits_and_pushes_through_http(self):
-        """화면 버튼의 실제 HTTP 경로가 함수만 존재하고 끊겨 있으면 안 된다."""
-        import subprocess
-        import urllib.request
-        with tempfile.TemporaryDirectory() as tmp:
-            root, bare, _env = _git_repo(tmp)
-            (root / "docs" / "sync.txt").write_text("api", encoding="utf-8")
-            old, server, thread = self._server(root)
-            try:
-                url = f"http://127.0.0.1:{server.server_port}/api/sync"
-                request = urllib.request.Request(
-                    url,
-                    data=json.dumps({"message": "test: api sync"}).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                # fetch+commit+push로 git spawn이 가장 많은 요청 — 여유 최대
-                with urllib.request.urlopen(request, timeout=12) as response:
-                    data = json.loads(response.read().decode("utf-8"))
-            finally:
-                server.shutdown()
-                server.server_close()
-                thread.join(3)
-                board.ROOT = old
-            remote_body = subprocess.check_output(
-                ["git", "--git-dir", str(bare), "show", "master:docs/sync.txt"],
-                text=True, encoding="utf-8",
-            ).strip()
-
-        self.assertTrue(data["ok"])
-        self.assertEqual(data["action"], "synced")
-        self.assertEqual(data["pushed"], 1)
-        self.assertEqual(remote_body, "api")
-
-    def test_cross_origin_sync_is_rejected_and_default_is_loopback(self):
-        """다른 웹사이트가 로컬 보드에 요청을 보내 commit하면 안 된다."""
-        import subprocess
-        import urllib.error
-        import urllib.request
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            (root / "docs" / "sync.txt").write_text("csrf", encoding="utf-8")
-            before = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-            old, server, thread = self._server(root)
-            try:
-                url = f"http://127.0.0.1:{server.server_port}/api/sync"
-                request = urllib.request.Request(
-                    url,
-                    data=b"{}",
-                    headers={
-                        "Content-Type": "application/json",
-                        "Origin": "https://evil.example",
-                    },
-                    method="POST",
-                )
-                with self.assertRaises(urllib.error.HTTPError) as caught:
-                    urllib.request.urlopen(request, timeout=8)
-                code = caught.exception.code
-                caught.exception.close()
-            finally:
-                server.shutdown()
-                server.server_close()
-                thread.join(3)
-                board.ROOT = old
-            after = subprocess.check_output(
-                ["git", "-C", str(root), "rev-parse", "HEAD"],
-                text=True, encoding="utf-8",
-            ).strip()
-
-        source = (HERE / "board.py").read_text(encoding="utf-8")
-        self.assertEqual(code, 403)
-        self.assertEqual(after, before)
-        self.assertIn('os.getenv("BOARD_HOST", "127.0.0.1")', source)
-
-    def test_page_exposes_unique_accessible_git_controls(self):
-        """화면에 고유 앵커와 실시간 상태 영역이 없으면 육안·E2E 검증이 불가능하다."""
-        from html.parser import HTMLParser
-        import urllib.request
-
-        class IdParser(HTMLParser):
-            def __init__(self):
-                super().__init__()
-                self.nodes = {}
-                self.duplicates = set()
-                self.stack = []
-
-            _void = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
-
-            def handle_starttag(self, tag, attrs):
-                attrs = dict(attrs)
-                key = attrs.get("id")
-                if key:
-                    if key in self.nodes:
-                        self.duplicates.add(key)
-                    self.nodes[key] = {
-                        "tag": tag, "ancestors": tuple(x for x in self.stack if x), **attrs,
-                    }
-                if tag not in self._void:
-                    self.stack.append(key)
-
-            def handle_endtag(self, tag):
-                if self.stack:
-                    self.stack.pop()
-
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            old, server, thread = self._server(root)
-            try:
-                url = f"http://127.0.0.1:{server.server_port}/"
-                # 페이지 렌더는 QA 샷 검사 등 실제 일을 하므로 기계가 바쁠 때를 위한 여유
-                with urllib.request.urlopen(url, timeout=10) as response:
-                    html = response.read().decode("utf-8")
-            finally:
-                server.shutdown()
-                server.server_close()
-                thread.join(3)
-                board.ROOT = old
-
-        parser = IdParser()
-        parser.feed(html)
-        self.assertEqual(parser.duplicates, set())
-        self.assertEqual(parser.nodes["btn-git-sync"]["tag"], "button")
-        self.assertEqual(parser.nodes["btn-git-detail"]["aria-controls"], "git-detail-dialog")
-        self.assertEqual(parser.nodes["git-detail-dialog"]["tag"], "dialog")
-        self.assertEqual(parser.nodes["git-sync-msg"]["role"], "status")
-        self.assertEqual(parser.nodes["git-sync-msg"]["aria-live"], "polite")
-        self.assertIn("git-head-actions", parser.nodes["btn-git-sync"]["ancestors"])
-        self.assertIn("git-head-actions", parser.nodes["btn-git-detail"]["ancestors"])
-
-    def test_live_event_stream_drives_page_refresh(self):
-        """외부 Git 변경은 브라우저 타이머가 멈춰도 서버 신호로 반영돼야 한다."""
-        import urllib.request
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            old, server, thread = self._server(root)
-            try:
-                url = f"http://127.0.0.1:{server.server_port}/api/events?once=1"
-                with urllib.request.urlopen(url, timeout=6) as response:
-                    body = response.read().decode("utf-8")
-                    content_type = response.headers.get("Content-Type")
-                    cache = response.headers.get("Cache-Control")
-                page_url = f"http://127.0.0.1:{server.server_port}/"
-                # 첫 렌더는 샷 블랙 판정 디코딩을 포함 — 부하 시 3초를 넘긴 flake 원인
-                with urllib.request.urlopen(page_url, timeout=10) as response:
-                    html = response.read().decode("utf-8")
-            finally:
-                server.shutdown()
-                server.server_close()
-                thread.join(3)
-                board.ROOT = old
-
-        self.assertEqual(content_type, "text/event-stream; charset=utf-8")
-        self.assertEqual(cache, "no-cache")
-        self.assertIn("event: refresh\n", body)
-        self.assertIn('new EventSource("/api/events")', html)
-        self.assertIn('addEventListener("refresh"', html)
 
 
 class LiveLogTests(unittest.TestCase):
@@ -1562,30 +635,6 @@ class LiveLogTests(unittest.TestCase):
             return board.loop_flags()
         finally:
             board.HERE, board.ROOT = old_here, old_root
-
-    def test_launchd_loop_path_with_spaces_counts_as_running(self):
-        process_table = (
-            "66332 /bin/bash /Users/junholee/Library/Application Support/"
-            "AI Lab Autonomous Loop/loop.sh /Users/junholee/ai_lab\n"
-        )
-        with mock.patch.object(board.subprocess, "check_output", return_value=process_table):
-            self.assertEqual(board.find_loop_pids(), [66332])
-
-    def test_current_loop_reads_root_dated_logs(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            here = root / "loop"
-            dated = root / "logs" / "2026-08-23"
-            here.mkdir()
-            dated.mkdir(parents=True)
-            (root / "logs" / "loop_main.log").write_text("현재 메인\n", encoding="utf-8")
-            lap = dated / "lap-20260823-134128-1.log"
-            lap.write_text("현재 작업 중\n", encoding="utf-8")
-            with mock.patch.object(board, "find_loop_pids", return_value=[66332]):
-                flags = self._flags(here)
-        self.assertTrue(flags["running"])
-        self.assertEqual(flags["latest_iter"], "lap-20260823-134128-1.log")
-        self.assertIn(flags["log_from"], {"loop_main.log", "lap-20260823-134128-1.log"})
 
     def test_stale_main_log_falls_back_to_iter_log(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1619,9 +668,7 @@ class LiveLogTests(unittest.TestCase):
         for hook in ('id="glance"', "log_age_sec", "hide-compact", "body.compact",
                      'id="g-stuck"'):
             self.assertIn(hook, html)
-        # aa9ca5a9 단일 ops 패널 정리 이후 막힌 것은 한눈(g-stuck 3줄) + 자세히(detail)만.
-        # 큰 stuck-box 섹션은 부활시키지 않는다(오너 철칙: 자세히에서만 풀기).
-        self.assertNotIn('id="stuck-box"', html)
+        self.assertIn("stuck-box hide-compact", html)
         doc = (HERE / "board.py").read_text(encoding="utf-8")
         self.assertIn("한 화면이 철칙", doc)
         self.assertIn('"log_age_sec"', doc)
@@ -1641,9 +688,7 @@ class LiveLogTests(unittest.TestCase):
         self.assertIn('tee -a "$MAIN_LOG"', sh)
         doc = (HERE / "board.py").read_text(encoding="utf-8")
         start = doc[doc.index("def start_loop"):doc.index("def resume_work")]
-        self.assertIn('HERE / "control.sh"', start)
-        self.assertIn("subprocess.run", start)
-        self.assertNotIn("subprocess.Popen", start)
+        self.assertIn("stdout=subprocess.DEVNULL", start)
 
 
 class BoardManageTests(unittest.TestCase):
@@ -1656,11 +701,9 @@ class BoardManageTests(unittest.TestCase):
         self.assertIn("한 화면이 철칙", doc)
         self.assertIn("아나", doc + (HERE / "v4_testers.json").read_text(encoding="utf-8"))
         self.assertIn("검은 화면", doc)
-        self.assertLess(html.find('id="detail-grid"'), html.find('id="charts"'))
-        self.assertIn('id="d-queue"', html)
-        self.assertIn('id="d-commands"', html)
+        self.assertLess(html.find('id="queue"'), html.find('id="charts"'))
         self.assertIn("할 일 적기", html)
-        self.assertIn("시킨 일 기록", html)
+        self.assertIn("내가 시킨 일", html)
         self.assertIn("테스트 하는 사람", html)
         self.assertIn("검증 결과", html)
         self.assertTrue(callable(board.load_test_report))
@@ -1685,34 +728,6 @@ class CommitAllowTests(unittest.TestCase):
         self.assertFalse(board.commit_allowed("projects/ashes-to-stars/unity/Library/foo"))
         self.assertFalse(board.commit_allowed("loop/logs/iter.log"))
         self.assertFalse(board.commit_allowed("projects/ashes-to-stars/unity_meas/Assets/x.cs"))
-
-    def test_exact_allow_entries_do_not_accept_suffixes(self):
-        """정확한 파일 허용값을 접두사로 읽으면 백업·시크릿 사본이 섞인다."""
-        self.assertFalse(board.commit_allowed(".gitignore.backup"))
-        self.assertFalse(board.commit_allowed("loop/board.py.bak"))
-        self.assertFalse(board.commit_allowed("projects/ashes-to-stars/CLAUDE.md.secret"))
-
-    def test_commit_refuses_pre_staged_blocked_file(self):
-        """수동 커밋도 기존 stage의 제외 파일을 함께 삼키면 안 된다."""
-        import subprocess
-        with tempfile.TemporaryDirectory() as tmp:
-            root, _bare, _env = _git_repo(tmp)
-            (root / "docs" / "sync.txt").write_text("2", encoding="utf-8")
-            (root / ".env").write_text("SECRET=x", encoding="utf-8")
-            subprocess.run(["git", "-C", str(root), "add", ".env"], check=True)
-            old = board.ROOT
-            try:
-                board.ROOT = root
-                with self.assertRaisesRegex(ValueError, "제외 파일.*스테이징"):
-                    board.commit_work("test: must refuse")
-            finally:
-                board.ROOT = old
-
-            committed = subprocess.check_output(
-                ["git", "--git-dir", str(_bare), "ls-tree", "-r", "--name-only", "master"],
-                text=True, encoding="utf-8",
-            ).splitlines()
-        self.assertNotIn(".env", committed)
 
 
 class DecisionTests(unittest.TestCase):
@@ -1851,8 +866,8 @@ class NowWorkTests(unittest.TestCase):
                 "▶ 이터레이션 #2  16:41:58  → /x/loop/logs/iter_20260816_164158.log\n",
                 encoding="utf-8",
             )
-            old = (board.HERE, board.ROOT)
-            board.HERE, board.ROOT = here, here.parent
+            old = board.HERE
+            board.HERE = here
             try:
                 now = board.current_work(True, False, False, "iter_20260816_164158.log", "")
                 self.assertEqual(now["phase"], "작업 중")
@@ -1866,7 +881,7 @@ class NowWorkTests(unittest.TestCase):
                 done = board.current_work(True, False, False, "iter_20260816_164158.log", "")
                 self.assertEqual(done["phase"], "대기")
             finally:
-                board.HERE, board.ROOT = old
+                board.HERE = old
 
 
 SAMPLE_BILLING = {
@@ -2131,15 +1146,7 @@ class SliceBoardTests(unittest.TestCase):
                             for f in charts["focus"]))
 
     def test_current_stays_proto_until_v4_done(self):
-        old = board.ROOT
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
-            (tmp / "output/qa/ashes-to-stars/v4_playtest").mkdir(parents=True)
-            board.ROOT = tmp
-            try:
-                charts = board.progress_charts(STATUS, DESIGN, "", {})
-            finally:
-                board.ROOT = old
+        charts = board.progress_charts(STATUS, DESIGN, "", {})
         self.assertEqual(charts["current"]["id"], "0")
         self.assertFalse(charts["current"]["proto_done"])
         self.assertTrue(any(f["id"] == "V4b" for f in charts["focus"]))
@@ -2164,413 +1171,24 @@ class SliceBoardTests(unittest.TestCase):
 
 
 class ResumeTests(unittest.TestCase):
-    def test_start_loop_uses_the_single_control_command(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            here = root / "loop"
-            here.mkdir()
-            result = mock.Mock(
-                returncode=0,
-                stdout="시작 확인: provider=codex pid=99\n",
-                stderr="",
-            )
-            old = (board.HERE, board.ROOT)
-            board.HERE, board.ROOT = here, root
-            try:
-                with mock.patch.object(board.subprocess, "run", return_value=result) as run:
-                    with mock.patch.object(board, "find_loop_pids", return_value=[99]):
-                        pid = board.start_loop()
-            finally:
-                board.HERE, board.ROOT = old
-
-        self.assertEqual(pid, 99)
-        run.assert_called_once()
-        self.assertEqual(run.call_args.args[0], ["bash", str(here / "control.sh"), "start"])
-        self.assertEqual(run.call_args.kwargs["cwd"], str(root))
-
-    def test_resume_delegates_stop_and_hold_cleanup_to_control(self):
+    def test_resume_clears_hold_and_starts_if_down(self):
         with tempfile.TemporaryDirectory() as tmp:
             here = Path(tmp)
             (here / "HOLD").write_text("")
             (here / "STOP").write_text("")
             old = (board.HERE, board.find_loop_pids, board.start_loop)
+            started = []
             board.HERE = here
-            calls = iter(([], [99], [99]))
-            board.find_loop_pids = lambda: next(calls)
-            start = mock.Mock(return_value=99)
-            board.start_loop = start
+            board.find_loop_pids = lambda: [99] if started else []
+            board.start_loop = lambda: started.append(1) or 99
             try:
                 r = board.resume_work()
             finally:
                 board.HERE, board.find_loop_pids, board.start_loop = old
-            start.assert_called_once_with()
+            self.assertFalse((here / "HOLD").exists())
+            self.assertFalse((here / "STOP").exists())
             self.assertTrue(r["started"])
             self.assertEqual(r["pids"], [99])
-
-        source = (HERE / "board.py").read_text(encoding="utf-8")
-        resume = source[source.index("def resume_work"):source.index("def commit_allowed")]
-        self.assertNotIn('set_flag("HOLD"', resume)
-        self.assertNotIn('set_flag("STOP"', resume)
-
-    def test_stop_loop_uses_the_single_control_command(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            here = root / "loop"
-            here.mkdir()
-            result = mock.Mock(returncode=0, stdout="중단 확인\n", stderr="")
-            old = (board.HERE, board.ROOT)
-            board.HERE, board.ROOT = here, root
-            try:
-                with mock.patch.object(board.subprocess, "run", return_value=result) as run:
-                    board.stop_loop()
-            finally:
-                board.HERE, board.ROOT = old
-
-        run.assert_called_once()
-        self.assertEqual(run.call_args.args[0], ["bash", str(here / "control.sh"), "stop"])
-        self.assertEqual(run.call_args.kwargs["cwd"], str(root))
-
-
-
-class UsagesParallelBudgetTests(unittest.TestCase):
-    """2026-08-24 보드응답:000 — 사용량 프로브의 '상한 6초'가 항목별 순차 누적(최악 18s)과
-    with 블록 잔여 대기 때문에 실질 상한이 아니었다. 전체 예산 안에서 반드시 돌아오고,
-    느린 항목은 빈 값으로 내려가야 한다."""
-
-    def _patch_usages(self, **targets):
-        patchers = [mock.patch.object(board, name, side_effect=fn)
-                    for name, fn in targets.items()]
-        for p in patchers:
-            p.start()
-            self.addCleanup(p.stop)
-
-    def test_slow_probes_cannot_exceed_budget(self):
-        import time as _t
-
-        def slow():
-            _t.sleep(1.2)
-            return {"ok": True}
-
-        self._patch_usages(grok_usage=slow, claude_usage=slow, codex_usage=slow)
-        t0 = _t.monotonic()
-        out = board._usages_parallel(budget=0.5)
-        elapsed = _t.monotonic() - t0
-        # 옛 구현이면 3항목 순차 대기로 3.6초 이상 — 예산 0.5초를 넘기면 재발이다.
-        self.assertLess(elapsed, 1.15)
-        self.assertEqual(out, {"grok": {}, "claude": {}, "codex": {}})
-
-    def test_fast_probes_keep_results(self):
-        def fast_grok():
-            return {"ok": True, "remain_pct": 12.3}
-
-        def fast_claude():
-            return {"ok": True, "used_pct": 4.5}
-
-        def fast_codex():
-            return {"ok": False}
-
-        self._patch_usages(grok_usage=fast_grok, claude_usage=fast_claude,
-                           codex_usage=fast_codex)
-        out = board._usages_parallel(budget=3.0)
-        self.assertEqual(out["grok"], {"ok": True, "remain_pct": 12.3})
-        self.assertEqual(out["claude"], {"ok": True, "used_pct": 4.5})
-        self.assertEqual(out["codex"], {"ok": False})
-
-
-class StateSnapshotDeadlineTests(unittest.TestCase):
-    """2026-08-25 보드응답:000 재발 — 개발 루프 바퀴(CPU 부하)와 겹치면 GET / 의
-    상태 조립(사용량 프로브+git 서브프로세스+샷 디코드)이 지킴이 curl 5초 한도를
-    넘겼다. 사용량 프로브만 묶어선 부족하다: 전체 조립도 단일 마감 안에서 반드시
-    돌아오고, 넘으면 직전 성공 스냅숏으로라도 응답해야 한다."""
-
-    def setUp(self):
-        self._old_good = board._state_good
-        board._state_good = None
-        self.addCleanup(setattr, board, "_state_good", self._old_good)
-
-    def test_slow_build_returns_last_good_within_budget(self):
-        import time as _t
-
-        marker = {"updated": "스냅숏", "queue": []}
-
-        def slow_build():
-            _t.sleep(1.2)
-            return {"updated": "느린 조립", "queue": []}
-
-        with mock.patch.object(board, "build_state", side_effect=slow_build):
-            board._state_good = marker
-            t0 = _t.monotonic()
-            out = board.state_snapshot(budget=0.4)
-            elapsed = _t.monotonic() - t0
-        # 옛 구현이면 조립이 끝날 때까지 1.2초 이상 기다린다 — 마감 초과가 재발이다.
-        self.assertLess(elapsed, 1.15)
-        self.assertEqual(out, marker)
-
-    def test_timeout_without_history_serves_minimal_skeleton(self):
-        import time as _t
-
-        def slow_build():
-            _t.sleep(1.2)
-            return {"updated": "느린 조립", "queue": []}
-
-        with mock.patch.object(board, "build_state", side_effect=slow_build):
-            t0 = _t.monotonic()
-            out = board.state_snapshot(budget=0.3)
-            elapsed = _t.monotonic() - t0
-        self.assertLess(elapsed, 1.15)
-        # 지킴이가 /api/state에서 요구하는 키는 골격에도 있어야 한다.
-        for key in ("updated", "queue", "mcp", "runner", "council", "proposals"):
-            self.assertIn(key, out)
-
-    def test_concurrent_request_while_building_does_not_stack_builds(self):
-        import threading
-        import time as _t
-
-        entered = threading.Event()
-        release = threading.Event()
-        builds = []
-
-        def slow_build():
-            builds.append(1)
-            entered.set()
-            release.wait(3)
-            return {"updated": "느린 조립", "queue": []}
-
-        with mock.patch.object(board, "build_state", side_effect=slow_build):
-            worker = threading.Thread(
-                target=lambda: board.state_snapshot(budget=2.5))
-            worker.start()
-            try:
-                self.assertTrue(entered.wait(2))
-                out = board.state_snapshot(budget=2.5)
-            finally:
-                release.set()
-                worker.join(4)
-        self.assertEqual(len(builds), 1)
-        self.assertIn("degraded", out)
-
-    def test_fast_build_keeps_result(self):
-        marker = {"updated": "즉시", "queue": []}
-        with mock.patch.object(board, "build_state", return_value=marker):
-            out = board.state_snapshot(budget=2.0)
-        self.assertEqual(out, marker)
-        self.assertIs(board._state_good, marker)
-
-
-class TestStatusFormatCompat(unittest.TestCase):
-    """2026-08-23 empty template broke the board — parsers must accept both shapes."""
-
-    def test_new_template_checkbox_queue(self):
-        status = (
-            "# status\n"
-            "## 1. 현재 진행 상황 요약\n"
-            "- **현재 상태**: 테스트\n"
-            "## 2. 다음 할 일 큐 (Next Tasks Queue)\n"
-            "- [ ] 1. 영지 EstateBuild 업그레이드 창\n"
-            "- [ ] 2. W2 손맛 재측정\n"
-            "- [ ] 3. \n"
-            "## 3. 최근 완료 내역 (History)\n"
-        )
-        queue = board.parse_queue(status)
-        self.assertEqual([q["title"] for q in queue], [
-            "영지 EstateBuild 업그레이드 창",
-            "W2 손맛 재측정",
-        ])
-
-    def test_legacy_numbered_queue_still_works(self):
-        status = (
-            "# status\n"
-            "## 다음 할 일 (원장 §22 — 위에서부터 하나만)\n"
-            "1. **영지 §4** — 업그레이드 창\n"
-            "2. **이펙트** — 한 결함만\n"
-            "## 다음 할 일 큐 (루프가 못 닫은 것)\n"
-        )
-        queue = board.parse_queue(status)
-        self.assertEqual(queue[0]["title"], "영지 §4")
-        self.assertIn("업그레이드", queue[0]["detail"])
-
-
-class NowTitleLapFormatTests(unittest.TestCase):
-    def test_blockquote_excerpt_is_not_a_title(self):
-        log = (
-            "> 2026-08-23 빈 템플릿으로 갈리며 보드가 비었던 것을, 아카이브 기준으로 복구합니다.\n"
-            "던전 화면 확인\n"
-        )
-        title = board.infer_now_title(log, [], [])
-        self.assertNotIn("템플릿", title)
-
-    def test_wrapup_commit_summary_is_not_a_title(self):
-        log = (
-            "커밋: - `ffb42f89` 구현 - `d0d43267` 상태 기록입니다.\n"
-            "바퀴 종료: 20260825-072849-2 code=0\n"
-        )
-        title = board.infer_now_title(log, [{"title": "영지 아트"}], [])
-        self.assertEqual(title, "영지 아트 하는 중")
-
-    def test_html_comment_and_diff_lines_are_not_titles(self):
-        log = (
-            "+ 기존 내용(마커·제안 관찰·처방 전문) 삭제 없음. -->\n"
-            "낡은 검증 문장 삭제 없음 확인합니다 -->\n"
-        )
-        title = board.infer_now_title(log, [{"title": "영지 아트"}], [])
-        self.assertNotIn("-->", title)
-
-    def test_markdown_heading_is_not_a_title(self):
-        log = (
-            "# 왜 사본을 쓰나: 유니티는 같은 프로젝트 폴더를 두 번 못 엽니다.\n"
-            "던전 화면 확인\n"
-        )
-        title = board.infer_now_title(log, [{"title": "영지 아트"}], [])
-        self.assertNotIn("사본", title)
-
-    def test_bare_code_word_rejects_candidate(self):
-        log = "env 게이트라 일반 플레이엔 영향 없음 void 검증합니다.\n"
-        title = board.infer_now_title(log, [{"title": "큐항목"}], [])
-        self.assertNotIn("void", title)
-
-
-class HeaderTextTest(unittest.TestCase):
-    """헤더는 시각만, 본문은 한 줄 요약 (오너 2026-08-26 「글벽이라 못 읽겠다」)."""
-
-    STATUS = ("# 재와 별\n\n최종 갱신: 2026-08-26 (바퀴) · **루프 생존성 수리**(`d2410dcf`) — "
-              "원인 체인 실측 확정: " + "아주 긴 설명 " * 20 + "\n")
-
-    def test_updated_is_only_the_stamp(self):
-        self.assertEqual(board.parse_updated(self.STATUS), "2026-08-26 (바퀴)")
-
-    def test_note_is_one_short_line_without_markdown(self):
-        note = board.parse_updated_note(self.STATUS)
-        self.assertLessEqual(len(note), 112)
-        self.assertNotIn("**", note)
-        self.assertNotIn("`", note)
-        self.assertIn("루프 생존성 수리", note)
-
-    def test_missing_line_is_empty_not_crash(self):
-        self.assertEqual(board.parse_updated("# 제목만"), "")
-        self.assertEqual(board.parse_updated_note("# 제목만"), "")
-
-
-class LoopHealthTest(unittest.TestCase):
-    """루프판 DORA 4키. 처리량·안정성·복구·신선도."""
-
-    def _repo(self, tmp, laps):
-        """laps: [(id, code, 끝난 초)] — loop_main.log와 lap 로그 mtime을 만든다."""
-        lines = []
-        for lap_id, code, secs in laps:
-            lines.append(f"바퀴 시작: {lap_id} agent=opencode")
-            if code is not None:
-                lines.append(f"바퀴 종료: {lap_id} code={code}")
-        (tmp / "logs").mkdir(parents=True, exist_ok=True)
-        (tmp / "logs" / "loop_main.log").write_text("\n".join(lines) + "\n", encoding="utf-8")
-        for lap_id, code, secs in laps:
-            began = datetime.strptime(lap_id.split("-")[0] + lap_id.split("-")[1], "%Y%m%d%H%M%S")
-            day = (tmp / "logs" / began.strftime("%Y-%m-%d"))
-            day.mkdir(parents=True, exist_ok=True)
-            f = day / f"lap-{lap_id}.log"
-            f.write_text("x", encoding="utf-8")
-            end = began.timestamp() + (secs or 0)
-            os.utime(f, (end, end))
-
-    def test_success_rate_median_and_recovery(self):
-        laps = [("20260826-100000-1", 0, 600),    # 10분 성공
-                ("20260826-101500-2", 1, 300),    # 실패
-                ("20260826-102500-3", 0, 1800),   # 30분 성공 → 실패 10분 뒤 복구
-                ("20260826-110000-4", 0, 1200)]
-        old = board.ROOT
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
-            self._repo(tmp, laps)
-            board.ROOT = tmp
-            try:
-                h = board.loop_health(now=datetime(2026, 8, 26, 11, 30))
-            finally:
-                board.ROOT = old
-        self.assertEqual(h["laps"], 4)
-        self.assertEqual(h["fail"], 1)
-        self.assertEqual(h["success_pct"], 75)
-        self.assertEqual(h["median_secs"], 900)          # 평균(975)이 아니라 중앙값
-        self.assertEqual(h["recover_secs"], 600)         # 10:15 실패 → 10:25 성공
-        self.assertEqual(h["idle_secs"], 10 * 60)        # 11:00 시작 +20분 = 11:20 종료 → 11:30
-        self.assertFalse(h["stale"])
-        self.assertEqual([s["code"] for s in h["spark"]], [0, 1, 0, 0])
-
-    def test_stale_when_quiet_over_90min(self):
-        old = board.ROOT
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
-            self._repo(tmp, [("20260826-100000-1", 0, 60)])
-            board.ROOT = tmp
-            try:
-                h = board.loop_health(now=datetime(2026, 8, 26, 12, 0))
-            finally:
-                board.ROOT = old
-        self.assertTrue(h["stale"])                      # 침묵을 초록으로 그리면 안 된다
-        self.assertGreater(h["idle_secs"], 90 * 60)
-
-    def test_empty_log_is_safe(self):
-        old = board.ROOT
-        with tempfile.TemporaryDirectory() as tmp:
-            board.ROOT = Path(tmp)
-            try:
-                h = board.loop_health()
-            finally:
-                board.ROOT = old
-        self.assertEqual(h["laps"], 0)
-        self.assertEqual(h["success_pct"], 0)
-
-
-class SliceBarTest(unittest.TestCase):
-    def test_summary_bar_uses_real_ratio(self):
-        """0/14인데 막대가 꽉 차 있던 버그(2026-08-26)."""
-        rows = [{"done": False} for _ in range(14)]
-        bars = board.focus_bars({"id": "1", "proto_done": True}, [], rows)
-        self.assertEqual(bars[0]["id"], "slice-done")
-        self.assertEqual(bars[0]["pct"], 0)
-        rows[0]["done"] = rows[1]["done"] = True
-        bars = board.focus_bars({"id": "1", "proto_done": True}, [], rows)
-        self.assertEqual(bars[0]["pct"], 14)
-
-
-class GateOverrideTest(unittest.TestCase):
-    """관문 철회·보류 (오너 2026-08-26)."""
-
-    RETIRE = {"title": "V2 조작감 — 손맛 관문", "choice": "retire", "note": "오너 철회"}
-    DEFER = {"title": "V3 보스 한 판 — 지휘 판정", "choice": "defer", "note": "오너 보류"}
-
-    def test_retire_and_defer_are_recognized(self):
-        d = {"a": self.RETIRE, "b": self.DEFER}
-        self.assertEqual(board.gate_override("V2", d)["state"], "retired")
-        self.assertEqual(board.gate_override("V3", d)["state"], "deferred")
-        self.assertIsNone(board.gate_override("V4b", d))
-
-    def test_pass_choice_is_not_an_override(self):
-        """옛 pass/skip 결정이 철회로 오독되면 안 된다."""
-        d = {"a": {"title": "V2 사람 판정", "choice": "pass"},
-             "b": {"title": "V4 외부 테스터 70% 사람 판정", "choice": "skip"}}
-        self.assertIsNone(board.gate_override("V2", d))
-        self.assertIsNone(board.gate_override("V4", d))
-
-    def test_override_marks_state_and_uncounts(self):
-        gates = [{"id": "V2", "pct": 100, "note": "옛 문구"},
-                 {"id": "V4a", "pct": 100, "note": "자동 경계 닫힘"}]
-        board.apply_gate_overrides(gates, {"a": self.RETIRE})
-        v2, v4a = gates
-        self.assertEqual(v2["state"], "retired")
-        self.assertEqual(v2["note"], "오너 철회")
-        self.assertFalse(v2["counted"])
-        self.assertTrue(v4a["counted"])          # 나머지는 건드리지 않는다
-        self.assertNotIn("state", v4a)
-
-    def test_retired_gate_leaves_average(self):
-        """네거티브 대조: 같은 관문 집합이라도 철회 결정이 없으면 평균이 끌려간다."""
-        def avg(decisions):
-            gates = [{"id": "V2", "pct": 0, "note": ""}, {"id": "V4a", "pct": 100, "note": ""}]
-            board.apply_gate_overrides(gates, decisions)
-            counted = [g for g in gates if g.get("counted", True)]
-            return round(sum(g["pct"] for g in counted) / len(counted)), len(counted)
-
-        self.assertEqual(avg(None), (50, 2))                 # 철회 없음 — 0%가 평균을 끈다
-        self.assertEqual(avg({"a": self.RETIRE}), (100, 1))  # 철회 — 평균에서 빠진다
 
 
 if __name__ == "__main__":

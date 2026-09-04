@@ -35,7 +35,6 @@ namespace AshesToStars
             string show = Environment.GetEnvironmentVariable(LocalPlayKit.EnvShow);
             string no = Environment.GetEnvironmentVariable(LocalPlayKit.EnvNo);
             string start = Environment.GetEnvironmentVariable("GAME_START");
-            string noTitleLane = Environment.GetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane);
             Environment.SetEnvironmentVariable(LocalPlayKit.EnvShow, null);
             Environment.SetEnvironmentVariable(LocalPlayKit.EnvNo, null);
             Environment.SetEnvironmentVariable("GAME_START", null);
@@ -77,34 +76,10 @@ namespace AshesToStars
             Check(GameState.Bag.GetCount(Economy.LifeItem.CraftHide) >= 30, "가죽 30");
             Check(GameState.Bag.GetCount(Economy.LifeItem.AdvancementMaterial) >= 40, "전직 재료 40");
             Check(LocalPlayKit.Line.Contains("로컬 테스트"), "타이틀에 시드 줄");
-            Check(TitleScreen.LocalKitLine().Contains("로컬 테스트"), "타이틀 표시 줄");
-
-            var body = new Rect(GameScreen.BodyPadX, GameScreen.BodyTop,
-                1280f - GameScreen.BodyPadX * 2f, 720f - GameScreen.BodyTop - 36f);
-            var rightCards = UiPages.Grid(new Rect(body.x + body.width * 0.56f, body.y + 8f,
-                body.width * 0.44f, body.height - 16f), 1, 3, 14f);
-            var lane = TitleScreen.LocalKitRect(body);
-            var intro = TitleScreen.IntroPanelRect(body);
-            Check(intro.xMax < rightCards[0].x,
-                $"소개 패널 오른쪽 {intro.xMax:0} < 시작 카드 왼쪽 {rightCards[0].x:0}");
-            Check(Mathf.Approximately(intro.height, 260f), $"소개 패널 높이 {intro.height:0}px");
-            Check(Mathf.Abs(intro.center.y - body.center.y) < 0.01f, "소개 패널은 좌측 열 세로 중앙");
-            Check(lane.y >= intro.yMax,
-                $"로컬 안내 y {lane.y:0} ≥ 소개 패널 아래 {intro.yMax:0}");
-            Check(lane.xMax < rightCards[2].x,
-                $"로컬 안내 오른쪽 {lane.xMax:0} < 종료 카드 왼쪽 {rightCards[2].x:0}");
-            Check(Mathf.Approximately(lane.height, 40f), "로컬 상태 패널 높이 40px");
-
-            Environment.SetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane, "1");
-            var blockedLane = TitleScreen.LocalKitRect(body);
-            Check(Mathf.Approximately(blockedLane.height, 20f), "네거티브는 옛 20px 생텍스트 칸");
-            Check(blockedLane.width > lane.width, "네거티브는 옛 전체 폭");
-            Environment.SetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane, null);
 
             Environment.SetEnvironmentVariable(LocalPlayKit.EnvShow, show);
             Environment.SetEnvironmentVariable(LocalPlayKit.EnvNo, no);
             Environment.SetEnvironmentVariable("GAME_START", start);
-            Environment.SetEnvironmentVariable(TitleScreen.EnvNoLocalKitLane, noTitleLane);
             LocalPlayKit.ResetForTest();
 
             string runtime = Path.Combine(Application.dataPath, "_Game/Scripts/Runtime");
@@ -113,11 +88,6 @@ namespace AshesToStars
                 "GameScreen이 시드를 읽는다");
             Check(screen.Contains("DebugAutoPilot.BootstrapIfRequested"),
                 "스모크를 시드보다 먼저 본다");
-
-            string kitSrc = File.ReadAllText(Path.Combine(runtime, "LocalPlayKit.cs"));
-            Check(kitSrc.Contains("ShortCopper(WantCopper)")
-                  && kitSrc.IndexOf("FormatCurrency(WantCopper)") < 0,
-                "로컬 테스트 골드는 ShortCopper만");
 
             if (_fail == 0) Debug.Log("[LocalPlayKitSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[LocalPlayKitSelfCheck] FAIL {_fail}\n" + _log);

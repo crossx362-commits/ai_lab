@@ -283,30 +283,10 @@ async def _message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 def main() -> int:
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not token:
-        print("TELEGRAM_BOT_TOKEN is not configured.")
-        return 1
-
-    # 다기기 폴링 충돌 방지 — .env TELEGRAM_POLL_HOST가 지정돼 있는데 이 기기가 아니면
-    # 아예 폴링을 시작하지 않는다(미지정이면 항상 허용 = 기존 동작과 동일, 회귀 없음).
-    ok, reason = should_poll()
-    print(f"[영숙] 폴링 소유권 확인: {reason}")
-    if not ok:
-        return 0
-
-    # 같은 기기 내 중복 폴러 방지(다른 기기는 위 should_poll이 담당)
-    with ProcessLock("youngsuk_telegram"):
-        app = Application.builder().token(token).build()
-        app.add_handler(CommandHandler("start", _start))
-        app.add_handler(CommandHandler("status", _status))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _message))
-        app.add_error_handler(_error_handler)
-
-        bc.log("Youngsuk Telegram bot started (polling mode)")
-        app.run_polling(allowed_updates=["message"], drop_pending_updates=True)
+    print("[영숙] 텔레그램 수신 데몬이 영구 비활성화되었습니다.")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

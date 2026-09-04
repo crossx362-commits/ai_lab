@@ -22,21 +22,6 @@ namespace AshesToStars
             : GearOpt.ShowQa ? GearOpt.Line()
             : BagSlots.ShowQa ? BagSlots.Line()
             : EquipJob.ShowQa ? EquipJob.Line()
-            : EquipLevel.ShowQa ? EquipLevel.Line()
-            : ReviveCap.ShowQa ? ReviveCap.Line()
-            : DeathCap.ShowQa ? DeathCap.Line()
-            : PvpRecover.ShowQa ? PvpRecover.Line()
-            : PveRecover.ShowQa ? PveRecover.Line()
-            : ProjCap.ShowQa ? ProjCap.Line()
-            : GhAnchor.ShowQa ? GhAnchor.Line()
-            : TierMul.ShowQa ? TierMul.Line()
-            : BurnTarget.ShowQa ? BurnTarget.Line()
-            : MoveSpd.ShowQa ? MoveSpd.Line()
-            : MobSpeed.ShowQa ? MobSpeed.Line()
-            : MobHp.ShowQa ? MobHp.Line()
-            : MobDmg.ShowQa ? MobDmg.Line()
-            : MobShotCadence.ShowQa ? MobShotCadence.Line()
-            : MobProjectileSpeed.ShowQa ? MobProjectileSpeed.Line()
             : EliteDrop.ShowQa ? EliteDrop.Line()
             : GearDrop.ShowQa ? GearDrop.Line()
             : CharHud.ShowQa ? CharHud.Line()
@@ -74,8 +59,6 @@ namespace AshesToStars
         int _detailPage;
         int _bagFilter = -1;
         Vector2 _listScroll;
-        Vector2 _attrScroll;
-        Vector2 _infoScroll;
         string _equipMsg = "";
 
         protected override void Body(Rect r)
@@ -84,47 +67,15 @@ namespace AshesToStars
             GameFlow.SeedV4WipeQaIfRequested();
             SeedRarityQaIfRequested();
             SeedFusionQaIfRequested();
-            SeedFusionEntryQaIfRequested();
             SeedSpecialJobQaIfRequested();
             SeedJobTraitQaIfRequested();
-            SeedSkillCostQaIfRequested();
-            SeedSkillDescQaIfRequested();
-            SeedSkillUltQaIfRequested();
             SeedRaceTraitQaIfRequested();
-            SeedRaceDefenseQaIfRequested();
-            SeedRaceDurabilityQaIfRequested();
-            SeedReviveCapQaIfRequested();
-            SeedDeathCapQaIfRequested();
-            SeedPvpRecoverQaIfRequested();
-            SeedPveRecoverQaIfRequested();
-            SeedPerfCapQaIfRequested();
-            SeedSummonCapQaIfRequested();
-            SeedProjCapQaIfRequested();
-            SeedResummonQaIfRequested();
-            SeedGhAnchorQaIfRequested();
-            SeedTierMulQaIfRequested();
-            SeedBurnTargetQaIfRequested();
-            SeedMoveSpdQaIfRequested();
-            SeedMobSpeedQaIfRequested();
-            SeedMobHpQaIfRequested();
-            SeedMobDmgQaIfRequested();
-            SeedMobRangedDistanceQaIfRequested();
-            SeedMobShotCadenceQaIfRequested();
-            SeedMobProjectileSpeedQaIfRequested();
             SeedTowerEndingQaIfRequested();
             SeedSoloRaidQaIfRequested();
             FloorRecruit.SeedQaIfRequested();
             SeedCharLookQaIfRequested();
-            SeedCharUnequipQaIfRequested();
-            SeedCharBagEquipQaIfRequested();
-            SeedCharBagFilterQaIfRequested();
-            SeedRosterPickQaIfRequested();
-            SeedCompactActionQaIfRequested();
-            SeedDrawTabsQaIfRequested();
-            SeedCharScrollQaIfRequested();
             CharHud.SeedQaIfRequested();
             EquipJob.SeedQaIfRequested();
-            EquipLevel.SeedQaIfRequested();
             BagSlots.SeedQaIfRequested();
             EliteDrop.SeedQaIfRequested();
             GearDrop.SeedQaIfRequested();
@@ -134,17 +85,13 @@ namespace AshesToStars
                 _selectedCharacter = 0;
             if (EquipJob.ShowQa && _selectedCharacter < 0)
                 _selectedCharacter = EquipJob.QaHealerIndex();
-            if (EquipLevel.ShowQa && _selectedCharacter < 0)
-                _selectedCharacter = EquipLevel.QaCharIndex();
             StarterPick.SeedQaIfRequested();
             StarterSecond.SeedQaIfRequested();
             SeedDefenseRecoverQaIfRequested();
             SeedRaceRecoverQaIfRequested();
             Rebirth.SeedQaIfRequested();
-            RebirthSkill.SeedQaIfRequested();
             Memorial.SeedQaIfRequested();
             if ((System.Environment.GetEnvironmentVariable(Rebirth.EnvShow) == "2"
-                 || System.Environment.GetEnvironmentVariable(RebirthSkill.EnvShow) == "2"
                  || System.Environment.GetEnvironmentVariable(Memorial.EnvShow) == "1")
                 && _selectedCharacter < 0)
                 _selectedCharacter = 0;
@@ -158,7 +105,6 @@ namespace AshesToStars
                 DrawFusion(r);
                 return;
             }
-            RestoreAdvancementUi();
             if (_choosingAdvancement && _selectedCharacter >= 0)
             {
                 var characters = LifeSystem.GetCharacters();
@@ -177,24 +123,6 @@ namespace AshesToStars
             DrawRosterSplit(page);
         }
 
-        void RestoreAdvancementUi()
-        {
-            var trial = LifeSystem.ActiveFirstTrial ?? LifeSystem.ActiveSecondTrial;
-            if (trial == null || _choosingAdvancement) return;
-            var roster = LifeSystem.GetCharacters();
-            int idx = roster.IndexOf(trial.Character);
-            if (idx < 0)
-            {
-                for (int i = 0; i < roster.Count; i++)
-                    if (roster[i] != null && roster[i].Id == trial.Character.Id) { idx = i; break; }
-            }
-            if (idx >= 0)
-            {
-                _selectedCharacter = idx;
-                _choosingAdvancement = true;
-            }
-        }
-
         void DrawAdvancement(Rect r, CharacterRecord ch)
         {
                         var secondTrial = LifeSystem.ActiveSecondTrial;
@@ -204,17 +132,10 @@ namespace AshesToStars
                             Info(r, 1, $"역할 목표: {secondTrial.Objective} {secondTrial.Progress}/{secondTrial.Required}");
                             if (!secondTrial.ObjectiveMet)
                             {
-                                int row = 2;
-                                if (!LifeSystem.TrialBattleBlocked
-                                    && Row(r, row++, "훈련장 입장", "비살상 전투 — 역할 스킬로 목표를 채운다"))
-                                {
-                                    GameFlow.GoBattle(GameFlow.Character, GameFlow.BattleKind.잡몹웨이브, 1);
-                                    return;
-                                }
                                 for (int i = 0; i < secondTrial.Actions.Count; i++)
                                 {
                                     var action = secondTrial.Actions[i];
-                                    if (Row(r, row++, TrialActionText(action), "각성 시험 상황에 맞는 행동을 선택한다"))
+                                    if (Row(r, i + 2, TrialActionText(action), "각성 시험 상황에 맞는 행동을 선택한다"))
                                     {
                                         if (!LifeSystem.ReportSecondTrialProgress(action))
                                         {
@@ -244,17 +165,10 @@ namespace AshesToStars
                             Info(r, 1, $"역할 목표: {trial.Objective} {trial.Progress}/{trial.Required}");
                             if (!trial.ObjectiveMet)
                             {
-                                int row = 2;
-                                if (!LifeSystem.TrialBattleBlocked
-                                    && Row(r, row++, "훈련장 입장", "비살상 전투 — 역할 스킬로 목표를 채운다"))
-                                {
-                                    GameFlow.GoBattle(GameFlow.Character, GameFlow.BattleKind.잡몹웨이브, 1);
-                                    return;
-                                }
                                 for (int i = 0; i < trial.Actions.Count; i++)
                                 {
                                     var action = trial.Actions[i];
-                                    if (Row(r, row++, TrialActionText(action), "훈련 상황에 맞는 행동을 선택한다"))
+                                    if (Row(r, i + 2, TrialActionText(action), "훈련 상황에 맞는 행동을 선택한다"))
                                     {
                                         // 정답을 화면이 대신 넣지 않는다. 패턴과 다른 행동은 즉시 시험 실패.
                                         if (!LifeSystem.ReportFirstTrialProgress(action))
@@ -299,7 +213,7 @@ namespace AshesToStars
                     // ✅ 소비처가 10행 가까이 쌓여 76px 기본 그리드로는 하위 줄이 넘쳐 사라졌다(밀도 상한).
                     // 이 패널만 행 피치를 46/40으로 낮춰 같은 index 그리드로 전부 담는다. 끝에서 되돌린다.
                     RowPitch = 46f; RowHt = 40f;
-                    string detail = $"{ch.Name} ({CharHud.JobFace(ch.Job)}) · {ExpText(ch)}";
+                    string detail = $"{ch.Name} ({ch.Job}) · {ExpText(ch)}";
                     if (!ch.IsDeleted && ch.Level == Rebirth.StartLevel
                         && !string.IsNullOrEmpty(Rebirth.LastName)
                         && ch.Name == Rebirth.LastName)
@@ -379,7 +293,7 @@ namespace AshesToStars
                     }
                     else if (!ch.IsDeleted && ch.DeathCount > 0 && LifeSystem.GetRevivePotions() > 0)
                     {
-                        if (Row(r, 3, "부활초 사용", $"사망 카운트 1 차감 (보유: {LifeSystem.GetRevivePotions()}/{ReviveCap.Limit()})",
+                        if (Row(r, 3, "부활초 사용", $"사망 카운트 1 차감 (보유: {LifeSystem.GetRevivePotions()}/3)",
                                 ItemAtlas.KeyFor(Economy.LifeItem.RevivalTea)))
                         {
                             LifeSystem.UseRevivePotion(ch);
@@ -392,7 +306,7 @@ namespace AshesToStars
                         statusMax = Math.Max(statusMax, 3);
                     }
 
-                    // §3·§4 기본 전투 스탯(JobDef 최대체력·공격력 — 전투 W3Party도 같은 에셋을 읽는다).
+                    // §3·§4 기본 전투 스탯(JobDef 최대체력·공격력·사거리·공격간격의 유일한 소비처).
                     // **속성** 탭의 표제 데이터라 이동기 프로필·종족 특성보다 우선순위가 높다 — 그래서
                     // 관례(새 조각은 맨 뒤)와 달리 전직 블록 **앞**(status 바로 뒤)에 두어 패널이 꽉 차도
                     // 항상 보이게 한다. 매칭 직업이 없으면(기본직 또는 에셋 미로드) 빈 문자열이라 줄을
@@ -400,54 +314,7 @@ namespace AshesToStars
                     if (!ch.IsDeleted)
                     {
                         string stats = JobInfo.StatLine(ch.Job);
-                        // §10-9 소환수 상한은 맨 뒤에 두면 r.yMax를 넘겨 안 보인다(플레이모드 실측).
-                        // StatLine과 같은 우선존에 붙여 패널이 꽉 차도 보이게 한다. QA_NO면 빈 문자열.
-                        string summonCap = SummonCap.Line();
-                        if (!string.IsNullOrEmpty(summonCap))
-                            stats = string.IsNullOrEmpty(stats) ? summonCap : stats + " · " + summonCap;
                         if (!string.IsNullOrEmpty(stats)) { Info(r, statusMax + 1, stats); statusMax += 1; }
-                        // §18-11 플레이어 이동속도. StatLine에 붙이면 소환수 상한과 같이
-                        // 우측이 잘린다(플레이모드 실측). 우선존 단독 행. QA_NO면 빈 문자열.
-                        string spd = MoveSpd.Line();
-                        if (!string.IsNullOrEmpty(spd)) { Info(r, statusMax + 1, spd); statusMax += 1; }
-                        // §18-11 잡몹 이속. 플레이어 이동과 같은 앵커라 바로 아래 단독 행.
-                        // QA_NO면 빈 문자열.
-                        string mobSpd = MobSpeed.Line();
-                        if (!string.IsNullOrEmpty(mobSpd)) { Info(r, statusMax + 1, mobSpd); statusMax += 1; }
-                        // §18-11 잡몹 HP. 이속과 같은 앵커라 바로 아래 단독 행.
-                        // QA_NO면 빈 문자열.
-                        string mobHp = MobHp.Line();
-                        if (!string.IsNullOrEmpty(mobHp)) { Info(r, statusMax + 1, mobHp); statusMax += 1; }
-                        // §18-11 잡몹 피해. HP와 같은 앵커라 바로 아래 단독 행.
-                        // QA_NO면 빈 문자열.
-                        string mobDmg = MobDmg.Line();
-                        if (!string.IsNullOrEmpty(mobDmg)) { Info(r, statusMax + 1, mobDmg); statusMax += 1; }
-                        // §18-14 소환수 재소환(0.5G/h T1=50실버 · 쿨다운 30초). QA_NO면 빈 문자열.
-                        string resummon = Resummon.Line();
-                        if (!string.IsNullOrEmpty(resummon)) { Info(r, statusMax + 1, resummon); statusMax += 1; }
-                        // §10-2 근접형 공격 주기. QA_NO면 옛 화면처럼 빈 문자열.
-                        string mobMelee = MobMeleeCadence.Line();
-                        if (!string.IsNullOrEmpty(mobMelee)) { Info(r, statusMax + 1, mobMelee); statusMax += 1; }
-                        // §10-2 원거리형 거리 유지·발사 주기는 같은 행동 프로필이라 한 행에 둔다.
-                        // 단독 행을 늘리면 아래 탄속 줄이 패널 밖으로 밀린다(1280×720 실측).
-                        string mobRangedDistance = MobRangedDistance.Line();
-                        string mobShot = MobShotCadence.Line();
-                        if (!string.IsNullOrEmpty(mobRangedDistance))
-                            mobShot = string.IsNullOrEmpty(mobShot)
-                                ? mobRangedDistance
-                                : mobRangedDistance + " · " + mobShot;
-                        if (!string.IsNullOrEmpty(mobShot)) { Info(r, statusMax + 1, mobShot); statusMax += 1; }
-                        // §10-2 원거리형 느린 탄속. QA_NO면 옛 화면처럼 빈 문자열.
-                        string mobProjectile = MobProjectileSpeed.Line();
-                        if (!string.IsNullOrEmpty(mobProjectile)) { Info(r, statusMax + 1, mobProjectile); statusMax += 1; }
-                        // §4 PvP 회복. 전직 블록 뒤에 두면 r.yMax를 넘겨 안 보인다(플레이모드 실측).
-                        // 우선존 단독 행. QA_NO면 빈 문자열.
-                        string pvpRec = PvpRecover.Line();
-                        if (!string.IsNullOrEmpty(pvpRec)) { Info(r, statusMax + 1, pvpRec); statusMax += 1; }
-                        // §18-8 PvE 회복. 전직 블록 뒤에 두면 r.yMax를 넘겨 안 보인다.
-                        // 우선존 단독 행. QA_NO면 빈 문자열.
-                        string pveRec = PveRecover.Line();
-                        if (!string.IsNullOrEmpty(pveRec)) { Info(r, statusMax + 1, pveRec); statusMax += 1; }
 
                         // §5 이동기 프로필(형태·거리·무적·쿨) + §4 사망 리스크 + §6 자동사냥을 한 행에.
                         // 무적은 원장 379 「이 게임 조작의 핵심 기술」이라 ConceptLine(직업 특성)·SkillLine(보유
@@ -542,8 +409,8 @@ namespace AshesToStars
                     if (!ch.IsDeleted && ch.PendingBoon >= 0)
                         Info(r, advancementRow++, $"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)} — 합성에서 교체/포기");
 
-                    // §4 직업 특성·§3 보유 스킬·§18-9 종족 특성/정체성/이속/체력/방어 — 전부 **이미 배선된 ✅ 표시
-                    // 소비처**(ConceptLine·SkillLine(쿨·위력·반경·소모)·SkillDescLine(설명)·MechanicLine·IdentityLine·SpeedLine·HealthLine·DefenseLine)인데, 76px 기본 그리드에선
+                    // §4 직업 특성·§3 보유 스킬·§18-9 종족 특성/정체성 — 전부 **이미 배선된 ✅ 표시
+                    // 소비처**(ConceptLine·SkillLine·MechanicLine·IdentityLine)인데, 76px 기본 그리드에선
                     // 1차+ 캐릭터에서 표제·전직·이동기 우선존이 행 6을 다 먹어 넘쳐 사라졌다(밀도 상한).
                     // 이 패널은 위 DrawAttributes 머리에서 RowPitch/RowHt를 컴팩트로 낮춰(공유 헬퍼 필드)
                     // 같은 인덱스 그리드로 더 많은 행을 담으므로 이 줄들도 한 판에 보인다. 기본직·에셋
@@ -551,75 +418,14 @@ namespace AshesToStars
                     if (!ch.IsDeleted)
                     {
                         string trait = JobInfo.ConceptLine(ch.Job);
-                        if (!string.IsNullOrEmpty(trait))
-                        {
-                            // Info(LabelClip·inner 20px)면 수호기사 「소모해 보」에서 우측이 잘린다 —
-                            // InfoWrap(LabelFit). 기본 52px면 컴팩트 피치에서 2칸을 먹어 초필이
-                            // 밀리므로 한 행(RowHt). QA_NO_CONCEPT_WRAP이면 옛 한 줄 Clip.
-                            if (JobInfo.ConceptWrapBlocked) Info(r, advancementRow++, trait);
-                            else advancementRow += InfoWrap(r, advancementRow, trait, RowHt);
-                        }
-                        // §3 SkillDef.쿨다운·위력배율·반경·자원소모 — SkillLine이 이름 옆에 (N초·×P·반경R·소모C) (표시 전용).
-                        // 환생 계승이 있으면 1개만(§4). QA_NO_REBORN_SKILL이면 옛 직업 표 전체.
-                        string skills = RebirthSkill.SkillLine(ch);
+                        if (!string.IsNullOrEmpty(trait)) Info(r, advancementRow++, trait);
+                        string skills = JobInfo.SkillLine(ch.Job);
                         if (!string.IsNullOrEmpty(skills)) Info(r, advancementRow++, skills);
-                        // §3 SkillDef.초필살기 — SkillUltLine이 초필 이름·쿨만 별도 한 줄(표시 전용).
-                        // SkillLine에 붙이면 뒤부터 잘리고, 설명 줄은 이미 두 줄이라 초필을 잃는다.
-                        // QA_NO면 빈 문자열이라 행을 안 그린다. 계승 1개면 초필 줄은 접는다.
-                        string skillUlt = RebirthSkill.SkillUltLine(ch);
-                        if (!string.IsNullOrEmpty(skillUlt)) Info(r, advancementRow++, skillUlt);
-                        // §3 SkillDef.설명 — SkillDescLine이 이름:설명 한 줄(표시 전용). SkillLine에 붙이면
-                        // 뒷 스킬 이름이 LabelClip에 잘리므로 다음 행. QA_NO면 빈 문자열이라 행을 안 그린다.
-                        // Info(LabelClip·inner 20px)면 마법사 「빙결: 광」에서 우측이 잘린다 — 두 줄
-                        // InfoWrap(LabelFit). QA_NO_SKILL_DESC_WRAP이면 옛 한 줄 Clip.
-                        string skillDesc = RebirthSkill.SkillDescLine(ch);
-                        if (!string.IsNullOrEmpty(skillDesc))
-                        {
-                            if (JobInfo.SkillDescWrapBlocked) Info(r, advancementRow++, skillDesc);
-                            else advancementRow += InfoWrap(r, advancementRow, skillDesc);
-                        }
                         // §18-9·§14 종족 고유 메커니즘·정체성 — 계정 종족(RacePrefs.Get) RaceDef의 유일 소비처.
                         string raceTrait = RaceInfo.MechanicLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceTrait)) Info(r, advancementRow++, raceTrait);
                         string raceIdent = RaceInfo.IdentityLine(RacePrefs.Get());
                         if (!string.IsNullOrEmpty(raceIdent)) Info(r, advancementRow++, raceIdent);
-                        // §18-9 RaceDef.이속배율 — 드워프 ×0.85 등 기준과 다를 때만 한 줄(SpeedLine).
-                        string raceSpeed = RaceInfo.SpeedLine(RacePrefs.Get());
-                        if (!string.IsNullOrEmpty(raceSpeed)) Info(r, advancementRow++, raceSpeed);
-                        // §18-9 RaceDef.체력배율 — 엘프 ×0.85 등 기준과 다를 때만 한 줄(HealthLine).
-                        string raceHp = RaceInfo.HealthLine(RacePrefs.Get());
-                        if (!string.IsNullOrEmpty(raceHp)) Info(r, advancementRow++, raceHp);
-                        // §18-9 RaceDef.방어배율 — 엘프 ×0.8 등 기준과 다를 때만 한 줄(DefenseLine).
-                        // 표시 전용. W3Party 전투 피해 배율은 안 건드린다. QA_NO면 빈 문자열이라 행을 안 그린다.
-                        string raceDef = RaceInfo.DefenseLine(RacePrefs.Get());
-                        if (!string.IsNullOrEmpty(raceDef)) Info(r, advancementRow++, raceDef);
-                        // §18-9 RaceDef.건물내구배율 — 드워프 ×1.2 등 기준과 다를 때만 한 줄.
-                        // 표시 전용. 건물 HP는 안 건드린다. QA_NO면 빈 문자열이라 행을 안 그린다.
-                        string raceDur = RaceInfo.DurabilityLine(RacePrefs.Get());
-                        if (!string.IsNullOrEmpty(raceDur)) Info(r, advancementRow++, raceDur);
-                        // §4 BalanceConfig.부활초소지상한 — ReviveCap.Line. QA_NO면 빈 문자열.
-                        string teaCap = ReviveCap.Line();
-                        if (!string.IsNullOrEmpty(teaCap)) Info(r, advancementRow++, teaCap);
-                        // §4 BalanceConfig.사망상한 — DeathCap.Line. QA_NO면 빈 문자열.
-                        string deathCap = DeathCap.Line();
-                        if (!string.IsNullOrEmpty(deathCap)) Info(r, advancementRow++, deathCap);
-                        // §10-9 BalanceConfig.잡몹상한·투사체상한 — 한 행. QA_NO면 빈 문자열.
-                        // 투사체를 맨 뒤 단독 행에 두면 r.yMax를 넘겨 안 보인다(소환수 상한 실측).
-                        string perfCap = PerfCap.Line();
-                        string projCap = ProjCap.Line();
-                        string gh = GhAnchor.Line();
-                        string tm = TierMul.Line();
-                        string burn = BurnTarget.Line();
-                        string budget = perfCap;
-                        if (!string.IsNullOrEmpty(projCap))
-                            budget = string.IsNullOrEmpty(budget) ? projCap : budget + " · " + projCap;
-                        if (!string.IsNullOrEmpty(gh))
-                            budget = string.IsNullOrEmpty(budget) ? gh : budget + " · " + gh;
-                        if (!string.IsNullOrEmpty(tm))
-                            budget = string.IsNullOrEmpty(budget) ? tm : budget + " · " + tm;
-                        if (!string.IsNullOrEmpty(burn))
-                            budget = string.IsNullOrEmpty(budget) ? burn : budget + " · " + burn;
-                        if (!string.IsNullOrEmpty(budget)) Info(r, advancementRow++, budget);
                     }
                     // 컴팩트 피치는 이 패널 전용 — 같은 화면의 index 그리드 경로(DrawAdvancement 등)가
                     // 기본 76/64를 기대하므로 반드시 되돌린다(안 하면 다음 프레임에 그 화면이 눌린다).
@@ -652,14 +458,12 @@ namespace AshesToStars
                     Hint(new Rect(r.x, r.y + 26f, r.width, 22f), special);
                     pickTop = 52f;
                 }
-                var jobs = FloorRecruit.PendingSpecialPick && FloorRecruit.PendingPicks <= 0
-                    ? LifeSystem.SpecialJobs : LifeSystem.BasicJobs;
                 var picks = UiPages.JobPickCards(new Rect(r.x, r.y + pickTop, r.width, r.height - pickTop),
-                    jobs.Length);
-                for (int i = 0; i < jobs.Length && i < picks.Length; i++)
+                    LifeSystem.BasicJobs.Length);
+                for (int i = 0; i < LifeSystem.BasicJobs.Length && i < picks.Length; i++)
                 {
-                    string job = jobs[i];
-                    if (DrawCard(picks[i], LifeSystem.JobFace(job),
+                    string job = LifeSystem.BasicJobs[i];
+                    if (DrawCard(picks[i], LifeSystem.BasicJobLabel(job),
                             FloorRecruit.PickSubtitle()))
                         FloorRecruit.TryClaim(job);
                 }
@@ -673,7 +477,7 @@ namespace AshesToStars
             if (FloorRecruit.PendingSpecialBanner)
                 Hint(new Rect(r.x, r.y, r.width, 22f), FloorRecruit.SpecialHint());
             float top = FloorRecruit.PendingSpecialBanner ? 28f : 0f;
-            var area = CharHud.Content(new Rect(r.x, r.y + top, r.width, r.height - top));
+            var area = new Rect(r.x, r.y + top, r.width, r.height - top);
             var allCharacters = LifeSystem.GetCharacters();
             if (allCharacters.Count == 0)
             {
@@ -692,26 +496,20 @@ namespace AshesToStars
             float contentH = Mathf.Max(listBody.height,
                 rows * (CharHud.CellH + UiPages.RosterRowGap));
             var view = new Rect(0f, 0f, Mathf.Max(40f, listBody.width - 16f), contentH);
-            _listScroll = GUI.BeginScrollView(listBody, _listScroll, view, GUIStyle.none, GUIStyle.none);
+            _listScroll = GUI.BeginScrollView(listBody, _listScroll, view);
             var board = new Rect(0f, 0f, view.width, contentH);
             for (int i = 0; i < allCharacters.Count; i++)
             {
                 var cell = CharHud.RosterCell(board, i);
-                // 클릭을 슬라이스·초상·라벨보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
-                // 스크롤뷰·BeginGroup(LabelFit)에 먹혀 선택이 안 바뀌었다(INBOX 2026-08-25).
-                var ev = Event.current;
-                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                    && cell.Contains(ev.mousePosition))
+                DrawRosterCell(cell, allCharacters[i], i == _selectedCharacter, i);
+                if (GUI.Button(cell, GUIContent.none, GUIStyle.none))
                 {
                     _selectedCharacter = i;
                     _choosingAdvancement = false;
                     _detailPage = 0;
-                    ev.Use();
                 }
-                DrawRosterCell(cell, allCharacters[i], i == _selectedCharacter, i);
             }
             GUI.EndScrollView();
-            _listScroll = UiAtlas.DrawVScroll(listBody, _listScroll, contentH, "roster");
             if (CompactAction(partyRect, $"파티 {PartyState.Slots.Count}/5", "tank"))
                 GameFlow.Go(GameFlow.Party);
 
@@ -728,35 +526,7 @@ namespace AshesToStars
             _detailPage = DrawTabs(stage, new[] { "장비", "속성" }, _detailPage);
             var detailBody = UiPages.AfterTabs(stage);
             if (_detailPage == 0) DrawEquipStudio(detailBody, ch);
-            else DrawAttributesScrolled(detailBody, ch);
-        }
-
-        /// <summary>
-        /// 속성 탭은 소비처 줄이 30행 가까이 쌓여 패널 높이(~13행)를 넘긴다. Info는 넘치는
-        /// 행을 조용히 건너뛰므로 전직·스킬·종족 줄이 아예 안 보였다(오너 2026-08-25
-        /// 「캐릭터 정보보기 불편」·플레이모드 실측 — PvP 회복 줄에서 하단 절단).
-        /// 넉넉한 가상 높이를 스크롤로 보여 잘림 없이 끝까지 도달하게 한다.
-        /// QA_NO_CHAR_SCROLL이면 옛 잘림 경로(네거티브).
-        /// </summary>
-        void DrawAttributesScrolled(Rect r, CharacterRecord ch)
-        {
-            if (CharHud.ScrollBlocked)
-            {
-                DrawAttributes(r, ch);
-                return;
-            }
-            const float maxRows = 34f;
-            float contentH = maxRows * 46f;
-            var view = new Rect(0f, 0f, Mathf.Max(40f, r.width - 16f), contentH);
-            // 스크롤 가상공간에서는 InfoAt의 REF_H(720) 절대 컷이 하단 소비처(보유 스킬·종족·
-            // 상한·예산 줄)를 조용히 지운다 — 접힘 한계를 가상 높이로 올리고, 빠져나오며
-            // 반드시 되돌린다(같은 프레임 다음 그리기가 옛 한계를 기대한다).
-            InfoFoldLimit = contentH;
-            _attrScroll = GUI.BeginScrollView(r, _attrScroll, view, GUIStyle.none, GUIStyle.none);
-            DrawAttributes(new Rect(0f, 0f, view.width, contentH), ch);
-            GUI.EndScrollView();
-            InfoFoldLimit = REF_H;
-            _attrScroll = UiAtlas.DrawVScroll(r, _attrScroll, contentH, "attr");
+            else DrawAttributes(detailBody, ch);
         }
 
         void DrawRosterCell(Rect cell, CharacterRecord ch, bool selected, int rosterIndex)
@@ -769,11 +539,9 @@ namespace AshesToStars
             PortraitAtlas.Draw(face, PortraitAtlas.KeyForJob(ch.Job), tint);
             UiAtlas.Draw(new Rect(face.xMax - 14f, face.yMax - 14f, 18f, 18f), UiAtlas.RoleKey(ch.Job));
             string name = ch.IsRescue ? $"{ch.Name}·재건" : ch.Name;
-            // 선택 피드백 — 옛 회색 Hint는 어느 셀이 고른지 모호했다(오너 2026-08-25
-            // 「캐릭터 선택이 안되는거 같음」). 선택 셀만 밝고 굵은 DockLabel로 이름을 띄운다.
-            if (selected && !CharHud.SelTintBlocked) DockLabel(nameR, name);
-            else Hint(nameR, name);            int cellLeft = LifeSystem.GetRecoveryTimeRemaining(ch);
-            string job = CharHud.JobFace(ch.Job);
+            Hint(nameR, name);
+            int cellLeft = LifeSystem.GetRecoveryTimeRemaining(ch);
+            string job = ch.Job;
             if (cellLeft > 0 && DefenseState.Contains(rosterIndex))
                 job = $"수비대 회복 {LifeSystem.FormatRecoveryPhrase(cellLeft)}";
             else if (cellLeft > 0)
@@ -808,7 +576,7 @@ namespace AshesToStars
                     "buffer", locked: true);
             }
             else if (DrawCard(cards[0], "합성 시작",
-                         $"1차 이상 캐릭터를 소멸시켜 패시브를 흡수한다. {EstateStatusHud.ShortCopper(Fusion.CostCopper())}(§18-7)",
+                         $"1차 이상 캐릭터를 소멸시켜 패시브를 흡수한다. {Economy.FormatCurrency(Fusion.CostCopper())}(§18-7)",
                          "buffer"))
             {
                 _fusing = true;
@@ -816,50 +584,8 @@ namespace AshesToStars
                 _fusionMaterial = -1;
             }
             DrawCard(cards[1], "규칙",
-                $"슬롯 4 · {EstateStatusHud.ShortCopper(Fusion.CostCopper())} · 넘치면 본 뒤 교체/포기. 재료는 영묘에 안 간다",
+                $"슬롯 4 · {Economy.FormatCurrency(Fusion.CostCopper())} · 넘치면 본 뒤 교체/포기. 재료는 영묘에 안 간다",
                 "heart", locked: true);
-        }
-
-
-        void SeedDrawTabsQaIfRequested()
-        {
-            string raw = Environment.GetEnvironmentVariable("QA_CHAR_TAB");
-            if (raw != "0" && raw != "1") return;
-            _listPage = 0;
-            _detailPage = raw == "1" ? 1 : 0;
-        }
-
-        void SeedCharScrollQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable("QA_CHAR_SCROLL") != "1") return;
-            _listScroll = new Vector2(0f, 80f);
-            _attrScroll = new Vector2(0f, 420f);
-            _infoScroll = new Vector2(0f, 280f);
-        }
-
-        void SeedCompactActionQaIfRequested()
-        {
-            string raw = Environment.GetEnvironmentVariable("QA_CHAR_COMPACT");
-            if (raw != "1") return;
-            GameFlow.Go(GameFlow.Party);
-        }
-
-        void SeedRosterPickQaIfRequested()
-        {
-            string raw = Environment.GetEnvironmentVariable("QA_CHAR_PICK");
-            if (string.IsNullOrEmpty(raw)) return;
-            FloorRecruit.ResetForTest();
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count < 2) return;
-            int pick = 0;
-            int.TryParse(raw, out pick);
-            if (pick < 0) pick = 0;
-            if (pick >= roster.Count) pick = roster.Count - 1;
-            _selectedCharacter = pick;
-            _listPage = 0;
-            _detailPage = 0;
-            _fusing = false;
-            _choosingAdvancement = false;
         }
 
         void SeedCharLookQaIfRequested()
@@ -872,56 +598,6 @@ namespace AshesToStars
             _selectedCharacter = 0;
             _listPage = 0;
             _detailPage = 0;
-            _fusing = false;
-            _choosingAdvancement = false;
-        }
-
-        void SeedCharUnequipQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable("QA_CHAR_UNEQUIP") != "1") return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            var ch = roster[0];
-            Equipment.TryUnequip(ch, EquipSlot.Weapon);
-            _selectedCharacter = 0;
-            _listPage = 0;
-            _detailPage = 0;
-            _bagFilter = (int)EquipSlot.Weapon;
-            _fusing = false;
-            _choosingAdvancement = false;
-        }
-
-        void SeedCharBagEquipQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable("QA_CHAR_BAG_EQUIP") != "1") return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            var ch = roster[0];
-            var bag = Equipment.Unequipped();
-            for (int i = 0; i < bag.Count; i++)
-            {
-                if (bag[i].Slot != EquipSlot.Weapon) continue;
-                Equipment.TryEquip(ch, bag[i].Id);
-                break;
-            }
-            _selectedCharacter = 0;
-            _listPage = 0;
-            _detailPage = 0;
-            _bagFilter = (int)EquipSlot.Weapon;
-            _fusing = false;
-            _choosingAdvancement = false;
-        }
-
-        void SeedCharBagFilterQaIfRequested()
-        {
-            string raw = Environment.GetEnvironmentVariable("QA_CHAR_BAG_FILTER");
-            if (string.IsNullOrEmpty(raw)) return;
-            if (!int.TryParse(raw, out int f)) return;
-            _bagFilter = f;
-            _selectedCharacter = 0;
-            _listPage = 0;
-            _detailPage = 0;
-            _infoScroll = new Vector2(0f, 90f);
             _fusing = false;
             _choosingAdvancement = false;
         }
@@ -970,45 +646,6 @@ namespace AshesToStars
             _detailPage = 1; // 속성 탭 — DrawAttributes에 직업 특성 줄이 있다
         }
 
-        // QA — 1차 검사. SkillDef.자원소모(일섬 5)가 SkillLine에 「소모5」로 보이는지
-        // 육안 확인용. 수호기사 성채 방패도 소모60이 있지만 SelfCheck 대표 칸은 일섬이라 검사를 심는다.
-        void SeedSkillCostQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable("QA_SKILL_COST") != "1") return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            roster[0].Job = "검사";
-            roster[0].Advancement = AdvancementTier.First;
-            _selectedCharacter = 0;
-            _detailPage = 1;
-        }
-
-        // QA — 1차 마법사. SkillDef.설명(화염폭풍 장판 광역)이 SkillDescLine에 보이는지
-        // 육안 확인용. 검사 일섬 설명은 길어 잘리기 쉬워 대표 칸은 마법사.
-        void SeedSkillDescQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable("QA_SKILL_DESC") != "1") return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            roster[0].Job = "마법사";
-            roster[0].Advancement = AdvancementTier.First;
-            _selectedCharacter = 0;
-            _detailPage = 1;
-        }
-
-        // QA — 1차 수호기사. SkillDef.초필살기(파티 전원 무적 180초)가 SkillUltLine에 보이는지
-        // 육안 확인용. 원장 §3 예시 4직업 중 수호기사가 대표 칸. 마법사는 authored 초필이 없다.
-        void SeedSkillUltQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable("QA_SKILL_ULT") != "1") return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            roster[0].Job = "수호기사";
-            roster[0].Advancement = AdvancementTier.First;
-            _selectedCharacter = 0;
-            _detailPage = 1;
-        }
-
         // 시각 QA. QA_RACE_TRAIT=1이면 계정 종족을 드워프로 두고 속성 탭을 연다 —
         // 기본직 캐릭터라 직업 특성/이동기 줄이 비어 종족 특성 줄이 패널 안에 넉넉히 들어간다.
         // 종족 특성 줄에 RaceInfo.MechanicLine이 붙이는 「(발동 25%)」(불굴 고유발동확률 0.25)를 육안 확인용.
@@ -1022,237 +659,6 @@ namespace AshesToStars
             _detailPage = 1;
         }
 
-        // 시각 QA. QA_RACE_DEFENSE=1이면 계정 종족을 엘프로 두고 속성 탭을 연다 —
-        // §18-9 방어 -20%가 DefenseLine에 보이는지 육안 확인용. 인간·드워프·수인은 ×1이라 줄이 없다.
-        void SeedRaceDefenseQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable("QA_RACE_DEFENSE") != "1") return;
-            RacePrefs.Set(RaceId.엘프);
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            _selectedCharacter = 0;
-            _detailPage = 1;
-        }
-
-        // 시각 QA. QA_RACE_DURABILITY=1이면 계정 종족을 드워프로 두고 속성 탭을 연다 —
-        // §18-9 건물 내구 +20%가 DurabilityLine에 보이는지 육안 확인용. 나머지 종족은 ×1이라 줄이 없다.
-        void SeedRaceDurabilityQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable(RaceInfo.EnvShowDurability) != "1") return;
-            RacePrefs.Set(RaceId.드워프);
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            _selectedCharacter = 0;
-            _detailPage = 1;
-        }
-
-        void SeedReviveCapQaIfRequested()
-        {
-            ReviveCap.SeedQaIfRequested();
-            if (!ReviveCap.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            _selectedCharacter = 0;
-            _detailPage = 1;
-        }
-
-        void SeedDeathCapQaIfRequested()
-        {
-            DeathCap.SeedQaIfRequested();
-            if (!DeathCap.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            _selectedCharacter = 0;
-            _detailPage = 1;
-        }
-
-        void SeedPvpRecoverQaIfRequested()
-        {
-            PvpRecover.SeedQaIfRequested();
-            if (!PvpRecover.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            _selectedCharacter = 0;
-            _detailPage = 1;
-        }
-
-        void SeedPveRecoverQaIfRequested()
-        {
-            PveRecover.SeedQaIfRequested();
-            if (!PveRecover.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            _selectedCharacter = 0;
-            _detailPage = 1;
-        }
-
-        void SeedPerfCapQaIfRequested()
-        {
-            PerfCap.SeedQaIfRequested();
-            if (!PerfCap.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedSummonCapQaIfRequested()
-        {
-            SummonCap.SeedQaIfRequested();
-            if (!SummonCap.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedResummonQaIfRequested()
-        {
-            Resummon.SeedQaIfRequested();
-            if (!Resummon.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedProjCapQaIfRequested()
-        {
-            ProjCap.SeedQaIfRequested();
-            if (!ProjCap.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedGhAnchorQaIfRequested()
-        {
-            GhAnchor.SeedQaIfRequested();
-            if (!GhAnchor.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedTierMulQaIfRequested()
-        {
-            TierMul.SeedQaIfRequested();
-            if (!TierMul.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedBurnTargetQaIfRequested()
-        {
-            BurnTarget.SeedQaIfRequested();
-            if (!BurnTarget.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedMoveSpdQaIfRequested()
-        {
-            MoveSpd.SeedQaIfRequested();
-            if (!MoveSpd.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedMobSpeedQaIfRequested()
-        {
-            MobSpeed.SeedQaIfRequested();
-            if (!MobSpeed.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedMobHpQaIfRequested()
-        {
-            MobHp.SeedQaIfRequested();
-            if (!MobHp.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedMobDmgQaIfRequested()
-        {
-            MobDmg.SeedQaIfRequested();
-            if (!MobDmg.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedMobRangedDistanceQaIfRequested()
-        {
-            MobRangedDistance.SeedQaIfRequested();
-            if (!MobRangedDistance.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            int pick = 0;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { pick = i; break; }
-            _selectedCharacter = pick;
-            _detailPage = 1;
-        }
-
-        void SeedMobShotCadenceQaIfRequested()
-        {
-            MobShotCadence.SeedQaIfRequested();
-            if (!MobShotCadence.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { _selectedCharacter = i; break; }
-            _detailPage = 1;
-        }
-
         void SeedTowerEndingQaIfRequested()
         {
             if (Environment.GetEnvironmentVariable("QA_TOWER_END") != "1") return;
@@ -1260,35 +666,11 @@ namespace AshesToStars
             if (_selectedCharacter < 0) _selectedCharacter = 0;
         }
 
-        void SeedMobProjectileSpeedQaIfRequested()
-        {
-            MobProjectileSpeed.SeedQaIfRequested();
-            if (!MobProjectileSpeed.ShowQa) return;
-            var roster = LifeSystem.GetCharacters();
-            if (roster.Count == 0) return;
-            for (int i = 0; i < roster.Count; i++)
-                if (!roster[i].IsDeleted) { _selectedCharacter = i; break; }
-            _detailPage = 1;
-        }
-
         void SeedSoloRaidQaIfRequested()
         {
             if (Environment.GetEnvironmentVariable("QA_SOLO_CLEAR") != "1") return;
             SoloRaidClear.SeedQaIfRequested();
             if (_selectedCharacter < 0) _selectedCharacter = 0;
-        }
-
-
-        void SeedFusionEntryQaIfRequested()
-        {
-            if (Environment.GetEnvironmentVariable("QA_FUSION_ENTRY") != "1") return;
-            // 안내 줄 샷: 합성 탭만. DrawFusion(소멸 확인)으로 들어가지 않는다.
-            Environment.SetEnvironmentVariable("QA_FUSION", "1");
-            Fusion.SeedQaIfRequested();
-            Environment.SetEnvironmentVariable("QA_FUSION", null);
-            _listPage = 1;
-            _fusing = false;
-            _selectedCharacter = -1;
         }
 
         void SeedFusionQaIfRequested()
@@ -1402,14 +784,14 @@ namespace AshesToStars
             var fodder = roster[_fusionMaterial];
             long cost = Fusion.CostCopper();
             Info(r, 0, $"{fodder.Name} ({fodder.Job}) → {chosen.Name}");
-            Info(r, 1, $"이 캐릭터는 되돌릴 수 없습니다. 영묘에도 가지 않습니다(§3) · {EstateStatusHud.ShortCopper(cost)}");
+            Info(r, 1, $"이 캐릭터는 되돌릴 수 없습니다. 영묘에도 가지 않습니다(§3) · {Economy.FormatCurrency(cost)}");
             if (GameState.Wallet.Copper < cost)
             {
                 Locked(r, 2, "소멸시키고 흡수한다",
-                       $"골드 {EstateStatusHud.ShortCopper(cost)} 필요 — 지금 {EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}(§18-7)");
+                       $"골드 {Economy.FormatCurrency(cost)} 필요 — 지금 {GameState.WalletText}(§18-7)");
             }
             else if (Row(r, 2, "소멸시키고 흡수한다",
-                         $"결과는 랜덤 1개 · {EstateStatusHud.ShortCopper(cost)}. 슬롯이 차면 본 뒤에 교체/포기"))
+                         $"결과는 랜덤 1개 · {Economy.FormatCurrency(cost)}. 슬롯이 차면 본 뒤에 교체/포기"))
             {
                 uint seed = (uint)(Environment.TickCount ^ fodder.Id.GetHashCode());
                 if (Fusion.TryFuse(chosen, fodder, seed, out var picked))
@@ -1457,23 +839,16 @@ namespace AshesToStars
             // 전투력은 오른쪽 정보 패널로 내렸다 — 헤더 둘째 줄(전투력)이 초상 위
             // 「투구」 링 라벨과 같은 좁은 상단 밴드를 다퉈 겹쳤다(폴리싱, 겹침 결함).
             // 제목은 초상 위 좌측에 둔다. 목숨 하트는 정보 칸 Lv 줄 오른쪽으로 내렸다(아래 참조).
-            Hint(new Rect(chrome.x, chrome.y, 360f, 24f), $"{title} · {CharHud.JobFace(ch.Job)}");
+            Hint(new Rect(chrome.x, chrome.y, 360f, 24f), $"{title} · {ch.Job}");
 
-            var face = CharHud.EquipPortrait(stage);
+            var face = UiPages.LargeLook(stage);
             var tint = ch.IsDeleted ? new Color(1f, 1f, 1f, 0.4f) : (Color?)null;
-            DrawSelectedLook(face, ch.Job, ch.Advancement, tint);
+            DrawSelectedLook(face, ch.Job, tint);
             UiAtlas.Draw(new Rect(face.center.x - 16f, face.yMax - 18f, 32f, 32f),
                 UiAtlas.RoleKey(ch.Job));
 
             var center = face.center;
             CharHud.EquipRingFit(stage, face, out float ringX, out float ringY);
-            // 라벨이 나가 있는 실제 평평한 내부 — 안쪽 금테 선(stage↔chrome 중간)까지.
-            // 정보 칸(infoTop·infoBottom)과 같은 보간선이라 한 선을 맞춘다. 이 선 안으로만
-            // 클램프하지 않으면 좌측 라벨(장갑·갑옷)이 장식 여백에 걸리고 신발은 하단
-            // 장식 위에 묻힌다(실측 2026-08-24).
-            var flat = Rect.MinMaxRect(
-                Mathf.Lerp(stage.x, chrome.x, 0.5f), Mathf.Lerp(stage.y, chrome.y, 0.5f),
-                Mathf.Lerp(stage.xMax, chrome.xMax, 0.5f), Mathf.Lerp(stage.yMax, chrome.yMax, 0.5f));
             for (int i = 0; i < RingSlots.Length; i++)
             {
                 var slot = RingSlots[i];
@@ -1481,16 +856,6 @@ namespace AshesToStars
                 var slotRect = UiPages.ClampIn(stage,
                     UiPages.SlotOnRing(center, ringX, ringY, deg, UiPages.EquipSlotSize));
                 var worn = Equipment.Worn(ch, slot);
-                // 클릭을 DrawGear보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
-                // FieldScreen 옛 버그(caa5b84c)와 같이 아이콘에 먹혀 해제·필터가 안 먹었다.
-                var ev = Event.current;
-                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                    && slotRect.Contains(ev.mousePosition) && !ch.IsDeleted)
-                {
-                    if (worn != null) Equipment.TryUnequip(ch, slot);
-                    _bagFilter = (int)slot;
-                    ev.Use();
-                }
                 ItemAtlas.DrawGear(slotRect, worn);
                 if (worn == null)
                 {
@@ -1499,8 +864,13 @@ namespace AshesToStars
                             slotRect.width - inset * 2f, slotRect.height - inset * 2f),
                         ItemAtlas.KeyForSlot(slot), new Color(1f, 1f, 1f, 0.28f));
                 }
-                var cap = CharHud.EquipLabel(stage, slotRect, flat);
+                var cap = CharHud.EquipLabel(stage, slotRect);
                 Hint(cap, CharHud.SlotLabel(slot, worn));
+                if (GUI.Button(slotRect, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)
+                {
+                    if (worn != null) Equipment.TryUnequip(ch, slot);
+                    _bagFilter = (int)slot;
+                }
             }
 
             float infoX = Mathf.Max(face.xMax + 36f, stage.x + 300f);
@@ -1510,62 +880,34 @@ namespace AshesToStars
             // 잘렸고, 옛 세션은 이를 피하려 top을 프레임 밖으로 끌어올려(pull-up) 첫 두 줄(Lv·xp)이 탭 옆에
             // 삐져나가는 넘침 결함을 만들었다. 실제 평평한 내부는 안쪽 금테 선(≈stage와 chrome의 중간)까지다 —
             // stage↔chrome를 0.5로 보간해 그 선에 맞추면 넘침 없이 ≈13줄을 담아 장비 전부·가방이 보인다.
-            // 꼭대기도 CharHud.InfoTop — 바닥과 같은 실측 선(pad 2/3)에서 4px 아래. 옛 0.62 보간은
-            // 선보다 위라 목숨 하트·Lv 줄이 상단 금테에 얹혔다(플레이모드 픽셀 재단 2026-08-24).
-            float infoTop = CharHud.InfoTop(stage, chrome);
-            // 바닥은 CharHud.InfoBottom — 실측하면 안쪽 금테 선은 pad의 ≈2/3 지점(0.5 flat보다
-            // 16px 위)이라 옛 0.45·0.5 어느 쪽이든 마지막 줄이 선에 덮였다(플레이모드 픽셀 재단
-            // 2026-08-24). 실제 선(0.667)에서 8px 위로 끊고, 줄 피치를 20→18로 낮춰 14줄+가방을
-            // 다 담는다(아래 DrawInspectInfo 참조).
-            float infoBottom = CharHud.InfoBottom(stage, chrome);
+            float infoTop = Mathf.Lerp(stage.y, chrome.y, 0.62f);
+            float infoBottom = Mathf.Lerp(stage.yMax, chrome.yMax, 0.45f);
             var info = new Rect(infoX, infoTop, stage.xMax - infoX - 14f, infoBottom - infoTop);
             // 목숨 하트는 정보 칸 맨 윗줄(Lv·경험)의 오른쪽에 붙여 헤더로 읽힌다 — chrome.xMax 우측 끝에
             // 두던 옛 위치는 정보 칸 중간(무기·없음 줄)에 떠 라벨 없이 겹쳐 보였다(겹침 결함).
             UiAtlas.DrawHearts(new Rect(info.xMax - 76f, infoTop, 76f, 22f),
                 ch.DeathCount, ch.IsDeleted, ch.MaxLives);
-            DrawInspectInfoScrolled(info, ch);
+            DrawInspectInfo(info, ch);
 
             var bar = new Rect(r.x, r.yMax - 48f, r.width, 44f);
             var actions = UiPages.Grid(bar, 2, 1, 12f);
             if (CompactAction(actions[0], "자동 장착", "sword") && !ch.IsDeleted)
                 AutoEquip(ch);
             CompactAction(actions[1],
-                $"{EstateStatusHud.ShortCopper(GameState.Wallet.Copper)}  ·  석 {GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone)}",
+                $"{Economy.FormatCurrency(GameState.Wallet.Copper)}  ·  석 {GameState.Bag.GetCount(Economy.LifeItem.EnhanceStone)}",
                 "gold", locked: true);
-        }
-
-        /// <summary>
-        /// 장비 탭 정보 칸도 옛 14줄 예산이라 가방을 8칸만 보여줬다(오너 2026-08-25
-        /// 「정보보기 불편」). 넉넉한 가상 높이를 스크롤로 보여 가방 전체·장비 줄이 끝까지
-        /// 도달하게 한다. QA_NO_CHAR_SCROLL이면 옛 잘림 경로(네거티브).
-        /// </summary>
-        void DrawInspectInfoScrolled(Rect r, CharacterRecord ch)
-        {
-            if (CharHud.ScrollBlocked)
-            {
-                DrawInspectInfo(r, ch);
-                return;
-            }
-            // 표제~장비 6줄 ≈ 252px + 가방 60칸(4열 15행 × 50px) = 1002px — 여유 1400px.
-            const float contentH = 1400f;
-            var view = new Rect(0f, 0f, Mathf.Max(40f, r.width - 16f), contentH);
-            _infoScroll = GUI.BeginScrollView(r, _infoScroll, view, GUIStyle.none, GUIStyle.none);
-            DrawInspectInfo(new Rect(0f, 0f, view.width, contentH), ch);
-            GUI.EndScrollView();
-            _infoScroll = UiAtlas.DrawVScroll(r, _infoScroll, contentH, "info");
         }
 
         void DrawInspectInfo(Rect r, CharacterRecord ch)
         {
             float y = r.y;
-            // 줄 간격 18f — 정보 칸은 실제 금테 선(pad 2/3, 실측 2026-08-24) 안쪽 ≈268px에
-            // 14줄(표제·xp·전투력·상태·전직·편성·장착 헤더·장비 6·가방)을 담는다. 20f였다가
-            // 바닥을 실제 선 위 8px로 올리며 14줄+가방이 다 들어오도록 낮췄다(22f→20f 사례와 같은 계열).
+            // 줄 간격 20f — 정보 칸은 안쪽 금테 안 ≈275px에 14줄(Lv·xp·전투력·상태·장착 헤더·
+            // 장비 6슬롯·가방§11)을 담아야 해 22f면 마지막 가방 줄이 넘쳐 잘렸다(폴리싱, 잘림 결함).
             void Line(string text)
             {
-                if (y + 16f > r.yMax) return;
-                Hint(new Rect(r.x, y, r.width, 18f), text);
-                y += 18f;
+                if (y + 18f > r.yMax) return;
+                Hint(new Rect(r.x, y, r.width, 20f), text);
+                y += 20f;
             }
 
             Line(ExpText(ch));
@@ -1575,7 +917,7 @@ namespace AshesToStars
                 float ratio = need <= 0f ? 0f : Mathf.Clamp01(ch.Exp / (float)need);
                 UiAtlas.DrawMeter(new Rect(r.x, y, Mathf.Min(220f, r.width), 16f),
                     "xp_frame", ratio, new Color(0.45f, 0.72f, 1f));
-                y += 18f;
+                y += 20f;
             }
             Line($"전투력  {CombatPower(ch):N0}");
             if (ch.IsDeleted)
@@ -1600,12 +942,6 @@ namespace AshesToStars
             if (!ch.IsDeleted && ch.PendingBoon >= 0)
                 Line($"보류 {Fusion.LabelOf((BoonId)ch.PendingBoon)}");
             if (EquipJob.ShowQa) Line(EquipJob.Line());
-            if (EquipLevel.ShowQa)
-            {
-                Line(EquipLevel.Line());
-                string deny = EquipLevel.SeedWhyNot();
-                if (!string.IsNullOrEmpty(deny)) Line(deny);
-            }
             if (BagSlots.ShowQa) Line(BagSlots.Line());
             if (GearOpt.ShowQa || GearOpt.ShowListQa)
             {
@@ -1635,23 +971,12 @@ namespace AshesToStars
                       + (string.IsNullOrEmpty(opt) ? "" : " · " + opt));
             }
 
-            // 4f — 장비 블록과 가방 줄 사이 여백. 6f였다가 바닥을 실제 금테 선(pad 2/3) 위 8px로
-            // 올린 뒤에도 가방 줄이 남도록 4f로.
-            y += 4f;
+            y += 6f;
             var bag = Equipment.Unequipped();
             int filled = 0;
             for (int i = 0; i < bag.Count; i++)
                 if (_bagFilter < 0 || (int)bag[i].Slot == _bagFilter) filled++;
             Line(BagSlots.Line() + (filled != bag.Count ? $" · 이 칸 {filled}" : ""));
-            const float tabH = 22f, tabGap = 4f;
-            int tabCount = 1 + Equipment.SlotCount;
-            float tabW = (r.width - tabGap * (tabCount - 1)) / tabCount;
-            DrawBagFilterTab(new Rect(r.x, y, tabW, tabH), "전체", -1);
-            for (int s = 0; s < Equipment.SlotCount; s++)
-                DrawBagFilterTab(
-                    new Rect(r.x + (s + 1) * (tabW + tabGap), y, tabW, tabH),
-                    Equipment.SlotName((EquipSlot)s), s);
-            y += tabH + 6f;
             const float cell = 44f, gap = 6f;
             int col = 0;
             int shown = 0;
@@ -1660,66 +985,41 @@ namespace AshesToStars
                 if (_bagFilter >= 0 && (int)bag[i].Slot != _bagFilter) continue;
                 var gcell = new Rect(r.x + col * (cell + gap), y, cell, cell);
                 if (gcell.yMax > r.yMax) break;
-                // 클릭을 DrawGear보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
-                // 장비 링 옛 버그(6de8dd05)와 같이 아이콘에 먹혀 장착이 안 먹었다.
-                var ev = Event.current;
-                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                    && gcell.Contains(ev.mousePosition) && !ch.IsDeleted)
+                ItemAtlas.DrawGear(gcell, bag[i]);
+                if (GUI.Button(gcell, GUIContent.none, GUIStyle.none) && !ch.IsDeleted)
                 {
                     if (!EquipJob.CanWear(ch, bag[i]))
                         _equipMsg = EquipJob.WhyNot(ch, bag[i]);
-                    else if (!EquipLevel.CanWear(ch, bag[i]))
-                        _equipMsg = EquipLevel.WhyNot(ch, bag[i]);
                     else if (Equipment.TryEquip(ch, bag[i].Id))
                         _equipMsg = "";
-                    ev.Use();
                 }
-                ItemAtlas.DrawGear(gcell, bag[i]);
                 col++;
                 if (col >= 4) { col = 0; y += cell + gap; }
                 shown++;
             }
         }
 
-        static void DrawSelectedLook(Rect target, string job, AdvancementTier tier, Color? tint) =>
-            UiPages.DrawJobLook(target, job, false, tier, tint);
+        static void DrawSelectedLook(Rect target, string job, Color? tint) =>
+            UiPages.DrawJobLook(target, job, false, tint);
 
         void DrawBagFilterTab(Rect tr, string label, int filter)
         {
-            // 클릭을 슬라이스보다 먼저 먹는다. 뒤에 둔 GUI.Button(none)은
-            // 가방 셀 옛 버그(bcc04e45)와 같이 크롬에 먹혀 필터가 안 바뀌었다.
-            var ev = Event.current;
-            if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                && tr.Contains(ev.mousePosition))
-            {
-                _bagFilter = filter;
-                ev.Use();
-            }
             bool on = _bagFilter == filter;
             UiAtlas.DrawSliced(tr, UiAtlas.ButtonKey(false, on), 8f,
                 on ? (Color?)null : new Color(1f, 1f, 1f, 0.62f));
             Hint(tr, label);
+            if (GUI.Button(tr, GUIContent.none, GUIStyle.none))
+                _bagFilter = filter;
         }
 
         bool CompactAction(Rect r, string label, string icon, bool locked = false)
         {
-            bool hit = false;
-            if (!locked)
-            {
-                var ev = Event.current;
-                if (ev != null && ev.type == EventType.MouseDown && ev.button == 0
-                    && r.Contains(ev.mousePosition))
-                {
-                    hit = true;
-                    ev.Use();
-                }
-            }
             var tint = locked ? new Color(1f, 1f, 1f, 0.55f) : (Color?)null;
             UiAtlas.DrawSliced(r, UiAtlas.ButtonKey(false, false), 10f, tint);
             ItemAtlas.DrawHud(new Rect(r.x + 8f, r.y + 6f, 32f, 32f), icon, tint);
             Hint(new Rect(r.x + 44f, r.y + 10f, r.width - 52f, 24f), label);
             if (locked) return false;
-            return hit;
+            return GUI.Button(r, GUIContent.none, GUIStyle.none);
         }
 
         static void AutoEquip(CharacterRecord ch)
@@ -1732,7 +1032,6 @@ namespace AshesToStars
                 {
                     if ((int)bag[i].Slot != s) continue;
                     if (!EquipJob.CanWear(ch, bag[i])) continue;
-                    if (!EquipLevel.CanWear(ch, bag[i])) continue;
                     Equipment.TryEquip(ch, bag[i].Id);
                     break;
                 }

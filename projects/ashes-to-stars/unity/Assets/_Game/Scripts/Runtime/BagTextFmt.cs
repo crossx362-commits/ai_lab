@@ -42,7 +42,7 @@ namespace AshesToStars
         {
             if (n <= 0) return "";
             string label = GameState.Label(it);
-            int cap = Economy.Capacity(it);
+            int cap = Economy.ItemCapacity[it];
             if (Blocked || !Unlimited(cap))
                 return $"{label} {n}/{cap}";
             return $"{label} {n}";

@@ -12,6 +12,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"/Users/junholee/ai_lab/projects/ai-team/skills/마루_게임개발/tools/autopilot_stop_hook.py\"",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   }
 }

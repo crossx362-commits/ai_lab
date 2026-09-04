@@ -83,20 +83,6 @@ namespace AshesToStars
                 && inner.yMin + e >= well.yMin && inner.yMax - e <= well.yMax;
         }
 
-        /// <summary>
-        /// 그려진 크롬 기준 판정. DrawSliced·CardLayout이 maxPad로 금테를 얇게 캡핑한 뒤
-        /// (<see cref="UiPages.CardPad"/>) 기본 오버로드는 무캡 절편을 재므로,
-        /// 카드 검증은 반드시 이 오버로드로 **같은 인자**를 써야 한다(67664c3a 이후 계약).
-        /// </summary>
-        public static bool FitsInContent(Rect target, Rect inner, string key, float extra, float maxPad)
-        {
-            if (inner.width < 1f || inner.height < 1f) return true;
-            var well = ContentRect(target, key, extra, maxPad);
-            const float e = 0.6f;
-            return inner.xMin + e >= well.xMin && inner.xMax - e <= well.xMax
-                && inner.yMin + e >= well.yMin && inner.yMax - e <= well.yMax;
-        }
-
         static readonly Dictionary<string, Rect> Pieces = new Dictionary<string, Rect>
         {
             // 상단: 하단 고정바 5종
@@ -527,55 +513,6 @@ namespace AshesToStars
                 GUI.color = saved;
             }
             return framed;
-        }
-
-        static string _vScrollDrag;
-        static float _vScrollGrab;
-
-        /// <summary>세로 스크롤 트랙/썸. 기본 GUI 스크롤바 대신 panel+DrawMeter.</summary>
-        public static Vector2 DrawVScroll(Rect view, Vector2 scroll, float contentH, string id)
-        {
-            const float barW = 14f;
-            float viewH = view.height;
-            float max = Mathf.Max(0f, contentH - viewH);
-            var track = new Rect(view.xMax - barW, view.y, barW, viewH);
-            DrawSliced(track, "panel", 8f, new Color(1f, 1f, 1f, 0.9f));
-            float thumbH = max <= 0f
-                ? viewH
-                : Mathf.Clamp(viewH * viewH / Mathf.Max(1f, contentH), 28f, viewH);
-            float travel = Mathf.Max(0f, track.height - thumbH);
-            float t = max > 0f ? Mathf.Clamp01(scroll.y / max) : 0f;
-            var thumb = new Rect(track.x + 1f, track.y + travel * t, track.width - 2f, thumbH);
-            DrawMeter(thumb, "hp_frame", 1f, new Color(0.92f, 0.72f, 0.28f));
-
-            var ev = Event.current;
-            if (ev != null && ev.button == 0)
-            {
-                if (ev.type == EventType.MouseDown && track.Contains(ev.mousePosition))
-                {
-                    _vScrollDrag = id;
-                    if (thumb.Contains(ev.mousePosition))
-                        _vScrollGrab = ev.mousePosition.y - thumb.y;
-                    else
-                    {
-                        _vScrollGrab = thumbH * 0.5f;
-                        float y = ev.mousePosition.y - track.y - _vScrollGrab;
-                        scroll.y = travel > 0f ? max * Mathf.Clamp01(y / travel) : 0f;
-                    }
-                    ev.Use();
-                }
-                if (ev.type == EventType.MouseDrag && _vScrollDrag == id)
-                {
-                    float y = ev.mousePosition.y - track.y - _vScrollGrab;
-                    scroll.y = travel > 0f ? max * Mathf.Clamp01(y / travel) : 0f;
-                    ev.Use();
-                }
-                if (ev.type == EventType.MouseUp && _vScrollDrag == id)
-                    _vScrollDrag = null;
-            }
-            scroll.x = 0f;
-            scroll.y = Mathf.Clamp(scroll.y, 0f, max);
-            return scroll;
         }
 
         static Texture2D _pixel;

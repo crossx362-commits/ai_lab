@@ -51,7 +51,9 @@ namespace AshesToStars
         {
             var go = new GameObject("BossAutoAttackSelfCheck");
             go.SetActive(false);
-            party = TestAttach.AttachWithAwake<global::W3Party>(go, p => { p.GameMode = true; });
+            party = go.AddComponent<global::W3Party>();
+            party.GameMode = true;
+            Invoke(party, "Awake");
             party.ApplyGameParty();
             var configure = typeof(global::W3Party).GetMethod("ConfigureBossTargets",
                 BindingFlags.Instance | BindingFlags.NonPublic);
@@ -73,6 +75,13 @@ namespace AshesToStars
             for (int i = 0; i < n; i++) tick.Invoke(party, new object[] { dt });
         }
 
+        static void Invoke(object target, string name)
+        {
+            var method = target.GetType().GetMethod(name,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Require(method != null, $"{target.GetType().Name}.{name} 없음");
+            method.Invoke(target, null);
+        }
 
         static void Require(bool condition, string message)
         {

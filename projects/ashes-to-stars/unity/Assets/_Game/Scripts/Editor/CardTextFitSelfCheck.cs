@@ -110,7 +110,7 @@ namespace AshesToStars
             // FieldScreen이 실제로 넣는 가장 긴 문구들. WORKLOG가 지목한 잘림 두 건이 여기 있다.
             // ⚠️ 잠긴 카드는 DrawCard가 런타임에 「잠김 — 」을 앞에 붙인다. 그걸 빼고 재면
             //    점검은 통과하는데 화면은 잘린다 — 실제로 처음에 그렇게 놓쳤다(오너 스크린샷).
-            Fits(dock[0], "사냥 시작", FieldDockCap.Hunt(), "도크[0]");
+            Fits(dock[0], "사냥 시작", "잡몹은 자동, 보스는 수동 지휘(§5)", "도크[0]");
             Fits(dock[1], "던전 입장", FieldDockCap.Dungeon(), "도크[1]");
             Fits(dock[2], "9150골드 7실버 50쿠퍼",
                 "잠김 — 부활초 3/3 · 환생석 3", "도크[2]");

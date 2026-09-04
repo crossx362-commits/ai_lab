@@ -4,17 +4,17 @@ using UnityEngine;
 namespace AshesToStars
 {
     /// <summary>
-    /// 기획서 §3 1차 전직이 그림을 어디서 가져오는지 검사한다.
-    /// 기본 단계는 5직업 시트, 1차·2차는 전용 폴더(guardian 등). 마법사는 mage.
+    /// 기획서 §3 1차 전직 11종이 기본 5장과 같은 그림을 쓰는지 검사한다.
+    /// 마법사는 기본 직업이라 전용 폴더가 없어도 된다.
     /// </summary>
     public static class AdvLookSelfCheck
     {
-        static readonly (string job, string dir, string baseDir)[] Need =
+        static readonly (string job, string dir)[] Need =
         {
-            ("수호기사", "guardian", "tank"), ("광전사", "berserker", "tank"),
-            ("검사", "swordsman", "dps"), ("궁수", "archer", "dps"), ("소환사", "summoner", "mage"),
-            ("사제", "priest", "healer"), ("드루이드", "druid", "healer"),
-            ("음유시인", "bard", "buffer"), ("주술사", "shaman", "buffer"), ("정령사", "elemental", "buffer"),
+            ("수호기사", "guardian"), ("광전사", "berserker"),
+            ("검사", "swordsman"), ("궁수", "archer"), ("소환사", "summoner"),
+            ("사제", "priest"), ("드루이드", "druid"),
+            ("음유시인", "bard"), ("주술사", "shaman"), ("정령사", "elemental"),
         };
 
         [MenuItem("Ashes to Stars/QA/Adv Look Self Check")]
@@ -32,30 +32,20 @@ namespace AshesToStars
 
             Check(UiPages.LookDir("마법사") == "mage", "마법사는 기본 mage");
             Check(UiPages.LookDir("탱") == "tank", "기본 탱은 tank");
-            Check(UiPages.DedicatedLookDir("사신") == "reaper"
-                  && UiPages.DedicatedLookDir("성기사") == "paladin"
-                  && UiPages.DedicatedLookDir("시간술사") == "chrono"
-                  && UiPages.DedicatedLookDir("용기사") == "dragonknight",
-                "특수 4종이 전용 폴더를 갖는다");
-            Check(Resources.Load<Texture2D>("sprites/reaper/reaper_idle_00") != null
-                  && Resources.Load<Texture2D>("sprites/paladin/paladin_idle_00") != null
-                  && Resources.Load<Texture2D>("sprites/chrono/chrono_idle_00") != null
-                  && Resources.Load<Texture2D>("sprites/dragonknight/dragonknight_idle_00") != null,
-                "특수 4종 idle이 Resources에 있다");
+            Check(UiPages.DedicatedLookDir("수호기사") == "guardian", "수호기사 전용 폴더명");
             for (int i = 0; i < Need.Length; i++)
             {
-                Check(UiPages.DedicatedLookDir(Need[i].job) == Need[i].dir,
-                    Need[i].job + " 전용 폴더명 계약은 " + Need[i].dir);
-                Check(UiPages.BaseLookDir(Need[i].job) == Need[i].baseDir,
-                    Need[i].job + " 기본 폴더는 " + Need[i].baseDir);
-                Check(UiPages.LookDir(Need[i].job) == Need[i].baseDir,
-                    Need[i].job + " 티어 없는 호출은 기본 " + Need[i].baseDir);
-                Check(UiPages.LookDir(Need[i].job, AdvancementTier.Basic) == Need[i].baseDir,
-                    Need[i].job + " 기본 단계는 " + Need[i].baseDir);
-                string dedicated = $"sprites/{Need[i].dir}/{Need[i].dir}_idle_00";
-                Check(Resources.Load<Texture2D>(dedicated) != null, dedicated + " 없음 — 전직 그림을 못 그린다");
-                Check(UiPages.LookDir(Need[i].job, AdvancementTier.First) == Need[i].dir,
-                    Need[i].job + " 1차는 전용 " + Need[i].dir);
+                string path = $"sprites/{Need[i].dir}/{Need[i].dir}_idle_00";
+                var tex = Resources.Load<Texture2D>(path);
+                Check(tex != null, path + " 없음 — 전직이 기본형과 같은 그림");
+                if (tex == null) continue;
+                Check(UiPages.LookDir(Need[i].job) == Need[i].dir,
+                    Need[i].job + " 이 " + UiPages.LookDir(Need[i].job) + " 를 본다");
+                string baseDir = UiPages.BaseLookDir(Need[i].job);
+                var baseTex = Resources.Load<Texture2D>(
+                    $"sprites/{baseDir}/{baseDir}_idle_00");
+                Check(baseTex == null || tex != baseTex,
+                    Need[i].job + " 전용이 기본 " + baseDir + " 과 같다");
             }
 
             if (fail == 0) Debug.Log("[AdvLookSelfCheck] PASS");

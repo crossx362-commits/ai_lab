@@ -15,11 +15,6 @@ namespace AshesToStars
         public const float OldBodyH = 540f;
         public const float DockH = 200f;
         public const float DockGap = 10f;
-        /// <summary>
-        /// 전폭 2×2 카드는 좌우가 내비 옆으로 빠진다.
-        /// 2px면 금테가 내비 윗변에 붙어 한 덩어리로 읽힌다(실측 2026-08-24 worldmap_hud_nav_shots/before.png).
-        /// </summary>
-        public const float NavGap = 12f;
         public const int DockCols = 2;
         public const int DockRows = 2;
         public const int OldCols = 2;
@@ -55,31 +50,18 @@ namespace AshesToStars
 
         public static string Line() => Blocked
             ? "카드가 월드맵을 가린다"
-            : "HUD는 월드맵을 가리지 않는다 — 도크는 내비 위(§16)";
-
-        /// <summary>내비 플레이트 윗변. 도크 아랫변이 이보다 아래면 금테가 먹힌다(§16).</summary>
-        public static float NavPlateTop(float screenH = 720f) =>
-            UiPages.NavPlateTop(GameFlow.BottomBar.Length, 1280f, screenH);
-
-        /// <summary>
-        /// 새 길 도크 상자. 영지 PaletteBar·필드 도크와 같이 내비 플레이트 위에 둔다 —
-        /// body.yMax에 붙이면 하단 금테가 도크에 먹힌다(실측 1280×720, 카드 yMax 640 · 플레이트 636).
-        /// </summary>
-        public static Rect Dock(Rect body, float screenH = 720f)
-        {
-            float yMax = Mathf.Min(body.yMax, NavPlateTop(screenH) - NavGap);
-            return new Rect(body.x, yMax - DockH, body.width, DockH);
-        }
+            : "HUD는 월드맵을 가리지 않는다(§16)";
 
         /// <summary>
         /// 성계 이동 · 침략 · 랭킹 · 수비대 순서.
         /// 막히면 옛 AfterPlate 2×2 전폭, 아니면 아래 2×2 도크.
         /// </summary>
-        public static Rect[] Cards(Rect body, float screenH = 720f)
+        public static Rect[] Cards(Rect body)
         {
             if (Blocked)
                 return UiPages.Grid(WorldStar.AfterPlate(body), OldCols, OldRows, 16f);
-            return UiPages.Grid(Dock(body, screenH), DockCols, DockRows, DockGap);
+            var dock = new Rect(body.x, body.yMax - DockH, body.width, DockH);
+            return UiPages.Grid(dock, DockCols, DockRows, DockGap);
         }
 
         public static void SeedQaIfRequested()

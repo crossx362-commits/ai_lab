@@ -63,7 +63,7 @@ namespace AshesToStars
         /// </summary>
         public long Exp { get; set; }
 
-        /// <summary>누적 사망 횟수 (0~상한, 상한이면 삭제된 상태). 상한은 DeathCap.Limit(§4).</summary>
+        /// <summary>누적 사망 횟수 (0~3, 3이면 삭제된 상태).</summary>
         public int DeathCount { get; set; }
 
         /// <summary>회복 종료 시각 (Unix 타임스탬프). 0이면 회복 중이 아님.</summary>
@@ -84,8 +84,8 @@ namespace AshesToStars
         /// </summary>
         public bool IsSpecialJob { get; set; }
 
-        /// <summary>일반은 DeathCap.Limit(§4 기본 3), 특수 직업 1목숨(§3).</summary>
-        public int MaxLives => IsSpecialJob ? 1 : DeathCap.Limit();
+        /// <summary>일반 3목숨, 특수 직업 1목숨(§3).</summary>
+        public int MaxLives => IsSpecialJob ? 1 : 3;
 
         /// <summary>합성으로 흡수한 패시브(BoonId). 상한 4(§18-7).</summary>
         public readonly System.Collections.Generic.List<int> AbsorbedBoons = new System.Collections.Generic.List<int>();
@@ -135,12 +135,6 @@ namespace AshesToStars
 
         /// <summary>누적 출전 초(§4). 전투·일정 사냥이 더한다. 옛 저장은 0.</summary>
         public long SortieSeconds { get; set; }
-
-        /// <summary>성장 시작 벽시계 Unix. V4 표본은 30분 가드. 0이면 미기록(옛 저장).</summary>
-        public long GrowthStartUnix { get; set; }
-
-        /// <summary>환생 때 가져온 스킬 1개(§4). 없으면 직업 표 전체(옛 화면).</summary>
-        public string KeptSkill { get; set; }
 
         public string PackMemorial()
         {
@@ -242,8 +236,6 @@ namespace AshesToStars
             IsDeleted = false;
             IsRescue = false;
             SortieSeconds = 0;
-            KeptSkill = "";
-            GrowthStartUnix = LifeSystem.NowUnix();
         }
     }
 
@@ -386,10 +378,6 @@ namespace AshesToStars
                 c.MemorialParty = p.Length > 14 ? p[14] : "";
                 // 16번째 필드는 누적 출전 초. 없던 저장은 0.
                 c.SortieSeconds = p.Length > 15 ? SafeLong(p[15], 0) : 0;
-                // 17번째 필드는 환생 계승 스킬. 없던 저장은 빈 칸(직업 표 전체).
-                c.KeptSkill = p.Length > 16 ? RebirthSkill.Pack(p[16]) : "";
-                // 18번째 필드는 성장 시작 벽시계. 없던 저장·0은 미기록(표본 아님). Now는 신규만.
-                c.GrowthStartUnix = p.Length > 17 ? SafeLong(p[17], 0) : 0;
                 _characters.Add(c);
                 legacyIndex++;
             }
@@ -437,9 +425,7 @@ namespace AshesToStars
                   .Append('\t').Append(c.IsSpecialJob ? '1' : '0')
                   .Append('\t').Append(c.PackMemorial())
                   .Append('\t').Append(SanitizeMemorialParty(c.MemorialParty))
-                  .Append('\t').Append(c.SortieSeconds)
-                  .Append('\t').Append(RebirthSkill.Pack(c.KeptSkill))
-                  .Append('\t').Append(c.GrowthStartUnix).Append('\n');
+                  .Append('\t').Append(c.SortieSeconds).Append('\n');
             PlayerPrefs.SetString(K_ROSTER, sb.ToString());
         }
 
@@ -523,9 +509,6 @@ namespace AshesToStars
         /// <summary>기본직업 5종. 층 클리어 보상·시작 로스터가 같은 이름을 쓴다(오너 21:38·§3).</summary>
         public static readonly string[] BasicJobs = { "탱", "딜", "마딜", "힐", "버퍼" };
 
-        /// <summary>특수 직업 4종(§3). 레이드 확률 영입·증표 전직이 같은 이름을 쓴다.</summary>
-        public static readonly string[] SpecialJobs = { "사신", "성기사", "시간술사", "용기사" };
-
         public static bool IsBasicJob(string job)
         {
             if (string.IsNullOrEmpty(job)) return false;
@@ -533,23 +516,6 @@ namespace AshesToStars
                 if (BasicJobs[i] == job) return true;
             return false;
         }
-
-        public static bool IsNamedSpecialJob(string job)
-        {
-            if (string.IsNullOrEmpty(job)) return false;
-            for (int i = 0; i < SpecialJobs.Length; i++)
-                if (SpecialJobs[i] == job) return true;
-            return false;
-        }
-
-        public static string SpecialJobFrom(string job) => job switch
-        {
-            "탱" or "수호기사" or "성기사" => "성기사",
-            "힐" or "사제" or "드루이드" => "성기사",
-            "마딜" or "마법사" or "소환사" or "용기사" => "용기사",
-            "버퍼" or "음유시인" or "주술사" or "정령사" or "시간술사" => "시간술사",
-            _ => "사신",
-        };
 
         public static string BasicJobLabel(string job) => job switch
         {
@@ -560,22 +526,6 @@ namespace AshesToStars
             "버퍼" => "서포터",
             _ => job ?? "",
         };
-
-        /// <summary>
-        /// 화면에 그리는 직업명. 저장값은 기본직 ID(딜·마딜)라 명부에 그대로 내면
-        /// 플레이스홀더로 읽힌다(실측 2026-08-24, circuit_r69 명부 「딜」「마딜」「힐」).
-        /// 1차가 두 종이면 「검사·궁수」로 붙이고, 세 종(버퍼)는 칸 폭에 「음유시인 외」.
-        /// 이미 전직한 이름(수호기사)은 그대로.
-        /// </summary>
-        public static string JobFace(string job)
-        {
-            if (string.IsNullOrEmpty(job)) return "";
-            if (!FirstAdvancementByBasicJob.TryGetValue(job, out string[] options)
-                || options == null || options.Length == 0)
-                return job;
-            if (options.Length <= 2) return string.Join("·", options);
-            return options[0] + " 외";
-        }
 
         /// <summary>
         /// 시작 로스터의 두 번째(§3). Lv10 기본직업. 같은 역할이면 이름에 숫자를 붙인다.
@@ -615,21 +565,19 @@ namespace AshesToStars
         }
 
         /// <summary>
-        /// 레이드 확률 보상. 특수 직업명(사신·성기사·시간술사·용기사) + 1목숨 플래그.
-        /// 목숨 1·부활초/환생석 불가(§3).
+        /// 레이드 확률 보상. 기본 역할 + 특수 직업 플래그.
+        /// 직업명(사신 등)은 💡라 안 붙인다. 목숨 1·부활초/환생석 불가(§3).
         /// </summary>
         public static CharacterRecord AddSpecialRecruit(string job)
         {
-            if (!IsNamedSpecialJob(job)) job = SpecialJobFrom(job);
-            if (!IsNamedSpecialJob(job)) return null;
+            if (!IsBasicJob(job)) return null;
             EnsureLoaded();
             int n = 0;
             for (int i = 0; i < _characters.Count; i++)
                 if (_characters[i].Name != null && _characters[i].Name.StartsWith("영입특수"))
                     n++;
-            var recruit = new CharacterRecord($"영입특수{job}{n + 1}", job, 1);
+            var recruit = new CharacterRecord($"영입특수{BasicJobLabel(job)}{n + 1}", job, 1);
             recruit.IsSpecialJob = true;
-            recruit.Advancement = AdvancementTier.First;
             _characters.Add(recruit);
             Save();
             return recruit;
@@ -723,46 +671,6 @@ namespace AshesToStars
         }
 
         /// <summary>역할 목표 1회를 기록한다. 추후 전투 이벤트가 이 진입점을 호출한다.</summary>
-        public static bool HasActiveTrial => ActiveFirstTrial != null || ActiveSecondTrial != null;
-        public static bool TrialObjectiveMet =>
-            (ActiveFirstTrial != null && ActiveFirstTrial.ObjectiveMet)
-            || (ActiveSecondTrial != null && ActiveSecondTrial.ObjectiveMet);
-
-        public const string EnvNoTrialBattle = "QA_NO_ADV_BATTLE";
-        public static bool TrialBattleBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoTrialBattle);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>전투 스킬·처치가 시험 목표와 같으면 진행. 다른 행동은 무시(UI 오답 실패와 다름).</summary>
-        public static void NoteCombatSkill(string skillName)
-        {
-            if (!HasActiveTrial || string.IsNullOrEmpty(skillName)) return;
-            FirstTrialAction? mapped = skillName switch
-            {
-                "도발의 함성" or "도발" => FirstTrialAction.Taunt,
-                "성채 방패" or "방패벽" => FirstTrialAction.Guard,
-                "광폭화" => FirstTrialAction.Brace,
-                "일섬" or "강타" or "처치" => FirstTrialAction.Strike,
-                "화염폭풍" or "관통 사격" => FirstTrialAction.Execute,
-                "집중" or "집중 사격" => FirstTrialAction.Mark,
-                "치유의 파동" or "치유" => FirstTrialAction.Heal,
-                "정화" => FirstTrialAction.Cleanse,
-                "기적" or "재생" => FirstTrialAction.Stabilize,
-                "고양" or "진군가" => FirstTrialAction.Inspire,
-                "쇠약" or "저주 중첩" => FirstTrialAction.Weaken,
-                "수호가" => FirstTrialAction.Sustain,
-                _ => (FirstTrialAction?)null,
-            };
-            if (!mapped.HasValue) return;
-            if (ActiveFirstTrial != null) ReportFirstTrialProgress(mapped.Value);
-            if (ActiveSecondTrial != null) ReportSecondTrialProgress(mapped.Value);
-        }
-
         public static bool ReportFirstTrialProgress(FirstTrialAction action)
         {
             if (ActiveFirstTrial == null || ActiveFirstTrial.ObjectiveMet
@@ -917,7 +825,6 @@ namespace AshesToStars
                 gained++;
             }
             if (c.Level >= MaxLevel) c.Exp = 0;   // 만렙은 경험치를 쌓지 않는다
-            if (gained > 0) Sfx.Play(Sfx.Signal.LevelUp);   // §16-10 레벨업은 짧은 상승 3음
             return gained;
         }
 
@@ -1007,17 +914,16 @@ namespace AshesToStars
             return true;
         }
 
-        /// <summary>§4 BalanceConfig.PvP회복시간. QA_NO면 옛 12시간(InvasionState.DefenseRecoverSeconds).</summary>
-        public static long PvpRecoverSeconds() => PvpRecover.Seconds();
+        /// <summary>침략 보호막과 같은 12시간(§15). 한쪽만 바꾸면 무방비 창이 생긴다.</summary>
+        public static long PvpRecoverSeconds() => InvasionState.DefenseRecoverSeconds;
 
         /// <summary>
         /// PvE 사망 회복 초(§3·§18-8). RaceDef.회복시간을 읽는다.
-        /// 인간은 18시간, 나머지·종족표 차단은 BalanceConfig.PvE회복시간(PveRecover).
-        /// PvP 9시간은 보호막 12시간과 어긋나 안 넣는다.
+        /// 인간은 18시간, 나머지 24시간. PvP 9시간은 보호막 12시간과 어긋나 안 넣는다.
         /// </summary>
         public static long PveRecoverSeconds()
         {
-            if (RaceRecoverBlocked) return PveRecover.Seconds();
+            if (RaceRecoverBlocked) return DefaultPveRecoverSeconds;
             if (ForcePveRecoverHours > 0f)
                 return Math.Max(1L, (long)(ForcePveRecoverHours * 3600f));
             try
@@ -1036,7 +942,7 @@ namespace AshesToStars
             }
             return RacePrefs.Get() == RaceId.인간
                 ? HumanPveRecoverSeconds
-                : PveRecover.Seconds();
+                : DefaultPveRecoverSeconds;
         }
 
         public static bool RaceRecoverBlocked
@@ -1069,7 +975,7 @@ namespace AshesToStars
         /// <summary>
         /// 사망을 기록한다.
         /// isPvp가 true면 사망 카운트를 올리지 않고 12시간 회복만 건다(§4·§15).
-        /// 특수 직업 PvP도 소멸하지 않는다(§3). 일반 PvE는 DeathCap.Limit회, 특수 PvE는 1회에 소멸.
+        /// 특수 직업 PvP도 소멸하지 않는다(§3). 일반 PvE는 3회, 특수 PvE는 1회에 소멸.
         /// </summary>
         public static void RegisterDeath(CharacterRecord character, bool isPvp = false)
         {
@@ -1090,46 +996,38 @@ namespace AshesToStars
                 character.RecoveryEndTime = 0;
                 Memorial.Stamp(character);
                 Memorial.Open();
-                V4LoopLog.NotePermadeath(character);
                 Equipment.DestroyEquippedOn(character);
-                Sfx.Play(Sfx.Signal.LastLifeGone);   // §16-10 소멸은 별도 신호음
                 Debug.Log($"[목숨] {character.Name} 특수 직업 즉시 소멸(§3)");
                 Save();
                 return;
             }
 
-            // 회복 기간 — RaceDef.회복시간(인간 18h) · 기본은 PveRecover(§18-8)
+            // 회복 기간 — RaceDef.회복시간(인간 18h, 나머지 24h, §18-8)
             long currentTime = GetCurrentUnixTime();
             character.RecoveryEndTime = currentTime + PveRecoverSeconds();
 
             // 사망 카운트 증가
             character.DeathCount++;
 
-            // 상한 사망 = 삭제 (§4). BalanceConfig.사망상한 — QA_NO면 옛 3.
-            int cap = DeathCap.Limit();
-            if (character.DeathCount >= cap)
+            // 3회 사망 = 삭제 (§4)
+            if (character.DeathCount >= 3)
             {
                 character.IsDeleted = true;
-                character.DeathCount = cap;  // 상한 유지
+                character.DeathCount = 3;  // 상한 유지
                 Memorial.Stamp(character);
                 Memorial.Open();
-                V4LoopLog.NotePermadeath(character);
                 Equipment.DestroyEquippedOn(character);
-                Sfx.Play(Sfx.Signal.LastLifeGone);   // §16-10 소멸은 별도 신호음
-                Debug.Log($"[목숨] {character.Name}이(가) 삭제되었습니다. ({cap}회 사망)");
+                Debug.Log($"[목숨] {character.Name}이(가) 삭제되었습니다. (3회 사망)");
             }
             else
             {
-                // §16-10: 일반 사망은 저음 1회, 마지막 목숨 진입은 위험 경고를 함께 낸다.
-                if (character.DeathCount == cap - 1) Sfx.Play(Sfx.Signal.LastLifeEnter);
-                Sfx.Play(Sfx.Signal.DeathLow);
-                Debug.Log($"[목숨] {character.Name} 사망: {character.DeathCount}/{cap} 회복 기간 시작");
+                Debug.Log($"[목숨] {character.Name} 사망: {character.DeathCount}/3 회복 기간 시작");
             }
 
             Save();
         }
 
-        /// <summary>살아있는 일반 캐릭터에 증표 1장으로 특수 직업을 붙인다(§3).</summary>
+        /// <summary>살아있는 일반 캐릭터에 증표 1장으로 특수 직업을 붙인다(§3). 직업명은 💡라 안 바꾼다.</summary>
         public static bool CanBecomeSpecial(CharacterRecord character)
         {
             if (character == null || character.IsDeleted || character.IsSpecialJob || character.IsRescue)
@@ -1144,11 +1042,8 @@ namespace AshesToStars
             if (!GameState.Consume(Economy.LifeItem.SpecialJobToken))
                 return false;
             character.IsSpecialJob = true;
-            character.Job = SpecialJobFrom(character.Job);
-            if (character.Advancement == AdvancementTier.Basic)
-                character.Advancement = AdvancementTier.First;
             Save();
-            Debug.Log($"[특수직업] {character.Name} → {character.Job} — 1회 사망 시 소멸(§3)");
+            Debug.Log($"[특수직업] {character.Name} 증표 전직 — 1회 사망 시 소멸(§3)");
             return true;
         }
 
@@ -1223,7 +1118,6 @@ namespace AshesToStars
             var rescue = new CharacterRecord($"재건{n + 1}", "딜", 1) { IsRescue = true };
             _characters.Add(rescue);
             Save();
-            V4LoopLog.NoteRebuildOffer(rescue);
             Debug.Log($"[목숨] 긴급 재건 {rescue.Name} (딜 Lv1) — 생존 0명");
             return rescue;
         }

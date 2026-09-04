@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -67,78 +66,6 @@ namespace AshesToStars
 
             _ = nameof(CharacterScreen);
 
-            string charSrc = SrcNoComments.Read(Path.Combine(Application.dataPath,
-                "_Game/Scripts/Runtime/CharacterScreen.cs"));
-            Check(charSrc.Contains("ShortCopper(GameState.Wallet.Copper)")
-                  && charSrc.IndexOf("FormatCurrency(GameState.Wallet.Copper)") < 0,
-                "캐릭터 지갑은 ShortCopper만");
-            Check(charSrc.Contains("ShortCopper(Fusion.CostCopper())")
-                  && charSrc.IndexOf("FormatCurrency(Fusion.CostCopper())") < 0,
-                "합성 안내 줄은 ShortCopper만");
-            Check(charSrc.Contains("ShortCopper(cost)")
-                  && charSrc.IndexOf("FormatCurrency(cost)") < 0,
-                "소멸 비용은 ShortCopper만");
-
-            int split = charSrc.IndexOf("void DrawRosterSplit", StringComparison.Ordinal);
-            int cellFn = charSrc.IndexOf("void DrawRosterCell", StringComparison.Ordinal);
-            Check(split >= 0 && cellFn > split, "DrawRosterSplit·DrawRosterCell가 있다");
-            string splitSrc = (split >= 0 && cellFn > split)
-                ? charSrc.Substring(split, cellFn - split) : "";
-            Check(splitSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
-                  && splitSrc.IndexOf("cell.Contains", StringComparison.Ordinal) >= 0
-                  && splitSrc.IndexOf("_selectedCharacter = i", StringComparison.Ordinal) >= 0,
-                "로스터 셀 클릭은 MouseDown으로 _selectedCharacter를 바꾼다");
-            Check(splitSrc.IndexOf("GUI.Button(cell", StringComparison.Ordinal) < 0,
-                "DrawRosterCell 뒤 GUI.Button(none)을 안 쓴다");
-
-            int studio = charSrc.IndexOf("void DrawEquipStudio", StringComparison.Ordinal);
-            int inspect = charSrc.IndexOf("void DrawInspectInfoScrolled", StringComparison.Ordinal);
-            Check(studio >= 0 && inspect > studio, "DrawEquipStudio가 있다");
-            string studioSrc = (studio >= 0 && inspect > studio)
-                ? charSrc.Substring(studio, inspect - studio) : "";
-            Check(studioSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
-                  && studioSrc.IndexOf("slotRect.Contains", StringComparison.Ordinal) >= 0
-                  && studioSrc.IndexOf("TryUnequip", StringComparison.Ordinal) >= 0
-                  && studioSrc.IndexOf("_bagFilter = (int)slot", StringComparison.Ordinal) >= 0,
-                "장비 링 슬롯 클릭은 MouseDown으로 해제·필터한다");
-            Check(studioSrc.IndexOf("GUI.Button(slotRect", StringComparison.Ordinal) < 0,
-                "DrawGear 뒤 GUI.Button(slotRect none)을 안 쓴다");
-
-            int inspectFn = charSrc.IndexOf("void DrawInspectInfo(Rect", StringComparison.Ordinal);
-            int lookFn = charSrc.IndexOf("static void DrawSelectedLook", StringComparison.Ordinal);
-            Check(inspectFn >= 0 && lookFn > inspectFn, "DrawInspectInfo가 있다");
-            string inspectSrc = (inspectFn >= 0 && lookFn > inspectFn)
-                ? charSrc.Substring(inspectFn, lookFn - inspectFn) : "";
-            Check(inspectSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
-                  && inspectSrc.IndexOf("gcell.Contains", StringComparison.Ordinal) >= 0
-                  && inspectSrc.IndexOf("TryEquip", StringComparison.Ordinal) >= 0,
-                "가방 셀 클릭은 MouseDown으로 장착한다");
-            Check(inspectSrc.IndexOf("GUI.Button(gcell", StringComparison.Ordinal) < 0,
-                "DrawGear 뒤 GUI.Button(gcell none)을 안 쓴다");
-
-            Check(inspectSrc.IndexOf("DrawBagFilterTab", StringComparison.Ordinal) >= 0,
-                "가방 줄이 DrawBagFilterTab을 그린다");
-            int tabFn = charSrc.IndexOf("void DrawBagFilterTab", StringComparison.Ordinal);
-            int compact = charSrc.IndexOf("bool CompactAction", StringComparison.Ordinal);
-            Check(tabFn >= 0 && compact > tabFn, "DrawBagFilterTab이 있다");
-            string tabSrc = (tabFn >= 0 && compact > tabFn)
-                ? charSrc.Substring(tabFn, compact - tabFn) : "";
-            Check(tabSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
-                  && tabSrc.IndexOf("tr.Contains", StringComparison.Ordinal) >= 0
-                  && tabSrc.IndexOf("_bagFilter = filter", StringComparison.Ordinal) >= 0,
-                "가방 필터 탭 클릭은 MouseDown으로 _bagFilter를 바꾼다");
-            Check(tabSrc.IndexOf("GUI.Button(tr", StringComparison.Ordinal) < 0,
-                "DrawBagFilterTab이 GUI.Button(none)을 안 쓴다");
-
-            int autoEq = charSrc.IndexOf("static void AutoEquip", StringComparison.Ordinal);
-            Check(compact >= 0 && autoEq > compact, "CompactAction이 있다");
-            string compactSrc = (compact >= 0 && autoEq > compact)
-                ? charSrc.Substring(compact, autoEq - compact) : "";
-            Check(compactSrc.IndexOf("EventType.MouseDown", StringComparison.Ordinal) >= 0
-                  && compactSrc.IndexOf("r.Contains", StringComparison.Ordinal) >= 0,
-                "CompactAction 클릭은 MouseDown이다");
-            Check(compactSrc.IndexOf("GUI.Button", StringComparison.Ordinal) < 0,
-                "CompactAction이 GUI.Button(none)을 안 쓴다");
             if (_fail == 0) Debug.Log("[CharacterRosterSelfCheck] PASS\n" + _log);
             else Debug.LogError($"[CharacterRosterSelfCheck] FAIL {_fail}건\n" + _log);
             if (_fail > 0) throw new InvalidOperationException(

@@ -12,8 +12,6 @@ namespace AshesToStars
     {
         public const string EnvShow = "QA_AUCTION_HUD";
         public const string EnvNo = "QA_NO_AUCTION_HUD";
-        public const string EnvNoLockDup = "QA_NO_AUCTION_LOCK_DUP";
-        public const string EnvNoPlayerCopy = "QA_NO_AUCTION_HUD_PLAYER_COPY";
         public const float OldBarH = 64f;
         public const float OldGap = 12f;
         public const float SlimH = 36f;
@@ -41,28 +39,6 @@ namespace AshesToStars
             }
         }
 
-        public static bool LockDupBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoLockDup);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>
-        /// 잠긴 경매장 본문 막대. 헤더 부제가 이미 AuctionHubLockReason이라
-        /// 같은 문장을 막대에 다시 그리면 중복이다(플레이모드 샷 circuit_r69).
-        /// QA_NO면 옛 중복. null이면 막대를 그리지 않는다.
-        /// </summary>
-        public static string LockBarLine()
-        {
-            string reason = EstateScreen.AuctionHubLockReason();
-            if (reason == null) return null;
-            if (LockDupBlocked) return reason;
-            return null;
-        }
-
         public static float BarH => Blocked ? OldBarH : SlimH;
 
         public static float Gap => Blocked ? OldGap : SlimGap;
@@ -75,23 +51,16 @@ namespace AshesToStars
             return lines * BarH + (lines - 1) * Gap;
         }
 
-        public static string PlayerCopy(string value)
-        {
-            if (string.IsNullOrEmpty(value)
-                || Environment.GetEnvironmentVariable(EnvNoPlayerCopy) == "1")
-                return value;
-            return System.Text.RegularExpressions.Regex.Replace(
-                value, @"\(§[0-9]+(?:-[0-9]+)?(?:[·,]§[0-9]+(?:-[0-9]+)?)*\)", "");
-        }
-
         public static string Line() => Blocked
             ? "안내 막대가 경매를 가린다"
-            : PlayerCopy("HUD는 경매 배경을 가리지 않는다(§16)");
+            : "HUD는 경매 배경을 가리지 않는다(§16)";
 
         public static string StatusLine()
         {
             long copper = GameState.Wallet.Copper;
-            string money = EstateStatusHud.ShortCopper(copper);
+            string money = copper >= Economy.COPPER_PER_GOLD
+                ? $"{copper / Economy.COPPER_PER_GOLD}골드"
+                : Economy.FormatCurrency(copper);
             return $"{money} · {AuctionState.MineCount}/{AuctionState.MaxMine}";
         }
 

@@ -37,7 +37,13 @@ def main():
         split(SRC / f"sheet_{j}_walk.png", WALK, dest, j)
         split(SRC / f"sheet_{j}_act.png", ACT, dest, j)
         print(j, len(list(dest.glob("*.png"))))
-    # 초상도 전시 시트가 붙인 것. p22 초상으로 덮지 않는다.
+    for n in ("tank","healer"):
+        p = SRC / f"portrait_{n}.png"
+        if p.exists():
+            d = RES / "ui" / "portraits"
+            d.mkdir(parents=True, exist_ok=True)
+            knock_bg.apply_path(p, d / f"{n}.png", crop=True)
+            print("portrait", n)
     for m in MOBS:
         dest = RES / "sprites" / m
         dest.mkdir(parents=True, exist_ok=True)

@@ -9,10 +9,8 @@ namespace AshesToStars
     /// 영공 반경은 §18-13 `1 + 돌파층/10`(100층 = 11). SenseBase가 SenseMul을 읽는다.
     /// 옛 길은 40~112·4~16 선형이라 공식이 소비처 0곳이었다. QA_NO면 옛 선형.
     /// 영공 버프/디버프는 영지에서 켠다. 10층 모양 연출은 💡라 안 넣는다.
-    /// 엘프는 같은 층에서 영공이 120%(§18-9). 탐험 범위 +30%는 WorldExplore가 읽는다.
+    /// 엘프는 같은 층에서 영공이 120%(§18-9). 탐험 범위 +30%는 안개 시스템이 없어 안 넣는다.
     /// 적 디버프는 침략 약탈이 95%로 읽는다(§14). 아군 버프는 광산이 이미 읽는다.
-    /// 디버프 중첩은 최대 2개 별(§18-13·담합 방지 §14). StarDebuffCap.Apply가 자른다.
-    /// 지금은 자기 별 0/1만 있어도 Cap=2·Apply·부제 줄로 소비처를 닫는다.
     /// </summary>
     public static class WorldStar
     {
@@ -178,7 +176,7 @@ namespace AshesToStars
         public static string RaceSenseLine()
         {
             if (RaceSensePercent() == ElfSensePercent && RacePrefs.Get() == RaceId.엘프)
-                return "내 별 영공 +20%";
+                return "엘프 인식 +20%(§18-9)";
             return "종족 인식 배율 없음";
         }
 
@@ -206,24 +204,11 @@ namespace AshesToStars
         public static bool AuraDebuffBlocked =>
             Environment.GetEnvironmentVariable(EnvNoDebuff) == "1";
 
-        /// <summary>자기 별 디버프 on=1 / off=0. 다별 중첩 모델은 아직 없다.</summary>
-        public static int StackedCount() => EnemyDebuff ? 1 : 0;
-
-        /// <summary>§18-13 상한으로 자른 중첩. QA_NO_STAR_DEBUFF_CAP면 요청 그대로.</summary>
-        public static int AppliedStacks() => StarDebuffCap.Apply(StackedCount());
-
-        public static bool ShowDebuffCapQa => StarDebuffCap.ShowQa;
-
-        public static string DebuffCapLine() => StarDebuffCap.Line();
-
-        public static void SeedDebuffCapQaIfRequested() => StarDebuffCap.SeedQaIfRequested();
-
-        /// <summary>§14 적 디버프. 켜면 침략 약탈이 95%. QA_NO_AURA_DEBUFF면 100.
-        /// 중첩 수는 StarDebuffCap.Apply가 자른다(지금은 0/1이라 상한 2에 안 걸린다).</summary>
+        /// <summary>§14 적 디버프. 켜면 침략 약탈이 95%. QA_NO_AURA_DEBUFF면 100.</summary>
         public static int EnemyPercent()
         {
             if (AuraDebuffBlocked) return 100;
-            return AppliedStacks() > 0 ? EnemyDebuffPercent : 100;
+            return EnemyDebuff ? EnemyDebuffPercent : 100;
         }
 
         public static float EnemyMul => EnemyPercent() / 100f;
@@ -316,7 +301,6 @@ namespace AshesToStars
             _debuffQaSeeded = false;
             _sizeQaSeeded = false;
             ForceRaceSenseMul = 0f;
-            StarDebuffCap.ResetForTest();
         }
 
         public static Rect Plate(Rect body) =>

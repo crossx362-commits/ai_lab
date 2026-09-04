@@ -30,8 +30,6 @@ namespace AshesToStars
         public const string EnvNoZoom = "QA_NO_YARD_ZOOM";
         public const string EnvShowPinch = "QA_YARD_PINCH";
         public const string EnvNoFootprint = "QA_NO_ESTATE_FOOTPRINT";
-        public const string EnvShowDrag = "QA_ESTATE_DRAG";
-        public const string EnvNoDrag = "QA_NO_ESTATE_DRAG";
         public const float QaPanX = 180f;
         public const float QaPanY = 48f;
         public const float QaZoom = 1.50f;
@@ -70,37 +68,12 @@ namespace AshesToStars
             {
                 string pan = Environment.GetEnvironmentVariable(EnvShowPan);
                 string zoom = Environment.GetEnvironmentVariable(EnvShowZoom);
-                return On(pan) || On(zoom) || ShowPinchQa || ShowDragQa;
+                return On(pan) || On(zoom) || ShowPinchQa;
             }
         }
 
         public static bool ShowPinchQa =>
             On(Environment.GetEnvironmentVariable(EnvShowPinch));
-
-        /// <summary>건물 끌어서 옮기기(GAME_SPEC_ESTATE_BUILD §2-2). QA_NO면 옛 클릭만.</summary>
-        public static bool DragBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoDrag);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        public static bool DragEnabled => !FillBlocked && !DragBlocked;
-
-        public static bool ShowDragQa
-        {
-            get
-            {
-                if (DragBlocked) return false;
-                return On(Environment.GetEnvironmentVariable(EnvShowDrag));
-            }
-        }
-
-        public static bool IsPanDragging => _dragging;
-
-        public static bool CoreGestureActive => _coreGesture;
 
         static bool On(string raw) =>
             raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
@@ -115,8 +88,6 @@ namespace AshesToStars
         static bool _dragging;
         static bool _qaSeeded;
         static float _pinch0;
-        static bool _coreGesture;
-        static Texture2D _dropOk, _dropBad;
 
         public static string IconOf(EstateGrid.Cell c) => c switch
         {
@@ -167,18 +138,16 @@ namespace AshesToStars
         public static string Line()
         {
             if (FillBlocked)
-                return "마을에서 건물을 눌러 관리한다. 방어는 빈 칸에 놓는다";
+                return "마을에서 건물을 눌러 관리한다. 방어는 빈 칸에 놓는다(§13·§16)";
             if (ShowPinchQa && ZoomEnabled)
-                return "마을을 두 손가락으로 벌려 확대한다. 집을 누르면 들어간다";
-            if (DragEnabled)
-                return "건물을 끌면 옮긴다. 빈 곳은 마을을 끌어 본다";
+                return "마을을 두 손가락으로 벌려 확대한다. 집을 누르면 들어간다(§16)";
             if (PanEnabled && ZoomEnabled)
-                return "마을을 끌어 보고 굴려 확대한다. 집을 누르면 들어간다";
+                return "마을을 끌어 보고 굴려 확대한다. 집을 누르면 들어간다(§16)";
             if (PanEnabled)
-                return "마을을 끌어 본다. 집을 누르면 들어간다";
+                return "마을을 끌어 본다. 집을 누르면 들어간다(§16)";
             if (ZoomEnabled)
-                return "마을을 굴려 확대한다. 집을 누르면 들어간다";
-            return "마을이 화면을 채운다. 집을 누르면 들어간다";
+                return "마을을 굴려 확대한다. 집을 누르면 들어간다(§16)";
+            return "마을이 화면을 채운다. 집을 누르면 들어간다(§16)";
         }
 
         /// <summary>
@@ -299,7 +268,6 @@ namespace AshesToStars
             _zoom = 1f;
             _down = false;
             _dragging = false;
-            _coreGesture = false;
             _qaSeeded = false;
             _pinch0 = 0f;
         }
@@ -364,7 +332,6 @@ namespace AshesToStars
                     if (!string.IsNullOrEmpty(icon))
                         UiAtlas.DrawFit(box, icon);
                 }
-                DrawScaffoldIfBusy(box, cell);
                 if (selX == x && selY == y)
                     DrawName(box, LabelOf(cell));
                 if (box.Contains(mouse) && x + y >= best)
@@ -395,7 +362,6 @@ namespace AshesToStars
             {
                 _down = false;
                 _dragging = false;
-                _coreGesture = false;
                 return;
             }
             var ev = Event.current;
@@ -403,23 +369,12 @@ namespace AshesToStars
             var mouse = ev.mousePosition;
             if (ev.type == EventType.MouseDown && ev.button == 0 && area.Contains(mouse))
             {
-                // 건물 위에서 시작한 드래그만 이동 — 빈 곳·방어는 마을 끌어 보기(§2-2).
-                if (DragEnabled && TryHitCoreOrigin(area, mouse, out _, out _))
-                {
-                    _down = false;
-                    _dragging = false;
-                    _coreGesture = true;
-                    return;
-                }
-                _coreGesture = false;
                 _down = true;
                 _dragging = false;
                 _dragFrom = mouse;
                 _panAtDrag = _pan;
                 return;
             }
-            if (ev.type == EventType.MouseUp && ev.button == 0)
-                _coreGesture = false;
             if (!_down) return;
             if (ev.type == EventType.MouseDrag && ev.button == 0)
             {
@@ -437,104 +392,6 @@ namespace AshesToStars
                 if (_dragging) ev.Use();
                 _down = false;
             }
-        }
-
-        /// <summary>마우스 아래 칸. Draw와 같은 마름모·건물 상자 판정.</summary>
-        public static bool TryHitCell(Rect area, Vector2 mouse, out int hitX, out int hitY)
-        {
-            hitX = -1;
-            hitY = -1;
-            EstateGrid.EnsureHubBuildings();
-            EnsureTex();
-            int n = EstateGrid.Size;
-            TileSize(area, out float tw, out float th);
-            int best = -1;
-            for (int s = 0; s < n * 2; s++)
-            for (int x = 0; x < n; x++)
-            {
-                int y = s - x;
-                if (y < 0 || y >= n) continue;
-                var p = TileOrigin(area, x, y);
-                var tile = new Rect(p.x, p.y, tw, th);
-                if (InDiamond(mouse, tile) && x + y >= best)
-                {
-                    best = x + y;
-                    hitX = x;
-                    hitY = y;
-                }
-            }
-            for (int s = 0; s < n * 2; s++)
-            for (int x = 0; x < n; x++)
-            {
-                int y = s - x;
-                if (y < 0 || y >= n) continue;
-                var cell = EstateGrid.At(x, y);
-                if (cell == EstateGrid.Cell.Empty) continue;
-                var p = TileOrigin(area, x, y);
-                var box = BuildingBox(p, tw, th, cell);
-                if (box.Contains(mouse) && x + y >= best)
-                {
-                    best = x + y;
-                    hitX = x;
-                    hitY = y;
-                }
-            }
-            return best >= 0;
-        }
-
-        /// <summary>마우스 아래 핵심 건물 원점. 자리 덮인 칸이면 원점으로 올린다.</summary>
-        public static bool TryHitCoreOrigin(Rect area, Vector2 mouse, out int ox, out int oy)
-        {
-            ox = -1;
-            oy = -1;
-            if (!TryHitCell(area, mouse, out int hx, out int hy)) return false;
-            if (EstateGrid.At(hx, hy) == EstateGrid.Cell.Empty
-                && EstateGrid.TryOwner(hx, hy, out int px, out int py))
-            {
-                hx = px;
-                hy = py;
-            }
-            var cell = EstateGrid.At(hx, hy);
-            if (!EstateGrid.IsCore(cell)) return false;
-            ox = hx;
-            oy = hy;
-            return true;
-        }
-
-        /// <summary>이동 미리보기 — 놓을 칸 강조 + 반투명 유령(§2-2).</summary>
-        public static void DrawMovePreview(Rect area, EstateGrid.Cell cell, int dropX, int dropY, bool ok)
-        {
-            if (!EstateGrid.InBounds(dropX, dropY)) return;
-            EnsureTex();
-            if (_dropOk == null)
-            {
-                _dropOk = Diamond(new Color(0.28f, 0.82f, 0.42f, 0.40f), new Color(0.45f, 1f, 0.55f, 0.95f));
-                _dropBad = Diamond(new Color(0.90f, 0.28f, 0.28f, 0.40f), new Color(1f, 0.45f, 0.40f, 0.95f));
-            }
-            TileSize(area, out float tw, out float th);
-            var f = EstateGrid.FootprintOf(cell);
-            var mark = ok ? _dropOk : _dropBad;
-            for (int y = dropY; y < dropY + f.y; y++)
-            for (int x = dropX; x < dropX + f.x; x++)
-            {
-                if (!EstateGrid.InBounds(x, y)) continue;
-                var p = TileOrigin(area, x, y);
-                GUI.DrawTexture(new Rect(p.x, p.y, tw, th), mark);
-            }
-            var origin = TileOrigin(area, dropX, dropY);
-            var box = BuildingBox(origin, tw, th, cell);
-            var prev = GUI.color;
-            GUI.color = new Color(1f, 1f, 1f, ok ? 0.55f : 0.35f);
-            var tex = PropTex(PropOf(cell));
-            if (tex != null)
-                GUI.DrawTexture(box, tex, ScaleMode.ScaleToFit, true);
-            else
-            {
-                string icon = IconOf(cell);
-                if (!string.IsNullOrEmpty(icon))
-                    UiAtlas.DrawFit(box, icon);
-            }
-            GUI.color = prev;
         }
 
         static void HandleZoom(Rect area)
@@ -640,20 +497,6 @@ namespace AshesToStars
             return new Rect(p.x + (tw - bw) * 0.5f, p.y + th * sit - bh, bw, bh);
         }
 
-        /// <summary>공사 중이면 공용 공사판을 반투명으로 겹친다(§6). QA_NO면 끈다.</summary>
-        static void DrawScaffoldIfBusy(Rect box, EstateGrid.Cell cell)
-        {
-            if (!EstateGrid.IsCore(cell)) return;
-            string scName = EstateBuildings.ScaffoldOf(cell);
-            if (scName == null) return;
-            var sc = PropTex(scName);
-            if (sc == null) return;
-            var prev = GUI.color;
-            GUI.color = new Color(1f, 1f, 1f, 0.72f);
-            GUI.DrawTexture(box, sc, ScaleMode.ScaleToFit, true);
-            GUI.color = prev;
-        }
-
         static void DrawName(Rect box, string name)
         {
             var tag = new Rect(box.center.x - 36f, box.y - 16f, 72f, 16f);
@@ -666,8 +509,8 @@ namespace AshesToStars
                 fontStyle = FontStyle.Bold,
                 clipping = TextClipping.Clip,
             };
-            style.normal.textColor = new Color(0.95f, 0.79f, 0.42f, 1f);
-            UiPages.LabelClip(tag, name, style);
+            style.normal.textColor = new Color(1f, 0.94f, 0.72f, 1f);
+            GUI.Label(tag, name, style);
         }
 
         static bool InDiamond(Vector2 p, Rect tile)

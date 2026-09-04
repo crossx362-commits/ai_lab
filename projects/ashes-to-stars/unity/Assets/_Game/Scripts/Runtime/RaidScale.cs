@@ -171,7 +171,7 @@ namespace AshesToStars
             string pct = (ScalePercent() / 100.0).ToString("0.00",
                 System.Globalization.CultureInfo.InvariantCulture);
             return $"하위 레이드 스케일 {pct}(§18-10) · {floor}층 T{from}→T{to} · "
-                + EstateStatusHud.ShortCopper(Gold(floor));
+                + Economy.FormatCurrency(Gold(floor));
         }
 
         /// <summary>시각 QA. 51층·선택 T5면 5층 골드가 1골드 15실버 23쿠퍼.</summary>

@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace AshesToStars
@@ -44,216 +43,21 @@ namespace AshesToStars
             return $"직업 특성 — {concept} · {mech}";
         }
 
-        /// <summary>§3·SkillDef.쿨다운. QA_NO면 이름만 남긴다(옛 SkillLine).</summary>
-        public const string EnvNoSkillCd = "QA_NO_SKILL_CD";
-
-        public static bool SkillCdBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoSkillCd);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>§3·SkillDef.위력배율. QA_NO면 위력 조각을 뺀다(옛 SkillLine = 이름·쿨만).</summary>
-        public const string EnvNoSkillPow = "QA_NO_SKILL_POW";
-
-        public static bool SkillPowBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoSkillPow);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>§3·SkillDef.반경. QA_NO면 반경 조각을 뺀다(옛 SkillLine = 이름·쿨·위력).</summary>
-        public const string EnvNoSkillRad = "QA_NO_SKILL_RAD";
-
-        /// <summary>기적 등 authored 99는 전투 반경이 아니라 전역 표식 — 숫자를 붙이지 않는다.</summary>
-        public const float SkillRadDisplayCap = 50f;
-
-        public static bool SkillRadBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoSkillRad);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>§3·SkillDef.자원소모. QA_NO면 소모 조각을 뺀다(옛 SkillLine = 이름·쿨·위력·반경).</summary>
-        public const string EnvNoSkillCost = "QA_NO_SKILL_COST";
-
-        public static bool SkillCostBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoSkillCost);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>§3·SkillDef.초필살기. QA_NO면 초필 줄을 비운다(옛 화면 = 초필 행 없음).</summary>
-        public const string EnvNoSkillUlt = "QA_NO_SKILL_ULT";
-
-        public static bool SkillUltBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoSkillUlt);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>§3·SkillDef.설명. QA_NO면 설명 줄을 비운다(옛 화면 = 설명 행 없음).</summary>
-        public const string EnvNoSkillDesc = "QA_NO_SKILL_DESC";
-
-        public static bool SkillDescBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoSkillDesc);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
         /// <summary>
-        /// 설명 줄을 두 줄로 접지 않고 옛 Info(LabelClip 한 줄)로 그린다.
-        /// 마법사 「빙결: 광」에서 우측이 잘리던 화면. QA_NO_SKILL_DESC(줄 자체 없음)와 별개.
-        /// </summary>
-        public const string EnvNoSkillDescWrap = "QA_NO_SKILL_DESC_WRAP";
-
-        public static bool SkillDescWrapBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoSkillDescWrap);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>
-        /// 직업 특성 줄을 두 줄로 접지 않고 옛 Info(LabelClip 한 줄)로 그린다.
-        /// 수호기사 「소모해 보」에서 우측이 잘리던 화면. 마법사 짧은 컨셉은 한 줄에 들어간다.
-        /// </summary>
-        public const string EnvNoConceptWrap = "QA_NO_CONCEPT_WRAP";
-
-        public static bool ConceptWrapBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoConceptWrap);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>
-        /// "보유 스킬 — {이름}(N초·×P·반경R·소모C) · …". JobDef.스킬의 이름·쿨다운·위력배율·반경·**자원소모** 소비처.
-        /// 이름·쿨·위력만 읽던 SkillLine(50202ce5) 옆에, ProjectSetup이 스킬마다 authored한
-        /// <c>SkillDef.반경</c>(화염폭풍 3.2·빙결 4·도발 4.5·진군가 8…)이 정의·에셋만 있고
-        /// grep 소비처 0곳이었다 — 형제 위력은 SkillLine이 「×P」로 읽는데 같은 SkillDef 행의
-        /// 반경만 죽어 있던 함정(위력·쿨다운·전투당발동과 동일 계열).
-        /// 원장 SkillDef 툴팁 「효과 반경(0이면 단일)」. 0 &lt; 반경 &lt; 50만 「반경R」
-        /// (기적 authored 99는 전역 표식이라 숫자를 안 붙임). 쿨과 같이 있으면 괄호 안
-        /// 「(N초·×P·반경R)」, 쿨 0이면 괄호 없이 「 이름 ×P 반경R」(SkillCd 「이름( 금지」).
-        /// QA_NO_SKILL_RAD면 반경 조각만 빼고 이름·쿨·위력 옛 줄로 회귀.
-        /// 같은 행의 <c>SkillDef.자원소모</c>(검사 일섬 5·사제 기적 100)는 정의·에셋만 있고
-        /// grep 소비처 0곳이었다 — 형제 반경은 「반경R」로 읽는데 소모만 죽어 있던 함정.
-        /// 원장 툴팁 「고유 자원 소모량(0이면 미사용)」. 0보다 클 때만 「소모C」.
-        /// 쿨과 같이 있으면 괄호 안 「·소모C」, 쿨 0이면 괄호 없이 「 소모C」.
-        /// QA_NO_SKILL_COST면 소모 조각만 빼고 이름·쿨·위력·반경 옛 줄로 회귀. 표시 전용 —
-        /// W3Party·전투 수치 무접촉.
+        /// "보유 스킬 — {이름} · {이름} · …". JobDef.스킬(SkillDef[])의 **유일한 런타임 소비처**.
+        /// 이 배열은 ProjectSetup이 직업마다 authored(도발의 함성·성채 방패…)하고도 어떤 코드도
+        /// 읽지 않아 소비처 0곳이었다(ConceptLine이 겪은 함정과 동일 계열). 매칭 직업이 없거나
+        /// 스킬 배열이 비면 빈 문자열 — 호출부는 이때 줄을 그리지 않는다(지어내지 않음).
         /// </summary>
         public static string SkillLine(string jobName)
         {
             var d = For(jobName);
             if (d == null || d.스킬 == null || d.스킬.Length == 0) return "";
-            var parts = new System.Collections.Generic.List<string>();
+            var names = new System.Collections.Generic.List<string>();
             foreach (var s in d.스킬)
-            {
-                if (s == null || string.IsNullOrEmpty(s.이름) || s.초필살기) continue;
-                string piece = s.이름;
-                bool showCd = !SkillCdBlocked && s.쿨다운 > 0f;
-                bool showPow = !SkillPowBlocked && s.위력배율 > 0f
-                    && Mathf.Abs(s.위력배율 - 1f) >= 0.0001f;
-                bool showRad = !SkillRadBlocked && s.반경 > 0f && s.반경 < SkillRadDisplayCap;
-                bool showCost = !SkillCostBlocked && s.자원소모 > 0f;
-                if (showCd)
-                {
-                    string inside = s.쿨다운.ToString("0.#") + "초";
-                    if (showPow) inside += "·×" + s.위력배율.ToString("0.##");
-                    if (showRad) inside += "·반경" + s.반경.ToString("0.#");
-                    if (showCost) inside += "·소모" + s.자원소모.ToString("0.#");
-                    piece += "(" + inside + ")";
-                }
-                else
-                {
-                    if (showPow) piece += " ×" + s.위력배율.ToString("0.##");
-                    if (showRad) piece += " 반경" + s.반경.ToString("0.#");
-                    if (showCost) piece += " 소모" + s.자원소모.ToString("0.#");
-                }
-                parts.Add(piece);
-            }
-            if (parts.Count == 0) return "";
-            return "보유 스킬 — " + string.Join(" · ", parts);
-        }
-
-        /// <summary>
-        /// "스킬 설명 — {이름}: {설명} · …". JobDef.스킬의 <c>SkillDef.설명</c> **유일한 런타임 소비처**.
-        /// 같은 SkillDef 행의 이름·쿨·위력·반경·자원소모는 SkillLine이 읽는데, ProjectSetup이
-        /// 스킬마다 authored한 설명(화염폭풍 「장판 광역 — 4체 이상 밀집 시」·일섬 「스택 5 전량
-        /// 소모 단일 폭딜」…)만 정의·에셋에 있고 grep 소비처 0곳이었다 — 숫자 형제는 SkillLine에
-        /// 붙고 같은 행의 TextArea만 죽어 있던 함정(반경·자원소모와 동일 계열). 원장 §3 직업 스킬
-        /// 표의 스킬 설명 열. SkillLine에 이어붙이면 LabelClip이 뒷 스킬 이름부터 자르므로
-        /// **별도 한 줄**로 낸다(IdentityLine이 MechanicLine과 갈라진 이유와 같음). 값이 빈
-        /// 스킬은 건너뛴다(지어내지 않음). QA_NO_SKILL_DESC면 항상 빈 문자열로 옛 화면(설명
-        /// 행 없음)에 회귀. 표시 전용 — W3Party·전투 수치 무접촉.
-        /// </summary>
-        public static string SkillDescLine(string jobName)
-        {
-            if (SkillDescBlocked) return "";
-            var d = For(jobName);
-            if (d == null || d.스킬 == null || d.스킬.Length == 0) return "";
-            var parts = new System.Collections.Generic.List<string>();
-            foreach (var s in d.스킬)
-            {
-                if (s == null || string.IsNullOrEmpty(s.이름) || string.IsNullOrEmpty(s.설명)
-                    || s.초필살기)
-                    continue;
-                parts.Add(s.이름 + ": " + s.설명);
-            }
-            if (parts.Count == 0) return "";
-            return "스킬 설명 — " + string.Join(" · ", parts);
-        }
-
-        /// <summary>
-        /// "초필살기 — {이름}(N초) · …". JobDef.스킬의 <c>SkillDef.초필살기</c> **유일한 런타임 소비처**.
-        /// 원장 §3 2차 전직 「초필살기 추가(스킬 4개 + 궁극기 1개)」·§18-6 쿨다운 180초.
-        /// 같은 SkillDef 행의 이름·쿨·위력·반경·자원소모·설명은 SkillLine·SkillDescLine이 읽는데
-        /// 초필 bool만 정의·에셋에 있고 grep 소비처 0곳이었다(설명·자원소모와 동일 계열).
-        /// 초필은 2차 슬롯이라 보유 스킬 줄에 붙이면 LabelClip이 뒤부터 자르고, 설명 줄은
-        /// 이미 두 줄이라 초필 이름을 잃는다 — **별도 한 줄**. 값이 false·이름 빈 스킬은
-        /// 건너뛴다(지어내지 않음). 마법사처럼 authored 초필이 없으면 빈 문자열.
-        /// QA_NO_SKILL_ULT면 항상 빈 문자열로 옛 화면(초필 행 없음)에 회귀.
-        /// 표시 전용 — W3Party·전투 게이지 무접촉.
-        /// </summary>
-        public static string SkillUltLine(string jobName)
-        {
-            if (SkillUltBlocked) return "";
-            var d = For(jobName);
-            if (d == null || d.스킬 == null || d.스킬.Length == 0) return "";
-            var parts = new System.Collections.Generic.List<string>();
-            foreach (var s in d.스킬)
-            {
-                if (s == null || !s.초필살기 || string.IsNullOrEmpty(s.이름)) continue;
-                string piece = s.이름;
-                if (s.쿨다운 > 0f) piece += "(" + s.쿨다운.ToString("0.#") + "초)";
-                parts.Add(piece);
-            }
-            if (parts.Count == 0) return "";
-            return "초필살기 — " + string.Join(" · ", parts);
+                if (s != null && !string.IsNullOrEmpty(s.이름)) names.Add(s.이름);
+            if (names.Count == 0) return "";
+            return "보유 스킬 — " + string.Join(" · ", names);
         }
 
         /// <summary>
@@ -333,9 +137,13 @@ namespace AshesToStars
 
         /// <summary>
         /// "HP {115} · 공격력 {24} · 사거리 {8} · 공격 {0.4}초". JobDef 기본 스탯 블록
-        /// (최대체력·공격력·사거리·공격간격). 화면 표와 전투 HP·공격력은 같은 에셋을 읽는다.
+        /// (최대체력·공격력·사거리·공격간격)의 **유일한 런타임 소비처**. §3·§4 직업 표의 직업별
+        /// HP·공격 컬럼인데 ProjectSetup이 직업마다 authored(수호기사 320/10, 검사 130/26,
+        /// 궁수 115/24·사거리 8·간격 0.4…)하고 Resources/jobs/*.asset에 committed까지 됐으면서
+        /// 읽는 코드 0곳이었다(컨셉·스킬·사망리스크·이동기·자동사냥적합도가 겪은 「정의만 있고 부르는
+        /// 곳 0」 함정과 동일 계열 — 전투 W3Party는 자체 상수표를 쓰고 asset 필드를 안 읽는다).
         /// 매칭 직업이 없으면(기본직 탱/딜/… 또는 에셋 미로드) 빈 문자열 — 호출부는 이때 줄을
-        /// 그리지 않는다(지어내지 않음).
+        /// 그리지 않는다(지어내지 않음). 밸런스·전투 수치는 안 건드린다(표시 전용, committed 값 그대로).
         /// </summary>
         public static string StatLine(string jobName)
         {
@@ -345,39 +153,6 @@ namespace AshesToStars
                  + " · 공격력 " + d.공격력.ToString("0.#")
                  + " · 사거리 " + d.사거리.ToString("0.#")
                  + " · 공격 " + d.공격간격.ToString("0.#") + "초";
-        }
-
-        public const string EnvNoCombatStats = "QA_NO_JOB_COMBAT_STATS";
-
-        public static bool CombatStatsBlocked
-        {
-            get
-            {
-                string raw = Environment.GetEnvironmentVariable(EnvNoCombatStats);
-                return raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        /// <summary>
-        /// 전투 최대체력. JobDef.최대체력을 읽고, 없거나 QA_NO면 역할 버킷(탱 320·딜 130·그외 150).
-        /// 광전사는 260/20인데 역할 버킷은 탱 320/10이라 몸빵이 되고 딜이 반토막이었다.
-        /// </summary>
-        public static float CombatHp(string jobName, float fallback)
-        {
-            if (CombatStatsBlocked) return fallback;
-            var d = For(jobName);
-            return d != null && d.최대체력 > 0f ? d.최대체력 : fallback;
-        }
-
-        /// <summary>
-        /// 전투 공격력. JobDef.공격력을 읽고, 없거나 QA_NO면 역할 버킷(딜 26·탱 10·버퍼 8·힐 6).
-        /// 소환사는 authored 14인데 딜 버킷 26으로 본체가 때렸다.
-        /// </summary>
-        public static float CombatAtk(string jobName, float fallback)
-        {
-            if (CombatStatsBlocked) return fallback;
-            var d = For(jobName);
-            return d != null && d.공격력 > 0f ? d.공격력 : fallback;
         }
     }
 }
