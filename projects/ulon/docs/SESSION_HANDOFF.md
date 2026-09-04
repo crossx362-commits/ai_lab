@@ -57,25 +57,17 @@
 오너에게 보여주는 화면은 플레이 3/4만. Kenney 샘플 밀도(건물·돌길·나무·소품이 붙을 것).
 
 ## 방금 고른 다음 일
-Magery Bless(축복) 1 들어 있음. 던전3는 leftover.
+셀프체크 PASS 복구(BindMob 침묵 실패 수리) 들어 있음. 다음은 던전3.
 
-## 지금 막힌 것 (2026-09-04 22:10)
-Unity 에디터(pid 60264)가 멎었다. CPU 0%, MCP ping 무응답, AppleEvent 타임아웃(-1712),
-90분간 재컴파일 없음(`Library/ScriptAssemblies/Ulon.Editor.dll` 20:40 고정).
-모달 대화상자가 떠 있을 가능성이 크다. **오너가 에디터를 닫거나 대화상자를 처리해야 푼다.**
+## 검증은 배치모드로 (2026-09-05)
+`tools/slice_selfcheck.sh`가 완전 헤드리스다 — 에디터를 닫고 돌리면 사람 개입이 없다.
+에디터를 켜 두면 프로젝트가 잠겨 배치모드가 못 뜨고, MCP 브리지는 에디터가 멎으면
+같이 죽는다(실제로 한 번 멎어 반나절 막혔다). 자동 검증은 GUI가 아니라 배치모드에 걸어라.
 
-에디터가 프로젝트를 잠그고 있어 배치모드(`tools/slice_selfcheck.sh`)도 못 뜬다.
-에디터를 닫은 뒤에는 배치모드가 완전 헤드리스라 사람 개입 없이 검증이 돈다 — 자율 루프는
-GUI 포커스가 아니라 배치모드에 의존하게 할 것.
-
-### 커밋 안 된 미검증 변경 2건 (컴파일조차 못 해봤다)
-- `Editor/VisualSliceBuilder.cs` `BindMob`: WorldBody가 없으면 조용히 return 하던 것을
-  없으면 붙이도록 고쳤다. 셀프체크 "다섯 번째 몬스터 기사가 사냥 구역에 있어야 합니다"의
-  근본 원인이다 — 씬 조회로 Rogue/Knight만 `WorldBody=False`인 것을 확인했다(나머지 6마리는 True).
-- `Editor/SliceSelfCheck.cs`: 이 버그를 쫓던 Rogue Debug.Log 잔재 제거.
-
-에디터가 살아나면 `slice_selfcheck.sh`로 컴파일 에러 0 + PASS를 확인한 뒤에만 커밋할 것.
-PASS가 나면 다음은 던전3(필드3).
+## 슬라이스 코드 위치 (2026-09-05 partial 분할)
+`SliceSelfCheck`(11739줄)와 `OfflineWorld`(4537줄)를 도메인별 partial 파일로 갈랐다.
+새 Assert는 주제에 맞는 `SliceSelfCheck.<도메인>.cs`에, 새 서버 로직은
+`OfflineWorld.<도메인>.cs`에 넣어라. 한 파일에 다시 쌓지 마라.
 
 ## 핵심 경로
 - 기획 원장: `projects/ulon/docs/GAME_DESIGN.md`
