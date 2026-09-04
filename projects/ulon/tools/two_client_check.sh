@@ -11,6 +11,16 @@ if [[ ! -x "$CLIENT_BIN" ]]; then
   exit 2
 fi
 
+for source_root in "$ROOT/unity/Assets/Game" "$ROOT/unity/Packages" "$ROOT/unity/ProjectSettings"; do
+  newer="$(find "$source_root" -type f ! -name '.gitkeep' ! -name '.DS_Store' -newer "$CLIENT_BIN" -print -quit)"
+  if [[ -n "$newer" ]]; then
+    echo "stale client: source is newer than $CLIENT_BIN" >&2
+    echo "newer source: $newer" >&2
+    echo "rebuild with: $ROOT/tools/rebuild_client.sh" >&2
+    exit 6
+  fi
+done
+
 "$CLIENT_BIN" -batchmode -nographics -ulon-server -logFile "$OUT/server.log" &
 SPID=$!
 APID=""
