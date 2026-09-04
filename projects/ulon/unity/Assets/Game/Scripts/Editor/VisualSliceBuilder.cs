@@ -2436,11 +2436,13 @@ namespace Ulon.Editor
             return controller;
         }
 
-        static void ConfigureHumanoid(string path, bool importClips)
+        internal static bool ConfigureHumanoid(string path, bool importClips)
         {
             var importer = AssetImporter.GetAtPath(path) as ModelImporter;
             if (importer == null)
                 throw new InvalidOperationException("importer 없음: " + path);
+            if (IsHumanoidConfigured(importer, importClips))
+                return false;
             importer.animationType = ModelImporterAnimationType.Human;
             importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
             importer.optimizeGameObjects = false;
@@ -2457,6 +2459,55 @@ namespace Ulon.Editor
             desc.hasTranslationDoF = false;
             importer.humanDescription = desc;
             importer.SaveAndReimport();
+            return true;
+        }
+
+        static bool IsHumanoidConfigured(ModelImporter importer, bool importClips)
+        {
+            if (importer.animationType != ModelImporterAnimationType.Human
+                || importer.avatarSetup != ModelImporterAvatarSetup.CreateFromThisModel
+                || importer.optimizeGameObjects
+                || importer.importAnimation != importClips
+                || importer.animationCompression != ModelImporterAnimationCompression.Off
+                || importer.materialImportMode != ModelImporterMaterialImportMode.ImportStandard)
+                return false;
+
+            if (importClips && !LocomotionClipsConfigured(importer.clipAnimations))
+                return false;
+
+            var desc = importer.humanDescription;
+            if (desc.hasTranslationDoF)
+                return false;
+            return SameHumanBones(desc.human, BuildHuman(desc.skeleton));
+        }
+
+        static bool LocomotionClipsConfigured(ModelImporterClipAnimation[] clips)
+        {
+            if (clips == null || clips.Length == 0)
+                return false;
+            for (int i = 0; i < clips.Length; i++)
+            {
+                string n = clips[i].name.ToLowerInvariant();
+                bool shouldLoop = n.Contains("idle") || n.Contains("walk") || n.Contains("run")
+                    || n.Contains("aiming") || n.Contains("shooting");
+                if (clips[i].loopTime != shouldLoop || clips[i].loopPose != shouldLoop)
+                    return false;
+            }
+            return true;
+        }
+
+        static bool SameHumanBones(HumanBone[] actual, HumanBone[] expected)
+        {
+            if (actual == null || expected == null || actual.Length != expected.Length)
+                return false;
+            for (int i = 0; i < actual.Length; i++)
+            {
+                if (actual[i].humanName != expected[i].humanName
+                    || actual[i].boneName != expected[i].boneName
+                    || actual[i].limit.useDefaultValues != expected[i].limit.useDefaultValues)
+                    return false;
+            }
+            return true;
         }
 
         static bool HasSkel(SkeletonBone[] skel, string name)

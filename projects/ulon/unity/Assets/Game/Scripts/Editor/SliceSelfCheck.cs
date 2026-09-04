@@ -35,6 +35,10 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureDungeon1();
             VisualSliceBuilder.EnsureDungeon2();
             VisualSliceBuilder.EnsureFieldBoss();
+            if (VisualSliceBuilder.ConfigureHumanoid(
+                    "Assets/_ThirdParty/KayKit/Skeletons/RAW/Characters/Skeleton_Warrior.fbx",
+                    true))
+                throw new InvalidOperationException("이미 설정된 Humanoid FBX를 셀프체크가 다시 임포트하면 안 됩니다.");
             NetworkSliceSetup.WireMob("Skeleton");
             NetworkSliceSetup.WireMob("Bandit");
             NetworkSliceSetup.WireMob("Raider");
