@@ -119,10 +119,6 @@ namespace Ulon.Editor
 
             var rogue = Array.Find(scene.GetRootGameObjects(), go => go.name == "Rogue");
             var rogueBody = rogue != null ? rogue.GetComponent<WorldBody>() : null;
-            Debug.Log("[Ulon] Rogue self-check lookup root=" + (rogue != null)
-                      + " body=" + (rogueBody != null)
-                      + " mobId=" + (rogueBody != null ? rogueBody.MobId : "-")
-                      + " enemy=" + (rogueBody != null && rogueBody.IsEnemy));
             if (rogueBody == null || rogueBody.MobId != "rogue" || !rogueBody.IsEnemy)
                 throw new InvalidOperationException("네 번째 몬스터 자객이 사냥 구역에 있어야 합니다.");
             if (rogueBody.DisplayName != "자객" || Math.Abs(rogueBody.MaxHp - 40f) > 0.0001f)

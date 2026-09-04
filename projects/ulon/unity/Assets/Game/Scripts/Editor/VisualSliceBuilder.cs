@@ -586,9 +586,11 @@ namespace Ulon.Editor
         {
             if (go == null)
                 return;
-            var body = go.GetComponent<WorldBody>();
-            if (body == null)
-                return;
+            // WorldBody가 없으면 조용히 return 하던 자리다. 그러면 몹은 영원히 바인드되지
+            // 않은 채 남고, 실패는 수백 줄 떨어진 셀프체크에서 "N번째 몬스터가 사냥 구역에
+            // 있어야 합니다"로 터진다(Rogue·Knight가 실제로 이 상태였다). Ensure 계약대로
+            // 없으면 붙인다 — 이 파일의 VendorStation/HealerStation과 같은 방식.
+            var body = go.GetComponent<WorldBody>() ?? go.AddComponent<WorldBody>();
             body.MobId = mobId;
             body.IsEnemy = true;
             body.ApplyMobCatalog();
