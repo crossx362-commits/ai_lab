@@ -57,6 +57,7 @@ namespace Ulon.Editor
             WireMob(Dungeon2.MobObject);
             WireMob(Dungeon2.BossObject);
             WireMob(FieldBoss.Object);
+            EnsureSceneObjectIds(scene);
 
             var nmGo = GameObject.Find("NetworkManager");
             if (nmGo == null)
@@ -92,6 +93,22 @@ namespace Ulon.Editor
                 go.AddComponent<NetworkObject>();
             if (go.GetComponent<NetMob>() == null)
                 go.AddComponent<NetMob>();
+        }
+
+        public static int EnsureSceneObjectIds(Scene scene)
+        {
+            var method = typeof(NetworkObject).GetMethod(
+                "CreateSceneId",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            if (method == null)
+                throw new System.MissingMethodException(typeof(NetworkObject).FullName, "CreateSceneId");
+
+            object[] arguments = { scene, false, 0 };
+            method.Invoke(null, arguments);
+            int changed = (int)arguments[2];
+            if (changed > 0)
+                EditorSceneManager.MarkSceneDirty(scene);
+            return changed;
         }
     }
 }

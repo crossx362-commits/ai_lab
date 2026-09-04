@@ -83,3 +83,11 @@ ok = (a.get("connected") and b.get("connected")
 print("PASS" if ok else "FAIL", a, b)
 sys.exit(0 if ok else 5)
 PY
+
+for log in "$OUT/server.log" "$OUT/a.log" "$OUT/b.log"; do
+  if grep -q "expected to be initialized but was not" "$log"; then
+    echo "FAIL uninitialized FishNet NetworkObject in $log" >&2
+    grep "expected to be initialized but was not" "$log" >&2
+    exit 7
+  fi
+done

@@ -52,6 +52,14 @@ namespace Ulon.Editor
             NetworkSliceSetup.WireMob(Dungeon2.MobObject);
             NetworkSliceSetup.WireMob(Dungeon2.BossObject);
             NetworkSliceSetup.WireMob(FieldBoss.Object);
+            NetworkSliceSetup.EnsureSceneObjectIds(scene);
+            foreach (var networkObject in UnityEngine.Object.FindObjectsByType<NetworkObject>(FindObjectsSortMode.None))
+            {
+                var serialized = new SerializedObject(networkObject);
+                var sceneId = serialized.FindProperty("SceneId");
+                if (sceneId == null || sceneId.ulongValue == 0)
+                    throw new InvalidOperationException("씬 NetworkObject SceneId가 비어 있습니다: " + networkObject.name);
+            }
 
             var bandit = GameObject.Find("Bandit");
             var banditBody = bandit != null ? bandit.GetComponent<WorldBody>() : null;
