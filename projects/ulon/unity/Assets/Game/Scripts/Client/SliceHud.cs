@@ -477,7 +477,7 @@ namespace Ulon.Client
             }
             DungeonGate near = NearestGate(me,
                 Dungeon1.EntranceObject, Dungeon1.ExitObject,
-                Dungeon2.EntranceObject, Dungeon2.ExitObject);
+                Dungeon2.EntranceObject, Dungeon2.ExitObject, Dungeon3.EntranceObject, Dungeon3.ExitObject);
             if (near != null && !me.Ghost)
             {
                 GUI.Box(new Rect(16, 568, 340, 52), "");

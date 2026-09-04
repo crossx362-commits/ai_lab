@@ -160,6 +160,7 @@ namespace Ulon.Server
             EnsureCarpenter();
             EnsureDungeon1Runtime();
             EnsureDungeon2Runtime();
+            EnsureDungeon3Runtime();
             EnsureFieldBossRuntime();
             bodies = FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
             for (int i = 0; i < bodies.Length; i++)

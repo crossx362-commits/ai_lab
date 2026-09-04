@@ -378,5 +378,110 @@ namespace Ulon.Editor
                     UnityEngine.Object.DestroyImmediate(enemyGo);
             }
         }
+
+        // 던전3. 보스(IronTyrant)는 전용 캐릭터 에셋 대기 중이라 아직 검사하지 않는다 —
+        // 에셋이 들어오면 던전1·2처럼 이름/HP/키/드랍/방 이격까지 여기서 확인한다.
+        static void AssertDungeon3Slice()
+        {
+            var entrance = GameObject.Find(Dungeon3.EntranceObject);
+            var interior = GameObject.Find(Dungeon3.InteriorObject);
+            var exitGo = GameObject.Find(Dungeon3.ExitObject);
+            var mob = GameObject.Find(Dungeon3.MobObject);
+            if (entrance == null || interior == null || exitGo == null || mob == null)
+                throw new InvalidOperationException("던전 3 입구/내부/출구/몹이 있어야 합니다.");
+            var eg = entrance.GetComponent<DungeonGate>();
+            var xg = exitGo.GetComponent<DungeonGate>();
+            if (eg == null || xg == null || eg.IsExit || !xg.IsExit
+                || eg.DungeonId != Dungeon3.Id || xg.DungeonId != Dungeon3.Id)
+                throw new InvalidOperationException("던전 3 게이트는 서버 DungeonGate 입장/퇴장이어야 합니다.");
+
+            var d1e = GameObject.Find(Dungeon1.EntranceObject);
+            if (d1e != null && Vector3.Distance(entrance.transform.position, d1e.transform.position) < 12f)
+                throw new InvalidOperationException("던전 3 입구는 던전 1 입구와 떨어져야 합니다.");
+            var d2e = GameObject.Find(Dungeon2.EntranceObject);
+            if (d2e != null && Vector3.Distance(entrance.transform.position, d2e.transform.position) < 12f)
+                throw new InvalidOperationException("던전 3 입구는 던전 2 입구와 떨어져야 합니다.");
+            if (GuardZone.Contains(entrance.transform.position.x, entrance.transform.position.z))
+                throw new InvalidOperationException("던전 3 입구는 마을 가드존 밖이어야 합니다.");
+            var hunt = GameObject.Find("Raider");
+            if (hunt != null && Vector3.Distance(entrance.transform.position, hunt.transform.position) < 8f)
+                throw new InvalidOperationException("던전 3 입구가 사냥 라인을 건드리면 안 됩니다.");
+            var field = GameObject.Find("EastField");
+            if (field != null && Vector3.Distance(entrance.transform.position, field.transform.position) < 12f)
+                throw new InvalidOperationException("던전 3 입구가 동쪽 필드를 건드리면 안 됩니다.");
+            var south = GameObject.Find("SouthField");
+            if (south != null && Vector3.Distance(entrance.transform.position, south.transform.position) < 12f)
+                throw new InvalidOperationException("던전 3 입구가 남쪽 필드를 건드리면 안 됩니다.");
+            var north = GameObject.Find("NorthField");
+            if (north != null && Vector3.Distance(entrance.transform.position, north.transform.position) < 12f)
+                throw new InvalidOperationException("던전 3 입구가 북쪽 필드를 건드리면 안 됩니다.");
+
+            var body = mob.GetComponent<WorldBody>();
+            if (body == null || body.MobId != MobCatalog.Raider || !body.IsEnemy)
+                throw new InvalidOperationException("던전 3 내부에는 카탈로그 야만인 1종이 있어야 합니다.");
+            if (mob.GetComponent<NetworkObject>() == null || mob.GetComponent<NetMob>() == null)
+                throw new InvalidOperationException("던전 3 몹 전투 상태는 서버 NetworkObject/NetMob이 권한을 가져야 합니다.");
+            var d1Room = GameObject.Find(Dungeon1.InteriorObject);
+            if (d1Room != null && Vector3.Distance(interior.transform.position, d1Room.transform.position) < 40f)
+                throw new InvalidOperationException("던전 3 내부는 던전 1과 같은 방이 아니어야 합니다.");
+            var d2Room = GameObject.Find(Dungeon2.InteriorObject);
+            if (d2Room != null && Vector3.Distance(interior.transform.position, d2Room.transform.position) < 40f)
+                throw new InvalidOperationException("던전 3 내부는 던전 2와 같은 방이 아니어야 합니다.");
+            if (GameObject.Find(Dungeon3.BossObject) != null)
+                throw new InvalidOperationException("던전 3 보스는 전용 에셋이 오기 전에는 두지 않습니다.");
+
+            var worldGo = new GameObject("selfcheck-dungeon3-world");
+            GameObject avatarGo = null;
+            GameObject enemyGo = null;
+            try
+            {
+                var world = worldGo.AddComponent<OfflineWorld>();
+                avatarGo = new GameObject("selfcheck-dungeon3-avatar");
+                avatarGo.transform.position = new Vector3(0f, 0.1f, 0f);
+                var avatar = avatarGo.AddComponent<WorldBody>();
+                avatar.IsAvatar = true;
+                avatar.MaxHp = 50f;
+                avatar.ResetHp();
+                var far = world.TryDungeon(avatar, eg);
+                if (far.Applied)
+                    throw new InvalidOperationException("던전 3 입구 사거리 밖 입장이 들어가면 안 됩니다.");
+                avatarGo.transform.position = entrance.transform.position;
+                var enter = world.TryDungeon(avatar, eg);
+                if (!enter.Applied)
+                    throw new InvalidOperationException("던전 3 입장 실패: " + enter.FailReason);
+                float dx = avatarGo.transform.position.x - Dungeon3.InteriorX;
+                float dz = avatarGo.transform.position.z - Dungeon3.InteriorZ;
+                if (dx * dx + dz * dz > 4f)
+                    throw new InvalidOperationException("던전 3 입장은 서버가 내부 스폰으로 워프해야 합니다.");
+
+                enemyGo = new GameObject("selfcheck-dungeon3-enemy");
+                enemyGo.transform.position = avatarGo.transform.position + new Vector3(0.8f, 0f, 0f);
+                var enemy = enemyGo.AddComponent<WorldBody>();
+                enemy.IsEnemy = true;
+                enemy.MobId = MobCatalog.Raider;
+                enemy.ApplyMobCatalog();
+                enemy.ResetHp();
+                var hit = world.TryAttack(avatar, enemy);
+                if (!hit.Applied)
+                    throw new InvalidOperationException("던전 3 내부 전투 실패: " + hit.FailReason);
+
+                avatarGo.transform.position = exitGo.transform.position;
+                var leave = world.TryDungeon(avatar, xg);
+                if (!leave.Applied)
+                    throw new InvalidOperationException("던전 3 퇴장 실패: " + leave.FailReason);
+                float lx = avatarGo.transform.position.x - Dungeon3.LeaveX;
+                float lz = avatarGo.transform.position.z - Dungeon3.LeaveZ;
+                if (lx * lx + lz * lz > 4f)
+                    throw new InvalidOperationException("던전 3 퇴장은 서버가 입구 밖으로 워프해야 합니다.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(worldGo);
+                if (avatarGo != null)
+                    UnityEngine.Object.DestroyImmediate(avatarGo);
+                if (enemyGo != null)
+                    UnityEngine.Object.DestroyImmediate(enemyGo);
+            }
+        }
     }
 }

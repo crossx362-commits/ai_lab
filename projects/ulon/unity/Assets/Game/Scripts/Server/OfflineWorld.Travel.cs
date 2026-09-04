@@ -37,6 +37,14 @@ namespace Ulon.Server
                     WarpBody(body, Dungeon2.InteriorX, Dungeon2.InteriorZ);
                 return new AttackResult { Applied = true };
             }
+            if (gate.DungeonId == Dungeon3.Id)
+            {
+                if (gate.IsExit)
+                    WarpBody(body, Dungeon3.LeaveX, Dungeon3.LeaveZ);
+                else
+                    WarpBody(body, Dungeon3.InteriorX, Dungeon3.InteriorZ);
+                return new AttackResult { Applied = true };
+            }
             return new AttackResult { FailReason = "unknown_dungeon" };
         }
 
@@ -165,6 +173,20 @@ namespace Ulon.Server
             bossBody.MobId = MobCatalog.ShadowCaptain;
             bossBody.IsEnemy = true;
             bossBody.ApplyMobCatalog();
+        }
+
+        static void EnsureDungeon3Runtime()
+        {
+            // 보스(IronTyrant)는 아직 스폰하지 않는다 — 전용 캐릭터 에셋 대기 중.
+            var mob = GameObject.Find(Dungeon3.MobObject);
+            if (mob == null)
+                return;
+            var body = mob.GetComponent<WorldBody>();
+            if (body == null)
+                return;
+            body.MobId = MobCatalog.Raider;
+            body.IsEnemy = true;
+            body.ApplyMobCatalog();
         }
 
         static void EnsureFieldBossRuntime()

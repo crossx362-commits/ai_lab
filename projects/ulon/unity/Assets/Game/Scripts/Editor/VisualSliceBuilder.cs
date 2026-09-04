@@ -889,6 +889,107 @@ namespace Ulon.Editor
             EditorSceneManager.SaveOpenScenes();
         }
 
+        // 던전2와 같은 구성이되 보스는 아직 없다 — 전용 캐릭터 에셋이 오면 얹는다.
+        public static void EnsureDungeon3()
+        {
+            const string RockW = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-wide.fbx";
+            const string RockL = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-large.fbx";
+            const string RockS = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-small.fbx";
+            const string Arch = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-arch.fbx";
+            const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
+            const string Planks = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/planks.fbx";
+            const string RockN = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/rock_largeA.fbx";
+            string[] models = { RockW, RockL, RockS, Arch, Lantern, Planks, RockN };
+            for (int i = 0; i < models.Length; i++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(models[i]) == null)
+                    ConfigureProp(models[i]);
+            }
+
+            var old = GameObject.Find(Dungeon3.RootObject);
+            if (old != null)
+                UnityEngine.Object.DestroyImmediate(old);
+            var stray = GameObject.Find(Dungeon3.MobObject);
+            if (stray != null)
+                UnityEngine.Object.DestroyImmediate(stray);
+            var strayBoss = GameObject.Find(Dungeon3.BossObject);
+            if (strayBoss != null)
+                UnityEngine.Object.DestroyImmediate(strayBoss);
+
+            var root = new GameObject(Dungeon3.RootObject);
+            Transform parent = root.transform;
+
+            var entrance = Place(Arch, new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), new Vector3(0f, 45f, 0f));
+            if (entrance == null)
+                entrance = Place(RockW, new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), Vector3.zero);
+            if (entrance == null)
+                throw new InvalidOperationException("던전 3 입구 모델 없음");
+            entrance.name = Dungeon3.EntranceObject;
+            entrance.transform.SetParent(parent, true);
+            var eg = entrance.GetComponent<DungeonGate>() ?? entrance.AddComponent<DungeonGate>();
+            eg.DungeonId = Dungeon3.Id;
+            eg.IsExit = false;
+            eg.DisplayName = "던전 3 입구";
+            EnsureCollider(entrance);
+            Decor(parent, RockW, new Vector3(Dungeon3.EntranceX + 1.4f, 0f, Dungeon3.EntranceZ + 0.6f), new Vector3(0f, 20f, 0f));
+            Decor(parent, RockL, new Vector3(Dungeon3.EntranceX + 1.1f, 0f, Dungeon3.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
+            Decor(parent, RockN, new Vector3(Dungeon3.EntranceX - 0.8f, 0f, Dungeon3.EntranceZ + 1.3f), new Vector3(0f, 10f, 0f));
+
+            var interior = new GameObject(Dungeon3.InteriorObject);
+            interior.transform.SetParent(parent, false);
+            interior.transform.position = OnGround(new Vector3(Dungeon3.InteriorX, 0f, Dungeon3.InteriorZ));
+            Transform room = interior.transform;
+            Decor(room, Planks, new Vector3(Dungeon3.InteriorX, 0.02f, Dungeon3.InteriorZ), Vector3.zero);
+            Decor(room, RockW, new Vector3(Dungeon3.InteriorX + 3.2f, 0f, Dungeon3.InteriorZ), new Vector3(0f, 90f, 0f));
+            Decor(room, RockW, new Vector3(Dungeon3.InteriorX - 3.2f, 0f, Dungeon3.InteriorZ), new Vector3(0f, 90f, 0f));
+            Decor(room, RockW, new Vector3(Dungeon3.InteriorX, 0f, Dungeon3.InteriorZ + 3.2f), Vector3.zero);
+            Decor(room, RockL, new Vector3(Dungeon3.InteriorX + 2.2f, 0f, Dungeon3.InteriorZ + 2.2f), new Vector3(0f, 30f, 0f));
+            Decor(room, RockS, new Vector3(Dungeon3.InteriorX - 1.6f, 0f, Dungeon3.InteriorZ - 1.8f), new Vector3(0f, 70f, 0f));
+            Decor(room, Lantern, new Vector3(Dungeon3.InteriorX - 2.4f, 0f, Dungeon3.InteriorZ + 2.1f), Vector3.zero);
+
+            var exitGo = Place(Arch, new Vector3(Dungeon3.ExitX, 0f, Dungeon3.ExitZ), new Vector3(0f, 45f, 0f));
+            if (exitGo == null)
+                exitGo = Place(RockS, new Vector3(Dungeon3.ExitX, 0f, Dungeon3.ExitZ), Vector3.zero);
+            if (exitGo == null)
+                throw new InvalidOperationException("던전 3 출구 모델 없음");
+            exitGo.name = Dungeon3.ExitObject;
+            exitGo.transform.SetParent(parent, true);
+            var xg = exitGo.GetComponent<DungeonGate>() ?? exitGo.AddComponent<DungeonGate>();
+            xg.DungeonId = Dungeon3.Id;
+            xg.IsExit = true;
+            xg.DisplayName = "던전 3 출구";
+            EnsureCollider(exitGo);
+
+            EnsureDungeon3Mob(parent);
+            EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
+            EditorSceneManager.SaveOpenScenes();
+        }
+
+        static void EnsureDungeon3Mob(Transform parent)
+        {
+            var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+            if (ctrl == null)
+                return;
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(BarbarianFbx) == null)
+                return;
+            ConfigureHumanoid(BarbarianFbx, true);
+            var spawned = SpawnActor(
+                Dungeon3.MobObject,
+                BarbarianFbx,
+                new Vector3(Dungeon3.MobX, 0f, Dungeon3.MobZ),
+                MobCatalog.HeightOf(MobCatalog.Raider),
+                ctrl,
+                false,
+                true,
+                MobCatalog.DisplayNameOf(MobCatalog.Raider),
+                MobCatalog.MaxHpOf(MobCatalog.Raider));
+            BindMob(spawned, MobCatalog.Raider);
+            HideExtraGear(spawned);
+            if (parent != null)
+                spawned.transform.SetParent(parent, true);
+        }
+
+
         public static void EnsureFieldBoss()
         {
             var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);

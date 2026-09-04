@@ -58,8 +58,8 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("멧돼지 좌표가 지정 위치와 같아야 합니다.");
             if (GuardZone.Contains(bpos.x, bpos.z))
                 throw new InvalidOperationException("멧돼지는 GuardZone 밖이어야 합니다.");
-            float[] lxs = { HousingPlot.X, TameCritter.X, 18.2f, 3.4f, -12.2f, Dungeon1.EntranceX, Dungeon2.EntranceX, 0f, FieldBoss.X, TravelGate.X, StableYard.X };
-            float[] lzs = { HousingPlot.Z, TameCritter.Z, 2.4f, -19.6f, 20.4f, Dungeon1.EntranceZ, Dungeon2.EntranceZ, 13.2f, FieldBoss.Z, TravelGate.Z, StableYard.Z };
+            float[] lxs = { HousingPlot.X, TameCritter.X, 18.2f, 3.4f, -12.2f, Dungeon1.EntranceX, Dungeon2.EntranceX, Dungeon3.EntranceX, 0f, FieldBoss.X, TravelGate.X, StableYard.X };
+            float[] lzs = { HousingPlot.Z, TameCritter.Z, 2.4f, -19.6f, 20.4f, Dungeon1.EntranceZ, Dungeon2.EntranceZ, Dungeon3.EntranceZ, 13.2f, FieldBoss.Z, TravelGate.Z, StableYard.Z };
             for (int i = 0; i < lxs.Length; i++)
             {
                 float dx = bpos.x - lxs[i];
@@ -467,8 +467,8 @@ namespace Ulon.Editor
                 if (b.min.y < 0f)
                     throw new InvalidOperationException("Stable이 땅속에 있음 minY=" + b.min.y);
             }
-            float[] lxs = { HousingPlot.X, TameCritter.X, TravelGate.X, -6.8f, -5.2f, -3.6f, HousingPlot.X - 1.6f, -7.5f, 2.5f, -5.5f, 4.5f, 1.2f, -2.2f, Dungeon1.EntranceX, Dungeon2.EntranceX, FieldBoss.X };
-            float[] lzs = { HousingPlot.Z, TameCritter.Z, TravelGate.Z, 3.4f, 3.4f, -3.6f, HousingPlot.Z + 1.4f, 1.2f, 1.2f, -2.1f, -2.1f, -4.8f, 4.2f, Dungeon1.EntranceZ, Dungeon2.EntranceZ, FieldBoss.Z };
+            float[] lxs = { HousingPlot.X, TameCritter.X, TravelGate.X, -6.8f, -5.2f, -3.6f, HousingPlot.X - 1.6f, -7.5f, 2.5f, -5.5f, 4.5f, 1.2f, -2.2f, Dungeon1.EntranceX, Dungeon2.EntranceX, Dungeon3.EntranceX, FieldBoss.X };
+            float[] lzs = { HousingPlot.Z, TameCritter.Z, TravelGate.Z, 3.4f, 3.4f, -3.6f, HousingPlot.Z + 1.4f, 1.2f, 1.2f, -2.1f, -2.1f, -4.8f, 4.2f, Dungeon1.EntranceZ, Dungeon2.EntranceZ, Dungeon3.EntranceZ, FieldBoss.Z };
             for (int i = 0; i < lxs.Length; i++)
             {
                 float dx = pos.x - lxs[i];
@@ -628,8 +628,8 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("문게이트 좌표가 지정 위치와 같아야 합니다.");
             if (Math.Abs(TravelGate.PlazaX) > 0.0001f || Math.Abs(TravelGate.PlazaZ) > 0.0001f)
                 throw new InvalidOperationException("문게이트 목적지는 광장 (0,0)이어야 합니다.");
-            float[] lxs = { HousingPlot.X, TameCritter.X, 18.2f, 3.4f, -12.2f, Dungeon1.EntranceX, Dungeon2.EntranceX, 0f, FieldBoss.X };
-            float[] lzs = { HousingPlot.Z, TameCritter.Z, 2.4f, -19.6f, 20.4f, Dungeon1.EntranceZ, Dungeon2.EntranceZ, 13.2f, FieldBoss.Z };
+            float[] lxs = { HousingPlot.X, TameCritter.X, 18.2f, 3.4f, -12.2f, Dungeon1.EntranceX, Dungeon2.EntranceX, Dungeon3.EntranceX, 0f, FieldBoss.X };
+            float[] lzs = { HousingPlot.Z, TameCritter.Z, 2.4f, -19.6f, 20.4f, Dungeon1.EntranceZ, Dungeon2.EntranceZ, Dungeon3.EntranceZ, 13.2f, FieldBoss.Z };
             for (int i = 0; i < lxs.Length; i++)
             {
                 float dx = pos.x - lxs[i];

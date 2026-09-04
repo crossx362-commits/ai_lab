@@ -42,8 +42,8 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("조련 대상 좌표가 지정 위치와 같아야 합니다.");
             if (GuardZone.Contains(pos.x, pos.z))
                 throw new InvalidOperationException("조련 대상은 GuardZone 밖이어야 합니다.");
-            float[] lxs = { HousingPlot.X, 18.2f, 3.4f, -12.2f, Dungeon1.EntranceX, Dungeon2.EntranceX, 0f };
-            float[] lzs = { HousingPlot.Z, 2.4f, -19.6f, 20.4f, Dungeon1.EntranceZ, Dungeon2.EntranceZ, 13.2f };
+            float[] lxs = { HousingPlot.X, 18.2f, 3.4f, -12.2f, Dungeon1.EntranceX, Dungeon2.EntranceX, Dungeon3.EntranceX, 0f };
+            float[] lzs = { HousingPlot.Z, 2.4f, -19.6f, 20.4f, Dungeon1.EntranceZ, Dungeon2.EntranceZ, Dungeon3.EntranceZ, 13.2f };
             for (int i = 0; i < lxs.Length; i++)
             {
                 float dx = pos.x - lxs[i];
