@@ -59,6 +59,24 @@
 ## 방금 고른 다음 일
 Magery Bless(축복) 1 들어 있음. 던전3는 leftover.
 
+## 지금 막힌 것 (2026-09-04 22:10)
+Unity 에디터(pid 60264)가 멎었다. CPU 0%, MCP ping 무응답, AppleEvent 타임아웃(-1712),
+90분간 재컴파일 없음(`Library/ScriptAssemblies/Ulon.Editor.dll` 20:40 고정).
+모달 대화상자가 떠 있을 가능성이 크다. **오너가 에디터를 닫거나 대화상자를 처리해야 푼다.**
+
+에디터가 프로젝트를 잠그고 있어 배치모드(`tools/slice_selfcheck.sh`)도 못 뜬다.
+에디터를 닫은 뒤에는 배치모드가 완전 헤드리스라 사람 개입 없이 검증이 돈다 — 자율 루프는
+GUI 포커스가 아니라 배치모드에 의존하게 할 것.
+
+### 커밋 안 된 미검증 변경 2건 (컴파일조차 못 해봤다)
+- `Editor/VisualSliceBuilder.cs` `BindMob`: WorldBody가 없으면 조용히 return 하던 것을
+  없으면 붙이도록 고쳤다. 셀프체크 "다섯 번째 몬스터 기사가 사냥 구역에 있어야 합니다"의
+  근본 원인이다 — 씬 조회로 Rogue/Knight만 `WorldBody=False`인 것을 확인했다(나머지 6마리는 True).
+- `Editor/SliceSelfCheck.cs`: 이 버그를 쫓던 Rogue Debug.Log 잔재 제거.
+
+에디터가 살아나면 `slice_selfcheck.sh`로 컴파일 에러 0 + PASS를 확인한 뒤에만 커밋할 것.
+PASS가 나면 다음은 던전3(필드3).
+
 ## 핵심 경로
 - 기획 원장: `projects/ulon/docs/GAME_DESIGN.md`
 - 확정안: `projects/ulon/docs/DESIGN.md`
