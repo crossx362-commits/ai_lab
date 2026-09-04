@@ -3,6 +3,7 @@
 """Ulon character persist. Prefers PostgreSQL, falls back to SQLite."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -20,6 +21,7 @@ DB_PATH = DATA / "ulon.sqlite"
 SCHEMA = (HERE / "schema.sql").read_text(encoding="utf-8")
 PORT = int(os.environ.get("ULON_PERSIST_PORT", "8777"))
 DEFAULT_PG = "postgresql://ulon@127.0.0.1:5432/ulon"
+SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 def _now() -> str:
@@ -616,6 +618,7 @@ class Handler(BaseHTTPRequestHandler):
                     "ok": True,
                     "driver": "postgres" if POSTGRES else "sqlite",
                     "port": PORT,
+                    "source_sha256": SOURCE_SHA256,
                     "time": _now(),
                 },
             )

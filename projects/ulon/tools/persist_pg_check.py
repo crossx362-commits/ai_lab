@@ -2,6 +2,7 @@
 """Save character/skills/inventory to Postgres, restart persist, reload."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import signal
@@ -18,6 +19,10 @@ PORT = "8777"
 BASE = f"http://127.0.0.1:{PORT}"
 ACCOUNT = "pg-reconnect"
 URL = "postgresql://ulon@127.0.0.1:5432/ulon"
+
+
+def source_sha256() -> str:
+    return hashlib.sha256(PERSIST.read_bytes()).hexdigest()
 
 
 def http(method: str, path: str, body: dict | None = None) -> tuple[int, dict]:
@@ -42,7 +47,11 @@ def wait_health(driver: str, timeout: float = 8.0) -> dict:
     while time.time() < deadline:
         try:
             code, body = http("GET", "/health")
-            if code == 200 and body.get("driver") == driver:
+            if (
+                code == 200
+                and body.get("driver") == driver
+                and body.get("source_sha256") == source_sha256()
+            ):
                 return body
             last = body
         except Exception as e:
@@ -112,7 +121,11 @@ def main() -> None:
     proc = None
     try:
         code, body = http("GET", "/health")
-        if code != 200 or body.get("driver") != "postgres":
+        if (
+            code != 200
+            or body.get("driver") != "postgres"
+            or body.get("source_sha256") != source_sha256()
+        ):
             raise RuntimeError("need start")
         print("reuse persist", body)
     except Exception:
