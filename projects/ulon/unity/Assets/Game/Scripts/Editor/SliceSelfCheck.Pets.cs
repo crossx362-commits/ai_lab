@@ -29,8 +29,7 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("야생하트는 Tameable=true ControlSlots=1이어야 합니다.");
             if (!MobCatalog.TamableOf(TameBoar.Id) || TameBoar.ControlSlots != 1)
                 throw new InvalidOperationException("야생멧돼지는 Tameable=true ControlSlots=1이어야 합니다.");
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
 
             var go = GameObject.Find(TameCritter.Object);
             var body = go != null ? go.GetComponent<WorldBody>() : null;
@@ -183,8 +182,7 @@ namespace Ulon.Editor
 
         static void AssertPetCommands()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -349,8 +347,7 @@ namespace Ulon.Editor
 
         static void AssertPetAttack()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -510,8 +507,7 @@ namespace Ulon.Editor
 
         static void AssertPetCome()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -667,8 +663,7 @@ namespace Ulon.Editor
 
         static void AssertPetBondVetRez()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -925,8 +920,7 @@ namespace Ulon.Editor
                 if (pet.Bonded)
                     throw new InvalidOperationException("release 후 Bonded가 꺼져야 합니다.");
 
-                if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                    throw new InvalidOperationException("Bonded Pet 부활 후 던전3가 생기면 안 됩니다.");
+                AssertDungeon3Leftover("Bonded Pet 부활 후");
                 world.ResetHousePlot();
             }
             finally

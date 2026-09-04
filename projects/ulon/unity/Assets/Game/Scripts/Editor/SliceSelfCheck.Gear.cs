@@ -13,8 +13,7 @@ namespace Ulon.Editor
     {
         static void AssertStrengthRequirement()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -113,8 +112,7 @@ namespace Ulon.Editor
 
         static void AssertOverweight()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -214,8 +212,7 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("과적 구매 메시지가 명확해야 합니다: " + world.LastWeightMessage);
                 world.CloseVendor();
 
-                if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                    throw new InvalidOperationException("Weight 슬라이스 후 던전3가 생기면 안 됩니다.");
+                AssertDungeon3Leftover("Weight 슬라이스 후");
                 world.ResetHousePlot();
             }
             finally
@@ -233,8 +230,7 @@ namespace Ulon.Editor
 
         static void AssertMeditationArmorPenalty()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {

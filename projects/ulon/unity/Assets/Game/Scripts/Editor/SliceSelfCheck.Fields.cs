@@ -992,8 +992,7 @@ namespace Ulon.Editor
 
         static void AssertHealingResurrect()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (SkillNames.KoreanOf(SkillId.Healing) != "치유")
                 throw new InvalidOperationException("치유 스킬명을 바꾸면 안 됩니다.");
             if (StatSet.PrimaryOf(SkillId.Healing) != StatId.Dex)
@@ -1211,8 +1210,7 @@ namespace Ulon.Editor
                 healer.Ghost = false;
                 healer.ResetHp();
 
-                if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                    throw new InvalidOperationException("붕대 부활 후 던전3가 생기면 안 됩니다.");
+                AssertDungeon3Leftover("붕대 부활 후");
             }
             finally
             {
@@ -1228,8 +1226,7 @@ namespace Ulon.Editor
 
         static void AssertBandageDetox()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -1462,8 +1459,7 @@ namespace Ulon.Editor
                 if (gh.Applied || gh.FailReason != "ghost")
                     throw new InvalidOperationException("유령 대상 서버 해독은 ghost 실패여야 합니다.");
 
-                if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                    throw new InvalidOperationException("붕대 해독 후 던전3가 생기면 안 됩니다.");
+                AssertDungeon3Leftover("붕대 해독 후");
                 world.ResetHousePlot();
             }
             finally

@@ -13,8 +13,7 @@ namespace Ulon.Editor
     {
         static void AssertControlSlots()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (GameObject.Find("DressVillage") != null)
                 throw new InvalidOperationException("DressVillage 오브젝트가 있으면 안 됩니다.");
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
@@ -207,8 +206,7 @@ namespace Ulon.Editor
 
         static void AssertNestedBag()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -307,8 +305,7 @@ namespace Ulon.Editor
                 if (Math.Abs(bag.TotalWeight() - w0) > 0.0001f)
                     throw new InvalidOperationException("꺼낸 뒤 무게가 유지되어야 합니다.");
 
-                if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                    throw new InvalidOperationException("NestedBag 슬라이스 후 던전3가 생기면 안 됩니다.");
+                AssertDungeon3Leftover("NestedBag 슬라이스 후");
                 world.ResetHousePlot();
             }
             finally
@@ -323,8 +320,7 @@ namespace Ulon.Editor
 
         static void AssertGroundDecay()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -413,8 +409,7 @@ namespace Ulon.Editor
                 if (!take.Applied)
                     throw new InvalidOperationException("Tick 후에도 secure take가 되어야 합니다: " + take.FailReason);
 
-                if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                    throw new InvalidOperationException("GroundDecay 슬라이스 후 던전3가 생기면 안 됩니다.");
+                AssertDungeon3Leftover("GroundDecay 슬라이스 후");
                 world.ResetHousePlot();
             }
             finally
@@ -435,8 +430,7 @@ namespace Ulon.Editor
 
         static void AssertStableSlice()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (StableYard.GoldCost != 2)
                 throw new InvalidOperationException("마구간 골드 비용은 2여야 합니다.");
             if (StableResolve.Park(new StableRequest { HasFollower = true, Gold = 2 }).Applied == false)
@@ -621,8 +615,7 @@ namespace Ulon.Editor
 
         static void AssertTravelSlice()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("여행 1은 문게이트만 두고 Recall 주문을 추가하지 않습니다(Bless Count=11과 별개).");
 
@@ -716,8 +709,7 @@ namespace Ulon.Editor
 
         static void AssertMarkRecall()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("Mark/Recall 1은 주문(Bless 포함 Count=11)과 별개로 골드 기록/귀환만 둡니다.");
             if (Math.Abs(TravelGate.PlazaX) > 0.0001f || Math.Abs(TravelGate.PlazaZ) > 0.0001f)
@@ -841,8 +833,7 @@ namespace Ulon.Editor
 
         static void AssertHousingSlice()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             OfflineWorld.Instance?.ResetHousePlot();
 
             var plot = GameObject.Find(HousingPlot.RootObject);

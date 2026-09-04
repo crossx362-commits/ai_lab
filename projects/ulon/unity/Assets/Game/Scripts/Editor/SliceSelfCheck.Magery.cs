@@ -13,8 +13,7 @@ namespace Ulon.Editor
     {
         static void AssertCastInterrupt()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -162,8 +161,7 @@ namespace Ulon.Editor
 
         static void AssertCleanse()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -292,8 +290,7 @@ namespace Ulon.Editor
 
         static void AssertWard()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -435,8 +432,7 @@ namespace Ulon.Editor
 
         static void AssertBind()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -596,8 +592,7 @@ namespace Ulon.Editor
 
         static void AssertWeaken()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -764,8 +759,7 @@ namespace Ulon.Editor
 
         static void AssertSpark()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -929,8 +923,7 @@ namespace Ulon.Editor
 
         static void AssertCraftOrder()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (GameObject.Find("DressVillage") != null)
                 throw new InvalidOperationException("DressVillage 오브젝트가 있으면 안 됩니다.");
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
@@ -1048,8 +1041,7 @@ namespace Ulon.Editor
 
         static void AssertRestore()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -1212,8 +1204,7 @@ namespace Ulon.Editor
 
         static void AssertBlink()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -1348,8 +1339,7 @@ namespace Ulon.Editor
 
         static void AssertBless()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {

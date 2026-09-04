@@ -421,8 +421,7 @@ namespace Ulon.Editor
 
         static void AssertBolt()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("마법 주문은 불씨+봉합+벼락+정화+수호+속박+약화+섬광+회복+도약+축복 11개여야 합니다.");
             if (SpellNames.KoreanOf(SpellId.Bolt) != "벼락")

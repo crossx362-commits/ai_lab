@@ -13,8 +13,7 @@ namespace Ulon.Editor
     {
         static void AssertFieldBossSlice()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3은 두지 않습니다.");
+            AssertDungeon3Leftover();
             var boss = GameObject.Find(FieldBoss.Object);
             var bossBody = boss != null ? boss.GetComponent<WorldBody>() : null;
             if (bossBody == null || bossBody.MobId != MobCatalog.Hexarch || !bossBody.IsEnemy)
@@ -104,8 +103,7 @@ namespace Ulon.Editor
             var xg = exitGo.GetComponent<DungeonGate>();
             if (eg == null || xg == null || eg.IsExit || !xg.IsExit || eg.DungeonId != Dungeon1.Id || xg.DungeonId != Dungeon1.Id)
                 throw new InvalidOperationException("던전 1 게이트는 서버 DungeonGate 입장/퇴장이어야 합니다.");
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3은 두지 않습니다.");
+            AssertDungeon3Leftover();
             var d2e = GameObject.Find(Dungeon2.EntranceObject);
             if (d2e != null && Vector3.Distance(entrance.transform.position, d2e.transform.position) < 12f)
                 throw new InvalidOperationException("던전 1 서쪽 입구와 던전 2 입구는 떨어져 있어야 합니다.");
@@ -244,8 +242,7 @@ namespace Ulon.Editor
             var xg = exitGo.GetComponent<DungeonGate>();
             if (eg == null || xg == null || eg.IsExit || !xg.IsExit || eg.DungeonId != Dungeon2.Id || xg.DungeonId != Dungeon2.Id)
                 throw new InvalidOperationException("던전 2 게이트는 서버 DungeonGate 입장/퇴장이어야 합니다.");
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3은 두지 않습니다.");
+            AssertDungeon3Leftover();
             var d1e = GameObject.Find(Dungeon1.EntranceObject);
             if (d1e == null)
                 throw new InvalidOperationException("던전 1 서쪽 입구가 유지되어야 합니다.");

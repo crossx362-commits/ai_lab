@@ -13,8 +13,7 @@ namespace Ulon.Editor
     {
         static void AssertGuildSlice()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (GuildRules.GoldCost != 25)
                 throw new InvalidOperationException("길드 창설 골드는 25여야 합니다.");
             if (GuildRules.NameMin != 1 || GuildRules.NameMax != 12)
@@ -143,8 +142,7 @@ namespace Ulon.Editor
 
         static void AssertGuildWar()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(20f, 0f))
                 throw new InvalidOperationException("가드존 반경이 마을과 안 맞습니다.");
 
@@ -276,8 +274,7 @@ namespace Ulon.Editor
 
         static void AssertDuel()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(20f, 0f))
                 throw new InvalidOperationException("가드존 반경이 마을과 안 맞습니다.");
 
@@ -458,8 +455,7 @@ namespace Ulon.Editor
 
         static void AssertExceptional()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
 
             ExceptionalCraft.Force = true;
             ExceptionalCraft.Seed = 0;
@@ -569,8 +565,7 @@ namespace Ulon.Editor
 
         static void AssertOpenPvpSlice()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(20f, 0f))
                 throw new InvalidOperationException("가드존 반경이 마을과 안 맞습니다.");
             if (PvpResolve.MurdererThreshold != 5)
@@ -695,8 +690,7 @@ namespace Ulon.Editor
 
         static void AssertReputationTitle()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -765,8 +759,7 @@ namespace Ulon.Editor
                 if (world.ReputationTitleOf(body) != "유명인")
                     throw new InvalidOperationException("SkillTitles와 Reputation은 동시여야 합니다.");
 
-                if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                    throw new InvalidOperationException("Reputation 슬라이스 후 던전3가 생기면 안 됩니다.");
+                AssertDungeon3Leftover("Reputation 슬라이스 후");
                 world.ResetHousePlot();
             }
             finally
@@ -782,8 +775,7 @@ namespace Ulon.Editor
 
         static void AssertKeywordSpeech()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
             for (int i = 0; i < keep.Length; i++)
             {
@@ -865,8 +857,7 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("상점 키워드도 vendor 경로여야 합니다.");
                 world.CloseVendor();
 
-                if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                    throw new InvalidOperationException("Keyword Speech 슬라이스 후 던전3가 생기면 안 됩니다.");
+                AssertDungeon3Leftover("Keyword Speech 슬라이스 후");
                 world.ResetHousePlot();
             }
             finally

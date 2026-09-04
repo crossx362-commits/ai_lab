@@ -327,8 +327,7 @@ namespace Ulon.Editor
 
         static void AssertDetectHiddenSlice()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (SkillId.DetectHidden == SkillId.Hiding)
                 throw new InvalidOperationException("감지 SkillId는 은신과 달라야 합니다.");
             if (SkillId.DetectHidden == SkillId.Stealth)
@@ -499,8 +498,7 @@ namespace Ulon.Editor
 
         static void AssertCamping()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (SkillId.Camping == SkillId.Cooking)
                 throw new InvalidOperationException("야영 SkillId는 요리와 달라야 합니다.");
             if (SkillId.Camping == SkillId.Hiding)
@@ -743,8 +741,7 @@ namespace Ulon.Editor
 
         static void AssertStealing()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (SkillId.Stealing == SkillId.Lockpicking)
                 throw new InvalidOperationException("훔치기 SkillId는 자물쇠따기와 달라야 합니다.");
             if (SkillId.Stealing == SkillId.Camping)
@@ -1683,8 +1680,7 @@ namespace Ulon.Editor
 
         static void AssertInscription()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (SkillId.Inscription == SkillId.Magery)
                 throw new InvalidOperationException("각인 SkillId는 마법과 달라야 합니다.");
             if (SkillId.Inscription == SkillId.Alchemy)
@@ -1945,8 +1941,7 @@ namespace Ulon.Editor
 
         static void AssertPoisoning()
         {
-            if (GameObject.Find("Dungeon3") != null || GameObject.Find("Dungeon3Entrance") != null)
-                throw new InvalidOperationException("던전 3 오브젝트가 있으면 안 됩니다.");
+            AssertDungeon3Leftover();
             if (SkillId.Poisoning == SkillId.Alchemy)
                 throw new InvalidOperationException("독 SkillId는 연금술과 달라야 합니다.");
             if (SkillId.Poisoning == SkillId.Veterinary)
