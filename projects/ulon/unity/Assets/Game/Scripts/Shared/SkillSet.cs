@@ -143,6 +143,7 @@ namespace Ulon.Shared
         public const string WardenCrest = "warden_crest";
         public const string CaptainSigil = "captain_sigil";
         public const string HexSeal = "hex_seal";
+        public const string TyrantCore = "tyrant_core";
         public const string Pouch = "pouch";
         public const float MeleeRange = 2.4f;
         public const float FencingRange = 5.2f;
@@ -173,6 +174,7 @@ namespace Ulon.Shared
             if (id == WardenCrest) return 0.2f;
             if (id == CaptainSigil) return 0.2f;
             if (id == HexSeal) return 0.2f;
+            if (id == TyrantCore) return 0.2f;
             if (id == Pouch) return 2f;
             return 1f;
         }

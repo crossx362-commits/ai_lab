@@ -59,6 +59,7 @@ namespace Ulon.Editor
             StripAndAssign(GameObject.Find("SkelRogue"), controller);
             StripAndAssign(GameObject.Find(Dungeon1.BossObject), controller);
             StripAndAssign(GameObject.Find(Dungeon2.BossObject), controller);
+            StripAndAssign(GameObject.Find(Dungeon3.BossObject), controller);
             StripAndAssign(GameObject.Find(FieldBoss.Object), controller);
             var prefab = PrefabUtility.LoadPrefabContents("Assets/Game/Prefabs/NetPlayer.prefab");
             StripAndAssign(prefab, controller);
@@ -961,6 +962,7 @@ namespace Ulon.Editor
             EnsureCollider(exitGo);
 
             EnsureDungeon3Mob(parent);
+            EnsureDungeon3Boss(parent);
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
         }
@@ -1107,6 +1109,32 @@ namespace Ulon.Editor
                 MobCatalog.DisplayNameOf(MobCatalog.ShadowCaptain),
                 MobCatalog.MaxHpOf(MobCatalog.ShadowCaptain));
             BindMob(spawned, MobCatalog.ShadowCaptain);
+            HideExtraGear(spawned);
+            if (parent != null)
+                spawned.transform.SetParent(parent, true);
+        }
+
+        // 전용 캐릭터 에셋이 오기 전까지 KayKit Knight를 쓴다. 키 2.60/HP 210으로
+        // 다른 보스 셋과 구분되며, 에셋이 오면 이 FBX만 갈아끼우면 된다.
+        static void EnsureDungeon3Boss(Transform parent)
+        {
+            var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+            if (ctrl == null)
+                return;
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(KnightFbx) == null)
+                return;
+            ConfigureHumanoid(KnightFbx, true);
+            var spawned = SpawnActor(
+                Dungeon3.BossObject,
+                KnightFbx,
+                new Vector3(Dungeon3.BossX, 0f, Dungeon3.BossZ),
+                MobCatalog.HeightOf(MobCatalog.IronTyrant),
+                ctrl,
+                false,
+                true,
+                MobCatalog.DisplayNameOf(MobCatalog.IronTyrant),
+                MobCatalog.MaxHpOf(MobCatalog.IronTyrant));
+            BindMob(spawned, MobCatalog.IronTyrant);
             HideExtraGear(spawned);
             if (parent != null)
                 spawned.transform.SetParent(parent, true);

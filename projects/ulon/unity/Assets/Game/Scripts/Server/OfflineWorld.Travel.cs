@@ -177,7 +177,6 @@ namespace Ulon.Server
 
         static void EnsureDungeon3Runtime()
         {
-            // 보스(IronTyrant)는 아직 스폰하지 않는다 — 전용 캐릭터 에셋 대기 중.
             var mob = GameObject.Find(Dungeon3.MobObject);
             if (mob == null)
                 return;
@@ -187,6 +186,15 @@ namespace Ulon.Server
             body.MobId = MobCatalog.Raider;
             body.IsEnemy = true;
             body.ApplyMobCatalog();
+            var boss = GameObject.Find(Dungeon3.BossObject);
+            if (boss == null)
+                return;
+            var bossBody = boss.GetComponent<WorldBody>();
+            if (bossBody == null)
+                return;
+            bossBody.MobId = MobCatalog.IronTyrant;
+            bossBody.IsEnemy = true;
+            bossBody.ApplyMobCatalog();
         }
 
         static void EnsureFieldBossRuntime()

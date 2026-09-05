@@ -427,8 +427,25 @@ namespace Ulon.Editor
             var d2Room = GameObject.Find(Dungeon2.InteriorObject);
             if (d2Room != null && Vector3.Distance(interior.transform.position, d2Room.transform.position) < 40f)
                 throw new InvalidOperationException("던전 3 내부는 던전 2와 같은 방이 아니어야 합니다.");
-            if (GameObject.Find(Dungeon3.BossObject) != null)
-                throw new InvalidOperationException("던전 3 보스는 전용 에셋이 오기 전에는 두지 않습니다.");
+            var boss = GameObject.Find(Dungeon3.BossObject);
+            var bossBody = boss != null ? boss.GetComponent<WorldBody>() : null;
+            if (bossBody == null || bossBody.MobId != MobCatalog.IronTyrant || !bossBody.IsEnemy)
+                throw new InvalidOperationException("던전 3 내부에 서버 권한 네임드 엘리트 강철폭군이 있어야 합니다.");
+            if (bossBody.DisplayName != "강철폭군" || Math.Abs(bossBody.MaxHp - 210f) > 0.0001f)
+                throw new InvalidOperationException("강철폭군은 이름=강철폭군, HP=210이어야 합니다.");
+            if (boss.GetComponent<NetworkObject>() == null || boss.GetComponent<NetMob>() == null)
+                throw new InvalidOperationException("강철폭군 전투 상태는 서버 NetworkObject/NetMob이 권한을 가져야 합니다.");
+            if (Math.Abs(boss.transform.position.x - Dungeon3.BossX) > 0.8f || Math.Abs(boss.transform.position.z - Dungeon3.BossZ) > 0.8f)
+                throw new InvalidOperationException("강철폭군은 던전 3 내부 표시 위치에 있어야 합니다.");
+            var d1Boss = GameObject.Find(Dungeon1.BossObject);
+            if (d1Boss != null && Vector3.Distance(boss.transform.position, d1Boss.transform.position) < 40f)
+                throw new InvalidOperationException("강철폭군은 던전 1 본워든과 같은 방이 아니어야 합니다.");
+            var d2Boss = GameObject.Find(Dungeon2.BossObject);
+            if (d2Boss != null && Vector3.Distance(boss.transform.position, d2Boss.transform.position) < 40f)
+                throw new InvalidOperationException("강철폭군은 던전 2 섀도우캡틴과 같은 방이 아니어야 합니다.");
+            var bossCc = boss.GetComponent<CharacterController>();
+            if (bossCc == null || Math.Abs(bossCc.height - 2.60f) > 0.05f)
+                throw new InvalidOperationException("강철폭군은 다른 보스 셋과 다른 키(2.60)여야 합니다.");
 
             var worldGo = new GameObject("selfcheck-dungeon3-world");
             GameObject avatarGo = null;
@@ -464,6 +481,43 @@ namespace Ulon.Editor
                 var hit = world.TryAttack(avatar, enemy);
                 if (!hit.Applied)
                     throw new InvalidOperationException("던전 3 내부 전투 실패: " + hit.FailReason);
+
+                var eliteGo = new GameObject("selfcheck-dungeon3-boss");
+                eliteGo.transform.position = avatarGo.transform.position + new Vector3(0.8f, 0f, 0f);
+                var elite = eliteGo.AddComponent<WorldBody>();
+                elite.IsEnemy = true;
+                elite.MobId = MobCatalog.IronTyrant;
+                elite.ApplyMobCatalog();
+                elite.ResetHp();
+                if (Math.Abs(elite.MaxHp - 210f) > 0.0001f || elite.DisplayName != "강철폭군")
+                    throw new InvalidOperationException("강철폭군 카탈로그 HP/이름이 서버에 적용되어야 합니다.");
+                var netGo = new GameObject("selfcheck-server-boss3");
+                var netBody = netGo.AddComponent<WorldBody>();
+                netBody.MobId = MobCatalog.IronTyrant;
+                var netMob = netGo.AddComponent<NetMob>();
+                netMob.OnStartServer();
+                if (netBody.DisplayName != "강철폭군" || Math.Abs(netBody.MaxHp - 210f) > 0.0001f || Math.Abs(netBody.Hp - 210f) > 0.0001f)
+                    throw new InvalidOperationException("서버 시작 시 강철폭군 카탈로그와 HP를 권위 있게 적용해야 합니다.");
+                UnityEngine.Object.DestroyImmediate(netGo);
+                var slayerGo = new GameObject("selfcheck-dungeon3-slayer");
+                slayerGo.transform.position = eliteGo.transform.position;
+                var slayer = slayerGo.AddComponent<WorldBody>();
+                slayer.IsAvatar = true;
+                slayer.MaxHp = 50f;
+                slayer.ResetHp();
+                var bag = slayerGo.AddComponent<InventoryBag>();
+                elite.ApplyDamage((int)elite.MaxHp - 1);
+                var slay = world.TryAttack(slayer, elite);
+                if (!slay.Applied)
+                    throw new InvalidOperationException("강철폭군 처치 실패: " + slay.FailReason);
+                if (elite.Alive)
+                    throw new InvalidOperationException("강철폭군이 죽어야 합니다.");
+                if (!ItemCatalog.Has(bag.Items, ItemCatalog.TyrantCore))
+                    throw new InvalidOperationException("강철폭군은 폭군의 핵(tyrant_core)을 서버가 지급해야 합니다.");
+                if (ItemCatalog.Has(bag.Items, ItemCatalog.CaptainSigil) || ItemCatalog.Has(bag.Items, ItemCatalog.WardenCrest))
+                    throw new InvalidOperationException("강철폭군은 다른 보스 드랍을 주면 안 됩니다.");
+                UnityEngine.Object.DestroyImmediate(eliteGo);
+                UnityEngine.Object.DestroyImmediate(slayerGo);
 
                 avatarGo.transform.position = exitGo.transform.position;
                 var leave = world.TryDungeon(avatar, xg);

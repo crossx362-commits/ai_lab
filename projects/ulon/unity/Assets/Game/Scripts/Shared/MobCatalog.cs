@@ -21,6 +21,7 @@ namespace Ulon.Shared
         public const string BoneWarden = "bonewarden";
         public const string ShadowCaptain = "shadowcaptain";
         public const string Hexarch = "hexarch";
+        public const string IronTyrant = "irontyrant";
         public const string Hart = "hart";
         public const string Boar = "boar";
         public const int KindCount = 8;
@@ -137,6 +138,17 @@ namespace Ulon.Shared
                 };
                 return true;
             }
+            if (id == IronTyrant)
+            {
+                definition = new MobDefinition
+                {
+                    Id = IronTyrant,
+                    DisplayName = "강철폭군",
+                    MaxHp = 210f,
+                    Height = 2.60f
+                };
+                return true;
+            }
             if (id == Hexarch)
             {
                 definition = new MobDefinition
@@ -196,7 +208,7 @@ namespace Ulon.Shared
 
         public static bool IsBoss(string id)
         {
-            return id == BoneWarden || id == ShadowCaptain || id == Hexarch;
+            return id == BoneWarden || id == ShadowCaptain || id == Hexarch || id == IronTyrant;
         }
 
         public static string KillDropOf(string id)
@@ -207,6 +219,8 @@ namespace Ulon.Shared
                 return ItemCatalog.CaptainSigil;
             if (id == Hexarch)
                 return ItemCatalog.HexSeal;
+            if (id == IronTyrant)
+                return ItemCatalog.TyrantCore;
             return "";
         }
 
@@ -227,6 +241,7 @@ namespace Ulon.Shared
             else if (id == BoneWarden) { str = 55; resist = 8; dmgMin = 8; dmgMax = 16; }
             else if (id == ShadowCaptain) { str = 50; resist = 6; dmgMin = 10; dmgMax = 18; }
             else if (id == Hexarch) { str = 30; resist = 12; dmgMin = 8; dmgMax = 20; }
+            else if (id == IronTyrant) { str = 62; resist = 10; dmgMin = 12; dmgMax = 22; }
             else if (id == Hart) { str = 8; resist = 0; dmgMin = 1; dmgMax = 2; }
             else if (id == Boar) { str = 10; resist = 0; dmgMin = 1; dmgMax = 3; }
         }
