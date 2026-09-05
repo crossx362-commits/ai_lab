@@ -57,20 +57,21 @@
 오너에게 보여주는 화면은 플레이 3/4만. Kenney 샘플 밀도(건물·돌길·나무·소품이 붙을 것).
 
 ## 방금 고른 다음 일
-던전3(남서 입구/내부 (80,-80)/출구/잡몹 야만인) 들어 있음. leftover는 이제 없다.
-남은 것: 던전3 보스 IronTyrant — 전용 캐릭터 에셋 대기 중이다.
+던전3 보스 강철폭군(HP 210, 키 2.60, tyrant_core) 들어 있음.
+이것으로 MVP 콘텐츠 상한(마을1·필드3·광산1·던전1~2·스킬16·몬스터20+보스2~3)을
+전부 채웠다. leftover 없음.
 
-## 던전3 보스가 막힌 이유 (2026-09-05)
-KayKit 캐릭터 FBX 8종이 전부 다른 몹에 쓰이고 있어 보스에 줄 모델이 없다.
-오너가 "새 무료 에셋 받기"로 정했고, `_ThirdParty/README.md`의 1차 필수 목록에
-이미 적혀 있으나 임포트가 안 된 Quaternius 두 팩이 후보다(CC0 확인):
-- https://quaternius.itch.io/universal-base-characters
-- https://quaternius.itch.io/modular-character-outfits-fantasy
-itch.io 로그인이 필요해 오너가 받아 `projects/ulon/art/`에 zip으로 넣기로 했다.
-도착하면 `_ThirdParty/Quaternius/<팩>/RAW/`에 풀고 LICENSE/SOURCE_URL을 두고
-`docs/ASSET_REGISTER.md`에 한 줄 남긴 뒤 IronTyrant를 얹는다.
-AssertDungeon3Slice가 "보스가 있으면 안 된다"로 현 상태를 못박고 있으니,
-보스를 넣을 때 그 줄부터 실제 보스 검사(이름/HP/키/드랍/방 이격)로 바꿔라.
+## 다음 후보 (오너와 정할 것)
+- 수치 데이터 외부화: 기획서 12.2가 "아이템/스킬/몬스터/제작법을 코드에 하드코딩하지
+  말고 ID 기반 데이터로"라고 못박았는데 ItemCatalog(SkillSet.cs)·MobCatalog가
+  전부 .cs 하드코딩이고 `Game/Data/`는 빈 폴더다. 밸런스 한 줄 고치는 데 재빌드가
+  든다. 전 셀프체크가 의존하는 부분이라 크다 — 아키텍처 변경이므로 승인 먼저.
+- 기획서 13.3의 8개월차 안정화: 관심 영역(Interest Management), 성능 테스트.
+- 강철폭군 모델 교체: 지금은 KayKit Knight 재사용이다. 오너가 Quaternius 팩
+  (universal-base-characters / modular-character-outfits-fantasy, CC0, itch.io
+  로그인 필요)을 `projects/ulon/art/`에 넣으면 `_ThirdParty/Quaternius/<팩>/RAW/`에
+  풀고 LICENSE/SOURCE_URL을 두고 `docs/ASSET_REGISTER.md`에 한 줄 남긴 뒤
+  EnsureDungeon3Boss의 FBX 상수만 바꾸면 된다.
 
 ## C# 블록을 잘라 옮길 때 (2026-09-05, 같은 실수 두 번)
 메서드/클래스 본문을 잘라 다른 파일로 옮기거나 복제할 땐 끝을 **중괄호 깊이로
