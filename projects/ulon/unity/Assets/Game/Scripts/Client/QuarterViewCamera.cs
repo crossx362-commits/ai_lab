@@ -11,6 +11,12 @@ namespace Ulon.Client
         [SerializeField] Transform follow;
         [SerializeField] float distance = 18f;
         [SerializeField] float minDistance = 8f;
+        // 기획서 §4.2는 고정 3/4 쿼터뷰 + **줌 허용**이다. 피치·요는 그대로 두고 실내에서만 줌을 더 허용한다.
+        // 실외 최소 8m면 카메라 높이가 8×sin35≈4.6m라 지면 높이의 암반 뚜껑 위에 머물러
+        // 화면이 「지붕 윗면」이 된다(검수 2026-09-06). 실내에서는 방 안으로 들어와야 한다.
+        // **상수로 둔다.** [SerializeField] 기본값은 이미 씬에 저장된 컴포넌트에는 적용되지 않아
+        // 코드를 고쳐도 씬은 옛 값을 쓴다 — 네거티브 컨트롤이 통과해버려서 발견했다(2026-09-06).
+        public const float IndoorDistanceMeters = 5.5f;
         [SerializeField] float maxDistance = 36f;
         [SerializeField] float zoomSpeed = 8f;
         [SerializeField] float pitch = 35f;
@@ -33,6 +39,16 @@ namespace Ulon.Client
         public float Yaw => yaw;
         public float Distance => distance;
         public float MinDistance => minDistance;
+        public float IndoorDistance => IndoorDistanceMeters;
+
+        /// <summary>이 지점이 던전 실내인가 — 머리 위가 던전 차폐물(뚜껑·천장)로 막혀 있으면 실내다.</summary>
+        public static bool IsIndoor(Vector3 point)
+        {
+            int layer = LayerMask.NameToLayer(DungeonSightFade.BlockerLayer);
+            if (layer < 0)
+                return false;
+            return Physics.Raycast(point + Vector3.up * 0.2f, Vector3.up, 30f, 1 << layer, QueryTriggerInteraction.Ignore);
+        }
 
         void OnEnable()
         {
@@ -54,7 +70,8 @@ namespace Ulon.Client
 
             Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
             Vector3 target = follow != null ? follow.position : Vector3.zero;
-            transform.SetPositionAndRotation(target - rot * Vector3.forward * distance, rot);
+            float useDist = IsIndoor(target) ? Mathf.Min(distance, IndoorDistanceMeters) : distance;
+            transform.SetPositionAndRotation(target - rot * Vector3.forward * useDist, rot);
 
             var cam = GetComponent<Camera>();
             if (cam == null)

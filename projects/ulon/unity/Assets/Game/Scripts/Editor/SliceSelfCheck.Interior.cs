@@ -133,9 +133,9 @@ namespace Ulon.Editor
             CheckSight("던전 2", new Vector2(Dungeon2.InteriorX, Dungeon2.InteriorZ), cam, blocker);
             CheckSight("던전 3", new Vector2(Dungeon3.InteriorX, Dungeon3.InteriorZ), cam, blocker);
 
-            CheckScreenFill("던전 1", new Vector2(Dungeon1.InteriorX, Dungeon1.InteriorZ), cam, blocker);
-            CheckScreenFill("던전 2", new Vector2(Dungeon2.InteriorX, Dungeon2.InteriorZ), cam, blocker);
-            CheckScreenFill("던전 3", new Vector2(Dungeon3.InteriorX, Dungeon3.InteriorZ), cam, blocker);
+            CheckScreenFill("던전 1", new Vector2(Dungeon1.InteriorX, Dungeon1.InteriorZ), cam, blocker, Dungeon1.InteriorObject, Dungeon1.MobObject, Dungeon1.BossObject);
+            CheckScreenFill("던전 2", new Vector2(Dungeon2.InteriorX, Dungeon2.InteriorZ), cam, blocker, Dungeon2.InteriorObject, Dungeon2.MobObject, Dungeon2.BossObject);
+            CheckScreenFill("던전 3", new Vector2(Dungeon3.InteriorX, Dungeon3.InteriorZ), cam, blocker, Dungeon3.InteriorObject, Dungeon3.MobObject, Dungeon3.BossObject);
 
             Debug.Log("[Ulon] 플레이 카메라 시야 통과 — pitch " + cam.Pitch + "·yaw " + cam.Yaw + "에서 방 안 플레이어를 가리는 것은 전부 " + Ulon.Client.DungeonSightFade.BlockerLayer + " 레이어(런타임 렌더 오프)");
         }
@@ -144,7 +144,7 @@ namespace Ulon.Editor
         {
             float groundY = GroundYAt(center) - VisualSliceBuilder.DungeonDepth;   // 방 바닥(지하화)
             var player = new Vector3(center.x, groundY + 1.0f, center.y);
-            float[] distances = { cam.Distance, cam.MinDistance };
+            float[] distances = { Mathf.Min(cam.Distance, cam.IndoorDistance), cam.MinDistance };
             for (int d = 0; d < distances.Length; d++)
             {
                 var rot = Quaternion.Euler(cam.Pitch, cam.Yaw, 0f);
@@ -179,14 +179,25 @@ namespace Ulon.Editor
         /// 주변 잔디가 화면을 채우게 한 상태) 0.60 → FAIL. 0.45면 고친 상태는 통과하고 결함은 잡힌다.
         /// </summary>
         const float OutdoorFillMax = 0.45f;
+        // 검수 2026-09-06: 「막을 것을 세지 말고 보여야 할 것을 세라」 — 잔디를 막았더니 회색 뚜껑이 화면을 덮었다.
+        // 그래서 **실내(바닥·벽·방 안 몹)가 화면에서 차지하는 비율의 하한**을 건다.
+        // 실측(2026-09-06): 실내 줌 5.5m에서 0.98~1.00, 실외 거리 18m(결함 상태)에서 0.67~0.78.
+        // 0.90이면 고친 상태는 통과하고 결함은 잡힌다 — 0.55로 뒀더니 결함이 그대로 통과했다.
+        const float InteriorShareMin = 0.90f;
         const int FillRaysPerAxis = 21;
 
-        static void CheckScreenFill(string label, Vector2 center, Ulon.Client.QuarterViewCamera cam, int blockerLayer)
+        static void CheckScreenFill(string label, Vector2 center, Ulon.Client.QuarterViewCamera cam, int blockerLayer,
+            string interiorObject, string mobObject, string bossObject)
         {
+            var interior = GameObject.Find(interiorObject);
+            if (interior == null)
+                throw new InvalidOperationException(label + " 내부 오브젝트가 없습니다: " + interiorObject);
+            var mobGo = GameObject.Find(mobObject);
+            var bossGo = GameObject.Find(bossObject);
             float groundY = GroundYAt(center) - VisualSliceBuilder.DungeonDepth;
             var player = new Vector3(center.x, groundY + 1.0f, center.y);
             var rot = Quaternion.Euler(cam.Pitch, cam.Yaw, 0f);
-            var eye = player - rot * Vector3.forward * cam.Distance;
+            var eye = player - rot * Vector3.forward * Mathf.Min(cam.Distance, cam.IndoorDistance);
 
             // 55° FOV·16:9 — QaShots의 카메라와 같은 화각으로 격자 샘플을 쏜다.
             float halfV = 55f * 0.5f;
@@ -198,6 +209,7 @@ namespace Ulon.Editor
             int total = 0;
             int outdoor = 0;
             int skyCount = 0;
+            int inside = 0;
             try
             {
             for (int iy = 0; iy < FillRaysPerAxis; iy++)
@@ -208,11 +220,13 @@ namespace Ulon.Editor
                     float tx = FillRaysPerAxis == 1 ? 0f : (ix / (float)(FillRaysPerAxis - 1)) * 2f - 1f;
                     var dir = rot * Quaternion.Euler(ty * halfV, tx * halfH, 0f) * Vector3.forward;
                     total++;
-                    if (IsOutdoorPixel(eye, dir, out bool sky))
+                    if (IsOutdoorPixel(eye, dir, out bool sky, out Collider firstHit))
                     {
                         outdoor++;
                         if (sky) skyCount++;
                     }
+                    if (IsInteriorHit(firstHit, interior, mobGo, bossGo))
+                        inside++;
                 }
             }
 
@@ -223,15 +237,35 @@ namespace Ulon.Editor
             }
 
             float ratio = outdoor / (float)total;
+            float interiorShare = inside / (float)total;
             float grass = (outdoor - skyCount) / (float)total;
             Debug.Log("[Ulon] 화면 채움 계측 " + label + " 잔디 " + grass.ToString("0.00") + " 하늘 " + (skyCount / (float)total).ToString("0.00") + " (잔디+하늘 " + outdoor + "/" + total + ")");
+            Debug.Log("[Ulon] 실내 비율 계측 " + label + " " + interiorShare.ToString("0.00") + " (" + inside + "/" + total + ")");
+            if (interiorShare < InteriorShareMin)
+                throw new InvalidOperationException(label + " 플레이 카메라 화면에서 던전 실내(바닥·벽·몹)가 " + (interiorShare * 100f).ToString("0") + "%뿐입니다 — 최소 " + (InteriorShareMin * 100f).ToString("0") + "%. 잔디를 막아도 뚜껑 윗면이 화면을 덮으면 실내로 안 읽힙니다(§8.2·§4.2 줌).");
             if (grass > OutdoorFillMax)
                 throw new InvalidOperationException(label + " 플레이 카메라 화면의 " + (grass * 100f).ToString("0") + "%가 잔디입니다 — 기획서 §8.2 상한 " + (OutdoorFillMax * 100f).ToString("0") + "%. 방이 지하로 안 내려갔거나 암반 뚜껑이 좁아 던전으로 안 읽힙니다.");
         }
 
         /// <summary>이 방향의 화면 픽셀이 잔디(Terrain)나 하늘로 보이는가 — 페이드로 꺼지는 렌더러는 없는 셈.</summary>
-        static bool IsOutdoorPixel(Vector3 eye, Vector3 dir, out bool sky)
+        /// <summary>이 화면 픽셀이 던전 실내(방 구조물 또는 방 안 몹)인가.</summary>
+        static bool IsInteriorHit(Collider col, GameObject interior, GameObject mob, GameObject boss)
         {
+            if (col == null)
+                return false;
+            var t = col.transform;
+            if (interior != null && t.IsChildOf(interior.transform))
+                return true;
+            if (mob != null && (t == mob.transform || t.IsChildOf(mob.transform)))
+                return true;
+            if (boss != null && (t == boss.transform || t.IsChildOf(boss.transform)))
+                return true;
+            return false;
+        }
+
+        static bool IsOutdoorPixel(Vector3 eye, Vector3 dir, out bool sky, out Collider firstHit)
+        {
+            firstHit = null;
             var hits = Physics.RaycastAll(eye, dir, 120f, ~0, QueryTriggerInteraction.Ignore);
             float best = float.MaxValue;
             bool bestOutdoor = true;   // 아무것도 안 맞으면 하늘
@@ -253,6 +287,7 @@ namespace Ulon.Editor
                     best = hits[i].distance;
                     bestOutdoor = isTerrain;
                     bestSky = false;
+                    firstHit = col;
                 }
             }
             sky = bestSky;

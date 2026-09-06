@@ -139,7 +139,8 @@ namespace Ulon.Editor
             var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
             float pitch = qv != null ? qv.Pitch : 35f;
             float yaw = qv != null ? qv.Yaw : 45f;
-            float dist = qv != null ? qv.Distance : 18f;
+            // 실내는 런타임과 같은 실내 줌 거리로 찍는다(§4.2 줌 허용) — 밖에서 찍으면 지붕 윗면만 나온다.
+            float dist = qv != null ? Mathf.Min(qv.Distance, qv.IndoorDistance) : 5.5f;
             // 방은 지하다 — 플레이어는 지면이 아니라 방 바닥에 선다.
             float y = GroundY(cx, cz) - VisualSliceBuilder.DungeonDepth;
             var player = new Vector3(cx, y + 1.0f, cz);
