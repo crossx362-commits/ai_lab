@@ -22,35 +22,38 @@ SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # �
 5. 보고엔 기획서 조항 번호(`docs/GAME_DESIGN.md` §4.2·§6.1·§8.1·§8.2·§10.2·§11·§12.2)를 인용.
 
 ## 최근 커밋 (오래된 것 → 최신)
-… eb0961ce(흰 바위 잔재), b074dc52·cf8404c5·34033723(던전 지하화 + 게이트 2종),
-8ec5cf4a(인수인계), cbf2341d·8646a0ca·ed1098ad·e89faccf·096261d0·eb88e531(월드 지형 산·바다·강·호수),
-dc18aeb5(왕관 위치·보스 무기·입구 마감 반려 3건), 2ef3b6c4(던전 침수), 917f0f3f(발 높이).
+… 던전 지하화·월드 지형·지형 반려 1~3·왕관/무기/입구 반려 3건·침수/발높이 회귀,
+f55878bb(실내 줌 §4.2 + 실내 화면 비율 하한 게이트), d7609f63(§6.1 지역 배치 + AssertWorldRegions).
 
 ## 최근에 끝난 것
-1. **던전 지하화**(검수 P0) — 방 바닥 지면 −4.5m, 6×6 암반 뚜껑 + Terrain 홀.
-   게이트: 화면 잔디 비율 45% 상한(§8.2) / `AssertDungeonLighting`(주광 차단·지하 점광 3개↑).
-2. **월드 지형**(오너 지시) — `Shared/WorldTerrain.cs`가 높이 원장. 맵 300m·높이 60m,
-   평지 → 산 띠(최고 52m) → 해안 → 바다, 호수(-70,10)·강(x −80~−140)이 같은 수면(3.0) 공유.
-   도포 3종(풀·바위·모래). `AssertWorldTerrain`(기복·표준편차·수면 아래 비율·호수/강 개별·도포·콘텐츠 8곳 뭍).
-3. **검수 반려 3건** — 왕관을 CharacterController 머리 기준으로(Assert: 바닥 ≥ 몸높이 0.8배),
-   보스 무기를 실제로 렌더(가장 큰 장비 선택·조상 활성화·HideExtraGear 예외·EnsureBossDressing 멱등,
-   Assert: 렌더러 + 최장변 ≥ 몸높이 0.4배), 입구 흰 바위 제거(EnsureEntranceClearance)·옆벽 정렬.
-4. **지형 작업이 부른 회귀 2건** — 던전이 수면 아래로 잠김(LandBase 10.0 + 침수 Assert),
-   방 안 몹·보스가 바닥에 파묻힘(StandOnRoomFloor + 발 높이 Assert).
+1. **던전 지하화**(P0) — 방 바닥 −4.5m, 6×6 암반 뚜껑 + Terrain 홀. 게이트: 화면 잔디 45% 상한·지하 점광 3개↑.
+2. **월드 지형** — `Shared/WorldTerrain.cs`가 높이 원장. 맵 300m·산 띠·바다·호수·강, 도포 3종. `AssertWorldTerrain`.
+3. **검수 반려 3건** — 왕관 위치(CharacterController 머리 기준)·보스 무기 실렌더·입구 바위 제거/옆벽 정렬.
+4. **회귀 2건** — 던전 침수(LandBase 10.0 + 침수 Assert)·방 안 발 높이(StandOnRoomFloor + Assert).
+5. **§7.2 서버 권한 배선** — 조련/펫/키워드를 NetAvatar Rpc로. 게이트는 런타임이 아니라 **소스 정적 스캔**
+   (`SliceSelfCheck.ServerAuthority.cs`) — 메서드 경계에서 멈추게 고치자 결함 2건이 더 드러났다.
+6. **실내 줌(§4.2) + 실내 화면 비율 하한** — `QuarterViewCamera.IndoorDistanceMeters` 상수, `InteriorShareMin=0.90`
+   (실측 실내 0.98~1.00 / 결함 0.67~0.78).
+7. **§6.1 지역 배치**(반려 4, d7609f63) — `Shared/WorldRegions.cs` 원장 + 농경지·숲·광산 실물 + 평지 산포 259개
+   + 던전 뚜껑 위 장식 66개. `AssertWorldRegions`: 지역 소품 하한·사분면 4개↑·평지 12m 안 소품 75%↑
+   (실측 91.0%, 네거티브 36.6% FAIL).
 
 ## 다음 할 일 (검수 확정 순서 — 새 지시가 오면 그게 맨 앞)
-1. 검수 회신 대기: 지형 2차(Blender로 실제 산·바위 메시를 얹는 것까지 범위인지) 여부.
-2. 온라인 서버권한 2건(`NetAvatar` SyncVar 노출 / `RpcTame`·`RpcPet` 부재) — 검수가 실물 검수 후 순위 확정.
-3. 테스트 공간(§6.1) 구현 + 문서의 "MVP 콘텐츠 상한 충족" 문구를 미구현으로 정정.
-4. `DataLedger` 레코드 단위 검증(아이템 weight>0·buy≥0·uses≥0·strReq≥0 / 몹 hp>0·height>0·name 비어있지 않음·dmgMin≥0·dmgMax≥dmgMin),
-   불량 레코드는 코드 폴백 + `Debug.LogError` + `loadError` 누적, 필드 없는 레코드로 코드 기본값 확인 Assert.
-5. GM "원장 다시 읽기" 배선, "재빌드 없이" 문구 정정, 스택 결합 경고 문서, `TameCritter/TameBoar.DisplayName` 이중 원장,
-   `MobCatalog.KindCount = 8` vs 14 모순, 클라 변조면 주석, Assert의 문자열 치환을 파싱/수정/기록으로 교체,
-   `Assets/Game/Data/.gitkeep` 삭제.
-6. 제작법(CraftRecipes) 외부화.
+1. **도달 불가 기능 스캔** — SliceSelfCheck가 OfflineWorld를 직접 불러 통과시키지만 `Client/`에 호출부가 없는
+   `Try*` 찾기. 확인된 것: `TryVetResurrect`(키 배선 + Rpc + 게이트 필요).
+2. **PASS 로그 문구 정정** — 「던전 1 … 스텁」, 「헥사크(HP 180)」, 「Bonded Pet+Veterinary 부활 1」이 실제와 다르다.
+3. **테스트 공간(§6.1)** 구현 + 문서의 "MVP 콘텐츠 상한 충족" 문구 정정.
+4. **산 도포 재반려** — 중턱 풀 하한 35%↑(현재 실측 0.19), 바위 텍스처를 풀과 다른 패턴/타일링으로,
+   바위 색 분산 게이트. **무기 손 부착 판정**(무기 앵커가 손 본 0.3m 안). **왕관 가시성**(머리 축에서 수평 0.15m 안).
+   보스 클로즈업 샷(17)은 상시 유지.
+5. `DataLedger` 레코드 단위 검증 → 정리 묶음(GM 원장 다시 읽기, "재빌드 없이" 문구, `TameCritter/TameBoar.DisplayName`
+   이중 원장, `MobCatalog.KindCount = 8` vs 14, Assert 문자열 치환 → 파싱/수정/기록, `Assets/Game/Data/.gitkeep` 삭제)
+   → 제작법(CraftRecipes) 외부화.
 
-## 지형 작업이 남긴 교훈(반복 금지)
-- `TerrainData`는 에셋이다 — `SaveAssets()` 없이는 씬을 다시 열 때 디스크의 옛 지형이 돌아온다.
-- `Ensure*` 스폰 함수는 오브젝트가 있으면 일찍 반환한다 — 코드에서 고쳐도 **이미 만들어진 씬은 안 고쳐진다**.
-  씬 상태를 바꾸는 수정에는 멱등한 `EnsureXxx` 보수 패스를 만들고 셀프체크에서 부를 것.
-- 지형 높이를 만지면 던전 침수·발 높이 어긋남 같은 회귀가 난다 — 지형 상수를 바꾸면 QA 샷 전량을 눈으로 볼 것.
+## 교훈(반복 금지)
+- `TerrainData`는 에셋이다 — `SaveAssets()` 없이는 디스크의 옛 지형이 돌아온다.
+- `Ensure*`는 오브젝트가 있으면 일찍 반환한다 — **이미 만들어진 씬은 코드 수정만으로 안 고쳐진다**. 멱등 보수 패스를 만들 것.
+- `[SerializeField]` 기본값 변경은 씬에 저장된 컴포넌트에 반영되지 않는다 — 판정에 쓰는 값은 상수로.
+- 씬을 만드는 `Ensure*`의 **호출 순서**를 확인할 것 — 던전 뚜껑 장식이 뚜껑 생성 전에 돌아 한 번 통째로 사라졌다.
+- 게이트 임계값은 **고친 상태와 결함 상태를 둘 다 실측해** 그 사이로 잡는다. 새 게이트는 게이트 자체를 네거티브 컨트롤로 검사.
+- 게이트는 존재가 아니라 **화면에서 읽히는 성질**(위치·정렬·부착·보여야 할 것의 하한)을 잰다.
