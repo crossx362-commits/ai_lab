@@ -4,7 +4,8 @@ namespace Ulon.Shared
     {
         public const string Id = "hart";
         public const string Object = "TameCritter";
-        public const string DisplayName = "야생하트";
+        /// <summary>이름은 원장(mobs.json → MobCatalog)에서만 온다 — 여기 상수로 또 적으면 원장이 둘이 된다.</summary>
+        public static string DisplayName => MobCatalog.DisplayNameOf(Id);
         public const float X = -22.8f;
         public const float Z = 8.4f;
         public const int ControlSlots = 1;
@@ -17,7 +18,8 @@ namespace Ulon.Shared
     {
         public const string Id = "boar";
         public const string Object = "TameBoar";
-        public const string DisplayName = "야생멧돼지";
+        /// <summary>이름은 원장(mobs.json → MobCatalog)에서만 온다.</summary>
+        public static string DisplayName => MobCatalog.DisplayNameOf(Id);
         public const float X = -25.6f;
         public const float Z = 11.2f;
         public const int ControlSlots = 1;

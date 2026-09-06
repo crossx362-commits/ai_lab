@@ -562,13 +562,15 @@ namespace Ulon.Client
             }
         }
 
+        string ledgerLine = "";
+
         void DrawGm(OfflineWorld world, WorldBody me)
         {
             if (!gmOpen && !Cli.Has("-ulon-gm"))
                 return;
             if (me == null)
                 return;
-            GUI.Box(new Rect(370, 200, 280, 220), "");
+            GUI.Box(new Rect(370, 200, 280, 250), "");
             GUI.Label(new Rect(382, 206, 256, 20), PersistDriver.Frozen ? "GM  계정 정지됨" : "GM  (F1)");
             if (GUI.Button(new Rect(382, 230, 90, 24), "광장복구"))
                 world.GmWarpPlaza(me);
@@ -588,17 +590,21 @@ namespace Ulon.Client
                 world.GmSpawnSkeleton();
             if (GUI.Button(new Rect(478, 286, 70, 24), "스켈삭제"))
                 world.GmDespawnExtra();
+            if (GUI.Button(new Rect(478, 314, 146, 24), "원장 다시 읽기"))
+                ledgerLine = world.GmReloadLedgers();
             if (GUI.Button(new Rect(554, 286, 70, 24), PersistDriver.Frozen ? "해제" : "정지"))
             {
                 bool next = !OpLog.IsFrozen(PersistDriver.AccountKey());
                 OpLog.Freeze(PersistDriver.AccountKey(), next);
                 PersistDriver.Frozen = next;
             }
+            if (ledgerLine != "")
+                GUI.Label(new Rect(382, 340, 256, 20), ledgerLine);
             string[] logs = OpLog.Recent(3);
             string logLine = logs.Length == 0 ? "(로그 없음)" : logs[logs.Length - 1];
             if (logLine.Length > 42)
                 logLine = logLine.Substring(logLine.Length - 42);
-            GUI.Label(new Rect(382, 318, 256, 90), logLine);
+            GUI.Label(new Rect(382, 360, 256, 60), logLine);
         }
 
 

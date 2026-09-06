@@ -210,6 +210,23 @@ namespace Ulon.Server
             bossBody.ApplyMobCatalog();
         }
 
+        /// <summary>
+        /// 12.2 — 수치 원장(items.json·mobs.json)을 **실행 중에** 다시 읽는다. 로더가 한 번 읽고 캐시하므로
+        /// 이 길이 없으면 파일을 고쳐도 게임을 껐다 켜야 반영된다(그때 「재빌드 없이」는 반만 맞는 말이다).
+        /// </summary>
+        public string GmReloadLedgers()
+        {
+            ItemData.Reload();
+            MobData.Reload();
+            string err = "";
+            if (!string.IsNullOrEmpty(ItemData.LoadError))
+                err += " 아이템: " + ItemData.LoadError;
+            if (!string.IsNullOrEmpty(MobData.LoadError))
+                err += " 몹: " + MobData.LoadError;
+            OpLog.Write("gm", PersistDriver.AccountKey(), "-", "reload_ledgers");
+            return "원장 재적재 — 아이템 " + ItemData.Count + "종·몹 " + MobData.Count + "종" + (err == "" ? "" : " / 불량:" + err);
+        }
+
         public AttackResult GmWarpPlaza(WorldBody body)
         {
             if (body == null)

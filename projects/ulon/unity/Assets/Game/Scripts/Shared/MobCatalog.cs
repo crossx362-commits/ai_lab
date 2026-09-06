@@ -24,7 +24,8 @@ namespace Ulon.Shared
         public const string IronTyrant = "irontyrant";
         public const string Hart = "hart";
         public const string Boar = "boar";
-        public const int KindCount = 8;
+        /// <summary>필드에 도는 **적대 잡몹** 종수. 원장(mobs.json) 레코드 수(보스·조련 대상 포함 14종)와 다르다.</summary>
+        public const int HostileKindCount = 8;
 
         public static bool TryGet(string id, out MobDefinition definition)
         {
@@ -177,7 +178,7 @@ namespace Ulon.Shared
                 definition = new MobDefinition
                 {
                     Id = Hart,
-                    DisplayName = TameCritter.DisplayName,
+                    DisplayName = "야생하트",
                     MaxHp = 20f,
                     Height = 0.9f
                 };
@@ -188,7 +189,7 @@ namespace Ulon.Shared
                 definition = new MobDefinition
                 {
                     Id = Boar,
-                    DisplayName = TameBoar.DisplayName,
+                    DisplayName = "야생멧돼지",
                     MaxHp = 24f,
                     Height = 0.95f
                 };

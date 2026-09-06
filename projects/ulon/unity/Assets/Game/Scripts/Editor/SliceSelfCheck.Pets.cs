@@ -21,7 +21,7 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("조련 스킬명/직업명이 기획과 같아야 합니다.");
             if (SkillNames.KoreanOf(SkillId.Veterinary) != "수의학" || SkillNames.KoreanOf(SkillId.AnimalLore) != "동물지식")
                 throw new InvalidOperationException("수의학/동물지식 스킬명을 바꾸면 안 됩니다.");
-            if (MobCatalog.KindCount != 8)
+            if (MobCatalog.HostileKindCount != 8)
                 throw new InvalidOperationException("사냥 몹 종류 수는 그대로 8이어야 합니다.");
             if (MobCatalog.TamableOf(MobCatalog.Bandit) || MobCatalog.TamableOf("wolf") || MobCatalog.TamableOf(MobCatalog.Skeleton))
                 throw new InvalidOperationException("사냥 몹은 조련불가여야 합니다.");
