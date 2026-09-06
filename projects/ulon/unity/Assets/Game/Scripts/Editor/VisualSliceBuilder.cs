@@ -2608,18 +2608,25 @@ namespace Ulon.Editor
                 // 실측 반경 = 벽 슬래브 중심의 최대 수평 편차. 문 쪽이 비어도 나머지 세 면이 있으므로 잰다.
                 float measured = -1f;
                 bool hasDoorBack = false;
+                bool hasRockFill = false;
+                float floorSpan = -1f;
                 for (int c = 0; c < room.childCount; c++)
                 {
                     var child = room.GetChild(c);
                     if (child.name == "DungeonWallDoorBack")
                         hasDoorBack = true;
+                    if (child.name.StartsWith("DungeonRockFill", StringComparison.Ordinal))
+                        hasRockFill = true;
+                    if (child.name == "DungeonFloor")
+                        floorSpan = child.localScale.x;
                     if (!child.name.StartsWith("DungeonWall", StringComparison.Ordinal) || child.name.StartsWith("DungeonWallDoor", StringComparison.Ordinal))
                         continue;
                     var p = child.position;
                     measured = Mathf.Max(measured, Mathf.Max(Mathf.Abs(p.x - center.x), Mathf.Abs(p.z - center.z)));
                 }
                 bool sizeOk = measured >= 0f && Mathf.Abs(measured - rooms[i].Half) < 0.05f;
-                if (sizeOk && hasDoorBack)
+                bool floorOk = Mathf.Abs(floorSpan - (rooms[i].Half * 2f + RockRingGap * 2f + 4f)) < 0.05f;
+                if (sizeOk && hasDoorBack && hasRockFill && floorOk)
                     continue;
 
                 int removed = 0;
@@ -2637,7 +2644,8 @@ namespace Ulon.Editor
                 }
                 BuildDungeonRoom(room, center, rooms[i].Half, rooms[i].H, rooms[i].Door);
                 Debug.Log("[Ulon] 던전 방 보수 — " + rooms[i].Obj + " 반경 " + measured.ToString("0.0") + "m → " +
-                    rooms[i].Half.ToString("0.0") + "m, 문 밖 통로 " + (hasDoorBack ? "있음" : "없음→신설") + ", 구조물 " + removed + "개 재건");
+                    rooms[i].Half.ToString("0.0") + "m, 문 밖 통로 " + (hasDoorBack ? "있음" : "없음→신설") +
+                    "·바깥 암반 " + (hasRockFill ? "있음" : "없음→신설") + ", 구조물 " + removed + "개 재건");
             }
         }
 
@@ -2692,6 +2700,9 @@ namespace Ulon.Editor
             EditorUtility.SetDirty(data);
         }
 
+        /// <summary>방 벽에서 바깥 암반 링까지의 거리 — 카메라 눈의 수평 오프셋(실내 줌 8.11m × cos35° = 6.6m)보다 넉넉히.</summary>
+        public const float RockRingGap = 14f;
+
         public static void BuildDungeonRoom(Transform room, Vector3 center, float half, float wallH, string doorSide)
         {
             // 앰비언트가 야외 값(0.55)이라 알베도를 낮춰야 실내가 낮처럼 안 보인다(§8.2).
@@ -2713,7 +2724,10 @@ namespace Ulon.Editor
             RepairTerrainHoles();
 
             // 바닥은 Terrain 홀보다 넓어야 한다 — 좁으면 방 가장자리로 하늘이 비친다(플레이캠 실측).
-            RoomSlab(room, "DungeonFloor", new Vector3(center.x, y + 0.1f, center.z), new Vector3(span + 8f, 0.2f, span + 8f), floorMat);
+            // 바닥은 방보다 훨씬 넓어야 한다 — 플레이어가 귀퉁이에 서면 카메라 눈이 벽 밖에 놓이고,
+            // 화면 아래쪽 시선이 바닥 판 **바깥으로 떨어져** 검은 띠가 생긴다(검수 2026-09-06 B 실측: 아래 18%).
+            float floorSpan = span + RockRingGap * 2f + 4f;
+            RoomSlab(room, "DungeonFloor", new Vector3(center.x, y + 0.1f, center.z), new Vector3(floorSpan, 0.2f, floorSpan), floorMat);
 
             for (int side = 0; side < 4; side++)
             {
@@ -2759,6 +2773,17 @@ namespace Ulon.Editor
                 var fs = SizeOf(len, seg + t * 2f);
                 RoomSlab(room, "DungeonFloorDoor", new Vector3(mid.x, y + 0.1f, mid.z), new Vector3(fs.x, 0.2f, fs.z), floorMat);
                 RoomSlab(room, "DungeonCeilDoor", new Vector3(mid.x, y + wallH, mid.z), new Vector3(fs.x, 0.4f, fs.z), ceilMat);
+
+                // **방 바깥도 실내여야 한다.** 플레이어가 귀퉁이에 서면 카메라 눈이 벽 밖(지하)에 놓인다 —
+                // 거기에 아무것도 없으면 화면 아래가 통째로 검다(검수 2026-09-06 B, 실측 허공 0.18).
+                // 방을 한 겹 더 둘러싸는 **바깥 암반 링**을 두른다. 눈이 어디에 서든 시선 끝에 돌이 있다.
+                // (속을 채운 덩어리는 답이 아니다 — 덩어리 **안**에서 쏜 레이는 아무것도 못 맞는다.)
+                float ringR = half + RockRingGap;
+                float ringLen = ringR * 2f + t * 2f;
+                RoomSlab(room, "DungeonRockFillNorth", new Vector3(center.x, y + wallH * 0.5f, center.z + ringR), new Vector3(ringLen, wallH, t), wallMat);
+                RoomSlab(room, "DungeonRockFillSouth", new Vector3(center.x, y + wallH * 0.5f, center.z - ringR), new Vector3(ringLen, wallH, t), wallMat);
+                RoomSlab(room, "DungeonRockFillEast", new Vector3(center.x + ringR, y + wallH * 0.5f, center.z), new Vector3(t, wallH, ringLen), wallMat);
+                RoomSlab(room, "DungeonRockFillWest", new Vector3(center.x - ringR, y + wallH * 0.5f, center.z), new Vector3(t, wallH, ringLen), wallMat);
             }
 
             for (int c = 0; c < 4; c++)

@@ -42,6 +42,8 @@ namespace Ulon.Editor
                 Orbit("06_field_boss", new Vector3(22.6f, 0f, 8.4f), 10f, 25f),
                 Orbit("07_d1_entrance", new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 8f, 20f),
                 PlayCam("08_d1_interior_playcam", Dungeon1.InteriorX, Dungeon1.InteriorZ),
+                // 귀퉁이에 선 화면 — 카메라 눈이 벽 밖으로 나가는 최악 자리(검수 2026-09-06 B).
+                PlayCam("23_d1_corner_playcam", Dungeon1.InteriorX + 6f, Dungeon1.InteriorZ + 6f, Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 Inside("08_d1_interior", Dungeon1.InteriorX, Dungeon1.InteriorZ, Dungeon1.BossX, Dungeon1.BossZ),
                 Orbit("09_d2_entrance", new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ), 8f, 20f),
                 PlayCam("10_d2_interior_playcam", Dungeon2.InteriorX, Dungeon2.InteriorZ),
@@ -204,7 +206,10 @@ namespace Ulon.Editor
         /// **플레이 카메라 그대로** 찍는다 — 씬의 QuarterViewCamera 값(pitch·yaw·distance)을 읽고
         /// 런타임과 같은 차폐 페이드를 적용한다. 검증 카메라가 플레이 카메라와 다르면 증거가 아니다.
         /// </summary>
-        static Shot PlayCam(string name, float cx, float cz)
+        static Shot PlayCam(string name, float cx, float cz) => PlayCam(name, cx, cz, cx, cz);
+
+        /// <summary>(hx,hz)의 지표에서 방 바닥 높이를 정한다 — 귀퉁이 샷은 방 중심 높이를 써야 바닥을 안 벗어난다.</summary>
+        static Shot PlayCam(string name, float cx, float cz, float hx, float hz)
         {
             var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
             float pitch = qv != null ? qv.Pitch : 35f;
@@ -212,7 +217,7 @@ namespace Ulon.Editor
             // 실내는 런타임과 같은 실내 줌 거리로 찍는다(§4.2 줌 허용) — 밖에서 찍으면 지붕 윗면만 나온다.
             float dist = qv != null ? Mathf.Min(qv.Distance, qv.IndoorDistance) : 5.5f;
             // 방은 지하다 — 플레이어는 지면이 아니라 방 바닥에 선다.
-            float y = GroundY(cx, cz) - VisualSliceBuilder.DungeonDepth;
+            float y = GroundY(hx, hz) - VisualSliceBuilder.DungeonDepth;
             var player = new Vector3(cx, y + 1.0f, cz);
             var rot = Quaternion.Euler(pitch, yaw, 0f);
             return new Shot { Name = name, Eye = player - rot * Vector3.forward * dist, Target = player, PlayCamera = true };

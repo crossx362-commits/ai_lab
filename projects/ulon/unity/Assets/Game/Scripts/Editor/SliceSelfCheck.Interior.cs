@@ -219,10 +219,20 @@ namespace Ulon.Editor
             var corridor = new System.Collections.Generic.List<Transform>();
             var all = interior.GetComponentsInChildren<Transform>(true);
             for (int i = 0; i < all.Length; i++)
-                if (all[i].name.StartsWith("DungeonWallDoor", StringComparison.Ordinal) || all[i].name == "DungeonCeilDoor")
+                if (all[i].name.StartsWith("DungeonWallDoor", StringComparison.Ordinal) || all[i].name == "DungeonCeilDoor"
+                    || all[i].name.StartsWith("DungeonRockFill", StringComparison.Ordinal))
                     corridor.Add(all[i]);
-            if (corridor.Count < 4)
-                throw new InvalidOperationException("던전 2 문 밖 통로 구조물이 " + corridor.Count + "개입니다 — 막음벽+옆벽 2+천장이 있어야 문틈으로 허공이 안 보입니다.");
+            if (corridor.Count < 8)
+                throw new InvalidOperationException("던전 2 방 바깥 차폐물이 " + corridor.Count + "개입니다 — 문 밖 통로 4 + 바깥 암반 링 4가 있어야 벽 밖으로 허공이 안 보입니다.");
+
+            // 바닥도 결함 시절 크기(방 span + 8m)로 되돌린다 — 지금은 넓은 바닥이 문틈 시선을 받아내고 있다.
+            Transform floor = null;
+            for (int i = 0; i < all.Length; i++)
+                if (all[i].name == "DungeonFloor") { floor = all[i]; break; }
+            if (floor == null)
+                throw new InvalidOperationException("던전 2 방 바닥(DungeonFloor)이 없습니다.");
+            var floorScale = floor.localScale;
+            float oldSpan = Dungeon2.RoomHalf * 2f + 8f;
 
             var center = new Vector2(Dungeon2.InteriorX, Dungeon2.InteriorZ);
             var saved = new Vector3[corridor.Count];
@@ -232,7 +242,8 @@ namespace Ulon.Editor
             try
             {
                 for (int i = 0; i < corridor.Count; i++)
-                    corridor[i].position = saved[i] + Vector3.up * 60f;   // 통로를 통째로 치운다(결함 상태 재현)
+                    corridor[i].position = saved[i] + Vector3.up * 60f;   // 통로·바깥 암반을 통째로 치운다(결함 상태 재현)
+                floor.localScale = new Vector3(oldSpan, floorScale.y, oldSpan);
                 Physics.SyncTransforms();
                 MeasureFill(center, cam, Mathf.Min(cam.Distance, cam.IndoorDistance), blocker, interior,
                     GameObject.Find(Dungeon2.MobObject), GameObject.Find(Dungeon2.BossObject),
@@ -242,12 +253,13 @@ namespace Ulon.Editor
             {
                 for (int i = 0; i < corridor.Count; i++)
                     corridor[i].position = saved[i];
+                floor.localScale = floorScale;
                 Physics.SyncTransforms();
             }
             if (voidShare <= VoidShareMax)
-                throw new InvalidOperationException("허공 게이트 네거티브 컨트롤 실패 — 문 밖 통로를 치웠는데도 허공이 " +
+                throw new InvalidOperationException("허공 게이트 네거티브 컨트롤 실패 — 방 바깥 차폐(통로·암반 링·넓은 바닥)를 되돌렸는데도 허공이 " +
                     voidShare.ToString("0.00") + "입니다(상한 " + VoidShareMax + "). 게이트가 결함을 못 잡습니다.");
-            Debug.Log("[Ulon] 허공 게이트 네거티브 컨트롤 통과 — 문 밖 통로 제거 시 허공 " + voidShare.ToString("0.00") + " > 상한 " + VoidShareMax);
+            Debug.Log("[Ulon] 허공 게이트 네거티브 컨트롤 통과 — 방 바깥 차폐 제거 시 허공 " + voidShare.ToString("0.00") + " > 상한 " + VoidShareMax);
         }
 
         static void MeasureFill(Vector2 center, Ulon.Client.QuarterViewCamera cam, float dist, int blockerLayer,
@@ -337,6 +349,7 @@ namespace Ulon.Editor
 
             float grass, interiorShare;
             MeasureFill(center, cam, useDist, blockerLayer, interior, mobGo, bossGo, out grass, out interiorShare, out float voidShare);
+
             Debug.Log("[Ulon] 화면 채움 계측 " + label + " 잔디 " + grass.ToString("0.00") + " (눈높이 지표 아래 " + (surfaceY - eyeProbe.y).ToString("0.00") + "m)");
             Debug.Log("[Ulon] 실내 비율 계측 " + label + " " + interiorShare.ToString("0.00") + " (거리 " + useDist.ToString("0.0") + "m·허공 " + voidShare.ToString("0.00") + ")" + s_voidSample);
             // 「잔디 비율 상한」은 대리 지표였다 — 벽 바깥 **허공**(아무것도 안 맞는 검은 화면)은 잔디가 아니라서
