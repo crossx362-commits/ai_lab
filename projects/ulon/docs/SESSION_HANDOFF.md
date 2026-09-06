@@ -57,16 +57,22 @@
 오너에게 보여주는 화면은 플레이 3/4만. Kenney 샘플 밀도(건물·돌길·나무·소품이 붙을 것).
 
 ## 방금 고른 다음 일
-던전3 보스 강철폭군(HP 210, 키 2.60, tyrant_core) 들어 있음.
-이것으로 MVP 콘텐츠 상한(마을1·필드3·광산1·던전1~2·스킬16·몬스터20+보스2~3)을
-전부 채웠다. leftover 없음.
+수치 데이터 외부화 1/3 — **아이템**(오너가 "우선순위 알아서 정해라", 2026-09-06).
+기획서 12.2대로 `ItemCatalog`의 무게·구매가·내구·StrReq·컨테이너를
+`unity/Assets/StreamingAssets/Data/items.json`(27종)로 옮겼다. StreamingAssets라
+빌드 후에도 파일만 고치면 되고 재빌드가 없다. 파일/항목이 없으면 옛 코드 값으로 폴백
+(`ItemData.TryGet` 실패 시)이라 데이터 사고로 게임이 죽지 않는다. 판매가는 구매가/3 유도라 그대로.
+검증: `tools/slice_selfcheck.sh` PASS(로그 654줄 「아이템 수치 원장 27종」).
+네거티브 컨트롤: `WeightOf`의 데이터 조회 한 줄을 빼고 재실행하면
+`AssertItemDataFile`이 「파일을 고쳐도 ItemCatalog가 안 따라옵니다」로 FAIL(exit 1).
+코드 `85f66512`.
 
 ## 다음 후보 (오너와 정할 것)
-- 수치 데이터 외부화: 기획서 12.2가 "아이템/스킬/몬스터/제작법을 코드에 하드코딩하지
-  말고 ID 기반 데이터로"라고 못박았는데 ItemCatalog(SkillSet.cs)·MobCatalog가
-  전부 .cs 하드코딩이고 `Game/Data/`는 빈 폴더다. 밸런스 한 줄 고치는 데 재빌드가
-  든다. 전 셀프체크가 의존하는 부분이라 크다 — 아키텍처 변경이므로 승인 먼저.
+- 수치 데이터 외부화 2/3 — **몬스터**: `MobCatalog.TryGet`이 14종 if-체인(HP·키)이다.
+  아이템과 같은 방식으로 `Data/mobs.json`. 외형(FBX 상수)은 코드에 남긴다(12.2 외형/능력치 분리).
+- 수치 데이터 외부화 3/3 — **제작법**: `CraftRecipes.All`(재료·개수·난이도·수리가능).
 - 기획서 13.3의 8개월차 안정화: 관심 영역(Interest Management), 성능 테스트.
+- 월드 비주얼·연출 폴리싱: QA 스샷 기준 지형이 평평한 초록 단색이고 NPC가 일렬로 서 있다.
 - 강철폭군 모델 교체: 지금은 KayKit Knight 재사용이다. 오너가 Quaternius 팩
   (universal-base-characters / modular-character-outfits-fantasy, CC0, itch.io
   로그인 필요)을 `projects/ulon/art/`에 넣으면 `_ThirdParty/Quaternius/<팩>/RAW/`에
