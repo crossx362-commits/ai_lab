@@ -18,14 +18,14 @@ namespace Ulon.Editor
     /// </summary>
     public static class PerfReport
     {
-        struct Spot
+        public struct Spot
         {
             public string Name;
             public Vector3 Center;
             public float Radius;
         }
 
-        struct Count
+        public struct Count
         {
             public int Renderers;
             public long Triangles;
@@ -40,13 +40,7 @@ namespace Ulon.Editor
         {
             EditorSceneManager.OpenScene("Assets/Game/Scenes/Bootstrap.unity");
 
-            float floor1 = GroundY(Dungeon1.InteriorX, Dungeon1.InteriorZ) - VisualSliceBuilder.DungeonDepth;
-            var spots = new[]
-            {
-                new Spot { Name = "던전 1 방(실내 1개)", Center = new Vector3(Dungeon1.InteriorX, floor1 + 1f, Dungeon1.InteriorZ), Radius = 12f },
-                new Spot { Name = "마을 광장(반경 40m)", Center = new Vector3(0f, WorldTerrain.LandBase, 0f), Radius = 40f },
-                new Spot { Name = "월드 조망(반경 200m)", Center = new Vector3(0f, WorldTerrain.LandBase, 0f), Radius = 200f },
-            };
+            var spots = Spots();
 
             var sb = new StringBuilder();
             sb.AppendLine("# 성능 기준 실측 (Ulon)");
@@ -54,7 +48,7 @@ namespace Ulon.Editor
             sb.AppendLine("측정: `bash tools/perf_report.sh` (배치모드, 씬 Bootstrap). 게이트 없음 — **숫자를 먼저 본다**.");
             sb.AppendLine("개수는 대리 지표다. 진짜 지표(프레임 시간) 측정 가능성은 맨 아래에 적는다.");
             sb.AppendLine();
-            sb.AppendLine("| 지점 | 렌더러 | 삼각형 | 머티리얼 종류 | MeshCollider | 그 외 콜라이더 | SkinnedMesh | 렌더 제출(ms) |");
+            sb.AppendLine("| 지점 | 렌더러 | 삼각형 | 머티리얼 종류 | MeshCollider | 그 외 콜라이더 | SkinnedMesh | 렌더 제출(ms, **대리 지표**) |");
             sb.AppendLine("|---|---:|---:|---:|---:|---:|---:|---:|");
 
             for (int i = 0; i < spots.Length; i++)
@@ -90,6 +84,18 @@ namespace Ulon.Editor
                 sb.Append("\n").Append(old.Substring(keep));      // 손으로 적은 조사 결과는 보존한다
             File.WriteAllText(path, sb.ToString());
             Debug.Log("[Ulon] 성능 보고서 — " + path);
+        }
+
+        /// <summary>재는 지점 — 보고서와 회귀 경보 게이트가 **같은 목록**을 쓴다(다른 자를 쓰면 비교가 무의미하다).</summary>
+        public static Spot[] Spots()
+        {
+            float floor1 = GroundY(Dungeon1.InteriorX, Dungeon1.InteriorZ) - VisualSliceBuilder.DungeonDepth;
+            return new[]
+            {
+                new Spot { Name = "던전 1 방(실내 1개)", Center = new Vector3(Dungeon1.InteriorX, floor1 + 1f, Dungeon1.InteriorZ), Radius = 12f },
+                new Spot { Name = "마을 광장(반경 40m)", Center = new Vector3(0f, WorldTerrain.LandBase, 0f), Radius = 40f },
+                new Spot { Name = "월드 조망(반경 200m)", Center = new Vector3(0f, WorldTerrain.LandBase, 0f), Radius = 200f },
+            };
         }
 
         /// <summary>
@@ -131,7 +137,12 @@ namespace Ulon.Editor
             return (float)times[times.Count / 2];
         }
 
-        static Count Measure(Spot spot)
+        /// <summary>
+        /// 반경 안의 렌더러·삼각형·머티리얼·콜라이더를 센다.
+        /// 위치 판정은 `Renderer.bounds`가 아니라 **transform.position**으로 한다 —
+        /// 배치모드에서 bounds가 프리팹 원점 값으로 남는 함정이 있었다(2026-09-06 원장).
+        /// </summary>
+        public static Count Measure(Spot spot)
         {
             var c = new Count();
             var mats = new HashSet<Material>();
@@ -140,7 +151,7 @@ namespace Ulon.Editor
             {
                 var r = renderers[i];
                 if (!r.enabled) continue;
-                if ((r.bounds.center - spot.Center).magnitude > spot.Radius) continue;
+                if ((r.transform.position - spot.Center).magnitude > spot.Radius) continue;
                 c.Renderers++;
                 if (r is SkinnedMeshRenderer smr)
                 {
@@ -161,7 +172,7 @@ namespace Ulon.Editor
             var cols = UnityEngine.Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < cols.Length; i++)
             {
-                if ((cols[i].bounds.center - spot.Center).magnitude > spot.Radius) continue;
+                if ((cols[i].transform.position - spot.Center).magnitude > spot.Radius) continue;
                 if (cols[i] is MeshCollider) c.MeshColliders++;
                 else c.OtherColliders++;
             }
