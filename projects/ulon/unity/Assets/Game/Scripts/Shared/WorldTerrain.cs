@@ -104,7 +104,8 @@ namespace Ulon.Shared
             float d = Mathf.Sqrt((wx - LakeX) * (wx - LakeX) + (wz - LakeZ) * (wz - LakeZ));
             if (d > LakeRadius)
                 return h;
-            float t = Mathf.SmoothStep(0f, 1f, 1f - d / LakeRadius);   // 가장자리는 얕게
+            // 바깥 40%만 완만한 둑, 안쪽은 넓은 수면 — 중심 한 점만 깊으면 물이 손톱만큼만 보인다.
+            float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - d / LakeRadius) / 0.4f));
             // 물가는 뭍 높이에서 서서히 내려가야 한다 — 바로 수면 높이로 떨어뜨리면 3m 수직 절벽이 된다.
             float bed = Mathf.Lerp(h, SeaLevel - LakeDepth, t);
             return Mathf.Min(h, bed);

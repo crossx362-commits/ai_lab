@@ -2668,7 +2668,7 @@ namespace Ulon.Editor
                     float rock = Mathf.Clamp01((h - (WorldTerrain.LandBase + 4f)) / 10f);
                     // 평지도 흙·바위 얼룩을 섞는다 — 초원 전체가 한 가지 초록이면 §8.2 위반이다.
                     float mottle = Mathf.PerlinNoise(wx * 0.021f + 3.1f, wz * 0.021f + 8.9f);
-                    rock = Mathf.Max(rock, Mathf.Clamp01((mottle - 0.62f) * 2.4f) * 0.75f);
+                    rock = Mathf.Max(rock, Mathf.Clamp01((mottle - 0.5f) * 2.6f) * 0.9f);
                     float grassW = Mathf.Max(0f, 1f - sand - rock);
                     float sum = sand + rock + grassW;
                     alpha[z, x, 0] = grassW / sum;
