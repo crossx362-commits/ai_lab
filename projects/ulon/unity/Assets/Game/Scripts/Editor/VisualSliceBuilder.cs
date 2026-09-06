@@ -782,9 +782,7 @@ namespace Ulon.Editor
             eg.DisplayName = "던전 입구";
             EnsureCollider(entrance);
             BuildDungeonEntrance(parent, new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 90f);
-            Decor(parent, RockW, new Vector3(Dungeon1.EntranceX - 1.4f, 0f, Dungeon1.EntranceZ + 0.6f), new Vector3(0f, 20f, 0f));
             Decor(parent, RockL, new Vector3(Dungeon1.EntranceX - 1.1f, 0f, Dungeon1.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
-            Decor(parent, RockN, new Vector3(Dungeon1.EntranceX + 0.8f, 0f, Dungeon1.EntranceZ + 1.3f), new Vector3(0f, 10f, 0f));
 
             var interior = new GameObject(Dungeon1.InteriorObject);
             interior.transform.SetParent(parent, false);
@@ -792,8 +790,8 @@ namespace Ulon.Editor
             Transform room = interior.transform;
             BuildDungeonRoom(room, new Vector3(Dungeon1.InteriorX, 0f, Dungeon1.InteriorZ), Dungeon1.RoomHalf, Dungeon1.RoomHeight, "West");
             Decor(room, Planks, new Vector3(Dungeon1.InteriorX, 0.22f, Dungeon1.InteriorZ), Vector3.zero);
-            Decor(room, RockL, new Vector3(Dungeon1.InteriorX + 3.4f, 0.2f, Dungeon1.InteriorZ + 3.4f), new Vector3(0f, 30f, 0f));
-            Decor(room, RockS, new Vector3(Dungeon1.InteriorX - 2.6f, 0.2f, Dungeon1.InteriorZ - 2.8f), new Vector3(0f, 70f, 0f));
+            RoomRubble(room, new Vector3(Dungeon1.InteriorX + 3.4f, 0f, Dungeon1.InteriorZ + 3.4f), 0.9f);
+            RoomRubble(room, new Vector3(Dungeon1.InteriorX - 2.6f, 0f, Dungeon1.InteriorZ - 2.8f), 0.6f);
 
             var exitGo = Place(Arch, new Vector3(Dungeon1.ExitX, 0f, Dungeon1.ExitZ), new Vector3(0f, 225f, 0f));
             if (exitGo == null)
@@ -854,9 +852,7 @@ namespace Ulon.Editor
             eg.DisplayName = "던전 2 입구";
             EnsureCollider(entrance);
             BuildDungeonEntrance(parent, new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ), -90f);
-            Decor(parent, RockW, new Vector3(Dungeon2.EntranceX + 1.4f, 0f, Dungeon2.EntranceZ + 0.6f), new Vector3(0f, 20f, 0f));
             Decor(parent, RockL, new Vector3(Dungeon2.EntranceX + 1.1f, 0f, Dungeon2.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
-            Decor(parent, RockN, new Vector3(Dungeon2.EntranceX - 0.8f, 0f, Dungeon2.EntranceZ + 1.3f), new Vector3(0f, 10f, 0f));
 
             var interior = new GameObject(Dungeon2.InteriorObject);
             interior.transform.SetParent(parent, false);
@@ -864,8 +860,8 @@ namespace Ulon.Editor
             Transform room = interior.transform;
             BuildDungeonRoom(room, new Vector3(Dungeon2.InteriorX, 0f, Dungeon2.InteriorZ), Dungeon2.RoomHalf, Dungeon2.RoomHeight, "East");
             Decor(room, Planks, new Vector3(Dungeon2.InteriorX, 0.22f, Dungeon2.InteriorZ), Vector3.zero);
-            Decor(room, RockL, new Vector3(Dungeon2.InteriorX + 3.4f, 0.2f, Dungeon2.InteriorZ + 3.4f), new Vector3(0f, 30f, 0f));
-            Decor(room, RockS, new Vector3(Dungeon2.InteriorX - 2.6f, 0.2f, Dungeon2.InteriorZ - 2.8f), new Vector3(0f, 70f, 0f));
+            RoomRubble(room, new Vector3(Dungeon2.InteriorX + 3.4f, 0f, Dungeon2.InteriorZ + 3.4f), 0.9f);
+            RoomRubble(room, new Vector3(Dungeon2.InteriorX - 2.6f, 0f, Dungeon2.InteriorZ - 2.8f), 0.6f);
 
             var exitGo = Place(Arch, new Vector3(Dungeon2.ExitX, 0f, Dungeon2.ExitZ), new Vector3(0f, 45f, 0f));
             if (exitGo == null)
@@ -929,9 +925,7 @@ namespace Ulon.Editor
             eg.DisplayName = "던전 3 입구";
             EnsureCollider(entrance);
             BuildDungeonEntrance(parent, new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 45f);
-            Decor(parent, RockW, new Vector3(Dungeon3.EntranceX + 1.4f, 0f, Dungeon3.EntranceZ + 0.6f), new Vector3(0f, 20f, 0f));
             Decor(parent, RockL, new Vector3(Dungeon3.EntranceX + 1.1f, 0f, Dungeon3.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
-            Decor(parent, RockN, new Vector3(Dungeon3.EntranceX - 0.8f, 0f, Dungeon3.EntranceZ + 1.3f), new Vector3(0f, 10f, 0f));
 
             var interior = new GameObject(Dungeon3.InteriorObject);
             interior.transform.SetParent(parent, false);
@@ -939,8 +933,8 @@ namespace Ulon.Editor
             Transform room = interior.transform;
             BuildDungeonRoom(room, new Vector3(Dungeon3.InteriorX, 0f, Dungeon3.InteriorZ), Dungeon3.RoomHalf, Dungeon3.RoomHeight, "West");
             Decor(room, Planks, new Vector3(Dungeon3.InteriorX, 0.22f, Dungeon3.InteriorZ), Vector3.zero);
-            Decor(room, RockL, new Vector3(Dungeon3.InteriorX + 3.4f, 0.2f, Dungeon3.InteriorZ + 3.4f), new Vector3(0f, 30f, 0f));
-            Decor(room, RockS, new Vector3(Dungeon3.InteriorX - 2.6f, 0.2f, Dungeon3.InteriorZ - 2.8f), new Vector3(0f, 70f, 0f));
+            RoomRubble(room, new Vector3(Dungeon3.InteriorX + 3.4f, 0f, Dungeon3.InteriorZ + 3.4f), 0.9f);
+            RoomRubble(room, new Vector3(Dungeon3.InteriorX - 2.6f, 0f, Dungeon3.InteriorZ - 2.8f), 0.6f);
 
             var exitGo = Place(Arch, new Vector3(Dungeon3.ExitX, 0f, Dungeon3.ExitZ), new Vector3(0f, 45f, 0f));
             if (exitGo == null)
@@ -1969,8 +1963,13 @@ namespace Ulon.Editor
             for (int side = -1; side <= 1; side += 2)
             {
                 Vector3 flank = pos + right * (1.7f * side);
-                Decor(parent, Lantern, flank, new Vector3(0f, approachYaw, 0f));
-                Decor(parent, Banner, flank + fwd * 0.6f, new Vector3(0f, approachYaw, 0f));
+                Decor(parent, Lantern, flank + fwd * 1.3f, new Vector3(0f, approachYaw, 0f));
+                var bannerGo = Place(Banner, flank + fwd * 0.75f + Vector3.up * 1.6f, new Vector3(0f, approachYaw, 0f));
+                if (bannerGo != null)
+                {
+                    bannerGo.transform.SetParent(parent, true);
+                    bannerGo.transform.localScale = bannerGo.transform.localScale * 1.8f;   // 얇은 판때기로 보이던 것을 키운다
+                }
                 var lightGo = new GameObject("DungeonEntranceLight");
                 lightGo.transform.SetParent(parent, true);
                 lightGo.transform.position = OnGround(flank) + Vector3.up * 2.2f;
@@ -1994,12 +1993,18 @@ namespace Ulon.Editor
             for (int side = -1; side <= 1; side += 2)
             {
                 Vector3 pillar = pos + right * (1.15f * side);
-                RoomSlab(frame.transform, "EntrancePillar", new Vector3(pillar.x, gy + 1.5f, pillar.z), new Vector3(0.7f, 3f, 0.7f), wallMat);
+                RoomSlab(frame.transform, "EntrancePillar", new Vector3(pillar.x, gy + 1.5f, pillar.z), new Vector3(0.7f, 3f, 0.7f), wallMat, approachYaw);
             }
-            RoomSlab(frame.transform, "EntranceLintel", new Vector3(pos.x, gy + 3.15f, pos.z), new Vector3(3.0f, 0.6f, 0.9f), wallMat);
-            Vector3 back = pos - fwd * 0.35f;
-            RoomSlab(frame.transform, "EntrancePortal", new Vector3(back.x, gy + 1.3f, back.z), new Vector3(1.6f, 2.6f, 0.25f), portalMat);
-            frame.transform.RotateAround(OnGround(pos), Vector3.up, 0f);
+            RoomSlab(frame.transform, "EntranceLintel", new Vector3(pos.x, gy + 3.15f, pos.z), new Vector3(3.0f, 0.6f, 1.1f), wallMat, approachYaw);
+            // 문구멍은 기둥 **뒤**에 얇게 눕혀 문틀 안쪽으로 들어가 보이게 한다(검수: 앞에 선 검은 판으로 보였다).
+            Vector3 back = pos - fwd * 0.55f;
+            RoomSlab(frame.transform, "EntrancePortal", new Vector3(back.x, gy + 1.25f, back.z), new Vector3(1.5f, 2.5f, 0.12f), portalMat, approachYaw);
+            // 옆벽 — 문틀이 벽에 뚫린 문으로 읽히게 좌우로 조금 이어 붙인다.
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector3 wing = pos + right * (2.35f * side) - fwd * 0.2f;
+                RoomSlab(frame.transform, "EntranceWing", new Vector3(wing.x, gy + 1.1f, wing.z), new Vector3(1.6f, 2.2f, 0.55f), wallMat, approachYaw);
+            }
         }
 
         /// <summary>마을에서 던전 3이 보이도록 세우는 이정표(검수 P0-2 「우연히라도 찾을 단서가 없다」).</summary>
@@ -2153,6 +2158,11 @@ namespace Ulon.Editor
 
         static void RoomSlab(Transform parent, string name, Vector3 center, Vector3 size, Material mat)
         {
+            RoomSlab(parent, name, center, size, mat, 0f);
+        }
+
+        static void RoomSlab(Transform parent, string name, Vector3 center, Vector3 size, Material mat, float yaw)
+        {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
             // 카메라와 플레이어 사이에 오면 렌더를 끄는 레이어(콜라이더는 남는다 — 하늘 차단·이동 막기는 유지).
@@ -2160,11 +2170,24 @@ namespace Ulon.Editor
             if (blocker >= 0)
                 go.layer = blocker;
             go.transform.SetParent(parent, true);
-            go.transform.position = center;
+            go.transform.SetPositionAndRotation(center, Quaternion.Euler(0f, yaw, 0f));
             go.transform.localScale = size;
             var rend = go.GetComponent<Renderer>();
             if (rend != null && mat != null)
                 rend.sharedMaterial = mat;
+        }
+
+        /// <summary>던전 톤 잔해 — Kenney 흰 저폴리 바위는 회색 돌벽과 재질이 붕 뜬다(검수 P1).</summary>
+        static void RoomRubble(Transform parent, Vector3 center, float scale)
+        {
+            var mat = MakeNoiseMat("DungeonWall", new Color(0.16f, 0.15f, 0.17f), new Color(0.27f, 0.26f, 0.28f));
+            float y = OnGround(new Vector3(center.x, 0f, center.z)).y;
+            for (int i = 0; i < 3; i++)
+            {
+                float a = i * 120f * Mathf.Deg2Rad;
+                var pos = new Vector3(center.x + Mathf.Sin(a) * scale * 0.5f, y + 0.25f * scale, center.z + Mathf.Cos(a) * scale * 0.5f);
+                RoomSlab(parent, "DungeonRubble", pos, new Vector3(0.7f * scale, 0.5f * scale, 0.7f * scale), mat, i * 37f);
+            }
         }
 
         static void RoomTorch(Transform parent, Vector3 pos, float half)
