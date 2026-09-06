@@ -1,112 +1,52 @@
-# SESSION HANDOFF — Ulon
+# SESSION HANDOFF — Ulon (자율개발 루프 세션)
 
-작업 루프: 한 항목이 끝나면 기획서 17장에서 다음을 고르고 바로 구현한다.
+> 지금까지 슬라이스에 들어간 기능 전량은 `SliceSelfCheck` PASS 로그 한 줄에 나열돼 있다
+> (`unity/Logs/selfcheck_dev.log`의 "Slice self-check PASS —" 줄). 여기엔 **현재 상태와 다음 단계만** 둔다.
 
-## 현재 상태
-- 검술 전투, FishNet, persist, 캐릭터 생성, 채광/벌목, 제작, 거래, 은행, 주문책, 유령/시체/부활, 무게/도구, 광맥 리스폰, 시약 채집까지 슬라이스에 들어 있음.
-- 시체 회수 UX: 누운 캐릭터 메시(캡슐 금지), HUD에 방향·거리, 유령은 치유사 안내, 시체 15분 소멸.
-- Party 최소: 리더 초대(동료 자동 수락), HP 표시, 파티 말, 파티원 시체 룻 공유. 파티 밖은 loot_right.
-- Guild 1: TryGuildCreate(이름 1~12, 골드 25), TryGuildInvite/Accept, 두 아바타 GuildId/GuildName 공유, TryGuildLeave. 파티와 별개. HUD `[길드명]` 태그.
-- Guild War 1: TryGuildWarDeclare(길드 A→B), 야외 아바타 A vs B TryAttack은 무고에게도 적용, Notoriety는 Innocent(Criminal 없음). GuardZone은 기존처럼 차단(필드만). TryGuildWarPeace로 종료. 비길드 야외는 Open PvP(범죄). leftover 던전3.
-- Duel 1: TryDuelInvite + TryDuelAccept 두 아바타. 야외 TryAttack은 Criminal 없이 적용(필드만, GuardZone 차단). yield/death/TryDuelEnd로 종료. Notoriety Innocent. Guild War·Open PvP와 별개. AssertDuel. leftover 던전3.
-- Exceptional 1: TryCraft 성공 시 숙련 롤(Force/seed 결정적). 플래그+내구/피해 소폭. MakerId와 별개. persist는 maker_id `EX:` prefix. AssertExceptional. leftover 던전3.
-- Inscription 1: SkillId.Inscription(각인/각인사, INT). TryInscribe는 천 또는 blank + 아는 주문 Ember → scroll_ember, 0.0→0.1. 주문서는 불씨 1회 시전 후 소모. 마법/연금술과 별개. AssertInscription. leftover 던전3.
-- Poisoning 1: SkillId.Poisoning(독/독살자, DEX). TryPoisonWeapon은 연금 물약 또는 천 독병(poison_vial/cloth)을 장착 근접무기에 도포. 다음 TryAttack은 짧은 HP 틱(마법 아님). 0.0→0.1. 연금술/수의학과 별개. AssertPoisoning. leftover 던전3.
-- Detect Hidden 1: SkillId.DetectHidden(감지/탐지자, DEX). TryDetectHidden은 근처 은신 대상 HiddenUntil 해제. 0.0→0.1. 은신/잠행과 별개. AssertDetectHiddenSlice. leftover 던전3.
-- Camping 1: SkillId.Camping(야영/야영꾼, DEX). TryCamp는 기존 Campfire 근처 또는 나무 불씨. 0.0→0.1. CampSafeUntil 짧은 안전로그아웃 플래그. 요리/은신과 별개. AssertCamping. leftover 던전3.
-- Stealing 1: SkillId.Stealing(훔치기/도둑, DEX). TrySteal은 마을 LockedCrate 더미 팩에서 최저가 골드/천 1. 0.0→0.1. 가드존/목격 실패→Criminal, 조용 성공은 무고. 자물쇠따기/플레이어가방 아님. AssertStealing. leftover 던전3.
-- Healing 붕대 부활 1: TryResurrectBandage(시술자 비유령·붕대1·근접·대상 아바타 Ghost). target.Resurrect()+붕대 소모, Healing 0.0→0.1. HealerStation TryResurrect 유지. Magery/Veterinary 아님. AssertHealingResurrect. leftover 던전3.
-- Pet Attack 1: TryPetAttack(주인·활성 팔로워·근처 IsEnemy 몹). PetAttackTarget 추격·TryAttack. F/H/G/A(Follow/Stay/Guard/Attack). 아바타 Open PvP 없음. AssertPetAttack. leftover 던전3.
-- Pet Come 1: TryPetCome(주인·활성 팔로워). Attack 해제 후 Follow, TickPets로 주인 오프셋. C/펫호출. 실패: no pet/ghost/stabled/dead. AssertPetCome. leftover 던전3.
-- Strength Requirement 1: iron_sword StrReq 25(catalog), TryEquip 저STR 실패/고STR 성공·명확 메시지, AssertStrengthRequirement. leftover 던전3.
-- Meditation Armor Penalty 1: iron_plate catalog HeavyArmor, 명상 틱 마나 회복 ½(무갑/경갑 정상), AssertMeditationArmorPenalty. leftover 던전3.
-- Magery Cast Interruption 1: Bolt만 CastingUntil 짧은 풍업. TryAttack Applied 피격 시 취소·효과 없음·마나/시약 소모 유지. Ember/Mend 즉시. AssertCastInterrupt. leftover 던전3.
-- Magery Cleanse 1: SpellId.Cleanse(정화) 즉시 시전, 자가/근처 아군 아바타 PoisonTicks 해제, 마나/시약 Ember급, Magery 0.0→0.1. AssertCleanse. leftover 던전3.
-- Healing 붕대 해독 1: TryCurePoison(시술자 비유령·붕대1·근접·대상 생존·PoisonTicks>0). 독 해제, Healing 0.0→0.1. Magery Cleanse/Veterinary/rez 아님. HUD 「해독」. AssertBandageDetox. leftover 던전3.
-- Bonded Pet + Veterinary 부활 1: 조련 시 Bonded. Bonded 펫 HP0→Ghost(슬롯 유지·시체 룻 없음). TryVetResurrect(붕대1·Veterinary 0.0→0.1). 플레이어 붕대 부활/마법/Stable claim 아님. AssertPetBondVetRez. leftover 던전3.
-- Weight/과적 1: CarryCap=STR*4(min10), 가방+아이템>한도 시 TryGather/TryBuy/TryCraft 실패·명확 메시지, AssertOverweight. leftover 던전3.
-- Nested Container 1: pouch(ItemCatalog)·ItemRecord InstanceId/ParentContainerId, backpack→pouch→item depth1(파우치 속 파우치 금지), TryMoveToPouch/TryTakeFromPouch, 내용물 무게 Carry 합산, AssertNestedBag. leftover 던전3.
-- Ground Drop 1: 월드 GroundItem DecayAt(기본 30s)·TickGroundItems 만료 삭제, 집 Lockdown/secure는 GroundItem 아님(예외), AssertGroundDecay. leftover 던전3.
-- Reputation Title 1: Fame/Karma/Notoriety 기반 평판 칭호(Murderer→살인자, Criminal→범죄자, Fame≥100→유명인). HUD 이름 옆 SkillTitles와 별개. AssertReputationTitle. leftover 던전3.
-- Keyword Speech 1: TrySpeechKeyword(bank/은행·guards/경비·vendor/상점) → 기존 Banker.TryBank/GuardStrike/Vendor.TryVendor, HUD 「은행」「경비」「상점」. AssertKeywordSpeech. leftover 던전3.
-- Magery Ward 1: SpellId.Ward(수호) 즉시 시전, 자가 WardUntil~8s, incoming TryAttack 피해×0.5, 마나/시약 Ember급, Magery 0.0→0.1. AssertWard. leftover 던전3.
-- Magery Bind 1: SpellId.Bind(속박) 즉시 시전, 근처 적 몹 RootUntil~4s(추격/이동·반격 불가), 마나/시약 Ember급, Magery 0.0→0.1. AssertBind. leftover 던전3.
-- Magery Weaken 1: SpellId.Weaken(약화) 즉시 시전, 근처 적 몹 WeakenUntil~6s, outgoing TryAttack/strike 피해×0.5, 마나/시약 Ember급, Magery 0.0→0.1. AssertWeaken. leftover 던전3.
-- Magery Spark 1: SpellId.Spark(섬광) 즉시 시전, 근처 적 몹 짧은 사거리(6)·불씨보다 낮은 피해, 마나/시약 Ember급, Magery 0.0→0.1. AssertSpark. leftover 던전3.
-- Magery Restore 1: SpellId.Restore(회복) 즉시 시전, 자가/근처 아군 아바타 HP 회복(봉합보다 높음), 마나/시약 봉합보다 약간 높음, Magery 0.0→0.1. AssertRestore. leftover 던전3.
-- Magery Blink 1: SpellId.Blink(도약) 즉시 시전, 자가 전방 ~3.5m 단거리 텔레포트, 마나/시약 Ember급, 유령/전투/마나·시약 실패, Mark/Recall/문게이트와 별개, Magery 0.0→0.1. AssertBlink. leftover 던전3.
-- Magery Bless 1: SpellId.Bless(축복) 즉시 시전, 자가/근처 아군 BlessUntil~8s, outgoing TryAttack 피해×1.25, Ward와 별개·Weaken 반대, 마나/시약 Ember급, Magery 0.0→0.1. AssertBless. leftover 던전3.
-- CraftOrder/제작의뢰 1: Forge/Vendor TryAcceptOrder→ActiveCraftOrder(iron_sword×1), TryTurnInOrder 직접 제작(MakerId) 납품·골드10·대장 소폭, 한 건만. HUD 「의뢰」「납품」. AssertCraftOrder. leftover 던전3.
-- Follower Control Slots 1: MaxControlSlots/FollowerCap=2, 야생하트+야생멧돼지 ControlCost=1, 둘 OK·셋째 no_slot, release/stable 슬롯 해제. AssertControlSlots. leftover 던전3.
-- 운영툴 최소: F1 GM(워프/지급/회수/스킬/스켈 소환삭제/정지/백업), oplog(거래·제작·시체), 계정 정지 파일, data/backups.
-- Closed Alpha 로컬 준비: `tools/closed_alpha_smoke.sh` (postgres+persist+백업). 클라 `-ulon-host <LAN>`. 외부 배포는 안 함.
-- 명성/카르마/노토라이어티 persist. 가드존은 광장 반경 16m. 무고 공격→범죄+가드 타격. 몬스터 처치 명성+10. Open PvP 꺼짐.
-- 자원 노드: Remaining 0이면 숨고, RespawnSeconds(8초) 후 Capacity로 재생. 광맥 12, 나무 12, 수지 덤불 8.
-- 시약: `ResinBush`(Kenney 덤불) 클릭 → resin, 마법 스킬 상승. 도구 불필요. 주문 시전은 resin 소비.
-- 씬: IronVein, Forge, OakTree, ResinBush, Banker=풍차, Healer=분수.
-- 중앙 마을 1(시스템 루프가 이 안에서 돈다). 메뉴 `Ulon/Dress Village`.
-  - 광장 스폰/거래(동료) → 서쪽 대장간·잡화 상점 → 북서 은행 → 남쪽 치유
-  - 동쪽 광맥, 북동 벌목, 광장 옆 시약, 북쪽 문 밖 사냥
-  - Gold. 상점: 곡괭이/도끼/시약 구매, 광석/나무 판매. 시작금 40.
-  - 훈련사(광장 동쪽 Mage): 5G에 스킬 +1, 상한 30, 스탯은 안 오름.
-  - 집 7채 + 울타리/대문. 바닥은 Unity Terrain + 노이즈 하이트맵(광장 평평). 광장만 돌길 타일.
-  - 필드 3/던전은 아직 안 함.
+## 지금 위치
+검수 세션(`local_7b28e464-020e-4be4-905a-270a96c891d7`)이 준 우선순위 큐를 따라 작업한다.
+한 파트가 끝나면 검수에 보고 → QA 지적이 오면 그것을 큐 맨 앞에 넣는다(오너 지시).
 
-## 월드 비주얼 금지 (오너 지시 2026-09-01, 앞으로 절대)
-단색 초록 Plane, Default-Material 프리미티브, Kenney 시안/주황 무텍스처, 집으로 안 읽히는 벽 타일 더미는 화면에 두지 않는다. `Dress Village`가 `AssertVillageVisuals`로 막는다.
-오너에게 보여주는 화면은 플레이 3/4만. Kenney 샘플 밀도(건물·돌길·나무·소품이 붙을 것).
+## 실행 명령 (모두 `/Users/junholee/ai_lab/projects/ulon`에서, **유니티 에디터를 닫고**)
+```bash
+SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # 배치모드 Assert 전량, EXIT=0이어야 함
+./tools/qa_shots.sh                                                          # builds/qa/*.png 14장
+```
+검수 세션도 같은 스크립트를 쓰므로 로그 파일명을 `SELFCHECK_LOG`로 분리한다(덮어쓰기 방지).
 
-## 방금 고른 다음 일
-수치 데이터 외부화 1/3 — **아이템**(오너가 "우선순위 알아서 정해라", 2026-09-06).
-기획서 12.2대로 `ItemCatalog`의 무게·구매가·내구·StrReq·컨테이너를
-`unity/Assets/StreamingAssets/Data/items.json`(27종)로 옮겼다. StreamingAssets라
-빌드 후에도 파일만 고치면 되고 재빌드가 없다. 파일/항목이 없으면 옛 코드 값으로 폴백
-(`ItemData.TryGet` 실패 시)이라 데이터 사고로 게임이 죽지 않는다. 판매가는 구매가/3 유도라 그대로.
-검증: `tools/slice_selfcheck.sh` PASS(로그 654줄 「아이템 수치 원장 27종」).
-네거티브 컨트롤: `WeightOf`의 데이터 조회 한 줄을 빼고 재실행하면
-`AssertItemDataFile`이 「파일을 고쳐도 ItemCatalog가 안 따라옵니다」로 FAIL(exit 1).
-코드 `85f66512`.
+## 작업 규칙 (검수가 반려하며 못박은 것 — 어기면 되돌려진다)
+1. **수치 게이트는 양쪽 한계** — 하한만 두면 상한 초과를 통과시킨다.
+2. **네거티브 컨트롤 먼저** — 고치기 전 상태에서 게이트가 FAIL(exit 1) 나는 로그 줄을 확보해 보고에 싣는다.
+3. **화면 근거는 플레이 카메라 샷**(`QaShots.PlayCam` — 씬의 QuarterViewCamera pitch/yaw/distance를 읽고 런타임과 같은 `DungeonSightFade.Hide` 적용). 전용 카메라 샷은 증거가 아니다.
+4. 씬을 바꾸는 작업은 `Assets/Game/Scenes/Bootstrap.unity`도 같이 커밋.
+5. 보고엔 기획서 조항 번호(`docs/GAME_DESIGN.md` §4.2·§6.1·§8.1·§8.2·§10.2·§11·§12.2)를 인용.
 
-수치 데이터 외부화 2/3 — **몬스터**(같은 이터, 2026-09-06).
-`MobCatalog`의 HP·키·표시명·STR·저항·피해대·보스판정·처치드랍·조련가능을
-`Data/mobs.json`(14종)으로 옮겼다. 외형(FBX 상수)은 12.2 외형/능력치 분리대로 코드에 남겼다.
-items.json과 중복이던 파일 읽기는 공용 `DataLedger.TryRead`로 합쳤다 — 원장이 늘어도 한 곳만 고친다.
-검증: `slice_selfcheck.sh` PASS(로그 「몬스터 수치 원장 14종」).
-네거티브 컨트롤: `MobCatalog.TryGet`의 데이터 분기를 빼고 재실행하면
-`AssertMobDataFile`이 「파일을 고쳐도 MobCatalog가 안 따라옵니다」로 FAIL(exit 1).
-코드 `ae7c70c3`.
+## 최근 커밋 (오래된 것 → 최신)
+85f66512, 5b955804, ae7c70c3, bada4df6, 221c72d0, 6b6fbcde, 737bd088, 37c9fbcb,
+9f1557ba(입구 문틀), 6e9f19f3, 808155b6, eb0961ce(흰 바위 잔재),
+b074dc52(던전 지하화 + 게이트 2종), cf8404c5(페이드가 바닥을 지우던 버그·방 안 잔디),
+34033723(방 가장자리 하늘 비침·실내 알베도).
 
-## 다음 후보 (오너와 정할 것)
-- 수치 데이터 외부화 3/3 — **제작법**: `CraftRecipes.All`(재료·개수·난이도·수리가능).
-- 기획서 13.3의 8개월차 안정화: 관심 영역(Interest Management), 성능 테스트.
-- 월드 비주얼·연출 폴리싱: QA 스샷 기준 지형이 평평한 초록 단색이고 NPC가 일렬로 서 있다.
-- 강철폭군 모델 교체: 지금은 KayKit Knight 재사용이다. 오너가 Quaternius 팩
-  (universal-base-characters / modular-character-outfits-fantasy, CC0, itch.io
-  로그인 필요)을 `projects/ulon/art/`에 넣으면 `_ThirdParty/Quaternius/<팩>/RAW/`에
-  풀고 LICENSE/SOURCE_URL을 두고 `docs/ASSET_REGISTER.md`에 한 줄 남긴 뒤
-  EnsureDungeon3Boss의 FBX 상수만 바꾸면 된다.
+## 방금 끝난 것 — 던전 지하화(검수 P0)
+- 방 바닥 = 지면 −`VisualSliceBuilder.DungeonDepth`(4.5m), 벽은 지면까지. 몹·보스·출구·등불·잔해는 `SinkIntoDungeon`으로 함께 내림.
+- 천장 한 장 → 6×6 `DungeonCap` 타일 + `PunchTerrainHole`(여백 2.5m)로 Terrain에 구멍. 페이드가 작은 창만 연다.
+- 게이트 2종(`Editor/SliceSelfCheck.Interior.cs`):
+  - **화면 채움**(§8.2): 플레이 카메라 시야 21×21 샘플 레이 중 잔디 비율 상한 0.45. 실측 0.07/0.13/0.23,
+    네거티브 컨트롤(뚜껑을 방 크기로 축소) 0.60 → FAIL. 하늘은 계측만(3/4 시점에선 늘 조금 들어온다).
+  - **실내 조명**(§8.2, `AssertDungeonLighting`): 주광이 방 바닥에 직접 못 닿음(암반 뚜껑 그림자) + 지면 아래 등불 점광 3개↑.
+    네거티브 컨트롤(받침 광원 `RoomFill` 제거) 2개 → FAIL.
+- 버그 2건 수리: 페이드가 대상보다 아래 렌더러(바닥)까지 지워 하늘이 비침 → `DungeonSightFade.Hide`에서 `bounds.max.y < look.y - 0.2` 제외.
+  바닥 판이 Terrain 홀보다 좁아 가장자리로 하늘이 보임 → `span + 8`.
+- 화면 근거: `builds/qa/08_d1_interior_playcam.png`(암반 단면 아래 등불로 밝힌 석실, 보스·잡몹 식별됨).
 
-## C# 블록을 잘라 옮길 때 (2026-09-05, 같은 실수 두 번)
-메서드/클래스 본문을 잘라 다른 파일로 옮기거나 복제할 땐 끝을 **중괄호 깊이로
-찾아라**. "다음 메서드 이름"이나 눈으로 센 줄 번호를 경계로 삼았다가 두 번 깨졌다:
-partial 분할 때는 본문 꼬리 16줄이 footer로 밀려 22개 파일에 복제됐고, 던전2를
-복제할 땐 사이에 낀 EnsureFieldBoss까지 따라와 중복 정의로 컴파일이 죽었다.
-둘 다 배치 검증이 잡았지만 한 번에 갈 수 있는 일이었다.
-
-## 검증은 배치모드로 (2026-09-05)
-`tools/slice_selfcheck.sh`가 완전 헤드리스다 — 에디터를 닫고 돌리면 사람 개입이 없다.
-에디터를 켜 두면 프로젝트가 잠겨 배치모드가 못 뜨고, MCP 브리지는 에디터가 멎으면
-같이 죽는다(실제로 한 번 멎어 반나절 막혔다). 자동 검증은 GUI가 아니라 배치모드에 걸어라.
-
-## 슬라이스 코드 위치 (2026-09-05 partial 분할)
-`SliceSelfCheck`(11739줄)와 `OfflineWorld`(4537줄)를 도메인별 partial 파일로 갈랐다.
-새 Assert는 주제에 맞는 `SliceSelfCheck.<도메인>.cs`에, 새 서버 로직은
-`OfflineWorld.<도메인>.cs`에 넣어라. 한 파일에 다시 쌓지 마라.
-
-## 핵심 경로
-- 기획 원장: `projects/ulon/docs/GAME_DESIGN.md`
-- 확정안: `projects/ulon/docs/DESIGN.md`
-- Unity: `projects/ulon/unity`
-- 2클라 검증: `projects/ulon/tools/two_client_check.sh`
-- Alpha 스모크: `projects/ulon/tools/closed_alpha_smoke.sh`
-- 빌드: 메뉴 `Ulon/Build Dedicated Server + Client` → `projects/ulon/builds/client/UlonClient.app`
+## 다음 할 일 (검수 확정 순서 — 새 지시가 오면 그게 맨 앞)
+1. 검수에 지하화 완료 보고 후 **다음 과제를 검수에 질문**(오너 지시).
+2. 온라인 서버권한 2건(`NetAvatar` SyncVar 노출 / `RpcTame`·`RpcPet` 부재) — 검수 검증 후 순위 재조정 중.
+3. 테스트 공간(§6.1) 구현 + 문서의 "MVP 콘텐츠 상한 충족" 문구를 미구현으로 정정.
+4. `DataLedger` 레코드 단위 검증(아이템 weight>0·buy≥0·uses≥0·strReq≥0 / 몹 hp>0·height>0·name 비어있지 않음·dmgMin≥0·dmgMax≥dmgMin),
+   불량 레코드는 코드 폴백 + `Debug.LogError` + `loadError` 누적, 필드 없는 레코드로 코드 기본값 확인 Assert. **검수가 먼저 시작하지 말라고 함.**
+5. GM "원장 다시 읽기" 배선, "재빌드 없이" 문구를 "(서버 재시작 또는 GM 리로드)"로 정정, 스택 결합 경고 문서,
+   `TameCritter/TameBoar.DisplayName` 이중 원장, `MobCatalog.KindCount = 8` vs 14 모순, 클라 변조면 주석,
+   Assert의 문자열 치환을 파싱/수정/기록으로 교체, `Assets/Game/Data/.gitkeep` 삭제.
+6. 제작법(CraftRecipes) 외부화.
+7. 오너의 산·바다·강·호수 지형 작업 — 검수가 오너 확인 중이라 **대기**. 착수 전 §11 리소스 정책·§8.1 폴리 예산 확인.
