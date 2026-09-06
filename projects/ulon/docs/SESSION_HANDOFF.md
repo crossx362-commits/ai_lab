@@ -26,7 +26,7 @@ SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # �
 f55878bb(실내 줌 §4.2 + 실내 화면 비율 하한 게이트), d7609f63(§6.1 지역 배치 + AssertWorldRegions),
 626745dc(도달 불가 5건 배선 + AssertReachableFeatures), 79b13d9e(§6.1 테스트 공간),
 ee7a2040·b613ee28·343a4ecd(시각 묶음), d5fface4·b9b58a79(실내 줌 5.8m 실측 + 눈높이 지표 게이트),
-8db38fed(원장 레코드 단위 검증 + AssertDataRecordSanity), 7109348d(왕관·무기 부착 반려 2건 + BossFit), c7fd68b4(정리 묶음).
+8db38fed(원장 레코드 단위 검증 + AssertDataRecordSanity), 7109348d(왕관·무기 부착 반려 2건 + BossFit), c7fd68b4(정리 묶음), 06f64758(보스 1몹 1무기·그립 높이).
 
 ## 최근에 끝난 것
 1. **던전 지하화**(P0) — 방 바닥 −4.5m, 6×6 암반 뚜껑 + Terrain 홀. 게이트: 화면 잔디 45% 상한·지하 점광 3개↑.
@@ -68,6 +68,9 @@ ee7a2040·b613ee28·343a4ecd(시각 묶음), d5fface4·b9b58a79(실내 줌 5.8m 
    원장 증명 Assert의 문자열 치환을 구조체 파싱/수정/기록으로 교체, `TameCritter/TameBoar.DisplayName`
    이중 원장 제거(이름은 mobs.json에서만), `KindCount` → `HostileKindCount`(원장 14종과 다른 수),
    `Assets/Game/Data/.gitkeep` 삭제.
+15. **보스 1몹 1무기·그립 높이**(06f64758) — 드레싱이 큰 무기를 붙여도 원래 칼이 남아 둘을 들고 있었다.
+   `DressBoss`가 보스 무기 외 무기류를 끄고, 게이트가 활성 무기 묶음 수 1개를 요구한다.
+   그립 높이 기준은 **목 관절(머리 본)** — 어깨 본을 이름으로 찾으면 모델 루트의 메시(발밑 좌표)를 문다.
 
 ## 다음 할 일 (검수 확정 순서 — 새 지시가 오면 그게 맨 앞)
 1. **지형 랩 한 번에** (검수 결정) — 아래 3번 항목이 다음 차례다.
