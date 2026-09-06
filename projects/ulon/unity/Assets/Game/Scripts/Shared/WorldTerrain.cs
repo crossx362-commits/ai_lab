@@ -74,6 +74,13 @@ namespace Ulon.Shared
                 h = SeaFloor;
             }
 
+            // 지형 가장자리는 반드시 바다로 — 노이즈가 육지를 경계 밖으로 밀면 조망에서
+            // 수직 절벽(맵 끝 단면)이 보인다(조망 샷 실측).
+            float edge = Mathf.Max(Mathf.Abs(wx), Mathf.Abs(wz));
+            float rim = Span * 0.5f - 14f;
+            if (edge > rim)
+                h = Mathf.Lerp(h, SeaFloor, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(rim, Span * 0.5f, edge)));
+
             h = CarveLake(wx, wz, h);
             h = CarveRiver(wx, wz, h);
             return Mathf.Clamp(h, 0f, MaxHeight);
