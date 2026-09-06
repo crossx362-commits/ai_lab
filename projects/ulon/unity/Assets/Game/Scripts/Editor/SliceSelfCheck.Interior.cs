@@ -186,6 +186,48 @@ namespace Ulon.Editor
         const float InteriorShareMin = 0.90f;
         const int FillRaysPerAxis = 21;
 
+
+        /// <summary>같은 화각·같은 페이드로 한 거리에서의 잔디/실내 비율을 잰다(거리 실측 스윕과 본판정이 같은 자를 쓰게).</summary>
+        static void MeasureFill(Vector2 center, Ulon.Client.QuarterViewCamera cam, float dist, int blockerLayer,
+            GameObject interior, GameObject mobGo, GameObject bossGo, out float grass, out float interiorShare)
+        {
+            float groundY = GroundYAt(center) - VisualSliceBuilder.DungeonDepth;
+            var player = new Vector3(center.x, groundY + 1.0f, center.y);
+            var rot = Quaternion.Euler(cam.Pitch, cam.Yaw, 0f);
+            var eye = player - rot * Vector3.forward * dist;
+            float halfV = 55f * 0.5f;
+            float halfH = Mathf.Rad2Deg * Mathf.Atan(Mathf.Tan(halfV * Mathf.Deg2Rad) * 16f / 9f);
+            var hidden = new System.Collections.Generic.List<Renderer>();
+            Ulon.Client.DungeonSightFade.Hide(eye, player, Ulon.Client.DungeonSightFade.DefaultRadius, hidden);
+            int total = 0, outdoor = 0, skyCount = 0, inside = 0;
+            try
+            {
+                for (int iy = 0; iy < FillRaysPerAxis; iy++)
+                {
+                    float ty = (iy / (float)(FillRaysPerAxis - 1)) * 2f - 1f;
+                    for (int ix = 0; ix < FillRaysPerAxis; ix++)
+                    {
+                        float tx = (ix / (float)(FillRaysPerAxis - 1)) * 2f - 1f;
+                        var dir = rot * Quaternion.Euler(ty * halfV, tx * halfH, 0f) * Vector3.forward;
+                        total++;
+                        if (IsOutdoorPixel(eye, dir, out bool sky, out Collider firstHit))
+                        {
+                            outdoor++;
+                            if (sky) skyCount++;
+                        }
+                        if (IsInteriorHit(firstHit, interior, mobGo, bossGo))
+                            inside++;
+                    }
+                }
+            }
+            finally
+            {
+                Ulon.Client.DungeonSightFade.Restore(hidden);
+            }
+            grass = (outdoor - skyCount) / (float)total;
+            interiorShare = inside / (float)total;
+        }
+
         static void CheckScreenFill(string label, Vector2 center, Ulon.Client.QuarterViewCamera cam, int blockerLayer,
             string interiorObject, string mobObject, string bossObject)
         {
@@ -197,50 +239,21 @@ namespace Ulon.Editor
             float groundY = GroundYAt(center) - VisualSliceBuilder.DungeonDepth;
             var player = new Vector3(center.x, groundY + 1.0f, center.y);
             var rot = Quaternion.Euler(cam.Pitch, cam.Yaw, 0f);
-            var eye = player - rot * Vector3.forward * Mathf.Min(cam.Distance, cam.IndoorDistance);
+            float useDist = Mathf.Min(cam.Distance, cam.IndoorDistance);
 
-            // 55° FOV·16:9 — QaShots의 카메라와 같은 화각으로 격자 샘플을 쏜다.
-            float halfV = 55f * 0.5f;
-            float halfH = Mathf.Rad2Deg * Mathf.Atan(Mathf.Tan(halfV * Mathf.Deg2Rad) * 16f / 9f);
-            // 런타임과 같은 페이드를 실제로 적용한다 — "DungeonBlocker면 안 보인다"고 가정하면
-            // 카메라와 플레이어 사이에 없는 바닥·벽까지 투명 취급해 화면이 전부 잔디로 잡힌다(실측 1.00).
-            var hidden = new System.Collections.Generic.List<Renderer>();
-            Ulon.Client.DungeonSightFade.Hide(eye, player, Ulon.Client.DungeonSightFade.DefaultRadius, hidden);
-            int total = 0;
-            int outdoor = 0;
-            int skyCount = 0;
-            int inside = 0;
-            try
-            {
-            for (int iy = 0; iy < FillRaysPerAxis; iy++)
-            {
-                float ty = FillRaysPerAxis == 1 ? 0f : (iy / (float)(FillRaysPerAxis - 1)) * 2f - 1f;
-                for (int ix = 0; ix < FillRaysPerAxis; ix++)
-                {
-                    float tx = FillRaysPerAxis == 1 ? 0f : (ix / (float)(FillRaysPerAxis - 1)) * 2f - 1f;
-                    var dir = rot * Quaternion.Euler(ty * halfV, tx * halfH, 0f) * Vector3.forward;
-                    total++;
-                    if (IsOutdoorPixel(eye, dir, out bool sky, out Collider firstHit))
-                    {
-                        outdoor++;
-                        if (sky) skyCount++;
-                    }
-                    if (IsInteriorHit(firstHit, interior, mobGo, bossGo))
-                        inside++;
-                }
-            }
+            // 실내 줌의 한계는 방 크기가 아니라 **지표**다: 눈높이가 지면을 넘는 순간 화면이 통째로 잔디가 된다.
+            // 실측 절벽 — 던전 3은 6.1m, 던전 1은 6.3m에서 실내 1.00 → 0.00. 그래서 이유를 코드가 못 박는다.
+            var eyeProbe = player - rot * Vector3.forward * useDist;
+            float surfaceY = GroundYAt(new Vector2(eyeProbe.x, eyeProbe.z));
+            if (eyeProbe.y > surfaceY - 0.05f)
+                throw new InvalidOperationException(label + " 실내 카메라 눈높이가 지표 위 " + (eyeProbe.y - surfaceY).ToString("0.00") +
+                    "m입니다 — 실내 줌 거리(" + useDist.ToString("0.0") + "m)가 방 깊이 " + VisualSliceBuilder.DungeonDepth +
+                    "m에 비해 멉니다. 더 넓은 전투 시야가 필요하면 거리가 아니라 **방 깊이**를 늘려야 합니다(§4.2).");
 
-            }
-            finally
-            {
-                Ulon.Client.DungeonSightFade.Restore(hidden);
-            }
-
-            float ratio = outdoor / (float)total;
-            float interiorShare = inside / (float)total;
-            float grass = (outdoor - skyCount) / (float)total;
-            Debug.Log("[Ulon] 화면 채움 계측 " + label + " 잔디 " + grass.ToString("0.00") + " 하늘 " + (skyCount / (float)total).ToString("0.00") + " (잔디+하늘 " + outdoor + "/" + total + ")");
-            Debug.Log("[Ulon] 실내 비율 계측 " + label + " " + interiorShare.ToString("0.00") + " (" + inside + "/" + total + ")");
+            float grass, interiorShare;
+            MeasureFill(center, cam, useDist, blockerLayer, interior, mobGo, bossGo, out grass, out interiorShare);
+            Debug.Log("[Ulon] 화면 채움 계측 " + label + " 잔디 " + grass.ToString("0.00") + " (눈높이 지표 아래 " + (surfaceY - eyeProbe.y).ToString("0.00") + "m)");
+            Debug.Log("[Ulon] 실내 비율 계측 " + label + " " + interiorShare.ToString("0.00") + " (거리 " + useDist.ToString("0.0") + "m)");
             if (interiorShare < InteriorShareMin)
                 throw new InvalidOperationException(label + " 플레이 카메라 화면에서 던전 실내(바닥·벽·몹)가 " + (interiorShare * 100f).ToString("0") + "%뿐입니다 — 최소 " + (InteriorShareMin * 100f).ToString("0") + "%. 잔디를 막아도 뚜껑 윗면이 화면을 덮으면 실내로 안 읽힙니다(§8.2·§4.2 줌).");
             if (grass > OutdoorFillMax)

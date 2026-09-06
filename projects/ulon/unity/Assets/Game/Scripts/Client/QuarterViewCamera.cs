@@ -16,7 +16,9 @@ namespace Ulon.Client
         // 화면이 「지붕 윗면」이 된다(검수 2026-09-06). 실내에서는 방 안으로 들어와야 한다.
         // **상수로 둔다.** [SerializeField] 기본값은 이미 씬에 저장된 컴포넌트에는 적용되지 않아
         // 코드를 고쳐도 씬은 옛 값을 쓴다 — 네거티브 컨트롤이 통과해버려서 발견했다(2026-09-06).
-        public const float IndoorDistanceMeters = 5.5f;
+        // 실측(2026-09-06): 실내 비율 90%↑를 지키는 상한은 던전 3이 6.1m·던전 1이 6.3m에서 무너진다.
+        // 한계는 방 크기가 아니라 지표 — 눈높이가 지면을 넘으면 화면이 통째로 잔디가 된다. 여유를 두고 5.8m.
+        public const float IndoorDistanceMeters = 5.8f;
         [SerializeField] float maxDistance = 36f;
         [SerializeField] float zoomSpeed = 8f;
         [SerializeField] float pitch = 35f;
