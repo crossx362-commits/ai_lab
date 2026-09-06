@@ -51,6 +51,9 @@ namespace Ulon.Editor
                 Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 // §8.1 멀리서도 읽히는 실루엣 — 산·바다 조망, 호수·강 조망.
                 BossCloseUp("17_boss_closeup", Dungeon3.BossX, Dungeon3.BossZ),
+                Orbit("18_meadow", new Vector3(WorldRegions.Meadow.X, 0f, WorldRegions.Meadow.Z), 34f, 28f),
+                Orbit("19_forest", new Vector3(WorldRegions.Forest.X, 0f, WorldRegions.Forest.Z), 38f, 26f),
+                Orbit("20_mine", new Vector3(WorldRegions.Mine.X, 0f, WorldRegions.Mine.Z), 30f, 26f),
                 Free("14_world_vista", new Vector3(-165f, 95f, -165f), new Vector3(0f, WorldTerrain.LandBase, 0f)),
                 Free("15_lake_river", new Vector3(WorldTerrain.LakeX + 46f, 40f, WorldTerrain.LakeZ + 46f), new Vector3(WorldTerrain.LakeX - 12f, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),

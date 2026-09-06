@@ -2411,6 +2411,305 @@ namespace Ulon.Editor
             light.shadows = LightShadows.None;
         }
 
+        /// <summary>
+        /// 기획서 §6.1 지역을 **실제 장소로** 만든다(검수 2026-09-06 반려 4: 「지역 이름만 있고 화면은 빈 초록」).
+        /// 배치는 결정적이다 — 매번 흔들리면 검수가 같은 화면을 못 본다.
+        /// </summary>
+        public static void EnsureWorldRegions()
+        {
+            const string TreeH = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/tree-high.fbx";
+            const string TreeR = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/tree-high-round.fbx";
+            const string TreeC = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/tree-crooked.fbx";
+            const string Tree = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/tree.fbx";
+            const string Fence = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/fence.fbx";
+            const string Cart = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/cart.fbx";
+            const string RockL = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-large.fbx";
+            const string RockW = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-wide.fbx";
+            const string Poles = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/poles.fbx";
+            const string Bush = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bush.fbx";
+            const string BushL = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bushLarge.fbx";
+            const string Tuft = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/grass_large.fbx";
+            const string Crop = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/grass_leafs.fbx";
+            string[] models = { TreeH, TreeR, TreeC, Tree, Fence, Cart, RockL, RockW, Poles, Bush, BushL, Tuft, Crop };
+            for (int i = 0; i < models.Length; i++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(models[i]) == null)
+                    ConfigureProp(models[i]);
+            }
+
+            BuildMeadow(WorldRegions.Meadow, Fence, Crop, Tuft, Cart, Bush);
+            BuildForest(WorldRegions.Forest, new[] { TreeH, TreeR, TreeC, Tree }, Bush, BushL, Tuft);
+            BuildMine(WorldRegions.Mine, RockL, RockW, Poles, Tuft);
+            ScatterPlain(new[] { Tuft, Bush, BushL, RockW });
+        }
+
+        /// <summary>
+        /// 던전 암반 뚜껑은 조망에서 **평평한 회색 직사각형**으로 읽힌다(반려 4 샷 18·19·20 전부에 찍혔다).
+        /// 뚜껑 위에 바위·덤불을 얹어 직선 테두리를 깨뜨린다. 방 안에서는 뚜껑 위가 안 보이므로
+        /// 실내 화면 비율 게이트(InteriorShareMin)에는 영향이 없다.
+        /// </summary>
+        public static void EnsureCapDressing()
+        {
+            DressDungeonCaps(new[]
+            {
+                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-wide.fbx",
+                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-large.fbx",
+                "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bushLarge.fbx",
+                "Assets/_ThirdParty/Kenney/Nature/RAW/Models/grass_large.fbx",
+            });
+        }
+
+        static void DressDungeonCaps(string[] props)
+        {
+            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var rooms = new System.Collections.Generic.Dictionary<Transform, Bounds>();
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] == null || all[i].name != "DungeonCap")
+                    continue;
+                var rend = all[i].GetComponent<Renderer>();
+                if (rend == null)
+                    continue;
+                var room = all[i].parent;
+                if (room == null)
+                    continue;
+                if (rooms.TryGetValue(room, out var b))
+                {
+                    b.Encapsulate(rend.bounds);
+                    rooms[room] = b;
+                }
+                else
+                {
+                    rooms[room] = rend.bounds;
+                }
+            }
+
+            int seed = 0;
+            int dressed = 0;
+            foreach (var kv in rooms)
+            {
+                // 멱등: 이전 장식을 지우고 다시 얹는다(Ensure* 조기 반환으로 이미 만들어진 씬이 안 고쳐지는 함정).
+                for (int i = kv.Key.childCount - 1; i >= 0; i--)
+                {
+                    var c = kv.Key.GetChild(i);
+                    if (c.name.StartsWith("CapDress", StringComparison.Ordinal))
+                        UnityEngine.Object.DestroyImmediate(c.gameObject);
+                }
+                var b = kv.Value;
+                for (int i = 0; i < 22; i++)
+                {
+                    seed++;
+                    float x = WorldRegions.Rand(seed, 51, b.min.x + 0.5f, b.max.x - 0.5f);
+                    float z = WorldRegions.Rand(seed, 52, b.min.z + 0.5f, b.max.z - 0.5f);
+                    var go = Place(props[i % props.Length], new Vector3(x, 0f, z), new Vector3(0f, WorldRegions.Rand(seed, 53, 0f, 360f), 0f));
+                    if (go == null)
+                        continue;
+                    go.name = "CapDress_" + go.name;
+                    go.transform.SetParent(kv.Key, true);
+                    // Terrain.SampleHeight는 홀을 모른다 — 뚜껑 윗면(지면 +0.15)에 맞춰 올린다.
+                    go.transform.position += new Vector3(0f, 0.15f, 0f);
+                    go.transform.localScale = go.transform.localScale * WorldRegions.Rand(seed, 54, 0.9f, 2.0f);
+                    dressed++;
+                }
+            }
+            Debug.Log("[Ulon] 던전 뚜껑 장식 " + dressed + "개 (방 " + rooms.Count + "곳)");
+        }
+
+        static Transform FreshRegion(WorldRegions.Region region)
+        {
+            var old = GameObject.Find(region.Object);
+            if (old != null)
+                UnityEngine.Object.DestroyImmediate(old);
+            var go = new GameObject(region.Object);
+            return go.transform;
+        }
+
+        /// <summary>농경지 — 울타리로 두른 밭 네 뙈기와 작물 이랑.</summary>
+        static void BuildMeadow(WorldRegions.Region r, string fence, string crop, string tuft, string cart, string bush)
+        {
+            var parent = FreshRegion(r);
+            var plots = new[]
+            {
+                new Vector2(r.X - 11f, r.Z - 9f), new Vector2(r.X + 10f, r.Z - 10f),
+                new Vector2(r.X - 10f, r.Z + 10f), new Vector2(r.X + 11f, r.Z + 9f),
+            };
+            for (int p = 0; p < plots.Length; p++)
+            {
+                float half = 6.5f;
+                // 울타리는 **폭을 재서 이어 붙인다**. 간격을 추측해 띄우면 화면에서 「밭을 두른 울타리」가 아니라
+                // 들판에 말뚝이 흩어진 것으로 읽힌다(검수 반려 4의 첫 샷이 그랬다).
+                FenceRun(parent, fence, new Vector2(plots[p].x - half, plots[p].y - half), new Vector2(plots[p].x + half, plots[p].y - half));
+                FenceRun(parent, fence, new Vector2(plots[p].x - half, plots[p].y + half), new Vector2(plots[p].x + half, plots[p].y + half));
+                FenceRun(parent, fence, new Vector2(plots[p].x - half, plots[p].y - half), new Vector2(plots[p].x - half, plots[p].y + half));
+                FenceRun(parent, fence, new Vector2(plots[p].x + half, plots[p].y - half), new Vector2(plots[p].x + half, plots[p].y + half));
+                for (int row = 0; row < 8; row++)
+                {
+                    for (int col = 0; col < 8; col++)
+                    {
+                        var pos = new Vector3(plots[p].x - 5.25f + col * 1.5f, 0f, plots[p].y - 5.25f + row * 1.5f);
+                        int seed = p * 131 + row * 11 + col;
+                        var go = Place(crop, pos, new Vector3(0f, WorldRegions.Rand(seed, 1, 0f, 360f), 0f));
+                        if (go == null)
+                            continue;
+                        go.transform.SetParent(parent, true);
+                        // 작물 한 포기는 원래 무릎 아래다 — 조망에서 흙 얼룩으로 보여 이랑이 안 읽힌다. 키운다.
+                        go.transform.localScale = go.transform.localScale * WorldRegions.Rand(seed, 2, 1.7f, 2.4f);
+                    }
+                }
+            }
+            Decor(parent, cart, new Vector3(r.X, 0f, r.Z), new Vector3(0f, 35f, 0f));
+            for (int i = 0; i < 10; i++)
+            {
+                float a = WorldRegions.Rand(i, 2, 0f, 360f) * Mathf.Deg2Rad;
+                float d = WorldRegions.Rand(i, 3, 8f, r.Radius);
+                Decor(parent, i % 2 == 0 ? tuft : bush, new Vector3(r.X + Mathf.Cos(a) * d, 0f, r.Z + Mathf.Sin(a) * d), new Vector3(0f, a * Mathf.Rad2Deg, 0f));
+            }
+        }
+
+        static float _fenceWidth = -1f;
+
+        /// <summary>울타리 한 장의 실제 폭(모델 크기를 추측하지 않는다).</summary>
+        static float FenceWidth(string path)
+        {
+            if (_fenceWidth > 0f)
+                return _fenceWidth;
+            var probe = Place(path, new Vector3(0f, 0f, 0f), Vector3.zero);
+            if (probe == null)
+                return 2f;
+            _fenceWidth = Mathf.Max(0.5f, CombinedBounds(probe).size.x);
+            UnityEngine.Object.DestroyImmediate(probe);
+            return _fenceWidth;
+        }
+
+        /// <summary>두 점을 잇는 연속된 울타리 줄.</summary>
+        static void FenceRun(Transform parent, string path, Vector2 from, Vector2 to)
+        {
+            Vector2 d = to - from;
+            float len = d.magnitude;
+            if (len < 0.5f)
+                return;
+            float w = FenceWidth(path);
+            int count = Mathf.Max(2, Mathf.CeilToInt(len / w));
+            float yaw = Mathf.Abs(d.x) >= Mathf.Abs(d.y) ? 0f : 90f;
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 p = from + d * ((i + 0.5f) / count);
+                Decor(parent, path, new Vector3(p.x, 0f, p.y), new Vector3(0f, yaw, 0f));
+            }
+        }
+
+        /// <summary>숲 — 나무 군락. 균일 격자로 심으면 과수원으로 보이니 군집을 이룬다.</summary>
+        static void BuildForest(WorldRegions.Region r, string[] trees, string bush, string bushLarge, string tuft)
+        {
+            var parent = FreshRegion(r);
+            int index = 0;
+            // 군락 7개·나무 5~9그루로는 「나무가 좀 있는 들판」이다(첫 샷). 숲으로 읽히려면 수관이 서로 겹쳐야 한다.
+            for (int cluster = 0; cluster < 14; cluster++)
+            {
+                float ca = WorldRegions.Rand(cluster, 11, 0f, 360f) * Mathf.Deg2Rad;
+                float cd = WorldRegions.Rand(cluster, 12, 3f, r.Radius - 5f);
+                var center = new Vector2(r.X + Mathf.Cos(ca) * cd, r.Z + Mathf.Sin(ca) * cd);
+                int count = Mathf.RoundToInt(WorldRegions.Rand(cluster, 13, 9f, 15f));
+                for (int i = 0; i < count; i++)
+                {
+                    index++;
+                    float a = WorldRegions.Rand(index, 14, 0f, 360f) * Mathf.Deg2Rad;
+                    float d = WorldRegions.Rand(index, 15, 0.6f, 5.2f);
+                    var pos = new Vector3(center.x + Mathf.Cos(a) * d, 0f, center.y + Mathf.Sin(a) * d);
+                    var go = Place(trees[index % trees.Length], pos, new Vector3(0f, WorldRegions.Rand(index, 16, 0f, 360f), 0f));
+                    if (go == null)
+                        continue;
+                    go.transform.SetParent(parent, true);
+                    float sc = WorldRegions.Rand(index, 17, 0.85f, 1.35f);
+                    go.transform.localScale = go.transform.localScale * sc;
+                }
+                Decor(parent, cluster % 2 == 0 ? bush : bushLarge, new Vector3(center.x + 3.2f, 0f, center.y - 2.4f), new Vector3(0f, 40f, 0f));
+                Decor(parent, tuft, new Vector3(center.x - 2.6f, 0f, center.y + 3.1f), new Vector3(0f, 120f, 0f));
+            }
+        }
+
+        /// <summary>광산/산지 — 산자락 바위 노두와 채광 광맥.</summary>
+        static void BuildMine(WorldRegions.Region r, string rockLarge, string rockWide, string poles, string tuft)
+        {
+            var parent = FreshRegion(r);
+            // 각도를 완전 무작위로 뽑으면 한쪽에 몰린다(사분면 게이트가 2개로 잡아냈다) — 사분면을 돌아가며 놓는다.
+            for (int i = 0; i < 28; i++)
+            {
+                float a = ((i % 4) * 90f + WorldRegions.Rand(i, 21, 5f, 85f)) * Mathf.Deg2Rad;
+                float d = WorldRegions.Rand(i, 22, 3f, r.Radius - 3f);
+                var pos = new Vector3(r.X + Mathf.Cos(a) * d, 0f, r.Z + Mathf.Sin(a) * d);
+                var go = Place(i % 3 == 0 ? rockWide : rockLarge, pos, new Vector3(0f, WorldRegions.Rand(i, 23, 0f, 360f), 0f));
+                if (go == null)
+                    continue;
+                go.transform.SetParent(parent, true);
+                go.transform.localScale = go.transform.localScale * WorldRegions.Rand(i, 24, 0.9f, 2.1f);
+            }
+            // 갱구 표시 — 기둥 두 개와 널판(마을에서 「저기가 광산」으로 읽히게).
+            Decor(parent, poles, new Vector3(r.X - 2.2f, 0f, r.Z - 1.4f), new Vector3(0f, 0f, 0f));
+            Decor(parent, poles, new Vector3(r.X + 2.2f, 0f, r.Z - 1.4f), new Vector3(0f, 0f, 0f));
+            for (int i = 0; i < 4; i++)
+                Decor(parent, tuft, new Vector3(r.X + (i - 1.5f) * 3f, 0f, r.Z + 6f), new Vector3(0f, i * 40f, 0f));
+
+            // 채광 광맥 3개 — 지역이 「장소」이려면 할 일이 있어야 한다(§6.1 광산은 채광 지역이다).
+            for (int i = 0; i < 3; i++)
+            {
+                var pos = new Vector3(r.X + (i - 1) * 5.5f, 0f, r.Z + 2.4f);
+                var vein = Place(rockLarge, pos, new Vector3(0f, 25f * i, 0f));
+                if (vein == null)
+                    continue;
+                vein.name = "MineVein" + (i + 1);
+                vein.transform.SetParent(parent, true);
+                var node = vein.GetComponent<ResourceNode>() ?? vein.AddComponent<ResourceNode>();
+                node.ResourceId = "iron_ore";
+                node.DisplayName = "광산 철광맥";
+                node.GatherSkill = SkillId.Mining;
+                node.Remaining = 14;
+                node.Capacity = 14;
+                node.RespawnSeconds = 10f;
+                node.Difficulty = 14f;
+                EnsureCollider(vein);
+            }
+        }
+
+        /// <summary>평지 산포 — 마을 밖 빈 초록을 깨는 잡초·덤불·돌. 지역·마을·던전 자리는 피한다.</summary>
+        static void ScatterPlain(string[] props)
+        {
+            var old = GameObject.Find("PlainScatter");
+            if (old != null)
+                UnityEngine.Object.DestroyImmediate(old);
+            var parent = new GameObject("PlainScatter").transform;
+            var regions = WorldRegions.All;
+            int placed = 0;
+            for (int i = 0; i < 460; i++)
+            {
+                float x = WorldRegions.Rand(i, 31, -84f, 84f);
+                float z = WorldRegions.Rand(i, 32, -84f, 84f);
+                float distVillage = Mathf.Sqrt(x * x + z * z);
+                if (distVillage < 26f)
+                    continue;                                  // 마을·광장은 그대로 둔다
+                bool inRegion = false;
+                for (int k = 0; k < regions.Length; k++)
+                {
+                    if (new Vector2(x - regions[k].X, z - regions[k].Z).magnitude < regions[k].Radius)
+                        inRegion = true;
+                }
+                if (inRegion)
+                    continue;
+                if (Mathf.Abs(Mathf.Abs(x) - 68f) < 16f && Mathf.Abs(Mathf.Abs(z) - 68f) < 16f)
+                    continue;                                  // 던전 뚜껑 자리
+                float h = WorldTerrain.HeightAt(x, z);
+                if (h < WorldTerrain.SeaLevel + 1f || h > WorldTerrain.LandBase + 6f)
+                    continue;                                  // 물가·산비탈은 제외
+                var go = Place(props[i % props.Length], new Vector3(x, 0f, z), new Vector3(0f, WorldRegions.Rand(i, 33, 0f, 360f), 0f));
+                if (go == null)
+                    continue;
+                go.transform.SetParent(parent, true);
+                go.transform.localScale = go.transform.localScale * WorldRegions.Rand(i, 34, 0.8f, 1.6f);
+                placed++;
+            }
+            Debug.Log("[Ulon] 평지 산포 " + placed + "개");
+        }
+
         static void Decor(Transform parent, string path, Vector3 pos, Vector3 euler)
         {
             var go = Place(path, pos, Quaternion.Euler(0f, euler.y, 0f));
