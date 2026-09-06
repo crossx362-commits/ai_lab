@@ -229,10 +229,7 @@ namespace Ulon.Server
                     dir = Vector3.forward;
                 else
                     dir.Normalize();
-                Vector3 pos = body.transform.position;
-                float destX = pos.x + dir.x * SpellCast.BlinkDistance;
-                float destZ = pos.z + dir.z * SpellCast.BlinkDistance;
-                WarpBody(body, destX, destZ);
+                WarpTo(body, BlinkLanding(body.transform.position, dir));
                 SkillGain.TryRaise(skills, SkillId.Magery, 18f, out float blb, out float bla, stats);
                 if (body.IsAvatar)
                     body.RecalcFromInt(stats.Int);

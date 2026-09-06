@@ -1603,7 +1603,7 @@ namespace Ulon.Editor
             AssertHuntGround();
             AssertRoomFurnished();
             AssertRoomFurnishedNegativeControl();
-            AssertRoomPropsQualified();
+            AssertPropsQualified();
             AssertRoomPropsNegativeControl();
             AssertPropDistribution();
             AssertPropDistributionNegativeControl();
@@ -1618,8 +1618,8 @@ namespace Ulon.Editor
             AssertPerfRegressionAlarm();
             AssertBossMobContrast();
             AssertBossMobContrastNegativeControl();
-            AssertMobArtQualified();
-            AssertMobArtNegativeControl();
+            AssertCharacterArtQualified();
+            AssertCharacterArtNegativeControl();
             AssertFootOnGround();
             AssertFootNegativeControl();
             AssertWorldRegions();
@@ -1628,6 +1628,8 @@ namespace Ulon.Editor
             AssertServerAuthorityWiring();
             AssertReachableFeatures();
             AssertWarpLandings();
+            AssertBlinkLanding();
+            AssertBlinkLandingNegativeControl();
             AssertWarpLandingsNegativeControl();
             AssertHudControlsOnScreen();
             AssertHudControlsNegativeControl();

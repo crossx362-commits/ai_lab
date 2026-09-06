@@ -140,6 +140,62 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// **도약(Blink) 착지**도 구조물 안이면 안 된다(검수 랩 C). 전방 3.5m를 그냥 계산해 보내던 옛 코드는
+        /// 벽을 향해 쓰면 플레이어를 벽 속에 넣었다 — 은행 워프와 원인은 달라도 화면 결과는 같다.
+        /// 판정은 마을에서 **여덟 방향**으로 뛰어 보고, 그중 벽을 향한 방향이 실제로 막히는지까지 본다.
+        /// </summary>
+        static void AssertBlinkLanding()
+        {
+            var bank = UnityEngine.Object.FindFirstObjectByType<BankStation>(FindObjectsInactive.Include);
+            if (bank == null)
+                throw new InvalidOperationException("은행이 없어 도약 착지를 잴 기준점을 못 잡습니다.");
+            // 건물에서 3m 떨어져 건물을 바라보는 자리 — 옛 코드라면 3.5m 도약이 건물 속으로 들어간다.
+            var toward = new Vector3(1f, 0f, 0f);
+            var stand = OfflineWorld.WarpTarget(bank.transform.position.x - 3f, bank.transform.position.z);
+            int checkedCount = 0;
+            var bad = new List<string>();
+            for (int i = 0; i < 8; i++)
+            {
+                float a = i * Mathf.PI * 0.25f;
+                var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                var landing = OfflineWorld.BlinkLanding(stand, dir);
+                checkedCount++;
+                if (Inside(landing, out string blocker))
+                    bad.Add("방향 " + i + " 구조물 안(" + blocker + ")");
+            }
+            if (checkedCount == 0)
+                throw new InvalidOperationException("도약 착지를 한 번도 재지 못했습니다(0이면 실패).");
+            if (bad.Count > 0)
+                throw new InvalidOperationException("도약 착지가 구조물 안인 방향 " + bad.Count + "개: " +
+                    string.Join(", ", bad) + " — 막혔으면 막히기 직전까지만 가야 합니다.");
+
+            // 건물을 정면으로 향한 도약은 **실제로 짧아져야** 한다 — 안 짧아지면 잰 것이 없다.
+            var full = OfflineWorld.BlinkLanding(stand, toward);
+            float moved = Vector2.Distance(new Vector2(stand.x, stand.z), new Vector2(full.x, full.z));
+            Debug.Log("[Ulon] 도약 착지 — 여덟 방향 전부 구조물 밖, 건물 정면 도약은 " + moved.ToString("0.00") +
+                      "m에서 멈춤(요구 3.5m)");
+            if (moved > SpellCast.BlinkDistance - 0.2f)
+                throw new InvalidOperationException("건물을 향한 도약이 " + moved.ToString("0.00") +
+                    "m나 갔습니다 — 막힘을 재지 못하고 있습니다(게이트가 헛돌고 있다).");
+        }
+
+        /// <summary>네거티브 컨트롤 — 옛 계산(막힘 무시하고 전방 3.5m)이면 빨간불이어야 한다.</summary>
+        static void AssertBlinkLandingNegativeControl()
+        {
+            var bank = UnityEngine.Object.FindFirstObjectByType<BankStation>(FindObjectsInactive.Include);
+            if (bank == null)
+                throw new InvalidOperationException("은행이 없어 도약 네거티브 컨트롤을 할 수 없습니다.");
+            var stand = OfflineWorld.WarpTarget(bank.transform.position.x - 3f, bank.transform.position.z);
+            var old = OfflineWorld.WarpTarget(stand.x + SpellCast.BlinkDistance, stand.z);
+            bool red = Inside(old, out string blocker);
+            Debug.Log("[Ulon] 도약 네거티브 컨트롤 — 옛 계산(전방 3.5m 무조건)은 " +
+                      (red ? "구조물 안(" + blocker + ")" : "**바깥**") + "에 떨어진다");
+            if (!red)
+                throw new InvalidOperationException("도약 네거티브 컨트롤 실패 — 옛 계산이 건물 안에 떨어지지 않습니다. " +
+                    "기준점이 건물을 향하고 있지 않다는 뜻이라, 이 게이트는 막힘을 재고 있지 않습니다.");
+        }
+
+        /// <summary>
         /// 네거티브 컨트롤 둘.
         /// ① **옛 결함을 그대로 재현한다** — y=0.1 하드코딩(2026-09-06 P0)을 착지 계산으로 넣어 빨간불 확인.
         /// ② **방 바닥을 실제로 내린다** — 실내 착지가 허공에 뜨는지 오브젝트를 움직여 확인.

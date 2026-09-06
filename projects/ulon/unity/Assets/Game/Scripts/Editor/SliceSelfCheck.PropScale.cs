@@ -16,41 +16,50 @@ namespace Ulon.Editor
         const float PropHeightFracMax = 0.80f;
         const float PropHeightFracMin = 0.15f;
 
+        /// <summary>
+        /// 마을·지역까지 같은 자로 잰다(검수 랩 C). 다만 **야외 상한은 느슨하다** — 집·나무는 사람보다 큰 게
+        /// 정상이라 0.80배를 들이대면 게이트가 거짓말을 한다. 야외 상한은 「거인 감지」용(플레이어 키 6배)이고,
+        /// 방은 예전 그대로 0.15~0.80배다. 대상 수집은 `PropScope` 공용 원장이 한다.
+        /// </summary>
         static void AssertPropScaleRatio()
         {
-            CheckPropScale("던전 1", Dungeon1.InteriorObject);
-            CheckPropScale("던전 2", Dungeon2.InteriorObject);
-            CheckPropScale("던전 3", Dungeon3.InteriorObject);
-            Debug.Log("[Ulon] 실내 소품 크기 통과 — 플레이어 키(" + VisualSliceBuilder.PlayerHeight + "m)의 " +
-                      PropHeightFracMin + "~" + PropHeightFracMax + "배");
+            var zones = PropScope.Zones();
+            int total = 0;
+            for (int i = 0; i < zones.Length; i++)
+                total += CheckPropScale(zones[i]);
+            if (total == 0)
+                throw new InvalidOperationException("크기를 잰 소품이 0개입니다 — 게이트가 아무것도 안 재고 통과했습니다.");
+            Debug.Log("[Ulon] 소품 크기 통과 — 구역 " + zones.Length + "곳 " + total + "개, 플레이어 키(" +
+                      VisualSliceBuilder.PlayerHeight + "m) 기준 방 " + PropHeightFracMin + "~" + PropHeightFracMax +
+                      "배 · 야외 상한 6배(거인 감지)");
         }
 
-        static void CheckPropScale(string label, string interiorObject)
+        static int CheckPropScale(PropScope.Zone zone)
         {
-            var interior = GameObject.Find(interiorObject);
-            if (interior == null)
-                throw new InvalidOperationException(interiorObject + "이(가) 없습니다.");
+            var props = PropScope.Props(zone, out GameObject _);
             int measured = 0;
             float tallest = 0f;
             string tallestName = "";
-            foreach (var t in PropNodes(interior))
+            for (int i = 0; i < props.Count; i++)
             {
+                var t = props[i];
                 if (IsStructureProp(t)) continue;
                 if (!GroundFit.WorldBounds(t, out Bounds wb)) continue;
                 measured++;
                 float frac = wb.size.y / VisualSliceBuilder.PlayerHeight;
                 if (frac > tallest) { tallest = frac; tallestName = t.name; }
-                if (frac > PropHeightFracMax)
-                    throw new InvalidOperationException(label + "의 소품 " + t.name + " 높이가 플레이어 키의 " +
-                        frac.ToString("0.00") + "배입니다 — 상한 " + PropHeightFracMax + "배(방이 거인의 창고로 읽힌다).");
-                if (frac < PropHeightFracMin)
-                    throw new InvalidOperationException(label + "의 소품 " + t.name + " 높이가 플레이어 키의 " +
+                if (frac > zone.ScaleMaxFrac)
+                    throw new InvalidOperationException(zone.Label + "의 소품 " + t.name + " 높이가 플레이어 키의 " +
+                        frac.ToString("0.00") + "배입니다 — 상한 " + zone.ScaleMaxFrac + "배(거인으로 읽힌다).");
+                if (zone.Indoor && frac < PropHeightFracMin)
+                    throw new InvalidOperationException(zone.Label + "의 소품 " + t.name + " 높이가 플레이어 키의 " +
                         frac.ToString("0.00") + "배입니다 — 하한 " + PropHeightFracMin + "배(바닥 먼지처럼 안 보인다).");
             }
             if (measured == 0)
-                throw new InvalidOperationException(label + "에서 크기를 잰 소품이 0개입니다 — 게이트가 아무것도 안 재고 통과했습니다.");
-            Debug.Log("[Ulon] 실내 소품 크기 " + label + " — " + measured + "개, 최대 " +
+                throw new InvalidOperationException(zone.Label + "에서 크기를 잰 소품이 0개입니다 — 게이트가 아무것도 안 재고 통과했습니다.");
+            Debug.Log("[Ulon] 소품 크기 " + zone.Label + " — " + measured + "개, 최대 " +
                       tallest.ToString("0.00") + "배(" + tallestName + ")");
+            return measured;
         }
 
         /// <summary>기둥은 천장까지, 횃불은 벽 2m에 있는 것이 정상이다 — 비율 자에서 뺀다.</summary>

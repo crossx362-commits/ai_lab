@@ -12,9 +12,9 @@ namespace Ulon.Editor
         /// 「살색인지」를 픽셀로 재지 않는다. 그건 증상이고, 통과시키려면 어차피 옷 있는 모델이 필요하다.
         /// 원장은 `Editor/MobArt.cs` — 라이선스·출처·몸통 판정을 한 줄에 적게 해서, 등록 없는 모델은 아예 못 들어온다.
         /// </summary>
-        static void AssertMobArtQualified()
+        static void AssertCharacterArtQualified()
         {
-            var names = MobObjectNames();
+            var names = CharacterObjectNames();
             int checkedCount = 0;
             for (int i = 0; i < names.Count; i++)
             {
@@ -29,13 +29,13 @@ namespace Ulon.Editor
                     throw new InvalidOperationException(names[i] + "이(가) 맨몸 모델 " + model.Prefix + "을(를) 씁니다(" + via +
                         ") — " + model.Note + " 옷·갑옷으로 읽히는 모델로 교체하세요(§8.1·§8.2).");
             }
-            Debug.Log("[Ulon] 몹 모델 자격 통과 — " + checkedCount + "체 전부 원장 등록·몸통이 옷/갑옷/뼈로 읽힘(맨몸 모델 금지)");
+            Debug.Log("[Ulon] 사람 모델 자격 통과(몹·보스·마을 사람) — " + checkedCount + "체 전부 원장 등록·몸통이 옷/갑옷/뼈로 읽힘(맨몸 모델 금지)");
         }
 
         /// <summary>네거티브 컨트롤 — 맨몸 모델을 **실제로 몹 자리에 놓아** 게이트가 빨간불이 되는지 본다.</summary>
-        static void AssertMobArtNegativeControl()
+        static void AssertCharacterArtNegativeControl()
         {
-            var names = MobObjectNames();
+            var names = CharacterObjectNames();
             GameObject host = null;
             for (int i = 0; i < names.Count && host == null; i++)
                 host = GameObject.Find(names[i]);
@@ -57,7 +57,7 @@ namespace Ulon.Editor
                 for (int i = 0; i < art.Count; i++)
                     art[i].gameObject.SetActive(false);          // 원래 모델을 치운다
                 bare.transform.SetParent(host.transform, false); // 그 자리에 맨몸 모델을 넣는다
-                try { AssertMobArtQualified(); }
+                try { AssertCharacterArtQualified(); }
                 catch (InvalidOperationException) { red = true; }
             }
             finally
@@ -72,7 +72,7 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 몹 모델 자격 네거티브 컨트롤 통과 — " + host.name + "에 맨몸 모델 투입 시 FAIL");
         }
 
-        internal static List<string> MobObjectNames()
+        internal static List<string> CharacterObjectNames()
         {
             var names = new List<string>();
             var spots = VisualSliceBuilder.HuntSpots;
@@ -82,6 +82,11 @@ namespace Ulon.Editor
             names.Add(Dungeon2.MobObject); names.Add(Dungeon2.BossObject);
             names.Add(Dungeon3.MobObject); names.Add(Dungeon3.BossObject);
             names.Add(FieldBoss.Object);
+            // **마을 사람도 사람 모델이다**(검수 랩 C, 사각지대 표 2번) — 몹만 보면 맨몸 마네킹이
+            // 마을에 서 있어도 통과한다. 플레이어·동료·훈련사도 같은 자격 원장으로 잰다.
+            names.Add("Player");
+            names.Add("Companion");
+            names.Add("Trainer");
             return names;
         }
 

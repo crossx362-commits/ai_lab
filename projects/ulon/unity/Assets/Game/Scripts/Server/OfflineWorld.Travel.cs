@@ -172,6 +172,32 @@ namespace Ulon.Server
             return flat - TargetFootprint(target) <= range;
         }
 
+        /// <summary>
+        /// 도약이 내려앉을 자리. 전방 `BlinkDistance`가 **막혀 있으면 막히기 직전까지만** 간다 —
+        /// 벽 너머로 뛰면 플레이어가 구조물 안에 처박힌다(은행 워프와 결과가 같다, 검수 랩 C).
+        /// 게임과 게이트가 같이 쓴다.
+        /// </summary>
+        public static Vector3 BlinkLanding(Vector3 from, Vector3 dir)
+        {
+            const float Body = 0.35f;
+            float want = SpellCast.BlinkDistance;
+            var foot = from + Vector3.up * 0.5f;
+            var head = from + Vector3.up * 1.6f;
+            float go = want;
+            if (Physics.CapsuleCast(foot, head, Body, dir, out RaycastHit hit, want, ~0, QueryTriggerInteraction.Ignore)
+                && hit.collider.GetComponentInParent<WorldBody>() == null
+                && hit.collider.GetComponent<TerrainCollider>() == null)
+                go = Mathf.Max(0f, hit.distance - (Body + 0.15f));      // 막히기 직전까지
+            var spot = WarpTarget(from.x + dir.x * go, from.z + dir.z * go);
+            // 지표 경사·소품 때문에 그래도 겹치면 조금씩 물러선다.
+            for (int i = 0; i < 6 && !SpotIsClear(spot); i++)
+            {
+                go = Mathf.Max(0f, go - 0.5f);
+                spot = WarpTarget(from.x + dir.x * go, from.z + dir.z * go);
+            }
+            return spot;
+        }
+
         /// <summary>대상이 바닥에 차지하는 반경 — 렌더러 바운드의 가로/세로 중 큰 쪽 절반.</summary>
         static float TargetFootprint(Transform target)
         {

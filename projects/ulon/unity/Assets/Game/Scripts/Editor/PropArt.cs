@@ -47,7 +47,41 @@ namespace Ulon.Editor
             new Model { Fbx = Town + "planks.fbx",                 License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "널빤지 — 마을 가구 중 유일하게 남긴 것" },
         };
 
+        /// <summary>
+        /// 마을·지역 소품은 개수가 많아 파일 하나씩 적을 수 없다 — **팩 단위**로 등록한다(검수 랩 C).
+        /// 팩도 라이선스·출처를 여기 적는다. 등록 안 된 곳에서 온 메시는 여전히 자격이 없다.
+        /// </summary>
+        public struct Pack
+        {
+            public string PathPrefix;
+            public string License;
+            public string Source;
+            public string Note;
+        }
+
+        public static readonly Pack[] RegisteredPacks =
+        {
+            new Pack { PathPrefix = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/",
+                License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "마을 건물·울타리·좌판·장식" },
+            new Pack { PathPrefix = "Assets/_ThirdParty/Kenney/Nature/RAW/",
+                License = "CC0", Source = "Kenney Nature Kit 1.0", Note = "나무·풀·바위 — 숲·평지 산포" },
+            new Pack { PathPrefix = "Assets/_ThirdParty/KayKit/Dungeon/RAW/",
+                License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "던전 소품 전반" },
+        };
+
         public static bool IsRegistered(string assetPath)
+        {
+            for (int i = 0; i < Registered.Length; i++)
+                if (string.Equals(Registered[i].Fbx, assetPath, StringComparison.Ordinal))
+                    return true;
+            for (int i = 0; i < RegisteredPacks.Length; i++)
+                if (assetPath.StartsWith(RegisteredPacks[i].PathPrefix, StringComparison.Ordinal))
+                    return true;
+            return false;
+        }
+
+        /// <summary>던전 방 안에서 쓸 수 있는 것은 **파일 단위 등록분만**이다(가구 창고 반려 이후 규칙).</summary>
+        public static bool IsRegisteredForRoom(string assetPath)
         {
             for (int i = 0; i < Registered.Length; i++)
                 if (string.Equals(Registered[i].Fbx, assetPath, StringComparison.Ordinal))

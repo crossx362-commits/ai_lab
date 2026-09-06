@@ -12,15 +12,57 @@ namespace Ulon.Editor
         /// 맨바닥 비율 게이트(`AssertRoomFurnished`)는 「덮기만 하면」 통과하므로 이 결함을 못 잡는다.
         /// 두 게이트는 서로 다른 것을 잰다 — **분포**는 맨바닥 비율이, **자격**은 이 게이트가.
         /// </summary>
-        static void AssertRoomPropsQualified()
+        /// <summary>
+        /// **마을·지역·사냥터까지 전수로** 잰다(검수 랩 C). 전에는 던전 방만 봐서 「거인의 통」·색칠 큐브가
+        /// 방 밖에서는 얼마든지 들어올 수 있었다. 대상 수집은 공용 원장 `PropScope`가 한다 —
+        /// 구역 루트가 없거나 소품이 하한보다 적으면 **조용히 통과하지 않고 실패**한다.
+        /// </summary>
+        static void AssertPropsQualified()
         {
             int total = 0;
-            total += CheckProps("던전 1", Dungeon1.InteriorObject);
-            total += CheckProps("던전 2", Dungeon2.InteriorObject);
-            total += CheckProps("던전 3", Dungeon3.InteriorObject);
+            var zones = PropScope.Zones();
+            if (zones.Length == 0)
+                throw new InvalidOperationException("소품 구역 원장이 비었습니다 — 잰 것이 없습니다(0이면 실패).");
+            for (int i = 0; i < zones.Length; i++)
+                total += CheckZoneProps(zones[i]);
             if (total == 0)
-                throw new InvalidOperationException("실내 소품(DungeonFurn*)이 한 개도 없습니다 — 방이 빈 바닥입니다(§6.1).");
-            Debug.Log("[Ulon] 실내 소품 자격 통과 — " + total + "개 전부 PropArt 등록 CC0 모델(프리미티브 0개)");
+                throw new InvalidOperationException("소품이 한 개도 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            Debug.Log("[Ulon] 소품 자격 통과 — 구역 " + zones.Length + "곳 " + total +
+                      "개 전부 PropArt 등록 CC0 모델(프리미티브 0개, 마을·지역·던전 전수)");
+        }
+
+        static int CheckZoneProps(PropScope.Zone zone)
+        {
+            var props = PropScope.Props(zone, out GameObject root);
+            int n = 0;
+            var kinds = new Dictionary<string, int>(StringComparer.Ordinal);
+            for (int i = 0; i < props.Count; i++)
+            {
+                var t = props[i];
+                string why = PropArt.ReasonUnqualified(t.gameObject);
+                if (why != "")
+                    throw new InvalidOperationException(zone.Label + "의 소품 " + t.name + "이(가) 자격 미달입니다 — " + why +
+                        ". 등록된 CC0 모델만 쓴다(자격 원장 Editor/PropArt.cs).");
+                if (zone.Indoor)
+                {
+                    string kind = PropArt.ModelKeyOf(t.gameObject);
+                    kinds[kind] = (kinds.TryGetValue(kind, out int had) ? had : 0) + 1;
+                }
+                n++;
+            }
+            // 종류 편중은 **방 규칙**이다 — 야외는 나무가 숲의 대부분인 게 정상이다.
+            if (zone.Indoor)
+                foreach (var kv in kinds)
+                {
+                    float share = kv.Value / (float)n;
+                    if (share > PropKindShareMax)
+                        throw new InvalidOperationException(zone.Label + "의 소품이 " + kv.Key + " 한 종류로 " +
+                            (share * 100f).ToString("0") + "%입니다 — 상한 " + (PropKindShareMax * 100f).ToString("0") +
+                            "%. 한 종류로 채우면 방이 그 물건 창고로 읽힌다(검수 2026-09-06).");
+                }
+            Debug.Log("[Ulon] 소품 자격 " + zone.Label + " " + n + "개" +
+                      (zone.Indoor ? " / " + kinds.Count + "종(최다 상한 " + PropKindShareMax + ")" : ""));
+            return n;
         }
 
         /// <summary>한 종류가 방 소품에서 차지할 수 있는 최대 비율 — 넘으면 방이 「돌무더기 창고」가 된다(검수 반려).</summary>
@@ -81,7 +123,7 @@ namespace Ulon.Editor
             bool red = false;
             try
             {
-                try { AssertRoomPropsQualified(); }
+                try { AssertPropsQualified(); }
                 catch (InvalidOperationException) { red = true; }
             }
             finally
@@ -106,7 +148,7 @@ namespace Ulon.Editor
                     c.name = "DungeonFurnRubbleClone" + i;
                     clones.Add(c);
                 }
-                try { AssertRoomPropsQualified(); }
+                try { AssertPropsQualified(); }
                 catch (InvalidOperationException) { kindRed = true; }
             }
             finally
