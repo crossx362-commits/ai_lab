@@ -11,6 +11,21 @@ namespace Ulon.Editor
 {
     public static partial class SliceSelfCheck
     {
+        /// <summary>
+        /// 맵 크기는 원장(WorldTerrain.Span)이 정한다 — 필드·콘텐츠를 추가하면서 슬쩍 키우면 안 된다.
+        /// 같은 식이 세 곳에 복붙돼 있었다(2026-09-06 산·바다 작업에서 발견) — 한 곳으로 모은다.
+        /// </summary>
+        static void AssertMapSizeIsLedger()
+        {
+            var terrain = GameObject.Find("Ground");
+            var t = terrain != null ? terrain.GetComponent<Terrain>() : null;
+            if (t == null || t.terrainData == null)
+                throw new InvalidOperationException("Ground Terrain이 있어야 합니다.");
+            Vector3 size = t.terrainData.size;
+            if (Math.Abs(size.x - WorldTerrain.Span) > 0.1f || Math.Abs(size.z - WorldTerrain.Span) > 0.1f)
+                throw new InvalidOperationException("맵 크기가 " + size.x + "x" + size.z + "입니다 — 원장(WorldTerrain.Span) " + WorldTerrain.Span + "와 다릅니다.");
+        }
+
         static void AssertEastFieldSlice()
         {
             var field = GameObject.Find("EastField");
@@ -31,13 +46,7 @@ namespace Ulon.Editor
             Vector3 pos = go.transform.position;
             if (GuardZone.Contains(pos.x, pos.z))
                 throw new InvalidOperationException("동쪽 필드는 가드존 밖이어야 합니다.");
-            var terrain = GameObject.Find("Ground");
-            var data = terrain != null ? terrain.GetComponent<Terrain>() : null;
-            if (data == null || data.terrainData == null)
-                throw new InvalidOperationException("Ground Terrain이 있어야 합니다.");
-            Vector3 size = data.terrainData.size;
-            if (Math.Abs(size.x - 180f) > 0.1f || Math.Abs(size.z - 180f) > 0.1f)
-                throw new InvalidOperationException("필드 추가로 맵 크기를 키우면 안 됩니다.");
+            AssertMapSizeIsLedger();
 
             var worldGo = new GameObject("selfcheck-field-world");
             GameObject bodyGo = null;
@@ -105,13 +114,7 @@ namespace Ulon.Editor
             var fish = GameObject.Find("FishingSpot");
             if (fish != null && Vector3.Distance(pos, fish.transform.position) < 8f)
                 throw new InvalidOperationException("남쪽 필드가 물가를 건드리면 안 됩니다.");
-            var terrain = GameObject.Find("Ground");
-            var data = terrain != null ? terrain.GetComponent<Terrain>() : null;
-            if (data == null || data.terrainData == null)
-                throw new InvalidOperationException("Ground Terrain이 있어야 합니다.");
-            Vector3 size = data.terrainData.size;
-            if (Math.Abs(size.x - 180f) > 0.1f || Math.Abs(size.z - 180f) > 0.1f)
-                throw new InvalidOperationException("필드 추가로 맵 크기를 키우면 안 됩니다.");
+            AssertMapSizeIsLedger();
 
             var worldGo = new GameObject("selfcheck-south-world");
             GameObject bodyGo = null;
@@ -189,13 +192,7 @@ namespace Ulon.Editor
             var villageNode = vein.GetComponent<ResourceNode>();
             if (villageNode == null || villageNode.GatherSkill != SkillId.Mining)
                 throw new InvalidOperationException("마을 IronVein 채광 노드가 유지되어야 합니다.");
-            var terrain = GameObject.Find("Ground");
-            var data = terrain != null ? terrain.GetComponent<Terrain>() : null;
-            if (data == null || data.terrainData == null)
-                throw new InvalidOperationException("Ground Terrain이 있어야 합니다.");
-            Vector3 size = data.terrainData.size;
-            if (Math.Abs(size.x - 180f) > 0.1f || Math.Abs(size.z - 180f) > 0.1f)
-                throw new InvalidOperationException("필드 추가로 맵 크기를 키우면 안 됩니다.");
+            AssertMapSizeIsLedger();
 
             var worldGo = new GameObject("selfcheck-north-world");
             GameObject bodyGo = null;

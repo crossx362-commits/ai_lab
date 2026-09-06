@@ -2097,6 +2097,7 @@ namespace Ulon.Editor
 
         /// <summary>던전 방을 지면 아래로 내리는 깊이(m). 지상 상자는 §8.2 「단색 초록」 위반이다.</summary>
         public const float DungeonDepth = 4.5f;
+        public const string WaterObject = "SeaWater";
 
         /// <summary>씬의 플레이 카메라에 실내 차폐 페이드를 보장한다(검수 2026-09-06 P0).</summary>
         public static void EnsureCameraSightFade()
@@ -2597,7 +2598,9 @@ namespace Ulon.Editor
             EnsureVillageTerrain();
         }
 
-        static void EnsureVillageTerrain()
+        /// <summary>지형은 셀프체크에서도 다시 만든다 — 안 그러면 원장(WorldTerrain)을 고쳐도
+        /// 씬에는 디스크의 옛 지형이 남아 Assert가 옛 값을 본다(2026-09-06 실측: 180m가 계속 잡혔다).</summary>
+        public static void EnsureVillageTerrain()
         {
             Directory.CreateDirectory(Path.Combine(Application.dataPath, "Game/Art/Env"));
             var grass = MakeNoiseMat("KenneyGrass", new Color(0.30f, 0.50f, 0.18f), new Color(0.22f, 0.40f, 0.12f));
@@ -2621,38 +2624,48 @@ namespace Ulon.Editor
                 data = new TerrainData();
                 AssetDatabase.CreateAsset(data, DataPath);
             }
-            int res = 257;
+            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.32f, 0.31f, 0.33f), new Color(0.46f, 0.45f, 0.46f), 10f);
+            var sandLayer = EnsureTerrainLayer("ShoreSand", new Color(0.74f, 0.68f, 0.50f), new Color(0.85f, 0.80f, 0.62f), 8f);
+
+            int res = 513;
             data.heightmapResolution = res;
-            data.size = new Vector3(180f, 5f, 180f);
-            data.terrainLayers = new[] { layer };
+            data.size = new Vector3(WorldTerrain.Span, WorldTerrain.MaxHeight, WorldTerrain.Span);
+            data.terrainLayers = new[] { layer, rockLayer, sandLayer };
             float[,] heights = new float[res, res];
-            float half = 90f;
+            float half = WorldTerrain.Span * 0.5f;
             for (int z = 0; z < res; z++)
             {
                 for (int x = 0; x < res; x++)
                 {
-                    float wx = (x / (float)(res - 1)) * 180f - half;
-                    float wz = (z / (float)(res - 1)) * 180f - half;
-                    float dist = Mathf.Sqrt(wx * wx + wz * wz);
-                    float n = Mathf.PerlinNoise(wx * 0.028f + 12.3f, wz * 0.028f + 4.7f) * 0.55f;
-                    n += Mathf.PerlinNoise(wx * 0.07f + 30f, wz * 0.07f) * 0.28f;
-                    n += Mathf.PerlinNoise(wx * 0.18f, wz * 0.18f + 18f) * 0.17f;
-                    float flatten = 1f;
-                    if (dist > 23f)
-                        flatten = dist >= 48f ? 0f : 1f - (dist - 23f) / 25f;
-                    heights[z, x] = n * (1f - flatten) * 0.55f;
+                    float wx = (x / (float)(res - 1)) * WorldTerrain.Span - half;
+                    float wz = (z / (float)(res - 1)) * WorldTerrain.Span - half;
+                    heights[z, x] = WorldTerrain.HeightAt(wx, wz) / WorldTerrain.MaxHeight;
                 }
             }
             data.SetHeights(0, 0, heights);
             int ar = data.alphamapResolution;
-            var alpha = new float[ar, ar, 1];
+            var alpha = new float[ar, ar, 3];
             for (int z = 0; z < ar; z++)
             {
                 for (int x = 0; x < ar; x++)
-                    alpha[z, x, 0] = 1f;
+                {
+                    float wx = (x / (float)(ar - 1)) * WorldTerrain.Span - half;
+                    float wz = (z / (float)(ar - 1)) * WorldTerrain.Span - half;
+                    float h = WorldTerrain.HeightAt(wx, wz);
+                    // 물가는 모래, 높은 곳은 바위, 나머지는 풀 — 초록 한 장으로 덮으면 §8.2 위반이다.
+                    float sand = 1f - Mathf.Clamp01((h - (WorldTerrain.SeaLevel - 0.5f)) / 2.5f);
+                    float rock = Mathf.Clamp01((h - (WorldTerrain.LandBase + 4f)) / 10f);
+                    float grassW = Mathf.Max(0f, 1f - sand - rock);
+                    float sum = sand + rock + grassW;
+                    alpha[z, x, 0] = grassW / sum;
+                    alpha[z, x, 1] = rock / sum;
+                    alpha[z, x, 2] = sand / sum;
+                }
             }
             data.SetAlphamaps(0, 0, alpha);
             EditorUtility.SetDirty(data);
+            // TerrainData는 에셋이다 — 저장하지 않으면 씬을 다시 열 때 디스크의 옛 지형이 돌아온다.
+            AssetDatabase.SaveAssets();
             var found = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = found.Length - 1; i >= 0; i--)
             {
@@ -2670,13 +2683,63 @@ namespace Ulon.Editor
             }
             var terrain = go.GetComponent<Terrain>();
             terrain.terrainData = data;
-            go.transform.position = new Vector3(-90f, 0f, -90f);
+            go.transform.position = new Vector3(-half, 0f, -half);
             terrain.heightmapPixelError = 5f;
-            terrain.basemapDistance = 90f;
+            terrain.basemapDistance = 160f;
             terrain.shadowCastingMode = ShadowCastingMode.On;
             var col = go.GetComponent<TerrainCollider>();
             if (col != null)
                 col.terrainData = data;
+
+            EnsureWater();
+        }
+
+        /// <summary>
+        /// 바다·강·호수는 같은 수면 하나로 만든다 — 지형이 SeaLevel 아래로 파인 곳에서만 물이 보인다.
+        /// 단색 파란 판은 §8.2 위반이라 노이즈 텍스처 재질을 쓴다(Default-Material 프리미티브 금지).
+        /// </summary>
+        static void EnsureWater()
+        {
+            var mat = MakeNoiseMat("SeaWater", new Color(0.10f, 0.28f, 0.42f), new Color(0.18f, 0.44f, 0.58f));
+            if (mat != null)
+            {
+                mat.SetFloat("_Glossiness", 0.85f);
+                mat.SetFloat("_Metallic", 0.1f);
+                if (mat.HasProperty("_MainTex"))
+                    mat.mainTextureScale = new Vector2(24f, 24f);
+                EditorUtility.SetDirty(mat);
+            }
+            var go = GameObject.Find(WaterObject);
+            if (go == null)
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Plane);
+                go.name = WaterObject;
+                var c = go.GetComponent<Collider>();
+                if (c != null)
+                    UnityEngine.Object.DestroyImmediate(c);
+            }
+            go.transform.position = new Vector3(0f, WorldTerrain.SeaLevel, 0f);
+            go.transform.localScale = new Vector3(WorldTerrain.Span / 10f, 1f, WorldTerrain.Span / 10f);
+            var rend = go.GetComponent<Renderer>();
+            if (rend != null && mat != null)
+                rend.sharedMaterial = mat;
+        }
+
+        static TerrainLayer EnsureTerrainLayer(string name, Color a, Color b, float tile)
+        {
+            var mat = MakeNoiseMat(name, a, b);
+            var tex = mat != null ? mat.mainTexture as Texture2D : null;
+            string path = "Assets/Game/Art/Env/" + name + ".terrainlayer";
+            var tl = AssetDatabase.LoadAssetAtPath<TerrainLayer>(path);
+            if (tl == null)
+            {
+                tl = new TerrainLayer();
+                AssetDatabase.CreateAsset(tl, path);
+            }
+            tl.diffuseTexture = tex;
+            tl.tileSize = new Vector2(tile, tile);
+            EditorUtility.SetDirty(tl);
+            return tl;
         }
 
         static void PlaceKenney()

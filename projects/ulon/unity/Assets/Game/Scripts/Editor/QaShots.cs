@@ -49,6 +49,10 @@ namespace Ulon.Editor
                 PlayCam("12_d3_interior_playcam", Dungeon3.InteriorX, Dungeon3.InteriorZ),
                 Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
                 Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ),
+                // §8.1 멀리서도 읽히는 실루엣 — 산·바다 조망, 호수·강 조망.
+                Free("14_world_vista", new Vector3(-165f, 95f, -165f), new Vector3(0f, WorldTerrain.LandBase, 0f)),
+                Free("15_lake_river", new Vector3(WorldTerrain.LakeX + 46f, 40f, WorldTerrain.LakeZ + 46f), new Vector3(WorldTerrain.LakeX - 12f, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),
+                Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
             };
 
             var camGo = new GameObject("QaShotCamera");
@@ -88,6 +92,12 @@ namespace Ulon.Editor
                 Object.DestroyImmediate(tex);
             }
             Debug.Log("[Ulon] QA shots " + shots.Length + "장 — " + dir);
+        }
+
+        /// <summary>임의 시점 — 조망 샷용.</summary>
+        static Shot Free(string name, Vector3 eye, Vector3 target)
+        {
+            return new Shot { Name = name, Eye = eye, Target = target };
         }
 
         /// <summary>바깥에서 대상 주위를 내려다본다.</summary>
