@@ -28,12 +28,16 @@ namespace Ulon.Editor
         }
 
         /// <summary>
-        /// 한 파일의 효과 배선 결함 목록. **게이트와 네거티브 컨트롤이 같은 함수를 쓴다** —
+        /// 한 파일의 배선 결함 목록. **게이트와 네거티브 컨트롤이 같은 함수를 쓴다** —
         /// NC는 결함이 든 소스 문자열을 이 함수에 그대로 먹인다.
+        ///
+        /// ① 매달린 조건은 **효과 호출에 한정하지 않는다**(검수 지시 2026-09-07) — 이 형태가 실제로
+        ///    결함 5건을 낳았고, 골드 지급·아이템 소비에 같은 형태가 생기면 그건 소리가 아니라
+        ///    **게임 규칙이 거짓말하는 것**이다. 그래서 모든 문장에 대해 본다.
         /// </summary>
         static List<string> EffectWiringDefects(string fileName, string[] lines)
         {
-            var defects = new List<string>();
+            var defects = new List<string>(DanglingIfDefects(fileName, lines));
             string lastRpcAttribute = "";
             for (int i = 0; i < lines.Length; i++)
             {
@@ -45,17 +49,6 @@ namespace Ulon.Editor
                 if (!IsEffectCall(t))
                     continue;
 
-                // ① 매달린 조건 — 중괄호 없는 if 아래에서 **둘째 줄부터**는 조건 밖이다.
-                int p = PrevCode(lines, i);
-                while (p >= 0 && IsEffectCall(lines[p].Trim()))
-                {
-                    int q = PrevCode(lines, p);
-                    if (q >= 0 && IsUnbracedIf(lines[q].Trim()))
-                        defects.Add(fileName + ":" + (i + 1) + " 매달린 조건 — 위 `if`에 중괄호가 없어 이 줄은 **조건 밖**에서 항상 실행된다: " + t);
-                    p = q;
-                    break;
-                }
-
                 // ② 관측자 배선 — NetAvatar의 효과는 방송을 거쳐야 한다.
                 if (fileName == "NetAvatar.cs" && lastRpcAttribute == "ServerRpc")
                     defects.Add(fileName + ":" + (i + 1) + " 서버에서만 재생 — `[ServerRpc]` 본체라 다른 사람 화면·귀에는 아무것도 안 간다(`[ObserversRpc]`로 방송할 것): " + t);
@@ -63,21 +56,70 @@ namespace Ulon.Editor
             return defects;
         }
 
-        static int PrevCode(string[] lines, int i)
+        /// <summary>
+        /// **중괄호 없는 `if` 아래 둘째 문장은 조건 밖이다.** 들여쓰기가 같아 눈으로는 안 보인다.
+        ///
+        /// 판단을 **보류하는 형태**(한계, 다음 사람이 「전부 검사된다」고 읽지 않게):
+        /// 여러 줄에 걸친 조건식, 본문이 한 문장으로 안 끝나는 경우, 한 줄에 `{ … }`로 닫은 if.
+        /// 셋 다 육안으로도 매달림이 아니다.
+        /// </summary>
+        static List<string> DanglingIfDefects(string fileName, string[] lines)
         {
-            for (int k = i - 1; k >= 0; k--)
+            var defects = new List<string>();
+            for (int i = 0; i < lines.Length; i++)
             {
-                string t = lines[k].Trim();
-                if (t.Length == 0 || t.StartsWith("//", StringComparison.Ordinal))
+                string t = StripComment(lines[i]);
+                if (!t.StartsWith("if (", StringComparison.Ordinal) && !t.StartsWith("else if (", StringComparison.Ordinal))
                     continue;
-                return k;
+                if (CountChar(t, '(') != CountChar(t, ')') || !t.EndsWith(")", StringComparison.Ordinal))
+                    continue;                                   // 여러 줄 조건 / 같은 줄에 본문이 있음
+                int b = NextCode(lines, i);
+                if (b < 0)
+                    continue;
+                string bt = StripComment(lines[b]);
+                if (bt.StartsWith("{", StringComparison.Ordinal) || !bt.EndsWith(";", StringComparison.Ordinal))
+                    continue;                                   // 중괄호 블록 / 한 문장으로 안 끝남
+                int n = NextCode(lines, b);
+                if (n < 0)
+                    continue;
+                string nt = StripComment(lines[n]);
+                if (Indent(lines[n]) != Indent(lines[b]))
+                    continue;                                   // 들여쓰기가 다르면 형제 문장이 아니다
+                if (nt.StartsWith("else", StringComparison.Ordinal) || nt.StartsWith("}", StringComparison.Ordinal)
+                    || nt.StartsWith("{", StringComparison.Ordinal) || nt.StartsWith("catch", StringComparison.Ordinal)
+                    || nt.StartsWith("finally", StringComparison.Ordinal))
+                    continue;
+                defects.Add(fileName + ":" + (n + 1) + " 매달린 조건 — 위 `if`에 중괄호가 없어 이 줄은 **조건 밖**에서 항상 실행된다: " + nt);
             }
-            return -1;
+            return defects;
         }
 
-        static bool IsUnbracedIf(string trimmed)
+        static string StripComment(string line)
         {
-            return trimmed.StartsWith("if (", StringComparison.Ordinal) && !trimmed.EndsWith("{", StringComparison.Ordinal);
+            int i = line.IndexOf("//", StringComparison.Ordinal);
+            return (i >= 0 ? line.Substring(0, i) : line).Trim();
+        }
+
+        static int CountChar(string s, char c)
+        {
+            int n = 0;
+            for (int i = 0; i < s.Length; i++) if (s[i] == c) n++;
+            return n;
+        }
+
+        static int Indent(string line)
+        {
+            int i = 0;
+            while (i < line.Length && (line[i] == ' ' || line[i] == '\t')) i++;
+            return i;
+        }
+
+        static int NextCode(string[] lines, int i)
+        {
+            for (int k = i + 1; k < lines.Length; k++)
+                if (StripComment(lines[k]).Length > 0)
+                    return k;
+            return -1;
         }
 
         static void AssertEffectWiring()
@@ -85,12 +127,26 @@ namespace Ulon.Editor
             string clientDir = Path.Combine(Application.dataPath, "Game/Scripts/Client");
             if (!Directory.Exists(clientDir))
                 throw new InvalidOperationException("클라 스크립트 폴더가 없습니다: " + clientDir);
+            // 매달린 조건은 클라 밖에서도 결함이다 — 골드·아이템을 다루는 서버·공용까지 본다.
+            var dirs = new List<string> { clientDir };
+            foreach (string sub in new[] { "Game/Scripts/Server", "Game/Scripts/Shared" })
+            {
+                string d = Path.Combine(Application.dataPath, sub);
+                if (!Directory.Exists(d))
+                    throw new InvalidOperationException("스크립트 폴더가 없습니다: " + d);
+                dirs.Add(d);
+            }
 
             var defects = new List<string>();
             int calls = 0;
             int broadcast = 0;
-            foreach (string file in Directory.GetFiles(clientDir, "*.cs", SearchOption.AllDirectories))
+            int scanned = 0;
+            var files = new List<string>();
+            for (int d = 0; d < dirs.Count; d++)
+                files.AddRange(Directory.GetFiles(dirs[d], "*.cs", SearchOption.AllDirectories));
+            foreach (string file in files)
             {
+                scanned++;
                 string name = Path.GetFileName(file);
                 if (name == "ActionVfx.cs" || name == "ActionSfx.cs")
                     continue;   // 효과 구현 자체 — 여기 있는 `Play`는 호출부가 아니다.
@@ -117,12 +173,15 @@ namespace Ulon.Editor
             var reasons = new List<string>(defects);
             if (calls == 0)
                 reasons.Add("효과 호출을 한 개도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
+            if (scanned == 0)
+                reasons.Add("소스 파일을 한 개도 못 읽었습니다 — 잰 것이 없습니다(0이면 실패).");
             if (broadcast == 0)
                 reasons.Add("NetAvatar에 방송되는 효과가 없습니다 — 온라인에서는 아무 불티도 소리도 안 납니다(0이면 실패).");
             if (reasons.Count > 0)
                 throw new InvalidOperationException("행동 효과 배선 결함 " + reasons.Count + "건:\n  " + string.Join("\n  ", reasons));
 
-            Debug.Log("[Ulon] 행동 효과 배선 — 호출 " + calls + "곳 전부 조건 안, NetAvatar 방송 재생 " + broadcast + "곳");
+            Debug.Log("[Ulon] 행동 효과 배선 — 소스 " + scanned + "개 훑어 매달린 조건 0건, 효과 호출 " + calls +
+                      "곳 전부 조건 안, NetAvatar 방송 재생 " + broadcast + "곳");
         }
 
         /// <summary>
@@ -142,6 +201,18 @@ namespace Ulon.Editor
             if (d1.Count == 0)
                 throw new InvalidOperationException("효과 배선 네거티브 컨트롤 실패 — 매달린 조건을 못 잡았습니다.");
 
+            // **효과 밖에서도 잡는가** — 골드 지급 같은 규칙 코드에 같은 형태가 생기면 그건 소리가 아니라
+            // 게임 규칙이 거짓말하는 것이다(검수 지시 2026-09-07).
+            string[] danglingRule =
+            {
+                "            if (order.Applied)",
+                "                bag.AddGold(10);",
+                "                ConsumeItem(bag, order.Item, 1);",
+            };
+            var d3 = EffectWiringDefects("Fake.cs", danglingRule);
+            if (d3.Count == 0)
+                throw new InvalidOperationException("효과 배선 네거티브 컨트롤 실패 — 효과 호출이 아닌 매달린 조건(골드·아이템)을 못 잡았습니다.");
+
             string[] serverOnly =
             {
                 "        [ServerRpc]",
@@ -154,7 +225,7 @@ namespace Ulon.Editor
             if (d2.Count == 0)
                 throw new InvalidOperationException("효과 배선 네거티브 컨트롤 실패 — 서버에서만 재생하는 효과를 못 잡았습니다.");
 
-            Debug.Log("[Ulon] 효과 배선 네거티브 컨트롤 — 매달린 조건/서버 전용 재생 둘 다 검출: " + d1[0] + " | " + d2[0]);
+            Debug.Log("[Ulon] 효과 배선 네거티브 컨트롤 — 매달린 조건(효과/규칙)·서버 전용 재생 셋 다 검출: " + d3[0] + " | " + d1[0] + " | " + d2[0]);
         }
     }
 }
