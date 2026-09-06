@@ -354,6 +354,9 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 실내 비율 계측 " + label + " " + interiorShare.ToString("0.00") + " (거리 " + useDist.ToString("0.0") + "m·허공 " + voidShare.ToString("0.00") + ")" + s_voidSample);
             // 「잔디 비율 상한」은 대리 지표였다 — 벽 바깥 **허공**(아무것도 안 맞는 검은 화면)은 잔디가 아니라서
             // 통과했다(검수 2026-09-06: 8.11m 줌에서 화면 아래 두 모서리가 검다). 허공에 따로 상한을 건다.
+            // 버린 시도(2026-09-06): 플레이어를 방 네 귀퉁이로 옮겨 최악 허공/실내 비율을 재는 스윕 게이트.
+            // 눈이 방 밖으로 나가는 지점에서 레이 모델이 실제 렌더와 어긋나(실내 0.00인데 화면은 멀쩡) 판정으로 못 쓴다.
+            // 귀퉁이 화면 근거는 QA 샷 `23_d1_corner_playcam`으로 남긴다 — 스윕 게이트를 다시 만들지 마라.
             if (voidShare > VoidShareMax)
                 throw new InvalidOperationException(label + " 화면의 " + (voidShare * 100f).ToString("0") + "%가 벽 바깥 허공(검은 화면)입니다 — 최대 " +
                     (VoidShareMax * 100f).ToString("0") + "%. 방이 카메라 화각을 못 채웁니다(§8.2). 줌 거리에 맞게 **방을 넓히세요**.");

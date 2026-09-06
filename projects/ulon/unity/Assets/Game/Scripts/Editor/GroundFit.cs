@@ -58,8 +58,13 @@ namespace Ulon.Editor
         }
 
         /// <summary>
-        /// 월드 바운드. `Renderer.bounds`가 아니라 **메시 정점을 직접** 변환한다 —
-        /// 배치모드에서는 렌더가 한 번도 안 돌아 `Renderer.bounds`가 프리팹 원점 값으로 남는다(실측).
+        /// 월드 바운드 — 메시 정점을 직접 변환한다. 스킨드 메시의 `Renderer.bounds`는 에디터 포즈에서
+        /// 부풀어 있어 발 높이가 실제보다 낮게 나오기 때문이다(BossFit과 같은 이유, `BakeMesh(mesh, false)`).
+        ///
+        /// 정정(2026-09-06): 처음엔 「배치모드에서 `Renderer.bounds`가 프리팹 원점 값으로 남는다」고 적었으나
+        /// **틀렸다.** 마을이 y=0으로 읽힌 것은 계측 오류가 아니라 실제로 10m 지하에 묻혀 있었기 때문이다
+        /// (이 함수로 옮겼더니 화면에 마을이 돌아왔다 = 두 방식이 같은 값을 봤다는 뜻). 다른 게이트의
+        /// `Renderer.bounds` 사용은 이 이유로는 의심할 필요가 없다.
         /// </summary>
         public static bool WorldBounds(Transform t, out Bounds bounds)
         {
