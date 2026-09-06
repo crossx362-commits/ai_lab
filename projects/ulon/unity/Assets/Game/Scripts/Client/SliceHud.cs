@@ -48,6 +48,8 @@ namespace Ulon.Client
 
         Panel panel = Panel.None;
         Vector2 skillScroll, bagScroll, nearbyScroll, socialScroll;
+        /// <summary>가방에서 고른 항목 — 「무엇에 대해」 착용·주머니 버튼이 작용하는지 화면에 보여야 한다(검수).</summary>
+        int bagPick = -1;
 
         const float CardW = 300f;
         const float PanelW = 308f;
@@ -68,7 +70,17 @@ namespace Ulon.Client
         static Rect TargetRect => new Rect((Screen.width - TargetW) * 0.5f, 12f, TargetW, 58f);
         static Rect QuickRect => new Rect((Screen.width - 580f) * 0.5f, Screen.height - 54f, 580f, 42f);
         static Rect TabsRect => new Rect(Screen.width - 318f, Screen.height - 54f, 306f, 42f);
-        static Rect PanelRect => new Rect(Screen.width - 318f, 80f, PanelW, Screen.height - 148f);
+        /// <summary>패널 높이는 **내용에 맞춘다** — 내용이 위 1/4인데 화면을 위아래로 다 쓰면 안 된다(검수).</summary>
+        float panelHeight = 200f;
+        Rect PanelRect
+        {
+            get
+            {
+                float max = Screen.height - 148f;
+                float h = Mathf.Clamp(panelHeight, 120f, max);
+                return new Rect(Screen.width - 318f, Screen.height - 66f - h, PanelW, h);
+            }
+        }
 
         /// <summary>이 프레임에 실제로 그린 UI 영역 — 게이트가 겹침·중앙 침범을 재는 데 쓴다.</summary>
         public static readonly System.Collections.Generic.List<Rect> DrawnAreas = new System.Collections.Generic.List<Rect>();
@@ -104,6 +116,11 @@ namespace Ulon.Client
         void Area(Rect r, System.Action body)
         {
             DrawnAreas.Add(r);
+            // 배경이 비쳐 글자가 묻히던 문제(검수 2026-09-07) — 어두운 판을 깔고 그 위에 상자를 얹는다.
+            var prev = GUI.color;
+            GUI.color = new Color(0.06f, 0.07f, 0.09f, 0.92f);
+            GUI.DrawTexture(r, Texture2D.whiteTexture);
+            GUI.color = prev;
             GUI.Box(r, GUIContent.none);
             GUILayout.BeginArea(new Rect(r.x + 8f, r.y + 6f, r.width - 16f, r.height - 12f));
             body();
@@ -252,8 +269,10 @@ namespace Ulon.Client
                 panel = Panel.None;
             if (panel == Panel.None)
                 return;
+            float used = 0f;
             Area(PanelRect, () =>
             {
+                GUILayout.BeginVertical();
                 switch (panel)
                 {
                     case Panel.Bag: PanelBag(world, me, net); break;
@@ -263,42 +282,78 @@ namespace Ulon.Client
                     case Panel.Nearby: PanelNearby(world, me, net); break;
                     case Panel.Gm: PanelGm(world, me); break;
                 }
+                GUILayout.EndVertical();
+                if (Event.current.type == EventType.Repaint)
+                    used = GUILayoutUtility.GetLastRect().height + 24f;
             });
+            if (used > 1f)
+                panelHeight = used;
         }
 
         void PanelBag(OfflineWorld world, WorldBody me, NetAvatar net)
         {
             var bag = me.GetComponent<InventoryBag>();
             var vault = me.GetComponent<BankVault>();
-            GUILayout.Label("가방");
-            bagScroll = GUILayout.BeginScrollView(bagScroll);
-            if (bag == null || bag.Items.Count == 0)
+            int count = bag != null ? bag.Items.Count : 0;
+            if (bagPick >= count)
+                bagPick = -1;
+
+            GUILayout.Label("가방" + (count > 0 ? "  " + count + "칸" : ""));
+            bagScroll = GUILayout.BeginScrollView(bagScroll, GUILayout.Height(Mathf.Min(200f, 26f * Mathf.Max(1, count) + 8f)));
+            if (count == 0)
                 GUILayout.Label("비었습니다");
             else
-                for (int i = 0; i < bag.Items.Count; i++)
+                for (int i = 0; i < count; i++)
                 {
                     var it = bag.Items[i];
-                    GUILayout.Label(it.TemplateId + " x" + it.Amount +
-                                    (it.Uses > 0 ? " (" + it.Uses + ")" : "") +
-                                    (it.Exceptional ? " *" : "") +
-                                    (!string.IsNullOrEmpty(it.MakerId) ? " [" + it.MakerId + "]" : ""));
+                    // 같은 도구가 두 줄인 이유 — **개체마다 내구가 따로**라 겹쳐 쌓이지 않는다.
+                    // 화면에 번호를 붙여 「왜 두 개지?」가 되지 않게 한다(검수 2026-09-07).
+                    int dup = 0, seen = 0;
+                    for (int j = 0; j < count; j++)
+                        if (bag.Items[j].TemplateId == it.TemplateId) { dup++; if (j <= i) seen++; }
+                    // 고른 항목이 화면에 보여야 한다 — 버튼이 「무엇에」 작용하는지 모르면 도달 불가와 같다(검수).
+                    string line = (bagPick == i ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(it.TemplateId) +
+                                  (dup > 1 ? " (" + seen + "/" + dup + ")" : "") +
+                                  (it.Amount > 1 ? " x" + it.Amount : "") +
+                                  (it.Uses > 0 ? "  내구 " + it.Uses : "") +
+                                  (it.Exceptional ? "  걸작" : "") +
+                                  (!string.IsNullOrEmpty(it.MakerId) ? "  제작 " + it.MakerId : "");
+                    if (GUILayout.Button(line, ItemStyle(bagPick == i)))
+                        bagPick = bagPick == i ? -1 : i;
                 }
-            GUILayout.Space(6f);
+            GUILayout.EndScrollView();
+
             GUILayout.Label(vault != null && vault.Items.Count > 0 ? "은행" : "은행 비움");
             if (vault != null)
                 for (int i = 0; i < vault.Items.Count; i++)
-                    GUILayout.Label(vault.Items[i].TemplateId + " x" + vault.Items[i].Amount);
-            GUILayout.EndScrollView();
+                    GUILayout.Label("   " + ItemCatalog.DisplayNameOf(vault.Items[i].TemplateId) +
+                                    (vault.Items[i].Amount > 1 ? " x" + vault.Items[i].Amount : ""));
             if (me.Ghost)
                 return;
+
+            string picked = bagPick >= 0 && bagPick < count ? bag.Items[bagPick].TemplateId : "";
+            GUILayout.Label(picked == "" ? "고른 것 없음 — 항목을 눌러 고르세요"
+                                         : "고른 것: " + ItemCatalog.DisplayNameOf(picked));
+            // 선택이 없으면 버튼은 **비활성**이다(누를 수는 있으나 아무 일도 안 하는 버튼을 두지 않는다).
+            GUI.enabled = picked != "";
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("착용")) Equip(net);
-            if (GUILayout.Button("해제")) Unequip(net);
+            if (GUILayout.Button("착용")) EquipItem(net, picked);
+            if (GUILayout.Button("주머니↓")) PouchInItem(net, picked);
+            if (GUILayout.Button("주머니↑")) PouchOutItem(net, picked);
             GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("주머니↓")) PouchIn(net);
-            if (GUILayout.Button("주머니↑")) PouchOut(net);
-            GUILayout.EndHorizontal();
+            GUI.enabled = true;
+            if (GUILayout.Button("장비 해제")) Unequip(net);
+        }
+
+        static GUIStyle pickedStyle;
+        static GUIStyle ItemStyle(bool on)
+        {
+            if (pickedStyle == null)
+            {
+                pickedStyle = new GUIStyle(GUI.skin.button) { alignment = TextAnchor.MiddleLeft };
+            }
+            var style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft };
+            return on ? pickedStyle : style;
         }
 
         void PanelAction(OfflineWorld world, WorldBody me, NetAvatar net)
@@ -1172,6 +1227,41 @@ namespace Ulon.Client
                     return rec.TemplateId;
             }
             return "";
+        }
+
+        /// <summary>
+        /// **고른 물건에** 작용한다 — 「가방에서 알아서 하나 고른다」는 예전 방식은 플레이어가 원하는 것을
+        /// 착용할 방법이 없었다(검수 2026-09-07: 기능이 아니라 도달 가능성 문제).
+        /// 후보 자동 선택(`Equip`/`PouchIn`/`PouchOut`)은 남겨 둔다 — 다른 호출부·게이트가 쓴다.
+        /// </summary>
+        static void EquipItem(NetAvatar net, string id)
+        {
+            if (string.IsNullOrEmpty(id) || OfflineWorld.Instance == null)
+                return;
+            if (net != null && net.IsClientInitialized)
+                net.RpcEquip(id);
+            else
+                OfflineWorld.Instance.TryEquip(OfflineWorld.Instance.Player, id);
+        }
+
+        static void PouchInItem(NetAvatar net, string id)
+        {
+            if (string.IsNullOrEmpty(id) || OfflineWorld.Instance == null)
+                return;
+            if (net != null && net.IsClientInitialized)
+                net.RpcMoveToPouch(id);
+            else
+                OfflineWorld.Instance.TryMoveToPouch(OfflineWorld.Instance.Player, id, "");
+        }
+
+        static void PouchOutItem(NetAvatar net, string id)
+        {
+            if (string.IsNullOrEmpty(id) || OfflineWorld.Instance == null)
+                return;
+            if (net != null && net.IsClientInitialized)
+                net.RpcTakeFromPouch(id);
+            else
+                OfflineWorld.Instance.TryTakeFromPouch(OfflineWorld.Instance.Player, id, "");
         }
 
         static void Equip(NetAvatar net)

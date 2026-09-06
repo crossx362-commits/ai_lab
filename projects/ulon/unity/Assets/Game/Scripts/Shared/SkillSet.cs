@@ -149,6 +149,48 @@ namespace Ulon.Shared
         public const float FencingRange = 5.2f;
         public const float ArcheryRange = 8f;
 
+        /// <summary>
+        /// 화면에 쓰는 한국어 이름. 원장은 `StreamingAssets/Data/items.json`의 `name`이고
+        /// 여기 표는 **파일이 없을 때의 폴백**이다(몹의 `MobCatalog.DisplayNameOf`와 같은 꼴).
+        /// 이름 원장을 두 곳에 두지 않는다 — 파일이 있으면 파일이 이긴다.
+        /// </summary>
+        public static string DisplayNameOf(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return "";
+            if (ItemData.TryGet(id, out var data) && !string.IsNullOrEmpty(data.name)) return data.name;
+            switch (id)
+            {
+                case Pickaxe: return "곡괭이";
+                case Hatchet: return "도끼";
+                case FishingPole: return "낚싯대";
+                case Fish: return "생선";
+                case CookedFood: return "요리한 음식";
+                case HealthPotion: return "회복 물약";
+                case PoisonVial: return "독병";
+                case Lute: return "류트";
+                case Lockpick: return "자물쇠따개";
+                case IronSword: return "철검";
+                case WoodenClub: return "나무 곤봉";
+                case WoodenBow: return "나무 활";
+                case WoodenSpear: return "나무 창";
+                case WoodenShield: return "나무 방패";
+                case IronPlate: return "철 갑옷";
+                case Cloth: return "천";
+                case Blank: return "빈 양피지";
+                case ScrollEmber: return "불씨 주문서";
+                case Bandage: return "붕대";
+                case WardenCrest: return "본워든의 문장";
+                case CaptainSigil: return "섀도우캡틴의 인장";
+                case HexSeal: return "헥사크의 봉인";
+                case TyrantCore: return "강철폭군의 핵";
+                case Pouch: return "주머니";
+                case "iron_ore": return "철광석";
+                case "wood": return "나무";
+                case "resin": return "시약";
+                default: return id;
+            }
+        }
+
         public static float WeightOf(string id)
         {
             // 12.2 — 수치 원장은 StreamingAssets/Data/items.json. 아래 값은 파일이 없을 때의 폴백이다.

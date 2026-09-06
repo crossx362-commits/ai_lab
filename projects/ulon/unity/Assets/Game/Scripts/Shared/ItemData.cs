@@ -15,6 +15,8 @@ namespace Ulon.Shared
     public struct ItemStat
     {
         public string id;
+        /// <summary>플레이어에게 보이는 한국어 표시명 — 이름 원장도 여기 하나뿐이다(코드는 폴백).</summary>
+        public string name;
         public float weight;
         public int buy;
         public int uses;
@@ -101,6 +103,8 @@ namespace Ulon.Shared
         /// <summary>불량이면 사유, 정상이면 빈 문자열. 판정을 한 곳에 둬야 로더와 Assert가 갈라지지 않는다.</summary>
         public static string ReasonInvalid(ItemStat rec)
         {
+            if (string.IsNullOrEmpty(rec.name))
+                return "name 비어 있음 (화면에 영문 ID가 그대로 나온다)";
             if (rec.weight <= 0f)
                 return "weight " + rec.weight + " (0 이하면 무한 적재)";
             if (rec.buy < 0)
