@@ -18,7 +18,9 @@ namespace Ulon.Editor
         const float PassHeightMax = 12f;        // 고개(안부)는 평지 대비 이 정도까지 낮아야 한다
         const float PassShareMin = 0.12f;       // 띠 둘레에서 고개가 차지하는 비율 하한(산괴+고개 구조)
         const float MassifSpreadMin = 25f;      // 띠 안 최고-최저 차 — 균일한 톱니 방지
-        const float MixedBandShareMin = 0.10f;  // 산 중턱 구간에서 풀·바위가 각각 이만큼은 있어야 한다
+        // 산 중턱에서 풀·바위가 각각 이만큼은 있어야 한다. 0.10은 「중턱 풀 0.19」를 통과시켜 재반려됐다 —
+        // 화면에서 읽히는 수준으로 0.35(검수 지시). 고친 뒤 실측 풀 0.66·바위 0.81.
+        const float MixedBandShareMin = 0.35f;
         const float ShoreSandShareMin = 0.60f;  // 물가 표본 중 모래가 우세해야 하는 비율      // 풀·바위·모래 각 도포 비율 하한
 
         static void AssertWorldTerrain()

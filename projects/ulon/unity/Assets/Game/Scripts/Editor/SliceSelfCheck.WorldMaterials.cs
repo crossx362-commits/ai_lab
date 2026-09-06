@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Ulon.Shared;
+using UnityEditor;
 using UnityEngine;
 
 namespace Ulon.Editor
@@ -118,7 +119,53 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("던전 뚜껑 타일이 지표 위로 " + worst.ToString("0.00") + "m 솟았습니다(" + worstName +
                     ") — 조망에서 회색 판으로 읽힙니다(§8.2). 타일 윗면을 그 자리 지형 아래로 내리세요.");
 
+            AssertTerrainLayerContrast();
+
             Debug.Log("[Ulon] 월드 재질 통과 — 렌더러 재질 " + checkedCount + "개 전부 텍스처 있음·바위 소품 전부 암석 재질, 뚜껑 타일 " + caps + "장 전부 지표 아래(여유 " + CapBuriedMargin + "m)");
+        }
+
+        // 바위 텍스처는 풀과 **다른 무늬·다른 타일링·넓은 명암 폭**이어야 한다(검수 재반려).
+        // 실측: 바위 표준편차 21.6 / 풀 4.9 / 모래 6.4 (0~255 휘도).
+        const float RockValueStdMin = 14f;
+
+        static void AssertTerrainLayerContrast()
+        {
+            var rock = AssetDatabase.LoadAssetAtPath<TerrainLayer>("Assets/Game/Art/Env/MountainRock.terrainlayer");
+            var grass = AssetDatabase.LoadAssetAtPath<TerrainLayer>("Assets/Game/Art/Env/VillageGrass.terrainlayer");
+            if (rock == null || grass == null)
+                throw new InvalidOperationException("지형 레이어 에셋이 없습니다(MountainRock/VillageGrass).");
+            if (Mathf.Abs(rock.tileSize.x - grass.tileSize.x) < 0.5f)
+                throw new InvalidOperationException("바위와 풀의 타일링이 같습니다(" + rock.tileSize.x + ") — 같은 스케일의 같은 잡음이면 산이 「초록/회색 두 색」으로만 읽힙니다(§8.2).");
+
+            float std = LuminanceStd("Assets/Game/Art/Env/MountainRock.png");
+            float grassStd = LuminanceStd("Assets/Game/Art/Env/KenneyGrass.png");
+            if (std < RockValueStdMin)
+                throw new InvalidOperationException("바위 텍스처의 명암 편차가 " + std.ToString("0.0") + "입니다 — 최소 " + RockValueStdMin +
+                    "(풀 " + grassStd.ToString("0.0") + "). 단조로운 회색 한 장으로 보입니다(§8.2).");
+            Debug.Log("[Ulon] 지형 레이어 대비 통과 — 바위 명암 편차 " + std.ToString("0.0") + "(풀 " + grassStd.ToString("0.0") + ")·타일 바위 " + rock.tileSize.x + " 풀 " + grass.tileSize.x);
+        }
+
+        /// <summary>PNG를 디스크에서 읽어 휘도 표준편차를 잰다(임포트된 텍스처는 isReadable이 아니라 GetPixels가 막힌다).</summary>
+        static float LuminanceStd(string assetPath)
+        {
+            string full = System.IO.Path.Combine(Application.dataPath, assetPath.Substring("Assets/".Length));
+            if (!System.IO.File.Exists(full))
+                throw new InvalidOperationException("텍스처 파일이 없습니다: " + assetPath);
+            var tex = new Texture2D(2, 2);
+            if (!tex.LoadImage(System.IO.File.ReadAllBytes(full)))
+                throw new InvalidOperationException("텍스처를 읽지 못했습니다: " + assetPath);
+            var px = tex.GetPixels();
+            float mean = 0f;
+            for (int i = 0; i < px.Length; i++)
+                mean += (0.299f * px[i].r + 0.587f * px[i].g + 0.114f * px[i].b) * 255f;
+            mean /= px.Length;
+            float var2 = 0f;
+            for (int i = 0; i < px.Length; i++)
+            {
+                float v = (0.299f * px[i].r + 0.587f * px[i].g + 0.114f * px[i].b) * 255f - mean;
+                var2 += v * v;
+            }
+            return Mathf.Sqrt(var2 / px.Length);
         }
 
         static float GroundHeightAt(float x, float z)

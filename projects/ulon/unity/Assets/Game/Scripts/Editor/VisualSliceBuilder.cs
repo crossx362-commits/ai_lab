@@ -1916,6 +1916,12 @@ namespace Ulon.Editor
 
         static Material MakeNoiseMat(string name, Color a, Color b)
         {
+            return MakeNoiseMat(name, a, b, 0);
+        }
+
+        /// <summary>pattern 0 = 잔풀 잡음, 1 = 굵은 층리(암석). 풀과 바위가 같은 무늬면 산이 두 색으로만 읽힌다(검수).</summary>
+        static Material MakeNoiseMat(string name, Color a, Color b, int pattern)
+        {
             Directory.CreateDirectory(Path.Combine(Application.dataPath, "Game/Art/Env"));
             string texPath = "Assets/Game/Art/Env/" + name + ".png";
             string matPath = "Assets/Game/Art/Env/" + name + ".mat";
@@ -1926,9 +1932,22 @@ namespace Ulon.Editor
             {
                 for (int x = 0; x < 128; x++)
                 {
-                    int h = (x * 374761 + y * 668265 + x * y * 13) & 255;
-                    int h2 = (x * 127 + y * 311) & 255;
-                    float t = (h / 255f) * 0.65f + (h2 / 255f) * 0.35f;
+                    float t;
+                    if (pattern == 1)
+                    {
+                        // 굵은 덩어리 + 사선 층리 — 잔풀 잡음과 눈에 띄게 다른 무늬.
+                        int bx = x / 6, by = y / 6;
+                        int hb = ((bx * 92837) ^ (by * 68927) ^ ((bx + by) * 15731)) & 255;
+                        int band = ((x + y * 3) / 9 * 47) & 255;
+                        int grit = (x * 61 + y * 149) & 63;
+                        t = (hb / 255f) * 0.52f + (band / 255f) * 0.28f + (grit / 63f) * 0.20f;
+                    }
+                    else
+                    {
+                        int h = (x * 374761 + y * 668265 + x * y * 13) & 255;
+                        int h2 = (x * 127 + y * 311) & 255;
+                        t = (h / 255f) * 0.65f + (h2 / 255f) * 0.35f;
+                    }
                     tex.SetPixel(x, y, Color.Lerp(a, b, t));
                 }
             }
@@ -3176,7 +3195,8 @@ namespace Ulon.Editor
                 AssetDatabase.CreateAsset(data, DataPath);
             }
             // 무채색 한 장으로 보이던 바위에 갈색기·명암 폭을 준다(§8.2).
-            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.28f, 0.26f, 0.24f), new Color(0.55f, 0.52f, 0.47f), 10f);
+            // 풀(잡음·타일 12)과 **다른 무늬·다른 타일링**이어야 산이 별개의 지질로 읽힌다(검수 재반려).
+            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.20f, 0.18f, 0.17f), new Color(0.63f, 0.58f, 0.50f), 7f, 1);
             var sandLayer = EnsureTerrainLayer("ShoreSand", new Color(0.74f, 0.68f, 0.50f), new Color(0.85f, 0.80f, 0.62f), 8f);
 
             int res = 513;
@@ -3212,13 +3232,13 @@ namespace Ulon.Editor
 
                     // 경계에 노이즈를 섞어 직선으로 끊기지 않게 한다.
                     float edgeNoise = (Mathf.PerlinNoise(wx * 0.09f + 17f, wz * 0.09f + 5f) - 0.5f) * 6f;
-                    float rock = Mathf.Clamp01((h - (WorldTerrain.LandBase + 6f) + edgeNoise) / 14f);
-                    rock = Mathf.Max(rock, Mathf.Clamp01((slope - 0.45f) * 1.8f));      // 급경사는 고도와 무관하게 바위
+                    float rock = Mathf.Clamp01((h - (WorldTerrain.LandBase + 10f) + edgeNoise * 1.6f) / 16f);
+                    rock = Mathf.Max(rock, Mathf.Clamp01((slope - 0.58f) * 1.6f));      // 급경사는 고도와 무관하게 바위
                     float mottle = Mathf.PerlinNoise(wx * 0.021f + 3.1f, wz * 0.021f + 8.9f);
                     rock = Mathf.Max(rock, Mathf.Clamp01((mottle - 0.5f) * 2.6f) * 0.55f);   // 평지 흙·바위 얼룩
-                    // 산 중턱까지 풀이 올라간다 — 완전히 회색이 되지 않게 상한을 둔다.
-                    if (h < WorldTerrain.LandBase + 20f)
-                        rock = Mathf.Min(rock, 0.82f);
+                    // 산 중턱까지 풀이 올라간다 — 상한을 얼룩으로 흔들어 풀·바위가 섞이게 한다(중턱 풀 0.19 재반려).
+                    if (h < WorldTerrain.LandBase + 22f)
+                        rock = Mathf.Min(rock, 0.42f + mottle * 0.45f);
 
                     // 물가 — 수면 ±2m는 모래. 잔디가 물에 수직으로 잘리면 §8.2 위반이다.
                     float sand = 1f - Mathf.Clamp01((Mathf.Abs(h - WorldTerrain.SeaLevel) - 0.8f) / 2.0f);
@@ -3301,7 +3321,12 @@ namespace Ulon.Editor
 
         static TerrainLayer EnsureTerrainLayer(string name, Color a, Color b, float tile)
         {
-            var mat = MakeNoiseMat(name, a, b);
+            return EnsureTerrainLayer(name, a, b, tile, 0);
+        }
+
+        static TerrainLayer EnsureTerrainLayer(string name, Color a, Color b, float tile, int pattern)
+        {
+            var mat = MakeNoiseMat(name, a, b, pattern);
             var tex = mat != null ? mat.mainTexture as Texture2D : null;
             string path = "Assets/Game/Art/Env/" + name + ".terrainlayer";
             var tl = AssetDatabase.LoadAssetAtPath<TerrainLayer>(path);
