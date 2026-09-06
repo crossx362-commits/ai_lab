@@ -1583,6 +1583,7 @@ namespace Ulon.Editor
             AssertPetAttack();
             AssertPetCome();
             AssertPetBondVetRez();
+            AssertDungeonInterior();
             AssertItemDataFile();
             AssertMobDataFile();
             AssertStrengthRequirement();

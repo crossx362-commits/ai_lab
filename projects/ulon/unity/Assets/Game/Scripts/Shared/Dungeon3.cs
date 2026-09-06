@@ -14,14 +14,16 @@ namespace Ulon.Shared
         public const float EntranceX = -14.0f;
         public const float EntranceZ = -18.0f;
         // 던전1이 (+80,+80), 던전2가 (-80,+80)을 쓴다. 남은 사분면.
-        public const float InteriorX = 80f;
-        public const float InteriorZ = -80f;
-        public const float ExitX = 78.4f;
-        public const float ExitZ = -78.2f;
-        public const float MobX = 82.2f;
-        public const float MobZ = -81.6f;
-        public const float BossX = 83.8f;
-        public const float BossZ = -83.2f;
+        public const float InteriorX = 68f;
+        public const float InteriorZ = -68f;
+        public const float ExitX = 65.4f;
+        public const float ExitZ = -65.6f;
+        public const float MobX = 65.6f;
+        public const float MobZ = -66.4f;
+        public const float BossX = 70.4f;
+        public const float BossZ = -70.6f;
+        public const float RoomHalf = 6f;
+        public const float RoomHeight = 3.2f;
         public const float LeaveX = -12.5f;
         public const float LeaveZ = -18.0f;
     }

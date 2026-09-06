@@ -789,13 +789,10 @@ namespace Ulon.Editor
             interior.transform.SetParent(parent, false);
             interior.transform.position = OnGround(new Vector3(Dungeon1.InteriorX, 0f, Dungeon1.InteriorZ));
             Transform room = interior.transform;
-            Decor(room, Planks, new Vector3(Dungeon1.InteriorX, 0.02f, Dungeon1.InteriorZ), Vector3.zero);
-            Decor(room, RockW, new Vector3(Dungeon1.InteriorX + 3.2f, 0f, Dungeon1.InteriorZ), new Vector3(0f, 90f, 0f));
-            Decor(room, RockW, new Vector3(Dungeon1.InteriorX - 3.2f, 0f, Dungeon1.InteriorZ), new Vector3(0f, 90f, 0f));
-            Decor(room, RockW, new Vector3(Dungeon1.InteriorX, 0f, Dungeon1.InteriorZ + 3.2f), Vector3.zero);
-            Decor(room, RockL, new Vector3(Dungeon1.InteriorX + 2.2f, 0f, Dungeon1.InteriorZ + 2.2f), new Vector3(0f, 30f, 0f));
-            Decor(room, RockS, new Vector3(Dungeon1.InteriorX - 1.6f, 0f, Dungeon1.InteriorZ - 1.8f), new Vector3(0f, 70f, 0f));
-            Decor(room, Lantern, new Vector3(Dungeon1.InteriorX - 2.4f, 0f, Dungeon1.InteriorZ + 2.1f), Vector3.zero);
+            BuildDungeonRoom(room, new Vector3(Dungeon1.InteriorX, 0f, Dungeon1.InteriorZ), Dungeon1.RoomHalf, Dungeon1.RoomHeight, "West");
+            Decor(room, Planks, new Vector3(Dungeon1.InteriorX, 0.22f, Dungeon1.InteriorZ), Vector3.zero);
+            Decor(room, RockL, new Vector3(Dungeon1.InteriorX + 3.4f, 0.2f, Dungeon1.InteriorZ + 3.4f), new Vector3(0f, 30f, 0f));
+            Decor(room, RockS, new Vector3(Dungeon1.InteriorX - 2.6f, 0.2f, Dungeon1.InteriorZ - 2.8f), new Vector3(0f, 70f, 0f));
 
             var exitGo = Place(Arch, new Vector3(Dungeon1.ExitX, 0f, Dungeon1.ExitZ), new Vector3(0f, 225f, 0f));
             if (exitGo == null)
@@ -863,13 +860,10 @@ namespace Ulon.Editor
             interior.transform.SetParent(parent, false);
             interior.transform.position = OnGround(new Vector3(Dungeon2.InteriorX, 0f, Dungeon2.InteriorZ));
             Transform room = interior.transform;
-            Decor(room, Planks, new Vector3(Dungeon2.InteriorX, 0.02f, Dungeon2.InteriorZ), Vector3.zero);
-            Decor(room, RockW, new Vector3(Dungeon2.InteriorX + 3.2f, 0f, Dungeon2.InteriorZ), new Vector3(0f, 90f, 0f));
-            Decor(room, RockW, new Vector3(Dungeon2.InteriorX - 3.2f, 0f, Dungeon2.InteriorZ), new Vector3(0f, 90f, 0f));
-            Decor(room, RockW, new Vector3(Dungeon2.InteriorX, 0f, Dungeon2.InteriorZ + 3.2f), Vector3.zero);
-            Decor(room, RockL, new Vector3(Dungeon2.InteriorX + 2.2f, 0f, Dungeon2.InteriorZ + 2.2f), new Vector3(0f, 30f, 0f));
-            Decor(room, RockS, new Vector3(Dungeon2.InteriorX - 1.6f, 0f, Dungeon2.InteriorZ - 1.8f), new Vector3(0f, 70f, 0f));
-            Decor(room, Lantern, new Vector3(Dungeon2.InteriorX - 2.4f, 0f, Dungeon2.InteriorZ + 2.1f), Vector3.zero);
+            BuildDungeonRoom(room, new Vector3(Dungeon2.InteriorX, 0f, Dungeon2.InteriorZ), Dungeon2.RoomHalf, Dungeon2.RoomHeight, "East");
+            Decor(room, Planks, new Vector3(Dungeon2.InteriorX, 0.22f, Dungeon2.InteriorZ), Vector3.zero);
+            Decor(room, RockL, new Vector3(Dungeon2.InteriorX + 3.4f, 0.2f, Dungeon2.InteriorZ + 3.4f), new Vector3(0f, 30f, 0f));
+            Decor(room, RockS, new Vector3(Dungeon2.InteriorX - 2.6f, 0.2f, Dungeon2.InteriorZ - 2.8f), new Vector3(0f, 70f, 0f));
 
             var exitGo = Place(Arch, new Vector3(Dungeon2.ExitX, 0f, Dungeon2.ExitZ), new Vector3(0f, 45f, 0f));
             if (exitGo == null)
@@ -940,13 +934,10 @@ namespace Ulon.Editor
             interior.transform.SetParent(parent, false);
             interior.transform.position = OnGround(new Vector3(Dungeon3.InteriorX, 0f, Dungeon3.InteriorZ));
             Transform room = interior.transform;
-            Decor(room, Planks, new Vector3(Dungeon3.InteriorX, 0.02f, Dungeon3.InteriorZ), Vector3.zero);
-            Decor(room, RockW, new Vector3(Dungeon3.InteriorX + 3.2f, 0f, Dungeon3.InteriorZ), new Vector3(0f, 90f, 0f));
-            Decor(room, RockW, new Vector3(Dungeon3.InteriorX - 3.2f, 0f, Dungeon3.InteriorZ), new Vector3(0f, 90f, 0f));
-            Decor(room, RockW, new Vector3(Dungeon3.InteriorX, 0f, Dungeon3.InteriorZ + 3.2f), Vector3.zero);
-            Decor(room, RockL, new Vector3(Dungeon3.InteriorX + 2.2f, 0f, Dungeon3.InteriorZ + 2.2f), new Vector3(0f, 30f, 0f));
-            Decor(room, RockS, new Vector3(Dungeon3.InteriorX - 1.6f, 0f, Dungeon3.InteriorZ - 1.8f), new Vector3(0f, 70f, 0f));
-            Decor(room, Lantern, new Vector3(Dungeon3.InteriorX - 2.4f, 0f, Dungeon3.InteriorZ + 2.1f), Vector3.zero);
+            BuildDungeonRoom(room, new Vector3(Dungeon3.InteriorX, 0f, Dungeon3.InteriorZ), Dungeon3.RoomHalf, Dungeon3.RoomHeight, "West");
+            Decor(room, Planks, new Vector3(Dungeon3.InteriorX, 0.22f, Dungeon3.InteriorZ), Vector3.zero);
+            Decor(room, RockL, new Vector3(Dungeon3.InteriorX + 3.4f, 0.2f, Dungeon3.InteriorZ + 3.4f), new Vector3(0f, 30f, 0f));
+            Decor(room, RockS, new Vector3(Dungeon3.InteriorX - 2.6f, 0.2f, Dungeon3.InteriorZ - 2.8f), new Vector3(0f, 70f, 0f));
 
             var exitGo = Place(Arch, new Vector3(Dungeon3.ExitX, 0f, Dungeon3.ExitZ), new Vector3(0f, 45f, 0f));
             if (exitGo == null)
@@ -1935,6 +1926,86 @@ namespace Ulon.Editor
                     slots[s] = mat;
                 rends[i].sharedMaterials = slots;
             }
+        }
+
+        /// <summary>
+        /// 던전 방 하나를 실내로 세운다 — 바닥·벽 링(문 한 칸)·모서리 기둥·천장·등불.
+        /// 던전 1·2·3이 이 함수 하나를 호출한다(같은 코드를 세 번 쓰지 않는다).
+        /// 검수 2026-09-06 P0-1: 옛 내부는 잔디밭에 바위 몇 개라 하늘이 그대로 보였다.
+        /// </summary>
+        public static void BuildDungeonRoom(Transform room, Vector3 center, float half, float wallH, string doorSide)
+        {
+            var floorMat = MakeNoiseMat("DungeonFloor", new Color(0.20f, 0.19f, 0.21f), new Color(0.31f, 0.29f, 0.30f));
+            var wallMat = MakeNoiseMat("DungeonWall", new Color(0.16f, 0.15f, 0.17f), new Color(0.27f, 0.26f, 0.28f));
+            var ceilMat = MakeNoiseMat("DungeonCeiling", new Color(0.11f, 0.11f, 0.13f), new Color(0.18f, 0.17f, 0.20f));
+
+            float y = OnGround(new Vector3(center.x, 0f, center.z)).y;
+            float span = half * 2f;
+            float seg = span / 3f;
+            float t = 0.5f;
+
+            RoomSlab(room, "DungeonFloor", new Vector3(center.x, y + 0.1f, center.z), new Vector3(span, 0.2f, span), floorMat);
+
+            for (int side = 0; side < 4; side++)
+            {
+                for (int i = -1; i <= 1; i++)
+                {
+                    string name = side == 0 ? "North" : side == 1 ? "South" : side == 2 ? "East" : "West";
+                    if (i == 0 && name == doorSide)
+                        continue;
+                    Vector3 pos;
+                    Vector3 size;
+                    float off = i * seg;
+                    if (side == 0) { pos = new Vector3(center.x + off, y + wallH * 0.5f, center.z + half); size = new Vector3(seg, wallH, t); }
+                    else if (side == 1) { pos = new Vector3(center.x + off, y + wallH * 0.5f, center.z - half); size = new Vector3(seg, wallH, t); }
+                    else if (side == 2) { pos = new Vector3(center.x + half, y + wallH * 0.5f, center.z + off); size = new Vector3(t, wallH, seg); }
+                    else { pos = new Vector3(center.x - half, y + wallH * 0.5f, center.z + off); size = new Vector3(t, wallH, seg); }
+                    RoomSlab(room, "DungeonWall" + name + (i + 1), pos, size, wallMat);
+                }
+            }
+
+            for (int c = 0; c < 4; c++)
+            {
+                float sx = (c == 0 || c == 3) ? 1f : -1f;
+                float sz = (c == 0 || c == 1) ? 1f : -1f;
+                RoomSlab(room, "DungeonPillar" + c,
+                    new Vector3(center.x + half * sx, y + wallH * 0.5f + 0.15f, center.z + half * sz),
+                    new Vector3(0.9f, wallH + 0.3f, 0.9f), wallMat);
+            }
+
+            RoomSlab(room, "DungeonCeiling", new Vector3(center.x, y + wallH + 0.15f, center.z),
+                new Vector3(span + 1f, 0.3f, span + 1f), ceilMat);
+
+            const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
+            Decor(room, Lantern, new Vector3(center.x - half + 1.2f, 0f, center.z + half - 1.2f), Vector3.zero);
+            Decor(room, Lantern, new Vector3(center.x + half - 1.2f, 0f, center.z - half + 1.2f), Vector3.zero);
+            RoomTorch(room, new Vector3(center.x - half + 1.2f, y + 2.1f, center.z + half - 1.2f), half);
+            RoomTorch(room, new Vector3(center.x + half - 1.2f, y + 2.1f, center.z - half + 1.2f), half);
+        }
+
+        static void RoomSlab(Transform parent, string name, Vector3 center, Vector3 size, Material mat)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, true);
+            go.transform.position = center;
+            go.transform.localScale = size;
+            var rend = go.GetComponent<Renderer>();
+            if (rend != null && mat != null)
+                rend.sharedMaterial = mat;
+        }
+
+        static void RoomTorch(Transform parent, Vector3 pos, float half)
+        {
+            var go = new GameObject("DungeonTorch");
+            go.transform.SetParent(parent, true);
+            go.transform.position = pos;
+            var light = go.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1f, 0.78f, 0.48f);
+            light.intensity = 2.4f;
+            light.range = half * 2.6f;
+            light.shadows = LightShadows.None;
         }
 
         static void Decor(Transform parent, string path, Vector3 pos, Vector3 euler)
