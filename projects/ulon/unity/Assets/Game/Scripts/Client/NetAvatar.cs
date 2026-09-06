@@ -442,6 +442,57 @@ namespace Ulon.Client
                 SaveNow();
         }
 
+        // 아래 5개는 서버에 구현만 있고 클라 호출부가 없어 **게임에서 도달 불가**였다(2026-09-06 도달 스캔).
+        [ServerRpc]
+        public void RpcPetRelease(NetworkObject pet)
+        {
+            if (pet == null || OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryPetRelease(GetComponent<WorldBody>(), pet.GetComponent<WorldBody>());
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcEquip(string templateId)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryEquip(GetComponent<WorldBody>(), templateId);
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcUnequip()
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryUnequip(GetComponent<WorldBody>());
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcMoveToPouch(string templateId)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryMoveToPouch(GetComponent<WorldBody>(), templateId, "");
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcTakeFromPouch(string templateId)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryTakeFromPouch(GetComponent<WorldBody>(), templateId, "");
+            if (result.Applied)
+                SaveNow();
+        }
+
         [ServerRpc]
         public void RpcSpeech(string text)
         {

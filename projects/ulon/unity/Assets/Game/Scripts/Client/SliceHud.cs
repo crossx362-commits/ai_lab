@@ -262,6 +262,16 @@ namespace Ulon.Client
                 }
                 if (GUI.Button(new Rect(256, 314, 70, 22), "주문서"))
                     UseScroll(net);
+                if (GUI.Button(new Rect(28, 424, 70, 22), "착용"))
+                    Equip(net);
+                if (GUI.Button(new Rect(104, 424, 70, 22), "해제"))
+                    Unequip(net);
+                if (GUI.Button(new Rect(180, 424, 70, 22), "주머니↓"))
+                    PouchIn(net);
+                if (GUI.Button(new Rect(256, 424, 70, 22), "주머니↑"))
+                    PouchOut(net);
+                if (GUI.Button(new Rect(332, 424, 70, 22), "펫놓아줌"))
+                    PetRelease(net);
             }
             if (LockButton(28, 112, SkillNames.KoreanOf(SkillId.Swordsmanship), sk.GetLock(SkillId.Swordsmanship)))
                 sk.CycleLock(SkillId.Swordsmanship);
@@ -1159,6 +1169,120 @@ namespace Ulon.Client
                 return;
             }
             OfflineWorld.Instance.TryPetCome(me, pet);
+        }
+
+        // 아래 5개는 서버 구현만 있고 클라 호출부가 없어 **플레이어가 쓸 수 없던** 기능이다
+        // (2026-09-06 도달 스캔, AssertReachableFeatures). 셀프체크는 OfflineWorld를 직접 불러 통과시키고 있었다.
+        static void PetRelease(NetAvatar net)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var me = OfflineWorld.Instance.Player;
+            if (me == null)
+                return;
+            WorldBody pet = null;
+            var list = UnityEngine.Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
+            for (int i = 0; i < list.Length; i++)
+            {
+                var b = list[i];
+                if (b != null && !b.PetStabled && b.OwnerCharacterId == me.CharacterId)
+                {
+                    pet = b;
+                    break;
+                }
+            }
+            if (pet == null)
+                return;
+            var pno = pet.GetComponent<FishNet.Object.NetworkObject>();
+            if (net != null && net.IsClientInitialized && pno != null)
+            {
+                net.RpcPetRelease(pno);
+                return;
+            }
+            OfflineWorld.Instance.TryPetRelease(me, pet);
+        }
+
+        /// <summary>가방에서 착용할 무기를 고른다 — 없으면 아무것도 안 한다.</summary>
+        static string EquipCandidate(WorldBody me)
+        {
+            var bag = me != null ? me.GetComponent<InventoryBag>() : null;
+            if (bag == null)
+                return "";
+            for (int i = 0; i < bag.Items.Count; i++)
+            {
+                var rec = bag.Items[i];
+                if (rec.Amount > 0 && ItemCatalog.IsMeleeWeapon(rec.TemplateId))
+                    return rec.TemplateId;
+            }
+            return "";
+        }
+
+        static void Equip(NetAvatar net)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            string id = EquipCandidate(OfflineWorld.Instance.Player);
+            if (string.IsNullOrEmpty(id))
+                return;
+            if (net != null && net.IsClientInitialized)
+                net.RpcEquip(id);
+            else
+                OfflineWorld.Instance.TryEquip(OfflineWorld.Instance.Player, id);
+        }
+
+        static void Unequip(NetAvatar net)
+        {
+            if (net != null && net.IsClientInitialized)
+                net.RpcUnequip();
+            else if (OfflineWorld.Instance != null)
+                OfflineWorld.Instance.TryUnequip(OfflineWorld.Instance.Player);
+        }
+
+        /// <summary>주머니에 넣을/에서 꺼낼 물건 — 주머니 자신은 넣을 수 없다(중첩 깊이 1).</summary>
+        static string PouchCandidate(WorldBody me, bool inPouch)
+        {
+            var bag = me != null ? me.GetComponent<InventoryBag>() : null;
+            if (bag == null)
+                return "";
+            string pouch = bag.PouchInstanceId();
+            if (string.IsNullOrEmpty(pouch))
+                return "";
+            for (int i = 0; i < bag.Items.Count; i++)
+            {
+                var rec = bag.Items[i];
+                if (rec.Amount <= 0 || ItemCatalog.IsContainer(rec.TemplateId))
+                    continue;
+                bool inside = rec.ParentContainerId == pouch;
+                if (inside == inPouch)
+                    return rec.TemplateId;
+            }
+            return "";
+        }
+
+        static void PouchIn(NetAvatar net)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            string id = PouchCandidate(OfflineWorld.Instance.Player, false);
+            if (string.IsNullOrEmpty(id))
+                return;
+            if (net != null && net.IsClientInitialized)
+                net.RpcMoveToPouch(id);
+            else
+                OfflineWorld.Instance.TryMoveToPouch(OfflineWorld.Instance.Player, id, "");
+        }
+
+        static void PouchOut(NetAvatar net)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            string id = PouchCandidate(OfflineWorld.Instance.Player, true);
+            if (string.IsNullOrEmpty(id))
+                return;
+            if (net != null && net.IsClientInitialized)
+                net.RpcTakeFromPouch(id);
+            else
+                OfflineWorld.Instance.TryTakeFromPouch(OfflineWorld.Instance.Player, id, "");
         }
 
         static void Pick(NetAvatar net, LockedCrate crate)
