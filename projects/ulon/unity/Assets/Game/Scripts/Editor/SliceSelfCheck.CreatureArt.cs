@@ -34,6 +34,8 @@ namespace Ulon.Editor
             { "TameBoar", "멧돼지가 덤불 메시(plant_bush)다 — 같은 사유, 같은 대기" },
         };
 
+        static bool creatureRosterLogged;
+
         static void AssertCreatureArtQualified()
         {
             var bodies = UnityEngine.Object.FindObjectsByType<WorldBody>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
@@ -43,11 +45,13 @@ namespace Ulon.Editor
             int ok = 0;
             var bad = new List<string>();
             var known = new List<string>();
+            var roster = new List<string>();   // 무엇이 무슨 메시인지 — 판정 근거를 로그에 남긴다
             for (int i = 0; i < bodies.Length; i++)
             {
                 var go = bodies[i].gameObject;
                 if (MobArt.ModelOf(go, out MobArt.Model model, out string _))
                 {
+                    roster.Add(go.name + " = 사람 원장 " + model.Prefix);
                     if (!model.BodyReadsClothed)
                         bad.Add(go.name + ": 맨몸 모델 " + model.Prefix);
                     else
@@ -55,6 +59,7 @@ namespace Ulon.Editor
                     continue;
                 }
                 string mesh = VisibleMeshAsset(go);
+                roster.Add(go.name + " = " + (mesh == "" ? "(메시 없음)" : mesh));
                 if (IsRegisteredCreatureMesh(mesh))
                 {
                     ok++;
@@ -68,6 +73,12 @@ namespace Ulon.Editor
                 bad.Add(go.name + ": 사람·짐승 원장 어디에도 없는 메시 " + (mesh == "" ? "(메시 없음)" : mesh));
             }
 
+            if (!creatureRosterLogged)
+            {
+                creatureRosterLogged = true;   // 네거티브 컨트롤 재실행 때 두 번 찍지 않는다
+                for (int i = 0; i < roster.Count; i++)
+                    Debug.Log("[Ulon] 생물 메시 — " + roster[i]);
+            }
             for (int i = 0; i < known.Count; i++)
                 Debug.LogWarning("[Ulon] 생물 모델 **알려진 결함** — " + known[i]);
             if (bad.Count > 0)
