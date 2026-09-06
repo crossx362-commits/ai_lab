@@ -1,0 +1,124 @@
+using System.IO;
+using Ulon.Shared;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+
+namespace Ulon.Editor
+{
+    /// <summary>
+    /// 검수용 오프스크린 스크린샷 — 셀프체크 PASS가 화면 품질을 보증하지 않으므로(검수 2026-09-06)
+    /// 화면 근거를 PNG로 남긴다. 배치모드(-nographics 없이)로 돌린다. 게임 로직은 건드리지 않는다.
+    ///   Unity -batchmode -projectPath . -executeMethod Ulon.Editor.QaShots.Run -quit
+    /// 산출물: projects/ulon/builds/qa/*.png
+    /// </summary>
+    public static class QaShots
+    {
+        const int W = 1280;
+        const int H = 720;
+
+        struct Shot
+        {
+            public string Name;
+            public Vector3 Eye;      // 카메라 위치(월드)
+            public Vector3 Target;   // 바라보는 지점(월드)
+        }
+
+        [MenuItem("Ulon/QA Shots")]
+        public static void Run()
+        {
+            EditorSceneManager.OpenScene("Assets/Game/Scenes/Bootstrap.unity");
+
+            string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "../../builds/qa"));
+            Directory.CreateDirectory(dir);
+
+            var shots = new[]
+            {
+                Orbit("01_village_square", new Vector3(0f, 0f, 0f), 20f, 35f),
+                Orbit("02_village_wide", new Vector3(0f, 0f, 0f), 55f, 45f),
+                Orbit("03_hunt_mobs", new Vector3(3.4f, 0f, 13.2f), 14f, 25f),
+                Orbit("06_field_boss", new Vector3(22.6f, 0f, 8.4f), 10f, 25f),
+                Orbit("07_d1_entrance", new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 8f, 20f),
+                Inside("08_d1_interior", Dungeon1.InteriorX, Dungeon1.InteriorZ, Dungeon1.BossX, Dungeon1.BossZ),
+                Orbit("09_d2_entrance", new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ), 8f, 20f),
+                Inside("10_d2_interior", Dungeon2.InteriorX, Dungeon2.InteriorZ, Dungeon2.BossX, Dungeon2.BossZ),
+                Orbit("11_d3_entrance", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 8f, 20f),
+                Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
+                Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ),
+            };
+
+            var camGo = new GameObject("QaShotCamera");
+            var cam = camGo.AddComponent<Camera>();
+            cam.fieldOfView = 55f;
+            cam.nearClipPlane = 0.05f;
+            cam.farClipPlane = 500f;
+            var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32);
+            var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
+            try
+            {
+                cam.targetTexture = rt;
+                for (int i = 0; i < shots.Length; i++)
+                {
+                    var shot = shots[i];
+                    camGo.transform.position = shot.Eye;
+                    camGo.transform.LookAt(shot.Target);
+                    cam.Render();
+                    RenderTexture.active = rt;
+                    tex.ReadPixels(new Rect(0, 0, W, H), 0, 0);
+                    tex.Apply();
+                    RenderTexture.active = null;
+                    File.WriteAllBytes(Path.Combine(dir, shot.Name + ".png"), tex.EncodeToPNG());
+                    Debug.Log("[Ulon] QA shot " + shot.Name);
+                }
+            }
+            finally
+            {
+                cam.targetTexture = null;
+                RenderTexture.active = null;
+                Object.DestroyImmediate(camGo);
+                Object.DestroyImmediate(rt);
+                Object.DestroyImmediate(tex);
+            }
+            Debug.Log("[Ulon] QA shots " + shots.Length + "장 — " + dir);
+        }
+
+        /// <summary>바깥에서 대상 주위를 내려다본다.</summary>
+        static Shot Orbit(string name, Vector3 target, float dist, float pitch)
+        {
+            float y = GroundY(target.x, target.z);
+            var t = new Vector3(target.x, y + 1.2f, target.z);
+            float rad = pitch * Mathf.Deg2Rad;
+            var eye = t + new Vector3(-dist * Mathf.Cos(rad), dist * Mathf.Sin(rad) + 1.5f, -dist * Mathf.Cos(rad)) * 0.7071f;
+            return new Shot { Name = name, Eye = eye, Target = t };
+        }
+
+        /// <summary>방 안에서 찍는다 — 천장이 있는 실내는 밖에서 보면 뚜껑만 보인다.</summary>
+        static Shot Inside(string name, float cx, float cz, float lookX, float lookZ)
+        {
+            float y = GroundY(cx, cz);
+            var eye = new Vector3(cx - 4.4f, y + 2.0f, cz - 4.4f);
+            var target = new Vector3(lookX, y + 1.0f, lookZ);
+            return new Shot { Name = name, Eye = eye, Target = target };
+        }
+
+        /// <summary>천장 위에서 방 전체 배치를 본다(뚜껑 포함 — 실내 여부 자체 확인용).</summary>
+        static Shot Roof(string name, float cx, float cz)
+        {
+            float y = GroundY(cx, cz);
+            return new Shot
+            {
+                Name = name,
+                Eye = new Vector3(cx - 14f, y + 12f, cz - 14f),
+                Target = new Vector3(cx, y + 1.5f, cz)
+            };
+        }
+
+        static float GroundY(float x, float z)
+        {
+            var terrain = Terrain.activeTerrain;
+            if (terrain == null)
+                return 0f;
+            return terrain.SampleHeight(new Vector3(x, 0f, z)) + terrain.transform.position.y;
+        }
+    }
+}
