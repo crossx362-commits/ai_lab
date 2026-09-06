@@ -572,6 +572,8 @@ namespace Ulon.Client
             GUI.Label(new Rect(382, 206, 256, 20), PersistDriver.Frozen ? "GM  계정 정지됨" : "GM  (F1)");
             if (GUI.Button(new Rect(382, 230, 90, 24), "광장복구"))
                 world.GmWarpPlaza(me);
+            if (GUI.Button(new Rect(382, 314, 90, 24), "테스트공간"))
+                world.GmWarpTest(me);
             if (GUI.Button(new Rect(478, 230, 70, 24), "곡괭이"))
                 world.GmGive(me, ItemCatalog.Pickaxe, 1);
             if (GUI.Button(new Rect(554, 230, 70, 24), "철검"))

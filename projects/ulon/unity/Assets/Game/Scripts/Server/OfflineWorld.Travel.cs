@@ -219,6 +219,16 @@ namespace Ulon.Server
             return new AttackResult { Applied = true };
         }
 
+        /// <summary>§6.1 테스트 공간으로 워프 — 개발자 전용 QA 마당은 마을에서 이어지는 길이 없다.</summary>
+        public AttackResult GmWarpTest(WorldBody body)
+        {
+            if (body == null)
+                return new AttackResult { FailReason = "no_body" };
+            WarpBody(body, WorldRegions.TestChamber.X, WorldRegions.TestChamber.Z);
+            OpLog.Write("gm", PersistDriver.AccountKey(), body.name, "warp_test");
+            return new AttackResult { Applied = true };
+        }
+
         public AttackResult GmGive(WorldBody body, string template, int amount)
         {
             if (body == null || string.IsNullOrEmpty(template))

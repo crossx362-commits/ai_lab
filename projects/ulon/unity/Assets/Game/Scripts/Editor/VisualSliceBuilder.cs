@@ -2441,6 +2441,69 @@ namespace Ulon.Editor
             BuildForest(WorldRegions.Forest, new[] { TreeH, TreeR, TreeC, Tree }, Bush, BushL, Tuft);
             BuildMine(WorldRegions.Mine, RockL, RockW, Poles, Tuft);
             ScatterPlain(new[] { Tuft, Bush, BushL, RockW });
+            BuildTestChamber(WorldRegions.TestChamber, Fence, Poles, Cart, RockW);
+        }
+
+        /// <summary>
+        /// §6.1 테스트 공간 — 표적·장비 거치대·연습 기둥을 둔 울타리 마당. GM 패널 워프로만 간다.
+        /// 살아 있는 몹은 두지 않는다 — GM 패널의 스켈레톤 소환으로 그 자리에서 만들어 쓴다
+        /// (상시 몹을 두면 몹 수를 세는 다른 판정들이 흔들린다).
+        /// </summary>
+        static void BuildTestChamber(WorldRegions.Region r, string fence, string poles, string cart, string rock)
+        {
+            const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
+            const string Banner = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/banner-red.fbx";
+            const string Planks = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/planks.fbx";
+            const string Stall = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall.fbx";
+            string[] models = { fence, poles, cart, rock, Lantern, Banner, Planks, Stall };
+            for (int i = 0; i < models.Length; i++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(models[i]) == null)
+                    ConfigureProp(models[i]);
+            }
+
+            var parent = FreshRegion(r);
+            float half = 10f;
+            FenceRun(parent, fence, new Vector2(r.X - half, r.Z - half), new Vector2(r.X + half, r.Z - half));
+            FenceRun(parent, fence, new Vector2(r.X - half, r.Z + half), new Vector2(r.X + half, r.Z + half));
+            FenceRun(parent, fence, new Vector2(r.X - half, r.Z - half), new Vector2(r.X - half, r.Z + half));
+            FenceRun(parent, fence, new Vector2(r.X + half, r.Z - half), new Vector2(r.X + half, r.Z + half));
+
+            // 표적 3개 — 스킬/무기 피해를 눈으로 보는 자리.
+            for (int i = 0; i < 3; i++)
+            {
+                var pos = new Vector3(r.X - 4f + i * 4f, 0f, r.Z + 6f);
+                var target = Place(poles, pos, new Vector3(0f, 0f, 0f));
+                if (target == null)
+                    continue;
+                target.name = "TestTarget" + (i + 1);
+                target.transform.SetParent(parent, true);
+                Decor(parent, Planks, pos + new Vector3(0f, 0f, 0.6f), new Vector3(0f, 90f, 0f));
+            }
+            // 장비 거치대와 작업대.
+            Decor(parent, Stall, new Vector3(r.X - 6f, 0f, r.Z - 5f), new Vector3(0f, 20f, 0f));
+            Decor(parent, cart, new Vector3(r.X + 6f, 0f, r.Z - 5f), new Vector3(0f, -30f, 0f));
+            Decor(parent, Banner, new Vector3(r.X, 0f, r.Z - half + 0.6f), new Vector3(0f, 180f, 0f));
+            for (int i = 0; i < 4; i++)
+            {
+                float sx = (i == 0 || i == 3) ? 1f : -1f;
+                float sz = (i == 0 || i == 1) ? 1f : -1f;
+                Decor(parent, Lantern, new Vector3(r.X + (half - 1.2f) * sx, 0f, r.Z + (half - 1.2f) * sz), Vector3.zero);
+                var lightGo = new GameObject("TestChamberLight");
+                lightGo.transform.SetParent(parent, true);
+                lightGo.transform.position = OnGround(new Vector3(r.X + (half - 1.2f) * sx, 2.2f, r.Z + (half - 1.2f) * sz));
+                var light = lightGo.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = new Color(0.98f, 0.85f, 0.6f);
+                light.intensity = 1.1f;
+                light.range = 9f;
+                light.shadows = LightShadows.None;
+            }
+            for (int i = 0; i < 6; i++)
+            {
+                float a = WorldRegions.Rand(i, 61, 0f, 360f) * Mathf.Deg2Rad;
+                Decor(parent, rock, new Vector3(r.X + Mathf.Cos(a) * (half + 3f), 0f, r.Z + Mathf.Sin(a) * (half + 3f)), Vector3.zero);
+            }
         }
 
         /// <summary>

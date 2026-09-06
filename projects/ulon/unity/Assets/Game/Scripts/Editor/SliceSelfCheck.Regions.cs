@@ -91,7 +91,63 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("마을 밖 평지 표본 " + samples + "곳 중 " + PlainCoverRadius + "m 안에 소품이 있는 곳이 " +
                     (share * 100f).ToString("0.0") + "%입니다 — 최소 " + (PlainCoverMin * 100f) + "%. 걸어가면 아무것도 없는 초록 벌판입니다(§8.2).");
 
+            AssertTestChamber();
+
             Debug.Log("[Ulon] §6.1 지역 통과 — 평지 표본 " + samples + "곳 중 소품 " + PlainCoverRadius + "m 안 " + (share * 100f).ToString("0.0") + "% (하한 " + (PlainCoverMin * 100f) + "%)");
+        }
+
+        /// <summary>
+        /// §6.1 「테스트 공간 — 개발자 전용 스킬/몬스터/장비 QA」. 마당이 있는 것만으로는 부족하다 —
+        /// **거기로 가는 길**(GM 패널 워프)이 없으면 개발자도 못 들어가고 문서에만 있는 공간이 된다.
+        /// </summary>
+        const int TestChamberLightMin = 4;
+        const int TestChamberTargetMin = 3;
+
+        static void AssertTestChamber()
+        {
+            var r = WorldRegions.TestChamber;
+            if (GameObject.Find(r.Object) == null)
+                throw new InvalidOperationException("§6.1 테스트 공간(" + r.Object + ")이 씬에 없습니다 — 기획서 6.1 지역표의 마지막 칸이 비어 있습니다.");
+
+            float h = WorldTerrain.HeightAt(r.X, r.Z);
+            if (h < WorldTerrain.SeaLevel + 1f)
+                throw new InvalidOperationException("§6.1 테스트 공간이 수면 아래입니다(높이 " + h.ToString("0.0") + ") — 물속 마당입니다.");
+
+            int props = 0, targets = 0;
+            var rends = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                var p = rends[i].transform.position;
+                if (new Vector2(p.x - r.X, p.z - r.Z).magnitude > r.Radius)
+                    continue;
+                props++;
+                if (AncestorNames(rends[i].transform).IndexOf("TestTarget", StringComparison.Ordinal) >= 0)
+                    targets++;
+            }
+            if (props < r.PropMin)
+                throw new InvalidOperationException("§6.1 테스트 공간 소품이 " + props + "개입니다 — 최소 " + r.PropMin + "개(울타리 마당·표적·거치대).");
+            if (targets < TestChamberTargetMin)
+                throw new InvalidOperationException("§6.1 테스트 공간 표적이 " + targets + "개입니다 — 최소 " + TestChamberTargetMin + "개. 스킬/장비를 시험할 대상이 없습니다.");
+
+            int lights = 0;
+            var all = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i].type != LightType.Point)
+                    continue;
+                var p = all[i].transform.position;
+                if (new Vector2(p.x - r.X, p.z - r.Z).magnitude <= r.Radius)
+                    lights++;
+            }
+            if (lights < TestChamberLightMin)
+                throw new InvalidOperationException("§6.1 테스트 공간 조명이 " + lights + "개입니다 — 최소 " + TestChamberLightMin + "개.");
+
+            // 가는 길: GM 패널이 실제로 워프를 부르는가. 서버 구현만 있으면 도달 불가 기능과 같은 함정이다.
+            string hud = System.IO.Path.Combine(Application.dataPath, "Game/Scripts/Client/SliceHud.cs");
+            if (!System.IO.File.Exists(hud) || System.IO.File.ReadAllText(hud).IndexOf("GmWarpTest", StringComparison.Ordinal) < 0)
+                throw new InvalidOperationException("GM 패널에 테스트 공간 워프 버튼이 없습니다 — 마당은 있는데 들어갈 길이 없습니다(§6.1).");
+
+            Debug.Log("[Ulon] §6.1 테스트 공간 통과 — 소품 " + props + "개·표적 " + targets + "개·점광 " + lights + "개·GM 워프 배선");
         }
     }
 }

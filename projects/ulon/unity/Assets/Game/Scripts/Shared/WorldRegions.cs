@@ -32,6 +32,15 @@ namespace Ulon.Shared
         public static readonly Region Mine = new Region
         { Object = MineObject, Name = "동쪽 광산", X = 74f, Z = 26f, Radius = 20f, PropMin = 20 };
 
+        /// <summary>
+        /// §6.1 「테스트 공간 — 개발자 전용 스킬/몬스터/장비 QA」. 던전 세 개가 쓰지 않는 네 번째 모서리에 둔다.
+        /// 마을에서 이어지는 길이 없고 GM 패널(F1) 워프로만 간다 — 플레이어 동선에 끼어들지 않는다.
+        /// </summary>
+        public const string TestChamberObject = "Region_TestChamber";
+        public static readonly Region TestChamber = new Region
+        { Object = TestChamberObject, Name = "테스트 공간", X = -68f, Z = -68f, Radius = 14f, PropMin = 24 };
+
+        /// <summary>평지 산포·소품 하한 판정 대상(테스트 공간은 개발자 전용이라 여기 넣지 않는다).</summary>
         public static Region[] All => new[] { Meadow, Forest, Mine };
 
         /// <summary>지역 배치·소품 산포에서 같은 값을 뽑기 위한 결정적 난수(씬이 매번 흔들리면 검수가 못 한다).</summary>
