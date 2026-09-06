@@ -75,14 +75,41 @@ namespace Ulon.Shared
                 loadError = "no items array: " + FullPath;
                 return;
             }
+            int bad = 0;
             for (int i = 0; i < parsed.items.Length; i++)
             {
                 var rec = parsed.items[i];
                 if (string.IsNullOrEmpty(rec.id))
                     continue;
+                // 레코드 단위 검증 — 불량 수치 하나가 원장 전체를 못 쓰게 만들면 안 되고,
+                // 조용히 통과해서도 안 된다(무게 0인 아이템은 무한 적재, 음수 가격은 무한 골드다).
+                string why = ReasonInvalid(rec);
+                if (why != "")
+                {
+                    bad++;
+                    loadError = (loadError == "" ? "" : loadError + "; ") + rec.id + ": " + why;
+                    Debug.LogError("[Ulon] items.json 레코드 무시 — " + rec.id + ": " + why + " (코드 기본값으로 떨어집니다)");
+                    continue;   // 코드 폴백
+                }
                 map[rec.id] = rec;
             }
             loadedFrom = FullPath;
+            if (bad > 0)
+                loadError = "불량 레코드 " + bad + "건 — " + loadError;
+        }
+
+        /// <summary>불량이면 사유, 정상이면 빈 문자열. 판정을 한 곳에 둬야 로더와 Assert가 갈라지지 않는다.</summary>
+        public static string ReasonInvalid(ItemStat rec)
+        {
+            if (rec.weight <= 0f)
+                return "weight " + rec.weight + " (0 이하면 무한 적재)";
+            if (rec.buy < 0)
+                return "buy " + rec.buy + " (음수 가격은 무한 골드)";
+            if (rec.uses < 0)
+                return "uses " + rec.uses;
+            if (rec.strReq < 0)
+                return "strReq " + rec.strReq;
+            return "";
         }
 
         public static bool TryGet(string id, out ItemStat stat)

@@ -76,14 +76,42 @@ namespace Ulon.Shared
                 loadError = "no mobs array: " + FullPath;
                 return;
             }
+            int bad = 0;
             for (int i = 0; i < parsed.mobs.Length; i++)
             {
                 var rec = parsed.mobs[i];
                 if (string.IsNullOrEmpty(rec.id))
                     continue;
+                // 레코드 단위 검증 — HP 0인 몹은 스폰 즉시 죽고, dmgMax < dmgMin이면 피해 굴림이 뒤집힌다.
+                string why = ReasonInvalid(rec);
+                if (why != "")
+                {
+                    bad++;
+                    loadError = (loadError == "" ? "" : loadError + "; ") + rec.id + ": " + why;
+                    Debug.LogError("[Ulon] mobs.json 레코드 무시 — " + rec.id + ": " + why + " (코드 기본값으로 떨어집니다)");
+                    continue;   // 코드 폴백
+                }
                 map[rec.id] = rec;
             }
             loadedFrom = FullPath;
+            if (bad > 0)
+                loadError = "불량 레코드 " + bad + "건 — " + loadError;
+        }
+
+        /// <summary>불량이면 사유, 정상이면 빈 문자열(로더와 Assert가 같은 판정을 쓴다).</summary>
+        public static string ReasonInvalid(MobStat rec)
+        {
+            if (rec.hp <= 0f)
+                return "hp " + rec.hp + " (0 이하면 스폰 즉시 사망)";
+            if (rec.height <= 0f)
+                return "height " + rec.height;
+            if (string.IsNullOrEmpty(rec.name))
+                return "name 비어 있음";
+            if (rec.dmgMin < 0)
+                return "dmgMin " + rec.dmgMin;
+            if (rec.dmgMax < rec.dmgMin)
+                return "dmgMax " + rec.dmgMax + " < dmgMin " + rec.dmgMin;
+            return "";
         }
 
         public static bool TryGet(string id, out MobStat stat)
