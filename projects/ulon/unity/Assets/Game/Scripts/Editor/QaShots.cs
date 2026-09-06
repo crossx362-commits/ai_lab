@@ -1,4 +1,5 @@
 using System.IO;
+using UnityEditor.Animations;
 using Ulon.Shared;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -37,7 +38,7 @@ namespace Ulon.Editor
             {
                 Orbit("01_village_square", new Vector3(0f, 0f, 0f), 20f, 35f),
                 Orbit("02_village_wide", new Vector3(0f, 0f, 0f), 55f, 45f),
-                Orbit("03_hunt_mobs", new Vector3(3.4f, 0f, 13.2f), 14f, 25f),
+                Orbit("03_hunt_mobs", new Vector3(2.8f, 0f, 13.6f), 26f, 30f),
                 Orbit("06_field_boss", new Vector3(22.6f, 0f, 8.4f), 10f, 25f),
                 Orbit("07_d1_entrance", new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 8f, 20f),
                 PlayCam("08_d1_interior_playcam", Dungeon1.InteriorX, Dungeon1.InteriorZ),
@@ -51,6 +52,7 @@ namespace Ulon.Editor
                 Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 // §8.1 멀리서도 읽히는 실루엣 — 산·바다 조망, 호수·강 조망.
                 BossCloseUp("17_boss_closeup", Dungeon3.BossX, Dungeon3.BossZ),
+                ActorCloseUp("22_mob_closeup", Dungeon3.MobObject),
                 Orbit("18_meadow", new Vector3(WorldRegions.Meadow.X, 0f, WorldRegions.Meadow.Z), 34f, 28f),
                 Orbit("19_forest", new Vector3(WorldRegions.Forest.X, 0f, WorldRegions.Forest.Z), 38f, 26f),
                 Orbit("20_mine", new Vector3(WorldRegions.Mine.X, 0f, WorldRegions.Mine.Z), 30f, 26f),
@@ -59,6 +61,12 @@ namespace Ulon.Editor
                 Free("15_lake_river", new Vector3(WorldTerrain.LakeX + 46f, 40f, WorldTerrain.LakeZ + 46f), new Vector3(WorldTerrain.LakeX - 12f, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
             };
+
+            // **런타임 포즈로 찍는다.** 에디터에서 그냥 찍으면 모든 액터가 바인드 포즈(T포즈)라
+            // 「칼이 얼굴 높이를 가로지른다」 같은 인상이 실제 플레이와 다르다(검수 2026-09-06 질의).
+            // 애니메이터 기본 상태(Idle)를 실제로 샘플링해 포즈를 만든 뒤 찍는다.
+            int posed = SampleIdlePose();
+            Debug.Log("[Ulon] QA 포즈 샘플링 — Idle 적용 액터 " + posed + "체");
 
             var camGo = new GameObject("QaShotCamera");
             var cam = camGo.AddComponent<Camera>();
@@ -97,6 +105,64 @@ namespace Ulon.Editor
                 Object.DestroyImmediate(tex);
             }
             Debug.Log("[Ulon] QA shots " + shots.Length + "장 — " + dir);
+        }
+
+        /// <summary>
+        /// 씬의 액터들에 애니메이터 기본 상태(Idle) 포즈를 입힌다 — 에디터 배치모드에서는 애니메이션이
+        /// 돌지 않아 바인드 포즈(T포즈)로 찍힌다. 반환값은 포즈가 적용된 액터 수.
+        /// </summary>
+        static int SampleIdlePose()
+        {
+            int n = 0;
+            var anims = Object.FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            Debug.Log("[Ulon] QA 포즈 — 애니메이터 " + anims.Length + "개");
+            for (int i = 0; i < anims.Length; i++)
+            {
+                var rac = anims[i].runtimeAnimatorController;
+                var ctrl = rac as AnimatorController;
+                if (ctrl == null && rac != null)
+                    ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(AssetDatabase.GetAssetPath(rac));
+                if (ctrl == null || ctrl.layers.Length == 0 || ctrl.layers[0].stateMachine == null)
+                {
+                    continue;
+                }
+                // 기본 상태의 motion이 블렌드 트리면 클립이 안 나온다 — 컨트롤러가 들고 있는 클립 중
+                // 이름에 idle이 든 것을 쓴다(없으면 첫 클립).
+                AnimationClip clip = null;
+                var clips = ctrl.animationClips;
+                for (int c = 0; c < clips.Length; c++)
+                {
+                    if (clips[c] == null)
+                        continue;
+                    if (clip == null)
+                        clip = clips[c];
+                    if (clips[c].name.ToLowerInvariant().Contains("idle"))
+                    {
+                        clip = clips[c];
+                        break;
+                    }
+                }
+                if (clip == null)
+                {
+                    Debug.Log("[Ulon] QA 포즈 건너뜀(클립 없음) " + anims[i].name + " ctrl=" + ctrl.name);
+                    continue;
+                }
+                clip.SampleAnimation(anims[i].gameObject, 0.4f);
+                n++;
+            }
+            return n;
+        }
+
+        /// <summary>액터를 **정면에서** 잡는다 — 뒤에서 찍으면 망토만 보인다(잡몹 검수용).</summary>
+        static Shot ActorCloseUp(string name, string objectName)
+        {
+            var go = GameObject.Find(objectName);
+            if (go == null)
+                return new Shot { Name = name, Eye = new Vector3(0f, 5f, -5f), Target = Vector3.zero };
+            var p = go.transform.position;
+            var target = p + new Vector3(0f, 1.1f, 0f);
+            var eye = target + go.transform.forward * 3.0f + new Vector3(0f, 0.9f, 0f);
+            return new Shot { Name = name, Eye = eye, Target = target };
         }
 
         /// <summary>보스 근접 — 왕관·큰 무기를 확인하는 검수용 샷(검수 요청 2026-09-06).</summary>

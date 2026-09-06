@@ -484,15 +484,17 @@ namespace Ulon.Editor
         {
             MoveNamed("Player", new Vector3(0f, 0f, 0f), Vector3.zero);
             MoveNamed("Companion", new Vector3(-2.4f, 0f, 1.8f), new Vector3(0f, 180f, 0f));
-            MoveNamed("Skeleton", new Vector3(0.4f, 0f, 13.2f), new Vector3(0f, 180f, 0f));
+            // 사냥터 — 모두 z=13.2에 세워 두니 **7종 일직선 진열**이었다(옛 반려). 깊이·간격·바라보는 방향을
+            // 흩어 무리로 읽히게 한다. 좌표는 사냥 구역 안(마을 북쪽 z 10~17)에 남긴다.
+            MoveNamed("Skeleton", new Vector3(0.6f, 0f, 13.6f), new Vector3(0f, 168f, 0f));
             EnsureHuntMobs();
-            MoveNamed("Bandit", new Vector3(-1.6f, 0f, 13.2f), new Vector3(0f, 180f, 0f));
-            MoveNamed("Raider", new Vector3(2.4f, 0f, 13.2f), new Vector3(0f, 180f, 0f));
-            MoveNamed("Rogue", new Vector3(-3.8f, 0f, 13.2f), new Vector3(0f, 180f, 0f));
-            MoveNamed("Knight", new Vector3(4.4f, 0f, 13.2f), new Vector3(0f, 180f, 0f));
-            MoveNamed("Acolyte", new Vector3(6.4f, 0f, 13.2f), new Vector3(0f, 180f, 0f));
-            MoveNamed("Minion", new Vector3(8.4f, 0f, 13.2f), new Vector3(0f, 180f, 0f));
-            MoveNamed("SkelRogue", new Vector3(10.4f, 0f, 13.2f), new Vector3(0f, 180f, 0f));
+            MoveNamed("Bandit", new Vector3(-2.6f, 0f, 11.4f), new Vector3(0f, 196f, 0f));
+            MoveNamed("Raider", new Vector3(2.2f, 0f, 15.8f), new Vector3(0f, 152f, 0f));
+            MoveNamed("Rogue", new Vector3(-4.6f, 0f, 14.9f), new Vector3(0f, 208f, 0f));
+            MoveNamed("Knight", new Vector3(4.9f, 0f, 11.2f), new Vector3(0f, 174f, 0f));
+            MoveNamed("Acolyte", new Vector3(6.8f, 0f, 15.4f), new Vector3(0f, 160f, 0f));
+            MoveNamed("Minion", new Vector3(8.7f, 0f, 12.1f), new Vector3(0f, 186f, 0f));
+            MoveNamed("SkelRogue", new Vector3(10.2f, 0f, 16.2f), new Vector3(0f, 150f, 0f));
             EnsureFieldBoss();
             MoveNamed("Banker", new Vector3(-10.5f, 0f, 8.5f), Vector3.zero);
             MoveNamed("Forge", new Vector3(-6.8f, 0f, 3.4f), new Vector3(0f, 90f, 0f));
@@ -620,6 +622,7 @@ namespace Ulon.Editor
                 MobCatalog.MaxHpOf(mobId));
             BindMob(spawned, mobId);
             HideExtraGear(spawned);
+            DressMob(spawned);
             spawned.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
         }
 
@@ -1019,6 +1022,7 @@ namespace Ulon.Editor
                 MobCatalog.MaxHpOf(MobCatalog.Raider));
             BindMob(spawned, MobCatalog.Raider);
             HideExtraGear(spawned);
+            DressMob(spawned);
             if (parent != null)
                 spawned.transform.SetParent(parent, true);
         }
@@ -1048,6 +1052,7 @@ namespace Ulon.Editor
             BindMob(spawned, MobCatalog.Hexarch);
             DressBoss(spawned, new Color(0.35f, 1f, 0.6f));       // 독기 어린 녹빛 — 헥사크
             HideExtraGear(spawned);
+            DressMob(spawned);
         }
 
 
@@ -1071,6 +1076,7 @@ namespace Ulon.Editor
                 MobCatalog.MaxHpOf(MobCatalog.Skeleton));
             BindMob(spawned, MobCatalog.Skeleton);
             HideExtraGear(spawned);
+            DressMob(spawned);
             if (parent != null)
                 spawned.transform.SetParent(parent, true);
         }
@@ -1120,6 +1126,7 @@ namespace Ulon.Editor
                 MobCatalog.MaxHpOf(MobCatalog.Bandit));
             BindMob(spawned, MobCatalog.Bandit);
             HideExtraGear(spawned);
+            DressMob(spawned);
             if (parent != null)
                 spawned.transform.SetParent(parent, true);
         }
@@ -2151,6 +2158,75 @@ namespace Ulon.Editor
         /// 스폰 Ensure*는 오브젝트가 있으면 일찍 반환하므로, 그 경로로만 두면 옛 보스는 영영 안 고쳐진다
         /// (헥사크가 무기 없이 남아 있던 이유다 — 검수 2026-09-06 반려).
         /// </summary>
+        /// <summary>
+        /// 이미 씬에 저장된 **잡몹**도 다시 꾸민다 — 스폰 Ensure*는 오브젝트가 있으면 일찍 반환하므로
+        /// 드레싱을 스폰 경로에만 두면 옛 몹은 영영 술잔을 든 채 남는다(보스에서 이미 겪은 함정).
+        /// </summary>
+        /// <summary>사냥터 잡몹의 자리 — 좌표 원장(빌더·게이트 공용). z를 다 같이 두면 「일직선 진열」이 된다.</summary>
+        public static readonly (string Name, float X, float Z, float Yaw)[] HuntSpots =
+        {
+            ("Skeleton", 0.6f, 13.6f, 168f),
+            ("Bandit", -2.6f, 11.4f, 196f),
+            ("Raider", 2.2f, 15.8f, 152f),
+            ("Rogue", -4.6f, 14.9f, 208f),
+            ("Knight", 4.9f, 11.2f, 174f),
+            ("Acolyte", 6.8f, 15.4f, 160f),
+            ("Minion", 8.7f, 12.1f, 186f),
+            ("SkelRogue", 10.2f, 16.2f, 150f),
+        };
+
+        /// <summary>
+        /// 사냥터 잡몹을 흩고 **지표에 세운다**. 두 가지가 겹쳐 있었다:
+        ///   1) 전부 z=13.2 한 줄(옛 「7종 일직선 진열」 반려의 잔존),
+        ///   2) 지형을 LandBase 10m로 올린 뒤에도 y=0에 남아 **땅속에 묻혀** 있었다 —
+        ///      03_hunt_mobs 샷에 몹이 2마리만 보인 진짜 이유다(검수 2026-09-06 관찰).
+        /// 배치 Ensure*는 오브젝트가 있으면 일찍 반환하므로 이 보수 패스가 따로 필요하다.
+        /// </summary>
+        public static void EnsureHuntMobPlacement()
+        {
+            int moved = 0;
+            for (int i = 0; i < HuntSpots.Length; i++)
+            {
+                var spot = HuntSpots[i];
+                var go = GameObject.Find(spot.Name);
+                if (go == null)
+                    continue;
+                float y = GroundHeightAt(spot.X, spot.Z);
+                var want = new Vector3(spot.X, y, spot.Z);
+                if ((go.transform.position - want).sqrMagnitude > 0.0001f)
+                    moved++;
+                go.transform.position = want;
+                go.transform.rotation = Quaternion.Euler(0f, spot.Yaw, 0f);
+            }
+            Debug.Log("[Ulon] 사냥터 배치 — " + HuntSpots.Length + "체 흩기·지표 세우기(옮긴 것 " + moved + "체)");
+        }
+
+        /// <summary>이 좌표의 지형 표면 높이(월드).</summary>
+        public static float GroundHeightAt(float x, float z)
+        {
+            var terrain = Terrain.activeTerrain;
+            if (terrain == null)
+                return 0f;
+            return terrain.SampleHeight(new Vector3(x, 0f, z)) + terrain.transform.position.y;
+        }
+
+        public static void EnsureMobDressing()
+        {
+            int n = 0;
+            var bodies = UnityEngine.Object.FindObjectsByType<WorldBody>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < bodies.Length; i++)
+            {
+                var b = bodies[i];
+                if (b == null || !b.IsEnemy)
+                    continue;
+                if (b.name == Dungeon1.BossObject || b.name == Dungeon2.BossObject || b.name == Dungeon3.BossObject || b.name == FieldBoss.Object)
+                    continue;                                  // 보스는 DressBoss가 맡는다
+                DressMob(b.gameObject);
+                n++;
+            }
+            Debug.Log("[Ulon] 잡몹 드레싱 — " + n + "체(손 소품 제거·무기 1개·의상 켜기)");
+        }
+
         public static void EnsureBossDressing()
         {
             DressBossNamed(Dungeon1.BossObject, new Color(0.55f, 0.85f, 1f));
@@ -2164,6 +2240,95 @@ namespace Ulon.Editor
             var go = GameObject.Find(objectName);
             if (go != null)
                 DressBoss(go, tint);
+        }
+
+        /// <summary>손에 드는 소품(무기 아님) — 이게 켜져 있고 무기가 꺼져 있으면 몹이 술잔을 들고 서 있다.</summary>
+        public static bool IsHandPropNamePublic(string n) => IsHandPropName(n);
+
+        static bool IsHandPropName(string n)
+        {
+            return n.IndexOf("Mug", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Bottle", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Cup", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Bread", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Torch", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>
+        /// 잡몹 드레싱 — 보스만 꾸미고 잡몹은 FBX 기본 상태로 뒀더니 던전 3 야만인이 **술잔을 든 맨몸**으로
+        /// 서 있었다(검수 2026-09-06 반려: 「왕관 쓴 보스 옆에 벗은 마네킹」). 하는 일:
+        ///   1) 손 소품(잔·병 등)을 끄고 **무기 하나**를 켠다(1몹 1무기).
+        ///   2) 모델이 가진 의상 메시(망토·모자·갑옷·후드)를 켠다 — 맨몸으로 두면 §8.1 실루엣이 안 읽힌다.
+        /// </summary>
+        public static void DressMob(GameObject actor)
+        {
+            if (actor == null)
+                return;
+            var all = actor.GetComponentsInChildren<Transform>(true);
+
+            // 1) 무기 — 가장 큰 것 하나만 켜고 나머지 무기·손 소품은 끈다.
+            Transform pick = null;
+            float bestLen = -1f;
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (!IsWeaponName(all[i].name))
+                    continue;
+                var mf = all[i].GetComponentsInChildren<MeshFilter>(true);
+                float len = 0f;
+                for (int m = 0; m < mf.Length; m++)
+                    if (mf[m].sharedMesh != null)
+                        len = Mathf.Max(len, mf[m].sharedMesh.bounds.size.magnitude);
+                if (len > bestLen)
+                {
+                    bestLen = len;
+                    pick = all[i];
+                }
+            }
+            for (int i = 0; i < all.Length; i++)
+            {
+                var t = all[i];
+                if (IsHandPropName(t.name))
+                {
+                    t.gameObject.SetActive(false);
+                    continue;
+                }
+                if (!IsWeaponName(t.name))
+                    continue;
+                bool keep = pick != null && (t == pick || t.IsChildOf(pick) || pick.IsChildOf(t));
+                t.gameObject.SetActive(keep);
+                if (keep)
+                {
+                    var rs = t.GetComponentsInChildren<Renderer>(true);
+                    for (int r = 0; r < rs.Length; r++)
+                        rs[r].enabled = true;
+                }
+            }
+            if (pick != null)
+                for (var t = pick; t != null && t != actor.transform; t = t.parent)
+                    t.gameObject.SetActive(true);
+
+            // 2) 의상 — 모델이 가진 것을 켠다.
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (!IsClothingName(all[i].name))
+                    continue;
+                all[i].gameObject.SetActive(true);
+                var rs = all[i].GetComponentsInChildren<Renderer>(true);
+                for (int r = 0; r < rs.Length; r++)
+                    rs[r].enabled = true;
+            }
+        }
+
+        /// <summary>의상 메시 이름인가(게이트도 같은 판정을 쓴다).</summary>
+        public static bool IsClothingName(string n)
+        {
+            return n.IndexOf("Cape", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Cloak", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Hood", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Helmet", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Armor", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Tunic", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         public static void DressBoss(GameObject boss, Color tint)
