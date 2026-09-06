@@ -65,7 +65,10 @@ namespace Ulon.Editor
                 float r = Mathf.Sqrt(dx * dx + dz * dz);
                 // 전역 발 높이 게이트(`AssertFootOnGround`)는 지하 방 구조물을 건너뛴다(지표 기준이라 못 잰다).
                 // 그러니 **방 안에서는 여기가 그 역할**을 한다 — 소품 발이 방 바닥 윗면에 붙어 있는가.
-                if (!t.name.StartsWith("DungeonFurnLantern", StringComparison.Ordinal) && GroundFit.WorldBounds(t, out Bounds wb))
+                // 벽에 거는 것(횃불·등불)은 바닥에 발이 없다 — 이름으로 빼되, 나머지는 전부 잰다.
+                bool wallMounted = t.name.StartsWith("DungeonFurnTorch", StringComparison.Ordinal)
+                    || t.name.StartsWith("DungeonFurnLantern", StringComparison.Ordinal);
+                if (!wallMounted && GroundFit.WorldBounds(t, out Bounds wb))
                 {
                     float floorTop = GroundYAt(center) - VisualSliceBuilder.DungeonDepth + VisualSliceBuilder.RoomFloorTop;
                     float dy = wb.min.y - floorTop;

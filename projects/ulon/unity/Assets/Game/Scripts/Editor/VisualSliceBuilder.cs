@@ -2711,10 +2711,15 @@ namespace Ulon.Editor
         /// </summary>
         public static void EnsureRoomFurnishing()
         {
-            const string Town = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/";
-            const string Nature = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/";
-            string[] loadFbx = { Town + "cart.fbx", Town + "planks.fbx", Town + "stall-bench.fbx", Town + "stall-stool.fbx" };
-            string[] rubbleFbx = { Town + "rock-small.fbx", Town + "rock-wide.fbx", Nature + "rock_smallA.fbx" };
+            const string Dg = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/";
+            // 방을 채우는 주력: 궤짝·통·나무상자(§6.1 던전). 마을 가구는 뺐다 — 검수가 「가구 창고」라고 반려했다.
+            string[] loadFbx =
+            {
+                Dg + "box_large.obj", Dg + "barrel_large.obj", Dg + "crates_stacked.obj",
+                Dg + "box_stacked.obj", Dg + "barrel_small_stack.obj", Dg + "chest.obj",
+                Dg + "box_small.obj", Dg + "table_medium_broken.obj",
+            };
+            string[] rubbleFbx = { Dg + "rubble_large.obj", Dg + "rubble_half.obj" };
 
             var rooms = new[]
             {
@@ -2735,58 +2740,49 @@ namespace Ulon.Editor
                         UnityEngine.Object.DestroyImmediate(room.GetChild(c).gameObject);
 
                 var center = new Vector3(rooms[i].X, 0f, rooms[i].Z);
-                // 바닥 슬래브 **윗면**은 방 원점보다 0.2m 위다 — 여기에 놓지 않으면 포석이 바닥 밑에 묻힌다(실측).
+                // 바닥 슬래브 **윗면**은 방 원점보다 0.2m 위다 — 여기에 놓지 않으면 소품이 바닥 밑에 묻힌다(실측).
                 float y = OnGround(center).y - DungeonDepth + RoomFloorTop;
                 float half = rooms[i].Half;
                 var rng = new System.Random(rooms[i].Seed);
                 float Jitter(float span) => (float)(rng.NextDouble() - 0.5) * span;
 
-                // 네 변 가운데 — **천장까지 닿는** 지지 기둥 + 벽 등불. 짧은 막대는 허공에 뜬 막대기로 읽힌다(검수).
+                // 네 변 가운데 — **천장까지 닿는 돌기둥** + 벽 횃불. 짧은 막대는 허공의 막대기로 읽힌다(검수).
                 for (int sIdx = 0; sIdx < 4; sIdx++)
                 {
                     float px = sIdx == 2 ? half - 0.7f : sIdx == 3 ? -half + 0.7f : 0f;
                     float pz = sIdx == 0 ? half - 0.7f : sIdx == 1 ? -half + 0.7f : 0f;
-                    placed += RoomProp(room, "DungeonFurnPole" + sIdx, Town + "poles.fbx",
+                    placed += RoomProp(room, "DungeonFurnPillar" + sIdx, Dg + (sIdx % 2 == 0 ? "pillar.obj" : "pillar_decorated.obj"),
                         new Vector3(center.x + px, y, center.z + pz), sIdx * 90f, RoomHeightOfWall - RoomFloorTop) ? 1 : 0;
-                    var lamp = RoomPropObject(room, "DungeonFurnLantern" + sIdx, Town + "lantern.fbx",
-                        new Vector3(center.x + px * 0.9f, y + 2.0f, center.z + pz * 0.9f), sIdx * 90f + 25f, 1.3f, true);
-                    if (lamp != null)
-                    {
-                        TintCharacter(lamp, "DungeonLanternGlow", new Color(1f, 0.72f, 0.34f));   // 흰 막대기로 읽히던 것을 불빛 색으로
-                        placed++;
-                    }
+                    placed += RoomProp(room, "DungeonFurnTorch" + sIdx, Dg + "torch_mounted.obj",
+                        new Vector3(center.x + px * 0.94f, y + 2.0f, center.z + pz * 0.94f), sIdx * 90f + 180f, 1.1f) ? 1 : 0;
                     RoomTorch(room, new Vector3(center.x + px * 0.85f, y + 2.4f, center.z + pz * 0.85f), half * 0.7f);
                 }
 
-                // 벽 쪽 짐 — 방을 채우는 **주력**이다(검수: 바위가 아니라 궤짝·수레·작업대가 던전 방을 만든다).
-                // 수로 채우지 않는다. 큰 소품 10개로 맨바닥 상한을 맞춘다.
-                for (int k = 0; k < 16; k++)
+                // 벽 쪽 짐 — 궤짝·통·상자. 수로 채우지 않는다(검수: 물량이 곧 반려 사유였다).
+                for (int k = 0; k < 12; k++)
                 {
-                    float a = (k * 22.5f + 20f) * Mathf.Deg2Rad;
-                    float r = half - 1.9f - Mathf.Abs(Jitter(1.6f));
+                    float a = (k * 30f + 20f) * Mathf.Deg2Rad;
+                    float r = half - 1.7f - Mathf.Abs(Jitter(1.2f));
                     var p = new Vector3(center.x + Mathf.Sin(a) * r, y, center.z + Mathf.Cos(a) * r);
                     string fbx = loadFbx[k % loadFbx.Length];
-                    // 납작한 모델(널빤지·작업대)은 **두께**로 맞추면 거대한 판이 된다 — 바닥 폭으로 맞춘다.
-                    float w = fbx.EndsWith("stall-stool.fbx", StringComparison.Ordinal) ? 1.1f
-                        : fbx.EndsWith("planks.fbx", StringComparison.Ordinal) ? 2.0f
-                        : fbx.EndsWith("stall-bench.fbx", StringComparison.Ordinal) ? 2.4f : 2.6f;
-                    // 벽을 바라보게 세운다 — 무작위 yaw는 수레·벤치를 누운 것처럼 보이게 했다(검수).
-                    float yaw = a * Mathf.Rad2Deg + 180f;
-                    placed += RoomProp(room, "DungeonFurnLoad" + k, fbx, p, yaw, w, false) ? 1 : 0;
+                    float w = fbx.EndsWith("box_small.obj", StringComparison.Ordinal) ? 0.9f
+                        : fbx.EndsWith("chest.obj", StringComparison.Ordinal) ? 1.2f
+                        : fbx.EndsWith("table_medium_broken.obj", StringComparison.Ordinal) ? 2.0f : 1.6f;
+                    // 벽을 바라보게 세운다 — 무작위 yaw는 소품을 누운 것처럼 보이게 했다(검수).
+                    placed += RoomProp(room, "DungeonFurnLoad" + k, fbx, p, a * Mathf.Rad2Deg + 180f, w, false) ? 1 : 0;
                 }
 
-                // 잔해 바위 — **모서리에 서너 개만**. 이걸 물량으로 쓰면 방이 채석장이 된다(검수 반려).
+                // 잔해 — 모서리에 넷만. 물량으로 쓰면 방이 채석장이 된다(검수 반려).
                 for (int k = 0; k < 4; k++)
                 {
                     float a = (k * 90f + 45f) * Mathf.Deg2Rad;
-                    float r = half - 1.4f;
+                    float r = half - 1.5f;
                     var p = new Vector3(center.x + Mathf.Sin(a) * r, y, center.z + Mathf.Cos(a) * r);
                     placed += RoomProp(room, "DungeonFurnRubble" + k, rubbleFbx[k % rubbleFbx.Length],
-                        p, (float)rng.NextDouble() * 360f, 1.4f + (float)rng.NextDouble() * 0.8f, false) ? 1 : 0;
+                        p, (float)rng.NextDouble() * 360f, 1.6f + (float)rng.NextDouble() * 0.6f, false) ? 1 : 0;
                 }
-
             }
-            Debug.Log("[Ulon] 던전 실내 채우기 — 등록 CC0 소품 " + placed + "개(기둥·등불·짐·잔해), 프리미티브 0개");
+            Debug.Log("[Ulon] 던전 실내 채우기 — 등록 CC0 소품 " + placed + "개(돌기둥·벽 횃불·궤짝·통·잔해), 프리미티브 0개");
         }
 
         /// <summary>

@@ -22,20 +22,29 @@ namespace Ulon.Editor
             public string Note;
         }
 
+        const string Dungeon = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/";
         const string Town = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/";
-        const string Nature = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/";
 
+        // 던전 소품은 KayKit Dungeon Remastered(CC0, 오너 승인 2026-09-06 도입)에서 온다.
+        // 그 전에는 마을 가구(걸상·벤치·짐수레)로 대신했고 검수가 「가구 창고」라고 반려했다 —
+        // 궤짝·통·부서진 상자 계열이 저장소에 아예 없었던 것이 원인이었다.
         public static readonly Model[] Registered =
         {
-            new Model { Fbx = Town + "poles.fbx",       License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "실내 지지 기둥" },
-            new Model { Fbx = Town + "planks.fbx",      License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "널빤지 더미" },
-            new Model { Fbx = Town + "cart.fbx",        License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "짐수레" },
-            new Model { Fbx = Town + "stall-bench.fbx", License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "작업대" },
-            new Model { Fbx = Town + "stall-stool.fbx", License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "궤짝 대용 걸상" },
-            new Model { Fbx = Town + "lantern.fbx",     License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "벽 등불(광원의 출처)" },
-            new Model { Fbx = Town + "rock-small.fbx",  License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "잔해" },
-            new Model { Fbx = Town + "rock-wide.fbx",   License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "잔해" },
-            new Model { Fbx = Nature + "rock_smallA.fbx",   License = "CC0", Source = "Kenney Nature Kit", Note = "잔해" },
+            new Model { Fbx = Dungeon + "barrel_large.obj",        License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "큰 통" },
+            new Model { Fbx = Dungeon + "barrel_small.obj",        License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "작은 통" },
+            new Model { Fbx = Dungeon + "barrel_small_stack.obj",  License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "통 더미" },
+            new Model { Fbx = Dungeon + "box_large.obj",           License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "큰 궤짝" },
+            new Model { Fbx = Dungeon + "box_small.obj",           License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "작은 궤짝" },
+            new Model { Fbx = Dungeon + "box_stacked.obj",         License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "쌓인 궤짝" },
+            new Model { Fbx = Dungeon + "crates_stacked.obj",      License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "쌓인 나무상자" },
+            new Model { Fbx = Dungeon + "chest.obj",               License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "궤" },
+            new Model { Fbx = Dungeon + "pillar.obj",              License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "돌기둥" },
+            new Model { Fbx = Dungeon + "pillar_decorated.obj",    License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "장식 돌기둥" },
+            new Model { Fbx = Dungeon + "rubble_large.obj",        License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "잔해 더미" },
+            new Model { Fbx = Dungeon + "rubble_half.obj",         License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "잔해" },
+            new Model { Fbx = Dungeon + "table_medium_broken.obj", License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "부서진 탁자" },
+            new Model { Fbx = Dungeon + "torch_mounted.obj",       License = "CC0", Source = "KayKit Dungeon Remastered 1.0", Note = "벽 횃불(광원의 출처)" },
+            new Model { Fbx = Town + "planks.fbx",                 License = "CC0", Source = "Kenney Fantasy Town Kit 2.0", Note = "널빤지 — 마을 가구 중 유일하게 남긴 것" },
         };
 
         public static bool IsRegistered(string assetPath)
