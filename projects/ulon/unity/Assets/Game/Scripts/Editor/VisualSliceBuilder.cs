@@ -2585,6 +2585,63 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// 방 크기(`Dungeon*.RoomHalf`)가 바뀌면 **이미 지어진 방은 안 따라온다** — `EnsureDungeon*`이
+        /// 실내 오브젝트가 있으면 일찍 반환하기 때문이다. 벽 실측 반경이 원장 값과 다르면 방 구조물만
+        /// 지우고 다시 짓는다(몹·보스·소품은 이름이 달라 남는다).
+        /// </summary>
+        public static void EnsureRoomSize()
+        {
+            var rooms = new[]
+            {
+                new { Obj = Dungeon1.InteriorObject, X = Dungeon1.InteriorX, Z = Dungeon1.InteriorZ, Half = Dungeon1.RoomHalf, H = Dungeon1.RoomHeight, Door = "West" },
+                new { Obj = Dungeon2.InteriorObject, X = Dungeon2.InteriorX, Z = Dungeon2.InteriorZ, Half = Dungeon2.RoomHalf, H = Dungeon2.RoomHeight, Door = "East" },
+                new { Obj = Dungeon3.InteriorObject, X = Dungeon3.InteriorX, Z = Dungeon3.InteriorZ, Half = Dungeon3.RoomHalf, H = Dungeon3.RoomHeight, Door = "West" },
+            };
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                var go = GameObject.Find(rooms[i].Obj);
+                if (go == null)
+                    continue;
+                var room = go.transform;
+                var center = new Vector3(rooms[i].X, 0f, rooms[i].Z);
+
+                // 실측 반경 = 벽 슬래브 중심의 최대 수평 편차. 문 쪽이 비어도 나머지 세 면이 있으므로 잰다.
+                float measured = -1f;
+                bool hasDoorBack = false;
+                for (int c = 0; c < room.childCount; c++)
+                {
+                    var child = room.GetChild(c);
+                    if (child.name == "DungeonWallDoorBack")
+                        hasDoorBack = true;
+                    if (!child.name.StartsWith("DungeonWall", StringComparison.Ordinal) || child.name.StartsWith("DungeonWallDoor", StringComparison.Ordinal))
+                        continue;
+                    var p = child.position;
+                    measured = Mathf.Max(measured, Mathf.Max(Mathf.Abs(p.x - center.x), Mathf.Abs(p.z - center.z)));
+                }
+                bool sizeOk = measured >= 0f && Mathf.Abs(measured - rooms[i].Half) < 0.05f;
+                if (sizeOk && hasDoorBack)
+                    continue;
+
+                int removed = 0;
+                for (int c = room.childCount - 1; c >= 0; c--)
+                {
+                    var child = room.GetChild(c);
+                    string n = child.name;
+                    bool structural = n.StartsWith("Dungeon", StringComparison.Ordinal)
+                        || n.StartsWith("CapDress", StringComparison.Ordinal)
+                        || n.IndexOf("lantern", StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (!structural)
+                        continue;
+                    UnityEngine.Object.DestroyImmediate(child.gameObject);
+                    removed++;
+                }
+                BuildDungeonRoom(room, center, rooms[i].Half, rooms[i].H, rooms[i].Door);
+                Debug.Log("[Ulon] 던전 방 보수 — " + rooms[i].Obj + " 반경 " + measured.ToString("0.0") + "m → " +
+                    rooms[i].Half.ToString("0.0") + "m, 문 밖 통로 " + (hasDoorBack ? "있음" : "없음→신설") + ", 구조물 " + removed + "개 재건");
+            }
+        }
+
+        /// <summary>
         /// 이미 만들어진 씬을 고치는 멱등 보수 패스(검수 반려 B). `Ensure*`는 오브젝트가 있으면 일찍 반환하므로
         /// 코드 수정만으로는 디스크의 씬이 안 고쳐진다. 옛 뚜껑·뚜껑 장식을 지우고 새 높이로 다시 깐다.
         /// </summary>
@@ -2674,6 +2731,34 @@ namespace Ulon.Editor
                     else { pos = new Vector3(center.x - half, y + wallH * 0.5f, center.z + off); size = new Vector3(t, wallH, seg); }
                     RoomSlab(room, "DungeonWall" + name + (i + 1), pos, size, wallMat);
                 }
+            }
+
+            // 문 쪽 한 칸은 벽이 없다 — 그 틈으로 쏜 시선은 **아무것도 안 맞고** 화면에 검은 삼각형으로 남는다
+            // (검수 2026-09-06: 8.11m 줌 오른쪽 아래 모서리). 문 밖에 짧은 통로를 이어 막는다.
+            {
+                Vector3 dir = doorSide == "North" ? Vector3.forward : doorSide == "South" ? Vector3.back
+                    : doorSide == "East" ? Vector3.right : Vector3.left;
+                Vector3 per = new Vector3(dir.z, 0f, dir.x);
+                float len = 5f;
+                Vector3 mouth = center + dir * half;
+                Vector3 axis(float along, float side) => new Vector3(
+                    mouth.x + dir.x * along + per.x * side, 0f, mouth.z + dir.z * along + per.z * side);
+                Vector3 SizeOf(float along, float across) =>
+                    new Vector3(Mathf.Abs(dir.x) * along + Mathf.Abs(per.x) * across, 0f, Mathf.Abs(dir.z) * along + Mathf.Abs(per.z) * across);
+
+                var back = axis(len, 0f);
+                var bs = SizeOf(t, seg + t * 2f); bs.y = wallH;
+                RoomSlab(room, "DungeonWallDoorBack", new Vector3(back.x, y + wallH * 0.5f, back.z), bs, wallMat);
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    var sideP = axis(len * 0.5f, s * (seg * 0.5f + t * 0.5f));
+                    var ss = SizeOf(len, t); ss.y = wallH;
+                    RoomSlab(room, "DungeonWallDoorSide" + (s + 1), new Vector3(sideP.x, y + wallH * 0.5f, sideP.z), ss, wallMat);
+                }
+                var mid = axis(len * 0.5f, 0f);
+                var fs = SizeOf(len, seg + t * 2f);
+                RoomSlab(room, "DungeonFloorDoor", new Vector3(mid.x, y + 0.1f, mid.z), new Vector3(fs.x, 0.2f, fs.z), floorMat);
+                RoomSlab(room, "DungeonCeilDoor", new Vector3(mid.x, y + wallH, mid.z), new Vector3(fs.x, 0.4f, fs.z), ceilMat);
             }
 
             for (int c = 0; c < 4; c++)

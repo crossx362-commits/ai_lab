@@ -13,7 +13,10 @@ namespace Ulon.Editor
         /// </summary>
         const int InteriorWallMin = 8;
         const float InteriorWallHeightMin = 1.5f;
-        const float InteriorRoomRadius = 9f;
+        // 방 반경은 **원장(RoomHalf)에서 유도한다** — 상수로 박으면 방을 넓힌 순간 모서리 벽·기둥이
+        // 판정 반경 밖으로 나가 「벽이 6개」로 오판한다(검은 허공 랩에서 실제로 그랬다). 대각선 + 여유.
+        static float InteriorRoomRadius =>
+            Mathf.Max(Dungeon1.RoomHalf, Mathf.Max(Dungeon2.RoomHalf, Dungeon3.RoomHalf)) * Mathf.Sqrt(2f) + 1.5f;
         const float InteriorMobGapMin = 4f;
 
         static void AssertDungeonInterior()
@@ -137,6 +140,7 @@ namespace Ulon.Editor
             CheckScreenFill("던전 1", new Vector2(Dungeon1.InteriorX, Dungeon1.InteriorZ), cam, blocker, Dungeon1.InteriorObject, Dungeon1.MobObject, Dungeon1.BossObject);
             CheckScreenFill("던전 2", new Vector2(Dungeon2.InteriorX, Dungeon2.InteriorZ), cam, blocker, Dungeon2.InteriorObject, Dungeon2.MobObject, Dungeon2.BossObject);
             CheckScreenFill("던전 3", new Vector2(Dungeon3.InteriorX, Dungeon3.InteriorZ), cam, blocker, Dungeon3.InteriorObject, Dungeon3.MobObject, Dungeon3.BossObject);
+            AssertVoidNegativeControl();
 
             Debug.Log("[Ulon] 플레이 카메라 시야 통과 — pitch " + cam.Pitch + "·yaw " + cam.Yaw + "에서 방 안 플레이어를 가리는 것은 전부 " + Ulon.Client.DungeonSightFade.BlockerLayer + " 레이어(런타임 렌더 오프)");
         }
@@ -187,12 +191,67 @@ namespace Ulon.Editor
         const float InteriorShareMin = 0.90f;
         /// <summary>검수 2026-09-06 요구 — 이 거리까지 줌 아웃해도 실내가 유지돼야 한다(전투 시야).</summary>
         const float IndoorDistanceRequired = 8.0f;
+        /// <summary>
+        /// 화면에서 허용하는 「아무것도 안 맞는 화면」 비율(벽 바깥 허공).
+        /// 실측(2026-09-06): 고친 상태 던전 1·2·3 전부 0.00 / 결함 상태(문 밖 통로를 치움) 0.02.
+        /// 상한을 0.02로 두면 결함이 경계에 걸터앉는다 — 0.005면 고친 상태는 통과하고 결함은 4배로 넘긴다.
+        /// </summary>
+        const float VoidShareMax = 0.005f;
         const int FillRaysPerAxis = 21;
 
 
         /// <summary>같은 화각·같은 페이드로 한 거리에서의 잔디/실내 비율을 잰다(거리 실측 스윕과 본판정이 같은 자를 쓰게).</summary>
+        static string s_voidSample = "";
+
+        /// <summary>
+        /// 허공 게이트의 네거티브 컨트롤 — 문 밖 통로의 **막음벽을 실제로 치워** 빨간불을 확인한다.
+        /// 빌더 한 줄을 주석 처리하는 방식은 씬에 이미 벽이 있어 아무것도 증명하지 못한다(검수 지적).
+        /// </summary>
+        static void AssertVoidNegativeControl()
+        {
+            var cam = UnityEngine.Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
+            if (cam == null)
+                throw new InvalidOperationException("씬에 QuarterViewCamera가 없습니다 — 허공 네거티브 컨트롤을 할 수 없습니다.");
+            int blocker = LayerMask.NameToLayer(Ulon.Client.DungeonSightFade.BlockerLayer);
+            var interior = GameObject.Find(Dungeon2.InteriorObject);
+            if (interior == null)
+                throw new InvalidOperationException("던전 2 내부 오브젝트가 없습니다 — 허공 네거티브 컨트롤을 할 수 없습니다.");
+            var corridor = new System.Collections.Generic.List<Transform>();
+            var all = interior.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+                if (all[i].name.StartsWith("DungeonWallDoor", StringComparison.Ordinal) || all[i].name == "DungeonCeilDoor")
+                    corridor.Add(all[i]);
+            if (corridor.Count < 4)
+                throw new InvalidOperationException("던전 2 문 밖 통로 구조물이 " + corridor.Count + "개입니다 — 막음벽+옆벽 2+천장이 있어야 문틈으로 허공이 안 보입니다.");
+
+            var center = new Vector2(Dungeon2.InteriorX, Dungeon2.InteriorZ);
+            var saved = new Vector3[corridor.Count];
+            for (int i = 0; i < corridor.Count; i++)
+                saved[i] = corridor[i].position;
+            float voidShare;
+            try
+            {
+                for (int i = 0; i < corridor.Count; i++)
+                    corridor[i].position = saved[i] + Vector3.up * 60f;   // 통로를 통째로 치운다(결함 상태 재현)
+                Physics.SyncTransforms();
+                MeasureFill(center, cam, Mathf.Min(cam.Distance, cam.IndoorDistance), blocker, interior,
+                    GameObject.Find(Dungeon2.MobObject), GameObject.Find(Dungeon2.BossObject),
+                    out float _, out float _, out voidShare);
+            }
+            finally
+            {
+                for (int i = 0; i < corridor.Count; i++)
+                    corridor[i].position = saved[i];
+                Physics.SyncTransforms();
+            }
+            if (voidShare <= VoidShareMax)
+                throw new InvalidOperationException("허공 게이트 네거티브 컨트롤 실패 — 문 밖 통로를 치웠는데도 허공이 " +
+                    voidShare.ToString("0.00") + "입니다(상한 " + VoidShareMax + "). 게이트가 결함을 못 잡습니다.");
+            Debug.Log("[Ulon] 허공 게이트 네거티브 컨트롤 통과 — 문 밖 통로 제거 시 허공 " + voidShare.ToString("0.00") + " > 상한 " + VoidShareMax);
+        }
+
         static void MeasureFill(Vector2 center, Ulon.Client.QuarterViewCamera cam, float dist, int blockerLayer,
-            GameObject interior, GameObject mobGo, GameObject bossGo, out float grass, out float interiorShare)
+            GameObject interior, GameObject mobGo, GameObject bossGo, out float grass, out float interiorShare, out float voidShare)
         {
             float groundY = GroundYAt(center) - VisualSliceBuilder.DungeonDepth;
             var player = new Vector3(center.x, groundY + 1.0f, center.y);
@@ -203,6 +262,9 @@ namespace Ulon.Editor
             var hidden = new System.Collections.Generic.List<Renderer>();
             Ulon.Client.DungeonSightFade.Hide(eye, player, Ulon.Client.DungeonSightFade.DefaultRadius, hidden);
             int total = 0, outdoor = 0, skyCount = 0, inside = 0;
+            // 허공이 **화면 어디로** 새는지 남긴다 — 「어딘가 검다」만으론 방을 넓힐지 문틈을 막을지 못 고른다.
+            float vxMin = 1f, vxMax = -1f, vyMin = 1f, vyMax = -1f;
+            var vDirSum = Vector3.zero;
             try
             {
                 for (int iy = 0; iy < FillRaysPerAxis; iy++)
@@ -216,7 +278,13 @@ namespace Ulon.Editor
                         if (IsOutdoorPixel(eye, dir, out bool sky, out Collider firstHit))
                         {
                             outdoor++;
-                            if (sky) skyCount++;
+                            if (sky)
+                            {
+                                skyCount++;
+                                vxMin = Mathf.Min(vxMin, tx); vxMax = Mathf.Max(vxMax, tx);
+                                vyMin = Mathf.Min(vyMin, ty); vyMax = Mathf.Max(vyMax, ty);
+                                vDirSum += dir;
+                            }
                         }
                         if (IsInteriorHit(firstHit, interior, mobGo, bossGo))
                             inside++;
@@ -229,6 +297,10 @@ namespace Ulon.Editor
             }
             grass = (outdoor - skyCount) / (float)total;
             interiorShare = inside / (float)total;
+            voidShare = skyCount / (float)total;   // 아무것도 안 맞은 화면 = 벽 바깥 허공(검은 삼각형)
+            s_voidSample = skyCount == 0 ? "" :
+                " 허공 위치 화면 x[" + vxMin.ToString("0.00") + "," + vxMax.ToString("0.00") + "] y[" +
+                vyMin.ToString("0.00") + "," + vyMax.ToString("0.00") + "] 평균방향 " + vDirSum.normalized.ToString("0.00");
         }
 
         static void CheckScreenFill(string label, Vector2 center, Ulon.Client.QuarterViewCamera cam, int blockerLayer,
@@ -264,9 +336,14 @@ namespace Ulon.Editor
                     "m에 비해 멉니다. 더 넓은 전투 시야가 필요하면 거리가 아니라 **방 깊이**를 늘려야 합니다(§4.2).");
 
             float grass, interiorShare;
-            MeasureFill(center, cam, useDist, blockerLayer, interior, mobGo, bossGo, out grass, out interiorShare);
+            MeasureFill(center, cam, useDist, blockerLayer, interior, mobGo, bossGo, out grass, out interiorShare, out float voidShare);
             Debug.Log("[Ulon] 화면 채움 계측 " + label + " 잔디 " + grass.ToString("0.00") + " (눈높이 지표 아래 " + (surfaceY - eyeProbe.y).ToString("0.00") + "m)");
-            Debug.Log("[Ulon] 실내 비율 계측 " + label + " " + interiorShare.ToString("0.00") + " (거리 " + useDist.ToString("0.0") + "m)");
+            Debug.Log("[Ulon] 실내 비율 계측 " + label + " " + interiorShare.ToString("0.00") + " (거리 " + useDist.ToString("0.0") + "m·허공 " + voidShare.ToString("0.00") + ")" + s_voidSample);
+            // 「잔디 비율 상한」은 대리 지표였다 — 벽 바깥 **허공**(아무것도 안 맞는 검은 화면)은 잔디가 아니라서
+            // 통과했다(검수 2026-09-06: 8.11m 줌에서 화면 아래 두 모서리가 검다). 허공에 따로 상한을 건다.
+            if (voidShare > VoidShareMax)
+                throw new InvalidOperationException(label + " 화면의 " + (voidShare * 100f).ToString("0") + "%가 벽 바깥 허공(검은 화면)입니다 — 최대 " +
+                    (VoidShareMax * 100f).ToString("0") + "%. 방이 카메라 화각을 못 채웁니다(§8.2). 줌 거리에 맞게 **방을 넓히세요**.");
             if (interiorShare < InteriorShareMin)
                 throw new InvalidOperationException(label + " 플레이 카메라 화면에서 던전 실내(바닥·벽·몹)가 " + (interiorShare * 100f).ToString("0") + "%뿐입니다 — 최소 " + (InteriorShareMin * 100f).ToString("0") + "%. 잔디를 막아도 뚜껑 윗면이 화면을 덮으면 실내로 안 읽힙니다(§8.2·§4.2 줌).");
             if (grass > OutdoorFillMax)

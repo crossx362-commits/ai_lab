@@ -42,7 +42,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureDungeon2();
             VisualSliceBuilder.EnsureDungeon3();
             VisualSliceBuilder.EnsureFieldBoss();
-            VisualSliceBuilder.EnsureCapBuried();          // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
+            VisualSliceBuilder.EnsureRoomSize();           // 방 반경이 원장과 다르면 헐고 다시 짓는다(검은 허공)
+            VisualSliceBuilder.EnsureCapBuried();        // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
             VisualSliceBuilder.EnsureCameraSightFade();
             if (VisualSliceBuilder.ConfigureHumanoid(
