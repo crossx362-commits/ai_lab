@@ -5,10 +5,9 @@ namespace Ulon.Client
     /// <summary>
     /// §11.2 사운드 — 행동 결과가 **귀에도** 남게 한다(구멍 표 ③: 사운드 0).
     ///
-    /// **클립 출처**: 저장소에 등록된 CC0 오디오가 하나도 없다(Kenney Particle Pack은 이미지 전용).
-    /// 그래서 클립을 받아오지 않고 **코드로 합성한다** — VFX에서 코드 생성 텍스처를 허용한 것과 같은 선이며,
-    /// 라이선스 대상이 되는 외부 파일이 생기지 않는다. 소리의 **질**은 자리를 채운 수준이고,
-    /// 실제로 들어 보고 판단하는 것은 오너 몫이다(검수는 소리를 들을 수 없다).
+    /// **클립 출처**: 등록 CC0 팩(Kenney RPG Audio, 오너 승인 2026-09-07)의 녹음 클립을 씬에 박아 두고
+    /// (`ActionSfx/Sfx*`의 AudioSource) 그것을 쓴다. 클립이 없으면 **코드 합성으로 폴백**한다 —
+    /// 클립이 빠졌다고 무음이 되지 않게(검수 요구). 실제로 들어 보고 판단하는 것은 오너 몫이다.
     ///
     /// 종류마다 **길이와 음높이가 달라야** 한다 — 같은 삑 소리 세 개는 귀에서 한 가지로 뭉친다.
     /// </summary>
@@ -36,13 +35,40 @@ namespace Ulon.Client
         }
 
         const int SampleRate = 44100;
+        public const string RootObject = "ActionSfx";
         static readonly AudioClip[] Cache = new AudioClip[3];
+
+        public static string ObjectFor(Kind kind)
+        {
+            switch (kind)
+            {
+                case Kind.Heal: return "SfxHeal";
+                case Kind.Craft: return "SfxCraft";
+                default: return "SfxHit";
+            }
+        }
+
+        /// <summary>씬에 박아 둔 등록 CC0 클립(없으면 null) — 편집기 게이트도 같은 경로로 찾는다.</summary>
+        public static AudioClip PackClip(Kind kind)
+        {
+            var root = GameObject.Find(RootObject);
+            if (root == null)
+                return null;
+            var child = root.transform.Find(ObjectFor(kind));
+            if (child == null)
+                return null;
+            var src = child.GetComponent<AudioSource>();
+            return src != null ? src.clip : null;
+        }
 
         public static AudioClip Clip(Kind kind)
         {
+            var pack = PackClip(kind);
+            if (pack != null)
+                return pack;
             int i = (int)kind;
             if (Cache[i] == null)
-                Cache[i] = Synth(kind.ToString(), SpecFor(kind));
+                Cache[i] = Synth(kind.ToString(), SpecFor(kind));   // 폴백 — 클립이 빠져도 무음이 되지 않게
             return Cache[i];
         }
 

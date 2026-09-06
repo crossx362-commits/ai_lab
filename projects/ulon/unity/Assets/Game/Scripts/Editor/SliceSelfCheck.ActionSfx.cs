@@ -31,7 +31,11 @@ namespace Ulon.Editor
             var m = new SfxMeasure[kinds.Length];
             for (int i = 0; i < kinds.Length; i++)
             {
-                m[i] = MeasureSfx(kinds[i].ToString(), ActionSfx.SpecFor(kinds[i]));
+                // **실제로 울리는 클립**을 잰다 — 사양만 재면 배선이 폴백으로 내려가도 통과한다.
+                if (ActionSfx.PackClip(kinds[i]) == null)
+                    throw new InvalidOperationException("등록 CC0 클립이 씬에 없습니다: " + ActionSfx.ObjectFor(kinds[i]) +
+                        " — 합성 폴백으로 내려간 채 통과시키지 않는다.");
+                m[i] = MeasureClip(ActionSfx.Clip(kinds[i]));
                 Debug.Log("[Ulon] SFX " + kinds[i] + " — " + m[i].Seconds.ToString("0.00") + "초, RMS " +
                           m[i].Rms.ToString("0.000") + ", 음높이 " + m[i].Hz.ToString("F0") + "Hz");
                 if (m[i].Rms < SfxRmsMin)
@@ -58,12 +62,11 @@ namespace Ulon.Editor
             Directory.CreateDirectory(dir);
             foreach (ActionSfx.Kind kind in Enum.GetValues(typeof(ActionSfx.Kind)))
             {
-                var clip = ActionSfx.Synth(kind.ToString(), ActionSfx.SpecFor(kind));
-                var data = new float[clip.samples];
+                var clip = ActionSfx.Clip(kind);
+                var data = new float[clip.samples * clip.channels];
                 clip.GetData(data, 0);
                 File.WriteAllBytes(Path.Combine(dir, "sfx_" + kind.ToString().ToLowerInvariant() + ".wav"),
-                    Wav(data, clip.frequency));
-                UnityEngine.Object.DestroyImmediate(clip);
+                    Wav(data, clip.frequency * clip.channels));
             }
             Debug.Log("[Ulon] SFX wav 3개 내보냄(오너 청취용) — " + dir);
         }
@@ -129,8 +132,17 @@ namespace Ulon.Editor
         static SfxMeasure MeasureSfx(string name, ActionSfx.Spec spec)
         {
             var clip = ActionSfx.Synth(name, spec);
-            var data = new float[clip.samples];
-            clip.GetData(data, 0);
+            var m = MeasureClip(clip);
+            UnityEngine.Object.DestroyImmediate(clip);
+            return m;
+        }
+
+        static SfxMeasure MeasureClip(AudioClip clip)
+        {
+            var data = new float[clip.samples * clip.channels];
+            if (!clip.GetData(data, 0))
+                throw new InvalidOperationException("클립 샘플을 읽지 못했습니다: " + clip.name +
+                    " (임포트 설정이 Decompress On Load인지 확인)");
             double sum = 0.0;
             int crossings = 0;
             for (int i = 0; i < data.Length; i++)
@@ -139,14 +151,12 @@ namespace Ulon.Editor
                 if (i > 0 && ((data[i - 1] < 0f && data[i] >= 0f) || (data[i - 1] >= 0f && data[i] < 0f)))
                     crossings++;
             }
-            var m = new SfxMeasure
+            return new SfxMeasure
             {
                 Seconds = clip.length,
                 Rms = (float)Math.Sqrt(sum / Math.Max(1, data.Length)),
-                Hz = clip.length > 0f ? crossings * 0.5f / clip.length : 0f,
+                Hz = clip.length > 0f ? crossings * 0.5f / (clip.length * Mathf.Max(1, clip.channels)) : 0f,
             };
-            UnityEngine.Object.DestroyImmediate(clip);
-            return m;
         }
 
         /// <summary>

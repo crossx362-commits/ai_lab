@@ -45,7 +45,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureFieldBoss();
             VisualSliceBuilder.EnsureFootOnGround();       // 지형이 올라가면 배치물도 따라 올린다(검수 A)
             VisualSliceBuilder.EnsureRoomSize();           // 방 반경이 원장과 다르면 헐고 다시 짓는다(검은 허공)
-            ActionVfxBuilder.EnsureActionVfx();            // 행동 결과 파티클(§11.2·§18.15)
+            ActionVfxBuilder.EnsureActionVfx();
+            ActionSfxBuilder.EnsureActionSfx();          // 등록 CC0 효과음(§11.2)            // 행동 결과 파티클(§11.2·§18.15)
             VisualSliceBuilder.EnsureRoomFurnishing();     // 넓힌 방을 채운다(§6.1 던전 콘텐츠)
             VisualSliceBuilder.EnsureCapBuried();        // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
