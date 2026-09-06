@@ -23,20 +23,36 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 실내 소품 자격 통과 — " + total + "개 전부 PropArt 등록 CC0 모델(프리미티브 0개)");
         }
 
+        /// <summary>한 종류가 방 소품에서 차지할 수 있는 최대 비율 — 넘으면 방이 「돌무더기 창고」가 된다(검수 반려).</summary>
+        const float PropKindShareMax = 0.40f;
+
         static int CheckProps(string label, string interiorObject)
         {
             var interior = GameObject.Find(interiorObject);
             if (interior == null)
                 throw new InvalidOperationException(interiorObject + "이(가) 없습니다.");
             int n = 0;
+            var kinds = new Dictionary<string, int>(StringComparer.Ordinal);
             foreach (var t in PropNodes(interior))
             {
                 string why = PropArt.ReasonUnqualified(t.gameObject);
                 if (why != "")
                     throw new InvalidOperationException(label + "의 소품 " + t.name + "이(가) 자격 미달입니다 — " + why +
                         ". 등록된 CC0 소품 프리팹만 쓴다(자격 원장 Editor/PropArt.cs).");
+                string kind = PropArt.ModelKeyOf(t.gameObject);
+                kinds[kind] = (kinds.TryGetValue(kind, out int had) ? had : 0) + 1;
                 n++;
             }
+            // 종류 편중 — 자격을 통과해도 한 종류가 방을 덮으면 화면이 망가진다(바위 44개 = 채석장).
+            foreach (var kv in kinds)
+            {
+                float share = kv.Value / (float)n;
+                if (share > PropKindShareMax)
+                    throw new InvalidOperationException(label + "의 소품이 " + kv.Key + " 한 종류로 " +
+                        (share * 100f).ToString("0") + "%입니다 — 상한 " + (PropKindShareMax * 100f).ToString("0") +
+                        "%. 한 종류로 채우면 던전 방이 아니라 그 물건 창고로 읽힌다(검수 2026-09-06).");
+            }
+            Debug.Log("[Ulon] 실내 소품 종류 " + label + " " + n + "개 / " + kinds.Count + "종, 최다 종류 비율 상한 " + PropKindShareMax);
             return n;
         }
 
@@ -75,6 +91,32 @@ namespace Ulon.Editor
             if (!red)
                 throw new InvalidOperationException("소품 자격 네거티브 컨트롤 실패 — 색칠 큐브를 소품으로 넣었는데도 통과했습니다.");
             Debug.Log("[Ulon] 실내 소품 자격 네거티브 컨트롤 통과 — 프리미티브 큐브를 넣으면 FAIL");
+
+            // 종류 편중 네거티브 컨트롤 — 한 종류를 실제로 잔뜩 복제해 넣으면 빨간불이어야 한다.
+            var seed = PropNodes(interior).Find(t => t.name.StartsWith("DungeonFurnRubble", StringComparison.Ordinal));
+            if (seed == null)
+                throw new InvalidOperationException("복제할 잔해 소품이 없습니다.");
+            var clones = new List<GameObject>();
+            bool kindRed = false;
+            try
+            {
+                for (int i = 0; i < 30; i++)
+                {
+                    var c = UnityEngine.Object.Instantiate(seed.gameObject, seed.parent);
+                    c.name = "DungeonFurnRubbleClone" + i;
+                    clones.Add(c);
+                }
+                try { AssertRoomPropsQualified(); }
+                catch (InvalidOperationException) { kindRed = true; }
+            }
+            finally
+            {
+                for (int i = 0; i < clones.Count; i++)
+                    UnityEngine.Object.DestroyImmediate(clones[i]);
+            }
+            if (!kindRed)
+                throw new InvalidOperationException("소품 종류 편중 네거티브 컨트롤 실패 — 바위를 30개 더 넣었는데도 통과했습니다.");
+            Debug.Log("[Ulon] 실내 소품 종류 편중 네거티브 컨트롤 통과 — 한 종류를 물량으로 넣으면 FAIL");
         }
     }
 }

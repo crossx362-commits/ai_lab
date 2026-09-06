@@ -50,6 +50,24 @@ namespace Ulon.Editor
         /// 자격 판정. 보이는 메시가 하나도 없거나, 내장 프리미티브거나, 원장에 없는 모델이면 사유를 돌려준다.
         /// 통과면 빈 문자열.
         /// </summary>
+        /// <summary>이 소품이 어느 등록 모델인가(자격 통과 오브젝트 기준). 못 찾으면 빈 문자열.</summary>
+        public static string ModelKeyOf(GameObject go)
+        {
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (!rends[i].enabled || !rends[i].gameObject.activeInHierarchy)
+                    continue;
+                var mf = rends[i].GetComponent<MeshFilter>();
+                if (mf == null || mf.sharedMesh == null)
+                    continue;
+                string path = AssetDatabase.GetAssetPath(mf.sharedMesh);
+                if (IsRegistered(path))
+                    return System.IO.Path.GetFileNameWithoutExtension(path);
+            }
+            return "";
+        }
+
         public static string ReasonUnqualified(GameObject go)
         {
             var rends = go.GetComponentsInChildren<Renderer>(true);

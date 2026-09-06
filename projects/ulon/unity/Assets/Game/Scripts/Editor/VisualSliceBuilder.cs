@@ -2741,40 +2741,48 @@ namespace Ulon.Editor
                 var rng = new System.Random(rooms[i].Seed);
                 float Jitter(float span) => (float)(rng.NextDouble() - 0.5) * span;
 
-                // 네 변 가운데 — 나무 지지 기둥 + 그 위 등불. 빛만 있고 출처가 없던 방을 고친다.
+                // 네 변 가운데 — **천장까지 닿는** 지지 기둥 + 벽 등불. 짧은 막대는 허공에 뜬 막대기로 읽힌다(검수).
                 for (int sIdx = 0; sIdx < 4; sIdx++)
                 {
-                    float px = sIdx == 2 ? half - 1.1f : sIdx == 3 ? -half + 1.1f : 0f;
-                    float pz = sIdx == 0 ? half - 1.1f : sIdx == 1 ? -half + 1.1f : 0f;
+                    float px = sIdx == 2 ? half - 0.7f : sIdx == 3 ? -half + 0.7f : 0f;
+                    float pz = sIdx == 0 ? half - 0.7f : sIdx == 1 ? -half + 0.7f : 0f;
                     placed += RoomProp(room, "DungeonFurnPole" + sIdx, Town + "poles.fbx",
-                        new Vector3(center.x + px, y, center.z + pz), sIdx * 90f, 3.4f) ? 1 : 0;
-                    placed += RoomProp(room, "DungeonFurnLantern" + sIdx, Town + "lantern.fbx",
-                        new Vector3(center.x + px * 0.88f, y + 2.1f, center.z + pz * 0.88f), sIdx * 90f + 25f, 0.9f) ? 1 : 0;
-                    RoomTorch(room, new Vector3(center.x + px * 0.85f, y + 2.5f, center.z + pz * 0.85f), half * 0.7f);
+                        new Vector3(center.x + px, y, center.z + pz), sIdx * 90f, RoomHeightOfWall - RoomFloorTop) ? 1 : 0;
+                    var lamp = RoomPropObject(room, "DungeonFurnLantern" + sIdx, Town + "lantern.fbx",
+                        new Vector3(center.x + px * 0.9f, y + 2.0f, center.z + pz * 0.9f), sIdx * 90f + 25f, 1.3f, true);
+                    if (lamp != null)
+                    {
+                        TintCharacter(lamp, "DungeonLanternGlow", new Color(1f, 0.72f, 0.34f));   // 흰 막대기로 읽히던 것을 불빛 색으로
+                        placed++;
+                    }
+                    RoomTorch(room, new Vector3(center.x + px * 0.85f, y + 2.4f, center.z + pz * 0.85f), half * 0.7f);
                 }
 
-                // 벽 쪽 짐 — 짐수레·작업대·널빤지·걸상을 벽을 따라 무리지어. 중앙은 비운다.
+                // 벽 쪽 짐 — 방을 채우는 **주력**이다(검수: 바위가 아니라 궤짝·수레·작업대가 던전 방을 만든다).
+                // 수로 채우지 않는다. 큰 소품 10개로 맨바닥 상한을 맞춘다.
                 for (int k = 0; k < 16; k++)
                 {
-                    float a = (k * 23f + 20f) * Mathf.Deg2Rad;
-                    float r = half - 1.7f - Mathf.Abs(Jitter(1.0f));
+                    float a = (k * 22.5f + 20f) * Mathf.Deg2Rad;
+                    float r = half - 1.9f - Mathf.Abs(Jitter(1.6f));
                     var p = new Vector3(center.x + Mathf.Sin(a) * r, y, center.z + Mathf.Cos(a) * r);
                     string fbx = loadFbx[k % loadFbx.Length];
                     // 납작한 모델(널빤지·작업대)은 **두께**로 맞추면 거대한 판이 된다 — 바닥 폭으로 맞춘다.
-                    float w = fbx.EndsWith("stall-stool.fbx", StringComparison.Ordinal) ? 0.7f
-                        : fbx.EndsWith("planks.fbx", StringComparison.Ordinal) ? 1.4f
-                        : fbx.EndsWith("stall-bench.fbx", StringComparison.Ordinal) ? 1.6f : 1.8f;
-                    placed += RoomProp(room, "DungeonFurnLoad" + k, fbx, p, (float)rng.NextDouble() * 360f, w, false) ? 1 : 0;
+                    float w = fbx.EndsWith("stall-stool.fbx", StringComparison.Ordinal) ? 1.1f
+                        : fbx.EndsWith("planks.fbx", StringComparison.Ordinal) ? 2.0f
+                        : fbx.EndsWith("stall-bench.fbx", StringComparison.Ordinal) ? 2.4f : 2.6f;
+                    // 벽을 바라보게 세운다 — 무작위 yaw는 수레·벤치를 누운 것처럼 보이게 했다(검수).
+                    float yaw = a * Mathf.Rad2Deg + 180f;
+                    placed += RoomProp(room, "DungeonFurnLoad" + k, fbx, p, yaw, w, false) ? 1 : 0;
                 }
 
-                // 잔해 — 바닥이 넓게 비지 않게 흩되, 중앙 반경 2.5m 밖에만 둔다(전투 공간).
-                for (int k = 0; k < 44; k++)
+                // 잔해 바위 — **모서리에 서너 개만**. 이걸 물량으로 쓰면 방이 채석장이 된다(검수 반려).
+                for (int k = 0; k < 4; k++)
                 {
-                    float a = (k * 37f + 140f) * Mathf.Deg2Rad;
-                    float r = half * (0.32f + (float)rng.NextDouble() * 0.58f);
+                    float a = (k * 90f + 45f) * Mathf.Deg2Rad;
+                    float r = half - 1.4f;
                     var p = new Vector3(center.x + Mathf.Sin(a) * r, y, center.z + Mathf.Cos(a) * r);
                     placed += RoomProp(room, "DungeonFurnRubble" + k, rubbleFbx[k % rubbleFbx.Length],
-                        p, (float)rng.NextDouble() * 360f, 1.0f + (float)rng.NextDouble() * 1.1f, false) ? 1 : 0;
+                        p, (float)rng.NextDouble() * 360f, 1.4f + (float)rng.NextDouble() * 0.8f, false) ? 1 : 0;
                 }
 
             }
@@ -2794,6 +2802,11 @@ namespace Ulon.Editor
 
         static bool RoomProp(Transform room, string name, string fbx, Vector3 pos, float yaw, float size, bool byHeight)
         {
+            return RoomPropObject(room, name, fbx, pos, yaw, size, byHeight) != null;
+        }
+
+        static GameObject RoomPropObject(Transform room, string name, string fbx, Vector3 pos, float yaw, float size, bool byHeight)
+        {
             if (!PropArt.IsRegistered(fbx))
                 throw new InvalidOperationException("소품 " + fbx + "은(는) PropArt 원장에 없습니다 — 등록 없이 쓰지 마라(§8.2·§11).");
             string prefabPath = EnsureEnvPrefab(fbx);
@@ -2801,7 +2814,7 @@ namespace Ulon.Editor
             if (prefab == null)
             {
                 Debug.LogWarning("[Ulon] 소품 프리팹 없음: " + fbx);
-                return false;
+                return null;
             }
             var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             go.name = name;
@@ -2835,7 +2848,7 @@ namespace Ulon.Editor
             }
             if (blocker >= 0)
                 go.layer = blocker;
-            return true;
+            return go;
         }
 
         /// <summary>방 원점에서 바닥 슬래브 윗면까지.</summary>
