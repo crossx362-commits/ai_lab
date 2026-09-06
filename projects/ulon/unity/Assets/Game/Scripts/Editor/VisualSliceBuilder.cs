@@ -781,6 +781,7 @@ namespace Ulon.Editor
             eg.IsExit = false;
             eg.DisplayName = "던전 입구";
             EnsureCollider(entrance);
+            BuildDungeonEntrance(parent, new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 90f);
             Decor(parent, RockW, new Vector3(Dungeon1.EntranceX - 1.4f, 0f, Dungeon1.EntranceZ + 0.6f), new Vector3(0f, 20f, 0f));
             Decor(parent, RockL, new Vector3(Dungeon1.EntranceX - 1.1f, 0f, Dungeon1.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
             Decor(parent, RockN, new Vector3(Dungeon1.EntranceX + 0.8f, 0f, Dungeon1.EntranceZ + 1.3f), new Vector3(0f, 10f, 0f));
@@ -852,6 +853,7 @@ namespace Ulon.Editor
             eg.IsExit = false;
             eg.DisplayName = "던전 2 입구";
             EnsureCollider(entrance);
+            BuildDungeonEntrance(parent, new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ), -90f);
             Decor(parent, RockW, new Vector3(Dungeon2.EntranceX + 1.4f, 0f, Dungeon2.EntranceZ + 0.6f), new Vector3(0f, 20f, 0f));
             Decor(parent, RockL, new Vector3(Dungeon2.EntranceX + 1.1f, 0f, Dungeon2.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
             Decor(parent, RockN, new Vector3(Dungeon2.EntranceX - 0.8f, 0f, Dungeon2.EntranceZ + 1.3f), new Vector3(0f, 10f, 0f));
@@ -926,6 +928,7 @@ namespace Ulon.Editor
             eg.IsExit = false;
             eg.DisplayName = "던전 3 입구";
             EnsureCollider(entrance);
+            BuildDungeonEntrance(parent, new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 45f);
             Decor(parent, RockW, new Vector3(Dungeon3.EntranceX + 1.4f, 0f, Dungeon3.EntranceZ + 0.6f), new Vector3(0f, 20f, 0f));
             Decor(parent, RockL, new Vector3(Dungeon3.EntranceX + 1.1f, 0f, Dungeon3.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
             Decor(parent, RockN, new Vector3(Dungeon3.EntranceX - 0.8f, 0f, Dungeon3.EntranceZ + 1.3f), new Vector3(0f, 10f, 0f));
@@ -952,6 +955,7 @@ namespace Ulon.Editor
             xg.DisplayName = "던전 3 출구";
             EnsureCollider(exitGo);
 
+            EnsureDungeon3Signpost(parent);
             EnsureDungeon3Mob(parent);
             EnsureDungeon3Boss(parent);
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
@@ -1933,6 +1937,66 @@ namespace Ulon.Editor
         /// 던전 1·2·3이 이 함수 하나를 호출한다(같은 코드를 세 번 쓰지 않는다).
         /// 검수 2026-09-06 P0-1: 옛 내부는 잔디밭에 바위 몇 개라 하늘이 그대로 보였다.
         /// </summary>
+        /// <summary>
+        /// 던전 입구를 "문"으로 읽히게 꾸민다(검수 2026-09-06 P0-2).
+        /// 옛 입구는 wall-arch 한 장 + 흰 바위라 길가 돌무더기로 보였다.
+        /// 아치 양옆 등불(점광)·붉은 깃발·마을 쪽에서 이어지는 돌길 타일을 공용으로 세운다.
+        /// approachYaw는 플레이어가 걸어오는 방향(도(度))이다.
+        /// </summary>
+        public static void BuildDungeonEntrance(Transform parent, Vector3 pos, float approachYaw)
+        {
+            const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
+            const string Banner = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/banner-red.fbx";
+            const string PathTile = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/ground_pathTile.fbx";
+            string[] models = { Lantern, Banner, PathTile };
+            for (int i = 0; i < models.Length; i++)
+            {
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(models[i]) == null)
+                    ConfigureProp(models[i]);
+            }
+
+            float rad = approachYaw * Mathf.Deg2Rad;
+            var fwd = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));   // 입구가 바라보는 쪽(=접근로)
+            var right = new Vector3(fwd.z, 0f, -fwd.x);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector3 flank = pos + right * (1.7f * side);
+                Decor(parent, Lantern, flank, new Vector3(0f, approachYaw, 0f));
+                Decor(parent, Banner, flank + fwd * 0.6f, new Vector3(0f, approachYaw, 0f));
+                var lightGo = new GameObject("DungeonEntranceLight");
+                lightGo.transform.SetParent(parent, true);
+                lightGo.transform.position = OnGround(flank) + Vector3.up * 2.2f;
+                var light = lightGo.AddComponent<Light>();
+                light.type = LightType.Point;
+                light.color = new Color(1f, 0.72f, 0.42f);
+                light.intensity = 3.2f;
+                light.range = 9f;
+                light.shadows = LightShadows.None;
+            }
+
+            for (int i = 1; i <= 4; i++)
+                Decor(parent, PathTile, pos + fwd * (1.6f * i), new Vector3(0f, approachYaw, 0f));
+        }
+
+        /// <summary>마을에서 던전 3이 보이도록 세우는 이정표(검수 P0-2 「우연히라도 찾을 단서가 없다」).</summary>
+        public static void EnsureDungeon3Signpost(Transform parent)
+        {
+            const string Poles = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/poles.fbx";
+            const string Banner = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/banner-red.fbx";
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(Poles) == null)
+                ConfigureProp(Poles);
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(Banner) == null)
+                ConfigureProp(Banner);
+            var pos = new Vector3(Dungeon3.SignX, 0f, Dungeon3.SignZ);
+            var go = Place(Poles, pos, new Vector3(0f, 225f, 0f));
+            if (go == null)
+                return;
+            go.name = Dungeon3.SignObject;
+            go.transform.SetParent(parent, true);
+            Decor(parent, Banner, pos + new Vector3(0.6f, 0f, 0.6f), new Vector3(0f, 225f, 0f));
+        }
+
         public static void BuildDungeonRoom(Transform room, Vector3 center, float half, float wallH, string doorSide)
         {
             var floorMat = MakeNoiseMat("DungeonFloor", new Color(0.20f, 0.19f, 0.21f), new Color(0.31f, 0.29f, 0.30f));

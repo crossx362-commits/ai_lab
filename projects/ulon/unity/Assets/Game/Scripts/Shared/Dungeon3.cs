@@ -22,6 +22,9 @@ namespace Ulon.Shared
         public const float MobZ = -66.4f;
         public const float BossX = 70.4f;
         public const float BossZ = -70.6f;
+        public const string SignObject = "Dungeon3Signpost";
+        public const float SignX = -7.2f;
+        public const float SignZ = -12.4f;
         public const float RoomHalf = 6f;
         public const float RoomHeight = 3.2f;
         public const float LeaveX = -12.5f;
