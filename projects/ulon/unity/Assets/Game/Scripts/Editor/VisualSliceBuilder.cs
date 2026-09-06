@@ -2200,6 +2200,18 @@ namespace Ulon.Editor
                     weapon.localScale = weapon.localScale * 1.55f;
                     weapon.name = BossWeaponPrefix + weapon.name;
                 }
+                // **손에 매단다.** 장비 소켓에 붙어 있던 무기는 키우고 나면 얼굴 옆에 떠 있는 판때기로 보였다
+                // (검수 2026-09-06 관찰). 게이트도 「존재」가 아니라 손과의 거리로 잰다.
+                var handBone = FindHandBone(boss);
+                if (handBone != null && weapon.parent != handBone)
+                {
+                    var keepScale = weapon.localScale;
+                    weapon.SetParent(handBone, false);
+                    weapon.localPosition = Vector3.zero;
+                    weapon.localRotation = Quaternion.identity;
+                    weapon.localScale = keepScale;
+                }
+
                 // 완드처럼 작은 장비는 1.55배로도 「큰 무기」로 안 읽힌다 — 몸 높이의 0.45배까지 키운다.
                 var ccw = boss.GetComponent<CharacterController>();
                 float wantLen = (ccw != null ? ccw.height : 2f) * 0.45f;
@@ -2210,6 +2222,10 @@ namespace Ulon.Editor
                     if (len > 0.01f && len < wantLen)
                         weapon.localScale = weapon.localScale * Mathf.Min(3.5f, wantLen / len);
                 }
+                // 앵커만 손에 두면 부족하다 — 메시 원점이 칼끝인 장비는 앵커가 손에 있어도 **몸통이 얼굴 옆에** 뜬다.
+                // 무기 덩어리의 한가운데를 손 위치로 옮겨 손이 무기 안에 들어오게 한다(게이트도 그걸 잰다).
+                if (handBone != null && BoundsOfEnabled(weapon, out wb))
+                    weapon.position += handBone.position - wb.center;
             }
 
             // 2) 머리장식 — 머리 **위**에 얹는다.
@@ -2239,7 +2255,25 @@ namespace Ulon.Editor
             }
             var crown = new GameObject(BossCrownObject);
             crown.transform.SetParent(boss.transform, true);
-            crown.transform.position = new Vector3(axis.x, headY - 0.06f, axis.z);
+            crown.transform.position = new Vector3(axis.x, headY + 0.02f, axis.z);
+            headR = Mathf.Max(headR, 0.24f);
+            // 테(밴드)가 없으면 머리카락 위로 뿔 두 개만 삐죽 나와 「왕관」으로 안 읽힌다(검수 관찰).
+            for (int i = 0; i < 12; i++)
+            {
+                float a = i * 30f * Mathf.Deg2Rad;
+                var seg = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                seg.name = "CrownBand" + i;
+                seg.transform.SetParent(crown.transform, true);
+                seg.transform.position = crown.transform.position + new Vector3(Mathf.Sin(a) * headR, 0.04f, Mathf.Cos(a) * headR);
+                seg.transform.rotation = Quaternion.Euler(0f, i * 30f, 0f);
+                seg.transform.localScale = new Vector3(headR * 0.62f, 0.10f, 0.07f);
+                var segRend = seg.GetComponent<Renderer>();
+                if (segRend != null)
+                    segRend.sharedMaterial = crownMat;
+                var segCol = seg.GetComponent<Collider>();
+                if (segCol != null)
+                    UnityEngine.Object.DestroyImmediate(segCol);
+            }
             for (int i = 0; i < 4; i++)
             {
                 float a = i * 90f * Mathf.Deg2Rad;
@@ -3470,11 +3504,9 @@ namespace Ulon.Editor
         /// 소켓 컴포넌트가 없는 액터에 무기를 붙인다 — 손 본을 찾아 그 밑에 프리팹을 얹는다.
         /// 손 본도 없으면 몸 옆에 세운다(화면에 무기가 보이는 것이 목적이다).
         /// </summary>
-        static Transform AttachWeaponToHand(GameObject actor)
+        /// <summary>손 본. 무기를 여기 매달지 않으면 어깨 소켓에 걸려 얼굴 옆에 뜬다(검수 2026-09-06).</summary>
+        public static Transform FindHandBone(GameObject actor)
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(EnsureKayKitPrefab(SwordFbx));
-            if (prefab == null)
-                return null;
             Transform hand = null;
             var all = actor.GetComponentsInChildren<Transform>(true);
             for (int i = 0; i < all.Length; i++)
@@ -3485,6 +3517,15 @@ namespace Ulon.Editor
                 if (hand == null || n.EndsWith(".r") || n.IndexOf("right") >= 0)
                     hand = all[i];
             }
+            return hand;
+        }
+
+        static Transform AttachWeaponToHand(GameObject actor)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(EnsureKayKitPrefab(SwordFbx));
+            if (prefab == null)
+                return null;
+            Transform hand = FindHandBone(actor);
             var item = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             if (item == null)
                 return null;
