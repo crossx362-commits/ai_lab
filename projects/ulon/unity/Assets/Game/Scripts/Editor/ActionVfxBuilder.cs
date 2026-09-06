@@ -28,9 +28,11 @@ namespace Ulon.Editor
 
         public static readonly Spec[] Specs =
         {
-            new Spec { Kind = ActionVfx.Kind.Hit,   Texture = "spark_01.png", Tint = new Color(1f, 0.32f, 0.18f), Size = 0.42f, Count = 26, Speed = 5.5f, Gravity = 0.9f },
-            new Spec { Kind = ActionVfx.Kind.Heal,  Texture = "circle_05.png", Tint = new Color(0.32f, 1f, 0.52f), Size = 0.30f, Count = 20, Speed = 1.4f, Gravity = -0.35f },
-            new Spec { Kind = ActionVfx.Kind.Craft, Texture = "star_01.png",  Tint = new Color(0.55f, 0.60f, 1f), Size = 0.34f, Count = 16, Speed = 2.2f, Gravity = 0.2f },
+            // 크기·개수는 **플레이 거리 기준**이다 — 검은 배경 코앞에서 잘 보이던 값(0.30~0.42m)은
+            // 야외 12m 쿼터뷰에서 화면의 0.02~0.07%밖에 안 덮어 사실상 안 보였다(검수 랩 D 실측).
+            new Spec { Kind = ActionVfx.Kind.Hit,   Texture = "spark_01.png", Tint = new Color(1f, 0.42f, 0.16f), Size = 1.00f, Count = 44, Speed = 5.5f, Gravity = 0.9f },
+            new Spec { Kind = ActionVfx.Kind.Heal,  Texture = "circle_05.png", Tint = new Color(0.36f, 1f, 0.55f), Size = 1.25f, Count = 42, Speed = 1.4f, Gravity = -0.35f },
+            new Spec { Kind = ActionVfx.Kind.Craft, Texture = "star_01.png",  Tint = new Color(0.60f, 0.62f, 1f), Size = 1.35f, Count = 40, Speed = 2.2f, Gravity = 0.2f },
         };
 
         public static void EnsureActionVfx()
