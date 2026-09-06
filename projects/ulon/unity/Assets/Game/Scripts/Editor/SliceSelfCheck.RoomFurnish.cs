@@ -181,7 +181,8 @@ namespace Ulon.Editor
                             if (col == null)
                                 continue;
                             var rend = col.GetComponent<Renderer>();
-                            if (rend != null && !rend.enabled)
+                            // 페이드는 끄지 않고 비치게 한다(검수 2026-09-07) — 둘 다 화면을 안 가린다.
+                            if (rend != null && (!rend.enabled || Ulon.Client.DungeonSightFade.IsGhosted(rend)))
                                 continue;                       // 페이드로 꺼진 것은 화면에 없다
                             if (col.name.StartsWith("DungeonFloor", StringComparison.Ordinal))
                                 bare++;

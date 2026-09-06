@@ -398,8 +398,9 @@ namespace Ulon.Editor
                 if (!isTerrain)
                 {
                     var rend = col.GetComponent<Renderer>();
-                    if (rend == null || !rend.enabled)
-                        continue;   // 페이드로 꺼진 것 포함 — 화면에 안 보인다
+                    // 페이드는 이제 **끄지 않고 비치게** 한다(검수 2026-09-07) — 둘 다 「화면을 안 가림」이다.
+                    if (rend == null || !rend.enabled || Ulon.Client.DungeonSightFade.IsGhosted(rend))
+                        continue;
                 }
                 if (hits[i].distance < best)
                 {

@@ -68,6 +68,8 @@ namespace Ulon.Editor
                 // 풍차(은행) 뒤에 선 자리 — 건물을 페이드 대상에 올린 뒤 화면이 어떻게 보이는지(검수 요구).
                 Vfx(Stand(PlayCamOutdoor("25_action_vfx_village", 0f, 0f))),
                 Stand(PlayCamOutdoor("26_behind_bank", -10f, 8f)),
+                // 던전 입구 앞 — 지표 높이인데 머리 위에 구조물이 있다. 줌이 실내로 튀지 않는지 눈으로 본다.
+                Stand(PlayCamAuto("27_entrance_zoom", Dungeon2.EntranceX, Dungeon2.EntranceZ)),
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
             };
 
@@ -237,6 +239,23 @@ namespace Ulon.Editor
         static Shot PlayCam(string name, float cx, float cz) => PlayCam(name, cx, cz, cx, cz);
 
         static Shot Vfx(Shot shot) { shot.Vfx = true; return shot; }
+
+        /// <summary>
+        /// **런타임과 같은 규칙으로** 줌을 고른다 — `QuarterViewCamera.IsIndoor`가 실내라고 하면 실내 줌.
+        /// 실내/야외를 내가 골라 찍으면 「줌이 튀는지」를 증거로 쓸 수 없다.
+        /// </summary>
+        static Shot PlayCamAuto(string name, float cx, float cz)
+        {
+            var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
+            float pitch = qv != null ? qv.Pitch : 35f;
+            float yaw = qv != null ? qv.Yaw : 45f;
+            var player = new Vector3(cx, GroundY(cx, cz) + 1.0f, cz);
+            bool indoor = Ulon.Client.QuarterViewCamera.IsIndoor(player);
+            float dist = qv != null ? (indoor ? Mathf.Min(qv.Distance, qv.IndoorDistance) : qv.Distance) : 12f;
+            Debug.Log("[Ulon] QA 자동 줌 " + name + " — IsIndoor=" + indoor + ", 거리 " + dist.ToString("0.0") + "m");
+            var rot = Quaternion.Euler(pitch, yaw, 0f);
+            return new Shot { Name = name, Eye = player - rot * Vector3.forward * dist, Target = player, PlayCamera = true };
+        }
 
         static Shot Stand(Shot shot) { shot.StandPlayer = true; return shot; }
 

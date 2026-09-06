@@ -56,17 +56,83 @@ namespace Ulon.Client
                 // 바닥까지 물어 방 바닥이 사라지고 하늘이 비쳤다(2026-09-06 플레이캠 실측).
                 if (rend.bounds.max.y < look.y - 0.2f)
                     continue;
-                rend.enabled = false;
+                Ghost(rend);
                 hidden.Add(rend);
             }
+        }
+
+        /// <summary>
+        /// **가리지 말고 비치게 한다**(검수 판정 2026-09-07). 렌더러를 끄면 건물 한 채가 통째로 증발해
+        /// 마을이 빈 흙바닥으로 보였다. 알파만 낮춰 **실루엣과 그림자는 남긴다** — 0으로 내리면
+        /// 끈 것과 같으므로 하한을 두고 게이트가 강제한다.
+        /// </summary>
+        public const float GhostAlpha = 0.35f;
+        /// <summary>이 아래로 내려가면 「비침」이 아니라 「사라짐」이다 — 게이트가 이 선을 지킨다.</summary>
+        public const float GhostAlphaMin = 0.20f;
+
+        static readonly Dictionary<Material, Material> ghostCache = new Dictionary<Material, Material>();
+        static readonly Dictionary<Renderer, Material[]> ghosted = new Dictionary<Renderer, Material[]>();
+
+        /// <summary>원본 머티리얼을 **파괴하지 않는다** — 반투명 사본을 만들어 갈아 끼우고 원본은 보관한다.</summary>
+        public static Material MakeGhost(Material src, float alpha)
+        {
+            var m = new Material(src);
+            m.name = src.name + " (Ghost)";
+            // Built-in Standard의 Fade 모드 — 알파 블렌딩, 그림자·실루엣 유지.
+            m.SetFloat("_Mode", 2f);
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetInt("_ZWrite", 0);
+            m.DisableKeyword("_ALPHATEST_ON");
+            m.EnableKeyword("_ALPHABLEND_ON");
+            m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            m.renderQueue = 3000;
+            Color c = m.HasProperty("_Color") ? m.color : Color.white;
+            c.a = alpha;
+            m.color = c;
+            return m;
+        }
+
+        static void Ghost(Renderer rend)
+        {
+            if (ghosted.ContainsKey(rend))
+                return;
+            var originals = rend.sharedMaterials;
+            var faded = new Material[originals.Length];
+            for (int i = 0; i < originals.Length; i++)
+            {
+                if (originals[i] == null)
+                    continue;
+                if (!ghostCache.TryGetValue(originals[i], out Material g) || g == null)
+                {
+                    g = MakeGhost(originals[i], GhostAlpha);
+                    ghostCache[originals[i]] = g;
+                }
+                faded[i] = g;
+            }
+            ghosted[rend] = originals;
+            rend.sharedMaterials = faded;
+        }
+
+        /// <summary>이 렌더러가 지금 「비치는 중」인가 — 판정 게이트가 「걷혔다」를 이 뜻으로 읽는다.</summary>
+        public static bool IsGhosted(Renderer rend)
+        {
+            return rend != null && ghosted.ContainsKey(rend);
         }
 
         public static void Restore(List<Renderer> hidden)
         {
             for (int i = 0; i < hidden.Count; i++)
             {
-                if (hidden[i] != null)
-                    hidden[i].enabled = true;
+                var rend = hidden[i];
+                if (rend == null)
+                    continue;
+                if (ghosted.TryGetValue(rend, out Material[] originals))
+                {
+                    rend.sharedMaterials = originals;      // 원상복구 — 게이트가 확인한다
+                    ghosted.Remove(rend);
+                }
+                rend.enabled = true;                        // 옛 방식(렌더 끄기)으로 남은 것도 되살린다
             }
             hidden.Clear();
         }

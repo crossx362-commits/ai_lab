@@ -1615,6 +1615,9 @@ namespace Ulon.Editor
             AssertActionSfxNegativeControl();
             AssertPlayerNotOccluded();
             AssertPlayerNotOccludedNegativeControl();
+            AssertIndoorRule();
+            AssertSightFadeTranslucent();
+            AssertSightFadeTranslucentNegativeControl();
             AssertOutdoorSightLine();
             AssertOutdoorSightLineNegativeControl();
             AssertSpawnOnGround();

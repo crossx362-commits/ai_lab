@@ -89,8 +89,10 @@ namespace Ulon.Editor
                     {
                         var info = hits[h];
                         var rend = info.collider != null ? info.collider.GetComponent<Renderer>() : null;
-                        if (rend != null && !rend.enabled)
-                            continue;                       // 페이드로 이미 걷힌 것은 화면을 가리지 않는다
+                        // 「걷혔다」의 뜻이 바뀌었다(검수 2026-09-07): 렌더러를 끄는 대신 **반투명**으로 만든다.
+                        // 렌더러는 켜져 있지만 뒤가 비치므로 화면을 가리지 않는다 — 판정도 그 뜻으로 읽는다.
+                        if (rend != null && (!rend.enabled || DungeonSightFade.IsGhosted(rend)))
+                            continue;
                         // 지표(`Ground`)는 **화면을 가리지 않는다** — 카메라가 방 안(지하)에 있고 지표 메시는
                         // 한 면만 그려져 아래에서는 그대로 통과해 보인다(광선은 맞지만 화면은 뚫려 있다).
                         // 벽·뚜껑은 빼지 않는다 — 그건 런타임 페이드가 걷는지까지 이 게이트가 봐야 한다.
