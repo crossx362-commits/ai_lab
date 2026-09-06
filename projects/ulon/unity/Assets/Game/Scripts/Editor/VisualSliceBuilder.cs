@@ -1977,6 +1977,22 @@ namespace Ulon.Editor
 
             for (int i = 1; i <= 4; i++)
                 Decor(parent, PathTile, pos + fwd * (1.6f * i), new Vector3(0f, approachYaw, 0f));
+
+            // 문틀 — wall-arch 한 장은 45° 시점에서 얇은 판때기로 보인다. 기둥 2 + 상인방 + 어두운 문구멍으로 문을 만든다.
+            var wallMat = MakeNoiseMat("DungeonWall", new Color(0.16f, 0.15f, 0.17f), new Color(0.27f, 0.26f, 0.28f));
+            var portalMat = MakeNoiseMat("DungeonPortal", new Color(0.03f, 0.03f, 0.05f), new Color(0.08f, 0.07f, 0.10f));
+            var frame = new GameObject("DungeonEntranceFrame");
+            frame.transform.SetParent(parent, true);
+            float gy = OnGround(pos).y;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector3 pillar = pos + right * (1.15f * side);
+                RoomSlab(frame.transform, "EntrancePillar", new Vector3(pillar.x, gy + 1.5f, pillar.z), new Vector3(0.7f, 3f, 0.7f), wallMat);
+            }
+            RoomSlab(frame.transform, "EntranceLintel", new Vector3(pos.x, gy + 3.15f, pos.z), new Vector3(3.0f, 0.6f, 0.9f), wallMat);
+            Vector3 back = pos - fwd * 0.35f;
+            RoomSlab(frame.transform, "EntrancePortal", new Vector3(back.x, gy + 1.3f, back.z), new Vector3(1.6f, 2.6f, 0.25f), portalMat);
+            frame.transform.RotateAround(OnGround(pos), Vector3.up, 0f);
         }
 
         /// <summary>마을에서 던전 3이 보이도록 세우는 이정표(검수 P0-2 「우연히라도 찾을 단서가 없다」).</summary>

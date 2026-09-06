@@ -73,6 +73,24 @@ namespace Ulon.Editor
                 throw new InvalidOperationException(label + " 입구 진입로 타일이 " + path + "장입니다 — 최소 " + EntrancePathMin + "장. 어디로 들어가는지 안 보입니다.");
             if (!banner)
                 throw new InvalidOperationException(label + " 입구에 깃발 표식이 없습니다.");
+
+            int frame = 0;
+            bool portal = false;
+            for (int i = 0; i < rends.Length; i++)
+            {
+                var p = rends[i].transform.position;
+                if (Vector2.Distance(new Vector2(p.x, p.z), pos) > EntranceRadius)
+                    continue;
+                string n = AncestorNames(rends[i].transform);
+                if (n.IndexOf("EntrancePillar", StringComparison.Ordinal) >= 0 || n.IndexOf("EntranceLintel", StringComparison.Ordinal) >= 0)
+                    frame++;
+                if (n.IndexOf("EntrancePortal", StringComparison.Ordinal) >= 0)
+                    portal = true;
+            }
+            if (frame < 3)
+                throw new InvalidOperationException(label + " 입구 문틀(기둥 2 + 상인방)이 " + frame + "개입니다 — 아치 한 장은 얇은 판때기로 보입니다.");
+            if (!portal)
+                throw new InvalidOperationException(label + " 입구에 어두운 문구멍이 없습니다 — 들어가는 곳으로 안 읽힙니다.");
         }
         // Kenney 프리팹은 메시 자식 이름이 전부 "Visual"이다 — 조상 이름까지 이어 붙여야 종류를 안다.
         static string AncestorNames(Transform t)
