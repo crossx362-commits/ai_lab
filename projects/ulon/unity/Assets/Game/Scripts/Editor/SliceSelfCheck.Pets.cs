@@ -182,13 +182,7 @@ namespace Ulon.Editor
 
         static void AssertPetCommands()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
+            AssertVillageIntact();
             string[] prefabs = { StableYard.Object, HousingPlot.VendorObject };
             for (int i = 0; i < prefabs.Length; i++)
             {
@@ -347,16 +341,7 @@ namespace Ulon.Editor
 
         static void AssertPetAttack()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             OfflineWorld.Instance?.ResetHousePlot();
 
@@ -507,16 +492,7 @@ namespace Ulon.Editor
 
         static void AssertPetCome()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             OfflineWorld.Instance?.ResetHousePlot();
 
@@ -663,16 +639,7 @@ namespace Ulon.Editor
 
         static void AssertPetBondVetRez()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
             if (SkillId.Veterinary == SkillId.Healing)
                 throw new InvalidOperationException("수의학 SkillId는 치유와 달라야 합니다.");
             if (SkillNames.KoreanOf(SkillId.Veterinary) != "수의학")

@@ -13,16 +13,7 @@ namespace Ulon.Editor
     {
         static void AssertCastInterrupt()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if (SpellCast.BoltCastSeconds <= 0f)
                 throw new InvalidOperationException("BoltCastSeconds는 양수여야 합니다.");
@@ -161,16 +152,7 @@ namespace Ulon.Editor
 
         static void AssertCleanse()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("마법 주문은 불씨+봉합+벼락+정화+수호+속박+약화+섬광+회복+도약+축복 11개여야 합니다.");
@@ -290,16 +272,7 @@ namespace Ulon.Editor
 
         static void AssertWard()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("마법 주문은 불씨+봉합+벼락+정화+수호+속박+약화+섬광+회복+도약+축복 11개여야 합니다.");
@@ -432,16 +405,7 @@ namespace Ulon.Editor
 
         static void AssertBind()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("마법 주문은 불씨+봉합+벼락+정화+수호+속박+약화+섬광+회복+도약+축복 11개여야 합니다.");
@@ -592,16 +556,7 @@ namespace Ulon.Editor
 
         static void AssertWeaken()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("마법 주문은 불씨+봉합+벼락+정화+수호+속박+약화+섬광+회복+도약+축복 11개여야 합니다.");
@@ -759,16 +714,7 @@ namespace Ulon.Editor
 
         static void AssertSpark()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("마법 주문은 불씨+봉합+벼락+정화+수호+속박+약화+섬광+회복+도약+축복 11개여야 합니다.");
@@ -923,18 +869,7 @@ namespace Ulon.Editor
 
         static void AssertCraftOrder()
         {
-            AssertDungeon3Leftover();
-            if (GameObject.Find("DressVillage") != null)
-                throw new InvalidOperationException("DressVillage 오브젝트가 있으면 안 됩니다.");
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if (CraftOrderRules.DefaultItem != ItemCatalog.IronSword)
                 throw new InvalidOperationException("기본 제작의뢰는 iron_sword여야 합니다.");
@@ -1041,16 +976,7 @@ namespace Ulon.Editor
 
         static void AssertRestore()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("마법 주문은 불씨+봉합+벼락+정화+수호+속박+약화+섬광+회복+도약+축복 11개여야 합니다.");
@@ -1204,16 +1130,7 @@ namespace Ulon.Editor
 
         static void AssertBlink()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("마법 주문은 불씨+봉합+벼락+정화+수호+속박+약화+섬광+회복+도약+축복 11개여야 합니다.");
@@ -1339,16 +1256,7 @@ namespace Ulon.Editor
 
         static void AssertBless()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if ((int)SpellId.Count != 11)
                 throw new InvalidOperationException("마법 주문은 불씨+봉합+벼락+정화+수호+속박+약화+섬광+회복+도약+축복 11개여야 합니다.");

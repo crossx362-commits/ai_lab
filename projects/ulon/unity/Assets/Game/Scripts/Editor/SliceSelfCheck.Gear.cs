@@ -13,16 +13,7 @@ namespace Ulon.Editor
     {
         static void AssertStrengthRequirement()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if (ItemCatalog.StrReqOf(ItemCatalog.IronSword) != 25)
                 throw new InvalidOperationException("철검 Strength Requirement는 25여야 합니다.");
@@ -112,16 +103,7 @@ namespace Ulon.Editor
 
         static void AssertOverweight()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if (ItemCatalog.CarryCap(10) != 40 || ItemCatalog.CarryCap(30) != 120)
                 throw new InvalidOperationException("CarryCap은 STR*4(최소 10)여야 합니다.");
@@ -230,16 +212,7 @@ namespace Ulon.Editor
 
         static void AssertMeditationArmorPenalty()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if (!ItemCatalog.IsHeavyArmor(ItemCatalog.IronPlate))
                 throw new InvalidOperationException("iron_plate는 HeavyArmor여야 합니다.");

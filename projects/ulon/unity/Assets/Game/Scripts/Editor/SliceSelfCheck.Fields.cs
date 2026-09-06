@@ -1223,16 +1223,7 @@ namespace Ulon.Editor
 
         static void AssertBandageDetox()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if (SkillNames.KoreanOf(SkillId.Healing) != "치유")
                 throw new InvalidOperationException("치유 스킬명을 바꾸면 안 됩니다.");

@@ -690,18 +690,7 @@ namespace Ulon.Editor
 
         static void AssertReputationTitle()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
-            if (GameObject.Find("DressVillage") != null)
-                throw new InvalidOperationException("DressVillage 오브젝트가 있으면 안 됩니다.");
+            AssertVillageIntact();
 
             if (ReputationTitles.FameFamous != 100)
                 throw new InvalidOperationException("유명인 Fame 임계값은 100이어야 합니다.");
@@ -775,18 +764,7 @@ namespace Ulon.Editor
 
         static void AssertKeywordSpeech()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
-            if (GameObject.Find("DressVillage") != null)
-                throw new InvalidOperationException("DressVillage 오브젝트가 있으면 안 됩니다.");
+            AssertVillageIntact();
             if (GameObject.Find("Banker") == null)
                 throw new InvalidOperationException("Banker가 있어야 합니다.");
 

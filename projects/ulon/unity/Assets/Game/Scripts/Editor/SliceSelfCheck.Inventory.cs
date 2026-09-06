@@ -13,18 +13,7 @@ namespace Ulon.Editor
     {
         static void AssertControlSlots()
         {
-            AssertDungeon3Leftover();
-            if (GameObject.Find("DressVillage") != null)
-                throw new InvalidOperationException("DressVillage 오브젝트가 있으면 안 됩니다.");
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             if (TameResolve.FollowerCap != 2)
                 throw new InvalidOperationException("MaxControlSlots/FollowerCap은 2여야 합니다.");
@@ -206,18 +195,7 @@ namespace Ulon.Editor
 
         static void AssertNestedBag()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
-            if (GameObject.Find("DressVillage") != null)
-                throw new InvalidOperationException("DressVillage 오브젝트가 있으면 안 됩니다.");
+            AssertVillageIntact();
 
             if (!ItemCatalog.IsContainer(ItemCatalog.Pouch))
                 throw new InvalidOperationException("pouch는 컨테이너여야 합니다.");
@@ -320,18 +298,7 @@ namespace Ulon.Editor
 
         static void AssertGroundDecay()
         {
-            AssertDungeon3Leftover();
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject, StableYard.Object };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
-            if (GameObject.Find("DressVillage") != null)
-                throw new InvalidOperationException("DressVillage 오브젝트가 있으면 안 됩니다.");
+            AssertVillageIntact();
 
             OfflineWorld.Instance?.ResetHousePlot();
 
@@ -436,15 +403,7 @@ namespace Ulon.Editor
             if (StableResolve.Park(new StableRequest { HasFollower = true, Gold = 2 }).Applied == false)
                 throw new InvalidOperationException("기본 Park는 성공해야 합니다.");
 
-            string[] keep = { "Forge", "Vendor", "Healer", HousingPlot.VendorObject };
-            for (int i = 0; i < keep.Length; i++)
-            {
-                if (GameObject.Find(keep[i]) == null)
-                    throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
-            }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageIntact();
 
             var go = GameObject.Find(StableYard.Object);
             var stable = go != null ? go.GetComponent<StableMaster>() : null;
