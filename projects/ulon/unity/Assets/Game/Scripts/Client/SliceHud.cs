@@ -172,6 +172,9 @@ namespace Ulon.Client
             int cap = ItemCatalog.CarryCap(st.Str);
             GUI.Label(new Rect(28, 90, 320, 22), inv);
             GUI.Label(new Rect(28, 206, 320, 22), "무게 " + w.ToString("0.0") + "/" + cap + (bag != null && bag.Overweight(st.Str) ? "  과적" : ""));
+            // 도구 사용 횟수·동료 슬롯 — 서버에만 있고 화면에 없던 값 2개(검수 구멍 표 2026-09-06).
+            GUI.Label(new Rect(28, 246, 340, 22), ToolLine(bag) + "  동료 " +
+                (world.Player != null ? world.CountFollowers(world.Player.CharacterId) : 0) + "/" + TameResolve.FollowerCap);
             GUI.Label(new Rect(28, 162, 320, 22), bankInv);
             if (world.Player != null && !world.Player.Ghost)
             {
@@ -466,7 +469,10 @@ namespace Ulon.Client
                 && Vector3.Distance(me.transform.position, forge.transform.position) <= forge.InteractRange)
             {
                 GUI.Box(new Rect(16, 448, 340, 40), "");
-                GUI.Label(new Rect(28, 452, 180, 20), forge.DisplayName);
+                GUI.Label(new Rect(28, 452, 120, 20), forge.DisplayName);
+                // 수리 전용 버튼 — 예전에는 「재료가 모자란 제작」이 우연히 수리로 떨어질 때만 수리됐다.
+                if (GUI.Button(new Rect(152, 452, 60, 24), "수리"))
+                    RepairAt(net, forge);
                 if (GUI.Button(new Rect(220, 452, 110, 24), "자물쇠"))
                     CraftAt(net, forge, "lockpick");
             }
@@ -1336,6 +1342,38 @@ namespace Ulon.Client
                 net.RpcTrain((int)skill);
             else if (OfflineWorld.Instance != null)
                 OfflineWorld.Instance.TryTrain(OfflineWorld.Instance.Player, skill);
+        }
+
+        /// <summary>도구가 얼마나 남았는지 — 곡괭이·도끼·낚싯대의 남은 사용 횟수(§18.8 Tool Uses).</summary>
+        static string ToolLine(InventoryBag bag)
+        {
+            if (bag == null)
+                return "도구 없음";
+            string[] tools = { ItemCatalog.Pickaxe, ItemCatalog.Hatchet, ItemCatalog.FishingPole };
+            string[] names = { "곡괭이", "도끼", "낚싯대" };
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < tools.Length; i++)
+            {
+                int uses = bag.ToolUses(tools[i]);
+                if (uses <= 0)
+                    continue;
+                if (sb.Length > 0)
+                    sb.Append(' ');
+                sb.Append(names[i]).Append(' ').Append(uses);
+            }
+            return sb.Length == 0 ? "도구 없음" : sb.ToString();
+        }
+
+        static void RepairAt(NetAvatar net, CraftStation station)
+        {
+            if (station == null || OfflineWorld.Instance == null)
+                return;
+            if (net != null && net.IsClientInitialized)
+            {
+                net.RpcRepair(station.gameObject.name);
+                return;
+            }
+            OfflineWorld.Instance.TryRepair(OfflineWorld.Instance.Player, station);
         }
 
         static void CraftAt(NetAvatar net, CraftStation station, string recipeId)

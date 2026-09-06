@@ -1624,6 +1624,7 @@ namespace Ulon.Editor
             AssertMobDataFile();
             AssertDataRecordSanity();
             AssertStrengthRequirement();
+            AssertRepairAndToolReadouts();
             AssertOverweight();
             AssertMeditationArmorPenalty();
             AssertCastInterrupt();

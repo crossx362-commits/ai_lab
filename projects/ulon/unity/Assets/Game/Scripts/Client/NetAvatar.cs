@@ -208,6 +208,17 @@ namespace Ulon.Client
         }
 
         [ServerRpc]
+        public void RpcRepair(string stationId)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var station = OfflineWorld.FindStation(stationId);
+            var result = OfflineWorld.Instance.TryRepair(GetComponent<WorldBody>(), station);
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
         public void RpcBank(string stationId)
         {
             if (OfflineWorld.Instance == null)

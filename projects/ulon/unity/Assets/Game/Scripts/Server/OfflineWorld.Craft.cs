@@ -68,6 +68,34 @@ namespace Ulon.Server
             return new AttackResult { Applied = true, Hit = true };
         }
 
+        /// <summary>
+        /// §5.1 내구도·수리 — **수리 전용 행동**. 제작대 사거리 안에서 재료 1개를 써서 가장 많이 닳은
+        /// 물건을 10회 회복한다. 예전에는 「재료가 모자라 제작이 실패할 때」만 수리가 일어나서
+        /// 플레이어가 수리를 의도적으로 할 방법이 화면에 없었다(검수 구멍 표).
+        /// </summary>
+        public AttackResult TryRepair(WorldBody body, CraftStation station)
+        {
+            if (body == null || station == null)
+                return new AttackResult { FailReason = "no_station" };
+            if (body.Ghost)
+                return new AttackResult { FailReason = "ghost" };
+            if (Vector3.Distance(body.transform.position, station.transform.position) > station.InteractRange)
+                return new AttackResult { FailReason = "range" };
+            var recipe = CraftRecipes.Find(station.RecipeId);
+            if (recipe == null)
+                return new AttackResult { FailReason = "unknown_recipe" };
+            var bag = body.GetComponent<InventoryBag>() ?? body.gameObject.AddComponent<InventoryBag>();
+            return RepairWith(bag, recipe, CountItem(bag, recipe.Ingredient));
+        }
+
+        AttackResult RepairWith(InventoryBag bag, CraftRecipe recipe, int have)
+        {
+            if (!recipe.CanRepair || have < 1 || !bag.RepairOne(10))
+                return new AttackResult { FailReason = "missing_" + recipe.Ingredient };
+            ConsumeItem(bag, recipe.Ingredient, 1);
+            return new AttackResult { Applied = true, Hit = true };
+        }
+
         public AttackResult TryCraft(WorldBody body, CraftStation station)
         {
             return TryCraft(body, station, null);
@@ -92,10 +120,9 @@ namespace Ulon.Server
             int have = CountItem(bag, recipe.Ingredient);
             if (have < recipe.Count)
             {
-                if (!recipe.CanRepair || have < 1 || !bag.RepairOne(10))
-                    return new AttackResult { FailReason = "missing_" + recipe.Ingredient };
-                ConsumeItem(bag, recipe.Ingredient, 1);
-                return new AttackResult { Applied = true, Hit = true };
+                // 재료가 모자라면 「같은 재료 1개로 수리」로 떨어진다(기존 동작). 수리만 하고 싶을 때는
+                // TryRepair를 직접 부른다 — 화면에 수리 버튼이 없어 이 경로가 안 보였다(검수 2026-09-06).
+                return RepairWith(bag, recipe, have);
             }
             float projected = bag.TotalWeight()
                 - ItemCatalog.WeightOf(recipe.Ingredient) * recipe.Count
