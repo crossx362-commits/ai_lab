@@ -28,6 +28,18 @@ namespace Ulon.Shared
 
         public static bool TryGet(string id, out MobDefinition definition)
         {
+            // 12.2 — 수치 원장은 StreamingAssets/Data/mobs.json. 아래 if-체인은 파일이 없을 때의 폴백이다.
+            if (MobData.TryGet(id, out var data))
+            {
+                definition = new MobDefinition
+                {
+                    Id = data.id,
+                    DisplayName = data.name,
+                    MaxHp = data.hp,
+                    Height = data.height
+                };
+                return true;
+            }
             if (id == Skeleton)
             {
                 definition = new MobDefinition
@@ -208,11 +220,13 @@ namespace Ulon.Shared
 
         public static bool IsBoss(string id)
         {
+            if (MobData.TryGet(id, out var data)) return data.boss;
             return id == BoneWarden || id == ShadowCaptain || id == Hexarch || id == IronTyrant;
         }
 
         public static string KillDropOf(string id)
         {
+            if (MobData.TryGet(id, out var data)) return data.drop ?? "";
             if (id == BoneWarden)
                 return ItemCatalog.WardenCrest;
             if (id == ShadowCaptain)
@@ -230,6 +244,14 @@ namespace Ulon.Shared
             resist = 0;
             dmgMin = 2;
             dmgMax = 4;
+            if (MobData.TryGet(id, out var data))
+            {
+                str = data.str;
+                resist = data.resist;
+                dmgMin = data.dmgMin;
+                dmgMax = data.dmgMax;
+                return;
+            }
             if (id == Skeleton) { str = 20; resist = 2; dmgMin = 3; dmgMax = 6; }
             else if (id == Bandit) { str = 28; resist = 1; dmgMin = 4; dmgMax = 8; }
             else if (id == Raider) { str = 40; resist = 2; dmgMin = 6; dmgMax = 10; }
@@ -248,6 +270,7 @@ namespace Ulon.Shared
 
         public static bool TamableOf(string id)
         {
+            if (MobData.TryGet(id, out var data)) return data.tamable;
             return id == Hart || id == Boar;
         }
 
