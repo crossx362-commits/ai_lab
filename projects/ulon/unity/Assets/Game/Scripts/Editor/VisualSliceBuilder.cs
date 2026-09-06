@@ -2876,7 +2876,8 @@ namespace Ulon.Editor
         public const float PlayerHeight = 1.8f;
 
         /// <summary>방 벽 높이(바닥에서 지면까지) — 채움 기둥이 벽과 같은 높이여야 한다.</summary>
-        const float RoomHeightOfWall = DungeonDepth + 0.15f;
+        /// <summary>방 벽 높이 — 게이트도 「방 천장 위」를 이 값으로 판별한다(단일 원장).</summary>
+        public const float RoomHeightOfWall = DungeonDepth + 0.15f;
 
         public static void EnsureRoomSize()
         {

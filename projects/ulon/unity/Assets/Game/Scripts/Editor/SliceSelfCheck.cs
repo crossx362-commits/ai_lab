@@ -1611,6 +1611,8 @@ namespace Ulon.Editor
             AssertPropScaleNegativeControl();
             AssertActionSfxDistinct();
             AssertActionSfxNegativeControl();
+            AssertPlayerNotOccluded();
+            AssertPlayerNotOccludedNegativeControl();
             AssertBossMobContrast();
             AssertBossMobContrastNegativeControl();
             AssertMobArtQualified();

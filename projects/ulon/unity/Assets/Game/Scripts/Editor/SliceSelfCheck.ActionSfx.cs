@@ -17,12 +17,21 @@ namespace Ulon.Editor
         const float SfxRmsMin = 0.02f;              // 이보다 작으면 사실상 무음
         const float SfxPitchRatioMin = 1.35f;       // 음높이 비(높은 쪽/낮은 쪽)
         const float SfxLengthRatioMin = 1.30f;      // 길이 비
+        // 음색 축 — 실측 3종의 최소 차이 1.33배(Hit·Heal)와 결함 상태(같은 클립 두 자리) 1.00배 사이.
+        const float SfxCentroidRatioMin = 1.15f;
+        // 음색의 **양쪽 한계** — 아래는 웅웅거리는 저음, 위는 쉿 소리만 남는 소리.
+        const float SfxCentroidHzMin = 200f;
+        const float SfxCentroidHzMax = 8000f;
+        /// <summary>세 축(길이·거칠기·음색) 중 몇 개가 달라야 「구분된다」로 볼 것인가.
+        /// 한 축만 재면 결함이 나머지로 빠져나간다 — 이 프로젝트가 반복해서 당한 실패다(검수).</summary>
+        const int SfxAxesRequired = 2;
 
         struct SfxMeasure
         {
             public float Seconds;
             public float Rms;
-            public float Hz;        // 영교차로 잰 대표 음높이
+            public float Hz;        // 영교차 — 녹음에서는 음높이가 아니라 「거칠기」에 가깝다
+            public float Centroid;  // 스펙트럴 센트로이드(Hz) — 음색 축. 길이 축 하나로 버티지 않게 한다
         }
 
         static void AssertActionSfxDistinct()
@@ -37,7 +46,11 @@ namespace Ulon.Editor
                         " — 합성 폴백으로 내려간 채 통과시키지 않는다.");
                 m[i] = MeasureClip(ActionSfx.Clip(kinds[i]));
                 Debug.Log("[Ulon] SFX " + kinds[i] + " — " + m[i].Seconds.ToString("0.00") + "초, RMS " +
-                          m[i].Rms.ToString("0.000") + ", 음높이 " + m[i].Hz.ToString("F0") + "Hz");
+                          m[i].Rms.ToString("0.000") + ", 영교차 " + m[i].Hz.ToString("F0") + "Hz, 음색 " +
+                          m[i].Centroid.ToString("F0") + "Hz");
+                if (m[i].Centroid < SfxCentroidHzMin || m[i].Centroid > SfxCentroidHzMax)
+                    throw new InvalidOperationException("SFX " + kinds[i] + "의 음색이 " + m[i].Centroid.ToString("F0") +
+                        "Hz입니다 — 허용 " + SfxCentroidHzMin + "~" + SfxCentroidHzMax + "Hz(아래는 웅웅거림, 위는 쉿 소리).");
                 if (m[i].Rms < SfxRmsMin)
                     throw new InvalidOperationException("SFX " + kinds[i] + "가 사실상 무음입니다(RMS " +
                         m[i].Rms.ToString("0.000") + " < " + SfxRmsMin + ").");
@@ -95,10 +108,15 @@ namespace Ulon.Editor
         {
             float pitch = Ratio(x.Hz, y.Hz);
             float length = Ratio(x.Seconds, y.Seconds);
-            if (pitch < SfxPitchRatioMin && length < SfxLengthRatioMin)
-                throw new InvalidOperationException("SFX " + a + "·" + b + "가 귀에서 구분되지 않습니다 — 음높이 비 " +
-                    pitch.ToString("0.00") + "(하한 " + SfxPitchRatioMin + "), 길이 비 " +
-                    length.ToString("0.00") + "(하한 " + SfxLengthRatioMin + ")");
+            float timbre = Ratio(x.Centroid, y.Centroid);
+            int axes = (pitch >= SfxPitchRatioMin ? 1 : 0)
+                     + (length >= SfxLengthRatioMin ? 1 : 0)
+                     + (timbre >= SfxCentroidRatioMin ? 1 : 0);
+            if (axes < SfxAxesRequired)
+                throw new InvalidOperationException("SFX " + a + "·" + b + "가 귀에서 구분되지 않습니다 — 다른 축 " +
+                    axes + "개(하한 " + SfxAxesRequired + "): 길이 비 " + length.ToString("0.00") +
+                    "/" + SfxLengthRatioMin + ", 거칠기 비 " + pitch.ToString("0.00") +
+                    "/" + SfxPitchRatioMin + ", 음색 비 " + timbre.ToString("0.00") + "/" + SfxCentroidRatioMin);
         }
 
         static float Ratio(float a, float b)
@@ -156,7 +174,35 @@ namespace Ulon.Editor
                 Seconds = clip.length,
                 Rms = (float)Math.Sqrt(sum / Math.Max(1, data.Length)),
                 Hz = clip.length > 0f ? crossings * 0.5f / (clip.length * Mathf.Max(1, clip.channels)) : 0f,
+                Centroid = Centroid(data, clip.frequency * Mathf.Max(1, clip.channels)),
             };
+        }
+
+        /// <summary>
+        /// 스펙트럴 센트로이드 — 소리의 「밝기」다. 로그 간격 대역의 에너지를 괴르첼로 재서 무게중심을 낸다
+        /// (FFT 없이 몇 개 대역만 재면 충분하다). 길이 축 하나로 버티던 판정에 **음색 축**을 세우기 위한 것.
+        /// </summary>
+        static float Centroid(float[] data, int rate)
+        {
+            const int Bands = 24;
+            double num = 0.0, den = 0.0;
+            for (int b = 0; b < Bands; b++)
+            {
+                float hz = 100f * Mathf.Pow(10f, 2f * b / (float)(Bands - 1));      // 100Hz~10kHz 로그 간격
+                double w = 2.0 * Math.PI * hz / rate;
+                double coeff = 2.0 * Math.Cos(w), s1 = 0.0, s2 = 0.0;
+                for (int i = 0; i < data.Length; i++)
+                {
+                    double s0 = data[i] + coeff * s1 - s2;
+                    s2 = s1; s1 = s0;
+                }
+                double power = s1 * s1 + s2 * s2 - coeff * s1 * s2;
+                if (power < 0.0) power = 0.0;
+                double mag = Math.Sqrt(power);
+                num += mag * hz;
+                den += mag;
+            }
+            return den > 1e-9 ? (float)(num / den) : 0f;
         }
 
         /// <summary>
