@@ -1601,6 +1601,10 @@ namespace Ulon.Editor
             AssertHuntGround();
             AssertRoomFurnished();
             AssertRoomFurnishedNegativeControl();
+            AssertRoomPropsQualified();
+            AssertRoomPropsNegativeControl();
+            AssertPropDistribution();
+            AssertPropDistributionNegativeControl();
             AssertBossMobContrast();
             AssertBossMobContrastNegativeControl();
             AssertMobArtQualified();

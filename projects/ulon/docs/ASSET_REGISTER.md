@@ -9,8 +9,8 @@
 | KayKit Adventurers 1.0 | 플레이어/동료/무기/파츠 | CC0 | GitHub Standard | 2026-08-31 | Knight.fbx, Mage.fbx, Rogue.fbx, sword_1handed.fbx, shield_round.fbx (Barbarian.fbx는 상반신 맨살이라 몹·동료 사용 금지 — `Editor/MobArt.cs` 자격 원장) | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 |
 | KayKit Skeletons 1.0 | 적 | CC0 | GitHub Standard | 2026-08-31 | Skeleton_Warrior.fbx, Skeleton_Mage.fbx, Skeleton_Minion.fbx, Skeleton_Rogue.fbx | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0 |
 | KayKit Dungeon Remastered | 던전 | CC0 |  |  |  |  |
-| Kenney Fantasy Town Kit 2.0 | 마을 소품 | CC0 | 공식 zip 일부 | 2026-08-31 | windmill, stall, fountain-round, tree, cart, rock | https://kenney.nl/assets/fantasy-town-kit |
-| Kenney Nature Kit | 필드 소품 | CC0 | 공식 zip 일부 | 2026-08-31 | grass, plant_bush, rock_largeA | https://kenney.nl/assets/nature-kit |
+| Kenney Fantasy Town Kit 2.0 | 마을 소품 | CC0 | 공식 zip 일부 | 2026-08-31 | windmill, stall, fountain-round, tree, cart, rock, 던전 실내 소품(poles, planks, stall-bench, stall-stool, lantern, rock-small, rock-wide — 자격 원장 `Editor/PropArt.cs`) | https://kenney.nl/assets/fantasy-town-kit |
+| Kenney Nature Kit | 필드 소품 | CC0 | 공식 zip 일부 | 2026-08-31 | grass, plant_bush, rock_largeA, rock_smallA(던전 잔해) | https://kenney.nl/assets/nature-kit |
 | Kenney Retro Fantasy Kit | 소품 | CC0 |  |  |  |  |
 | Noto Sans KR | 한글 UI | SIL OFL 1.1 |  |  |  |  |
 | 지형 텍스처 4종(KenneyGrass·MountainRock·ShoreSand·SeaWater) | 지형 도포·수면 | 자체 제작 | VisualSliceBuilder.MakeNoiseMat이 128px 노이즈로 생성 | 2026-09-06 | Assets/Game/Art/Env/*.png | 코드 생성(외부 원본 없음) |
