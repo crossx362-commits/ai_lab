@@ -38,3 +38,19 @@ dc18aeb5(왕관 위치·보스 무기·입구 마감 반려 3건), 2ef3b6c4(던�
 4. **지형 작업이 부른 회귀 2건** — 던전이 수면 아래로 잠김(LandBase 10.0 + 침수 Assert),
    방 안 몹·보스가 바닥에 파묻힘(StandOnRoomFloor + 발 높이 Assert).
 
+## 다음 할 일 (검수 확정 순서 — 새 지시가 오면 그게 맨 앞)
+1. 검수 회신 대기: 지형 2차(Blender로 실제 산·바위 메시를 얹는 것까지 범위인지) 여부.
+2. 온라인 서버권한 2건(`NetAvatar` SyncVar 노출 / `RpcTame`·`RpcPet` 부재) — 검수가 실물 검수 후 순위 확정.
+3. 테스트 공간(§6.1) 구현 + 문서의 "MVP 콘텐츠 상한 충족" 문구를 미구현으로 정정.
+4. `DataLedger` 레코드 단위 검증(아이템 weight>0·buy≥0·uses≥0·strReq≥0 / 몹 hp>0·height>0·name 비어있지 않음·dmgMin≥0·dmgMax≥dmgMin),
+   불량 레코드는 코드 폴백 + `Debug.LogError` + `loadError` 누적, 필드 없는 레코드로 코드 기본값 확인 Assert.
+5. GM "원장 다시 읽기" 배선, "재빌드 없이" 문구 정정, 스택 결합 경고 문서, `TameCritter/TameBoar.DisplayName` 이중 원장,
+   `MobCatalog.KindCount = 8` vs 14 모순, 클라 변조면 주석, Assert의 문자열 치환을 파싱/수정/기록으로 교체,
+   `Assets/Game/Data/.gitkeep` 삭제.
+6. 제작법(CraftRecipes) 외부화.
+
+## 지형 작업이 남긴 교훈(반복 금지)
+- `TerrainData`는 에셋이다 — `SaveAssets()` 없이는 씬을 다시 열 때 디스크의 옛 지형이 돌아온다.
+- `Ensure*` 스폰 함수는 오브젝트가 있으면 일찍 반환한다 — 코드에서 고쳐도 **이미 만들어진 씬은 안 고쳐진다**.
+  씬 상태를 바꾸는 수정에는 멱등한 `EnsureXxx` 보수 패스를 만들고 셀프체크에서 부를 것.
+- 지형 높이를 만지면 던전 침수·발 높이 어긋남 같은 회귀가 난다 — 지형 상수를 바꾸면 QA 샷 전량을 눈으로 볼 것.
