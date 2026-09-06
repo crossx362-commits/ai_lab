@@ -31,6 +31,10 @@ namespace Ulon.Editor
         {
             EditorSceneManager.OpenScene("Assets/Game/Scenes/Bootstrap.unity");
 
+            // VFX는 카메라 렌더가 필요해 -nographics 셀프체크에서 잴 수 없다 — 여기서 화면으로 잰다.
+            SliceSelfCheck.AssertActionVfxOnScreen();
+            SliceSelfCheck.AssertActionVfxNegativeControl();
+
             string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "../../builds/qa"));
             Directory.CreateDirectory(dir);
 
@@ -50,6 +54,7 @@ namespace Ulon.Editor
                 Inside("10_d2_interior", Dungeon2.InteriorX, Dungeon2.InteriorZ, Dungeon2.BossX, Dungeon2.BossZ),
                 Orbit("11_d3_entrance", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 8f, 20f),
                 PlayCam("12_d3_interior_playcam", Dungeon3.InteriorX, Dungeon3.InteriorZ),
+                PlayCam("24_action_vfx", Dungeon3.InteriorX, Dungeon3.InteriorZ),
                 Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
                 Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 // §8.1 멀리서도 읽히는 실루엣 — 산·바다 조망, 호수·강 조망.
@@ -88,7 +93,9 @@ namespace Ulon.Editor
                     var faded = new System.Collections.Generic.List<Renderer>();
                     if (shot.PlayCamera)
                         Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, Ulon.Client.DungeonSightFade.DefaultRadius, faded);
+                    var vfx = shot.Name == "24_action_vfx" ? SliceSelfCheck.SpawnVfxTrio(shot.Target) : null;
                     cam.Render();
+                    if (vfx != null) Object.DestroyImmediate(vfx);
                     Ulon.Client.DungeonSightFade.Restore(faded);
                     RenderTexture.active = rt;
                     tex.ReadPixels(new Rect(0, 0, W, H), 0, 0);

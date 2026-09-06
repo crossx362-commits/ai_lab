@@ -113,6 +113,8 @@ namespace Ulon.Client
             var attacker = GetComponent<WorldBody>();
             var victim = target.GetComponent<WorldBody>();
             var result = OfflineWorld.Instance.TryAttack(attacker, victim);
+            if (result.Applied && victim != null)
+                ActionVfx.Play(ActionVfx.Kind.Hit, victim.transform.position + Vector3.up * 1.0f);
             if (!result.Applied)
             {
                 Debug.Log("[Ulon] attack fail " + result.FailReason);
@@ -334,6 +336,8 @@ namespace Ulon.Client
             if (target == null || target.IsEnemy || !target.Alive)
                 target = body;
             var result = OfflineWorld.Instance.TryHeal(body, target);
+            if (result.Applied && target != null)
+                ActionVfx.Play(ActionVfx.Kind.Heal, target.transform.position + Vector3.up * 1.0f);
             if (result.Applied)
                 SaveNow();
         }
