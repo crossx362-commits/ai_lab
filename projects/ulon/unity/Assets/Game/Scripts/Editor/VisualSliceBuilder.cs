@@ -2193,8 +2193,10 @@ namespace Ulon.Editor
                 {
                     float px = center.x - capSpan * 0.5f + tile * (cx + 0.5f);
                     float pz = center.z - capSpan * 0.5f + tile * (cz + 0.5f);
-                    RoomSlab(room, "DungeonCap", new Vector3(px, capTop - capThick * 0.5f, pz),
-                        new Vector3(tile, capThick, tile), ceilMat);
+                    // 타일마다 살짝 높이·크기를 흔든다 — 완전한 평면 정사각형은 조망에서 인공 슬래브로 읽힌다.
+                    float jitter = (Mathf.PerlinNoise(px * 0.21f + 4f, pz * 0.21f + 9f) - 0.5f) * 0.5f;
+                    RoomSlab(room, "DungeonCap", new Vector3(px, capTop + jitter - capThick * 0.5f, pz),
+                        new Vector3(tile * 1.02f, capThick, tile * 1.02f), ceilMat);
                 }
             }
 
@@ -2664,6 +2666,9 @@ namespace Ulon.Editor
                     // 물가는 모래, 높은 곳은 바위, 나머지는 풀 — 초록 한 장으로 덮으면 §8.2 위반이다.
                     float sand = 1f - Mathf.Clamp01((h - (WorldTerrain.SeaLevel - 0.5f)) / 2.5f);
                     float rock = Mathf.Clamp01((h - (WorldTerrain.LandBase + 4f)) / 10f);
+                    // 평지도 흙·바위 얼룩을 섞는다 — 초원 전체가 한 가지 초록이면 §8.2 위반이다.
+                    float mottle = Mathf.PerlinNoise(wx * 0.021f + 3.1f, wz * 0.021f + 8.9f);
+                    rock = Mathf.Max(rock, Mathf.Clamp01((mottle - 0.62f) * 2.4f) * 0.75f);
                     float grassW = Mathf.Max(0f, 1f - sand - rock);
                     float sum = sand + rock + grassW;
                     alpha[z, x, 0] = grassW / sum;
