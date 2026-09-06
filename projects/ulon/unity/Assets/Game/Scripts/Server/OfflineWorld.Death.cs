@@ -156,8 +156,8 @@ namespace Ulon.Server
                 return new AttackResult { FailReason = "no_vendor" };
             if (body.Ghost)
                 return new AttackResult { FailReason = "ghost" };
-            float dist = Vector3.Distance(body.transform.position, vendor.transform.position);
-            if (dist > vendor.InteractRange)
+            // 사거리는 대상 표면에서(은행과 같은 이유) — 좌판이 크면 중심 기준은 늘 밖이다.
+            if (!WithinReach(body.transform.position, vendor.transform, vendor.InteractRange))
                 return new AttackResult { FailReason = "range" };
             ActiveVendor = vendor;
             return new AttackResult { Applied = true };

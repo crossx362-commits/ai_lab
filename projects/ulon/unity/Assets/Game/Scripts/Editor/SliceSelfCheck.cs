@@ -1627,6 +1627,8 @@ namespace Ulon.Editor
             AssertWorldMaterials();
             AssertServerAuthorityWiring();
             AssertReachableFeatures();
+            AssertWarpLandings();
+            AssertWarpLandingsNegativeControl();
             AssertHudControlsOnScreen();
             AssertHudControlsNegativeControl();
             AssertBossSilhouette();

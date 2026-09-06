@@ -122,16 +122,95 @@ namespace Ulon.Server
         /// 지형을 올린 뒤로는 워프할 때마다 플레이어가 10m 지하에 처박혔다(검수 2026-09-06 A 랩에서 발견).
         /// </summary>
         static void WarpBody(WorldBody body, float x, float z, bool indoor = false)
+            => WarpTo(body, WarpTarget(x, z, indoor));
+
+        /// <summary>이미 정해진 자리로 내려놓는다 — CharacterController를 끄고 옮겨야 밀려나지 않는다.</summary>
+        static void WarpTo(WorldBody body, Vector3 spot)
         {
             var cc = body.GetComponent<CharacterController>();
             if (cc != null)
                 cc.enabled = false;
+            body.transform.position = spot;
+            if (cc != null)
+                cc.enabled = true;
+        }
+
+        /// <summary>
+        /// **대상 옆**에 내려놓을 자리(은행·상인 같은 키워드 워프용). 대상 좌표를 그대로 쓰면
+        /// 그 자리에 서 있는 것이 건물일 때 플레이어가 **구조물 안**으로 들어간다 —
+        /// 「은행」이라고 말하면 풍차 속으로 떨어지던 결함이 그것이다(검수 랩 B, 2026-09-07).
+        ///
+        /// 대상 바운드 밖 + 사거리 안에서 여덟 방향을 돌며 **몸이 들어갈 빈자리**를 고른다.
+        /// 게임과 게이트가 이 함수를 **같이** 쓴다(원장 하나, 같은 자).
+        /// </summary>
+        public static Vector3 WarpBesideTarget(Transform target, float interactRange)
+        {
+            var center = target.position;
+            float radius = TargetFootprint(target) + 0.6f;                 // 바운드 밖으로 조금 더
+            float reach = Mathf.Max(radius, Mathf.Min(interactRange - 0.4f, radius + 1.2f));
+            for (int i = 0; i < 8; i++)
+            {
+                float a = i * Mathf.PI * 0.25f;
+                float x = center.x + Mathf.Cos(a) * reach;
+                float z = center.z + Mathf.Sin(a) * reach;
+                var spot = WarpTarget(x, z);
+                if (SpotIsClear(spot))
+                    return spot;
+            }
+            // 여덟 방향이 다 막혔으면 그래도 대상 밖에 세운다(안보다는 낫다).
+            return WarpTarget(center.x + reach, center.z);
+        }
+
+        /// <summary>
+        /// 사거리는 **대상의 표면**에서 잰다. 중심에서 재면 풍차처럼 큰 건물은 「옆에 붙어 서도 사거리 밖」이 된다 —
+        /// 은행 옆으로 워프시켜 놓고 그 자리에서 「사거리 밖」이라 거절하던 모순이 그것이었다(검수 랩 B).
+        /// </summary>
+        public static bool WithinReach(Vector3 from, Transform target, float range)
+        {
+            float flat = Vector2.Distance(new Vector2(from.x, from.z),
+                                          new Vector2(target.position.x, target.position.z));
+            return flat - TargetFootprint(target) <= range;
+        }
+
+        /// <summary>대상이 바닥에 차지하는 반경 — 렌더러 바운드의 가로/세로 중 큰 쪽 절반.</summary>
+        static float TargetFootprint(Transform target)
+        {
+            var rends = target.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0)
+                return 0.5f;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++)
+                b.Encapsulate(rends[i].bounds);
+            return Mathf.Max(b.extents.x, b.extents.z);
+        }
+
+        /// <summary>그 자리에 사람 몸이 들어가는가 — 구조물·소품과 겹치면 빈자리가 아니다.</summary>
+        static bool SpotIsClear(Vector3 groundSpot)
+        {
+            var foot = groundSpot + Vector3.up * 0.5f;
+            var head = groundSpot + Vector3.up * 1.6f;
+            var hits = Physics.OverlapCapsule(foot, head, 0.35f);
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (hits[i].GetComponentInParent<WorldBody>() != null)
+                    continue;                                              // 사람·몹은 비켜서면 그만이다
+                if (hits[i].GetComponent<TerrainCollider>() != null)
+                    continue;                                              // 지표는 딛는 것이지 막는 것이 아니다
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 워프가 내려놓는 자리. **게이트와 같은 함수를 쓰라고** 공개해 둔다 —
+        /// 판정이 자기만의 계산을 하면 게임이 실제로 어디에 내려놓는지와 갈라진다(발 높이 원장과 같은 이유).
+        /// </summary>
+        public static Vector3 WarpTarget(float x, float z, bool indoor = false)
+        {
             float y = WorldTerrain.HeightAt(x, z) + 0.1f;
             if (indoor)
                 y -= WorldTerrain.DungeonDepth;             // 던전 방 바닥
-            body.transform.position = new Vector3(x, y, z);
-            if (cc != null)
-                cc.enabled = true;
+            return new Vector3(x, y, z);
         }
 
         static void EnsureDungeon1Runtime()

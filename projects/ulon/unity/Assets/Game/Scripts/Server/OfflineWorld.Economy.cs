@@ -116,8 +116,8 @@ namespace Ulon.Server
                 return new AttackResult { FailReason = "no_bank" };
             if (body.Ghost)
                 return new AttackResult { FailReason = "ghost" };
-            float dist = Vector3.Distance(body.transform.position, station.transform.position);
-            if (dist > station.InteractRange)
+            // 사거리는 건물 표면에서 잰다 — 중심 기준이면 풍차 옆에 붙어 서도 「사거리 밖」이다(검수 랩 B).
+            if (!WithinReach(body.transform.position, station.transform, station.InteractRange))
                 return new AttackResult { FailReason = "range" };
             if (Bag(body).Items.Count > 0)
                 return DepositAll(body);
@@ -168,9 +168,9 @@ namespace Ulon.Server
                 LastSpeechMessage = "은행 없음";
                 return new AttackResult { FailReason = "no_bank" };
             }
-            float dist = Vector3.Distance(body.transform.position, station.transform.position);
-            if (dist > station.InteractRange)
-                WarpBody(body, station.transform.position.x, station.transform.position.z);
+            // 대상 좌표 그대로 보내면 건물 안에 처박힌다 — 옆 빈자리로(검수 랩 B).
+            if (!WithinReach(body.transform.position, station.transform, station.InteractRange))
+                WarpTo(body, WarpBesideTarget(station.transform, station.InteractRange));
             var result = TryBank(body, station);
             LastSpeechMessage = "은행";
             if (result.Applied)
@@ -216,8 +216,9 @@ namespace Ulon.Server
                 LastSpeechMessage = "상점 없음";
                 return new AttackResult { FailReason = "no_vendor" };
             }
-            if (best > nearest.InteractRange)
-                WarpBody(body, nearest.transform.position.x, nearest.transform.position.z);
+            // 위와 같은 이유 — 상인 위가 아니라 상인 옆에 선다.
+            if (!WithinReach(body.transform.position, nearest.transform, nearest.InteractRange))
+                WarpTo(body, WarpBesideTarget(nearest.transform, nearest.InteractRange));
             var result = TryVendor(body, nearest);
             if (result.Applied)
             {

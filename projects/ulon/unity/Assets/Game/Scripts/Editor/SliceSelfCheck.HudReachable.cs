@@ -85,7 +85,7 @@ namespace Ulon.Editor
             var drawn = HudDrawnControls();
             AssertRequiredControlsDrawn(drawn, lines);
             Debug.Log("[Ulon] 화면 조작 수단(실행) 통과 — 기록된 버튼 " + drawn.Count + "종에 핵심 " +
-                      HudRequiredControls.Length + "종이 모두 들어 있음(docs/hud_controls.txt)");
+                      HudRequiredControls.Length + "종이 모두 들어 있음 · 기록 " + HudControlsHeader);
         }
 
         static void AssertRequiredControlsDrawn(HashSet<string> drawn, string[] hudLines)
@@ -112,6 +112,8 @@ namespace Ulon.Editor
                     "HUD를 고쳤다면 `bash tools/hud_shots.sh`로 기록을 갱신하세요(기록이 낡아도 이 줄이 뜹니다).");
         }
 
+        static string HudControlsHeader = "";
+
         static HashSet<string> HudDrawnControls()
         {
             // 기록은 `docs/hud_controls.txt`(git 추적)를 본다 — `builds/`는 무시 경로라 새로 받은 저장소에서
@@ -122,12 +124,21 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("그려진 버튼 기록(" + path + ")이 없습니다 — " +
                     "`bash tools/hud_shots.sh`를 한 번 돌려 실행 중 화면의 조작 수단을 기록하세요.");
             var set = new HashSet<string>();
+            HudControlsHeader = "";
             foreach (string line in File.ReadAllLines(path))
             {
                 string s = line.Trim();
+                if (s.StartsWith("#", StringComparison.Ordinal))
+                {
+                    HudControlsHeader = s.TrimStart('#').Trim();   // 언제·어느 커밋의 기록인지
+                    continue;
+                }
                 if (s.Length > 0)
                     set.Add(s);
             }
+            if (HudControlsHeader.Length == 0)
+                throw new InvalidOperationException("기록(" + path + ") 첫 줄에 머리말(생성 시각·HEAD)이 없습니다 — " +
+                    "언제 것인지 모르는 기록은 증거가 아닙니다. `bash tools/hud_shots.sh`로 다시 만드세요(손으로 쓰지 마세요).");
             return set;
         }
 

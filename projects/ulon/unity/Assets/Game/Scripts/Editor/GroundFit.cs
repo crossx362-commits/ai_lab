@@ -38,12 +38,26 @@ namespace Ulon.Editor
                 list.Add(t);
         }
 
-        /// <summary>지형·물·관리자·카메라·조명 — 배치물이 아니다.</summary>
+        /// <summary>
+        /// 지형·물·관리자·카메라·조명 — 배치물이 아니다.
+        /// **이름 「포함」으로 거르지 않는다**(검수 랩 B): `Contains("Light")`는 「StreetLight」·「Lighthouse」처럼
+        /// 이름에 그 단어가 든 **배치물을 통째로** 눈 밖으로 내보낸다. 씬 루트는 우리가 만든 것뿐이니
+        /// **정확한 이름 목록**으로 적는다 — 새 루트가 생기면 여기 적어야 검사에서 빠진다(빠뜨림이 눈에 띈다).
+        /// </summary>
+        static readonly string[] SkipRoots =
+        {
+            "Terrain", "Ground", "Managers", "GameManager", "NetworkManager", "Main Camera", "PlayCamera",
+            "Directional Light", "Sun", "Canvas", "EventSystem", "Global Volume", "PostProcessVolume",
+        };
+
         public static bool SkipContainer(string n)
         {
-            return n == "Terrain" || n.StartsWith("Sea", StringComparison.Ordinal) || n.StartsWith("Water", StringComparison.Ordinal)
-                || n.Contains("Manager") || n.Contains("Camera") || n.Contains("Light") || n.Contains("Canvas")
-                || n.Contains("EventSystem") || n.Contains("Volume");
+            if (n.StartsWith("Sea", StringComparison.Ordinal) || n.StartsWith("Water", StringComparison.Ordinal))
+                return true;                                  // 바다·수면은 지표가 아니다
+            for (int i = 0; i < SkipRoots.Length; i++)
+                if (string.Equals(n, SkipRoots[i], StringComparison.Ordinal))
+                    return true;
+            return false;
         }
 
         /// <summary>방 구조물·뚜껑 — 지하에 묻힌 것이 정상이다.</summary>

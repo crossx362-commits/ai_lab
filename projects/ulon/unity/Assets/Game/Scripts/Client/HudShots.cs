@@ -114,6 +114,13 @@ namespace Ulon.Client
                 yield return Shot("hud_06_shop");
             }
 
+            // ⑦ 「은행」 워프 착지 — 수치가 0.10m라도 **벽 속이 아닌지는 눈으로 봐야 한다**(검수 랩 B 조건 3).
+            world.Player.transform.position = new Vector3(30f, world.Player.transform.position.y, 30f);
+            world.TrySpeechKeyword(world.Player, "은행");
+            Panel(0);
+            for (int i = 0; i < 10; i++) yield return null;
+            yield return Shot("hud_07_bank_warp");
+
             // 화면 규칙 검사 — **해상도 하나만 재면 다른 쪽이 깨진다**(검수). 두 해상도 모두 본다.
             bool ok = true;
             yield return CheckLayout(1280, 720, r => ok &= r);
