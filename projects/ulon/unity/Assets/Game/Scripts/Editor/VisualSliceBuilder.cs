@@ -320,10 +320,45 @@ namespace Ulon.Editor
                 PaintSceneByName(roadMat, new[] { "road" });
         }
 
-        static void PaintSceneByName(Material mat, string[] names)
+        /// <summary>
+        /// 마을 밖 소품 재질(검수 2026-09-06 반려 A). Kenney FantasyTown 바위는 **흰 무텍스처**라
+        /// 잔디 위에 스티로폼 덩어리로 보였다 — 산 도포와 같은 암석 계열로 칠하고, 광맥은 따로 구분한다.
+        /// 씬을 다 만든 뒤에 부른다(나중에 놓인 소품까지 칠해야 한다).
+        /// </summary>
+        public static void EnsureWorldPropMaterials()
         {
+            // 밝은 회색(0.30~0.56)은 햇빛에서 흰 스티로폼으로 보였다 — 산자락 암석 톤으로 낮춘다(실측 후 재조정).
+            var rockMat = MakeNoiseMat("MountainRockProp", new Color(0.15f, 0.14f, 0.13f), new Color(0.34f, 0.31f, 0.27f));
+            if (rockMat != null)
+            {
+                rockMat.SetFloat("_Glossiness", 0.08f);
+                if (rockMat.HasProperty("_MainTex"))
+                    rockMat.mainTextureScale = new Vector2(2.5f, 2.5f);
+                EditorUtility.SetDirty(rockMat);
+            }
+            var veinMat = MakeNoiseMat("IronVeinRock", new Color(0.24f, 0.21f, 0.18f), new Color(0.62f, 0.38f, 0.16f));
+            string[] rockFbx =
+            {
+                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-large.fbx",
+                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-wide.fbx",
+                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-small.fbx",
+            };
+            // FBX 임포트 에셋에 재질을 꽂는 것은 **디스크에 남지 않는다**(다시 열면 흰 Kenney 재질로 돌아온다 —
+            // 이번에 셀프체크는 「102개 도포」라고 찍는데 샷은 그대로 흰 바위였던 원인이다).
+            // 실제 자산인 Env 프리팹에 꽂고 저장한다.
+            for (int i = 0; i < rockFbx.Length; i++)
+                AssignMatAsset(EnvPrefabPath(rockFbx[i]), rockMat);
+            AssetDatabase.SaveAssets();
+            int rocks = PaintSceneByName(rockMat, new[] { "rock-large", "rock-wide", "rock-small" });
+            int veins = PaintSceneByName(veinMat, new[] { "MineVein1", "MineVein2", "MineVein3", "IronVein" });
+            Debug.Log("[Ulon] 소품 재질 — 바위 렌더러 " + rocks + "개 암석 도포, 광맥 " + veins + "개 철광 도포");
+        }
+
+        static int PaintSceneByName(Material mat, string[] names)
+        {
+            int painted = 0;
             if (mat == null || names == null)
-                return;
+                return painted;
             var rends = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < rends.Length; i++)
             {
@@ -345,7 +380,9 @@ namespace Ulon.Editor
                 for (int s = 0; s < slots.Length; s++)
                     slots[s] = mat;
                 rends[i].sharedMaterials = slots;
+                painted++;
             }
+            return painted;
         }
 
         static bool NameMatches(string name, string[] names)
@@ -377,6 +414,9 @@ namespace Ulon.Editor
                 t = t.parent;
             return t.name;
         }
+
+        /// <summary>캐릭터 아트 판정을 Assert에서도 쓴다(같은 규칙을 두 벌 두면 갈라진다).</summary>
+        public static bool IsCharacterArtPublic(Transform t) => IsCharacterArt(t);
 
         static bool IsCharacterArt(Transform t)
         {
@@ -1917,6 +1957,24 @@ namespace Ulon.Editor
             return mat;
         }
 
+        /// <summary>프리팹 에셋에 재질을 꽂고 **디스크에 기록**한다(SetDirty/SavePrefabAsset 없이는 사라진다).</summary>
+        static void AssignMatAsset(string prefabPath, Material mat)
+        {
+            var go = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (go == null || mat == null)
+                return;
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                var slots = rends[i].sharedMaterials;
+                for (int s = 0; s < slots.Length; s++)
+                    slots[s] = mat;
+                rends[i].sharedMaterials = slots;
+            }
+            EditorUtility.SetDirty(go);
+            PrefabUtility.SavePrefabAsset(go);
+        }
+
         static void AssignMat(string fbx, Material mat)
         {
             var go = AssetDatabase.LoadAssetAtPath<GameObject>(fbx);
@@ -2236,6 +2294,90 @@ namespace Ulon.Editor
             EditorUtility.SetDirty(data);
         }
 
+        // 뚜껑 윗면은 지표 아래로, 아랫면(=방 천장)은 예전 높이 그대로 — 두께로 맞춘다.
+        // 천장이 내려오면 보스가 천장에 닿고 실내 화면 판정이 흔들린다.
+        // 뚜껑 윗면은 지표 아래로, 아랫면(=방 천장)은 예전 높이 그대로 — 두께로 맞춘다.
+        // 천장이 내려오면 보스가 천장에 닿고 실내 화면 판정이 흔들린다.
+        public const float CapTopBelowGround = 0.60f;
+        public const float CapBottomBelowGround = 2.10f;
+
+        /// <summary>
+        /// 암반 뚜껑 6×6 타일. 한 장이면 통째로 사라져 다시 잔디가 보이므로 격자로 깐다.
+        /// **윗면 높이는 타일마다 그 자리의 지면에서 잰다** — 방 중심 한 곳만 재면 경사에서 뚜껑이 지표로 솟아
+        /// 조망에 회색 판으로 찍힌다(검수 반려 B의 잔재가 그랬다). 아랫면은 방 천장이라 고정한다.
+        /// </summary>
+        static void BuildCapTiles(Transform room, Vector3 center, float span, Material ceilMat)
+        {
+            float centerGround = OnGround(new Vector3(center.x, 0f, center.z)).y;
+            float bottom = centerGround - CapBottomBelowGround;
+            int capTiles = 6;
+            float capSpan = span + 16f;
+            float tile = capSpan / capTiles;
+            for (int cx = 0; cx < capTiles; cx++)
+            {
+                for (int cz = 0; cz < capTiles; cz++)
+                {
+                    float px = center.x - capSpan * 0.5f + tile * (cx + 0.5f);
+                    float pz = center.z - capSpan * 0.5f + tile * (cz + 0.5f);
+                    float top = OnGround(new Vector3(px, 0f, pz)).y - CapTopBelowGround;
+                    float thick = Mathf.Max(0.8f, top - bottom);
+                    RoomSlab(room, "DungeonCap", new Vector3(px, top - thick * 0.5f, pz),
+                        new Vector3(tile * 1.02f, thick, tile * 1.02f), ceilMat);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 이미 만들어진 씬을 고치는 멱등 보수 패스(검수 반려 B). `Ensure*`는 오브젝트가 있으면 일찍 반환하므로
+        /// 코드 수정만으로는 디스크의 씬이 안 고쳐진다. 옛 뚜껑·뚜껑 장식을 지우고 새 높이로 다시 깐다.
+        /// </summary>
+        public static void EnsureCapBuried()
+        {
+            RepairTerrainHoles();
+            var ceilMat = MakeNoiseMat("DungeonCeiling", new Color(0.11f, 0.11f, 0.13f), new Color(0.18f, 0.17f, 0.20f));
+            var rooms = new[]
+            {
+                new { Obj = Dungeon1.InteriorObject, X = Dungeon1.InteriorX, Z = Dungeon1.InteriorZ, Half = Dungeon1.RoomHalf },
+                new { Obj = Dungeon2.InteriorObject, X = Dungeon2.InteriorX, Z = Dungeon2.InteriorZ, Half = Dungeon2.RoomHalf },
+                new { Obj = Dungeon3.InteriorObject, X = Dungeon3.InteriorX, Z = Dungeon3.InteriorZ, Half = Dungeon3.RoomHalf },
+            };
+            int removed = 0;
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                var go = GameObject.Find(rooms[i].Obj);
+                if (go == null)
+                    continue;
+                var room = go.transform;
+                for (int c = room.childCount - 1; c >= 0; c--)
+                {
+                    var child = room.GetChild(c);
+                    if (child.name == "DungeonCap" || child.name.StartsWith("CapDress", StringComparison.Ordinal))
+                    {
+                        UnityEngine.Object.DestroyImmediate(child.gameObject);
+                        removed++;
+                    }
+                }
+                BuildCapTiles(room, new Vector3(rooms[i].X, 0f, rooms[i].Z), rooms[i].Half * 2f, ceilMat);
+            }
+            Debug.Log("[Ulon] 던전 뚜껑 매설 — 옛 타일 " + removed + "장 제거 후 타일마다 그 자리 지표 " + CapTopBelowGround + "m 아래로 재배치, Terrain 홀 복구");
+        }
+
+        /// <summary>뚫어 둔 Terrain 홀을 전부 메운다 — 홀은 에셋에 남으므로 코드에서 안 뚫는 것만으로는 안 사라진다.</summary>
+        static void RepairTerrainHoles()
+        {
+            var terrain = Terrain.activeTerrain;
+            if (terrain == null || terrain.terrainData == null)
+                return;
+            var data = terrain.terrainData;
+            int res = data.holesResolution;
+            var solid = new bool[res, res];
+            for (int z = 0; z < res; z++)
+                for (int x = 0; x < res; x++)
+                    solid[z, x] = true;
+            data.SetHoles(0, 0, solid);
+            EditorUtility.SetDirty(data);
+        }
+
         public static void BuildDungeonRoom(Transform room, Vector3 center, float half, float wallH, string doorSide)
         {
             // 앰비언트가 야외 값(0.55)이라 알베도를 낮춰야 실내가 낮처럼 안 보인다(§8.2).
@@ -2251,7 +2393,10 @@ namespace Ulon.Editor
             float t = 0.5f;
             wallH = DungeonDepth + 0.15f;   // 바닥에서 지면까지 — 벽 너머로 잔디가 보이지 않게
 
-            PunchTerrainHole(center, half);
+            // Terrain 홀은 더 이상 뚫지 않는다(검수 2026-09-06 반려 B) — 구멍은 조망에서 **짙은 회색 직사각형**으로 읽혔다.
+            // 실내 줌(§4.2) 이후 카메라가 방 안에 있어 뚜껑이 페이드로 걷히지 않으므로, 지표는 잔디 그대로 두고
+            // 뚜껑을 지표 **아래로** 묻는다(하늘·주광 차단은 뚜껑이 계속 한다).
+            RepairTerrainHoles();
 
             // 바닥은 Terrain 홀보다 넓어야 한다 — 좁으면 방 가장자리로 하늘이 비친다(플레이캠 실측).
             RoomSlab(room, "DungeonFloor", new Vector3(center.x, y + 0.1f, center.z), new Vector3(span + 8f, 0.2f, span + 8f), floorMat);
@@ -2285,23 +2430,7 @@ namespace Ulon.Editor
 
             // 천장 = 지면 높이의 암반 뚜껑. 한 장이면 페이드 때 통째로 사라져 다시 잔디가 보이므로
             // 6×6 타일 격자로 깔아 시선에 걸린 몇 장만 걷히게 한다(단면으로 읽힌다).
-            float capTop = ground + 0.15f;
-            float capThick = Mathf.Max(1.2f, DungeonDepth * 0.5f);
-            int capTiles = 6;
-            float capSpan = span + 16f;
-            float tile = capSpan / capTiles;
-            for (int cx = 0; cx < capTiles; cx++)
-            {
-                for (int cz = 0; cz < capTiles; cz++)
-                {
-                    float px = center.x - capSpan * 0.5f + tile * (cx + 0.5f);
-                    float pz = center.z - capSpan * 0.5f + tile * (cz + 0.5f);
-                    // 타일마다 살짝 높이·크기를 흔든다 — 완전한 평면 정사각형은 조망에서 인공 슬래브로 읽힌다.
-                    float jitter = (Mathf.PerlinNoise(px * 0.21f + 4f, pz * 0.21f + 9f) - 0.5f) * 0.5f;
-                    RoomSlab(room, "DungeonCap", new Vector3(px, capTop + jitter - capThick * 0.5f, pz),
-                        new Vector3(tile * 1.02f, capThick, tile * 1.02f), ceilMat);
-                }
-            }
+            BuildCapTiles(room, center, span, ceilMat);
 
             const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
             var lanternA = Place(Lantern, new Vector3(center.x - half + 1.2f, 0f, center.z + half - 1.2f), Vector3.zero);
@@ -2506,77 +2635,6 @@ namespace Ulon.Editor
             }
         }
 
-        /// <summary>
-        /// 던전 암반 뚜껑은 조망에서 **평평한 회색 직사각형**으로 읽힌다(반려 4 샷 18·19·20 전부에 찍혔다).
-        /// 뚜껑 위에 바위·덤불을 얹어 직선 테두리를 깨뜨린다. 방 안에서는 뚜껑 위가 안 보이므로
-        /// 실내 화면 비율 게이트(InteriorShareMin)에는 영향이 없다.
-        /// </summary>
-        public static void EnsureCapDressing()
-        {
-            DressDungeonCaps(new[]
-            {
-                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-wide.fbx",
-                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-large.fbx",
-                "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bushLarge.fbx",
-                "Assets/_ThirdParty/Kenney/Nature/RAW/Models/grass_large.fbx",
-            });
-        }
-
-        static void DressDungeonCaps(string[] props)
-        {
-            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            var rooms = new System.Collections.Generic.Dictionary<Transform, Bounds>();
-            for (int i = 0; i < all.Length; i++)
-            {
-                if (all[i] == null || all[i].name != "DungeonCap")
-                    continue;
-                var rend = all[i].GetComponent<Renderer>();
-                if (rend == null)
-                    continue;
-                var room = all[i].parent;
-                if (room == null)
-                    continue;
-                if (rooms.TryGetValue(room, out var b))
-                {
-                    b.Encapsulate(rend.bounds);
-                    rooms[room] = b;
-                }
-                else
-                {
-                    rooms[room] = rend.bounds;
-                }
-            }
-
-            int seed = 0;
-            int dressed = 0;
-            foreach (var kv in rooms)
-            {
-                // 멱등: 이전 장식을 지우고 다시 얹는다(Ensure* 조기 반환으로 이미 만들어진 씬이 안 고쳐지는 함정).
-                for (int i = kv.Key.childCount - 1; i >= 0; i--)
-                {
-                    var c = kv.Key.GetChild(i);
-                    if (c.name.StartsWith("CapDress", StringComparison.Ordinal))
-                        UnityEngine.Object.DestroyImmediate(c.gameObject);
-                }
-                var b = kv.Value;
-                for (int i = 0; i < 22; i++)
-                {
-                    seed++;
-                    float x = WorldRegions.Rand(seed, 51, b.min.x + 0.5f, b.max.x - 0.5f);
-                    float z = WorldRegions.Rand(seed, 52, b.min.z + 0.5f, b.max.z - 0.5f);
-                    var go = Place(props[i % props.Length], new Vector3(x, 0f, z), new Vector3(0f, WorldRegions.Rand(seed, 53, 0f, 360f), 0f));
-                    if (go == null)
-                        continue;
-                    go.name = "CapDress_" + go.name;
-                    go.transform.SetParent(kv.Key, true);
-                    // Terrain.SampleHeight는 홀을 모른다 — 뚜껑 윗면(지면 +0.15)에 맞춰 올린다.
-                    go.transform.position += new Vector3(0f, 0.15f, 0f);
-                    go.transform.localScale = go.transform.localScale * WorldRegions.Rand(seed, 54, 0.9f, 2.0f);
-                    dressed++;
-                }
-            }
-            Debug.Log("[Ulon] 던전 뚜껑 장식 " + dressed + "개 (방 " + rooms.Count + "곳)");
-        }
 
         static Transform FreshRegion(WorldRegions.Region region)
         {
