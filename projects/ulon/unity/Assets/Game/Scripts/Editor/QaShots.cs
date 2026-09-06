@@ -50,6 +50,7 @@ namespace Ulon.Editor
                 Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
                 Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 // §8.1 멀리서도 읽히는 실루엣 — 산·바다 조망, 호수·강 조망.
+                BossCloseUp("17_boss_closeup", Dungeon3.BossX, Dungeon3.BossZ),
                 Free("14_world_vista", new Vector3(-165f, 95f, -165f), new Vector3(0f, WorldTerrain.LandBase, 0f)),
                 Free("15_lake_river", new Vector3(WorldTerrain.LakeX + 46f, 40f, WorldTerrain.LakeZ + 46f), new Vector3(WorldTerrain.LakeX - 12f, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
@@ -92,6 +93,16 @@ namespace Ulon.Editor
                 Object.DestroyImmediate(tex);
             }
             Debug.Log("[Ulon] QA shots " + shots.Length + "장 — " + dir);
+        }
+
+        /// <summary>보스 근접 — 왕관·큰 무기를 확인하는 검수용 샷(검수 요청 2026-09-06).</summary>
+        static Shot BossCloseUp(string name, float bx, float bz)
+        {
+            float y = GroundY(bx, bz) - VisualSliceBuilder.DungeonDepth;
+            var target = new Vector3(bx, y + 1.9f, bz);
+            // 방 중앙 쪽에서 본다 — 보스는 벽 가까이 서 있어 바깥쪽에서 잡으면 벽 속이다.
+            var toCenter = new Vector3(Dungeon3.InteriorX - bx, 0f, Dungeon3.InteriorZ - bz).normalized;
+            return new Shot { Name = name, Eye = target + toCenter * 4.2f + new Vector3(0f, 0.9f, 0f), Target = target };
         }
 
         /// <summary>임의 시점 — 조망 샷용.</summary>
