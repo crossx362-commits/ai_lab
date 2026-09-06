@@ -1613,6 +1613,8 @@ namespace Ulon.Editor
             AssertActionSfxNegativeControl();
             AssertPlayerNotOccluded();
             AssertPlayerNotOccludedNegativeControl();
+            AssertSpawnOnGround();
+            AssertSpawnOnGroundNegativeControl();
             AssertPerfRegressionAlarm();
             AssertBossMobContrast();
             AssertBossMobContrastNegativeControl();

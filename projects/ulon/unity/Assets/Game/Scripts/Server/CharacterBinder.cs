@@ -7,6 +7,39 @@ namespace Ulon.Server
 {
     public static class CharacterBinder
     {
+        /// <summary>
+        /// 저장된 좌표를 **그대로 믿지 않는다**. 새 캐릭터 스냅샷의 좌표는 (0,0,0)인데 마을 지표는 y≈10이라
+        /// 로그인 직후 플레이어가 **땅 밑 10m에서 떨어져 바다로 빠졌다**(2026-09-07 HUD 샷으로 발견, P0).
+        /// 발밑 3m 안에 딛을 것이 있으면(던전 방 바닥 등) 그대로 두고, 없으면 지표 위로 올린다.
+        /// </summary>
+        public static Vector3 GroundedSpawn(Component body, Vector3 want)
+        {
+            if (StandsOnSomething(body, want))
+                return want;
+            var hits = Physics.RaycastAll(new Vector3(want.x, want.y + 500f, want.z), Vector3.down, 1000f,
+                                          ~0, QueryTriggerInteraction.Ignore);
+            float best = float.NegativeInfinity;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (body != null && hits[i].collider != null && hits[i].collider.transform.IsChildOf(body.transform))
+                    continue;
+                if (hits[i].point.y > best) best = hits[i].point.y;
+            }
+            return float.IsNegativeInfinity(best) ? want : new Vector3(want.x, best + 0.05f, want.z);
+        }
+
+        static bool StandsOnSomething(Component body, Vector3 want)
+        {
+            var hits = Physics.RaycastAll(want + Vector3.up * 0.5f, Vector3.down, 3f, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (body != null && hits[i].collider != null && hits[i].collider.transform.IsChildOf(body.transform))
+                    continue;
+                return true;
+            }
+            return false;
+        }
+
         public static void Apply(WorldBody body, CharacterSnapshot snap, SkillSet skills, StatSet stats)
         {
             if (body == null || snap == null)
@@ -21,7 +54,7 @@ namespace Ulon.Server
                 body.DisplayName = snap.Name;
             body.Appearance = snap.Appearance;
             body.transform.SetPositionAndRotation(
-                new Vector3(snap.X, snap.Y, snap.Z),
+                GroundedSpawn(body, new Vector3(snap.X, snap.Y, snap.Z)),
                 body.transform.rotation);
             if (stats != null)
             {
