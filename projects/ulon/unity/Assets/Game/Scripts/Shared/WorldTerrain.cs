@@ -28,7 +28,7 @@ namespace Ulon.Shared
         // 호수 — 마을(반경 48)·던전(±68 모서리) 밖 서쪽 평지.
         public const float LakeX = -70f;
         public const float LakeZ = 10f;
-        public const float LakeRadius = 15f;
+        public const float LakeRadius = 21f;
         public const float LakeDepth = 1.8f;     // 물 아래 깊이
 
         // 강 — 호수에서 서쪽 바다까지. 산 띠를 협곡으로 통과한다.
@@ -42,7 +42,7 @@ namespace Ulon.Shared
         {
             // 정사각 링 그대로 쓰면 화면에서 "네모난 담장"으로 읽힌다(조망 샷 실측).
             // 거리 자체를 노이즈로 흔들어 해안선·산자락을 들쭉날쭉하게 만든다.
-            float wobble = (Mathf.PerlinNoise(wx * 0.012f + 5.5f, wz * 0.012f + 71f) - 0.5f) * 26f;
+            float wobble = (Mathf.PerlinNoise(wx * 0.009f + 5.5f, wz * 0.009f + 71f) - 0.5f) * 52f;
             float m = Mathf.Max(Mathf.Abs(wx), Mathf.Abs(wz)) + wobble;
             float h;
 
@@ -64,7 +64,8 @@ namespace Ulon.Shared
                 float ridge = Mathf.PerlinNoise(wx * 0.045f + 91f, wz * 0.045f + 17f);
                 ridge = 1f - Mathf.Abs(ridge * 2f - 1f);            // 능선형 노이즈
                 float bumps = Mathf.PerlinNoise(wx * 0.13f, wz * 0.13f + 55f) * 0.35f;
-                h = LandBase + t * MountainHeight * (0.55f + ridge * 0.65f + bumps);
+                // 균일한 톱니 링은 담장으로 읽힌다(§8.1) — 저주파 마스크로 산괴와 고개를 만든다.
+                h = LandBase + t * MountainHeight * Massif(wx, wz) * (0.55f + ridge * 0.65f + bumps);
             }
             else if (m <= CoastEnd)
             {
@@ -88,6 +89,13 @@ namespace Ulon.Shared
             return Mathf.Clamp(h, 0f, MaxHeight);
         }
 
+        /// <summary>산괴 마스크 — 0에 가까우면 고개(넘어갈 수 있는 낮은 안부), 1이면 큰 산덩어리.</summary>
+        public static float Massif(float wx, float wz)
+        {
+            float n = Mathf.PerlinNoise(wx * 0.0075f + 41.7f, wz * 0.0075f + 3.3f);
+            return Mathf.Lerp(0.15f, 1.6f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.32f, 0.78f, n)));
+        }
+
         /// <summary>마을 주변은 평평하게, 바깥으로 갈수록 완만한 기복.</summary>
         static float Rolling(float wx, float wz)
         {
@@ -107,7 +115,8 @@ namespace Ulon.Shared
             if (d > LakeRadius)
                 return h;
             // 바깥 40%만 완만한 둑, 안쪽은 넓은 수면 — 중심 한 점만 깊으면 물이 손톱만큼만 보인다.
-            float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - d / LakeRadius) / 0.4f));
+            // 둑을 넓게(바깥 60%) — 급경사면 물가 모래 띠가 안 생기고 잔디가 물에 수직으로 잘린다(§8.2).
+            float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - d / LakeRadius) / 0.6f));
             // 물가는 뭍 높이에서 서서히 내려가야 한다 — 바로 수면 높이로 떨어뜨리면 3m 수직 절벽이 된다.
             float bed = Mathf.Lerp(h, SeaLevel - LakeDepth, t);
             return Mathf.Min(h, bed);

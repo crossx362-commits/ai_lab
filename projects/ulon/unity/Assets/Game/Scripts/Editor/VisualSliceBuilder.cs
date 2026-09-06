@@ -2755,7 +2755,8 @@ namespace Ulon.Editor
                 data = new TerrainData();
                 AssetDatabase.CreateAsset(data, DataPath);
             }
-            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.32f, 0.31f, 0.33f), new Color(0.46f, 0.45f, 0.46f), 10f);
+            // 무채색 한 장으로 보이던 바위에 갈색기·명암 폭을 준다(§8.2).
+            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.28f, 0.26f, 0.24f), new Color(0.55f, 0.52f, 0.47f), 10f);
             var sandLayer = EnsureTerrainLayer("ShoreSand", new Color(0.74f, 0.68f, 0.50f), new Color(0.85f, 0.80f, 0.62f), 8f);
 
             int res = 513;
@@ -2783,16 +2784,33 @@ namespace Ulon.Editor
                     float wx = (x / (float)(ar - 1)) * WorldTerrain.Span - half;
                     float wz = (z / (float)(ar - 1)) * WorldTerrain.Span - half;
                     float h = WorldTerrain.HeightAt(wx, wz);
-                    // 물가는 모래, 높은 곳은 바위, 나머지는 풀 — 초록 한 장으로 덮으면 §8.2 위반이다.
-                    float sand = 1f - Mathf.Clamp01((h - (WorldTerrain.SeaLevel - 0.5f)) / 2.5f);
-                    float rock = Mathf.Clamp01((h - (WorldTerrain.LandBase + 4f)) / 10f);
-                    // 평지도 흙·바위 얼룩을 섞는다 — 초원 전체가 한 가지 초록이면 §8.2 위반이다.
+                    // 경사도 — 가파른 곳이 바위다. 높이만 보면 산이 회색 한 장, 밑동이 칼로 자른 듯 끊긴다(§8.2).
+                    float d = WorldTerrain.Span / (ar - 1);
+                    float hx = WorldTerrain.HeightAt(wx + d, wz) - WorldTerrain.HeightAt(wx - d, wz);
+                    float hz = WorldTerrain.HeightAt(wx, wz + d) - WorldTerrain.HeightAt(wx, wz - d);
+                    float slope = Mathf.Sqrt(hx * hx + hz * hz) / (2f * d);
+
+                    // 경계에 노이즈를 섞어 직선으로 끊기지 않게 한다.
+                    float edgeNoise = (Mathf.PerlinNoise(wx * 0.09f + 17f, wz * 0.09f + 5f) - 0.5f) * 6f;
+                    float rock = Mathf.Clamp01((h - (WorldTerrain.LandBase + 6f) + edgeNoise) / 14f);
+                    rock = Mathf.Max(rock, Mathf.Clamp01((slope - 0.45f) * 1.8f));      // 급경사는 고도와 무관하게 바위
                     float mottle = Mathf.PerlinNoise(wx * 0.021f + 3.1f, wz * 0.021f + 8.9f);
-                    rock = Mathf.Max(rock, Mathf.Clamp01((mottle - 0.5f) * 2.6f) * 0.9f);
-                    float grassW = Mathf.Max(0f, 1f - sand - rock);
-                    float sum = sand + rock + grassW;
+                    rock = Mathf.Max(rock, Mathf.Clamp01((mottle - 0.5f) * 2.6f) * 0.55f);   // 평지 흙·바위 얼룩
+                    // 산 중턱까지 풀이 올라간다 — 완전히 회색이 되지 않게 상한을 둔다.
+                    if (h < WorldTerrain.LandBase + 20f)
+                        rock = Mathf.Min(rock, 0.82f);
+
+                    // 물가 — 수면 ±2m는 모래. 잔디가 물에 수직으로 잘리면 §8.2 위반이다.
+                    float sand = 1f - Mathf.Clamp01((Mathf.Abs(h - WorldTerrain.SeaLevel) - 0.8f) / 2.0f);
+                    if (h < WorldTerrain.SeaLevel)
+                        sand = 1f;                                   // 물속 바닥도 모래
+                    sand = Mathf.Max(sand, 0f);
+
+                    float grassW = Mathf.Max(0f, 1f - sand) * Mathf.Max(0f, 1f - rock);
+                    float rockW = Mathf.Max(0f, 1f - sand) * rock;
+                    float sum = Mathf.Max(0.0001f, grassW + rockW + sand);
                     alpha[z, x, 0] = grassW / sum;
-                    alpha[z, x, 1] = rock / sum;
+                    alpha[z, x, 1] = rockW / sum;
                     alpha[z, x, 2] = sand / sum;
                 }
             }

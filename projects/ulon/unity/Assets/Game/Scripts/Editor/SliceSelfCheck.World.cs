@@ -14,7 +14,12 @@ namespace Ulon.Editor
         const float MountainReliefMin = 18f;    // 산 띠 최고점 - 평지 기준(m)
         const float MountainSpreadMin = 4f;     // 산 띠 높이 표준편차(m) — 평평한 고원은 산이 아니다
         const float WaterAreaMin = 0.06f;       // 지형 표본 중 수면 아래 비율(바다+강+호수)
-        const float LayerShareMin = 0.03f;      // 풀·바위·모래 각 도포 비율 하한
+        const float LayerShareMin = 0.03f;
+        const float PassHeightMax = 12f;        // 고개(안부)는 평지 대비 이 정도까지 낮아야 한다
+        const float PassShareMin = 0.12f;       // 띠 둘레에서 고개가 차지하는 비율 하한(산괴+고개 구조)
+        const float MassifSpreadMin = 25f;      // 띠 안 최고-최저 차 — 균일한 톱니 방지
+        const float MixedBandShareMin = 0.10f;  // 산 중턱 구간에서 풀·바위가 각각 이만큼은 있어야 한다
+        const float ShoreSandShareMin = 0.60f;  // 물가 표본 중 모래가 우세해야 하는 비율      // 풀·바위·모래 각 도포 비율 하한
 
         static void AssertWorldTerrain()
         {
@@ -101,6 +106,38 @@ namespace Ulon.Editor
             if (terrain.SampleHeight(new Vector3(riverMidX, 0f, riverMidZ)) + origin.y >= WorldTerrain.SeaLevel)
                 throw new InvalidOperationException("강 중앙(" + riverMidX.ToString("0") + ", " + riverMidZ.ToString("0") + ")이 수면 위입니다 — 물길이 이어지지 않았습니다.");
 
+            // ②-2 산괴와 고개 — 균일한 링은 담장으로 읽힌다(§8.1 검수 반려).
+            //    띠를 한 바퀴 돌며 최고/최저를 본다: 고개(낮은 안부)와 큰 봉우리가 둘 다 있어야 산맥이다.
+            // 방향마다 산 띠를 가로질러 **그 방향의 최고봉**을 구한다. 고정 반경 한 줄만 훑으면
+            // 해안선 노이즈 때문에 띠를 빗나가 엉뚱한 값이 나온다(실측에서 겪었다).
+            int dirs = 360;
+            float bandMin = float.MaxValue;
+            int passCount = 0;
+            for (int i = 0; i < dirs; i++)
+            {
+                float ang = i / (float)dirs * Mathf.PI * 2f;
+                float ux = Mathf.Cos(ang);
+                float uz = Mathf.Sin(ang);
+                float norm = Mathf.Max(Mathf.Abs(ux), Mathf.Abs(uz));
+                float dirPeak = 0f;
+                for (float m = WorldTerrain.MountainStart - 12f; m <= WorldTerrain.CoastEnd; m += 2f)
+                {
+                    float sc = m / norm;
+                    float hh = terrain.SampleHeight(new Vector3(ux * sc, 0f, uz * sc)) + origin.y;
+                    dirPeak = Mathf.Max(dirPeak, hh);
+                }
+                peak = Mathf.Max(peak, dirPeak);
+                bandMin = Mathf.Min(bandMin, dirPeak);
+                if (dirPeak < WorldTerrain.LandBase + PassHeightMax)
+                    passCount++;
+            }
+            float passShare = passCount / (float)dirs;
+            Debug.Log("[Ulon] 지형 계측 방향별 최고봉 최대 " + peak.ToString("0.0") + "m 최소 " + bandMin.ToString("0.0") + "m 고개 비율 " + passShare.ToString("0.00"));
+            if (passShare < PassShareMin)
+                throw new InvalidOperationException("산 띠에서 고개(평지+" + PassHeightMax + "m 이하)가 " + (passShare * 100f).ToString("0") + "%뿐입니다 — 최소 " + (PassShareMin * 100f).ToString("0") + "%. 봉우리가 균일하게 이어지면 산맥이 아니라 톱니 담장으로 읽힙니다(§8.1).");
+            if (peak - bandMin < MassifSpreadMin)
+                throw new InvalidOperationException("방향별 최고봉의 최대 " + peak.ToString("0.0") + "m와 최소 " + bandMin.ToString("0.0") + "m의 차가 " + (peak - bandMin).ToString("0.0") + "m입니다 — 최소 " + MassifSpreadMin + "m. 봉우리 크기가 균일하면 톱니 울타리로 보입니다.");
+
             // ③ 도포 — 초록 한 장으로 덮으면 §8.2 위반. 풀·바위·모래가 각각 실제로 칠해져 있는가.
             if (data.terrainLayers == null || data.terrainLayers.Length < 3)
                 throw new InvalidOperationException("지형 레이어가 " + (data.terrainLayers == null ? 0 : data.terrainLayers.Length) + "장입니다 — 풀·바위·모래 3장이 필요합니다(§8.2).");
@@ -126,6 +163,42 @@ namespace Ulon.Editor
                 if (share[l] / cells < LayerShareMin)
                     throw new InvalidOperationException("지형 도포 " + names[l] + "가 " + (share[l] / cells * 100f).ToString("0.0") + "%뿐입니다 — 최소 " + (LayerShareMin * 100f).ToString("0") + "%(§8.2 단조로운 한 가지 색 금지).");
             }
+
+            // ③-2 「어디에 칠했는지」 — 전체 비율만 보면 산 전체가 회색 한 장이어도 통과한다(검수 반려).
+            //     산 중턱 구간에 풀과 바위가 **섞여** 있는지, 물가에 모래가 있는지 위치로 본다.
+            int midG = 0, midR = 0, midN = 0, shoreN = 0, shoreSand = 0;
+            for (int gz = 0; gz < 120; gz++)
+            {
+                for (int gx = 0; gx < 120; gx++)
+                {
+                    float wx = -halfSpan + (gx + 0.5f) / 120f * WorldTerrain.Span;
+                    float wz = -halfSpan + (gz + 0.5f) / 120f * WorldTerrain.Span;
+                    float h = terrain.SampleHeight(new Vector3(wx, 0f, wz)) + origin.y;
+                    int ax = Mathf.Clamp(Mathf.RoundToInt((wx + halfSpan) / WorldTerrain.Span * (ar - 1)), 0, ar - 1);
+                    int az = Mathf.Clamp(Mathf.RoundToInt((wz + halfSpan) / WorldTerrain.Span * (ar - 1)), 0, ar - 1);
+                    float g = maps[az, ax, 0], r = maps[az, ax, 1], sd = maps[az, ax, 2];
+                    if (h > WorldTerrain.LandBase + 6f && h < WorldTerrain.LandBase + 18f)
+                    {
+                        midN++;
+                        if (g > 0.35f) midG++;
+                        if (r > 0.35f) midR++;
+                    }
+                    if (Mathf.Abs(h - WorldTerrain.SeaLevel) < 0.8f)
+                    {
+                        shoreN++;
+                        if (sd >= g && sd >= r) shoreSand++;
+                    }
+                }
+            }
+            Debug.Log("[Ulon] 지형 계측 중턱 풀 " + (midN > 0 ? midG / (float)midN : 0f).ToString("0.00") + " 바위 " + (midN > 0 ? midR / (float)midN : 0f).ToString("0.00") + " / 물가 모래 " + (shoreN > 0 ? shoreSand / (float)shoreN : 0f).ToString("0.00") + " (표본 " + midN + "·" + shoreN + ")");
+            if (midN < 20)
+                throw new InvalidOperationException("산 중턱 표본이 " + midN + "개뿐입니다 — 산비탈이 사실상 없습니다.");
+            if (midG / (float)midN < MixedBandShareMin || midR / (float)midN < MixedBandShareMin)
+                throw new InvalidOperationException("산 중턱 도포가 한쪽으로 쏠렸습니다(풀 " + (midG / (float)midN).ToString("0.00") + " · 바위 " + (midR / (float)midN).ToString("0.00") + ") — 각각 " + MixedBandShareMin + " 이상이어야 합니다. 산이 무채색 한 장으로 읽히고 밑동이 칼로 자른 듯 끊깁니다(§8.2).");
+            if (shoreN < 20)
+                throw new InvalidOperationException("물가 표본이 " + shoreN + "개뿐입니다 — 물가 경사가 절벽입니다.");
+            if (shoreSand / (float)shoreN < ShoreSandShareMin)
+                throw new InvalidOperationException("물가 도포 중 모래가 " + (shoreSand / (float)shoreN).ToString("0.00") + "입니다 — 최소 " + ShoreSandShareMin + ". 잔디가 물에 수직으로 잘립니다(§8.2).");
 
             // ④ 콘텐츠 좌표가 전부 뭍에 있는가 — 지형을 넓히거나 파면 여기서 P0가 재발한다.
             CheckOnLand(terrain, origin, "마을 광장", 0f, 0f);
