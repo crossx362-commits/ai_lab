@@ -2765,11 +2765,11 @@ namespace Ulon.Editor
                     float r = half - 1.7f - Mathf.Abs(Jitter(1.2f));
                     var p = new Vector3(center.x + Mathf.Sin(a) * r, y, center.z + Mathf.Cos(a) * r);
                     string fbx = loadFbx[k % loadFbx.Length];
-                    float w = fbx.EndsWith("box_small.obj", StringComparison.Ordinal) ? 0.9f
-                        : fbx.EndsWith("chest.obj", StringComparison.Ordinal) ? 1.2f
-                        : fbx.EndsWith("table_medium_broken.obj", StringComparison.Ordinal) ? 2.0f : 1.6f;
+                    // **크기는 플레이어 키 비율로** 잡는다 — 바닥 폭으로 맞췄더니 통이 사람보다 컸다(검수).
+                    // 통·상자·궤짝은 허리~가슴(0.4~0.7배), 부서진 탁자는 그 사이.
+                    float h = PlayerHeight * LoadHeightFrac(fbx);
                     // 벽을 바라보게 세운다 — 무작위 yaw는 소품을 누운 것처럼 보이게 했다(검수).
-                    placed += RoomProp(room, "DungeonFurnLoad" + k, fbx, p, a * Mathf.Rad2Deg + 180f, w, false) ? 1 : 0;
+                    placed += RoomProp(room, "DungeonFurnLoad" + k, fbx, p, a * Mathf.Rad2Deg + 180f, h, true) ? 1 : 0;
                 }
 
                 // 잔해 — 모서리에 넷만. 물량으로 쓰면 방이 채석장이 된다(검수 반려).
@@ -2779,10 +2779,28 @@ namespace Ulon.Editor
                     float r = half - 1.5f;
                     var p = new Vector3(center.x + Mathf.Sin(a) * r, y, center.z + Mathf.Cos(a) * r);
                     placed += RoomProp(room, "DungeonFurnRubble" + k, rubbleFbx[k % rubbleFbx.Length],
-                        p, (float)rng.NextDouble() * 360f, 1.6f + (float)rng.NextDouble() * 0.6f, false) ? 1 : 0;
+                        p, (float)rng.NextDouble() * 360f,
+                        PlayerHeight * (0.28f + (float)rng.NextDouble() * 0.12f), true) ? 1 : 0;
                 }
             }
             Debug.Log("[Ulon] 던전 실내 채우기 — 등록 CC0 소품 " + placed + "개(돌기둥·벽 횃불·궤짝·통·잔해), 프리미티브 0개");
+        }
+
+        /// <summary>
+        /// 방 짐 소품의 높이를 **플레이어 키에 대한 비율**로 준다(검수 요구: 절대 수치 금지).
+        /// 상한 0.8배·하한 0.15배는 게이트 `AssertPropScaleRatio`가 지킨다.
+        /// </summary>
+        static float LoadHeightFrac(string fbx)
+        {
+            if (fbx.EndsWith("box_small.obj", StringComparison.Ordinal)) return 0.34f;
+            if (fbx.EndsWith("chest.obj", StringComparison.Ordinal)) return 0.42f;
+            if (fbx.EndsWith("barrel_small_stack.obj", StringComparison.Ordinal)) return 0.52f;
+            if (fbx.EndsWith("table_medium_broken.obj", StringComparison.Ordinal)) return 0.55f;
+            if (fbx.EndsWith("box_large.obj", StringComparison.Ordinal)) return 0.60f;
+            if (fbx.EndsWith("barrel_large.obj", StringComparison.Ordinal)) return 0.66f;
+            if (fbx.EndsWith("box_stacked.obj", StringComparison.Ordinal)) return 0.70f;
+            if (fbx.EndsWith("crates_stacked.obj", StringComparison.Ordinal)) return 0.74f;
+            return 0.60f;
         }
 
         /// <summary>
@@ -2849,6 +2867,10 @@ namespace Ulon.Editor
 
         /// <summary>방 원점에서 바닥 슬래브 윗면까지.</summary>
         public const float RoomFloorTop = 0.2f;
+
+        /// <summary>플레이어 키(m) — 소품 크기의 **유일한 기준**이다(검수: 절대 수치로 박으면
+        /// 캐릭터 스케일을 바꾸는 순간 또 어긋난다). `SpawnActor("Player", …)`도 이 값을 쓴다.</summary>
+        public const float PlayerHeight = 1.8f;
 
         /// <summary>방 벽 높이(바닥에서 지면까지) — 채움 기둥이 벽과 같은 높이여야 한다.</summary>
         const float RoomHeightOfWall = DungeonDepth + 0.15f;
@@ -3687,7 +3709,7 @@ namespace Ulon.Editor
             MakeGround();
             PlaceKenney();
 
-            var player = SpawnActor("Player", KnightFbx, new Vector3(0f, 0f, 0f), 1.8f, controller, true, false, "나", 50f);
+            var player = SpawnActor("Player", KnightFbx, new Vector3(0f, 0f, 0f), PlayerHeight, controller, true, false, "나", 50f);
             AttachGear(player, SwordFbx, ShieldFbx);
             HideExtraGear(player);
             var companion = SpawnActor("Companion", KnightFbx, new Vector3(-2.2f, 0f, 1.4f), 1.85f, controller, false, false, "동료", 50f);

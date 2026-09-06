@@ -1606,6 +1606,8 @@ namespace Ulon.Editor
             AssertRoomPropsNegativeControl();
             AssertPropDistribution();
             AssertPropDistributionNegativeControl();
+            AssertPropScaleRatio();
+            AssertPropScaleNegativeControl();
             AssertBossMobContrast();
             AssertBossMobContrastNegativeControl();
             AssertMobArtQualified();
