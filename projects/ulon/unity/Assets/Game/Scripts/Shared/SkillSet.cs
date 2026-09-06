@@ -466,15 +466,34 @@ namespace Ulon.Shared
             }
         };
 
+        /// <summary>
+        /// 제작법을 찾는다. **원장(recipes.json)이 이기고 코드 배열은 폴백**이다(12.2).
+        /// 원장에 없는 id는 코드 기본값으로, 코드에도 없으면 null.
+        /// </summary>
         public static CraftRecipe Find(string id)
         {
             if (string.IsNullOrEmpty(id))
-                return All[0];
+                id = All[0].Id;
+            CraftRecipe fallback = null;
             for (int i = 0; i < All.Length; i++)
                 if (All[i].Id == id)
-                    return All[i];
-            return null;
+                    fallback = All[i];
+            if (RecipeData.TryGet(id, out RecipeStat rec) && Enum.TryParse(rec.skill, false, out SkillId skill))
+                return new CraftRecipe
+                {
+                    Id = rec.id,
+                    Ingredient = rec.ingredient,
+                    Count = rec.count,
+                    Output = rec.output,
+                    Skill = skill,
+                    Difficulty = rec.difficulty,
+                    CanRepair = rec.canRepair
+                };
+            return fallback;
         }
+
+        /// <summary>코드 폴백 목록(원장 생성·검증용). 원장이 있으면 원장이 이긴다.</summary>
+        public static CraftRecipe[] CodeDefaults => All;
     }
 
     [Serializable]

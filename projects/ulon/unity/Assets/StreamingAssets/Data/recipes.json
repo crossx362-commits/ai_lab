@@ -1,0 +1,15 @@
+{
+    "recipes": [
+        { "id": "iron_sword", "ingredient": "iron_ore", "count": 2, "output": "iron_sword", "skill": "Blacksmithing", "difficulty": 15.0, "canRepair": true },
+        { "id": "wooden_club", "ingredient": "wood", "count": 2, "output": "wooden_club", "skill": "Carpentry", "difficulty": 12.0, "canRepair": true },
+        { "id": "wooden_bow", "ingredient": "wood", "count": 3, "output": "wooden_bow", "skill": "Carpentry", "difficulty": 14.0, "canRepair": true },
+        { "id": "wooden_spear", "ingredient": "wood", "count": 2, "output": "wooden_spear", "skill": "Carpentry", "difficulty": 13.0, "canRepair": true },
+        { "id": "lute", "ingredient": "wood", "count": 2, "output": "lute", "skill": "Carpentry", "difficulty": 12.0, "canRepair": true },
+        { "id": "lockpick", "ingredient": "iron_ore", "count": 1, "output": "lockpick", "skill": "Blacksmithing", "difficulty": 10.0, "canRepair": false },
+        { "id": "bandage", "ingredient": "cloth", "count": 1, "output": "bandage", "skill": "Tailoring", "difficulty": 8.0, "canRepair": false },
+        { "id": "cooked_fish", "ingredient": "fish", "count": 1, "output": "cooked_food", "skill": "Cooking", "difficulty": 10.0, "canRepair": false },
+        { "id": "cooked_wrap", "ingredient": "cloth", "count": 1, "output": "cooked_food", "skill": "Cooking", "difficulty": 10.0, "canRepair": false },
+        { "id": "health_potion", "ingredient": "cloth", "count": 1, "output": "health_potion", "skill": "Alchemy", "difficulty": 10.0, "canRepair": false },
+        { "id": "poison_vial", "ingredient": "cloth", "count": 1, "output": "poison_vial", "skill": "Poisoning", "difficulty": 10.0, "canRepair": false }
+    ]
+}

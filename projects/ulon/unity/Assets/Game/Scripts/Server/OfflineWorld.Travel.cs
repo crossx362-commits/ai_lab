@@ -225,13 +225,16 @@ namespace Ulon.Server
         {
             ItemData.Reload();
             MobData.Reload();
+            RecipeData.Reload();
             string err = "";
             if (!string.IsNullOrEmpty(ItemData.LoadError))
                 err += " 아이템: " + ItemData.LoadError;
             if (!string.IsNullOrEmpty(MobData.LoadError))
                 err += " 몹: " + MobData.LoadError;
+            if (!string.IsNullOrEmpty(RecipeData.LoadError))
+                err += " 제작법: " + RecipeData.LoadError;
             OpLog.Write("gm", PersistDriver.AccountKey(), "-", "reload_ledgers");
-            return "원장 재적재 — 아이템 " + ItemData.Count + "종·몹 " + MobData.Count + "종" + (err == "" ? "" : " / 불량:" + err);
+            return "원장 재적재 — 아이템 " + ItemData.Count + "종·몹 " + MobData.Count + "종·제작법 " + RecipeData.Count + "종" + (err == "" ? "" : " / 불량:" + err);
         }
 
         public AttackResult GmWarpPlaza(WorldBody body)
