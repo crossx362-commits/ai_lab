@@ -25,6 +25,7 @@ namespace Ulon.Editor
         // 검수 2026-09-06 반려 2 — bounds 포함은 대리 지표였다(긴 칼의 AABB가 몸을 삼킨다).
         const float WeaponGripDistMax = 0.10f;      // 그립 끝점 ↔ 손 본
         const float WeaponForearmAngleMax = 60f;    // 무기 장축 ↔ 팔꿈치→손 방향
+        const float GripAboveNeckMax = 0.00f;       // 그립 y ≤ 목(머리 본) y (검수 2026-09-06 관찰)
         const float CrownAxisOffsetMax = 0.15f;
         // 검수 2026-09-06 반려 1 — 수평만 재서 수직이 무검사로 남았다.
         const float CrownSitGapMax = 0.03f;         // 왕관 바닥이 정수리 위로 떠도 되는 한도
@@ -118,6 +119,40 @@ namespace Ulon.Editor
                 if (angle > WeaponForearmAngleMax)
                     throw new InvalidOperationException(label + " 무기 장축이 팔뚝 방향과 " + angle.ToString("0") + "° 어긋났습니다 — 최대 " + WeaponForearmAngleMax +
                         "°. 칼이 몸에 가로로 꽂힌 막대로 보입니다(§8.1).");
+
+                // 자세 — 그립이 어깨보다 높으면 칼이 얼굴을 가로지른다(검수 2026-09-06 관찰).
+                // 기준을 「어깨 본」으로 잡으려다 두 번 헛짚었다: 이름 검색은 모델 루트의 메시("Knight_ArmRight",
+                // 발밑 좌표)를 물었고, 손에서 두 마디 위는 리그에 따라 손목(wrist.r)이었다. 리그 이름에 기대지 않고
+                // **목 관절(머리 본)** 을 기준으로 잰다 — 그립이 목보다 높으면 칼이 얼굴을 가로지른다.
+                var neck = BossFit.FindBone(go, "head");
+                if (neck != null)
+                {
+                    float rise = grip.y - neck.position.y;
+                    Debug.Log("[Ulon] 보스 그립 높이 " + label + " 목(" + neck.name + ") 대비 " + rise.ToString("+0.00;-0.00") + "m (한도 " + GripAboveNeckMax + ")");
+                    if (rise > GripAboveNeckMax)
+                        throw new InvalidOperationException(label + " 무기 그립이 목보다 " + rise.ToString("0.00") + "m 높습니다 — 최대 " + GripAboveNeckMax +
+                            "m. 칼이 얼굴 높이를 가로지릅니다(§8.1).");
+                }
+
+                // 1몹 1무기(P1 #7) — 보스가 큰 무기 말고 다른 무기를 같이 들고 있으면 실루엣이 안 읽힌다.
+                int weapons = 0;
+                var gearAll = go.GetComponentsInChildren<Transform>(true);
+                for (int g = 0; g < gearAll.Length; g++)
+                {
+                    var t = gearAll[g];
+                    if (!VisualSliceBuilder.IsWeaponName(t.name) || !t.gameObject.activeInHierarchy)
+                        continue;
+                    if (t.parent != null && VisualSliceBuilder.IsWeaponName(t.parent.name))
+                        continue;   // 무기 안의 부품은 따로 세지 않는다
+                    var wr = t.GetComponentsInChildren<Renderer>(true);
+                    bool visible = false;
+                    for (int r = 0; r < wr.Length; r++)
+                        if (wr[r].enabled && wr[r].gameObject.activeInHierarchy) visible = true;
+                    if (visible)
+                        weapons++;
+                }
+                if (weapons != 1)
+                    throw new InvalidOperationException(label + "가 무기를 " + weapons + "개 들고 있습니다 — 1몹 1무기(P1 #7). 보스 무기를 새로 붙일 때 원래 무기를 꺼야 합니다.");
 
                 if (BossFit.HeadBounds(go, out Bounds headB))
                 {

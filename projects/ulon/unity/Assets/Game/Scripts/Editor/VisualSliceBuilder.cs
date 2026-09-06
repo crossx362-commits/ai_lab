@@ -2235,6 +2235,23 @@ namespace Ulon.Editor
                 }
             }
 
+            // 1-b) **1몹 1무기**(P1 #7) — 보스 드레싱이 큰 무기를 새로 붙이면 원래 들고 있던 칼이
+            //      같은 손에 그대로 남는다(기사 보스: 1H_Sword + BossWeapon_2H_Sword가 둘 다 켜져 있었다).
+            //      HideExtraGear는 "1H_Sword"를 keep 목록에 두므로 이 경로를 못 잡는다.
+            if (weapon != null)
+            {
+                var gears = boss.GetComponentsInChildren<Transform>(true);
+                for (int i = 0; i < gears.Length; i++)
+                {
+                    var g = gears[i];
+                    if (g == null || !IsWeaponName(g.name))
+                        continue;
+                    if (g == weapon || g.IsChildOf(weapon) || weapon.IsChildOf(g))
+                        continue;
+                    g.gameObject.SetActive(false);
+                }
+            }
+
             // 2) 머리장식 — 머리 **위**에 얹는다.
             //    렌더러 바운드(b.max.y)로 얹었더니 어깨 높이에 수평으로 떠서 접시처럼 보였다
             //    (에디터에서 스킨드 바운드는 못 믿는다 — 실루엣 게이트에서 이미 겪은 함정이다).
@@ -3626,6 +3643,18 @@ namespace Ulon.Editor
                 if (!keepIt)
                     t.gameObject.SetActive(false);
             }
+        }
+
+        /// <summary>장비 이름인가(게이트도 같은 판정을 쓴다).</summary>
+        public static bool IsGearName(string n) => ContainsGearName(n);
+
+        /// <summary>손에 드는 **무기**인가 — 방패·화살통은 무기가 아니다(1몹 1무기 판정용).</summary>
+        public static bool IsWeaponName(string n)
+        {
+            if (!ContainsGearName(n))
+                return false;
+            return n.IndexOf("Shield", StringComparison.OrdinalIgnoreCase) < 0
+                && n.IndexOf("Quiver", StringComparison.OrdinalIgnoreCase) < 0;
         }
 
         static bool ContainsGearName(string n)
