@@ -151,6 +151,8 @@ namespace Ulon.Shared
 
         public static float WeightOf(string id)
         {
+            // 12.2 — 수치 원장은 StreamingAssets/Data/items.json. 아래 값은 파일이 없을 때의 폴백이다.
+            if (ItemData.TryGet(id, out var data)) return data.weight;
             if (id == "iron_ore") return 2f;
             if (id == "wood") return 2f;
             if (id == "resin") return 0.2f;
@@ -197,10 +199,15 @@ namespace Ulon.Shared
 
         public static int CarryCap(int str) => str * 4 < 10 ? 10 : str * 4;
 
-        public static int StrReqOf(string id) => id == IronSword ? 25 : 0;
+        public static int StrReqOf(string id)
+        {
+            if (ItemData.TryGet(id, out var data)) return data.strReq;
+            return id == IronSword ? 25 : 0;
+        }
 
         public static int MaxUsesOf(string id)
         {
+            if (ItemData.TryGet(id, out var data)) return data.uses;
             if (id == Pickaxe || id == Hatchet || id == FishingPole) return 20;
             if (id == IronSword) return 40;
             if (id == WoodenClub) return 30;
@@ -212,12 +219,17 @@ namespace Ulon.Shared
             return 0;
         }
 
-        public static bool IsContainer(string id) => id == Pouch;
+        public static bool IsContainer(string id)
+        {
+            if (ItemData.TryGet(id, out var data)) return data.container;
+            return id == Pouch;
+        }
 
         public static bool Stackable(string id) => !IsContainer(id) && MaxUsesOf(id) <= 0;
 
         public static int BuyPrice(string id)
         {
+            if (ItemData.TryGet(id, out var data)) return data.buy;
             if (id == Pickaxe || id == Hatchet || id == FishingPole) return 25;
             if (id == IronSword) return 40;
             if (id == WoodenClub) return 18;

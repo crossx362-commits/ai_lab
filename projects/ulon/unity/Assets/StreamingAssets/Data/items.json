@@ -1,0 +1,31 @@
+{
+  "items": [
+    { "id": "pickaxe",       "weight": 6.0,  "buy": 25, "uses": 20, "strReq": 0,  "container": false },
+    { "id": "hatchet",       "weight": 6.0,  "buy": 25, "uses": 20, "strReq": 0,  "container": false },
+    { "id": "fishing_pole",  "weight": 6.0,  "buy": 25, "uses": 20, "strReq": 0,  "container": false },
+    { "id": "fish",          "weight": 1.0,  "buy": 6,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "cooked_food",   "weight": 0.5,  "buy": 8,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "health_potion", "weight": 0.3,  "buy": 12, "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "poison_vial",   "weight": 0.3,  "buy": 10, "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "lute",          "weight": 3.0,  "buy": 20, "uses": 20, "strReq": 0,  "container": false },
+    { "id": "lockpick",      "weight": 0.2,  "buy": 8,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "iron_sword",    "weight": 8.0,  "buy": 40, "uses": 40, "strReq": 25, "container": false },
+    { "id": "wooden_club",   "weight": 5.0,  "buy": 18, "uses": 30, "strReq": 0,  "container": false },
+    { "id": "wooden_bow",    "weight": 6.0,  "buy": 22, "uses": 30, "strReq": 0,  "container": false },
+    { "id": "wooden_spear",  "weight": 6.0,  "buy": 20, "uses": 30, "strReq": 0,  "container": false },
+    { "id": "wooden_shield", "weight": 6.0,  "buy": 20, "uses": 30, "strReq": 0,  "container": false },
+    { "id": "iron_plate",    "weight": 14.0, "buy": 0,  "uses": 40, "strReq": 0,  "container": false },
+    { "id": "cloth",         "weight": 0.5,  "buy": 3,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "blank",         "weight": 0.2,  "buy": 4,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "scroll_ember",  "weight": 0.2,  "buy": 16, "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "bandage",       "weight": 0.1,  "buy": 5,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "warden_crest",  "weight": 0.2,  "buy": 0,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "captain_sigil", "weight": 0.2,  "buy": 0,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "hex_seal",      "weight": 0.2,  "buy": 0,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "tyrant_core",   "weight": 0.2,  "buy": 0,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "pouch",         "weight": 2.0,  "buy": 0,  "uses": 0,  "strReq": 0,  "container": true  },
+    { "id": "iron_ore",      "weight": 2.0,  "buy": 6,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "wood",          "weight": 2.0,  "buy": 5,  "uses": 0,  "strReq": 0,  "container": false },
+    { "id": "resin",         "weight": 0.2,  "buy": 4,  "uses": 0,  "strReq": 0,  "container": false }
+  ]
+}
