@@ -104,7 +104,8 @@ namespace Ulon.Client
             var net = me.GetComponent<NetAvatar>();
 
             DebugOpen = gmOpen || Cli.Has("-ulon-gm");
-            DrawnAreas.Clear();
+            BeginFrame();
+            RegisterOwner(this);                            // HUD도 「그린 자」로 자기 이름을 남긴다
             DrawStatusCard(world, me, net);
             DrawTargetCard(world);
             DrawQuickbar(world, me, net);
@@ -112,13 +113,66 @@ namespace Ulon.Client
             DrawPanel(world, me, net);
         }
 
+        /// <summary>이 프레임에 **실제로 그린 버튼의 라벨** — 「코드가 부른다」와 「화면에 수단이 있다」는 다르다.
+        /// 게이트(`SliceSelfCheck.HudReachable`)가 이 목록과 소스를 대조한다.</summary>
+        public static readonly System.Collections.Generic.List<string> DrawnControls = new System.Collections.Generic.List<string>();
+
+        /// <summary>이 프레임에 영역을 등록한 컴포넌트의 형 이름 — OnGUI를 그리면서 등록 안 한 것을 잡는다.</summary>
+        public static readonly System.Collections.Generic.HashSet<string> DrawnOwners = new System.Collections.Generic.HashSet<string>();
+
         /// <summary>다른 화면 요소(예: 접속 패널)도 자기 영역을 여기 등록한다 —
-        /// 화면 규칙 게이트가 **HUD만 보고 통과**해 버리는 구멍을 막는다(2026-09-07 실측으로 드러났다).</summary>
-        public static void RegisterArea(Rect r) => DrawnAreas.Add(r);
+        /// 화면 규칙 게이트가 **HUD만 보고 통과**해 버리는 구멍을 막는다(2026-09-07 실측으로 드러났다).
+        /// `owner`는 그린 컴포넌트다 — 등록을 빼먹은 OnGUI를 게이트가 이름으로 짚기 위해 받는다.</summary>
+        public static void RegisterArea(Rect r, MonoBehaviour owner)
+        {
+            BeginFrame();
+            // IMGUI는 한 프레임에 OnGUI를 **여러 번**(Layout·Repaint) 부른다 — 같은 사각형을 두 번 담으면
+            // 겹침 검사가 자기 자신과 겹쳤다고 한다. 프레임 단위로 비우되 같은 사각형은 한 번만 센다.
+            if (!DrawnAreas.Contains(r))
+                DrawnAreas.Add(r);
+            RegisterOwner(owner);
+        }
+
+        public static void RegisterOwner(MonoBehaviour owner)
+        {
+            BeginFrame();
+            if (owner != null)
+                DrawnOwners.Add(owner.GetType().Name);
+        }
+
+        static int drawnFrame = -1;
+
+        /// <summary>세 목록은 **프레임 번호로** 비운다 — 예전처럼 `SliceHud.OnGUI` 첫머리에서 비우면
+        /// 그보다 먼저 그린 컴포넌트(접속 패널)의 등록이 지워져 게이트 눈 밖으로 나간다.</summary>
+        static void BeginFrame()
+        {
+            if (drawnFrame == Time.frameCount)
+                return;
+            drawnFrame = Time.frameCount;
+            DrawnAreas.Clear();
+            DrawnControls.Clear();
+            DrawnOwners.Clear();
+        }
+
+        /// <summary>버튼은 **전부 이 함수를 거친다** — 그려진 조작 수단을 남기기 위해서다.
+        /// `GUILayout.Button`을 직접 부르면 그 기능은 게이트 눈 밖으로 나간다.</summary>
+        static bool Btn(string label, params GUILayoutOption[] options)
+        {
+            bool hit = GUILayout.Button(label, options);
+            DrawnControls.Add(label);
+            return hit;
+        }
+
+        static bool Btn(string label, GUIStyle style, params GUILayoutOption[] options)
+        {
+            bool hit = GUILayout.Button(label, style, options);
+            DrawnControls.Add(label);
+            return hit;
+        }
 
         void Area(Rect r, System.Action body)
         {
-            DrawnAreas.Add(r);
+            RegisterArea(r, this);
             // 배경이 비쳐 글자가 묻히던 문제(검수 2026-09-07) — 어두운 판을 깔고 그 위에 상자를 얹는다.
             var prev = GUI.color;
             GUI.color = new Color(0.06f, 0.07f, 0.09f, 0.92f);
@@ -222,11 +276,11 @@ namespace Ulon.Client
             Area(QuickRect, () =>
             {
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("붕대")) Bandage(net);
-                if (GUILayout.Button("물약")) Drink(net);
-                if (GUILayout.Button(SkillNames.KoreanOf(SkillId.Meditation))) Meditate(net);
+                if (Btn("붕대")) Bandage(net);
+                if (Btn("물약")) Drink(net);
+                if (Btn(SkillNames.KoreanOf(SkillId.Meditation))) Meditate(net);
                 for (int i = 0; i < QuickSpells.Length; i++)
-                    if (book.Knows(QuickSpells[i]) && GUILayout.Button(SpellNames.KoreanOf(QuickSpells[i])))
+                    if (book.Knows(QuickSpells[i]) && Btn(SpellNames.KoreanOf(QuickSpells[i])))
                         Cast(net, QuickSpells[i]);
                 GUILayout.EndHorizontal();
             });
@@ -259,7 +313,7 @@ namespace Ulon.Client
         void Tab(string label, Panel which)
         {
             bool on = panel == which;
-            if (GUILayout.Button(on ? "▸" + label : label))
+            if (Btn(on ? "▸" + label : label))
                 panel = on ? Panel.None : which;
         }
 
@@ -321,7 +375,7 @@ namespace Ulon.Client
                                   (it.Uses > 0 ? "  내구 " + it.Uses : "") +
                                   (it.Exceptional ? "  걸작" : "") +
                                   (!string.IsNullOrEmpty(it.MakerId) ? "  제작 " + it.MakerId : "");
-                    if (GUILayout.Button(line, ItemStyle(bagPick == i)))
+                    if (Btn(line, ItemStyle(bagPick == i)))
                         bagPick = bagPick == i ? -1 : i;
                 }
             GUILayout.EndScrollView();
@@ -340,12 +394,12 @@ namespace Ulon.Client
             // 선택이 없으면 버튼은 **비활성**이다(누를 수는 있으나 아무 일도 안 하는 버튼을 두지 않는다).
             GUI.enabled = picked != "";
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("착용")) EquipItem(net, picked);
-            if (GUILayout.Button("주머니↓")) PouchInItem(net, picked);
-            if (GUILayout.Button("주머니↑")) PouchOutItem(net, picked);
+            if (Btn("착용")) EquipItem(net, picked);
+            if (Btn("주머니↓")) PouchInItem(net, picked);
+            if (Btn("주머니↑")) PouchOutItem(net, picked);
             GUILayout.EndHorizontal();
             GUI.enabled = true;
-            if (GUILayout.Button("장비 해제")) Unequip(net);
+            if (Btn("장비 해제")) Unequip(net);
         }
 
         static GUIStyle pickedStyle;
@@ -364,7 +418,7 @@ namespace Ulon.Client
             GUILayout.Label("행동");
             if (me.Ghost)
             {
-                if (GUILayout.Button("붕대 부활")) ResurrectBandage(net);
+                if (Btn("붕대 부활")) ResurrectBandage(net);
                 return;
             }
             Row3(("추적", () => Track(net)), ("연주", () => PlayLute(net)), (SkillNames.KoreanOf(SkillId.Peacemaking), () => Peace(net)));
@@ -380,7 +434,7 @@ namespace Ulon.Client
             Row3(("은행", () => SpeakKeyword(net, "은행")), ("경비", () => SpeakKeyword(net, "경비")), ("상점", () => SpeakKeyword(net, "상점")));
             GUILayout.BeginHorizontal();
             keywordSpeech = GUILayout.TextField(keywordSpeech ?? "");
-            if (GUILayout.Button("말", GUILayout.Width(48f)))
+            if (Btn("말", GUILayout.Width(48f)))
             {
                 SpeakKeyword(net, keywordSpeech);
                 keywordSpeech = "";
@@ -392,7 +446,7 @@ namespace Ulon.Client
         {
             GUILayout.BeginHorizontal();
             for (int i = 0; i < items.Length; i++)
-                if (GUILayout.Button(items[i].Label))
+                if (Btn(items[i].Label))
                     items[i].OnClick();
             GUILayout.EndHorizontal();
         }
@@ -408,7 +462,7 @@ namespace Ulon.Client
                 var id = (StatId)i;
                 string name = id == StatId.Str ? "STR" : id == StatId.Dex ? "DEX" : "INT";
                 int val = id == StatId.Str ? st.Str : id == StatId.Dex ? st.Dex : st.Int;
-                if (GUILayout.Button(name + " " + val + " " + LockMark(st.GetLock(id))))
+                if (Btn(name + " " + val + " " + LockMark(st.GetLock(id))))
                     st.CycleLock(id);
             }
             GUILayout.EndHorizontal();
@@ -420,7 +474,7 @@ namespace Ulon.Client
                 for (int c = 0; c < 2 && i + c < n; c++)
                 {
                     var id = (SkillId)(i + c);
-                    if (GUILayout.Button(SkillNames.KoreanOf(id) + " " + sk.Get(id).ToString("0.0") + " " + LockMark(sk.GetLock(id))))
+                    if (Btn(SkillNames.KoreanOf(id) + " " + sk.Get(id).ToString("0.0") + " " + LockMark(sk.GetLock(id))))
                         sk.CycleLock(id);
                 }
                 GUILayout.EndHorizontal();
@@ -450,7 +504,7 @@ namespace Ulon.Client
             {
                 if (PartyView.PendingMe)
                 {
-                    if (GUILayout.Button("수락"))
+                    if (Btn("수락"))
                     {
                         if (net != null && net.IsClientInitialized) net.RpcPartyAccept();
                         else world.TryPartyAccept(me);
@@ -459,7 +513,7 @@ namespace Ulon.Client
                 }
                 var pal = GameObject.Find("Companion");
                 var palBody = pal != null ? pal.GetComponent<WorldBody>() : null;
-                if (palBody != null && GUILayout.Button("동료 초대"))
+                if (palBody != null && Btn("동료 초대"))
                 {
                     var nob = pal.GetComponent<FishNet.Object.NetworkObject>();
                     if (net != null && net.IsClientInitialized && nob != null) net.RpcPartyInvite(nob);
@@ -485,7 +539,7 @@ namespace Ulon.Client
             GUILayout.Label(party != null && party.Chat.Count > 0 ? party.Chat[party.Chat.Count - 1] : PartyView.Chat);
             GUILayout.BeginHorizontal();
             partyChat = GUILayout.TextField(partyChat ?? "");
-            if (GUILayout.Button("말", GUILayout.Width(48f)))
+            if (Btn("말", GUILayout.Width(48f)))
             {
                 if (net != null && net.IsClientInitialized) net.RpcPartySay(partyChat);
                 else world.TryPartySay(me, partyChat);
@@ -493,12 +547,12 @@ namespace Ulon.Client
             }
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("탈퇴"))
+            if (Btn("탈퇴"))
             {
                 if (net != null && net.IsClientInitialized) net.RpcPartyLeave();
                 else world.TryPartyLeave(me);
             }
-            if (party != null && party.Pending == me && GUILayout.Button("수락"))
+            if (party != null && party.Pending == me && Btn("수락"))
                 world.TryPartyAccept(me);
             GUILayout.EndHorizontal();
         }
@@ -512,7 +566,7 @@ namespace Ulon.Client
             {
                 if (GuildView.PendingMe)
                 {
-                    if (GUILayout.Button("수락"))
+                    if (Btn("수락"))
                     {
                         if (net != null && net.IsClientInitialized) net.RpcGuildAccept();
                         else world.TryGuildAccept(me);
@@ -521,7 +575,7 @@ namespace Ulon.Client
                 }
                 GUILayout.BeginHorizontal();
                 guildNameInput = GUILayout.TextField(guildNameInput ?? "");
-                if (GUILayout.Button("창설", GUILayout.Width(60f)))
+                if (Btn("창설", GUILayout.Width(60f)))
                 {
                     if (net != null && net.IsClientInitialized) net.RpcGuildCreate(guildNameInput);
                     else world.TryGuildCreate(me, guildNameInput);
@@ -551,29 +605,29 @@ namespace Ulon.Client
             var pal = GameObject.Find("Companion");
             var palBody = pal != null ? pal.GetComponent<WorldBody>() : null;
             GUILayout.BeginHorizontal();
-            if (palBody != null && guild != null && guild.Leader == me && GUILayout.Button("동료 초대"))
+            if (palBody != null && guild != null && guild.Leader == me && Btn("동료 초대"))
             {
                 var nob = pal.GetComponent<FishNet.Object.NetworkObject>();
                 if (net != null && net.IsClientInitialized && nob != null) net.RpcGuildInvite(nob);
                 else world.TryGuildInvite(me, palBody);
             }
-            if (GUILayout.Button("탈퇴"))
+            if (Btn("탈퇴"))
             {
                 if (net != null && net.IsClientInitialized) net.RpcGuildLeave();
                 else world.TryGuildLeave(me);
             }
-            if (guild != null && guild.Pending == me && GUILayout.Button("수락"))
+            if (guild != null && guild.Pending == me && Btn("수락"))
                 world.TryGuildAccept(me);
             GUILayout.EndHorizontal();
             var foe = world.Selected;
             if (guild != null && guild.Leader == me && foe != null && foe != me && world.GuildOf(foe) != null
-                && world.GuildOf(foe) != guild && string.IsNullOrEmpty(guild.WarWithId) && GUILayout.Button("선전포고"))
+                && world.GuildOf(foe) != guild && string.IsNullOrEmpty(guild.WarWithId) && Btn("선전포고"))
             {
                 var nob = foe.GetComponent<FishNet.Object.NetworkObject>();
                 if (net != null && net.IsClientInitialized && nob != null) net.RpcGuildWarDeclare(nob);
                 else world.TryGuildWarDeclare(me, foe);
             }
-            if (guild != null && guild.Leader == me && !string.IsNullOrEmpty(guild.WarWithId) && GUILayout.Button("강화"))
+            if (guild != null && guild.Leader == me && !string.IsNullOrEmpty(guild.WarWithId) && Btn("강화"))
             {
                 if (net != null && net.IsClientInitialized) net.RpcGuildWarPeace();
                 else world.TryGuildWarPeace(me);
@@ -589,7 +643,7 @@ namespace Ulon.Client
             var duelFoe = foe != null && foe != me && foe.IsAvatar && !foe.IsEnemy ? foe : palBody;
             if (me.DuelOpponent == null)
             {
-                if (duelFoe != null && duelFoe != me && GUILayout.Button("결투 초대"))
+                if (duelFoe != null && duelFoe != me && Btn("결투 초대"))
                 {
                     var nob = duelFoe.GetComponent<FishNet.Object.NetworkObject>();
                     if (net != null && net.IsClientInitialized && nob != null) net.RpcDuelInvite(nob);
@@ -599,7 +653,7 @@ namespace Ulon.Client
                 var bodies = Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
                 for (int i = 0; i < bodies.Length; i++)
                     if (bodies[i] != null && bodies[i].PendingDuel == me) { pendingMe = true; break; }
-                if (pendingMe && GUILayout.Button("결투수락"))
+                if (pendingMe && Btn("결투수락"))
                 {
                     if (net != null && net.IsClientInitialized) net.RpcDuelAccept();
                     else world.TryDuelAccept(me);
@@ -608,12 +662,12 @@ namespace Ulon.Client
             }
             GUILayout.Label("결투 중 " + (me.DuelOpponent.DisplayName ?? ""));
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("항복"))
+            if (Btn("항복"))
             {
                 if (net != null && net.IsClientInitialized) net.RpcDuelYield();
                 else world.TryDuelYield(me);
             }
-            if (GUILayout.Button("종료"))
+            if (Btn("종료"))
             {
                 if (net != null && net.IsClientInitialized) net.RpcDuelEnd();
                 else world.TryDuelEnd(me);
@@ -661,7 +715,7 @@ namespace Ulon.Client
                 for (int i = 0; i < ShopBuy.Length; i++)
                 {
                     string id = ShopBuy[i];
-                    if (GUILayout.Button((shopPick == id ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(id) +
+                    if (Btn((shopPick == id ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(id) +
                                          "  " + ItemCatalog.BuyPrice(id) + "G", ItemStyle(shopPick == id)))
                         shopPick = shopPick == id ? "" : id;
                 }
@@ -669,7 +723,7 @@ namespace Ulon.Client
                 for (int i = 0; i < ShopSell.Length; i++)
                 {
                     string id = ShopSell[i];
-                    if (GUILayout.Button((shopPick == id ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(id) +
+                    if (Btn((shopPick == id ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(id) +
                                          "  " + Owned(me, id) + "개 보유", ItemStyle(shopPick == id)))
                         shopPick = shopPick == id ? "" : id;
                 }
@@ -679,12 +733,12 @@ namespace Ulon.Client
                 // (둘 다 켜 두면 눌러 보고 나서야 안 된다는 걸 알게 된다 — 가방과 같은 규칙.)
                 GUILayout.BeginHorizontal();
                 GUI.enabled = shopPick != "" && System.Array.IndexOf(ShopBuy, shopPick) >= 0;
-                if (GUILayout.Button("사기")) Shop(net, true, shopPick);
+                if (Btn("사기")) Shop(net, true, shopPick);
                 GUI.enabled = shopPick != "" && System.Array.IndexOf(ShopSell, shopPick) >= 0;
-                if (GUILayout.Button("팔기")) Shop(net, false, shopPick);
+                if (Btn("팔기")) Shop(net, false, shopPick);
                 GUI.enabled = true;
                 GUILayout.EndHorizontal();
-                if (GUILayout.Button("상점 닫기")) world.CloseVendor();
+                if (Btn("상점 닫기")) world.CloseVendor();
                 GUILayout.Space(6f);
             }
             if (world.ActiveTrainer != null && !me.Ghost)
@@ -696,12 +750,12 @@ namespace Ulon.Client
                     for (int c = 0; c < 3 && i + c < Trainable.Length; c++)
                     {
                         var id = Trainable[i + c];
-                        if (GUILayout.Button(SkillNames.KoreanOf(id)))
+                        if (Btn(SkillNames.KoreanOf(id)))
                             Train(net, id);
                     }
                     GUILayout.EndHorizontal();
                 }
-                if (GUILayout.Button("훈련 닫기"))
+                if (Btn("훈련 닫기"))
                     world.CloseTrainer();
                 GUILayout.Space(6f);
             }
@@ -715,7 +769,7 @@ namespace Ulon.Client
             if (InRangeCrate(me, locked))
             {
                 GUILayout.Label(locked.Opened ? locked.DisplayName + " (열림)" : locked.DisplayName);
-                if (!locked.Opened && GUILayout.Button("따기"))
+                if (!locked.Opened && Btn("따기"))
                 {
                     if (net != null && net.IsClientInitialized) net.RpcPick(locked.gameObject.name);
                     else world.TryPick(me, locked);
@@ -728,7 +782,7 @@ namespace Ulon.Client
             if (gate != null && !me.Ghost)
             {
                 GUILayout.Label(gate.DisplayName);
-                if (GUILayout.Button(gate.IsExit ? "나가기" : "들어가기"))
+                if (Btn(gate.IsExit ? "나가기" : "들어가기"))
                 {
                     if (net != null && net.IsClientInitialized) net.RpcDungeon(gate.gameObject.name);
                     else world.TryDungeon(me, gate);
@@ -775,16 +829,16 @@ namespace Ulon.Client
                 string line = (craftPick == recipe.Id ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(recipe.Output) +
                               "  ← " + ItemCatalog.DisplayNameOf(recipe.Ingredient) + " " + have + "/" + recipe.Count +
                               (have < recipe.Count ? "  재료 부족" : "");
-                if (GUILayout.Button(line, ItemStyle(craftPick == recipe.Id)))
+                if (Btn(line, ItemStyle(craftPick == recipe.Id)))
                     craftPick = craftPick == recipe.Id ? "" : recipe.Id;
             }
             GUILayout.Label(craftPick == "" ? "고른 것 없음 — 제작법을 눌러 고르세요"
                                             : "고른 것: " + ItemCatalog.DisplayNameOf(CraftRecipes.Find(craftPick).Output));
             GUI.enabled = craftPick != "";
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("만들기")) CraftAt(net, station, craftPick);
+            if (Btn("만들기")) CraftAt(net, station, craftPick);
             // 수리 전용 버튼 — 예전에는 「재료가 모자란 제작」이 우연히 수리로 떨어질 때만 수리됐다.
-            if (GUILayout.Button("수리")) RepairAt(net, station);
+            if (Btn("수리")) RepairAt(net, station);
             GUILayout.EndHorizontal();
             GUI.enabled = true;
         }
@@ -838,12 +892,12 @@ namespace Ulon.Client
                  ("철검", () => Offer(net, me, "iron_sword")),
                  ("없음", () => Offer(net, me, "")));
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("수락"))
+            if (Btn("수락"))
             {
                 if (net != null && net.IsClientInitialized) net.RpcTradeAccept();
                 else world.ConfirmTrade(me);
             }
-            if (GUILayout.Button("취소"))
+            if (Btn("취소"))
             {
                 if (net != null && net.IsClientInitialized) net.RpcTradeCancel();
                 else world.CancelTrade();

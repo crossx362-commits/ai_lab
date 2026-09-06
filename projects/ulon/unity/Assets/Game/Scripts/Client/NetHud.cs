@@ -24,7 +24,7 @@ namespace Ulon.Client
                 return;
 
             var area = new Rect(12f, Screen.height - 178f, 320f, 118f);
-            SliceHud.RegisterArea(area);
+            SliceHud.RegisterArea(area, this);
             GUI.BeginGroup(area);
             string server = manager != null && manager.IsServerStarted ? "서버 ON" : "서버 OFF";
             string client = manager != null && manager.IsClientStarted ? "클라 ON" : "클라 OFF";

@@ -6,4 +6,6 @@ ROOT=/Users/junholee/ai_lab/projects/ulon
 UNITY="/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS/Unity"
 "$UNITY" -batchmode -quit -projectPath "$ROOT/unity" -executeMethod Ulon.Editor.FrameProbeBuild.Run -logFile "$ROOT/unity/Logs/frame_probe_build.log"
 "$ROOT/builds/frameprobe/Ulon.app/Contents/MacOS/Ulon" -hudshots -shotdir "$ROOT/builds/qa" -logFile "$ROOT/unity/Logs/hud_shots.log"
+# 그려진 조작 수단 기록은 게이트가 읽는다 — builds/는 git 무시라 추적 경로로 복사한다.
+cp "$ROOT/builds/qa/hud_controls.txt" "$ROOT/docs/hud_controls.txt"
 ls -la "$ROOT/builds/qa"/hud_*.png

@@ -103,11 +103,6 @@ namespace Ulon.Client
                 yield return Shot("hud_05_combat");
             }
 
-            // 화면 규칙 검사 — **해상도 하나만 재면 다른 쪽이 깨진다**(검수). 두 해상도 모두 본다.
-            bool ok = true;
-            yield return CheckLayout(1280, 720, r => ok &= r);
-            yield return CheckLayout(1920, 1080, r => ok &= r);
-
             // ⑥ 상점 — 상인 앞에서 근처 패널을 열고. 검수가 이 화면도 못 봤다.
             var vendor = FindAnyObjectByType<VendorStation>();
             if (vendor != null)
@@ -118,6 +113,17 @@ namespace Ulon.Client
                 for (int i = 0; i < 8; i++) yield return null;
                 yield return Shot("hud_06_shop");
             }
+
+            // 화면 규칙 검사 — **해상도 하나만 재면 다른 쪽이 깨진다**(검수). 두 해상도 모두 본다.
+            bool ok = true;
+            yield return CheckLayout(1280, 720, r => ok &= r);
+            yield return CheckLayout(1920, 1080, r => ok &= r);
+
+            // 조작 수단 수집 — 상태가 있어야 그려지는 버튼(궤짝·던전 문)은 그 자리에 서서 모은다.
+            yield return VisitForControls(world);
+            // 그린 자 등록 강제 + 그려진 조작 수단 기록(랩 A).
+            yield return CheckOwners(r => ok &= r);
+            WriteControls();
 
             Debug.Log("[Ulon] HUD 샷 완료 — " + dir + (ok ? " · 화면 규칙 통과" : " · **화면 규칙 위반**"));
             Application.Quit(ok ? 0 : 1);
@@ -143,6 +149,7 @@ namespace Ulon.Client
             {
                 hud.ShowPanel(p);
                 for (int i = 0; i < 3; i++) yield return null;
+                Harvest();
                 var areas = SliceHud.DrawnAreas.ToArray();
                 var zone = SliceHud.CombatZone;
                 for (int i = 0; i < areas.Length; i++)
@@ -167,6 +174,101 @@ namespace Ulon.Client
             result(ok);
         }
 
+        /// <summary>
+        /// 상태가 있어야 그려지는 버튼을 모으러 다닌다 — 궤짝 앞(따기)·던전 문 앞(들어가기)·훈련사 앞(훈련).
+        /// 안 다니면 「코드에는 있는데 화면에 없다」와 「이 실행에서 그 자리에 안 가 봤다」가 구분되지 않는다.
+        /// </summary>
+        IEnumerator VisitForControls(OfflineWorld world)
+        {
+            var me = world.Player;
+            var crate = OfflineWorld.FindCrate("LockedCrate");
+            if (crate != null)
+            {
+                me.transform.position = crate.transform.position + new Vector3(1.0f, 0f, 1.0f);
+                Panel(5);
+                for (int i = 0; i < 5; i++) yield return null;
+                Harvest();
+            }
+            var gate = GameObject.Find(Dungeon1.EntranceObject);
+            if (gate != null)
+            {
+                me.transform.position = gate.transform.position + new Vector3(1.0f, 0f, 1.0f);
+                Panel(5);
+                for (int i = 0; i < 5; i++) yield return null;
+                Harvest();
+            }
+            var trainer = FindAnyObjectByType<TrainerStation>();
+            if (trainer != null)
+            {
+                me.transform.position = trainer.transform.position + new Vector3(1.2f, 0f, 1.2f);
+                world.TryTrainer(me, trainer);
+                Panel(5);
+                for (int i = 0; i < 5; i++) yield return null;
+                Harvest();
+                world.CloseTrainer();
+            }
+        }
+
+        /// <summary>패널을 도는 동안 화면에 그려진 버튼 라벨을 모은다 — 게이트가 소스와 대조할 원장이다.</summary>
+        static readonly System.Collections.Generic.SortedSet<string> controls = new System.Collections.Generic.SortedSet<string>();
+        static readonly System.Collections.Generic.HashSet<string> owners = new System.Collections.Generic.HashSet<string>();
+
+        static void Harvest()
+        {
+            for (int i = 0; i < SliceHud.DrawnControls.Count; i++)
+                controls.Add(SliceHud.DrawnControls[i]);
+            foreach (var o in SliceHud.DrawnOwners)
+                owners.Add(o);
+        }
+
+        void WriteControls()
+        {
+            string path = Path.Combine(dir, "hud_controls.txt");
+            File.WriteAllText(path, string.Join("\n", controls) + "\n");
+            Debug.Log("[Ulon] 그려진 조작 수단 " + controls.Count + "종 기록 — " + path);
+        }
+
+        /// <summary>
+        /// **OnGUI를 그리면서 영역 등록을 안 한 컴포넌트**를 잡는다. 접속 패널이 상태 카드에 겹쳐 있는데도
+        /// 화면 규칙이 통과했던 이유가 이것이고, 등록을 강제할 수단이 없으면 그대로 재발한다(검수 랩 A).
+        /// 한계: 이 검사가 도는 상태(패널 전부 열어 보기)에서 **한 번도 안 그리는** 컴포넌트는 못 본다.
+        /// </summary>
+        IEnumerator CheckOwners(System.Action<bool> result)
+        {
+            var probe = new GameObject("UnregisteredGuiProbe").AddComponent<UnregisteredGuiProbe>();
+            for (int i = 0; i < 5; i++) yield return null;
+            bool ncRed = !OwnersOk(out string ncMissing);
+            Destroy(probe.gameObject);
+            for (int i = 0; i < 5; i++) yield return null;
+            Debug.Log("[Ulon] 등록 강제 네거티브 컨트롤 — 등록 안 하는 OnGUI를 넣자 " +
+                      (ncRed ? "빨간불(" + ncMissing + ")" : "**통과했다 — 게이트가 못 잡는다**"));
+
+            bool ok = OwnersOk(out string missing);
+            if (!ok)
+                Debug.Log("[Ulon] 화면 규칙 위반 — OnGUI를 그리면서 SliceHud.RegisterArea로 영역을 등록하지 않은 컴포넌트: " + missing);
+            else
+                Debug.Log("[Ulon] 그린 자 등록 통과 — OnGUI 구현 " + owners.Count + "종 전부 영역을 등록한다(" +
+                          string.Join(", ", owners) + ")");
+            result(ok && ncRed);
+        }
+
+        static bool OwnersOk(out string missing)
+        {
+            var list = new System.Collections.Generic.List<string>();
+            var all = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                var t = all[i].GetType();
+                if (t.GetMethod("OnGUI", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                                         | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly) == null)
+                    continue;
+                if (!owners.Contains(t.Name) && !SliceHud.DrawnOwners.Contains(t.Name) && !list.Contains(t.Name))
+                    list.Add(t.Name);
+            }
+            missing = string.Join(", ", list);
+            return list.Count == 0 && owners.Count > 0;   // 0이면 실패 — 아무도 안 그렸다면 잰 게 없다
+        }
+
         static void Panel(int index)
         {
             var hud = FindAnyObjectByType<SliceHud>();
@@ -179,6 +281,7 @@ namespace Ulon.Client
             ScreenCapture.CaptureScreenshot(path);
             // 캡처는 프레임 끝에 일어난다 — 몇 프레임 기다려야 파일이 실제로 생긴다.
             for (int i = 0; i < 10; i++) yield return null;
+            Harvest();
             var w = OfflineWorld.Instance;
             string where = "";
             if (w != null && w.Player != null)
