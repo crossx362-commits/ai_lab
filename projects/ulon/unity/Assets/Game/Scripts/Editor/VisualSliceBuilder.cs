@@ -2138,8 +2138,9 @@ namespace Ulon.Editor
 
         public static void BuildDungeonRoom(Transform room, Vector3 center, float half, float wallH, string doorSide)
         {
-            var floorMat = MakeNoiseMat("DungeonFloor", new Color(0.20f, 0.19f, 0.21f), new Color(0.31f, 0.29f, 0.30f));
-            var wallMat = MakeNoiseMat("DungeonWall", new Color(0.16f, 0.15f, 0.17f), new Color(0.27f, 0.26f, 0.28f));
+            // 앰비언트가 야외 값(0.55)이라 알베도를 낮춰야 실내가 낮처럼 안 보인다(§8.2).
+            var floorMat = MakeNoiseMat("DungeonFloor", new Color(0.13f, 0.12f, 0.14f), new Color(0.21f, 0.20f, 0.21f));
+            var wallMat = MakeNoiseMat("DungeonWall", new Color(0.11f, 0.10f, 0.12f), new Color(0.19f, 0.18f, 0.20f));
             var ceilMat = MakeNoiseMat("DungeonCeiling", new Color(0.11f, 0.11f, 0.13f), new Color(0.18f, 0.17f, 0.20f));
 
             // 지하화(검수 2026-09-06 P0 마무리) — 지상에 상자를 얹으면 페이드가 걷힐 때 화면 절반이 잔디밭이 된다(§8.2).
@@ -2152,7 +2153,8 @@ namespace Ulon.Editor
 
             PunchTerrainHole(center, half);
 
-            RoomSlab(room, "DungeonFloor", new Vector3(center.x, y + 0.1f, center.z), new Vector3(span, 0.2f, span), floorMat);
+            // 바닥은 Terrain 홀보다 넓어야 한다 — 좁으면 방 가장자리로 하늘이 비친다(플레이캠 실측).
+            RoomSlab(room, "DungeonFloor", new Vector3(center.x, y + 0.1f, center.z), new Vector3(span + 8f, 0.2f, span + 8f), floorMat);
 
             for (int side = 0; side < 4; side++)
             {
