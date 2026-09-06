@@ -1472,8 +1472,10 @@ namespace Ulon.Client
                     tgt = me;
                 var healed = OfflineWorld.Instance.TryHeal(me, tgt);
                 if (healed.Applied && tgt != null)
+                {
                     ActionVfx.Play(ActionVfx.Kind.Heal, tgt.transform.position + Vector3.up * 1.0f);
                     ActionSfx.Play(ActionSfx.Kind.Heal, tgt.transform.position + Vector3.up * 1.0f);
+                }
             }
         }
 
@@ -1528,8 +1530,10 @@ namespace Ulon.Client
             }
             var made = OfflineWorld.Instance.TryCraft(OfflineWorld.Instance.Player, station, recipeId);
             if (made.Applied)
+            {
                 ActionVfx.Play(ActionVfx.Kind.Craft, station.transform.position + Vector3.up * 1.1f);
                 ActionSfx.Play(ActionSfx.Kind.Craft, station.transform.position + Vector3.up * 1.1f);
+            }
         }
 
         static void Shop(NetAvatar net, bool buy, string template)

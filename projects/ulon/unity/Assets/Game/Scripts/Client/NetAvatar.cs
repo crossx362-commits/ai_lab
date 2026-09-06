@@ -114,8 +114,10 @@ namespace Ulon.Client
             var victim = target.GetComponent<WorldBody>();
             var result = OfflineWorld.Instance.TryAttack(attacker, victim);
             if (result.Applied && victim != null)
-                ActionVfx.Play(ActionVfx.Kind.Hit, victim.transform.position + Vector3.up * 1.0f);
-                ActionSfx.Play(ActionSfx.Kind.Hit, victim.transform.position + Vector3.up * 1.0f);
+            {
+                // 효과는 **서버에서 재생하면 안 된다** — 서버 인스턴스에서만 난다(검수 랩 D).
+                RpcPlayEffect((int)ActionVfx.Kind.Hit, victim.transform.position + Vector3.up * 1.0f);
+            }
             if (!result.Applied)
             {
                 Debug.Log("[Ulon] attack fail " + result.FailReason);
@@ -207,7 +209,11 @@ namespace Ulon.Client
             var station = OfflineWorld.FindStation(stationId);
             var result = OfflineWorld.Instance.TryCraft(GetComponent<WorldBody>(), station, recipeId);
             if (result.Applied)
+            {
+                if (station != null)
+                    RpcPlayEffect((int)ActionVfx.Kind.Craft, station.transform.position + Vector3.up * 1.1f);
                 SaveNow();
+            }
         }
 
         [ServerRpc]
@@ -218,7 +224,11 @@ namespace Ulon.Client
             var station = OfflineWorld.FindStation(stationId);
             var result = OfflineWorld.Instance.TryRepair(GetComponent<WorldBody>(), station);
             if (result.Applied)
+            {
+                if (station != null)
+                    RpcPlayEffect((int)ActionVfx.Kind.Craft, station.transform.position + Vector3.up * 1.1f);
                 SaveNow();
+            }
         }
 
         [ServerRpc]
@@ -338,8 +348,9 @@ namespace Ulon.Client
                 target = body;
             var result = OfflineWorld.Instance.TryHeal(body, target);
             if (result.Applied && target != null)
-                ActionVfx.Play(ActionVfx.Kind.Heal, target.transform.position + Vector3.up * 1.0f);
-                ActionSfx.Play(ActionSfx.Kind.Heal, target.transform.position + Vector3.up * 1.0f);
+            {
+                RpcPlayEffect((int)ActionVfx.Kind.Heal, target.transform.position + Vector3.up * 1.0f);
+            }
             if (result.Applied)
                 SaveNow();
         }
@@ -906,6 +917,23 @@ namespace Ulon.Client
         void RpcPlayAttack()
         {
             GetComponent<CharacterAnim>()?.PlayAttack();
+        }
+
+        /// <summary>
+        /// 행동 효과를 **모든 클라이언트**에 방송한다. 서버 Rpc 본체에서 `ActionVfx/Sfx.Play`를 부르면
+        /// 서버 인스턴스에서만 재생돼 행동한 본인도 옆 사람도 아무것도 못 받는다(검수 랩 D).
+        /// 불티와 소리는 **한 곳에서 같이** 낸다 — 따로 부르면 한쪽만 조건 밖으로 새는 결함이 또 생긴다.
+        /// </summary>
+        [ObserversRpc]
+        void RpcPlayEffect(int kind, Vector3 at)
+        {
+            var k = (ActionVfx.Kind)kind;
+            // 두 열거형이 같은 순서라는 가정에 기대지 않는다 — 순서가 갈리면 소리만 엉뚱해진다.
+            var s = k == ActionVfx.Kind.Heal ? ActionSfx.Kind.Heal
+                  : k == ActionVfx.Kind.Craft ? ActionSfx.Kind.Craft
+                  : ActionSfx.Kind.Hit;
+            ActionVfx.Play(k, at);
+            ActionSfx.Play(s, at);
         }
 
 

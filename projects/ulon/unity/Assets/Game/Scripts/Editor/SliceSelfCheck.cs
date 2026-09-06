@@ -1621,6 +1621,8 @@ namespace Ulon.Editor
             AssertCharacterArtQualified();
             AssertCreatureArtQualified();
             AssertCreatureArtNegativeControl();
+            AssertEffectWiring();
+            AssertEffectWiringNegativeControl();
             AssertCharacterArtNegativeControl();
             AssertFootOnGround();
             AssertFootNegativeControl();
