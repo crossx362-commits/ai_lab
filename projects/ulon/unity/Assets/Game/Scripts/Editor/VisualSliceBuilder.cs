@@ -2561,6 +2561,57 @@ namespace Ulon.Editor
             sockets.Attach(item, socket);
         }
 
+        /// <summary>
+        /// 모자·투구는 키 측정에서 뺀다(검수 2026-09-06 P0-3). 헥사크(KayKit Mage)는 챙 넓은 모자가
+        /// 전체 바운드를 키워서, 목표 키에 맞추면 몸이 쪼그라들고 모자만 보였다.
+        /// </summary>
+        static bool IsHeadgear(Transform t)
+        {
+            for (var cur = t; cur != null; cur = cur.parent)
+            {
+                if (cur.name.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>모자를 몸 비례로 줄인다 — 45° 시점에서 챙이 몸을 덮지 않게.</summary>
+        static void SlimHeadgear(Transform visual)
+        {
+            var all = visual.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] == visual)
+                    continue;
+                if (all[i].name.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0)
+                    all[i].localScale = all[i].localScale * HeadgearScale;
+            }
+        }
+
+        const float HeadgearScale = 0.62f;
+
+        static bool BoundsOf(Transform visual, bool includeHeadgear, out Bounds bounds)
+        {
+            bounds = new Bounds();
+            var rends = visual.GetComponentsInChildren<Renderer>();
+            bool any = false;
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (!includeHeadgear && IsHeadgear(rends[i].transform))
+                    continue;
+                if (!any)
+                {
+                    bounds = rends[i].bounds;
+                    any = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(rends[i].bounds);
+                }
+            }
+            return any;
+        }
+
         static void FitHeight(Transform visual, Transform root, float target)
         {
             visual.localPosition = Vector3.zero;
@@ -2568,15 +2619,15 @@ namespace Ulon.Editor
             var rends = visual.GetComponentsInChildren<Renderer>();
             if (rends.Length == 0)
                 return;
-            Bounds b = rends[0].bounds;
-            for (int i = 1; i < rends.Length; i++)
-                b.Encapsulate(rends[i].bounds);
+            SlimHeadgear(visual);
+            Bounds b;
+            if (!BoundsOf(visual, false, out b))
+                BoundsOf(visual, true, out b);
             if (b.size.y < 0.01f)
                 return;
             visual.localScale = Vector3.one * (target / b.size.y);
-            b = rends[0].bounds;
-            for (int i = 1; i < rends.Length; i++)
-                b.Encapsulate(rends[i].bounds);
+            if (!BoundsOf(visual, false, out b))
+                BoundsOf(visual, true, out b);
             visual.localPosition = new Vector3(0f, visual.localPosition.y - (b.min.y - root.position.y), 0f);
         }
 

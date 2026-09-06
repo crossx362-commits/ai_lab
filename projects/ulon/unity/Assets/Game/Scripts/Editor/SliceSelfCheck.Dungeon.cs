@@ -41,7 +41,7 @@ namespace Ulon.Editor
             if (Vector3.Distance(boss.transform.position, oak.transform.position) > 12f)
                 throw new InvalidOperationException("헥사크는 동쪽 필드 아웃라이어여야 합니다.");
             var cc = boss.GetComponent<CharacterController>();
-            if (cc == null || Math.Abs(cc.height - 2.48f) > 0.05f)
+            if (cc == null || Math.Abs(cc.height - MobCatalog.HeightOf(MobCatalog.Hexarch)) > 0.05f)
                 throw new InvalidOperationException("헥사크는 KayKit Mage를 본워든/섀도우캡틴과 다른 키로 써야 합니다.");
 
             var worldGo = new GameObject("selfcheck-fieldboss-world");
@@ -138,7 +138,7 @@ namespace Ulon.Editor
             if (huntLine != null && Vector3.Distance(boss.transform.position, huntLine.transform.position) < 40f)
                 throw new InvalidOperationException("본워든은 사냥 라인 아웃라이어가 아니라 던전 1 내부여야 합니다.");
             var cc = boss.GetComponent<CharacterController>();
-            if (cc == null || Math.Abs(cc.height - 2.25f) > 0.05f)
+            if (cc == null || Math.Abs(cc.height - MobCatalog.HeightOf(MobCatalog.BoneWarden)) > 0.05f)
                 throw new InvalidOperationException("본워든은 KayKit 스켈레톤을 1.4배 키로 써야 합니다.");
 
             var worldGo = new GameObject("selfcheck-dungeon-world");
@@ -285,7 +285,7 @@ namespace Ulon.Editor
             if (d1Boss != null && Vector3.Distance(boss.transform.position, d1Boss.transform.position) < 40f)
                 throw new InvalidOperationException("섀도우캡틴은 던전 1 본워든과 같은 방이 아니어야 합니다.");
             var cc = boss.GetComponent<CharacterController>();
-            if (cc == null || Math.Abs(cc.height - 2.35f) > 0.05f)
+            if (cc == null || Math.Abs(cc.height - MobCatalog.HeightOf(MobCatalog.ShadowCaptain)) > 0.05f)
                 throw new InvalidOperationException("섀도우캡틴은 KayKit Rogue를 본워든과 다른 키로 써야 합니다.");
 
             var worldGo = new GameObject("selfcheck-dungeon2-world");
@@ -444,7 +444,7 @@ namespace Ulon.Editor
             if (d2Boss != null && Vector3.Distance(boss.transform.position, d2Boss.transform.position) < 40f)
                 throw new InvalidOperationException("강철폭군은 던전 2 섀도우캡틴과 같은 방이 아니어야 합니다.");
             var bossCc = boss.GetComponent<CharacterController>();
-            if (bossCc == null || Math.Abs(bossCc.height - 2.60f) > 0.05f)
+            if (bossCc == null || Math.Abs(bossCc.height - MobCatalog.HeightOf(MobCatalog.IronTyrant)) > 0.05f)
                 throw new InvalidOperationException("강철폭군은 다른 보스 셋과 다른 키(2.60)여야 합니다.");
 
             var worldGo = new GameObject("selfcheck-dungeon3-world");

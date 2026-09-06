@@ -73,8 +73,8 @@ namespace Ulon.Editor
             // 파일 값이 옮기기 전 코드 값과 같은지(밸런스 무변경 이관)
             if (MobCatalog.MaxHpOf(MobCatalog.Skeleton) != 30f || MobCatalog.MaxHpOf(MobCatalog.IronTyrant) != 210f)
                 throw new InvalidOperationException("몬스터 HP가 원장과 다릅니다.");
-            if (MobCatalog.HeightOf(MobCatalog.IronTyrant) != 2.60f)
-                throw new InvalidOperationException("강철폭군 키는 2.60이어야 합니다.");
+            if (MobCatalog.HeightOf(MobCatalog.IronTyrant) != 2.95f)
+                throw new InvalidOperationException("강철폭군 키는 2.95여야 합니다.");
             if (MobCatalog.DisplayNameOf(MobCatalog.Hart) != TameCritter.DisplayName ||
                 MobCatalog.DisplayNameOf(MobCatalog.Boar) != TameBoar.DisplayName)
                 throw new InvalidOperationException("조련 대상 이름이 코드 상수와 어긋납니다.");

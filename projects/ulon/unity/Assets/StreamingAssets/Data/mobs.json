@@ -8,10 +8,10 @@
     { "id": "acolyte",       "name": "주술사",     "hp": 50.0,  "height": 1.65, "str": 18, "resist": 8,  "dmgMin": 3,  "dmgMax": 6,  "boss": false, "tamable": false, "drop": "" },
     { "id": "minion",        "name": "졸병",       "hp": 22.0,  "height": 1.35, "str": 12, "resist": 0,  "dmgMin": 2,  "dmgMax": 4,  "boss": false, "tamable": false, "drop": "" },
     { "id": "skelrogue",     "name": "해골도적",   "hp": 28.0,  "height": 1.50, "str": 18, "resist": 2,  "dmgMin": 3,  "dmgMax": 6,  "boss": false, "tamable": false, "drop": "" },
-    { "id": "bonewarden",    "name": "본워든",     "hp": 120.0, "height": 2.25, "str": 55, "resist": 8,  "dmgMin": 8,  "dmgMax": 16, "boss": true,  "tamable": false, "drop": "warden_crest" },
-    { "id": "shadowcaptain", "name": "섀도우캡틴", "hp": 150.0, "height": 2.35, "str": 50, "resist": 6,  "dmgMin": 10, "dmgMax": 18, "boss": true,  "tamable": false, "drop": "captain_sigil" },
-    { "id": "hexarch",       "name": "헥사크",     "hp": 180.0, "height": 2.48, "str": 30, "resist": 12, "dmgMin": 8,  "dmgMax": 20, "boss": true,  "tamable": false, "drop": "hex_seal" },
-    { "id": "irontyrant",    "name": "강철폭군",   "hp": 210.0, "height": 2.60, "str": 62, "resist": 10, "dmgMin": 12, "dmgMax": 22, "boss": true,  "tamable": false, "drop": "tyrant_core" },
+    { "id": "bonewarden",    "name": "본워든",     "hp": 120.0, "height": 2.60, "str": 55, "resist": 8,  "dmgMin": 8,  "dmgMax": 16, "boss": true,  "tamable": false, "drop": "warden_crest" },
+    { "id": "shadowcaptain", "name": "섀도우캡틴", "hp": 150.0, "height": 2.70, "str": 50, "resist": 6,  "dmgMin": 10, "dmgMax": 18, "boss": true,  "tamable": false, "drop": "captain_sigil" },
+    { "id": "hexarch",       "name": "헥사크",     "hp": 180.0, "height": 2.80, "str": 30, "resist": 12, "dmgMin": 8,  "dmgMax": 20, "boss": true,  "tamable": false, "drop": "hex_seal" },
+    { "id": "irontyrant",    "name": "강철폭군",   "hp": 210.0, "height": 2.95, "str": 62, "resist": 10, "dmgMin": 12, "dmgMax": 22, "boss": true,  "tamable": false, "drop": "tyrant_core" },
     { "id": "hart",          "name": "야생하트",   "hp": 20.0,  "height": 0.90, "str": 8,  "resist": 0,  "dmgMin": 1,  "dmgMax": 2,  "boss": false, "tamable": true,  "drop": "" },
     { "id": "boar",          "name": "야생멧돼지", "hp": 24.0,  "height": 0.95, "str": 10, "resist": 0,  "dmgMin": 1,  "dmgMax": 3,  "boss": false, "tamable": true,  "drop": "" }
   ]

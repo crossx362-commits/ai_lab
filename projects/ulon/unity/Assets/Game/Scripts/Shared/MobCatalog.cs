@@ -135,7 +135,7 @@ namespace Ulon.Shared
                     Id = BoneWarden,
                     DisplayName = "본워든",
                     MaxHp = 120f,
-                    Height = 2.25f
+                    Height = 2.60f
                 };
                 return true;
             }
@@ -146,7 +146,7 @@ namespace Ulon.Shared
                     Id = ShadowCaptain,
                     DisplayName = "섀도우캡틴",
                     MaxHp = 150f,
-                    Height = 2.35f
+                    Height = 2.70f
                 };
                 return true;
             }
@@ -157,7 +157,7 @@ namespace Ulon.Shared
                     Id = IronTyrant,
                     DisplayName = "강철폭군",
                     MaxHp = 210f,
-                    Height = 2.60f
+                    Height = 2.95f
                 };
                 return true;
             }
@@ -168,7 +168,7 @@ namespace Ulon.Shared
                     Id = Hexarch,
                     DisplayName = "헥사크",
                     MaxHp = 180f,
-                    Height = 2.48f
+                    Height = 2.80f
                 };
                 return true;
             }
