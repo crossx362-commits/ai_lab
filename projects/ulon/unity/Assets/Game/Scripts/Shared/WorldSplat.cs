@@ -1,0 +1,90 @@
+using UnityEngine;
+
+namespace Ulon.Shared
+{
+    /// <summary>
+    /// 지형 **도포 원장** — 어느 좌표가 무슨 지표인지 한 곳에서 정한다. 빌더가 칠하고 Assert가 같은 함수로 잰다.
+    ///
+    /// 왜 필요한가: §6.1 지역(농경지·숲·광산)이 소품만 얹힌 채 바닥은 전부 같은 밝은 초록이라
+    /// 「지역」으로 안 읽혔다(검수 2026-09-06 관찰). 그리고 지역끼리 잇는 길이 없어 평지에 떠 있었다.
+    /// </summary>
+    public static class WorldSplat
+    {
+        // TerrainData.terrainLayers 순서와 같아야 한다(빌더가 이 순서로 배열을 만든다).
+        public const int Grass = 0;
+        public const int Rock = 1;
+        public const int Sand = 2;
+        public const int Tilled = 3;    // 농경지 — 갈아엎은 흙
+        public const int Soil = 4;      // 숲 — 어두운 부엽토
+        public const int Gravel = 5;    // 광산 — 자갈
+        public const int Road = 6;      // 지역을 잇는 길
+        public const int LayerCount = 7;
+
+        public const float RoadHalfWidth = 2.4f;   // 길 중심에서 이 폭까지는 온전히 길
+        public const float RoadFade = 1.8f;        // 그 바깥으로 이 폭만큼 흙이 옅어진다
+
+        /// <summary>마을 광장에서 각 지역으로 가는 길(직선 스포크). 지역이 평지에 떠 있지 않게 한다.</summary>
+        public static Vector4[] Routes => new[]
+        {
+            new Vector4(0f, 0f, WorldRegions.Meadow.X, WorldRegions.Meadow.Z),
+            new Vector4(0f, 0f, WorldRegions.Forest.X, WorldRegions.Forest.Z),
+            new Vector4(0f, 0f, WorldRegions.Mine.X, WorldRegions.Mine.Z),
+        };
+
+        /// <summary>이 지역에 해당하는 도포 레이어.</summary>
+        public static int LayerOf(string regionObject)
+        {
+            if (regionObject == WorldRegions.MeadowObject) return Tilled;
+            if (regionObject == WorldRegions.ForestObject) return Soil;
+            if (regionObject == WorldRegions.MineObject) return Gravel;
+            return Grass;
+        }
+
+        /// <summary>
+        /// 이 좌표를 덮는 지표(길 &gt; 지역)와 그 세기(0~1). 없으면 -1.
+        /// 경계는 노이즈로 흔든다 — 원이 그대로 보이면 화면에서 「도장 찍은 자국」으로 읽힌다.
+        /// </summary>
+        public static int CoverAt(float wx, float wz, out float weight)
+        {
+            weight = 0f;
+            int layer = -1;
+
+            var regions = WorldRegions.All;
+            for (int i = 0; i < regions.Length; i++)
+            {
+                var r = regions[i];
+                float d = new Vector2(wx - r.X, wz - r.Z).magnitude;
+                float wobble = (Mathf.PerlinNoise(wx * 0.05f + i * 13.7f, wz * 0.05f + i * 4.3f) - 0.5f) * (r.Radius * 0.22f);
+                float t = 1f - Mathf.InverseLerp(r.Radius * 0.72f, r.Radius * 1.04f, d + wobble);
+                t = Mathf.Clamp01(t) * 0.95f;
+                if (t > weight)
+                {
+                    weight = t;
+                    layer = LayerOf(r.Object);
+                }
+            }
+
+            var routes = Routes;
+            for (int i = 0; i < routes.Length; i++)
+            {
+                float d = DistToSegment(wx, wz, routes[i].x, routes[i].y, routes[i].z, routes[i].w);
+                float t = 1f - Mathf.Clamp01((d - RoadHalfWidth) / RoadFade);
+                if (t > weight)
+                {
+                    weight = t;
+                    layer = Road;
+                }
+            }
+            return layer;
+        }
+
+        public static float DistToSegment(float px, float pz, float ax, float az, float bx, float bz)
+        {
+            float dx = bx - ax, dz = bz - az;
+            float len2 = dx * dx + dz * dz;
+            float t = len2 < 0.0001f ? 0f : Mathf.Clamp01(((px - ax) * dx + (pz - az) * dz) / len2);
+            float cx = ax + dx * t, cz = az + dz * t;
+            return new Vector2(px - cx, pz - cz).magnitude;
+        }
+    }
+}

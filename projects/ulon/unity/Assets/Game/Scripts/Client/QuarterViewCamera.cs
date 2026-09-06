@@ -18,7 +18,8 @@ namespace Ulon.Client
         // 코드를 고쳐도 씬은 옛 값을 쓴다 — 네거티브 컨트롤이 통과해버려서 발견했다(2026-09-06).
         // 실측(2026-09-06): 실내 비율 90%↑를 지키는 상한은 던전 3이 6.1m·던전 1이 6.3m에서 무너진다.
         // 한계는 방 크기가 아니라 지표 — 눈높이가 지면을 넘으면 화면이 통째로 잔디가 된다. 여유를 두고 5.8m.
-        public const float IndoorDistanceMeters = 5.8f;
+        // **깊이에서 유도한다**(검수 2026-09-06 요구) — 여기 숫자를 손으로 고치면 다음에 방 깊이를 바꾼
+        // 사람이 두 값을 따로 맞춰야 한다. 원장은 WorldTerrain.DungeonDepth 하나뿐이다.
         [SerializeField] float maxDistance = 36f;
         [SerializeField] float zoomSpeed = 8f;
         [SerializeField] float pitch = 35f;
@@ -41,7 +42,7 @@ namespace Ulon.Client
         public float Yaw => yaw;
         public float Distance => distance;
         public float MinDistance => minDistance;
-        public float IndoorDistance => IndoorDistanceMeters;
+        public float IndoorDistance => Ulon.Shared.WorldTerrain.IndoorDistanceFor(pitch);
 
         /// <summary>이 지점이 던전 실내인가 — 머리 위가 던전 차폐물(뚜껑·천장)로 막혀 있으면 실내다.</summary>
         public static bool IsIndoor(Vector3 point)
@@ -72,7 +73,7 @@ namespace Ulon.Client
 
             Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
             Vector3 target = follow != null ? follow.position : Vector3.zero;
-            float useDist = IsIndoor(target) ? Mathf.Min(distance, IndoorDistanceMeters) : distance;
+            float useDist = IsIndoor(target) ? Mathf.Min(distance, IndoorDistance) : distance;
             transform.SetPositionAndRotation(target - rot * Vector3.forward * useDist, rot);
 
             var cam = GetComponent<Camera>();

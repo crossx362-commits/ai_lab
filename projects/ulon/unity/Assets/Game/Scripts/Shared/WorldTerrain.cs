@@ -12,9 +12,35 @@ namespace Ulon.Shared
         public const float Span = 300f;          // 지형 한 변
         public const float MaxHeight = 60f;      // Terrain size.y
         public const float SeaLevel = 3.0f;      // 물 표면 높이(바다·강·호수 공용)
-        // 평지 기준 높이. 던전 방이 지면 -4.5m에 파이므로 수면(3.0)보다 그만큼 더 위에 있어야 한다 —
+        // 평지 기준 높이. 던전 방이 지면 -DungeonDepth에 파이므로 수면(3.0)보다 그만큼 더 위에 있어야 한다 —
         // 6.0이었을 때 방 바닥이 수면 아래로 들어가 던전이 통째로 물에 잠겼다(QA 샷 실측).
+        // 깊이를 4.5 → 5.8로 내리면서 침수 게이트(방 바닥 ≥ 수면+0.5)를 지키는 **최소 상향폭**만 올렸다.
         public const float LandBase = 10.0f;
+
+        /// <summary>
+        /// 던전 방을 지면 아래로 내리는 깊이(m). **실내 줌 상한이 여기서 유도된다** — 눈높이가 지표를 넘으면
+        /// 화면이 통째로 잔디가 되기 때문이다(실측 2026-09-06). 그래서 깊이를 고치면 줌도 따라 움직인다:
+        /// 다음 사람이 카메라 쪽 숫자를 손으로 맞추는 일이 없게 상수를 한 곳에 둔다(검수 요구).
+        ///
+        /// 값의 근거: 실내 줌 8.0m를 쓰려면 깊이 ≥ 눈높이(1.0) + 8.0×sin35° + 여유(0.15) = 5.74m.
+        /// 지형·입구·콘텐츠 배치를 흔드는 값이라 **여유를 크게 잡지 않는다** — 5.8m가 8.0m를 만족하는 최소값이다.
+        /// </summary>
+        public const float DungeonDepth = 5.8f;
+
+        /// <summary>플레이 카메라가 바라보는 지점의 높이(방 바닥 위) — 줌 상한 유도에 쓴다.</summary>
+        public const float PlayerEyeHeight = 1.0f;
+
+        /// <summary>눈이 지표를 뚫지 않도록 남기는 여유(m).</summary>
+        public const float DungeonEyeMargin = 0.15f;
+
+        /// <summary>이 피치에서 실내가 유지되는 최대 카메라 거리(m). 깊이에서 유도한다 — 하드코딩 금지.</summary>
+        public static float IndoorDistanceFor(float pitchDeg)
+        {
+            float s = Mathf.Sin(pitchDeg * Mathf.Deg2Rad);
+            if (s < 0.01f)
+                return 999f;
+            return (DungeonDepth - PlayerEyeHeight - DungeonEyeMargin) / s;
+        }
 
         // 체비셰프 거리(정사각 링) 기준 띠. 마을·필드·던전(±68, 방+뚜껑 반경 ~14)은 전부 평지 띠 안이다.
         public const float FlatMax = 88f;        // 여기까지 평지

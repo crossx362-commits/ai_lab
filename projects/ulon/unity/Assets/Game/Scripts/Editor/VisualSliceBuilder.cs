@@ -1942,6 +1942,13 @@ namespace Ulon.Editor
                         int grit = (x * 61 + y * 149) & 63;
                         t = (hb / 255f) * 0.52f + (band / 255f) * 0.28f + (grit / 63f) * 0.20f;
                     }
+                    else if (pattern == 2)
+                    {
+                        // 이랑 — 갈아엎은 밭. 줄무늬가 있어야 「경작지」로 읽힌다.
+                        int furrow = ((y / 5) % 2) * 70;
+                        int grain = (x * 53 + y * 17) & 63;
+                        t = Mathf.Clamp01((furrow + grain) / 133f);
+                    }
                     else
                     {
                         int h = (x * 374761 + y * 668265 + x * y * 13) & 255;
@@ -2337,8 +2344,8 @@ namespace Ulon.Editor
 
         public const string DungeonBlockerLayer = "DungeonBlocker";
 
-        /// <summary>던전 방을 지면 아래로 내리는 깊이(m). 지상 상자는 §8.2 「단색 초록」 위반이다.</summary>
-        public const float DungeonDepth = 4.5f;
+        /// <summary>던전 방 깊이 — 원장은 `WorldTerrain.DungeonDepth`다(실내 줌 상한이 여기서 유도된다).</summary>
+        public const float DungeonDepth = WorldTerrain.DungeonDepth;
         public const string WaterObject = "SeaWater";
 
         /// <summary>씬의 플레이 카메라에 실내 차폐 페이드를 보장한다(검수 2026-09-06 P0).</summary>
@@ -3264,11 +3271,16 @@ namespace Ulon.Editor
             // 풀(잡음·타일 12)과 **다른 무늬·다른 타일링**이어야 산이 별개의 지질로 읽힌다(검수 재반려).
             var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.20f, 0.18f, 0.17f), new Color(0.63f, 0.58f, 0.50f), 7f, 1);
             var sandLayer = EnsureTerrainLayer("ShoreSand", new Color(0.74f, 0.68f, 0.50f), new Color(0.85f, 0.80f, 0.62f), 8f);
+            // §6.1 지역이 **지표로** 구분돼야 한다 — 바닥이 전부 같은 초록이면 소품만 얹힌 모양이다(검수 2026-09-06 관찰).
+            var tilledLayer = EnsureTerrainLayer("FarmTilled", new Color(0.30f, 0.21f, 0.13f), new Color(0.47f, 0.34f, 0.21f), 3.5f, 2);
+            var soilLayer = EnsureTerrainLayer("ForestSoil", new Color(0.16f, 0.13f, 0.09f), new Color(0.30f, 0.25f, 0.16f), 9f);
+            var gravelLayer = EnsureTerrainLayer("MineGravel", new Color(0.28f, 0.26f, 0.24f), new Color(0.55f, 0.52f, 0.47f), 4.5f, 1);
+            var roadLayer = EnsureTerrainLayer("DirtRoad", new Color(0.38f, 0.31f, 0.22f), new Color(0.58f, 0.50f, 0.37f), 5f);
 
             int res = 513;
             data.heightmapResolution = res;
             data.size = new Vector3(WorldTerrain.Span, WorldTerrain.MaxHeight, WorldTerrain.Span);
-            data.terrainLayers = new[] { layer, rockLayer, sandLayer };
+            data.terrainLayers = new[] { layer, rockLayer, sandLayer, tilledLayer, soilLayer, gravelLayer, roadLayer };
             float[,] heights = new float[res, res];
             float half = WorldTerrain.Span * 0.5f;
             for (int z = 0; z < res; z++)
@@ -3282,7 +3294,7 @@ namespace Ulon.Editor
             }
             data.SetHeights(0, 0, heights);
             int ar = data.alphamapResolution;
-            var alpha = new float[ar, ar, 3];
+            var alpha = new float[ar, ar, WorldSplat.LayerCount];
             for (int z = 0; z < ar; z++)
             {
                 for (int x = 0; x < ar; x++)
@@ -3314,10 +3326,23 @@ namespace Ulon.Editor
 
                     float grassW = Mathf.Max(0f, 1f - sand) * Mathf.Max(0f, 1f - rock);
                     float rockW = Mathf.Max(0f, 1f - sand) * rock;
-                    float sum = Mathf.Max(0.0001f, grassW + rockW + sand);
-                    alpha[z, x, 0] = grassW / sum;
-                    alpha[z, x, 1] = rockW / sum;
-                    alpha[z, x, 2] = sand / sum;
+
+                    // 지역 지표·길 — 원장(WorldSplat)이 계산하고 Assert도 같은 함수를 읽는다.
+                    int cover = WorldSplat.CoverAt(wx, wz, out float coverW);
+                    coverW *= Mathf.Max(0f, 1f - sand) * Mathf.Max(0f, 1f - rock * 0.45f);
+                    float keep = Mathf.Max(0f, 1f - coverW);
+
+                    var w = new float[WorldSplat.LayerCount];
+                    w[WorldSplat.Grass] = grassW * keep;
+                    w[WorldSplat.Rock] = rockW * keep;
+                    w[WorldSplat.Sand] = sand;
+                    if (cover >= 0)
+                        w[cover] += coverW;
+                    float sum = 0.0001f;
+                    for (int c = 0; c < WorldSplat.LayerCount; c++)
+                        sum += w[c];
+                    for (int c = 0; c < WorldSplat.LayerCount; c++)
+                        alpha[z, x, c] = w[c] / sum;
                 }
             }
             data.SetAlphamaps(0, 0, alpha);

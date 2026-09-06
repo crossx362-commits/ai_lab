@@ -95,6 +95,7 @@ namespace Ulon.Editor
                 throw new InvalidOperationException(label + " 내부 중앙에서 하늘이 그대로 보입니다 — 천장(또는 상방 차단)이 없습니다. 천장 렌더러 최고점 y=" + ceilingY.ToString("0.00"));
 
             // 방 바닥이 수면 아래면 던전이 물에 잠긴다(지형 작업 후 실제로 잠겼다).
+            Debug.Log("[Ulon] 방 바닥 높이 " + label + " " + groundY.ToString("0.00") + "m (수면 " + WorldTerrain.SeaLevel + "m + 여유 " + (groundY - WorldTerrain.SeaLevel - 0.5f).ToString("0.00") + "m, 깊이 " + WorldTerrain.DungeonDepth + "m·LandBase " + WorldTerrain.LandBase + ")");
             if (groundY < WorldTerrain.SeaLevel + 0.5f)
                 throw new InvalidOperationException(label + " 방 바닥이 " + groundY.ToString("0.0") + "m로 수면(" + WorldTerrain.SeaLevel + "m) 아래입니다 — 던전이 물에 잠깁니다. 평지 높이(WorldTerrain.LandBase)가 던전 깊이 " + VisualSliceBuilder.DungeonDepth + "m보다 충분히 높아야 합니다.");
 
@@ -184,6 +185,8 @@ namespace Ulon.Editor
         // 실측(2026-09-06): 실내 줌 5.5m에서 0.98~1.00, 실외 거리 18m(결함 상태)에서 0.67~0.78.
         // 0.90이면 고친 상태는 통과하고 결함은 잡힌다 — 0.55로 뒀더니 결함이 그대로 통과했다.
         const float InteriorShareMin = 0.90f;
+        /// <summary>검수 2026-09-06 요구 — 이 거리까지 줌 아웃해도 실내가 유지돼야 한다(전투 시야).</summary>
+        const float IndoorDistanceRequired = 8.0f;
         const int FillRaysPerAxis = 21;
 
 
@@ -239,6 +242,16 @@ namespace Ulon.Editor
             float groundY = GroundYAt(center) - VisualSliceBuilder.DungeonDepth;
             var player = new Vector3(center.x, groundY + 1.0f, center.y);
             var rot = Quaternion.Euler(cam.Pitch, cam.Yaw, 0f);
+            // 검수 2026-09-06 요구 — 「실내 줌 8.0m에서 실내 비율 0.90↑」. 줌 상한은 방 깊이에서 유도되므로
+            // 이 판정은 사실상 **깊이 하한**을 건다: 깊이 ≥ 눈높이 + 8.0×sin(pitch) + 여유.
+            float allowed = WorldTerrain.IndoorDistanceFor(cam.Pitch);
+            Debug.Log("[Ulon] 실내 줌 상한 " + label + " " + allowed.ToString("0.00") + "m (요구 " + IndoorDistanceRequired + "m, 방 깊이 " + WorldTerrain.DungeonDepth + "m·피치 " + cam.Pitch.ToString("0") + "°)");
+            if (allowed < IndoorDistanceRequired)
+                throw new InvalidOperationException(label + " 실내 줌 상한이 " + allowed.ToString("0.00") + "m입니다 — 요구 " + IndoorDistanceRequired +
+                    "m. 방 깊이 " + WorldTerrain.DungeonDepth + "m가 모자랍니다(필요 최소 " +
+                    (WorldTerrain.PlayerEyeHeight + IndoorDistanceRequired * Mathf.Sin(cam.Pitch * Mathf.Deg2Rad) + WorldTerrain.DungeonEyeMargin).ToString("0.00") +
+                    "m). 카메라 숫자가 아니라 **깊이**를 고치세요(§4.2).");
+
             float useDist = Mathf.Min(cam.Distance, cam.IndoorDistance);
 
             // 실내 줌의 한계는 방 크기가 아니라 **지표**다: 눈높이가 지면을 넘는 순간 화면이 통째로 잔디가 된다.
