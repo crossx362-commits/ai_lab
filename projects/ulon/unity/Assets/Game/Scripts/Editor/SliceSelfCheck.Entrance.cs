@@ -14,6 +14,40 @@ namespace Ulon.Editor
         const int EntranceLightMin = 2;
         const int EntrancePathMin = 3;
 
+        // 검수 2026-09-06 반려: 흰 Kenney 바위가 던전 1 문구멍을 정면에서 가렸고,
+        // 옆벽이 기둥과 높이가 어긋나 계단처럼 보였다. 존재가 아니라 **위치·정렬**을 잰다.
+        const float EntranceRockClearRadius = 4f;
+        const float WingTopGapMax = 0.5f;
+
+        static void CheckEntranceFinish(string label, float ex, float ez)
+        {
+            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            float wingTop = float.MinValue;
+            float pillarTop = float.MinValue;
+            for (int i = 0; i < all.Length; i++)
+            {
+                var t = all[i];
+                if (t == null)
+                    continue;
+                var p = t.position;
+                float d = new Vector2(p.x - ex, p.z - ez).magnitude;
+                if (d > EntranceRockClearRadius)
+                    continue;
+                if (t.name.IndexOf("rock", StringComparison.OrdinalIgnoreCase) >= 0
+                    && t.GetComponentInChildren<Renderer>(true) != null)
+                    throw new InvalidOperationException(label + " 입구 " + d.ToString("0.0") + "m 앞에 바위(" + t.name + ")가 있습니다 — 문구멍을 가리고 흰 저폴리 바위는 돌벽과 재질이 붕 뜹니다(§8.1).");
+                var rend = t.GetComponent<Renderer>();
+                if (rend == null)
+                    continue;
+                if (t.name == "EntranceWing")
+                    wingTop = Mathf.Max(wingTop, rend.bounds.max.y);
+                if (t.name == "EntrancePillar")
+                    pillarTop = Mathf.Max(pillarTop, rend.bounds.max.y);
+            }
+            if (wingTop > float.MinValue && pillarTop > float.MinValue && pillarTop - wingTop > WingTopGapMax)
+                throw new InvalidOperationException(label + " 입구 옆벽 윗면이 기둥보다 " + (pillarTop - wingTop).ToString("0.00") + "m 낮습니다 — 최대 " + WingTopGapMax + "m. 「벽에 뚫린 문」이 아니라 계단처럼 보입니다(§8.1).");
+        }
+
         static void AssertDungeonEntrance()
         {
             AssertDungeon3Leftover();
@@ -22,10 +56,14 @@ namespace Ulon.Editor
             CheckEntrance("던전 2", new Vector2(Dungeon2.EntranceX, Dungeon2.EntranceZ));
             CheckEntrance("던전 3", new Vector2(Dungeon3.EntranceX, Dungeon3.EntranceZ));
 
+            CheckEntranceFinish("던전 1", Dungeon1.EntranceX, Dungeon1.EntranceZ);
+            CheckEntranceFinish("던전 2", Dungeon2.EntranceX, Dungeon2.EntranceZ);
+            CheckEntranceFinish("던전 3", Dungeon3.EntranceX, Dungeon3.EntranceZ);
+
             if (GameObject.Find(Dungeon3.SignObject) == null)
                 throw new InvalidOperationException("던전 3 이정표가 없습니다: " + Dungeon3.SignObject + " (마을에서 찾을 단서가 없다)");
 
-            Debug.Log("[Ulon] 던전 입구 단서 통과 — 등불 " + EntranceLightMin + "개↑·깃발·진입로 타일 " + EntrancePathMin + "장↑ (던전 1·2·3) + 던전 3 이정표");
+            Debug.Log("[Ulon] 던전 입구 단서 통과 — 등불 " + EntranceLightMin + "개↑·깃발·진입로 타일 " + EntrancePathMin + "장↑·바위 " + EntranceRockClearRadius + "m 안 없음·옆벽 정렬 (던전 1·2·3) + 던전 3 이정표");
         }
 
         static void CheckEntrance(string label, Vector2 pos)

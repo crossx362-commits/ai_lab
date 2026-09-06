@@ -782,7 +782,7 @@ namespace Ulon.Editor
             eg.DisplayName = "던전 입구";
             EnsureCollider(entrance);
             BuildDungeonEntrance(parent, new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 90f);
-            Decor(parent, RockL, new Vector3(Dungeon1.EntranceX - 1.1f, 0f, Dungeon1.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
+            RoomRubble(parent, new Vector3(Dungeon1.EntranceX - 2.9f, 0f, Dungeon1.EntranceZ - 2.6f), 0.8f);   // 흰 Kenney 바위는 돌벽과 재질이 붕 뜬다 — 던전 톤 잔해로, 문 앞이 아니라 옆으로.
 
             var interior = new GameObject(Dungeon1.InteriorObject);
             interior.transform.SetParent(parent, false);
@@ -852,7 +852,7 @@ namespace Ulon.Editor
             eg.DisplayName = "던전 2 입구";
             EnsureCollider(entrance);
             BuildDungeonEntrance(parent, new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ), -90f);
-            Decor(parent, RockL, new Vector3(Dungeon2.EntranceX + 1.1f, 0f, Dungeon2.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
+            RoomRubble(parent, new Vector3(Dungeon2.EntranceX + 2.9f, 0f, Dungeon2.EntranceZ - 2.6f), 0.8f);   // 흰 Kenney 바위는 돌벽과 재질이 붕 뜬다 — 던전 톤 잔해로, 문 앞이 아니라 옆으로.
 
             var interior = new GameObject(Dungeon2.InteriorObject);
             interior.transform.SetParent(parent, false);
@@ -925,7 +925,7 @@ namespace Ulon.Editor
             eg.DisplayName = "던전 3 입구";
             EnsureCollider(entrance);
             BuildDungeonEntrance(parent, new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 45f);
-            Decor(parent, RockL, new Vector3(Dungeon3.EntranceX + 1.1f, 0f, Dungeon3.EntranceZ - 1.1f), new Vector3(0f, 50f, 0f));
+            RoomRubble(parent, new Vector3(Dungeon3.EntranceX + 2.9f, 0f, Dungeon3.EntranceZ - 2.6f), 0.8f);   // 흰 Kenney 바위는 돌벽과 재질이 붕 뜬다 — 던전 톤 잔해로, 문 앞이 아니라 옆으로.
 
             var interior = new GameObject(Dungeon3.InteriorObject);
             interior.transform.SetParent(parent, false);
@@ -1940,6 +1940,34 @@ namespace Ulon.Editor
         /// 아치 양옆 등불(점광)·붉은 깃발·마을 쪽에서 이어지는 돌길 타일을 공용으로 세운다.
         /// approachYaw는 플레이어가 걸어오는 방향(도(度))이다.
         /// </summary>
+        /// <summary>
+        /// 입구 앞에 남아 있는 흰 Kenney 바위를 씬에서 치운다 — Ensure*는 오브젝트가 있으면 일찍 반환하므로
+        /// 코드에서 배치를 지워도 이미 만들어진 씬에는 그대로 남는다(검수 2026-09-06 반려: 던전 1 문구멍을 가렸다).
+        /// </summary>
+        public static void EnsureEntranceClearance()
+        {
+            ClearRocksNear(new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ));
+            ClearRocksNear(new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ));
+            ClearRocksNear(new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ));
+        }
+
+        static void ClearRocksNear(Vector3 pos)
+        {
+            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = all.Length - 1; i >= 0; i--)
+            {
+                var t = all[i];
+                if (t == null || t.parent == null)
+                    continue;
+                if (t.name.IndexOf("rock", StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+                var p = t.position;
+                if ((new Vector2(p.x - pos.x, p.z - pos.z)).magnitude > 4f)
+                    continue;
+                UnityEngine.Object.DestroyImmediate(t.gameObject);
+            }
+        }
+
         public static void BuildDungeonEntrance(Transform parent, Vector3 pos, float approachYaw)
         {
             const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
@@ -1998,8 +2026,9 @@ namespace Ulon.Editor
             // 옆벽 — 문틀이 벽에 뚫린 문으로 읽히게 좌우로 조금 이어 붙인다.
             for (int side = -1; side <= 1; side += 2)
             {
-                Vector3 wing = pos + right * (2.35f * side) - fwd * 0.2f;
-                RoomSlab(frame.transform, "EntranceWing", new Vector3(wing.x, gy + 1.1f, wing.z), new Vector3(1.6f, 2.2f, 0.55f), wallMat, approachYaw);
+                // 기둥과 같은 평면·같은 두께·비슷한 높이로 — 어긋나면 계단처럼 보인다(검수 반려).
+                Vector3 wing = pos + right * (2.35f * side);
+                RoomSlab(frame.transform, "EntranceWing", new Vector3(wing.x, gy + 1.45f, wing.z), new Vector3(1.6f, 2.9f, 0.7f), wallMat, approachYaw);
             }
         }
 
@@ -2030,45 +2059,116 @@ namespace Ulon.Editor
         public const string BossAuraObject = "BossAura";
         public const string BossWeaponPrefix = "BossWeapon_";
 
+        /// <summary>
+        /// 이미 씬에 있는 보스 4종에도 §10.2 차별화를 다시 적용한다(멱등).
+        /// 스폰 Ensure*는 오브젝트가 있으면 일찍 반환하므로, 그 경로로만 두면 옛 보스는 영영 안 고쳐진다
+        /// (헥사크가 무기 없이 남아 있던 이유다 — 검수 2026-09-06 반려).
+        /// </summary>
+        public static void EnsureBossDressing()
+        {
+            DressBossNamed(Dungeon1.BossObject, new Color(0.55f, 0.85f, 1f));
+            DressBossNamed(Dungeon2.BossObject, new Color(0.65f, 0.35f, 1f));
+            DressBossNamed(Dungeon3.BossObject, new Color(1f, 0.45f, 0.2f));
+            DressBossNamed(FieldBoss.Object, new Color(0.35f, 1f, 0.6f));
+        }
+
+        static void DressBossNamed(string objectName, Color tint)
+        {
+            var go = GameObject.Find(objectName);
+            if (go != null)
+                DressBoss(go, tint);
+        }
+
         public static void DressBoss(GameObject boss, Color tint)
         {
             if (boss == null)
                 return;
 
-            // 1) 큰 무기 — 손에 든 장비를 키운다.
-            var all = boss.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < all.Length; i++)
+            // 멱등하게 — 이전에 붙은 왕관·오라는 지우고 다시 만든다(위치 규칙이 바뀌면 옛 것이 남는다).
+            var old = boss.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < old.Length; i++)
             {
-                var t = all[i];
-                if (!t.gameObject.activeInHierarchy)
+                if (old[i] == null)
                     continue;
-                if (!ContainsGearName(t.name) || t.name.StartsWith(BossWeaponPrefix, StringComparison.Ordinal))
-                    continue;
-                if (t.GetComponentInChildren<Renderer>(true) == null)
-                    continue;
-                t.localScale = t.localScale * 1.55f;
-                t.name = BossWeaponPrefix + t.name;
-                break;
+                if (old[i].name == BossCrownObject || old[i].name == BossAuraObject)
+                    UnityEngine.Object.DestroyImmediate(old[i].gameObject);
             }
 
-            // 2) 머리장식 — 머리 위 왕관(뿔 4개).
+            // 1) 큰 무기 — 손에 든 장비를 키운다. 없으면 손 소켓에 검을 새로 붙인다.
+            //    개명만 하고 손에 아무것도 없는 보스가 게이트를 통과했다(검수 2026-09-06 반려).
+            var weapon = FindGearTransform(boss);
+            if (weapon == null)
+            {
+                AttachGear(boss, SwordFbx, null);
+                weapon = FindGearTransform(boss);
+            }
+            if (weapon == null)
+                weapon = AttachWeaponToHand(boss);   // EquipmentSockets가 없는 보스(헥사크)용 폴백
+            if (weapon != null)
+            {
+                // 화면에 보이는 것이 목적이다 — 개명만 되고 꺼져 있거나 부모가 꺼진 무기가 있었다(헥사크의 완드).
+                for (var t = weapon; t != null && t != boss.transform; t = t.parent)
+                    t.gameObject.SetActive(true);
+                var wrends = weapon.GetComponentsInChildren<Renderer>(true);
+                for (int i = 0; i < wrends.Length; i++)
+                {
+                    wrends[i].enabled = true;
+                    wrends[i].gameObject.SetActive(true);
+                }
+                if (!weapon.name.StartsWith(BossWeaponPrefix, StringComparison.Ordinal))
+                {
+                    weapon.localScale = weapon.localScale * 1.55f;
+                    weapon.name = BossWeaponPrefix + weapon.name;
+                }
+                // 완드처럼 작은 장비는 1.55배로도 「큰 무기」로 안 읽힌다 — 몸 높이의 0.45배까지 키운다.
+                var ccw = boss.GetComponent<CharacterController>();
+                float wantLen = (ccw != null ? ccw.height : 2f) * 0.45f;
+                Bounds wb;
+                if (BoundsOfEnabled(weapon, out wb))
+                {
+                    float len = Mathf.Max(wb.size.x, Mathf.Max(wb.size.y, wb.size.z));
+                    if (len > 0.01f && len < wantLen)
+                        weapon.localScale = weapon.localScale * Mathf.Min(3.5f, wantLen / len);
+                }
+            }
+
+            // 2) 머리장식 — 머리 **위**에 얹는다.
+            //    렌더러 바운드(b.max.y)로 얹었더니 어깨 높이에 수평으로 떠서 접시처럼 보였다
+            //    (에디터에서 스킨드 바운드는 못 믿는다 — 실루엣 게이트에서 이미 겪은 함정이다).
+            //    CharacterController가 스폰 시 원장 키를 그대로 받으므로 그걸 머리 기준으로 쓴다.
             var crownMat = MakeNoiseMat("BossCrown", new Color(0.62f, 0.48f, 0.12f), new Color(0.86f, 0.72f, 0.26f));
             Bounds b;
-            if (!BoundsOf(boss.transform, true, out b))
-                return;
+            bool hasBounds = BoundsOf(boss.transform, true, out b);
+            var cc = boss.GetComponent<CharacterController>();
+            float headY;
+            float headR;
+            Vector3 axis;
+            if (cc != null && cc.height > 0.01f)
+            {
+                axis = boss.transform.position + cc.center;
+                headY = boss.transform.position.y + cc.center.y + cc.height * 0.5f;
+                headR = Mathf.Max(0.16f, cc.radius * 0.62f);
+            }
+            else
+            {
+                if (!hasBounds)
+                    return;
+                axis = b.center;
+                headY = b.max.y;
+                headR = Mathf.Max(0.16f, b.size.x * 0.22f);
+            }
             var crown = new GameObject(BossCrownObject);
             crown.transform.SetParent(boss.transform, true);
-            crown.transform.position = new Vector3(b.center.x, b.max.y + 0.05f, b.center.z);
-            float r = Mathf.Max(0.22f, b.size.x * 0.22f);
+            crown.transform.position = new Vector3(axis.x, headY - 0.06f, axis.z);
             for (int i = 0; i < 4; i++)
             {
                 float a = i * 90f * Mathf.Deg2Rad;
                 var spike = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 spike.name = "CrownSpike" + i;
                 spike.transform.SetParent(crown.transform, true);
-                spike.transform.position = crown.transform.position + new Vector3(Mathf.Sin(a) * r, 0.18f, Mathf.Cos(a) * r);
-                spike.transform.localScale = new Vector3(0.12f, 0.42f, 0.12f);
-                spike.transform.rotation = Quaternion.Euler(Mathf.Cos(a) * 18f, 0f, -Mathf.Sin(a) * 18f);
+                spike.transform.position = crown.transform.position + new Vector3(Mathf.Sin(a) * headR, 0.20f, Mathf.Cos(a) * headR);
+                spike.transform.localScale = new Vector3(0.11f, 0.40f, 0.11f);
+                spike.transform.rotation = Quaternion.Euler(Mathf.Cos(a) * 14f, 0f, -Mathf.Sin(a) * 14f);
                 var rend = spike.GetComponent<Renderer>();
                 if (rend != null)
                     rend.sharedMaterial = crownMat;
@@ -2080,7 +2180,7 @@ namespace Ulon.Editor
             // 3) VFX — 보스 색 오라(점광). 멀리서도 색으로 읽힌다(§8.1 실루엣/가독성).
             var auraGo = new GameObject(BossAuraObject);
             auraGo.transform.SetParent(boss.transform, true);
-            auraGo.transform.position = new Vector3(b.center.x, b.min.y + b.size.y * 0.55f, b.center.z);
+            auraGo.transform.position = new Vector3(axis.x, boss.transform.position.y + (headY - boss.transform.position.y) * 0.55f, axis.z);
             var aura = auraGo.AddComponent<Light>();
             aura.type = LightType.Point;
             aura.color = tint;
@@ -2883,6 +2983,92 @@ namespace Ulon.Editor
             AttachIf(sockets, shieldPath, sockets.LeftHand);
         }
 
+        /// <summary>
+        /// 소켓 컴포넌트가 없는 액터에 무기를 붙인다 — 손 본을 찾아 그 밑에 프리팹을 얹는다.
+        /// 손 본도 없으면 몸 옆에 세운다(화면에 무기가 보이는 것이 목적이다).
+        /// </summary>
+        static Transform AttachWeaponToHand(GameObject actor)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(EnsureKayKitPrefab(SwordFbx));
+            if (prefab == null)
+                return null;
+            Transform hand = null;
+            var all = actor.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                string n = all[i].name.ToLowerInvariant();
+                if (n.IndexOf("hand") < 0)
+                    continue;
+                if (hand == null || n.EndsWith(".r") || n.IndexOf("right") >= 0)
+                    hand = all[i];
+            }
+            var item = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            if (item == null)
+                return null;
+            if (hand != null)
+            {
+                item.transform.SetParent(hand, false);
+                item.transform.localPosition = Vector3.zero;
+                item.transform.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                var cc = actor.GetComponent<CharacterController>();
+                float h = cc != null ? cc.height : 2f;
+                item.transform.SetParent(actor.transform, false);
+                item.transform.localPosition = new Vector3(0.45f, h * 0.35f, 0.1f);
+                item.transform.localRotation = Quaternion.Euler(0f, 0f, 12f);
+            }
+            item.name = "Sword_Boss";
+            return item.transform;
+        }
+
+        /// <summary>손에 든(또는 붙어 있는) 무기 중 **가장 큰 것** — 첫 번째를 잡으면 완드 같은 소품이 걸린다.</summary>
+        static Transform FindGearTransform(GameObject actor)
+        {
+            Transform best = null;
+            float bestLen = -1f;
+            var all = actor.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                var t = all[i];
+                if (!ContainsGearName(t.name))
+                    continue;
+                if (t.name.IndexOf("Shield", StringComparison.OrdinalIgnoreCase) >= 0
+                    || t.name.IndexOf("Quiver", StringComparison.OrdinalIgnoreCase) >= 0)
+                    continue;
+                var rends = t.GetComponentsInChildren<Renderer>(true);
+                if (rends.Length == 0)
+                    continue;
+                var b = rends[0].bounds;
+                for (int k = 1; k < rends.Length; k++)
+                    b.Encapsulate(rends[k].bounds);
+                float len = Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z));
+                if (len > bestLen)
+                {
+                    bestLen = len;
+                    best = t;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>렌더가 켜진 자식들의 합 바운드.</summary>
+        static bool BoundsOfEnabled(Transform t, out Bounds bounds)
+        {
+            bounds = new Bounds();
+            bool any = false;
+            var rends = t.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (!rends[i].enabled || !rends[i].gameObject.activeInHierarchy)
+                    continue;
+                if (!any) { bounds = rends[i].bounds; any = true; }
+                else bounds.Encapsulate(rends[i].bounds);
+            }
+            return any;
+        }
+
         static void HideExtraGear(GameObject actor)
         {
             string[] keep = { "1H_Sword", "Round_Shield", "sword_1handed", "shield_round" };
@@ -2892,6 +3078,8 @@ namespace Ulon.Editor
                 bool gear = ContainsGearName(n);
                 if (!gear)
                     continue;
+                if (n.StartsWith(BossWeaponPrefix, StringComparison.Ordinal))
+                    continue;   // 보스 무기는 여기서 다시 끄면 안 된다(헥사크 완드가 이렇게 사라졌다)
                 bool keepIt = false;
                 for (int i = 0; i < keep.Length; i++)
                     if (n == keep[i])

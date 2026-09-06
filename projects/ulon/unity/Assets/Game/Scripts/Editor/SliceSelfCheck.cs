@@ -20,6 +20,8 @@ namespace Ulon.Editor
                 scene = EditorSceneManager.OpenScene(scenePath);
             VisualSliceBuilder.EnsureVillageTerrain();   // 지형 먼저 — 던전 방이 여기에 구멍을 뚫는다
             VisualSliceBuilder.EnsureHuntMobs();
+            VisualSliceBuilder.EnsureBossDressing();
+            VisualSliceBuilder.EnsureEntranceClearance();
             VisualSliceBuilder.EnsureFishSpot();
             VisualSliceBuilder.EnsureCampfire();
             VisualSliceBuilder.EnsureMortar();
