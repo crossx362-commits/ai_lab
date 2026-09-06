@@ -11,7 +11,9 @@ namespace Ulon.Editor
         /// 수치가 아니라 **실제 렌더러 바운드**를 본다 — 헥사크는 키 2.48을 들고도 챙 넓은 모자에
         /// 몸이 먹혀 "떠 있는 모자"로 보였다. 수치만 보는 판정은 그걸 통과시킨다.
         /// </summary>
-        const float BossSilhouetteRatio = 1.4f;
+        // 기획서 §10.2 「보스는 일반 모델을 1.3~1.5배 확대」 — 하한만 넣으면 게이트가 상한 초과를 통과시킨다(검수 반려 1).
+        const float BossSilhouetteMin = 1.3f;
+        const float BossSilhouetteMax = 1.5f;
         // 실측(2026-09-06): 모자 축소 후 hatW 1.52 / 축소 전 2.45, 몸 폭은 둘 다 2.84.
         // 0.70이면 고친 상태는 통과하고 결함 상태는 잡힌다 — 이 값으로 네거티브 컨트롤이 빨간불을 낸다.
         const float HeadgearWidthMax = 0.70f;
@@ -25,7 +27,7 @@ namespace Ulon.Editor
             CheckSilhouette("던전 3", Dungeon3.BossObject, Dungeon3.MobObject);
             CheckSilhouette("필드 보스", FieldBoss.Object, "Raider");
 
-            Debug.Log("[Ulon] 보스 실루엣 통과 — 잡몹 대비 " + BossSilhouetteRatio + "배↑, 모자 폭 몸 폭의 " + HeadgearWidthMax + "배 이하 (던전 1·2·3·필드)");
+            Debug.Log("[Ulon] 보스 실루엣 통과 — §10.2 잡몹 대비 " + BossSilhouetteMin + "~" + BossSilhouetteMax + "배, 모자 폭 몸 폭의 " + HeadgearWidthMax + "배 이하 (던전 1·2·3·필드)");
         }
 
         static void CheckSilhouette(string label, string bossObject, string mobObject)
@@ -37,8 +39,8 @@ namespace Ulon.Editor
             float mobH = BodyHeight(label + " 잡몹", mobObject, out _);
 
             float ratio = bossH / mobH;
-            if (ratio < BossSilhouetteRatio)
-                throw new InvalidOperationException(label + " 보스가 잡몹 대비 " + ratio.ToString("0.00") + "배입니다 — 최소 " + BossSilhouetteRatio + "배(보스 " + bossH.ToString("0.00") + "m, 잡몹 " + mobH.ToString("0.00") + "m). 보스로 안 읽힙니다.");
+            if (ratio < BossSilhouetteMin || ratio > BossSilhouetteMax)
+                throw new InvalidOperationException(label + " 보스가 잡몹 대비 " + ratio.ToString("0.00") + "배입니다 — 기획서 §10.2는 " + BossSilhouetteMin + "~" + BossSilhouetteMax + "배(보스 " + bossH.ToString("0.00") + "m, 잡몹 " + mobH.ToString("0.00") + "m).");
 
             // 모자가 몸을 덮는가 — 헥사크 결함의 직접 판정(폭 비율은 스케일이 같이 먹으므로 bounds로 봐도 안정적이다).
             Bounds hat = new Bounds();

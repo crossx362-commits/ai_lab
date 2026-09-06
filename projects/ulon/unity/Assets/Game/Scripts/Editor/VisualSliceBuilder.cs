@@ -1009,6 +1009,7 @@ namespace Ulon.Editor
                 MobCatalog.DisplayNameOf(MobCatalog.Hexarch),
                 MobCatalog.MaxHpOf(MobCatalog.Hexarch));
             BindMob(spawned, MobCatalog.Hexarch);
+            DressBoss(spawned, new Color(0.35f, 1f, 0.6f));       // 독기 어린 녹빛 — 헥사크
             HideExtraGear(spawned);
         }
 
@@ -1057,6 +1058,7 @@ namespace Ulon.Editor
                 MobCatalog.MaxHpOf(MobCatalog.BoneWarden));
             BindMob(spawned, MobCatalog.BoneWarden);
             HideExtraGear(spawned);
+            DressBoss(spawned, new Color(0.55f, 0.85f, 1f));      // 창백한 푸른빛 — 언데드 수문장
             if (parent != null)
                 spawned.transform.SetParent(parent, true);
         }
@@ -1105,6 +1107,7 @@ namespace Ulon.Editor
                 MobCatalog.MaxHpOf(MobCatalog.ShadowCaptain));
             BindMob(spawned, MobCatalog.ShadowCaptain);
             HideExtraGear(spawned);
+            DressBoss(spawned, new Color(0.65f, 0.35f, 1f));      // 보랏빛 — 그림자
             if (parent != null)
                 spawned.transform.SetParent(parent, true);
         }
@@ -1131,6 +1134,7 @@ namespace Ulon.Editor
                 MobCatalog.MaxHpOf(MobCatalog.IronTyrant));
             BindMob(spawned, MobCatalog.IronTyrant);
             HideExtraGear(spawned);
+            DressBoss(spawned, new Color(1f, 0.45f, 0.2f));       // 달군 쇳빛 — 강철폭군
             if (parent != null)
                 spawned.transform.SetParent(parent, true);
         }
@@ -2016,6 +2020,74 @@ namespace Ulon.Editor
             Decor(parent, Banner, pos + new Vector3(0.6f, 0f, 0.6f), new Vector3(0f, 225f, 0f));
         }
 
+        /// <summary>
+        /// 기획서 §10.2 「보스는 일반 모델을 1.3~1.5배 확대하고 **머리장식·큰 무기·VFX·전용 기술**로 차별화한다」.
+        /// 크기만으로는 같은 FBX를 쓰는 잡몹과 구분이 안 된다(검수 2026-09-06 반려 2).
+        /// 새 에셋 없이 기존 파츠·스케일·조명으로 세 가지를 붙인다: 왕관(머리장식)·무기 확대·오라(VFX).
+        /// </summary>
+        public const string BossCrownObject = "BossCrown";
+        public const string BossAuraObject = "BossAura";
+        public const string BossWeaponPrefix = "BossWeapon_";
+
+        public static void DressBoss(GameObject boss, Color tint)
+        {
+            if (boss == null)
+                return;
+
+            // 1) 큰 무기 — 손에 든 장비를 키운다.
+            var all = boss.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                var t = all[i];
+                if (!t.gameObject.activeInHierarchy)
+                    continue;
+                if (!ContainsGearName(t.name) || t.name.StartsWith(BossWeaponPrefix, StringComparison.Ordinal))
+                    continue;
+                if (t.GetComponentInChildren<Renderer>(true) == null)
+                    continue;
+                t.localScale = t.localScale * 1.55f;
+                t.name = BossWeaponPrefix + t.name;
+                break;
+            }
+
+            // 2) 머리장식 — 머리 위 왕관(뿔 4개).
+            var crownMat = MakeNoiseMat("BossCrown", new Color(0.62f, 0.48f, 0.12f), new Color(0.86f, 0.72f, 0.26f));
+            Bounds b;
+            if (!BoundsOf(boss.transform, true, out b))
+                return;
+            var crown = new GameObject(BossCrownObject);
+            crown.transform.SetParent(boss.transform, true);
+            crown.transform.position = new Vector3(b.center.x, b.max.y + 0.05f, b.center.z);
+            float r = Mathf.Max(0.22f, b.size.x * 0.22f);
+            for (int i = 0; i < 4; i++)
+            {
+                float a = i * 90f * Mathf.Deg2Rad;
+                var spike = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                spike.name = "CrownSpike" + i;
+                spike.transform.SetParent(crown.transform, true);
+                spike.transform.position = crown.transform.position + new Vector3(Mathf.Sin(a) * r, 0.18f, Mathf.Cos(a) * r);
+                spike.transform.localScale = new Vector3(0.12f, 0.42f, 0.12f);
+                spike.transform.rotation = Quaternion.Euler(Mathf.Cos(a) * 18f, 0f, -Mathf.Sin(a) * 18f);
+                var rend = spike.GetComponent<Renderer>();
+                if (rend != null)
+                    rend.sharedMaterial = crownMat;
+                var col = spike.GetComponent<Collider>();
+                if (col != null)
+                    UnityEngine.Object.DestroyImmediate(col);
+            }
+
+            // 3) VFX — 보스 색 오라(점광). 멀리서도 색으로 읽힌다(§8.1 실루엣/가독성).
+            var auraGo = new GameObject(BossAuraObject);
+            auraGo.transform.SetParent(boss.transform, true);
+            auraGo.transform.position = new Vector3(b.center.x, b.min.y + b.size.y * 0.55f, b.center.z);
+            var aura = auraGo.AddComponent<Light>();
+            aura.type = LightType.Point;
+            aura.color = tint;
+            aura.intensity = 3.4f;
+            aura.range = 6.5f;
+            aura.shadows = LightShadows.None;
+        }
+
         public const string DungeonBlockerLayer = "DungeonBlocker";
 
         /// <summary>씬의 플레이 카메라에 실내 차폐 페이드를 보장한다(검수 2026-09-06 P0).</summary>
@@ -2366,6 +2438,7 @@ namespace Ulon.Editor
             var hexarch = SpawnActor(FieldBoss.Object, MageFbx, new Vector3(FieldBoss.X, 0f, FieldBoss.Z), MobCatalog.HeightOf(MobCatalog.Hexarch), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Hexarch), MobCatalog.MaxHpOf(MobCatalog.Hexarch));
             BindMob(hexarch, MobCatalog.Hexarch);
             HideExtraGear(hexarch);
+            DressBoss(hexarch, new Color(0.35f, 1f, 0.6f));       // 독기 어린 녹빛 — 헥사크(§10.2)
 
             var world = new GameObject("OfflineWorld");
             world.AddComponent<OfflineWorld>();
