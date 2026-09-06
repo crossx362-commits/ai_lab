@@ -26,7 +26,7 @@ namespace Ulon.Server
                 if (gate.IsExit)
                     WarpBody(body, Dungeon1.LeaveX, Dungeon1.LeaveZ);
                 else
-                    WarpBody(body, Dungeon1.InteriorX, Dungeon1.InteriorZ);
+                    WarpBody(body, Dungeon1.InteriorX, Dungeon1.InteriorZ, true);
                 return new AttackResult { Applied = true };
             }
             if (gate.DungeonId == Dungeon2.Id)
@@ -34,7 +34,7 @@ namespace Ulon.Server
                 if (gate.IsExit)
                     WarpBody(body, Dungeon2.LeaveX, Dungeon2.LeaveZ);
                 else
-                    WarpBody(body, Dungeon2.InteriorX, Dungeon2.InteriorZ);
+                    WarpBody(body, Dungeon2.InteriorX, Dungeon2.InteriorZ, true);
                 return new AttackResult { Applied = true };
             }
             if (gate.DungeonId == Dungeon3.Id)
@@ -42,7 +42,7 @@ namespace Ulon.Server
                 if (gate.IsExit)
                     WarpBody(body, Dungeon3.LeaveX, Dungeon3.LeaveZ);
                 else
-                    WarpBody(body, Dungeon3.InteriorX, Dungeon3.InteriorZ);
+                    WarpBody(body, Dungeon3.InteriorX, Dungeon3.InteriorZ, true);
                 return new AttackResult { Applied = true };
             }
             return new AttackResult { FailReason = "unknown_dungeon" };
@@ -117,12 +117,19 @@ namespace Ulon.Server
             return result;
         }
 
-        static void WarpBody(WorldBody body, float x, float z)
+        /// <summary>
+        /// 워프는 **그 자리 지표 위**로 내려놓는다. 옛 코드는 y를 0.1로 박아 뒀는데(평지 시절 값)
+        /// 지형을 올린 뒤로는 워프할 때마다 플레이어가 10m 지하에 처박혔다(검수 2026-09-06 A 랩에서 발견).
+        /// </summary>
+        static void WarpBody(WorldBody body, float x, float z, bool indoor = false)
         {
             var cc = body.GetComponent<CharacterController>();
             if (cc != null)
                 cc.enabled = false;
-            body.transform.position = new Vector3(x, 0.1f, z);
+            float y = WorldTerrain.HeightAt(x, z) + 0.1f;
+            if (indoor)
+                y -= WorldTerrain.DungeonDepth;             // 던전 방 바닥
+            body.transform.position = new Vector3(x, y, z);
             if (cc != null)
                 cc.enabled = true;
         }

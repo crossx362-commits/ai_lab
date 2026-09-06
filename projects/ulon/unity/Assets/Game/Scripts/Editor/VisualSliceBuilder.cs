@@ -2589,6 +2589,32 @@ namespace Ulon.Editor
         /// 실내 오브젝트가 있으면 일찍 반환하기 때문이다. 벽 실측 반경이 원장 값과 다르면 방 구조물만
         /// 지우고 다시 짓는다(몹·보스·소품은 이름이 달라 남는다).
         /// </summary>
+        /// <summary>
+        /// 씬에 이미 놓인 배치물을 **그 자리 지표**로 끌어올린다(검수 2026-09-06 A).
+        /// 지형 높이를 올린 랩 이후 마을 건물·상인·장식이 지표 10m 아래에 묻혀 있었다 — 화면에서 마을이 사라졌다.
+        /// 대상·바운드·기대 높이는 게이트와 같은 `GroundFit`을 쓴다.
+        /// </summary>
+        public static void EnsureFootOnGround()
+        {
+            var items = GroundFit.Candidates();
+            int moved = 0;
+            float worst = 0f;
+            string worstName = "";
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (!GroundFit.WorldBounds(items[i], out Bounds b))
+                    continue;
+                float dy = GroundFit.ExpectedGroundY(items[i], b) - b.min.y;
+                if (Mathf.Abs(dy) < 0.02f)
+                    continue;
+                items[i].position += new Vector3(0f, dy, 0f);
+                moved++;
+                if (Mathf.Abs(dy) > Mathf.Abs(worst)) { worst = dy; worstName = items[i].name; }
+            }
+            if (moved > 0)
+                Debug.Log("[Ulon] 배치물 지표 스냅 — " + moved + "개 이동(최대 " + worstName + " " + worst.ToString("0.00") + "m)");
+        }
+
         public static void EnsureRoomSize()
         {
             var rooms = new[]
