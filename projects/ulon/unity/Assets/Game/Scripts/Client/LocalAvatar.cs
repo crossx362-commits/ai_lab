@@ -178,7 +178,7 @@ namespace Ulon.Client
                 {
                     OfflineWorld.Instance?.Select(body);
                     if (wild)
-                        OfflineWorld.Instance?.TryTame(mine, body);
+                        TameTarget(body);
                     else
                         CycleOwnPet(mine, body);
                     return;
@@ -397,21 +397,37 @@ namespace Ulon.Client
             OfflineWorld.Instance?.TryGate(mine, gate);
         }
 
-        void CycleOwnPet(WorldBody mine, WorldBody pet)
+        /// <summary>§7.2 서버 권한형 — 조련은 서버가 판정한다. 온라인에서 로컬만 바꾸면 남에게 안 보인다.</summary>
+        void TameTarget(WorldBody target)
         {
-            if (pet.PetGuard)
-                OfflineWorld.Instance?.TryPetFollow(mine, pet);
-            else if (pet.PetFollow)
-                OfflineWorld.Instance?.TryPetStay(mine, pet);
-            else
-                OfflineWorld.Instance?.TryPetGuard(mine, pet);
+            var net = GetComponent<NetAvatar>();
+            var no = target != null ? target.GetComponent<FishNet.Object.NetworkObject>() : null;
+            if (net != null && net.IsClientInitialized && no != null)
+            {
+                net.RpcTame(no);
+                return;
+            }
+            OfflineWorld.Instance?.TryTame(GetComponent<WorldBody>(), target);
         }
 
-        void CommandOwnPet(int mode)
+        void CycleOwnPet(WorldBody mine, WorldBody pet)
+        {
+            int mode = pet.PetGuard ? 0 : pet.PetFollow ? 1 : 2;   // Guard→Follow, Follow→Stay, 그 외→Guard
+            SendPetCommand(pet, mode);
+        }
+
+        /// <summary>펫 명령도 서버 권한(§7.2). mode 0=Follow 1=Stay 2=Guard.</summary>
+        void SendPetCommand(WorldBody pet, int mode)
         {
             var mine = GetComponent<WorldBody>();
-            var pet = FindOwnPet(mine);
-            if (pet == null || OfflineWorld.Instance == null)
+            var net = GetComponent<NetAvatar>();
+            var no = pet != null ? pet.GetComponent<FishNet.Object.NetworkObject>() : null;
+            if (net != null && net.IsClientInitialized && no != null)
+            {
+                net.RpcPetCommand(no, mode);
+                return;
+            }
+            if (OfflineWorld.Instance == null || pet == null)
                 return;
             if (mode == 1)
                 OfflineWorld.Instance.TryPetStay(mine, pet);
@@ -421,23 +437,45 @@ namespace Ulon.Client
                 OfflineWorld.Instance.TryPetFollow(mine, pet);
         }
 
+        void CommandOwnPet(int mode)
+        {
+            var pet = FindOwnPet(GetComponent<WorldBody>());
+            if (pet == null)
+                return;
+            SendPetCommand(pet, mode);
+        }
+
         void CommandOwnPetAttack()
         {
             var mine = GetComponent<WorldBody>();
             var pet = FindOwnPet(mine);
-            if (pet == null || OfflineWorld.Instance == null)
+            if (pet == null)
                 return;
             WorldBody enemy = FindNearbyEnemy(mine);
-            OfflineWorld.Instance.TryPetAttack(mine, pet, enemy);
+            var net = GetComponent<NetAvatar>();
+            var pno = pet.GetComponent<FishNet.Object.NetworkObject>();
+            if (net != null && net.IsClientInitialized && pno != null)
+            {
+                net.RpcPetAttack(pno, enemy != null ? enemy.GetComponent<FishNet.Object.NetworkObject>() : null);
+                return;
+            }
+            OfflineWorld.Instance?.TryPetAttack(mine, pet, enemy);
         }
 
         void CommandOwnPetCome()
         {
             var mine = GetComponent<WorldBody>();
             var pet = FindOwnPet(mine);
-            if (pet == null || OfflineWorld.Instance == null)
+            if (pet == null)
                 return;
-            OfflineWorld.Instance.TryPetCome(mine, pet);
+            var net = GetComponent<NetAvatar>();
+            var pno = pet.GetComponent<FishNet.Object.NetworkObject>();
+            if (net != null && net.IsClientInitialized && pno != null)
+            {
+                net.RpcPetCome(pno);
+                return;
+            }
+            OfflineWorld.Instance?.TryPetCome(mine, pet);
         }
 
         static WorldBody FindOwnPet(WorldBody mine)

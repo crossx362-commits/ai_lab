@@ -373,6 +373,85 @@ namespace Ulon.Client
                 SaveNow();
         }
 
+        // 기획서 §7.2 서버 권한형 — 조련·펫 명령이 이 배선을 빠뜨려 온라인에서 각 클라의
+        // 로컬 오프라인 월드만 바꾸고 있었다(검수 2026-09-06 P0). 다른 기능과 같은 모양으로 맞춘다.
+        [ServerRpc]
+        public void RpcAcceptOrder()
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryAcceptOrder(GetComponent<WorldBody>());
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcTurnInOrder()
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryTurnInOrder(GetComponent<WorldBody>());
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcTame(NetworkObject target)
+        {
+            if (target == null || OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryTame(GetComponent<WorldBody>(), target.GetComponent<WorldBody>());
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcPetCommand(NetworkObject pet, int mode)
+        {
+            if (pet == null || OfflineWorld.Instance == null)
+                return;
+            var me = GetComponent<WorldBody>();
+            var body = pet.GetComponent<WorldBody>();
+            var result = mode == 1
+                ? OfflineWorld.Instance.TryPetStay(me, body)
+                : mode == 2
+                    ? OfflineWorld.Instance.TryPetGuard(me, body)
+                    : OfflineWorld.Instance.TryPetFollow(me, body);
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcPetAttack(NetworkObject pet, NetworkObject enemy)
+        {
+            if (pet == null || OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryPetAttack(GetComponent<WorldBody>(), pet.GetComponent<WorldBody>(),
+                enemy != null ? enemy.GetComponent<WorldBody>() : null);
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcPetCome(NetworkObject pet)
+        {
+            if (pet == null || OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryPetCome(GetComponent<WorldBody>(), pet.GetComponent<WorldBody>());
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcSpeech(string text)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TrySpeechKeyword(GetComponent<WorldBody>(), text);
+            if (result.Applied)
+                SaveNow();
+        }
+
         [ServerRpc]
         public void RpcVet()
         {

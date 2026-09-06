@@ -1035,6 +1035,11 @@ namespace Ulon.Client
 
         static void AcceptCraftOrder(NetAvatar net)
         {
+            if (net != null && net.IsClientInitialized)
+            {
+                net.RpcAcceptOrder();
+                return;
+            }
             if (OfflineWorld.Instance == null)
                 return;
             OfflineWorld.Instance.TryAcceptOrder(OfflineWorld.Instance.Player);
@@ -1042,6 +1047,11 @@ namespace Ulon.Client
 
         static void TurnInCraftOrder(NetAvatar net)
         {
+            if (net != null && net.IsClientInitialized)
+            {
+                net.RpcTurnInOrder();
+                return;
+            }
             if (OfflineWorld.Instance == null)
                 return;
             OfflineWorld.Instance.TryTurnInOrder(OfflineWorld.Instance.Player);
@@ -1097,6 +1107,12 @@ namespace Ulon.Client
                     enemy = b;
                 }
             }
+            var pno = pet.GetComponent<FishNet.Object.NetworkObject>();
+            if (net != null && net.IsClientInitialized && pno != null)
+            {
+                net.RpcPetAttack(pno, enemy != null ? enemy.GetComponent<FishNet.Object.NetworkObject>() : null);
+                return;
+            }
             OfflineWorld.Instance.TryPetAttack(me, pet, enemy);
         }
 
@@ -1108,6 +1124,11 @@ namespace Ulon.Client
             var me = OfflineWorld.Instance.Player;
             if (me == null)
                 return;
+            if (net != null && net.IsClientInitialized)
+            {
+                net.RpcSpeech(text);
+                return;
+            }
             OfflineWorld.Instance.TrySpeechKeyword(me, text);
         }
 
@@ -1131,6 +1152,12 @@ namespace Ulon.Client
             }
             if (pet == null)
                 return;
+            var pno = pet.GetComponent<FishNet.Object.NetworkObject>();
+            if (net != null && net.IsClientInitialized && pno != null)
+            {
+                net.RpcPetCome(pno);
+                return;
+            }
             OfflineWorld.Instance.TryPetCome(me, pet);
         }
 
