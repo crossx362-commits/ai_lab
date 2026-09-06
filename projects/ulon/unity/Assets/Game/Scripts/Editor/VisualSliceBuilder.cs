@@ -2122,7 +2122,7 @@ namespace Ulon.Editor
             int res = data.holesResolution;
             Vector3 size = data.size;
             Vector3 origin = terrain.transform.position;
-            float pad = 0.6f;
+            float pad = 2.5f;   // 벽 바깥면·해상도 반올림까지 덮어야 방 안에 잔디 조각이 안 남는다
             int x0 = Mathf.Clamp(Mathf.FloorToInt((center.x - half - pad - origin.x) / size.x * res), 0, res - 1);
             int x1 = Mathf.Clamp(Mathf.CeilToInt((center.x + half + pad - origin.x) / size.x * res), 0, res - 1);
             int z0 = Mathf.Clamp(Mathf.FloorToInt((center.z - half - pad - origin.z) / size.z * res), 0, res - 1);

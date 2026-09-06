@@ -52,6 +52,10 @@ namespace Ulon.Client
                 var rend = found[i].collider != null ? found[i].collider.GetComponent<Renderer>() : null;
                 if (rend == null || !rend.enabled)
                     continue;
+                // 발밑(바닥 판)은 내려다보는 카메라를 가리지 않는다. 창 반경이 커지면 스피어캐스트가
+                // 바닥까지 물어 방 바닥이 사라지고 하늘이 비쳤다(2026-09-06 플레이캠 실측).
+                if (rend.bounds.max.y < look.y - 0.2f)
+                    continue;
                 rend.enabled = false;
                 hidden.Add(rend);
             }
