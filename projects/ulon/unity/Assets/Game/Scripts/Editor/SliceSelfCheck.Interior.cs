@@ -94,6 +94,10 @@ namespace Ulon.Editor
             if (!blocked)
                 throw new InvalidOperationException(label + " 내부 중앙에서 하늘이 그대로 보입니다 — 천장(또는 상방 차단)이 없습니다. 천장 렌더러 최고점 y=" + ceilingY.ToString("0.00"));
 
+            // 방 바닥이 수면 아래면 던전이 물에 잠긴다(지형 작업 후 실제로 잠겼다).
+            if (groundY < WorldTerrain.SeaLevel + 0.5f)
+                throw new InvalidOperationException(label + " 방 바닥이 " + groundY.ToString("0.0") + "m로 수면(" + WorldTerrain.SeaLevel + "m) 아래입니다 — 던전이 물에 잠깁니다. 평지 높이(WorldTerrain.LandBase)가 던전 깊이 " + VisualSliceBuilder.DungeonDepth + "m보다 충분히 높아야 합니다.");
+
             float gap = Vector2.Distance(mob, boss);
             if (gap < InteriorMobGapMin)
                 throw new InvalidOperationException(label + " 잡몹과 보스 간격이 " + gap.ToString("0.00") + "m입니다 — 최소 " + InteriorMobGapMin + "m(45° 시점에서 포개집니다).");

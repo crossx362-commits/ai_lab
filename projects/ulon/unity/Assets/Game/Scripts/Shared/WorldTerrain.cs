@@ -12,7 +12,9 @@ namespace Ulon.Shared
         public const float Span = 300f;          // 지형 한 변
         public const float MaxHeight = 60f;      // Terrain size.y
         public const float SeaLevel = 3.0f;      // 물 표면 높이(바다·강·호수 공용)
-        public const float LandBase = 6.0f;      // 평지 기준 높이 — 물보다 3m 위
+        // 평지 기준 높이. 던전 방이 지면 -4.5m에 파이므로 수면(3.0)보다 그만큼 더 위에 있어야 한다 —
+        // 6.0이었을 때 방 바닥이 수면 아래로 들어가 던전이 통째로 물에 잠겼다(QA 샷 실측).
+        public const float LandBase = 10.0f;
 
         // 체비셰프 거리(정사각 링) 기준 띠. 마을·필드·던전(±68, 방+뚜껑 반경 ~14)은 전부 평지 띠 안이다.
         public const float FlatMax = 88f;        // 여기까지 평지
