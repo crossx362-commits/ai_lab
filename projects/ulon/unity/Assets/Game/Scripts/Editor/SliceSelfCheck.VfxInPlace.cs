@@ -29,6 +29,11 @@ namespace Ulon.Editor
         // (루마 0.53 vs 0.6) 밝기 축으로는 「안 읽힘」으로 나오지만 화면에서는 색으로 또렷이 읽힌다.
         // 사람 눈이 보는 것은 밝기만이 아니다 — 채널 최대 차의 평균을 쓴다.
         const float PlayVfxContrastMin = 0.18f;      // 바뀐 자리의 평균 색 차(채널 최대)
+        // **양쪽 한계**(검수 지시) — 하한만 두면 다음 사람이 「잘 보이게」 키우다 전투 화면을 덮는다.
+        // 상한은 「효과가 대상을 가리지 않는 최대」다. 실측: 정상 최대 지하 Hit 3.2%대,
+        // 결함(2.5배로 키움) 지하 45.7% → 그 사이인 6%.
+        const float PlayVfxChangedMax = 0.06f;       // 화면의 6%
+        // 여유 메모: 야외 Craft가 하한 바로 위다(0.32% vs 0.25%). 야외 효과를 더 줄이면 바로 빨간불이다.
 
         struct PlayVfxMeasure
         {
@@ -52,7 +57,7 @@ namespace Ulon.Editor
             float roomY = TerrainHeight(Dungeon3.InteriorX, Dungeon3.InteriorZ) - VisualSliceBuilder.DungeonDepth;
             return new[]
             {
-                // 대낮의 밝은 마을 — 밝은 효과가 배경에 묻히는 자리
+                // 대낮의 밝은 마을(야외 줌 18m) — 밝은 효과가 배경에 묻히는 자리
                 new PlayVfxSpot { Label = "마을 광장(야외 대낮)", Player = new Vector3(0f, villageY + 1.0f, 0f), Distance = outdoor },
                 // 어두운 지하 방 — 반대쪽 극단
                 new PlayVfxSpot { Label = "던전 3 방(지하)", Player = new Vector3(Dungeon3.InteriorX, roomY + 1.0f, Dungeon3.InteriorZ), Distance = indoor },
@@ -84,6 +89,10 @@ namespace Ulon.Editor
                         failures.Add(kinds[k] + "가 " + spots[s].Label + "에서 안 읽힘 — 바뀐 픽셀 " +
                             (m.Changed * 100f).ToString("F2") + "%(하한 " + (PlayVfxChangedMin * 100f).ToString("F2") +
                             "%), 대비 " + m.Contrast.ToString("F2") + "(하한 " + PlayVfxContrastMin + ")");
+                    if (m.Changed > PlayVfxChangedMax)
+                        failures.Add(kinds[k] + "가 " + spots[s].Label + "에서 화면을 너무 덮는다 — 바뀐 픽셀 " +
+                            (m.Changed * 100f).ToString("F2") + "%(상한 " + (PlayVfxChangedMax * 100f).ToString("F2") +
+                            "%). 효과가 플레이어·대상을 가리면 회복 대상을 보면서 쓸 수 없다.");
                 }
             if (measured == 0)
                 throw new Exception("VFX 실화면 측정을 한 번도 못 했습니다 — 잰 것이 없습니다(0이면 실패).");
@@ -107,6 +116,15 @@ namespace Ulon.Editor
             if (weak.Changed >= PlayVfxChangedMin && weak.Contrast >= PlayVfxContrastMin)
                 throw new Exception("VFX 실화면 네거티브 컨트롤 실패 — 효과를 6% 크기로 줄였는데도 임계를 넘었습니다. " +
                     "임계가 너무 낮아 「안 읽히는 효과」를 통과시킵니다.");
+
+            // **반대쪽 네거티브 컨트롤** — 2.5배로 키우면 상한을 넘어야 한다. 상한이 살아 있다는 증거다
+            // (하한만 검사하면 「화면을 덮는 효과」로 빠져나간다).
+            var loud = MeasureVfxInPlace(PlayVfxSpots()[1], ActionVfx.Kind.Hit, 2.5f);
+            Debug.Log("[Ulon] VFX 실화면 네거티브 컨트롤 — 250% 크기(지하): 바뀐 픽셀 " +
+                      (loud.Changed * 100f).ToString("F2") + "%, 상한 " + (PlayVfxChangedMax * 100f).ToString("F2") + "%");
+            if (loud.Changed <= PlayVfxChangedMax)
+                throw new Exception("VFX 실화면 상한 네거티브 컨트롤 실패 — 효과를 2.5배로 키웠는데도 상한 안이었습니다(" +
+                    (loud.Changed * 100f).ToString("F2") + "%). 상한이 너무 높아 화면을 덮는 효과를 통과시킵니다.");
         }
 
         static PlayVfxMeasure MeasureVfxInPlace(PlayVfxSpot spot, ActionVfx.Kind kind, float scale)

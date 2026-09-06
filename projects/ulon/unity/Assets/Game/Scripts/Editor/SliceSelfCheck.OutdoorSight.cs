@@ -15,13 +15,24 @@ namespace Ulon.Editor
     ///
     /// 그래서 마을·숲을 **격자로 걸어 다니며** 설 수 있는 자리마다 몸통 가려짐을 잰다.
     /// 판정은 실내와 **같은 함수**(`OccludedShareAt`)로 하고, 런타임 페이드도 같이 적용한다.
+    /// 축은 **둘**이다 — 평균(가려지는 자리 비율)과 최악(한 자리 최대 가림). 평균만 보면 한 자리가
+    /// 20%여도 통과한다.
+    ///
+    /// **한계 두 가지**(다음 사람이 「야외 차폐는 검증된다」고 읽지 않게):
+    /// ① 콜라이더가 있는 것만 잡는다 — 콜라이더 없는 장식이 화면을 가리면 이 게이트는 못 본다(샷으로 볼 몫이다).
+    /// ② 남은 평균값의 정체는 **몹**이다(실측 Bandit). 건물 문제가 아니다 — 사람·짐승은 페이드하지 않는다.
     /// </summary>
     public static partial class SliceSelfCheck
     {
         /// <summary>한 자리에서 몸통이 이만큼 넘게 막히면 「그 자리에선 안 보인다」로 센다(실내 기준과 같다).</summary>
         const float OutdoorOccludedMax = 0.10f;
-        /// <summary>안 보이는 자리 비율의 상한 — 실측(정상/결함)을 보고 잡는다.</summary>
+        /// <summary>안 보이는 자리 **비율**의 상한(평균 축) — 결함 2.5% / 고친 값 1.4% 사이가 아니라,
+        /// 소품 하나 추가로 빨간불이 나지 않게 고친 값 위에 둔다(검수 지시: 0%를 상한으로 박지 마라).</summary>
         const float OutdoorBlindSpotMax = 0.02f;
+        /// <summary>**최악 자리** 상한 — 평균만 보면 한 자리가 20%여도 통과한다(검수 지시).
+        /// 다만 **몹은 빼고** 잰다: 사람·짐승은 움직이므로 「구조적으로 안 보이는 자리」가 아니다
+        /// (실측 남은 최악 20%의 정체가 Bandit이다). 정적 물체가 이만큼 가리면 그건 배치 결함이다.</summary>
+        const float OutdoorWorstStaticMax = 0.10f;
 
         struct SightArea
         {
@@ -56,7 +67,8 @@ namespace Ulon.Editor
             return true;
         }
 
-        static float BlindSpotShare(SightArea area, out int stands, out string worst, out string worstBlocker)
+        static float BlindSpotShare(SightArea area, out int stands, out string worst, out string worstBlocker,
+                                    out float worstStatic, out string worstStaticWhere)
         {
             var qv = UnityEngine.Object.FindFirstObjectByType<QuarterViewCamera>(FindObjectsInactive.Include);
             float dist = qv != null ? qv.Distance : 12f;
@@ -64,6 +76,8 @@ namespace Ulon.Editor
             stands = 0;
             worst = "";
             worstBlocker = "";
+            worstStatic = 0f;
+            worstStaticWhere = "";
             float worstShare = 0f;
             for (float dx = -area.Half; dx <= area.Half + 0.001f; dx += area.Step)
                 for (float dz = -area.Half; dz <= area.Half + 0.001f; dz += area.Step)
@@ -82,6 +96,14 @@ namespace Ulon.Editor
                     }
                     if (share > OutdoorOccludedMax)
                         blind++;
+                    // 최악 축은 **몹을 빼고** — 움직이는 것은 구조적 결함이 아니다.
+                    float stat = OccludedShareAt(feet, dist, true, out _, out string statBlocker, true);
+                    if (stat > worstStatic)
+                    {
+                        worstStatic = stat;
+                        worstStaticWhere = "(" + x.ToString("0") + "," + z.ToString("0") + ") " +
+                            (stat * 100f).ToString("0") + "%" + (statBlocker != "" ? " ← " + statBlocker : "");
+                    }
                 }
             return stands > 0 ? blind / (float)stands : 0f;
         }
@@ -93,15 +115,21 @@ namespace Ulon.Editor
             int totalStands = 0;
             for (int i = 0; i < areas.Length; i++)
             {
-                float blind = BlindSpotShare(areas[i], out int stands, out string worst, out string blocker);
+                float blind = BlindSpotShare(areas[i], out int stands, out string worst, out string blocker,
+                                             out float worstStatic, out string worstStaticWhere);
                 totalStands += stands;
                 Debug.Log("[Ulon] 야외 시선 " + areas[i].Label + " — 설 수 있는 자리 " + stands + "곳 중 가려지는 자리 " +
-                          (blind * 100f).ToString("0.0") + "%, 최악 " + worst + (blocker != "" ? " ← " + blocker : ""));
+                          (blind * 100f).ToString("0.0") + "%, 최악 " + worst + (blocker != "" ? " ← " + blocker : "") +
+                          " | 몹 제외 최악 " + (worstStatic * 100f).ToString("0.0") + "% " + worstStaticWhere);
                 if (stands == 0)
                     failures.Add(areas[i].Label + ": 설 수 있는 자리를 한 곳도 못 찾음(잰 것이 없다)");
-                else if (blind > OutdoorBlindSpotMax)
+                if (blind > OutdoorBlindSpotMax)
                     failures.Add(areas[i].Label + ": 가려지는 자리 " + (blind * 100f).ToString("0.0") + "%(상한 " +
                         (OutdoorBlindSpotMax * 100f).ToString("0.0") + "%), 최악 " + worst + " ← " + blocker);
+                if (worstStatic > OutdoorWorstStaticMax)
+                    failures.Add(areas[i].Label + ": **한 자리**가 정적 물체에 " + (worstStatic * 100f).ToString("0.0") +
+                        "% 가림(상한 " + (OutdoorWorstStaticMax * 100f).ToString("0.0") + "%) " + worstStaticWhere +
+                        " — 평균이 통과해도 그 자리에 선 사람은 안 보인다");
             }
             if (totalStands == 0)
                 throw new InvalidOperationException("야외 표본이 0개입니다 — 잰 것이 없습니다(0이면 실패).");
@@ -109,8 +137,9 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("야외에서 플레이어가 가려지는 자리가 있습니다:\n  " +
                     string.Join("\n  ", failures) +
                     "\n카메라 각도는 고정이라 그 자리에 서면 화면에서 사라집니다.");
-            Debug.Log("[Ulon] 야외 시선 — 지역 " + areas.Length + "곳 표본 " + totalStands + "자리, 가려지는 자리 상한 " +
-                      (OutdoorBlindSpotMax * 100f).ToString("0.0") + "% 이내");
+            Debug.Log("[Ulon] 야외 시선 — 지역 " + areas.Length + "곳 표본 " + totalStands + "자리, 평균 축 상한 " +
+                      (OutdoorBlindSpotMax * 100f).ToString("0.0") + "% · 최악(몹 제외) 축 상한 " +
+                      (OutdoorWorstStaticMax * 100f).ToString("0.0") + "% 이내");
         }
 
         /// <summary>마을 격자에서 아무것도 안 가리는 자리를 찾는다 — NC의 기준선이다.</summary>

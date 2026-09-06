@@ -24,15 +24,19 @@ namespace Ulon.Editor
             public int Count;
             public float Speed;
             public float Gravity;       // 움직임 축 — 타격은 튀고, 회복은 떠오른다
+            public float Spread;        // 방출 구 반경 — 크면 한 덩어리가 아니라 **흩어진다**
+            public float Alpha;         // 불투명도 — 1이면 뒤가 안 비친다(대상을 덮는다)
         }
 
         public static readonly Spec[] Specs =
         {
             // 크기·개수는 **플레이 거리 기준**이다 — 검은 배경 코앞에서 잘 보이던 값(0.30~0.42m)은
             // 야외 12m 쿼터뷰에서 화면의 0.02~0.07%밖에 안 덮어 사실상 안 보였다(검수 랩 D 실측).
-            new Spec { Kind = ActionVfx.Kind.Hit,   Texture = "spark_01.png", Tint = new Color(1f, 0.42f, 0.16f), Size = 1.00f, Count = 44, Speed = 5.5f, Gravity = 0.9f },
-            new Spec { Kind = ActionVfx.Kind.Heal,  Texture = "circle_05.png", Tint = new Color(0.36f, 1f, 0.55f), Size = 1.25f, Count = 42, Speed = 1.4f, Gravity = -0.35f },
-            new Spec { Kind = ActionVfx.Kind.Craft, Texture = "star_01.png",  Tint = new Color(0.60f, 0.62f, 1f), Size = 1.35f, Count = 40, Speed = 2.2f, Gravity = 0.2f },
+            new Spec { Kind = ActionVfx.Kind.Hit,   Texture = "spark_01.png", Tint = new Color(1f, 0.42f, 0.16f), Size = 1.00f, Count = 44, Speed = 5.5f, Gravity = 0.9f, Spread = 0.25f, Alpha = 1.00f },
+            // 회복은 **대상을 보면서** 쓰는 것이다 — 불투명한 초록 덩어리가 대상을 덮으면 안 된다(검수 반려).
+            // 크기를 줄이는 대신 **반투명하게, 넓게 흩어** 뒤가 비치게 한다.
+            new Spec { Kind = ActionVfx.Kind.Heal,  Texture = "circle_05.png", Tint = new Color(0.36f, 1f, 0.55f), Size = 0.62f, Count = 64, Speed = 1.4f, Gravity = -0.35f, Spread = 0.95f, Alpha = 0.45f },
+            new Spec { Kind = ActionVfx.Kind.Craft, Texture = "star_01.png",  Tint = new Color(0.60f, 0.62f, 1f), Size = 1.35f, Count = 40, Speed = 2.2f, Gravity = 0.2f, Spread = 0.35f, Alpha = 0.85f },
         };
 
         public static void EnsureActionVfx()
@@ -60,7 +64,7 @@ namespace Ulon.Editor
             main.startLifetime = 0.55f;
             main.startSpeed = spec.Speed;
             main.startSize = spec.Size;
-            main.startColor = spec.Tint;
+            main.startColor = new Color(spec.Tint.r, spec.Tint.g, spec.Tint.b, spec.Alpha);
             main.gravityModifier = spec.Gravity;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.maxParticles = 128;
@@ -71,7 +75,7 @@ namespace Ulon.Editor
 
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 0.25f;
+            shape.radius = spec.Spread > 0f ? spec.Spread : 0.25f;
 
             var renderer = go.GetComponent<ParticleSystemRenderer>();
             renderer.sharedMaterial = MaterialFor(spec);

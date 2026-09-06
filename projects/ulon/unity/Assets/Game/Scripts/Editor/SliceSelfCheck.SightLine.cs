@@ -52,7 +52,8 @@ namespace Ulon.Editor
         /// 발밑 좌표와 카메라 거리를 받아 같은 계측을 한다 — 실내(방 바닥)와 야외(지표)가 **같은 함수**를 쓴다.
         /// 야외 표본을 따로 구현하면 두 판정이 갈라진다(원장 패턴).
         /// </summary>
-        static float OccludedShareAt(Vector3 feet, float dist, bool applyFade, out int total, out string worst)
+        static float OccludedShareAt(Vector3 feet, float dist, bool applyFade, out int total, out string worst,
+                                     bool ignoreCreatures = false)
         {
             var qv = UnityEngine.Object.FindFirstObjectByType<QuarterViewCamera>(FindObjectsInactive.Include);
             float pitch = qv != null ? qv.Pitch : 35f;
@@ -94,6 +95,11 @@ namespace Ulon.Editor
                         // 한 면만 그려져 아래에서는 그대로 통과해 보인다(광선은 맞지만 화면은 뚫려 있다).
                         // 벽·뚜껑은 빼지 않는다 — 그건 런타임 페이드가 걷는지까지 이 게이트가 봐야 한다.
                         if (info.collider != null && info.collider.transform.root.name == "Ground")
+                            continue;
+                        // 사람·짐승은 **움직인다** — 그 자리를 「구조적으로 안 보이는 자리」로 세면 안 된다.
+                        // 정적 가림만 판정하고 싶을 때 켠다(야외 최악 축, 검수 지시 2026-09-07).
+                        if (ignoreCreatures && info.collider != null &&
+                            info.collider.transform.root.GetComponentInChildren<Ulon.Server.WorldBody>(true) != null)
                             continue;
                         hit++;
                         string name = info.collider != null ? info.collider.transform.root.name + "/" + info.collider.name : "?";

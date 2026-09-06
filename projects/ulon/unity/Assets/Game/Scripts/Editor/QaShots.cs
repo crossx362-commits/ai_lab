@@ -24,19 +24,14 @@ namespace Ulon.Editor
             public Vector3 Eye;      // 카메라 위치(월드)
             public Vector3 Target;   // 바라보는 지점(월드)
             public bool PlayCamera;  // 플레이 카메라 재현(차폐 페이드 적용)
+            public bool Vfx;         // 행동 효과 3종을 나란히 재생해 같이 찍는다
+            public bool StandPlayer; // 플레이어를 그 자리에 실제로 세우고 찍는다(가려짐을 눈으로 보려면 몸이 있어야 한다)
         }
 
         [MenuItem("Ulon/QA Shots")]
         public static void Run()
         {
             EditorSceneManager.OpenScene("Assets/Game/Scenes/Bootstrap.unity");
-
-            // VFX는 카메라 렌더가 필요해 -nographics 셀프체크에서 잴 수 없다 — 여기서 화면으로 잰다.
-            SliceSelfCheck.AssertActionVfxOnScreen();
-            SliceSelfCheck.AssertActionVfxNegativeControl();
-            // 검은 배경에서 보이는 것과 **실제 플레이 프레임**에서 읽히는 것은 다르다(검수 랩 D).
-            SliceSelfCheck.AssertActionVfxInPlayFrame();
-            SliceSelfCheck.AssertActionVfxInPlayFrameNegativeControl();
 
             string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "../../builds/qa"));
             Directory.CreateDirectory(dir);
@@ -57,7 +52,7 @@ namespace Ulon.Editor
                 Inside("10_d2_interior", Dungeon2.InteriorX, Dungeon2.InteriorZ, Dungeon2.BossX, Dungeon2.BossZ),
                 Orbit("11_d3_entrance", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 8f, 20f),
                 PlayCam("12_d3_interior_playcam", Dungeon3.InteriorX, Dungeon3.InteriorZ),
-                PlayCam("24_action_vfx", Dungeon3.InteriorX, Dungeon3.InteriorZ),
+                Vfx(PlayCam("24_action_vfx", Dungeon3.InteriorX, Dungeon3.InteriorZ)),
                 Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
                 Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 // §8.1 멀리서도 읽히는 실루엣 — 산·바다 조망, 호수·강 조망.
@@ -69,6 +64,10 @@ namespace Ulon.Editor
                 Orbit("21_testchamber", new Vector3(WorldRegions.TestChamber.X, 0f, WorldRegions.TestChamber.Z), 24f, 22f),
                 Free("14_world_vista", new Vector3(-165f, 95f, -165f), new Vector3(0f, WorldTerrain.LandBase, 0f)),
                 Free("15_lake_river", new Vector3(WorldTerrain.LakeX + 46f, 40f, WorldTerrain.LakeZ + 46f), new Vector3(WorldTerrain.LakeX - 12f, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),
+                // 효과를 **야외 대낮**에서도 한 장(실내만 보면 어두운 배경 덕을 본다), 그리고
+                // 풍차(은행) 뒤에 선 자리 — 건물을 페이드 대상에 올린 뒤 화면이 어떻게 보이는지(검수 요구).
+                Vfx(Stand(PlayCamOutdoor("25_action_vfx_village", 0f, 0f))),
+                Stand(PlayCamOutdoor("26_behind_bank", -10f, 8f)),
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
             };
 
@@ -96,8 +95,14 @@ namespace Ulon.Editor
                     var faded = new System.Collections.Generic.List<Renderer>();
                     if (shot.PlayCamera)
                         Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, Ulon.Client.DungeonSightFade.DefaultRadius, faded);
-                    var vfx = shot.Name == "24_action_vfx" ? SliceSelfCheck.SpawnVfxTrio(shot.Target) : null;
+                    var vfx = shot.Vfx ? SliceSelfCheck.SpawnVfxTrio(shot.Target) : null;
+                    // 「집 뒤에 서면 어떻게 보이나」는 **몸이 있어야** 보인다 — 좌표만 찍으면 빈 잔디다.
+                    var player = shot.StandPlayer ? GameObject.Find("Player") : null;
+                    Vector3 savedPlayer = player != null ? player.transform.position : Vector3.zero;
+                    if (player != null)
+                        player.transform.position = shot.Target - Vector3.up * 1.0f;
                     cam.Render();
+                    if (player != null) player.transform.position = savedPlayer;
                     if (vfx != null) Object.DestroyImmediate(vfx);
                     Ulon.Client.DungeonSightFade.Restore(faded);
                     RenderTexture.active = rt;
@@ -116,7 +121,20 @@ namespace Ulon.Editor
                 Object.DestroyImmediate(rt);
                 Object.DestroyImmediate(tex);
             }
+            // **샷을 먼저 찍고 게이트는 나중에 돈다**(검수 지시 2026-09-07). 게이트가 먼저 돌면
+            // 빨간불 때 옛 PNG가 남아 「이번 화면」으로 오독된다 — 실제로 한 번 판정을 흐릴 뻔했다.
+            // 언제 찍은 것인지도 파일로 남긴다(hud_controls.txt 머리말과 같은 처방).
+            File.WriteAllText(Path.Combine(dir, "shots.txt"),
+                "# 촬영 " + System.DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") + "Z · 이 폴더의 PNG는 이 시각의 것이다\n" +
+                string.Join("\n", System.Array.ConvertAll(shots, x => x.Name + ".png")) + "\n");
             Debug.Log("[Ulon] QA shots " + shots.Length + "장 — " + dir);
+
+            // VFX는 카메라 렌더가 필요해 -nographics 셀프체크에서 잴 수 없다 — 여기서 화면으로 잰다.
+            SliceSelfCheck.AssertActionVfxOnScreen();
+            SliceSelfCheck.AssertActionVfxNegativeControl();
+            // 검은 배경에서 보이는 것과 **실제 플레이 프레임**에서 읽히는 것은 다르다(검수 랩 D).
+            SliceSelfCheck.AssertActionVfxInPlayFrame();
+            SliceSelfCheck.AssertActionVfxInPlayFrameNegativeControl();
         }
 
         /// <summary>
@@ -218,6 +236,10 @@ namespace Ulon.Editor
         /// </summary>
         static Shot PlayCam(string name, float cx, float cz) => PlayCam(name, cx, cz, cx, cz);
 
+        static Shot Vfx(Shot shot) { shot.Vfx = true; return shot; }
+
+        static Shot Stand(Shot shot) { shot.StandPlayer = true; return shot; }
+
         /// <summary>(hx,hz)의 지표에서 방 바닥 높이를 정한다 — 귀퉁이 샷은 방 중심 높이를 써야 바닥을 안 벗어난다.</summary>
         static Shot PlayCam(string name, float cx, float cz, float hx, float hz)
         {
@@ -229,6 +251,21 @@ namespace Ulon.Editor
             // 방은 지하다 — 플레이어는 지면이 아니라 방 바닥에 선다.
             float y = GroundY(hx, hz) - VisualSliceBuilder.DungeonDepth;
             var player = new Vector3(cx, y + 1.0f, cz);
+            var rot = Quaternion.Euler(pitch, yaw, 0f);
+            return new Shot { Name = name, Eye = player - rot * Vector3.forward * dist, Target = player, PlayCamera = true };
+        }
+
+        /// <summary>
+        /// **야외** 플레이 카메라 — 지표에 서고 야외 줌 거리(qv.Distance)를 쓴다.
+        /// 실내용 `PlayCam`은 방 깊이를 빼므로 마을에 쓰면 플레이어가 지하로 들어간다.
+        /// </summary>
+        static Shot PlayCamOutdoor(string name, float cx, float cz)
+        {
+            var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
+            float pitch = qv != null ? qv.Pitch : 35f;
+            float yaw = qv != null ? qv.Yaw : 45f;
+            float dist = qv != null ? qv.Distance : 12f;
+            var player = new Vector3(cx, GroundY(cx, cz) + 1.0f, cz);
             var rot = Quaternion.Euler(pitch, yaw, 0f);
             return new Shot { Name = name, Eye = player - rot * Vector3.forward * dist, Target = player, PlayCamera = true };
         }

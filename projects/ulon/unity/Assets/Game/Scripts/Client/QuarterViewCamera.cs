@@ -44,13 +44,25 @@ namespace Ulon.Client
         public float MinDistance => minDistance;
         public float IndoorDistance => Ulon.Shared.WorldTerrain.IndoorDistanceFor(pitch);
 
-        /// <summary>이 지점이 던전 실내인가 — 머리 위가 던전 차폐물(뚜껑·천장)로 막혀 있으면 실내다.</summary>
+        /// <summary>
+        /// 이 지점이 던전 실내인가 — 머리 위가 차폐물로 막혀 있고 **동시에 지표보다 아래**여야 실내다.
+        ///
+        /// 예전에는 「머리 위에 차폐 레이어가 있으면 실내」였다. 그 레이어에는 나무·마을 고정물도 들어가므로
+        /// (야외 차폐 페이드, 검수 랩 D) **나무 밑에 서기만 해도 카메라가 실내 줌으로 당겨진다.**
+        /// 실내의 정의는 레이어가 아니라 **지형**이다 — 방은 지표 아래에 판 것이다(규칙 명확화, 공개).
+        /// </summary>
         public static bool IsIndoor(Vector3 point)
         {
             int layer = LayerMask.NameToLayer(DungeonSightFade.BlockerLayer);
             if (layer < 0)
                 return false;
-            return Physics.Raycast(point + Vector3.up * 0.2f, Vector3.up, 30f, 1 << layer, QueryTriggerInteraction.Ignore);
+            if (!Physics.Raycast(point + Vector3.up * 0.2f, Vector3.up, 30f, 1 << layer, QueryTriggerInteraction.Ignore))
+                return false;
+            var terrain = Terrain.activeTerrain;
+            if (terrain == null)
+                return true;
+            float ground = terrain.SampleHeight(point) + terrain.transform.position.y;
+            return point.y < ground - 1.0f;
         }
 
         void OnEnable()

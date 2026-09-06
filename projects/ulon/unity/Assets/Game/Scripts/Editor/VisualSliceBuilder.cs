@@ -1614,6 +1614,9 @@ namespace Ulon.Editor
             return false;
         }
 
+        /// <summary>마을 페이드 범위(반경 m) — 가드존 마을 구역. 이 밖은 소품 배치 헬퍼가 이미 레이어를 준다.</summary>
+        public const float VillageFadeRadius = 22f;
+
         /// <summary>
         /// 건물도 **카메라와 플레이어 사이에 끼면 걷힌다**(검수 랩 D). 카메라 요는 고정이라
         /// 집 뒤에 서면 화면에서 사라진다 — 실측 마을 279자리 중 7자리, 최악 20%(은행 풍차).
@@ -1630,8 +1633,17 @@ namespace Ulon.Editor
             for (int i = 0; i < all.Length; i++)
             {
                 var go = all[i];
-                if (go == null || !go.scene.IsValid() || !IsBuilding(go.name))
+                if (go == null || !go.scene.IsValid() || go.transform.parent != null)
+                    continue;                                   // 루트 단위로만 판단한다(자식은 함께 딸려간다)
+                // **이름 목록으로 하나씩 추가하면 두더지잡기가 된다** — 낚시터를 넣으니 화덕이 나왔다.
+                // 규칙으로 쓴다: 마을 안의 **정적 렌더러는 전부** 시야에 끼면 걷힌다.
+                var p = go.transform.position;
+                if (Mathf.Abs(p.x) > VillageFadeRadius || Mathf.Abs(p.z) > VillageFadeRadius)
                     continue;
+                if (go.name == "Ground" || go.name.StartsWith("Terrain", StringComparison.Ordinal))
+                    continue;                                   // 지표는 페이드 대상이 아니다
+                if (go.GetComponentInChildren<Ulon.Server.WorldBody>(true) != null)
+                    continue;                                   // 사람·짐승은 투명해지면 더 이상하다
                 var rends = go.GetComponentsInChildren<Renderer>(true);
                 for (int r = 0; r < rends.Length; r++)
                 {
