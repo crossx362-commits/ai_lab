@@ -26,7 +26,7 @@ SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # �
 f55878bb(실내 줌 §4.2 + 실내 화면 비율 하한 게이트), d7609f63(§6.1 지역 배치 + AssertWorldRegions),
 626745dc(도달 불가 5건 배선 + AssertReachableFeatures), 79b13d9e(§6.1 테스트 공간),
 ee7a2040·b613ee28·343a4ecd(시각 묶음), d5fface4·b9b58a79(실내 줌 5.8m 실측 + 눈높이 지표 게이트),
-8db38fed(원장 레코드 단위 검증 + AssertDataRecordSanity), 7109348d(왕관·무기 부착 반려 2건 + BossFit).
+8db38fed(원장 레코드 단위 검증 + AssertDataRecordSanity), 7109348d(왕관·무기 부착 반려 2건 + BossFit), c7fd68b4(정리 묶음).
 
 ## 최근에 끝난 것
 1. **던전 지하화**(P0) — 방 바닥 −4.5m, 6×6 암반 뚜껑 + Terrain 홀. 게이트: 화면 잔디 45% 상한·지하 점광 3개↑.
@@ -64,12 +64,15 @@ ee7a2040·b613ee28·343a4ecd(시각 묶음), d5fface4·b9b58a79(실내 줌 5.8m 
    게이트: 왕관 바닥 ≤ 정수리+0.03m·지름 ≤ 머리 폭×1.4, 그립 ≤ 0.10m·팔뚝 60°·무기 중심 머리 밖.
    네거티브 컨트롤(오브젝트 이동): 왕관 +0.3m·무기 +1m·무기 90° 전부 FAIL.
 
+14. **정리 묶음**(c7fd68b4) — GM 「원장 다시 읽기」(`OfflineWorld.GmReloadLedgers` + 패널 버튼 + 배선 Assert),
+   원장 증명 Assert의 문자열 치환을 구조체 파싱/수정/기록으로 교체, `TameCritter/TameBoar.DisplayName`
+   이중 원장 제거(이름은 mobs.json에서만), `KindCount` → `HostileKindCount`(원장 14종과 다른 수),
+   `Assets/Game/Data/.gitkeep` 삭제.
+
 ## 다음 할 일 (검수 확정 순서 — 새 지시가 오면 그게 맨 앞)
-1. **정리 묶음** — GM "원장 다시 읽기" 배선, "재빌드 없이" 문구 정정, `TameCritter/TameBoar.DisplayName` 이중 원장,
-   `MobCatalog.KindCount = 8` vs 14 모순, 기존 Assert(`AssertItemDataFile`/`AssertMobDataFile`)의 문자열 치환을
-   파싱/수정/기록으로 교체, `Assets/Game/Data/.gitkeep` 삭제.
+1. **지형 랩 한 번에** (검수 결정) — 아래 3번 항목이 다음 차례다.
 2. **제작법(CraftRecipes) 외부화**(§12.2).
-3. **지형 랩 한 번에** (검수 결정) — 지역 지표 도포(광산=자갈·숲=어두운 흙·농경지=갈아엎은 흙 + `AssertRegionSplat`:
+3. **지형 랩 상세** — 지역 지표 도포(광산=자갈·숲=어두운 흙·농경지=갈아엎은 흙 + `AssertRegionSplat`:
    지역 반경 안 해당 레이어 ≥0.5·평지 풀 ≥0.8) + 지역을 잇는 **길** + 방 깊이(`DungeonDepth`)/`LandBase` 상향.
    지형은 **두 번 흔들지 않는다** — 이 셋을 한 랩에서 처리한다.
 
