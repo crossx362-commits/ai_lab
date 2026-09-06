@@ -68,7 +68,7 @@ namespace Ulon.Editor
                     camGo.transform.LookAt(shot.Target);
                     var faded = new System.Collections.Generic.List<Renderer>();
                     if (shot.PlayCamera)
-                        Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, 0.5f, faded);
+                        Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, Ulon.Client.DungeonSightFade.DefaultRadius, faded);
                     cam.Render();
                     Ulon.Client.DungeonSightFade.Restore(faded);
                     RenderTexture.active = rt;
@@ -103,7 +103,7 @@ namespace Ulon.Editor
         /// <summary>방 안에서 찍는다 — 천장이 있는 실내는 밖에서 보면 뚜껑만 보인다.</summary>
         static Shot Inside(string name, float cx, float cz, float lookX, float lookZ)
         {
-            float y = GroundY(cx, cz);
+            float y = GroundY(cx, cz) - VisualSliceBuilder.DungeonDepth;
             var eye = new Vector3(cx - 4.4f, y + 2.0f, cz - 4.4f);
             var target = new Vector3(lookX, y + 1.0f, lookZ);
             return new Shot { Name = name, Eye = eye, Target = target };
@@ -119,7 +119,8 @@ namespace Ulon.Editor
             float pitch = qv != null ? qv.Pitch : 35f;
             float yaw = qv != null ? qv.Yaw : 45f;
             float dist = qv != null ? qv.Distance : 18f;
-            float y = GroundY(cx, cz);
+            // 방은 지하다 — 플레이어는 지면이 아니라 방 바닥에 선다.
+            float y = GroundY(cx, cz) - VisualSliceBuilder.DungeonDepth;
             var player = new Vector3(cx, y + 1.0f, cz);
             var rot = Quaternion.Euler(pitch, yaw, 0f);
             return new Shot { Name = name, Eye = player - rot * Vector3.forward * dist, Target = player, PlayCamera = true };

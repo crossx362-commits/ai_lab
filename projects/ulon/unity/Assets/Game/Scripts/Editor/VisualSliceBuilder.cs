@@ -789,7 +789,6 @@ namespace Ulon.Editor
             interior.transform.position = OnGround(new Vector3(Dungeon1.InteriorX, 0f, Dungeon1.InteriorZ));
             Transform room = interior.transform;
             BuildDungeonRoom(room, new Vector3(Dungeon1.InteriorX, 0f, Dungeon1.InteriorZ), Dungeon1.RoomHalf, Dungeon1.RoomHeight, "West");
-            Decor(room, Planks, new Vector3(Dungeon1.InteriorX, 0.22f, Dungeon1.InteriorZ), Vector3.zero);
             RoomRubble(room, new Vector3(Dungeon1.InteriorX + 3.4f, 0f, Dungeon1.InteriorZ + 3.4f), 0.9f);
             RoomRubble(room, new Vector3(Dungeon1.InteriorX - 2.6f, 0f, Dungeon1.InteriorZ - 2.8f), 0.6f);
 
@@ -808,6 +807,7 @@ namespace Ulon.Editor
 
             EnsureDungeonMob(parent);
             EnsureDungeonBoss(parent);
+            SinkIntoDungeon(parent, Dungeon1.MobObject, Dungeon1.BossObject, Dungeon1.ExitObject);
         }
 
         public static void EnsureDungeon2()
@@ -859,7 +859,6 @@ namespace Ulon.Editor
             interior.transform.position = OnGround(new Vector3(Dungeon2.InteriorX, 0f, Dungeon2.InteriorZ));
             Transform room = interior.transform;
             BuildDungeonRoom(room, new Vector3(Dungeon2.InteriorX, 0f, Dungeon2.InteriorZ), Dungeon2.RoomHalf, Dungeon2.RoomHeight, "East");
-            Decor(room, Planks, new Vector3(Dungeon2.InteriorX, 0.22f, Dungeon2.InteriorZ), Vector3.zero);
             RoomRubble(room, new Vector3(Dungeon2.InteriorX + 3.4f, 0f, Dungeon2.InteriorZ + 3.4f), 0.9f);
             RoomRubble(room, new Vector3(Dungeon2.InteriorX - 2.6f, 0f, Dungeon2.InteriorZ - 2.8f), 0.6f);
 
@@ -878,6 +877,7 @@ namespace Ulon.Editor
 
             EnsureDungeon2Mob(parent);
             EnsureDungeon2Boss(parent);
+            SinkIntoDungeon(parent, Dungeon2.MobObject, Dungeon2.BossObject, Dungeon2.ExitObject);
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
         }
@@ -932,7 +932,6 @@ namespace Ulon.Editor
             interior.transform.position = OnGround(new Vector3(Dungeon3.InteriorX, 0f, Dungeon3.InteriorZ));
             Transform room = interior.transform;
             BuildDungeonRoom(room, new Vector3(Dungeon3.InteriorX, 0f, Dungeon3.InteriorZ), Dungeon3.RoomHalf, Dungeon3.RoomHeight, "West");
-            Decor(room, Planks, new Vector3(Dungeon3.InteriorX, 0.22f, Dungeon3.InteriorZ), Vector3.zero);
             RoomRubble(room, new Vector3(Dungeon3.InteriorX + 3.4f, 0f, Dungeon3.InteriorZ + 3.4f), 0.9f);
             RoomRubble(room, new Vector3(Dungeon3.InteriorX - 2.6f, 0f, Dungeon3.InteriorZ - 2.8f), 0.6f);
 
@@ -952,6 +951,7 @@ namespace Ulon.Editor
             EnsureDungeon3Signpost(parent);
             EnsureDungeon3Mob(parent);
             EnsureDungeon3Boss(parent);
+            SinkIntoDungeon(parent, Dungeon3.MobObject, Dungeon3.BossObject, Dungeon3.ExitObject);
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
         }
@@ -2095,6 +2095,9 @@ namespace Ulon.Editor
 
         public const string DungeonBlockerLayer = "DungeonBlocker";
 
+        /// <summary>던전 방을 지면 아래로 내리는 깊이(m). 지상 상자는 §8.2 「단색 초록」 위반이다.</summary>
+        public const float DungeonDepth = 4.5f;
+
         /// <summary>씬의 플레이 카메라에 실내 차폐 페이드를 보장한다(검수 2026-09-06 P0).</summary>
         public static void EnsureCameraSightFade()
         {
@@ -2106,16 +2109,48 @@ namespace Ulon.Editor
             }
         }
 
+        /// <summary>
+        /// 방 자리의 지형에 구멍을 뚫는다. 지하 방을 만들어도 Terrain 표면이 그대로 남아 있으면
+        /// 페이드로 뚜껑이 걷힐 때 방이 아니라 **잔디가** 보인다(실측으로 확인, 검수 P0 마무리).
+        /// </summary>
+        static void PunchTerrainHole(Vector3 center, float half)
+        {
+            var terrain = Terrain.activeTerrain;
+            if (terrain == null || terrain.terrainData == null)
+                return;
+            var data = terrain.terrainData;
+            int res = data.holesResolution;
+            Vector3 size = data.size;
+            Vector3 origin = terrain.transform.position;
+            float pad = 0.6f;
+            int x0 = Mathf.Clamp(Mathf.FloorToInt((center.x - half - pad - origin.x) / size.x * res), 0, res - 1);
+            int x1 = Mathf.Clamp(Mathf.CeilToInt((center.x + half + pad - origin.x) / size.x * res), 0, res - 1);
+            int z0 = Mathf.Clamp(Mathf.FloorToInt((center.z - half - pad - origin.z) / size.z * res), 0, res - 1);
+            int z1 = Mathf.Clamp(Mathf.CeilToInt((center.z + half + pad - origin.z) / size.z * res), 0, res - 1);
+            int w = x1 - x0 + 1;
+            int h = z1 - z0 + 1;
+            if (w <= 0 || h <= 0)
+                return;
+            var holes = new bool[h, w];   // false = 구멍
+            data.SetHoles(x0, z0, holes);
+            EditorUtility.SetDirty(data);
+        }
+
         public static void BuildDungeonRoom(Transform room, Vector3 center, float half, float wallH, string doorSide)
         {
             var floorMat = MakeNoiseMat("DungeonFloor", new Color(0.20f, 0.19f, 0.21f), new Color(0.31f, 0.29f, 0.30f));
             var wallMat = MakeNoiseMat("DungeonWall", new Color(0.16f, 0.15f, 0.17f), new Color(0.27f, 0.26f, 0.28f));
             var ceilMat = MakeNoiseMat("DungeonCeiling", new Color(0.11f, 0.11f, 0.13f), new Color(0.18f, 0.17f, 0.20f));
 
-            float y = OnGround(new Vector3(center.x, 0f, center.z)).y;
+            // 지하화(검수 2026-09-06 P0 마무리) — 지상에 상자를 얹으면 페이드가 걷힐 때 화면 절반이 잔디밭이 된다(§8.2).
+            float ground = OnGround(new Vector3(center.x, 0f, center.z)).y;
+            float y = ground - DungeonDepth;
             float span = half * 2f;
             float seg = span / 3f;
             float t = 0.5f;
+            wallH = DungeonDepth + 0.15f;   // 바닥에서 지면까지 — 벽 너머로 잔디가 보이지 않게
+
+            PunchTerrainHole(center, half);
 
             RoomSlab(room, "DungeonFloor", new Vector3(center.x, y + 0.1f, center.z), new Vector3(span, 0.2f, span), floorMat);
 
@@ -2146,14 +2181,52 @@ namespace Ulon.Editor
                     new Vector3(0.9f, wallH + 0.3f, 0.9f), wallMat);
             }
 
-            RoomSlab(room, "DungeonCeiling", new Vector3(center.x, y + wallH + 0.15f, center.z),
-                new Vector3(span + 1f, 0.3f, span + 1f), ceilMat);
+            // 천장 = 지면 높이의 암반 뚜껑. 한 장이면 페이드 때 통째로 사라져 다시 잔디가 보이므로
+            // 6×6 타일 격자로 깔아 시선에 걸린 몇 장만 걷히게 한다(단면으로 읽힌다).
+            float capTop = ground + 0.15f;
+            float capThick = Mathf.Max(1.2f, DungeonDepth * 0.5f);
+            int capTiles = 6;
+            float capSpan = span + 16f;
+            float tile = capSpan / capTiles;
+            for (int cx = 0; cx < capTiles; cx++)
+            {
+                for (int cz = 0; cz < capTiles; cz++)
+                {
+                    float px = center.x - capSpan * 0.5f + tile * (cx + 0.5f);
+                    float pz = center.z - capSpan * 0.5f + tile * (cz + 0.5f);
+                    RoomSlab(room, "DungeonCap", new Vector3(px, capTop - capThick * 0.5f, pz),
+                        new Vector3(tile, capThick, tile), ceilMat);
+                }
+            }
 
             const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
-            Decor(room, Lantern, new Vector3(center.x - half + 1.2f, 0f, center.z + half - 1.2f), Vector3.zero);
-            Decor(room, Lantern, new Vector3(center.x + half - 1.2f, 0f, center.z - half + 1.2f), Vector3.zero);
+            var lanternA = Place(Lantern, new Vector3(center.x - half + 1.2f, 0f, center.z + half - 1.2f), Vector3.zero);
+            var lanternB = Place(Lantern, new Vector3(center.x + half - 1.2f, 0f, center.z - half + 1.2f), Vector3.zero);
+            if (lanternA != null) { lanternA.transform.SetParent(room, true); SinkIntoDungeon(lanternA); }
+            if (lanternB != null) { lanternB.transform.SetParent(room, true); SinkIntoDungeon(lanternB); }
             RoomTorch(room, new Vector3(center.x - half + 1.2f, y + 2.1f, center.z + half - 1.2f), half);
             RoomTorch(room, new Vector3(center.x + half - 1.2f, y + 2.1f, center.z - half + 1.2f), half);
+            // 방 전체를 등불 색으로 아주 약하게 받쳐준다 — 주광은 암반 뚜껑 그림자에 막히므로(AssertDungeonLighting)
+            // 이 점광들이 실내의 유일한 광원이다. 세면 낮처럼 보이니 약하게.
+            RoomFill(room, new Vector3(center.x, y + 2.6f, center.z), half);
+        }
+
+        /// <summary>지상 배치 로직(Place/SnapRootToGround)을 거친 오브젝트를 방 바닥 높이로 내린다.</summary>
+        public static void SinkIntoDungeon(GameObject go)
+        {
+            if (go == null)
+                return;
+            go.transform.position -= new Vector3(0f, DungeonDepth, 0f);
+        }
+
+        public static void SinkIntoDungeon(Transform parent, params string[] names)
+        {
+            for (int i = 0; i < names.Length; i++)
+            {
+                var go = GameObject.Find(names[i]);
+                if (go != null)
+                    SinkIntoDungeon(go);
+            }
         }
 
         static void RoomSlab(Transform parent, string name, Vector3 center, Vector3 size, Material mat)
@@ -2181,7 +2254,7 @@ namespace Ulon.Editor
         static void RoomRubble(Transform parent, Vector3 center, float scale)
         {
             var mat = MakeNoiseMat("DungeonWall", new Color(0.16f, 0.15f, 0.17f), new Color(0.27f, 0.26f, 0.28f));
-            float y = OnGround(new Vector3(center.x, 0f, center.z)).y;
+            float y = OnGround(new Vector3(center.x, 0f, center.z)).y - DungeonDepth;
             for (int i = 0; i < 3; i++)
             {
                 float a = i * 120f * Mathf.Deg2Rad;
@@ -2200,6 +2273,20 @@ namespace Ulon.Editor
             light.color = new Color(1f, 0.78f, 0.48f);
             light.intensity = 2.4f;
             light.range = half * 2.6f;
+            light.shadows = LightShadows.None;
+        }
+
+        /// <summary>실내 받침 광원 — 던전 분위기(따뜻한 저강도)로 방 전체를 약하게 채운다.</summary>
+        static void RoomFill(Transform parent, Vector3 pos, float half)
+        {
+            var go = new GameObject("DungeonFill");
+            go.transform.SetParent(parent, true);
+            go.transform.position = pos;
+            var light = go.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.95f, 0.72f, 0.45f);
+            light.intensity = 0.7f;
+            light.range = half * 3.2f;
             light.shadows = LightShadows.None;
         }
 

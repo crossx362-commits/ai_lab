@@ -15,7 +15,10 @@ namespace Ulon.Client
         public const string BlockerLayer = "DungeonBlocker";
 
         [SerializeField] Transform target;
-        [SerializeField] float radius = 0.5f;
+        /// <summary>시야 창을 얼마나 넓게 열지. 좁으면 뚜껑 한 장만 걷혀 방이 조금밖에 안 보인다(실측).</summary>
+        public const float DefaultRadius = 2.2f;
+
+        [SerializeField] float radius = DefaultRadius;
 
         readonly List<Renderer> hidden = new List<Renderer>();
 
