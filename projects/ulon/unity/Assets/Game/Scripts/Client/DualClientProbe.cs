@@ -83,9 +83,18 @@ namespace Ulon.Client
                     yield return null;
             }
 
+            // **효과가 이 클라이언트에 도착했는가** — 소스 게이트로는 알 수 없는 부분이다(검수 지시).
+            // HP가 바뀐 뒤에도 방송은 몇 프레임 늦게 올 수 있으므로 잠깐 더 기다린다.
+            float effectDeadline = Time.realtimeSinceStartup + 2f;
+            while (Time.realtimeSinceStartup < effectDeadline && ActionVfx.Played == 0)
+                yield return null;
+
             float hpAfter = body.Hp;
-            bool ok = avatars >= 2 && hasMob && hpAfter < hpBefore;
-            Write(outPath, true, ok ? "ok" : "hp_unchanged", avatars, true, hpBefore, hpAfter);
+            bool ok = avatars >= 2 && hasMob && hpAfter < hpBefore && ActionVfx.Played > 0 && ActionSfx.Played > 0;
+            string status = ok ? "ok"
+                : hpAfter >= hpBefore ? "hp_unchanged"
+                : "effect_missing";   // 피해는 갔는데 불티·소리가 이 화면엔 안 왔다
+            Write(outPath, true, status, avatars, true, hpBefore, hpAfter);
             Quit();
         }
 
@@ -129,7 +138,8 @@ namespace Ulon.Client
         {
             if (string.IsNullOrEmpty(path))
                 path = Path.Combine(Application.persistentDataPath, "ulon-check.json");
-            string json = "{\"connected\":" + (connected ? "true" : "false")
+            string json = "{\"vfx\":" + ActionVfx.Played + ",\"sfx\":" + ActionSfx.Played
+                          + ",\"connected\":" + (connected ? "true" : "false")
                           + ",\"status\":\"" + status + "\""
                           + ",\"avatars\":" + avatars
                           + ",\"mob\":" + (mob ? "true" : "false")

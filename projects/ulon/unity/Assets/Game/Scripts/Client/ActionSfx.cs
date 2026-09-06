@@ -95,6 +95,9 @@ namespace Ulon.Client
         }
 
         /// <summary>그 자리에서 한 번 울린다. 3D로 두어 거리에 따라 줄어든다.</summary>
+        /// <summary>이 클라이언트에서 실제로 울린 횟수 — VFX와 같은 이유(2클라 실측).</summary>
+        public static int Played;
+
         public static void Play(Kind kind, Vector3 position)
         {
             var clip = Clip(kind);
@@ -108,6 +111,7 @@ namespace Ulon.Client
             src.minDistance = 3f;
             src.maxDistance = 30f;
             src.Play();
+            Played++;
             Object.Destroy(go, clip.length + 0.1f);
         }
     }

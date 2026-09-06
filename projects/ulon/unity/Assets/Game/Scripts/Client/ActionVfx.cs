@@ -26,6 +26,13 @@ namespace Ulon.Client
         }
 
         /// <summary>해당 효과를 그 자리에서 한 번 재생한다. 템플릿이 없으면 조용히 넘어간다(전투를 막지 않는다).</summary>
+        /// <summary>
+        /// **이 클라이언트에 실제로 도착해 재생된 횟수**(2클라 실측용, 검수 지시 2026-09-07).
+        /// 소스 게이트는 「부르도록 적혀 있다」까지만 본다 — 옆 사람 화면에 닿았다는 증거는 실행에서 나와야 한다.
+        /// </summary>
+        public static int Played;
+        public static Kind LastKind;
+
         public static void Play(Kind kind, Vector3 position)
         {
             var template = Template(kind);
@@ -41,6 +48,8 @@ namespace Ulon.Client
                 return;
             }
             ps.Play(true);
+            Played++;
+            LastKind = kind;
             Object.Destroy(go, ps.main.duration + ps.main.startLifetime.constantMax + 0.2f);
         }
 

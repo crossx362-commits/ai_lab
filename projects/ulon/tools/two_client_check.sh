@@ -79,7 +79,11 @@ ok = (a.get("connected") and b.get("connected")
       and a.get("avatars",0) >= 2 and b.get("avatars",0) >= 2
       and a.get("mob") and b.get("mob")
       and a.get("hpAfter", 99) < a.get("hpBefore", 0)
-      and b.get("hpAfter", 99) < b.get("hpBefore", 0))
+      and b.get("hpAfter", 99) < b.get("hpBefore", 0)
+      # 효과가 **두 클라이언트 모두**에 도착했는가 — 공격자 자신에게도, 옆 사람에게도.
+      # 소스 게이트는 「부르도록 적혀 있다」까지만 본다(검수 지시 2026-09-07).
+      and a.get("vfx",0) > 0 and a.get("sfx",0) > 0
+      and b.get("vfx",0) > 0 and b.get("sfx",0) > 0)
 print("PASS" if ok else "FAIL", a, b)
 sys.exit(0 if ok else 5)
 PY
