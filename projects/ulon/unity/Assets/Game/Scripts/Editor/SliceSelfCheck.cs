@@ -1619,6 +1619,8 @@ namespace Ulon.Editor
             AssertBossMobContrast();
             AssertBossMobContrastNegativeControl();
             AssertCharacterArtQualified();
+            AssertCreatureArtQualified();
+            AssertCreatureArtNegativeControl();
             AssertCharacterArtNegativeControl();
             AssertFootOnGround();
             AssertFootNegativeControl();
