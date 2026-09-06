@@ -191,6 +191,12 @@ Paperdoll/드래그앤드롭/대상 커서/퀵바 없음, 몬스터 14/20종, �
 도구 남은 횟수·동료 N/2. 게이트 `AssertRepairAndToolReadouts`(서버 행동 + HUD가 값을 읽는지).
 HUD는 IMGUI라 QA 샷에 안 나온다 — 이 항목 증거는 게이트다.
 
+㉚ KayKit Dungeon Remastered 도입(0c1a92cc) — **오너가 이 세션에서 직접 승인**(검수 전언만으로는
+다운로드하지 않는다). 실제 쓰는 14종만 `_ThirdParty/KayKit/Dungeon/RAW`, LICENSE·SOURCE_URL·
+README_IMPORT 동봉, ASSET_REGISTER 기록. Kenney Particle Pack 12장도 함께 승인·도입(VFX용).
+함정: **.glb는 유니티 기본 임포트 불가** → 같은 팩 .obj 사용. 방 = 돌기둥 4·벽 횃불 4·궤짝/통 12·잔해 4.
+맨바닥 0.54/0.55/0.54(상한 0.57), 13종. 발 붙음 게이트에서 벽걸이(횃불·등불) 이름 제외.
+
 다음: 검수 확정 순서 4번 **VFX**(사운드는 그 뒤, 오너 확인 필요 명시). 착수 전 질문 대기 —
 저장소에 Kenney Particle Pack이 없다: (가) 코드 생성 파티클 텍스처 허용인가 (나) 팩 도입을 오너 안건으로.
 그 뒤 5번 성능(관심 영역·LOD, MeshCollider 실측 포함). DB·전용 서버는 착수 금지(검수 지시).
