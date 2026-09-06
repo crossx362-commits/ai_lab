@@ -1598,6 +1598,8 @@ namespace Ulon.Editor
             AssertDungeonLighting();
             AssertWorldTerrain();
             AssertHuntGround();
+            AssertBossMobContrast();
+            AssertBossMobContrastNegativeControl();
             AssertMobArtQualified();
             AssertMobArtNegativeControl();
             AssertFootOnGround();

@@ -2308,15 +2308,72 @@ namespace Ulon.Editor
                 for (var t = pick; t != null && t != actor.transform; t = t.parent)
                     t.gameObject.SetActive(true);
 
-            // 2) 의상 — 모델이 가진 것을 켠다.
+            // 2) 의상 — 모델이 가진 것을 켠다. 단 **망토는 보스 전용**이다(검수 2026-09-06 반려):
+            // 잡몹과 보스가 같은 모델일 때 망토까지 같으면 플레이 거리에서 「작은 보스」로 읽힌다(§8.1).
             for (int i = 0; i < all.Length; i++)
             {
                 if (!IsClothingName(all[i].name))
                     continue;
-                all[i].gameObject.SetActive(true);
+                bool cape = IsCapeName(all[i].name);
+                all[i].gameObject.SetActive(!cape);
                 var rs = all[i].GetComponentsInChildren<Renderer>(true);
                 for (int r = 0; r < rs.Length; r++)
-                    rs[r].enabled = true;
+                    rs[r].enabled = !cape;
+            }
+
+            // 3) 색 — 잡몹은 어두운 흙색 계열로 낮춘다. 보스는 원래 색을 유지하므로 같은 모델이라도 갈라진다.
+            TintCharacter(actor, MobDrabName, MobDrabTint);
+        }
+
+        /// <summary>보스 전용 표식인 망토·클로크인가(잡몹은 끈다).</summary>
+        public static bool IsCapeName(string n)
+        {
+            return n.IndexOf("Cape", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Cloak", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        public const string MobDrabName = "MobDrab";
+        public static readonly Color MobDrabTint = new Color(0.46f, 0.42f, 0.36f);
+
+        /// <summary>
+        /// 캐릭터 메시(무기 제외)에 색을 입힌다 — 원본 텍스처는 그대로 두고 **색만** 곱한 재질 에셋을 만든다.
+        /// 다운로드 없이 실루엣·색으로 잡몹과 보스를 가르기 위한 최소 수단(검수 2026-09-06 지시 순서 2).
+        /// </summary>
+        public static void TintCharacter(GameObject actor, string matName, Color tint)
+        {
+            if (actor == null)
+                return;
+            var rends = actor.GetComponentsInChildren<Renderer>(true);
+            Texture source = null;
+            Shader shader = null;
+            for (int i = 0; i < rends.Length && source == null; i++)
+            {
+                var m = rends[i].sharedMaterial;
+                if (m != null && m.mainTexture != null) { source = m.mainTexture; shader = m.shader; }
+            }
+            if (source == null)
+                return;
+            string matPath = "Assets/Game/Art/Env/" + matName + "_" + source.name + ".mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null)
+            {
+                mat = new Material(shader != null ? shader : Shader.Find("Standard"));
+                AssetDatabase.CreateAsset(mat, matPath);
+            }
+            mat.shader = shader != null ? shader : Shader.Find("Standard");
+            mat.mainTexture = source;
+            mat.color = tint;
+            EditorUtility.SetDirty(mat);
+
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (IsWeaponName(rends[i].name) || (rends[i].transform.parent != null && IsWeaponName(rends[i].transform.parent.name)))
+                    continue;                                   // 무기는 원래 색 그대로
+                var slots = rends[i].sharedMaterials;
+                for (int sIdx = 0; sIdx < slots.Length; sIdx++)
+                    if (slots[sIdx] != null && slots[sIdx].mainTexture == source)
+                        slots[sIdx] = mat;
+                rends[i].sharedMaterials = slots;
             }
         }
 

@@ -99,6 +99,13 @@ namespace Ulon.Editor
                         throw new InvalidOperationException(names[i] + "이(가) 손에 " + tr.name + "을(를) 들고 있습니다 — 잡몹은 술잔이 아니라 무기를 들어야 합니다(§8.1).");
                     if (VisualSliceBuilder.IsClothingName(tr.name))
                     {
+                        // 망토는 **보스 전용 표식**이라 잡몹 의상으로 세지 않는다(검수 2026-09-06 실루엣 반려).
+                        if (VisualSliceBuilder.IsCapeName(tr.name))
+                        {
+                            if (visible)
+                                throw new InvalidOperationException(names[i] + "이(가) 망토를 걸치고 있습니다 — 망토는 보스 전용 표식입니다(§8.1·§10.2).");
+                            continue;
+                        }
                         clothTotal++;
                         if (visible) clothOn++;
                     }
@@ -121,7 +128,7 @@ namespace Ulon.Editor
                 if (clothTotal > 0 && clothOn == 0)
                     throw new InvalidOperationException(names[i] + "의 의상 메시 " + clothTotal + "개가 전부 꺼져 있습니다 — 맨몸으로 서 있습니다(§8.2).");
             }
-            Debug.Log("[Ulon] 잡몹 드레싱 통과 — " + names.Count + "체(손 소품 없음·무기 1개·의상 켜짐)");
+            Debug.Log("[Ulon] 잡몹 드레싱 통과 — " + names.Count + "체(손 소품 없음·무기 1개·의상 켜짐·망토 없음)");
         }
     }
 }
