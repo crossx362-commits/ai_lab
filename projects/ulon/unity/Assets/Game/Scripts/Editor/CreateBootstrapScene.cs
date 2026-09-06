@@ -68,6 +68,9 @@ namespace Ulon.Editor
             if (cam != null)
             {
                 var qv = cam.GetComponent<QuarterViewCamera>() ?? cam.gameObject.AddComponent<QuarterViewCamera>();
+                // 실내 차폐 페이드도 씬에 박아 둔다 — 런타임에만 붙이면 에디터 검증이 못 본다(검수 2026-09-06 P0).
+                if (cam.GetComponent<DungeonSightFade>() == null)
+                    cam.gameObject.AddComponent<DungeonSightFade>();
                 qv.SetFollow(player.transform);
             }
 

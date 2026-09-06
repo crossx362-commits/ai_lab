@@ -99,6 +99,65 @@ namespace Ulon.Editor
                 throw new InvalidOperationException(label + " 잡몹과 보스 간격이 " + gap.ToString("0.00") + "m입니다 — 최소 " + InteriorMobGapMin + "m(45° 시점에서 포개집니다).");
         }
 
+
+        /// <summary>
+        /// **플레이 카메라 기준** 시야 판정(검수 2026-09-06 P0). 기획서 §4.2 고정 3/4 쿼터뷰라
+        /// 카메라 피치·요를 실내에서 바꿀 수 없다 — 대신 카메라와 플레이어 사이의 던전 벽·천장을
+        /// DungeonBlocker 레이어로 빼고 런타임에 렌더만 끈다(DungeonSightFade).
+        /// 검증 카메라가 플레이 카메라와 다르면 증거가 아니다 — 그래서 씬의 QuarterViewCamera 값을 그대로 읽는다.
+        /// </summary>
+        static void AssertPlayCameraSight()
+        {
+            AssertDungeon3Leftover();
+            Physics.SyncTransforms();
+
+            var cam = UnityEngine.Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
+            if (cam == null)
+                throw new InvalidOperationException("씬에 QuarterViewCamera가 없습니다 — 플레이 카메라 기준 검증을 할 수 없습니다.");
+            if (cam.GetComponent<Ulon.Client.DungeonSightFade>() == null)
+                throw new InvalidOperationException("플레이 카메라에 DungeonSightFade가 없습니다 — 실내에서 천장이 화면을 막습니다.");
+
+            int blocker = LayerMask.NameToLayer(Ulon.Client.DungeonSightFade.BlockerLayer);
+            if (blocker < 0)
+                throw new InvalidOperationException("레이어 " + Ulon.Client.DungeonSightFade.BlockerLayer + "가 없습니다(ProjectSettings/TagManager).");
+
+            CheckSight("던전 1", new Vector2(Dungeon1.InteriorX, Dungeon1.InteriorZ), cam, blocker);
+            CheckSight("던전 2", new Vector2(Dungeon2.InteriorX, Dungeon2.InteriorZ), cam, blocker);
+            CheckSight("던전 3", new Vector2(Dungeon3.InteriorX, Dungeon3.InteriorZ), cam, blocker);
+
+            Debug.Log("[Ulon] 플레이 카메라 시야 통과 — pitch " + cam.Pitch + "·yaw " + cam.Yaw + "에서 방 안 플레이어를 가리는 것은 전부 " + Ulon.Client.DungeonSightFade.BlockerLayer + " 레이어(런타임 렌더 오프)");
+        }
+
+        static void CheckSight(string label, Vector2 center, Ulon.Client.QuarterViewCamera cam, int blockerLayer)
+        {
+            float groundY = GroundYAt(center);
+            var player = new Vector3(center.x, groundY + 1.0f, center.y);
+            float[] distances = { cam.Distance, cam.MinDistance };
+            for (int d = 0; d < distances.Length; d++)
+            {
+                var rot = Quaternion.Euler(cam.Pitch, cam.Yaw, 0f);
+                var eye = player - rot * Vector3.forward * distances[d];
+                Vector3 dir = player - eye;
+                float dist = dir.magnitude;
+                dir /= dist;
+                var hits = Physics.RaycastAll(eye, dir, dist, ~0, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < hits.Length; i++)
+                {
+                    var col = hits[i].collider;
+                    if (col == null)
+                        continue;
+                    var rend = col.GetComponent<Renderer>();
+                    if (rend == null || !rend.enabled)
+                        continue;
+                    if (col.gameObject.layer == blockerLayer)
+                        continue;   // 런타임에 렌더가 꺼진다
+                    if (col.GetComponent<Terrain>() != null)
+                        continue;
+                    throw new InvalidOperationException(label + " 실내 플레이어가 플레이 카메라(거리 " + distances[d] + ")에서 안 보입니다 — " + col.gameObject.name + "(레이어 " + LayerMask.LayerToName(col.gameObject.layer) + ")가 시야를 막습니다. 페이드 레이어로 빼거나 치워라.");
+                }
+            }
+        }
+
         static float GroundYAt(Vector2 flat)
         {
             var terrain = Terrain.activeTerrain;

@@ -1739,6 +1739,9 @@ namespace Ulon.Editor
             cam.backgroundColor = new Color(0.55f, 0.7f, 0.85f);
             var player = GameObject.Find("Player");
             var qv = cam.GetComponent<QuarterViewCamera>() ?? cam.gameObject.AddComponent<QuarterViewCamera>();
+            // 실내 차폐 페이드도 씬에 박아 둔다 — 런타임에만 붙이면 에디터 검증이 못 본다(검수 2026-09-06 P0).
+            if (cam.GetComponent<DungeonSightFade>() == null)
+                cam.gameObject.AddComponent<DungeonSightFade>();
             if (player != null)
                 qv.SetFollow(player.transform);
             Quaternion rot = Quaternion.Euler(35f, 45f, 0f);
@@ -2013,6 +2016,19 @@ namespace Ulon.Editor
             Decor(parent, Banner, pos + new Vector3(0.6f, 0f, 0.6f), new Vector3(0f, 225f, 0f));
         }
 
+        public const string DungeonBlockerLayer = "DungeonBlocker";
+
+        /// <summary>씬의 플레이 카메라에 실내 차폐 페이드를 보장한다(검수 2026-09-06 P0).</summary>
+        public static void EnsureCameraSightFade()
+        {
+            var cams = UnityEngine.Object.FindObjectsByType<QuarterViewCamera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < cams.Length; i++)
+            {
+                if (cams[i].GetComponent<DungeonSightFade>() == null)
+                    cams[i].gameObject.AddComponent<DungeonSightFade>();
+            }
+        }
+
         public static void BuildDungeonRoom(Transform room, Vector3 center, float half, float wallH, string doorSide)
         {
             var floorMat = MakeNoiseMat("DungeonFloor", new Color(0.20f, 0.19f, 0.21f), new Color(0.31f, 0.29f, 0.30f));
@@ -2067,6 +2083,10 @@ namespace Ulon.Editor
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
+            // 카메라와 플레이어 사이에 오면 렌더를 끄는 레이어(콜라이더는 남는다 — 하늘 차단·이동 막기는 유지).
+            int blocker = LayerMask.NameToLayer(DungeonBlockerLayer);
+            if (blocker >= 0)
+                go.layer = blocker;
             go.transform.SetParent(parent, true);
             go.transform.position = center;
             go.transform.localScale = size;
@@ -2356,6 +2376,9 @@ namespace Ulon.Editor
             if (cam != null)
             {
                 var qv = cam.GetComponent<QuarterViewCamera>() ?? cam.gameObject.AddComponent<QuarterViewCamera>();
+                // 실내 차폐 페이드도 씬에 박아 둔다 — 런타임에만 붙이면 에디터 검증이 못 본다(검수 2026-09-06 P0).
+                if (cam.GetComponent<DungeonSightFade>() == null)
+                    cam.gameObject.AddComponent<DungeonSightFade>();
                 qv.SetFollow(player.transform);
             }
 

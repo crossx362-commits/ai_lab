@@ -18,13 +18,29 @@ namespace Ulon.Client
         [SerializeField] bool orthographic;
         [SerializeField] float orthographicSize = 8f;
 
-        public void SetFollow(Transform target) => follow = target;
+        public void SetFollow(Transform target)
+        {
+            follow = target;
+            // 실내 차폐 페이드도 같은 대상을 본다(검수 2026-09-06 P0 — 천장 위 카메라).
+            var fade = GetComponent<DungeonSightFade>();
+            if (fade == null)
+                fade = gameObject.AddComponent<DungeonSightFade>();
+            fade.SetTarget(target);
+        }
+
+        /// <summary>Assert가 같은 값으로 카메라를 놓기 위해 읽는다 — 검증 카메라가 플레이 카메라와 달라 P0를 놓쳤다.</summary>
+        public float Pitch => pitch;
+        public float Yaw => yaw;
+        public float Distance => distance;
+        public float MinDistance => minDistance;
 
         void OnEnable()
         {
             var cam = GetComponent<Camera>();
             if (cam == null)
                 return;
+            if (GetComponent<DungeonSightFade>() == null)
+                gameObject.AddComponent<DungeonSightFade>();
             cam.clearFlags = CameraClearFlags.Skybox;
             if (cam.farClipPlane < 90f)
                 cam.farClipPlane = 90f;

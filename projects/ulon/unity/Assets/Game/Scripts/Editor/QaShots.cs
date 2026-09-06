@@ -22,6 +22,7 @@ namespace Ulon.Editor
             public string Name;
             public Vector3 Eye;      // 카메라 위치(월드)
             public Vector3 Target;   // 바라보는 지점(월드)
+            public bool PlayCamera;  // 플레이 카메라 재현(차폐 페이드 적용)
         }
 
         [MenuItem("Ulon/QA Shots")]
@@ -39,10 +40,13 @@ namespace Ulon.Editor
                 Orbit("03_hunt_mobs", new Vector3(3.4f, 0f, 13.2f), 14f, 25f),
                 Orbit("06_field_boss", new Vector3(22.6f, 0f, 8.4f), 10f, 25f),
                 Orbit("07_d1_entrance", new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 8f, 20f),
+                PlayCam("08_d1_interior_playcam", Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 Inside("08_d1_interior", Dungeon1.InteriorX, Dungeon1.InteriorZ, Dungeon1.BossX, Dungeon1.BossZ),
                 Orbit("09_d2_entrance", new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ), 8f, 20f),
+                PlayCam("10_d2_interior_playcam", Dungeon2.InteriorX, Dungeon2.InteriorZ),
                 Inside("10_d2_interior", Dungeon2.InteriorX, Dungeon2.InteriorZ, Dungeon2.BossX, Dungeon2.BossZ),
                 Orbit("11_d3_entrance", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 8f, 20f),
+                PlayCam("12_d3_interior_playcam", Dungeon3.InteriorX, Dungeon3.InteriorZ),
                 Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
                 Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ),
             };
@@ -62,7 +66,11 @@ namespace Ulon.Editor
                     var shot = shots[i];
                     camGo.transform.position = shot.Eye;
                     camGo.transform.LookAt(shot.Target);
+                    var faded = new System.Collections.Generic.List<Renderer>();
+                    if (shot.PlayCamera)
+                        Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, 0.5f, faded);
                     cam.Render();
+                    Ulon.Client.DungeonSightFade.Restore(faded);
                     RenderTexture.active = rt;
                     tex.ReadPixels(new Rect(0, 0, W, H), 0, 0);
                     tex.Apply();
@@ -99,6 +107,22 @@ namespace Ulon.Editor
             var eye = new Vector3(cx - 4.4f, y + 2.0f, cz - 4.4f);
             var target = new Vector3(lookX, y + 1.0f, lookZ);
             return new Shot { Name = name, Eye = eye, Target = target };
+        }
+
+        /// <summary>
+        /// **플레이 카메라 그대로** 찍는다 — 씬의 QuarterViewCamera 값(pitch·yaw·distance)을 읽고
+        /// 런타임과 같은 차폐 페이드를 적용한다. 검증 카메라가 플레이 카메라와 다르면 증거가 아니다.
+        /// </summary>
+        static Shot PlayCam(string name, float cx, float cz)
+        {
+            var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
+            float pitch = qv != null ? qv.Pitch : 35f;
+            float yaw = qv != null ? qv.Yaw : 45f;
+            float dist = qv != null ? qv.Distance : 18f;
+            float y = GroundY(cx, cz);
+            var player = new Vector3(cx, y + 1.0f, cz);
+            var rot = Quaternion.Euler(pitch, yaw, 0f);
+            return new Shot { Name = name, Eye = player - rot * Vector3.forward * dist, Target = player, PlayCamera = true };
         }
 
         /// <summary>천장 위에서 방 전체 배치를 본다(뚜껑 포함 — 실내 여부 자체 확인용).</summary>

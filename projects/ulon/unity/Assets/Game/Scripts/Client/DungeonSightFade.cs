@@ -1,0 +1,67 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Ulon.Client
+{
+    /// <summary>
+    /// 기획서 §4.2 「고정 3/4 쿼터뷰」를 지키면서 실내가 보이게 한다(검수 2026-09-06 P0).
+    /// 카메라 피치·요는 건드리지 않고, **카메라와 플레이어 사이에 낀 던전 벽·천장만 렌더를 끈다.**
+    /// 콜라이더는 그대로라 하늘 차단·이동 제한은 유지된다.
+    /// </summary>
+    [RequireComponent(typeof(Camera))]
+    [DisallowMultipleComponent]
+    public sealed class DungeonSightFade : MonoBehaviour
+    {
+        public const string BlockerLayer = "DungeonBlocker";
+
+        [SerializeField] Transform target;
+        [SerializeField] float radius = 0.5f;
+
+        readonly List<Renderer> hidden = new List<Renderer>();
+
+        public void SetTarget(Transform t) => target = t;
+
+        void LateUpdate()
+        {
+            Restore(hidden);
+            if (target == null)
+                return;
+            Hide(transform.position, target.position + Vector3.up * 1.0f, radius, hidden);
+        }
+
+        /// <summary>
+        /// 카메라와 대상 사이의 DungeonBlocker 렌더러를 끈다. 런타임(LateUpdate)과 QA 스크린샷 도구가
+        /// **같은 함수**를 쓴다 — 검증 화면이 플레이 화면과 다르면 증거가 아니다(검수 2026-09-06 P0).
+        /// </summary>
+        public static void Hide(Vector3 eye, Vector3 look, float radius, List<Renderer> hidden)
+        {
+            int layer = LayerMask.NameToLayer(BlockerLayer);
+            if (layer < 0)
+                return;
+            Vector3 dir = look - eye;
+            float dist = dir.magnitude;
+            if (dist < 0.01f)
+                return;
+            dir /= dist;
+            var found = Physics.SphereCastAll(eye, radius, dir, dist, 1 << layer, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < found.Length; i++)
+            {
+                var rend = found[i].collider != null ? found[i].collider.GetComponent<Renderer>() : null;
+                if (rend == null || !rend.enabled)
+                    continue;
+                rend.enabled = false;
+                hidden.Add(rend);
+            }
+        }
+
+        public static void Restore(List<Renderer> hidden)
+        {
+            for (int i = 0; i < hidden.Count; i++)
+            {
+                if (hidden[i] != null)
+                    hidden[i].enabled = true;
+            }
+            hidden.Clear();
+        }
+    }
+}
