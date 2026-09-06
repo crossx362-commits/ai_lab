@@ -253,6 +253,7 @@ namespace Ulon.Client
                 anim?.PlayAttack();
                 // §18.15 — 결과가 숫자로만 나지 않게. 타격 지점에 불티.
                 ActionVfx.Play(ActionVfx.Kind.Hit, chasing.transform.position + Vector3.up * 1.0f);
+                ActionSfx.Play(ActionSfx.Kind.Hit, chasing.transform.position + Vector3.up * 1.0f);
             }
         }
 
@@ -292,6 +293,7 @@ namespace Ulon.Client
             var craft = OfflineWorld.Instance != null ? OfflineWorld.Instance.TryCraft(mine, station) : default;
             if (craft.Applied)
                 ActionVfx.Play(ActionVfx.Kind.Craft, station.transform.position + Vector3.up * 1.1f);
+                ActionSfx.Play(ActionSfx.Kind.Craft, station.transform.position + Vector3.up * 1.1f);
         }
 
         void TryUseBank(BankStation station)

@@ -1787,6 +1787,9 @@ namespace Ulon.Editor
             // 실내 차폐 페이드도 씬에 박아 둔다 — 런타임에만 붙이면 에디터 검증이 못 본다(검수 2026-09-06 P0).
             if (cam.GetComponent<DungeonSightFade>() == null)
                 cam.gameObject.AddComponent<DungeonSightFade>();
+            // 소리를 듣는 귀도 씬에 박아 둔다 — 리스너가 없으면 SFX를 아무리 울려도 들리지 않는다.
+            if (UnityEngine.Object.FindAnyObjectByType<AudioListener>() == null)
+                cam.gameObject.AddComponent<AudioListener>();
             if (player != null)
                 qv.SetFollow(player.transform);
             Quaternion rot = Quaternion.Euler(35f, 45f, 0f);

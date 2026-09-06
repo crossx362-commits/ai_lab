@@ -1608,6 +1608,8 @@ namespace Ulon.Editor
             AssertPropDistributionNegativeControl();
             AssertPropScaleRatio();
             AssertPropScaleNegativeControl();
+            AssertActionSfxDistinct();
+            AssertActionSfxNegativeControl();
             AssertBossMobContrast();
             AssertBossMobContrastNegativeControl();
             AssertMobArtQualified();

@@ -115,6 +115,7 @@ namespace Ulon.Client
             var result = OfflineWorld.Instance.TryAttack(attacker, victim);
             if (result.Applied && victim != null)
                 ActionVfx.Play(ActionVfx.Kind.Hit, victim.transform.position + Vector3.up * 1.0f);
+                ActionSfx.Play(ActionSfx.Kind.Hit, victim.transform.position + Vector3.up * 1.0f);
             if (!result.Applied)
             {
                 Debug.Log("[Ulon] attack fail " + result.FailReason);
@@ -338,6 +339,7 @@ namespace Ulon.Client
             var result = OfflineWorld.Instance.TryHeal(body, target);
             if (result.Applied && target != null)
                 ActionVfx.Play(ActionVfx.Kind.Heal, target.transform.position + Vector3.up * 1.0f);
+                ActionSfx.Play(ActionSfx.Kind.Heal, target.transform.position + Vector3.up * 1.0f);
             if (result.Applied)
                 SaveNow();
         }
