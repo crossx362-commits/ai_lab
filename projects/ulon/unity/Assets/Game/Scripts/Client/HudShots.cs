@@ -108,6 +108,17 @@ namespace Ulon.Client
             yield return CheckLayout(1280, 720, r => ok &= r);
             yield return CheckLayout(1920, 1080, r => ok &= r);
 
+            // ⑥ 상점 — 상인 앞에서 근처 패널을 열고. 검수가 이 화면도 못 봤다.
+            var vendor = FindAnyObjectByType<VendorStation>();
+            if (vendor != null)
+            {
+                world.Player.transform.position = vendor.transform.position + new Vector3(1.4f, 0f, 1.4f);
+                world.TryVendor(world.Player, vendor);
+                Panel(5);
+                for (int i = 0; i < 8; i++) yield return null;
+                yield return Shot("hud_06_shop");
+            }
+
             Debug.Log("[Ulon] HUD 샷 완료 — " + dir + (ok ? " · 화면 규칙 통과" : " · **화면 규칙 위반**"));
             Application.Quit(ok ? 0 : 1);
         }

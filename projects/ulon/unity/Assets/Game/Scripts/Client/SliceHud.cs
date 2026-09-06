@@ -50,6 +50,9 @@ namespace Ulon.Client
         Vector2 skillScroll, bagScroll, nearbyScroll, socialScroll;
         /// <summary>가방에서 고른 항목 — 「무엇에 대해」 착용·주머니 버튼이 작용하는지 화면에 보여야 한다(검수).</summary>
         int bagPick = -1;
+        /// <summary>제작대에서 고른 제작법 / 상점에서 고른 물건 — **조작법을 인벤토리와 통일**한다(검수).</summary>
+        string craftPick = "";
+        string shopPick = "";
 
         const float CardW = 300f;
         const float PanelW = 308f;
@@ -646,25 +649,42 @@ namespace Ulon.Client
         void PanelNearby(OfflineWorld world, WorldBody me, NetAvatar net)
         {
             GUILayout.Label("근처");
-            nearbyScroll = GUILayout.BeginScrollView(nearbyScroll);
+            // 목록이 길어져도 화면을 위아래로 다 쓰지 않는다 — 넘치면 스크롤(검수 조건 1).
+            nearbyScroll = GUILayout.BeginScrollView(nearbyScroll, GUILayout.MaxHeight(Screen.height * 0.42f));
             if (NearbyCount(world, me) == 0)
                 GUILayout.Label("가까이에 쓸 것이 없습니다.");
 
             if (world.ActiveVendor != null && !me.Ghost)
             {
-                GUILayout.Label("잡화  " + world.ActiveVendor.DisplayName);
-                Row3(("곡괭이 25", () => Shop(net, true, ItemCatalog.Pickaxe)),
-                     ("도끼 25", () => Shop(net, true, ItemCatalog.Hatchet)),
-                     ("낚싯대 25", () => Shop(net, true, ItemCatalog.FishingPole)));
-                Row3(("붕대 5", () => Shop(net, true, ItemCatalog.Bandage)),
-                     ("천 3", () => Shop(net, true, ItemCatalog.Cloth)),
-                     ("시약", () => Shop(net, true, "resin")));
-                Row3(("류트 20", () => Shop(net, true, ItemCatalog.Lute)),
-                     ("자물쇠 8", () => Shop(net, true, ItemCatalog.Lockpick)),
-                     ("광석팔기", () => Shop(net, false, "iron_ore")));
-                Row3(("나무팔기", () => Shop(net, false, "wood")),
-                     ("생선팔기", () => Shop(net, false, ItemCatalog.Fish)),
-                     ("닫기", () => world.CloseVendor()));
+                // 상인 이름이 이미 「잡화」다 — 앞에 종류를 또 붙이면 「잡화 잡화」가 된다.
+                GUILayout.Label(world.ActiveVendor.DisplayName + "  ·  살 것");
+                for (int i = 0; i < ShopBuy.Length; i++)
+                {
+                    string id = ShopBuy[i];
+                    if (GUILayout.Button((shopPick == id ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(id) +
+                                         "  " + ItemCatalog.BuyPrice(id) + "G", ItemStyle(shopPick == id)))
+                        shopPick = shopPick == id ? "" : id;
+                }
+                GUILayout.Label("팔 것");
+                for (int i = 0; i < ShopSell.Length; i++)
+                {
+                    string id = ShopSell[i];
+                    if (GUILayout.Button((shopPick == id ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(id) +
+                                         "  " + Owned(me, id) + "개 보유", ItemStyle(shopPick == id)))
+                        shopPick = shopPick == id ? "" : id;
+                }
+                GUILayout.Label(shopPick == "" ? "고른 것 없음 — 항목을 눌러 고르세요"
+                                               : "고른 것: " + ItemCatalog.DisplayNameOf(shopPick));
+                // 산 것을 팔 수는 없다 — 고른 항목이 어느 목록의 것이냐에 따라 버튼이 켜진다.
+                // (둘 다 켜 두면 눌러 보고 나서야 안 된다는 걸 알게 된다 — 가방과 같은 규칙.)
+                GUILayout.BeginHorizontal();
+                GUI.enabled = shopPick != "" && System.Array.IndexOf(ShopBuy, shopPick) >= 0;
+                if (GUILayout.Button("사기")) Shop(net, true, shopPick);
+                GUI.enabled = shopPick != "" && System.Array.IndexOf(ShopSell, shopPick) >= 0;
+                if (GUILayout.Button("팔기")) Shop(net, false, shopPick);
+                GUI.enabled = true;
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("상점 닫기")) world.CloseVendor();
                 GUILayout.Space(6f);
             }
             if (world.ActiveTrainer != null && !me.Ghost)
@@ -686,30 +706,11 @@ namespace Ulon.Client
                 GUILayout.Space(6f);
             }
             var forge = OfflineWorld.FindStation("Forge");
-            if (InRange(me, forge))
-            {
-                GUILayout.Label(forge.DisplayName);
-                // 수리 전용 버튼 — 예전에는 「재료가 모자란 제작」이 우연히 수리로 떨어질 때만 수리됐다.
-                Row3(("수리", () => RepairAt(net, forge)), ("자물쇠", () => CraftAt(net, forge, "lockpick")));
-                GUILayout.Space(6f);
-            }
+            if (InRange(me, forge)) { Station(world, me, net, forge, SkillId.Blacksmithing); GUILayout.Space(6f); }
             var carpenter = OfflineWorld.FindStation("Carpenter");
-            if (InRange(me, carpenter))
-            {
-                GUILayout.Label(carpenter.DisplayName);
-                Row3(("나무활", () => CraftAt(net, carpenter, "wooden_bow")),
-                     ("나무창", () => CraftAt(net, carpenter, "wooden_spear")),
-                     ("나무곤봉", () => CraftAt(net, carpenter, "wooden_club")));
-                Row3(("류트", () => CraftAt(net, carpenter, "lute")));
-                GUILayout.Space(6f);
-            }
+            if (InRange(me, carpenter)) { Station(world, me, net, carpenter, SkillId.Carpentry); GUILayout.Space(6f); }
             var mortar = OfflineWorld.FindStation("Mortar");
-            if (InRange(me, mortar))
-            {
-                GUILayout.Label(mortar.DisplayName);
-                Row3(("회복물약", () => CraftAt(net, mortar, "health_potion")));
-                GUILayout.Space(6f);
-            }
+            if (InRange(me, mortar)) { Station(world, me, net, mortar, SkillId.Alchemy); GUILayout.Space(6f); }
             var locked = OfflineWorld.FindCrate("LockedCrate");
             if (InRangeCrate(me, locked))
             {
@@ -736,6 +737,56 @@ namespace Ulon.Client
             }
             PanelTrade(world, me, net);
             GUILayout.EndScrollView();
+        }
+
+        static readonly string[] ShopBuy =
+        {
+            ItemCatalog.Pickaxe, ItemCatalog.Hatchet, ItemCatalog.FishingPole,
+            ItemCatalog.Bandage, ItemCatalog.Cloth, "resin", ItemCatalog.Lute, ItemCatalog.Lockpick,
+        };
+
+        static readonly string[] ShopSell = { "iron_ore", "wood", ItemCatalog.Fish };
+
+        static int Owned(WorldBody me, string id)
+        {
+            var bag = me != null ? me.GetComponent<InventoryBag>() : null;
+            if (bag == null) return 0;
+            int n = 0;
+            for (int i = 0; i < bag.Items.Count; i++)
+                if (bag.Items[i].TemplateId == id) n += bag.Items[i].Amount;
+            return n;
+        }
+
+        /// <summary>
+        /// 제작대 하나 — 그 대장간·목공소·연금대에서 만들 수 있는 제작법을 **원장에서** 뽑아 보여준다.
+        /// 조작법은 가방과 같다: 목록에서 고르고, 버튼이 고른 것에 작용하고, 선택이 없으면 비활성.
+        /// 재료가 모자라면 줄에 그대로 적는다 — 눌러 보고 나서야 알게 하지 않는다.
+        /// </summary>
+        void Station(OfflineWorld world, WorldBody me, NetAvatar net, CraftStation station, SkillId skill)
+        {
+            GUILayout.Label(station.DisplayName);
+            var ids = CraftRecipes.CodeDefaults;
+            for (int i = 0; i < ids.Length; i++)
+            {
+                var recipe = CraftRecipes.Find(ids[i].Id);
+                if (recipe == null || recipe.Skill != skill)
+                    continue;
+                int have = Owned(me, recipe.Ingredient);
+                string line = (craftPick == recipe.Id ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(recipe.Output) +
+                              "  ← " + ItemCatalog.DisplayNameOf(recipe.Ingredient) + " " + have + "/" + recipe.Count +
+                              (have < recipe.Count ? "  재료 부족" : "");
+                if (GUILayout.Button(line, ItemStyle(craftPick == recipe.Id)))
+                    craftPick = craftPick == recipe.Id ? "" : recipe.Id;
+            }
+            GUILayout.Label(craftPick == "" ? "고른 것 없음 — 제작법을 눌러 고르세요"
+                                            : "고른 것: " + ItemCatalog.DisplayNameOf(CraftRecipes.Find(craftPick).Output));
+            GUI.enabled = craftPick != "";
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("만들기")) CraftAt(net, station, craftPick);
+            // 수리 전용 버튼 — 예전에는 「재료가 모자란 제작」이 우연히 수리로 떨어질 때만 수리됐다.
+            if (GUILayout.Button("수리")) RepairAt(net, station);
+            GUILayout.EndHorizontal();
+            GUI.enabled = true;
         }
 
         static readonly SkillId[] Trainable =
