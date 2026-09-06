@@ -67,9 +67,16 @@
 `AssertItemDataFile`이 「파일을 고쳐도 ItemCatalog가 안 따라옵니다」로 FAIL(exit 1).
 코드 `85f66512`.
 
+수치 데이터 외부화 2/3 — **몬스터**(같은 이터, 2026-09-06).
+`MobCatalog`의 HP·키·표시명·STR·저항·피해대·보스판정·처치드랍·조련가능을
+`Data/mobs.json`(14종)으로 옮겼다. 외형(FBX 상수)은 12.2 외형/능력치 분리대로 코드에 남겼다.
+items.json과 중복이던 파일 읽기는 공용 `DataLedger.TryRead`로 합쳤다 — 원장이 늘어도 한 곳만 고친다.
+검증: `slice_selfcheck.sh` PASS(로그 「몬스터 수치 원장 14종」).
+네거티브 컨트롤: `MobCatalog.TryGet`의 데이터 분기를 빼고 재실행하면
+`AssertMobDataFile`이 「파일을 고쳐도 MobCatalog가 안 따라옵니다」로 FAIL(exit 1).
+코드 `ae7c70c3`.
+
 ## 다음 후보 (오너와 정할 것)
-- 수치 데이터 외부화 2/3 — **몬스터**: `MobCatalog.TryGet`이 14종 if-체인(HP·키)이다.
-  아이템과 같은 방식으로 `Data/mobs.json`. 외형(FBX 상수)은 코드에 남긴다(12.2 외형/능력치 분리).
 - 수치 데이터 외부화 3/3 — **제작법**: `CraftRecipes.All`(재료·개수·난이도·수리가능).
 - 기획서 13.3의 8개월차 안정화: 관심 영역(Interest Management), 성능 테스트.
 - 월드 비주얼·연출 폴리싱: QA 스샷 기준 지형이 평평한 초록 단색이고 NPC가 일렬로 서 있다.
