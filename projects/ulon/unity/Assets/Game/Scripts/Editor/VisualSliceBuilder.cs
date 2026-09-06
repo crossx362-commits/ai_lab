@@ -250,6 +250,7 @@ namespace Ulon.Editor
             ApplyVillageDecor(parent, Fence, Gate, Hedge, Lantern, Tree, TreeH, Bush, RockS, RockN,
                 Wall, Shutters, Door, RoofHigh, Chimney, WoodWall, WoodDoor, Roof);
             SnapBuildingsToGround();
+            Debug.Log("[Ulon] 건물 시야 페이드 — 레이어 올린 렌더러 " + EnsureBuildingsFadeable() + "개");
             EnsureNamedVisualsAndController();
             RelinkKayKitInScene();
             FramePlayCamera();
@@ -1595,6 +1596,54 @@ namespace Ulon.Editor
             go.transform.position += new Vector3(0f, dy, 0f);
         }
 
+        /// <summary>
+        /// **마을 건물 원장** — 「무엇이 건물인가」를 한 곳에만 적는다. 전에는 같은 이름 목록이
+        /// 지표 스냅·매몰 판정에 복붙돼 있었고, 여기에 시야 페이드까지 붙으면 세 벌이 갈라진다.
+        /// </summary>
+        static readonly string[] BuildingObjects =
+        {
+            "House", "Banker", "Forge", "Vendor", "Healer", "watermill",
+            HousingPlot.HouseObject, HousingPlot.VendorObject,
+        };
+
+        static bool IsBuilding(string name)
+        {
+            for (int i = 0; i < BuildingObjects.Length; i++)
+                if (BuildingObjects[i] == name)
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 건물도 **카메라와 플레이어 사이에 끼면 걷힌다**(검수 랩 D). 카메라 요는 고정이라
+        /// 집 뒤에 서면 화면에서 사라진다 — 실측 마을 279자리 중 7자리, 최악 20%(은행 풍차).
+        /// 새 기구를 만들지 않고 런타임이 이미 가진 `DungeonSightFade`가 걷도록 **레이어만** 올린다.
+        /// 콜라이더는 그대로라 이동 제한·충돌은 유지된다.
+        /// </summary>
+        public static int EnsureBuildingsFadeable()
+        {
+            int layer = LayerMask.NameToLayer(DungeonBlockerLayer);
+            if (layer < 0)
+                throw new InvalidOperationException("레이어 " + DungeonBlockerLayer + "가 없습니다(ProjectSettings/TagManager).");
+            int moved = 0;
+            var all = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                var go = all[i];
+                if (go == null || !go.scene.IsValid() || !IsBuilding(go.name))
+                    continue;
+                var rends = go.GetComponentsInChildren<Renderer>(true);
+                for (int r = 0; r < rends.Length; r++)
+                {
+                    if (rends[r].gameObject.layer == layer)
+                        continue;
+                    rends[r].gameObject.layer = layer;
+                    moved++;
+                }
+            }
+            return moved;
+        }
+
         static void SnapBuildingsToGround()
         {
             var all = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -1606,10 +1655,8 @@ namespace Ulon.Editor
                 if (IsCharacterArt(go.transform))
                     continue;
                 string n = go.name;
-                if (n == "House" || n == "Banker" || n == "Forge" || n == "Vendor" || n == "Healer"
-                    || n == "FishingSpot" || n == "watermill" || n == "Campfire" || n == "Mortar"
-                    || n == "OakTree" || n == "IronVein" || n == HousingPlot.HouseObject
-                    || n == HousingPlot.VendorObject)
+                if (IsBuilding(n) || n == "FishingSpot" || n == "Campfire" || n == "Mortar"
+                    || n == "OakTree" || n == "IronVein")
                     SnapRootToGround(go);
             }
         }
@@ -1624,9 +1671,7 @@ namespace Ulon.Editor
                 if (go == null || !go.scene.IsValid())
                     continue;
                 string n = go.name;
-                bool house = n == "House" || n == "Banker" || n == "Forge" || n == "Vendor" || n == "Healer"
-                    || n == "watermill" || n == HousingPlot.HouseObject || n == HousingPlot.VendorObject;
-                if (!house)
+                if (!IsBuilding(n))
                     continue;
                 Bounds b = CombinedBounds(go);
                 if (b.min.y < -0.05f)

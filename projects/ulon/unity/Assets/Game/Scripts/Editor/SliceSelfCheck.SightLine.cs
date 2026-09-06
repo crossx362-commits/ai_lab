@@ -45,6 +45,18 @@ namespace Ulon.Editor
 
             float floor = GroundYAt(new Vector2(cx, cz)) - VisualSliceBuilder.DungeonDepth + VisualSliceBuilder.RoomFloorTop;
             var feet = new Vector3(cx, floor, cz);
+            return OccludedShareAt(feet, dist, applyFade, out total, out worst);
+        }
+
+        /// <summary>
+        /// 발밑 좌표와 카메라 거리를 받아 같은 계측을 한다 — 실내(방 바닥)와 야외(지표)가 **같은 함수**를 쓴다.
+        /// 야외 표본을 따로 구현하면 두 판정이 갈라진다(원장 패턴).
+        /// </summary>
+        static float OccludedShareAt(Vector3 feet, float dist, bool applyFade, out int total, out string worst)
+        {
+            var qv = UnityEngine.Object.FindFirstObjectByType<QuarterViewCamera>(FindObjectsInactive.Include);
+            float pitch = qv != null ? qv.Pitch : 35f;
+            float yaw = qv != null ? qv.Yaw : 45f;
             var rot = Quaternion.Euler(pitch, yaw, 0f);
             var eye = feet + Vector3.up * 1.0f - rot * Vector3.forward * dist;
             var right = rot * Vector3.right;
