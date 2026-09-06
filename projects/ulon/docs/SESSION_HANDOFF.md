@@ -22,31 +22,19 @@ SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # �
 5. 보고엔 기획서 조항 번호(`docs/GAME_DESIGN.md` §4.2·§6.1·§8.1·§8.2·§10.2·§11·§12.2)를 인용.
 
 ## 최근 커밋 (오래된 것 → 최신)
-85f66512, 5b955804, ae7c70c3, bada4df6, 221c72d0, 6b6fbcde, 737bd088, 37c9fbcb,
-9f1557ba(입구 문틀), 6e9f19f3, 808155b6, eb0961ce(흰 바위 잔재),
-b074dc52(던전 지하화 + 게이트 2종), cf8404c5(페이드가 바닥을 지우던 버그·방 안 잔디),
-34033723(방 가장자리 하늘 비침·실내 알베도).
+… eb0961ce(흰 바위 잔재), b074dc52·cf8404c5·34033723(던전 지하화 + 게이트 2종),
+8ec5cf4a(인수인계), cbf2341d·8646a0ca·ed1098ad·e89faccf·096261d0·eb88e531(월드 지형 산·바다·강·호수),
+dc18aeb5(왕관 위치·보스 무기·입구 마감 반려 3건), 2ef3b6c4(던전 침수), 917f0f3f(발 높이).
 
-## 방금 끝난 것 — 던전 지하화(검수 P0)
-- 방 바닥 = 지면 −`VisualSliceBuilder.DungeonDepth`(4.5m), 벽은 지면까지. 몹·보스·출구·등불·잔해는 `SinkIntoDungeon`으로 함께 내림.
-- 천장 한 장 → 6×6 `DungeonCap` 타일 + `PunchTerrainHole`(여백 2.5m)로 Terrain에 구멍. 페이드가 작은 창만 연다.
-- 게이트 2종(`Editor/SliceSelfCheck.Interior.cs`):
-  - **화면 채움**(§8.2): 플레이 카메라 시야 21×21 샘플 레이 중 잔디 비율 상한 0.45. 실측 0.07/0.13/0.23,
-    네거티브 컨트롤(뚜껑을 방 크기로 축소) 0.60 → FAIL. 하늘은 계측만(3/4 시점에선 늘 조금 들어온다).
-  - **실내 조명**(§8.2, `AssertDungeonLighting`): 주광이 방 바닥에 직접 못 닿음(암반 뚜껑 그림자) + 지면 아래 등불 점광 3개↑.
-    네거티브 컨트롤(받침 광원 `RoomFill` 제거) 2개 → FAIL.
-- 버그 2건 수리: 페이드가 대상보다 아래 렌더러(바닥)까지 지워 하늘이 비침 → `DungeonSightFade.Hide`에서 `bounds.max.y < look.y - 0.2` 제외.
-  바닥 판이 Terrain 홀보다 좁아 가장자리로 하늘이 보임 → `span + 8`.
-- 화면 근거: `builds/qa/08_d1_interior_playcam.png`(암반 단면 아래 등불로 밝힌 석실, 보스·잡몹 식별됨).
+## 최근에 끝난 것
+1. **던전 지하화**(검수 P0) — 방 바닥 지면 −4.5m, 6×6 암반 뚜껑 + Terrain 홀.
+   게이트: 화면 잔디 비율 45% 상한(§8.2) / `AssertDungeonLighting`(주광 차단·지하 점광 3개↑).
+2. **월드 지형**(오너 지시) — `Shared/WorldTerrain.cs`가 높이 원장. 맵 300m·높이 60m,
+   평지 → 산 띠(최고 52m) → 해안 → 바다, 호수(-70,10)·강(x −80~−140)이 같은 수면(3.0) 공유.
+   도포 3종(풀·바위·모래). `AssertWorldTerrain`(기복·표준편차·수면 아래 비율·호수/강 개별·도포·콘텐츠 8곳 뭍).
+3. **검수 반려 3건** — 왕관을 CharacterController 머리 기준으로(Assert: 바닥 ≥ 몸높이 0.8배),
+   보스 무기를 실제로 렌더(가장 큰 장비 선택·조상 활성화·HideExtraGear 예외·EnsureBossDressing 멱등,
+   Assert: 렌더러 + 최장변 ≥ 몸높이 0.4배), 입구 흰 바위 제거(EnsureEntranceClearance)·옆벽 정렬.
+4. **지형 작업이 부른 회귀 2건** — 던전이 수면 아래로 잠김(LandBase 10.0 + 침수 Assert),
+   방 안 몹·보스가 바닥에 파묻힘(StandOnRoomFloor + 발 높이 Assert).
 
-## 다음 할 일 (검수 확정 순서 — 새 지시가 오면 그게 맨 앞)
-1. 검수에 지하화 완료 보고 후 **다음 과제를 검수에 질문**(오너 지시).
-2. 온라인 서버권한 2건(`NetAvatar` SyncVar 노출 / `RpcTame`·`RpcPet` 부재) — 검수 검증 후 순위 재조정 중.
-3. 테스트 공간(§6.1) 구현 + 문서의 "MVP 콘텐츠 상한 충족" 문구를 미구현으로 정정.
-4. `DataLedger` 레코드 단위 검증(아이템 weight>0·buy≥0·uses≥0·strReq≥0 / 몹 hp>0·height>0·name 비어있지 않음·dmgMin≥0·dmgMax≥dmgMin),
-   불량 레코드는 코드 폴백 + `Debug.LogError` + `loadError` 누적, 필드 없는 레코드로 코드 기본값 확인 Assert. **검수가 먼저 시작하지 말라고 함.**
-5. GM "원장 다시 읽기" 배선, "재빌드 없이" 문구를 "(서버 재시작 또는 GM 리로드)"로 정정, 스택 결합 경고 문서,
-   `TameCritter/TameBoar.DisplayName` 이중 원장, `MobCatalog.KindCount = 8` vs 14 모순, 클라 변조면 주석,
-   Assert의 문자열 치환을 파싱/수정/기록으로 교체, `Assets/Game/Data/.gitkeep` 삭제.
-6. 제작법(CraftRecipes) 외부화.
-7. 오너의 산·바다·강·호수 지형 작업 — 검수가 오너 확인 중이라 **대기**. 착수 전 §11 리소스 정책·§8.1 폴리 예산 확인.
