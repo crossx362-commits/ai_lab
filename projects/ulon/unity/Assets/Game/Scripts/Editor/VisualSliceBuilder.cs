@@ -807,7 +807,8 @@ namespace Ulon.Editor
 
             EnsureDungeonMob(parent);
             EnsureDungeonBoss(parent);
-            SinkIntoDungeon(parent, Dungeon1.MobObject, Dungeon1.BossObject, Dungeon1.ExitObject);
+            SinkIntoDungeon(parent, Dungeon1.ExitObject);
+            StandOnRoomFloor(new Vector3(Dungeon1.InteriorX, 0f, Dungeon1.InteriorZ), Dungeon1.MobObject, Dungeon1.BossObject);
         }
 
         public static void EnsureDungeon2()
@@ -877,7 +878,8 @@ namespace Ulon.Editor
 
             EnsureDungeon2Mob(parent);
             EnsureDungeon2Boss(parent);
-            SinkIntoDungeon(parent, Dungeon2.MobObject, Dungeon2.BossObject, Dungeon2.ExitObject);
+            SinkIntoDungeon(parent, Dungeon2.ExitObject);
+            StandOnRoomFloor(new Vector3(Dungeon2.InteriorX, 0f, Dungeon2.InteriorZ), Dungeon2.MobObject, Dungeon2.BossObject);
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
         }
@@ -951,7 +953,8 @@ namespace Ulon.Editor
             EnsureDungeon3Signpost(parent);
             EnsureDungeon3Mob(parent);
             EnsureDungeon3Boss(parent);
-            SinkIntoDungeon(parent, Dungeon3.MobObject, Dungeon3.BossObject, Dungeon3.ExitObject);
+            SinkIntoDungeon(parent, Dungeon3.ExitObject);
+            StandOnRoomFloor(new Vector3(Dungeon3.InteriorX, 0f, Dungeon3.InteriorZ), Dungeon3.MobObject, Dungeon3.BossObject);
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
         }
@@ -2327,6 +2330,23 @@ namespace Ulon.Editor
                 var go = GameObject.Find(names[i]);
                 if (go != null)
                     SinkIntoDungeon(go);
+            }
+        }
+
+        /// <summary>
+        /// 방 안 오브젝트를 **방 바닥 윗면**에 세운다. 각자 자기 자리 지면에서 깊이만큼 내리면
+        /// 지면 기복만큼 어긋나 바닥에 파묻히거나 뜬다(지형 작업 후 보스가 0.31m 파묻혔다).
+        /// </summary>
+        public static void StandOnRoomFloor(Vector3 roomCenter, params string[] names)
+        {
+            float floorTop = OnGround(roomCenter).y - DungeonDepth + 0.2f;
+            for (int i = 0; i < names.Length; i++)
+            {
+                var go = GameObject.Find(names[i]);
+                if (go == null)
+                    continue;
+                var p = go.transform.position;
+                go.transform.position = new Vector3(p.x, floorTop, p.z);
             }
         }
 

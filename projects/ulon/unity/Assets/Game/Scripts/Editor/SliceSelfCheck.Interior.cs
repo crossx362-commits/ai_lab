@@ -98,6 +98,10 @@ namespace Ulon.Editor
             if (groundY < WorldTerrain.SeaLevel + 0.5f)
                 throw new InvalidOperationException(label + " 방 바닥이 " + groundY.ToString("0.0") + "m로 수면(" + WorldTerrain.SeaLevel + "m) 아래입니다 — 던전이 물에 잠깁니다. 평지 높이(WorldTerrain.LandBase)가 던전 깊이 " + VisualSliceBuilder.DungeonDepth + "m보다 충분히 높아야 합니다.");
 
+            // 발이 바닥에 닿는가 — 지형·깊이를 만지면 떠 있거나 파묻힌다(§8.1 화면 가독성).
+            CheckFeetOnFloor(label + " 잡몹", MobObjectAt(label, false), groundY);
+            CheckFeetOnFloor(label + " 보스", MobObjectAt(label, true), groundY);
+
             float gap = Vector2.Distance(mob, boss);
             if (gap < InteriorMobGapMin)
                 throw new InvalidOperationException(label + " 잡몹과 보스 간격이 " + gap.ToString("0.00") + "m입니다 — 최소 " + InteriorMobGapMin + "m(45° 시점에서 포개집니다).");
@@ -330,6 +334,31 @@ namespace Ulon.Editor
             }
             if (points < RoomPointLightMin)
                 throw new InvalidOperationException(label + " 방 안 등불 점광이 " + points + "개입니다 — 최소 " + RoomPointLightMin + "개(지면 아래·방 반경 " + InteriorRoomRadius + "m 안). 주광이 막힌 실내가 캄캄해집니다.");
+        }
+
+        const float FeetGapMax = 0.25f;
+
+        static string MobObjectAt(string label, bool boss)
+        {
+            if (label == "던전 1")
+                return boss ? Dungeon1.BossObject : Dungeon1.MobObject;
+            if (label == "던전 2")
+                return boss ? Dungeon2.BossObject : Dungeon2.MobObject;
+            return boss ? Dungeon3.BossObject : Dungeon3.MobObject;
+        }
+
+        /// <summary>방 바닥 윗면과 발끝의 차이. 바닥 판은 두께 0.2, 중심이 바닥+0.1이므로 윗면은 groundY+0.2다.</summary>
+        static void CheckFeetOnFloor(string what, string objectName, float roomFloorY)
+        {
+            var go = GameObject.Find(objectName);
+            if (go == null)
+                throw new InvalidOperationException(what + " 오브젝트가 없습니다: " + objectName);
+            float floorTop = roomFloorY + 0.2f;
+            float feet = go.transform.position.y;
+            float d = feet - floorTop;
+            Debug.Log("[Ulon] 발 높이 계측 " + what + " 발끝 " + feet.ToString("0.00") + " 바닥윗면 " + floorTop.ToString("0.00") + " 차 " + d.ToString("0.00"));
+            if (Mathf.Abs(d) > FeetGapMax)
+                throw new InvalidOperationException(what + "의 발이 방 바닥과 " + d.ToString("0.00") + "m 어긋납니다 — 허용 " + FeetGapMax + "m(양수는 공중부양, 음수는 바닥에 파묻힘).");
         }
 
         static float GroundYAt(Vector2 flat)
