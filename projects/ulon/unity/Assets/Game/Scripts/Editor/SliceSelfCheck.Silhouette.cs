@@ -12,7 +12,9 @@ namespace Ulon.Editor
         /// 몸이 먹혀 "떠 있는 모자"로 보였다. 수치만 보는 판정은 그걸 통과시킨다.
         /// </summary>
         const float BossSilhouetteRatio = 1.4f;
-        const float HeadgearWidthMax = 1.35f;
+        // 실측(2026-09-06): 모자 축소 후 hatW 1.52 / 축소 전 2.45, 몸 폭은 둘 다 2.84.
+        // 0.70이면 고친 상태는 통과하고 결함 상태는 잡힌다 — 이 값으로 네거티브 컨트롤이 빨간불을 낸다.
+        const float HeadgearWidthMax = 0.70f;
 
         static void AssertBossSilhouette()
         {
@@ -61,6 +63,8 @@ namespace Ulon.Editor
             {
                 float hatW = Mathf.Max(hat.size.x, hat.size.z);
                 float bodyW = Mathf.Max(body.size.x, body.size.z);
+                var ccm = bossGo.GetComponent<CharacterController>();
+                Debug.Log("[Ulon] 실루엣 계측 " + label + " hatW=" + hatW.ToString("0.00") + " bodyW=" + bodyW.ToString("0.00") + " ccR=" + (ccm != null ? ccm.radius : 0f).ToString("0.00") + " ccH=" + (ccm != null ? ccm.height : 0f).ToString("0.00"));
                 if (bodyW > 0.01f && hatW > bodyW * HeadgearWidthMax)
                     throw new InvalidOperationException(label + " 모자 폭 " + hatW.ToString("0.00") + "m가 몸 폭 " + bodyW.ToString("0.00") + "m의 " + HeadgearWidthMax + "배를 넘습니다 — 45° 시점에서 몸이 모자에 가려집니다.");
             }
