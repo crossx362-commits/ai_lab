@@ -38,7 +38,10 @@ namespace Ulon.Shared
         /// <summary>월드 좌표의 지형 높이(미터).</summary>
         public static float HeightAt(float wx, float wz)
         {
-            float m = Mathf.Max(Mathf.Abs(wx), Mathf.Abs(wz));
+            // 정사각 링 그대로 쓰면 화면에서 "네모난 담장"으로 읽힌다(조망 샷 실측).
+            // 거리 자체를 노이즈로 흔들어 해안선·산자락을 들쭉날쭉하게 만든다.
+            float wobble = (Mathf.PerlinNoise(wx * 0.012f + 5.5f, wz * 0.012f + 71f) - 0.5f) * 26f;
+            float m = Mathf.Max(Mathf.Abs(wx), Mathf.Abs(wz)) + wobble;
             float h;
 
             if (m <= FlatMax)

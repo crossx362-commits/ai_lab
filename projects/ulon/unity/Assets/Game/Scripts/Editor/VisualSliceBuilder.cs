@@ -1607,11 +1607,7 @@ namespace Ulon.Editor
                 EditorUtility.SetDirty(sky);
                 RenderSettings.skybox = sky;
             }
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.55f, 0.70f, 0.86f);
-            RenderSettings.fogStartDistance = 42f;
-            RenderSettings.fogEndDistance = 115f;
+            EnsureWorldAtmosphere();
             RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.58f, 0.62f, 0.55f);
         }
@@ -2600,6 +2596,19 @@ namespace Ulon.Editor
 
         /// <summary>지형은 셀프체크에서도 다시 만든다 — 안 그러면 원장(WorldTerrain)을 고쳐도
         /// 씬에는 디스크의 옛 지형이 남아 Assert가 옛 값을 본다(2026-09-06 실측: 180m가 계속 잡혔다).</summary>
+        /// <summary>
+        /// 안개 범위는 월드 크기를 따라간다 — 42~115m로는 300m 월드에서 산·바다가 통째로 안개에 묻혀
+        /// §8.1 「멀리서도 즉시 읽히는 실루엣」이 성립하지 않는다(2026-09-06 조망 샷 실측).
+        /// </summary>
+        public static void EnsureWorldAtmosphere()
+        {
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = new Color(0.55f, 0.70f, 0.86f);
+            RenderSettings.fogStartDistance = 90f;
+            RenderSettings.fogEndDistance = WorldTerrain.Span * 1.6f;
+        }
+
         public static void EnsureVillageTerrain()
         {
             Directory.CreateDirectory(Path.Combine(Application.dataPath, "Game/Art/Env"));
@@ -2692,6 +2701,7 @@ namespace Ulon.Editor
                 col.terrainData = data;
 
             EnsureWater();
+            EnsureWorldAtmosphere();
         }
 
         /// <summary>
@@ -2719,7 +2729,8 @@ namespace Ulon.Editor
                     UnityEngine.Object.DestroyImmediate(c);
             }
             go.transform.position = new Vector3(0f, WorldTerrain.SeaLevel, 0f);
-            go.transform.localScale = new Vector3(WorldTerrain.Span / 10f, 1f, WorldTerrain.Span / 10f);
+            // 지형보다 훨씬 넓게 — 수면 끝이 화면에 보이면 "판때기"로 읽힌다.
+            go.transform.localScale = new Vector3(WorldTerrain.Span * 0.3f, 1f, WorldTerrain.Span * 0.3f);
             var rend = go.GetComponent<Renderer>();
             if (rend != null && mat != null)
                 rend.sharedMaterial = mat;
