@@ -20,9 +20,15 @@ namespace Ulon.Editor
         // 「크다」만으로는 부족하다 — **손에 들려 있는지**와 **머리 축 위에 있는지**를 잰다.
         // 앵커 거리만 재면 메시 원점이 칼끝인 장비를 통과시킨다(실제로 통과했다: 앵커 0.03m인데 화면에선 얼굴 옆).
         // 그래서 **손이 무기 덩어리 안에 있는지**를 잰다.
-        const float WeaponHandDistMax = 1.50f;   // 앵커는 느슨한 상식선만(진짜 판정은 아래 포함 여부)
-        const float WeaponHandInsideMax = 0.15f;
+        // 앵커(무기 트랜스폼 원점) 거리는 판정에서 뺐다 — 메시 원점이 칼끝인 장비는 그립이 손에 있어도
+        // 앵커가 1.8m 떨어진다(섀도우캡틴 실측). 화면 진실은 그립 끝점과 팔뚝 정렬이다.
+        // 검수 2026-09-06 반려 2 — bounds 포함은 대리 지표였다(긴 칼의 AABB가 몸을 삼킨다).
+        const float WeaponGripDistMax = 0.10f;      // 그립 끝점 ↔ 손 본
+        const float WeaponForearmAngleMax = 60f;    // 무기 장축 ↔ 팔꿈치→손 방향
         const float CrownAxisOffsetMax = 0.15f;
+        // 검수 2026-09-06 반려 1 — 수평만 재서 수직이 무검사로 남았다.
+        const float CrownSitGapMax = 0.03f;         // 왕관 바닥이 정수리 위로 떠도 되는 한도
+        const float CrownWidthRatioMax = 1.4f;      // 왕관 지름 ≤ 머리 폭 × 이 값
 
         static void AssertBossTraits()
         {
@@ -91,35 +97,57 @@ namespace Ulon.Editor
             if (!bigWeapon)
                 throw new InvalidOperationException(label + "가 무기를 들고 있지 않습니다 — 렌더러가 있는 " + VisualSliceBuilder.BossWeaponPrefix + "* 오브젝트가 없습니다(§10.2 큰 무기). 이름만 바꾸는 것으로는 화면에 안 보입니다.");
 
-            // 손 부착 — 무기 앵커가 손 본에서 얼마나 떨어져 있나.
+            // 손 부착 — **그립 끝점**이 손에 있고, 칼날이 팔뚝 방향으로 뻗고, 무기가 얼굴 옆이 아니어야 한다.
+            // bounds 포함 판정은 긴 칼의 AABB가 몸을 삼켜서 늘 통과했다(검수 2026-09-06 반려 2 — 대리 지표).
             var hand = VisualSliceBuilder.FindHandBone(go);
             if (weaponT != null)
             {
                 if (hand == null)
                     throw new InvalidOperationException(label + "에게 손 본이 없습니다 — 무기를 손에 매달 수 없습니다(§10.2).");
-                float d = Vector3.Distance(weaponT.position, hand.position);
-                Debug.Log("[Ulon] 보스 무기 손 거리 " + label + " " + d.ToString("0.00") + "m (한도 " + WeaponHandDistMax + ")");
-                Bounds hb;
-                if (RenderBounds(weaponT, out hb))
+                if (!BossFit.WeaponAxis(weaponT, out Vector3 grip, out Vector3 tip))
+                    throw new InvalidOperationException(label + " 무기의 장축을 못 읽었습니다 — 렌더가 켜진 메시가 없습니다(§10.2).");
+
+                float gripD = Vector3.Distance(grip, hand.position);
+                var along = (tip - grip).normalized;
+                var fore = BossFit.ForearmDir(hand, go.transform);
+                float angle = Vector3.Angle(along, fore);
+                Debug.Log("[Ulon] 보스 무기 그립 " + label + " 손까지 " + gripD.ToString("0.00") + "m·팔뚝 정렬 " + angle.ToString("0") + "° (한도 " + WeaponGripDistMax + "m/" + WeaponForearmAngleMax + "°)");
+                if (gripD > WeaponGripDistMax)
+                    throw new InvalidOperationException(label + " 무기 그립 끝이 손에서 " + gripD.ToString("0.00") + "m 떨어져 있습니다 — 최대 " + WeaponGripDistMax +
+                        "m. 무기 덩어리는 근처에 있어도 **쥔 것으로 안 읽힙니다**(§8.1). 손 본 위치로 그립 끝을 옮기세요.");
+                if (angle > WeaponForearmAngleMax)
+                    throw new InvalidOperationException(label + " 무기 장축이 팔뚝 방향과 " + angle.ToString("0") + "° 어긋났습니다 — 최대 " + WeaponForearmAngleMax +
+                        "°. 칼이 몸에 가로로 꽂힌 막대로 보입니다(§8.1).");
+
+                if (BossFit.HeadBounds(go, out Bounds headB))
                 {
-                    float outside = Mathf.Sqrt(hb.SqrDistance(hand.position));
-                    Debug.Log("[Ulon] 보스 무기-손 포함 " + label + " " + outside.ToString("0.00") + "m (한도 " + WeaponHandInsideMax + ")");
-                    if (outside > WeaponHandInsideMax)
-                        throw new InvalidOperationException(label + " 손이 무기 덩어리 밖 " + outside.ToString("0.00") + "m에 있습니다 — 최대 " + WeaponHandInsideMax +
-                            "m. 앵커만 손에 있고 무기는 얼굴 옆에 떠 있는 상태입니다(§8.1).");
+                    var wCenter = (grip + tip) * 0.5f;
+                    if (headB.Contains(wCenter))
+                        throw new InvalidOperationException(label + " 무기 중심이 머리 덩어리 안에 있습니다 — 칼이 얼굴 옆 눈높이에 떠 있습니다(§8.1).");
                 }
-                if (d > WeaponHandDistMax)
-                    throw new InvalidOperationException(label + " 무기가 손에서 " + d.ToString("0.00") + "m 떨어져 있습니다 — 최대 " + WeaponHandDistMax +
-                        "m. 무기가 아예 다른 곳에 붙어 있습니다(§8.1). 손 본에 매다세요.");
+
             }
-            // 왕관 중심축 — 머리 위에 얹혀야 왕관으로 읽힌다.
+            // 왕관 — 수평 축만 재면 결함이 **수직으로** 빠져나간다(검수 반려 1). 정수리 위 부착과 크기를 함께 잰다.
             if (crownT != null)
             {
                 Vector3 axis = go.transform.position + cc.center;
                 float off = new Vector2(crownT.position.x - axis.x, crownT.position.z - axis.z).magnitude;
-                Debug.Log("[Ulon] 보스 왕관 축 편차 " + label + " " + off.ToString("0.00") + "m (한도 " + CrownAxisOffsetMax + ")");
                 if (off > CrownAxisOffsetMax)
                     throw new InvalidOperationException(label + " 왕관이 몸 축에서 수평으로 " + off.ToString("0.00") + "m 벗어났습니다 — 최대 " + CrownAxisOffsetMax + "m(§8.1).");
+
+                if (!BossFit.HeadMetrics(go, out float headTopY, out float headW, out Vector3 _))
+                    throw new InvalidOperationException(label + " 머리 정점을 못 읽었습니다 — 왕관 부착을 검사할 수 없습니다(§10.2).");
+                if (!RenderBounds(crownT, out Bounds cb2))
+                    throw new InvalidOperationException(label + " 왕관 렌더러가 없습니다(§10.2).");
+                float gap = cb2.min.y - headTopY;          // +면 공중에 떠 있다
+                float diameter = Mathf.Max(cb2.size.x, cb2.size.z);
+                Debug.Log("[Ulon] 보스 왕관 " + label + " 정수리 대비 바닥 " + gap.ToString("+0.00;-0.00") + "m·지름 " + diameter.ToString("0.00") + "m/머리폭 " + headW.ToString("0.00") + "m (한도 " + CrownSitGapMax + "m/×" + CrownWidthRatioMax + ")");
+                if (gap > CrownSitGapMax)
+                    throw new InvalidOperationException(label + " 왕관 바닥이 정수리보다 " + gap.ToString("0.00") + "m 위에 있습니다 — 최대 " + CrownSitGapMax +
+                        "m. 관 전체가 머리 위 공중에 떠 있습니다(§8.1). CharacterController 캡슐 꼭대기가 아니라 **실제 메시 정수리**에 얹으세요.");
+                if (diameter > headW * CrownWidthRatioMax)
+                    throw new InvalidOperationException(label + " 왕관 지름이 " + diameter.ToString("0.00") + "m로 머리 폭 " + headW.ToString("0.00") + "m의 " +
+                        (diameter / Mathf.Max(0.01f, headW)).ToString("0.0") + "배입니다 — 최대 " + CrownWidthRatioMax + "배. 머리보다 큰 관은 얹힌 것으로 안 읽힙니다(§8.1).");
             }
 
             int traits = (crown ? 1 : 0) + (aura ? 1 : 0) + (bigWeapon ? 1 : 0);

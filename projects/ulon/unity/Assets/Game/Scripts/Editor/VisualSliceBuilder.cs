@@ -2222,10 +2222,17 @@ namespace Ulon.Editor
                     if (len > 0.01f && len < wantLen)
                         weapon.localScale = weapon.localScale * Mathf.Min(3.5f, wantLen / len);
                 }
-                // 앵커만 손에 두면 부족하다 — 메시 원점이 칼끝인 장비는 앵커가 손에 있어도 **몸통이 얼굴 옆에** 뜬다.
-                // 무기 덩어리의 한가운데를 손 위치로 옮겨 손이 무기 안에 들어오게 한다(게이트도 그걸 잰다).
-                if (handBone != null && BoundsOfEnabled(weapon, out wb))
-                    weapon.position += handBone.position - wb.center;
+                // 무기 덩어리 한가운데를 손에 맞추면 **칼이 얼굴 옆에 가로로 뜬다**(검수 2026-09-06 반려 2):
+                // 손 안에 들어와야 하는 건 무기 전체가 아니라 **그립 끝**이고, 칼날은 팔뚝 방향으로 뻗어야 한다.
+                if (handBone != null && BossFit.WeaponAxis(weapon, out Vector3 grip, out Vector3 tip))
+                {
+                    var along = tip - grip;
+                    var fore = BossFit.ForearmDir(handBone, boss.transform);
+                    if (along.sqrMagnitude > 1e-6f)
+                        weapon.rotation = Quaternion.FromToRotation(along.normalized, fore) * weapon.rotation;
+                    if (BossFit.WeaponAxis(weapon, out grip, out tip))
+                        weapon.position += handBone.position - grip;
+                }
             }
 
             // 2) 머리장식 — 머리 **위**에 얹는다.
@@ -2253,10 +2260,18 @@ namespace Ulon.Editor
                 headY = b.max.y;
                 headR = Mathf.Max(0.16f, b.size.x * 0.22f);
             }
+            // CharacterController 캡슐 꼭대기는 **머리카락보다 한 뼘 위**다 — 그 위에 얹으면 관이 공중에 뜬다
+            // (검수 2026-09-06 반려 1). 실제 정점(스킨드 베이크)의 정수리·머리 폭으로 다시 잡는다.
+            if (BossFit.HeadMetrics(boss, out float meshTopY, out float headW, out Vector3 headC))
+            {
+                headY = meshTopY;
+                axis = new Vector3(headC.x, axis.y, headC.z);
+                headR = headW * 0.46f;      // 테 조각·뿔 기울기까지 더한 실측 지름이 머리 폭 1.26배(게이트 상한 1.4배)
+            }
             var crown = new GameObject(BossCrownObject);
             crown.transform.SetParent(boss.transform, true);
-            crown.transform.position = new Vector3(axis.x, headY + 0.02f, axis.z);
-            headR = Mathf.Max(headR, 0.24f);
+            // 테 아랫면(pos.y + 0.04 − 0.05)이 정수리에 살짝 파묻히게 — 떠 있으면 얹힌 것으로 안 읽힌다.
+            crown.transform.position = new Vector3(axis.x, headY - 0.02f, axis.z);
             // 테(밴드)가 없으면 머리카락 위로 뿔 두 개만 삐죽 나와 「왕관」으로 안 읽힌다(검수 관찰).
             for (int i = 0; i < 12; i++)
             {
