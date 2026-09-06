@@ -13,5 +13,6 @@
 | Kenney Nature Kit | 필드 소품 | CC0 | 공식 zip 일부 | 2026-08-31 | grass, plant_bush, rock_largeA | https://kenney.nl/assets/nature-kit |
 | Kenney Retro Fantasy Kit | 소품 | CC0 |  |  |  |  |
 | Noto Sans KR | 한글 UI | SIL OFL 1.1 |  |  |  |  |
+| 지형 텍스처 4종(KenneyGrass·MountainRock·ShoreSand·SeaWater) | 지형 도포·수면 | 자체 제작 | VisualSliceBuilder.MakeNoiseMat이 128px 노이즈로 생성 | 2026-09-06 | Assets/Game/Art/Env/*.png | 코드 생성(외부 원본 없음) |
 
 모델뿐 아니라 UI, 소리, VFX, 폰트, 음악도 한 줄씩 추가한다.
