@@ -19,6 +19,7 @@ namespace Ulon.Editor
             if (scene.path != scenePath)
                 scene = EditorSceneManager.OpenScene(scenePath);
             VisualSliceBuilder.EnsureVillageTerrain();   // 지형 먼저 — 던전 방이 여기에 구멍을 뚫는다
+            VisualSliceBuilder.EnsureMobArtQualified();    // 맨몸 모델 몹은 지우고 다시 짓는다(검수 자격 규칙)
             VisualSliceBuilder.EnsureHuntMobs();
             VisualSliceBuilder.EnsureHuntMobPlacement();
             VisualSliceBuilder.EnsureMobDressing();
@@ -1597,6 +1598,8 @@ namespace Ulon.Editor
             AssertDungeonLighting();
             AssertWorldTerrain();
             AssertHuntGround();
+            AssertMobArtQualified();
+            AssertMobArtNegativeControl();
             AssertFootOnGround();
             AssertFootNegativeControl();
             AssertWorldRegions();

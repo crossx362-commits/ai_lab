@@ -17,6 +17,8 @@ namespace Ulon.Editor
         const string ScenePath = "Assets/Game/Scenes/Bootstrap.unity";
         const string ControllerPath = "Assets/Game/Art/Characters/SharedLocomotion.controller";
         const string KnightFbx = "Assets/_ThirdParty/KayKit/Adventurers/RAW/Characters/Knight.fbx";
+        // Barbarian은 **맨몸 상반신**이라 잡몹·동료로 쓰지 않는다(검수 2026-09-06: 살색 덩어리로 읽힌다).
+        // 자격은 `MobArt` 원장이 강제한다 — 여기서 지우기만 하면 다음 사람이 다시 넣는다.
         const string BarbarianFbx = "Assets/_ThirdParty/KayKit/Adventurers/RAW/Characters/Barbarian.fbx";
         const string MageFbx = "Assets/_ThirdParty/KayKit/Adventurers/RAW/Characters/Mage.fbx";
         const string RogueFbx = "Assets/_ThirdParty/KayKit/Adventurers/RAW/Characters/Rogue.fbx";
@@ -32,7 +34,6 @@ namespace Ulon.Editor
         {
             EditorSceneManager.OpenScene(ScenePath);
             ConfigureHumanoid(KnightFbx, true);
-            ConfigureHumanoid(BarbarianFbx, true);
             ConfigureHumanoid(MageFbx, true);
             ConfigureHumanoid(RogueFbx, true);
             ConfigureHumanoid(SkeletonFbx, true);
@@ -586,7 +587,7 @@ namespace Ulon.Editor
                 BindMob(skel, MobCatalog.Skeleton);
 
             EnsureHuntMob("Bandit", MobCatalog.Bandit, MageFbx, new Vector3(-1.6f, 0f, 13.2f));
-            EnsureHuntMob("Raider", MobCatalog.Raider, BarbarianFbx, new Vector3(2.4f, 0f, 13.2f));
+            EnsureHuntMob("Raider", MobCatalog.Raider, KnightFbx, new Vector3(2.4f, 0f, 13.2f));
             EnsureHuntMob("Rogue", MobCatalog.Rogue, RogueFbx, new Vector3(-3.8f, 0f, 13.2f));
             EnsureHuntMob("Knight", MobCatalog.Knight, KnightFbx, new Vector3(4.4f, 0f, 13.2f));
             EnsureHuntMob("Acolyte", MobCatalog.Acolyte, SkeletonMageFbx, new Vector3(6.4f, 0f, 13.2f));
@@ -1007,12 +1008,12 @@ namespace Ulon.Editor
             var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
             if (ctrl == null)
                 return;
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(BarbarianFbx) == null)
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(KnightFbx) == null)
                 return;
-            ConfigureHumanoid(BarbarianFbx, true);
+            ConfigureHumanoid(KnightFbx, true);
             var spawned = SpawnActor(
                 Dungeon3.MobObject,
-                BarbarianFbx,
+                KnightFbx,
                 new Vector3(Dungeon3.MobX, 0f, Dungeon3.MobZ),
                 MobCatalog.HeightOf(MobCatalog.Raider),
                 ctrl,
@@ -2594,6 +2595,33 @@ namespace Ulon.Editor
         /// 지형 높이를 올린 랩 이후 마을 건물·상인·장식이 지표 10m 아래에 묻혀 있었다 — 화면에서 마을이 사라졌다.
         /// 대상·바운드·기대 높이는 게이트와 같은 `GroundFit`을 쓴다.
         /// </summary>
+        /// <summary>
+        /// 자격 없는 모델을 쓰는 몹은 **지우고 다시 짓게** 한다 — `Ensure*`는 오브젝트가 있으면 일찍 반환하므로
+        /// 모델 상수를 바꿔도 이미 저장된 씬은 옛 모델 그대로다(검수 2026-09-06 야만인 교체에서 실측).
+        /// 이 패스는 `EnsureHuntMobs`·`EnsureDungeon*`보다 **먼저** 돌아야 한다.
+        /// </summary>
+        public static void EnsureMobArtQualified()
+        {
+            var names = new List<string>();
+            for (int i = 0; i < HuntSpots.Length; i++)
+                names.Add(HuntSpots[i].Name);
+            names.Add(Dungeon1.MobObject); names.Add(Dungeon2.MobObject); names.Add(Dungeon3.MobObject);
+            names.Add("Companion");
+            int removed = 0;
+            for (int i = 0; i < names.Count; i++)
+            {
+                var go = GameObject.Find(names[i]);
+                if (go == null)
+                    continue;
+                if (MobArt.ModelOf(go, out MobArt.Model model, out string _) && model.BodyReadsClothed)
+                    continue;
+                UnityEngine.Object.DestroyImmediate(go);
+                removed++;
+            }
+            if (removed > 0)
+                Debug.Log("[Ulon] 자격 없는 몹 모델 " + removed + "체 제거 — 다음 Ensure에서 등록 모델로 다시 짓는다");
+        }
+
         public static void EnsureFootOnGround()
         {
             var items = GroundFit.Candidates();
@@ -3383,13 +3411,13 @@ namespace Ulon.Editor
         {
             string fbx = KnightFbx;
             if (rootName == "Companion")
-                fbx = BarbarianFbx;
+                fbx = KnightFbx;
             else if (rootName == "Skeleton" || rootName == Dungeon1.MobObject || rootName == Dungeon1.BossObject)
                 fbx = SkeletonFbx;
             else if (rootName == "Bandit" || rootName == "Trainer" || rootName == Dungeon2.MobObject || rootName == FieldBoss.Object)
                 fbx = MageFbx;
-            else if (rootName == "Raider")
-                fbx = BarbarianFbx;
+            else if (rootName == "Raider" || rootName == Dungeon3.MobObject)
+                fbx = KnightFbx;
             else if (rootName == "Rogue" || rootName == Dungeon2.BossObject)
                 fbx = RogueFbx;
             else if (rootName == "Knight")
@@ -3425,7 +3453,6 @@ namespace Ulon.Editor
             }
 
             ConfigureHumanoid(KnightFbx, true);
-            ConfigureHumanoid(BarbarianFbx, true);
             ConfigureHumanoid(MageFbx, true);
             ConfigureHumanoid(RogueFbx, true);
             ConfigureHumanoid(SkeletonFbx, true);
@@ -3453,7 +3480,7 @@ namespace Ulon.Editor
             var player = SpawnActor("Player", KnightFbx, new Vector3(0f, 0f, 0f), 1.8f, controller, true, false, "나", 50f);
             AttachGear(player, SwordFbx, ShieldFbx);
             HideExtraGear(player);
-            var companion = SpawnActor("Companion", BarbarianFbx, new Vector3(-2.2f, 0f, 1.4f), 1.85f, controller, false, false, "동료", 50f);
+            var companion = SpawnActor("Companion", KnightFbx, new Vector3(-2.2f, 0f, 1.4f), 1.85f, controller, false, false, "동료", 50f);
             HideExtraGear(companion);
             var skeleton = SpawnActor("Skeleton", SkeletonFbx, new Vector3(5.2f, 0f, 3.6f), MobCatalog.HeightOf(MobCatalog.Skeleton), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Skeleton), MobCatalog.MaxHpOf(MobCatalog.Skeleton));
             BindMob(skeleton, MobCatalog.Skeleton);
@@ -3461,7 +3488,7 @@ namespace Ulon.Editor
             var bandit = SpawnActor("Bandit", MageFbx, new Vector3(7.4f, 0f, 3.6f), MobCatalog.HeightOf(MobCatalog.Bandit), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Bandit), MobCatalog.MaxHpOf(MobCatalog.Bandit));
             BindMob(bandit, MobCatalog.Bandit);
             HideExtraGear(bandit);
-            var raider = SpawnActor("Raider", BarbarianFbx, new Vector3(2.4f, 0f, 13.2f), MobCatalog.HeightOf(MobCatalog.Raider), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Raider), MobCatalog.MaxHpOf(MobCatalog.Raider));
+            var raider = SpawnActor("Raider", KnightFbx, new Vector3(2.4f, 0f, 13.2f), MobCatalog.HeightOf(MobCatalog.Raider), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Raider), MobCatalog.MaxHpOf(MobCatalog.Raider));
             BindMob(raider, MobCatalog.Raider);
             HideExtraGear(raider);
             var rogue = SpawnActor("Rogue", RogueFbx, new Vector3(-3.8f, 0f, 13.2f), MobCatalog.HeightOf(MobCatalog.Rogue), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Rogue), MobCatalog.MaxHpOf(MobCatalog.Rogue));
