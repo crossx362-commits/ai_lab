@@ -118,6 +118,9 @@ namespace Ulon.Editor
             // 검수 완료 기준 — **도적과 자객을 한 화면에**. 도적을 Rogue 모델로 옮겼으니
             // 「겹침이 Rogue 쪽으로 옮겨간 것 아니냐」를 눈으로 확인할 수 있어야 한다.
             shotList.Add(PairCloseUp("54_bandit_rogue", "Bandit", "Rogue"));
+            // 아마밭 — 「밭으로 읽히는가」는 근접 한 장으로 판정한다(검수 완료 기준, 랩 ⑤).
+            // 한 포기에 붙으면 「밭」이 화면에 안 담긴다 — **뙈기 전체**가 들어오는 거리·각도로 찍는다.
+            shotList.Add(Orbit("55_flaxfield", new Vector3(WorldSplat.FlaxX, 0f, WorldSplat.FlaxZ), 13f, 32f));
             shots = shotList.ToArray();
 
             // **런타임 포즈로 찍는다.** 에디터에서 그냥 찍으면 모든 액터가 바인드 포즈(T포즈)라

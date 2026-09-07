@@ -31,6 +31,28 @@ namespace Ulon.Shared
             new Vector4(0f, 0f, WorldRegions.Mine.X, WorldRegions.Mine.Z),
         };
 
+        /// <summary>
+        /// **마을 아마밭** — 지역(농경지)과 달리 마을 안에 있는 작은 뙈기라 원형 지역 규칙에 안 걸린다.
+        /// 바닥이 초록 잔디인 채로 작물만 얹으면 「밭」이 아니라 「풀밭에 놓인 풀」이다(검수 반려:
+        /// 20cm 덤불 하나가 아마밭이었다). 중심·반폭을 여기 한 곳에 적고 빌더·게이트가 같이 읽는다.
+        /// </summary>
+        public const float FlaxX = 3.4f;
+        // 북쪽 가장자리를 마을 우리(z≈−17.4)에 물리지 않게 잡는다 — 첫 판은 마을 울타리가
+        // 밭 안으로 들어와 「경작지」가 아니라 「우리」로 읽혔다(게이트가 안쪽 침범 6개로 잡았다).
+        public const float FlaxZ = -20.6f;
+        public const float FlaxHalfX = 5.0f;
+        public const float FlaxHalfZ = 3.0f;
+
+        /// <summary>아마밭 뙈기를 덮는 세기(0~1) — 사각 뙈기라 가장자리만 부드럽게 흘린다.</summary>
+        public static float FlaxCoverAt(float wx, float wz)
+        {
+            const float fade = 1.4f;
+            float tx = 1f - Mathf.Clamp01((Mathf.Abs(wx - FlaxX) - FlaxHalfX) / fade);
+            float tz = 1f - Mathf.Clamp01((Mathf.Abs(wz - FlaxZ) - FlaxHalfZ) / fade);
+            float wobble = (Mathf.PerlinNoise(wx * 0.35f + 31f, wz * 0.35f + 7f) - 0.5f) * 0.18f;
+            return Mathf.Clamp01(Mathf.Min(tx, tz) + wobble);
+        }
+
         /// <summary>이 지역에 해당하는 도포 레이어.</summary>
         public static int LayerOf(string regionObject)
         {
@@ -62,6 +84,13 @@ namespace Ulon.Shared
                     weight = t;
                     layer = LayerOf(r.Object);
                 }
+            }
+
+            float flax = FlaxCoverAt(wx, wz);
+            if (flax > weight)
+            {
+                weight = flax;
+                layer = Tilled;
             }
 
             var routes = Routes;

@@ -1665,6 +1665,8 @@ namespace Ulon.Editor
             AssertNoUndeclaredLookTwins();                  // 화면에서 같은 쌍은 선언된 것만(검수 지시 2)
             AssertActorsAnimatedNegativeControl();          // 컨트롤러를 떼면 빨간불인가
             AssertActorsAnimated();                         // T포즈로 서 있는 사람형이 없는가(랩 ④ (a) 실측)
+            AssertFlaxFieldNegativeControl();               // 한 포기만 남기면 빨간불인가
+            AssertFlaxFieldReadsAsField();                  // 아마밭이 「밭」으로 읽히는가(랩 ⑤)
             AssertEffectWiring();
             AssertEffectWiringNegativeControl();
             AssertCharacterArtNegativeControl();

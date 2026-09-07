@@ -696,6 +696,10 @@ namespace Ulon.Editor
             Decor(parent, Tuft, new Vector3(20.2f, 0f, 2.2f), new Vector3(0f, 95f, 0f));
         }
 
+        /// <summary>아마밭 이랑 수·한 줄에 심는 수 — 게이트가 같은 값을 읽는다(두 벌로 적지 않는다).</summary>
+        public const int FlaxRows = 5;
+        public const int FlaxPerRow = 9;
+
         public static void EnsureSouthField()
         {
             const string Bush = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bushLarge.fbx";
@@ -703,7 +707,11 @@ namespace Ulon.Editor
             const string RockA = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/rock_largeA.fbx";
             const string RockS = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/rock_smallA.fbx";
             const string Tuft = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/grass_large.fbx";
-            string[] models = { Bush, BushS, RockA, RockS, Tuft };
+            const string Crop = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/grass_leafs.fbx";
+            // 농경지·마을과 **같은 울타리 모델**을 쓴다. Nature 킷의 fence.fbx는 축이 반대라
+            // `FenceRun`의 yaw 규칙에서 조각이 가로로 서서 밭을 빗처럼 가로질렀다(첫 샷이 그랬다).
+            const string Fence = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/fence.fbx";
+            string[] models = { Bush, BushS, RockA, RockS, Tuft, Crop, Fence };
             for (int i = 0; i < models.Length; i++)
             {
                 if (AssetDatabase.LoadAssetAtPath<GameObject>(models[i]) == null)
@@ -716,13 +724,46 @@ namespace Ulon.Editor
             if (stray != null)
                 UnityEngine.Object.DestroyImmediate(stray);
             var root = new GameObject("SouthField");
-            root.transform.position = new Vector3(3.4f, 0f, -19.6f);
+            root.transform.position = new Vector3(WorldSplat.FlaxX, 0f, WorldSplat.FlaxZ);
             Transform parent = root.transform;
-            var flax = Place(Bush, new Vector3(3.4f, 0f, -19.6f), Vector3.zero);
+
+            // **밭으로 읽히게 한다**(검수 반려: 20cm 덤불 하나가 「아마밭」이었다).
+            // 밭은 ⓐ 갈아엎은 흙(도포는 `WorldSplat.FlaxCoverAt`) ⓑ **줄줄이 반복되는 작물**
+            // ⓒ 두른 울타리 — 셋이 같이 있어야 「경작지」다. 농경지 지역(BuildMeadow)과 같은 규칙을 쓴다.
+            float hx = WorldSplat.FlaxHalfX, hz = WorldSplat.FlaxHalfZ;
+            FenceRun(parent, Fence, new Vector2(WorldSplat.FlaxX - hx, WorldSplat.FlaxZ - hz), new Vector2(WorldSplat.FlaxX + hx, WorldSplat.FlaxZ - hz));
+            FenceRun(parent, Fence, new Vector2(WorldSplat.FlaxX - hx, WorldSplat.FlaxZ + hz), new Vector2(WorldSplat.FlaxX + hx, WorldSplat.FlaxZ + hz));
+            FenceRun(parent, Fence, new Vector2(WorldSplat.FlaxX - hx, WorldSplat.FlaxZ - hz), new Vector2(WorldSplat.FlaxX - hx, WorldSplat.FlaxZ + hz));
+            FenceRun(parent, Fence, new Vector2(WorldSplat.FlaxX + hx, WorldSplat.FlaxZ - hz), new Vector2(WorldSplat.FlaxX + hx, WorldSplat.FlaxZ + hz));
+            // 이랑 — **줄 간격은 넓게, 줄 안은 촘촘하게**. 격자로 고르게 뿌리면 이랑이 안 읽힌다.
+            int crops = 0;
+            for (int row = 0; row < FlaxRows; row++)
+            {
+                float z = WorldSplat.FlaxZ - hz + 1.0f + row * ((hz * 2f - 2.0f) / (FlaxRows - 1));
+                for (int col = 0; col < FlaxPerRow; col++)
+                {
+                    float x = WorldSplat.FlaxX - hx + 0.8f + col * ((hx * 2f - 1.6f) / (FlaxPerRow - 1));
+                    int seed = row * 37 + col * 11;
+                    var stalk = Place(Crop, new Vector3(x, 0f, z), new Vector3(0f, WorldRegions.Rand(seed, 1, 0f, 360f), 0f));
+                    if (stalk == null)
+                        continue;
+                    stalk.name = "FlaxStalk";
+                    stalk.transform.SetParent(parent, true);
+                    // 한 포기는 무릎 아래라 조망에서 흙 얼룩으로 보인다 — 농경지와 같은 배율로 키운다.
+                    stalk.transform.localScale = stalk.transform.localScale * WorldRegions.Rand(seed, 2, 1.7f, 2.4f);
+                    crops++;
+                }
+            }
+            if (crops < FlaxRows * FlaxPerRow / 2)
+                throw new InvalidOperationException("아마밭 작물이 " + crops + "포기뿐입니다 — 모델을 못 놓았습니다(0이면 실패).");
+
+            // 수확 대상 한 포기는 **밭 한가운데의 작물**이다(밭 밖의 덤불이 아니라).
+            var flax = Place(Crop, new Vector3(WorldSplat.FlaxX, 0f, WorldSplat.FlaxZ), Vector3.zero);
             if (flax == null)
-                throw new InvalidOperationException("남쪽 필드 덤불 모델 없음");
+                throw new InvalidOperationException("아마밭 작물 모델 없음");
             flax.name = "FieldFlax";
             flax.transform.SetParent(parent, true);
+            flax.transform.localScale = flax.transform.localScale * 2.6f;   // 수확 대상은 조금 더 크게(어디를 캐는지 보이게)
             var node = flax.GetComponent<ResourceNode>() ?? flax.AddComponent<ResourceNode>();
             node.ResourceId = ItemCatalog.Cloth;
             node.DisplayName = "들판 아마";
@@ -732,11 +773,12 @@ namespace Ulon.Editor
             node.RespawnSeconds = 8f;
             node.Difficulty = 10f;
             EnsureCollider(flax);
-            Decor(parent, RockA, new Vector3(5.1f, 0f, -18.4f), new Vector3(0f, 30f, 0f));
-            Decor(parent, RockS, new Vector3(1.8f, 0f, -20.6f), new Vector3(0f, 80f, 0f));
-            Decor(parent, BushS, new Vector3(4.8f, 0f, -21.0f), new Vector3(0f, 50f, 0f));
-            Decor(parent, Tuft, new Vector3(2.2f, 0f, -18.7f), new Vector3(0f, 15f, 0f));
-            Decor(parent, Tuft, new Vector3(4.6f, 0f, -19.2f), new Vector3(0f, 110f, 0f));
+            // 곁가지는 **울타리 밖**에 둔다 — 밭 한가운데 바위가 박혀 있으면 경작지로 안 읽힌다.
+            Decor(parent, RockA, new Vector3(WorldSplat.FlaxX + hx + 1.6f, 0f, WorldSplat.FlaxZ + 1.2f), new Vector3(0f, 30f, 0f));
+            Decor(parent, RockS, new Vector3(WorldSplat.FlaxX - hx - 1.4f, 0f, WorldSplat.FlaxZ - 1.0f), new Vector3(0f, 80f, 0f));
+            Decor(parent, BushS, new Vector3(WorldSplat.FlaxX + hx + 1.2f, 0f, WorldSplat.FlaxZ - hz - 1.3f), new Vector3(0f, 50f, 0f));
+            Decor(parent, Tuft, new Vector3(WorldSplat.FlaxX - hx - 1.1f, 0f, WorldSplat.FlaxZ + hz + 1.0f), new Vector3(0f, 15f, 0f));
+            Decor(parent, Tuft, new Vector3(WorldSplat.FlaxX + 0.6f, 0f, WorldSplat.FlaxZ - hz - 1.5f), new Vector3(0f, 110f, 0f));
         }
 
 
@@ -4525,8 +4567,15 @@ namespace Ulon.Editor
         }
 
         static float _fenceWidth = -1f;
+        static bool _fenceRunsAlongZ;
 
-        /// <summary>울타리 한 장의 실제 폭(모델 크기를 추측하지 않는다).</summary>
+        /// <summary>
+        /// 울타리 한 장의 실제 폭과 **어느 축으로 누워 있는지**(모델 크기를 추측하지 않는다).
+        ///
+        /// 폭을 x로만 재던 옛 판은 이 킷 울타리(길이가 z축)에서 0.5m 하한에 걸려 32m 둘레에
+        /// 64조각을 깔았고, yaw도 반대라 조각이 밭을 **가로질러 빗살처럼** 섰다(55 첫 샷).
+        /// 「이 모델은 x로 길다」는 추측이었다 — 재서 쓴다.
+        /// </summary>
         static float FenceWidth(string path)
         {
             if (_fenceWidth > 0f)
@@ -4534,7 +4583,9 @@ namespace Ulon.Editor
             var probe = Place(path, new Vector3(0f, 0f, 0f), Vector3.zero);
             if (probe == null)
                 return 2f;
-            _fenceWidth = Mathf.Max(0.5f, CombinedBounds(probe).size.x);
+            var size = CombinedBounds(probe).size;
+            _fenceRunsAlongZ = size.z > size.x;
+            _fenceWidth = Mathf.Max(0.5f, Mathf.Max(size.x, size.z));
             UnityEngine.Object.DestroyImmediate(probe);
             return _fenceWidth;
         }
@@ -4548,7 +4599,9 @@ namespace Ulon.Editor
                 return;
             float w = FenceWidth(path);
             int count = Mathf.Max(2, Mathf.CeilToInt(len / w));
-            float yaw = Mathf.Abs(d.x) >= Mathf.Abs(d.y) ? 0f : 90f;
+            // 줄의 방향과 **모델이 누운 축**을 맞춘다(둘 중 하나만 보면 조각이 가로로 선다).
+            bool runAlongX = Mathf.Abs(d.x) >= Mathf.Abs(d.y);
+            float yaw = (runAlongX == _fenceRunsAlongZ) ? 90f : 0f;
             for (int i = 0; i < count; i++)
             {
                 Vector2 p = from + d * ((i + 0.5f) / count);
