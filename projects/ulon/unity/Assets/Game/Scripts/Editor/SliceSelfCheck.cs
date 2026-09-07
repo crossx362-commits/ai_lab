@@ -47,8 +47,11 @@ namespace Ulon.Editor
             // 이미 만들어진 씬은 빌더 수정만으로 안 고쳐진다 — 멱등 보수 패스로 돌린다(검수 랩 D).
             Debug.Log("[Ulon] 건물 시야 페이드 — 레이어 올린 렌더러 " + VisualSliceBuilder.EnsureBuildingsFadeable() + "개");
             VisualSliceBuilder.EnsureBankBuilding();       // 은행을 들어갈 수 있는 건물로(검수 P1)
+            VisualSliceBuilder.EnsureFishingSpotAtWater(); // 지표 스냅 뒤에 물가로(앞에 두면 스냅이 둑 위로 끌어올린다)
             VisualSliceBuilder.EnsureVillageFacilities();  // 시설이 그 기능으로 읽히게(검수 랩 ①)
             VisualSliceBuilder.EnsureServiceNpcs();        // 표시명만 사람이던 자리에 사람을(§18.19, 검수 랩 ②)
+            VisualSliceBuilder.EnsureCampfireFire();       // 화덕에 불(검수 반려 — 불 메시가 없어도 파티클로 된다)
+            VisualSliceBuilder.EnsureStableYardFence();    // 마구간 울타리를 닫는다(검수 반려)
             VisualSliceBuilder.EnsureEntranceFramesQualified();  // 옛 씬의 검은 큐브 문틀을 등록 조각으로 다시 세운다(검수 2026-09-07)
             VisualSliceBuilder.EnsureRoomSize();           // 방 반경이 원장과 다르면 헐고 다시 짓는다(검은 허공)
             ActionVfxBuilder.EnsureActionVfx();
@@ -1697,6 +1700,10 @@ namespace Ulon.Editor
             AssertCraftOrder();
             // 역할↔외형은 **맨 끝**에 둔다 — 지금 마을 시설이 전부 어긋나 빨간불이라, 앞에 두면
             // 나머지 게이트가 한 줄도 못 돌아 회귀를 못 본다(검수 지시로 세운 게이트, 랩 ① 작업 목록).
+            AssertFishingAtWaterNegativeControl();
+            AssertFishingAtWater();
+            AssertCampfireFireNegativeControl();
+            AssertCampfireHasFire();
             AssertRoleLookNegativeControl();
             AssertRoleLook();
 

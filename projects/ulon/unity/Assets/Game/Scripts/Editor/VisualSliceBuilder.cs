@@ -1501,10 +1501,31 @@ namespace Ulon.Editor
             EnsureCollider(go);
         }
 
+        /// <summary>
+        /// **낚시터가 설 물가**(검수 반려 2026-09-07: 「데크가 잔디 위, 물이 화면에 없다」).
+        /// 좌표를 손으로 박지 않는다 — 호수 중심에서 마을 쪽으로 걸어 나오며 **지표가 수면 위로
+        /// 올라오는 지점**(물가)을 찾는다. 지형을 바꾸면 이 값도 같이 움직인다.
+        /// </summary>
+        public static Vector3 LakeShoreTowardVillage()
+        {
+            var center = new Vector2(WorldTerrain.LakeX, WorldTerrain.LakeZ);
+            var dir = (new Vector2(0f, 0f) - center).normalized;      // 마을(원점) 쪽
+            // **공식이 아니라 실제 지형을 잰다** — 하이트맵 해상도 때문에 공식과 실물이 갈리고,
+            // 공식으로 잡은 「물가」가 실물에서는 수면보다 6m 높은 **둑 위**였다(첫 시도 실측).
+            for (float d = 0f; d <= WorldTerrain.LakeRadius + 12f; d += 0.25f)
+            {
+                var p = center + dir * d;
+                float h = GroundY(p.x, p.y);
+                if (h > WorldTerrain.SeaLevel + 0.3f)
+                    return new Vector3(p.x - dir.x * 0.25f, 0f, p.y - dir.y * 0.25f);   // 마지막으로 물에 잠긴 자리
+            }
+            return new Vector3(WorldTerrain.LakeX + WorldTerrain.LakeRadius, 0f, WorldTerrain.LakeZ);
+        }
+
         public static void EnsureFishSpot()
         {
             const string fbx = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/watermill.fbx";
-            Vector3 pos = new Vector3(-11.5f, 0f, -8.5f);
+            Vector3 pos = LakeShoreTowardVillage();
             var go = GameObject.Find("FishingSpot");
             if (go == null)
                 go = GameObject.Find("watermill");
@@ -2330,9 +2351,14 @@ namespace Ulon.Editor
             touched += FacilityPart("Carpenter", "Stairs", Town + "stairs-wood.fbx", new Vector3(-0.7f, 0f, 0.2f), 0.9f, true) ? 1 : 0;
 
             // 화덕 — 등불이 화덕 노릇 하던 자리. 둘러싼 돌과 장작을 놓는다(불빛은 기존 등불이 낸다).
-            touched += FacilityPart("Campfire", "Stone1", Dg + "rubble_half.obj", new Vector3(0.5f, 0f, 0.2f), 0.5f, true) ? 1 : 0;
-            touched += FacilityPart("Campfire", "Stone2", Dg + "rubble_half.obj", new Vector3(-0.4f, 0f, -0.4f), 0.45f, true) ? 1 : 0;
-            touched += FacilityPart("Campfire", "Wood", Town + "planks.fbx", new Vector3(0f, 0f, 0.5f), 0.8f, false) ? 1 : 0;
+            // 화덕은 **등불 기둥**이 본체였다(검수 반려 「돌 놓인 데크」의 진짜 몸통) — 등불 시각을 치우고
+            // 돌을 불 둘레에 **둥글게** 놓는다. 낚시터에서 물레방아를 치운 것과 같은 처방이다.
+            HideOwnVisual("Campfire");
+            touched += FacilityPart("Campfire", "Stone1", Dg + "rubble_half.obj", new Vector3(0.55f, 0f, 0f), 0.62f, true) ? 1 : 0;
+            touched += FacilityPart("Campfire", "Stone2", Dg + "rubble_half.obj", new Vector3(-0.55f, 0f, 0f), 0.62f, true) ? 1 : 0;
+            touched += FacilityPart("Campfire", "Stone3", Dg + "rubble_half.obj", new Vector3(0f, 0f, 0.55f), 0.62f, true) ? 1 : 0;
+            touched += FacilityPart("Campfire", "Stone4", Dg + "rubble_half.obj", new Vector3(0f, 0f, -0.55f), 0.62f, true) ? 1 : 0;
+            touched += FacilityPart("Campfire", "Wood", Town + "planks.fbx", new Vector3(0f, 0f, 0f), 0.9f, false) ? 1 : 0;
 
             // 절구 — 약병 대신 통·궤. 걸상 하나로는 연금 자리로 안 읽힌다.
             touched += FacilityPart("Mortar", "Barrel", Dg + "barrel_small.obj", new Vector3(0.5f, 0f, 0.3f), 1.0f, true) ? 1 : 0;
@@ -2346,14 +2372,7 @@ namespace Ulon.Editor
             touched += FacilityPart("Stable", "Fence2", Town + "fence-gate.fbx", new Vector3(-1.4f, 0f, 0.6f), 1.2f, false) ? 1 : 0;
 
             // 낚시터 — **물레방아를 치운다**(마을 시야를 막던 그 물건이기도 하다). 물가 발판·기둥·수레.
-            var fish = GameObject.Find("FishingSpot");
-            if (fish != null)
-                for (int c = fish.transform.childCount - 1; c >= 0; c--)
-                {
-                    var ch = fish.transform.GetChild(c);
-                    if (!ch.name.StartsWith("FacPart", StringComparison.Ordinal))
-                        UnityEngine.Object.DestroyImmediate(ch.gameObject);
-                }
+            HideOwnVisual("FishingSpot");
             // 발판을 크게 — **주 메시가 발판**이어야 한다. 기둥(poles)이 주 메시가 되면 집터와 같은 메시라
             // 화면에서 낚시터와 집터가 구분되지 않는다(게이트가 잡았다).
             touched += FacilityPart("FishingSpot", "Dock", Town + "planks.fbx", new Vector3(0f, 0f, 0f), 2.6f, false) ? 1 : 0;
@@ -2361,6 +2380,186 @@ namespace Ulon.Editor
 
             Physics.SyncTransforms();
             Debug.Log("[Ulon] 마을 시설 꾸밈 — 조각 " + touched + "개(상점 차양·대장간 굴뚝·목공 널빤지·화덕 돌·절구 통·훈련 깃발·마구간 울타리·낚시 발판)");
+        }
+
+        /// <summary>
+        /// **낚시터를 실제 물가로 옮긴다**(검수 반려 2026-09-07: 「데크가 잔디 위, 물이 화면에 없다」).
+        ///
+        /// 이 패스는 **지형이 다 만들어지고 지표 스냅까지 끝난 뒤에** 돌아야 한다 — 처음엔 배치 순서
+        /// 앞쪽(EnsureFishSpot)에서 옮겼더니 ① 그때의 지형은 아직 옛 것이었고 ② 뒤따라 도는
+        /// `EnsureFootOnGround`가 발판을 다시 둑 위로 끌어올렸다(실측: 수면 +5.1m인데 게이트 초록불).
+        /// 그래서 **실제 하이트맵을 걸어 수면과 만나는 지점**을 찾고, 그 뒤에는 아무도 안 건드리게 한다.
+        /// </summary>
+        public static bool EnsureFishingSpotAtWater()
+        {
+            var go = GameObject.Find("FishingSpot");
+            if (go == null)
+                return false;
+            var center = new Vector2(WorldTerrain.LakeX, WorldTerrain.LakeZ);
+            var dir = (new Vector2(0f, 0f) - center).normalized;      // 마을(원점) 쪽 물가
+            Vector3 want = go.transform.position;
+            bool found = false;
+            for (float d = 0f; d <= WorldTerrain.LakeRadius + 14f; d += 0.25f)
+            {
+                var p = center + dir * d;
+                float h = GroundY(p.x, p.y);
+                if (h < WorldTerrain.SeaLevel)
+                    continue;                                          // 아직 물속
+                want = new Vector3(p.x, h, p.y);                       // 지표가 수면과 만나는 첫 지점
+                found = true;
+                break;
+            }
+            if (!found)
+                return false;
+            if (Vector3.Distance(go.transform.position, want) > 0.5f)
+                Debug.Log("[Ulon] 낚시터를 물가로 옮긴다 — " + go.transform.position.ToString("0.0") + " → " +
+                          want.ToString("0.0") + " (수면 " + WorldTerrain.SeaLevel + "m)");
+            go.transform.position = want;
+            return true;
+        }
+
+        public const string CampfireFlameObject = "CampfireFlame";
+
+        /// <summary>
+        /// **화덕에 불을 붙인다**(검수 반려 2026-09-07: 「널빤지 위에 회색 돌 두 개, 불이 없다」).
+        /// 불 **메시**는 저장소에 없지만 §8.2가 막는 것은 무텍스처 프리미티브 메시이지 파티클이 아니다 —
+        /// 등록 CC0 스프라이트(Kenney Particles)로 불꽃을 피우고 따뜻한 점광을 같이 둔다.
+        /// 멱등: 있으면 헐고 다시 만든다.
+        /// </summary>
+        public static bool EnsureCampfireFire()
+        {
+            var go = GameObject.Find("Campfire");
+            if (go == null)
+                return false;
+            for (int c = go.transform.childCount - 1; c >= 0; c--)
+                if (go.transform.GetChild(c).name == CampfireFlameObject)
+                    UnityEngine.Object.DestroyImmediate(go.transform.GetChild(c).gameObject);
+
+            const string texPath = "Assets/_ThirdParty/Kenney/Particles/RAW/Textures/flame_01.png";
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
+            if (tex == null)
+            {
+                Debug.LogWarning("[Ulon] 불꽃 스프라이트가 없어 화덕에 불을 못 붙였습니다: " + texPath);
+                return false;
+            }
+
+            // 불은 **돌 사이 한가운데 위**에서 난다 — 기준은 오브젝트 원점이 아니라 보이는 것의 중심이다.
+            Vector3 at = go.transform.position;
+            if (BoundsOf(go.transform, true, out Bounds b) && b.size.sqrMagnitude > 0.0001f)
+                at = new Vector3(b.center.x, b.min.y + 0.25f, b.center.z);
+
+            var flame = new GameObject(CampfireFlameObject);
+            flame.transform.SetParent(go.transform, true);
+            flame.transform.position = at;
+
+            var ps = flame.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.playOnAwake = true;
+            main.duration = 1.2f;
+            main.startLifetime = 0.75f;
+            main.startSpeed = 1.1f;
+            main.startSize = 0.55f;
+            main.startColor = new Color(1f, 0.55f, 0.13f, 0.95f);
+            main.gravityModifier = -0.12f;                    // 위로 오른다
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 64;
+            var emission = ps.emission;
+            emission.rateOverTime = 22f;
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 12f;
+            shape.radius = 0.22f;
+            var rend = flame.GetComponent<ParticleSystemRenderer>();
+            rend.renderMode = ParticleSystemRenderMode.Billboard;
+            rend.sharedMaterial = CampfireFlameMaterial(tex);
+
+            // 불빛 — 밤·실내가 아니어도 「불이 켜져 있다」를 화면에 만든다.
+            var lightGo = new GameObject("CampfireLight");
+            lightGo.transform.SetParent(flame.transform, false);
+            var light = lightGo.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1f, 0.62f, 0.28f);
+            light.range = 6f;
+            light.intensity = 2.2f;
+            Debug.Log("[Ulon] 화덕에 불 — 파티클(등록 CC0 flame_01) + 점광. 불 메시가 없다고 화덕을 비워 두지 않는다.");
+            return true;
+        }
+
+        static Material CampfireFlameMaterial(Texture2D tex)
+        {
+            System.IO.Directory.CreateDirectory(System.IO.Path.Combine(Application.dataPath, "Game/Art/VFX"));
+            const string matPath = "Assets/Game/Art/VFX/CampfireFlame.mat";
+            var shader = Shader.Find("Particles/Standard Unlit") ?? Shader.Find("Sprites/Default");
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null)
+            {
+                mat = new Material(shader);
+                AssetDatabase.CreateAsset(mat, matPath);
+            }
+            mat.shader = shader;
+            mat.mainTexture = tex;
+            var tint = new Color(1f, 0.55f, 0.13f);
+            mat.color = tint;
+            if (mat.HasProperty("_Color"))
+                mat.SetColor("_Color", tint);
+            if (mat.HasProperty("_Mode"))
+                mat.SetFloat("_Mode", 4f);                    // Additive
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
+        /// <summary>
+        /// **마구간 울타리를 닫는다**(검수 반려: 「끊어진 울타리 조각 셋이라 축사로 안 읽힌다」).
+        /// 조각은 이미 있다 — 새 자산 없이 **둘러싸게** 놓는다. 한 변에 두 칸씩 네 변, 앞면 한 칸은 문.
+        /// </summary>
+        public static int EnsureStableYardFence()
+        {
+            var go = GameObject.Find("Stable");
+            if (go == null)
+                return 0;
+            const string fence = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/fence.fbx";
+            const string gate = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/fence-gate.fbx";
+            for (int c = go.transform.childCount - 1; c >= 0; c--)
+                if (go.transform.GetChild(c).name.StartsWith("YardFence", StringComparison.Ordinal))
+                    UnityEngine.Object.DestroyImmediate(go.transform.GetChild(c).gameObject);
+
+            Vector3 center = go.transform.position;
+            if (BoundsOf(go.transform, true, out Bounds b) && b.size.sqrMagnitude > 0.0001f)
+                center = new Vector3(b.center.x, 0f, b.center.z);
+            const float half = 2.4f;                          // 마당 반폭 — 말 한 마리와 사람이 서는 크기
+            const float step = 1.6f;                          // 판 하나의 폭 = 칸 간격(딱 맞물려야 「닫혔다」로 읽힌다)
+            int made = 0;
+            // 네 변을 세 칸씩. 앞변(마을 쪽) 가운데 한 칸만 문으로 바꾼다 — 들어가는 길이 보여야 축사다.
+            for (int side = 0; side < 4; side++)
+            {
+                float yaw = side * 90f;
+                var dir = Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
+                var normal = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+                for (int k = -1; k <= 1; k++)
+                {
+                    bool door = side == 2 && k == 0;
+                    var at = center + normal * half + dir * (step * k);
+                    var made1 = RoomPropObject(go.transform, "YardFence" + side + "_" + k,
+                        // 이 킷 울타리는 **긴 축이 Z**다(실측 0.12×0.61×1.60) — yaw 그대로 놓으면 판이
+                        // 변에 수직으로 서서 이음매가 벌어진다(입구 벽판에서 겪은 것과 같은 함정).
+                        door ? gate : fence, OnGround(new Vector3(at.x, 0f, at.z)), yaw + 90f, step, false);
+                    if (made1 != null)
+                    {
+                        // 조각 원점이 모서리인 프리팹이 있다 — 바운드 중심으로 다시 맞춘다.
+                        if (BoundsOf(made1.transform, true, out Bounds mb))
+                        {
+                            made1.transform.position += new Vector3(at.x - mb.center.x, 0f, at.z - mb.center.z);
+                            if (made == 0)
+                                Debug.Log("[Ulon] 마구간 울타리 판 크기 — " + mb.size.ToString("0.00") +
+                                          " (칸 간격 " + step + "m와 맞아야 이음매가 안 벌어진다)");
+                        }
+                        made++;
+                    }
+                }
+            }
+            Debug.Log("[Ulon] 마구간 마당 — 울타리 " + made + "칸으로 둘러쌌다(앞변 한 칸은 문). 새 자산 없이 배치로 푼다.");
+            return made;
         }
 
         /// <summary>
@@ -2415,6 +2614,56 @@ namespace Ulon.Editor
         /// <summary>로그인 스폰(0,0) 둘레에 부속을 놓지 않는 반경 — 스폰이 소품 위에 뜨는 것을 막는다.</summary>
         const float SpawnClearRadius = 2.6f;
 
+        /// <summary>
+        /// 부속을 붙일 **기준점** — 시설 본체(부속·사람·불꽃을 뺀 것)의 보이는 중심.
+        ///
+        /// 예전엔 시설 전체 바운드의 중심을 썼다. 그러면 **부속이 이미 붙은 상태에서 다시 돌 때마다
+        /// 기준이 부속 쪽으로 밀려** 실행할수록 조각이 흩어진다(실측: 화덕 부속이 5.4m로 벌어졌다 —
+        /// 근접 샷이 마을 전경이 돼서야 드러났다). 멱등 패스는 **자기 출력물을 입력으로 먹으면 안 된다.**
+        /// </summary>
+        /// <summary>
+        /// 시설의 **본체 시각을 치운다** — 역할과 다른 물건이 몸통일 때 쓴다(낚시터=물레방아, 화덕=등불).
+        /// 부속(FacPart*)·사람(*Npc)·불꽃은 남긴다. 콜라이더·컴포넌트는 그대로 두고 **보이는 것만** 없앤다.
+        /// </summary>
+        static void HideOwnVisual(string hostName)
+        {
+            var host = GameObject.Find(hostName);
+            if (host == null)
+                return;
+            for (int c = host.transform.childCount - 1; c >= 0; c--)
+            {
+                var ch = host.transform.GetChild(c);
+                if (ch.name.StartsWith("FacPart", StringComparison.Ordinal) ||
+                    ch.name.StartsWith("YardFence", StringComparison.Ordinal) ||
+                    ch.name == CampfireFlameObject || ch.name.EndsWith("Npc", StringComparison.Ordinal))
+                    continue;
+                UnityEngine.Object.DestroyImmediate(ch.gameObject);
+            }
+        }
+
+        static Vector3 HostAnchor(Transform host)
+        {
+            bool any = false;
+            Bounds box = new Bounds();
+            var rends = host.GetComponentsInChildren<Renderer>(false);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (rends[i] is ParticleSystemRenderer)
+                    continue;
+                bool mine = false;
+                for (var p = rends[i].transform; p != null && p != host; p = p.parent)
+                    if (p.name.StartsWith("FacPart", StringComparison.Ordinal) ||
+                        p.name.StartsWith("YardFence", StringComparison.Ordinal) ||
+                        p.name == CampfireFlameObject || p.name.EndsWith("Npc", StringComparison.Ordinal))
+                    { mine = true; break; }
+                if (mine)
+                    continue;
+                if (!any) { box = rends[i].bounds; any = true; }
+                else box.Encapsulate(rends[i].bounds);
+            }
+            return any ? new Vector3(box.center.x, host.position.y, box.center.z) : host.position;
+        }
+
         /// <summary>시설에 부속 조각 하나를 붙인다(멱등 — 이름이 같으면 헐고 다시 붙인다).</summary>
         static bool FacilityPart(string host, string part, string fbx, Vector3 offset, float size, bool byHeight)
         {
@@ -2429,10 +2678,8 @@ namespace Ulon.Editor
                     UnityEngine.Object.DestroyImmediate(go.transform.GetChild(c).gameObject);
             // 기준은 **보이는 것의 중심**이다 — 오브젝트 원점이 (0,0,0)에 남아 있는 시설이 있어(실측)
             // transform.position에 붙였더니 조각이 마을 광장 스폰 자리에 떨어져 스폰이 1.35m 떴다.
-            Vector3 baseAt = go.transform.position;
-            if (BoundsOf(go.transform, true, out Bounds hb) && hb.size.sqrMagnitude > 0.0001f)
-                baseAt = new Vector3(hb.center.x, baseAt.y, hb.center.z);
-            var at = baseAt + offset;
+            Vector3 baseAt = HostAnchor(go.transform);
+            var at = new Vector3(baseAt.x, go.transform.position.y, baseAt.z) + offset;
             // **스폰 자리를 막지 않는다** — 목공소가 마을 광장 한복판(0,0)에 서 있어 널빤지가 스폰 위에
             // 떨어졌고, 로그인 직후 플레이어가 1.35m 떠서 착지했다(2026-09-07 실측).
             var flat = new Vector2(at.x, at.z);

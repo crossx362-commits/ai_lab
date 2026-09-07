@@ -79,7 +79,8 @@ namespace Ulon.Editor
                 FacilityCloseUp("32_vendor", "Vendor"),
                 FacilityCloseUp("33_campfire", "Campfire"),
                 FacilityCloseUp("34_mortar", "Mortar"),
-                FacilityCloseUp("35_fishing", "FishingSpot"),
+                FacilityCloseUp("35_fishing", "FishingSpot",
+                    new Vector3(WorldTerrain.LakeX, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),   // 호수를 등지지 않게
                 FacilityCloseUp("36_stable", "Stable"),
                 FacilityCloseUp("37_banker", "Banker"),
                 FacilityCloseUp("38_healer", "Healer"),
@@ -89,6 +90,20 @@ namespace Ulon.Editor
             // **런타임 포즈로 찍는다.** 에디터에서 그냥 찍으면 모든 액터가 바인드 포즈(T포즈)라
             // 「칼이 얼굴 높이를 가로지른다」 같은 인상이 실제 플레이와 다르다(검수 2026-09-06 질의).
             // 애니메이터 기본 상태(Idle)를 실제로 샘플링해 포즈를 만든 뒤 찍는다.
+            // **배치 렌더에서는 파티클이 돌지 않는다** — 화덕 불처럼 계속 나는 효과는 미리 시뮬레이션해야
+            // 화면에 찍힌다(안 하면 「불을 붙였는데 샷엔 없다」가 된다).
+            int simmed = 0;
+            var loops = Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < loops.Length; i++)
+            {
+                var m = loops[i].main;
+                if (!m.loop || !m.playOnAwake)
+                    continue;
+                loops[i].Simulate(1.2f, true, true);
+                simmed++;
+            }
+            Debug.Log("[Ulon] QA 파티클 시뮬레이션 — 계속 나는 효과 " + simmed + "개");
+
             int posed = SampleIdlePose();
             Debug.Log("[Ulon] QA 포즈 샘플링 — Idle 적용 액터 " + posed + "체");
 
@@ -218,7 +233,13 @@ namespace Ulon.Editor
         /// 각도(pitch·yaw)는 플레이 카메라와 같게 둔다 — 게임에서 보는 방향 그대로 판정하기 위해서다.
         /// **이건 플레이 거리 샷이 아니다**(자산이 무엇으로 읽히는지 보는 확대 샷이다) — 숨기지 않고 적는다.
         /// </summary>
-        static Shot FacilityCloseUp(string name, string objectName)
+        static Shot FacilityCloseUp(string name, string objectName) => FacilityCloseUp(name, objectName, null);
+
+        /// <param name="beyond">
+        /// 이 지점이 **피사체 너머(배경)**에 오도록 카메라를 세운다. 낚시터처럼 「무엇 옆에 있는가」가
+        /// 판정의 핵심인 시설에 쓴다 — 가림만 보고 방위를 고르면 물을 등지고 찍어 물이 화면에서 사라진다(실측).
+        /// </param>
+        static Shot FacilityCloseUp(string name, string objectName, Vector3? beyond)
         {
             var go = GameObject.Find(objectName);
             if (go == null)
@@ -230,8 +251,13 @@ namespace Ulon.Editor
             {
                 if (!rends[i].enabled || !rends[i].gameObject.activeInHierarchy)
                     continue;
+                // **파티클은 프레이밍에서 뺀다** — 월드 시뮬레이션 파티클의 바운드는 수십 m로 잡혀
+                // 「화덕 근접」이 마을 전경이 됐다(화덕에 불을 붙인 직후 실측).
+                if (rends[i] is ParticleSystemRenderer)
+                    continue;
                 if (!any) { box = rends[i].bounds; any = true; }
                 else box.Encapsulate(rends[i].bounds);
+                Debug.Log("[Ulon] 근접 바운드 " + name + " ← " + rends[i].gameObject.name + " " + rends[i].bounds.size.ToString("0.0"));
             }
             var target = any ? box.center : go.transform.position + Vector3.up;
             float radius = any ? Mathf.Max(box.extents.magnitude, 0.6f) : 1.5f;
@@ -283,6 +309,16 @@ namespace Ulon.Editor
                         }
                 float share = total > 0 ? seen / (float)total : 0f;
                 if (share > bestSeen + 0.02f) { bestSeen = share; bestYaw = y; bestPitch = pit; }
+            }
+            if (beyond.HasValue)
+            {
+                // 배경에 둬야 할 것의 **반대편**에 선다 — 그래야 그것이 피사체 뒤로 들어온다.
+                var away = target - beyond.Value; away.y = 0f;
+                if (away.sqrMagnitude > 0.0001f)
+                {
+                    bestYaw = Quaternion.LookRotation(-away.normalized, Vector3.up).eulerAngles.y;
+                    bestPitch = 20f;                     // 낮게 봐야 수면이 화면에 들어온다
+                }
             }
             var rot = Quaternion.Euler(bestPitch, bestYaw, 0f);
             Debug.Log("[Ulon] 시설 근접 " + name + "(" + objectName + ") — 바운드 " + (any ? box.size.ToString("0.0") : "(없음)") +
