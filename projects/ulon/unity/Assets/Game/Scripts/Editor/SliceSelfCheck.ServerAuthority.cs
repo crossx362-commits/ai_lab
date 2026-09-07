@@ -30,7 +30,12 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("NetAvatar.cs가 없습니다 — 서버 권한 배선을 검사할 수 없습니다.");
             string netSource = File.ReadAllText(netPath);
 
-            var callRe = new Regex(@"OfflineWorld\.Instance\??\.(Try\w+)\s*\(");
+            // **`OfflineWorld.Instance.Try*`만 찾으면 지역 변수로 받아 부르는 곳이 안 보인다.**
+            // 실측(2026-09-08 축 ① 목록 검증): `SliceHud`는 62곳, `HudShots`는 4곳을 모두
+            // `var world = OfflineWorld.Instance;` 뒤 `world.Try*`로 부른다 — **이 게이트는 그 66곳을
+            // 한 번도 본 적이 없다.** 「클라가 서버를 안 거친다」를 막겠다는 자가 클라 화면 코드를
+            // 통째로 못 보고 있었던 셈이다. 받는 이름까지 함께 잡는다.
+            var callRe = new Regex(@"(?:OfflineWorld\.Instance\??|\bworld)\.(Try\w+)\s*\(");
             var rpcCallRe = new Regex(@"net\.(Rpc\w+)\s*\(");
             int checkedCalls = 0;
             int rpcUses = 0;
@@ -40,6 +45,12 @@ namespace Ulon.Editor
                 string name = Path.GetFileName(file);
                 if (name == "NetAvatar.cs")
                     continue;   // 서버에서 도는 Rpc 본체다 — 여기서 OfflineWorld를 부르는 것이 정상이다.
+                // **선언 예외**: `HudShots`는 플레이어 입력이 아니라 **검수용 화면을 만드는 도구**다
+                // (HUD가 IMGUI라 편집기 렌더에 안 나와서, 스탠드얼론에서 상황을 꾸며 찍는다).
+                // 여기서 오프라인 월드를 직접 미는 것은 「기능이 서버를 안 거친다」가 아니라
+                // 「촬영용 무대를 세운다」이다. 게임 플레이 경로가 아니므로 뺀다.
+                if (name == "HudShots.cs")
+                    continue;
 
                 string[] lines = File.ReadAllLines(file);
                 for (int i = 0; i < lines.Length; i++)
