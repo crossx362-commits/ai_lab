@@ -147,9 +147,23 @@ f764f281(실루엣 분모 오염·근접 프레이밍 사람 제외·방 소품 
    받은 것: OGA Deer(OBJ)·OGA Boar(blend→로컬 Blender FBX). 등록·원장·샷 42/43/44 완료,
    `CreatureArtKnownDefect` 0줄. **검수 판정 대기 2건**: 화풍(사실적 비례 vs KayKit 청키),
    사슴 크기 0.9m가 작아 보임(원장 §12.2라 임의 변경 안 함).
-   남은 순서: **②작업장 → ③사람**.
-   피어 전언이 아니라 오너 본인 회신이다. **아직 아무것도 받지 않았다.** 검수가 정한 순서:
-   **①동물 → ②작업장 → ③사람**.
+   ①동물 랩은 **검수 수용(2026-09-07)** — 화풍은 수용하되 「작업장·사람 팩에서도 결 차이가 나면
+   **「팩 화풍 일관성」 한 안건으로 묶어 검수에 올려라**」(개별 판정 금지), 사슴 크기는 §12.2대로
+   **원장 그대로 두는 판단이 옳다**고 확정.
+   남은 순서: **②작업장(착수 승인됨) → ③사람**.
+   **②작업장 조사 결과(2026-09-07, 아직 아무것도 안 받음)**:
+   - **KayKit엔 모루·화로·절구가 없다** — 조직 저장소 전수(Adventures/City Builder Bits/Medieval Hexagon/
+     Dungeon Remastered/Prototype Bits/Skeletons/Restaurant/Halloween/Furniture/Space Base) 확인.
+     City Builder=`bench`, Medieval Hexagon=헥스 타일 `building_blacksmith_*`, Furniture=탁자뿐.
+   - 이미 가진 팩에도 없다(`_ThirdParty` 전수 = 배럴 3종만).
+   - **OGA CC0 직다운 가능**: `Iron Anvil Low poly.zip` 785KB(HTTP 200) / `cauldron.zip` 705KB /
+     `medievalcauldron.blend` 2.24MB. **절구(모르타르)는 CC0가 없다** — `mortar-and-pestle`·
+     `blacksmith-items`는 CC-BY-SA, `alchemy-tools`는 CC-BY라 §11 정책(CC0 우선)에서 제외했다.
+   - **설계서 §부록B가 이미 지목한 팩**: *Quaternius Fantasy Props MegaKit Standard*(CC0, 「대장간·
+     도구」 용도, 200+ 모델, FBX/OBJ/glTF). 배포처가 itch.io/구글드라이브라 **curl로는 못 받는다**
+     (업로드 id·세션 필요). 억지 우회하지 않았다 — 브라우저로 받으려면 오너 승인이 필요하다.
+   - 그래서 **대장 세션에 안건을 올려 둔 상태**다: (A) OGA 모루만 받고 절구는 CC0 부재를 보고,
+     (B) MegaKit을 브라우저로 받아 모루·절구·도구를 한 번에. 회신 오면 그대로 집행.
    절차: 실제로 쓰는 파일만 `_ThirdParty/<제작자>/<팩>/RAW`, LICENSE·SOURCE_URL·받은 날짜·
    승인 날짜(2026-09-07)를 `docs/ASSET_REGISTER.md` §11에, **자격 원장에도 등록**,
    **.glb는 유니티 기본 임포트 불가 → .obj/.fbx**. `CreatureArtKnownDefect`는 **지우기만** 한다.
@@ -480,6 +494,8 @@ NC는 `VisualSliceBuilder.AnchorSelfReferenceForNc`로 자기참조를 되살려
   성질**이 참이 될 때까지 결함을 만들고, 못 만들면 자기 실패로 던져라.
 - **판정 대상이 안 찍힌 샷은 판정이 아니다** — 시설용 내려보기 각(35~65°)으로 사람을 찍으면
   정수리만 나와 「발이 바닥에 닿았는가」가 화면에 없다. 무엇을 볼 샷인지에 따라 각을 정하라.
+- **새 팩은 「형식 차이」로 샌다** — `Place`/`EnsureEnvPrefab`이 `.fbx`만 프리팹화해서 사슴 `.obj`가
+  RAW째 씬에 들어갔다(「하트는 Prefab이어야 합니다」). 확장자 판정은 `IsModelPath` 한 곳으로.
 - **「배선했다」는 오프라인 경로만 본 말일 수 있다** — 서버 Rpc 본체에서 재생한 효과는 아무에게도 안 간다.
 - 중괄호 없는 `if` 아래 두 줄은 **둘째 줄이 조건 밖**이다. 소리가 결과를 거짓말하면 없느니만 못하다.
 - **검은 배경에서 보이는 것과 실제 프레임에서 읽히는 것은 다르다** — 판정은 실화면 차분으로.
