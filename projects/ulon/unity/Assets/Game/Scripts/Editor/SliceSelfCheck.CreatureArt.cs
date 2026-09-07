@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Ulon.Server;
+using Ulon.Shared;
 using UnityEngine;
 
 namespace Ulon.Editor
@@ -17,11 +18,14 @@ namespace Ulon.Editor
     public static partial class SliceSelfCheck
     {
         /// <summary>
-        /// 짐승 모델 원장 — **지금은 비어 있다**. 저장소에 동물 메시가 하나도 없다(2026-09-07 전수 확인:
-        /// KayKit Adventurers/Skeletons는 사람·해골, Kenney FantasyTown/Nature는 건물·식물뿐).
-        /// CC0 동물 팩 도입은 오너 승인 사항이라 임의로 받지 않는다.
+        /// 짐승 모델 원장 — 오너 승인(2026-09-07)으로 받은 CC0 모델만 적는다.
+        /// 출처·라이선스·받은 날은 각 폴더의 SOURCE_URL.txt/LICENSE.txt와 `docs/ASSET_REGISTER.md` §11에 있다.
         /// </summary>
-        static readonly string[] CreatureArtRegistered = new string[0];
+        static readonly string[] CreatureArtRegistered =
+        {
+            "Assets/_ThirdParty/OpenGameArt/Deer/RAW/Deer.obj",     // 야생하트
+            "Assets/_ThirdParty/OpenGameArt/Boar/RAW/Boar.fbx",     // 멧돼지
+        };
 
         /// <summary>
         /// **알려진 결함**과 그 사유. 여기 적힌 것은 실패 대신 경고로 남긴다 —
@@ -30,8 +34,8 @@ namespace Ulon.Editor
         /// </summary>
         static readonly Dictionary<string, string> CreatureArtKnownDefect = new Dictionary<string, string>
         {
-            { "TameCritter", "야생하트가 덤불 메시(plant_bushLarge)다 — 대체할 짐승 모델이 저장소에 없다. CC0 동물 팩 도입 오너 결정 대기(2026-09-07)" },
-            { "TameBoar", "멧돼지가 덤불 메시(plant_bush)다 — 같은 사유, 같은 대기" },
+            // 비어 있는 것이 정상이다. 2026-09-07 사슴·멧돼지 모델 도입으로 두 줄을 **지웠다**.
+            // 새 줄을 넣는 것은 검수 승인 사항이다(결함이 목록 뒤에 숨지 않게).
         };
 
         static bool creatureRosterLogged;
@@ -119,26 +123,40 @@ namespace Ulon.Editor
         }
 
         /// <summary>
-        /// 네거티브 컨트롤 — **알려진 결함 목록을 비우면 빨간불이어야 한다**.
-        /// 지금 상태가 실제로 결함이라는 뜻이고, 목록이 결함을 가리고 있음을 매 실행 증명한다.
+        /// 네거티브 컨트롤 — **생물에 소품 메시를 물리면 빨간불**이어야 한다.
+        ///
+        /// 2026-09-07 교체: 예전 NC는 「알려진 결함 목록을 비우면 빨간불」이었다. 그 목록이 실제 결함
+        /// (덤불로 세운 야생하트·멧돼지)을 가리고 있음을 증명하는 장치였는데, 모델이 들어와 목록이
+        /// 비었으니 그 NC는 **자기 전제를 잃었다**(그리고 스스로 「지우라」고 말했다). 이제는
+        /// 결함을 직접 만든다 — 짐승 하나에 덤불 메시를 끼워 넣고 게이트가 무는지 본다.
         /// </summary>
         static void AssertCreatureArtNegativeControl()
         {
-            var saved = new Dictionary<string, string>(CreatureArtKnownDefect);
-            CreatureArtKnownDefect.Clear();
+            var victim = GameObject.Find(TameCritter.Object) ?? GameObject.Find(TameBoar.Object);
+            if (victim == null)
+                throw new InvalidOperationException("생물 자격 NC 대상(조련 생물)이 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            var mf = victim.GetComponentInChildren<MeshFilter>(true);
+            if (mf == null)
+                throw new InvalidOperationException("생물 자격 NC 대상에 메시가 없습니다.");
+            const string bush = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bush.fbx";
+            var bushGo = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(bush);
+            var bushMf = bushGo != null ? bushGo.GetComponentInChildren<MeshFilter>(true) : null;
+            if (bushMf == null || bushMf.sharedMesh == null)
+                throw new InvalidOperationException("생물 자격 NC용 덤불 메시를 못 찾았습니다: " + bush);
+            var keep = mf.sharedMesh;
             bool red = false;
             string message = "";
-            try { AssertCreatureArtQualified(); }
-            catch (InvalidOperationException e) { red = true; message = e.Message; }
-            finally
+            try
             {
-                foreach (var kv in saved)
-                    CreatureArtKnownDefect[kv.Key] = kv.Value;
+                mf.sharedMesh = bushMf.sharedMesh;      // **결함을 실제로 만든다**
+                try { AssertCreatureArtQualified(); }
+                catch (InvalidOperationException e) { red = true; message = e.Message; }
             }
+            finally { mf.sharedMesh = keep; }
             if (!red)
-                throw new InvalidOperationException("생물 자격 네거티브 컨트롤 실패 — 알려진 결함 목록을 비웠는데 통과했습니다. " +
-                    "목록이 이미 필요 없다면 지우세요(결함이 고쳐졌다는 뜻입니다).");
-            Debug.Log("[Ulon] 생물 자격 네거티브 컨트롤 — 알려진 결함 목록을 비우면 빨간불: " + message);
+                throw new InvalidOperationException("생물 자격 네거티브 컨트롤 실패 — " + victim.name +
+                    "에 덤불 메시를 물렸는데 통과했습니다.");
+            Debug.Log("[Ulon] 생물 자격 네거티브 컨트롤 통과 — 짐승에 덤불 메시를 물리면 FAIL: " + message);
         }
     }
 }

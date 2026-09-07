@@ -89,6 +89,11 @@ namespace Ulon.Editor
                 FacilityCloseUp("39_boss1", Dungeon1.BossObject, null, true),
                 FacilityCloseUp("40_boss2", Dungeon2.BossObject, null, true),
                 FacilityCloseUp("41_boss3", Dungeon3.BossObject, null, true),
+                // 조련 생물 근접 — 덤불이 아니라 짐승으로 읽히는지 본다(동물 팩 랩 완료 기준).
+                FacilityCloseUp("42_deer", TameCritter.Object, null, true),
+                FacilityCloseUp("43_boar", TameBoar.Object, null, true),
+                // 마구간 마당의 짐승 — 「빈 마당」 반려의 완료 근거(동물 랩).
+                FacilityCloseUp("44_stable_beast", VisualSliceBuilder.StableBeastObject, null, true),
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
             };
 

@@ -1345,7 +1345,8 @@ namespace Ulon.Editor
 
         public static void EnsureTameCritter()
         {
-            const string fbx = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bushLarge.fbx";
+            // 야생하트 = **사슴 모델**(OGA CC0, 오너 승인 2026-09-07). 덤불 메시로 세우던 결함을 여기서 끝낸다.
+            const string fbx = "Assets/_ThirdParty/OpenGameArt/Deer/RAW/Deer.obj";
             if (AssetDatabase.LoadAssetAtPath<GameObject>(fbx) == null)
                 ConfigureProp(fbx);
             var old = GameObject.Find(TameCritter.Object);
@@ -1354,9 +1355,11 @@ namespace Ulon.Editor
             Vector3 pos = new Vector3(TameCritter.X, 0f, TameCritter.Z);
             var go = Place(fbx, pos, Vector3.zero);
             if (go == null)
-                throw new InvalidOperationException("조련 대상 Kenney Nature 메시 없음");
+                throw new InvalidOperationException("조련 대상 사슴 메시 없음: " + fbx);
             go.name = TameCritter.Object;
             go.transform.SetPositionAndRotation(OnGround(pos), Quaternion.identity);
+            FitCreatureHeight(go, MobCatalog.HeightOf(TameCritter.Id));
+            PaintCreature(go, true);
             EnsureCollider(go);
             var body = go.GetComponent<WorldBody>() ?? go.AddComponent<WorldBody>();
             body.MobId = TameCritter.Id;
@@ -1375,7 +1378,8 @@ namespace Ulon.Editor
 
         public static void EnsureTameBoar()
         {
-            const string fbx = "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bush.fbx";
+            // 멧돼지 = **멧돼지 모델**(OGA CC0 boar_0.blend → Boar.fbx, 오너 승인 2026-09-07).
+            const string fbx = "Assets/_ThirdParty/OpenGameArt/Boar/RAW/Boar.fbx";
             if (AssetDatabase.LoadAssetAtPath<GameObject>(fbx) == null)
                 ConfigureProp(fbx);
             var old = GameObject.Find(TameBoar.Object);
@@ -1384,9 +1388,11 @@ namespace Ulon.Editor
             Vector3 pos = new Vector3(TameBoar.X, 0f, TameBoar.Z);
             var go = Place(fbx, pos, Vector3.zero);
             if (go == null)
-                throw new InvalidOperationException("조련 멧돼지 Kenney Nature 메시 없음");
+                throw new InvalidOperationException("조련 멧돼지 메시 없음: " + fbx);
             go.name = TameBoar.Object;
             go.transform.SetPositionAndRotation(OnGround(pos), Quaternion.identity);
+            FitCreatureHeight(go, MobCatalog.HeightOf(TameBoar.Id));
+            PaintCreature(go, false);
             EnsureCollider(go);
             var body = go.GetComponent<WorldBody>() ?? go.AddComponent<WorldBody>();
             body.MobId = TameBoar.Id;
@@ -1962,7 +1968,7 @@ namespace Ulon.Editor
 
         static float PrefabRunLength(string path)
         {
-            if (path.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase))
+            if (IsModelPath(path))
                 path = EnsureEnvPrefab(path);
             if (string.IsNullOrEmpty(path) || AssetDatabase.LoadAssetAtPath<GameObject>(path) == null)
                 return 1f;
@@ -2543,6 +2549,39 @@ namespace Ulon.Editor
         /// **마구간 울타리를 닫는다**(검수 반려: 「끊어진 울타리 조각 셋이라 축사로 안 읽힌다」).
         /// 조각은 이미 있다 — 새 자산 없이 **둘러싸게** 놓는다. 한 변에 두 칸씩 네 변, 앞면 한 칸은 문.
         /// </summary>
+        public const string StableBeastObject = "StableBeast";
+
+        /// <summary>
+        /// **마구간 마당에 짐승을 세운다**(검수 완료 기준 2026-09-07 동물 랩).
+        /// 울타리만 닫아 놓으면 「빈 마당」이라 마구간으로 안 읽힌다 — 맡겨 둔 짐승 한 마리가 그 기능을 말한다.
+        /// 조련 대상이 아니라 **배치물**이다(WorldBody 없음 — 잡거나 조련할 수 있는 것으로 오해되면 안 된다).
+        /// 멱등: 있으면 헐고 다시 세운다.
+        /// </summary>
+        public static bool EnsureStableBeast()
+        {
+            var stable = GameObject.Find(StableYard.Object);
+            if (stable == null)
+                return false;
+            for (int c = stable.transform.childCount - 1; c >= 0; c--)
+                if (stable.transform.GetChild(c).name == StableBeastObject)
+                    UnityEngine.Object.DestroyImmediate(stable.transform.GetChild(c).gameObject);
+            const string fbx = "Assets/_ThirdParty/OpenGameArt/Deer/RAW/Deer.obj";
+            var anchor = HostAnchor(stable.transform);          // 자기 울타리·짐승을 뺀 본체 중심
+            var at = new Vector3(anchor.x + 1.6f, 0f, anchor.z - 1.2f);
+            var go = Place(fbx, at, new Vector3(0f, 200f, 0f));
+            if (go == null)
+                return false;
+            go.name = StableBeastObject;
+            go.transform.SetParent(stable.transform, true);
+            FitCreatureHeight(go, MobCatalog.HeightOf(TameCritter.Id));
+            PaintCreature(go, true);
+            EnsureCollider(go);
+            BoundsOf(go.transform, true, out Bounds bb);
+            Debug.Log("[Ulon] 마구간 짐승 — 자리 " + go.transform.position.ToString("0.00") + " 크기 " + bb.size.ToString("0.00") +
+                      " (마구간 중심 " + anchor.ToString("0.00") + ")");
+            return true;
+        }
+
         public static int EnsureStableYardFence()
         {
             var go = GameObject.Find("Stable");
@@ -4819,7 +4858,9 @@ namespace Ulon.Editor
         static GameObject Place(string path, Vector3 pos, Quaternion rot)
         {
             string displayName = Path.GetFileNameWithoutExtension(path);
-            if (path.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase))
+            // **모델 확장자를 하나만 보면 새 팩에서 조용히 샌다** — OBJ로 배포된 사슴이 RAW 그대로 놓여
+            // 「Prefab이어야 한다」 게이트에 걸렸다(2026-09-07). 모델이면 전부 Env 프리팹을 거친다.
+            if (IsModelPath(path))
                 path = EnsureEnvPrefab(path);
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab == null)
@@ -5100,6 +5141,45 @@ namespace Ulon.Editor
                 }
             }
             return any;
+        }
+
+        /// <summary>
+        /// 짐승 모델을 **원장 키**에 맞춘다. 모델마다 제작 단위가 달라(사슴 OBJ, 멧돼지 Blender FBX)
+        /// 그냥 놓으면 거인이나 먼지가 된다 — 영지 사고와 같은 계열이라 크기는 코드가 정한다.
+        /// </summary>
+        /// <summary>
+        /// 짐승 모델을 **칠한다**(§8.2 무텍스처 금지). 받은 CC0 모델은 단색 재질(사슴)이거나
+        /// 텍스처가 FBX에 안 딸려 왔다(멧돼지) — 소품과 같은 잡음 텍스처 재질로 부위별로 칠한다.
+        /// 부위 구분은 원본 재질 이름(deer_skin·deer_horn·Deer_hoaves)으로 한다.
+        /// </summary>
+        static void PaintCreature(GameObject go, bool deer)
+        {
+            var hide = MakeNoiseMat(deer ? "DeerHide" : "BoarHide",
+                deer ? new Color(0.42f, 0.28f, 0.16f) : new Color(0.24f, 0.19f, 0.16f),
+                deer ? new Color(0.55f, 0.38f, 0.22f) : new Color(0.34f, 0.27f, 0.22f));
+            var horn = MakeNoiseMat("CreatureHorn", new Color(0.68f, 0.62f, 0.48f), new Color(0.82f, 0.76f, 0.60f));
+            var hoof = MakeNoiseMat("CreatureHoof", new Color(0.10f, 0.09f, 0.08f), new Color(0.18f, 0.16f, 0.14f));
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                var mats = rends[i].sharedMaterials;
+                for (int m = 0; m < mats.Length; m++)
+                {
+                    string n = mats[m] != null ? mats[m].name : "";
+                    mats[m] = n.IndexOf("horn", StringComparison.OrdinalIgnoreCase) >= 0 ? horn
+                            : n.IndexOf("hoav", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              n.IndexOf("hoof", StringComparison.OrdinalIgnoreCase) >= 0 ? hoof
+                            : hide;
+                }
+                rends[i].sharedMaterials = mats;
+            }
+        }
+
+        static void FitCreatureHeight(GameObject go, float target)
+        {
+            if (target < 0.05f || !BoundsOf(go.transform, true, out Bounds b) || b.size.y < 0.001f)
+                return;
+            go.transform.localScale = go.transform.localScale * (target / b.size.y);
         }
 
         static void FitHeight(Transform visual, Transform root, float target)
@@ -5503,9 +5583,17 @@ namespace Ulon.Editor
             return n == "fence" || n == "fence-gate";
         }
 
+        /// <summary>유니티가 모델로 읽는 확장자(팩마다 배포 형식이 다르다 — FBX·OBJ 둘 다 온다).</summary>
+        public static bool IsModelPath(string path)
+        {
+            return !string.IsNullOrEmpty(path) &&
+                   (path.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) ||
+                    path.EndsWith(".obj", StringComparison.OrdinalIgnoreCase));
+        }
+
         static string EnsureEnvPrefab(string fbxPath, bool rebuild = false)
         {
-            if (string.IsNullOrEmpty(fbxPath) || !fbxPath.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase))
+            if (!IsModelPath(fbxPath))
                 return fbxPath;
             EnsureEnvFolder();
             string prefabPath = EnvPrefabPath(fbxPath);

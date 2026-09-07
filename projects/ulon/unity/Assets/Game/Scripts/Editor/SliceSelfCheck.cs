@@ -51,7 +51,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureVillageFacilities();  // 시설이 그 기능으로 읽히게(검수 랩 ①)
             VisualSliceBuilder.EnsureServiceNpcs();        // 표시명만 사람이던 자리에 사람을(§18.19, 검수 랩 ②)
             VisualSliceBuilder.EnsureCampfireFire();       // 화덕에 불(검수 반려 — 불 메시가 없어도 파티클로 된다)
-            VisualSliceBuilder.EnsureStableYardFence();    // 마구간 울타리를 닫는다(검수 반려)
+            VisualSliceBuilder.EnsureStableYardFence();
+            VisualSliceBuilder.EnsureStableBeast();       // 마당에 짐승 한 마리(빈 마당은 마구간이 아니다)    // 마구간 울타리를 닫는다(검수 반려)
             VisualSliceBuilder.EnsureEntranceFramesQualified();  // 옛 씬의 검은 큐브 문틀을 등록 조각으로 다시 세운다(검수 2026-09-07)
             VisualSliceBuilder.EnsureRoomSize();           // 방 반경이 원장과 다르면 헐고 다시 짓는다(검은 허공)
             VisualSliceBuilder.EnsureCapeIsBossOnly();     // 망토는 §10.2 보스 표식이다 — 예외 없음(검수 판정 2026-09-07)

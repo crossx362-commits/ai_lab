@@ -13,6 +13,8 @@
 | Kenney RPG Audio 1.0 | 행동 효과음(타격·회복·제작) | CC0 | 공식 zip 일부 | 2026-09-07 | RAW/Audio: knifeSlice.ogg(타격)·handleCoins.ogg(회복)·metalPot1.ogg(제작). 나머지 미도입. 클립이 없을 때만 코드 합성 폴백(`Client/ActionSfx.cs`) (오너 승인 2026-09-07) | https://kenney.nl/assets/rpg-audio |
 | Kenney Fantasy Town Kit 2.0 | 마을 소품 | CC0 | 공식 zip 일부 | 2026-08-31 | windmill, stall, fountain-round, tree, cart, rock, planks(던전 널빤지). 던전 실내 소품은 2026-09-06부터 KayKit Dungeon Remastered로 교체 | https://kenney.nl/assets/fantasy-town-kit |
 | Kenney Nature Kit | 필드 소품 | CC0 | 공식 zip 일부 | 2026-08-31 | grass, plant_bush, rock_largeA, rock_smallA(던전 잔해) | https://kenney.nl/assets/nature-kit |
+| OpenGameArt Deer (low poly, rigged) | 조련 대상 「야생하트」·마구간 짐승 | CC0 | 전체 | 2026-09-07 | RAW: Deer.obj + Deer.mtl(배포 zip의 「Other formats」). 나머지 blend·3ds 미도입. 자격 원장 `Editor/SliceSelfCheck.CreatureArt.cs` (오너 승인 2026-09-07) | https://opengameart.org/content/deer-low-poly-rigged |
+| OpenGameArt Boar | 조련 대상 「멧돼지」 | CC0 | 전체 | 2026-09-07 | RAW: boar_0.blend(배포 원본) + Boar.fbx(로컬 Blender 5.2로 변환한 것, 변환 명령은 README_IMPORT.txt). 자격 원장 `Editor/SliceSelfCheck.CreatureArt.cs` (오너 승인 2026-09-07) | https://opengameart.org/content/boar |
 | Kenney Retro Fantasy Kit | 소품 | CC0 |  |  |  |  |
 | Noto Sans KR | 한글 UI | SIL OFL 1.1 |  |  |  |  |
 | 지형 텍스처 4종(KenneyGrass·MountainRock·ShoreSand·SeaWater) | 지형 도포·수면 | 자체 제작 | VisualSliceBuilder.MakeNoiseMat이 128px 노이즈로 생성 | 2026-09-06 | Assets/Game/Art/Env/*.png | 코드 생성(외부 원본 없음) |
