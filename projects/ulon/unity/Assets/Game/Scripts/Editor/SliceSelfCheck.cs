@@ -23,6 +23,9 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureMobModelLedger();     // 기대 모델과 다른 몹도 헐고 다시(도적=Rogue, 검수 승인)
             VisualSliceBuilder.EnsureHuntMobs();
             VisualSliceBuilder.EnsureHuntMobPlacement();
+            // 크기를 **드레싱보다 먼저** 맞춘다 — 왕관·무기는 정수리·손 위치에 맞춰 붙는데,
+            // 뒤에서 몸 크기를 바꾸면 그 부착이 통째로 어긋난다(실제로 섀도우캡틴 관이 1.00m 떴다).
+            VisualSliceBuilder.EnsureMobSizes();           // 원장 키로(랩 ⑥ — 재는 자와 맞추는 자가 갈려 있었다)
             VisualSliceBuilder.EnsureMobDressing();
             VisualSliceBuilder.EnsureBossDressing();
             VisualSliceBuilder.EnsureEntranceClearance();
@@ -1667,6 +1670,8 @@ namespace Ulon.Editor
             AssertActorsAnimated();                         // T포즈로 서 있는 사람형이 없는가(랩 ④ (a) 실측)
             AssertFlaxFieldNegativeControl();               // 한 포기만 남기면 빨간불인가
             AssertFlaxFieldReadsAsField();                  // 아마밭이 「밭」으로 읽히는가(랩 ⑤)
+            AssertMobHeightsNegativeControl();               // 한 마리를 1.4배로 키우면 빨간불인가
+            AssertMobHeightsMatchCatalog();                  // 몹이 원장 키로 서 있는가(랩 ⑥)
             AssertEffectWiring();
             AssertEffectWiringNegativeControl();
             AssertCharacterArtNegativeControl();

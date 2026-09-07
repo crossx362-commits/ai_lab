@@ -45,6 +45,12 @@ namespace Ulon.Editor
                 Orbit("01_village_square", new Vector3(0f, 0f, 0f), 20f, 35f),
                 Orbit("02_village_wide", new Vector3(0f, 0f, 0f), 55f, 45f),
                 Orbit("03_hunt_mobs", new Vector3(2.8f, 0f, 13.6f), 26f, 30f),
+                // 잡몹이 나란히 선 눈높이 샷 — **키를 서로 비교해서 읽는** 화면(검수 완료 기준 랩 ⑥).
+                // 위에서 내려다보면 원근이 키 차이를 먹는다. 낮게·가까이서 본다.
+                // 마을 반대쪽(북)에서 눈높이로 — 궤도 샷은 지붕이 화면 절반을 먹었다.
+                Free("56_mob_lineup",
+                     new Vector3(2.8f, GroundY(2.8f, 25f) + 4.0f, 25f),
+                     new Vector3(2.8f, GroundY(2.8f, 13.6f) + 1.0f, 13.6f)),
                 Orbit("06_field_boss", new Vector3(22.6f, 0f, 8.4f), 10f, 25f),
                 Orbit("07_d1_entrance", new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 8f, 20f),
                 PlayCam("08_d1_interior_playcam", Dungeon1.InteriorX, Dungeon1.InteriorZ),

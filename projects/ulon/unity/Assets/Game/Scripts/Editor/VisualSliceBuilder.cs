@@ -5639,13 +5639,30 @@ namespace Ulon.Editor
             }
         }
 
+        /// <summary>
+        /// 짐승 키 맞추기 — **사람과 같은 자**(구운 몸)로 잰다(랩 ⑥).
+        ///
+        /// 옛 판은 `BoundsOf(..., includeInactive: true)`로 쟀다. 꺼져 있는 노드까지 들어가
+        /// 실제 몸보다 훨씬 큰 값이 나오면 배율이 그만큼 작아진다 — 멧돼지가 **0.03m**(원장 0.95m)로
+        /// 서 있었고, 근접 샷은 피사체에 맞춰 당기니 화면으로는 멀쩡해 보였다. 새 몹 키 게이트가 잡았다.
+        /// </summary>
         static void FitCreatureHeight(GameObject go, float target)
         {
-            if (target < 0.05f || !BoundsOf(go.transform, true, out Bounds b) || b.size.y < 0.001f)
+            if (target < 0.05f)
                 return;
-            go.transform.localScale = go.transform.localScale * (target / b.size.y);
+            float got = FitMeasuredHeight(go.transform, go.transform, target);
+            if (got > 0.0001f && Mathf.Abs(got - target) / target >= 0.05f)
+                Debug.LogWarning("[Ulon] 짐승 키가 수렴하지 않았습니다 — " + go.name + " 목표 " +
+                                 target.ToString("0.00") + "m, 마지막 실측 " + got.ToString("0.000") + "m");
         }
 
+        /// <summary>
+        /// 키를 맞춘다 — **재는 자와 같은 자로**(검수 조건 2·3, 랩 ⑥).
+        ///
+        /// 옛 판은 `BoundsOf`(스킨드 렌더러 bounds 그대로 + 장비 포함)로 맞추는데 게이트는
+        /// 구운 몸(`GroundFit.BodyBounds`)으로 쟀다. 자가 둘이라 자객이 원장 1.70m인데 2.37m로,
+        /// 도적이 1.75m인데 1.53m로 섰다. **맞추는 쪽이 게이트와 같은 자를 쓴다.**
+        /// </summary>
         static void FitHeight(Transform visual, Transform root, float target)
         {
             visual.localPosition = Vector3.zero;
@@ -5654,15 +5671,128 @@ namespace Ulon.Editor
             if (rends.Length == 0)
                 return;
             SlimHeadgear(visual);
-            Bounds b;
-            if (!BoundsOf(visual, false, out b))
-                BoundsOf(visual, true, out b);
-            if (b.size.y < 0.01f)
+            // 한 번 곱해서 안 끝나는 모델이 있다(본이 스케일된 노드 아래 있으면 배율이 두 번 들어간다) —
+            // **반응을 재서** 맞춘다. 안 그러면 같은 모델인데 도적 1.77m·던전 도적 1.53m처럼 갈린다.
+            FitMeasuredHeight(visual, visual, target);
+            if (!MeasuredBody(visual, out Bounds b))
                 return;
-            visual.localScale = Vector3.one * (target / b.size.y);
-            if (!BoundsOf(visual, false, out b))
-                BoundsOf(visual, true, out b);
             visual.localPosition = new Vector3(0f, visual.localPosition.y - (b.min.y - root.position.y), 0f);
+        }
+
+        /// <summary>게이트와 **같은 자** — 스킨드 메시를 구워서 재고 장비는 뺀다.</summary>
+        static bool MeasuredBody(Transform visual, out Bounds b)
+        {
+            if (GroundFit.WorldBounds(visual, out b, t => GroundFit.IsGear(visual, t)) && b.size.y > 0.01f)
+                return true;
+            return BoundsOf(visual, false, out b) || BoundsOf(visual, true, out b);
+        }
+
+        /// <summary>
+        /// **몹을 원장 키로 다시 세운다**(멱등, 랩 ⑥). 이미 서 있는 몹은 `EnsureHuntMob`이
+        /// 일찍 반환하므로 `FitHeight`를 고쳐도 옛 크기가 그대로 남는다 —
+        /// 「Ensure가 일찍 반환할 때 이미 있는 것이 옳은지는 아무도 안 본다」 계열이다.
+        /// 목표 비율로 한 번에 맞추므로(곱하기 누적이 아니라) 두 번째 실행은 아무것도 안 바꾼다.
+        /// </summary>
+        public static void EnsureMobSizes()
+        {
+            var mobs = UnityEngine.Object.FindObjectsByType<WorldBody>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var fixedNames = new List<string>();
+            var skipped = new List<string>();
+            int seen = 0;
+            for (int i = 0; i < mobs.Length; i++)
+            {
+                string id = mobs[i].MobId;
+                if (string.IsNullOrEmpty(id))
+                    continue;
+                float want = MobCatalog.HeightOf(id);
+                if (want < 0.01f)
+                    continue;
+                seen++;
+                var target = SizeTarget(mobs[i].transform);
+                if (target == null)
+                {
+                    skipped.Add(mobs[i].name + "(키울 것이 없음)");
+                    continue;
+                }
+                if (!GroundFit.BodyBounds(mobs[i].transform, out Bounds b) || b.size.y < 0.0001f)
+                {
+                    skipped.Add(mobs[i].name + "(잴 몸이 없음)");
+                    continue;
+                }
+                if (GroundFit.WorldBounds(mobs[i].transform, out Bounds full) && b.size.y < full.size.y * 0.5f)
+                {
+                    // **건너뛴 것을 침묵으로 두지 않는다** — 조용히 빠지면 그 몹은 영원히 틀린 크기다.
+                    skipped.Add(mobs[i].name + "(몸 자가 무너짐 " + b.size.y.ToString("0.00") + "/" + full.size.y.ToString("0.00") + "m)");
+                    continue;
+                }
+                float before = b.size.y;
+                // **게이트가 받아 주는 폭 안이면 손대지 않는다.** 2%로 두었더니 보스가 매 실행
+                // 2.68↔2.69를 오가며 멱등 게이트를 깼다(포즈에 따라 구운 바운드가 조금씩 다르다).
+                // 고칠 것은 「명백히 틀린 것」이고, 그 판단 기준은 게이트와 같아야 한다.
+                if (Mathf.Abs(before - want) / want <= 0.08f)
+                    continue;
+                // 한 번 곱해서 안 끝나는 모델이 있다(멧돼지: 재고 곱한 뒤 다시 재면 값이 다르다) —
+                // **수렴할 때까지 재고 맞춘다**. 목표 비율로만 곱하므로 맞은 것은 첫 회에 빠져나간다.
+                float got = FitMeasuredHeight(mobs[i].transform, target, want);
+                if (GroundFit.BodyBounds(mobs[i].transform, out Bounds after))
+                    target.position += new Vector3(0f, mobs[i].transform.position.y - after.min.y, 0f);
+                fixedNames.Add(mobs[i].name + " " + before.ToString("0.00") + "→" + got.ToString("0.00") + "m");
+            }
+            Debug.Log("[Ulon] 몹 키 보정 — 원장에 묶인 " + seen + "체 중 " + fixedNames.Count + "체 조정·" +
+                      skipped.Count + "체 건너뜀. 조정: " + (fixedNames.Count == 0 ? "(전부 이미 맞다)" : string.Join(", ", fixedNames)) +
+                      (skipped.Count == 0 ? "" : " / 건너뜀: " + string.Join(", ", skipped)));
+        }
+
+        /// <summary>
+        /// 잰 키를 목표에 맞춘다 — **반응을 재서** 맞춘다.
+        ///
+        /// 「배율을 r배 하면 키도 r배」는 **추측**이다. 멧돼지는 루트를 1/37로 줄이자 키가 1/1170으로
+        /// 줄었다(제곱 반응) — 본이 스케일된 루트 아래 있어 구운 메시에 배율이 두 번 들어가는 경로다.
+        /// 그래서 비율로 한 번 곱하는 방식은 진동만 하고 영원히 안 맞는다(실제로 35.10→0.03을 오갔다).
+        /// 여기서는 한 번 곱해 보고 **지수 e = log(변화)/log(배율)** 를 실측한 뒤 그 지수로 푼다.
+        /// 사람형(e≈1)도 짐승(e≈2)도 같은 코드로 두세 번에 수렴한다.
+        /// </summary>
+        static float FitMeasuredHeight(Transform actor, Transform target, float want)
+        {
+            float e = 1f;
+            float got = 0f;
+            for (int pass = 0; pass < 8; pass++)
+            {
+                if (!GroundFit.BodyBounds(actor, out Bounds cur) || cur.size.y < 0.0001f)
+                    return got;
+                got = cur.size.y;
+                if (Mathf.Abs(got - want) / want < 0.02f)
+                    return got;
+                float f = Mathf.Pow(want / got, 1f / Mathf.Clamp(e, 0.5f, 4f));
+                f = Mathf.Clamp(f, 0.02f, 50f);
+                target.localScale = target.localScale * f;
+                if (!GroundFit.BodyBounds(actor, out Bounds next) || next.size.y < 0.0001f)
+                    return got;
+                // 반응 지수를 실측해 다음 회에 쓴다(선형이면 1, 제곱이면 2가 나온다).
+                float lf = Mathf.Log(f);
+                if (Mathf.Abs(lf) > 0.001f)
+                    e = Mathf.Clamp(Mathf.Log(next.size.y / got) / lf, 0.5f, 4f);
+                got = next.size.y;
+            }
+            return got;
+        }
+
+        /// <summary>
+        /// 키를 **어디에 걸어야 하는가** — 사람형은 몸이 `Visual` 자식에 있고, 짐승은 **루트 자체**가 메시다.
+        /// 처음엔 둘 다 자식을 키우려다 멧돼지가 루트 배율(0.0037)에 자식 배율(0.027)까지 곱해져
+        /// 3cm로 쪼그라들었다 — **만드는 쪽이 어디를 키웠는지와 같은 곳**을 잡아야 한다.
+        /// </summary>
+        static Transform SizeTarget(Transform actor)
+        {
+            if (actor.GetComponent<CharacterController>() == null)
+                return actor;                                   // 짐승 — 루트가 곧 몸이다(FitCreatureHeight와 같은 자리)
+            var visual = actor.Find("Visual");
+            if (visual != null)
+                return visual;
+            for (int c = 0; c < actor.childCount; c++)
+                if (actor.GetChild(c).GetComponentInChildren<Renderer>(true) != null)
+                    return actor.GetChild(c);
+            return null;
         }
 
         static AnimatorController BuildController(AnimationClip idle, AnimationClip walk, AnimationClip run, AnimationClip attack)
