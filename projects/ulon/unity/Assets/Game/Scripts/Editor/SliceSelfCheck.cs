@@ -71,6 +71,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureRoomFurnishing();     // 넓힌 방을 채운다(§6.1 던전 콘텐츠)
             VisualSliceBuilder.EnsureCapBuried();        // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
+            VisualSliceBuilder.EnsureDecorClearOfPeople();  // 사람 몸에 박힌 장식은 장식이 비킨다(검수 판정 2026-09-08)
             VisualSliceBuilder.EnsureActorsOnSurface();
             VisualSliceBuilder.EnsureWeaponsAboveFloor();  // 몸을 세운 **뒤** 무기를 바닥 위로(같은 원인의 다른 얼굴)    // **스케일·드레싱이 다 끝난 뒤** 발을 바닥에 다시 붙인다
 

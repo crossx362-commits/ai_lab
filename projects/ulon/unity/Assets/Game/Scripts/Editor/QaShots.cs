@@ -430,6 +430,8 @@ namespace Ulon.Editor
             float bestSeen = -1f;
             float bestDist = -1f;
             var blockers = new System.Collections.Generic.List<string>();
+            var perBearing = new System.Collections.Generic.List<string>();
+            int frontRejected = 0;
             // 마을은 시설이 2~3m 간격으로 붙어 있어 게임 각도에서는 앞집 지붕이 시설을 통째로 덮는다
             // (첫 촬영본 35_fishing이 그랬다). 방위 8 × 내려보는 각 3을 다 재고 제일 잘 보이는 조합을 쓴다.
             float[] pitches = lowAngle ? new[] { 10f, 18f, 26f } : new[] { pitch, 50f, 65f };
@@ -482,7 +484,10 @@ namespace Ulon.Editor
                 // 처음엔 점수에 가산점으로 얹었더니 가림 점수에 묻혀 치유사가 뒷모습으로 찍혔다.
                 // 등을 보이는 각은 아예 **후보에서 뺀다** — 얼굴이 없으면 「누구인지」가 화면에 없다.
                 if (byRenderer && !IgnoreFrontRuleForNc && FrontDot(go.transform, target, pit, y, dist) < PersonFrontMin)
+                {
+                    frontRejected++;                 // 「가려서 못 찍는다」와 「앞이 아니라 못 쓴다」를 갈라 센다
                     continue;
+                }
                 // **「대상이 실제로 보이는가」로 후보를 거른다**(검수 반려 2026-09-08).
                 // 처음엔 「반투명이 끼는 방위를 뺀다」로 걸었는데 그건 **대리 지표**였다 —
                 // 반투명이 없다 ≠ 대상이 보인다. 불투명한 지붕에 통째로 가려진 방위가 그 규칙을
@@ -499,16 +504,23 @@ namespace Ulon.Editor
                     // 온몸이 화면에 들어오는 거리다(55° 화각·키 1.8m 기준 1.73m가 꽉 차는 거리) —
                     // 예전에 1.4m까지 열었다가 훈련사가 얼굴만 찍힌 개악을 되풀이하지 않기 위한 바닥이다.
                     float tryDist = -1f;
-                    for (float d = dist; d >= InsidePullFloor - 0.01f; d -= 0.3f)
+                    string lastBlocker = "";            // 이 방위에서 마지막으로 막은 것 — 방위별 로그의 실체
+                    // **하한은 「더 당기지 마라」이지 「그보다 가까우면 안 본다」가 아니다.**
+                    // 처음엔 `d >= 하한`으로만 돌렸더니, 원래 거리가 이미 1.9m 아래인 작은 피사체는
+                    // 루프가 **한 번도 안 돌아** 「전 방위가 막혔다」로 보고됐다(실측: 마구간지기 —
+                    // 실제로는 아무것도 안 막고 있었다). 원래 거리는 언제나 한 번 잰다.
+                    float stop = Mathf.Min(dist, InsidePullFloor);
+                    for (float d = dist; d >= stop - 0.01f; d -= 0.3f)
                     {
                         // 0.3m 격자가 하한을 건너뛰면 「1.9m에서 보이는데 못 찾는」 일이 생긴다(실측 은행원).
-                        if (d - 0.3f < InsidePullFloor)
-                            d = InsidePullFloor;
+                        if (d - 0.3f < stop && d > stop)
+                            d = stop;
                         var eyeD = target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * d;
                         var headD = box.center + Vector3.up * box.extents.y * 0.8f;
                         if (BlockedByRenderer(eyeD, headD, go.transform, out string bd) ||
                             BlockedByRenderer(eyeD, box.center, go.transform, out bd))
                         {
+                            lastBlocker = bd;
                             if (bd != "" && !blockers.Contains(bd))
                                 blockers.Add(bd);
                             continue;
@@ -517,7 +529,16 @@ namespace Ulon.Editor
                         break;
                     }
                     if (tryDist < 0f)
+                    {
+                        // **방위별로 무엇이 막았는지 남긴다**(검수 지시 2026-09-08, 마구간지기).
+                        // 이 줄이 없어서 「막힘 기록 0」이 찍혔고, 나는 그것을 세계의 사실로 읽을 뻔했다 —
+                        // 리스트를 만들어 놓고 채우지 않은 것은 **계측기가 결과를 만든 것**이다.
+                        // 막은 이름이 비어 있으면 그것도 그대로 적는다(빈칸을 숨기면 다시 같은 오독이 난다).
+                        if (perBearing.Count < 40)
+                            perBearing.Add("요 " + y.ToString("0") + "°/내려 " + pit.ToString("0") + "° ← " +
+                                           (lastBlocker == "" ? "(막은 이름 없음)" : lastBlocker));
                         continue;
+                    }
                     // 같은 값이면 **덜 당긴 방위**를 고른다 — 껍데기 안으로 들어갈수록 주변이 안 보인다.
                     if (share > bestSeen + 0.02f || (Mathf.Abs(share - bestSeen) <= 0.02f && tryDist > bestDist))
                     {
@@ -533,6 +554,8 @@ namespace Ulon.Editor
             if (go.GetComponent<CharacterController>() != null)
             {
                 PersonShotClear[name] = bestSeen >= 0f;
+                Debug.Log("[Ulon] 사람 샷 결론 " + name + "(" + go.name + ") — bestSeen " + bestSeen.ToString("0.00") +
+                          " · clear " + (bestSeen >= 0f));
                 if (bestSeen < 0f)
                 {
                     // 진단 — **얼마나 더 들어가면 보이는가**를 같이 잰다(하한 1.9m는 판정용이고,
@@ -551,8 +574,12 @@ namespace Ulon.Editor
                             break;
                         }
                     }
+                    Debug.Log("[Ulon] 사람 샷 진단 " + name + " — 원래 거리 " + dist.ToString("0.00") +
+                              "m · 정면 탈락 " + frontRejected + " · 막힘 기록 " + perBearing.Count +
+                              " · 바운드 " + box.size.ToString("0.00") + " · 반지름 " + radius.ToString("0.00"));
                     Debug.Log("[Ulon] 사람 샷 " + name + " — 머리·몸통이 다 보이는 방위가 없다(24조합 전부 막힘). " +
                               "기본 방위로 찍고 실패로 보고한다. 막은 것: " + string.Join(", ", blockers) +
+                              "\n  방위별(정면 규칙에 걸린 것 " + frontRejected + "개 제외): " + string.Join(" / ", perBearing) +
                               " | 하한을 낮추면 " + (clears < 0f ? "0.9m까지 내려도 안 보인다" :
                               clears.ToString("0.0") + "m·방위 " + clearYaw.ToString("0") + "°/" + clearPitch.ToString("0") + "°에서 보인다"));
                 }

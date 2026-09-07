@@ -18,6 +18,20 @@ namespace Ulon.Editor
     /// </summary>
     public static partial class SliceSelfCheck
     {
+        /// <summary>
+        /// **이 조각이 사람·짐승의 일부인가**(제외 판정의 단일 원장).
+        ///
+        /// 예전엔 `t.root.GetComponentInChildren&lt;WorldBody&gt;()`로 물었다 — 뿌리에 몸이 하나라도
+        /// 매달려 있으면 **그 뿌리 아래 전부**를 「사람·짐승」으로 보고 뺐다. 그래서 마구간지기가
+        /// 마구간의 자식이라는 이유만으로 **마구간 전체(울타리·기둥·지붕·사슴)가 자 밖으로 사라졌고**,
+        /// 사슴이 마구간지기 몸에 16% 박혀 있는데도 「낀 사람 0명」이 나왔다.
+        /// **자를 느슨하게 하는 규칙이 곧 구멍이다** — 제외는 그 조각 **자신의 조상**에게만 묻는다.
+        /// </summary>
+        static bool IsBodyPart(Transform t)
+        {
+            return t != null && t.GetComponentInParent<Ulon.Server.WorldBody>() != null;
+        }
+
         static List<Transform> People()
         {
             var found = new List<Transform>();
@@ -37,11 +51,56 @@ namespace Ulon.Editor
             {
                 if (IsTerrainCollider(hits[i]) || hits[i].transform.IsChildOf(person))
                     continue;
-                if (hits[i].transform.root.GetComponentInChildren<Ulon.Server.WorldBody>(true) != null)
+                if (IsBodyPart(hits[i].transform))
                     continue;                                   // 사람·짐승 겹침은 다른 축(선언 제외)
                 blockers.Add(GroundFit.NodePath(hits[i].transform));
             }
             return blockers;
+        }
+
+        /// <summary>
+        /// **사람 몸에 조각이 겹쳐 있는가** — 콜라이더가 아니라 **보이는 것**으로 잰다(검수 지시 2026-09-08).
+        ///
+        /// 왜 넓혔나: 훈련사 머리에 지붕 조각(`roof-gable-end`)이 박혀 있었는데 이 게이트는
+        /// 「낀 사람 0명」이라고 답했다. 캡슐이 짧아서가 아니라(0.4~1.6m+반지름이라 머리까지 잰다)
+        /// **그 지붕 조각에 콜라이더가 없어서**다 — 물리로 재는 자는 장식을 못 본다.
+        /// 그래서 몸 바운드와 **렌더러 바운드**가 겹치는지 따로 본다. 사람·짐승은 뺀다(다른 축).
+        /// </summary>
+        static List<string> PiecesInBody(Transform person)
+        {
+            var found = new List<string>();
+            if (!GroundFit.BodyBounds(person, out Bounds body))
+                return found;
+            var rends = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                var t = rends[i].transform;
+                if (!rends[i].enabled || rends[i] is ParticleSystemRenderer)
+                    continue;
+                if (t.IsChildOf(person) || t.GetComponent<Terrain>() != null)
+                    continue;
+                if (IsBodyPart(t))
+                    continue;                                   // 사람·짐승 겹침은 다른 축
+                var b = rends[i].bounds;
+                if (b.size.x > 20f || b.size.z > 20f)
+                    continue;                                   // 월드 규모 판(지형·수면)은 겹침이 무의미
+                if (!b.Intersects(body))
+                    continue;
+                // 스치는 것이 아니라 **몸 안에 박힌 것**만 — 겹침 부피가 몸의 5% 이상.
+                var min = Vector3.Max(b.min, body.min);
+                var max = Vector3.Min(b.max, body.max);
+                var overlap = Vector3.Max(max - min, Vector3.zero);
+                float vol = overlap.x * overlap.y * overlap.z;
+                float bodyVol = Mathf.Max(0.0001f, body.size.x * body.size.y * body.size.z);
+                float share = vol / bodyVol;
+                if (share >= 0.01f && share < 0.05f)
+                    Debug.Log("[Ulon] 몸에 스친 조각(판정 아래) — " + person.name + " ← " +
+                              GroundFit.NodePath(t) + " " + (share * 100f).ToString("0.0") + "%");
+                if (share < 0.05f)
+                    continue;
+                found.Add(GroundFit.NodePath(t) + "(" + (vol / bodyVol * 100f).ToString("0") + "%)");
+            }
+            return found;
         }
 
         static void AssertNobodyInsideStructure()
@@ -53,6 +112,7 @@ namespace Ulon.Editor
             for (int i = 0; i < people.Count; i++)
             {
                 var blockers = StructuresAround(people[i]);
+                blockers.AddRange(PiecesInBody(people[i]));      // 콜라이더 없는 장식까지 본다
                 if (blockers.Count > 0)
                     bad.Add(people[i].name + " ← " + string.Join("+", blockers.GetRange(0, Mathf.Min(3, blockers.Count))));
             }
@@ -72,7 +132,7 @@ namespace Ulon.Editor
                     {
                         if (IsTerrainCollider(hits[h].collider) || hits[h].transform.IsChildOf(people[i]))
                             continue;
-                        if (hits[h].transform.root.GetComponentInChildren<Ulon.Server.WorldBody>(true) != null)
+                        if (IsBodyPart(hits[h].transform))
                             continue;
                         walls++;
                         break;
@@ -104,7 +164,7 @@ namespace Ulon.Editor
             {
                 if (IsTerrainCollider(all[i]))
                     continue;
-                if (all[i].transform.root.GetComponentInChildren<Ulon.Server.WorldBody>(true) != null)
+                if (IsBodyPart(all[i].transform))
                     continue;
                 if (all[i].bounds.size.y > 1.2f && all[i].bounds.size.y < 20f)
                     wall = all[i].transform;

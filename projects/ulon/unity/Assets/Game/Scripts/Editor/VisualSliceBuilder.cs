@@ -3832,6 +3832,73 @@ namespace Ulon.Editor
         /// 낚시터는 건드리지 않는다 — `EnsureFishSpot`이 먼저 돌아 이름을 `FishingSpot`으로 바꾸므로
         /// 여기서는 「아직 물레방아인 것」만 남는다(순서가 곧 안전장치다).
         /// </summary>
+        /// <summary>
+        /// **장식이 사람 몸에 박혀 있으면 장식을 비킨다**(검수 판정 2026-09-08).
+        ///
+        /// 훈련사 머리에 지붕이, 상인 몸에 다른 지붕이 겹쳐 있었다. 사람을 옮기는 것은 금지고
+        /// (그 자리가 §18.19대로 맞다), 겹친 쪽은 **역할 없는 장식**이니 장식이 물러난다.
+        /// 개별 좌표를 손보지 않는다 — 겹치면 밀어내는 **규칙**이라 다음에 장식을 더 놔도 같은 일이 안 난다.
+        /// 멱등: 안 겹치면 아무것도 안 움직인다.
+        /// </summary>
+        public static void EnsureDecorClearOfPeople()
+        {
+            var decorRoot = GameObject.Find("VillageDecor");
+            if (decorRoot == null)
+                return;
+            var people = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            int moved = 0;
+            for (int i = 0; i < people.Length; i++)
+            {
+                if (!GroundFit.BodyBounds(people[i].transform, out Bounds body))
+                    continue;
+                for (int g = 0; g < decorRoot.transform.childCount; g++)
+                {
+                    var group = decorRoot.transform.GetChild(g);
+                    if (!GroundFit.WorldBounds(group, out Bounds gb) || !gb.Intersects(body))
+                        continue;
+                    // **바닥에 깔린 것은 겹친 게 아니다** — 몸 바운드는 발까지 내려오므로 길 타일·판석은
+                    // 언제나 스친다(실측: 흙길이 동료를 피해 0.25m 밀려났다 — 규칙이 잘못 잡은 것이다).
+                    if (gb.size.y < 0.3f)
+                        continue;
+                    // 스치는 것과 **박힌 것**을 가른다 — 게이트와 같은 기준(몸 부피의 5%)을 쓴다.
+                    var lo = Vector3.Max(gb.min, body.min);
+                    var hi = Vector3.Min(gb.max, body.max);
+                    var ov = Vector3.Max(hi - lo, Vector3.zero);
+                    if (ov.x * ov.y * ov.z < body.size.x * body.size.y * body.size.z * 0.05f)
+                        continue;
+                    var away = group.position - people[i].transform.position;
+                    away.y = 0f;
+                    if (away.sqrMagnitude < 0.0001f)
+                        away = Vector3.right;
+                    away = away.normalized;
+                    int step = 0;
+                    while (step < 20 && GroundFit.WorldBounds(group, out Bounds now) && Overlaps(now, body, 0.01f))
+                    {
+                        group.position += away * 0.25f;
+                        step++;
+                    }
+                    if (step > 0)
+                    {
+                        // 밀어낸 뒤에도 발은 땅에 붙어 있어야 한다(공중 장식 사고와 같은 원인).
+                        group.position = new Vector3(group.position.x, GroundHeightAt(group.position.x, group.position.z), group.position.z);
+                        Debug.Log("[Ulon] 장식이 사람에 겹쳐 비켜섰다 — " + group.name + " ← " + people[i].name +
+                                  " " + (step * 0.25f).ToString("0.00") + "m");
+                        moved++;
+                    }
+                }
+            }
+            Debug.Log("[Ulon] 장식-사람 겹침 정리 — 사람 " + people.Length + "명 대상, 비켜선 장식 " + moved + "개");
+        }
+
+        /// <summary>두 바운드의 겹침 부피가 몸의 `share` 이상인가 — 「스쳤다」와 「박혔다」를 가른다.</summary>
+        static bool Overlaps(Bounds a, Bounds body, float share)
+        {
+            var lo = Vector3.Max(a.min, body.min);
+            var hi = Vector3.Min(a.max, body.max);
+            var ov = Vector3.Max(hi - lo, Vector3.zero);
+            return ov.x * ov.y * ov.z >= body.size.x * body.size.y * body.size.z * share;
+        }
+
         public static void EnsureNoRolelessWatermill()
         {
             var gone = new List<string>();
