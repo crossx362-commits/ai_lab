@@ -11,25 +11,83 @@ namespace Ulon.Editor
     /// </summary>
     public static class GroundFit
     {
-        /// <summary>씬에 놓인 배치물(캐릭터·건물·소품)의 루트들.</summary>
+        /// <summary>
+        /// 씬에 놓인 배치물(캐릭터·건물·소품)의 **배치 단위** 전수.
+        ///
+        /// **왜 다시 짰나**(검수 지시 2026-09-07, 부양/매몰 랩): 산포 바위 259개가 지표에서 4.3m 떠
+        /// 있었는데 발 게이트가 **초록불**이었다. 옛 판은 「루트에 렌더러가 (자식까지 훑어서) 있으면
+        /// 루트 하나를 대상으로 넣는다」였고, 그래서 `PlainScatter`·`Region_*` 같은 **담는 통**이
+        /// 통째로 한 덩어리로 재졌다 — 259개의 부양이 **합쳐진 바운드 안에서 상쇄돼** 사라졌다.
+        /// 「대상 집합이 좁으면 결함은 그 밖에서 산다」의 네 번째 사례다.
+        ///
+        /// **단위 규칙(구조로 정한다, 이름 목록이 아니다)**: 어떤 노드의 렌더러 바운드가 수평으로
+        /// `UnitSpreadMax`(8m)보다 넓게 퍼져 있으면 그건 한 물건이 아니라 **통**이다 → 자식으로 내려간다.
+        /// 그보다 좁으면 한 배치 단위다(집은 지붕·굴뚝까지 한 단위로 같이 내려앉아야 한다).
+        /// </summary>
+        public const float UnitSpreadMax = 8f;
+
+        /// <summary>직전 `Candidates()`가 **왜 뺐는지** — 침묵으로 빼지 않는다(검수 조건 2).</summary>
+        public static readonly List<string> LastExcluded = new List<string>();
+
         public static List<Transform> Candidates()
         {
             var list = new List<Transform>();
+            LastExcluded.Clear();
             var roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
             for (int r = 0; r < roots.Length; r++)
-            {
-                var root = roots[r];
-                if (!root.activeInHierarchy || SkipContainer(root.name))
-                    continue;
-                if (HasRenderer(root.transform))
-                {
-                    Add(list, root.transform);
-                    continue;
-                }
-                for (int c = 0; c < root.transform.childCount; c++)
-                    Add(list, root.transform.GetChild(c));
-            }
+                Collect(list, roots[r].transform, 0);
             return list;
+        }
+
+        static void Collect(List<Transform> list, Transform t, int depth)
+        {
+            if (!t.gameObject.activeInHierarchy)
+                return;
+            if (SkipContainer(t.name) || SkipItem(t.name))
+            {
+                if (HasRenderer(t))
+                    LastExcluded.Add(t.name + "(선언 제외: " + (SkipItem(t.name) ? "지하가 설계" : "지형·물·관리자") + ")");
+                return;
+            }
+            if (!HasRenderer(t))
+                return;
+            if (!UnitBounds(t, out Bounds b))
+            {
+                LastExcluded.Add(NodePath(t) + "(공중에 있는 것이 정상: 파티클뿐)");
+                return;
+            }
+            // 세계만 한 판(바다 수면 등)은 배치물이 아니다 — 이름이 아니라 크기로 뺀다.
+            if (b.size.x > 200f || b.size.z > 200f)
+            {
+                LastExcluded.Add(NodePath(t) + "(월드 규모 판 " + b.size.x.ToString("0") + "×" + b.size.z.ToString("0") + "m)");
+                return;
+            }
+            if (depth < 4 && t.childCount > 0 && Mathf.Max(b.size.x, b.size.z) > UnitSpreadMax)
+            {
+                for (int c = 0; c < t.childCount; c++)
+                    Collect(list, t.GetChild(c), depth + 1);
+                return;
+            }
+            list.Add(t);
+        }
+
+        /// <summary>
+        /// 단위 바운드 — **파티클은 뺀다**. 불꽃·연기는 공중에 있는 것이 정상이라
+        /// (검수가 명시적으로 허용한 제외) 이것까지 넣으면 화톳불이 땅으로 끌려 내려간다.
+        /// </summary>
+        public static bool UnitBounds(Transform t, out Bounds bounds)
+        {
+            bounds = new Bounds();
+            bool first = true;
+            var rends = t.GetComponentsInChildren<Renderer>(false);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (rends[i] is ParticleSystemRenderer || rends[i] is TrailRenderer || rends[i] is LineRenderer)
+                    continue;
+                if (first) { bounds = rends[i].bounds; first = false; }
+                else bounds.Encapsulate(rends[i].bounds);
+            }
+            return !first;
         }
 
         static void Add(List<Transform> list, Transform t)
@@ -44,6 +102,8 @@ namespace Ulon.Editor
         /// 이름에 그 단어가 든 **배치물을 통째로** 눈 밖으로 내보낸다. 씬 루트는 우리가 만든 것뿐이니
         /// **정확한 이름 목록**으로 적는다 — 새 루트가 생기면 여기 적어야 검사에서 빠진다(빠뜨림이 눈에 띈다).
         /// </summary>
+        static readonly string[] WaterRoots = { "SeaWater", "Water", "River", "Lake", "LakeWater", "RiverWater" };
+
         static readonly string[] SkipRoots =
         {
             "Terrain", "Ground", "Managers", "GameManager", "NetworkManager", "Main Camera", "PlayCamera",
@@ -52,8 +112,13 @@ namespace Ulon.Editor
 
         public static bool SkipContainer(string n)
         {
-            if (n.StartsWith("Sea", StringComparison.Ordinal) || n.StartsWith("Water", StringComparison.Ordinal))
-                return true;                                  // 바다·수면은 지표가 아니다
+            // **접두사로 거르면 「Watermill」이 물이 된다** — 실제로 그랬다(검수 2026-09-07):
+            // 마을 물레방아 두 채가 10m 지하에 묻힌 채 「Water…」라는 이유로 검사 대상 밖이었다.
+            // 「이름 포함으로 거르지 마라」의 접두사 판(같은 함정 두 번째). 수면은 **정확한 이름**으로
+            // 적고, 이름이 바뀌어도 새는 일이 없게 크기 규칙(월드 규모 판)이 한 번 더 받는다.
+            for (int i = 0; i < WaterRoots.Length; i++)
+                if (string.Equals(n, WaterRoots[i], StringComparison.Ordinal))
+                    return true;
             for (int i = 0; i < SkipRoots.Length; i++)
                 if (string.Equals(n, SkipRoots[i], StringComparison.Ordinal))
                     return true;

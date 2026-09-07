@@ -32,7 +32,12 @@ namespace Ulon.Editor
             }
 
             offenders.Sort((a, b) => Mathf.Abs(b.Dy).CompareTo(Mathf.Abs(a.Dy)));
-            Debug.Log("[Ulon] §8.1 전역 발 높이 — 대상 " + checkedCount + "개, 오차 " + GlobalFootErrorMax + "m 초과 " + offenders.Count + "개");
+            // **몇 개를 쟀고 몇 개를 왜 뺐는지**를 같이 적는다(검수 조건 2026-09-07) —
+            // 침묵으로 빠진 것이 259개 부양 바위를 숨겼다.
+            Debug.Log("[Ulon] §8.1 전역 발 높이 — 대상 " + checkedCount + "개(배치 단위 " + items.Count +
+                      "), 오차 " + GlobalFootErrorMax + "m 초과 " + offenders.Count + "개 · 선언 제외 " +
+                      GroundFit.LastExcluded.Count + "개: " +
+                      string.Join(", ", GroundFit.LastExcluded.GetRange(0, Mathf.Min(12, GroundFit.LastExcluded.Count))));
             for (int i = 0; i < offenders.Count && i < 15; i++)
                 Debug.Log("[Ulon]   발 높이 이탈 " + offenders[i].Name + " " + offenders[i].Dy.ToString("0.00") + "m");
             if (offenders.Count > 0)
@@ -41,31 +46,39 @@ namespace Ulon.Editor
                     "m). 지형 높이를 바꾸면 그 위에 선 것도 같이 옮겨야 합니다.");
         }
 
-        /// <summary>네거티브 컨트롤 — 배치물 하나를 실제로 1m 내려 게이트가 빨간불이 되는지 본다.</summary>
+        /// <summary>
+        /// 네거티브 컨트롤 — **양쪽으로** 만든다(검수 조건 2026-09-07): 하나를 실제로 3m 띄우고,
+        /// 하나를 3m 묻는다. 결함은 한 방향만 나지 않는다 — 산포 바위는 떠 있었고 물레방아는 묻혀 있었다.
+        /// </summary>
         static void AssertFootNegativeControl()
         {
             var items = GroundFit.Candidates();
-            Transform victim = null;
-            for (int i = 0; i < items.Count; i++)
-                if (GroundFit.WorldBounds(items[i], out Bounds _)) { victim = items[i]; break; }
-            if (victim == null)
-                throw new InvalidOperationException("발 높이 네거티브 컨트롤 대상이 없습니다 — 배치물이 하나도 안 잡힙니다.");
+            var picks = new List<Transform>();
+            for (int i = 0; i < items.Count && picks.Count < 2; i++)
+                if (GroundFit.WorldBounds(items[i], out Bounds _))
+                    picks.Add(items[i]);
+            if (picks.Count < 2)
+                throw new InvalidOperationException("발 높이 네거티브 컨트롤 대상이 " + picks.Count +
+                    "개뿐입니다 — 배치물이 안 잡힙니다(0이면 실패).");
 
-            var saved = victim.position;
-            bool red = false;
-            try
+            for (int k = 0; k < 2; k++)
             {
-                victim.position = saved - Vector3.up * 1.0f;
-                try { AssertFootOnGround(); }
-                catch (InvalidOperationException) { red = true; }
+                var victim = picks[k];
+                float dy = k == 0 ? 3.0f : -3.0f;              // 띄우기 / 묻기
+                var saved = victim.position;
+                bool red = false;
+                try
+                {
+                    victim.position = saved + Vector3.up * dy;
+                    try { AssertFootOnGround(); }
+                    catch (InvalidOperationException) { red = true; }
+                }
+                finally { victim.position = saved; }
+                if (!red)
+                    throw new InvalidOperationException("발 높이 네거티브 컨트롤 실패 — " + victim.name + "를 " +
+                        dy.ToString("0") + "m 옮겼는데도 통과했습니다.");
+                Debug.Log("[Ulon] 발 높이 네거티브 컨트롤 통과 — " + victim.name + " " + dy.ToString("0") + "m 이동 시 FAIL");
             }
-            finally
-            {
-                victim.position = saved;
-            }
-            if (!red)
-                throw new InvalidOperationException("발 높이 게이트 네거티브 컨트롤 실패 — " + victim.name + "를 1m 내렸는데도 통과했습니다.");
-            Debug.Log("[Ulon] 발 높이 게이트 네거티브 컨트롤 통과 — " + victim.name + " 1m 하강 시 FAIL");
         }
     }
 }

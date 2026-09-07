@@ -93,6 +93,8 @@ namespace Ulon.Editor
                 FacilityCloseUp("32_vendor", "Vendor"),
                 FacilityCloseUp("33_campfire", "Campfire"),
                 FacilityCloseUp("34_mortar", "Mortar"),
+                // 물레방아가 **지상에 섰는지** 눈으로 본다 — 10m 지하에 묻혀 있었다(검수 완료 기준 랩 ⑧).
+                FacilityCloseUp("57_watermill", "Watermill", null, true),
                 FacilityCloseUp("35_fishing", "FishingSpot",
                     new Vector3(WorldTerrain.LakeX, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),   // 호수를 등지지 않게
                 FacilityCloseUp("36_stable", "Stable"),
