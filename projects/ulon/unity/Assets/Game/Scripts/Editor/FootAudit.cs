@@ -50,6 +50,20 @@ namespace Ulon.Editor
                         off.Add(rends[r].gameObject.name);
                 if (off.Count > 0)
                     Debug.Log("[Ulon] 꺼진 메시 " + t.name + " — " + string.Join(", ", off));
+                // 게이트와 **같은 자**로 잰다 — 발 밑 표면과의 차(마을·지하를 한 규칙으로).
+                string surf = "발 밑에 바닥 없음";
+                var from = new Vector3(b.center.x, b.min.y + 2.0f, b.center.z);
+                var hits = Physics.RaycastAll(from, Vector3.down, 10f, ~0, QueryTriggerInteraction.Ignore);
+                System.Array.Sort(hits, (u, v) => u.distance.CompareTo(v.distance));
+                for (int h = 0; h < hits.Length; h++)
+                {
+                    if (hits[h].collider == null || hits[h].collider.transform.IsChildOf(t))
+                        continue;
+                    surf = "표면 " + hits[h].point.y.ToString("0.00") + " 차 " + (b.min.y - hits[h].point.y).ToString("0.00") +
+                           "m (" + hits[h].collider.transform.root.name + "/" + hits[h].collider.name + ")";
+                    break;
+                }
+                Debug.Log("[Ulon] 발밑 " + t.name + " — " + surf);
                 Debug.Log("[Ulon] 발 " + t.name + " — 발 y " + b.min.y.ToString("0.00") +
                           " / 지표 " + ground.ToString("0.00") +
                           " / 차이 " + (b.min.y - ground).ToString("0.00") + "m · 게이트 " + via);

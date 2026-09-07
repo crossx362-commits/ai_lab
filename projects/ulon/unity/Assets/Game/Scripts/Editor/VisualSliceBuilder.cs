@@ -2607,6 +2607,11 @@ namespace Ulon.Editor
             if (npc == null)
                 return false;
             HideExtraGear(npc);
+            // **망토는 보스 표식이다**(§10.2, b2905b55) — 마을 사람이 걸치면 그 대비가 무너진다.
+            // 치유사(Knight)가 붉은 망토를 걸치고 나와 화면에서 「경비」로 읽혔다(검수 판정 2026-09-07).
+            foreach (var t in npc.GetComponentsInChildren<Transform>(true))
+                if (IsCapeName(t.name))
+                    t.gameObject.SetActive(false);
             npc.transform.SetParent(go.transform, true);
             return true;
         }
@@ -2630,6 +2635,10 @@ namespace Ulon.Editor
             var host = GameObject.Find(hostName);
             if (host == null)
                 return;
+            // **본체 오브젝트 자신에게 달린 렌더러도 있다** — 화덕은 등불 메시가 자식이 아니라 루트에
+            // 붙어 있어, 자식만 치웠더니 불 한가운데 등불 기둥이 그대로 서 있었다(검수 확인 요청).
+            foreach (var r in host.GetComponents<Renderer>())
+                r.enabled = false;
             for (int c = host.transform.childCount - 1; c >= 0; c--)
             {
                 var ch = host.transform.GetChild(c);

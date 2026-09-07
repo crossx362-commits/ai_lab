@@ -1700,6 +1700,10 @@ namespace Ulon.Editor
             AssertCraftOrder();
             // 역할↔외형은 **맨 끝**에 둔다 — 지금 마을 시설이 전부 어긋나 빨간불이라, 앞에 두면
             // 나머지 게이트가 한 줄도 못 돌아 회귀를 못 본다(검수 지시로 세운 게이트, 랩 ① 작업 목록).
+            AssertCapeIsBossOnlyNegativeControl();
+            AssertCapeIsBossOnly();
+            AssertActorFeetNegativeControl();
+            AssertActorFeetOnSurface();
             AssertFishingAtWaterNegativeControl();
             AssertFishingAtWater();
             AssertCampfireFireNegativeControl();
