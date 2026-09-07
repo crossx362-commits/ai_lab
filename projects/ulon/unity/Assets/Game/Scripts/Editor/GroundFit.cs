@@ -95,6 +95,24 @@ namespace Ulon.Editor
             return false;
         }
 
+        /// <summary>
+        /// **장비는 발이 아니다** — 무기·망토를 발 높이 계산에 넣으면 「발」이 칼끝·망토 자락이 된다.
+        /// 액터 바로 밑까지만 거슬러 올라간다(액터 이름이 우연히 장비 이름을 닮아도 안 걸리게).
+        /// </summary>
+        public static bool IsGear(Transform actor, Transform t)
+        {
+            for (var p = t; p != null && p != actor; p = p.parent)
+                if (VisualSliceBuilder.IsWeaponName(p.name) || VisualSliceBuilder.IsCapeName(p.name))
+                    return true;
+            return false;
+        }
+
+        /// <summary>액터의 **몸** 바운드(장비 제외).</summary>
+        public static bool BodyBounds(Transform actor, out Bounds bounds)
+        {
+            return WorldBounds(actor, out bounds, t => IsGear(actor, t));
+        }
+
         public static bool HasRenderer(Transform t)
         {
             return t.GetComponentInChildren<Renderer>(false) != null;
@@ -109,7 +127,14 @@ namespace Ulon.Editor
         /// (이 함수로 옮겼더니 화면에 마을이 돌아왔다 = 두 방식이 같은 값을 봤다는 뜻). 다른 게이트의
         /// `Renderer.bounds` 사용은 이 이유로는 의심할 필요가 없다.
         /// </summary>
-        public static bool WorldBounds(Transform t, out Bounds bounds)
+        public static bool WorldBounds(Transform t, out Bounds bounds) => WorldBounds(t, out bounds, null);
+
+        /// <param name="skip">
+        /// 이 렌더러 오브젝트는 바운드에서 뺀다. **발 높이는 몸으로 재야 한다** — 무기까지 포함하면
+        /// 「발」이 사실은 **칼끝**이 되어, 칼끝을 바닥에 대는 순간 발이 떠도 게이트가 0.00m로 읽는다
+        /// (검수 의심 「41 검이 바닥을 뚫는다」를 재다 드러난 구멍, 2026-09-07).
+        /// </param>
+        public static bool WorldBounds(Transform t, out Bounds bounds, System.Func<Transform, bool> skip)
         {
             bounds = new Bounds();
             bool first = true;
@@ -120,12 +145,16 @@ namespace Ulon.Editor
                 var rend = filters[i].GetComponent<Renderer>();
                 if (mesh == null || rend == null || !rend.enabled)
                     continue;
+                if (skip != null && skip(filters[i].transform))
+                    continue;
                 Encapsulate(ref bounds, ref first, mesh.bounds, filters[i].transform.localToWorldMatrix);
             }
             var skins = t.GetComponentsInChildren<SkinnedMeshRenderer>(false);
             for (int i = 0; i < skins.Length; i++)
             {
                 if (!skins[i].enabled || skins[i].sharedMesh == null)
+                    continue;
+                if (skip != null && skip(skins[i].transform))
                     continue;
                 var baked = new Mesh();
                 skins[i].BakeMesh(baked, false);           // true면 스케일이 두 번 곱해진다

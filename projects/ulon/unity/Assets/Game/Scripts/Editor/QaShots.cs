@@ -26,6 +26,7 @@ namespace Ulon.Editor
             public bool PlayCamera;  // 플레이 카메라 재현(차폐 페이드 적용)
             public bool Vfx;         // 행동 효과 3종을 나란히 재생해 같이 찍는다
             public bool StandPlayer; // 플레이어를 그 자리에 실제로 세우고 찍는다(가려짐을 눈으로 보려면 몸이 있어야 한다)
+            public Transform Subject; // 근접 샷의 피사체 — 자기 자신이 페이드에 물리지 않게 뺀다
         }
 
         [MenuItem("Ulon/QA Shots")]
@@ -128,7 +129,7 @@ namespace Ulon.Editor
                     camGo.transform.LookAt(shot.Target);
                     var faded = new System.Collections.Generic.List<Renderer>();
                     if (shot.PlayCamera)
-                        Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, Ulon.Client.DungeonSightFade.DefaultRadius, faded);
+                        Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, Ulon.Client.DungeonSightFade.DefaultRadius, faded, shot.Subject);
                     var vfx = shot.Vfx ? SliceSelfCheck.SpawnVfxTrio(shot.Target) : null;
                     // 「집 뒤에 서면 어떻게 보이나」는 **몸이 있어야** 보인다 — 좌표만 찍으면 빈 잔디다.
                     var player = shot.StandPlayer ? GameObject.Find("Player") : null;
@@ -336,7 +337,7 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 시설 근접 " + name + "(" + objectName + ") — 바운드 " + (any ? box.size.ToString("0.0") : "(없음)") +
                       ", 거리 " + dist.ToString("0.0") + "m, 방위 " + bestYaw.ToString("0") + "°/내려보기 " +
                       bestPitch.ToString("0") + "°(시설이 먼저 보이는 표본 " + (bestSeen * 100f).ToString("0") + "%)");
-            return new Shot { Name = name, Eye = target - rot * Vector3.forward * dist, Target = target, PlayCamera = true };
+            return new Shot { Name = name, Eye = target - rot * Vector3.forward * dist, Target = target, PlayCamera = true, Subject = go.transform };
         }
 
         /// <summary>보스 근접 — 왕관·큰 무기를 확인하는 검수용 샷(검수 요청 2026-09-06).</summary>

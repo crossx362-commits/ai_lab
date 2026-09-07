@@ -21,7 +21,9 @@ namespace Ulon.Editor
             var items = GroundFit.Candidates();
             for (int i = 0; i < items.Count; i++)
             {
-                if (!GroundFit.WorldBounds(items[i], out Bounds b))
+                // **몸 기준**으로 통일한다 — 무기를 넣으면 「발」이 칼끝이 되고,
+                // 몸을 바닥에 붙이는 보수 패스와 서로 다른 자를 보게 된다(2026-09-07 실측 Hexarch −0.87m).
+                if (!GroundFit.BodyBounds(items[i], out Bounds b))
                     continue;
                 float dy = b.min.y - GroundFit.ExpectedGroundY(items[i], b);
                 checkedCount++;

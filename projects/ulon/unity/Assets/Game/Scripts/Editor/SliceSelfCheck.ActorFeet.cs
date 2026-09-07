@@ -43,7 +43,8 @@ namespace Ulon.Editor
             int measured = 0;
             for (int i = 0; i < actors.Count; i++)
             {
-                if (!GroundFit.WorldBounds(actors[i], out Bounds b))
+                // **몸으로 잰다** — 무기·망토를 넣으면 「발」이 칼끝이 된다(검수 의심 3을 재다 드러난 구멍).
+                if (!GroundFit.BodyBounds(actors[i], out Bounds b))
                 {
                     // **못 잰 것을 조용히 넘기지 않는다** — 통과와 미검사가 로그에서 같아 보이면 그게 빈 통과다.
                     Debug.Log("[Ulon]   발 미검사 " + actors[i].name + " — 보이는 메시가 없다");

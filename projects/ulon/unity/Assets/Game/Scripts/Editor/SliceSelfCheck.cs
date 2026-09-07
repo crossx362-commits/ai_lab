@@ -60,7 +60,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureRoomFurnishing();     // 넓힌 방을 채운다(§6.1 던전 콘텐츠)
             VisualSliceBuilder.EnsureCapBuried();        // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
-            VisualSliceBuilder.EnsureActorsOnSurface();    // **스케일·드레싱이 다 끝난 뒤** 발을 바닥에 다시 붙인다
+            VisualSliceBuilder.EnsureActorsOnSurface();
+            VisualSliceBuilder.EnsureWeaponsAboveFloor();  // 몸을 세운 **뒤** 무기를 바닥 위로(같은 원인의 다른 얼굴)    // **스케일·드레싱이 다 끝난 뒤** 발을 바닥에 다시 붙인다
 
             VisualSliceBuilder.EnsureCameraSightFade();
             if (VisualSliceBuilder.ConfigureHumanoid(
@@ -1631,6 +1632,8 @@ namespace Ulon.Editor
             AssertIndoorRule();
             AssertSightFadeTranslucent();
             AssertSightFadeTranslucentNegativeControl();
+            AssertCloseUpSubjectNotGhostedNegativeControl();   // 피사체가 자기 페이드에 물리는지(33 반려)
+            AssertCloseUpSubjectNotGhosted();
             AssertOutdoorSightLine();
             AssertOutdoorSightLineNegativeControl();
             AssertSpawnOnGround();
@@ -1709,6 +1712,8 @@ namespace Ulon.Editor
             AssertBuilderIdempotent();
             AssertCapeIsBossOnlyNegativeControl();
             AssertCapeIsBossOnly();
+            AssertGearAboveFloorNegativeControl();          // 장비가 바닥을 뚫는지(41 반려)
+            AssertGearAboveFloor();
             AssertActorFeetNegativeControl();
             AssertActorFeetOnSurface();
             AssertFishingAtWaterNegativeControl();

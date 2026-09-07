@@ -516,7 +516,8 @@ namespace Ulon.Editor
             var go = GameObject.Find(objectName);
             if (go == null)
                 throw new InvalidOperationException(what + " 오브젝트가 없습니다: " + objectName);
-            if (!GroundFit.WorldBounds(go.transform, out Bounds b))
+            // 발은 **몸**으로 잰다 — 무기를 넣으면 칼끝이 발이 된다(장비-바닥은 `AssertGearAboveFloor`가 따로 본다).
+            if (!GroundFit.BodyBounds(go.transform, out Bounds b))
                 throw new InvalidOperationException(what + "의 보이는 메시가 없습니다: " + objectName + " — 못 잰 것을 통과로 적지 않는다.");
             if (!GroundFit.SurfaceUnder(go.transform, b, out float sy, out string surface))
                 throw new InvalidOperationException(what + "의 발 밑에 바닥이 없습니다(" + objectName + ").");

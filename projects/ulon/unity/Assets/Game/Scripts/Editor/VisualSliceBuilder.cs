@@ -3358,7 +3358,7 @@ namespace Ulon.Editor
             string worstName = "";
             for (int i = 0; i < items.Count; i++)
             {
-                if (!GroundFit.WorldBounds(items[i], out Bounds b))
+                if (!GroundFit.BodyBounds(items[i], out Bounds b))
                     continue;
                 float dy = GroundFit.ExpectedGroundY(items[i], b) - b.min.y;
                 if (Mathf.Abs(dy) < 0.02f)
@@ -3801,6 +3801,76 @@ namespace Ulon.Editor
         /// 낚시터에서 배운 「이동은 스냅 뒤에」와 같은 순서 문제다. 게이트와 **같은 자**
         /// (`GroundFit.SurfaceUnder`)를 쓴다.
         /// </summary>
+        /// <summary>
+        /// **무기가 바닥을 뚫지 않게 한다**(검수 판정 2026-09-07 2).
+        /// 실측: 보스 무기 4개가 바닥 아래 0.28~1.10m — 「보스가 묻혔다」던 값과 **같은 숫자**다.
+        /// 몸을 바닥에 세우자 그 깊이가 고스란히 무기로 옮겨간 것이니, 두 사건은 원인이 하나다:
+        /// **키운 뒤 바닥과의 관계를 아무도 안 봤다.**
+        ///
+        /// 각도는 건드리지 않는다(칼날 각도 게이트는 안 걸기로 한 결정이 있다). **그립을 축으로 줄인다** —
+        /// 축이 손이면 손에 들린 관계가 유지되고, 모자라면 남은 만큼만 위로 민다(무기-손 포함 게이트가 감시).
+        /// </summary>
+        public static int EnsureWeaponsAboveFloor()
+        {
+            var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            int fixedCount = 0;
+            for (int i = 0; i < actors.Length; i++)
+            {
+                var actor = actors[i].transform;
+                if (!actor.gameObject.activeInHierarchy || !GroundFit.BodyBounds(actor, out Bounds body))
+                    continue;
+                if (!GroundFit.SurfaceUnder(actor, body, out float floorY, out _))
+                    continue;
+                var rends = actor.GetComponentsInChildren<Renderer>(false);
+                for (int r = 0; r < rends.Length; r++)
+                {
+                    if (rends[r] is ParticleSystemRenderer || !rends[r].enabled)
+                        continue;
+                    if (!GroundFit.IsGear(actor, rends[r].transform))
+                        continue;
+                    if (IsCapeName(rends[r].gameObject.name))
+                        continue;
+                    // 무기 루트 — 스케일을 여기서 만진다(렌더러가 자식 「Visual」인 경우가 있다).
+                    var root = rends[r].transform;
+                    while (root.parent != null && root.parent != actor && !IsWeaponName(root.name))
+                        root = root.parent;
+                    float below = floorY + 0.05f - rends[r].bounds.min.y;
+                    if (below <= 0f)
+                        continue;
+                    // **축은 트랜스폼 원점이 아니라 그립**이다 — 원점으로 줄였더니 석궁 그립이 손에서
+                    // 0.78m 떨어져 나갔다(무기-손 게이트가 잡았다). 그립을 제자리에 두고 길이만 줄인다.
+                    if (!BossFit.WeaponAxis(root, out Vector3 grip, out _))
+                    {
+                        Debug.LogWarning("[Ulon] 무기 접지 보류 — " + actor.name + "/" + root.name + " 축을 못 읽었다(" +
+                                         below.ToString("0.00") + "m 매몰). 억지로 옮기지 않는다.");
+                        continue;
+                    }
+                    float drop = grip.y - rends[r].bounds.min.y;            // 그립에서 최저점까지
+                    float want = grip.y - (floorY + 0.05f);
+                    if (drop <= 0.01f || want <= 0f)
+                    {
+                        Debug.LogWarning("[Ulon] 무기 접지 보류 — " + actor.name + "/" + root.name +
+                                         " 그립 자체가 바닥 높이다(축소로 못 푼다).");
+                        continue;
+                    }
+                    float s = want / drop;
+                    if (s < 0.5f)
+                    {
+                        Debug.LogWarning("[Ulon] 무기 접지 보류 — " + actor.name + "/" + root.name + "를 " +
+                                         s.ToString("0.00") + "배로 줄여야 한다(§10.2 보스 무기가 너무 작아진다). 검수 판단 필요.");
+                        continue;
+                    }
+                    root.localScale = root.localScale * s;
+                    if (BossFit.WeaponAxis(root, out Vector3 grip2, out _))
+                        root.position += grip - grip2;                      // 그립을 손에 되돌린다
+                    fixedCount++;
+                }
+            }
+            if (fixedCount > 0)
+                Debug.Log("[Ulon] 무기 접지 — " + fixedCount + "개를 바닥 위로(그립 축 축소 후 남은 만큼만 이동)");
+            return fixedCount;
+        }
+
         public static int EnsureActorsOnSurface()
         {
             var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
@@ -3810,7 +3880,8 @@ namespace Ulon.Editor
             for (int i = 0; i < actors.Length; i++)
             {
                 var t = actors[i].transform;
-                if (!t.gameObject.activeInHierarchy || !GroundFit.WorldBounds(t, out Bounds b))
+                // 재착지도 **몸 기준**이다 — 칼끝을 바닥에 대면 발이 뜬다.
+                if (!t.gameObject.activeInHierarchy || !GroundFit.BodyBounds(t, out Bounds b))
                     continue;
                 if (!GroundFit.SurfaceUnder(t, b, out float sy, out _))
                     continue;

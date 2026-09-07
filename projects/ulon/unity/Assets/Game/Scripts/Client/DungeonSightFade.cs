@@ -36,7 +36,13 @@ namespace Ulon.Client
         /// 카메라와 대상 사이의 DungeonBlocker 렌더러를 끈다. 런타임(LateUpdate)과 QA 스크린샷 도구가
         /// **같은 함수**를 쓴다 — 검증 화면이 플레이 화면과 다르면 증거가 아니다(검수 2026-09-06 P0).
         /// </summary>
-        public static void Hide(Vector3 eye, Vector3 look, float radius, List<Renderer> hidden)
+        /// <param name="except">
+        /// **바라보는 대상 자신**은 비치게 하지 않는다. 게임에서는 look 지점이 플레이어(블로커 레이어가
+        /// 아니다)라 해당 없고 null이지만, QA 근접 샷은 look 지점에 **피사체**를 놓는다 — 그러면 반경
+        /// 2.2m 구체가 피사체를 물어 **판정할 대상이 반투명으로** 찍힌다(33_campfire의 돌·장작이 그랬다).
+        /// 이건 페이드 사본이 남은 게 아니라 **자기 자신을 가림으로 센 것**이다.
+        /// </param>
+        public static void Hide(Vector3 eye, Vector3 look, float radius, List<Renderer> hidden, Transform except = null)
         {
             int layer = LayerMask.NameToLayer(BlockerLayer);
             if (layer < 0)
@@ -55,6 +61,8 @@ namespace Ulon.Client
                 // 발밑(바닥 판)은 내려다보는 카메라를 가리지 않는다. 창 반경이 커지면 스피어캐스트가
                 // 바닥까지 물어 방 바닥이 사라지고 하늘이 비쳤다(2026-09-06 플레이캠 실측).
                 if (rend.bounds.max.y < look.y - 0.2f)
+                    continue;
+                if (except != null && rend.transform.IsChildOf(except))
                     continue;
                 Ghost(rend);
                 hidden.Add(rend);
