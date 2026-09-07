@@ -164,6 +164,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureGearDressed();
             VisualSliceBuilder.EnsureMobLooks();
             VisualSliceBuilder.EnsureCompanion();
+            VisualSliceBuilder.EnsureActorAnimators();
             VisualSliceBuilder.EnsureVillagerLooks();
             VisualSliceBuilder.EnsureCampfireFire();
             VisualSliceBuilder.EnsureStableYardFence();

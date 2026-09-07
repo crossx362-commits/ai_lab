@@ -54,6 +54,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureGearDressed();        // 한 사람이 무기 1·방패 1만 든다(랩 ③ 발견)
             VisualSliceBuilder.EnsureMobLooks();           // 도적·자객·기사·약탈자를 든 것·색으로 가른다(검수 승인)
             VisualSliceBuilder.EnsureCompanion();          // 지워진 뒤 아무도 안 세우던 동료를 다시(랩 ③)
+            VisualSliceBuilder.EnsureActorAnimators();     // 컨트롤러 없는 액터는 게임에서 T포즈다(랩 ④)
             VisualSliceBuilder.EnsureVillagerLooks();      // 5역할을 든 것·몸 색으로 가른다(검수 랩 ③사람)
             VisualSliceBuilder.EnsureCampfireFire();       // 화덕에 불(검수 반려 — 불 메시가 없어도 파티클로 된다)
             VisualSliceBuilder.EnsureStableYardFence();
@@ -1662,6 +1663,8 @@ namespace Ulon.Editor
             AssertSceneRosterPresent();                     // 있어야 할 것이 조용히 사라지지 않았는가(3(b))
             AssertNoUndeclaredLookTwinsNegativeControl();   // 선언 없는 쌍을 만들면 빨간불인가
             AssertNoUndeclaredLookTwins();                  // 화면에서 같은 쌍은 선언된 것만(검수 지시 2)
+            AssertActorsAnimatedNegativeControl();          // 컨트롤러를 떼면 빨간불인가
+            AssertActorsAnimated();                         // T포즈로 서 있는 사람형이 없는가(랩 ④ (a) 실측)
             AssertEffectWiring();
             AssertEffectWiringNegativeControl();
             AssertCharacterArtNegativeControl();

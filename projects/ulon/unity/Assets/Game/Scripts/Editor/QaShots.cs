@@ -275,8 +275,13 @@ namespace Ulon.Editor
                 var ctrl = rac as AnimatorController;
                 if (ctrl == null && rac != null)
                     ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(AssetDatabase.GetAssetPath(rac));
+                // **건너뛴 것을 침묵으로 두지 마라** — 여기서 조용히 빠진 액터는 T포즈 그대로 찍힌다.
+                // 「포즈 15체 적용」만 찍고 22개 중 7개가 왜 빠졌는지 안 적어 T포즈가 샷에 남았다.
                 if (ctrl == null || ctrl.layers.Length == 0 || ctrl.layers[0].stateMachine == null)
                 {
+                    Debug.Log("[Ulon] QA 포즈 건너뜀(" +
+                              (rac == null ? "컨트롤러 없음" : ctrl == null ? "컨트롤러를 에셋으로 못 읽음" : "레이어/상태기 없음") +
+                              ") " + GroundFit.NodePath(anims[i].transform) + " — 이 액터는 바인드 포즈(T포즈)로 찍힙니다");
                     continue;
                 }
                 // 기본 상태의 motion이 블렌드 트리면 클립이 안 나온다 — 컨트롤러가 들고 있는 클립 중
@@ -301,6 +306,7 @@ namespace Ulon.Editor
                     continue;
                 }
                 clip.SampleAnimation(anims[i].gameObject, 0.4f);
+                Debug.Log("[Ulon] QA 포즈 적용 " + GroundFit.NodePath(anims[i].transform) + " ← " + clip.name);
                 n++;
             }
             return n;

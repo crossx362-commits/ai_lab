@@ -4800,6 +4800,52 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] " + sb.ToString());
         }
 
+        /// <summary>
+        /// **모든 사람형이 실제로 움직이게 한다**(검수 2026-09-07 (a) — 53의 T포즈).
+        ///
+        /// 스탠드얼론 실측에서 훈련사와 스켈레톤이 **애니메이터 없이** 서 있었다. 런타임
+        /// `CharacterAnim.StripEmptyAnimators`가 컨트롤러 없는 애니메이터를 지우는데, 그 액터에는
+        /// 컨트롤러 달린 애니메이터가 **하나도 없어** 결국 아무것도 안 남았다 — 게임 화면에서 T포즈다.
+        /// 만드는 경로가 여럿이라(생성·모델 교체·프리팹 인스턴스) 한 곳을 고쳐선 또 샌다.
+        /// 그래서 **전수 보정 패스**로 두고, 게이트가 이 성질을 지킨다(`AssertActorsAnimated`).
+        /// 멱등: 이미 컨트롤러가 있으면 손대지 않는다.
+        /// </summary>
+        public static void EnsureActorAnimators()
+        {
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+            if (controller == null)
+            {
+                Debug.LogWarning("[Ulon] 공용 로코모션 컨트롤러가 없습니다: " + ControllerPath);
+                return;
+            }
+            var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var fixedNames = new List<string>();
+            for (int i = 0; i < actors.Length; i++)
+            {
+                var go = actors[i].gameObject;
+                var anim = go.GetComponentInChildren<Animator>(true);
+                if (anim != null && anim.runtimeAnimatorController != null)
+                    continue;
+                // **계층을 건드리지 않는다.** 처음엔 `StripAndAssign`을 재사용했는데 그것이 Visual을
+                // 다시 찾아 이름을 바꾸고 아바타를 덮어써서 자객의 발이 지표 아래 10m로 튀었다
+                // (게이트가 잡았다). 여기서 고칠 것은 **컨트롤러가 없다** 하나뿐이다.
+                if (anim == null)
+                {
+                    var visual = go.transform.Find("Visual");
+                    anim = (visual != null ? visual.gameObject : go).AddComponent<Animator>();
+                }
+                if (anim.avatar == null)
+                    anim.avatar = AvatarFor(go.name);
+                anim.runtimeAnimatorController = controller;
+                anim.applyRootMotion = false;
+                anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                fixedNames.Add(go.name);
+            }
+            if (fixedNames.Count > 0)
+                Debug.Log("[Ulon] 액터 애니메이터 보정 — " + fixedNames.Count + "체에 공용 컨트롤러를 달았다(" +
+                          string.Join(", ", fixedNames) + "). 컨트롤러 없는 액터는 게임에서 T포즈로 선다");
+        }
+
         static void StripAndAssign(GameObject root, RuntimeAnimatorController controller)
         {
             if (root == null)
