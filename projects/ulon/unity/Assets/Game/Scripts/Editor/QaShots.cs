@@ -589,13 +589,20 @@ namespace Ulon.Editor
         /// </summary>
         static Shot PairCloseUp(string name, string aName, string bName)
         {
-            var a = GameObject.Find(aName);
-            var b = GameObject.Find(bName);
+            // **이름은 유일하지 않다** — `GameObject.Find("Rogue")`는 실체가 아니라 프리팹 속 같은 이름의
+            // 노드를 집는다(근접 샷에서 이미 당했다). 여기도 같은 함정이었다: 두 거리는 「같다」고 찍히는데
+            // 화면에서는 한쪽이 확연히 작았다 — **화면이 계측과 어긋나면 계측이 다른 것을 재고 있는 것**이다.
+            var a = FindSubject(aName);
+            var b = FindSubject(bName);
             if (a == null || b == null ||
                 !GroundFit.BodyBounds(a.transform, out Bounds ba) || !GroundFit.BodyBounds(b.transform, out Bounds bb))
                 return new Shot { Name = name, Eye = new Vector3(0f, 5f, -5f), Target = Vector3.zero };
             var box = ba; box.Encapsulate(bb);
-            var target = box.center;
+            // **나란히 비교하는 샷은 두 대상을 같은 거리에 둔다**(검수 규칙 2026-09-07) — 거리가 다르면
+            // 원근이 크기를 바꿔 「갈리는가」 판정이 오염된다. 합친 상자의 중심은 두 몸 중앙이 아니다
+            // (덩치 큰 쪽으로 끌린다) — **두 몸 중심의 중점**을 보고, 그 둘을 잇는 선의 **수직**에서 본다.
+            // 그러면 두 거리는 대칭으로 같아진다. 아래 로그가 실제 두 거리를 찍어 규칙을 증명한다.
+            var target = (ba.center + bb.center) * 0.5f;
             float radius = Mathf.Max(box.extents.magnitude, 0.8f);
             float dist = radius / Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad) * 1.25f;
             // 둘이 나란히 서므로 **둘을 잇는 선의 옆**에서 봐야 서로 겹치지 않는다. 그 두 방향 중
@@ -605,7 +612,13 @@ namespace Ulon.Editor
             if (Vector3.Dot(side, a.transform.forward) < 0f)
                 side = -side;
             var eye = target + side * dist + Vector3.up * dist * 0.30f;
-            Debug.Log("[Ulon] 둘 근접 " + name + " — 합친 바운드 " + box.size.ToString("0.0") + ", 거리 " + dist.ToString("0.0") + "m");
+            float da = Vector3.Distance(eye, ba.center), db = Vector3.Distance(eye, bb.center);
+            Debug.Log("[Ulon] 둘 근접 " + name + " — 합친 바운드 " + box.size.ToString("0.0") + ", 거리 " + dist.ToString("0.0") +
+                      "m, 두 대상까지 " + aName + " " + da.ToString("0.00") + "m ↔ " + bName + " " + db.ToString("0.00") +
+                      "m (차이 " + Mathf.Abs(da - db).ToString("0.00") + "m — 같아야 원근이 크기를 안 바꾼다)" +
+                      " | 화면 높이 비 " + ((ba.size.y / da) / Mathf.Max(0.0001f, bb.size.y / db)).ToString("0.00") +
+                      " (몸 " + ba.size.y.ToString("0.00") + "m·" + bb.size.y.ToString("0.00") + "m, 자리 " +
+                      ba.center.ToString("F1") + "·" + bb.center.ToString("F1") + ")");
             return new Shot { Name = name, Eye = eye, Target = target, PlayCamera = true, Subject = a.transform };
         }
 
