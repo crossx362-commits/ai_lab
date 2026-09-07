@@ -114,7 +114,10 @@ namespace Ulon.Editor
             shotList.Add(PairCloseUp("51_player_companion", "Player", VisualSliceBuilder.CompanionObject));
             // 도적 근접 — Mage 차림이던 이름-외형 어긋남을 고친 뒤(검수 승인) 화면으로 확인한다.
             shotList.Add(FacilityCloseUp("52_bandit", "Bandit", null, true));
-            shotList.Add(FacilityCloseUp("53_rogue", "Rogue", null, true));   // 자객 — 도적과 갈리는지 나란히 본다
+            shotList.Add(FacilityCloseUp("53_rogue", "Rogue", null, true));   // 자객 단독
+            // 검수 완료 기준 — **도적과 자객을 한 화면에**. 도적을 Rogue 모델로 옮겼으니
+            // 「겹침이 Rogue 쪽으로 옮겨간 것 아니냐」를 눈으로 확인할 수 있어야 한다.
+            shotList.Add(PairCloseUp("54_bandit_rogue", "Bandit", "Rogue"));
             shots = shotList.ToArray();
 
             // **런타임 포즈로 찍는다.** 에디터에서 그냥 찍으면 모든 액터가 바인드 포즈(T포즈)라
