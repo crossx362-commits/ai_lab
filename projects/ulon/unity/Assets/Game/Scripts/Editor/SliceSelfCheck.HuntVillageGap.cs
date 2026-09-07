@@ -39,8 +39,8 @@ namespace Ulon.Editor
                     continue;                                   // 사람·몹은 구조물이 아니다
                 // **월드 규모의 판은 구조물이 아니다** — 바다 수면(`SeaWater`)이 중심 (0,0)에
                 // 세계만 한 바운드를 갖고 있어서, 이걸 안 빼면 모든 몹의 「최단 거리」가 0m로 나온다
-                // (첫 판이 그렇게 찍혔다). 마을 소품이라면 가드존 지름을 넘지 않는다.
-                if (all[i].bounds.size.x > GuardZone.Radius * 2f || all[i].bounds.size.z > GuardZone.Radius * 2f)
+                // (첫 판이 그렇게 찍혔다). 규칙은 **공용 함수 한 곳**에만 둔다(검수 지시 2026-09-07).
+                if (GroundFit.IsWorldScalePlane(all[i].bounds))
                     continue;
                 var c = all[i].bounds.center;
                 if ((c.x * c.x) + (c.z * c.z) > VillageStructureRadius * VillageStructureRadius)

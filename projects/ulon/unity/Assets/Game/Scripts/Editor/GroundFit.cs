@@ -56,8 +56,7 @@ namespace Ulon.Editor
                 LastExcluded.Add(NodePath(t) + "(공중에 있는 것이 정상: 파티클뿐)");
                 return;
             }
-            // 세계만 한 판(바다 수면 등)은 배치물이 아니다 — 이름이 아니라 크기로 뺀다.
-            if (b.size.x > 200f || b.size.z > 200f)
+            if (IsWorldScalePlane(b))
             {
                 LastExcluded.Add(NodePath(t) + "(월드 규모 판 " + b.size.x.ToString("0") + "×" + b.size.z.ToString("0") + "m)");
                 return;
@@ -69,6 +68,19 @@ namespace Ulon.Editor
                 return;
             }
             list.Add(t);
+        }
+
+        /// <summary>세계만 한 판(바다 수면 등)의 가로폭 하한.</summary>
+        public const float WorldScaleSize = 200f;
+
+        /// <summary>
+        /// **세계만 한 판은 배치물도 구조물도 아니다** — 이름이 아니라 크기로 뺀다.
+        /// 같은 규칙이 두 곳에 살면 재발하므로(사냥터 이격 게이트가 이걸 따로 적었다가 첫 판에서
+        /// 전원 0.0m를 냈다) **여기 한 곳**에 두고 부르기만 한다.
+        /// </summary>
+        public static bool IsWorldScalePlane(Bounds b)
+        {
+            return b.size.x > WorldScaleSize || b.size.z > WorldScaleSize;
         }
 
         /// <summary>
