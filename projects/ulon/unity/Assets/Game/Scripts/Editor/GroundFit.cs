@@ -66,6 +66,35 @@ namespace Ulon.Editor
             return n.StartsWith("Dungeon", StringComparison.Ordinal) || n.StartsWith("CapDress", StringComparison.Ordinal);
         }
 
+        /// <summary>
+        /// **발 밑 표면**(검수 판정 2026-09-07 ①) — 보수 패스와 게이트가 **같은 자**로 잰다.
+        /// 지표 y가 아니라 광선이 맞는 첫 표면이므로 마을·지하 방을 규칙 하나로 다룬다.
+        ///
+        /// 시작 높이는 **예상 최대 매몰 깊이보다 커야 한다** — 0.6m에서 쏘았더니 1.10m 묻힌 보스의
+        /// 광선이 **바닥 밑에서 시작**해 「발 밑에 바닥이 없다」로 읽혔다.
+        /// **계측기가 결함보다 얕으면 결함을 못 잰다.** 보스 크기(≤2.6m)를 감안해 2m로 둔다.
+        /// </summary>
+        public const float SurfaceProbeUp = 2.0f;
+
+        public static bool SurfaceUnder(Transform actor, Bounds b, out float y, out string what)
+        {
+            y = 0f;
+            what = "";
+            var from = new Vector3(b.center.x, b.min.y + SurfaceProbeUp, b.center.z);
+            var hits = UnityEngine.Physics.RaycastAll(from, Vector3.down, SurfaceProbeUp + 8f, ~0,
+                UnityEngine.QueryTriggerInteraction.Ignore);
+            Array.Sort(hits, (u, v) => u.distance.CompareTo(v.distance));
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (hits[i].collider == null || hits[i].collider.transform.IsChildOf(actor))
+                    continue;
+                y = hits[i].point.y;
+                what = hits[i].collider.transform.root.name + "/" + hits[i].collider.name;
+                return true;
+            }
+            return false;
+        }
+
         public static bool HasRenderer(Transform t)
         {
             return t.GetComponentInChildren<Renderer>(false) != null;

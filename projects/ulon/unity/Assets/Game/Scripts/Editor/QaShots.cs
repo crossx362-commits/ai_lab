@@ -84,6 +84,10 @@ namespace Ulon.Editor
                 FacilityCloseUp("36_stable", "Stable"),
                 FacilityCloseUp("37_banker", "Banker"),
                 FacilityCloseUp("38_healer", "Healer"),
+                // 보스가 **바닥에 서 있는지** 눈으로 본다(검수 판정 2026-09-07 ① — 최대 1.10m 묻혀 있었다).
+                FacilityCloseUp("39_boss1", Dungeon1.BossObject, null, true),
+                FacilityCloseUp("40_boss2", Dungeon2.BossObject, null, true),
+                FacilityCloseUp("41_boss3", Dungeon3.BossObject, null, true),
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
             };
 
@@ -239,7 +243,15 @@ namespace Ulon.Editor
         /// 이 지점이 **피사체 너머(배경)**에 오도록 카메라를 세운다. 낚시터처럼 「무엇 옆에 있는가」가
         /// 판정의 핵심인 시설에 쓴다 — 가림만 보고 방위를 고르면 물을 등지고 찍어 물이 화면에서 사라진다(실측).
         /// </param>
-        static Shot FacilityCloseUp(string name, string objectName, Vector3? beyond)
+        static Shot FacilityCloseUp(string name, string objectName, Vector3? beyond) =>
+            FacilityCloseUp(name, objectName, beyond, false);
+
+        /// <param name="lowAngle">
+        /// **발이 바닥에 닿았는지**를 보는 샷은 내려보는 각을 낮춘다. 시설용 각(35~65°)으로 사람을 찍으면
+        /// 정수리와 어깨만 나와 **발과 바닥의 접점이 화면에 없다** — 판정 대상이 안 찍히는 샷은 판정이 아니다
+        /// (첫 촬영본 39_boss1이 그랬다: 왕관만 보였다).
+        /// </param>
+        static Shot FacilityCloseUp(string name, string objectName, Vector3? beyond, bool lowAngle)
         {
             var go = GameObject.Find(objectName);
             if (go == null)
@@ -274,7 +286,7 @@ namespace Ulon.Editor
             float bestSeen = -1f;
             // 마을은 시설이 2~3m 간격으로 붙어 있어 게임 각도에서는 앞집 지붕이 시설을 통째로 덮는다
             // (첫 촬영본 35_fishing이 그랬다). 방위 8 × 내려보는 각 3을 다 재고 제일 잘 보이는 조합을 쓴다.
-            float[] pitches = { pitch, 50f, 65f };
+            float[] pitches = lowAngle ? new[] { 10f, 18f, 26f } : new[] { pitch, 50f, 65f };
             for (int k = 0; k < 8 * pitches.Length; k++)
             {
                 float y = baseYaw + (k % 8) * 45f;

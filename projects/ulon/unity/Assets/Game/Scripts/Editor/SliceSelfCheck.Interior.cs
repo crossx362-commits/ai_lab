@@ -502,16 +502,27 @@ namespace Ulon.Editor
             return boss ? Dungeon3.BossObject : Dungeon3.MobObject;
         }
 
-        /// <summary>방 바닥 윗면과 발끝의 차이. 바닥 판은 두께 0.2, 중심이 바닥+0.1이므로 윗면은 groundY+0.2다.</summary>
+        /// <summary>
+        /// 방 안 몹의 발과 **바로 아래 표면**의 차이.
+        ///
+        /// 2026-09-07 정정: 예전엔 `transform.position.y`(원점)를 「발끝」으로, `roomFloorY + 0.2`(공식)를
+        /// 「바닥 윗면」으로 삼았다 — **둘 다 대리 지표**다. 보스를 1.3~1.5배로 키우면 원점과 메시 밑면이
+        /// 벌어지고, 공식 바닥은 실제 바닥 판 콜라이더와 어긋날 수 있다. 그래서 보수 패스가 실제 표면에
+        /// 재착지시켜 **화면상 바닥에 선** 뒤에도 이 게이트만 계속 빨간불이었다(자가 둘이면 한쪽이 틀린다).
+        /// 이제 액터 발 게이트와 **같은 자**(메시 밑면 vs 발밑 광선)를 쓴다.
+        /// </summary>
         static void CheckFeetOnFloor(string what, string objectName, float roomFloorY)
         {
             var go = GameObject.Find(objectName);
             if (go == null)
                 throw new InvalidOperationException(what + " 오브젝트가 없습니다: " + objectName);
-            float floorTop = roomFloorY + 0.2f;
-            float feet = go.transform.position.y;
-            float d = feet - floorTop;
-            Debug.Log("[Ulon] 발 높이 계측 " + what + " 발끝 " + feet.ToString("0.00") + " 바닥윗면 " + floorTop.ToString("0.00") + " 차 " + d.ToString("0.00"));
+            if (!GroundFit.WorldBounds(go.transform, out Bounds b))
+                throw new InvalidOperationException(what + "의 보이는 메시가 없습니다: " + objectName + " — 못 잰 것을 통과로 적지 않는다.");
+            if (!GroundFit.SurfaceUnder(go.transform, b, out float sy, out string surface))
+                throw new InvalidOperationException(what + "의 발 밑에 바닥이 없습니다(" + objectName + ").");
+            float d = b.min.y - sy;
+            Debug.Log("[Ulon] 발 높이 계측 " + what + " 발끝 " + b.min.y.ToString("0.00") + " 표면 " + sy.ToString("0.00") +
+                      " 차 " + d.ToString("0.00") + " (" + surface + ")");
             if (Mathf.Abs(d) > FeetGapMax)
                 throw new InvalidOperationException(what + "의 발이 방 바닥과 " + d.ToString("0.00") + "m 어긋납니다 — 허용 " + FeetGapMax + "m(양수는 공중부양, 음수는 바닥에 파묻힘).");
         }

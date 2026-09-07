@@ -33,27 +33,6 @@ namespace Ulon.Editor
             return list;
         }
 
-        /// <summary>발 밑 표면 y. 자기 콜라이더는 무시한다. 못 찾으면 false.</summary>
-        static bool SurfaceUnder(Transform actor, Bounds b, out float y, out string what)
-        {
-            y = 0f;
-            what = "";
-            // 발이 이미 바닥 **속에** 묻혀 있으면 발 높이에서 쏜 광선은 바닥 밑에서 시작해 아무것도 못 맞는다
-            // (실측: 보스 둘이 「발 밑에 바닥이 없다」로 나왔다). 넉넉히 위에서 쏘고 길이도 늘린다.
-            var from = new Vector3(b.center.x, b.min.y + 2.0f, b.center.z);
-            var hits = Physics.RaycastAll(from, Vector3.down, 10f, ~0, QueryTriggerInteraction.Ignore);
-            Array.Sort(hits, (u, v) => u.distance.CompareTo(v.distance));
-            for (int i = 0; i < hits.Length; i++)
-            {
-                if (hits[i].collider == null || hits[i].collider.transform.IsChildOf(actor))
-                    continue;
-                y = hits[i].point.y;
-                what = hits[i].collider.transform.root.name + "/" + hits[i].collider.name;
-                return true;
-            }
-            return false;
-        }
-
         static void AssertActorFeetOnSurface()
         {
             var actors = ActorTargets();
@@ -70,7 +49,7 @@ namespace Ulon.Editor
                     Debug.Log("[Ulon]   발 미검사 " + actors[i].name + " — 보이는 메시가 없다");
                     continue;
                 }
-                if (!SurfaceUnder(actors[i], b, out float sy, out string what))
+                if (!GroundFit.SurfaceUnder(actors[i], b, out float sy, out string what))
                 {
                     offenders.Add((actors[i].name, float.NaN, "발 밑에 바닥이 없다"));
                     continue;
@@ -171,11 +150,29 @@ namespace Ulon.Editor
             }
             if (cape == null)
                 throw new InvalidOperationException("망토 네거티브 컨트롤 대상이 없습니다 — 꺼 둔 망토를 가진 비(非)보스가 없습니다.");
-            cape.gameObject.SetActive(true);
+
+            // **결함을 진짜로 만들어야 NC다** — 오브젝트만 켜면 조상이 꺼져 있거나 렌더러가 꺼진 경우
+            // 화면엔 여전히 망토가 없고, 게이트는 「없다」고 옳게 답한다(그러면 NC가 자기 실수를 게이트 탓으로 적는다).
+            // 그래서 게이트가 보는 성질(activeInHierarchy && renderer.enabled)이 실제로 참이 될 때까지 켜고,
+            // 켠 것을 전부 기억해 되돌린다.
+            var turnedOn = new List<GameObject>();
+            var enabledRenderers = new List<Renderer>();
+            for (var p = cape; p != null && p != victim.parent; p = p.parent)
+                if (!p.gameObject.activeSelf) { p.gameObject.SetActive(true); turnedOn.Add(p.gameObject); }
+            var capeRends = cape.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < capeRends.Length; i++)
+                if (!capeRends[i].enabled) { capeRends[i].enabled = true; enabledRenderers.Add(capeRends[i]); }
+            if (!HasVisibleCape(victim.gameObject))
+                throw new InvalidOperationException("망토 네거티브 컨트롤 실패 — " + victim.name +
+                    "의 망토를 켰는데도 「보이는 망토」가 아닙니다. 결함을 못 만들었으니 게이트 판정이 아니라 NC가 틀렸다.");
+
             bool red = false;
             try { AssertCapeIsBossOnly(); }
             catch (InvalidOperationException) { red = true; }
-            cape.gameObject.SetActive(false);
+            for (int i = 0; i < enabledRenderers.Count; i++)
+                enabledRenderers[i].enabled = false;
+            for (int i = 0; i < turnedOn.Count; i++)
+                turnedOn[i].SetActive(false);
             if (!red)
                 throw new InvalidOperationException("망토 네거티브 컨트롤 실패 — " + victim.name + "에게 망토를 켰는데 통과했습니다.");
             Debug.Log("[Ulon] 망토 표식 네거티브 컨트롤 통과 — " + victim.name + "에게 망토를 켜자 FAIL");

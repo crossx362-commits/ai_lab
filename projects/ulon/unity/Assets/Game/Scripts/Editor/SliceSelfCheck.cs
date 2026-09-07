@@ -54,11 +54,14 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureStableYardFence();    // 마구간 울타리를 닫는다(검수 반려)
             VisualSliceBuilder.EnsureEntranceFramesQualified();  // 옛 씬의 검은 큐브 문틀을 등록 조각으로 다시 세운다(검수 2026-09-07)
             VisualSliceBuilder.EnsureRoomSize();           // 방 반경이 원장과 다르면 헐고 다시 짓는다(검은 허공)
+            VisualSliceBuilder.EnsureCapeIsBossOnly();     // 망토는 §10.2 보스 표식이다 — 예외 없음(검수 판정 2026-09-07)
             ActionVfxBuilder.EnsureActionVfx();
             ActionSfxBuilder.EnsureActionSfx();          // 등록 CC0 효과음(§11.2)            // 행동 결과 파티클(§11.2·§18.15)
             VisualSliceBuilder.EnsureRoomFurnishing();     // 넓힌 방을 채운다(§6.1 던전 콘텐츠)
             VisualSliceBuilder.EnsureCapBuried();        // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
+            VisualSliceBuilder.EnsureActorsOnSurface();    // **스케일·드레싱이 다 끝난 뒤** 발을 바닥에 다시 붙인다
+
             VisualSliceBuilder.EnsureCameraSightFade();
             if (VisualSliceBuilder.ConfigureHumanoid(
                     "Assets/_ThirdParty/KayKit/Skeletons/RAW/Characters/Skeleton_Warrior.fbx",
@@ -1700,6 +1703,10 @@ namespace Ulon.Editor
             AssertCraftOrder();
             // 역할↔외형은 **맨 끝**에 둔다 — 지금 마을 시설이 전부 어긋나 빨간불이라, 앞에 두면
             // 나머지 게이트가 한 줄도 못 돌아 회귀를 못 본다(검수 지시로 세운 게이트, 랩 ① 작업 목록).
+            AssertNoWholeFacilityAnchorNegativeControl();   // 자리 기준이 시설 전체 바운드로 새는지(소스)
+            AssertNoWholeFacilityAnchor();
+            AssertBuilderIdempotentNegativeControl();       // 다시 돌려도 좌표가 안 밀리는지(실측)
+            AssertBuilderIdempotent();
             AssertCapeIsBossOnlyNegativeControl();
             AssertCapeIsBossOnly();
             AssertActorFeetNegativeControl();

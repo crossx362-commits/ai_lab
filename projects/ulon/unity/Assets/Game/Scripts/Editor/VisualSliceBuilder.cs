@@ -2418,6 +2418,33 @@ namespace Ulon.Editor
             return true;
         }
 
+        /// <summary>
+        /// **망토는 보스만**(검수 판정 2026-09-07 ②, §10.2·b2905b55). 예외 없음 —
+        /// 플레이어도 Knight이고 보스도 Knight라, 망토가 유일한 구분 축인 방이 둘(던전 1·3) 있다.
+        /// 플레이어 표식이 필요해지면 **다른 축**(색·문장·장비)으로 주고 그때 다시 판정받는다.
+        /// 게이트는 `AssertCapeIsBossOnly`.
+        /// </summary>
+        public static int EnsureCapeIsBossOnly()
+        {
+            var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            int off = 0;
+            for (int i = 0; i < actors.Length; i++)
+            {
+                var wb = actors[i].GetComponent<Ulon.Server.WorldBody>();
+                if (wb != null && !string.IsNullOrEmpty(wb.MobId) && Ulon.Shared.MobCatalog.IsBoss(wb.MobId))
+                    continue;
+                foreach (var t in actors[i].GetComponentsInChildren<Transform>(true))
+                    if (IsCapeName(t.name) && t.gameObject.activeSelf)
+                    {
+                        t.gameObject.SetActive(false);
+                        off++;
+                    }
+            }
+            if (off > 0)
+                Debug.Log("[Ulon] 망토 정리 — 보스가 아닌 " + off + "개를 껐다(망토는 §10.2 보스 표식, 예외 없음)");
+            return off;
+        }
+
         public const string CampfireFlameObject = "CampfireFlame";
 
         /// <summary>
@@ -2444,9 +2471,12 @@ namespace Ulon.Editor
             }
 
             // 불은 **돌 사이 한가운데 위**에서 난다 — 기준은 오브젝트 원점이 아니라 보이는 것의 중심이다.
-            Vector3 at = go.transform.position;
+            // **자기 출력물(돌·장작)을 기준으로 삼지 않는다** — 그러면 돌 때마다 불이 밀린다(검수 판정 ③).
+            var anchor = HostAnchor(go.transform);
+            float footY = go.transform.position.y;
             if (BoundsOf(go.transform, true, out Bounds b) && b.size.sqrMagnitude > 0.0001f)
-                at = new Vector3(b.center.x, b.min.y + 0.25f, b.center.z);
+                footY = b.min.y;
+            var at = new Vector3(anchor.x, footY + 0.25f, anchor.z);
 
             var flame = new GameObject(CampfireFlameObject);
             flame.transform.SetParent(go.transform, true);
@@ -2524,9 +2554,8 @@ namespace Ulon.Editor
                 if (go.transform.GetChild(c).name.StartsWith("YardFence", StringComparison.Ordinal))
                     UnityEngine.Object.DestroyImmediate(go.transform.GetChild(c).gameObject);
 
-            Vector3 center = go.transform.position;
-            if (BoundsOf(go.transform, true, out Bounds b) && b.size.sqrMagnitude > 0.0001f)
-                center = new Vector3(b.center.x, 0f, b.center.z);
+            var center = HostAnchor(go.transform);   // 자기 울타리·부속을 뺀 본체 중심(검수 판정 ③)
+            center.y = 0f;
             const float half = 2.4f;                          // 마당 반폭 — 말 한 마리와 사람이 서는 크기
             const float step = 1.6f;                          // 판 하나의 폭 = 칸 간격(딱 맞물려야 「닫혔다」로 읽힌다)
             int made = 0;
@@ -2599,9 +2628,7 @@ namespace Ulon.Editor
             if (old != null)
                 UnityEngine.Object.DestroyImmediate(old);
             ConfigureHumanoid(fbx, true);
-            Vector3 baseAt = go.transform.position;
-            if (BoundsOf(go.transform, true, out Bounds hb) && hb.size.sqrMagnitude > 0.0001f)
-                baseAt = new Vector3(hb.center.x, 0f, hb.center.z);
+            var baseAt = HostAnchor(go.transform);   // 차양·굴뚝 같은 부속을 뺀 본체 중심(검수 판정 ③)
             var npc = SpawnActor(name, fbx, new Vector3(baseAt.x + offset.x, 0f, baseAt.z + offset.z), 1.75f, ctrl,
                 false, false, display, 50f);
             if (npc == null)
@@ -2650,8 +2677,21 @@ namespace Ulon.Editor
             }
         }
 
+        /// <summary>
+        /// **네거티브 컨트롤 전용 스위치** — 켜면 `HostAnchor`가 옛 방식(시설 **전체** 바운드)으로 돌아간다.
+        /// 멱등 실측 게이트가 「자기참조를 되살리면 좌표가 실제로 밀리는가」를 증명하는 데만 쓴다.
+        /// 평시엔 false이고, 게이트가 켠 뒤 반드시 되돌린다.
+        /// </summary>
+        public static bool AnchorSelfReferenceForNc;
+
         static Vector3 HostAnchor(Transform host)
         {
+            if (AnchorSelfReferenceForNc)
+            {
+                if (BoundsOf(host, true, out Bounds nc) && nc.size.sqrMagnitude > 0.0001f)
+                    return new Vector3(nc.center.x, host.position.y, nc.center.z);
+                return host.position;
+            }
             bool any = false;
             Bounds box = new Bounds();
             var rends = host.GetComponentsInChildren<Renderer>(false);
@@ -3751,6 +3791,45 @@ namespace Ulon.Editor
         /// 방 안 오브젝트를 **방 바닥 윗면**에 세운다. 각자 자기 자리 지면에서 깊이만큼 내리면
         /// 지면 기복만큼 어긋나 바닥에 파묻히거나 뜬다(지형 작업 후 보스가 0.31m 파묻혔다).
         /// </summary>
+        /// <summary>
+        /// **키운 뒤 바닥에 다시 세운다**(검수 판정 2026-09-07 ①).
+        /// 보스는 잡몹의 1.3~1.5배로 **키운 뒤** 자리를 다시 안 잡아서 발이 방 바닥에 묻혔다
+        /// (실측 −0.25 / −0.82 / −1.10m). `StandOnRoomFloor`는 **transform y**를 맞출 뿐이라
+        /// 스케일이 바뀌면 발(메시 밑면)이 따라 내려간다.
+        ///
+        /// 그래서 이 패스는 **스케일이 확정된 뒤**(드레싱·크기 조정 전부 끝난 뒤) 돌아야 한다 —
+        /// 낚시터에서 배운 「이동은 스냅 뒤에」와 같은 순서 문제다. 게이트와 **같은 자**
+        /// (`GroundFit.SurfaceUnder`)를 쓴다.
+        /// </summary>
+        public static int EnsureActorsOnSurface()
+        {
+            var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            int moved = 0;
+            float worst = 0f;
+            string worstName = "";
+            for (int i = 0; i < actors.Length; i++)
+            {
+                var t = actors[i].transform;
+                if (!t.gameObject.activeInHierarchy || !GroundFit.WorldBounds(t, out Bounds b))
+                    continue;
+                if (!GroundFit.SurfaceUnder(t, b, out float sy, out _))
+                    continue;
+                float dy = sy - b.min.y;
+                if (Mathf.Abs(dy) < 0.02f)
+                    continue;
+                t.position += new Vector3(0f, dy, 0f);
+                moved++;
+                if (Mathf.Abs(dy) > Mathf.Abs(worst)) { worst = dy; worstName = t.name; }
+            }
+            if (moved > 0)
+            {
+                Physics.SyncTransforms();
+                Debug.Log("[Ulon] 액터 재착지 — " + moved + "명(최대 " + worstName + " " + worst.ToString("0.00") + "m). " +
+                          "크기를 바꾼 뒤에는 자리를 다시 잡아야 한다.");
+            }
+            return moved;
+        }
+
         public static void StandOnRoomFloor(Vector3 roomCenter, params string[] names)
         {
             float floorTop = OnGround(roomCenter).y - DungeonDepth + 0.2f;
