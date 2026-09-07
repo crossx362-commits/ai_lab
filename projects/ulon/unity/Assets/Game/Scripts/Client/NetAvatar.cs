@@ -709,7 +709,11 @@ namespace Ulon.Client
         {
             if (other == null || OfflineWorld.Instance == null)
                 return;
-            OfflineWorld.Instance.TryPartyInvite(GetComponent<WorldBody>(), other.GetComponent<WorldBody>());
+            // **거절 사유를 서버가 남긴다** — 안 남기면 클라에서는 「버튼을 눌렀는데 아무 일도 안 난다」로만
+            // 보인다(2클라 판정에서 실제로 여기서 막혔다).
+            var res = OfflineWorld.Instance.TryPartyInvite(GetComponent<WorldBody>(), other.GetComponent<WorldBody>());
+            if (!res.Applied)
+                Debug.Log("[Ulon] 파티 초대 거절 — " + res.FailReason + " (대상 " + other.name + ")");
             BroadcastParty();
         }
 
@@ -771,7 +775,13 @@ namespace Ulon.Client
         void RpcPartyState(bool open, int pendingId, string leader, string roster, string chat)
         {
             PartyView.Open = open;
-            PartyView.PendingMe = pendingId != 0 && pendingId == ObjectId;
+            // **「나에게 온 초대인가」는 내 아바타와 비교해야 한다**(2026-09-08 2클라 실측).
+            // 이 RPC는 **초대한 사람의 아바타**에서 방송되므로 `ObjectId`는 그 사람의 것이다 —
+            // 그래서 초대받은 쪽에서 `pendingId == ObjectId`가 영영 성립하지 않았고,
+            // **수락 버튼이 아무에게도 안 그려졌다**(파티가 대장 1명에서 멈춰 있던 이유).
+            var mineBody = OfflineWorld.Instance != null ? OfflineWorld.Instance.Player : null;
+            var mineNob = mineBody != null ? mineBody.GetComponent<NetworkObject>() : null;
+            PartyView.PendingMe = pendingId != 0 && mineNob != null && pendingId == mineNob.ObjectId;
             PartyView.Leader = leader;
             PartyView.Roster = roster;
             PartyView.Chat = chat;

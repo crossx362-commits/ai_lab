@@ -173,12 +173,44 @@ namespace Ulon.Client
             if (spawner == null)
                 return;
             if (spawner.Spawns != null && spawner.Spawns.Length >= 2)
+            {
+                // 씬이 자리를 갖고 있어도 **높이는 확인한다** — 아래 사고가 정확히 이 경로였다.
+                for (int i = 0; i < spawner.Spawns.Length; i++)
+                    LiftToGround(spawner.Spawns[i]);
                 return;
+            }
             var a = new GameObject("SpawnA").transform;
             a.position = new Vector3(-1.2f, 0f, 1.2f);
             var b = new GameObject("SpawnB").transform;
             b.position = new Vector3(1.2f, 0f, 1.2f);
+            LiftToGround(a);
+            LiftToGround(b);
             spawner.Spawns = new[] { a, b };
+        }
+
+        /// <summary>
+        /// **접속 자리를 지면 위로 올린다**(2026-09-08 실측 사고).
+        ///
+        /// 스폰 자리가 `y = 0`으로 박혀 있었는데 이 월드의 지면은 `LandBase = 10`이다 —
+        /// 즉 접속하는 순간 두 아바타가 **지면 10m 아래**에 떨어져 끝없이 낙하했고(실측 y −3.6 → −21.0),
+        /// 서버는 그 몸을 죽은 것으로 보아 파티 초대를 `ghost`로 거절했다.
+        /// 「온라인에서 파티가 안 된다」의 진짜 뿌리는 버튼이 아니라 **접속 자리**였다.
+        /// 높이는 다른 데서 쓰는 자와 같은 것으로 잰다(`Terrain.SampleHeight` + 지형 원점 y).
+        /// </summary>
+        static void LiftToGround(Transform t)
+        {
+            if (t == null)
+                return;
+            var terrain = Terrain.activeTerrain;
+            if (terrain == null)
+                return;
+            var p = t.position;
+            float ground = terrain.SampleHeight(p) + terrain.transform.position.y;
+            if (p.y >= ground - 0.05f)
+                return;
+            t.position = new Vector3(p.x, ground + 0.1f, p.z);
+            Debug.Log("[Ulon] 접속 자리를 지면 위로 — " + t.name + " y " + p.y.ToString("0.0") + " → " +
+                      t.position.y.ToString("0.0") + " (지면 " + ground.ToString("0.0") + "m)");
         }
     }
 }

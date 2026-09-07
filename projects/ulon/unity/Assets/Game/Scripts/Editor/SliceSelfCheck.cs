@@ -748,6 +748,13 @@ namespace Ulon.Editor
                 pal.IsEnemy = false;
                 pal.MaxHp = 40f;
                 pal.ResetHp();
+                // **HUD가 고르는 것과 서버가 받는 것이 같은가** — 초대 대상 선정을 씬 이름에서
+                // 거리 기반으로 바꿨으니(2026-09-08), 오프라인에서도 옆에 선 몸을 집어야 한다.
+                // 이걸 안 재면 「온라인을 고치다 오프라인을 잃는」 회귀를 못 본다(검수 조건 2).
+                var picked = OfflineWorld.NearestInvitee(body, PartyResolve.InviteRange);
+                if (picked == null)
+                    throw new InvalidOperationException("초대 대상 선정 실패 — 사거리 " +
+                        PartyResolve.InviteRange + "m 안에 몸이 있는데 HUD가 쓰는 선정 함수가 아무것도 못 골랐습니다.");
                 var invited = world.TryPartyInvite(body, pal);
                 if (!invited.Applied || world.ActiveParty == null || !world.ActiveParty.Contains(pal))
                     throw new InvalidOperationException("파티 초대 실패: " + invited.FailReason);

@@ -6,6 +6,39 @@ namespace Ulon.Server
 {
     public sealed partial class OfflineWorld
     {
+        /// <summary>
+        /// **초대할 수 있는 가장 가까운 몸** — 씬 이름이 아니라 **거리**로 고른다(검수 지시 2026-09-08).
+        ///
+        /// 전에는 HUD가 `GameObject.Find("Companion")`으로 대상을 잡았다. 그런데 네트워크에서는
+        /// `AutoStartNetwork.PrepareSceneForNetwork`가 `Player`·`Companion`을 꺼 버리므로 그 몸이
+        /// 사라지고, **버튼 자체가 안 그려져** 온라인에서 파티를 만들 방법이 없었다. 파티에 매달린
+        /// 규칙(시체 파티 우선권·유령의 파티원 통신)까지 통째로 도달 불가였다.
+        ///
+        /// 그래서 대상 선정을 서버 규칙과 **같은 자**로 바꾼다 — 반경은 `PartyResolve.InviteRange`고,
+        /// 그 값은 결투·길드 초대와 같은 수다(임의로 고른 반경이 아니다). 오프라인 슬라이스에서는
+        /// 옆에 선 동료가 그대로 가장 가까운 몸이라 기존 경로가 살아 있다.
+        /// </summary>
+        public static WorldBody NearestInvitee(WorldBody me, float radius)
+        {
+            if (me == null)
+                return null;
+            var all = Object.FindObjectsByType<WorldBody>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            WorldBody best = null;
+            float bestD = float.MaxValue;
+            for (int i = 0; i < all.Length; i++)
+            {
+                var b = all[i];
+                if (b == null || b == me || b.IsEnemy || b.Ghost)
+                    continue;
+                float d = Vector3.Distance(me.transform.position, b.transform.position);
+                if (d > radius || d >= bestD)
+                    continue;
+                bestD = d;
+                best = b;
+            }
+            return best;
+        }
+
         public AttackResult TryPartyInvite(WorldBody from, WorldBody to)
         {
             if (from == null || to == null || from == to)
@@ -15,7 +48,7 @@ namespace Ulon.Server
             if (to.IsEnemy)
                 return new AttackResult { FailReason = "enemy" };
             float dist = Vector3.Distance(from.transform.position, to.transform.position);
-            if (dist > 4f)
+            if (dist > PartyResolve.InviteRange)
                 return new AttackResult { FailReason = "range" };
             if (ActiveParty != null && ActiveParty.Leader != from)
                 return new AttackResult { FailReason = "not_leader" };
@@ -41,7 +74,7 @@ namespace Ulon.Server
             if (ActiveParty.Pending != body)
                 return new AttackResult { FailReason = "no_invite" };
             float dist = Vector3.Distance(body.transform.position, ActiveParty.Leader.transform.position);
-            if (dist > 6f)
+            if (dist > PartyResolve.AcceptRange)
                 return new AttackResult { FailReason = "range" };
             ActiveParty.Add(body);
             return new AttackResult { Applied = true };

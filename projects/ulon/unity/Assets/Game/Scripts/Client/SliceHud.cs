@@ -511,11 +511,15 @@ namespace Ulon.Client
                     }
                     return;
                 }
-                var pal = GameObject.Find("Companion");
-                var palBody = pal != null ? pal.GetComponent<WorldBody>() : null;
-                if (palBody != null && Btn("동료 초대"))
+                // **대상은 씬 이름이 아니라 거리로 고른다**(검수 지시 2026-09-08).
+                // `GameObject.Find("Companion")`은 네트워크에서 그 오브젝트가 꺼지면 null이 되고,
+                // 버튼이 통째로 사라져 **온라인에서만 파티를 못 만드는** 상태였다.
+                // 반경은 서버가 받아 주는 사거리와 같은 값을 쓴다(`PartyResolve.InviteRange`) —
+                // 버튼이 보이는데 서버가 거절하는 어긋남을 없앤다.
+                var palBody = OfflineWorld.NearestInvitee(me, PartyResolve.InviteRange);
+                if (palBody != null && Btn(palBody.IsAvatar ? "파티 초대" : "동료 초대"))
                 {
-                    var nob = pal.GetComponent<FishNet.Object.NetworkObject>();
+                    var nob = palBody.GetComponent<FishNet.Object.NetworkObject>();
                     if (net != null && net.IsClientInitialized && nob != null) net.RpcPartyInvite(nob);
                     else world.TryPartyInvite(me, palBody);
                 }
