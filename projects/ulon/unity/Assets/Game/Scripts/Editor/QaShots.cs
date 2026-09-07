@@ -43,6 +43,7 @@ namespace Ulon.Editor
             var shots = new[]
             {
                 Orbit("01_village_square", new Vector3(0f, 0f, 0f), 20f, 35f),
+                CompanionBlock("58_companion_block"),
                 Orbit("02_village_wide", new Vector3(0f, 0f, 0f), 55f, 45f),
                 // 마을 쪽(남)에서 북쪽 사냥터를 본다 — 마을이 카메라 **뒤**라 프레임 밖이다
                 // (검수 완료 기준 랩 ⑦: 8체가 다 들어오고 마을이 화면에 없을 것).
@@ -758,6 +759,37 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] QA 자동 줌 " + name + " — IsIndoor=" + indoor + ", 거리 " + dist.ToString("0.0") + "m");
             var rot = Quaternion.Euler(pitch, yaw, 0f);
             return new Shot { Name = name, Eye = player - rot * Vector3.forward * dist, Target = player, PlayCamera = true };
+        }
+
+        /// <summary>
+        /// **동료가 카메라와 플레이어 사이에 선 화면**(검수 의심 확인용 2026-09-07).
+        /// 야외 시선 게이트의 최악 20%가 `Companion`이었는데 「몹 제외」로 빠져서, 화면에서 얼마나
+        /// 나쁜지는 아무도 안 봤다. 동료를 옮기지 않는다 — **플레이어를 동료 뒤에 세운다**
+        /// (카메라 각은 고정이라 시야선은 동료를 지나간다). 씬을 흔들지 않고 그 상황을 만든다.
+        /// </summary>
+        static Shot CompanionBlock(string name)
+        {
+            // **게이트가 최악이라고 지목한 그 자리**를 그대로 재현한다(마을 (-2,2), 가림 20% ← Companion).
+            // 내가 임의로 만든 배치는 게이트가 잰 상황이 아니다 — 증거는 잰 자리에서 찍어야 한다.
+            var comp = FindSubject("Companion");
+            var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
+            float pitch = qv != null ? qv.Pitch : 35f;
+            float yaw = qv != null ? qv.Yaw : 45f;
+            float dist = qv != null ? qv.Distance : 12f;
+            var rot = Quaternion.Euler(pitch, yaw, 0f);
+            if (comp == null)
+                return new Shot { Name = name, Eye = new Vector3(0f, 5f, -5f), Target = Vector3.zero };
+            // 카메라 → 플레이어 방향이 -(rot*forward)의 반대이므로, 동료보다 **더 먼 쪽**에 플레이어를 둔다.
+            var player = new Vector3(-2f, GroundY(-2f, 2f) + 1.0f, 2f);
+            Debug.Log("[Ulon] 동료 가림 샷 — 동료 " + comp.transform.position.ToString("0.0") +
+                      ", 플레이어 " + player.ToString("0.0") + " (카메라 거리 " + dist.ToString("0.0") + "m)");
+            return Stand(new Shot
+            {
+                Name = name,
+                Eye = player - rot * Vector3.forward * dist,
+                Target = player,
+                PlayCamera = true,
+            });
         }
 
         static Shot Stand(Shot shot) { shot.StandPlayer = true; return shot; }

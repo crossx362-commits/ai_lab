@@ -168,7 +168,17 @@ namespace Ulon.Editor
             return false;
         }
 
-        /// <summary>방 구조물·뚜껑 — 지하에 묻힌 것이 정상이다.</summary>
+        /// <summary>
+        /// 방 구조물·뚜껑 — 지하에 묻힌 것이 정상이다.
+        ///
+        /// **`Dungeon*`는 이제 겹띠다** — 실제 판정은 자리로 한다(`InDungeonRoom`: 방 중심 12m 안 +
+        /// 꼭대기가 지표보다 1m 아래). 이름 규약이 바뀌어도 안 새게 성질로 옮겼다(검수 지시 2026-09-07).
+        ///
+        /// **`CapDress*`는 이름으로 남긴다(사유)**: 뚜껑 장식은 지표 바로 위·아래를 오가는 물건이라
+        /// 「자리」만으로는 정상과 결함이 안 갈린다 — 0.2m 솟은 것이 설계이고 0.35m 솟으면 결함이다
+        /// (`AssertWorldMaterials`가 그 축을 따로 잰다). 그래서 여기서는 발 높이 판정에서만 빼고,
+        /// 높이 판정은 전용 게이트에 맡긴다. 이름으로 빼는 유일하게 남은 자리다.
+        /// </summary>
         public static bool SkipItem(string n)
         {
             return n.StartsWith("Dungeon", StringComparison.Ordinal) || n.StartsWith("CapDress", StringComparison.Ordinal);
