@@ -29,6 +29,22 @@ namespace Ulon.Editor
             public int Renderers;       // 보이는 렌더러 수 — 조립물인가 조각 하나인가
             public bool HasInsideRoom;  // **안에 사람이 설 자리**가 물리로 비어 있는가
             public string InsideWhy;    // 그 판정의 근거(로그용)
+            public string DisplayName;  // 씬에 적힌 표시명 — 원장이 아니라 **화면에 뜨는 문자열**을 읽는다
+        }
+
+        /// <summary>
+        /// 이 역할에 **사람이 서 있어야 하는가**. 세 갈래가 서로의 사각지대를 메운다 —
+        ///   ① 원장의 `MustBePerson`(치유사·훈련사·마구간지기),
+        ///   ② 씬 표시명이 사람을 가리키는 경우(**전수 규칙** — 새 시설이 목록 밖에서 생겨도 걸린다),
+        ///   ③ 원장의 `ServiceDesk`(표시명이 장소인 은행·상점 — §18.19의 「말을 거는 상대」).
+        /// </summary>
+        static bool NeedsPerson(RoleLook.Facility spec, RoleLookFact f, out string why)
+        {
+            if (spec.MustBePerson) { why = "원장이 사람 역할로 적었다"; return true; }
+            if (RoleLook.NamesAPerson(f.DisplayName)) { why = "표시명 「" + f.DisplayName + "」이 사람을 가리킨다"; return true; }
+            if (spec.ServiceDesk) { why = "말을 걸어 서비스를 받는 자리다(§18.19)"; return true; }
+            why = "";
+            return false;
         }
 
         /// <summary>
@@ -85,10 +101,10 @@ namespace Ulon.Editor
                             ". 「들어갈 수 있다」의 정의는 높이가 아니라 이것이다(§8.2).");
                 }
 
-                // (d) 표시명이 사람인 역할은 사람 모델이어야 한다(§18.19).
-                if (spec.MustBePerson && !f.IsPerson)
-                    reasons.Add(spec.Role + "(" + f.Object + ")은 표시명이 사람인데 화면엔 사람이 없습니다 — " +
-                        "보이는 메시 " + (string.IsNullOrEmpty(f.MeshKey) ? "(없음)" : f.MeshKey) + "(§18.19).");
+                // (d) 말을 거는 자리·사람 이름의 역할에는 **사람이 서 있어야** 한다(§18.19).
+                if (NeedsPerson(spec, f, out string whyPerson) && !f.IsPerson)
+                    reasons.Add(spec.Role + "(" + f.Object + ")에 사람이 없습니다 — " + whyPerson +
+                        ". 보이는 메시 " + (string.IsNullOrEmpty(f.MeshKey) ? "(없음)" : f.MeshKey) + "(§18.19).");
             }
             return reasons;
         }
@@ -101,13 +117,31 @@ namespace Ulon.Editor
                 var go = all[i].gameObject;
                 if (!seen.Add(go))
                     continue;
-                facts.Add(FactOf(go, role));
+                facts.Add(FactOf(go, role, DisplayNameOf(all[i])));
             }
         }
 
-        static RoleLookFact FactOf(GameObject go, string role)
+        /// <summary>
+        /// 씬 컴포넌트에 적힌 표시명을 **반사로** 읽는다 — 역할마다 필드를 손으로 옮겨 적으면
+        /// 새 역할이 목록 밖에 남는다. `DisplayName`이라는 이름의 문자열 필드면 무엇이든 읽는다.
+        /// </summary>
+        static string DisplayNameOf(MonoBehaviour c)
         {
-            var fact = new RoleLookFact { Object = go.name, Role = role };
+            if (c == null)
+                return "";
+            var t = c.GetType();
+            var f = t.GetField("DisplayName");
+            if (f != null && f.FieldType == typeof(string))
+                return (f.IsStatic ? f.GetValue(null) : f.GetValue(c)) as string ?? "";
+            var p = t.GetProperty("DisplayName");
+            if (p != null && p.PropertyType == typeof(string))
+                return p.GetValue(c) as string ?? "";
+            return "";
+        }
+
+        static RoleLookFact FactOf(GameObject go, string role, string display)
+        {
+            var fact = new RoleLookFact { Object = go.name, Role = role, DisplayName = display };
             var rends = go.GetComponentsInChildren<Renderer>(true);
             float biggest = 0f;
             int rendererCount = 0;
@@ -131,6 +165,11 @@ namespace Ulon.Editor
                 string file = string.IsNullOrEmpty(path) ? m.name : System.IO.Path.GetFileName(path);
                 if (!meshNames.Contains(file))
                     meshNames.Add(file);
+                // **주 메시 판정에서 사람은 뺀다** — 시설에 서비스 NPC를 세우자 스킨드 메시 바운드가
+                // 부풀어 사람이 「주 메시」가 됐고, 은행원·상인이 같은 모델이면 (a) 메시 중복이
+                // **시설이 아니라 사람** 때문에 빨간불을 냈다. 시설의 외형과 그 자리에 선 사람은 다른 축이다.
+                if (MobArt.Find(rends[i].gameObject.name, out _))
+                    continue;
                 float vol = rends[i].bounds.size.x * rends[i].bounds.size.y * rends[i].bounds.size.z;
                 if (vol > biggest) { biggest = vol; fact.MeshKey = file; }
             }
@@ -216,7 +255,7 @@ namespace Ulon.Editor
                 var go = nodes[i].gameObject;
                 if (!RoleLook.TryGet(go.name, out _) || !seen.Add(go))
                     continue;
-                facts.Add(FactOf(go, "자원 시설"));
+                facts.Add(FactOf(go, "자원 시설", DisplayNameOf(nodes[i])));
             }
             return facts;
         }
@@ -236,7 +275,10 @@ namespace Ulon.Editor
                 Debug.Log("[Ulon] 역할 요구 " + spec.Role + "(" + f.Object + ") — 높이 " + f.Height.ToString("0.00") +
                           "m/하한 " + (VisualSliceBuilder.PlayerHeight * spec.MinHeightFrac).ToString("0.00") +
                           "m · 부속 " + (f.HasPart ? "있음" : "없음") +
-                          " · 사람 " + (spec.MustBePerson ? (f.IsPerson ? "있음" : "없음") : "요구 조건 없음") +
+                          " · 표시명 「" + (string.IsNullOrEmpty(f.DisplayName) ? "(없음)" : f.DisplayName) + "」" +
+                          " · 사람 " + (NeedsPerson(spec, f, out string why)
+                              ? ((f.IsPerson ? "있음" : "없음") + "(요구: " + why + ")")
+                              : "요구 조건 없음") +
                           " · 들어가기 " + (spec.Enterable
                               ? ("두께 " + f.Thickness.ToString("0.00") + "m/렌더러 " + f.Renderers + "개/" +
                                  (f.HasInsideRoom ? "설 자리 있음" : "설 자리 없음(" + f.InsideWhy + ")"))
@@ -303,11 +345,28 @@ namespace Ulon.Editor
             if (RoleLookDefects(solid).Count == 0)
                 throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 속이 찬 덩어리가 은행으로 통과했습니다.");
 
+            // 표시명 접미사 규칙 — **원장에 아무 플래그가 없어도** 사람 이름이면 사람을 요구해야 한다.
+            // (제작대는 사람 요구가 없는 역할이라, 여기서 빨간불이 나면 그건 표시명 때문이다.)
+            var namedPerson = new List<RoleLookFact> { Good("Carpenter", 2f) };
+            var npr = namedPerson[0]; npr.IsPerson = false; npr.DisplayName = "목공 장인"; namedPerson[0] = npr;
+            if (RoleLookDefects(namedPerson).Count == 0)
+                throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 표시명이 「목공 장인」인데 사람 없이 통과했습니다.");
+            var namedPlace = new List<RoleLookFact> { Good("Carpenter", 2f) };
+            var npl = namedPlace[0]; npl.IsPerson = false; npl.DisplayName = "목공소"; namedPlace[0] = npl;
+            if (RoleLookDefects(namedPlace).Count != 0)
+                throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 표시명이 장소(「목공소」)인데 사람을 요구했습니다(접미사 규칙이 과하게 문다).");
+
+            // 말을 거는 자리(§18.19) — 표시명이 장소여도 상대가 있어야 한다.
+            var desk = new List<RoleLookFact> { Good("Vendor", 2f) };
+            var dk = desk[0]; dk.IsPerson = false; dk.DisplayName = "잡화"; desk[0] = dk;
+            if (RoleLookDefects(desk).Count == 0)
+                throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 상점에 상인이 없는데 통과했습니다.");
+
             var unknown = new List<RoleLookFact> { Good("NewShinyStation", 2f) };
             if (RoleLookDefects(unknown).Count == 0)
                 throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 원장에 없는 역할이 통과했습니다.");
 
-            Debug.Log("[Ulon] 역할↔외형 네거티브 컨트롤 통과 — 정상 입력 초록불 + 결함 8종(메시 중복·낮은 높이·부속 없음·사람 없음·원장 밖·얇은 판·조각 하나·속이 참) 전부 FAIL");
+            Debug.Log("[Ulon] 역할↔외형 네거티브 컨트롤 통과 — 정상 입력 초록불 + 결함 10종(메시 중복·낮은 높이·부속 없음·사람 없음·표시명이 사람인데 사람 없음·말 거는 자리에 상대 없음·원장 밖·얇은 판·조각 하나·속이 참) 전부 FAIL, 표시명이 장소인 역할은 사람 요구 없음까지 확인");
         }
     }
 }

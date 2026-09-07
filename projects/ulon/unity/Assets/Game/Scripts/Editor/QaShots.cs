@@ -73,6 +73,16 @@ namespace Ulon.Editor
                 // 마을 시설 근접 — 「저게 대장간이구나」가 화면에서 읽히는지 눈으로 본다(검수 랩 ① 요구).
                 Stand(PlayCamOutdoor("28_facilities", -5.2f, 3.4f)),
                 Stand(PlayCamOutdoor("29_forge_carpenter", -6.8f, 5.2f)),
+                // 시설별 **진짜 근접** — 28·29는 플레이 거리라 시설이 수십 픽셀이었다(검수 반려).
+                FacilityCloseUp("30_forge", "Forge"),
+                FacilityCloseUp("31_carpenter", "Carpenter"),
+                FacilityCloseUp("32_vendor", "Vendor"),
+                FacilityCloseUp("33_campfire", "Campfire"),
+                FacilityCloseUp("34_mortar", "Mortar"),
+                FacilityCloseUp("35_fishing", "FishingSpot"),
+                FacilityCloseUp("36_stable", "Stable"),
+                FacilityCloseUp("37_banker", "Banker"),
+                FacilityCloseUp("38_healer", "Healer"),
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
             };
 
@@ -198,6 +208,87 @@ namespace Ulon.Editor
             var target = p + new Vector3(0f, 1.1f, 0f);
             var eye = target + go.transform.forward * 3.0f + new Vector3(0f, 0.9f, 0f);
             return new Shot { Name = name, Eye = eye, Target = target };
+        }
+
+        /// <summary>
+        /// **시설 근접**(검수 2026-09-07: 「시설 하나가 화면의 1/3 이상 차지하게」).
+        /// 지난번 근접 샷은 플레이 카메라 거리(12m) 그대로라 사실상 마을 전경이었고, 대장간이
+        /// 수십 픽셀이라 검수가 판정할 수 없었다. 그래서 거리를 **재서 정한다** —
+        /// 시설의 보이는 바운드 반지름과 카메라 화각으로 「화면 높이의 절반을 채우는 거리」를 푼다.
+        /// 각도(pitch·yaw)는 플레이 카메라와 같게 둔다 — 게임에서 보는 방향 그대로 판정하기 위해서다.
+        /// **이건 플레이 거리 샷이 아니다**(자산이 무엇으로 읽히는지 보는 확대 샷이다) — 숨기지 않고 적는다.
+        /// </summary>
+        static Shot FacilityCloseUp(string name, string objectName)
+        {
+            var go = GameObject.Find(objectName);
+            if (go == null)
+                return new Shot { Name = name, Eye = new Vector3(0f, 5f, -5f), Target = Vector3.zero };
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            bool any = false;
+            Bounds box = new Bounds();
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (!rends[i].enabled || !rends[i].gameObject.activeInHierarchy)
+                    continue;
+                if (!any) { box = rends[i].bounds; any = true; }
+                else box.Encapsulate(rends[i].bounds);
+            }
+            var target = any ? box.center : go.transform.position + Vector3.up;
+            float radius = any ? Mathf.Max(box.extents.magnitude, 0.6f) : 1.5f;
+            // 화면 높이의 절반을 채우려면 거리 = 반지름 / tan(화각/2) — 여기에 1.35배 여유(가장자리 잘림 방지).
+            float dist = radius / Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad) * 1.35f;
+            var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
+            float pitch = qv != null ? qv.Pitch : 35f;
+            float baseYaw = qv != null ? qv.Yaw : 45f;
+            // **어느 쪽에서 봐야 시설이 보이는가를 잰다.** 마을 한복판이라 게임 방위 그대로 잡으면
+            // 앞집이 가려 판정이 불가능한 샷이 나온다(첫 촬영본 30_forge가 그랬다). 네 방위를 쏴 보고
+            // **가리는 것이 가장 적은 쪽**을 고른다 — 취향이 아니라 광선으로 고르고, 고른 쪽을 로그에 남긴다.
+            float bestYaw = baseYaw;
+            float bestPitch = pitch;
+            float bestSeen = -1f;
+            // 마을은 시설이 2~3m 간격으로 붙어 있어 게임 각도에서는 앞집 지붕이 시설을 통째로 덮는다
+            // (첫 촬영본 35_fishing이 그랬다). 방위 8 × 내려보는 각 3을 다 재고 제일 잘 보이는 조합을 쓴다.
+            float[] pitches = { pitch, 50f, 65f };
+            for (int k = 0; k < 8 * pitches.Length; k++)
+            {
+                float y = baseYaw + (k % 8) * 45f;
+                float pit = pitches[k / 8];
+                var eyeK = target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * dist;
+                // 중심선 하나만 쏘면 「앞집 옆을 스쳐 지나가」 0개로 읽힌다(첫 시도가 그랬다) —
+                // 시설 표면 표본에 쏴서 **몇 %가 실제로 이 시설로 먼저 닿는지**를 잰다(차폐 게이트와 같은 방식).
+                int seen = 0, total = 0;
+                for (int sx = -1; sx <= 1; sx++)
+                    for (int sy = -1; sy <= 1; sy++)
+                        for (int sz = -1; sz <= 1; sz++)
+                        {
+                            var p = box.center + new Vector3(sx * box.extents.x * 0.6f, sy * box.extents.y * 0.6f, sz * box.extents.z * 0.6f);
+                            var seg = p - eyeK;
+                            total++;
+                            var hits = Physics.RaycastAll(eyeK, seg.normalized, seg.magnitude, ~0, QueryTriggerInteraction.Ignore);
+                            System.Array.Sort(hits, (u, v) => u.distance.CompareTo(v.distance));
+                            bool blocked = false;
+                            for (int h = 0; h < hits.Length; h++)
+                            {
+                                if (hits[h].collider == null || SliceSelfCheck.IsTerrainCollider(hits[h].collider))
+                                    continue;
+                                // **「내 콜라이더에 맞았는가」로 재면 안 된다** — 발판·돌·분수처럼 콜라이더가
+                                // 없는 시설은 광선이 그냥 통과해 「안 보임」으로 세어졌다(실측 11%).
+                                // 재려는 것은 **가림**이다: 남의 것이 먼저 맞으면 가려진 것이고, 아무것도
+                                // 안 맞으면 뚫려 있는 것이다.
+                                blocked = !hits[h].collider.transform.IsChildOf(go.transform);
+                                break;                      // 가장 가까운 것 하나만 본다
+                            }
+                            if (!blocked)
+                                seen++;
+                        }
+                float share = total > 0 ? seen / (float)total : 0f;
+                if (share > bestSeen + 0.02f) { bestSeen = share; bestYaw = y; bestPitch = pit; }
+            }
+            var rot = Quaternion.Euler(bestPitch, bestYaw, 0f);
+            Debug.Log("[Ulon] 시설 근접 " + name + "(" + objectName + ") — 바운드 " + (any ? box.size.ToString("0.0") : "(없음)") +
+                      ", 거리 " + dist.ToString("0.0") + "m, 방위 " + bestYaw.ToString("0") + "°/내려보기 " +
+                      bestPitch.ToString("0") + "°(시설이 먼저 보이는 표본 " + (bestSeen * 100f).ToString("0") + "%)");
+            return new Shot { Name = name, Eye = target - rot * Vector3.forward * dist, Target = target, PlayCamera = true };
         }
 
         /// <summary>보스 근접 — 왕관·큰 무기를 확인하는 검수용 샷(검수 요청 2026-09-06).</summary>

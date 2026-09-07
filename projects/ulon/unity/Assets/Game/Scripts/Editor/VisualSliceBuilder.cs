@@ -2380,8 +2380,14 @@ namespace Ulon.Editor
             int made = 0;
             made += ServiceNpc("Healer", KnightFbx, "치유사", new Vector3(1.5f, 0f, 0.9f), ctrl) ? 1 : 0;
             made += ServiceNpc("Stable", RogueFbx, "마구간지기", new Vector3(1.3f, 0f, -0.9f), ctrl) ? 1 : 0;
+            // 표시명이 「은행」·「잡화」라 접미사 규칙엔 안 걸리지만, §18.19가 말하는 마을 서비스는
+            // **말을 거는 상대**다(검수: 「은행원·상인이 좌판인 것이 위반의 본체」).
+            // 은행원은 문 앞에 세운다 — 건물 안에 넣으면 밖에서 안 보이고 워프 착지 자리를 먹는다.
+            made += ServiceNpc("Banker", MageFbx, "은행원", new Vector3(0f, 0f, -3.4f), ctrl) ? 1 : 0;
+            made += ServiceNpc("Vendor", RogueFbx, "상인", new Vector3(0f, 0f, -1.6f), ctrl) ? 1 : 0;
             Physics.SyncTransforms();
-            Debug.Log("[Ulon] 마을 서비스 NPC — " + made + "명(치유사·마구간지기). 표시명만 사람이던 자리에 사람을 세운다(§18.19)");
+            Debug.Log("[Ulon] 마을 서비스 NPC — " + made + "명(치유사·마구간지기·은행원·상인). 표시명만 사람이던 자리에 사람을 세운다(§18.19). " +
+                      "저장소 사람 모델이 3종뿐이라 모델은 겹친다(치유사=Knight, 훈련사·은행원=Mage, 마구간지기·상인=Rogue) — 숨기지 않고 적어 둔다.");
         }
 
         static bool ServiceNpc(string host, string fbx, string display, Vector3 offset, AnimatorController ctrl)

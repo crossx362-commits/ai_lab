@@ -1619,6 +1619,7 @@ namespace Ulon.Editor
             AssertPropScaleNegativeControl();
             AssertActionSfxDistinct();
             AssertActionSfxNegativeControl();
+            AssertTerrainClassNegativeControl();   // 차폐 게이트들이 「지표」를 무엇으로 아는지 먼저 증명한다
             AssertPlayerNotOccluded();
             AssertPlayerNotOccludedNegativeControl();
             AssertIndoorRule();

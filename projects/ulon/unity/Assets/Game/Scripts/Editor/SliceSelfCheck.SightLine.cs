@@ -17,6 +17,54 @@ namespace Ulon.Editor
         /// <summary>몸통 표본 중 막혀도 되는 비율 — 실루엣이 읽히려면 대부분이 뚫려 있어야 한다.</summary>
         const float PlayerOccludedMax = 0.10f;
 
+        /// <summary>
+        /// **지표인가**(검수 승인 2026-09-07 ④). 예전엔 `transform.root.name == "Ground"`로 갈랐다 —
+        /// 판정 실패가 아니라 **분류**라서, 지표 루트를 개명하는 순간 아무도 모르게 「지표가 화면을
+        /// 가린다」로 뒤집힌다(빨간불도 안 난다). 이름 대신 **성질**로 잰다: TerrainCollider이거나
+        /// 루트에 Terrain 컴포넌트가 달린 것. 네거티브 컨트롤은 `AssertTerrainClassNegativeControl`.
+        /// </summary>
+        public static bool IsTerrainCollider(Collider c)
+        {
+            if (c == null)
+                return false;
+            if (c is TerrainCollider)
+                return true;
+            return c.transform.root.GetComponentInChildren<Terrain>(true) != null;
+        }
+
+        /// <summary>
+        /// 지표 분류의 네거티브 컨트롤 — **양쪽**을 로그에 남긴다(검수 조건).
+        ///   ① 지표 루트를 개명해도 여전히 지표로 분류되는가(이름 의존이 남아 있으면 여기서 깨진다),
+        ///   ② 다른 오브젝트를 `Ground`로 개명해도 지표로 안 세는가(이름만으로 면제받지 못한다).
+        /// </summary>
+        static void AssertTerrainClassNegativeControl()
+        {
+            var ground = GameObject.Find("Ground");
+            if (ground == null || ground.GetComponent<Terrain>() == null)
+                throw new InvalidOperationException("지표(Terrain 컴포넌트가 달린 Ground)를 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
+            var gc = ground.GetComponent<Collider>();
+            if (gc == null)
+                throw new InvalidOperationException("지표에 콜라이더가 없습니다 — 분류를 잴 수 없습니다.");
+
+            string had = ground.name;
+            ground.name = "지표_개명_NC";
+            bool stillTerrain = IsTerrainCollider(gc);
+            ground.name = had;
+
+            var fake = new GameObject("Ground");
+            fake.transform.position = new Vector3(0f, -500f, 0f);   // 다른 게이트의 광선에 걸리지 않게 멀리
+            var fc = fake.AddComponent<BoxCollider>();
+            bool fakeTerrain = IsTerrainCollider(fc);
+            UnityEngine.Object.DestroyImmediate(fake);
+
+            Debug.Log("[Ulon] 지표 분류 NC — 개명한 지표를 지표로 봄: " + (stillTerrain ? "예" : "아니오") +
+                      " · 이름만 Ground인 상자를 지표로 봄: " + (fakeTerrain ? "예" : "아니오"));
+            if (!stillTerrain)
+                throw new InvalidOperationException("지표 분류 네거티브 컨트롤 실패 — 이름을 바꾸자 지표가 지표로 안 읽힙니다(이름 의존이 남아 있다).");
+            if (fakeTerrain)
+                throw new InvalidOperationException("지표 분류 네거티브 컨트롤 실패 — 이름만 Ground인 상자가 지표로 통과했습니다(가림이 조용히 면제된다).");
+        }
+
         static void AssertPlayerNotOccluded()
         {
             CheckSightLine("던전 1", Dungeon1.InteriorX, Dungeon1.InteriorZ);
@@ -96,7 +144,7 @@ namespace Ulon.Editor
                         // 지표(`Ground`)는 **화면을 가리지 않는다** — 카메라가 방 안(지하)에 있고 지표 메시는
                         // 한 면만 그려져 아래에서는 그대로 통과해 보인다(광선은 맞지만 화면은 뚫려 있다).
                         // 벽·뚜껑은 빼지 않는다 — 그건 런타임 페이드가 걷는지까지 이 게이트가 봐야 한다.
-                        if (info.collider != null && info.collider.transform.root.name == "Ground")
+                        if (IsTerrainCollider(info.collider))
                             continue;
                         // 사람·짐승은 **움직인다** — 그 자리를 「구조적으로 안 보이는 자리」로 세면 안 된다.
                         // 정적 가림만 판정하고 싶을 때 켠다(야외 최악 축, 검수 지시 2026-09-07).

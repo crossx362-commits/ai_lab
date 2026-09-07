@@ -42,6 +42,31 @@ namespace Ulon.Editor
             public string PartWhy;         // 그 부속이 무엇을 읽히게 하는가
             public bool MustBePerson;      // 표시명이 사람인 역할(§18.19) — 사람 모델이어야 한다
             public bool Enterable;         // 사람이 **들어가는** 역할 — 높이만으로는 못 잰다(검수 2026-09-07)
+            public bool ServiceDesk;       // 플레이어가 **말을 걸어 서비스를 받는** 자리(§18.19) — 상대가 서 있어야 한다
+        }
+
+        /// <summary>
+        /// **표시명이 사람을 가리키는가**(검수 랩 ② 「사람 자격 게이트를 표시명이 사람인 역할 전수로」).
+        ///
+        /// 원장 플래그만으로는 목록이라 새 시설이 조용히 빠져나간다 — 그래서 씬에 적힌 **표시명 문자열**을
+        /// 직접 읽어 사람 접미사로 끝나면 사람을 요구한다. 「치유사」·「훈련사」·「마구간지기」·「은행원」·
+        /// 「상인」이 여기에 걸린다. 장소 이름(「은행」·「잡화」·「대장간」·「주택 부지」)은 안 걸리므로,
+        /// 그쪽은 원장의 `ServiceDesk`가 따로 요구한다(둘은 서로의 사각지대를 메운다).
+        ///
+        /// **한계(공개)**: 등록 접미사로 끝나지 않는 사람 이름 — 예컨대 「목수」 — 은 이 규칙이 못 잡는다.
+        /// 「수」를 넣으면 「분수」 같은 물건 이름까지 사람으로 읽히므로 넣지 않았다. 그런 역할이 생기면
+        /// 원장에 `MustBePerson`으로 적어라(규칙과 원장 둘 다 있는 이유가 이것이다).
+        /// </summary>
+        public static bool NamesAPerson(string displayName)
+        {
+            if (string.IsNullOrEmpty(displayName))
+                return false;
+            string s = displayName.Trim();
+            string[] suffixes = { "지기", "사", "원", "인", "꾼", "장이" };
+            for (int i = 0; i < suffixes.Length; i++)
+                if (s.Length > suffixes[i].Length && s.EndsWith(suffixes[i], StringComparison.Ordinal))
+                    return true;
+            return false;
         }
 
         /// <summary>
@@ -51,10 +76,13 @@ namespace Ulon.Editor
         /// </summary>
         public static readonly Facility[] Facilities =
         {
-            new Facility { Object = "Banker", Role = "은행", MinHeightFrac = 1.5f, Enterable = true,
+            new Facility { Object = "Banker", Role = "은행", MinHeightFrac = 1.5f, Enterable = true, ServiceDesk = true,
                 PartMeshes = new[] { "wall-door.fbx", "wall-window-glass.fbx", "wall-window-shutters.fbx" },
                 PartWhy = "문·창이 붙어야 「들어갈 수 있는 건물」로 읽힌다(§8.2)" },
-            new Facility { Object = "Vendor", Role = "상점", MinHeightFrac = 0.5f,
+            // 은행·상점은 표시명이 「은행」·「잡화」라 접미사 규칙에 안 걸린다 — 그런데 §18.19가 말하는
+            // 마을 서비스는 **말을 거는 상대**다(검수: 「은행원·상인이 좌판인 것이 위반의 본체」).
+            // 제작대(대장간·목공소·절구·화덕)는 플레이어가 **직접 쓰는 도구 자리**라 상대를 요구하지 않는다.
+            new Facility { Object = "Vendor", Role = "상점", MinHeightFrac = 0.5f, ServiceDesk = true,
                 PartMeshes = new[] { "stall-green.fbx", "stall-red.fbx", "banner-red.fbx", "crates_stacked.obj", "box_large.obj" },
                 PartWhy = "차양·쌓인 물건이 있어야 「파는 곳」으로 읽힌다" },
             new Facility { Object = "Forge", Role = "대장간", MinHeightFrac = 0.5f,

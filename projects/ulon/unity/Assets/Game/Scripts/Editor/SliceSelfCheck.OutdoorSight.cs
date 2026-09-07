@@ -59,8 +59,9 @@ namespace Ulon.Editor
                 ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < hits.Length; i++)
             {
-                string root = hits[i].transform.root.name;
-                if (root == "Ground" || root.StartsWith("Terrain", StringComparison.Ordinal))
+                // 이름이 아니라 **성질**로 갈린다 — 지표 루트를 개명하면 설 자리가 통째로 사라져
+                // 「표본 0개」로 조용히 통과했을 것이다(검수 ④, NC는 AssertTerrainClassNegativeControl).
+                if (IsTerrainCollider(hits[i]))
                     continue;
                 return false;
             }
