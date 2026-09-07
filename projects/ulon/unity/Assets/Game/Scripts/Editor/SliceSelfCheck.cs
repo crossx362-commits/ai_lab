@@ -46,6 +46,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureFootOnGround();       // 지형이 올라가면 배치물도 따라 올린다(검수 A)
             // 이미 만들어진 씬은 빌더 수정만으로 안 고쳐진다 — 멱등 보수 패스로 돌린다(검수 랩 D).
             Debug.Log("[Ulon] 건물 시야 페이드 — 레이어 올린 렌더러 " + VisualSliceBuilder.EnsureBuildingsFadeable() + "개");
+            VisualSliceBuilder.EnsureEntranceFramesQualified();  // 옛 씬의 검은 큐브 문틀을 등록 조각으로 다시 세운다(검수 2026-09-07)
             VisualSliceBuilder.EnsureRoomSize();           // 방 반경이 원장과 다르면 헐고 다시 짓는다(검은 허공)
             ActionVfxBuilder.EnsureActionVfx();
             ActionSfxBuilder.EnsureActionSfx();          // 등록 CC0 효과음(§11.2)            // 행동 결과 파티클(§11.2·§18.15)
@@ -1607,6 +1608,8 @@ namespace Ulon.Editor
             AssertRoomFurnishedNegativeControl();
             AssertPropsQualified();
             AssertRoomPropsNegativeControl();
+            AssertEntranceArtQualified();
+            AssertEntranceArtNegativeControl();
             AssertPropDistribution();
             AssertPropDistributionNegativeControl();
             AssertPropScaleRatio();

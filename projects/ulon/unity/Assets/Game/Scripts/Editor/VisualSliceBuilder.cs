@@ -2163,28 +2163,89 @@ namespace Ulon.Editor
             for (int i = 1; i <= 4; i++)
                 Decor(parent, PathTile, pos + fwd * (1.6f * i), new Vector3(0f, approachYaw, 0f));
 
-            // 문틀 — wall-arch 한 장은 45° 시점에서 얇은 판때기로 보인다. 기둥 2 + 상인방 + 어두운 문구멍으로 문을 만든다.
-            var wallMat = MakeNoiseMat("DungeonWall", new Color(0.16f, 0.15f, 0.17f), new Color(0.27f, 0.26f, 0.28f));
+            BuildEntranceFrame(parent, pos, approachYaw);
+        }
+
+        /// <summary>입구 문틀 루트·문구멍의 이름 원장 — 빌더와 자격 게이트가 **같은 상수**를 본다.</summary>
+        public const string EntranceFrameObject = "DungeonEntranceFrame";
+        public const string EntrancePortalObject = "EntrancePortal";
+
+        /// <summary>
+        /// 입구 문틀만 따로 세운다 — 등불·깃발·돌길과 분리해 **문틀만 다시 지을 수 있게** 한다
+        /// (`EnsureEntranceFramesQualified`). 한 함수 안에 두면 옛 씬을 고칠 때 등불이 겹겹이 쌓인다.
+        /// </summary>
+        static void BuildEntranceFrame(Transform parent, Vector3 pos, float approachYaw)
+        {
+            float rad = approachYaw * Mathf.Deg2Rad;
+            var fwd = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));
+            var right = new Vector3(fwd.z, 0f, -fwd.x);
+
+            // 문틀 — **등록 CC0 조각으로만 세운다**(검수 2026-09-07 반려). 옛 문틀은 무텍스처 검은
+            // 직육면체 3개(기둥 2 + 상인방)라 §8.2가 막는 「프리미티브 색칠 큐브」 그 자체였다 —
+            // 소품 랩에서 같은 이유로 이미 반려된 결함이 **입구에만 남아 있었다**(대낮 야외의 검은 비석 셋).
+            // 「아치 한 장은 얇은 판때기」라는 옛 문제는 톤을 올려서가 아니라 **입체 돌기둥이 아치 양옆에
+            // 서서 깊이를 만드는 것**으로 푼다(아치 자체는 이 함수 밖의 DungeonGate 오브젝트다).
+            const string Pillar = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/pillar_decorated.obj";
+            const string PlainPillar = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/pillar.obj";
             var portalMat = MakeNoiseMat("DungeonPortal", new Color(0.03f, 0.03f, 0.05f), new Color(0.08f, 0.07f, 0.10f));
-            var frame = new GameObject("DungeonEntranceFrame");
+            var frame = new GameObject(EntranceFrameObject);
             frame.transform.SetParent(parent, true);
             float gy = OnGround(pos).y;
             for (int side = -1; side <= 1; side += 2)
             {
-                Vector3 pillar = pos + right * (1.15f * side);
-                RoomSlab(frame.transform, "EntrancePillar", new Vector3(pillar.x, gy + 1.5f, pillar.z), new Vector3(0.7f, 3f, 0.7f), wallMat, approachYaw);
+                Vector3 pillar = pos + right * (1.45f * side);
+                RoomPropObject(frame.transform, "EntrancePillar" + (side > 0 ? 1 : 2), Pillar,
+                    new Vector3(pillar.x, gy, pillar.z), approachYaw, 3.2f, true);
             }
-            RoomSlab(frame.transform, "EntranceLintel", new Vector3(pos.x, gy + 3.15f, pos.z), new Vector3(3.0f, 0.6f, 1.1f), wallMat, approachYaw);
-            // 문구멍은 기둥 **뒤**에 얇게 눕혀 문틀 안쪽으로 들어가 보이게 한다(검수: 앞에 선 검은 판으로 보였다).
-            Vector3 back = pos - fwd * 0.55f;
-            RoomSlab(frame.transform, "EntrancePortal", new Vector3(back.x, gy + 1.25f, back.z), new Vector3(1.5f, 2.5f, 0.12f), portalMat, approachYaw);
-            // 옆벽 — 문틀이 벽에 뚫린 문으로 읽히게 좌우로 조금 이어 붙인다.
+            // 옆벽 — **돌기둥으로 한 겹 더**(기둥보다 낮되 0.5m 안, 계단처럼 보이면 안 된다). Kenney 벽 블록(wall-block)을 옆벽으로 세워 봤더니
+            // 마을 회벽 흰 큐브가 문틀보다 커서 입구를 통째로 가렸다(2026-09-07 샷에서 눈으로 확인).
+            // 마을 벽재는 던전 돌과 톤이 붕 뜬다 — 옆벽도 같은 KayKit 돌기둥으로, 낮게 둔다.
             for (int side = -1; side <= 1; side += 2)
             {
-                // 기둥과 같은 평면·같은 두께·비슷한 높이로 — 어긋나면 계단처럼 보인다(검수 반려).
-                Vector3 wing = pos + right * (2.35f * side);
-                RoomSlab(frame.transform, "EntranceWing", new Vector3(wing.x, gy + 1.45f, wing.z), new Vector3(1.6f, 2.9f, 0.7f), wallMat, approachYaw);
+                Vector3 wing = pos + right * (2.5f * side);
+                RoomPropObject(frame.transform, "EntranceWing" + (side > 0 ? 1 : 2), PlainPillar,
+                    new Vector3(wing.x, gy, wing.z), approachYaw, 2.8f, true);
             }
+            // 문구멍 — **자격 원장의 유일한 예외**다. 이건 물건이 아니라 안쪽의 「어둠」이고, 아래가
+            // 실제 방이 아니라 지표라서 뚫어 두면 잔디가 비친다(검수: 「문구멍 자체는 어두워도 된다」).
+            // 예외가 샛길이 되지 않게 게이트가 **이 이름 하나만·어두운 색일 때만** 봐준다.
+            Vector3 back = pos - fwd * 0.55f;
+            RoomSlab(frame.transform, EntrancePortalObject, new Vector3(back.x, gy + 1.25f, back.z),
+                new Vector3(1.5f, 2.5f, 0.12f), portalMat, approachYaw);
+        }
+
+        /// <summary>입구 세 곳의 뿌리·좌표·접근 방향 원장 — 빌더와 유지보수 패스가 같은 목록을 본다.</summary>
+        public static readonly (string Root, float X, float Z, float Yaw)[] EntranceSpots =
+        {
+            (Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ, 90f),
+            (Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ, -90f),
+            (Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ, 45f),
+        };
+
+        /// <summary>
+        /// 이미 씬에 저장된 입구 문틀도 등록 조각으로 다시 세운다(멱등).
+        /// `EnsureDungeon*`는 루트가 있으면 통째로 다시 짓지만 셀프체크 경로에서는 호출되지 않는다 —
+        /// 빌더만 고치면 **옛 씬의 검은 큐브는 영영 그대로 남는다**(보스 무기·마을 페이드에서 겪은 함정).
+        /// </summary>
+        public static void EnsureEntranceFramesQualified()
+        {
+            int rebuilt = 0;
+            for (int s = 0; s < EntranceSpots.Length; s++)
+            {
+                var spot = EntranceSpots[s];
+                var root = GameObject.Find(spot.Root);
+                if (root == null)
+                    continue;                                   // 아직 안 지어진 던전 — 게이트가 따로 실패시킨다
+                for (int c = root.transform.childCount - 1; c >= 0; c--)
+                {
+                    var child = root.transform.GetChild(c);
+                    if (child.name == EntranceFrameObject)
+                        UnityEngine.Object.DestroyImmediate(child.gameObject);
+                }
+                BuildEntranceFrame(root.transform, new Vector3(spot.X, 0f, spot.Z), spot.Yaw);
+                rebuilt++;
+            }
+            Debug.Log("[Ulon] 입구 문틀 재건 " + rebuilt + "곳 — 등록 CC0 조각(돌기둥·벽 블록)으로");
         }
 
         /// <summary>마을에서 던전 3이 보이도록 세우는 이정표(검수 P0-2 「우연히라도 찾을 단서가 없다」).</summary>
