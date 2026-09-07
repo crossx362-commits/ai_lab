@@ -222,6 +222,56 @@ namespace Ulon.Editor
             return true;
         }
 
+        /// <summary>
+        /// **사람 근접 샷은 앞에서 찍혔는가**(검수 반려 2026-09-07: 48 치유사가 뒷모습이었다).
+        /// 증거 샷은 **판정할 성질이 화면에 들어오는 각도**로 찍어야 한다 — 역할이 서로 다른지는
+        /// 얼굴·앞섶이 보여야 판정된다. 값은 촬영 때 고른 방위에서 실제로 계산한 코사인이다.
+        /// </summary>
+        public static void AssertPersonShotsFront()
+        {
+            var table = QaShots.PersonShotFront;
+            if (table.Count == 0)
+                throw new InvalidOperationException("사람 근접 샷이 하나도 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            var bad = new List<string>();
+            foreach (var kv in table)
+            {
+                Debug.Log("[Ulon] 사람 샷 정면 판정 — " + kv.Key + " " + kv.Value.ToString("0.00"));
+                if (kv.Value < QaShots.PersonFrontMin)
+                    bad.Add(kv.Key + " " + kv.Value.ToString("0.00"));
+            }
+            if (bad.Count > 0)
+                throw new InvalidOperationException("등을 보이고 찍힌 사람 샷 " + bad.Count + "장: " +
+                    string.Join(", ", bad) + " — 얼굴이 없으면 「누구인지」가 화면에 없다(하한 " +
+                    QaShots.PersonFrontMin + ").");
+            Debug.Log("[Ulon] 사람 샷 정면 — " + table.Count + "장 전수 통과(하한 " + QaShots.PersonFrontMin + ")");
+        }
+
+        /// <summary>
+        /// NC — **정면 규칙을 끄면 빨간불**이어야 한다. 규칙을 넣은 뒤에는 사람을 돌려세워도
+        /// 프레이밍이 따라 돌아 결함이 안 만들어진다(그래서 씬이 아니라 규칙을 끈다).
+        /// </summary>
+        public static void AssertPersonShotsFrontNegativeControl()
+        {
+            bool red = false;
+            string message = "";
+            try
+            {
+                QaShots.IgnoreFrontRuleForNc = true;
+                QaShots.RecomputePersonFront();
+                try { AssertPersonShotsFront(); }
+                catch (InvalidOperationException e) { red = true; message = e.Message; }
+            }
+            finally
+            {
+                QaShots.IgnoreFrontRuleForNc = false;
+                QaShots.RecomputePersonFront();          // 표를 실제 촬영 값으로 되돌린다
+            }
+            if (!red)
+                throw new InvalidOperationException("사람 샷 정면 네거티브 컨트롤 실패 — 규칙을 껐는데도 전부 앞에서 찍혔습니다. " +
+                    "그렇다면 이 게이트는 아무것도 막고 있지 않은 것이니 다시 짜라.");
+            Debug.Log("[Ulon] 사람 샷 정면 네거티브 컨트롤 통과 — 규칙을 끄면 FAIL: " + message);
+        }
+
         static Material FirstBodyMaterial(GameObject go)
         {
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))

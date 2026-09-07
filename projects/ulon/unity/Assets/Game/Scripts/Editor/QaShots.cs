@@ -197,6 +197,9 @@ namespace Ulon.Editor
             // 검은 배경에서 보이는 것과 **실제 플레이 프레임**에서 읽히는 것은 다르다(검수 랩 D).
             SliceSelfCheck.AssertActionVfxInPlayFrame();
             SliceSelfCheck.AssertActionVfxInPlayFrameNegativeControl();
+            // 사람 샷이 **앞에서** 찍혔는가 — 등만 나온 샷은 「누구인지」를 판정할 수 없다(검수 반려).
+            SliceSelfCheck.AssertPersonShotsFrontNegativeControl();
+            SliceSelfCheck.AssertPersonShotsFront();
         }
 
         /// <summary>
@@ -214,8 +217,9 @@ namespace Ulon.Editor
                 Debug.LogWarning("[Ulon] 대조 시트 — 붙일 샷이 없습니다(0이면 실패).");
                 return;
             }
-            int cols = Mathf.CeilToInt(Mathf.Sqrt(names.Count));
-            int rows = Mathf.CeilToInt(names.Count / (float)cols);
+            // **빈 칸을 만들지 않는다**(검수 지적) — 5장은 5칸 한 줄이다. 격자로 접으면 6칸째가 검게 남는다.
+            int cols = names.Count;
+            int rows = 1;
             int tw = W / 2, th = H / 2;
             var sheet = new Texture2D(cols * tw, rows * th, TextureFormat.RGB24, false);
             var fill = new Color32[cols * tw * rows * th];
@@ -429,15 +433,11 @@ namespace Ulon.Editor
                                 seen++;
                         }
                 float share = total > 0 ? seen / (float)total : 0f;
-                // **사람은 앞에서 찍는다** — 가림만 보고 고르면 셋 중 셋이 뒷모습이었다(첫 대조 시트).
-                // 「서로 다른 모습인가」는 얼굴·앞섶이 화면에 있어야 판정되는 성질이다.
-                if (byRenderer)
-                {
-                    var toEye = (target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * dist) - target;
-                    toEye.y = 0f;
-                    float front = Vector3.Dot(toEye.normalized, go.transform.forward);   // 1=정면, -1=뒤통수
-                    share += 0.25f * (front + 1f) * 0.5f;
-                }
+                // **사람은 앞에서 찍는다 — 선호가 아니라 규칙이다**(검수 반려 2026-09-07).
+                // 처음엔 점수에 가산점으로 얹었더니 가림 점수에 묻혀 치유사가 뒷모습으로 찍혔다.
+                // 등을 보이는 각은 아예 **후보에서 뺀다** — 얼굴이 없으면 「누구인지」가 화면에 없다.
+                if (byRenderer && !IgnoreFrontRuleForNc && FrontDot(go.transform, target, pit, y, dist) < PersonFrontMin)
+                    continue;
                 if (share > bestSeen + 0.02f) { bestSeen = share; bestYaw = y; bestPitch = pit; }
             }
             if (beyond.HasValue)
@@ -455,10 +455,95 @@ namespace Ulon.Editor
             // 밖에 서면 벽·뚜껑이 규칙대로 페이드돼 화면 위쪽에 바깥 지형·하늘이 들어온다(40·41이 그랬다) —
             // 방이 뚫린 게 아니라(뚜껑은 방 span+16m를 덮는다) **샷이 방 밖에서 찍힌 것**이다.
             dist = ClampInsideRoom(target, rot, dist);
+            // **사람은 가리는 것 앞으로 당겨 선다**(검수 사소 지적 2026-09-07: 반투명 벽이 인물을 덮었다).
+            // 페이드는 벽을 지워 주는 것이 아니라 **반투명하게** 만든다 — 그 유령 너머로 사람을 보면
+            // 색이 섞여 「무슨 색 옷인가」가 흐려진다. 막는 것이 있으면 그 앞까지 카메라를 당긴다.
+            if (go.GetComponent<CharacterController>() != null)
+            {
+                // 당김은 **반투명해질 것**(페이드 레이어)만 피한다. 처음엔 아무 렌더러나 피하게 했더니
+                // 울타리·바닥 바운드까지 걸려 1.2m까지 붙었고 얼굴만 찍혔다(개악) — 그래서
+                // ① 대상을 페이드 레이어로 좁히고 ② 원래 거리의 70%까지만 당긴다.
+                float floor = Mathf.Max(1.6f, dist * 0.7f);
+                int pulled = 0;
+                while (dist > floor && FadeBlocked(target - rot * Vector3.forward * dist, target, go.transform))
+                {
+                    dist -= 0.2f;
+                    pulled++;
+                }
+                if (pulled > 0)
+                    Debug.Log("[Ulon] 사람 샷 가림 회피 " + name + " — " + (pulled * 0.2f).ToString("0.0") +
+                              "m 당겨 " + dist.ToString("0.0") + "m에서 찍는다");
+            }
+            if (go.GetComponent<CharacterController>() != null)
+            {
+                float front = FrontDot(go.transform, target, bestPitch, bestYaw, dist);
+                PersonShotFront[name] = front;
+                Debug.Log("[Ulon] 사람 샷 정면성 " + name + " — " + front.ToString("0.00") +
+                          "(하한 " + PersonFrontMin + ", 1=정면 -1=뒤통수)");
+            }
             Debug.Log("[Ulon] 시설 근접 " + name + "(" + objectName + ") — 바운드 " + (any ? box.size.ToString("0.0") : "(없음)") +
                       ", 거리 " + dist.ToString("0.0") + "m, 방위 " + bestYaw.ToString("0") + "°/내려보기 " +
                       bestPitch.ToString("0") + "°(시설이 먼저 보이는 표본 " + (bestSeen * 100f).ToString("0") + "%)");
             return new Shot { Name = name, Eye = target - rot * Vector3.forward * dist, Target = target, PlayCamera = true, Subject = go.transform };
+        }
+
+        /// <summary>
+        /// **네거티브 컨트롤 전용 스위치** — 켜면 정면 규칙이 없던 때로 돌아간다(가산점도 없다).
+        /// 규칙을 넣고 나면 프레이밍이 **구조적으로** 앞을 고르기 때문에, 씬을 돌려세워도 결함이 안 만들어진다.
+        /// 그래서 규칙 자체를 끄고 「그때는 뒷모습이 나오는가」를 확인한다(앵커 NC와 같은 처방).
+        /// </summary>
+        public static bool IgnoreFrontRuleForNc;
+
+        /// <summary>사람 샷의 프레이밍만 다시 계산해 정면성 표를 갱신한다(렌더는 하지 않는다).</summary>
+        public static void RecomputePersonFront()
+        {
+            PersonShotFront.Clear();
+            var people = VillagerLook.Villagers();
+            for (int i = 0; i < people.Count; i++)
+                FacilityCloseUp((45 + i).ToString("00") + "_person_" + VillagerLook.HostOf(people[i]),
+                                people[i].name, null, true);
+        }
+
+        /// <summary>눈과 피사체 사이에 **페이드될 것**(DungeonBlocker 레이어)이 있는가.</summary>
+        static bool FadeBlocked(Vector3 eye, Vector3 point, Transform subject)
+        {
+            int layer = LayerMask.NameToLayer(Ulon.Client.DungeonSightFade.BlockerLayer);
+            if (layer < 0)
+                return false;
+            var seg = point - eye;
+            float len = seg.magnitude;
+            if (len < 0.001f)
+                return false;
+            var ray = new Ray(eye, seg / len);
+            var rends = Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (!rends[i].enabled || rends[i].gameObject.layer != layer)
+                    continue;
+                var t = rends[i].transform;
+                if (t == subject || t.IsChildOf(subject))
+                    continue;
+                if (rends[i].bounds.IntersectRay(ray, out float d) && d < len - 0.05f)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>사람 샷이 앞에서 찍혔다고 인정하는 최소 정면성(코사인) — 0.2는 정면 ±78°다.</summary>
+        public const float PersonFrontMin = 0.2f;
+
+        /// <summary>이번 실행의 사람 샷 정면성 — 샷 이름 → 코사인. 게이트가 이 값을 판정한다.</summary>
+        public static readonly System.Collections.Generic.Dictionary<string, float> PersonShotFront =
+            new System.Collections.Generic.Dictionary<string, float>();
+
+        /// <summary>카메라가 사람의 앞쪽에 있는가 — 1이면 정면, -1이면 뒤통수.</summary>
+        static float FrontDot(Transform person, Vector3 target, float pit, float yaw, float dist)
+        {
+            var toEye = -(Quaternion.Euler(pit, yaw, 0f) * Vector3.forward * dist);
+            toEye.y = 0f;
+            if (toEye.sqrMagnitude < 0.0001f)
+                return 0f;
+            return Vector3.Dot(toEye.normalized, person.forward);
         }
 
         /// <summary>시설 부속(FacPart*) 밑인가 — **조상까지 올라가며** 본다(이름이 자식에 안 붙어 있다).</summary>

@@ -41,6 +41,10 @@ namespace Ulon.Editor
                     if (r.enabled)
                         Debug.Log("[Ulon] 사람 바운드 조각 " + go.name + " ← " + r.transform.parent?.name + "/" + r.gameObject.name +
                                   " " + r.bounds.size.ToString("0.00") + " 위 " + r.bounds.max.y.ToString("0.00"));
+                var vis = go.transform.Find("Visual");
+                Debug.Log("[Ulon] 사람 방향 " + go.name + " — 루트 forward " + go.transform.forward.ToString("0.00") +
+                          " / Visual 로컬 y " + (vis != null ? vis.localEulerAngles.y.ToString("0") : "(없음)") +
+                          " / Visual world forward " + (vis != null ? vis.forward.ToString("0.00") : "-"));
                 Debug.Log("[Ulon] 사람 " + go.name + " — 모델 " + model +
                           " / 몸 색 " + ColorText(body) + "(" + bodyVia + ")" +
                           " / 든 것 [" + string.Join(", ", on) + "]" +
