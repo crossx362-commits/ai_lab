@@ -247,6 +247,89 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// **사람 근접 샷이 실제로 보이는 방위에서 찍혔는가**(검수 반려 2026-09-08).
+        ///
+        /// 앞선 규칙은 「반투명이 끼는 방위를 뺀다」였는데 그건 **대리 지표**였다 —
+        /// 불투명한 지붕이 통째로 가린 방위는 그 규칙을 통과했고, 게이트는 EXIT=0인데
+        /// `50_villagers` 한 타일은 붉은 지붕만 찍히고 마법사는 지붕 위로 모자만 나왔다.
+        /// 이제 촬영이 **머리·몸통 두 점이 다 뚫린 방위**만 후보로 쓰고, 그런 방위가 없는 사람은
+        /// 차선으로 찍지 않고 이 게이트가 **이름과 함께 실패**로 올린다 — 못 찍는 사람이 있다는
+        /// 사실 자체가 배치 보고다.
+        /// </summary>
+        public static void AssertPersonShotsUnblocked()
+        {
+            var table = QaShots.PersonShotClear;
+            if (table.Count == 0)
+                throw new InvalidOperationException("사람 근접 샷이 하나도 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            var bad = new List<string>();
+            foreach (var kv in table)
+                if (!kv.Value)
+                    bad.Add(kv.Key);
+            if (bad.Count > 0)
+                throw new InvalidOperationException("머리·몸통이 다 보이는 방위가 없는 사람 " + bad.Count + "명: " +
+                    string.Join(", ", bad) + " — 카메라를 더 비틀어 가릴 것이 아니라 **그 사람이 가려지지 않는 자리에 서야** 합니다. " +
+                    "샷 프레이밍이 아니라 배치 문제입니다.");
+            Debug.Log("[Ulon] 사람 샷 가림 — " + table.Count + "명 전수가 머리·몸통 다 뚫린 방위에서 찍혔다");
+        }
+
+        /// <summary>
+        /// NC — 한 사람을 **판으로 둘러싸 모든 방위를 막으면** 그 이름이 실패 목록에 떠야 한다.
+        /// 판 하나로는 한 방위만 막혀 24조합 중 다른 데가 뚫린다 — 결함을 **실제로** 만들려면
+        /// 둘러싸야 한다(「NC가 결함을 못 만들면 게이트를 증명하지 못한다」).
+        /// </summary>
+        public static void AssertPersonShotsUnblockedNegativeControl()
+        {
+            var people = VillagerLook.Villagers();
+            if (people.Count == 0)
+                throw new InvalidOperationException("사람 샷 가림 NC 대상이 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            // **이미 실패 중인 사람을 NC 대상으로 잡으면 가짜 통과다** — 판을 세우지 않아도 빨간불이니
+            // 「결함을 만들어서 빨개졌다」를 증명하지 못한다(2026-09-08 첫 판이 정확히 그랬다).
+            // 그래서 **지금 통과 중인 사람**만 대상으로 삼고, 그 사람 하나가 뒤집히는지를 본다.
+            GameObject victim = null;
+            string want = null;
+            for (int i = 0; i < people.Count; i++)
+            {
+                string shot = (45 + i).ToString("00") + "_person_" + VillagerLook.HostOf(people[i]);
+                if (QaShots.PersonShotClear.TryGetValue(shot, out bool clear) && clear)
+                {
+                    victim = people[i];
+                    want = shot;
+                    break;
+                }
+            }
+            if (victim == null)
+                throw new InvalidOperationException("사람 샷 가림 NC를 돌릴 수 없습니다 — 지금 뚫린 방위로 찍히는 사람이 " +
+                    "한 명도 없어, 판을 세워도 「이 NC가 만든 결함」인지 구분되지 않습니다. 가림 실패부터 해소하십시오.");
+            var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            bool red = false;
+            string message = "";
+            try
+            {
+                wall.name = "PersonShotBlockNC";
+                wall.transform.position = victim.transform.position + Vector3.up * 1.0f;
+                wall.transform.localScale = new Vector3(3f, 3f, 3f);
+                UnityEngine.Object.DestroyImmediate(wall.GetComponent<Collider>());   // 콜라이더가 아니라 **보이는 것**으로 재는 게이트다
+                QaShots.RecomputePersonFront();
+                // **판정은 그 한 사람이 뒤집혔는가**로 한다 — 목록에 다른 실패가 섞여 있어도
+                // 「내가 만든 결함이 잡혔다」는 이 사람으로만 증명된다.
+                if (QaShots.PersonShotClear.TryGetValue(want, out bool nowClear) && !nowClear)
+                {
+                    red = true;
+                    message = want + "이 통과 → 실패로 뒤집혔다";
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(wall);
+                QaShots.RecomputePersonFront();          // 표를 실제 촬영 값으로 되돌린다
+            }
+            if (!red)
+                throw new InvalidOperationException("사람 샷 가림 네거티브 컨트롤 실패 — " + victim.name +
+                    "을 판으로 둘러쌌는데도 통과했습니다. 그렇다면 이 게이트는 아무것도 막고 있지 않습니다.");
+            Debug.Log("[Ulon] 사람 샷 가림 네거티브 컨트롤 통과 — 한 사람을 둘러싸면 FAIL: " + message);
+        }
+
+        /// <summary>
         /// NC — **정면 규칙을 끄면 빨간불**이어야 한다. 규칙을 넣은 뒤에는 사람을 돌려세워도
         /// 프레이밍이 따라 돌아 결함이 안 만들어진다(그래서 씬이 아니라 규칙을 끈다).
         /// </summary>

@@ -224,6 +224,9 @@ namespace Ulon.Editor
             // 사람 샷이 **앞에서** 찍혔는가 — 등만 나온 샷은 「누구인지」를 판정할 수 없다(검수 반려).
             SliceSelfCheck.AssertPersonShotsFrontNegativeControl();
             SliceSelfCheck.AssertPersonShotsFront();
+            // 앞에서 찍혔어도 **가려져 있으면** 판정할 수 없다 — 두 축은 따로 잰다(검수 반려 2026-09-08).
+            SliceSelfCheck.AssertPersonShotsUnblockedNegativeControl();
+            SliceSelfCheck.AssertPersonShotsUnblocked();
         }
 
         /// <summary>
@@ -415,7 +418,7 @@ namespace Ulon.Editor
             float bestYaw = baseYaw;
             float bestPitch = pitch;
             float bestSeen = -1f;
-            float blockedYaw = baseYaw, blockedPitch = pitch, blockedSeen = -1f;
+            var blockers = new System.Collections.Generic.List<string>();
             // 마을은 시설이 2~3m 간격으로 붙어 있어 게임 각도에서는 앞집 지붕이 시설을 통째로 덮는다
             // (첫 촬영본 35_fishing이 그랬다). 방위 8 × 내려보는 각 3을 다 재고 제일 잘 보이는 조합을 쓴다.
             float[] pitches = lowAngle ? new[] { 10f, 18f, 26f } : new[] { pitch, 50f, 65f };
@@ -469,24 +472,37 @@ namespace Ulon.Editor
                 // 등을 보이는 각은 아예 **후보에서 뺀다** — 얼굴이 없으면 「누구인지」가 화면에 없다.
                 if (byRenderer && !IgnoreFrontRuleForNc && FrontDot(go.transform, target, pit, y, dist) < PersonFrontMin)
                     continue;
-                // **반투명 벽이 끼는 방위는 후보에서 뺀다**(검수 지시 2026-09-07, 마을 배치 랩).
-                // 「당겨서 피한다」는 완화였고 70% 하한에 걸려 유령 벽이 남았다 —
-                // `50_villagers` 1·3번 타일이 「유리벽 안에 선 NPC」로 읽힌 이유가 이것이다.
-                // 반드시 성립해야 하는 것은 **후보에서 배제하는 규칙**으로 건다(검수 원문).
-                // 다만 모든 방위가 막힌 시설도 있으니, 막힌 후보는 **차선**으로 따로 남긴다.
-                if (byRenderer && FadeBlocked(target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * dist, target, go.transform))
+                // **「대상이 실제로 보이는가」로 후보를 거른다**(검수 반려 2026-09-08).
+                // 처음엔 「반투명이 끼는 방위를 뺀다」로 걸었는데 그건 **대리 지표**였다 —
+                // 반투명이 없다 ≠ 대상이 보인다. 불투명한 지붕에 통째로 가려진 방위가 그 규칙을
+                // 통과해서, 게이트는 EXIT=0인데 `50_villagers` 한 타일은 붉은 지붕만, 마법사 타일은
+                // 지붕 위로 모자만 나왔다. 그래서 **머리와 몸통 두 점 모두**가 카메라에서 안 막힌
+                // 방위만 남긴다 — 반투명·불투명을 가리지 않는다(막힘은 막힘이다).
+                if (byRenderer)
                 {
-                    if (share > blockedSeen + 0.02f) { blockedSeen = share; blockedYaw = y; blockedPitch = pit; }
-                    continue;
+                    var eyeC = target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * dist;
+                    var head = box.center + Vector3.up * box.extents.y * 0.8f;
+                    if (BlockedByRenderer(eyeC, head, go.transform, out string hb) ||
+                        BlockedByRenderer(eyeC, box.center, go.transform, out hb))
+                    {
+                        // 막은 것의 이름을 모아 둔다 — 전부 막혔을 때 **무엇이 막았는지**를 말해야
+                        // 「배치를 옮겨라」인지 「자가 부푼 바운드를 보고 있다」인지 갈린다.
+                        if (hb != "" && !blockers.Contains(hb))
+                            blockers.Add(hb);
+                        continue;
+                    }
                 }
                 if (share > bestSeen + 0.02f) { bestSeen = share; bestYaw = y; bestPitch = pit; }
             }
-            bool noClearBearing = false;
-            if (bestSeen < 0f && blockedSeen >= 0f)
+            // **차선으로 찍지 않는다**(검수 지시 2026-09-08). 뚫린 방위가 하나도 없으면 그 사실이
+            // 곧 배치 보고다 — 기본 방위로 찍어 두되 **이름과 함께 실패로 올린다**(`PersonShotClear`).
+            // 예전엔 「반투명이 끼는 차선」으로 몰래 찍었고, 그래서 못 쓰는 샷이 통과했다.
+            if (go.GetComponent<CharacterController>() != null)
             {
-                bestYaw = blockedYaw; bestPitch = blockedPitch; bestSeen = blockedSeen;
-                noClearBearing = true;
-                Debug.Log("[Ulon] 사람 샷 " + name + " — 뚫린 방위가 없어 반투명이 끼는 차선 방위로 찍는다");
+                PersonShotClear[name] = bestSeen >= 0f;
+                if (bestSeen < 0f)
+                    Debug.Log("[Ulon] 사람 샷 " + name + " — 머리·몸통이 다 보이는 방위가 없다(24조합 전부 막힘). " +
+                              "기본 방위로 찍고 실패로 보고한다. 막은 것: " + string.Join(", ", blockers));
             }
             if (beyond.HasValue)
             {
@@ -525,7 +541,12 @@ namespace Ulon.Editor
                     Debug.Log("[Ulon] 사람 샷 가림 회피 " + name + " — " + (pulled * 0.2f).ToString("0.0") +
                               "m 당겨 " + dist.ToString("0.0") + "m에서 찍는다");
             }
-            if (go.GetComponent<CharacterController>() != null)
+            // **뚫린 방위가 없다고 이미 실패한 샷은 정면성으로 또 세지 않는다** — 한 결함에 게이트 하나다.
+            // (기본 방위로 찍은 그림은 뒤통수일 수밖에 없어, 안 그러면 같은 원인으로 빨간불이 두 번 뜨고
+            //  정작 「가려서 못 찍는다」는 진짜 사유가 정면 실패에 가려진다.)
+            if (go.GetComponent<CharacterController>() != null && PersonShotClear.TryGetValue(name, out bool wasClear) && !wasClear)
+                Debug.Log("[Ulon] 사람 샷 정면성 " + name + " — 가려서 못 찍은 샷이라 정면 판정에서 뺀다(가림 게이트가 잡는다)");
+            else if (go.GetComponent<CharacterController>() != null)
             {
                 float front = FrontDot(go.transform, target, bestPitch, bestYaw, dist);
                 PersonShotFront[name] = front;
@@ -549,6 +570,7 @@ namespace Ulon.Editor
         public static void RecomputePersonFront()
         {
             PersonShotFront.Clear();
+            PersonShotClear.Clear();
             var people = VillagerLook.Villagers();
             for (int i = 0; i < people.Count; i++)
                 FacilityCloseUp((45 + i).ToString("00") + "_person_" + VillagerLook.HostOf(people[i]),
@@ -582,6 +604,14 @@ namespace Ulon.Editor
 
         /// <summary>사람 샷이 앞에서 찍혔다고 인정하는 최소 정면성(코사인) — 0.2는 정면 ±78°다.</summary>
         public const float PersonFrontMin = 0.2f;
+
+        /// <summary>
+        /// 이번 실행의 사람 샷이 **뚫린 방위에서 찍혔는가** — 샷 이름 → 참/거짓.
+        /// 거짓이면 그 사람은 24개 방위·내려보기 조합 어디에서도 머리·몸통이 다 보이지 않는다는 뜻이고,
+        /// 그건 샷의 문제가 아니라 **배치 보고**다(검수 지시 2026-09-08).
+        /// </summary>
+        public static readonly System.Collections.Generic.Dictionary<string, bool> PersonShotClear =
+            new System.Collections.Generic.Dictionary<string, bool>();
 
         /// <summary>이번 실행의 사람 샷 정면성 — 샷 이름 → 코사인. 게이트가 이 값을 판정한다.</summary>
         public static readonly System.Collections.Generic.Dictionary<string, float> PersonShotFront =
@@ -665,7 +695,13 @@ namespace Ulon.Editor
         /// 피사체 자신과 지형은 막는 것으로 세지 않는다(지형은 발밑이라 늘 걸린다).
         /// </summary>
         static bool BlockedByRenderer(Vector3 eye, Vector3 point, Transform subject)
+            => BlockedByRenderer(eye, point, subject, out _);
+
+        /// <summary>같은 판정에 **무엇이 막았는지**를 같이 돌려준다 — 「막혔다」만으로는
+        /// 진짜 지붕인지 남의 바운드가 부푼 것인지 구분할 수 없다(이 저장소가 여러 번 밟은 함정).</summary>
+        static bool BlockedByRenderer(Vector3 eye, Vector3 point, Transform subject, out string blocker)
         {
+            blocker = "";
             var seg = point - eye;
             float len = seg.magnitude;
             if (len < 0.001f)
@@ -684,7 +720,11 @@ namespace Ulon.Editor
                 if (Vector3.Distance(rends[i].bounds.center, point) > 30f)
                     continue;                                   // 멀리 있는 것은 이 표본을 못 가린다
                 if (rends[i].bounds.IntersectRay(ray, out float dist) && dist < len - 0.05f)
+                {
+                    blocker = (t.parent != null ? t.parent.name + "/" : "") + rends[i].gameObject.name +
+                              "(바운드 " + rends[i].bounds.size.ToString("0.0") + ")";
                     return true;
+                }
             }
             return false;
         }
