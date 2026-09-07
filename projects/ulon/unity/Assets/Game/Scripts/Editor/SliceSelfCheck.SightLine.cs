@@ -148,7 +148,11 @@ namespace Ulon.Editor
                             continue;
                         // 사람·짐승은 **움직인다** — 그 자리를 「구조적으로 안 보이는 자리」로 세면 안 된다.
                         // 정적 가림만 판정하고 싶을 때 켠다(야외 최악 축, 검수 지시 2026-09-07).
+                        // **동료는 뺀 대상에서 다시 넣는다**(검수 판정 2026-09-07): 제외 사유가
+                        // 「움직이니까」인데 동료의 자리는 **씬 상수(follow offset)**라 그 사유가 성립하지 않는다.
+                        // 사유가 안 맞는 제외는 결함을 통째로 사각지대에 둔다(대상 집합이 곧 판정 범위다).
                         if (ignoreCreatures && info.collider != null &&
+                            info.collider.transform.root.name != VisualSliceBuilder.CompanionObject &&
                             info.collider.transform.root.GetComponentInChildren<Ulon.Server.WorldBody>(true) != null)
                             continue;
                         hit++;

@@ -485,7 +485,7 @@ namespace Ulon.Editor
         static void PlaceLandmarks()
         {
             MoveNamed("Player", new Vector3(0f, 0f, 0f), Vector3.zero);
-            MoveNamed("Companion", new Vector3(-2.4f, 0f, 1.8f), new Vector3(0f, 180f, 0f));
+            MoveNamed(CompanionObject, CompanionSpot, new Vector3(0f, 180f, 0f));
             // 사냥터 — 모두 z=13.2에 세워 두니 **7종 일직선 진열**이었다(옛 반려). 깊이·간격·바라보는 방향을
             // 흩어 무리로 읽히게 한다. 좌표는 사냥 구역 안(마을 북쪽 z 10~17)에 남긴다.
             MoveNamed("Skeleton", new Vector3(0.6f, 0f, 13.6f), new Vector3(0f, 168f, 0f));
@@ -2817,6 +2817,16 @@ namespace Ulon.Editor
         /// 새 모델은 받지 않는다(§11 승인 대기와 무관하게 지금 세울 수 있어야 한다).
         /// </summary>
         public const string CompanionObject = "Companion";
+
+        /// <summary>
+        /// 동료가 서는 **한 자리**(원장). 스폰과 보수 패스가 각각 좌표를 들고 있어 한쪽을 고치면
+        /// 다른 쪽이 되돌리고 있었다 — 자리 원장이 둘이면 갈린다(검수 계열 문장).
+        ///
+        /// 카메라는 플레이어 기준 (−x,−z) 쪽이다(고정 쿼터뷰 요 45°). 이 자리는 그 축에서 **77°**
+        /// 비껴 있어 상시 가림이 아니다(`AssertCompanionOffSightAxis`, 하한 35°). 고정 카메라라
+        /// 프레임마다 계산할 필요가 없다 — 월드 고정 좌표로 충분하다.
+        /// </summary>
+        public static readonly Vector3 CompanionSpot = new Vector3(-2.2f, 0f, 1.4f);
         public static readonly Color CompanionTint = new Color(0.36f, 0.70f, 0.42f);
 
         public static void EnsureCompanion()
@@ -2831,7 +2841,7 @@ namespace Ulon.Editor
             if (go == null)
             {
                 ConfigureHumanoid(KnightFbx, true);
-                go = SpawnActor(CompanionObject, KnightFbx, new Vector3(-2.2f, 0f, 1.4f), 1.85f, ctrl,
+                go = SpawnActor(CompanionObject, KnightFbx, CompanionSpot, 1.85f, ctrl,
                                 false, false, "동료", 50f);
                 if (go == null)
                     return;

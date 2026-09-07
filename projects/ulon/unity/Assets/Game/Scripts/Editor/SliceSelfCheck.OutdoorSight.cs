@@ -98,6 +98,12 @@ namespace Ulon.Editor
                     if (share > OutdoorOccludedMax)
                         blind++;
                     // 최악 축은 **몹을 빼고** — 움직이는 것은 구조적 결함이 아니다.
+                    // **동료는 이제 뺀 대상이 아니다**(자리가 씬 상수라 사유가 안 맞는다, 검수 판정).
+                    // 다만 **동료 반경 2.5m 안의 표본은 건너뛴다** — 사람 바로 뒤가 가려지는 것은
+                    // 배치 결함이 아니라 사람이 서 있다는 사실이고, 이 축은 정적 배치를 재는 축이다.
+                    // 동료가 시선 축 위인지는 각도로 따로 잰다(`AssertCompanionOffSightAxis`).
+                    if (CompanionWithin(feet, 2.5f))
+                        continue;
                     float stat = OccludedShareAt(feet, dist, true, out _, out string statBlocker, true);
                     if (stat > worstStatic)
                     {
@@ -107,6 +113,17 @@ namespace Ulon.Editor
                     }
                 }
             return stands > 0 ? blind / (float)stands : 0f;
+        }
+
+        /// <summary>이 표본이 동료와 겹쳐 선 자리인가.</summary>
+        static bool CompanionWithin(Vector3 feet, float radius)
+        {
+            var c = GameObject.Find(VisualSliceBuilder.CompanionObject);
+            if (c == null)
+                return false;
+            var p = c.transform.position;
+            float dx = p.x - feet.x, dz = p.z - feet.z;
+            return (dx * dx + dz * dz) <= radius * radius;
         }
 
         static void AssertOutdoorSightLine()

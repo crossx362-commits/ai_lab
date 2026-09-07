@@ -775,12 +775,16 @@ namespace Ulon.Editor
             var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
             float pitch = qv != null ? qv.Pitch : 35f;
             float yaw = qv != null ? qv.Yaw : 45f;
-            float dist = qv != null ? qv.Distance : 12f;
+            // **거리는 줄인다**(검수 반려 2026-09-07: 잘라 확대해야 보이는 샷은 증거로서 미완성).
+            // 각(요·피치)은 플레이 카메라 그대로라 「가리는가」의 기하는 같고, 거리만 당겨
+            // 판정 대상이 화면의 1/3 이상을 차지하게 한다.
+            float dist = 7f;
             var rot = Quaternion.Euler(pitch, yaw, 0f);
             if (comp == null)
                 return new Shot { Name = name, Eye = new Vector3(0f, 5f, -5f), Target = Vector3.zero };
             // 카메라 → 플레이어 방향이 -(rot*forward)의 반대이므로, 동료보다 **더 먼 쪽**에 플레이어를 둔다.
-            var player = new Vector3(-2f, GroundY(-2f, 2f) + 1.0f, 2f);
+            // 플레이어는 스폰 자리(0,0)에 세운다 — 동료 자리는 이 자리 기준으로 정해진 상수다.
+            var player = new Vector3(0f, GroundY(0f, 0f) + 1.0f, 0f);
             Debug.Log("[Ulon] 동료 가림 샷 — 동료 " + comp.transform.position.ToString("0.0") +
                       ", 플레이어 " + player.ToString("0.0") + " (카메라 거리 " + dist.ToString("0.0") + "m)");
             return Stand(new Shot
