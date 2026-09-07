@@ -147,6 +147,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureFishingSpotAtWater();
             VisualSliceBuilder.EnsureVillageFacilities();
             VisualSliceBuilder.EnsureServiceNpcs();
+            VisualSliceBuilder.EnsureGearDressed();
+            VisualSliceBuilder.EnsureCompanion();
             VisualSliceBuilder.EnsureVillagerLooks();
             VisualSliceBuilder.EnsureCampfireFire();
             VisualSliceBuilder.EnsureStableYardFence();

@@ -2698,7 +2698,7 @@ namespace Ulon.Editor
                     t.gameObject.SetActive(t.name == specs[s].Gear);
                 }
                 // ② 몸 색 — 장비를 뺀 몸 렌더러에만 칠한다(칼날 색이 그 사람의 색이 되면 안 된다).
-                var mat = VillagerTintMaterial(specs[s].Host, specs[s].Tint, who);
+                var mat = TintMaterial(specs[s].Host, specs[s].Tint, who);
                 if (mat != null)
                     foreach (var r in who.GetComponentsInChildren<Renderer>(true))
                         if (!IsGearName(r.gameObject.name))
@@ -2760,8 +2760,151 @@ namespace Ulon.Editor
 
         static Bounds Encapsulated(Bounds a, Bounds b) { a.Encapsulate(b); return a; }
 
+
+        /// <summary>
+        /// **동료를 다시 세운다**(검수 랩 ③ 남은 항목, 2026-09-07).
+        ///
+        /// 실측으로 드러난 것: 씬에 `Companion`이 **아예 없다**. 예전에 `EnsureMobArtQualified`가
+        /// 자격 미달 모델(맨몸 야만인)을 지웠는데 **다시 세우는 패스가 없었다** — 그래서 HUD의
+        /// 「동료 초대」·결투 상대 폴백이 오프라인에서 아무 일도 안 했다. 지우는 패스를 만들면
+        /// **다시 세우는 패스도 같이** 있어야 한다.
+        ///
+        /// 플레이어와 갈리는 축은 마을 5역할과 같다 — **몸 색(초록)과 든 것(검만, 방패 없음)**.
+        /// 새 모델은 받지 않는다(§11 승인 대기와 무관하게 지금 세울 수 있어야 한다).
+        /// </summary>
+        public const string CompanionObject = "Companion";
+        public static readonly Color CompanionTint = new Color(0.36f, 0.70f, 0.42f);
+
+        public static void EnsureCompanion()
+        {
+            var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+            if (ctrl == null)
+            {
+                Debug.LogWarning("[Ulon] 애니메이터 컨트롤러가 없어 동료를 세우지 못했습니다 — T포즈로 세우지 않는다.");
+                return;
+            }
+            var go = GameObject.Find(CompanionObject);
+            if (go == null)
+            {
+                ConfigureHumanoid(KnightFbx, true);
+                go = SpawnActor(CompanionObject, KnightFbx, new Vector3(-2.2f, 0f, 1.4f), 1.85f, ctrl,
+                                false, false, "동료", 50f);
+                if (go == null)
+                    return;
+                Debug.Log("[Ulon] 동료를 다시 세웠다 — 씬에 없어서 「동료 초대」가 오프라인에서 죽어 있었다.");
+            }
+            // 든 것: 검 하나만(플레이어는 검+방패다 — 실루엣이 갈린다).
+            foreach (var t in go.GetComponentsInChildren<Transform>(true))
+                if (IsGearName(t.name))
+                    t.gameObject.SetActive(t.name == "1H_Sword");
+            var mat = TintMaterial(CompanionObject, CompanionTint, go);
+            if (mat != null)
+                foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                    if (!IsGearName(r.gameObject.name))
+                        r.sharedMaterial = mat;
+            Physics.SyncTransforms();
+        }
+
+        /// <summary>
+        /// **한 사람이 무기 하나·방패 하나만 든다**(랩 ③ 실측 발견, 2026-09-07).
+        ///
+        /// 플레이어가 검 3자루와 방패 4개를 동시에 달고 있었다(잡몹 Knight도 방패 4개). `HideExtraGear`는
+        /// 스폰 때만 도는데 **이미 저장된 씬에는 안 돌았다**. 잡몹 드레싱 게이트가 못 본 이유는
+        /// 그 게이트가 **무기 개수만** 세고 방패는 무기로 안 치기 때문이다 — 세는 것만 보인다.
+        /// 보스 무기(`BossWeapon*`)는 §10.2 표식이라 그것이 있으면 다른 무기는 전부 끈다.
+        /// 멱등 — 무엇을 켜고 무엇을 끌지 이름 우선순위로 정하므로 몇 번 돌려도 같은 결과다.
+        /// </summary>
+        static readonly string[] GearKeepOrder =
+        {
+            "BossWeapon", "1H_Sword", "2H_Sword", "2H_Staff", "1H_Wand", "1H_Crossbow", "2H_Crossbow", "Dagger",
+        };
+
+        public static void EnsureGearDressed()
+        {
+            var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            int fixedUp = 0;
+            for (int a = 0; a < actors.Length; a++)
+            {
+                var root = actors[a].transform;
+                // **꺼 둔 것까지 후보로 본다.** 보이는 것 중에서만 고르면 한 번 잘못 남은 선택이
+                // 그대로 굳는다 — 플레이어가 「1H_Sword_Offhand」(왼손 검)만 든 채 굳었다(실측).
+                // 다만 **원래 무장한 사람만** 손댄다(맨손 스켈레톤에게 무기를 쥐여 주지 않는다).
+                var weapons = new List<Transform>();
+                var shields = new List<Transform>();
+                bool armed = false, shielded = false;
+                foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (!IsGearName(t.name))
+                        continue;
+                    var r = t.GetComponent<Renderer>();
+                    if (r == null)
+                        continue;
+                    bool visible = r.enabled && t.gameObject.activeInHierarchy;
+                    if (t.name.IndexOf("Shield", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        shields.Add(t);
+                        shielded |= visible;
+                    }
+                    else if (IsWeaponName(t.name))
+                    {
+                        weapons.Add(t);
+                        armed |= visible;
+                    }
+                }
+                var keepW = armed ? PickGear(weapons) : null;
+                var keepS = shielded ? PickShield(shields) : null;
+                int off = 0;
+                for (int i = 0; i < weapons.Count; i++)
+                {
+                    bool want = weapons[i] == keepW;
+                    if (weapons[i].gameObject.activeSelf != want) { weapons[i].gameObject.SetActive(want); off++; }
+                }
+                for (int i = 0; i < shields.Count; i++)
+                {
+                    bool want = shields[i] == keepS;
+                    if (shields[i].gameObject.activeSelf != want) { shields[i].gameObject.SetActive(want); off++; }
+                }
+                if (off > 0)
+                {
+                    fixedUp++;
+                    Debug.Log("[Ulon] 장비 정리 " + root.name + " — 무기 " + weapons.Count + "·방패 " + shields.Count +
+                              " 중 " + off + "개를 고쳤다(남긴 것: " + (keepW != null ? keepW.name : "없음") +
+                              (keepS != null ? " + " + keepS.name : "") + ")");
+                }
+            }
+            Debug.Log("[Ulon] 장비 정리 — 사람형 " + actors.Length + "체 중 " + fixedUp + "체를 「무기 1 + 방패 1」로 정리했다");
+        }
+
+        static Transform PickGear(List<Transform> gear)
+        {
+            // **보스 무기가 최우선이다**(§10.2 표식) — 정확한 이름 우선 규칙을 먼저 돌렸더니
+            // 섀도우캡틴의 `BossWeapon_2H_Crossbow`를 끄고 모델 석궁을 남겨 보스 무기 게이트가 빨간불이었다.
+            for (int i = 0; i < gear.Count; i++)
+                if (gear[i].name.StartsWith(BossWeaponPrefix, StringComparison.Ordinal))
+                    return gear[i];
+            // **정확히 같은 이름이 먼저다** — 접두사만 보면 「1H_Sword」를 찾다가 「1H_Sword_Offhand」를
+            // 집어 플레이어가 왼손 검만 든 채로 남았다(실측).
+            for (int k = 0; k < GearKeepOrder.Length; k++)
+                for (int i = 0; i < gear.Count; i++)
+                    if (gear[i].name == GearKeepOrder[k])
+                        return gear[i];
+            for (int k = 0; k < GearKeepOrder.Length; k++)
+                for (int i = 0; i < gear.Count; i++)
+                    if (gear[i].name.StartsWith(GearKeepOrder[k], StringComparison.Ordinal))
+                        return gear[i];
+            return gear.Count > 0 ? gear[0] : null;
+        }
+
+        static Transform PickShield(List<Transform> shields)
+        {
+            for (int i = 0; i < shields.Count; i++)
+                if (shields[i].name == "Round_Shield")
+                    return shields[i];
+            return shields[0];
+        }
+
         /// <summary>역할별 몸 재질 — 모델 텍스처는 그대로 두고 색만 곱한다(질감을 잃으면 §8.2 위반이다).</summary>
-        static Material VillagerTintMaterial(string host, Color tint, GameObject who)
+        static Material TintMaterial(string host, Color tint, GameObject who)
         {
             Texture texture = null;
             foreach (var r in who.GetComponentsInChildren<Renderer>(true))

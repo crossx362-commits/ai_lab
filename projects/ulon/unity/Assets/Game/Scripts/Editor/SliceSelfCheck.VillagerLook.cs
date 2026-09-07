@@ -272,6 +272,143 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 사람 샷 정면 네거티브 컨트롤 통과 — 규칙을 끄면 FAIL: " + message);
         }
 
+        /// <summary>
+        /// **동료가 플레이어와 갈리는가**(검수 랩 ③ 남은 항목). 마을 5역할과 같은 자로 잰다 —
+        /// 모델·든 것·몸 색 셋이 다 같으면 「내 편인지」가 화면에 없다(§8.1).
+        /// 동료가 **씬에 있는지**부터 본다 — 지우는 패스만 있고 세우는 패스가 없어 사라져 있었다.
+        /// </summary>
+        static void AssertCompanionDistinct()
+        {
+            var pal = GameObject.Find(VisualSliceBuilder.CompanionObject);
+            var player = GameObject.Find("Player");
+            if (pal == null)
+                throw new InvalidOperationException("동료(Companion)가 씬에 없습니다 — HUD의 「동료 초대」·결투 폴백이 " +
+                    "가리킬 상대가 없습니다(VisualSliceBuilder.EnsureCompanion).");
+            if (player == null)
+                throw new InvalidOperationException("플레이어가 씬에 없습니다 — 잰 것이 없습니다(0이면 실패).");
+
+            string mp = MobArt.ModelOf(player, out MobArt.Model pm, out _) ? pm.Prefix : "(원장 밖)";
+            string mc = MobArt.ModelOf(pal, out MobArt.Model cm, out _) ? cm.Prefix : "(원장 밖)";
+            var gp = string.Join("+", VillagerLook.VisibleGear(player));
+            var gc = string.Join("+", VillagerLook.VisibleGear(pal));
+            var cp = VillagerLook.BodyColor(player, out _);
+            var cc = VillagerLook.BodyColor(pal, out _);
+            float gap = ColorGap(cp, cc);
+            Debug.Log("[Ulon] 동료 대비 — 플레이어 " + mp + "/" + (gp == "" ? "맨손" : gp) + "/" + PersonLookAudit.ColorText(cp) +
+                      " vs 동료 " + mc + "/" + (gc == "" ? "맨손" : gc) + "/" + PersonLookAudit.ColorText(cc) +
+                      " (색 거리 " + gap.ToString("0.00") + ")");
+            if (mp == mc && gp == gc && gap < VillagerColorGapMin)
+                throw new InvalidOperationException("동료가 플레이어와 같은 모습입니다(" + mp + "/" +
+                    (gp == "" ? "맨손" : gp) + ", 색 거리 " + gap.ToString("0.00") + ") — 내 편인지가 화면에서 안 갈린다(§8.1).");
+        }
+
+        /// <summary>NC — 동료를 플레이어와 같은 모습으로 만들면 빨간불이어야 한다.</summary>
+        static void AssertCompanionDistinctNegativeControl()
+        {
+            var pal = GameObject.Find(VisualSliceBuilder.CompanionObject);
+            var player = GameObject.Find("Player");
+            if (pal == null || player == null)
+                throw new InvalidOperationException("동료 NC 대상이 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            var donor = FirstBodyMaterial(player);
+            var keep = new Dictionary<Renderer, Material>();
+            var gearWas = new List<(GameObject Go, bool On)>();
+            var want = new HashSet<string>(VillagerLook.VisibleGear(player));
+            bool red = false;
+            string message = "";
+            try
+            {
+                foreach (var r in pal.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (VisualSliceBuilder.IsGearName(r.gameObject.name))
+                    {
+                        gearWas.Add((r.gameObject, r.gameObject.activeSelf));
+                        r.gameObject.SetActive(want.Contains(r.gameObject.name));   // 든 것까지 같게
+                        continue;
+                    }
+                    keep[r] = r.sharedMaterial;
+                    r.sharedMaterial = donor;
+                }
+                float gap = ColorGap(VillagerLook.BodyColor(player, out _), VillagerLook.BodyColor(pal, out _));
+                if (gap >= VillagerColorGapMin)
+                    throw new InvalidOperationException("동료 NC가 결함을 못 만들었습니다 — 색 거리 " + gap.ToString("0.00"));
+                try { AssertCompanionDistinct(); }
+                catch (InvalidOperationException e) { red = true; message = e.Message; }
+            }
+            finally
+            {
+                foreach (var kv in keep)
+                    kv.Key.sharedMaterial = kv.Value;
+                for (int i = 0; i < gearWas.Count; i++)
+                    gearWas[i].Go.SetActive(gearWas[i].On);
+            }
+            if (!red)
+                throw new InvalidOperationException("동료 네거티브 컨트롤 실패 — 플레이어와 같은 모습으로 만들었는데 통과했습니다.");
+            Debug.Log("[Ulon] 동료 네거티브 컨트롤 통과 — 플레이어와 같게 만들면 FAIL: " + message);
+        }
+
+        /// <summary>
+        /// **한 사람이 무기 하나·방패 하나만 든다**(랩 ③ 실측 발견: 플레이어가 검 3·방패 4였다).
+        /// 잡몹 드레싱 게이트는 **무기만** 세어 방패 4개를 못 봤다 — 세는 것만 보인다.
+        /// </summary>
+        static void AssertGearDressed()
+        {
+            var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            if (actors.Length == 0)
+                throw new InvalidOperationException("사람형이 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            var bad = new List<string>();
+            for (int a = 0; a < actors.Length; a++)
+            {
+                int w = 0, sh = 0;
+                foreach (var t in actors[a].GetComponentsInChildren<Transform>(true))
+                {
+                    var r = t.GetComponent<Renderer>();
+                    if (r == null || !r.enabled || !t.gameObject.activeInHierarchy || !VisualSliceBuilder.IsGearName(t.name))
+                        continue;
+                    if (t.name.IndexOf("Shield", System.StringComparison.OrdinalIgnoreCase) >= 0) sh++;
+                    else if (VisualSliceBuilder.IsWeaponName(t.name)) w++;
+                }
+                if (w > 1 || sh > 1)
+                    bad.Add(actors[a].name + " 무기 " + w + "·방패 " + sh);
+            }
+            if (bad.Count > 0)
+                throw new InvalidOperationException("무기·방패를 여러 개 든 사람형 " + bad.Count + "체: " +
+                    string.Join(", ", bad) + " — 등에 방패 넷을 짊어진 실루엣은 사람으로 안 읽힌다(§8.1).");
+            Debug.Log("[Ulon] 장비 개수 — 사람형 " + actors.Length + "체 전수 「무기 1↓·방패 1↓」");
+        }
+
+        /// <summary>NC — 꺼 둔 장비를 실제로 켜면 빨간불이어야 한다.</summary>
+        static void AssertGearDressedNegativeControl()
+        {
+            var player = GameObject.Find("Player");
+            if (player == null)
+                throw new InvalidOperationException("장비 개수 NC 대상(플레이어)이 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            var turned = new List<GameObject>();
+            bool red = false;
+            string message = "";
+            try
+            {
+                foreach (var t in player.GetComponentsInChildren<Transform>(true))
+                    if (VisualSliceBuilder.IsGearName(t.name) && !t.gameObject.activeSelf)
+                    {
+                        t.gameObject.SetActive(true);      // **결함을 실제로 만든다**
+                        turned.Add(t.gameObject);
+                    }
+                if (turned.Count == 0)
+                    throw new InvalidOperationException("장비 개수 NC가 결함을 못 만들었습니다 — 꺼 둔 장비가 하나도 없습니다.");
+                try { AssertGearDressed(); }
+                catch (InvalidOperationException e) { red = true; message = e.Message; }
+            }
+            finally
+            {
+                for (int i = 0; i < turned.Count; i++)
+                    turned[i].SetActive(false);
+            }
+            if (!red)
+                throw new InvalidOperationException("장비 개수 네거티브 컨트롤 실패 — 장비를 " + turned.Count +
+                    "개 더 켰는데 통과했습니다.");
+            Debug.Log("[Ulon] 장비 개수 네거티브 컨트롤 통과 — 꺼 둔 장비를 켜면 FAIL: " + message);
+        }
+
         static Material FirstBodyMaterial(GameObject go)
         {
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))

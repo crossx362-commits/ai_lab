@@ -50,6 +50,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureFishingSpotAtWater(); // 지표 스냅 뒤에 물가로(앞에 두면 스냅이 둑 위로 끌어올린다)
             VisualSliceBuilder.EnsureVillageFacilities();  // 시설이 그 기능으로 읽히게(검수 랩 ①)
             VisualSliceBuilder.EnsureServiceNpcs();        // 표시명만 사람이던 자리에 사람을(§18.19, 검수 랩 ②)
+            VisualSliceBuilder.EnsureGearDressed();        // 한 사람이 무기 1·방패 1만 든다(랩 ③ 발견)
+            VisualSliceBuilder.EnsureCompanion();          // 지워진 뒤 아무도 안 세우던 동료를 다시(랩 ③)
             VisualSliceBuilder.EnsureVillagerLooks();      // 5역할을 든 것·몸 색으로 가른다(검수 랩 ③사람)
             VisualSliceBuilder.EnsureCampfireFire();       // 화덕에 불(검수 반려 — 불 메시가 없어도 파티클로 된다)
             VisualSliceBuilder.EnsureStableYardFence();
@@ -1650,6 +1652,10 @@ namespace Ulon.Editor
             AssertVillagerLooksDistinct();                  // 5역할이 화면에서 갈리는가 — 존재가 아니라 차이
             AssertVillagerHatFitsNegativeControl();         // 모자를 키우면 빨간불인가
             AssertVillagerHatFits();                        // 챙이 사람을 덮지 않는가(§8.1)
+            AssertGearDressedNegativeControl();             // 꺼 둔 장비를 켜면 빨간불인가
+            AssertGearDressed();                            // 무기 1·방패 1(플레이어가 검 3·방패 4였다)
+            AssertCompanionDistinctNegativeControl();       // 동료를 플레이어와 같게 만들면 빨간불인가
+            AssertCompanionDistinct();                      // 동료가 내 편으로 갈리는가
             AssertEffectWiring();
             AssertEffectWiringNegativeControl();
             AssertCharacterArtNegativeControl();

@@ -111,6 +111,7 @@ namespace Ulon.Editor
                 villagerShots.Add(nm);
                 shotList.Add(FacilityCloseUp(nm, villagers[i].name, null, true));
             }
+            shotList.Add(PairCloseUp("51_player_companion", "Player", VisualSliceBuilder.CompanionObject));
             shots = shotList.ToArray();
 
             // **런타임 포즈로 찍는다.** 에디터에서 그냥 찍으면 모든 액터가 바인드 포즈(T포즈)라
@@ -553,6 +554,32 @@ namespace Ulon.Editor
                 if (p.name.StartsWith("FacPart", System.StringComparison.Ordinal))
                     return true;
             return false;
+        }
+
+        /// <summary>
+        /// **둘을 한 화면에** — 동료가 플레이어와 갈리는지는 나란히 놓고 봐야 판정된다(검수 완료 기준).
+        /// 두 몸 바운드를 합쳐 가운데를 보고, 플레이어 앞쪽에서 낮게 찍는다(얼굴·앞섶이 보이게).
+        /// </summary>
+        static Shot PairCloseUp(string name, string aName, string bName)
+        {
+            var a = GameObject.Find(aName);
+            var b = GameObject.Find(bName);
+            if (a == null || b == null ||
+                !GroundFit.BodyBounds(a.transform, out Bounds ba) || !GroundFit.BodyBounds(b.transform, out Bounds bb))
+                return new Shot { Name = name, Eye = new Vector3(0f, 5f, -5f), Target = Vector3.zero };
+            var box = ba; box.Encapsulate(bb);
+            var target = box.center;
+            float radius = Mathf.Max(box.extents.magnitude, 0.8f);
+            float dist = radius / Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad) * 1.25f;
+            // 둘이 나란히 서므로 **둘을 잇는 선의 옆**에서 봐야 서로 겹치지 않는다. 그 두 방향 중
+            // 플레이어의 앞쪽을 고른다 — 뒤통수 둘을 찍으면 누가 누구인지가 화면에 없다.
+            var along = bb.center - ba.center; along.y = 0f;
+            var side = Vector3.Cross(along.normalized, Vector3.up);
+            if (Vector3.Dot(side, a.transform.forward) < 0f)
+                side = -side;
+            var eye = target + side * dist + Vector3.up * dist * 0.30f;
+            Debug.Log("[Ulon] 둘 근접 " + name + " — 합친 바운드 " + box.size.ToString("0.0") + ", 거리 " + dist.ToString("0.0") + "m");
+            return new Shot { Name = name, Eye = eye, Target = target, PlayCamera = true, Subject = a.transform };
         }
 
         /// <summary>
