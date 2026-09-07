@@ -64,6 +64,16 @@ namespace Ulon.Editor
                     break;
                 }
                 Debug.Log("[Ulon] 발밑 " + t.name + " — " + surf);
+                // **바운드에 무엇이 섞였나** — 장비를 포함한 바운드로 발을 재면 「발」이 칼끝이 된다.
+                // 옛 규칙(전체 바운드를 바닥에 맞춤)을 적용하면 몸이 그 차이만큼 떴다는 뜻이다.
+                if (GroundFit.BodyBounds(t, out Bounds body) && GroundFit.WorldBounds(t, out Bounds whole))
+                {
+                    float hang = body.min.y - whole.min.y;      // 장비가 몸보다 얼마나 아래로 내려가 있나
+                    Debug.Log("[Ulon] 바운드 혼입 " + t.name + " — 몸 밑면 " + body.min.y.ToString("0.00") +
+                              " / 장비 포함 밑면 " + whole.min.y.ToString("0.00") +
+                              " / 차 " + hang.ToString("0.00") + "m" +
+                              (hang > 0.05f ? " ← 옛 규칙이면 몸이 이만큼 떴다" : ""));
+                }
                 Debug.Log("[Ulon] 발 " + t.name + " — 발 y " + b.min.y.ToString("0.00") +
                           " / 지표 " + ground.ToString("0.00") +
                           " / 차이 " + (b.min.y - ground).ToString("0.00") + "m · 게이트 " + via);

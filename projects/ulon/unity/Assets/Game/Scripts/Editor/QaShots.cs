@@ -130,6 +130,11 @@ namespace Ulon.Editor
                     var faded = new System.Collections.Generic.List<Renderer>();
                     if (shot.PlayCamera)
                         Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, Ulon.Client.DungeonSightFade.DefaultRadius, faded, shot.Subject);
+                    // **무엇이 반투명해졌는지 이름으로 남긴다** — 화면에 유령이 보이면 그것이 벽 장식인지
+                    // 피사체의 일부인지 로그로 갈린다(검수 의심 2026-09-07: 41 오른쪽 반투명 칼날).
+                    for (int f = 0; f < faded.Count && f < 12; f++)
+                        if (faded[f] != null)
+                            Debug.Log("[Ulon] 샷 페이드 " + shot.Name + " ← " + faded[f].transform.root.name + "/" + faded[f].name);
                     var vfx = shot.Vfx ? SliceSelfCheck.SpawnVfxTrio(shot.Target) : null;
                     // 「집 뒤에 서면 어떻게 보이나」는 **몸이 있어야** 보인다 — 좌표만 찍으면 빈 잔디다.
                     var player = shot.StandPlayer ? GameObject.Find("Player") : null;
@@ -334,10 +339,47 @@ namespace Ulon.Editor
                 }
             }
             var rot = Quaternion.Euler(bestPitch, bestYaw, 0f);
+            // **방 안 피사체는 카메라도 방 안에 세운다**(검수 판정 2026-09-07 3(a)).
+            // 밖에 서면 벽·뚜껑이 규칙대로 페이드돼 화면 위쪽에 바깥 지형·하늘이 들어온다(40·41이 그랬다) —
+            // 방이 뚫린 게 아니라(뚜껑은 방 span+16m를 덮는다) **샷이 방 밖에서 찍힌 것**이다.
+            dist = ClampInsideRoom(target, rot, dist);
             Debug.Log("[Ulon] 시설 근접 " + name + "(" + objectName + ") — 바운드 " + (any ? box.size.ToString("0.0") : "(없음)") +
                       ", 거리 " + dist.ToString("0.0") + "m, 방위 " + bestYaw.ToString("0") + "°/내려보기 " +
                       bestPitch.ToString("0") + "°(시설이 먼저 보이는 표본 " + (bestSeen * 100f).ToString("0") + "%)");
             return new Shot { Name = name, Eye = target - rot * Vector3.forward * dist, Target = target, PlayCamera = true, Subject = go.transform };
+        }
+
+        /// <summary>
+        /// 피사체가 던전 방 안이면 카메라가 방 벽을 넘지 않도록 **거리를 줄인다**.
+        /// 각도는 그대로 둔다 — 판정 각(발-바닥 접점)이 바뀌면 안 되기 때문이다.
+        /// </summary>
+        static float ClampInsideRoom(Vector3 target, Quaternion rot, float dist)
+        {
+            var rooms = new[]
+            {
+                (new Vector2(Dungeon1.InteriorX, Dungeon1.InteriorZ), Dungeon1.RoomHalf),
+                (new Vector2(Dungeon2.InteriorX, Dungeon2.InteriorZ), Dungeon2.RoomHalf),
+                (new Vector2(Dungeon3.InteriorX, Dungeon3.InteriorZ), Dungeon3.RoomHalf),
+            };
+            var flat = new Vector2(target.x, target.z);
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                if (Vector2.Distance(flat, rooms[i].Item1) > rooms[i].Item2)
+                    continue;                                   // 이 방 안의 피사체가 아니다
+                float half = rooms[i].Item2 - 0.8f;             // 벽 두께·여유
+                for (int k = 0; k < 40; k++)                    // 0.2m씩 당기며 방 안에 들어올 때까지
+                {
+                    var eye = target - rot * Vector3.forward * dist;
+                    if (Vector2.Distance(new Vector2(eye.x, eye.z), rooms[i].Item1) <= half)
+                        break;
+                    dist -= 0.2f;
+                    if (dist < 1.2f) { dist = 1.2f; break; }
+                }
+                Debug.Log("[Ulon] 근접 샷 방 안 제한 — 거리 " + dist.ToString("0.0") + "m로 당김(방 반경 " +
+                          rooms[i].Item2.ToString("0.0") + "m)");
+                break;
+            }
+            return dist;
         }
 
         /// <summary>보스 근접 — 왕관·큰 무기를 확인하는 검수용 샷(검수 요청 2026-09-06).</summary>
