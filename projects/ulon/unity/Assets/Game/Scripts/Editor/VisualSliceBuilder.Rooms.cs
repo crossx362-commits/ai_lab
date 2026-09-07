@@ -153,37 +153,27 @@ namespace Ulon.Editor
         /// </summary>
         public static void EnsureDecorClearOfPeople()
         {
-            var decorRoot = GameObject.Find("VillageDecor");
-            if (decorRoot == null)
-                return;
             var people = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var rends = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             int moved = 0;
             for (int i = 0; i < people.Length; i++)
             {
                 if (!GroundFit.BodyBounds(people[i].transform, out Bounds body))
                     continue;
-                for (int g = 0; g < decorRoot.transform.childCount; g++)
+                for (int r = 0; r < rends.Length; r++)
                 {
-                    var group = decorRoot.transform.GetChild(g);
-                    if (!GroundFit.WorldBounds(group, out Bounds gb) || !gb.Intersects(body))
+                    if (!StuckInBody(rends[r], people[i].transform, body))
                         continue;
-                    // **바닥에 깔린 것은 겹친 게 아니다** — 몸 바운드는 발까지 내려오므로 길 타일·판석은
-                    // 언제나 스친다(실측: 흙길이 동료를 피해 0.25m 밀려났다 — 규칙이 잘못 잡은 것이다).
-                    if (gb.size.y < 0.3f)
-                        continue;
-                    // 스치는 것과 **박힌 것**을 가른다 — 게이트와 같은 기준(몸 부피의 5%)을 쓴다.
-                    var lo = Vector3.Max(gb.min, body.min);
-                    var hi = Vector3.Min(gb.max, body.max);
-                    var ov = Vector3.Max(hi - lo, Vector3.zero);
-                    if (ov.x * ov.y * ov.z < body.size.x * body.size.y * body.size.z * 0.05f)
-                        continue;
+                    var group = PieceGroup(rends[r].transform);
+                    if (group == null || group.GetComponentInChildren<CharacterController>(true) != null)
+                        continue;                              // 사람 자신은 옮기지 않는다
                     var away = group.position - people[i].transform.position;
                     away.y = 0f;
                     if (away.sqrMagnitude < 0.0001f)
                         away = Vector3.right;
                     away = away.normalized;
                     int step = 0;
-                    while (step < 20 && GroundFit.WorldBounds(group, out Bounds now) && Overlaps(now, body, 0.01f))
+                    while (step < 20 && StuckInBody(rends[r], people[i].transform, body))
                     {
                         group.position += away * 0.25f;
                         step++;
@@ -192,13 +182,50 @@ namespace Ulon.Editor
                     {
                         // 밀어낸 뒤에도 발은 땅에 붙어 있어야 한다(공중 장식 사고와 같은 원인).
                         group.position = new Vector3(group.position.x, GroundHeightAt(group.position.x, group.position.z), group.position.z);
-                        Debug.Log("[Ulon] 장식이 사람에 겹쳐 비켜섰다 — " + group.name + " ← " + people[i].name +
+                        Debug.Log("[Ulon] 조각이 사람 몸에 박혀 비켜섰다 — " + GroundFit.NodePath(group) + " ← " + people[i].name +
                                   " " + (step * 0.25f).ToString("0.00") + "m");
                         moved++;
                     }
                 }
             }
-            Debug.Log("[Ulon] 장식-사람 겹침 정리 — 사람 " + people.Length + "명 대상, 비켜선 장식 " + moved + "개");
+            Debug.Log("[Ulon] 조각-사람 겹침 정리 — 사람 " + people.Length + "명 대상, 비켜선 조각 " + moved + "개");
+        }
+
+        /// <summary>
+        /// **맞추는 자는 재는 자와 같아야 한다** — 게이트(`PiecesInBody`)와 **똑같은 기준**으로 묻는다:
+        /// 몸 부피의 5% 이상 겹치고, **삼각형이 실제로 몸에 닿는가**. 예전엔 이 패스가 자기만의
+        /// 기준(VillageDecor 그룹 바운드)으로 밀어서, 게이트가 부르는 조각은 손도 못 대고
+        /// 평평한 길 타일만 밀어냈다.
+        /// </summary>
+        static bool StuckInBody(Renderer rend, Transform person, Bounds body)
+        {
+            if (rend == null || !rend.enabled || rend is ParticleSystemRenderer)
+                return false;
+            var t = rend.transform;
+            if (t.IsChildOf(person) || t.GetComponent<Terrain>() != null)
+                return false;
+            if (t.GetComponentInParent<Ulon.Server.WorldBody>() != null)
+                return false;                                  // 사람·짐승 겹침은 다른 축
+            var b = rend.bounds;
+            if (b.size.x > 20f || b.size.z > 20f || b.size.y < 0.3f)
+                return false;                                  // 월드 규모 판·바닥 타일
+            if (!b.Intersects(body))
+                return false;
+            var lo = Vector3.Max(b.min, body.min);
+            var hi = Vector3.Min(b.max, body.max);
+            var ov = Vector3.Max(hi - lo, Vector3.zero);
+            if (ov.x * ov.y * ov.z < body.size.x * body.size.y * body.size.z * 0.05f)
+                return false;
+            return SliceSelfCheck.MeshHitsBox(rend, body);
+        }
+
+        /// <summary>조각의 **이동 단위** — 뿌리(시설·건물)가 아니라 그 직계 자식(붙인 조각)을 옮긴다.</summary>
+        static Transform PieceGroup(Transform t)
+        {
+            var cur = t;
+            while (cur.parent != null && cur.parent.parent != null)
+                cur = cur.parent;
+            return cur;
         }
 
         /// <summary>두 바운드의 겹침 부피가 몸의 `share` 이상인가 — 「스쳤다」와 「박혔다」를 가른다.</summary>

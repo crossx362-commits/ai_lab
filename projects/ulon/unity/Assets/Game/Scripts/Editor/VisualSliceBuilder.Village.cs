@@ -176,8 +176,11 @@ namespace Ulon.Editor
         /// </summary>
         public static void EnsureWorldPropMaterials()
         {
-            // 밝은 회색(0.30~0.56)은 햇빛에서 흰 스티로폼으로 보였다 — 산자락 암석 톤으로 낮춘다(실측 후 재조정).
-            var rockMat = MakeNoiseMat("MountainRockProp", new Color(0.15f, 0.14f, 0.13f), new Color(0.34f, 0.31f, 0.27f));
+            // 밝은 회색(0.30~0.56)은 햇빛에서 흰 스티로폼으로 보였다 — 그래서 0.15~0.34로 낮췄더니
+            // **이번엔 대낮에 새까만 덩어리**가 됐다(검수 관찰 「25번 검은 직육면체」의 진짜 정체:
+            // `rock-large`·`rock-wide`·`IronVein`이었다 — 나는 처음에 던전 텍스처 소품으로 잘못 짚었다).
+            // 흰 스티로폼과 검은 덩어리 사이, 햇빛 아래 **돌로 읽히는** 0.34~0.58로 올린다.
+            var rockMat = MakeNoiseMat("MountainRockProp", new Color(0.34f, 0.32f, 0.30f), new Color(0.58f, 0.55f, 0.50f));
             if (rockMat != null)
             {
                 rockMat.SetFloat("_Glossiness", 0.08f);
@@ -185,7 +188,8 @@ namespace Ulon.Editor
                     rockMat.mainTextureScale = new Vector2(2.5f, 2.5f);
                 EditorUtility.SetDirty(rockMat);
             }
-            var veinMat = MakeNoiseMat("IronVeinRock", new Color(0.24f, 0.21f, 0.18f), new Color(0.62f, 0.38f, 0.16f));
+            // 광맥도 같은 이유로 바닥을 올린다 — 철빛은 어두워야 하지만 **검은 상자**면 안 읽힌다.
+            var veinMat = MakeNoiseMat("IronVeinRock", new Color(0.34f, 0.30f, 0.26f), new Color(0.66f, 0.44f, 0.20f));
             string[] rockFbx =
             {
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-large.fbx",
@@ -201,6 +205,57 @@ namespace Ulon.Editor
             int rocks = PaintSceneByName(rockMat, new[] { "rock-large", "rock-wide", "rock-small" });
             int veins = PaintSceneByName(veinMat, new[] { "MineVein1", "MineVein2", "MineVein3", "IronVein" });
             Debug.Log("[Ulon] 소품 재질 — 바위 렌더러 " + rocks + "개 암석 도포, 광맥 " + veins + "개 철광 도포");
+        }
+
+        /// <summary>
+        /// **야외에 던전 텍스처를 두지 않는다**(검수 판정 2026-09-08, 25번 샷 「검은 직육면체」).
+        ///
+        /// 왜 붙었나: 마을 시설 드레싱이 궤짝·통·잡석을 `KayKit/Dungeon`에서 가져다 쓴다 —
+        /// Kenney 마을 킷에 궤짝·통 메시가 **없기 때문**이다(실측: crate/barrel/box 0개).
+        /// 그 조각들은 횃불 밝기를 전제한 `dungeon_texture`를 달고 있어서, 햇빛 아래 Kenney 밝은
+        /// 소품 옆에 놓이면 **새까만 덩어리**로 읽힌다. 조각을 바꿀 수는 없으니(대체 메시가 없다)
+        /// **재질을 마을 톤으로 갈아 끼운다.**
+        ///
+        /// 대상은 이름이 아니라 **규칙**으로 모은다: 던전 뿌리 밖에 있으면서 던전 텍스처를 쓰는 렌더러 전수.
+        /// (이름 목록으로 잡으면 다음에 새 조각을 가져다 쓸 때 또 새까맣게 나온다.)
+        /// </summary>
+        public static int EnsureOutdoorPropMaterials()
+        {
+            var wood = MakeNoiseMat("VillageCrateWood", new Color(0.34f, 0.23f, 0.13f), new Color(0.62f, 0.45f, 0.26f));
+            var stone = MakeNoiseMat("VillageFieldStone", new Color(0.33f, 0.31f, 0.28f), new Color(0.58f, 0.55f, 0.50f));
+            if (wood == null || stone == null)
+                return 0;
+            var rends = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            int painted = 0;
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (!IsOutdoorDungeonTextured(rends[i]))
+                    continue;
+                // **경로 전체**로 본다 — 렌더러 이름은 `default`, 부모는 `Visual`이라 그 둘만 보면
+                // 모닥불 돌(`Campfire/FacPartStone1/Visual/default`)이 「나무」로 칠해진다(실측 오답).
+                string n = GroundFit.NodePath(rends[i].transform);
+                bool rubble = n.IndexOf("Stone", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              n.IndexOf("Rubble", StringComparison.OrdinalIgnoreCase) >= 0;
+                rends[i].sharedMaterial = rubble ? stone : wood;
+                EditorUtility.SetDirty(rends[i]);
+                painted++;
+                Debug.Log("[Ulon] 야외 소품 재질 교체 — " + GroundFit.NodePath(rends[i].transform) +
+                          " 던전 텍스처 → " + (rubble ? "마을 돌" : "마을 나무"));
+            }
+            Debug.Log("[Ulon] 야외 던전텍스처 정리 — " + painted + "개 교체(마을 킷에 궤짝·통 메시가 없어 던전 조각을 쓰고 있다)");
+            return painted;
+        }
+
+        /// <summary>야외(던전 뿌리 밖)에 서 있으면서 던전 텍스처를 쓰는 렌더러인가 — 게이트와 공용.</summary>
+        public static bool IsOutdoorDungeonTextured(Renderer r)
+        {
+            if (r == null || r.sharedMaterial == null || !r.sharedMaterial.HasProperty("_MainTex"))
+                return false;
+            var tex = r.sharedMaterial.mainTexture;
+            if (tex == null || tex.name.IndexOf("dungeon", StringComparison.OrdinalIgnoreCase) < 0)
+                return false;
+            // 던전 뿌리(입구 문틀 포함) 안이면 던전 텍스처가 **맞는 자리**다.
+            return r.transform.root.name.IndexOf("Dungeon", StringComparison.OrdinalIgnoreCase) < 0;
         }
 
         static int PaintSceneByName(Material mat, string[] names)

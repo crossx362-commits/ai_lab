@@ -98,6 +98,15 @@ namespace Ulon.Editor
                               GroundFit.NodePath(t) + " " + (share * 100f).ToString("0.0") + "%");
                 if (share < 0.05f)
                     continue;
+                // **속이 빈 것은 박힌 것이 아니다** — 상자 교차만 보면 차양 지붕 아래 빈 공간이
+                // 몸과 겹쳐 「상인이 차양에 박혔다」가 된다. 봐주는 예외를 두지 말고 **더 정확히** 잰다:
+                // 조각의 삼각형이 몸 상자와 실제로 만나는가(`MeshHitsBox`). 사슴·궤짝은 그대로 걸린다.
+                if (!MeshHitsBox(rends[i], body))
+                {
+                    Debug.Log("[Ulon] 몸 상자만 겹친 조각(속이 빔, 판정 아님) — " + person.name + " ← " +
+                              GroundFit.NodePath(t) + " " + (share * 100f).ToString("0") + "% · 삼각형은 몸에 안 닿는다");
+                    continue;
+                }
                 found.Add(GroundFit.NodePath(t) + "(" + (vol / bodyVol * 100f).ToString("0") + "%)");
             }
             return found;

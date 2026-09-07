@@ -15,8 +15,12 @@ namespace Ulon.Shared
         public const float InteriorZ = 68f;
         public const float ExitX = 65.4f;
         public const float ExitZ = 65.6f;
-        public const float MobX = 65.6f;
-        public const float MobZ = 66.4f;
+        // **몹은 출구 워프 자리에서 비켜 선다**(검수 랩 2026-09-08 실측: 세 던전 모두 출구에서
+        // 0.82m — 같은 수치가 복사돼 있었다). 나가는 사람이 몹 몸 안에서 튀어나오면 그건 배치 결함이다.
+        // 자리는 **들어오는 착지 자리(Interior)와 나가는 게이트(Exit) 양쪽에서 2.5m** 떨어진 점이다
+        // (출구에서만 물러나면 이번엔 들어오는 사람 위에 선다 — 자리는 둘 다 봐야 정해진다).
+        public const float MobX = 65.5f;
+        public const float MobZ = 68.1f;
         public const float BossX = 70.4f;
         public const float BossZ = 70.6f;
         public const float RoomHalf = 8f;

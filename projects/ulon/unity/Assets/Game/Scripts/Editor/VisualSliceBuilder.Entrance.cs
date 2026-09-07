@@ -33,11 +33,23 @@ namespace Ulon.Editor
             var fwd = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));   // 입구가 바라보는 쪽(=접근로)
             var right = new Vector3(fwd.z, 0f, -fwd.x);
 
+            // 문틀 치수와 **같은 값**을 쓴다 — 등불·배너가 문구멍 안으로 들어오지 않게 하려면
+            // 문 반폭과 기둥 반폭을 알아야 한다(`BuildEntranceFrame`의 DoorHalf 1.25m·기둥 지름 2.23m).
+            const float DoorHalf = 1.25f;
+            const float PillarHalf = 1.12f;
             for (int side = -1; side <= 1; side += 2)
             {
-                Vector3 flank = pos + right * (1.7f * side);
-                Decor(parent, Lantern, flank + fwd * 1.3f, new Vector3(0f, approachYaw, 0f));
-                var bannerGo = Place(Banner, flank + fwd * 0.75f + Vector3.up * 1.6f, new Vector3(0f, approachYaw, 0f));
+                Vector3 pillar = pos + right * (DoorHalf * side);
+                // **등불은 문 통로 밖에 선다**(검수 판정 2026-09-08). 예전엔 `flank + fwd*1.3`이라
+                // 지나가는 자리에 서 있었고, 입구 샷에서는 검은 문판 한가운데 회색 기둥으로 읽혔다.
+                // 물건 자체는 맞으니 옮기기만 한다 — 기둥 바깥쪽으로.
+                Decor(parent, Lantern, pillar + right * (PillarHalf * side) + fwd * 0.6f,
+                      new Vector3(0f, approachYaw, 0f));
+                // **벽걸이 물건은 벽에 붙인다**(검수 판정 2026-09-08). `banner-red`는 장대+브래킷+천이
+                // 한 몸인 **벽에 거는** 소품인데, 걸 것 없이 공중(up 1.6m)에 세워 둬서 화면에서는
+                // 「문 양옆에 뜬 도끼·망치 4개」로 읽혔다(검수 관찰). 기둥 앞면에 붙여 건다.
+                var bannerGo = Place(Banner, pillar + fwd * (PillarHalf + 0.05f) + Vector3.up * 2.0f,
+                                     new Vector3(0f, approachYaw, 0f));
                 if (bannerGo != null)
                 {
                     bannerGo.transform.SetParent(parent, true);
@@ -45,7 +57,7 @@ namespace Ulon.Editor
                 }
                 var lightGo = new GameObject("DungeonEntranceLight");
                 lightGo.transform.SetParent(parent, true);
-                lightGo.transform.position = OnGround(flank) + Vector3.up * 2.2f;
+                lightGo.transform.position = OnGround(pillar + right * (PillarHalf * side)) + Vector3.up * 2.2f;
                 var light = lightGo.AddComponent<Light>();
                 light.type = LightType.Point;
                 light.color = new Color(1f, 0.72f, 0.42f);

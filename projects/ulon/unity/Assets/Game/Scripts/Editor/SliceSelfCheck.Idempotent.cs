@@ -73,12 +73,30 @@ namespace Ulon.Editor
             return bad;
         }
 
-        static string BuilderSourcePath()
+        /// <summary>
+        /// **빌더 소스 전부**를 읽는다 — 파일 하나가 아니라 `VisualSliceBuilder*.cs` 전체다.
+        ///
+        /// 예전엔 `VisualSliceBuilder.cs` 한 파일만 읽었다. 그 파일을 주제별 partial로 쪼개자
+        /// 이 스캐너가 **0건**을 만나 「정규식이 죽었다」로 빨간불을 냈다(2026-09-08 실측) —
+        /// 다행히 「0이면 실패」가 서 있어서 조용히 통과하지 않았다. **한 파일을 이름으로 붙잡는 자는
+        /// 파일이 갈라지는 날 눈이 먼다** — 규칙(접두사)으로 모아라.
+        /// </summary>
+        static string[] BuilderSourcePaths()
         {
-            string p = Path.Combine(Application.dataPath, "Game/Scripts/Editor/VisualSliceBuilder.cs");
-            if (!File.Exists(p))
-                throw new InvalidOperationException("빌더 소스를 못 찾았습니다: " + p + " — 못 읽은 것을 통과로 적지 않는다.");
-            return p;
+            string dir = Path.Combine(Application.dataPath, "Game/Scripts/Editor");
+            var found = Directory.GetFiles(dir, "VisualSliceBuilder*.cs", SearchOption.TopDirectoryOnly);
+            if (found.Length == 0)
+                throw new InvalidOperationException("빌더 소스를 못 찾았습니다: " + dir + " — 못 읽은 것을 통과로 적지 않는다.");
+            return found;
+        }
+
+        static string BuilderSource()
+        {
+            var paths = BuilderSourcePaths();
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < paths.Length; i++)
+                sb.Append(File.ReadAllText(paths[i])).Append('\n');
+            return sb.ToString();
         }
 
         /// <summary>`HostAnchor` 본문만 잘라낸다 — 그 안의 옛 방식은 **네거티브 컨트롤 스위치**라 정상이다.</summary>
@@ -95,7 +113,7 @@ namespace Ulon.Editor
 
         static void AssertNoWholeFacilityAnchor()
         {
-            string source = File.ReadAllText(BuilderSourcePath());
+            string source = BuilderSource();
             // **스캐너가 헛돌지 않는지 먼저** — host 바운드 호출이 0건이면 규칙이 아니라 정규식이 죽은 것이다.
             var all = ScanHostAnchorViolations(source, out int allReads, out _);
             if (allReads == 0)

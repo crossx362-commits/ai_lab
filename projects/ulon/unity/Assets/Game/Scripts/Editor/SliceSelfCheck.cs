@@ -71,6 +71,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureRoomFurnishing();     // 넓힌 방을 채운다(§6.1 던전 콘텐츠)
             VisualSliceBuilder.EnsureCapBuried();        // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
+            VisualSliceBuilder.EnsureOutdoorPropMaterials(); // 야외에 남은 던전 텍스처를 마을 톤으로
             VisualSliceBuilder.EnsureDecorClearOfPeople();  // 사람 몸에 박힌 장식은 장식이 비킨다(검수 판정 2026-09-08)
             VisualSliceBuilder.EnsureActorsOnSurface();
             VisualSliceBuilder.EnsureWeaponsAboveFloor();  // 몸을 세운 **뒤** 무기를 바닥 위로(같은 원인의 다른 얼굴)    // **스케일·드레싱이 다 끝난 뒤** 발을 바닥에 다시 붙인다
@@ -1676,6 +1677,10 @@ namespace Ulon.Editor
             AssertGearDressed();                            // 무기 1·방패 1(플레이어가 검 3·방패 4였다)
             AssertNobodyInsideStructureNegativeControl();
             AssertNobodyInsideStructure();
+            AssertOutdoorPropsNotBlackNegativeControl();    // 소품을 새까맣게 칠하면 빨간불인가
+            AssertOutdoorPropsNotBlack();                   // 대낮 야외에 검은 덩어리가 없는가
+            AssertWarpSpotsClearNegativeControl();          // 몹을 출구 위에 세우면 빨간불인가
+            AssertWarpSpotsClear();                         // 나가는 자리에 몹이 붙어 있지 않은가
             AssertCompanionOffSightAxisNegativeControl();
             AssertCompanionOffSightAxis();
             AssertCompanionDistinctNegativeControl();       // 동료를 플레이어와 같게 만들면 빨간불인가
