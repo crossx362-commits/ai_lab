@@ -102,6 +102,11 @@ namespace Ulon.Editor
                     // 다만 **동료 반경 2.5m 안의 표본은 건너뛴다** — 사람 바로 뒤가 가려지는 것은
                     // 배치 결함이 아니라 사람이 서 있다는 사실이고, 이 축은 정적 배치를 재는 축이다.
                     // 동료가 시선 축 위인지는 각도로 따로 잰다(`AssertCompanionOffSightAxis`).
+                    // **이 제외는 그 각도 게이트가 살아 있을 때만 정당하다**(검수 승인 조건 2026-09-08) —
+                    // 각도 게이트를 지우면 「동료 반경 2.5m」가 아무도 안 보는 사각지대가 된다.
+                    // 지울 거면 이 continue도 같이 지워라.
+                    // 이 제외로 마을 정적 최악이 20.0% → 0.0%가 됐는데, 그건 **수리가 아니라 재분류**다
+                    // (표본이 축 밖으로 나갔을 뿐 세계는 그대로다 — 숨긴 것은 지운 것이 아니다).
                     if (CompanionWithin(feet, 2.5f))
                         continue;
                     float stat = OccludedShareAt(feet, dist, true, out _, out string statBlocker, true);
@@ -138,7 +143,8 @@ namespace Ulon.Editor
                 totalStands += stands;
                 Debug.Log("[Ulon] 야외 시선 " + areas[i].Label + " — 설 수 있는 자리 " + stands + "곳 중 가려지는 자리 " +
                           (blind * 100f).ToString("0.0") + "%, 최악 " + worst + (blocker != "" ? " ← " + blocker : "") +
-                          " | 몹 제외 최악 " + (worstStatic * 100f).ToString("0.0") + "% " + worstStaticWhere);
+                          " | 몹·동료반경 제외 최악 " + (worstStatic * 100f).ToString("0.0") + "% " + worstStaticWhere +
+                          " (동료 반경 2.5m 표본은 축 밖 — 제외 사유가 바뀌어 빠진 것이지 가림이 줄어든 게 아니다)");
                 if (stands == 0)
                     failures.Add(areas[i].Label + ": 설 수 있는 자리를 한 곳도 못 찾음(잰 것이 없다)");
                 if (blind > OutdoorBlindSpotMax)
