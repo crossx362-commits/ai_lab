@@ -2302,6 +2302,152 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 은행 건물 재건 — 벽 8칸(문 1·창 7)·지붕·굴뚝, 한 변 " + (Half * 2f) + "m");
         }
 
+        /// <summary>
+        /// **마을 시설을 그 기능으로 읽히게 꾸민다**(검수 랩 ①, 2026-09-07).
+        /// 대조표에서 드러난 것: 상점과 대장간이 같은 좌판, 목공소 20cm, 화덕이 등불, 낚시터가 물레방아.
+        /// 새 팩을 받지 않고 **저장소 조각**으로 붙인다 — 안 되는 것이 남으면 그게 오너 안건의 근거다.
+        /// 멱등: 붙인 조각(`FacPart*`)을 매번 헐고 다시 붙인다.
+        /// </summary>
+        public static void EnsureVillageFacilities()
+        {
+            const string Town = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/";
+            const string Dg = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/";
+            int touched = 0;
+
+            // 상점 — 차양과 쌓인 물건이 「파는 곳」을 읽히게 한다. 대장간과 **다른 주 메시**가 되도록
+            // 차양을 크게 씌운다(지금은 둘 다 stall.fbx 좌판이라 화면에서 구분이 안 됐다).
+            touched += FacilityPart("Vendor", "Canopy", Town + "stall-red.fbx", new Vector3(0f, 0f, 0f), 2.2f, true) ? 1 : 0;
+            touched += FacilityPart("Vendor", "Crate", Dg + "box_large.obj", new Vector3(0.9f, 0f, 0.6f), 0.8f, true) ? 1 : 0;
+
+            // 대장간 — 굴뚝(화로의 연기)·통. 저장소에 모루·화로 메시가 없어 **굴뚝으로 대신**했다.
+            // 화면에서 「대장간」으로 안 읽히면 그 샷이 곧 오너 안건의 근거다(검수 지시).
+            touched += FacilityPart("Forge", "Chimney", Town + "chimney.fbx", new Vector3(0.7f, 0f, 0.5f), 2.6f, true) ? 1 : 0;
+            touched += FacilityPart("Forge", "Barrel", Dg + "barrel_large.obj", new Vector3(-0.8f, 0f, 0.4f), 1.0f, true) ? 1 : 0;
+
+            // 목공소 — 널빤지·톱질대. 20cm 걸상만으로는 멀리서 아무것도 아니다.
+            touched += FacilityPart("Carpenter", "Planks", Town + "planks.fbx", new Vector3(0.6f, 0f, 0.3f), 1.4f, false) ? 1 : 0;
+            touched += FacilityPart("Carpenter", "Post", Town + "poles.fbx", new Vector3(-0.2f, 0f, 0.8f), 1.5f, true) ? 1 : 0;
+            touched += FacilityPart("Carpenter", "Stairs", Town + "stairs-wood.fbx", new Vector3(-0.7f, 0f, 0.2f), 0.9f, true) ? 1 : 0;
+
+            // 화덕 — 등불이 화덕 노릇 하던 자리. 둘러싼 돌과 장작을 놓는다(불빛은 기존 등불이 낸다).
+            touched += FacilityPart("Campfire", "Stone1", Dg + "rubble_half.obj", new Vector3(0.5f, 0f, 0.2f), 0.5f, true) ? 1 : 0;
+            touched += FacilityPart("Campfire", "Stone2", Dg + "rubble_half.obj", new Vector3(-0.4f, 0f, -0.4f), 0.45f, true) ? 1 : 0;
+            touched += FacilityPart("Campfire", "Wood", Town + "planks.fbx", new Vector3(0f, 0f, 0.5f), 0.8f, false) ? 1 : 0;
+
+            // 절구 — 약병 대신 통·궤. 걸상 하나로는 연금 자리로 안 읽힌다.
+            touched += FacilityPart("Mortar", "Barrel", Dg + "barrel_small.obj", new Vector3(0.5f, 0f, 0.3f), 1.0f, true) ? 1 : 0;
+            touched += FacilityPart("Mortar", "Box", Dg + "box_small.obj", new Vector3(-0.5f, 0f, 0.2f), 0.6f, true) ? 1 : 0;
+
+            // 훈련소 — 무엇을 가르치는지 표식. 사람 모델 교체는 별개 랩이다(대조표 §3).
+            touched += FacilityPart("Trainer", "Banner", Town + "banner-red.fbx", new Vector3(1.0f, 0f, 0.4f), 2.0f, true) ? 1 : 0;
+
+            // 마구간 — 축사 울타리. 지기(사람)는 서비스 NPC 랩에서 세운다.
+            touched += FacilityPart("Stable", "Fence1", Town + "fence.fbx", new Vector3(1.4f, 0f, 0.6f), 1.2f, false) ? 1 : 0;
+            touched += FacilityPart("Stable", "Fence2", Town + "fence-gate.fbx", new Vector3(-1.4f, 0f, 0.6f), 1.2f, false) ? 1 : 0;
+
+            // 낚시터 — **물레방아를 치운다**(마을 시야를 막던 그 물건이기도 하다). 물가 발판·기둥·수레.
+            var fish = GameObject.Find("FishingSpot");
+            if (fish != null)
+                for (int c = fish.transform.childCount - 1; c >= 0; c--)
+                {
+                    var ch = fish.transform.GetChild(c);
+                    if (!ch.name.StartsWith("FacPart", StringComparison.Ordinal))
+                        UnityEngine.Object.DestroyImmediate(ch.gameObject);
+                }
+            // 발판을 크게 — **주 메시가 발판**이어야 한다. 기둥(poles)이 주 메시가 되면 집터와 같은 메시라
+            // 화면에서 낚시터와 집터가 구분되지 않는다(게이트가 잡았다).
+            touched += FacilityPart("FishingSpot", "Dock", Town + "planks.fbx", new Vector3(0f, 0f, 0f), 2.6f, false) ? 1 : 0;
+            touched += FacilityPart("FishingSpot", "Pole", Town + "poles.fbx", new Vector3(0.9f, 0f, 0.6f), 1.0f, true) ? 1 : 0;
+
+            Physics.SyncTransforms();
+            Debug.Log("[Ulon] 마을 시설 꾸밈 — 조각 " + touched + "개(상점 차양·대장간 굴뚝·목공 널빤지·화덕 돌·절구 통·훈련 깃발·마구간 울타리·낚시 발판)");
+        }
+
+        /// <summary>
+        /// **마을 서비스 NPC**(검수 랩 ②, §18.19). 표시명이 「치유사」·「마구간지기」인데 화면엔 분수와
+        /// 좌판만 있었다 — 말을 거는 상대가 없다는 뜻이다. 저장소의 사람 모델로 지금 세울 수 있다.
+        /// 새 모델을 받지 않으므로 훈련사(Mage)와 겹치지 않는 것만 고른다.
+        /// 멱등 — 있으면 헐고 다시 세운다(옛 씬도 이 패스가 고친다).
+        /// </summary>
+        public static void EnsureServiceNpcs()
+        {
+            var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+            if (ctrl == null)
+            {
+                Debug.LogWarning("[Ulon] 애니메이터 컨트롤러가 없어 서비스 NPC를 세우지 못했습니다 — T포즈로 세우지 않는다.");
+                return;
+            }
+            int made = 0;
+            made += ServiceNpc("Healer", KnightFbx, "치유사", new Vector3(1.5f, 0f, 0.9f), ctrl) ? 1 : 0;
+            made += ServiceNpc("Stable", RogueFbx, "마구간지기", new Vector3(1.3f, 0f, -0.9f), ctrl) ? 1 : 0;
+            Physics.SyncTransforms();
+            Debug.Log("[Ulon] 마을 서비스 NPC — " + made + "명(치유사·마구간지기). 표시명만 사람이던 자리에 사람을 세운다(§18.19)");
+        }
+
+        static bool ServiceNpc(string host, string fbx, string display, Vector3 offset, AnimatorController ctrl)
+        {
+            var go = GameObject.Find(host);
+            if (go == null || AssetDatabase.LoadAssetAtPath<GameObject>(fbx) == null)
+                return false;
+            string name = host + "Npc";
+            var old = GameObject.Find(name);
+            if (old != null)
+                UnityEngine.Object.DestroyImmediate(old);
+            ConfigureHumanoid(fbx, true);
+            Vector3 baseAt = go.transform.position;
+            if (BoundsOf(go.transform, true, out Bounds hb) && hb.size.sqrMagnitude > 0.0001f)
+                baseAt = new Vector3(hb.center.x, 0f, hb.center.z);
+            var npc = SpawnActor(name, fbx, new Vector3(baseAt.x + offset.x, 0f, baseAt.z + offset.z), 1.75f, ctrl,
+                false, false, display, 50f);
+            if (npc == null)
+                return false;
+            HideExtraGear(npc);
+            npc.transform.SetParent(go.transform, true);
+            return true;
+        }
+
+        /// <summary>로그인 스폰(0,0) 둘레에 부속을 놓지 않는 반경 — 스폰이 소품 위에 뜨는 것을 막는다.</summary>
+        const float SpawnClearRadius = 2.6f;
+
+        /// <summary>시설에 부속 조각 하나를 붙인다(멱등 — 이름이 같으면 헐고 다시 붙인다).</summary>
+        static bool FacilityPart(string host, string part, string fbx, Vector3 offset, float size, bool byHeight)
+        {
+            var go = GameObject.Find(host);
+            if (go == null)
+                return false;
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(fbx) == null && fbx.EndsWith(".fbx", StringComparison.Ordinal))
+                ConfigureProp(fbx);
+            string name = "FacPart" + part;
+            for (int c = go.transform.childCount - 1; c >= 0; c--)
+                if (go.transform.GetChild(c).name == name)
+                    UnityEngine.Object.DestroyImmediate(go.transform.GetChild(c).gameObject);
+            // 기준은 **보이는 것의 중심**이다 — 오브젝트 원점이 (0,0,0)에 남아 있는 시설이 있어(실측)
+            // transform.position에 붙였더니 조각이 마을 광장 스폰 자리에 떨어져 스폰이 1.35m 떴다.
+            Vector3 baseAt = go.transform.position;
+            if (BoundsOf(go.transform, true, out Bounds hb) && hb.size.sqrMagnitude > 0.0001f)
+                baseAt = new Vector3(hb.center.x, baseAt.y, hb.center.z);
+            var at = baseAt + offset;
+            // **스폰 자리를 막지 않는다** — 목공소가 마을 광장 한복판(0,0)에 서 있어 널빤지가 스폰 위에
+            // 떨어졌고, 로그인 직후 플레이어가 1.35m 떠서 착지했다(2026-09-07 실측).
+            var flat = new Vector2(at.x, at.z);
+            if (flat.magnitude < SpawnClearRadius)
+            {
+                var dir = flat.sqrMagnitude > 0.0001f ? flat.normalized : new Vector2(1f, 0f);
+                at = new Vector3(dir.x * SpawnClearRadius, at.y, dir.y * SpawnClearRadius);
+            }
+            at = OnGround(new Vector3(at.x, 0f, at.z));
+            var made = RoomPropObject(go.transform, name, fbx, at, 0f, size, byHeight);
+            // **납작한 조각을 높이 기준으로 키우면 바닥이 폭발한다** — 널빤지를 높이 1.3m로 맞췄더니
+            // 21.7×21.7m가 돼 마을 광장과 스폰을 덮었다(2026-09-07 실측). 조용히 넘어가지 않게 막는다.
+            if (made != null && BoundsOf(made.transform, true, out Bounds gb) && Mathf.Max(gb.size.x, gb.size.z) > 6f)
+                throw new InvalidOperationException("시설 부속 " + host + "/" + part + "이 " +
+                    gb.size.ToString("0.0") + "로 커졌습니다 — 납작한 조각은 높이가 아니라 폭으로 맞춰라.");
+            // 조각 원점이 모서리인 프리팹이 있다 — 바운드 중심으로 다시 맞춘다(안 맞추면 스폰 자리로 되돌아온다).
+            if (made != null && BoundsOf(made.transform, true, out Bounds mb))
+                made.transform.position += new Vector3(at.x - mb.center.x, 0f, at.z - mb.center.z);
+            return made != null;
+        }
+
         /// <summary>지금 세운 은행 벽의 실제 높이(조각 비율이 바뀌어도 지붕이 따라 올라가게).</summary>
         static float BankWallHeight(GameObject bank)
         {

@@ -47,6 +47,8 @@ namespace Ulon.Editor
             // 이미 만들어진 씬은 빌더 수정만으로 안 고쳐진다 — 멱등 보수 패스로 돌린다(검수 랩 D).
             Debug.Log("[Ulon] 건물 시야 페이드 — 레이어 올린 렌더러 " + VisualSliceBuilder.EnsureBuildingsFadeable() + "개");
             VisualSliceBuilder.EnsureBankBuilding();       // 은행을 들어갈 수 있는 건물로(검수 P1)
+            VisualSliceBuilder.EnsureVillageFacilities();  // 시설이 그 기능으로 읽히게(검수 랩 ①)
+            VisualSliceBuilder.EnsureServiceNpcs();        // 표시명만 사람이던 자리에 사람을(§18.19, 검수 랩 ②)
             VisualSliceBuilder.EnsureEntranceFramesQualified();  // 옛 씬의 검은 큐브 문틀을 등록 조각으로 다시 세운다(검수 2026-09-07)
             VisualSliceBuilder.EnsureRoomSize();           // 방 반경이 원장과 다르면 헐고 다시 짓는다(검은 허공)
             ActionVfxBuilder.EnsureActionVfx();

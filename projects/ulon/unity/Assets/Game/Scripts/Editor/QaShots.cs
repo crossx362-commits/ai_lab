@@ -70,6 +70,9 @@ namespace Ulon.Editor
                 Stand(PlayCamOutdoor("26_behind_bank", -10f, 8f)),
                 // 던전 입구 앞 — 지표 높이인데 머리 위에 구조물이 있다. 줌이 실내로 튀지 않는지 눈으로 본다.
                 Stand(PlayCamAuto("27_entrance_zoom", Dungeon2.EntranceX, Dungeon2.EntranceZ)),
+                // 마을 시설 근접 — 「저게 대장간이구나」가 화면에서 읽히는지 눈으로 본다(검수 랩 ① 요구).
+                Stand(PlayCamOutdoor("28_facilities", -5.2f, 3.4f)),
+                Stand(PlayCamOutdoor("29_forge_carpenter", -6.8f, 5.2f)),
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
             };
 
