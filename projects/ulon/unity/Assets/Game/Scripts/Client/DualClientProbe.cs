@@ -80,6 +80,15 @@ namespace Ulon.Client
                 : float.NaN;
             myHp = myBodyNow != null ? myBodyNow.Hp : 0f;
             myGhost = myBodyNow != null && myBodyNow.Ghost;
+            // **계측 전용(검수 조사 지시 2026-09-08)** — 화면이 읽는 값이 서버와 같은가를 보려면
+            // 클라가 실제로 들고 있는 수치를 그대로 내보내야 한다. 고치지 않는다, 재기만 한다.
+            myMaxHp = myBodyNow != null ? myBodyNow.MaxHp : 0f;
+            myMana = myBodyNow != null ? myBodyNow.Mana : 0f;
+            myGold = myBodyNow != null ? myBodyNow.Gold : 0;
+            myName = myBodyNow != null ? myBodyNow.DisplayName : "-";
+            var bagNow = myBodyNow != null ? myBodyNow.GetComponent<InventoryBag>() : null;
+            myBag = bagNow != null ? bagNow.Items.Count : -1;
+            mySkill = mine.SwordSkill;
             Debug.Log("[Ulon] 생존 상태(" + role + ") — y " + myY.ToString("0.0") + " · 지면 " +
                       myGroundY.ToString("0.0") + " · HP " + myHp.ToString("0") + " · 유령 " + myGhost);
 
@@ -126,6 +135,9 @@ namespace Ulon.Client
         /// (검수 지시 2026-09-08: 세계가 무너진 채로 초록불이 켜져 있었다).</summary>
         static float myY, myGroundY, myHp;
         static bool myGhost;
+        static float myMaxHp, myMana, mySkill;
+        static int myGold, myBag;
+        static string myName = "-";
 
         /// <summary>이 클라이언트가 본 파티 상태 — json으로 나가고, 두 클라가 같아야 통과다.</summary>
         static bool partyOpen;
@@ -316,6 +328,12 @@ namespace Ulon.Client
                           + ",\"groundY\":" + myGroundY.ToString("0.##")
                           + ",\"hp\":" + myHp.ToString("0.##")
                           + ",\"ghost\":" + (myGhost ? "true" : "false")
+                          + ",\"maxHp\":" + myMaxHp.ToString("0.##")
+                          + ",\"mana\":" + myMana.ToString("0.##")
+                          + ",\"gold\":" + myGold
+                          + ",\"bag\":" + myBag
+                          + ",\"skill\":" + mySkill.ToString("0.##")
+                          + ",\"name\":\"" + myName.Replace("\"", "") + "\""
                           + "}";
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, json, new UTF8Encoding(false));
