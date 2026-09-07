@@ -334,8 +334,12 @@ v1.1  |  기준일 2026-08-31  |  UO Classic 핵심 시스템 보완판
 - 원본 에셋 팩 자체를 게임 밖에서 재배포하지 않습니다.
 # 12. Unity 프로젝트/리소스 관리 규칙
 ## 12.1 권장 폴더
-| Assets/├─ _ThirdParty/│  ├─ KayKit/│  ├─ Kenney/│  └─ Quaternius/├─ Game/│  ├─ Art/Characters/│  ├─ Art/Monsters/│  ├─ Art/Env/│  ├─ Art/VFX/│  ├─ Audio/│  ├─ Data/│  ├─ Prefabs/│  ├─ Scenes/│  ├─ Scripts/Client/│  ├─ Scripts/Server/│  ├─ Scripts/Shared/│  └─ UI/└─ Tests/ |
+| Assets/├─ _ThirdParty/│  ├─ KayKit/│  ├─ Kenney/│  └─ Quaternius/├─ Game/│  ├─ Art/Characters/│  ├─ Art/Monsters/│  ├─ Art/Env/│  ├─ Art/VFX/│  ├─ Audio/│  ├─ Prefabs/│  ├─ Scenes/│  ├─ Scripts/Client/│  ├─ Scripts/Server/│  ├─ Scripts/Shared/│  └─ UI/├─ StreamingAssets/Data/└─ Tests/ |
 | --- |
+
+데이터 파일(`items.json`·`mobs.json`·`recipes.json`)은 **`Assets/StreamingAssets/Data/`** 에 둡니다.
+예전 표는 `Game/Data/`를 적었는데, 서버 빌드가 런타임에 읽어야 하는 파일이라 실제 자리는
+StreamingAssets입니다(`Game/Data`는 2026-09-07 삭제 — 문서가 틀린 채로 남으면 다음 사람이 폴더를 되살립니다).
 
 ## 12.2 데이터 기반 원칙
 - 아이템/스킬/몬스터/제작법은 코드에 하드코딩하지 않고 ID 기반 데이터(ScriptableObject 또는 서버 데이터 파일)로 관리합니다.

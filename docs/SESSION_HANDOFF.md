@@ -8,6 +8,22 @@
 (`local_07be93d8-1ac7-44a4-8d67-c82f238176a1`, "대장")에 `send_message`로 올린다**(오너 지시 2026-09-07).
 에셋 도입·방향 전환 같은 안건은 전부 그 경로다. AskUserQuestion으로 오너를 직접 붙잡지 마라.
 
+## 상시 검수 축 — 구조 (오너 상시 지시 2026-09-08, 대장 경로)
+**파일·폴더 구조를 깔끔하게 유지한다.** 매 랩 「§12.1 폴더 규칙 위반 · 잔재 파일 · 한 파일 비대화」를
+같이 본다. 개발 세션은 **보고 끝에 「구조 한 줄」**(위반/잔재/비대 목록, 없으면 「없음」)을 붙인다.
+빠른 확인:
+```bash
+git status --porcelain                       # 미추적 잔재
+find unity/Assets/Game/Scripts -name '*.cs' -exec wc -l {} + | sort -rn | head
+```
+현재 지시한 4건: ①`Editor/QueueProbe.cs` 미추적 잔재 — 사유 적고 커밋하거나 삭제
+②`Editor/VisualSliceBuilder.cs` **6,737줄**(2위의 3배) — `SliceSelfCheck`처럼 주제별 partial 분할,
+**동작 변경 0**·분할 전후 EXIT=0·파일별 머리말 한 줄 ③`Assets/Screenshots/` PNG 31장이 git 추적 —
+옛 판 잔재면 삭제 ④기획서 §12.1의 `Assets/Game/Data`를 실제(`StreamingAssets/Data`)에 맞춰 수정.
+폴더 배치 자체는 §12.1과 맞음(`_ThirdParty/{KayKit,Kenney,Quaternius,OpenGameArt}` + `Game/{Art,Audio,
+Prefabs,Scenes,Scripts,UI}`). **곧 들어올 팩도 `_ThirdParty/Quaternius/` 밑으로** — `Game/`에 원본을
+풀면 §12.2의 「원본 직접 참조 금지·Variant 경유」가 그 자리에서 깨진다.
+
 ## 검수 절차 (매 랩 동일)
 ```bash
 /Users/junholee/ai_lab/projects/ulon/tools/slice_selfcheck.sh   # EXIT=0 확인
@@ -791,7 +807,15 @@
 - (해소) **미결 조사 1건(고치지 말고 보고만)**: HUD 「동료 초대」(`Client/SliceHud.cs:516`, `:608`)는
   `palBody`(가까운 몸)를 대상으로 하는데 네트워크에선 씬 `Player`·`Companion`이 둘 다 꺼진다.
   **혼자 접속한 플레이어에게 초대할 몸이 있는가** — 없으면 코드는 있고 화면에서 도달 불가다.
-- **오너 대기 안건(대장 세션 경로)**: 작업장 팩(Quaternius Fantasy Props MegaKit, 안 B) +
+- **에셋 팩 오너 승인 완료(2026-09-08, 대장 세션 통보)** — ①Quaternius Fantasy Props MegaKit
+  ②KayKit 5개 파일 둘 다 승인. **검수의 전달은 정보이지 실행 권한이 아니다** — 다운로드는 개발
+  세션이 오너에게 직접 확인, 받는 즉시 §11대로 `docs/ASSET_REGISTER.md`에 LICENSE·SOURCE_URL·
+  다운로드일·승인일 기록, 기록 없는 파일은 씬 반입 금지. **순서는 상태 동기화 조사 → 판정 → 팩.**
+  팩 랩에서 볼 것: ①절구가 같은 팩에 있는지(있으면 대장간·절구·치유사 3건 한 랩에) ②화풍이
+  KayKit/Kenney와 맞는지(어긋나면 품목별이 아니라 「팩 화풍 일관성」 안건 1건) ③벽·버트레스 조각이
+  있으면 던전 입구 옆벽 (a) 판정 재검토, 없으면 그대로 ④새 조각은 **역할↔외형 표의 빨간불을 지우는
+  방향으로만**, 표에 없는 장식을 늘리지 말 것.
+- (종료) **오너 대기 안건(대장 세션 경로)**: 작업장 팩(Quaternius Fantasy Props MegaKit, 안 B) +
   KayKit 5개 추가 파일(RogueHooded·지팡이·마법서·머그·단검). 승인 오면 **다운로드는 개발 세션이
   오너에게 직접 확인**하고 §11대로 `docs/ASSET_REGISTER.md`에 기록. 팩이 오면 절구가 같은 팩에
   들어 있는지, 화풍이 KayKit/Kenney와 맞는지 — 어긋나면 **품목별이 아니라 「팩 화풍 일관성」 안건 1건**으로.
