@@ -2927,8 +2927,10 @@ namespace Ulon.Editor
         /// </summary>
         public static readonly (string Object, string Fbx, string Gear, Color Tint, string Why)[] MobLooks =
         {
-            ("Bandit",             null, "1H_Crossbow",  new Color(0.52f, 0.26f, 0.20f), "도적 — 적갈, 한손 석궁"),
-            (Dungeon2.MobObject,   null, "1H_Crossbow",  new Color(0.52f, 0.26f, 0.20f), "던전 도적 — 마을판과 같은 종류(선언된 쌍)"),
+            // 마구간지기(갈 7A5733)도 같은 Rogue 몸에 한손 석궁을 든다 — 밝은 적갈로는 색 거리가
+            // 0.12밖에 안 나 화면에서 안 갈렸다. 어두운 적갈로 내려 0.44를 벌었다(§8.1).
+            ("Bandit",             null, "1H_Crossbow",  new Color(0.34f, 0.13f, 0.11f), "도적 — 어두운 적갈, 한손 석궁"),
+            (Dungeon2.MobObject,   null, "1H_Crossbow",  new Color(0.34f, 0.13f, 0.11f), "던전 도적 — 마을판과 같은 종류(선언된 쌍)"),
             ("Rogue",              null, "2H_Crossbow",  new Color(0.28f, 0.32f, 0.40f), "자객 — 청회색, 두손 석궁(도적과 갈린다)"),
             ("Knight",             null, "1H_Sword",     new Color(0.62f, 0.66f, 0.72f), "기사 — 밝은 강철빛, 한손검+방패"),
             ("Raider",             null, "2H_Sword",     new Color(0.44f, 0.30f, 0.22f), "약탈자 — 흙빛, 두손검(기사와 갈린다)"),
