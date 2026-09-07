@@ -300,16 +300,41 @@ namespace Ulon.Editor
             if (victim == null)
                 throw new InvalidOperationException("사람 샷 가림 NC를 돌릴 수 없습니다 — 지금 뚫린 방위로 찍히는 사람이 " +
                     "한 명도 없어, 판을 세워도 「이 NC가 만든 결함」인지 구분되지 않습니다. 가림 실패부터 해소하십시오.");
-            var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            // **둘러싸되 품지는 않는다.** 큰 상자로 감싸면 그 바운드가 사람을 품어 버려서
+            // 「표본이 바운드 안이면 판정 불가」 규칙에 걸려 결함이 안 만들어진다(실측).
+            // 그래서 카메라가 들어올 수 있는 하한(1.9m)보다 **안쪽**인 1.2m에 판 8장을 둘러 세운다 —
+            // 카메라는 언제나 이 울타리 밖이므로 어느 방위로도 사람이 안 보여야 한다.
+            var walls = new List<GameObject>();
             bool red = false;
             string message = "";
             try
             {
-                wall.name = "PersonShotBlockNC";
-                wall.transform.position = victim.transform.position + Vector3.up * 1.0f;
-                wall.transform.localScale = new Vector3(3f, 3f, 3f);
-                UnityEngine.Object.DestroyImmediate(wall.GetComponent<Collider>());   // 콜라이더가 아니라 **보이는 것**으로 재는 게이트다
+                // **결함을 만들려면 판이 카메라보다 사람에게 더 가까워야 한다.**
+                // 처음엔 1.2m 울타리를 세웠는데 통과했다 — 카메라가 비스듬한 방위에서 1.9m를
+                // 슬랜트로 오면 수평으로는 1.1m라 **울타리 안쪽에 서게** 되고, 그러면 사이에 판이 없다.
+                // (그 자체는 게이트가 맞게 판정한 것이다: 껍데기 안에 들어가면 보이는 게 맞다.)
+                // 그래서 카메라가 절대 못 들어오는 0.6m에 벽 넷 + 뚜껑 하나로 상자를 만든다.
+                // 판은 축에 나란하게 둔다 — 돌린 판은 월드 AABB가 뚱뚱해져 카메라를 제 바운드에 품는다.
+                var offs = new[] { new Vector3(0.6f, 1.3f, 0f), new Vector3(-0.6f, 1.3f, 0f),
+                                   new Vector3(0f, 1.3f, 0.6f), new Vector3(0f, 1.3f, -0.6f),
+                                   new Vector3(0f, 2.6f, 0f) };
+                var sizes = new[] { new Vector3(0.1f, 2.6f, 1.3f), new Vector3(0.1f, 2.6f, 1.3f),
+                                    new Vector3(1.3f, 2.6f, 0.1f), new Vector3(1.3f, 2.6f, 0.1f),
+                                    new Vector3(1.3f, 0.1f, 1.3f) };
+                for (int i = 0; i < offs.Length; i++)
+                {
+                    var w = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    w.name = "PersonShotBlockNC" + i;
+                    w.transform.position = victim.transform.position + offs[i];
+                    w.transform.localScale = sizes[i];
+                    UnityEngine.Object.DestroyImmediate(w.GetComponent<Collider>());   // 콜라이더가 아니라 **보이는 것**으로 재는 게이트다
+                    walls.Add(w);
+                }
                 QaShots.RecomputePersonFront();
+                Debug.Log("[Ulon] NC 진단 — 대상 " + want + " · 판 " + walls.Count + "장 · 판 자리 " +
+                          walls[0].transform.position.ToString("F1") + " · 사람 자리 " +
+                          victim.transform.position.ToString("F1") + " · 지금 clear=" +
+                          (QaShots.PersonShotClear.TryGetValue(want, out bool dbg) ? dbg.ToString() : "(없음)"));
                 // **판정은 그 한 사람이 뒤집혔는가**로 한다 — 목록에 다른 실패가 섞여 있어도
                 // 「내가 만든 결함이 잡혔다」는 이 사람으로만 증명된다.
                 if (QaShots.PersonShotClear.TryGetValue(want, out bool nowClear) && !nowClear)
@@ -320,7 +345,8 @@ namespace Ulon.Editor
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(wall);
+                for (int i = 0; i < walls.Count; i++)
+                    UnityEngine.Object.DestroyImmediate(walls[i]);
                 QaShots.RecomputePersonFront();          // 표를 실제 촬영 값으로 되돌린다
             }
             if (!red)

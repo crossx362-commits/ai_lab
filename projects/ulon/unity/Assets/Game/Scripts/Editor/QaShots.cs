@@ -12,6 +12,12 @@ namespace Ulon.Editor
     /// 화면 근거를 PNG로 남긴다. 배치모드(-nographics 없이)로 돌린다. 게임 로직은 건드리지 않는다.
     ///   Unity -batchmode -projectPath . -executeMethod Ulon.Editor.QaShots.Run -quit
     /// 산출물: projects/ulon/builds/qa/*.png
+    ///
+    /// **금지: 샷을 위해 세계를 옮기지 않는다**(검수 판정 2026-09-08).
+    /// 은행원이 은행 안에, 상인이 차양 밑에, 훈련사가 지붕 밑에 선 것은 §18.19가 맞게 구현된
+    /// 모습이다. 근접 샷이 안 찍힌다고 그 사람들을 문 밖으로 끌어내면 **계측기가 세계를 바꾸는
+    /// 것**이고, 게임은 나빠지고 숫자만 좋아진다. 막히면 **카메라를 껍데기 안으로** 넣고,
+    /// 그래도 안 되면 그 사실을 이름과 함께 **보고**한다.
     /// </summary>
     public static class QaShots
     {
@@ -44,6 +50,7 @@ namespace Ulon.Editor
             {
                 Orbit("01_village_square", new Vector3(0f, 0f, 0f), 20f, 35f),
                 CompanionBlock("58_companion_block"),
+                PersonPlayCam("59_banker_playcam", "Banker"),
                 Orbit("02_village_wide", new Vector3(0f, 0f, 0f), 55f, 45f),
                 // 마을 쪽(남)에서 북쪽 사냥터를 본다 — 마을이 카메라 **뒤**라 프레임 밖이다
                 // (검수 완료 기준 랩 ⑦: 8체가 다 들어오고 마을이 화면에 없을 것).
@@ -66,6 +73,9 @@ namespace Ulon.Editor
                 PlayCam("10_d2_interior_playcam", Dungeon2.InteriorX, Dungeon2.InteriorZ),
                 Inside("10_d2_interior", Dungeon2.InteriorX, Dungeon2.InteriorZ, Dungeon2.BossX, Dungeon2.BossZ),
                 Orbit("11_d3_entrance", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 8f, 20f),
+                // 문구멍 슬랩을 안쪽으로 물린 뒤 **비스듬한 방위에서 판의 앞면이 노출되는지** 본다
+                // (검수 조건 2026-09-08: 정면 한 장 = 11번, 45° 한 장 = 이것).
+                Angled("60_d3_entrance_45", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 7f, 18f, 90f),
                 PlayCam("12_d3_interior_playcam", Dungeon3.InteriorX, Dungeon3.InteriorZ),
                 Vfx(PlayCam("24_action_vfx", Dungeon3.InteriorX, Dungeon3.InteriorZ)),
                 Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
@@ -418,6 +428,7 @@ namespace Ulon.Editor
             float bestYaw = baseYaw;
             float bestPitch = pitch;
             float bestSeen = -1f;
+            float bestDist = -1f;
             var blockers = new System.Collections.Generic.List<string>();
             // 마을은 시설이 2~3m 간격으로 붙어 있어 게임 각도에서는 앞집 지붕이 시설을 통째로 덮는다
             // (첫 촬영본 35_fishing이 그랬다). 방위 8 × 내려보는 각 3을 다 재고 제일 잘 보이는 조합을 쓴다.
@@ -480,17 +491,39 @@ namespace Ulon.Editor
                 // 방위만 남긴다 — 반투명·불투명을 가리지 않는다(막힘은 막힘이다).
                 if (byRenderer)
                 {
-                    var eyeC = target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * dist;
-                    var head = box.center + Vector3.up * box.extents.y * 0.8f;
-                    if (BlockedByRenderer(eyeC, head, go.transform, out string hb) ||
-                        BlockedByRenderer(eyeC, box.center, go.transform, out hb))
+                    // **껍데기 안으로 들어가서 찍는다**(검수 판정 2026-09-08, (ㄴ)).
+                    // 은행원이 은행 안에, 상인이 차양 밑에, 훈련사가 지붕 밑에 서 있는 것은 §18.19가
+                    // 맞게 구현된 모습이지 결함이 아니다. **샷이 안 찍힌다고 사람을 문 밖으로 옮기는
+                    // (ㄱ)안은 금지다** — 그건 계측기가 세계를 바꾸는 짓이고, 게임은 나빠지고 숫자만 좋아진다.
+                    // 그래서 밖에서 막히면 카메라를 그 껍데기 **안쪽까지** 당겨 본다. 하한 1.9m는
+                    // 온몸이 화면에 들어오는 거리다(55° 화각·키 1.8m 기준 1.73m가 꽉 차는 거리) —
+                    // 예전에 1.4m까지 열었다가 훈련사가 얼굴만 찍힌 개악을 되풀이하지 않기 위한 바닥이다.
+                    float tryDist = -1f;
+                    for (float d = dist; d >= InsidePullFloor - 0.01f; d -= 0.3f)
                     {
-                        // 막은 것의 이름을 모아 둔다 — 전부 막혔을 때 **무엇이 막았는지**를 말해야
-                        // 「배치를 옮겨라」인지 「자가 부푼 바운드를 보고 있다」인지 갈린다.
-                        if (hb != "" && !blockers.Contains(hb))
-                            blockers.Add(hb);
-                        continue;
+                        // 0.3m 격자가 하한을 건너뛰면 「1.9m에서 보이는데 못 찾는」 일이 생긴다(실측 은행원).
+                        if (d - 0.3f < InsidePullFloor)
+                            d = InsidePullFloor;
+                        var eyeD = target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * d;
+                        var headD = box.center + Vector3.up * box.extents.y * 0.8f;
+                        if (BlockedByRenderer(eyeD, headD, go.transform, out string bd) ||
+                            BlockedByRenderer(eyeD, box.center, go.transform, out bd))
+                        {
+                            if (bd != "" && !blockers.Contains(bd))
+                                blockers.Add(bd);
+                            continue;
+                        }
+                        tryDist = d;
+                        break;
                     }
+                    if (tryDist < 0f)
+                        continue;
+                    // 같은 값이면 **덜 당긴 방위**를 고른다 — 껍데기 안으로 들어갈수록 주변이 안 보인다.
+                    if (share > bestSeen + 0.02f || (Mathf.Abs(share - bestSeen) <= 0.02f && tryDist > bestDist))
+                    {
+                        bestSeen = share; bestYaw = y; bestPitch = pit; bestDist = tryDist;
+                    }
+                    continue;
                 }
                 if (share > bestSeen + 0.02f) { bestSeen = share; bestYaw = y; bestPitch = pit; }
             }
@@ -501,8 +534,28 @@ namespace Ulon.Editor
             {
                 PersonShotClear[name] = bestSeen >= 0f;
                 if (bestSeen < 0f)
+                {
+                    // 진단 — **얼마나 더 들어가면 보이는가**를 같이 잰다(하한 1.9m는 판정용이고,
+                    // 이 탐색은 「불가능인가, 하한이 문제인가」를 가른다).
+                    float clears = -1f; float clearYaw = 0f, clearPitch = 0f;
+                    for (int k = 0; k < 8 * pitches.Length && clears < 0f; k++)
+                    {
+                        float y2 = baseYaw + (k % 8) * 45f, pit2 = pitches[k / 8];
+                        for (float d = InsidePullFloor; d >= 0.9f; d -= 0.15f)
+                        {
+                            var e2 = target - Quaternion.Euler(pit2, y2, 0f) * Vector3.forward * d;
+                            if (BlockedByRenderer(e2, box.center + Vector3.up * box.extents.y * 0.8f, go.transform) ||
+                                BlockedByRenderer(e2, box.center, go.transform))
+                                continue;
+                            clears = d; clearYaw = y2; clearPitch = pit2;
+                            break;
+                        }
+                    }
                     Debug.Log("[Ulon] 사람 샷 " + name + " — 머리·몸통이 다 보이는 방위가 없다(24조합 전부 막힘). " +
-                              "기본 방위로 찍고 실패로 보고한다. 막은 것: " + string.Join(", ", blockers));
+                              "기본 방위로 찍고 실패로 보고한다. 막은 것: " + string.Join(", ", blockers) +
+                              " | 하한을 낮추면 " + (clears < 0f ? "0.9m까지 내려도 안 보인다" :
+                              clears.ToString("0.0") + "m·방위 " + clearYaw.ToString("0") + "°/" + clearPitch.ToString("0") + "°에서 보인다"));
+                }
             }
             if (beyond.HasValue)
             {
@@ -513,6 +566,14 @@ namespace Ulon.Editor
                     bestYaw = Quaternion.LookRotation(-away.normalized, Vector3.up).eulerAngles.y;
                     bestPitch = 20f;                     // 낮게 봐야 수면이 화면에 들어온다
                 }
+            }
+            // 사람은 껍데기 안까지 당겨 고른 그 거리로 찍는다(위 (ㄴ) 판정).
+            if (bestDist > 0f && !beyond.HasValue)
+            {
+                if (bestDist < dist - 0.05f)
+                    Debug.Log("[Ulon] 사람 샷 " + name + " — 밖에서는 막혀 껍데기 안까지 " +
+                              dist.ToString("0.0") + "m → " + bestDist.ToString("0.0") + "m로 들어가 찍는다");
+                dist = bestDist;
             }
             var rot = Quaternion.Euler(bestPitch, bestYaw, 0f);
             // **방 안 피사체는 카메라도 방 안에 세운다**(검수 판정 2026-09-07 3(a)).
@@ -530,7 +591,9 @@ namespace Ulon.Editor
                 // **하한 70%는 지킨다.** 「뚫린 방위가 없으면 더 깊이 당기자」고 1.4m까지 열어 봤더니
                 // 훈련사가 **얼굴만** 찍혔다(원장에 이미 적힌 개악을 그대로 다시 밟았다 — 2026-09-07 재확인).
                 // 유령이 남는 것보다 대상이 안 찍히는 것이 나쁘다.
-                float floor = Mathf.Max(1.6f, dist * 0.7f);
+                // 하한은 껍데기 안으로 들어갈 때 쓰는 하한과 **같은 값**을 쓴다 — 안 그러면
+                // 애써 1.9m로 정한 자리를 이 루프가 1.5m까지 다시 당겨 얼굴만 남긴다(실측).
+                float floor = Mathf.Max(InsidePullFloor, dist * 0.7f);
                 int pulled = 0;
                 while (dist > floor && FadeBlocked(target - rot * Vector3.forward * dist, target, go.transform))
                 {
@@ -601,6 +664,12 @@ namespace Ulon.Editor
             }
             return false;
         }
+
+        /// <summary>
+        /// 껍데기 안으로 들어갈 때의 **최소 거리** — 온몸이 화면에 들어오는 거리다
+        /// (55° 화각·키 1.8m면 1.73m에서 화면 높이를 꽉 채운다). 이 아래로는 얼굴만 찍힌다.
+        /// </summary>
+        const float InsidePullFloor = 1.9f;
 
         /// <summary>사람 샷이 앞에서 찍혔다고 인정하는 최소 정면성(코사인) — 0.2는 정면 ±78°다.</summary>
         public const float PersonFrontMin = 0.2f;
@@ -717,11 +786,27 @@ namespace Ulon.Editor
                     continue;
                 if (rends[i].GetComponent<TerrainCollider>() != null || t.GetComponent<Terrain>() != null)
                     continue;
+                // **선언된 예외 하나: 플레이어 아바타.** QA 씬의 플레이어는 스폰 자리에 세워 둔
+                // 소품이라, 그 몸이 훈련사 앞을 막아 24방위가 전부 막힌 것으로 읽혔다(실측
+                // `Player>Knight_Helmet`). 실제 플레이에서 플레이어는 비켜서면 그만이므로
+                // 「구조적으로 안 보이는 자리」가 아니다 — 다른 사람·짐승은 그대로 가리는 것으로 센다.
+                if (t.root.name == "Player")
+                    continue;
                 if (Vector3.Distance(rends[i].bounds.center, point) > 30f)
                     continue;                                   // 멀리 있는 것은 이 표본을 못 가린다
+                // **카메라가 그 껍데기 안에 있으면 그것은 가리는 것이 아니다**(검수 (ㄴ) 판정 2026-09-08).
+                // 바운드 안에서 쏜 광선은 `IntersectRay`가 거리 0으로 참을 돌려주기 때문에,
+                // 안으로 들어가 찍는 순간 지붕이 스스로를 「가림」으로 세었다(당겨도 계속 빨간불이던 이유).
+                if (rends[i].bounds.Contains(eye))
+                    continue;
+                // **표본 점이 남의 바운드 안에 있다고 봐주지 않는다**(2026-09-08 되돌림).
+                // 한때 「바운드가 머리를 품으면 판정 불가」로 건너뛰었더니, 훈련사 타일이
+                // **청록 지붕 뒤로 모자만 나온 채 통과**했다 — 자의 한계를 봐주는 규칙이
+                // 곧 못 쓰는 샷을 통과시키는 구멍이 된다. 판정은 자를 느슨하게 해서가 아니라
+                // 사람이 지붕 밑에 있다는 **사실을 보고**해서 닫는다.
                 if (rends[i].bounds.IntersectRay(ray, out float dist) && dist < len - 0.05f)
                 {
-                    blocker = (t.parent != null ? t.parent.name + "/" : "") + rends[i].gameObject.name +
+                    blocker = t.root.name + ">" + (t.parent != null ? t.parent.name + "/" : "") + rends[i].gameObject.name +
                               "(바운드 " + rends[i].bounds.size.ToString("0.0") + ")";
                     return true;
                 }
@@ -788,6 +873,15 @@ namespace Ulon.Editor
             return new Shot { Name = name, Eye = eye, Target = t };
         }
 
+        /// <summary>요를 지정해 비스듬히 본다 — 정면에서만 멀쩡한 배치를 걸러내는 각이다.</summary>
+        static Shot Angled(string name, Vector3 target, float dist, float pitch, float yaw)
+        {
+            float y = GroundY(target.x, target.z);
+            var t = new Vector3(target.x, y + 1.2f, target.z);
+            var rot = Quaternion.Euler(pitch, yaw, 0f);
+            return new Shot { Name = name, Eye = t - rot * Vector3.forward * dist, Target = t };
+        }
+
         /// <summary>방 안에서 찍는다 — 천장이 있는 실내는 밖에서 보면 뚜껑만 보인다.</summary>
         static Shot Inside(string name, float cx, float cz, float lookX, float lookZ)
         {
@@ -848,6 +942,39 @@ namespace Ulon.Editor
             var player = new Vector3(0f, GroundY(0f, 0f) + 1.0f, 0f);
             Debug.Log("[Ulon] 동료 가림 샷 — 동료 " + comp.transform.position.ToString("0.0") +
                       ", 플레이어 " + player.ToString("0.0") + " (카메라 거리 " + dist.ToString("0.0") + "m)");
+            return Stand(new Shot
+            {
+                Name = name,
+                Eye = player - rot * Vector3.forward * dist,
+                Target = player,
+                PlayCamera = true,
+            });
+        }
+
+        /// <summary>
+        /// **플레이 카메라로 그 사람에게 다가간 화면**(검수 조건 2026-09-08).
+        /// 근접 샷은 껍데기 안으로 들어가 찍지만, 플레이어가 실제로 다가갈 때 지붕이 걷혀
+        /// 보이는지는 **플레이 카메라 각·거리**로만 확인된다 — 샷에서만 보이고 플레이에서
+        /// 못 보는 사람이면 그건 진짜 배치 결함이다.
+        /// </summary>
+        static Shot PersonPlayCam(string name, string objectName)
+        {
+            var go = FindSubject(objectName);
+            var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
+            float pitch = qv != null ? qv.Pitch : 35f;
+            float yaw = qv != null ? qv.Yaw : 45f;
+            var rot = Quaternion.Euler(pitch, yaw, 0f);
+            if (go == null)
+                return new Shot { Name = name, Eye = new Vector3(0f, 5f, -5f), Target = Vector3.zero };
+            // 플레이어는 그 사람 **바로 옆**(카메라 쪽으로 1.2m)에 선다 — 다가간 상황을 재현한다.
+            var toCam = rot * Vector3.back;
+            toCam.y = 0f;
+            toCam = toCam.sqrMagnitude > 0.0001f ? toCam.normalized : Vector3.back;
+            var p = go.transform.position + toCam * 1.2f;
+            var player = new Vector3(p.x, GroundY(p.x, p.z) + 1.0f, p.z);
+            float dist = 5f;                                  // 판정 대상이 화면의 1/3 이상을 차지하는 거리
+            Debug.Log("[Ulon] 플레이 접근 샷 " + name + " — " + objectName + " " +
+                      go.transform.position.ToString("0.0") + ", 플레이어 " + player.ToString("0.0"));
             return Stand(new Shot
             {
                 Name = name,
