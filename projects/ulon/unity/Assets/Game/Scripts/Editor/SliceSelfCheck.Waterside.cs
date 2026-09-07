@@ -61,6 +61,29 @@ namespace Ulon.Editor
                     " — 상한 " + FishingWaterMax + "m. 잔디 위 발판은 낚시터로 안 읽힌다(§8.1).");
         }
 
+        /// <summary>
+        /// NC — **낚시터가 사라지면 빨간불**(검수 조건 2026-09-07). 옛 코드는 낚시터가 없으면
+        /// 장식 물레방아를 「물가」로 갈아 끼워 결함을 감췄다. 그 폴백을 없앤 만큼, 「없음」이
+        /// 실제로 실패로 읽히는지 여기서 확인한다(지우지 않고 이름만 바꿔 되돌린다).
+        /// </summary>
+        static void AssertFishingSpotMissingNegativeControl()
+        {
+            var spot = GameObject.Find("FishingSpot");
+            if (spot == null)
+                throw new InvalidOperationException("낚시터 NC 대상이 없습니다 — 이미 없습니다(0이면 실패).");
+            bool red = false;
+            try
+            {
+                spot.name = "FishingSpot_NC";
+                try { AssertFishingAtWater(); }
+                catch (InvalidOperationException) { red = true; }
+            }
+            finally { spot.name = "FishingSpot"; }
+            if (!red)
+                throw new InvalidOperationException("낚시터 부재 네거티브 컨트롤 실패 — 낚시터를 치웠는데 통과했습니다.");
+            Debug.Log("[Ulon] 낚시터 부재 네거티브 컨트롤 통과 — 낚시터가 없으면 FAIL(폴백으로 대체되지 않는다)");
+        }
+
         /// <summary>네거티브 컨트롤 — 낚시터를 실제로 마을 잔디로 옮겨 빨간불을 본 뒤 되돌린다.</summary>
         static void AssertFishingAtWaterNegativeControl()
         {

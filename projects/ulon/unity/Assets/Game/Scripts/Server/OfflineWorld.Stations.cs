@@ -177,9 +177,13 @@ namespace Ulon.Server
         {
             var go = GameObject.Find("FishingSpot");
             if (go == null)
-                go = GameObject.Find("watermill");
-            if (go == null)
+            {
+                // **폴백을 없앴다**(검수 판정 2026-09-07): 옛 코드는 장식 물레방아를 집어 이름만
+                // `FishingSpot`으로 갈아 끼웠다. 결함(낚시터 없음)이 「물가」로 위장돼 아무도 몰랐다.
+                // 폴백이 결함을 감춘다 — 없으면 **소리 내어 실패**한다.
+                Debug.LogError("[Ulon] 낚시터(FishingSpot)가 씬에 없습니다 — 낚시가 동작하지 않습니다.");
                 return;
+            }
             go.name = "FishingSpot";
             var node = go.GetComponent<ResourceNode>() ?? go.AddComponent<ResourceNode>();
             node.ResourceId = ItemCatalog.Fish;

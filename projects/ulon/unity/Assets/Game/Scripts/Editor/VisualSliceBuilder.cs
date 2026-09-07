@@ -1571,13 +1571,17 @@ namespace Ulon.Editor
 
         public static void EnsureFishSpot()
         {
-            const string fbx = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/watermill.fbx";
+            // **물레방아 폴백을 없앴다**(검수 판정 2026-09-07). 낚시터가 없을 때 장식 물레방아를
+            // 집어 「물가」 간판만 갈아 끼우는 경로였고, 그래서 **아무도 낚시터가 없다는 걸 몰랐다**.
+            // 조용한 폴백은 강등 운영과 같다 — 없으면 낚시터 자체를 짓는다(발판이 본체다).
+            const string fbx = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/planks.fbx";
             Vector3 pos = LakeShoreTowardVillage();
             var go = GameObject.Find("FishingSpot");
             if (go == null)
-                go = GameObject.Find("watermill");
-            if (go == null)
+            {
                 go = Place(fbx, pos, Vector3.zero);
+                Debug.Log("[Ulon] 낚시터가 없어 새로 지었다 — 물가 발판(" + pos.ToString("0.0") + ")");
+            }
             if (go == null)
                 return;
             go.name = "FishingSpot";
