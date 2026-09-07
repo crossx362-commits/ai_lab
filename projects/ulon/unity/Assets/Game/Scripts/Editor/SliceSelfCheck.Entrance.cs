@@ -88,6 +88,83 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// **문구멍이 기둥 사이에 있는가**(검수 2026-09-07 반려: 조각은 등록 메시로 바뀌었는데 화면은
+        /// 「돌기둥 넷이 흩어져 선 모습」이었다). 두께만 재면 조각이 흩어져 있어도 통과한다 —
+        /// 또 한 축만 재는 것이다. 입구가 바라보는 방향의 **가로축(right)** 위에서:
+        ///   ① 기둥 둘이 문구멍의 **반대쪽**에 하나씩 있어야 하고,
+        ///   ② 문구멍이 두 기둥의 가운데에서 좌우로 크게 벗어나면 안 된다.
+        /// </summary>
+        const float PortalOffCenterMax = 0.35f;
+
+        static void CheckPortalBetweenPillars(string label, Vector2 pos)
+        {
+            float yaw = 0f;
+            bool found = false;
+            for (int s = 0; s < VisualSliceBuilder.EntranceSpots.Length; s++)
+            {
+                var spot = VisualSliceBuilder.EntranceSpots[s];
+                if (new Vector2(spot.X - pos.x, spot.Z - pos.y).magnitude < 1f)
+                {
+                    yaw = spot.Yaw;
+                    found = true;
+                }
+            }
+            if (!found)
+                throw new InvalidOperationException(label + " 입구 좌표가 원장(EntranceSpots)에 없습니다 — 잰 것이 없습니다.");
+            float rad = yaw * Mathf.Deg2Rad;
+            var right = new Vector2(Mathf.Cos(rad), -Mathf.Sin(rad));   // fwd=(sin,cos)의 오른쪽
+
+            float Lateral(Vector3 p) => Vector2.Dot(new Vector2(p.x, p.z) - pos, right);
+
+            var pillars = new List<float>();
+            float portalAt = float.NaN;
+            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                var t = all[i];
+                if (t == null || t.parent == null || t.parent.name != VisualSliceBuilder.EntranceFrameObject)
+                    continue;
+                var rend = t.GetComponentInChildren<Renderer>(false);
+                if (rend == null)
+                    continue;
+                if (Vector2.Distance(new Vector2(rend.bounds.center.x, rend.bounds.center.z), pos) > EntranceRadius)
+                    continue;
+                if (t.name.StartsWith("EntrancePillar", StringComparison.Ordinal))
+                    pillars.Add(Lateral(rend.bounds.center));
+                else if (t.name.StartsWith(VisualSliceBuilder.EntrancePortalObject, StringComparison.Ordinal))
+                    portalAt = Lateral(rend.bounds.center);
+            }
+            if (pillars.Count < 2 || float.IsNaN(portalAt))
+                throw new InvalidOperationException(label + " 입구에서 기둥 2개와 문구멍을 못 찾았습니다(기둥 " + pillars.Count +
+                    ") — 잰 것이 없습니다(0이면 실패).");
+            pillars.Sort();
+            float leftMost = pillars[0];
+            float rightMost = pillars[pillars.Count - 1];
+            if (!(leftMost < portalAt && portalAt < rightMost))
+                throw new InvalidOperationException(label + " 문구멍이 기둥 사이에 없습니다 — 기둥 " +
+                    leftMost.ToString("0.00") + "m·" + rightMost.ToString("0.00") + "m, 문구멍 " + portalAt.ToString("0.00") +
+                    "m(입구 가로축). 기둥이 문을 끼고 서야 「문」으로 읽힌다(§8.1).");
+            float off = Mathf.Abs(portalAt - (leftMost + rightMost) * 0.5f);
+            if (off > PortalOffCenterMax)
+                throw new InvalidOperationException(label + " 문구멍이 기둥 가운데에서 " + off.ToString("0.00") +
+                    "m 치우쳤습니다 — 상한 " + PortalOffCenterMax + "m. 문이 아니라 흩어진 돌기둥으로 보입니다(§8.1).");
+            // 상인방 노릇을 하기로 한 아치(DungeonGate 오브젝트)가 **실제로 어디에 얼마만 하게** 서 있는지
+            // 찍는다 — 검수가 「두 샷 어디에도 아치가 안 보인다」고 물었다. 판정이 아니라 진단이다.
+            var gates = UnityEngine.Object.FindObjectsByType<Ulon.Server.DungeonGate>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < gates.Length; i++)
+            {
+                var r = gates[i].GetComponentInChildren<Renderer>(false);
+                if (r == null || Vector2.Distance(new Vector2(r.bounds.center.x, r.bounds.center.z), pos) > EntranceRadius)
+                    continue;
+                Debug.Log("[Ulon] 입구 아치 진단 " + label + " — " + gates[i].name + " 크기 " + r.bounds.size.ToString("0.00") +
+                          ", 가로축 " + Lateral(r.bounds.center).ToString("0.00") + "m, 윗면 " +
+                          (r.bounds.max.y - r.bounds.min.y).ToString("0.00") + "m 높이");
+            }
+            Debug.Log("[Ulon] 입구 문구멍 위치 " + label + " — 기둥 " + leftMost.ToString("0.00") + "m·" +
+                      rightMost.ToString("0.00") + "m 사이, 중앙에서 " + off.ToString("0.00") + "m(상한 " + PortalOffCenterMax + "m)");
+        }
+
+        /// <summary>
         /// 네거티브 컨트롤 — **결함을 실제로 만든다**. 기둥·옆벽을 꺼서 「아치 뒤 문구멍 판 한 장」으로
         /// 되돌리면(옛 입구가 정확히 그랬다) 두께 게이트가 빨간불이어야 한다. 끝나면 되살린다.
         /// </summary>
@@ -129,6 +206,28 @@ namespace Ulon.Editor
             if (!red)
                 throw new InvalidOperationException("입구 문틀 두께 네거티브 컨트롤 실패 — 기둥·옆벽을 다 꺼 판 한 장만 남겼는데도 통과했습니다.");
             Debug.Log("[Ulon] 입구 문틀 두께 네거티브 컨트롤 통과 — 조각 " + off.Count + "개를 끄면(판 한 장) FAIL");
+
+            // 문구멍을 **실제로 1m 옆으로 옮겨** 「기둥 사이」 판정이 반응하는지 본다(검수 지시).
+            Transform portal = null;
+            for (int c = 0; c < target.childCount; c++)
+                if (target.GetChild(c).name.StartsWith(VisualSliceBuilder.EntrancePortalObject, StringComparison.Ordinal))
+                    portal = target.GetChild(c);
+            if (portal == null)
+                throw new InvalidOperationException("문구멍이 없어 위치 네거티브 컨트롤을 할 수 없습니다.");
+            var was = portal.position;
+            float radNc = 90f * Mathf.Deg2Rad;                                  // 던전 1 접근 방향
+            var rightNc = new Vector3(Mathf.Cos(radNc), 0f, -Mathf.Sin(radNc));
+            portal.position = was + rightNc * 1.5f;
+            bool movedRed = false;
+            try
+            {
+                try { CheckEntrance("던전 1", new Vector2(Dungeon1.EntranceX, Dungeon1.EntranceZ)); }
+                catch (InvalidOperationException) { movedRed = true; }
+            }
+            finally { portal.position = was; }
+            if (!movedRed)
+                throw new InvalidOperationException("문구멍 위치 네거티브 컨트롤 실패 — 문구멍을 1.5m 옆으로 옮겼는데도 통과했습니다.");
+            Debug.Log("[Ulon] 입구 문구멍 위치 네거티브 컨트롤 통과 — 문구멍을 1.5m 옆으로 옮기면 FAIL");
         }
 
         static void CheckEntrance(string label, Vector2 pos)
@@ -209,6 +308,7 @@ namespace Ulon.Editor
                     EntranceFrameThickMin + "m. 얇은 판때기 한 장은 길가 표지판으로 보입니다(§8.1).");
             if (!portal)
                 throw new InvalidOperationException(label + " 입구에 어두운 문구멍이 없습니다 — 들어가는 곳으로 안 읽힙니다.");
+            CheckPortalBetweenPillars(label, pos);
             Debug.Log("[Ulon] 입구 문틀 " + label + " — 수평 최소 두께 " + thick.ToString("0.00") + "m(하한 " + EntranceFrameThickMin + "m)");
         }
         // Kenney 프리팹은 메시 자식 이름이 전부 "Visual"이다 — 조상 이름까지 이어 붙여야 종류를 안다.

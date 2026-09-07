@@ -2185,25 +2185,39 @@ namespace Ulon.Editor
             // 소품 랩에서 같은 이유로 이미 반려된 결함이 **입구에만 남아 있었다**(대낮 야외의 검은 비석 셋).
             // 「아치 한 장은 얇은 판때기」라는 옛 문제는 톤을 올려서가 아니라 **입체 돌기둥이 아치 양옆에
             // 서서 깊이를 만드는 것**으로 푼다(아치 자체는 이 함수 밖의 DungeonGate 오브젝트다).
+            // **배치 반려(검수 2026-09-07)**: 조각을 등록 메시로 바꿨는데도 화면은 「돌기둥 넷이 흩어져
+            // 선 모습」이었다. 원인 셋을 진단으로 갈랐다 —
+            //  ① 「상인방은 기존 아치가 대신한다」던 내 말이 **틀렸다**. 게이트 오브젝트(`Dungeon*Entrance`)는
+            //     0.30×1.00×0.10m짜리 손바닥만 한 조각이라 상인방 노릇을 할 수 없다. 상인방을 직접 세운다.
+            //  ② 옆벽이 기둥과 **같은 줄에** 서서 「기둥 넷」으로 읽혔다 — 뒤로 물려 벽처럼 겹치게 한다.
+            //  ③ 조각이 두 종류라 톤이 갈렸다(베이지 하나 + 회색 셋) — **한 종류로 통일**.
             const string Pillar = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/pillar_decorated.obj";
-            const string PlainPillar = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/pillar.obj";
             var portalMat = MakeNoiseMat("DungeonPortal", new Color(0.03f, 0.03f, 0.05f), new Color(0.08f, 0.07f, 0.10f));
             var frame = new GameObject(EntranceFrameObject);
             frame.transform.SetParent(parent, true);
             float gy = OnGround(pos).y;
+            const float DoorHalf = 1.25f;      // 문구멍 반폭 + 기둥 반폭 — 기둥이 문을 좌우로 낀다
+            const float PillarH = 3.2f;
             for (int side = -1; side <= 1; side += 2)
             {
-                Vector3 pillar = pos + right * (1.45f * side);
+                Vector3 pillar = pos + right * (DoorHalf * side);
                 RoomPropObject(frame.transform, "EntrancePillar" + (side > 0 ? 1 : 2), Pillar,
-                    new Vector3(pillar.x, gy, pillar.z), approachYaw, 3.2f, true);
+                    new Vector3(pillar.x, gy, pillar.z), approachYaw, PillarH, true);
             }
-            // 옆벽 — **돌기둥으로 한 겹 더**(기둥보다 낮되 0.5m 안, 계단처럼 보이면 안 된다). Kenney 벽 블록(wall-block)을 옆벽으로 세워 봤더니
-            // 마을 회벽 흰 큐브가 문틀보다 커서 입구를 통째로 가렸다(2026-09-07 샷에서 눈으로 확인).
-            // 마을 벽재는 던전 돌과 톤이 붕 뜬다 — 옆벽도 같은 KayKit 돌기둥으로, 낮게 둔다.
+            // 상인방 — 같은 돌기둥을 **눕혀** 두 기둥 위를 잇는다. 새 조각을 받지 않고 배치로 푼다(검수).
+            var lintel = RoomPropObject(frame.transform, "EntranceLintel", Pillar,
+                new Vector3(pos.x, gy, pos.z), approachYaw, DoorHalf * 2f + 0.9f, true);
+            if (lintel != null)
+            {
+                lintel.transform.rotation = Quaternion.Euler(0f, approachYaw, 90f);
+                if (BoundsOf(lintel.transform, true, out Bounds lb))
+                    lintel.transform.position += new Vector3(pos.x, gy + PillarH + 0.25f, pos.z) - lb.center;
+            }
+            // 옆벽 — 기둥과 **같은 줄이 아니라 뒤로 물려** 벽처럼 겹치게 한다(기둥보다 낮되 0.5m 안).
             for (int side = -1; side <= 1; side += 2)
             {
-                Vector3 wing = pos + right * (2.5f * side);
-                RoomPropObject(frame.transform, "EntranceWing" + (side > 0 ? 1 : 2), PlainPillar,
+                Vector3 wing = pos + right * (2.3f * side) - fwd * 1.1f;
+                RoomPropObject(frame.transform, "EntranceWing" + (side > 0 ? 1 : 2), Pillar,
                     new Vector3(wing.x, gy, wing.z), approachYaw, 2.8f, true);
             }
             // 문구멍 — **자격 원장의 유일한 예외**다. 이건 물건이 아니라 안쪽의 「어둠」이고, 아래가
