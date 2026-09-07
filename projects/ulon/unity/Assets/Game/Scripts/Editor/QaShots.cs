@@ -415,6 +415,7 @@ namespace Ulon.Editor
             float bestYaw = baseYaw;
             float bestPitch = pitch;
             float bestSeen = -1f;
+            float blockedYaw = baseYaw, blockedPitch = pitch, blockedSeen = -1f;
             // 마을은 시설이 2~3m 간격으로 붙어 있어 게임 각도에서는 앞집 지붕이 시설을 통째로 덮는다
             // (첫 촬영본 35_fishing이 그랬다). 방위 8 × 내려보는 각 3을 다 재고 제일 잘 보이는 조합을 쓴다.
             float[] pitches = lowAngle ? new[] { 10f, 18f, 26f } : new[] { pitch, 50f, 65f };
@@ -468,7 +469,24 @@ namespace Ulon.Editor
                 // 등을 보이는 각은 아예 **후보에서 뺀다** — 얼굴이 없으면 「누구인지」가 화면에 없다.
                 if (byRenderer && !IgnoreFrontRuleForNc && FrontDot(go.transform, target, pit, y, dist) < PersonFrontMin)
                     continue;
+                // **반투명 벽이 끼는 방위는 후보에서 뺀다**(검수 지시 2026-09-07, 마을 배치 랩).
+                // 「당겨서 피한다」는 완화였고 70% 하한에 걸려 유령 벽이 남았다 —
+                // `50_villagers` 1·3번 타일이 「유리벽 안에 선 NPC」로 읽힌 이유가 이것이다.
+                // 반드시 성립해야 하는 것은 **후보에서 배제하는 규칙**으로 건다(검수 원문).
+                // 다만 모든 방위가 막힌 시설도 있으니, 막힌 후보는 **차선**으로 따로 남긴다.
+                if (byRenderer && FadeBlocked(target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * dist, target, go.transform))
+                {
+                    if (share > blockedSeen + 0.02f) { blockedSeen = share; blockedYaw = y; blockedPitch = pit; }
+                    continue;
+                }
                 if (share > bestSeen + 0.02f) { bestSeen = share; bestYaw = y; bestPitch = pit; }
+            }
+            bool noClearBearing = false;
+            if (bestSeen < 0f && blockedSeen >= 0f)
+            {
+                bestYaw = blockedYaw; bestPitch = blockedPitch; bestSeen = blockedSeen;
+                noClearBearing = true;
+                Debug.Log("[Ulon] 사람 샷 " + name + " — 뚫린 방위가 없어 반투명이 끼는 차선 방위로 찍는다");
             }
             if (beyond.HasValue)
             {
@@ -493,6 +511,9 @@ namespace Ulon.Editor
                 // 당김은 **반투명해질 것**(페이드 레이어)만 피한다. 처음엔 아무 렌더러나 피하게 했더니
                 // 울타리·바닥 바운드까지 걸려 1.2m까지 붙었고 얼굴만 찍혔다(개악) — 그래서
                 // ① 대상을 페이드 레이어로 좁히고 ② 원래 거리의 70%까지만 당긴다.
+                // **하한 70%는 지킨다.** 「뚫린 방위가 없으면 더 깊이 당기자」고 1.4m까지 열어 봤더니
+                // 훈련사가 **얼굴만** 찍혔다(원장에 이미 적힌 개악을 그대로 다시 밟았다 — 2026-09-07 재확인).
+                // 유령이 남는 것보다 대상이 안 찍히는 것이 나쁘다.
                 float floor = Mathf.Max(1.6f, dist * 0.7f);
                 int pulled = 0;
                 while (dist > floor && FadeBlocked(target - rot * Vector3.forward * dist, target, go.transform))

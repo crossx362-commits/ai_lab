@@ -2262,6 +2262,8 @@ namespace Ulon.Editor
             //  ② 옆벽이 기둥과 **같은 줄에** 서서 「기둥 넷」으로 읽혔다 — 뒤로 물려 벽처럼 겹치게 한다.
             //  ③ 조각이 두 종류라 톤이 갈렸다(베이지 하나 + 회색 셋) — **한 종류로 통일**.
             const string Pillar = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/pillar_decorated.obj";
+            // 눕히는 조각·옆벽은 무늬 없는 민 기둥으로 — 장식은 **세운 것에만** 둔다.
+            const string PlainPillar = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/pillar.obj";
             var portalMat = MakeNoiseMat("DungeonPortal", new Color(0.03f, 0.03f, 0.05f), new Color(0.08f, 0.07f, 0.10f));
             var frame = new GameObject(EntranceFrameObject);
             frame.transform.SetParent(parent, true);
@@ -2274,8 +2276,11 @@ namespace Ulon.Editor
                 RoomPropObject(frame.transform, "EntrancePillar" + (side > 0 ? 1 : 2), Pillar,
                     new Vector3(pillar.x, gy, pillar.z), approachYaw, PillarH, true);
             }
-            // 상인방 — 같은 돌기둥을 **눕혀** 두 기둥 위를 잇는다. 새 조각을 받지 않고 배치로 푼다(검수).
-            var lintel = RoomPropObject(frame.transform, "EntranceLintel", Pillar,
+            // 상인방 — 눕혀 잇는다. **장식 기둥이 아니라 민 기둥**(`pillar.obj`)을 쓴다(검수 지적
+            // 2026-09-07): 장식 기둥을 눕히니 방패 무늬가 **가로로 누워** 「옆으로 눕힌 기둥」으로 읽혔다.
+            // 원인은 자동 배치 로직이 아니라 **어떤 조각을 쓰느냐**다 — 등록 킷에 들보 조각이 없어
+            // 같은 계열의 민 조각으로 바꾼다(무늬가 없으면 눕혀도 방향이 안 읽힌다).
+            var lintel = RoomPropObject(frame.transform, "EntranceLintel", PlainPillar,
                 new Vector3(pos.x, gy, pos.z), approachYaw, DoorHalf * 2f + 0.9f, true);
             if (lintel != null)
             {
@@ -2287,7 +2292,8 @@ namespace Ulon.Editor
             for (int side = -1; side <= 1; side += 2)
             {
                 Vector3 wing = pos + right * (2.3f * side) - fwd * 1.1f;
-                RoomPropObject(frame.transform, "EntranceWing" + (side > 0 ? 1 : 2), Pillar,
+                // 옆벽도 민 조각이다 — 장식 기둥으로 세우면 「기둥이 네 개」로 읽힌다(검수 지적).
+                RoomPropObject(frame.transform, "EntranceWing" + (side > 0 ? 1 : 2), PlainPillar,
                     new Vector3(wing.x, gy, wing.z), approachYaw, 2.8f, true);
             }
             // 문구멍 — **자격 원장의 유일한 예외**다. 이건 물건이 아니라 안쪽의 「어둠」이고, 아래가
