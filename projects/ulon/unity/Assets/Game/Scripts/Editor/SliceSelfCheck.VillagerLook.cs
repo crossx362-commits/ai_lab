@@ -347,33 +347,63 @@ namespace Ulon.Editor
         }
 
         /// <summary>
-        /// **한 사람이 무기 하나·방패 하나만 든다**(랩 ③ 실측 발견: 플레이어가 검 3·방패 4였다).
-        /// 잡몹 드레싱 게이트는 **무기만** 세어 방패 4개를 못 봤다 — 세는 것만 보인다.
+        /// **장비를 슬롯별로 전수로 센다**(검수 지시 2026-09-07 4).
+        ///
+        /// 처음엔 「무기 1 + 방패 1」만 셌다. 그런데 이 구멍이 생긴 원인 자체가
+        /// **「무기 개수만 세고 방패는 무기로 안 쳤다」**였다 — 같은 방식으로 세면 다음엔 투구나
+        /// 망토가 겹쳐도 못 본다. **세는 것만 보인다.** 그래서 종류(슬롯)와 상한을 원장에 적고
+        /// 켜져 있는 장비 렌더러를 종류별로 전수로 센다. 새 종류가 생기면 여기 한 줄 추가하면 된다.
         /// </summary>
+        static readonly (string Slot, int Max, Func<string, bool> Is)[] GearSlots =
+        {
+            ("무기", 1, n => VisualSliceBuilder.IsWeaponName(n)),
+            ("방패", 1, n => n.IndexOf("Shield", StringComparison.OrdinalIgnoreCase) >= 0),
+            ("머리", 1, n => n.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             n.IndexOf("Helmet", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                             n.StartsWith("BossCrown", StringComparison.Ordinal)),
+            ("망토", 1, n => VisualSliceBuilder.IsCapeName(n)),
+            ("화살통", 1, n => n.IndexOf("Quiver", StringComparison.OrdinalIgnoreCase) >= 0),
+        };
+
         static void AssertGearDressed()
         {
             var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             if (actors.Length == 0)
                 throw new InvalidOperationException("사람형이 없습니다 — 잰 것이 없습니다(0이면 실패).");
             var bad = new List<string>();
+            int worn = 0;
             for (int a = 0; a < actors.Length; a++)
             {
-                int w = 0, sh = 0;
+                var count = new int[GearSlots.Length];
+                var names = new List<string>[GearSlots.Length];
                 foreach (var t in actors[a].GetComponentsInChildren<Transform>(true))
                 {
                     var r = t.GetComponent<Renderer>();
-                    if (r == null || !r.enabled || !t.gameObject.activeInHierarchy || !VisualSliceBuilder.IsGearName(t.name))
+                    if (r == null || !r.enabled || !t.gameObject.activeInHierarchy)
                         continue;
-                    if (t.name.IndexOf("Shield", System.StringComparison.OrdinalIgnoreCase) >= 0) sh++;
-                    else if (VisualSliceBuilder.IsWeaponName(t.name)) w++;
+                    for (int g = 0; g < GearSlots.Length; g++)
+                    {
+                        if (!GearSlots[g].Is(t.name))
+                            continue;
+                        count[g]++;
+                        (names[g] ??= new List<string>()).Add(t.name);
+                        worn++;
+                        break;                               // 한 조각은 한 슬롯에만 센다
+                    }
                 }
-                if (w > 1 || sh > 1)
-                    bad.Add(actors[a].name + " 무기 " + w + "·방패 " + sh);
+                for (int g = 0; g < GearSlots.Length; g++)
+                    if (count[g] > GearSlots[g].Max)
+                        bad.Add(actors[a].name + " " + GearSlots[g].Slot + " " + count[g] + "개(" +
+                                string.Join("+", names[g]) + ")");
             }
+            if (worn == 0)
+                throw new InvalidOperationException("장비를 걸친 사람형이 하나도 없습니다 — 잰 것이 없습니다(0이면 실패).");
             if (bad.Count > 0)
-                throw new InvalidOperationException("무기·방패를 여러 개 든 사람형 " + bad.Count + "체: " +
-                    string.Join(", ", bad) + " — 등에 방패 넷을 짊어진 실루엣은 사람으로 안 읽힌다(§8.1).");
-            Debug.Log("[Ulon] 장비 개수 — 사람형 " + actors.Length + "체 전수 「무기 1↓·방패 1↓」");
+                throw new InvalidOperationException("한 슬롯에 여러 개를 걸친 사람형 " + bad.Count + "건: " +
+                    string.Join(", ", bad) + " — 방패 넷을 짊어진 실루엣은 사람으로 안 읽힌다(§8.1). " +
+                    "상한은 SliceSelfCheck.GearSlots 원장에 있습니다.");
+            Debug.Log("[Ulon] 장비 슬롯 — 사람형 " + actors.Length + "체·걸친 조각 " + worn +
+                      "개 전수, 슬롯 " + GearSlots.Length + "종 모두 상한 안");
         }
 
         /// <summary>NC — 꺼 둔 장비를 실제로 켜면 빨간불이어야 한다.</summary>

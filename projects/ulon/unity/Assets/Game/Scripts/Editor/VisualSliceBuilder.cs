@@ -583,11 +583,10 @@ namespace Ulon.Editor
 
         public static void EnsureHuntMobs()
         {
-            var skel = GameObject.Find("Skeleton");
-            if (skel != null)
-                BindMob(skel, MobCatalog.Skeleton);
-
-            EnsureHuntMob("Bandit", MobCatalog.Bandit, MageFbx, new Vector3(-1.6f, 0f, 13.2f));
+            // **`Skeleton`도 없으면 세운다.** 예전엔 찾아서 묶기만 했다 — 자격 패스가 지우면
+            // 다시 세우는 코드가 파이프라인에 없어 **동료와 똑같이 영영 사라질** 자리였다(랩 ③ 전수 조사).
+            EnsureHuntMob("Skeleton", MobCatalog.Skeleton, SkeletonFbx, new Vector3(0.6f, 0f, 13.6f));
+            EnsureHuntMob("Bandit", MobCatalog.Bandit, RogueFbx, new Vector3(-1.6f, 0f, 13.2f));
             EnsureHuntMob("Raider", MobCatalog.Raider, KnightFbx, new Vector3(2.4f, 0f, 13.2f));
             EnsureHuntMob("Rogue", MobCatalog.Rogue, RogueFbx, new Vector3(-3.8f, 0f, 13.2f));
             EnsureHuntMob("Knight", MobCatalog.Knight, KnightFbx, new Vector3(4.4f, 0f, 13.2f));
@@ -1113,12 +1112,12 @@ namespace Ulon.Editor
             var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
             if (ctrl == null)
                 return;
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(MageFbx) == null)
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(RogueFbx) == null)
                 return;
-            ConfigureHumanoid(MageFbx, true);
+            ConfigureHumanoid(RogueFbx, true);
             var spawned = SpawnActor(
                 Dungeon2.MobObject,
-                MageFbx,
+                RogueFbx,
                 new Vector3(Dungeon2.MobX, 0f, Dungeon2.MobZ),
                 MobCatalog.HeightOf(MobCatalog.Bandit),
                 ctrl,
@@ -2464,17 +2463,18 @@ namespace Ulon.Editor
             var go = GameObject.Find("Campfire");
             if (go == null)
                 return false;
-            for (int c = go.transform.childCount - 1; c >= 0; c--)
-                if (go.transform.GetChild(c).name == CampfireFlameObject)
-                    UnityEngine.Object.DestroyImmediate(go.transform.GetChild(c).gameObject);
-
+            // **다시 세울 수 있는지 먼저 확인하고 지운다**(랩 ③ 전수 조사에서 나온 비대칭).
+            // 예전엔 불꽃을 먼저 지우고 텍스처가 없으면 false로 빠져 **불이 사라진 채** 남았다.
             const string texPath = "Assets/_ThirdParty/Kenney/Particles/RAW/Textures/flame_01.png";
             var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
             if (tex == null)
             {
-                Debug.LogWarning("[Ulon] 불꽃 스프라이트가 없어 화덕에 불을 못 붙였습니다: " + texPath);
+                Debug.LogWarning("[Ulon] 불꽃 스프라이트가 없어 화덕에 불을 못 붙였습니다(기존 불은 그대로 둡니다): " + texPath);
                 return false;
             }
+            for (int c = go.transform.childCount - 1; c >= 0; c--)
+                if (go.transform.GetChild(c).name == CampfireFlameObject)
+                    UnityEngine.Object.DestroyImmediate(go.transform.GetChild(c).gameObject);
 
             // 불은 **돌 사이 한가운데 위**에서 난다 — 기준은 오브젝트 원점이 아니라 보이는 것의 중심이다.
             // **자기 출력물(돌·장작)을 기준으로 삼지 않는다** — 그러면 돌 때마다 불이 밀린다(검수 판정 ③).
@@ -2851,7 +2851,16 @@ namespace Ulon.Editor
                         armed |= visible;
                     }
                 }
-                var keepW = armed ? PickGear(weapons) : null;
+                // **이미 하나만 들고 있으면 그것을 존중한다.** 여기서 다시 고르면 앞선 패스(`DressMob`은
+                // 「가장 큰 무기」를 고른다)의 결정을 덮어 **다른 몹과 같은 모습으로 합쳐진다** —
+                // 실제로 기사(2H_Sword)를 1H_Sword로 바꿔 약탈자와 완전히 같아졌고 겹침 게이트가 잡았다.
+                var visibleWeapons = new List<Transform>();
+                for (int i = 0; i < weapons.Count; i++)
+                    if (weapons[i].gameObject.activeInHierarchy)
+                        visibleWeapons.Add(weapons[i]);
+                var keepW = !armed ? null
+                          : visibleWeapons.Count == 1 ? visibleWeapons[0]
+                          : PickGear(weapons);
                 var keepS = shielded ? PickShield(shields) : null;
                 int off = 0;
                 for (int i = 0; i < weapons.Count; i++)
@@ -2901,6 +2910,82 @@ namespace Ulon.Editor
                 if (shields[i].name == "Round_Shield")
                     return shields[i];
             return shields[0];
+        }
+
+
+        /// <summary>
+        /// **몹 외형 원장**(검수 승인 2026-09-07 — 도적 교체·겹침 이동 대책).
+        ///
+        /// 모델만 바꾸면 **겹침이 옮겨간다**: 도적을 Rogue로 바꾸면 자객(Rogue/석궁)과 완전히 같아진다
+        /// (Rogue FBX가 품은 무기는 석궁 2종뿐이다). 그래서 마을 5역할과 같은 두 축 —
+        /// **든 것과 몸 색** — 을 여기 한 곳에 적고 적용한다.
+        ///
+        /// 기사↔약탈자도 같은 이유로 여기 있다: 방패 넷을 정리하고 나니 **둘이 완전히 같아졌다**
+        /// (원래 방패 개수만 달랐다 — 그건 구분이 아니다). 겹침 게이트가 그 자리에서 잡았다.
+        /// 「기대 모델」이 다르면 **지운다** — 다시 세우는 것은 `EnsureHuntMobs`·`EnsureDungeon2`다
+        /// (지우기만 하는 패스를 만들지 않는다, 동료가 그렇게 사라졌다).
+        /// </summary>
+        public static readonly (string Object, string Fbx, string Gear, Color Tint, string Why)[] MobLooks =
+        {
+            ("Bandit",             null, "1H_Crossbow",  new Color(0.52f, 0.26f, 0.20f), "도적 — 적갈, 한손 석궁"),
+            (Dungeon2.MobObject,   null, "1H_Crossbow",  new Color(0.52f, 0.26f, 0.20f), "던전 도적 — 마을판과 같은 종류(선언된 쌍)"),
+            ("Rogue",              null, "2H_Crossbow",  new Color(0.28f, 0.32f, 0.40f), "자객 — 청회색, 두손 석궁(도적과 갈린다)"),
+            ("Knight",             null, "1H_Sword",     new Color(0.62f, 0.66f, 0.72f), "기사 — 밝은 강철빛, 한손검+방패"),
+            ("Raider",             null, "2H_Sword",     new Color(0.44f, 0.30f, 0.22f), "약탈자 — 흙빛, 두손검(기사와 갈린다)"),
+            (Dungeon3.MobObject,   null, "2H_Sword",     new Color(0.44f, 0.30f, 0.22f), "던전 약탈자 — 마을판과 같은 종류(선언된 쌍)"),
+        };
+
+        /// <summary>기대 모델이 다른 몹을 지운다 — `EnsureHuntMobs`·`EnsureDungeon*`보다 **먼저** 돌아야 한다.</summary>
+        public static void EnsureMobModelLedger()
+        {
+            var expect = new (string Object, string Prefix)[]
+            {
+                ("Bandit", "Rogue"),
+                (Dungeon2.MobObject, "Rogue"),
+            };
+            int removed = 0;
+            for (int i = 0; i < expect.Length; i++)
+            {
+                var go = GameObject.Find(expect[i].Object);
+                if (go == null)
+                    continue;
+                if (MobArt.ModelOf(go, out MobArt.Model m, out _) && m.Prefix == expect[i].Prefix)
+                    continue;
+                Debug.Log("[Ulon] 몹 모델 교체 — " + expect[i].Object + "가 기대 모델(" + expect[i].Prefix +
+                          ")이 아니라 헐고 다시 세운다");
+                UnityEngine.Object.DestroyImmediate(go);
+                removed++;
+            }
+            if (removed > 0)
+                Debug.Log("[Ulon] 몹 모델 원장 — " + removed + "체를 교체 대상으로 지웠다(재생성은 EnsureHuntMobs·EnsureDungeon2)");
+        }
+
+        /// <summary>원장대로 몹의 든 것·몸 색을 맞춘다(멱등). `DressMob`·`EnsureGearDressed` 뒤에 돈다.</summary>
+        public static void EnsureMobLooks()
+        {
+            int done = 0;
+            for (int i = 0; i < MobLooks.Length; i++)
+            {
+                var go = GameObject.Find(MobLooks[i].Object);
+                if (go == null)
+                    continue;
+                foreach (var t in go.GetComponentsInChildren<Transform>(true))
+                {
+                    if (!IsGearName(t.name) || t.name.StartsWith(BossWeaponPrefix, StringComparison.Ordinal))
+                        continue;
+                    bool shield = t.name.IndexOf("Shield", StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (shield)
+                        continue;                        // 방패는 `EnsureGearDressed`가 하나로 정리한다
+                    t.gameObject.SetActive(t.name == MobLooks[i].Gear);
+                }
+                var mat = TintMaterial("Mob" + MobLooks[i].Object, MobLooks[i].Tint, go);
+                if (mat != null)
+                    foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                        if (!IsGearName(r.gameObject.name))
+                            r.sharedMaterial = mat;
+                done++;
+            }
+            Debug.Log("[Ulon] 몹 외형 원장 — " + done + "체에 든 것·몸 색을 적용했다(모델만 바꾸면 겹침이 옮겨간다)");
         }
 
         /// <summary>역할별 몸 재질 — 모델 텍스처는 그대로 두고 색만 곱한다(질감을 잃으면 §8.2 위반이다).</summary>
@@ -4743,8 +4828,10 @@ namespace Ulon.Editor
                 fbx = KnightFbx;
             else if (rootName == "Skeleton" || rootName == Dungeon1.MobObject || rootName == Dungeon1.BossObject)
                 fbx = SkeletonFbx;
-            else if (rootName == "Bandit" || rootName == "Trainer" || rootName == Dungeon2.MobObject || rootName == FieldBoss.Object)
+            else if (rootName == "Trainer" || rootName == FieldBoss.Object)
                 fbx = MageFbx;
+            else if (rootName == "Bandit" || rootName == Dungeon2.MobObject)
+                fbx = RogueFbx;      // 「도적」이 마법사 차림이던 이름-외형 어긋남(검수 승인 2026-09-07)
             else if (rootName == "Raider" || rootName == Dungeon3.MobObject)
                 fbx = KnightFbx;
             else if (rootName == "Rogue" || rootName == Dungeon2.BossObject)

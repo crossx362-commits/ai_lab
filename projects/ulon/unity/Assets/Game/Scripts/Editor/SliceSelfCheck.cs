@@ -20,6 +20,7 @@ namespace Ulon.Editor
                 scene = EditorSceneManager.OpenScene(scenePath);
             VisualSliceBuilder.EnsureVillageTerrain();   // 지형 먼저 — 던전 방이 여기에 구멍을 뚫는다
             VisualSliceBuilder.EnsureMobArtQualified();    // 맨몸 모델 몹은 지우고 다시 짓는다(검수 자격 규칙)
+            VisualSliceBuilder.EnsureMobModelLedger();     // 기대 모델과 다른 몹도 헐고 다시(도적=Rogue, 검수 승인)
             VisualSliceBuilder.EnsureHuntMobs();
             VisualSliceBuilder.EnsureHuntMobPlacement();
             VisualSliceBuilder.EnsureMobDressing();
@@ -51,6 +52,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureVillageFacilities();  // 시설이 그 기능으로 읽히게(검수 랩 ①)
             VisualSliceBuilder.EnsureServiceNpcs();        // 표시명만 사람이던 자리에 사람을(§18.19, 검수 랩 ②)
             VisualSliceBuilder.EnsureGearDressed();        // 한 사람이 무기 1·방패 1만 든다(랩 ③ 발견)
+            VisualSliceBuilder.EnsureMobLooks();           // 도적·자객·기사·약탈자를 든 것·색으로 가른다(검수 승인)
             VisualSliceBuilder.EnsureCompanion();          // 지워진 뒤 아무도 안 세우던 동료를 다시(랩 ③)
             VisualSliceBuilder.EnsureVillagerLooks();      // 5역할을 든 것·몸 색으로 가른다(검수 랩 ③사람)
             VisualSliceBuilder.EnsureCampfireFire();       // 화덕에 불(검수 반려 — 불 메시가 없어도 파티클로 된다)
@@ -1656,6 +1658,10 @@ namespace Ulon.Editor
             AssertGearDressed();                            // 무기 1·방패 1(플레이어가 검 3·방패 4였다)
             AssertCompanionDistinctNegativeControl();       // 동료를 플레이어와 같게 만들면 빨간불인가
             AssertCompanionDistinct();                      // 동료가 내 편으로 갈리는가
+            AssertSceneRosterNegativeControl();             // 명단 하나를 지우면 빨간불인가
+            AssertSceneRosterPresent();                     // 있어야 할 것이 조용히 사라지지 않았는가(3(b))
+            AssertNoUndeclaredLookTwinsNegativeControl();   // 선언 없는 쌍을 만들면 빨간불인가
+            AssertNoUndeclaredLookTwins();                  // 화면에서 같은 쌍은 선언된 것만(검수 지시 2)
             AssertEffectWiring();
             AssertEffectWiringNegativeControl();
             AssertCharacterArtNegativeControl();

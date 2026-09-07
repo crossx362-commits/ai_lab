@@ -112,6 +112,9 @@ namespace Ulon.Editor
                 shotList.Add(FacilityCloseUp(nm, villagers[i].name, null, true));
             }
             shotList.Add(PairCloseUp("51_player_companion", "Player", VisualSliceBuilder.CompanionObject));
+            // 도적 근접 — Mage 차림이던 이름-외형 어긋남을 고친 뒤(검수 승인) 화면으로 확인한다.
+            shotList.Add(FacilityCloseUp("52_bandit", "Bandit", null, true));
+            shotList.Add(FacilityCloseUp("53_rogue", "Rogue", null, true));   // 자객 — 도적과 갈리는지 나란히 본다
             shots = shotList.ToArray();
 
             // **런타임 포즈로 찍는다.** 에디터에서 그냥 찍으면 모든 액터가 바인드 포즈(T포즈)라
@@ -336,7 +339,7 @@ namespace Ulon.Editor
         /// </param>
         static Shot FacilityCloseUp(string name, string objectName, Vector3? beyond, bool lowAngle)
         {
-            var go = GameObject.Find(objectName);
+            var go = FindSubject(objectName);
             if (go == null)
                 return new Shot { Name = name, Eye = new Vector3(0f, 5f, -5f), Target = Vector3.zero };
             var rends = go.GetComponentsInChildren<Renderer>(true);
@@ -554,6 +557,21 @@ namespace Ulon.Editor
                 if (p.name.StartsWith("FacPart", System.StringComparison.Ordinal))
                     return true;
             return false;
+        }
+
+        /// <summary>
+        /// 이름으로 피사체를 찾되 **액터(CharacterController)를 먼저** 고른다.
+        /// KayKit 프리팹 안에 모델 이름과 같은 노드가 있어(`Rogue/Rogue`) `GameObject.Find`가
+        /// **속 노드**를 집었고, 그 노드엔 CC가 없어 사람 판정이 빗나가 바운드가 통째로 비었다
+        /// (첫 촬영본 53_rogue: 프레이밍이 대상 없이 잡혔다). **이름은 유일하지 않다.**
+        /// </summary>
+        static GameObject FindSubject(string objectName)
+        {
+            var actors = Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < actors.Length; i++)
+                if (actors[i].gameObject.name == objectName)
+                    return actors[i].gameObject;
+            return GameObject.Find(objectName);
         }
 
         /// <summary>

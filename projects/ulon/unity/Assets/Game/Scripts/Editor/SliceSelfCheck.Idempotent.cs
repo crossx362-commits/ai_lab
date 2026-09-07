@@ -135,10 +135,24 @@ namespace Ulon.Editor
             {
                 if (!all[i].gameObject.activeInHierarchy)
                     continue;
-                string path = GroundFit.NodePath(all[i]);
-                map[path] = all[i].position;              // 같은 경로가 겹치면 마지막 것 — 비교는 경로 기준이라 무방
+                // **같은 경로가 여럿이면 키가 겹친다.** 예전엔 「마지막 것」을 담았는데, 오브젝트가
+                // 하나라도 헐고 다시 서면 `FindObjectsByType`의 순서가 바뀌어 **같은 키가 다른 집을
+                // 가리켰다** — 마을 장식이 8~25m 「밀린 것」으로 읽혀 멱등 게이트가 거짓 빨간불을 냈다
+                // (도적 모델을 교체하자 드러났다). 형제 순번을 키에 붙여 **한 오브젝트에 한 키**로 만든다.
+                string path = GroundFit.NodePath(all[i]) + "#" + SiblingChain(all[i]);
+                map[path] = all[i].position;
             }
             return map;
+        }
+
+        /// <summary>루트부터 이 노드까지의 형제 순번 — 같은 이름이 여럿일 때 키를 갈라 준다.</summary>
+        static string SiblingChain(Transform t)
+        {
+            var parts = new List<string>();
+            for (var cur = t; cur != null; cur = cur.parent)
+                parts.Add(cur.GetSiblingIndex().ToString());
+            parts.Reverse();
+            return string.Join(".", parts);
         }
 
         /// <summary>보수 패스 중 **자리를 잡는 것들**만 다시 돌린다(빌드 전체를 다시 짓지 않는다).</summary>
@@ -148,6 +162,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureVillageFacilities();
             VisualSliceBuilder.EnsureServiceNpcs();
             VisualSliceBuilder.EnsureGearDressed();
+            VisualSliceBuilder.EnsureMobLooks();
             VisualSliceBuilder.EnsureCompanion();
             VisualSliceBuilder.EnsureVillagerLooks();
             VisualSliceBuilder.EnsureCampfireFire();
