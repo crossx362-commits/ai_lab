@@ -187,9 +187,18 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("은행이 없어 도약 네거티브 컨트롤을 할 수 없습니다.");
             var stand = OfflineWorld.WarpTarget(bank.transform.position.x - 3f, bank.transform.position.z);
             var old = OfflineWorld.WarpTarget(stand.x + SpellCast.BlinkDistance, stand.z);
-            bool red = Inside(old, out string blocker);
+            bool inside = Inside(old, out string blocker);
+            // 은행이 **속이 빈 건물**이 되면서(2026-09-07) 「구조물 안」만으로는 결함을 못 잡는다 —
+            // 옛 계산의 착지점은 벽 **너머**의 빈 방이라 겹침이 없다. 진짜 결함은 「벽을 통과해서 간다」다.
+            bool through = Physics.Linecast(stand + Vector3.up * 1.0f, old + Vector3.up * 1.0f,
+                out RaycastHit wall, ~0, QueryTriggerInteraction.Ignore)
+                && wall.collider.GetComponentInParent<WorldBody>() == null
+                && wall.collider.GetComponent<TerrainCollider>() == null;
+            if (through && string.IsNullOrEmpty(blocker))
+                blocker = wall.collider.transform.root.name + " 벽을 통과";
+            bool red = inside || through;
             Debug.Log("[Ulon] 도약 네거티브 컨트롤 — 옛 계산(전방 3.5m 무조건)은 " +
-                      (red ? "구조물 안(" + blocker + ")" : "**바깥**") + "에 떨어진다");
+                      (red ? "구조물 안이거나 벽 너머(" + blocker + ")" : "**바깥**") + "에 떨어진다");
             if (!red)
                 throw new InvalidOperationException("도약 네거티브 컨트롤 실패 — 옛 계산이 건물 안에 떨어지지 않습니다. " +
                     "기준점이 건물을 향하고 있지 않다는 뜻이라, 이 게이트는 막힘을 재고 있지 않습니다.");

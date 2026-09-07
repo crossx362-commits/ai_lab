@@ -22,6 +22,17 @@ namespace Ulon.Editor
     /// </summary>
     public static class RoleLook
     {
+        /// <summary>
+        /// **사람이 들어가는 역할**에만 걸리는 세 축(검수 2026-09-07: 「높이 3.1m로 통과하는데 풍차
+        /// 날개다」 — 한 축만 재면 다른 축으로 빠져나간다).
+        ///   (i)  수평 최소 두께 — 얇은 판은 건물이 아니다(입구 문틀에서 쓴 축 그대로).
+        ///   (ii) 렌더러 1개면 실패 — 건물은 벽·지붕·문이 조립된 것이다.
+        ///   (iii) **안에 사람이 설 자리** — 이게 「들어갈 수 있다」의 정의다. 물리로 잰다.
+        /// 두께 1.5m는 사람 캡슐(지름 0.6m)이 서고 양쪽에 벽이 남는 최소치다.
+        /// </summary>
+        public const float EnterableThickMin = 1.5f;
+        public const int EnterableRendererMin = 2;
+
         public struct Facility
         {
             public string Object;          // 씬 오브젝트 이름
@@ -30,6 +41,7 @@ namespace Ulon.Editor
             public string[] PartMeshes;    // 기능이 읽히는 부속 — 이 중 하나라도 붙어 있어야 한다
             public string PartWhy;         // 그 부속이 무엇을 읽히게 하는가
             public bool MustBePerson;      // 표시명이 사람인 역할(§18.19) — 사람 모델이어야 한다
+            public bool Enterable;         // 사람이 **들어가는** 역할 — 높이만으로는 못 잰다(검수 2026-09-07)
         }
 
         /// <summary>
@@ -39,7 +51,7 @@ namespace Ulon.Editor
         /// </summary>
         public static readonly Facility[] Facilities =
         {
-            new Facility { Object = "Banker", Role = "은행", MinHeightFrac = 1.5f,
+            new Facility { Object = "Banker", Role = "은행", MinHeightFrac = 1.5f, Enterable = true,
                 PartMeshes = new[] { "wall-door.fbx", "wall-window-glass.fbx", "wall-window-shutters.fbx" },
                 PartWhy = "문·창이 붙어야 「들어갈 수 있는 건물」로 읽힌다(§8.2)" },
             new Facility { Object = "Vendor", Role = "상점", MinHeightFrac = 0.5f,

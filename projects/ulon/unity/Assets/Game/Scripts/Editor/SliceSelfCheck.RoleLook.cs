@@ -25,6 +25,10 @@ namespace Ulon.Editor
             public float Height;        // 렌더러 바운드 높이(m)
             public bool HasPart;        // 원장이 요구한 부속이 하나라도 붙어 있는가
             public bool IsPerson;       // 사람 모델(MobArt 원장)인가
+            public float Thickness;     // 수평 최소 두께(m) — 얇은 판 감지
+            public int Renderers;       // 보이는 렌더러 수 — 조립물인가 조각 하나인가
+            public bool HasInsideRoom;  // **안에 사람이 설 자리**가 물리로 비어 있는가
+            public string InsideWhy;    // 그 판정의 근거(로그용)
         }
 
         /// <summary>
@@ -67,6 +71,20 @@ namespace Ulon.Editor
                     reasons.Add(spec.Role + "(" + f.Object + ")에 기능이 읽히는 부속이 없습니다 — " + spec.PartWhy +
                         " (후보: " + string.Join(", ", spec.PartMeshes) + ").");
 
+                // (e) 사람이 **들어가는** 역할은 높이로 못 잰다 — 풍차 날개가 3.1m로 통과했다(검수).
+                if (spec.Enterable)
+                {
+                    if (f.Thickness < RoleLook.EnterableThickMin)
+                        reasons.Add(spec.Role + "(" + f.Object + ") 수평 최소 두께가 " + f.Thickness.ToString("0.00") +
+                            "m입니다 — 하한 " + RoleLook.EnterableThickMin + "m. 얇은 판은 건물이 아니다(§8.2).");
+                    if (f.Renderers < RoleLook.EnterableRendererMin)
+                        reasons.Add(spec.Role + "(" + f.Object + ")이 렌더러 " + f.Renderers +
+                            "개짜리 조각 하나입니다 — 건물은 벽·지붕·문이 조립된 것이다(§8.2).");
+                    if (!f.HasInsideRoom)
+                        reasons.Add(spec.Role + "(" + f.Object + ") 안에 사람이 설 자리가 없습니다 — " + f.InsideWhy +
+                            ". 「들어갈 수 있다」의 정의는 높이가 아니라 이것이다(§8.2).");
+                }
+
                 // (d) 표시명이 사람인 역할은 사람 모델이어야 한다(§18.19).
                 if (spec.MustBePerson && !f.IsPerson)
                     reasons.Add(spec.Role + "(" + f.Object + ")은 표시명이 사람인데 화면엔 사람이 없습니다 — " +
@@ -92,6 +110,7 @@ namespace Ulon.Editor
             var fact = new RoleLookFact { Object = go.name, Role = role };
             var rends = go.GetComponentsInChildren<Renderer>(true);
             float biggest = 0f;
+            int rendererCount = 0;
             bool any = false;
             Bounds box = new Bounds();
             var meshNames = new List<string>();
@@ -105,6 +124,7 @@ namespace Ulon.Editor
                     m = smr.sharedMesh;
                 if (m == null)
                     continue;
+                rendererCount++;
                 if (!any) { box = rends[i].bounds; any = true; }
                 else box.Encapsulate(rends[i].bounds);
                 string path = UnityEditor.AssetDatabase.GetAssetPath(m);
@@ -115,7 +135,11 @@ namespace Ulon.Editor
                 if (vol > biggest) { biggest = vol; fact.MeshKey = file; }
             }
             fact.Height = any ? box.size.y : 0f;
+            fact.Thickness = any ? Mathf.Min(box.size.x, box.size.z) : 0f;
+            fact.Renderers = rendererCount;
             fact.IsPerson = MobArt.ModelOf(go, out _, out _);
+            if (RoleLook.TryGet(go.name, out RoleLook.Facility enter) && enter.Enterable)
+                fact.HasInsideRoom = HasStandingRoomInside(go, box, out fact.InsideWhy);
             if (RoleLook.TryGet(go.name, out RoleLook.Facility spec))
             {
                 // 부속은 원장이 적은 후보 메시가 **붙어 있으면** 통과다. 「주 메시가 아닐 것」까지 요구했더니
@@ -130,6 +154,48 @@ namespace Ulon.Editor
                         }
             }
             return fact;
+        }
+
+        /// <summary>
+        /// **안에 사람이 설 자리가 있는가**를 물리로 잰다(검수 2026-09-07: 「들어갈 수 있다」의 정의).
+        /// 두 조건을 **같이** 본다 —
+        ///   ① 건물 한가운데에 플레이어 캡슐이 **겹치지 않고** 선다(속이 찬 덩어리면 실패),
+        ///   ② 그 자리에서 수평 네 방향 광선이 **자기 건물 콜라이더에 맞는다**(둘러싸였다).
+        /// ②가 없으면 허공도 통과한다 — 풍차 날개 옆의 빈 공기가 「설 자리」로 읽혔을 것이다.
+        /// </summary>
+        static bool HasStandingRoomInside(GameObject go, Bounds box, out string why)
+        {
+            const float Radius = 0.3f;                       // 플레이어 캡슐 반지름
+            float h = VisualSliceBuilder.PlayerHeight;
+            var feet = new Vector3(box.center.x, box.min.y + 0.05f, box.center.z);
+            var p0 = feet + Vector3.up * Radius;
+            var p1 = feet + Vector3.up * (h - Radius);
+            if (Physics.CheckCapsule(p0, p1, Radius, ~0, QueryTriggerInteraction.Ignore))
+            {
+                why = "한가운데가 막혀 있다(사람 캡슐이 겹친다)";
+                return false;
+            }
+            var dirs = new[] { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+            int walls = 0;
+            var mid = feet + Vector3.up * (h * 0.5f);
+            float reach = Mathf.Max(box.size.x, box.size.z) * 0.5f + 0.5f;
+            for (int i = 0; i < dirs.Length; i++)
+            {
+                var hits = Physics.RaycastAll(mid, dirs[i], reach, ~0, QueryTriggerInteraction.Ignore);
+                for (int k = 0; k < hits.Length; k++)
+                    if (hits[k].collider != null && hits[k].collider.transform.IsChildOf(go.transform))
+                    {
+                        walls++;
+                        break;
+                    }
+            }
+            if (walls < 3)
+            {
+                why = "둘러싸이지 않았다(수평 네 방향 중 자기 벽에 막히는 방향이 " + walls + "개, 3개 이상 필요)";
+                return false;
+            }
+            why = "사람 캡슐이 서고 벽 " + walls + "면에 둘러싸임";
+            return true;
         }
 
         static List<RoleLookFact> RoleLookFacts()
@@ -160,6 +226,22 @@ namespace Ulon.Editor
             var facts = RoleLookFacts();
             if (facts.Count == 0)
                 throw new InvalidOperationException("역할 오브젝트를 한 개도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
+            // **통과와 미검사가 로그에서 같아 보이면 그게 빈 통과다**(검수 2026-09-07).
+            // 역할마다 「무엇을 요구했고 무엇은 요구하지 않았는지」를 한 줄씩 남긴다.
+            for (int i = 0; i < facts.Count; i++)
+            {
+                var f = facts[i];
+                if (!RoleLook.TryGet(f.Object, out RoleLook.Facility spec))
+                    continue;
+                Debug.Log("[Ulon] 역할 요구 " + spec.Role + "(" + f.Object + ") — 높이 " + f.Height.ToString("0.00") +
+                          "m/하한 " + (VisualSliceBuilder.PlayerHeight * spec.MinHeightFrac).ToString("0.00") +
+                          "m · 부속 " + (f.HasPart ? "있음" : "없음") +
+                          " · 사람 " + (spec.MustBePerson ? (f.IsPerson ? "있음" : "없음") : "요구 조건 없음") +
+                          " · 들어가기 " + (spec.Enterable
+                              ? ("두께 " + f.Thickness.ToString("0.00") + "m/렌더러 " + f.Renderers + "개/" +
+                                 (f.HasInsideRoom ? "설 자리 있음" : "설 자리 없음(" + f.InsideWhy + ")"))
+                              : "요구 조건 없음"));
+            }
             var reasons = RoleLookDefects(facts);
             if (reasons.Count > 0)
                 throw new InvalidOperationException("역할↔외형 어긋남 " + reasons.Count + "건(대상 " + facts.Count + "개):\n  " +
@@ -178,6 +260,7 @@ namespace Ulon.Editor
             RoleLookFact Good(string obj, float h) => new RoleLookFact
             {
                 Object = obj, Role = "합성", MeshKey = obj + ".fbx", Height = h, HasPart = true, IsPerson = true,
+                Thickness = 4f, Renderers = 6, HasInsideRoom = true, InsideWhy = "합성",
             };
             var ok = new List<RoleLookFact> { Good("Banker", 4f), Good("Forge", 2f), Good("Healer", 2f) };
             var green = RoleLookDefects(ok);
@@ -204,11 +287,27 @@ namespace Ulon.Editor
             if (RoleLookDefects(notPerson).Count == 0)
                 throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 사람이어야 하는 역할이 사람 없이 통과했습니다.");
 
+            // 사람이 들어가는 역할의 세 축 — 축마다 하나씩 결함을 만든다.
+            var thin = new List<RoleLookFact> { Good("Banker", 4f) };
+            var t = thin[0]; t.Thickness = 0.5f; thin[0] = t;
+            if (RoleLookDefects(thin).Count == 0)
+                throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 0.5m 판때기가 은행으로 통과했습니다.");
+
+            var onePiece = new List<RoleLookFact> { Good("Banker", 4f) };
+            var o = onePiece[0]; o.Renderers = 1; onePiece[0] = o;
+            if (RoleLookDefects(onePiece).Count == 0)
+                throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 렌더러 1개짜리 조각이 은행으로 통과했습니다.");
+
+            var solid = new List<RoleLookFact> { Good("Banker", 4f) };
+            var so = solid[0]; so.HasInsideRoom = false; so.InsideWhy = "합성"; solid[0] = so;
+            if (RoleLookDefects(solid).Count == 0)
+                throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 속이 찬 덩어리가 은행으로 통과했습니다.");
+
             var unknown = new List<RoleLookFact> { Good("NewShinyStation", 2f) };
             if (RoleLookDefects(unknown).Count == 0)
                 throw new InvalidOperationException("역할↔외형 네거티브 컨트롤 실패 — 원장에 없는 역할이 통과했습니다.");
 
-            Debug.Log("[Ulon] 역할↔외형 네거티브 컨트롤 통과 — 정상 입력 초록불 + 결함 5종(메시 중복·낮은 높이·부속 없음·사람 없음·원장 밖) 전부 FAIL");
+            Debug.Log("[Ulon] 역할↔외형 네거티브 컨트롤 통과 — 정상 입력 초록불 + 결함 8종(메시 중복·낮은 높이·부속 없음·사람 없음·원장 밖·얇은 판·조각 하나·속이 참) 전부 FAIL");
         }
     }
 }

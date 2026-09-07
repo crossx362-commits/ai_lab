@@ -2228,6 +2228,94 @@ namespace Ulon.Editor
                 new Vector3(1.5f, 2.5f, 0.12f), portalMat, approachYaw);
         }
 
+        /// <summary>
+        /// **은행을 들어갈 수 있는 건물로 세운다**(검수 2026-09-07 P1: 은행이 풍차 날개 한 장이었다).
+        /// 새 팩을 받지 않고 저장소의 Kenney 마을 조각(벽·문·창·지붕·굴뚝)을 조립한다.
+        /// 멱등 — 매번 헐고 다시 짓는다(옛 씬의 풍차 날개도 이 패스가 치운다).
+        /// </summary>
+        public static void EnsureBankBuilding()
+        {
+            const string Town = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/";
+            string[] models = { Town + "wall-door.fbx", Town + "wall-window-shutters.fbx",
+                                Town + "roof.fbx", Town + "chimney.fbx" };
+            for (int i = 0; i < models.Length; i++)
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(models[i]) == null)
+                    ConfigureProp(models[i]);
+
+            var bank = GameObject.Find("Banker");
+            if (bank == null)
+                return;
+            // 옛 시각물(풍차 날개)과 지난 조각을 통째로 헐어낸다 — 남겨 두면 날개가 건물 옆에 계속 선다.
+            for (int c = bank.transform.childCount - 1; c >= 0; c--)
+                UnityEngine.Object.DestroyImmediate(bank.transform.GetChild(c).gameObject);
+            var stray = bank.GetComponents<Component>();
+            for (int i = 0; i < stray.Length; i++)
+                if (stray[i] is Renderer || stray[i] is MeshFilter || stray[i] is Collider)
+                    UnityEngine.Object.DestroyImmediate(stray[i]);
+
+            // `OnGround`는 지면 높이를 **더한다**(오프셋용) — 이미 지면 위에 선 오브젝트의 위치를 그대로
+            // 넣으면 높이가 두 배가 된다. 처음에 그렇게 써서 은행이 지면 10m 위에 떠 있었다(2026-09-07).
+            var at = OnGround(new Vector3(bank.transform.position.x, 0f, bank.transform.position.z));
+            bank.transform.position = at;
+            // 벽재는 **얇은 판 조각**만 쓴다 — `wall-block`은 이 킷에서 2m 정육면체라(실측) 벽이 아니라
+            // 돌덩이로 읽히고, 높이도 2m에 그쳐 쿼터뷰 카메라가 지붕 위로 넘겨다봤다(첫 시도 실패).
+            const float Half = 2.4f;        // 한 변 4.8m — 사람이 서고도 남는 안쪽
+            const float PieceW = 2.4f;      // 벽 판 높이(=폭) — 2m 벽은 카메라가 넘어다본다
+            // 네 벽. 앞면(남쪽) 한 칸은 문, 한 칸은 창 — 문·창이 붙어야 「들어갈 수 있는 집」으로 읽힌다(§8.2).
+            for (int side = 0; side < 4; side++)
+            {
+                float yaw = side * 90f;
+                float r = yaw * Mathf.Deg2Rad;
+                var outward = new Vector3(Mathf.Sin(r), 0f, Mathf.Cos(r));
+                var along = new Vector3(outward.z, 0f, -outward.x);
+                for (int k = -1; k <= 1; k += 2)
+                {
+                    string fbx = (side == 0 && k < 0) ? Town + "wall-door.fbx" : Town + "wall-window-shutters.fbx";
+                    // 두 판을 **살짝 겹친다** — 딱 맞춰 놓으면 벽 한가운데에 이음매(폭 0)가 생겨
+                    // 그 선으로 광선과 도약이 그대로 통과했다(도약 게이트가 3.50m로 안 막혀 드러남).
+                    var p = at + outward * Half + along * ((PieceW * 0.5f - 0.15f) * k);
+                    var piece = RoomPropObject(bank.transform, "BankWall" + side + (k > 0 ? "a" : "b"), fbx,
+                        // 이 킷의 벽 판은 **yaw 0에서 X축으로 얇다** — `yaw+180`으로 세웠더니 네 벽이 전부
+                        // 90° 돌아가 고리가 아니라 바람개비가 됐다(도약 광선이 그 사이로 통과해 드러남).
+                        new Vector3(p.x, at.y, p.z), yaw + 90f, PieceW, true);
+                    // 조각 원점이 가운데가 아니라 모서리인 프리팹이 있다 — **바운드 중심으로 다시 맞춘다**.
+                    // 안 맞추면 벽 고리가 한쪽으로 밀려 틈이 생기고, 그 틈으로 시선·사람이 샌다(실측).
+                    if (piece != null && BoundsOf(piece.transform, true, out Bounds pb))
+                        piece.transform.position += new Vector3(p.x - pb.center.x, 0f, p.z - pb.center.z);
+                }
+            }
+            // 지붕·굴뚝 — 지붕이 없으면 위에서 본 화면에서 그냥 벽 네 장이다(§8.2 「문·창·지붕」).
+            var roof = RoomPropObject(bank.transform, "BankRoof", Town + "roof.fbx",
+                new Vector3(at.x, at.y, at.z), 0f, Half * 2f + 0.6f, false);
+            // 지붕은 벽 위에 **걸친다** — 딱 붙여 놓으면 실측에서 0.8m 틈이 생겨 쿼터뷰 광선이 그 틈으로
+            // 새고(페이드 대상 0개), 화면에서도 지붕이 떠 보였다.
+            float wallTop = BankWallHeight(bank);
+            if (roof != null && BoundsOf(roof.transform, true, out Bounds rb))
+                roof.transform.position += new Vector3(at.x, at.y + wallTop - 0.35f, at.z) - new Vector3(rb.center.x, rb.min.y, rb.center.z);
+            var chimney = RoomPropObject(bank.transform, "BankChimney", Town + "chimney.fbx",
+                new Vector3(at.x + 1.2f, at.y, at.z + 1.2f), 0f, 1.2f, true);
+            if (chimney != null)
+                chimney.transform.position += Vector3.up * (wallTop + 1.0f);
+            // **새로 만든 콜라이더는 동기화 전까지 광선에 안 잡힌다** — 이걸 안 부르면 시야 페이드
+            // 게이트가 「걷힌 렌더러 0개」로 빨간불이 난다(2026-09-07 실측, 원인 찾는 데 세 번 헛짚었다).
+            Physics.SyncTransforms();
+            Debug.Log("[Ulon] 은행 건물 재건 — 벽 8칸(문 1·창 7)·지붕·굴뚝, 한 변 " + (Half * 2f) + "m");
+        }
+
+        /// <summary>지금 세운 은행 벽의 실제 높이(조각 비율이 바뀌어도 지붕이 따라 올라가게).</summary>
+        static float BankWallHeight(GameObject bank)
+        {
+            float top = 0f;
+            var rends = bank.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < rends.Length; i++)
+                // 프리팹 메시 노드 이름은 전부 "Visual"이다 — **부모 이름**으로 지붕을 가려야 한다
+                // (renderer.name으로 보면 지붕이 안 걸러져 굴뚝이 허공에 뜬다, 2026-09-07 실측).
+                if (rends[i].transform.parent != null
+                    && rends[i].transform.parent.name.IndexOf("Roof", StringComparison.Ordinal) < 0)
+                    top = Mathf.Max(top, rends[i].bounds.max.y - bank.transform.position.y);
+            return top;
+        }
+
         /// <summary>입구 세 곳의 뿌리·좌표·접근 방향 원장 — 빌더와 유지보수 패스가 같은 목록을 본다.</summary>
         public static readonly (string Root, float X, float Z, float Yaw)[] EntranceSpots =
         {
