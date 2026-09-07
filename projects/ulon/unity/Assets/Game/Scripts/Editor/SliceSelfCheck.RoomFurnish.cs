@@ -166,6 +166,25 @@ namespace Ulon.Editor
             if (!footRed)
                 throw new InvalidOperationException("소품 발 붙음 네거티브 컨트롤 실패 — 소품을 1m 띄웠는데도 통과했습니다.");
             Debug.Log("[Ulon] 실내 소품 발 붙음 네거티브 컨트롤 통과 — 1m 띄우면 FAIL");
+
+            // **양쪽을 잰다**(검수 2026-09-07) — 자를 바닥 판 실측으로 바꿨으니 「묻힘」 쪽도 확인한다.
+            // 띄움만 재는 NC는 「묻혀도 통과하는 게이트」를 못 잡는다.
+            bool sinkRed = false;
+            try
+            {
+                lift.position = keep - Vector3.up * 0.5f;
+                Physics.SyncTransforms();
+                try { AssertPropDistribution(); }
+                catch (InvalidOperationException) { sinkRed = true; }
+            }
+            finally
+            {
+                lift.position = keep;
+                Physics.SyncTransforms();
+            }
+            if (!sinkRed)
+                throw new InvalidOperationException("소품 묻힘 네거티브 컨트롤 실패 — 소품을 0.5m 묻었는데도 통과했습니다.");
+            Debug.Log("[Ulon] 실내 소품 묻힘 네거티브 컨트롤 통과 — 0.5m 묻으면 FAIL(바닥 판 실측 기준)");
         }
 
         static float BareFloorShare(Vector2 center, string interiorObject, Ulon.Client.QuarterViewCamera cam)
