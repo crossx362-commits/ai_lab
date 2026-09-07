@@ -17,6 +17,31 @@ namespace Ulon.Editor
 {
     public static partial class VisualSliceBuilder
     {
+        /// <summary>
+        /// **상호작용 표적의 메시를 끈다 — 자리와 콜라이더는 그대로**(검수 판정 2026-09-08).
+        ///
+        /// `Dungeon*Entrance`는 「누르면 들어가는 곳」이지 장식이 아니다. 그런데 그 자체 메시가
+        /// 0.28×1.0×0.28짜리 무늬 없는 회색 막대라, 하필 **문 정중앙**에 서서 화면에서는
+        /// 「통로 한가운데 놓인 잔재 기둥」으로 읽혔다(검수 관찰, §8.2 원시 도형 금지).
+        ///
+        /// **자리는 못 옮긴다** — 도달·워프 게이트가 이 좌표를 전제한다. 그래서 **렌더러만 끈다**:
+        /// 콜라이더·`DungeonGate`·좌표는 살아 있으므로 누르는 것은 그대로 되고, 화면에서 문으로
+        /// 읽히는 것은 뒤에 선 `EntrancePortal`이 맡는다.
+        /// **다음 사람에게**: 이건 「빠진 메시」가 아니다. 되살리지 마라 — 되살리면 문 한가운데
+        /// 회색 막대가 다시 선다. 눌리는지는 셀프체크의 던전 입장·퇴장이 매번 증명한다.
+        /// </summary>
+        public static void HideGateMesh(string gateObjectName)
+        {
+            var go = GameObject.Find(gateObjectName);
+            if (go == null)
+                return;
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < rends.Length; i++)
+                rends[i].enabled = false;
+            Debug.Log("[Ulon] 입구 표적 메시 끔 — " + gateObjectName + " 렌더러 " + rends.Length +
+                      "개(자리·콜라이더·상호작용은 그대로, 문은 EntrancePortal이 읽힌다)");
+        }
+
         public static void BuildDungeonEntrance(Transform parent, Vector3 pos, float approachYaw)
         {
             const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";

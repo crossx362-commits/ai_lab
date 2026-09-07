@@ -59,6 +59,7 @@ namespace Ulon.Editor
             eg.DisplayName = "던전 입구";
             EnsureCollider(entrance);
             BuildDungeonEntrance(parent, new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 90f);
+            HideGateMesh(Dungeon1.EntranceObject);          // 문 한가운데 회색 막대로 읽히던 표적 메시
             RoomRubble(parent, new Vector3(Dungeon1.EntranceX - 2.9f, 0f, Dungeon1.EntranceZ - 2.6f), 0.8f);   // 흰 Kenney 바위는 돌벽과 재질이 붕 뜬다 — 던전 톤 잔해로, 문 앞이 아니라 옆으로.
 
             var interior = new GameObject(Dungeon1.InteriorObject);
@@ -130,6 +131,7 @@ namespace Ulon.Editor
             eg.DisplayName = "던전 2 입구";
             EnsureCollider(entrance);
             BuildDungeonEntrance(parent, new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ), -90f);
+            HideGateMesh(Dungeon2.EntranceObject);          // 문 한가운데 회색 막대로 읽히던 표적 메시
             RoomRubble(parent, new Vector3(Dungeon2.EntranceX + 2.9f, 0f, Dungeon2.EntranceZ - 2.6f), 0.8f);   // 흰 Kenney 바위는 돌벽과 재질이 붕 뜬다 — 던전 톤 잔해로, 문 앞이 아니라 옆으로.
 
             var interior = new GameObject(Dungeon2.InteriorObject);
@@ -204,6 +206,7 @@ namespace Ulon.Editor
             eg.DisplayName = "던전 3 입구";
             EnsureCollider(entrance);
             BuildDungeonEntrance(parent, new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 45f);
+            HideGateMesh(Dungeon3.EntranceObject);          // 문 한가운데 회색 막대로 읽히던 표적 메시
             RoomRubble(parent, new Vector3(Dungeon3.EntranceX + 2.9f, 0f, Dungeon3.EntranceZ - 2.6f), 0.8f);   // 흰 Kenney 바위는 돌벽과 재질이 붕 뜬다 — 던전 톤 잔해로, 문 앞이 아니라 옆으로.
 
             var interior = new GameObject(Dungeon3.InteriorObject);
