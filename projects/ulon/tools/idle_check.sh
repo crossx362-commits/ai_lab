@@ -5,6 +5,8 @@
 set -euo pipefail
 ROOT=/Users/junholee/ai_lab/projects/ulon
 UNITY="/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS/Unity"
+# 씬 명단을 먼저 덤프한다 — 실행 실측이 「무엇을 안 덮었는지」를 이름으로 적게 하려고.
+"$UNITY" -batchmode -nographics -quit -projectPath "$ROOT/unity" -executeMethod Ulon.Editor.SliceSelfCheck.DumpSceneRoster -logFile "$ROOT/unity/Logs/scene_roster.log"
 "$UNITY" -batchmode -quit -projectPath "$ROOT/unity" -executeMethod Ulon.Editor.FrameProbeBuild.Run -logFile "$ROOT/unity/Logs/frame_probe_build.log"
 "$ROOT/builds/frameprobe/Ulon.app/Contents/MacOS/Ulon" -idlecheck -shotdir "$ROOT/builds/qa" -idleout "$ROOT/builds/qa/idle_check.md" -logFile "$ROOT/unity/Logs/idle_check.log"
 cat "$ROOT/builds/qa/idle_check.md"

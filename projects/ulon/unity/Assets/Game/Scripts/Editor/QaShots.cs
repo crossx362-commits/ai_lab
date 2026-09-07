@@ -135,10 +135,13 @@ namespace Ulon.Editor
                 loops[i].Simulate(1.2f, true, true);
                 simmed++;
             }
-            Debug.Log("[Ulon] QA 파티클 시뮬레이션 — 계속 나는 효과 " + simmed + "개");
+            // **분모를 같이 찍는다** — 「N개 했다」만 적으면 빠진 것이 조용히 남는다(포즈 7체가 그렇게 샜다).
+            Debug.Log("[Ulon] QA 파티클 시뮬레이션 — 계속 나는 효과 " + simmed + "/" + loops.Length +
+                      "개(나머지는 1회성이라 시뮬레이션 대상이 아니다)");
 
-            int posed = SampleIdlePose();
-            Debug.Log("[Ulon] QA 포즈 샘플링 — Idle 적용 액터 " + posed + "체");
+            int posed = SampleIdlePose(out int animTotal);
+            Debug.Log("[Ulon] QA 포즈 샘플링 — Idle 적용 액터 " + posed + "/" + animTotal + "체" +
+                      (posed < animTotal ? " — 빠진 것은 위의 「건너뜀」 줄에 사유가 있다" : ""));
 
             var camGo = new GameObject("QaShotCamera");
             var cam = camGo.AddComponent<Camera>();
@@ -264,11 +267,11 @@ namespace Ulon.Editor
         /// 씬의 액터들에 애니메이터 기본 상태(Idle) 포즈를 입힌다 — 에디터 배치모드에서는 애니메이션이
         /// 돌지 않아 바인드 포즈(T포즈)로 찍힌다. 반환값은 포즈가 적용된 액터 수.
         /// </summary>
-        static int SampleIdlePose()
+        static int SampleIdlePose(out int total)
         {
             int n = 0;
             var anims = Object.FindObjectsByType<Animator>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            Debug.Log("[Ulon] QA 포즈 — 애니메이터 " + anims.Length + "개");
+            total = anims.Length;
             for (int i = 0; i < anims.Length; i++)
             {
                 var rac = anims[i].runtimeAnimatorController;

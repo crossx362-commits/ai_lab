@@ -80,7 +80,7 @@ namespace Ulon.Editor
                             throw new InvalidOperationException(rend.name + "이 페이드 사본을 그대로 달고 있습니다 — 원상복구가 안 됩니다.");
                     restored++;
                 }
-                Debug.Log("[Ulon] 시야 페이드 원상복구 — " + restored + "개 원본 머티리얼로 되돌림");
+                Debug.Log("[Ulon] 시야 페이드 원상복구 — " + restored + "/" + faded.Count + "개 원본 머티리얼로 되돌림");
             }
         }
 

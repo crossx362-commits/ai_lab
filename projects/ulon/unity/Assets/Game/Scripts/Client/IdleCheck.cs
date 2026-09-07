@@ -111,7 +111,36 @@ namespace Ulon.Client
                               " | " + (hasCtrl ? "있음" : "**없음**") + " | " + state + " | " + (ok ? "돈다" : "**멈춤(T포즈)**") + " |");
             }
             sb.AppendLine();
-            sb.AppendLine("합계: 돈다 " + moving + "체 / 멈춤 " + still + "체 (전수 " + actors.Length + "체)");
+            sb.AppendLine("합계: 돈다 " + moving + "체 / 멈춤 " + still + "체 (이 실행에 **있는** 사람형 " + actors.Length + "체)");
+            sb.AppendLine();
+            // **덮은 것과 안 덮은 것을 이름으로 적는다**(검수 지시 2026-09-07) — 스탠드얼론 오프라인
+            // 월드에는 편집기 씬의 사람형 일부만 존재한다. 숫자만 있으면 다음 사람이 「전수 통과」로 읽는다.
+            string rosterPath = Path.Combine(dir, "scene_roster.txt");
+            if (File.Exists(rosterPath))
+            {
+                var have = new HashSet<string>();
+                for (int i = 0; i < actors.Length; i++) have.Add(actors[i].name);
+                var missing = new List<string>();
+                foreach (var line in File.ReadAllLines(rosterPath))
+                {
+                    string nm = line.Trim();
+                    if (nm.Length > 0 && !have.Contains(nm))
+                        missing.Add(nm);
+                }
+                sb.AppendLine("## 이 실측이 **안 덮은** 것 (" + missing.Count + "개)");
+                sb.AppendLine();
+                sb.AppendLine("편집기 씬 명단에는 있으나 스탠드얼론 오프라인 월드에 없어 재지 못했다 — " +
+                              "이들은 편집기 게이트(`AssertActorsAnimated`)가 덮는다. " +
+                              "명단에는 사람형뿐 아니라 **시설·짐승도 들어 있다**(대장간·화덕 등은 애초에 애니메이션 대상이 아니다) — " +
+                              "명단을 여기서 따로 추리지 않는 것은 두 벌이 어긋나지 않게 하려는 것이다:");
+                sb.AppendLine();
+                sb.AppendLine(missing.Count == 0 ? "(없음 — 명단 전수를 실행에서 쟀다)" : string.Join(", ", missing));
+            }
+            else
+            {
+                sb.AppendLine("**주의**: 씬 명단 파일이 없어 「안 덮은 것」을 못 적었다(" + rosterPath +
+                              "). `tools/idle_check.sh`가 덤프를 먼저 돌린다 — 이 줄이 보이면 그 단계가 빠진 것이다.");
+            }
             File.WriteAllText(outPath, sb.ToString());
             Debug.Log("[Ulon] idle 실측 — 돈다 " + moving + " / 멈춤 " + still + " → " + outPath);
 

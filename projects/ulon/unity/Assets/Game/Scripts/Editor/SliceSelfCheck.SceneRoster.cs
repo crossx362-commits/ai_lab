@@ -42,6 +42,25 @@ namespace Ulon.Editor
             return roster;
         }
 
+        /// <summary>
+        /// 명단을 파일로 남긴다 — **실행 실측이 무엇을 덮고 무엇을 안 덮는지** 이름으로 말하게 하려고.
+        /// 스탠드얼론 오프라인 월드에는 사람형이 일부만 있어서, 숫자만 보면 다음 사람이
+        /// 「전수 통과」로 읽는다(검수 지시 2026-09-07). 런타임은 이 파일을 읽어 대조한다.
+        /// </summary>
+        public static void DumpSceneRoster()
+        {
+            UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/Game/Scenes/Bootstrap.unity");
+            var roster = SceneRoster();
+            var lines = new List<string>();
+            for (int i = 0; i < roster.Count; i++)
+                lines.Add(roster[i].Name);
+            string path = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+                Application.dataPath, "../../builds/qa/scene_roster.txt"));
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
+            System.IO.File.WriteAllText(path, string.Join("\n", lines));
+            Debug.Log("[Ulon] 씬 명단 덤프 — " + lines.Count + "개 → " + path);
+        }
+
         static void AssertSceneRosterPresent()
         {
             var roster = SceneRoster();
