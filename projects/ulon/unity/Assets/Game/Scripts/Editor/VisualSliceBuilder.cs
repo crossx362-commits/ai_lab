@@ -2657,6 +2657,139 @@ namespace Ulon.Editor
                       "저장소 사람 모델이 3종뿐이라 모델은 겹친다(치유사=Knight, 훈련사·은행원=Mage, 마구간지기·상인=Rogue) — 숨기지 않고 적어 둔다.");
         }
 
+        /// <summary>
+        /// **마을 사람 5역할을 서로 다르게 보이게 한다**(검수 랩 ③사람, 2026-09-07).
+        ///
+        /// 실측(`PersonLookAudit`)이 말한 것: 다섯이 모델 3종을 돌려써서 **상인과 마구간지기가 같고**,
+        /// 치유사는 칼·방패를 들어 경비로 읽히고, 훈련사는 완드와 지팡이를 **둘 다** 들고 있었다.
+        /// 새 모델을 받지 않고 두 축으로 가른다 —
+        ///   ① **든 것**: KayKit 모델은 검·방패·완드·석궁을 FBX 안에 품고 있다(꺼져 있을 뿐이다),
+        ///   ② **몸 색**: 같은 모델을 쓰는 짝은 옷 색으로 가른다(질감은 그대로, 색만 곱한다).
+        /// 색만으로 가르지 않는 이유는 색맹·야간 화면에서 무너지기 때문이고, 장비만으로 가르지 않는
+        /// 이유는 손이 빈 역할이 둘 있기 때문이다. **두 축을 같이 본다**(게이트도 같은 두 축을 잰다).
+        /// 멱등 — 매 실행 같은 결과가 되게 「켤 것」과 「끌 것」을 둘 다 명시한다.
+        /// </summary>
+        public static void EnsureVillagerLooks()
+        {
+            var specs = new (string Host, string Gear, Color Tint, string Why)[]
+            {
+                ("Healer",  "",             new Color(0.62f, 0.92f, 0.86f), "치유사 — 칼·방패를 내려놓아야 경비로 안 읽힌다"),
+                ("Trainer", "2H_Staff",     new Color(0.86f, 0.34f, 0.28f), "훈련사 — 가르치는 도구 하나만(완드까지 둘은 무기 둘이다)"),
+                ("Banker",  "",             new Color(0.30f, 0.36f, 0.62f), "은행원 — 훈련사와 같은 Mage 몸이라 색·장비로 가른다"),
+                ("Vendor",  "",             new Color(0.92f, 0.78f, 0.30f), "상인 — 마구간지기와 같은 Rogue 몸이라 색으로 가른다"),
+                ("Stable",  "1H_Crossbow",  new Color(0.48f, 0.34f, 0.20f), "마구간지기 — 짐승을 다루는 손에 무언가 들려야 상인과 갈린다"),
+            };
+            var people = VillagerLook.Villagers();
+            int done = 0;
+            var lines = new List<string>();
+            for (int s = 0; s < specs.Length; s++)
+            {
+                GameObject who = null;
+                for (int i = 0; i < people.Count; i++)
+                    if (VillagerLook.HostOf(people[i]) == specs[s].Host)
+                        who = people[i];
+                if (who == null)
+                    continue;
+                // ① 든 것 — 원장이 적은 하나만 켜고 나머지 장비는 끈다(모델이 품은 것이 제멋대로 켜져 있었다).
+                foreach (var t in who.GetComponentsInChildren<Transform>(true))
+                {
+                    if (!IsGearName(t.name))
+                        continue;
+                    t.gameObject.SetActive(t.name == specs[s].Gear);
+                }
+                // ② 몸 색 — 장비를 뺀 몸 렌더러에만 칠한다(칼날 색이 그 사람의 색이 되면 안 된다).
+                var mat = VillagerTintMaterial(specs[s].Host, specs[s].Tint, who);
+                if (mat != null)
+                    foreach (var r in who.GetComponentsInChildren<Renderer>(true))
+                        if (!IsGearName(r.gameObject.name))
+                            r.sharedMaterial = mat;
+                FitVillagerHat(who);
+                done++;
+                lines.Add(specs[s].Host + "=" + (specs[s].Gear == "" ? "맨손" : specs[s].Gear) + "/" +
+                          ColorUtility.ToHtmlStringRGB(specs[s].Tint) + " (" + specs[s].Why + ")");
+            }
+            Debug.Log("[Ulon] 마을 사람 외형 — " + done + "명을 든 것·몸 색 두 축으로 갈랐다: " + string.Join(" · ", lines));
+        }
+
+        /// <summary>
+        /// **모자가 머리보다 크면 줄인다**(랩 ③에서 실측으로 드러난 결함, 2026-09-07).
+        /// 훈련사 모자가 2.09 × 1.34 × 2.04m — 몸통(0.85 × 0.95)의 두 배가 넘어 근접 샷에서
+        /// 사람 대신 챙이 화면을 덮었다. 옛 씬에 남은 잔재다(`EnsureTrainerNpc`는 있으면 일찍 반환한다).
+        ///
+        /// `SlimHeadgear`처럼 **곱하기**로 줄이면 실행할수록 작아진다(멱등이 아니다) —
+        /// 그래서 **목표 비율에 맞춘다**: 모자 폭 ≤ 몸(모자 뺀 것) 폭 × <see cref="HatHeadWidthMax"/>.
+        /// 처음엔 「머리 폭」과 견줬는데, 스킨드 렌더러의 머리 바운드가 1.27m로 부풀어 있어
+        /// **모자가 2.09m여도 1.7배로 읽혀 통과**했다(보스 실루엣 게이트가 몸 폭을 쓰는 것과 같은 이유다).
+        /// 이미 그 안이면 아무것도 안 한다(그래서 몇 번을 돌려도 같은 결과다).
+        /// </summary>
+        public const float HatHeadWidthMax = 1.0f;
+
+        static void FitVillagerHat(GameObject who)
+        {
+            Transform hat = null;
+            Bounds hatBox = new Bounds(), headBox = new Bounds();
+            bool hasHat = false, hasHead = false;
+            foreach (var r in who.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r.enabled || !r.gameObject.activeInHierarchy)
+                    continue;
+                if (r.gameObject.name.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    hat = r.transform;
+                    hatBox = hasHat ? Encapsulated(hatBox, r.bounds) : r.bounds;
+                    hasHat = true;
+                }
+                else
+                {
+                    headBox = hasHead ? Encapsulated(headBox, r.bounds) : r.bounds;   // 모자를 뺀 몸 전체
+                    hasHead = true;
+                }
+            }
+            if (!hasHat || !hasHead)
+                return;
+            float hatW = Mathf.Max(hatBox.size.x, hatBox.size.z);
+            float headW = Mathf.Max(headBox.size.x, headBox.size.z);
+            if (headW < 0.01f || hatW <= headW * HatHeadWidthMax)
+                return;
+            float k = headW * HatHeadWidthMax / hatW;
+            hat.localScale = hat.localScale * k;
+            Debug.Log("[Ulon] 모자 비례 " + who.name + " — 모자 폭 " + hatW.ToString("0.00") + "m가 몸 폭 " +
+                      headW.ToString("0.00") + "m의 " + (hatW / headW).ToString("0.0") + "배라 " +
+                      k.ToString("0.00") + "배로 줄였다(목표 " + HatHeadWidthMax + "배 이하).");
+        }
+
+        static Bounds Encapsulated(Bounds a, Bounds b) { a.Encapsulate(b); return a; }
+
+        /// <summary>역할별 몸 재질 — 모델 텍스처는 그대로 두고 색만 곱한다(질감을 잃으면 §8.2 위반이다).</summary>
+        static Material VillagerTintMaterial(string host, Color tint, GameObject who)
+        {
+            Texture texture = null;
+            foreach (var r in who.GetComponentsInChildren<Renderer>(true))
+            {
+                if (IsGearName(r.gameObject.name) || r.sharedMaterial == null)
+                    continue;
+                if (r.sharedMaterial.mainTexture != null)
+                {
+                    texture = r.sharedMaterial.mainTexture;
+                    break;
+                }
+            }
+            if (texture == null)
+                return null;                        // 텍스처를 못 찾으면 칠하지 않는다(민무늬로 만들지 않는다)
+            Directory.CreateDirectory(Path.Combine(Application.dataPath, "Game/Art/People"));
+            string path = "Assets/Game/Art/People/" + host + "Tint.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Standard"));
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            mat.mainTexture = texture;
+            mat.color = tint;
+            EditorUtility.SetDirty(mat);
+            return mat;
+        }
+
         static bool ServiceNpc(string host, string fbx, string display, Vector3 offset, AnimatorController ctrl)
         {
             var go = GameObject.Find(host);

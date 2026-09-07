@@ -50,6 +50,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureFishingSpotAtWater(); // 지표 스냅 뒤에 물가로(앞에 두면 스냅이 둑 위로 끌어올린다)
             VisualSliceBuilder.EnsureVillageFacilities();  // 시설이 그 기능으로 읽히게(검수 랩 ①)
             VisualSliceBuilder.EnsureServiceNpcs();        // 표시명만 사람이던 자리에 사람을(§18.19, 검수 랩 ②)
+            VisualSliceBuilder.EnsureVillagerLooks();      // 5역할을 든 것·몸 색으로 가른다(검수 랩 ③사람)
             VisualSliceBuilder.EnsureCampfireFire();       // 화덕에 불(검수 반려 — 불 메시가 없어도 파티클로 된다)
             VisualSliceBuilder.EnsureStableYardFence();
             VisualSliceBuilder.EnsureStableBeast();       // 마당에 짐승 한 마리(빈 마당은 마구간이 아니다)    // 마구간 울타리를 닫는다(검수 반려)
@@ -1645,6 +1646,10 @@ namespace Ulon.Editor
             AssertCharacterArtQualified();
             AssertCreatureArtQualified();
             AssertCreatureArtNegativeControl();
+            AssertVillagerLooksNegativeControl();           // 두 사람을 같게 만들면 빨간불인가(랩 ③사람)
+            AssertVillagerLooksDistinct();                  // 5역할이 화면에서 갈리는가 — 존재가 아니라 차이
+            AssertVillagerHatFitsNegativeControl();         // 모자를 키우면 빨간불인가
+            AssertVillagerHatFits();                        // 챙이 사람을 덮지 않는가(§8.1)
             AssertEffectWiring();
             AssertEffectWiringNegativeControl();
             AssertCharacterArtNegativeControl();

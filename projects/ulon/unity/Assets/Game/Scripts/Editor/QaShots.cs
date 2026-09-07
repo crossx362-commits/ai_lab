@@ -18,6 +18,9 @@ namespace Ulon.Editor
         const int W = 1280;
         const int H = 720;
 
+        /// <summary>이번 실행에서 찍은 마을 사람 샷 이름 — 대조 시트가 이것만 모은다.</summary>
+        static readonly System.Collections.Generic.List<string> villagerShots = new System.Collections.Generic.List<string>();
+
         struct Shot
         {
             public string Name;
@@ -97,6 +100,19 @@ namespace Ulon.Editor
                 Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
             };
 
+            // **마을 사람 근접** — 5역할이 서로 다른 모습인지 눈으로 본다(검수 랩 ③사람 완료 기준).
+            // 대상은 이름 목록이 아니라 `VillagerLook.Villagers()` 전수다 — 역할이 늘면 샷도 늘어난다.
+            var shotList = new System.Collections.Generic.List<Shot>(shots);
+            var villagers = VillagerLook.Villagers();
+            villagerShots.Clear();
+            for (int i = 0; i < villagers.Count; i++)
+            {
+                string nm = (45 + i).ToString("00") + "_person_" + VillagerLook.HostOf(villagers[i]);
+                villagerShots.Add(nm);
+                shotList.Add(FacilityCloseUp(nm, villagers[i].name, null, true));
+            }
+            shots = shotList.ToArray();
+
             // **런타임 포즈로 찍는다.** 에디터에서 그냥 찍으면 모든 액터가 바인드 포즈(T포즈)라
             // 「칼이 얼굴 높이를 가로지른다」 같은 인상이 실제 플레이와 다르다(검수 2026-09-06 질의).
             // 애니메이터 기본 상태(Idle)를 실제로 샘플링해 포즈를 만든 뒤 찍는다.
@@ -173,6 +189,7 @@ namespace Ulon.Editor
                 "# 촬영 " + System.DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") + "Z · 이 폴더의 PNG는 이 시각의 것이다\n" +
                 string.Join("\n", System.Array.ConvertAll(shots, x => x.Name + ".png")) + "\n");
             Debug.Log("[Ulon] QA shots " + shots.Length + "장 — " + dir);
+            ContactSheet(dir, villagerShots, "50_villagers");
 
             // VFX는 카메라 렌더가 필요해 -nographics 셀프체크에서 잴 수 없다 — 여기서 화면으로 잰다.
             SliceSelfCheck.AssertActionVfxOnScreen();
@@ -180,6 +197,56 @@ namespace Ulon.Editor
             // 검은 배경에서 보이는 것과 **실제 플레이 프레임**에서 읽히는 것은 다르다(검수 랩 D).
             SliceSelfCheck.AssertActionVfxInPlayFrame();
             SliceSelfCheck.AssertActionVfxInPlayFrameNegativeControl();
+        }
+
+        /// <summary>
+        /// **대조 시트** — 방금 찍은 근접 샷들을 한 장에 나란히 붙인다(검수 랩 ③ 완료 기준:
+        /// 「5역할이 서로 다른 모습임을 **한 장에**」).
+        ///
+        /// 사람들이 마을 20m에 흩어져 있어 한 프레임에 다 넣으면 한 명이 50픽셀이 된다 —
+        /// **판정 대상이 안 찍힌 샷은 판정이 아니다**(원장). 그래서 각자를 실제 자리에서 찍은
+        /// 진짜 렌더를 타일로 붙인다. 아무도 옮기지 않고, 새로 그리지도 않는다.
+        /// </summary>
+        static void ContactSheet(string dir, System.Collections.Generic.List<string> names, string outName)
+        {
+            if (names.Count == 0)
+            {
+                Debug.LogWarning("[Ulon] 대조 시트 — 붙일 샷이 없습니다(0이면 실패).");
+                return;
+            }
+            int cols = Mathf.CeilToInt(Mathf.Sqrt(names.Count));
+            int rows = Mathf.CeilToInt(names.Count / (float)cols);
+            int tw = W / 2, th = H / 2;
+            var sheet = new Texture2D(cols * tw, rows * th, TextureFormat.RGB24, false);
+            var fill = new Color32[cols * tw * rows * th];
+            for (int i = 0; i < fill.Length; i++) fill[i] = new Color32(18, 18, 20, 255);
+            sheet.SetPixels32(fill);
+            var tile = new Texture2D(2, 2, TextureFormat.RGB24, false);
+            for (int i = 0; i < names.Count; i++)
+            {
+                string path = Path.Combine(dir, names[i] + ".png");
+                if (!File.Exists(path) || !tile.LoadImage(File.ReadAllBytes(path)))
+                    continue;
+                var small = ScaleHalf(tile, tw, th);
+                int cx = (i % cols) * tw;
+                int cy = (rows - 1 - i / cols) * th;      // 왼쪽 위부터 채운다(텍스처 원점은 아래)
+                sheet.SetPixels(cx, cy, tw, th, small);
+            }
+            sheet.Apply();
+            File.WriteAllBytes(Path.Combine(dir, outName + ".png"), sheet.EncodeToPNG());
+            Object.DestroyImmediate(tile);
+            Object.DestroyImmediate(sheet);
+            Debug.Log("[Ulon] 대조 시트 " + outName + ".png — " + names.Count + "장(" + string.Join(", ", names) + ")");
+        }
+
+        /// <summary>단순 축소(최근접) — 판정은 「누가 누구와 같은가」라 보간 품질이 결과를 바꾸지 않는다.</summary>
+        static Color[] ScaleHalf(Texture2D src, int tw, int th)
+        {
+            var outp = new Color[tw * th];
+            for (int y = 0; y < th; y++)
+                for (int x = 0; x < tw; x++)
+                    outp[y * tw + x] = src.GetPixelBilinear((x + 0.5f) / tw, (y + 0.5f) / th);
+            return outp;
         }
 
         /// <summary>
@@ -270,7 +337,22 @@ namespace Ulon.Editor
             var rends = go.GetComponentsInChildren<Renderer>(true);
             bool any = false;
             Bounds box = new Bounds();
-            for (int i = 0; i < rends.Length; i++)
+            // **피사체가 사람이면 사람의 몸을 잰다.** 시설 프레이밍은 「시설에 서 있는 사람」을 빼는데,
+            // 그 규칙을 사람 피사체에 그대로 적용했더니 바운드가 통째로 비어 `new Bounds()`의 중심,
+            // 즉 **월드 원점**을 향해 방위를 골랐다(첫 촬영본 46_person_Vendor에 상인이 아예 없었다).
+            // 무엇을 빼는가가 곧 정의다 — 장비는 빼고(GroundFit.BodyBounds) 몸만 잰다.
+            // 사람 몸에서 **장비와 시설 부속을 뺀다** — 훈련사 밑에 걸린 시설 깃발(FacPart*)이 섞여
+            // 몸이 2.9m로 읽혔고 카메라가 5.5m 뒤로 물러나 사람이 콩알이 됐다(첫 촬영본 47).
+            if (go.GetComponent<CharacterController>() != null &&
+                GroundFit.WorldBounds(go.transform, out Bounds body,
+                    t => GroundFit.IsGear(go.transform, t) || IsFacilityPart(go.transform, t)))
+            {
+                box = body;
+                any = true;
+                Debug.Log("[Ulon] 근접 바운드 " + name + " ← 사람 몸 " + body.size.ToString("0.0"));
+            }
+            bool personBox = any;                       // 사람 몸을 이미 쟀으면 아래 시설 루프는 돌지 않는다
+            for (int i = 0; i < rends.Length && !personBox; i++)
             {
                 if (!rends[i].enabled || !rends[i].gameObject.activeInHierarchy)
                     continue;
@@ -310,6 +392,7 @@ namespace Ulon.Editor
                 // 중심선 하나만 쏘면 「앞집 옆을 스쳐 지나가」 0개로 읽힌다(첫 시도가 그랬다) —
                 // 시설 표면 표본에 쏴서 **몇 %가 실제로 이 시설로 먼저 닿는지**를 잰다(차폐 게이트와 같은 방식).
                 int seen = 0, total = 0;
+                bool byRenderer = go.GetComponent<CharacterController>() != null;
                 for (int sx = -1; sx <= 1; sx++)
                     for (int sy = -1; sy <= 1; sy++)
                         for (int sz = -1; sz <= 1; sz++)
@@ -317,6 +400,17 @@ namespace Ulon.Editor
                             var p = box.center + new Vector3(sx * box.extents.x * 0.6f, sy * box.extents.y * 0.6f, sz * box.extents.z * 0.6f);
                             var seg = p - eyeK;
                             total++;
+                            // **사람은 콜라이더로 가려짐을 못 잰다** — 좌판·집 같은 시설은 콜라이더가
+                            // 없거나 성기어서 광선이 그냥 통과했고, 「100% 보인다」로 고른 방위에서
+                            // 화면엔 벽만 찍혔다(첫 촬영본 46: 상인이 아예 없었다).
+                            // 사람 피사체는 **보이는 것**(렌더러 바운드)으로 가려짐을 잰다.
+                            if (byRenderer)
+                            {
+                                if (BlockedByRenderer(eyeK, p, go.transform))
+                                    continue;
+                                seen++;
+                                continue;
+                            }
                             var hits = Physics.RaycastAll(eyeK, seg.normalized, seg.magnitude, ~0, QueryTriggerInteraction.Ignore);
                             System.Array.Sort(hits, (u, v) => u.distance.CompareTo(v.distance));
                             bool blocked = false;
@@ -335,6 +429,15 @@ namespace Ulon.Editor
                                 seen++;
                         }
                 float share = total > 0 ? seen / (float)total : 0f;
+                // **사람은 앞에서 찍는다** — 가림만 보고 고르면 셋 중 셋이 뒷모습이었다(첫 대조 시트).
+                // 「서로 다른 모습인가」는 얼굴·앞섶이 화면에 있어야 판정되는 성질이다.
+                if (byRenderer)
+                {
+                    var toEye = (target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * dist) - target;
+                    toEye.y = 0f;
+                    float front = Vector3.Dot(toEye.normalized, go.transform.forward);   // 1=정면, -1=뒤통수
+                    share += 0.25f * (front + 1f) * 0.5f;
+                }
                 if (share > bestSeen + 0.02f) { bestSeen = share; bestYaw = y; bestPitch = pit; }
             }
             if (beyond.HasValue)
@@ -356,6 +459,44 @@ namespace Ulon.Editor
                       ", 거리 " + dist.ToString("0.0") + "m, 방위 " + bestYaw.ToString("0") + "°/내려보기 " +
                       bestPitch.ToString("0") + "°(시설이 먼저 보이는 표본 " + (bestSeen * 100f).ToString("0") + "%)");
             return new Shot { Name = name, Eye = target - rot * Vector3.forward * dist, Target = target, PlayCamera = true, Subject = go.transform };
+        }
+
+        /// <summary>시설 부속(FacPart*) 밑인가 — **조상까지 올라가며** 본다(이름이 자식에 안 붙어 있다).</summary>
+        static bool IsFacilityPart(Transform actor, Transform t)
+        {
+            for (var p = t; p != null && p != actor; p = p.parent)
+                if (p.name.StartsWith("FacPart", System.StringComparison.Ordinal))
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 눈에서 표본점까지 **보이는 것**이 가로막는가 — 콜라이더가 아니라 렌더러 바운드로 잰다.
+        /// 피사체 자신과 지형은 막는 것으로 세지 않는다(지형은 발밑이라 늘 걸린다).
+        /// </summary>
+        static bool BlockedByRenderer(Vector3 eye, Vector3 point, Transform subject)
+        {
+            var seg = point - eye;
+            float len = seg.magnitude;
+            if (len < 0.001f)
+                return false;
+            var ray = new Ray(eye, seg / len);
+            var rends = Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (!rends[i].enabled || rends[i] is ParticleSystemRenderer)
+                    continue;
+                var t = rends[i].transform;
+                if (t == subject || t.IsChildOf(subject))
+                    continue;
+                if (rends[i].GetComponent<TerrainCollider>() != null || t.GetComponent<Terrain>() != null)
+                    continue;
+                if (Vector3.Distance(rends[i].bounds.center, point) > 30f)
+                    continue;                                   // 멀리 있는 것은 이 표본을 못 가린다
+                if (rends[i].bounds.IntersectRay(ray, out float dist) && dist < len - 0.05f)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
