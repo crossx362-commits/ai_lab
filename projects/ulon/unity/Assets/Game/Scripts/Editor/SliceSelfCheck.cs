@@ -1624,6 +1624,8 @@ namespace Ulon.Editor
             AssertDungeonLighting();
             AssertWorldTerrain();
             AssertHuntGround();
+            AssertHuntMobsAwayFromVillageNegativeControl();
+            AssertHuntMobsAwayFromVillage();
             AssertRoomFurnished();
             AssertRoomFurnishedNegativeControl();
             AssertPropsQualified();

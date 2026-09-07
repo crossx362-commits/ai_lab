@@ -3281,14 +3281,16 @@ namespace Ulon.Editor
         /// <summary>사냥터 잡몹의 자리 — 좌표 원장(빌더·게이트 공용). z를 다 같이 두면 「일직선 진열」이 된다.</summary>
         public static readonly (string Name, float X, float Z, float Yaw)[] HuntSpots =
         {
-            ("Skeleton", 0.6f, 13.6f, 168f),
-            ("Bandit", -2.6f, 11.4f, 196f),
-            ("Raider", 2.2f, 15.8f, 152f),
-            ("Rogue", -4.6f, 14.9f, 208f),
-            ("Knight", 4.9f, 11.2f, 174f),
-            ("Acolyte", 6.8f, 15.4f, 160f),
-            ("Minion", 8.7f, 12.1f, 186f),
-            ("SkelRogue", 10.2f, 16.2f, 150f),
+            // z를 마을에서 20m 북으로 밀었다(검수 지시 2026-09-07) — 56 샷에서 몹이 담장에 붙어
+            // 「마을에 몹이 산다」로 읽혔다. 흩어진 모양(x·z 산포)은 그대로 두고 통째로 옮긴다.
+            ("Skeleton", 0.6f, 33.6f, 168f),
+            ("Bandit", -2.6f, 31.4f, 196f),
+            ("Raider", 2.2f, 35.8f, 152f),
+            ("Rogue", -4.6f, 34.9f, 208f),
+            ("Knight", 4.9f, 31.2f, 174f),
+            ("Acolyte", 6.8f, 35.4f, 160f),
+            ("Minion", 8.7f, 32.1f, 186f),
+            ("SkelRogue", 10.2f, 36.2f, 150f),
         };
 
         /// <summary>
