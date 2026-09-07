@@ -1,0 +1,517 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using Ulon.Client;
+using Ulon.Server;
+using Ulon.Shared;
+using UnityEditor;
+using UnityEditor.Animations;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+// **VisualSliceBuilder 분할**(오너 상시 지시 2026-09-08, 파일 비대화 정리).
+// 이 파일이 담는 것: 배치 보고·액터 애니메이터·Build() 전체 파이프라인·조명·지형·물 — 세계 조립 순서.
+// 동작 변경 0 — 구간을 순서 그대로 옮기기만 했다(순서를 바꾸면 주석과 몸통의 짝이 깨진다).
+namespace Ulon.Editor
+{
+    public static partial class VisualSliceBuilder
+    {
+
+        public static void BatchFixAndReport()
+        {
+            FixCharacterAnimation();
+            var sb = new System.Text.StringBuilder();
+            var importer = AssetImporter.GetAtPath(KnightFbx) as ModelImporter;
+            sb.AppendLine("type=" + importer.animationType);
+            var humans = importer.humanDescription.human;
+            for (int i = 0; i < humans.Length; i++)
+                sb.AppendLine(humans[i].humanName + "->" + humans[i].boneName);
+            AnimationClip[] clips = LoadClips(KnightFbx);
+            AnimationClip idle = BestClip(clips, new[] { "idle" }, new[] { "attack", "walk", "run", "combat" });
+            if (idle != null)
+            {
+                var binds = AnimationUtility.GetCurveBindings(idle);
+                sb.AppendLine("idle=" + idle.name + " humanMotion=" + idle.isHumanMotion + " binds=" + binds.Length);
+                int n = Mathf.Min(12, binds.Length);
+                for (int i = 0; i < n; i++)
+                    sb.AppendLine("  " + binds[i].path + " / " + binds[i].propertyName);
+            }
+            var player = GameObject.Find("Player");
+            var anim = player != null ? player.GetComponentInChildren<Animator>() : null;
+            if (anim != null && anim.avatar != null)
+                sb.AppendLine("playerAvatar=" + anim.avatar.name + " human=" + anim.avatar.isHuman + " valid=" + anim.avatar.isValid);
+            var companion = GameObject.Find("Companion");
+            var canim = companion != null ? companion.GetComponentInChildren<Animator>() : null;
+            if (canim != null && canim.avatar != null)
+                sb.AppendLine("companionAvatar=" + canim.avatar.name + " human=" + canim.avatar.isHuman);
+            if (anim != null && canim != null)
+                sb.AppendLine("sharedCtrl=" + (anim.runtimeAnimatorController == canim.runtimeAnimatorController));
+            string outPath = Path.GetFullPath(Path.Combine(Application.dataPath, "../../builds/humanoid-report.txt"));
+            Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
+            File.WriteAllText(outPath, sb.ToString());
+            Debug.Log("[Ulon] " + sb.ToString());
+        }
+
+        /// <summary>
+        /// **모든 사람형이 실제로 움직이게 한다**(검수 2026-09-07 (a) — 53의 T포즈).
+        ///
+        /// 스탠드얼론 실측에서 훈련사와 스켈레톤이 **애니메이터 없이** 서 있었다. 런타임
+        /// `CharacterAnim.StripEmptyAnimators`가 컨트롤러 없는 애니메이터를 지우는데, 그 액터에는
+        /// 컨트롤러 달린 애니메이터가 **하나도 없어** 결국 아무것도 안 남았다 — 게임 화면에서 T포즈다.
+        /// 만드는 경로가 여럿이라(생성·모델 교체·프리팹 인스턴스) 한 곳을 고쳐선 또 샌다.
+        /// 그래서 **전수 보정 패스**로 두고, 게이트가 이 성질을 지킨다(`AssertActorsAnimated`).
+        /// 멱등: 이미 컨트롤러가 있으면 손대지 않는다.
+        /// </summary>
+        public static void EnsureActorAnimators()
+        {
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+            if (controller == null)
+            {
+                Debug.LogWarning("[Ulon] 공용 로코모션 컨트롤러가 없습니다: " + ControllerPath);
+                return;
+            }
+            var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var fixedNames = new List<string>();
+            for (int i = 0; i < actors.Length; i++)
+            {
+                var go = actors[i].gameObject;
+                var anim = go.GetComponentInChildren<Animator>(true);
+                if (anim != null && anim.runtimeAnimatorController != null)
+                    continue;
+                // **계층을 건드리지 않는다.** 처음엔 `StripAndAssign`을 재사용했는데 그것이 Visual을
+                // 다시 찾아 이름을 바꾸고 아바타를 덮어써서 자객의 발이 지표 아래 10m로 튀었다
+                // (게이트가 잡았다). 여기서 고칠 것은 **컨트롤러가 없다** 하나뿐이다.
+                if (anim == null)
+                {
+                    var visual = go.transform.Find("Visual");
+                    anim = (visual != null ? visual.gameObject : go).AddComponent<Animator>();
+                }
+                if (anim.avatar == null)
+                    anim.avatar = AvatarFor(go.name);
+                anim.runtimeAnimatorController = controller;
+                anim.applyRootMotion = false;
+                anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                fixedNames.Add(go.name);
+            }
+            if (fixedNames.Count > 0)
+                Debug.Log("[Ulon] 액터 애니메이터 보정 — " + fixedNames.Count + "체에 공용 컨트롤러를 달았다(" +
+                          string.Join(", ", fixedNames) + "). 컨트롤러 없는 액터는 게임에서 T포즈로 선다");
+        }
+
+        static void StripAndAssign(GameObject root, RuntimeAnimatorController controller)
+        {
+            if (root == null)
+                return;
+            var rootAnim = root.GetComponent<Animator>();
+            if (rootAnim != null)
+                UnityEngine.Object.DestroyImmediate(rootAnim);
+            Transform visual = root.transform.Find("Visual");
+            if (visual == null)
+                visual = FindMeshChildToNameVisual(root.transform);
+            GameObject host = visual != null ? visual.gameObject : root;
+            var anim = host.GetComponentInChildren<Animator>(true);
+            if (anim == null)
+                anim = host.AddComponent<Animator>();
+            anim.avatar = AvatarFor(root.name);
+            anim.runtimeAnimatorController = controller;
+            anim.applyRootMotion = false;
+            anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            var smrs = host.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            for (int i = 0; i < smrs.Length; i++)
+                smrs[i].updateWhenOffscreen = true;
+        }
+
+        static Avatar AvatarFor(string rootName)
+        {
+            string fbx = KnightFbx;
+            if (rootName == "Companion")
+                fbx = KnightFbx;
+            else if (rootName == "Skeleton" || rootName == Dungeon1.MobObject || rootName == Dungeon1.BossObject)
+                fbx = SkeletonFbx;
+            else if (rootName == "Trainer" || rootName == FieldBoss.Object)
+                fbx = MageFbx;
+            else if (rootName == "Bandit" || rootName == Dungeon2.MobObject)
+                fbx = RogueFbx;      // 「도적」이 마법사 차림이던 이름-외형 어긋남(검수 승인 2026-09-07)
+            else if (rootName == "Raider" || rootName == Dungeon3.MobObject)
+                fbx = KnightFbx;
+            else if (rootName == "Rogue" || rootName == Dungeon2.BossObject)
+                fbx = RogueFbx;
+            else if (rootName == "Knight")
+                fbx = KnightFbx;
+            else if (rootName == "Acolyte")
+                fbx = SkeletonMageFbx;
+            else if (rootName == "Minion")
+                fbx = SkeletonMinionFbx;
+            else if (rootName == "SkelRogue")
+                fbx = SkeletonRogueFbx;
+            Avatar human = null;
+            Avatar any = null;
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(fbx))
+            {
+                var av = o as Avatar;
+                if (av == null)
+                    continue;
+                any = av;
+                if (av.isHuman)
+                    human = av;
+            }
+            return human != null ? human : any;
+        }
+
+        [MenuItem("Ulon/Build Visual Slice")]
+        public static void Build()
+        {
+            if (!File.Exists(Path.Combine(Directory.GetParent(Application.dataPath)!.FullName, KnightFbx)))
+            {
+                Debug.LogWarning("[Ulon] KayKit Knight.fbx 없음. 캡슐 부트스트랩으로 폴백.");
+                CreateBootstrapScene.Create();
+                return;
+            }
+
+            ConfigureHumanoid(KnightFbx, true);
+            ConfigureHumanoid(MageFbx, true);
+            ConfigureHumanoid(RogueFbx, true);
+            ConfigureHumanoid(SkeletonFbx, true);
+            ConfigureHumanoid(SkeletonMageFbx, true);
+            ConfigureHumanoid(SkeletonRogueFbx, true);
+            ConfigureProp(SwordFbx);
+            ConfigureProp(ShieldFbx);
+            foreach (string prop in KenneyProps())
+                ConfigureProp(prop);
+
+            AnimationClip[] clips = LoadClips(KnightFbx);
+            AnimationClip idle = BestClip(clips, new[] { "idle" }, new[] { "attack", "walk", "run", "combat" });
+            AnimationClip walk = BestClip(clips, new[] { "walking", "walk" }, new[] { "attack", "strafe" });
+            AnimationClip run = BestClip(clips, new[] { "running", "run" }, new[] { "attack" });
+            AnimationClip attack = BestClip(clips, new[] { "1h_melee_attack", "attack_chop", "melee_attack", "attack" }, new[] { "idle" });
+            if (idle == null)
+                throw new InvalidOperationException("Knight FBX에서 Idle 클립을 찾지 못했습니다. 클립: " + ClipNames(clips));
+
+            AnimatorController controller = BuildController(idle, walk, run, attack);
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+            SetupLighting();
+            MakeGround();
+            PlaceKenney();
+
+            var player = SpawnActor("Player", KnightFbx, new Vector3(0f, 0f, 0f), PlayerHeight, controller, true, false, "나", 50f);
+            AttachGear(player, SwordFbx, ShieldFbx);
+            HideExtraGear(player);
+            var companion = SpawnActor("Companion", KnightFbx, new Vector3(-2.2f, 0f, 1.4f), 1.85f, controller, false, false, "동료", 50f);
+            HideExtraGear(companion);
+            var skeleton = SpawnActor("Skeleton", SkeletonFbx, new Vector3(5.2f, 0f, 3.6f), MobCatalog.HeightOf(MobCatalog.Skeleton), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Skeleton), MobCatalog.MaxHpOf(MobCatalog.Skeleton));
+            BindMob(skeleton, MobCatalog.Skeleton);
+            HideExtraGear(skeleton);
+            var bandit = SpawnActor("Bandit", MageFbx, new Vector3(7.4f, 0f, 3.6f), MobCatalog.HeightOf(MobCatalog.Bandit), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Bandit), MobCatalog.MaxHpOf(MobCatalog.Bandit));
+            BindMob(bandit, MobCatalog.Bandit);
+            HideExtraGear(bandit);
+            var raider = SpawnActor("Raider", KnightFbx, new Vector3(2.4f, 0f, 13.2f), MobCatalog.HeightOf(MobCatalog.Raider), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Raider), MobCatalog.MaxHpOf(MobCatalog.Raider));
+            BindMob(raider, MobCatalog.Raider);
+            HideExtraGear(raider);
+            var rogue = SpawnActor("Rogue", RogueFbx, new Vector3(-3.8f, 0f, 13.2f), MobCatalog.HeightOf(MobCatalog.Rogue), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Rogue), MobCatalog.MaxHpOf(MobCatalog.Rogue));
+            BindMob(rogue, MobCatalog.Rogue);
+            HideExtraGear(rogue);
+            var knight = SpawnActor("Knight", KnightFbx, new Vector3(4.4f, 0f, 13.2f), MobCatalog.HeightOf(MobCatalog.Knight), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Knight), MobCatalog.MaxHpOf(MobCatalog.Knight));
+            BindMob(knight, MobCatalog.Knight);
+            HideExtraGear(knight);
+            var acolyte = SpawnActor("Acolyte", SkeletonMageFbx, new Vector3(6.4f, 0f, 13.2f), MobCatalog.HeightOf(MobCatalog.Acolyte), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Acolyte), MobCatalog.MaxHpOf(MobCatalog.Acolyte));
+            BindMob(acolyte, MobCatalog.Acolyte);
+            HideExtraGear(acolyte);
+            var minion = SpawnActor("Minion", SkeletonMinionFbx, new Vector3(8.4f, 0f, 13.2f), MobCatalog.HeightOf(MobCatalog.Minion), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Minion), MobCatalog.MaxHpOf(MobCatalog.Minion));
+            BindMob(minion, MobCatalog.Minion);
+            HideExtraGear(minion);
+            var skelRogue = SpawnActor("SkelRogue", SkeletonRogueFbx, new Vector3(10.4f, 0f, 13.2f), MobCatalog.HeightOf(MobCatalog.SkelRogue), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.SkelRogue), MobCatalog.MaxHpOf(MobCatalog.SkelRogue));
+            BindMob(skelRogue, MobCatalog.SkelRogue);
+            HideExtraGear(skelRogue);
+            var hexarch = SpawnActor(FieldBoss.Object, MageFbx, new Vector3(FieldBoss.X, 0f, FieldBoss.Z), MobCatalog.HeightOf(MobCatalog.Hexarch), controller, false, true, MobCatalog.DisplayNameOf(MobCatalog.Hexarch), MobCatalog.MaxHpOf(MobCatalog.Hexarch));
+            BindMob(hexarch, MobCatalog.Hexarch);
+            HideExtraGear(hexarch);
+            DressBoss(hexarch, new Color(0.35f, 1f, 0.6f));       // 독기 어린 녹빛 — 헥사크(§10.2)
+
+            var world = new GameObject("OfflineWorld");
+            world.AddComponent<OfflineWorld>();
+            world.AddComponent<SliceHud>();
+            world.AddComponent<PersistDriver>();
+
+            Camera cam = UnityEngine.Object.FindAnyObjectByType<Camera>();
+            if (cam != null)
+            {
+                var qv = cam.GetComponent<QuarterViewCamera>() ?? cam.gameObject.AddComponent<QuarterViewCamera>();
+                // 실내 차폐 페이드도 씬에 박아 둔다 — 런타임에만 붙이면 에디터 검증이 못 본다(검수 2026-09-06 P0).
+                if (cam.GetComponent<DungeonSightFade>() == null)
+                    cam.gameObject.AddComponent<DungeonSightFade>();
+                qv.SetFollow(player.transform);
+            }
+
+            SetupSky();
+            DressVillageInOpenScene();
+
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+            Debug.Log("[Ulon] Visual slice 씬 저장. clips idle=" + idle.name
+                      + " walk=" + (walk != null ? walk.name : "-")
+                      + " run=" + (run != null ? run.name : "-")
+                      + " attack=" + (attack != null ? attack.name : "-"));
+        }
+
+        static void SetupLighting()
+        {
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.55f, 0.58f, 0.52f);
+            Light sun = UnityEngine.Object.FindAnyObjectByType<Light>();
+            if (sun == null)
+                return;
+            sun.type = LightType.Directional;
+            sun.color = new Color(1f, 0.95f, 0.85f);
+            sun.intensity = 1.18f;
+            sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            sun.shadows = LightShadows.Soft;
+        }
+
+        static void MakeGround()
+        {
+            EnsureVillageTerrain();
+        }
+
+        /// <summary>지형은 셀프체크에서도 다시 만든다 — 안 그러면 원장(WorldTerrain)을 고쳐도
+        /// 씬에는 디스크의 옛 지형이 남아 Assert가 옛 값을 본다(2026-09-06 실측: 180m가 계속 잡혔다).</summary>
+        /// <summary>
+        /// 안개 범위는 월드 크기를 따라간다 — 42~115m로는 300m 월드에서 산·바다가 통째로 안개에 묻혀
+        /// §8.1 「멀리서도 즉시 읽히는 실루엣」이 성립하지 않는다(2026-09-06 조망 샷 실측).
+        /// </summary>
+        public static void EnsureWorldAtmosphere()
+        {
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = new Color(0.55f, 0.70f, 0.86f);
+            RenderSettings.fogStartDistance = 90f;
+            RenderSettings.fogEndDistance = WorldTerrain.Span * 1.6f;
+        }
+
+        public static void EnsureVillageTerrain()
+        {
+            Directory.CreateDirectory(Path.Combine(Application.dataPath, "Game/Art/Env"));
+            var grass = MakeNoiseMat("KenneyGrass", new Color(0.30f, 0.50f, 0.18f), new Color(0.22f, 0.40f, 0.12f));
+            var tex = grass != null ? grass.mainTexture as Texture2D : null;
+            if (tex == null)
+                tex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Game/Art/Env/KenneyGrass.png");
+            const string DataPath = "Assets/Game/Art/Env/VillageTerrain.asset";
+            const string LayerPath = "Assets/Game/Art/Env/VillageGrass.terrainlayer";
+            var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(LayerPath);
+            if (layer == null)
+            {
+                layer = new TerrainLayer();
+                AssetDatabase.CreateAsset(layer, LayerPath);
+            }
+            layer.diffuseTexture = tex;
+            layer.tileSize = new Vector2(12f, 12f);
+            EditorUtility.SetDirty(layer);
+            var data = AssetDatabase.LoadAssetAtPath<TerrainData>(DataPath);
+            if (data == null)
+            {
+                data = new TerrainData();
+                AssetDatabase.CreateAsset(data, DataPath);
+            }
+            // 무채색 한 장으로 보이던 바위에 갈색기·명암 폭을 준다(§8.2).
+            // 풀(잡음·타일 12)과 **다른 무늬·다른 타일링**이어야 산이 별개의 지질로 읽힌다(검수 재반려).
+            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.20f, 0.18f, 0.17f), new Color(0.63f, 0.58f, 0.50f), 7f, 1);
+            var sandLayer = EnsureTerrainLayer("ShoreSand", new Color(0.74f, 0.68f, 0.50f), new Color(0.85f, 0.80f, 0.62f), 8f);
+            // §6.1 지역이 **지표로** 구분돼야 한다 — 바닥이 전부 같은 초록이면 소품만 얹힌 모양이다(검수 2026-09-06 관찰).
+            var tilledLayer = EnsureTerrainLayer("FarmTilled", new Color(0.30f, 0.21f, 0.13f), new Color(0.47f, 0.34f, 0.21f), 3.5f, 2);
+            var soilLayer = EnsureTerrainLayer("ForestSoil", new Color(0.16f, 0.13f, 0.09f), new Color(0.30f, 0.25f, 0.16f), 9f);
+            var gravelLayer = EnsureTerrainLayer("MineGravel", new Color(0.28f, 0.26f, 0.24f), new Color(0.55f, 0.52f, 0.47f), 4.5f, 1);
+            var roadLayer = EnsureTerrainLayer("DirtRoad", new Color(0.38f, 0.31f, 0.22f), new Color(0.58f, 0.50f, 0.37f), 5f);
+
+            int res = 513;
+            data.heightmapResolution = res;
+            data.size = new Vector3(WorldTerrain.Span, WorldTerrain.MaxHeight, WorldTerrain.Span);
+            data.terrainLayers = new[] { layer, rockLayer, sandLayer, tilledLayer, soilLayer, gravelLayer, roadLayer };
+            float[,] heights = new float[res, res];
+            float half = WorldTerrain.Span * 0.5f;
+            for (int z = 0; z < res; z++)
+            {
+                for (int x = 0; x < res; x++)
+                {
+                    float wx = (x / (float)(res - 1)) * WorldTerrain.Span - half;
+                    float wz = (z / (float)(res - 1)) * WorldTerrain.Span - half;
+                    heights[z, x] = WorldTerrain.HeightAt(wx, wz) / WorldTerrain.MaxHeight;
+                }
+            }
+            data.SetHeights(0, 0, heights);
+            int ar = data.alphamapResolution;
+            var alpha = new float[ar, ar, WorldSplat.LayerCount];
+            for (int z = 0; z < ar; z++)
+            {
+                for (int x = 0; x < ar; x++)
+                {
+                    float wx = (x / (float)(ar - 1)) * WorldTerrain.Span - half;
+                    float wz = (z / (float)(ar - 1)) * WorldTerrain.Span - half;
+                    float h = WorldTerrain.HeightAt(wx, wz);
+                    // 경사도 — 가파른 곳이 바위다. 높이만 보면 산이 회색 한 장, 밑동이 칼로 자른 듯 끊긴다(§8.2).
+                    float d = WorldTerrain.Span / (ar - 1);
+                    float hx = WorldTerrain.HeightAt(wx + d, wz) - WorldTerrain.HeightAt(wx - d, wz);
+                    float hz = WorldTerrain.HeightAt(wx, wz + d) - WorldTerrain.HeightAt(wx, wz - d);
+                    float slope = Mathf.Sqrt(hx * hx + hz * hz) / (2f * d);
+
+                    // 경계에 노이즈를 섞어 직선으로 끊기지 않게 한다.
+                    float edgeNoise = (Mathf.PerlinNoise(wx * 0.09f + 17f, wz * 0.09f + 5f) - 0.5f) * 6f;
+                    float rock = Mathf.Clamp01((h - (WorldTerrain.LandBase + 10f) + edgeNoise * 1.6f) / 16f);
+                    rock = Mathf.Max(rock, Mathf.Clamp01((slope - 0.58f) * 1.6f));      // 급경사는 고도와 무관하게 바위
+                    float mottle = Mathf.PerlinNoise(wx * 0.021f + 3.1f, wz * 0.021f + 8.9f);
+                    rock = Mathf.Max(rock, Mathf.Clamp01((mottle - 0.5f) * 2.6f) * 0.55f);   // 평지 흙·바위 얼룩
+                    // 산 중턱까지 풀이 올라간다 — 상한을 얼룩으로 흔들어 풀·바위가 섞이게 한다(중턱 풀 0.19 재반려).
+                    if (h < WorldTerrain.LandBase + 22f)
+                        rock = Mathf.Min(rock, 0.42f + mottle * 0.45f);
+
+                    // 물가 — 수면 ±2m는 모래. 잔디가 물에 수직으로 잘리면 §8.2 위반이다.
+                    float sand = 1f - Mathf.Clamp01((Mathf.Abs(h - WorldTerrain.SeaLevel) - 0.8f) / 2.0f);
+                    if (h < WorldTerrain.SeaLevel)
+                        sand = 1f;                                   // 물속 바닥도 모래
+                    sand = Mathf.Max(sand, 0f);
+
+                    float grassW = Mathf.Max(0f, 1f - sand) * Mathf.Max(0f, 1f - rock);
+                    float rockW = Mathf.Max(0f, 1f - sand) * rock;
+
+                    // 지역 지표·길 — 원장(WorldSplat)이 계산하고 Assert도 같은 함수를 읽는다.
+                    int cover = WorldSplat.CoverAt(wx, wz, out float coverW);
+                    coverW *= Mathf.Max(0f, 1f - sand) * Mathf.Max(0f, 1f - rock * 0.45f);
+                    float keep = Mathf.Max(0f, 1f - coverW);
+
+                    var w = new float[WorldSplat.LayerCount];
+                    w[WorldSplat.Grass] = grassW * keep;
+                    w[WorldSplat.Rock] = rockW * keep;
+                    w[WorldSplat.Sand] = sand;
+                    if (cover >= 0)
+                        w[cover] += coverW;
+                    float sum = 0.0001f;
+                    for (int c = 0; c < WorldSplat.LayerCount; c++)
+                        sum += w[c];
+                    for (int c = 0; c < WorldSplat.LayerCount; c++)
+                        alpha[z, x, c] = w[c] / sum;
+                }
+            }
+            data.SetAlphamaps(0, 0, alpha);
+            EditorUtility.SetDirty(data);
+            // TerrainData는 에셋이다 — 저장하지 않으면 씬을 다시 열 때 디스크의 옛 지형이 돌아온다.
+            AssetDatabase.SaveAssets();
+            var found = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = found.Length - 1; i >= 0; i--)
+            {
+                if (found[i] == null || found[i].name != "Ground")
+                    continue;
+                if (found[i].GetComponent<Terrain>() != null)
+                    continue;
+                UnityEngine.Object.DestroyImmediate(found[i].gameObject);
+            }
+            var go = GameObject.Find("Ground");
+            if (go == null)
+            {
+                go = Terrain.CreateTerrainGameObject(data);
+                go.name = "Ground";
+            }
+            var terrain = go.GetComponent<Terrain>();
+            terrain.terrainData = data;
+            go.transform.position = new Vector3(-half, 0f, -half);
+            terrain.heightmapPixelError = 5f;
+            terrain.basemapDistance = 160f;
+            terrain.shadowCastingMode = ShadowCastingMode.On;
+            var col = go.GetComponent<TerrainCollider>();
+            if (col != null)
+                col.terrainData = data;
+
+            EnsureWater();
+            EnsureWorldAtmosphere();
+        }
+
+        /// <summary>
+        /// 바다·강·호수는 같은 수면 하나로 만든다 — 지형이 SeaLevel 아래로 파인 곳에서만 물이 보인다.
+        /// 단색 파란 판은 §8.2 위반이라 노이즈 텍스처 재질을 쓴다(Default-Material 프리미티브 금지).
+        /// </summary>
+        static void EnsureWater()
+        {
+            var mat = MakeNoiseMat("SeaWater", new Color(0.10f, 0.28f, 0.42f), new Color(0.18f, 0.44f, 0.58f));
+            if (mat != null)
+            {
+                mat.SetFloat("_Glossiness", 0.85f);
+                mat.SetFloat("_Metallic", 0.1f);
+                if (mat.HasProperty("_MainTex"))
+                    mat.mainTextureScale = new Vector2(24f, 24f);
+                EditorUtility.SetDirty(mat);
+            }
+            var go = GameObject.Find(WaterObject);
+            if (go == null)
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Plane);
+                go.name = WaterObject;
+                var c = go.GetComponent<Collider>();
+                if (c != null)
+                    UnityEngine.Object.DestroyImmediate(c);
+            }
+            go.transform.position = new Vector3(0f, WorldTerrain.SeaLevel, 0f);
+            // 지형보다 훨씬 넓게 — 수면 끝이 화면에 보이면 "판때기"로 읽힌다.
+            go.transform.localScale = new Vector3(WorldTerrain.Span * 0.3f, 1f, WorldTerrain.Span * 0.3f);
+            var rend = go.GetComponent<Renderer>();
+            if (rend != null && mat != null)
+                rend.sharedMaterial = mat;
+        }
+
+        static TerrainLayer EnsureTerrainLayer(string name, Color a, Color b, float tile)
+        {
+            return EnsureTerrainLayer(name, a, b, tile, 0);
+        }
+
+        static TerrainLayer EnsureTerrainLayer(string name, Color a, Color b, float tile, int pattern)
+        {
+            var mat = MakeNoiseMat(name, a, b, pattern);
+            var tex = mat != null ? mat.mainTexture as Texture2D : null;
+            string path = "Assets/Game/Art/Env/" + name + ".terrainlayer";
+            var tl = AssetDatabase.LoadAssetAtPath<TerrainLayer>(path);
+            if (tl == null)
+            {
+                tl = new TerrainLayer();
+                AssetDatabase.CreateAsset(tl, path);
+            }
+            tl.diffuseTexture = tex;
+            tl.tileSize = new Vector2(tile, tile);
+            EditorUtility.SetDirty(tl);
+            return tl;
+        }
+
+        static void PlaceKenney()
+        {
+            var millGo = Place("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/windmill.fbx", new Vector3(-10.5f, 0f, 8.5f), Vector3.zero);
+            if (millGo != null)
+            {
+                millGo.name = "Banker";
+                var bank = millGo.AddComponent<BankStation>();
+                bank.DisplayName = "은행";
+            }
+            Place("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall.fbx", new Vector3(-5.2f, 0f, 3.4f), new Vector3(0f, 90f, 0f));
+            Place("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/fountain-round.fbx", new Vector3(-3.6f, 0f, -3.6f), Vector3.zero);
+            Place("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/tree-high.fbx", new Vector3(9f, 0f, 7f), Vector3.zero);
+            Place("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/tree.fbx", new Vector3(-7f, 0f, -6f), Vector3.zero);
+            Place("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/cart.fbx", new Vector3(-7.4f, 0f, 6.4f), Vector3.zero);
+            Place("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-large.fbx", new Vector3(7.5f, 0f, -3f), Vector3.zero);
+            Place("Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bushLarge.fbx", new Vector3(4.6f, 0f, -3.6f), Vector3.zero);
+            Place("Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bush.fbx", new Vector3(-6.2f, 0f, -5.4f), Vector3.zero);
+            Place("Assets/_ThirdParty/Kenney/Nature/RAW/Models/rock_largeA.fbx", new Vector3(8.5f, 0f, 2.4f), Vector3.zero);
+            var veinGo = Place("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-large.fbx", new Vector3(9.8f, 0f, -3.4f), Vector3.zero);
+            if (veinGo != null)
+            {
+                veinGo.name = "IronVein";
+                var node = veinGo.AddComponent<ResourceNode>();
+                node.ResourceId = "iron_ore";
+                node.DisplayName = "철 광맥";
+            }
+            var forgeGo = Place("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall.fbx", new Vector3(-6.8f, 0f, 3.4f), new Vector3(0f, 90f, 0f));
+            if (forgeGo != null)
+            {
+                forgeGo.name = "Forge";
+                var station = forgeGo.AddComponent<CraftStation>();
+                station.RecipeId = "iron_sword";
+                station.DisplayName = "대장간";
+            }
+            EnsureCarpenterLandmark();
+        }
+    }
+}
