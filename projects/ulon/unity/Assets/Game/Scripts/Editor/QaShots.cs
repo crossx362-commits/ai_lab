@@ -273,6 +273,10 @@ namespace Ulon.Editor
                 // 「화덕 근접」이 마을 전경이 됐다(화덕에 불을 붙인 직후 실측).
                 if (rends[i] is ParticleSystemRenderer)
                     continue;
+                // **시설에 세운 사람은 시설의 크기가 아니다**(검수 승인 2026-09-07) — 스킨드 바운드가
+                // 부풀어 근접 거리를 키운다. 파티클을 뺀 것과 같은 처리다.
+                if (rends[i].GetComponentInParent<CharacterController>() != null)
+                    continue;
                 if (!any) { box = rends[i].bounds; any = true; }
                 else box.Encapsulate(rends[i].bounds);
                 Debug.Log("[Ulon] 근접 바운드 " + name + " ← " + rends[i].gameObject.name + " " + rends[i].bounds.size.ToString("0.0"));

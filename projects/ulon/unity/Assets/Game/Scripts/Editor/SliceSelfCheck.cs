@@ -1660,6 +1660,7 @@ namespace Ulon.Editor
             AssertWarpLandingsNegativeControl();
             AssertHudControlsOnScreen();
             AssertHudControlsNegativeControl();
+            AssertBossSilhouetteHeadgearNegativeControl();   // 모자를 되돌리면 빨간불인가(분모 오염 감시)
             AssertBossSilhouette();
             AssertBossTraits();
             AssertDungeonEntrance();

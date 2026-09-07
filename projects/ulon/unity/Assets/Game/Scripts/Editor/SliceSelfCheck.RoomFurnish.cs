@@ -52,6 +52,22 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 실내 소품 분포 통과 — 사분면마다 1개 이상, 중앙 반경 " + CombatClearRadius + "m 비어 있음");
         }
 
+        /// <summary>방 바닥 판의 **실측** 윗면 — 공식(지표−깊이+두께)이 아니라 실제 오브젝트 바운드를 읽는다.</summary>
+        static bool RoomFloorTopMeasured(GameObject interior, out float y)
+        {
+            y = 0f;
+            bool any = false;
+            var rends = interior.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (!rends[i].gameObject.name.StartsWith("DungeonFloor", StringComparison.Ordinal))
+                    continue;
+                float top = rends[i].bounds.max.y;
+                if (!any || top > y) { y = top; any = true; }
+            }
+            return any;
+        }
+
         static void CheckDistribution(string label, Vector2 center, string interiorObject)
         {
             var interior = GameObject.Find(interiorObject);
@@ -70,11 +86,17 @@ namespace Ulon.Editor
                     || t.name.StartsWith("DungeonFurnLantern", StringComparison.Ordinal);
                 if (!wallMounted && GroundFit.WorldBounds(t, out Bounds wb))
                 {
-                    float floorTop = GroundYAt(center) - VisualSliceBuilder.DungeonDepth + VisualSliceBuilder.RoomFloorTop;
+                    // **공식이 아니라 실물 바닥 판**을 잰다(검수 승인 2026-09-07) —
+                    // 공식과 실물이 「지금은 일치」해도 자가 둘이면 언젠가 갈린다(방 안 몹 게이트에서 겪었다).
+                    // 액터처럼 「발 밑 광선」을 쓰면 **겹쳐 놓인 소품**이 먼저 맞는다(첫 시도에서 잔해가
+                    // 이웃 소품 아래로 들어가 −0.79m로 읽혔다) — 방 안에서는 바닥 판 자체를 대상으로 삼는다.
+                    if (!RoomFloorTopMeasured(interior, out float floorTop))
+                        throw new InvalidOperationException(label + "의 바닥 판(DungeonFloor)을 못 찾았습니다 — 못 잰 것을 통과로 적지 않는다.");
+                    string under = "DungeonFloor";
                     float dy = wb.min.y - floorTop;
                     if (Mathf.Abs(dy) > PropFootErrorMax)
                         throw new InvalidOperationException(label + "의 소품 " + t.name + " 발이 방 바닥에서 " +
-                            dy.ToString("0.00") + "m " + (dy > 0f ? "떠" : "묻혀") + " 있습니다 — 허용 " + PropFootErrorMax + "m.");
+                            dy.ToString("0.00") + "m " + (dy > 0f ? "떠" : "묻혀") + " 있습니다 — 허용 " + PropFootErrorMax + "m(밑에 닿은 것: " + under + ").");
                 }
                 if (r < CombatClearRadius)
                     throw new InvalidOperationException(label + "의 소품 " + t.name + "이(가) 중앙에서 " +

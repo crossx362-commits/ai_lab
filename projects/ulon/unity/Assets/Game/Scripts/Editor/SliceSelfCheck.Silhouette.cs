@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Ulon.Shared;
 using UnityEngine;
 
@@ -57,6 +58,11 @@ namespace Ulon.Editor
                 }
                 else
                 {
+                    // **몸 폭에 장비를 섞지 않는다**(검수 승인 2026-09-07). 무기·망토를 넣었더니
+                    // 필드 보스 몸 폭이 4.28m(CharacterController 지름은 0.8m)로 잡혀 상한이 3.0m가 됐고,
+                    // 모자 폭 1.41은 **무슨 짓을 해도 통과**했다 — 비율 게이트는 분모가 부풀면 통째로 무력해진다.
+                    if (GroundFit.IsGear(bossGo.transform, rends[i].transform))
+                        continue;
                     if (!hasBody) { body = rends[i].bounds; hasBody = true; }
                     else body.Encapsulate(rends[i].bounds);
                 }
@@ -70,6 +76,43 @@ namespace Ulon.Editor
                 if (bodyW > 0.01f && hatW > bodyW * HeadgearWidthMax)
                     throw new InvalidOperationException(label + " 모자 폭 " + hatW.ToString("0.00") + "m가 몸 폭 " + bodyW.ToString("0.00") + "m의 " + HeadgearWidthMax + "배를 넘습니다 — 45° 시점에서 몸이 모자에 가려집니다.");
             }
+        }
+
+        /// <summary>
+        /// 네거티브 컨트롤 — **모자를 원래 크기로 되돌려** 빨간불을 본다.
+        /// 이 NC가 빨간불이 안 나면 이 게이트는 아무것도 안 재고 있는 것이다(실제로 그랬다: 분모 오염).
+        /// </summary>
+        static void AssertBossSilhouetteHeadgearNegativeControl()
+        {
+            var boss = GameObject.Find(FieldBoss.Object);
+            if (boss == null)
+                throw new InvalidOperationException("실루엣 NC 대상(필드 보스)이 없습니다.");
+            var hats = new List<Transform>();
+            var all = boss.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+                if (IsHeadgearName(all[i]) && all[i] != boss.transform)
+                    hats.Add(all[i]);
+            if (hats.Count == 0)
+                throw new InvalidOperationException("실루엣 NC 대상 모자를 못 찾았습니다 — 결함을 만들 수 없습니다(NC 실패).");
+            var saved = new List<Vector3>();
+            for (int i = 0; i < hats.Count; i++) saved.Add(hats[i].localScale);
+            bool red = false;
+            try
+            {
+                // 축소 전 크기(0.62배로 줄인 것을 되돌린다) — 헥사크가 「떠 있는 모자」로 보이던 그 상태다.
+                for (int i = 0; i < hats.Count; i++)
+                    hats[i].localScale = hats[i].localScale / 0.62f;
+                try { CheckSilhouette("필드 보스", FieldBoss.Object, "Raider"); }
+                catch (InvalidOperationException) { red = true; }
+            }
+            finally
+            {
+                for (int i = 0; i < hats.Count; i++) hats[i].localScale = saved[i];
+            }
+            if (!red)
+                throw new InvalidOperationException("실루엣 네거티브 컨트롤 실패 — 모자를 원래 크기로 되돌렸는데 통과했습니다. " +
+                    "이 게이트는 아무것도 안 재고 있습니다(분모에 장비가 섞이지 않았는지 보라).");
+            Debug.Log("[Ulon] 실루엣 네거티브 컨트롤 통과 — 모자를 원래 크기로 되돌리자 FAIL");
         }
 
         static float BodyHeight(string what, string objectName, out GameObject go)
