@@ -1848,7 +1848,6 @@ namespace Ulon.Editor
             const string TreeHC = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/tree-high-crooked.fbx";
             const string RockW = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-wide.fbx";
             const string Poles = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/poles.fbx";
-            const string Mill = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/watermill.fbx";
             Decor(parent, lantern, new Vector3(-2.2f, 0f, -2.2f), Vector3.zero);
             Decor(parent, lantern, new Vector3(2.2f, 0f, -2.2f), Vector3.zero);
             Decor(parent, lantern, new Vector3(-2.2f, 0f, 2.2f), Vector3.zero);
@@ -1864,7 +1863,6 @@ namespace Ulon.Editor
             Decor(parent, StallR, new Vector3(-5.2f, 0f, 4.8f), new Vector3(0f, 90f, 0f));
             Decor(parent, StallG, new Vector3(4.8f, 0f, -5.2f), new Vector3(0f, 270f, 0f));
             Decor(parent, CartH, new Vector3(-6.4f, 0f, 3.6f), Vector3.zero);
-            Decor(parent, Mill, new Vector3(-11.5f, 0f, -8.5f), Vector3.zero);
             Decor(parent, HedgeL, new Vector3(-4.2f, 0f, 7.4f), Vector3.zero);
             Decor(parent, HedgeL, new Vector3(5.4f, 0f, 7.4f), Vector3.zero);
             Decor(parent, hedge, new Vector3(-7.4f, 0f, 1.6f), new Vector3(0f, 90f, 0f));
@@ -3794,6 +3792,39 @@ namespace Ulon.Editor
             }
             if (removed > 0)
                 Debug.Log("[Ulon] 자격 없는 몹 모델 " + removed + "체 제거 — 다음 Ensure에서 등록 모델로 다시 짓는다");
+        }
+
+        /// <summary>
+        /// **역할 없는 물레방아를 씬에서 지운다**(검수 절차 판정 2026-09-07).
+        ///
+        /// 절차대로 역할 원장(`RoleLook.Facilities`)을 먼저 봤고 **물레방아에 대응하는 역할이 없다**
+        /// (제분소 같은 기능이 게임에 없다). 남은 것은 장식이고, 마을 광장 포장 위의 물레방아는
+        /// §8.1 기능↔외형 어긋남 그 자체다. 「낚시터에서 치웠다」던 그 물건이 실은 지표 아래로
+        /// 내려가 화면에서만 사라져 있었고(지면 스냅이 되올렸다), 이번엔 **정말로 지운다**.
+        ///
+        /// 낚시터는 건드리지 않는다 — `EnsureFishSpot`이 먼저 돌아 이름을 `FishingSpot`으로 바꾸므로
+        /// 여기서는 「아직 물레방아인 것」만 남는다(순서가 곧 안전장치다).
+        /// </summary>
+        public static void EnsureNoRolelessWatermill()
+        {
+            var gone = new List<string>();
+            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] == null || !IsWatermillName(all[i].name))
+                    continue;
+                gone.Add(GroundFit.NodePath(all[i]) + all[i].position.ToString("F1"));
+                UnityEngine.Object.DestroyImmediate(all[i].gameObject);
+            }
+            if (gone.Count > 0)
+                Debug.Log("[Ulon] 역할 없는 물레방아 " + gone.Count + "채 제거: " + string.Join(", ", gone));
+        }
+
+        /// <summary>모델 이름으로 고른다 — 이건 「이름으로 거르기」가 아니라 **어떤 자산인지**를 보는 것이다.</summary>
+        public static bool IsWatermillName(string n)
+        {
+            return string.Equals(n, "watermill", StringComparison.OrdinalIgnoreCase) ||
+                   n.StartsWith("watermill (", StringComparison.OrdinalIgnoreCase);
         }
 
         public static void EnsureFootOnGround()

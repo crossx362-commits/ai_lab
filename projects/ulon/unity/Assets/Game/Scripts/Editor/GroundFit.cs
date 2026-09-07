@@ -49,6 +49,14 @@ namespace Ulon.Editor
                     LastExcluded.Add(t.name + "(선언 제외: " + (SkipItem(t.name) ? "지하가 설계" : "지형·물·관리자") + ")");
                 return;
             }
+            // **이름이 아니라 자리로도 뺀다**(검수 지시 2026-09-07: 이름으로 거르는 자리를 성질로
+            // 바꿀 수 있는지 보라). 던전 방 안에 있고 지표보다 확실히 아래면, 이름이 무엇이든
+            // 지하가 정상이다 — 위의 이름 규칙(`Dungeon*`)은 이제 이 판정의 겹띠일 뿐이다.
+            if (HasRenderer(t) && UnitBounds(t, out Bounds probe) && InDungeonRoom(probe))
+            {
+                LastExcluded.Add(NodePath(t) + "(자리로 제외: 던전 방 안·지표 아래)");
+                return;
+            }
             if (!HasRenderer(t))
                 return;
             if (!UnitBounds(t, out Bounds b))
@@ -68,6 +76,29 @@ namespace Ulon.Editor
                 return;
             }
             list.Add(t);
+        }
+
+        /// <summary>
+        /// **자리로 판정하는 지하** — 던전 방 중심에서 수평 12m 안이고 꼭대기가 지표보다 1m 아래면
+        /// 그 물건은 지하에 있는 것이 정상이다(§8.2). 이름 규약이 바뀌어도 안 샌다.
+        /// </summary>
+        public static bool InDungeonRoom(Bounds b)
+        {
+            var rooms = new[]
+            {
+                (Dungeon1.InteriorX, Dungeon1.InteriorZ),
+                (Dungeon2.InteriorX, Dungeon2.InteriorZ),
+                (Dungeon3.InteriorX, Dungeon3.InteriorZ),
+            };
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                float dx = b.center.x - rooms[i].Item1, dz = b.center.z - rooms[i].Item2;
+                if ((dx * dx) + (dz * dz) > 12f * 12f)
+                    continue;
+                if (b.max.y < TerrainY(b.center.x, b.center.z) - 1f)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>세계만 한 판(바다 수면 등)의 가로폭 하한.</summary>

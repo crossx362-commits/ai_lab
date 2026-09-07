@@ -31,6 +31,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureEntranceClearance();
             VisualSliceBuilder.EnsureWorldRegions();
             VisualSliceBuilder.EnsureFishSpot();
+            VisualSliceBuilder.EnsureNoRolelessWatermill();  // 역할 원장에 없는 장식 물레방아는 지운다(검수 판정)
             VisualSliceBuilder.EnsureCampfire();
             VisualSliceBuilder.EnsureMortar();
             VisualSliceBuilder.EnsureLockedCrate();
@@ -1624,6 +1625,8 @@ namespace Ulon.Editor
             AssertDungeonLighting();
             AssertWorldTerrain();
             AssertHuntGround();
+            AssertNoRolelessWatermillNegativeControl();
+            AssertNoRolelessWatermill();
             AssertHuntMobsAwayFromVillageNegativeControl();
             AssertHuntMobsAwayFromVillage();
             AssertRoomFurnished();
