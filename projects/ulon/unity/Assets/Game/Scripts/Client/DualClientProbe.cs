@@ -69,6 +69,19 @@ namespace Ulon.Client
             // 초대 대상은 HUD와 **같은 함수**로 고른다(`OfflineWorld.NearestInvitee`) — 자가 둘이면
             // 「버튼이 고른 것」과 「검사가 고른 것」이 갈린다.
             yield return Party(role, mine, deadline);
+            yield return Guild(role, mine, deadline);
+
+            // 살아 있는가·땅 위인가 — 판정은 스크립트가 한다(여기서는 잰 값만 남긴다).
+            var myBodyNow = mine.GetComponent<WorldBody>();
+            myY = mine.transform.position.y;
+            var terrainNow = Terrain.activeTerrain;
+            myGroundY = terrainNow != null
+                ? terrainNow.SampleHeight(mine.transform.position) + terrainNow.transform.position.y
+                : float.NaN;
+            myHp = myBodyNow != null ? myBodyNow.Hp : 0f;
+            myGhost = myBodyNow != null && myBodyNow.Ghost;
+            Debug.Log("[Ulon] 생존 상태(" + role + ") — y " + myY.ToString("0.0") + " · 지면 " +
+                      myGroundY.ToString("0.0") + " · HP " + myHp.ToString("0") + " · 유령 " + myGhost);
 
             yield return new WaitForSeconds(0.5f);
             var body = mob.GetComponent<WorldBody>();
@@ -103,6 +116,16 @@ namespace Ulon.Client
             Write(outPath, true, status, avatars, true, hpBefore, hpAfter);
             Quit();
         }
+
+        /// <summary>이 클라이언트가 본 길드 상태 — 파티와 같은 방식으로 두 클라가 같아야 통과다.</summary>
+        static bool guildOpen;
+        static string guildName = "";
+        static int guildMembers;
+
+        /// <summary>**아바타가 땅 위에 살아 있는가** — 접속 자리 y=0 사고를 다시 놓치지 않기 위한 값들
+        /// (검수 지시 2026-09-08: 세계가 무너진 채로 초록불이 켜져 있었다).</summary>
+        static float myY, myGroundY, myHp;
+        static bool myGhost;
 
         /// <summary>이 클라이언트가 본 파티 상태 — json으로 나가고, 두 클라가 같아야 통과다.</summary>
         static bool partyOpen;
@@ -172,6 +195,62 @@ namespace Ulon.Client
                       " · 인원 " + partyMembers);
         }
 
+        /// <summary>
+        /// 길드도 **같은 방식으로** 판정한다(검수 지시 2026-09-08): A가 창설하고 옆의 몸을 초대,
+        /// B가 수락하면 두 클라의 길드 상태가 같아져야 한다. `-ulon-nc-party`면 초대만 끊는다.
+        /// </summary>
+        static IEnumerator Guild(string role, NetAvatar mine, float deadline)
+        {
+            bool ncCutInvite = Cli.Get("-ulon-nc-party", "") != "";
+            var myBody = mine.GetComponent<WorldBody>();
+            if (role == "attacker")
+            {
+                mine.RpcGuildCreate("검사길드");
+                yield return new WaitForSeconds(0.4f);
+                float inviteDeadline = Mathf.Min(deadline, Time.realtimeSinceStartup + 5f);
+                while (Time.realtimeSinceStartup < inviteDeadline && GuildRosterCount() < 2)
+                {
+                    var pick = OfflineWorld.NearestInvitee(myBody, Ulon.Shared.GuildRules.InviteRange);
+                    var nob = pick != null ? pick.GetComponent<FishNet.Object.NetworkObject>() : null;
+                    if (ncCutInvite)
+                    {
+                        Debug.Log("[Ulon] 길드 초대 안 보냄 — NC(초대 RPC 끊음)");
+                        break;
+                    }
+                    if (nob == null)
+                    {
+                        yield return new WaitForSeconds(0.25f);
+                        continue;
+                    }
+                    mine.RpcGuildInvite(nob);
+                    yield return new WaitForSeconds(0.35f);
+                }
+            }
+            else
+            {
+                float acceptDeadline = Mathf.Min(deadline, Time.realtimeSinceStartup + 6f);
+                while (Time.realtimeSinceStartup < acceptDeadline && !GuildView.PendingMe)
+                    yield return null;
+                if (GuildView.PendingMe)
+                    mine.RpcGuildAccept();
+            }
+            float until = Mathf.Min(deadline, Time.realtimeSinceStartup + 4f);
+            while (Time.realtimeSinceStartup < until && GuildRosterCount() < 2)
+                yield return null;
+            guildOpen = GuildView.Open;
+            guildName = GuildView.GuildName ?? "";
+            guildMembers = GuildRosterCount();
+            Debug.Log("[Ulon] 길드 상태(" + role + ") — open " + guildOpen + " · 이름 " + guildName +
+                      " · 인원 " + guildMembers);
+        }
+
+        static int GuildRosterCount()
+        {
+            if (!GuildView.Open || string.IsNullOrEmpty(GuildView.Roster))
+                return 0;
+            return GuildView.Roster.Split('\n').Length;
+        }
+
         /// <summary>명부의 줄 수 = 파티 인원(대장 한 줄 + 파티원 줄들).</summary>
         static int RosterCount()
         {
@@ -230,6 +309,13 @@ namespace Ulon.Client
                           + ",\"partyOpen\":" + (partyOpen ? "true" : "false")
                           + ",\"partyLeader\":\"" + partyLeader.Replace("\"", "") + "\""
                           + ",\"partyMembers\":" + partyMembers
+                          + ",\"guildOpen\":" + (guildOpen ? "true" : "false")
+                          + ",\"guildName\":\"" + guildName.Replace("\"", "") + "\""
+                          + ",\"guildMembers\":" + guildMembers
+                          + ",\"y\":" + myY.ToString("0.##")
+                          + ",\"groundY\":" + myGroundY.ToString("0.##")
+                          + ",\"hp\":" + myHp.ToString("0.##")
+                          + ",\"ghost\":" + (myGhost ? "true" : "false")
                           + "}";
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, json, new UTF8Encoding(false));

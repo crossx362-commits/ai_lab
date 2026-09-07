@@ -38,6 +38,10 @@ namespace Ulon.Client
             }
             if (appearance != 2)
                 return;
+            // **여기 씬 이름 고정은 구멍이 아니다**(검수 판정 2026-09-08). 네트워크에서는 동료
+            // 오브젝트 자체가 없으므로 도너가 없는 것이 맞다 — 파티·길드 초대처럼 「할 수 있어야 하는데
+            // 못 하는」 경우가 아니라, 애초에 대상이 없는 경우다. 다음 사람이 같은 패턴이라고
+            // 오해하고 고치지 않도록 남긴다.
             var companion = GameObject.Find("Companion");
             if (companion == null)
                 return;

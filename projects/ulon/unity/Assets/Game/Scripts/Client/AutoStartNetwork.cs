@@ -201,6 +201,13 @@ namespace Ulon.Client
         {
             if (t == null)
                 return;
+            // NC 전용 스위치 — 이 결함(접속 자리 y=0)을 **실제로 되살려** 검사가 빨간불인지 본다.
+            // 게이트를 끄는 게 아니라 세계를 옛 상태로 되돌리는 쪽이 진짜 네거티브 컨트롤이다.
+            if (Cli.Has("-ulon-nc-spawn"))
+            {
+                Debug.Log("[Ulon] NC — 접속 자리를 지면 위로 올리지 않는다(옛 결함 재현)");
+                return;
+            }
             var terrain = Terrain.activeTerrain;
             if (terrain == null)
                 return;

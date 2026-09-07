@@ -606,12 +606,14 @@ namespace Ulon.Client
                 ? (world.FindGuild(guild.WarWithId) != null ? world.FindGuild(guild.WarWithId).Name : guild.WarWithId)
                 : GuildView.WarName;
             GUILayout.Label("[" + name + "] " + roster + (string.IsNullOrEmpty(war) ? "" : "  전쟁 " + war));
-            var pal = GameObject.Find("Companion");
-            var palBody = pal != null ? pal.GetComponent<WorldBody>() : null;
+            // 파티와 **같은 구멍**이었다(검수 지시 2026-09-08): 씬 이름 고정이라 네트워크에서
+            // Companion이 꺼지면 버튼이 사라져 「창설은 되는데 초대가 안 되는」 반쪽이 됐다.
+            // 대상은 거리로 고르고, 반경은 서버가 받아 주는 사거리와 같은 값을 쓴다.
+            var palBody = OfflineWorld.NearestInvitee(me, GuildRules.InviteRange);
             GUILayout.BeginHorizontal();
-            if (palBody != null && guild != null && guild.Leader == me && Btn("동료 초대"))
+            if (palBody != null && guild != null && guild.Leader == me && Btn(palBody.IsAvatar ? "길드 초대" : "동료 초대"))
             {
-                var nob = pal.GetComponent<FishNet.Object.NetworkObject>();
+                var nob = palBody.GetComponent<FishNet.Object.NetworkObject>();
                 if (net != null && net.IsClientInitialized && nob != null) net.RpcGuildInvite(nob);
                 else world.TryGuildInvite(me, palBody);
             }

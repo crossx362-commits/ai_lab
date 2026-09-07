@@ -799,7 +799,9 @@ namespace Ulon.Client
         {
             if (other == null || OfflineWorld.Instance == null)
                 return;
-            OfflineWorld.Instance.TryGuildInvite(GetComponent<WorldBody>(), other.GetComponent<WorldBody>());
+            var gres = OfflineWorld.Instance.TryGuildInvite(GetComponent<WorldBody>(), other.GetComponent<WorldBody>());
+            if (!gres.Applied)
+                Debug.Log("[Ulon] 길드 초대 거절 — " + gres.FailReason + " (대상 " + other.name + ")");
             BroadcastGuild();
         }
 
@@ -897,7 +899,11 @@ namespace Ulon.Client
         void RpcGuildState(bool open, int pendingId, string guildId, string guildName, string leader, string roster, string warName)
         {
             GuildView.Open = open;
-            GuildView.PendingMe = pendingId != 0 && pendingId == ObjectId;
+            // 파티와 **같은 결함**이었다 — 이 RPC도 초대한 사람의 아바타에서 방송되므로
+            // `ObjectId`는 그 사람 것이다. 받는 쪽에서 성립하지 않아 수락 버튼이 안 그려졌다.
+            var mineGuildBody = OfflineWorld.Instance != null ? OfflineWorld.Instance.Player : null;
+            var mineGuildNob = mineGuildBody != null ? mineGuildBody.GetComponent<NetworkObject>() : null;
+            GuildView.PendingMe = pendingId != 0 && mineGuildNob != null && pendingId == mineGuildNob.ObjectId;
             GuildView.GuildId = guildId ?? "";
             GuildView.GuildName = guildName ?? "";
             GuildView.Leader = leader ?? "";

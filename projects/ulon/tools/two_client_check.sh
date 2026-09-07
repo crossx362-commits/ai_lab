@@ -18,6 +18,9 @@ def normalize(j):
     j["Ghost"] = False
     if float(j.get("Hp", 0)) <= 0:
         j["Hp"] = 50.0
+    j["Gold"] = max(int(j.get("Gold", 0)), 100)   # 길드 창설비 25골드 — 검사가 제 전제를 만든다
+    j["GuildId"] = ""
+    j["GuildName"] = ""
     return j
 
 for name in ("ds-a", "ds-b"):
@@ -45,9 +48,15 @@ FIX
 
 # 파티 네거티브 컨트롤 — 초대 RPC만 끊고 돌린다. 그때는 파티가 안 생겨야(=FAIL이어야) 정상이다.
 NC_ARGS=()
+SERVER_ARGS=()
 EXPECT_FAIL=0
 if [[ "${1:-}" == "--nc-party" ]]; then
   NC_ARGS=(-ulon-nc-party 1)
+  EXPECT_FAIL=1
+fi
+# 접속 자리 NC — 서버 쪽에서 스폰을 옛 결함(y=0)으로 되돌린다. 아바타가 지면 아래로 떨어져야 한다.
+if [[ "${1:-}" == "--nc-spawn" ]]; then
+  SERVER_ARGS=(-ulon-nc-spawn 1)
   EXPECT_FAIL=1
 fi
 
@@ -66,7 +75,7 @@ for source_root in "$ROOT/unity/Assets/Game" "$ROOT/unity/Packages" "$ROOT/unity
   fi
 done
 
-"$CLIENT_BIN" -batchmode -nographics -ulon-server -logFile "$OUT/server.log" &
+"$CLIENT_BIN" -batchmode -nographics -ulon-server "${SERVER_ARGS[@]}" -logFile "$OUT/server.log" &
 SPID=$!
 APID=""
 BPID=""
@@ -113,6 +122,17 @@ set +e
 python3 - "$OUT" <<'PY'
 import json, sys, pathlib
 root = pathlib.Path(sys.argv[1])
+def alive(x):
+    # **살아 있음은 클라가 아니라 서버가 안다.** 아바타의 Hp/Ghost는 클라이언트로 동기화되지
+    # 않아(실측: 서버가 ghost로 거절하는 동안 클라 값은 HP 0·유령 False였다) 그 값으로는
+    # 판정할 수 없다 — json에는 진단용으로만 남긴다.
+    # 대신 ① 자리가 지면 근처인가(낙하 사고를 그대로 잡는다) ② 서버가 이 아바타의 공격을
+    # 받아 줬는가(status ok — 유령이면 서버가 `attack fail ghost`로 거절한다)로 본다.
+    y, g = x.get("y"), x.get("groundY")
+    if y is None or g is None:
+        return False
+    return abs(y - g) <= 1.0 and x.get("status") == "ok"
+
 def load(p):
     return json.loads(pathlib.Path(p).read_text(encoding="utf-8-sig"))
 try:
@@ -134,7 +154,14 @@ ok = (a.get("connected") and b.get("connected")
       # 「초대 버튼이 그려진다」가 아니라 **양쪽 json이 같아지는 것**으로 판정한다.
       and a.get("partyOpen") and b.get("partyOpen")
       and a.get("partyMembers",0) >= 2 and a.get("partyMembers") == b.get("partyMembers")
-      and a.get("partyLeader","") != "" and a.get("partyLeader") == b.get("partyLeader"))
+      and a.get("partyLeader","") != "" and a.get("partyLeader") == b.get("partyLeader")
+      # **길드도 같은 방식으로**(검수 지시 2026-09-08) — 파티와 같은 구멍이었다.
+      and a.get("guildOpen") and b.get("guildOpen")
+      and a.get("guildMembers",0) >= 2 and a.get("guildMembers") == b.get("guildMembers")
+      and a.get("guildName","") != "" and a.get("guildName") == b.get("guildName")
+      # **아바타가 땅 위에 살아 있는가** — 접속 자리 y=0으로 두 아바타가 떨어져 죽은 채로
+      # 이 검사가 초록불이던 적이 있다(2026-09-08). 세계가 무너졌는지부터 본다.
+      and alive(a) and alive(b))
 print("PASS" if ok else "FAIL", a, b)
 sys.exit(0 if ok else 5)
 PY
@@ -145,7 +172,7 @@ if [[ "$EXPECT_FAIL" -eq 1 ]]; then
     echo "FAIL 파티 네거티브 컨트롤 — 초대 RPC를 끊었는데도 통과했다. 이 검사는 아무것도 막고 있지 않다." >&2
     exit 8
   fi
-  echo "PASS 파티 네거티브 컨트롤 — 초대를 끊으면 빨간불(rc=$RC)"
+  echo "PASS 네거티브 컨트롤 — 결함을 되살리면 빨간불(rc=$RC)"
   exit 0
 fi
 if [[ "$RC" -ne 0 ]]; then
