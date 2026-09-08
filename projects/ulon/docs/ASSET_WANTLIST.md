@@ -26,7 +26,7 @@
 | 모루 | Workbench Anvil | Kenney | https://poly.pizza/m/bY1pp3kAAb | CC0(페이지 명시) | OBJ/glTF |
 | 대장간(건물) | Blacksmith | Quaternius | https://poly.pizza/m/bV52eTG1Aj | CC0(페이지 명시) | FBX/glTF |
 | 마구간(건물) | Fantasy Stable | Quaternius | https://poly.pizza/m/qhNQSOGGbi | CC0(페이지 명시) | FBX/glTF |
-| 목공소(건물) | Fantasy Sawmill · Sawmill · Sawmill Saw | Quaternius | https://poly.pizza/m/alxTTFjKDM · /m/UTJHANd25O · /m/suqpa3jKWg | Quaternius 업로드(개별 페이지 확인 필요) | FBX/glTF |
+| 목공소(건물) | Fantasy Sawmill(+ Sawmill Saw) | Quaternius | https://poly.pizza/m/alxTTFjKDM · /m/suqpa3jKWg | CC0(페이지 명시) | FBX/glTF |
 
 ## B. 미확인 — **팩(모듈 세트가 필요한 것)**
 
@@ -40,15 +40,6 @@
 
 **갱도 입구는 단품으로 못 찾았다** — poly.pizza에서 mine/cave/tunnel entrance를 훑었지만 쓸 만한 단품이 없었다(나온 것은 맨홀 뚜껑·사원 입구·포털 문 따위였다). 그래서 갱도 입구만은 B에 남는다.
 **절구통도 단품은 유료 픽밖에 없었다**(Poly by Google·MilkAndBanana의 mortar and pestle) — CC0 확인 못 함.
-
-## (참고) 원래 팩 후보 표
-
-| 팩 | 덮는 물건 | 출처 URL | 받는 방법 | 라이선스 |
-|---|---|---|---|---|
-| **Quaternius Fantasy Props MegaKit** (이미 승인, 파일 대기) | 모루·화덕·절구 후보, 작업대·궤짝·좌판·도구 200+ | https://quaternius.com/packs/fantasypropsmegakit.html | 사이트 직접 다운로드 또는 https://quaternius.itch.io/fantasy-props-megakit (GitHub 배포 **없음**) | CC0(사이트 명시) |
-| **Kenney Modular Cave Kit** | **갱도 입구**·터널·동굴 벽 40점 | https://kenney.nl/assets/modular-cave-kit | 직접 zip — `kenney.nl/media/pages/assets/modular-cave-kit/37ec3cb12d-1783667097/kenney_modular-cave-kit_1.0.zip` (**curl 가능**) | CC0(팩 페이지 명시) |
-| **Quaternius Medieval Village MegaKit** | 마구간·목공소 등 **건물**(모듈 벽·지붕·계단 300+) | https://quaternius.com/packs/medievalvillage.html · https://quaternius.itch.io/medieval-village-megakit | 사이트/itch 다운로드(무료판은 일부 모델만) | CC0(팩 페이지 명시) |
-| Poly Pizza 단품 — Kenney *Workbench Anvil* | 모루 하나만 급할 때의 예비 | https://poly.pizza/m/bY1pp3kAAb | 모델 페이지에서 OBJ/glTF 단품 | CC0(모델 페이지 명시) |
 
 ## 확인한 것과 **확인 못 한 것**(추측 금지)
 
