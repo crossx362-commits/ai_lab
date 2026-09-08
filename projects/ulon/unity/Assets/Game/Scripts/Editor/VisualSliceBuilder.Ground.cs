@@ -222,6 +222,56 @@ namespace Ulon.Editor
             foreach (var t in decor.GetComponentsInChildren<Transform>(true))
                 if (t.name.StartsWith("road", StringComparison.Ordinal))
                     doomed.Add(t.gameObject);
+            // ⑤ **마당을 가로지르는 담을 걷는다**(검수 2026-09-09). 씬은 커밋된 것이라 놓는 쪽
+            // 규칙만 고치면 화면이 안 바뀐다 — 놓을 때 안 놓고, 이미 선 것은 여기서 치운다(같은 문장).
+            var walls = new List<Transform>();
+            foreach (var t in decor.GetComponentsInChildren<Transform>(true))
+            {
+                if (!t.name.StartsWith("fence", StringComparison.Ordinal) &&
+                    !t.name.StartsWith("hedge", StringComparison.Ordinal))
+                    continue;
+                if (InPlazaYard(t.position.x, t.position.z))
+                {
+                    doomed.Add(t.gameObject);
+                    continue;
+                }
+                walls.Add(t);
+            }
+            // ⑥ **잘라 내고 남은 꼬리도 걷는다.** 변 하나를 끊으면 그 줄의 끝에 한두 조각이 고아로
+            // 남는다 — 화면에서 「담」이 아니라 「버려진 널빤지」로 읽힌다(실측: 광장 남서·남동 각 2조각).
+            // 이어진 것끼리 묶어 **두 조각 이하인 줄**만, 그것도 광장 언저리(12m)에서만 치운다.
+            var group = new int[walls.Count];
+            for (int i = 0; i < walls.Count; i++)
+                group[i] = i;
+            for (int i = 0; i < walls.Count; i++)
+                for (int j = i + 1; j < walls.Count; j++)
+                {
+                    if (new Vector2(walls[i].position.x - walls[j].position.x,
+                                    walls[i].position.z - walls[j].position.z).magnitude > 2.6f)
+                        continue;
+                    int ri = i, rj = j;
+                    while (group[ri] != ri) ri = group[ri];
+                    while (group[rj] != rj) rj = group[rj];
+                    group[Mathf.Max(ri, rj)] = Mathf.Min(ri, rj);
+                }
+            var size = new Dictionary<int, int>();
+            var root = new int[walls.Count];
+            for (int i = 0; i < walls.Count; i++)
+            {
+                int r = i;
+                while (group[r] != r) r = group[r];
+                root[i] = r;
+                size.TryGetValue(r, out int n);
+                size[r] = n + 1;
+            }
+            for (int i = 0; i < walls.Count; i++)
+            {
+                if (size[root[i]] > 2)
+                    continue;
+                if (Mathf.Max(Mathf.Abs(walls[i].position.x), Mathf.Abs(walls[i].position.z)) > 12f)
+                    continue;
+                doomed.Add(walls[i].gameObject);
+            }
             for (int i = 0; i < doomed.Count; i++)
                 UnityEngine.Object.DestroyImmediate(doomed[i]);
 
@@ -578,6 +628,12 @@ namespace Ulon.Editor
                     if (sx * sx + sz * sz < skipR * skipR)
                         continue;
                 }
+                // **광장 마당은 담이 지나가지 않는다** — 집 마당 폐곡선의 광장 쪽 변을 여기서 끊는다.
+                // 자리를 옮기지 않고 **비우는** 이유: 로트를 밀면 그 안의 집이 담 밖으로 나온다(실측:
+                // 집 (7.4,4.6)이 그 로트 안이다). 변 하나가 빠지면 마당이 광장으로 열린 그림이 된다.
+                if (IsRunPiece(System.IO.Path.GetFileNameWithoutExtension(model)) &&
+                    InPlazaYard(x * WorldScale.Kit, z * WorldScale.Kit))
+                    continue;
                 Decor(parent, model, new Vector3(x, 0f, z), new Vector3(0f, along, 0f));
             }
         }

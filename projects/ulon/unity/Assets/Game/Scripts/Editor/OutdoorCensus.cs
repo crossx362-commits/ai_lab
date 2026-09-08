@@ -143,6 +143,10 @@ namespace Ulon.Editor
 
         static string Zone(Vector3 p)
         {
+            // **광장은 마을 안의 또 다른 마당이다**(검수 2026-09-09 — 「울타리가 광장을 가로지른다」).
+            // 마을로 뭉뚱그리면 349개에 묻혀 안 보인다 — 먼저 이 자리만 따로 센다.
+            if (Mathf.Abs(p.x) <= VisualSliceBuilder.PlazaYard && Mathf.Abs(p.z) <= VisualSliceBuilder.PlazaYard)
+                return "광장";
             if (Mathf.Abs(p.x) <= VisualSliceBuilder.VillageFadeRadius &&
                 Mathf.Abs(p.z) <= VisualSliceBuilder.VillageFadeRadius)
                 return "마을";

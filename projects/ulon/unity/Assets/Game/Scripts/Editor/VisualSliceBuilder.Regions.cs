@@ -209,6 +209,21 @@ namespace Ulon.Editor
         /// </summary>
         public const float LandmarkYard = 9f;
 
+        /// <summary>
+        /// **광장 마당 — 여기엔 담을 세우지 않는다**(검수 2026-09-09 「울타리가 광장을 가로지른다」).
+        /// 세어 보니(`OutdoorCensus` 광장 구역) 마당을 가로지른 담은 여섯 조각이고, 전부 집 마당
+        /// 폐곡선(`PlaceLotU`) 넷의 **광장 쪽 변**이었다 — 남의 집 담이 모이는 자리를 잘라 놓았다.
+        /// 반경 유도(실측): 가로지른 여섯은 중심에서 **3.4~4.3m**, 결백한 것들(로트 모서리·문·
+        /// 바깥 변)은 **5.2m 이상**이었다. 그 사이인 4.75m를 마당으로 삼는다 — 분수(중앙)와
+        /// 가로등 귀퉁이(7.6m) 사이의 **비어 있어야 하는 속**이다.
+        /// 값은 여기 하나뿐이고, 자(`SliceSelfCheck.CollectPlazaCrossers`)와 세는 도구가 이것을 읽는다.
+        /// </summary>
+        public const float PlazaYard = 4.75f;
+
+        /// <summary>월드 좌표가 광장 마당 안인가 — 놓는 쪽·재는 쪽이 같은 문장을 쓴다.</summary>
+        internal static bool InPlazaYard(float wx, float wz) =>
+            Mathf.Abs(wx) <= PlazaYard && Mathf.Abs(wz) <= PlazaYard;
+
         static bool ClearOfDungeonMouths(Vector3 p)
         {
             var mouths = new[]

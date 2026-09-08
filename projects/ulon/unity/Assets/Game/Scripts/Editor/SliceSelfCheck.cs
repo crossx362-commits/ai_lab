@@ -1811,7 +1811,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.ClearDecorFromRegions();           // 커밋된 씬에 남은 마을 장식은 지역에서 치운다
             AssertVillagePropsNotClashingNegativeControl();       // 종류가 다른 둘을 겹치면 빨간불인가(양방향 NC)
             AssertVillagePropsNotClashing();                      // 마을 소품끼리 파고들지 않았는가(검수 랩)
-            AssertNoRegionIntrusionNegativeControl();             // 지역 안에 남의 배치물을 넣으면 빨간불인가(양방향 NC)
+            AssertNoRegionIntrusionNegativeControl();      // 지역 안에 남의 배치물을 넣으면 빨간불인가(양방향 NC)
+            AssertPlazaClearNegativeControl();             // 광장 마당에 담을 넣으면 빨간불인가(같은 자, 다른 절)
             AssertNoRegionIntrusion();                           // 지역 안에는 그 지역이 놓은 것만(검수 2026-09-09)
             AssertDoorFrontClearNegativeControl();                // 문 개구부 정면에는 소품이 서지 않는다(양방향 NC)
             AssertDoorFrontClear();

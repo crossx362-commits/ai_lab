@@ -164,20 +164,70 @@ namespace Ulon.Editor
             }
         }
 
+        /// <summary>
+        /// **광장 마당을 담이 가로지르지 않는가**(검수 지시 2026-09-09 — 「울타리가 광장을 가로지른다」).
+        ///
+        /// 새 자를 만들지 않았다: 이 파일의 ② 방향(`CollectMouthCoverers` — 「마당 안에 남의 것이 있나」)이
+        /// 이미 하는 일이고, 광장도 마당이다. 야외에서 쓴 「사이 거리 2.0m」는 여기서 쓰지 않는다 —
+        /// 광장의 증상은 곁에 선 것이 아니라 **가로지르는 것**이라, 물어야 할 것은 「마당 안인가」다.
+        ///
+        /// 담만 본다(줄 조각·산울). 좌판·분수·가로등은 광장에 있어야 할 것들이다.
+        /// </summary>
+        static float NearestPlazaWall;
+        static string NearestPlazaWallWhat = "(없음)";
+
+        static void CollectPlazaCrossers(List<string> found, List<Transform> nodes = null)
+        {
+            NearestPlazaWall = float.MaxValue;
+            NearestPlazaWallWhat = "(없음)";
+            var decor = GameObject.Find("VillageDecor");
+            if (decor == null)
+                return;
+            int walls = 0;
+            foreach (var t in decor.GetComponentsInChildren<Transform>(false))
+            {
+                bool wall = t.name.StartsWith("fence", StringComparison.Ordinal) ||
+                            t.name.StartsWith("hedge", StringComparison.Ordinal);
+                // **조각의 뿌리에서 잰다** — 킷 담은 껍데기에 렌더러가 없고 자식이 그린다.
+                // 처음엔 `GetComponent<Renderer>()`로 걸렀다가 **담을 한 조각도 못 세고 초록불**이 나왔다(0이면 실패).
+                if (!wall || t.GetComponentInChildren<Renderer>(true) == null)
+                    continue;
+                walls++;
+                if (!GroundFit.WorldBounds(t, out Bounds b) || IsFlatMat(b))
+                    continue;
+                float out2 = Mathf.Max(Mathf.Abs(b.center.x), Mathf.Abs(b.center.z));
+                if (out2 > VisualSliceBuilder.PlazaYard)
+                {
+                    // **걸리지 않은 가장 가까운 담**도 남긴다 — 자가 언제부터 아슬아슬해졌는지 보이라고.
+                    if (out2 < NearestPlazaWall) { NearestPlazaWall = out2; NearestPlazaWallWhat = t.name; }
+                    continue;
+                }
+                found.Add("광장 마당 " + VisualSliceBuilder.PlazaYard.ToString("0.00") + "m 안에 담 " + t.name + " @(" +
+                          b.center.x.ToString("0.0") + "," + b.center.z.ToString("0.0") + ")");
+                if (nodes != null)
+                    nodes.Add(t);
+            }
+            if (walls == 0)
+                throw new InvalidOperationException("마을 담을 한 조각도 못 읽었습니다 — 잰 것이 없습니다(0이면 실패).");
+        }
+
         static string RegionIntrusionReason(bool log)
         {
             var found = new List<string>();
             CollectRegionIntruders(found);
             CollectMouthCoverers(found);
+            CollectPlazaCrossers(found);
             if (log)
                 Debug.Log("[Ulon] 지역 침입 — 지역 " + WorldRegions.All.Length + "곳 · 물건 곁(" +
                           RegionIntrusionRange.ToString("0.0") + "m)에 낀 남의 배치물 " + found.Count +
                           "개 · 가장 가까운 이웃 " +
-                          (NearestOutsider == float.MaxValue ? "(없음)" : NearestOutsider.ToString("0.0") + "m " + NearestOutsiderWhat));
+                          (NearestOutsider == float.MaxValue ? "(없음)" : NearestOutsider.ToString("0.0") + "m " + NearestOutsiderWhat) +
+                          " · 광장 마당(" + VisualSliceBuilder.PlazaYard.ToString("0.00") + "m) 밖 가장 가까운 담 " +
+                          (NearestPlazaWall == float.MaxValue ? "(없음)" : NearestPlazaWall.ToString("0.0") + "m " + NearestPlazaWallWhat));
             if (found.Count == 0)
                 return "";
             found.Sort(StringComparer.Ordinal);
-            return "지역이 놓은 물건 곁에 남의 배치물이 서 있습니다 — " + found.Count + "건:\n  " +
+            return "지역·마당에 남의 배치물이 서 있습니다 — " + found.Count + "건:\n  " +
                    string.Join("\n  ", found.GetRange(0, Mathf.Min(found.Count, 8))) +
                    (found.Count > 8 ? "\n  … 외 " + (found.Count - 8) + "건" : "") +
                    "\n원장이 둘이면 좌표는 언젠가 겹칩니다 — 놓는 쪽 원장의 자리를 옮기십시오(§8.2).";
@@ -229,6 +279,55 @@ namespace Ulon.Editor
             if (!string.IsNullOrEmpty(back))
                 throw new InvalidOperationException("지역 침입 네거티브 컨트롤 실패 — 되돌렸는데도 빨간불입니다: " + back);
             Debug.Log("[Ulon] 지역 침입 양방향 NC 통과 — 마을 소품을 지역에 넣으면 FAIL · 되돌리면 통과");
+        }
+
+        /// <summary>
+        /// **광장 절의 양방향 NC** — 지역 NC는 이 절을 건드리지 않는다(같은 자에 붙였다고 같이 검증되지 않는다).
+        /// 담 한 조각을 광장 한가운데로 옮기면 빨간불, 되돌리면 초록이어야 한다.
+        /// </summary>
+        static void AssertPlazaClearNegativeControl()
+        {
+            var decor = GameObject.Find("VillageDecor");
+            if (decor == null)
+                throw new InvalidOperationException("광장 NC 실패 — VillageDecor가 없습니다(0이면 실패).");
+            Transform victim = null;
+            foreach (var t in decor.GetComponentsInChildren<Transform>(false))
+            {
+                if (!t.name.StartsWith("fence", StringComparison.Ordinal))
+                    continue;
+                if (t.GetComponentInChildren<Renderer>(true) == null)
+                    continue;
+                // 희생양은 정해서 고른다 — 자리 순으로 광장에서 **가장 먼** 담(옮기는 거리가 가장 커야 티가 난다).
+                if (victim == null ||
+                    Mathf.Max(Mathf.Abs(t.position.x), Mathf.Abs(t.position.z)) >
+                    Mathf.Max(Mathf.Abs(victim.position.x), Mathf.Abs(victim.position.z)))
+                    victim = t;
+            }
+            if (victim == null)
+                throw new InvalidOperationException("광장 NC 대상 담이 없습니다(0이면 실패).");
+            var kept = victim.position;
+            bool red;
+            try
+            {
+                victim.position = new Vector3(0f, kept.y, 0f);
+                Physics.SyncTransforms();
+                var probe = new List<string>();
+                CollectPlazaCrossers(probe);
+                red = probe.Count > 0;
+            }
+            finally
+            {
+                victim.position = kept;
+                Physics.SyncTransforms();
+            }
+            if (!red)
+                throw new InvalidOperationException("광장 네거티브 컨트롤 실패 — " + victim.name +
+                    "을(를) 광장 한가운데로 옮겼는데 통과했습니다.");
+            var back = new List<string>();
+            CollectPlazaCrossers(back);
+            if (back.Count > 0)
+                throw new InvalidOperationException("광장 네거티브 컨트롤 실패 — 되돌렸는데도 빨간불입니다: " + back[0]);
+            Debug.Log("[Ulon] 광장 마당 양방향 NC 통과 — 담을 마당에 넣으면 FAIL · 되돌리면 통과");
         }
     }
 }
