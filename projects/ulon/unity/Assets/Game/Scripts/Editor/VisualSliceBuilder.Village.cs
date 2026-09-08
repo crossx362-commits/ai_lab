@@ -216,7 +216,8 @@ namespace Ulon.Editor
                 AssignMatAsset(EnvPrefabPath(rockFbx[i]), rockMat);
             AssetDatabase.SaveAssets();
             int rocks = PaintSceneByName(rockMat, new[] { "rock-large", "rock-wide", "rock-small" });
-            int veins = PaintSceneByName(veinMat, new[] { "MineVein1", "MineVein2", "MineVein3", "IronVein" });
+            int veins = PaintSceneByName(veinMat, new[] { "MineVein1", "MineVein2", "MineVein3", "IronVein",
+                "MineOrePile1", "MineOrePile2", "MineOrePile3", "MineOrePile4" });
             // **풀·흙 도포도 여기로 옮긴다**(검수 판정 2026-09-08 「재현성 결함」).
             // 증상: 이 트리에서는 `Dungeon1/ground_pathTile/Visual/:dirt` 618개가 무텍스처로 걸리는데
             // 공유 트리는 같은 소스로 통과했다. 원인은 도포 시점이었다 — 풀·흙 도포는

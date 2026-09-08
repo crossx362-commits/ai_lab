@@ -241,28 +241,86 @@ namespace Ulon.Editor
         static void BuildMine(WorldRegions.Region r, string rockLarge, string rockWide, string poles, string tuft)
         {
             var parent = FreshRegion(r);
+            // **갱구 자리**(산자락 쪽, 마을을 보게) — 아래 바위 산포가 이 앞을 비운다.
+            // 자리는 **지역 한가운데**다 — 처음엔 산자락(중심에서 8m 동쪽)에 세웠더니 화면 구석에서
+            // 손톱만 하게 잡혔다. 「있는데 안 보이면 그건 배치·크기 문제」(검수).
+            var mouth = new Vector3(r.X + 1.5f, 0f, r.Z);
             // 각도를 완전 무작위로 뽑으면 한쪽에 몰린다(사분면 게이트가 2개로 잡아냈다) — 사분면을 돌아가며 놓는다.
-            for (int i = 0; i < 28; i++)
+            // 바위는 **28개 → 18개, 최대 2.1배 → 1.5배**로 줄였다. 예전 판은 갱구·광차·광맥을 통째로
+            // 가렸고, 사람 1.8m보다 세 배 큰 돌덩이가 스물여덟 개 서 있으면 화면은 채석장으로 읽힌다.
+            for (int i = 0; i < 18; i++)
             {
                 float a = ((i % 4) * 90f + WorldRegions.Rand(i, 21, 5f, 85f)) * Mathf.Deg2Rad;
-                float d = WorldRegions.Rand(i, 22, 3f, r.Radius - 3f);
+                float d = WorldRegions.Rand(i, 22, 8f, r.Radius - 2f);
                 var pos = new Vector3(r.X + Mathf.Cos(a) * d, 0f, r.Z + Mathf.Sin(a) * d);
+                // **갱구 앞과 광차 길은 비운다** — 여기가 막히면 화면은 다시 「들판에 부은 돌」이 된다
+                // (검수 2026-09-09: 바위 28개가 갱구 기둥 둘과 광맥 셋을 통째로 삼키고 있었다).
+                if (new Vector2(pos.x - mouth.x, pos.z - mouth.z).magnitude < 7.5f)
+                    continue;
+                if (pos.x > r.X && pos.x < mouth.x && Mathf.Abs(pos.z - r.Z) < 3.2f)
+                    continue;
                 var go = Place(i % 3 == 0 ? rockWide : rockLarge, pos, new Vector3(0f, WorldRegions.Rand(i, 23, 0f, 360f), 0f));
                 if (go == null)
                     continue;
                 go.transform.SetParent(parent, true);
-                go.transform.localScale = go.transform.localScale * WorldRegions.Rand(i, 24, 0.9f, 2.1f);
+                go.transform.localScale = go.transform.localScale * WorldRegions.Rand(i, 24, 0.8f, 1.5f);
             }
-            // 갱구 표시 — 기둥 두 개와 널판(마을에서 「저기가 광산」으로 읽히게).
-            Decor(parent, poles, new Vector3(r.X - 2.2f, 0f, r.Z - 1.4f), new Vector3(0f, 0f, 0f));
-            Decor(parent, poles, new Vector3(r.X + 2.2f, 0f, r.Z - 1.4f), new Vector3(0f, 0f, 0f));
+            // **갱구**(검수 지시 2026-09-09: 「20_mine이 광산이 아니라 회색 돌무더기다」).
+            // 세어 보니 물건은 있었다 — 기둥 2·광맥 3 — 그런데 최대 2.1배로 커진 바위 28개에 묻혀
+            // 화면에서 하나도 안 읽혔다. 그래서 **지역이 그 지역으로 읽히는 물건**을 세운다:
+            // 바위 절벽 두 짝 사이의 갱도 입구 + 버팀목·널판 더미 + 등불, 그 앞에 광차와 광석 더미.
+            // 조각은 전부 **땅에 서는 것만** 쓴다 — `Place`는 뿌리를 지표에 붙이므로(SnapRootToGround)
+            // 상인방처럼 띄우는 조각은 발 높이 게이트와 싸우게 된다.
+            const string Cart = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/cart.fbx";
+            const string CartHigh = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/cart-high.fbx";
+            const string Planks = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/planks.fbx";
+            const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
+            const string RockSmall = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-small.fbx";
+            // **미결: 갱도 입구 조형이 없다**(2026-09-09, 검수 「20_mine이 광산이 아니다」 랩).
+            // 시도 셋이 이렇게 깨졌다. ㉠ `wall-arch`·`wall-block`은 Kenney 흰 재질 그대로라 잔디 위
+            // 흰 상자로 읽혔다(이 저장소 단골 반려). ㉡ 암반 면을 큐브로 세우니 소품 자격 게이트가
+            // 물었다(「색칠 큐브는 소품이 아니다」 §8.2 — 옳다). ㉢ 등록된 바위 두 짝을 세워 그 사이를
+            // 비워 봤지만, 볼록한 바위로는 **구멍이 안 만들어진다** — 화면엔 큰 돌이 둘 더 늘 뿐이었다.
+            // 자산 전수: 이 저장소에 mine/cave/tunnel/entrance 메시는 **0건**이다. 그러니 지금은
+            // **갱구 대신 「채광 현장」으로 읽히게** 한다(버팀목·광차·널판·등불·광석 더미·광맥).
+            // MegaKit(대장간 모루와 같은 대기 건)이 도착하면 갱도 입구가 최우선 후보다.
+            // 갱도 문틀 — 버팀목 두 짝이 틈 앞에 서서 「사람이 판 구멍」으로 읽히게 한다.
+            Decor(parent, poles, mouth + new Vector3(-1.1f, 0f, -0.9f), Vector3.zero);
+            Decor(parent, poles, mouth + new Vector3(1.1f, 0f, -0.9f), Vector3.zero);
+            Decor(parent, poles, mouth + new Vector3(-0.8f, 0f, -2.6f), Vector3.zero);
+            Decor(parent, poles, mouth + new Vector3(-0.8f, 0f, 2.6f), Vector3.zero);
+            Decor(parent, Planks, mouth + new Vector3(-2.4f, 0f, 3.4f), new Vector3(0f, 20f, 0f));
+            Decor(parent, Planks, mouth + new Vector3(-3.6f, 0f, -3.2f), new Vector3(0f, 70f, 0f));
+            Decor(parent, Lantern, mouth + new Vector3(-1.2f, 0f, -3.4f), Vector3.zero);
+            Decor(parent, Lantern, mouth + new Vector3(-1.2f, 0f, 3.4f), Vector3.zero);
+            // 광차 둘 — 「여기서 캐서 실어 나간다」가 한 장면에 들어온다.
+            Decor(parent, Cart, mouth + new Vector3(-4.6f, 0f, -0.9f), new Vector3(0f, 90f, 0f));
+            Decor(parent, CartHigh, mouth + new Vector3(-6.4f, 0f, 1.6f), new Vector3(0f, 70f, 0f));
+            // 광석 더미 — 광맥과 같은 철광 재질로 칠해진다(`EnsureWorldPropMaterials`의 이름 목록).
+            for (int i = 0; i < 4; i++)
+            {
+                var pile = Place(RockSmall, mouth + new Vector3(-3.2f - i * 0.9f, 0f, -2.2f + i * 1.3f),
+                    new Vector3(0f, i * 55f, 0f));
+                if (pile == null)
+                    continue;
+                pile.name = "MineOrePile" + (i + 1);
+                pile.transform.SetParent(parent, true);
+                pile.transform.localScale *= 0.55f;
+            }
             for (int i = 0; i < 4; i++)
                 Decor(parent, tuft, new Vector3(r.X + (i - 1.5f) * 3f, 0f, r.Z + 6f), new Vector3(0f, i * 40f, 0f));
 
             // 채광 광맥 3개 — 지역이 「장소」이려면 할 일이 있어야 한다(§6.1 광산은 채광 지역이다).
+            // **갱구 옆으로 옮겼다** — 예전 자리(지역 한가운데)는 바위 밭 속이라 안 읽혔다.
+            var veinSpots = new[]
+            {
+                mouth + new Vector3(-1.6f, 0f, -4.6f),
+                mouth + new Vector3(-2.0f, 0f, 4.8f),
+                mouth + new Vector3(-6.2f, 0f, -3.8f),
+            };
             for (int i = 0; i < 3; i++)
             {
-                var pos = new Vector3(r.X + (i - 1) * 5.5f, 0f, r.Z + 2.4f);
+                var pos = veinSpots[i];
                 var vein = Place(rockLarge, pos, new Vector3(0f, 25f * i, 0f));
                 if (vein == null)
                     continue;
