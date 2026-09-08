@@ -51,20 +51,19 @@ namespace Ulon.Editor
             if (idle == null)
                 throw new InvalidOperationException("Idle 클립 없음");
             AnimatorController controller = BuildController(idle, walk, run, attack);
-            StripAndAssign(GameObject.Find("Player"), controller);
-            StripAndAssign(GameObject.Find("Companion"), controller);
-            StripAndAssign(GameObject.Find("Skeleton"), controller);
-            StripAndAssign(GameObject.Find("Bandit"), controller);
-            StripAndAssign(GameObject.Find("Raider"), controller);
-            StripAndAssign(GameObject.Find("Rogue"), controller);
-            StripAndAssign(GameObject.Find("Knight"), controller);
-            StripAndAssign(GameObject.Find("Acolyte"), controller);
-            StripAndAssign(GameObject.Find("Minion"), controller);
-            StripAndAssign(GameObject.Find("SkelRogue"), controller);
-            StripAndAssign(GameObject.Find(Dungeon1.BossObject), controller);
-            StripAndAssign(GameObject.Find(Dungeon2.BossObject), controller);
-            StripAndAssign(GameObject.Find(Dungeon3.BossObject), controller);
-            StripAndAssign(GameObject.Find(FieldBoss.Object), controller);
+            // **명단이 아니라 씬 전수로 고른다**(랩 ③, 2026-09-08). 여기엔 `GameObject.Find` 14줄이
+            // 있었다 — 모델이 하나 늘 때마다 새는 자다. 새 액터는 아무 오류 없이 명단 밖에 남아
+            // 게임에서 T포즈로 선다(오류가 안 나므로 아무도 못 센다). **이름이 아니라 자리·성질로**:
+            // 「몸을 가진 것」(CharacterController)이면서 「살가죽이 붙은 것」(SkinnedMeshRenderer)이
+            // 배우다. 사슴·멧돼지 같은 야생은 CharacterController가 없어 저절로 빠진다.
+            // 대상 선정은 `ActorsToDress()` 하나로 — 이름 명단 14줄이 있던 자리다(랩 ③).
+            var actors = ActorsToDress();
+            // 0이면 실패 — 「아무도 못 골랐다」가 조용한 초록불로 지나가면 명단이 샌 것도 못 본다.
+            if (actors.Length == 0)
+                throw new InvalidOperationException("씬에서 액터를 한 명도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
+            for (int i = 0; i < actors.Length; i++)
+                StripAndAssign(actors[i], controller);
+            Debug.Log("[Ulon] 배우 전수 스윕 — " + actors.Length + "명에 컨트롤러 배정(이름 명단 없음)");
             var prefab = PrefabUtility.LoadPrefabContents("Assets/Game/Prefabs/NetPlayer.prefab");
             StripAndAssign(prefab, controller);
             PrefabUtility.SaveAsPrefabAsset(prefab, "Assets/Game/Prefabs/NetPlayer.prefab");

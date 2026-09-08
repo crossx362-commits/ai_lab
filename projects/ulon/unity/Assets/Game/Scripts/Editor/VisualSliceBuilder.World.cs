@@ -54,6 +54,29 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// **애니메이터를 붙일 대상**을 씬 전수로 고른다(랩 ③, 2026-09-08).
+        ///
+        /// 여기 있던 것은 `GameObject.Find("Player"|"Companion"|…)` **14줄짜리 이름 명단**이었다.
+        /// 명단은 모델이 하나 늘 때마다 새는 자다 — 새 액터는 아무 오류 없이 명단 밖에 남아
+        /// 게임에서 T포즈로 선다(오류가 안 나므로 아무도 못 센다). **이름이 아니라 자리·성질로**:
+        /// 「몸을 가진 것」(CharacterController)이 배우다. 사슴·멧돼지 같은 야생은 몸이 없어 저절로 빠진다.
+        ///
+        /// **부작용이 없다** — 게이트가 이 함수를 그대로 불러 NC를 걸 수 있게(세계를 안 바꾸고) 뺐다.
+        /// 처음엔 게이트가 빌더 본체(`FixCharacterAnimation`)를 다시 불렀는데, 그것이 모든 보정 패스
+        /// **뒤에** 액터·프리팹·FBX 임포트를 다시 손대 QA 샷 「마구간 사람이 가려진다」를 만들었다
+        /// (판별 테스트: 게이트만 끄면 통과). 재는 자는 재는 동안 세계를 바꾸면 안 된다.
+        /// </summary>
+        public static GameObject[] ActorsToDress()
+        {
+            var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var list = new List<GameObject>(actors.Length);
+            for (int i = 0; i < actors.Length; i++)
+                list.Add(actors[i].gameObject);
+            return list.ToArray();
+        }
+
+        /// <summary>
         /// **모든 사람형이 실제로 움직이게 한다**(검수 2026-09-07 (a) — 53의 T포즈).
         ///
         /// 스탠드얼론 실측에서 훈련사와 스켈레톤이 **애니메이터 없이** 서 있었다. 런타임
@@ -71,11 +94,11 @@ namespace Ulon.Editor
                 Debug.LogWarning("[Ulon] 공용 로코모션 컨트롤러가 없습니다: " + ControllerPath);
                 return;
             }
-            var actors = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var actors = ActorsToDress();      // 대상 선정은 한 곳에서만 — 자가 둘이면 또 갈린다
             var fixedNames = new List<string>();
             for (int i = 0; i < actors.Length; i++)
             {
-                var go = actors[i].gameObject;
+                var go = actors[i];
                 var anim = go.GetComponentInChildren<Animator>(true);
                 if (anim != null && anim.runtimeAnimatorController != null)
                     continue;
@@ -88,7 +111,10 @@ namespace Ulon.Editor
                     anim = (visual != null ? visual.gameObject : go).AddComponent<Animator>();
                 }
                 if (anim.avatar == null)
-                    anim.avatar = AvatarFor(go.name);
+                {
+                    var own = AvatarFromVisual(go);
+                    anim.avatar = own != null ? own : AvatarFor(go.name);
+                }
                 anim.runtimeAnimatorController = controller;
                 anim.applyRootMotion = false;
                 anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
@@ -113,13 +139,40 @@ namespace Ulon.Editor
             var anim = host.GetComponentInChildren<Animator>(true);
             if (anim == null)
                 anim = host.AddComponent<Animator>();
-            anim.avatar = AvatarFor(root.name);
+            // **아바타도 이름표가 아니라 그 배우가 입고 있는 모델에서 고른다**(랩 ③).
+            // 이름 표(`AvatarFor`)는 모르는 이름을 전부 Knight로 돌려주므로, 명단 밖에서 들어온
+            // 새 액터가 해골 몸에 기사 뼈대를 쓰게 된다 — 스윕으로 고르기 시작한 이상 위험한 폴백이다.
+            var own = AvatarFromVisual(host);
+            anim.avatar = own != null ? own : AvatarFor(root.name);
             anim.runtimeAnimatorController = controller;
             anim.applyRootMotion = false;
             anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             var smrs = host.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             for (int i = 0; i < smrs.Length; i++)
                 smrs[i].updateWhenOffscreen = true;
+        }
+
+        /// <summary>그 배우가 실제로 입은 살가죽(FBX)에서 사람 아바타를 찾는다 — 못 찾으면 null.</summary>
+        static Avatar AvatarFromVisual(GameObject host)
+        {
+            if (host == null)
+                return null;
+            var skins = host.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            for (int i = 0; i < skins.Length; i++)
+            {
+                if (skins[i] == null || skins[i].sharedMesh == null)
+                    continue;
+                string path = AssetDatabase.GetAssetPath(skins[i].sharedMesh);
+                if (string.IsNullOrEmpty(path))
+                    continue;
+                foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path))
+                {
+                    var av = o as Avatar;
+                    if (av != null && av.isHuman)
+                        return av;
+                }
+            }
+            return null;
         }
 
         static Avatar AvatarFor(string rootName)
