@@ -11,6 +11,12 @@
 > (`unity/Logs/selfcheck_dev.log`의 "Slice self-check PASS —" 줄). 여기엔 **현재 상태와 다음 단계만** 둔다.
 
 
+## 시체 열람 — **구현 완료**(`5f661ae6`, 2026-09-08)
+보기=근접 전원·TargetRpc 응답만(방송 없음) / 가져가기=기존 `loot_right`, **게이트 둘로 분리**.
+실측: 밖 `range` 거절·목록 없음 → 근접 성공·`bandage:1` / 회수는 밖 그대로 → 근접에서 가방 증가.
+화면: `builds/qa/hud_08_corpse_mine.png`(내 시체) · `hud_09_corpse_other.png`(남의 시체 · 떠돌이).
+치유사 후드 로브 배선 뒤 **칼이 켜져 있던 것**도 같이 수리(`47235c68`, `AssertBarehandVillagers` + NC).
+
 ## 오너 판정 잠금 (2026-09-08, 봇관리 전달)
 - **시체 내용물 가시성 = 가까이 온 사람 전부(②).** 보는 건 근접 전원·서버 열람 Rpc 응답으로만·방송 금지.
 - 가져가기는 기존 `loot_right`. 보는 것/가져가기 게이트 분리.
