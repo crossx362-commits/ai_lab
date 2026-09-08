@@ -303,7 +303,34 @@ namespace Ulon.Editor
         /// </summary>
         public static bool PersonBounds(Transform actor, out Bounds bounds)
         {
-            return WorldBounds(actor, out bounds, t => IsGear(actor, t) || IsFacilityPart(actor, t));
+            return WorldBounds(actor, out bounds, t => IsGear(actor, t) || IsFacilityPart(actor, t) || OutsideRig(actor, t));
+        }
+
+        /// <summary>
+        /// **뼈대 밖에 매달린 것은 그 사람의 몸이 아니다**(2026-09-09, 은행원 4.60m).
+        ///
+        /// `FacPart*` 이름으로 시설 부속을 빼고 있었는데, 은행원에게는 **은행 건물 자체**가
+        /// `Banker/BankRoof00`·`BankChimney`로 달려 있어 이름 그물에 안 걸렸다 — 사람 키가
+        /// **4.60m**(지붕 3.8 + 굴뚝 4.6)로 읽혔다. 이름 원장은 언제나 샌다.
+        ///
+        /// 성질로 가른다: 사람은 **스킨드 메시**와 그 **뼈대에 물린 것**(투구·모자·무기)으로 이뤄진다.
+        /// 뼈대(루트 본) 밖에서 액터 루트에 바로 매달린 정적 메시는 그 사람이 **서 있는 시설**이다.
+        /// 스킨드 메시가 아예 없는 액터(소품·구조물)에는 이 규칙을 적용하지 않는다.
+        /// </summary>
+        public static bool OutsideRig(Transform actor, Transform t)
+        {
+            var skins = actor.GetComponentsInChildren<SkinnedMeshRenderer>(false);
+            if (skins.Length == 0)
+                return false;
+            for (int i = 0; i < skins.Length; i++)
+            {
+                if (t == skins[i].transform || t.IsChildOf(skins[i].transform))
+                    return false;
+                var rig = skins[i].rootBone;
+                if (rig != null && (t == rig || t.IsChildOf(rig)))
+                    return false;
+            }
+            return true;
         }
 
         /// <summary>머리 장식으로 보는 높이 — 몸(발~정수리)의 이 비율 위에 앉은 것.</summary>
@@ -329,12 +356,21 @@ namespace Ulon.Editor
             return HeadgearByPlace(actor, t);
         }
 
-        /// <summary>이름을 빼고 **자리·성질만으로** 잰다 — NC가 이 자를 직접 겨눈다.</summary>
+        /// <summary>
+        /// 이름을 빼고 **자리·성질만으로** 잰다 — NC가 이 자를 직접 겨눈다.
+        ///
+        /// **선언한 한계(검수 2026-09-09)**: 「몸 위쪽 80% 위」만으로는 **공격 모션에서 치켜든 무기**가
+        /// 머리 장식으로 오인된다(그러면 그 무기가 키 측정에서 빠져 사람이 그만큼 작아진다).
+        /// 랩 ②에서 이미 쓴 성질로 막는다 — **손뼈 아래에 매달린 것은 쓴 것이 아니다.**
+        /// 투구는 머리뼈(`head`/`spine`) 아래에 물리므로 이 제외에 걸리지 않는다.
+        /// </summary>
         public static bool HeadgearByPlace(Transform actor, Transform t)
         {
             var renderer = t.GetComponent<Renderer>();
             if (renderer == null || renderer is SkinnedMeshRenderer)
                 return false;                                   // 몸은 스킨드다 — 쓴 것은 뼈에 물린 정적 메시
+            if (VisualSliceBuilder.UnderHandBone(t))
+                return false;                                   // 치켜든 칼은 머리 위에 와도 쓴 것이 아니다
             if (!WorldBounds(actor, out Bounds body, x => IsGear(actor, x) || IsFacilityPart(actor, x)))
                 return false;
             if (body.size.y < 0.01f)

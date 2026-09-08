@@ -46,8 +46,18 @@ namespace Ulon.Editor
                 if (GroundFit.HeadgearByPlace(who.transform, probe.transform))
                     throw new InvalidOperationException("머리 장식 NC② 실패 — 허리 높이로 내린 " + HeadgearProbeName +
                         "를 여전히 쓴 것으로 봤습니다. 자가 아무나 잡으면 빈 통과입니다.");
-                Debug.Log("[Ulon] 머리 장식 자리 양방향 NC 통과 — 이름 밖 물건도 정수리 위면 잡고(" +
-                          body.max.y.ToString("0.00") + "m), 허리로 내리면 놓는다");
+                // 세 번째 팔 — **치켜든 무기**(손뼈 아래)는 정수리 위에 와도 쓴 것이 아니다.
+                // 이 팔이 없으면 공격 모션에서 사람 키가 칼만큼 줄어든다(검수 2026-09-09 한계 선언).
+                Transform hand = HandBoneOf(who);
+                if (hand == null)
+                    throw new InvalidOperationException("손뼈를 못 찾았습니다 — 자리로 재는 자가 설 자리가 없습니다.");
+                probe.transform.SetParent(hand, true);
+                probe.transform.position = new Vector3(body.center.x, body.max.y + 0.30f, body.center.z);
+                if (GroundFit.HeadgearByPlace(who.transform, probe.transform))
+                    throw new InvalidOperationException("머리 장식 NC③ 실패 — 손에 쥔 채 머리 위로 치켜든 " +
+                        HeadgearProbeName + "를 쓴 것으로 봤습니다. 공격 모션마다 키가 줄어듭니다.");
+                Debug.Log("[Ulon] 머리 장식 자리 3방향 NC 통과 — 이름 밖 물건도 정수리 위면 잡고(" +
+                          body.max.y.ToString("0.00") + "m), 허리로 내리면 놓고, **손에 쥐고 치켜들면** 놓는다");
             }
             finally { UnityEngine.Object.DestroyImmediate(probe); }
 

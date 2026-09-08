@@ -521,9 +521,7 @@ namespace Ulon.Editor
                         if (d - 0.3f < stop && d > stop)
                             d = stop;
                         var eyeD = target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * d;
-                        var headD = box.center + Vector3.up * box.extents.y * 0.8f;
-                        if (BlockedByRenderer(eyeD, headD, go.transform, out string bd) ||
-                            BlockedByRenderer(eyeD, box.center, go.transform, out bd))
+                        if (PersonBlocked(eyeD, box, go.transform, out string bd))
                         {
                             lastBlocker = bd;
                             if (bd != "" && !blockers.Contains(bd))
@@ -572,8 +570,7 @@ namespace Ulon.Editor
                         for (float d = InsidePullFloor; d >= 0.9f; d -= 0.15f)
                         {
                             var e2 = target - Quaternion.Euler(pit2, y2, 0f) * Vector3.forward * d;
-                            if (BlockedByRenderer(e2, box.center + Vector3.up * box.extents.y * 0.8f, go.transform) ||
-                                BlockedByRenderer(e2, box.center, go.transform))
+                            if (PersonBlocked(e2, box, go.transform, out _))
                                 continue;
                             clears = d; clearYaw = y2; clearPitch = pit2;
                             break;
@@ -788,6 +785,33 @@ namespace Ulon.Editor
         /// </summary>
         static bool BlockedByRenderer(Vector3 eye, Vector3 point, Transform subject)
             => BlockedByRenderer(eye, point, subject, out _);
+
+        /// <summary>
+        /// **사람이 판정할 만큼 보이는가** — 머리·몸통 두 점만 보면 모자란다(검수 2026-09-09):
+        /// `50_villagers` 첫 칸은 두 점이 뚫린 방위였는데도 나무 기둥이 화면 절반을 먹고 인물이
+        /// 그늘에 잠겨, 판정할 성질(모자 비례·손)이 화면에 없었다.
+        /// 그래서 **실루엣의 좌우 끝과 손 높이까지 다섯 점**을 본다 — 옆에 선 기둥은 좌우 끝에서 걸린다.
+        /// </summary>
+        static bool PersonBlocked(Vector3 eye, Bounds box, Transform subject, out string blocker)
+        {
+            Vector3 flat = box.center - eye; flat.y = 0f;
+            Vector3 right = flat.sqrMagnitude > 0.0001f
+                ? Vector3.Cross(Vector3.up, flat.normalized) * Mathf.Max(box.extents.x, box.extents.z) * 0.8f
+                : Vector3.right * box.extents.x * 0.8f;
+            var points = new[]
+            {
+                box.center + Vector3.up * box.extents.y * 0.8f,   // 머리
+                box.center,                                        // 몸통
+                box.center + right,                                // 실루엣 오른쪽 끝
+                box.center - right,                                // 실루엣 왼쪽 끝
+                box.center - Vector3.up * box.extents.y * 0.3f,    // 손 높이
+            };
+            for (int i = 0; i < points.Length; i++)
+                if (BlockedByRenderer(eye, points[i], subject, out blocker))
+                    return true;
+            blocker = "";
+            return false;
+        }
 
         /// <summary>같은 판정에 **무엇이 막았는지**를 같이 돌려준다 — 「막혔다」만으로는
         /// 진짜 지붕인지 남의 바운드가 부푼 것인지 구분할 수 없다(이 저장소가 여러 번 밟은 함정).</summary>
