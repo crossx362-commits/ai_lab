@@ -5,14 +5,16 @@ CLIENT_BIN="$ROOT/builds/client/UlonClient.app/Contents/MacOS/Ulon"
 OUT="$ROOT/builds/check"
 mkdir -p "$OUT"
 rm -f "$OUT"/a.json "$OUT"/b.json "$OUT"/server.log "$OUT"/a.log "$OUT"/b.log
+# 저장소 주소는 **한 자리**에만 산다 — 같은 값이 두 곳에 살면 한쪽만 바뀐다(검수 2026-09-08).
+PERSIST_URL="http://127.0.0.1:8777/character/"
 # **검사 계정을 매 판 살아 있는 상태로 되돌린다.**
 # 지난 판의 저장 상태가 이번 판정을 만든다 — 실제로 옛 낙하 사고(스폰 y 0 = 지면 10m 아래)로
 # ds-a가 「유령(HP 0)」으로 저장돼 있어서, 스폰을 고친 뒤에도 파티 초대가 계속 ghost로 거절됐다.
 # 파일을 지우면 안 된다: 헤드리스에는 캐릭터 생성 화면이 없어 새 계정이 HP 0으로 남는다.
-python3 - "$ROOT/builds/client/data/accounts" <<'FIX'
+python3 - "$ROOT/builds/client/data/accounts" "$PERSIST_URL" <<'FIX'
 import json, pathlib, sys, urllib.request, urllib.error
 d = pathlib.Path(sys.argv[1])
-PERSIST = "http://127.0.0.1:8777/character/"
+PERSIST = sys.argv[2]
 
 def normalize(j):
     j["Ghost"] = False
@@ -122,17 +124,28 @@ fi
 # **인프라 실패 ≠ 이슈 실패**(검수 판정 2026-09-08). 저장소(8777)가 죽어 있으면 골드 0·가방 빈 값이
 # 내려와 축 ③·④가 통째로 FAIL로 찍혔다 — 그건 결함이 아니라 **못 잰 것**이다. 시작 때 한 번 묻고,
 # 죽었으면 FAIL(1·8)이 아니라 **rc=9 「못 잼」**으로 멈춘다(빨간불과 무응답을 같은 색으로 칠하지 않는다).
-if ! python3 - <<'ALIVE'
-import sys, urllib.request
+#
+# 묻는 이름은 **일부러 없는 이름**이다(검수 2026-09-08 지적). `ds-a`를 물으면 데이터 디렉터리가 빈
+# 첫 판에서 404가 나고, 그걸 「죽었다」로 읽으면 살아 있는 저장소를 두고 rc=9가 난다 —
+# `store_gold`에서 방금 고친 「404 = 쓴 적 없음」과 **같은 함정**이다. 문지기의 판정은 하나다:
+# **HTTP 응답이 오면 살아 있다**(404 포함). 연결 자체가 안 될 때만 죽은 것이다.
+# 없는 이름을 쓰면 그 404 경로가 **매 판 실제로 밟힌다** — 자가 조용히 뒤집히지 않는다.
+if ! python3 - "$PERSIST_URL" <<'ALIVE'
+import sys, urllib.request, urllib.error
+url = sys.argv[1] + "__alive_probe__"
 try:
-    with urllib.request.urlopen("http://127.0.0.1:8777/character/ds-a", timeout=3) as r:
-        sys.exit(0 if r.read() else 1)
+    urllib.request.urlopen(url, timeout=3)
+    sys.exit(0)                      # 200 — 살아 있다
+except urllib.error.HTTPError:
+    sys.exit(0)                      # 404 등 — **응답이 왔으니 살아 있다**
 except Exception:
-    sys.exit(1)
+    sys.exit(1)                      # 연결 실패·시간 초과 — 죽었다
 ALIVE
 then
-  echo "못 잼 — 영속 저장소(http://127.0.0.1:8777)가 응답하지 않습니다. 결함이 아니라 계측 불가입니다." >&2
-  echo "  띄우는 곳: cwd /Users/junholee/ai_lab/projects/ulon, 데이터 .../projects/ulon/data" >&2
+  echo "못 잼 — 영속 저장소($PERSIST_URL)가 응답하지 않습니다. 결함이 아니라 계측 불가입니다." >&2
+  # 경로를 박제하지 않는다 — 저장소는 **기계에 하나**뿐이고 어느 트리에서 띄웠든 같은 8777이다.
+  echo "  띄우는 법: 띄울 트리의 projects/ulon에서 \`python3 server/persist.py\`(데이터는 그 옆 data/)." >&2
+  echo "  이 트리: $ROOT" >&2
   exit 9
 fi
 
