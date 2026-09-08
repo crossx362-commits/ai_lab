@@ -33,7 +33,9 @@ namespace Ulon.Editor
                                    List<string> bldNames, List<Bounds> bldBoxes)
         {
             var stack = new Stack<Transform>();
-            var all = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            // 꺼진 것도 훑는다 — **부지 집은 계약 전까지 꺼져 있을 뿐 그 자리는 이미 예약돼 있다**.
+            // (굽는 쪽이 못 보고 지나쳐 덤불이 그 집에 박힌 채 남았다, 2026-09-09.) 소품은 켜진 것만 센다.
+            var all = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < all.Length; i++)
             {
                 var go = all[i];
@@ -65,6 +67,8 @@ namespace Ulon.Editor
                         stack.Push(t.GetChild(c));
                     continue;
                 }
+                if (!t.gameObject.activeInHierarchy)
+                    continue;
                 if (!GroundFit.WorldBounds(t, out Bounds wb) || !InVillage(wb) || IsVillageMat(wb))
                     continue;
                 propNodes.Add(t);
