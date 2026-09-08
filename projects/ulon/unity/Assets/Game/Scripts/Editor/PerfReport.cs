@@ -31,7 +31,8 @@ namespace Ulon.Editor
             public long Triangles;
             public int MeshColliders;
             public int OtherColliders;
-            public int Materials;
+            public int Materials;         // **에셋 한 벌** 기준 종류 수(자는 MaterialKey)
+            public int MaterialInstances; // 참고용 — 옛 자(인스턴스 개수). 게이트는 이 값을 안 쓴다.
             public int Skinned;
         }
 
@@ -145,10 +146,36 @@ namespace Ulon.Editor
         /// <summary>직전 `Measure`가 센 머티리얼 이름 — 경보가 났을 때 원인을 대기 위한 것.</summary>
         public static readonly System.Collections.Generic.List<string> LastMaterialNames = new System.Collections.Generic.List<string>();
 
+        /// <summary>
+        /// 머티리얼 「종류」의 **자**(검수 판정 2026-09-08): 인스턴스 개수가 아니라 **에셋 한 벌**로 센다.
+        /// 왜: 옛 자는 `HashSet&lt;Material&gt;`(인스턴스 동일성)이라, 같은 에셋을 가리키는 사본이
+        /// 늘기만 해도 숫자가 올라갔다 — 실측에서 `colormap` 34개·`grass` 7개·`dirt` 3개가 그렇게 세어졌다.
+        /// 그건 「무거워졌다」가 아니라 **같은 것을 여러 번 셌다**는 뜻이다.
+        /// 「에셋 경로+이름」으로 먼저 재 봤지만 숫자가 그대로 84였다 — 34개 `colormap`은 **34개의 서로 다른
+        /// FBX가 각자 품고 있는 같은 재질**이라 경로가 다 다르기 때문이다. 그래서 자를 한 번 더 바꿨다:
+        /// 키는 **재질이 그리는 그림**(셰이더 + 메인 텍스처 에셋 + 색)이다. Kenney 킷 33개 프롭이
+        /// 같은 `colormap.png`를 같은 셰이더로 그리면 그건 **한 종류**다.
+        /// 한계는 선언한다: 광택·타일링만 다른 두 재질은 한 종류로 센다(그림이 사실상 같다).
+        /// 텍스처가 없는 재질은 색으로 갈린다. 이 자는 **인스턴스 수를 안 본다** — 사본이 늘어도 안 는다.
+        /// </summary>
+        public static string MaterialKey(Material m)
+        {
+            if (m == null)
+                return "null";
+            string shader = m.shader != null ? m.shader.name : "(no shader)";
+            var tex = m.mainTexture;
+            string texKey = tex != null ? UnityEditor.AssetDatabase.GetAssetPath(tex) : "(no tex)";
+            if (tex != null && string.IsNullOrEmpty(texKey))
+                texKey = "mem:" + tex.name;
+            string col = m.HasProperty("_Color") ? ColorUtility.ToHtmlStringRGBA(m.color) : "-";
+            return shader + "|" + texKey + "|" + col;
+        }
+
         public static Count Measure(Spot spot)
         {
             var c = new Count();
             var mats = new HashSet<Material>();
+            var matKeys = new HashSet<string>();
             var renderers = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < renderers.Length; i++)
             {
@@ -168,14 +195,15 @@ namespace Ulon.Editor
                 }
                 var shared = r.sharedMaterials;
                 for (int m = 0; m < shared.Length; m++)
-                    if (shared[m] != null) mats.Add(shared[m]);
+                    if (shared[m] != null) { mats.Add(shared[m]); matKeys.Add(MaterialKey(shared[m])); }
             }
-            c.Materials = mats.Count;
+            c.Materials = matKeys.Count;
+            c.MaterialInstances = mats.Count;
             // **넘었을 때 「무엇이 늘었나」를 말할 수 있어야 한다** — 숫자만 남기면 다음 사람이
             // 원인을 못 찾고 상한부터 올린다(그게 자를 헐겁게 하는 길이다).
             LastMaterialNames.Clear();
-            foreach (var m in mats)
-                LastMaterialNames.Add(m.name);
+            foreach (var k in matKeys)
+                LastMaterialNames.Add(k);
             LastMaterialNames.Sort(System.StringComparer.Ordinal);
 
             var cols = UnityEngine.Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);

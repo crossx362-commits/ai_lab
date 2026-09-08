@@ -204,7 +204,19 @@ namespace Ulon.Editor
             AssetDatabase.SaveAssets();
             int rocks = PaintSceneByName(rockMat, new[] { "rock-large", "rock-wide", "rock-small" });
             int veins = PaintSceneByName(veinMat, new[] { "MineVein1", "MineVein2", "MineVein3", "IronVein" });
-            Debug.Log("[Ulon] 소품 재질 — 바위 렌더러 " + rocks + "개 암석 도포, 광맥 " + veins + "개 철광 도포");
+            // **풀·흙 도포도 여기로 옮긴다**(검수 판정 2026-09-08 「재현성 결함」).
+            // 증상: 이 트리에서는 `Dungeon1/ground_pathTile/Visual/:dirt` 618개가 무텍스처로 걸리는데
+            // 공유 트리는 같은 소스로 통과했다. 원인은 도포 시점이었다 — 풀·흙 도포는
+            // `ApplyVillageMaterials`, 즉 **마을을 짓는 도중**에만 돌았고, 던전 입구·방의 돌길 타일은
+            // 그 뒤에 세워진다. 그래서 「이번 판에서 그 물건이 언제 생겼나」에 따라 결과가 갈렸다
+            // (같은 소스, 다른 결과 = 재현성 결함이지 환경 차이가 아니다).
+            // 바위가 이미 이 함수로 옮겨온 것과 같은 이유다: **소품이 전부 놓인 뒤에 칠한다.**
+            var grassMat = MakeNoiseMat("KenneyGrass", new Color(0.32f, 0.52f, 0.2f), new Color(0.24f, 0.42f, 0.14f));
+            var dirtMat = MakeNoiseMat("KenneyDirt", new Color(0.52f, 0.38f, 0.24f), new Color(0.4f, 0.28f, 0.16f));
+            int greens = PaintSceneByName(grassMat, new[] { "grass", "grass_large", "plant_bush", "plant_bushLarge", "ResinBush", "FieldFlax", "grass_leafs", "ground_grass" });
+            int dirts = PaintSceneByName(dirtMat, new[] { "rock_smallA", "rock_largeA", "ground_pathTile" });
+            Debug.Log("[Ulon] 소품 재질 — 바위 렌더러 " + rocks + "개 암석 도포, 광맥 " + veins + "개 철광 도포, " +
+                      "풀 " + greens + "개, 흙·돌길 " + dirts + "개");
         }
 
         /// <summary>

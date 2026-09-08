@@ -1663,6 +1663,7 @@ namespace Ulon.Editor
             AssertOutdoorSightLineNegativeControl();
             AssertSpawnOnGround();
             AssertSpawnOnGroundNegativeControl();
+            AssertPerfMaterialRulerNegativeControl();
             AssertPerfRegressionAlarm();
             AssertBossMobContrast();
             AssertBossMobContrastNegativeControl();

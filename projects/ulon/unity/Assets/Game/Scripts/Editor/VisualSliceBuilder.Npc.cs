@@ -876,6 +876,49 @@ namespace Ulon.Editor
                 || n.IndexOf("Tunic", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        /// <summary>
+        /// 무기 최저점이 발밑 바닥보다 아래면, **그립 점을 축으로** 칼끝을 들어 여유 0.10m를 만든다.
+        /// 게이트(`AssertGearAboveFloor`)와 **같은 자**로 바닥을 잡는다 — 재는 자와 맞추는 자가 둘이면
+        /// 한쪽만 통과하는 일이 생긴다. 도는 방향은 짐작하지 않고 **양쪽을 재서** 올라가는 쪽을 고른다.
+        /// </summary>
+        static void LiftWeaponAboveFloor(GameObject actor, Transform weapon)
+        {
+            const float Want = 0.10f;
+            if (actor == null || weapon == null)
+                return;
+            if (!GroundFit.BodyBounds(actor.transform, out Bounds body))
+                return;
+            if (!GroundFit.SurfaceUnder(actor.transform, body, out float floorY, out _))
+                return;
+            if (!BoundsOfEnabled(weapon, out Bounds start) || start.min.y >= floorY + Want)
+                return;
+
+            float sign = 0f;
+            for (int step = 0; step < 36; step++)
+            {
+                if (!BoundsOfEnabled(weapon, out Bounds cur) || cur.min.y >= floorY + Want)
+                    break;
+                if (!BossFit.WeaponAxis(weapon, out Vector3 grip, out Vector3 tip))
+                    break;
+                var axis = Vector3.Cross((tip - grip).normalized, Vector3.up);
+                if (axis.sqrMagnitude < 1e-6f)
+                    break;
+                axis = axis.normalized;
+                if (sign == 0f)
+                {
+                    // 어느 쪽으로 돌아야 칼끝이 올라가는지 **재서** 고른다.
+                    weapon.RotateAround(grip, axis, 5f);
+                    bool up = BoundsOfEnabled(weapon, out Bounds probe) && probe.min.y > cur.min.y;
+                    weapon.RotateAround(grip, axis, -5f);
+                    sign = up ? 1f : -1f;
+                }
+                weapon.RotateAround(grip, axis, 5f * sign);
+            }
+            if (BoundsOfEnabled(weapon, out Bounds end))
+                Debug.Log("[Ulon] 보스 무기 들어올림 — " + actor.name + " 최저점 " +
+                          (start.min.y - floorY).ToString("0.00") + "m → " + (end.min.y - floorY).ToString("0.00") + "m (바닥 기준)");
+        }
+
         public static void DressBoss(GameObject boss, Color tint)
         {
             if (boss == null)
@@ -950,6 +993,12 @@ namespace Ulon.Editor
                     if (BossFit.WeaponAxis(weapon, out grip, out tip))
                         weapon.position += handBone.position - grip;
                 }
+                // **칼끝을 바닥에서 든다**(검수 판정 2026-09-08: `BoneWarden/Visual 0.28m` 매몰).
+                // 보스는 키가 1.3~1.5배, 무기는 그 위에 또 최대 3.5배까지 커진다 — 손에 제대로
+                // 들려 있어도 팔뚝 방향으로 뻗은 칼끝이 바닥 밑으로 내려간다.
+                // 고치는 자리는 **그립이 아니라 각도**다: 그립 점을 축으로 돌리면 손과의 관계는 그대로고
+                // (같은 함수가 바로 위에서 맞춘 것을 안 깨뜨린다) 칼끝만 올라온다.
+                LiftWeaponAboveFloor(boss, weapon);
             }
 
             // 1-b) **1몹 1무기**(P1 #7) — 보스 드레싱이 큰 무기를 새로 붙이면 원래 들고 있던 칼이
