@@ -76,6 +76,9 @@ namespace Ulon.Client
             // **몹 사냥보다 먼저 한다** — 몹과 치고받은 뒤에 하면 때리는 쪽이 이미 유령이라
             // 서버가 `attack fail ghost`로 거절하고, 검사는 판마다 결과가 달라진다(실측).
             yield return PvpHp(role, mine, deadline);
+            // **안내 문구가 화면까지 오는가**(전역 상태 전수 랩의 근거 실측). 길드 창설은 서버에서
+            // `LastGuildMessage`를 채운다 — 클라의 그 값이 비어 있으면 「안내가 안 뜬다」는 뜻이다.
+            guildMsg = OfflineWorld.Instance != null ? (OfflineWorld.Instance.LastGuildMessage ?? "") : "";
             yield return Economy(role, mine, deadline);
             // 축 ④ — 스킬은 **서버가 올려 준다**. 몹 사냥(아래)이 검술을 올리므로 그 앞뒤로 잰다.
             SkillsSnapshot(mine, out skSwordBefore, out skMiningBefore, out skMageryBefore, out skillsSeen);
@@ -332,6 +335,7 @@ namespace Ulon.Client
         static int skillsSeen;
         static bool skCheatStuck;
 
+        static string guildMsg = "";
         static int ecoGoldBefore = -1, ecoGoldAfter = -1;
         static string ecoBagBefore = "", ecoBagAfter = "", ecoBagAfterCheat = "";
         static bool ecoCheatStuck, ecoLocalBuy;
@@ -561,6 +565,7 @@ namespace Ulon.Client
                           + ",\"skMageryAfter\":" + skMageryAfter.ToString("0.###")
                           + ",\"skillsSeen\":" + skillsSeen
                           + ",\"skCheatStuck\":" + (skCheatStuck ? "true" : "false")
+                          + ",\"guildMsg\":\"" + guildMsg.Replace("\"", "") + "\""
                           + "}";
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, json, new UTF8Encoding(false));
