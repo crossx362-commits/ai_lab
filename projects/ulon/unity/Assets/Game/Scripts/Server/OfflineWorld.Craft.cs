@@ -129,7 +129,7 @@ namespace Ulon.Server
                 + ItemCatalog.WeightOf(recipe.Output);
             if (projected > ItemCatalog.CarryCap(StatsOf(body).Str))
             {
-                LastWeightMessage = WeightRefuseMessage(StatsOf(body).Str, bag);
+                LastWeightMessage = Tell(body, WeightRefuseMessage(StatsOf(body).Str, bag));
                 return new AttackResult { FailReason = "overweight" };
             }
             ConsumeItem(bag, recipe.Ingredient, recipe.Count);
@@ -196,11 +196,11 @@ namespace Ulon.Server
             });
             if (!gate.Applied)
             {
-                LastCraftOrderMessage = CraftOrderMessage(gate.FailReason, body.ActiveCraftOrder);
+                LastCraftOrderMessage = Tell(body, CraftOrderMessage(gate.FailReason, body.ActiveCraftOrder));
                 return gate;
             }
             body.ActiveCraftOrder = CraftOrderRules.DefaultItem;
-            LastCraftOrderMessage = "제작의뢰 수락: " + CraftOrderRules.DefaultItem + " x" + CraftOrderRules.Amount;
+            LastCraftOrderMessage = Tell(body, "제작의뢰 수락: " + CraftOrderRules.DefaultItem + " x" + CraftOrderRules.Amount);
             OpLog.Write("craft_order_accept", PersistDriver.AccountKey(), body.DisplayName, body.ActiveCraftOrder);
             return gate;
         }
@@ -243,19 +243,19 @@ namespace Ulon.Server
             });
             if (!gate.Applied)
             {
-                LastCraftOrderMessage = CraftOrderMessage(gate.FailReason, order);
+                LastCraftOrderMessage = Tell(body, CraftOrderMessage(gate.FailReason, order));
                 return gate;
             }
             if (!TakeCraftedByMaker(bag, order, maker))
             {
-                LastCraftOrderMessage = CraftOrderMessage("wrong_item", order);
+                LastCraftOrderMessage = Tell(body, CraftOrderMessage("wrong_item", order));
                 return new AttackResult { FailReason = "wrong_item" };
             }
             body.Gold += CraftOrderRules.GoldReward;
             body.ActiveCraftOrder = "";
             var skills = SkillsOf(body);
             SkillGain.TryRaise(skills, SkillId.Blacksmithing, CraftOrderRules.SkillDifficulty, out float before, out float after, StatsOf(body));
-            LastCraftOrderMessage = "제작의뢰 납품 +" + CraftOrderRules.GoldReward + "G";
+            LastCraftOrderMessage = Tell(body, "제작의뢰 납품 +" + CraftOrderRules.GoldReward + "G");
             OpLog.Write("craft_order_turnin", PersistDriver.AccountKey(), body.DisplayName, order);
             return new AttackResult { Applied = true, Hit = true, Damage = CraftOrderRules.GoldReward, SkillBefore = before, SkillAfter = after };
         }

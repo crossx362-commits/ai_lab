@@ -76,9 +76,8 @@ namespace Ulon.Client
             // **몹 사냥보다 먼저 한다** — 몹과 치고받은 뒤에 하면 때리는 쪽이 이미 유령이라
             // 서버가 `attack fail ghost`로 거절하고, 검사는 판마다 결과가 달라진다(실측).
             yield return PvpHp(role, mine, deadline);
-            // **안내 문구가 화면까지 오는가**(전역 상태 전수 랩의 근거 실측). 길드 창설은 서버에서
-            // `LastGuildMessage`를 채운다 — 클라의 그 값이 비어 있으면 「안내가 안 뜬다」는 뜻이다.
-            guildMsg = OfflineWorld.Instance != null ? (OfflineWorld.Instance.LastGuildMessage ?? "") : "";
+            // guildMsg는 Guild() 안에서 창설 직후 찍는다(수락 안내가 덮기 전).
+            yield return Corpse(role, mine, deadline);
             yield return Economy(role, mine, deadline);
             // 축 ④ — 스킬은 **서버가 올려 준다**. 몹 사냥(아래)이 검술을 올리므로 그 앞뒤로 잰다.
             SkillsSnapshot(mine, out skSwordBefore, out skMiningBefore, out skMageryBefore, out skillsSeen);
@@ -335,6 +334,68 @@ namespace Ulon.Client
         static int skillsSeen;
         static bool skCheatStuck;
 
+        /// <summary>
+        /// **시체 열람과 회수는 규칙이 다르다**(오너 판정 2026-09-08 + 검수 조건 ㉠).
+        /// 보는 것 = **근접이면 누구나**, 가져가는 것 = 기존 `loot_right`. 그래서 **재는 것도 둘**이다 —
+        /// 한 덩어리로 재면 어느 쪽이 깨졌는지 안 보인다. 각각 **사거리 밖 → 안** 순서로 재서
+        /// 「서버가 거절한다」와 「서버가 준다」를 같은 판에서 본다(NC를 판 밖으로 빼지 않는다).
+        /// </summary>
+        static IEnumerator Corpse(string role, NetAvatar mine, float deadline)
+        {
+            if (role != "attacker")
+                yield break;
+            var body = mine.GetComponent<WorldBody>();
+            var bag = mine.GetComponent<InventoryBag>();
+            var node = OfflineWorld.FindCorpse("ds-b");
+            if (body == null || bag == null || node == null)
+            {
+                Debug.Log("[Ulon] 축시체 — 잴 시체가 없다(ds-b 시체 없음)");
+                yield break;
+            }
+            var near = node.transform.position + new Vector3(1.0f, 0f, 0f);
+            var far = node.transform.position + new Vector3(20f, 0f, 20f);
+
+            // ① 보는 것 — 멀리서 요청하면 거절, 가까이서 요청하면 목록이 온다.
+            mine.RpcSetPos(far);
+            WarpNextTo(mine.transform, far);
+            yield return new WaitForSeconds(0.8f);
+            NetAvatar.LastPeekFail = "";
+            mine.RpcCorpsePeek("ds-b");
+            yield return new WaitForSeconds(0.8f);
+            peekFarFail = NetAvatar.LastPeekFail;
+            peekFarItems = OfflineWorld.CorpseSignature(OfflineWorld.FindCorpse("ds-b"));
+
+            mine.RpcSetPos(near);
+            WarpNextTo(mine.transform, near);
+            yield return new WaitForSeconds(0.8f);
+            NetAvatar.LastPeekFail = "";
+            mine.RpcCorpsePeek("ds-b");
+            yield return new WaitForSeconds(0.8f);
+            peekNearFail = NetAvatar.LastPeekFail;
+            peekNearItems = OfflineWorld.CorpseSignature(OfflineWorld.FindCorpse("ds-b"));
+
+            // ② 가져가는 것 — 같은 방식으로 사거리 밖/안. 판정은 **가방이 실제로 늘었는가**다.
+            string bagBefore = NetAvatar.BagSignature(bag);
+            mine.RpcSetPos(far);
+            WarpNextTo(mine.transform, far);
+            yield return new WaitForSeconds(0.8f);
+            mine.RpcLoot("ds-b");
+            yield return new WaitForSeconds(1.0f);
+            lootFarBag = NetAvatar.BagSignature(bag);
+            mine.RpcSetPos(near);
+            WarpNextTo(mine.transform, near);
+            yield return new WaitForSeconds(0.8f);
+            mine.RpcLoot("ds-b");
+            yield return new WaitForSeconds(1.2f);
+            lootNearBag = NetAvatar.BagSignature(bag);
+            Debug.Log("[Ulon] 축시체 — 보기 밖 「" + peekFarFail + "」/안 「" + peekNearFail +
+                      "」 목록 " + peekNearItems + " · 가져가기 밖 " + lootFarBag + " → 안 " + lootNearBag +
+                      " (처음 " + bagBefore + ")");
+        }
+
+        static string peekFarFail = "", peekNearFail = "", peekFarItems = "", peekNearItems = "";
+        static string lootFarBag = "", lootNearBag = "";
+
         static string guildMsg = "";
         static int ecoGoldBefore = -1, ecoGoldAfter = -1;
         static string ecoBagBefore = "", ecoBagAfter = "", ecoBagAfterCheat = "";
@@ -430,6 +491,8 @@ namespace Ulon.Client
             {
                 mine.RpcGuildCreate("검사길드");
                 yield return new WaitForSeconds(0.4f);
+                // 창설 안내가 **이 클라에만** 왔는가 — 초대 전에 찍는다(검수 B: 옆 사람 화면에 뜨면 방송).
+                guildMsg = mine.ClientHint ?? "";
                 float inviteDeadline = Mathf.Min(deadline, Time.realtimeSinceStartup + 5f);
                 while (Time.realtimeSinceStartup < inviteDeadline && GuildRosterCount() < 2)
                 {
@@ -451,6 +514,9 @@ namespace Ulon.Client
             }
             else
             {
+                // A의 창설 안내가 방송되면 이 클라에도 "created"가 온다. 수락 전에 찍는다.
+                yield return new WaitForSeconds(0.6f);
+                guildMsg = mine.ClientHint ?? "";
                 float acceptDeadline = Mathf.Min(deadline, Time.realtimeSinceStartup + 6f);
                 while (Time.realtimeSinceStartup < acceptDeadline && !GuildView.PendingMe)
                     yield return null;
@@ -566,6 +632,12 @@ namespace Ulon.Client
                           + ",\"skillsSeen\":" + skillsSeen
                           + ",\"skCheatStuck\":" + (skCheatStuck ? "true" : "false")
                           + ",\"guildMsg\":\"" + guildMsg.Replace("\"", "") + "\""
+                          + ",\"peekFarFail\":\"" + peekFarFail + "\""
+                          + ",\"peekFarItems\":\"" + peekFarItems + "\""
+                          + ",\"peekNearFail\":\"" + peekNearFail + "\""
+                          + ",\"peekNearItems\":\"" + peekNearItems + "\""
+                          + ",\"lootFarBag\":\"" + lootFarBag + "\""
+                          + ",\"lootNearBag\":\"" + lootNearBag + "\""
                           + "}";
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, json, new UTF8Encoding(false));

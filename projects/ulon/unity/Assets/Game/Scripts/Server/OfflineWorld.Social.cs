@@ -118,7 +118,7 @@ namespace Ulon.Server
             });
             if (!check.Applied)
             {
-                LastGuildMessage = check.FailReason;
+                LastGuildMessage = Tell(body, check.FailReason);
                 return check;
             }
             guildSeq++;
@@ -128,7 +128,7 @@ namespace Ulon.Server
             body.GuildId = id;
             body.GuildName = name;
             body.Gold -= GuildRules.GoldCost;
-            LastGuildMessage = "created";
+            LastGuildMessage = Tell(body, "created");
             return new AttackResult { Applied = true, Hit = true, Damage = GuildRules.GoldCost };
         }
 
@@ -152,7 +152,7 @@ namespace Ulon.Server
             });
             if (!check.Applied)
             {
-                LastGuildMessage = check.FailReason;
+                LastGuildMessage = Tell(from, check.FailReason);
                 return check;
             }
             if (!to.IsAvatar)
@@ -160,11 +160,11 @@ namespace Ulon.Server
                 guild.Add(to);
                 to.GuildId = guild.Id;
                 to.GuildName = guild.Name;
-                LastGuildMessage = "joined";
+                LastGuildMessage = Tell(from, "joined");
                 return new AttackResult { Applied = true };
             }
             guild.Pending = to;
-            LastGuildMessage = "invited";
+            LastGuildMessage = Tell(from, "invited");
             return new AttackResult { Applied = true };
         }
 
@@ -196,13 +196,13 @@ namespace Ulon.Server
             });
             if (!check.Applied)
             {
-                LastGuildMessage = check.FailReason;
+                LastGuildMessage = Tell(body, check.FailReason);
                 return check;
             }
             guild.Add(body);
             body.GuildId = guild.Id;
             body.GuildName = guild.Name;
-            LastGuildMessage = "accepted";
+            LastGuildMessage = Tell(body, "accepted");
             return new AttackResult { Applied = true };
         }
 
@@ -214,7 +214,7 @@ namespace Ulon.Server
             var check = GuildResolve.Leave(new GuildRequest { HasGuild = guild != null });
             if (!check.Applied)
             {
-                LastGuildMessage = check.FailReason;
+                LastGuildMessage = Tell(body, check.FailReason);
                 return check;
             }
             if (body == guild.Leader)
@@ -231,7 +231,7 @@ namespace Ulon.Server
                 body.GuildId = "";
                 body.GuildName = "";
             }
-            LastGuildMessage = "left";
+            LastGuildMessage = Tell(body, "left");
             return new AttackResult { Applied = true };
         }
 
@@ -255,11 +255,11 @@ namespace Ulon.Server
             });
             if (!check.Applied)
             {
-                LastDuelMessage = check.FailReason;
+                LastDuelMessage = Tell(from, check.FailReason);
                 return check;
             }
             from.PendingDuel = to;
-            LastDuelMessage = "invited";
+            LastDuelMessage = Tell(from, "invited");
             return new AttackResult { Applied = true, Hit = true };
         }
 
@@ -289,14 +289,14 @@ namespace Ulon.Server
             });
             if (!check.Applied)
             {
-                LastDuelMessage = check.FailReason;
+                LastDuelMessage = Tell(body, check.FailReason);
                 return check;
             }
             from.PendingDuel = null;
             from.DuelOpponent = body;
             body.DuelOpponent = from;
             body.PendingDuel = null;
-            LastDuelMessage = "accepted";
+            LastDuelMessage = Tell(body, "accepted");
             return new AttackResult { Applied = true, Hit = true };
         }
 
@@ -307,11 +307,11 @@ namespace Ulon.Server
             var check = DuelResolve.End(new DuelRequest { InDuel = body.DuelOpponent != null });
             if (!check.Applied)
             {
-                LastDuelMessage = check.FailReason;
+                LastDuelMessage = Tell(body, check.FailReason);
                 return check;
             }
             ClearDuel(body);
-            LastDuelMessage = "ended";
+            LastDuelMessage = Tell(body, "ended");
             return new AttackResult { Applied = true, Hit = true };
         }
 
@@ -319,7 +319,7 @@ namespace Ulon.Server
         {
             var r = TryDuelEnd(body);
             if (r.Applied)
-                LastDuelMessage = "yielded";
+                LastDuelMessage = Tell(body, "yielded");
             return r;
         }
 
@@ -360,12 +360,12 @@ namespace Ulon.Server
             });
             if (!check.Applied)
             {
-                LastGuildMessage = check.FailReason;
+                LastGuildMessage = Tell(from, check.FailReason);
                 return check;
             }
             ga.WarWithId = gb.Id;
             gb.WarWithId = ga.Id;
-            LastGuildMessage = "war";
+            LastGuildMessage = Tell(from, "war");
             return new AttackResult { Applied = true, Hit = true };
         }
 
@@ -384,11 +384,11 @@ namespace Ulon.Server
             });
             if (!check.Applied)
             {
-                LastGuildMessage = check.FailReason;
+                LastGuildMessage = Tell(from, check.FailReason);
                 return check;
             }
             ClearGuildWar(ga);
-            LastGuildMessage = "peace";
+            LastGuildMessage = Tell(from, "peace");
             return new AttackResult { Applied = true, Hit = true };
         }
 

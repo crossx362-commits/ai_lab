@@ -28,7 +28,11 @@ def normalize(j):
     j["Corpse"] = []
     # 가방도 되돌린다 — 안 지웠더니 붕대가 판마다 쌓여(`bandage:4`) 「이번에 산 것」을
     # 「원래 있던 것」과 구별할 수 없었다. 픽스처는 **실행이 읽는 자리**를 되돌린다.
-    j["Inventory"] = []
+    # ds-b는 **붕대 하나를 들고 죽는다** — 시체 안에 아무것도 없으면 「열람이 됐다」와
+    # 「열람은 됐는데 빈 시체였다」가 구별되지 않는다(픽스처가 판정을 만든다).
+    j["Inventory"] = [] if name != "ds-b" else [
+        {"Slot": 0, "TemplateId": "bandage", "Amount": 1, "Uses": 0,
+         "MakerId": "", "Exceptional": False, "InstanceId": "fixture-bandage", "ParentContainerId": ""}]
     j["GuildId"] = ""
     j["GuildName"] = ""
     return j
@@ -85,6 +89,12 @@ fi
 # (같은 문이 스킬도 막는다 — 축 ④의 치트 NC도 이 스위치다. 문이 하나라 NC도 하나다.)
 if [[ "${1:-}" == "--nc-localeconomy" ]]; then
   NC_ARGS=(-ulon-nc-localeconomy 1)
+  EXPECT_FAIL=1
+fi
+# 안내 TargetRpc NC(검수 B) — 서버가 그 사람에게 보내는 것만 끊는다. 길드는 만들어지지만
+# 화면 문구는 비어 있어야 하고, 그때 이 검사는 빨간불이어야 한다.
+if [[ "${1:-}" == "--nc-nohint" ]]; then
+  SERVER_ARGS=(-ulon-nc-nohint 1)
   EXPECT_FAIL=1
 fi
 
@@ -170,6 +180,18 @@ def alive(x):
         return False
     return abs(y - g) <= 1.0 and x.get("status") == "ok"
 
+def item_count(sig, tid):
+    """가방 한 줄(`템플릿:개수:남은횟수`)에서 그 물건이 몇 개인가."""
+    n = 0
+    for part in (sig or "").split("|"):
+        f = part.split(":")
+        if len(f) >= 2 and f[0] == tid:
+            try:
+                n += int(f[1])
+            except ValueError:
+                pass
+    return n
+
 def store_gold(name):
     import urllib.request
     try:
@@ -223,7 +245,9 @@ ok = (a.get("connected") and b.get("connected")
       # ① 서버가 정한 결과가 클라 화면 값으로 내려오는가 — 길드 25 + 붕대 5를 쓰고 32 → 2.
       and a.get("ecoGoldBefore", -1) == 7 and a.get("ecoGoldAfter", -1) == 2
       # ② 가방은 **무엇이 들어 있나**로 본다 — 산 물건(붕대)이 실제로 들어왔는가.
-      and "bandage" not in a.get("ecoBagBefore", "") and "bandage" in a.get("ecoBagAfter", "")
+      # **개수로 잰다** — 시체에서 회수한 붕대가 이미 가방에 있으므로 「있다/없다」로는
+      # 「이번에 산 것」이 안 보인다(축 ③ 첫 판에서 만난 그 함정, 이번엔 순서 때문에 다시 왔다).
+      and item_count(a.get("ecoBagAfter", ""), "bandage") == item_count(a.get("ecoBagBefore", ""), "bandage") + 1
       # ③ 치트 — 클라가 제 손으로 골드를 올릴 수 없고, 클라가 판정한 구매는 성립하지 않는다.
       #    (이 둘이 참이면 「이름만 서버 권위」다 — 값만 내려오고 정하는 쪽은 클라다.)
       and a.get("ecoCheatStuck") is False and a.get("ecoLocalBuy") is False
@@ -237,14 +261,30 @@ ok = (a.get("connected") and b.get("connected")
       and a.get("skMiningAfter", -1) >= 0 and a.get("skMageryAfter", -1) >= 0
       # ④ 치트 — 클라가 제 스킬을 올릴 수 없다.
       and a.get("skCheatStuck") is False and b.get("skCheatStuck") is False
+      # **안내 B**: 길드 창설 문구가 **A 화면에만** 온다. B에도 있으면 ObserversRpc 방송이다.
+      and a.get("guildMsg","") == "created"
+      and b.get("guildMsg","") == ""
       # **저장소로 나가는 문**(축 ④ 마지막 구멍): 끊긴 클라가 종료하면서 제 값(12345)을 공유
       # 저장소에 쓰면 서버가 아는 진실이 덮인다. 저장소가 서버 값(2)을 지키고 있어야 한다.
       and store_gold("ds-a") == 2
       # 그리고 **클라가 직접 저장소에 쓰는 길**도 막혔는가 — 검사 전용 계정에 12345를 써 본다.
       and store_gold("storeprobe") == 0
+      # **시체 「보는 것」**(오너 판정: 근접 전원 · 열람 Rpc 응답으로만 · 방송 금지):
+      # 사거리 밖 요청은 거절(`range`)이고 그때 목록은 안 온다, 가까이서는 목록이 온다.
+      and a.get("peekFarFail") == "range" and a.get("peekFarItems", "x") == ""
+      and a.get("peekNearFail") == "" and "bandage" in a.get("peekNearItems", "")
+      # **시체 「가져가는 것」**은 별개 게이트다(검수 조건 ㉠) — 사거리 밖에서는 가방이 안 늘고,
+      # 사거리 안에서는 늘어야 한다. 규칙(`loot_right`)이 다르니 통과 조건도 따로 둔다.
+      and "bandage" not in a.get("lootFarBag", "")
+      and "bandage" in a.get("lootNearBag", "")
       and alive(a) and alive(b))
+print("시체 보기 — 밖", repr(a.get("peekFarFail")), "안", repr(a.get("peekNearFail")),
+      "목록", repr(a.get("peekNearItems")),
+      "· 가져가기 — 밖", repr(a.get("lootFarBag")), "안", repr(a.get("lootNearBag")))
 print("저장소 — ds-a 골드", store_gold("ds-a"), "(서버 값 2) · 클라 직접 쓰기 storeprobe",
       store_gold("storeprobe"), "(0이어야 한다 — 12345면 문이 열려 있다)")
+print("안내 B — A guildMsg", repr(a.get("guildMsg")), "· B guildMsg", repr(b.get("guildMsg")),
+      "(A=created, B 빈 값)")
 print("축4 스킬 — 검술", a.get("skSwordBefore"), "→", a.get("skSwordAfter"),
       "· 원장 항목", a.get("skillsSeen"), "· 채광", a.get("skMiningAfter"),
       "· 마법", a.get("skMageryAfter"), "· 치트 먹힘", a.get("skCheatStuck"))

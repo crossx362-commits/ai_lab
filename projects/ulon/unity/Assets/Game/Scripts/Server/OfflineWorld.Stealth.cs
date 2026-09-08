@@ -46,7 +46,7 @@ namespace Ulon.Server
                 calmed++;
             }
             result.Calmed = calmed;
-            LastPlayMessage = "연주 진정 " + calmed;
+            LastPlayMessage = Tell(body, "연주 진정 " + calmed);
             OpLog.Write("play", PersistDriver.AccountKey(), body.DisplayName, LastPlayMessage);
             return result;
         }
@@ -85,7 +85,7 @@ namespace Ulon.Server
             if (bag != null && ItemCatalog.MaxUsesOf(ItemCatalog.Lute) > 0)
                 bag.WearTool(ItemCatalog.Lute);
             target.CalmUntil = Time.time + PeacemakingResolve.PeaceSeconds;
-            LastPeaceMessage = target.DisplayName + " 평화 " + PeacemakingResolve.PeaceSeconds.ToString("0") + "초";
+            LastPeaceMessage = Tell(body, target.DisplayName + " 평화 " + PeacemakingResolve.PeaceSeconds.ToString("0") + "초");
             OpLog.Write("peace", PersistDriver.AccountKey(), target.DisplayName, LastPeaceMessage);
             return result;
         }
@@ -135,7 +135,7 @@ namespace Ulon.Server
             second.ProvokeUntil = Time.time + ProvocationResolve.FightSeconds;
             first.ProvokePartner = second;
             second.ProvokePartner = first;
-            LastProvokeMessage = first.DisplayName + " vs " + second.DisplayName + " 도발 " + ProvocationResolve.FightSeconds.ToString("0") + "초";
+            LastProvokeMessage = Tell(body, first.DisplayName + " vs " + second.DisplayName + " 도발 " + ProvocationResolve.FightSeconds.ToString("0") + "초");
             OpLog.Write("provoke", PersistDriver.AccountKey(), first.DisplayName, LastProvokeMessage);
             return result;
         }
@@ -164,7 +164,7 @@ namespace Ulon.Server
             body.HiddenUntil = Time.time + HidingResolve.HideSeconds;
             body.StealthUntil = 0f;
             lastHiddenPos[id] = body.transform.position;
-            LastHideMessage = "은신 " + HidingResolve.HideSeconds.ToString("0") + "초";
+            LastHideMessage = Tell(body, "은신 " + HidingResolve.HideSeconds.ToString("0") + "초");
             OpLog.Write("hide", PersistDriver.AccountKey(), body.DisplayName, LastHideMessage);
             return result;
         }
@@ -193,7 +193,7 @@ namespace Ulon.Server
             body.HiddenUntil = Time.time + StealthResolve.StealthSeconds;
             body.StealthUntil = Time.time + StealthResolve.StealthSeconds;
             lastHiddenPos[id] = body.transform.position;
-            LastStealthMessage = "잠행 " + StealthResolve.StealthSeconds.ToString("0") + "초";
+            LastStealthMessage = Tell(body, "잠행 " + StealthResolve.StealthSeconds.ToString("0") + "초");
             OpLog.Write("stealth", PersistDriver.AccountKey(), body.DisplayName, LastStealthMessage);
             return result;
         }
@@ -251,7 +251,7 @@ namespace Ulon.Server
                 other.BreakHide();
                 revealed++;
             }
-            LastDetectMessage = revealed > 0 ? "감지 " + revealed : "감지";
+            LastDetectMessage = Tell(body, revealed > 0 ? "감지 " + revealed : "감지");
             OpLog.Write("detect", PersistDriver.AccountKey(), body.DisplayName, LastDetectMessage);
             return result;
         }
@@ -294,7 +294,7 @@ namespace Ulon.Server
                     return new CampingResult { FailReason = "no_kindling" };
             }
             body.CampSafeUntil = Time.time + CampingResolve.SafeSeconds;
-            LastCampMessage = "야영 " + CampingResolve.SafeSeconds.ToString("0") + "초";
+            LastCampMessage = Tell(body, "야영 " + CampingResolve.SafeSeconds.ToString("0") + "초");
             OpLog.Write("camp", PersistDriver.AccountKey(), body.DisplayName, LastCampMessage);
             return result;
         }
@@ -343,12 +343,12 @@ namespace Ulon.Server
                     pack.ClothLoot -= 1;
                     Bag(body).Add(ItemCatalog.Cloth, 1);
                 }
-                LastStealMessage = "훔침";
+                LastStealMessage = Tell(body, "훔침");
             }
             else if (result.Criminal)
-                LastStealMessage = "들킴";
+                LastStealMessage = Tell(body, "들킴");
             else
-                LastStealMessage = "훔치기";
+                LastStealMessage = Tell(body, "훔치기");
             OpLog.Write("steal", PersistDriver.AccountKey(), body.DisplayName, LastStealMessage);
             return result;
         }
@@ -453,7 +453,7 @@ namespace Ulon.Server
                 if (bag.Overweight(StatsOf(body).Str))
                     bag.TakeOne(ItemCatalog.Cloth);
             }
-            LastPickMessage = crate.DisplayName + " 열림 +" + crate.GoldLoot + "G";
+            LastPickMessage = Tell(body, crate.DisplayName + " 열림 +" + crate.GoldLoot + "G");
             OpLog.Write("pick", PersistDriver.AccountKey(), body.DisplayName, LastPickMessage);
             return result;
         }
@@ -496,7 +496,7 @@ namespace Ulon.Server
                 if (!sel.Alive)
                     return new ProvocationResult { FailReason = "dead" };
                 PendingProvoke = sel;
-                LastProvokeMessage = sel.DisplayName + " 도발 대상1";
+                LastProvokeMessage = Tell(body, sel.DisplayName + " 도발 대상1");
                 return new ProvocationResult { FailReason = "need_second" };
             }
             ProvocationResult result = TryProvoke(body, PendingProvoke, sel);

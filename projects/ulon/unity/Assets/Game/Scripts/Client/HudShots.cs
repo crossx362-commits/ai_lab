@@ -121,6 +121,23 @@ namespace Ulon.Client
             for (int i = 0; i < 10; i++) yield return null;
             yield return Shot("hud_07_bank_warp");
 
+            // ⑧ 시체 — **내 것과 남의 것이 화면에서 갈리는가**(검수 조건 ㉡, 2026-09-08).
+            //    구별이 없으면 「가져갈 수 있는 것」을 착각한다. 두 장을 나란히 찍어 눈으로 본다.
+            //    (열람 목록은 온라인에서 서버가 답으로 준다 — 여기선 화면 구성만 본다.)
+            var corpseSpot = world.Player.transform.position + new Vector3(1.2f, 0f, 0f);
+            world.ApplyCorpseView(PersistDriver.AccountKey(), "hudshot-mine", "나", corpseSpot, 600f, world.Player);
+            world.ApplyCorpseItems(PersistDriver.AccountKey(), "bandage:2|wood:3");
+            Panel(5);
+            for (int i = 0; i < 8; i++) yield return null;
+            yield return Shot("hud_08_corpse_mine");
+            world.RemoveCorpseView(PersistDriver.AccountKey());
+            world.ApplyCorpseView("someone-else", "hudshot-other", "떠돌이", corpseSpot, 600f, world.Player);
+            world.ApplyCorpseItems("someone-else", "iron_ore:4");
+            Panel(5);
+            for (int i = 0; i < 8; i++) yield return null;
+            yield return Shot("hud_09_corpse_other");
+            world.RemoveCorpseView("someone-else");
+
             // 화면 규칙 검사 — **해상도 하나만 재면 다른 쪽이 깨진다**(검수). 두 해상도 모두 본다.
             bool ok = true;
             yield return CheckLayout(1280, 720, r => ok &= r);

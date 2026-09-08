@@ -86,14 +86,14 @@ namespace Ulon.Server
             });
             if (!result.Applied)
             {
-                LastTravelMessage = result.FailReason;
+                LastTravelMessage = Tell(body, result.FailReason);
                 return result;
             }
             body.Gold -= TravelMark.GoldCost;
             body.HasMark = true;
             body.MarkX = body.transform.position.x;
             body.MarkZ = body.transform.position.z;
-            LastTravelMessage = "기록";
+            LastTravelMessage = Tell(body, "기록");
             return result;
         }
 
@@ -109,11 +109,11 @@ namespace Ulon.Server
             });
             if (!result.Applied)
             {
-                LastTravelMessage = result.FailReason;
+                LastTravelMessage = Tell(body, result.FailReason);
                 return result;
             }
             WarpBody(body, body.MarkX, body.MarkZ);
-            LastTravelMessage = "귀환";
+            LastTravelMessage = Tell(body, "귀환");
             return result;
         }
 

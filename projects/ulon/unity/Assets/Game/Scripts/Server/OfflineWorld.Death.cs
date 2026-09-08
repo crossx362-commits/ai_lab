@@ -105,6 +105,63 @@ namespace Ulon.Server
             return new AttackResult { Applied = true, Hit = true };
         }
 
+        /// <summary>
+        /// **시체 안을 보는 것**(오너 판정 2026-09-08: **가까이 온 사람 전부**가 볼 수 있다).
+        ///
+        /// 「보는 것」과 「가져가는 것」은 **규칙이 다르다** — 가져가기는 `LootAllowed`(파티)가 그대로
+        /// 지키고, 보기는 근접이면 된다. 그래서 게이트도 둘이다(하나로 묶으면 어느 쪽이 깨졌는지
+        /// 안 보인다, 검수 조건). 목록은 **방송하지 않는다**: 요청한 사람에게만 답으로 간다
+        /// (`NetAvatar.RpcCorpsePeek` → TargetRpc). 유령도 볼 수는 있다 — 가져가기만 막힌다.
+        /// </summary>
+        public AttackResult TryPeekCorpse(WorldBody body, CorpseNode node, out string items)
+        {
+            items = "";
+            if (body == null || node == null)
+                return new AttackResult { FailReason = "no_corpse" };
+            float dist = Vector3.Distance(body.transform.position, node.transform.position);
+            if (dist > node.InteractRange)
+                return new AttackResult { FailReason = "range" };
+            items = CorpseSignature(node);
+            return new AttackResult { Applied = true };
+        }
+
+        /// <summary>시체 안을 한 줄로 — `템플릿:개수` 를 `|`로 잇는다(가방 한 줄과 같은 형식).</summary>
+        public static string CorpseSignature(CorpseNode node)
+        {
+            if (node == null)
+                return "";
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < node.Items.Count; i++)
+            {
+                if (sb.Length > 0) sb.Append('|');
+                sb.Append(node.Items[i].TemplateId).Append(':').Append(node.Items[i].Amount);
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// **본 것을 화면에 얹는다** — 서버가 답으로 준 목록만 클라의 시체 껍데기에 채운다.
+        /// 클라가 스스로 채우면 그건 「보이는 것」을 클라가 정하는 것이다(§417).
+        /// </summary>
+        public void ApplyCorpseItems(string ownerId, string sig)
+        {
+            var node = FindCorpse(ownerId);
+            if (node == null)
+                return;
+            node.Items.Clear();
+            if (string.IsNullOrEmpty(sig))
+                return;
+            var parts = sig.Split('|');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var f = parts[i].Split(':');
+                if (f.Length < 2)
+                    continue;
+                int.TryParse(f[1], out int amount);
+                node.Items.Add(new ItemRecord { TemplateId = f[0], Amount = amount, Slot = i });
+            }
+        }
+
         public AttackResult TryLootCorpse(WorldBody body, CorpseNode node)
         {
             if (body == null || node == null)
@@ -222,11 +279,11 @@ namespace Ulon.Server
             });
             if (!result.Applied)
             {
-                LastEquipMessage = EquipResolve.MessageFor(result.FailReason, templateId, req);
+                LastEquipMessage = Tell(body, EquipResolve.MessageFor(result.FailReason, templateId, req));
                 return result;
             }
             equipped[body.GetInstanceID()] = templateId;
-            LastEquipMessage = EquipResolve.MessageFor("", templateId, req);
+            LastEquipMessage = Tell(body, EquipResolve.MessageFor("", templateId, req));
             OpLog.Write("equip", PersistDriver.AccountKey(), body.DisplayName, templateId);
             return result;
         }
@@ -243,11 +300,11 @@ namespace Ulon.Server
             });
             if (!result.Applied)
             {
-                LastEquipMessage = EquipResolve.MessageFor(result.FailReason, cur, 0);
+                LastEquipMessage = Tell(body, EquipResolve.MessageFor(result.FailReason, cur, 0));
                 return result;
             }
             equipped.Remove(body.GetInstanceID());
-            LastEquipMessage = "해제: " + cur;
+            LastEquipMessage = Tell(body, "해제: " + cur);
             OpLog.Write("unequip", PersistDriver.AccountKey(), body.DisplayName, cur);
             return result;
         }
@@ -266,7 +323,7 @@ namespace Ulon.Server
             var bag = Bag(body);
             if (!bag.CanCarry(StatsOf(body).Str, templateId, 1))
             {
-                LastWeightMessage = WeightRefuseMessage(StatsOf(body).Str, bag);
+                LastWeightMessage = Tell(body, WeightRefuseMessage(StatsOf(body).Str, bag));
                 return new AttackResult { FailReason = "overweight" };
             }
             bag.Add(templateId, 1);

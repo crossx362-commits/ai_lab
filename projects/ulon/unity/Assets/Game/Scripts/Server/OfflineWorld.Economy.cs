@@ -21,7 +21,7 @@ namespace Ulon.Server
             var bag = Bag(body);
             if (!bag.CanCarry(StatsOf(body).Str, node.ResourceId, 1))
             {
-                LastWeightMessage = WeightRefuseMessage(StatsOf(body).Str, bag);
+                LastWeightMessage = Tell(body, WeightRefuseMessage(StatsOf(body).Str, bag));
                 return new AttackResult { FailReason = "overweight" };
             }
             string tool = ItemCatalog.ToolFor(node.GatherSkill);
@@ -132,7 +132,7 @@ namespace Ulon.Server
                 return new AttackResult { FailReason = "ghost" };
             if (string.IsNullOrWhiteSpace(text))
             {
-                LastSpeechMessage = "";
+                LastSpeechMessage = Tell(body, "");
                 return new AttackResult { FailReason = "empty" };
             }
             string raw = text.Trim();
@@ -143,7 +143,7 @@ namespace Ulon.Server
                 return SpeechGuards(body);
             if (key == "vendor" || raw == "상점")
                 return SpeechVendor(body);
-            LastSpeechMessage = "";
+            LastSpeechMessage = Tell(body, "");
             return new AttackResult { FailReason = "no_match" };
         }
 
@@ -165,14 +165,14 @@ namespace Ulon.Server
             }
             if (station == null)
             {
-                LastSpeechMessage = "은행 없음";
+                LastSpeechMessage = Tell(body, "은행 없음");
                 return new AttackResult { FailReason = "no_bank" };
             }
             // 대상 좌표 그대로 보내면 건물 안에 처박힌다 — 옆 빈자리로(검수 랩 B).
             if (!WithinReach(body.transform.position, station.transform, station.InteractRange))
                 WarpTo(body, WarpBesideTarget(station.transform, station.InteractRange));
             var result = TryBank(body, station);
-            LastSpeechMessage = "은행";
+            LastSpeechMessage = Tell(body, "은행");
             if (result.Applied)
                 return result;
             if (result.FailReason == "empty_bag" || result.FailReason == "empty_bank")
@@ -188,13 +188,13 @@ namespace Ulon.Server
                 if (inZone)
                 {
                     GuardStrike(body);
-                    LastSpeechMessage = "경비";
+                    LastSpeechMessage = Tell(body, "경비");
                     return new AttackResult { Applied = true, Hit = true };
                 }
-                LastSpeechMessage = "경비는 마을에만 있다.";
+                LastSpeechMessage = Tell(body, "경비는 마을에만 있다.");
                 return new AttackResult { Applied = true };
             }
-            LastSpeechMessage = "경비가 순찰 중이다.";
+            LastSpeechMessage = Tell(body, "경비가 순찰 중이다.");
             return new AttackResult { Applied = true };
         }
 
@@ -213,7 +213,7 @@ namespace Ulon.Server
             }
             if (nearest == null)
             {
-                LastSpeechMessage = "상점 없음";
+                LastSpeechMessage = Tell(body, "상점 없음");
                 return new AttackResult { FailReason = "no_vendor" };
             }
             // 위와 같은 이유 — 상인 위가 아니라 상인 옆에 선다.
@@ -222,10 +222,10 @@ namespace Ulon.Server
             var result = TryVendor(body, nearest);
             if (result.Applied)
             {
-                LastSpeechMessage = "상점";
+                LastSpeechMessage = Tell(body, "상점");
                 return result;
             }
-            LastSpeechMessage = "상점: " + nearest.DisplayName + " 쪽으로";
+            LastSpeechMessage = Tell(body, "상점: " + nearest.DisplayName + " 쪽으로");
             return new AttackResult { Applied = true };
         }
 

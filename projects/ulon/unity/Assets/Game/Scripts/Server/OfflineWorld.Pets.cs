@@ -87,7 +87,7 @@ namespace Ulon.Server
             AttackResult result = TameResolve.Tame(req);
             if (!result.Applied)
             {
-                LastTameMessage = result.FailReason;
+                LastTameMessage = Tell(body, result.FailReason);
                 return result;
             }
             string ownerId = body.CharacterId;
@@ -104,7 +104,7 @@ namespace Ulon.Server
             target.IsEnemy = false;
             target.Tameable = true;
             target.Bonded = true;
-            LastTameMessage = target.DisplayName + " 조련";
+            LastTameMessage = Tell(body, target.DisplayName + " 조련");
             OpLog.Write("tame", PersistDriver.AccountKey(), target.DisplayName, LastTameMessage);
             return result;
         }
@@ -123,7 +123,7 @@ namespace Ulon.Server
             target.PetFollow = true;
             target.PetGuard = false;
             target.PetAttackTarget = null;
-            LastTameMessage = "따라와";
+            LastTameMessage = Tell(body, "따라와");
             return result;
         }
 
@@ -141,7 +141,7 @@ namespace Ulon.Server
             target.PetFollow = false;
             target.PetGuard = false;
             target.PetAttackTarget = null;
-            LastTameMessage = "머물러";
+            LastTameMessage = Tell(body, "머물러");
             return result;
         }
 
@@ -159,7 +159,7 @@ namespace Ulon.Server
             target.PetFollow = true;
             target.PetGuard = true;
             target.PetAttackTarget = null;
-            LastTameMessage = "지켜";
+            LastTameMessage = Tell(body, "지켜");
             return result;
         }
 
@@ -179,7 +179,7 @@ namespace Ulon.Server
             target.PetGuard = false;
             target.PetAttackTarget = null;
             target.Bonded = false;
-            LastTameMessage = "놓아줌";
+            LastTameMessage = Tell(body, "놓아줌");
             OpLog.Write("tame", PersistDriver.AccountKey(), target.DisplayName, LastTameMessage);
             return result;
         }
@@ -201,7 +201,7 @@ namespace Ulon.Server
             pet.PetFollow = false;
             pet.PetGuard = false;
             pet.PetAttackTarget = enemy;
-            LastTameMessage = "공격";
+            LastTameMessage = Tell(body, "공격");
             return result;
         }
 
@@ -221,7 +221,7 @@ namespace Ulon.Server
             pet.PetFollow = true;
             pet.PetGuard = false;
             pet.PetAttackTarget = null;
-            LastTameMessage = "이리와";
+            LastTameMessage = Tell(body, "이리와");
             return result;
         }
 
@@ -350,7 +350,7 @@ namespace Ulon.Server
             AttackResult result = StableResolve.Park(req);
             if (!result.Applied)
             {
-                LastStableMessage = result.FailReason;
+                LastStableMessage = Tell(body, result.FailReason);
                 return result;
             }
             body.Gold -= StableYard.GoldCost;
@@ -370,7 +370,7 @@ namespace Ulon.Server
             pet.Bonded = false;
             HidePet(pet, true);
             PersistStable(rec);
-            LastStableMessage = "마구간 맡김";
+            LastStableMessage = Tell(body, "마구간 맡김");
             OpLog.Write("stable", PersistDriver.AccountKey(), rec.DisplayName, LastStableMessage);
             return result;
         }
@@ -403,7 +403,7 @@ namespace Ulon.Server
             AttackResult result = StableResolve.Claim(req);
             if (!result.Applied)
             {
-                LastStableMessage = result.FailReason;
+                LastStableMessage = Tell(body, result.FailReason);
                 return result;
             }
             var pet = FindPetBody(rec.PetId);
@@ -422,7 +422,7 @@ namespace Ulon.Server
             pet.transform.position = new Vector3(s.x + TameCritter.FollowOffsetX, pet.transform.position.y, s.z + TameCritter.FollowOffsetZ);
             stables.Remove(ownerId);
             PersistStable(new StableRecord { CharacterId = ownerId });
-            LastStableMessage = "마구간 찾음";
+            LastStableMessage = Tell(body, "마구간 찾음");
             OpLog.Write("stable", PersistDriver.AccountKey(), pet.DisplayName, LastStableMessage);
             return result;
         }

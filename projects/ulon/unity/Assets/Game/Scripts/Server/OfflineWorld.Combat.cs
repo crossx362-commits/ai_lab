@@ -230,7 +230,7 @@ namespace Ulon.Server
             target.Resurrect();
             if (healer.IsAvatar)
                 healer.RecalcFromStr(StatsOf(healer).Str);
-            LastHealRezMessage = target.DisplayName + " 부활";
+            LastHealRezMessage = Tell(healer, target.DisplayName + " 부활");
             OpLog.Write("rez", PersistDriver.AccountKey(), target.DisplayName, "bandage");
             return result;
         }
@@ -267,7 +267,7 @@ namespace Ulon.Server
             target.NextPoisonAt = 0f;
             if (healer.IsAvatar)
                 healer.RecalcFromStr(StatsOf(healer).Str);
-            LastCurePoisonMessage = target.DisplayName + " 해독";
+            LastCurePoisonMessage = Tell(healer, target.DisplayName + " 해독");
             OpLog.Write("cure", PersistDriver.AccountKey(), target.DisplayName, "bandage");
             return result;
         }
@@ -314,7 +314,7 @@ namespace Ulon.Server
             if (nextHp > target.MaxHp)
                 nextHp = target.MaxHp;
             target.SetHp(nextHp);
-            LastVetMessage = target.DisplayName + " +" + result.Damage.ToString("0");
+            LastVetMessage = Tell(healer, target.DisplayName + " +" + result.Damage.ToString("0"));
             OpLog.Write("vet", PersistDriver.AccountKey(), target.DisplayName, "bandage +" + result.Damage);
             return result;
         }
@@ -351,7 +351,7 @@ namespace Ulon.Server
             target.PetAttackTarget = null;
             if (healer.IsAvatar)
                 healer.RecalcFromStr(StatsOf(healer).Str);
-            LastVetRezMessage = target.DisplayName + " 부활";
+            LastVetRezMessage = Tell(healer, target.DisplayName + " 부활");
             LastVetMessage = LastVetRezMessage;
             OpLog.Write("vetrez", PersistDriver.AccountKey(), target.DisplayName, "bandage");
             return result;
@@ -390,7 +390,7 @@ namespace Ulon.Server
             bag.Add(ItemCatalog.ScrollEmber, 1);
             if (body.IsAvatar)
                 body.RecalcFromInt(StatsOf(body).Int);
-            LastInscribeMessage = ItemCatalog.ScrollEmber;
+            LastInscribeMessage = Tell(body, ItemCatalog.ScrollEmber);
             OpLog.Write("inscribe", PersistDriver.AccountKey(), body.DisplayName, ItemCatalog.ScrollEmber);
             return result;
         }
@@ -427,7 +427,7 @@ namespace Ulon.Server
             if (!took)
                 return new AttackResult { FailReason = "no_poison" };
             poisonedWeapon[body.GetInstanceID()] = true;
-            LastPoisonMessage = "poison";
+            LastPoisonMessage = Tell(body, "poison");
             OpLog.Write("poison", PersistDriver.AccountKey(), body.DisplayName, "weapon");
             return result;
         }
@@ -592,7 +592,7 @@ namespace Ulon.Server
             if (!result.Applied)
                 return result;
             nextEvalAt[id] = Time.time + EvalIntResolve.CooldownSeconds;
-            LastEvalMessage = target.DisplayName + " INT " + result.Intelligence + " MP " + result.Mana + "/" + result.MaxMana;
+            LastEvalMessage = Tell(body, target.DisplayName + " INT " + result.Intelligence + " MP " + result.Mana + "/" + result.MaxMana);
             if (body.IsAvatar)
                 body.RecalcFromInt(StatsOf(body).Int);
             OpLog.Write("evalint", PersistDriver.AccountKey(), target.DisplayName, LastEvalMessage);
@@ -633,7 +633,7 @@ namespace Ulon.Server
             if (!result.Applied)
                 return result;
             nextTrackAt[id] = Time.time + TrackingResolve.CooldownSeconds;
-            LastTrackMessage = result.Kind + " HP " + result.Hp.ToString("0") + "/" + result.MaxHp.ToString("0");
+            LastTrackMessage = Tell(body, result.Kind + " HP " + result.Hp.ToString("0") + "/" + result.MaxHp.ToString("0"));
             OpLog.Write("track", PersistDriver.AccountKey(), result.Kind, LastTrackMessage);
             return result;
         }
@@ -672,7 +672,7 @@ namespace Ulon.Server
             if (!result.Applied)
                 return result;
             nextTrackAt[id] = Time.time + TrackingResolve.CooldownSeconds;
-            LastTrackMessage = result.Kind + " 마지막 " + result.LastPosition;
+            LastTrackMessage = Tell(body, result.Kind + " 마지막 " + result.LastPosition);
             OpLog.Write("track", PersistDriver.AccountKey(), result.Kind, LastTrackMessage);
             return result;
         }
@@ -716,8 +716,8 @@ namespace Ulon.Server
             if (!result.Applied)
                 return result;
             nextLoreAt[id] = Time.time + AnimalLoreResolve.CooldownSeconds;
-            LastLoreMessage = result.Kind + " HP " + result.Hp.ToString("0") + "/" + result.MaxHp.ToString("0")
-                + " STR " + result.Str + " 저항 " + result.Resist + " 피해 " + result.DamageBand + " 조련불가";
+            LastLoreMessage = Tell(body, result.Kind + " HP " + result.Hp.ToString("0") + "/" + result.MaxHp.ToString("0")
+                + " STR " + result.Str + " 저항 " + result.Resist + " 피해 " + result.DamageBand + " 조련불가");
             OpLog.Write("animallore", PersistDriver.AccountKey(), result.Kind, LastLoreMessage);
             return result;
         }

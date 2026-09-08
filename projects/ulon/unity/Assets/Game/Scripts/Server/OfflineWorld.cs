@@ -64,6 +64,22 @@ namespace Ulon.Server
             public string DisplayName = "";
         }
 
+        /// <summary>
+        /// 안내는 사건이니 전역에 쌓지 않고 그 사람에게 보낸다(검수 B).
+        /// Last* 필드는 오프라인·셀프체크용으로만 남긴다 — 온라인 HUD는 ClientHint를 읽는다.
+        /// </summary>
+        public string Tell(WorldBody who, string text)
+        {
+            text = text ?? "";
+            if (text.Length == 0 || who == null)
+                return text;
+            if (Cli.Has("-ulon-nc-nohint"))
+                return text;
+            var sink = who.GetComponent<IHintSink>();
+            sink?.SendHint(text);
+            return text;
+        }
+
         public string LastEvalMessage { get; private set; } = "";
         public string LastTrackMessage { get; private set; } = "";
         public string LastPlayMessage { get; private set; } = "";

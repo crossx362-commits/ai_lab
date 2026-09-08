@@ -1,3 +1,4 @@
+using FishNet.Connection;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using UnityEngine;
@@ -6,8 +7,11 @@ using Ulon.Shared;
 
 namespace Ulon.Client
 {
-    public sealed class NetAvatar : NetworkBehaviour
+    public sealed class NetAvatar : NetworkBehaviour, IHintSink
     {
+        /// <summary>이 클라 화면에 떠 있는 마지막 안내 — TargetRpc로만 채워진다(검수 B).</summary>
+        string clientHint = "";
+        public string ClientHint => clientHint;
         readonly SyncVar<float> skill = new SyncVar<float>();
         // **축 ② — 체력·사망/유령을 서버가 말한다**(오너 결정 (C) 단계 도입, 2026-09-08).
         //
@@ -199,6 +203,34 @@ namespace Ulon.Client
             if (IsServerInitialized)
                 return;                      // 서버에는 진짜 시체가 이미 있다
             OfflineWorld.Instance?.ApplyCorpseView(ownerId, corpseId, kind, pos, secondsLeft, GetComponent<WorldBody>());
+        }
+
+        /// <summary>이 클라가 마지막으로 시체를 열어 본 결과 — 거절 사유(빈 문자열이면 성공).</summary>
+        public static string LastPeekFail = "";
+
+        /// <summary>
+        /// **시체 열람**(오너 판정 2026-09-08). 근접이면 누구나 볼 수 있고, **목록은 요청한
+        /// 사람에게만** 간다 — 방송하면 멀리 있는 사람 화면에도 남의 가방이 뜬다.
+        /// 가져가기는 이 길이 아니다(`RpcLoot` → `LootAllowed`) — 규칙이 다르므로 길도 다르다.
+        /// </summary>
+        [ServerRpc]
+        public void RpcCorpsePeek(string ownerId)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var node = OfflineWorld.FindCorpse(ownerId);
+            var result = OfflineWorld.Instance.TryPeekCorpse(GetComponent<WorldBody>(), node, out string items);
+            RpcCorpseItems(Owner, ownerId, result.Applied ? items : "", result.Applied ? "" : result.FailReason);
+        }
+
+        [TargetRpc]
+        void RpcCorpseItems(FishNet.Connection.NetworkConnection conn, string ownerId, string items, string fail)
+        {
+            LastPeekFail = fail ?? "";
+            if (string.IsNullOrEmpty(fail))
+                OfflineWorld.Instance?.ApplyCorpseItems(ownerId, items);
+            else
+                Debug.Log("[Ulon] 시체 열람 거절 — " + fail + " (시체 " + ownerId + ")");
         }
 
         [ObserversRpc]
@@ -1109,6 +1141,24 @@ namespace Ulon.Client
         void RpcPlayAttack()
         {
             GetComponent<CharacterAnim>()?.PlayAttack();
+        }
+
+        /// <summary>
+        /// 안내는 그 사람에게만 간다(검수 2026-09-08 B). ObserversRpc로 보내면
+        /// 「화면에 떴다」만으로 통과하고 옆 사람도 같은 글을 본다.
+        /// NC `-ulon-nc-nohint`는 호출부가 이 함수를 안 부르게 해서 절단한다.
+        /// </summary>
+        public void SendHint(string text)
+        {
+            if (Owner == null || !IsServerInitialized)
+                return;
+            RpcHint(Owner, text ?? "");
+        }
+
+        [TargetRpc]
+        void RpcHint(NetworkConnection conn, string text)
+        {
+            clientHint = text ?? "";
         }
 
         /// <summary>

@@ -237,7 +237,7 @@ namespace Ulon.Client
         void DrawTargetCard(OfflineWorld world)
         {
             var target = world.Selected;
-            string msg = Msg(world);
+            string msg = Msg(world, world.Player);
             if ((target == null || !target.Alive) && string.IsNullOrEmpty(msg))
                 return;
             Area(TargetRect, () =>
@@ -254,8 +254,12 @@ namespace Ulon.Client
             });
         }
 
-        static string Msg(OfflineWorld world)
+        static string Msg(OfflineWorld world, WorldBody me)
         {
+            // 온라인은 TargetRpc로 받은 안내만 본다 — 로컬 Last*는 서버 전역이라 클라에선 빈 값이다.
+            var net = me != null ? me.GetComponent<NetAvatar>() : null;
+            if (net != null && net.IsClientInitialized && !string.IsNullOrEmpty(net.ClientHint))
+                return net.ClientHint;
             string s = "";
             if (!string.IsNullOrEmpty(world.LastEvalMessage)) s += world.LastEvalMessage + " ";
             if (!string.IsNullOrEmpty(world.LastTravelMessage)) s += world.LastTravelMessage + " ";
@@ -692,6 +696,7 @@ namespace Ulon.Client
             if (InRange(me, OfflineWorld.FindStation("Carpenter"))) n++;
             if (InRange(me, OfflineWorld.FindStation("Mortar"))) n++;
             if (InRangeCrate(me, OfflineWorld.FindCrate("LockedCrate"))) n++;
+            if (NearestCorpse(me) != null) n++;
             if (NearestGate(me, Dungeon1.EntranceObject, Dungeon1.ExitObject,
                             Dungeon2.EntranceObject, Dungeon2.ExitObject,
                             Dungeon3.EntranceObject, Dungeon3.ExitObject) != null) n++;
@@ -706,6 +711,29 @@ namespace Ulon.Client
             => c != null && me != null && !me.Ghost
                && Vector3.Distance(me.transform.position, c.transform.position) <= c.InteractRange;
 
+        /// <summary>
+        /// **근접한 시체 하나** — 오너 판정(2026-09-08)대로 **내 것이든 남의 것이든** 가까이 있으면
+        /// 화면에 뜬다. 「보는 것」은 근접 전원, 「가져가는 것」은 `loot_right`가 따로 지킨다.
+        /// </summary>
+        static CorpseNode NearestCorpse(WorldBody me)
+        {
+            if (me == null)
+                return null;
+            CorpseNode best = null;
+            float bestD = float.MaxValue;
+            var all = Object.FindObjectsByType<CorpseNode>(FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                float d = Vector3.Distance(me.transform.position, all[i].transform.position);
+                if (d <= all[i].InteractRange && d < bestD)
+                {
+                    bestD = d;
+                    best = all[i];
+                }
+            }
+            return best;
+        }
+
         void PanelNearby(OfflineWorld world, WorldBody me, NetAvatar net)
         {
             GUILayout.Label("근처");
@@ -714,6 +742,36 @@ namespace Ulon.Client
             if (NearbyCount(world, me) == 0)
                 GUILayout.Label("가까이에 쓸 것이 없습니다.");
 
+            var corpse = NearestCorpse(me);
+            if (corpse != null)
+            {
+                // **내 시체와 남의 시체를 화면에서 가른다**(검수 조건 ㉡) — 구별이 없으면
+                // 「가져갈 수 있는 것」을 착각한다. 이름 앞의 말이 그 구별이다.
+                bool mineCorpse = corpse.OwnerId == PersistDriver.AccountKey();
+                GUILayout.Label((mineCorpse ? "내 시체" : "남의 시체 · " + corpse.LastKind) +
+                                "  ·  " + corpse.SecondsLeft.ToString("0") + "초");
+                if (Btn("시체 보기"))
+                {
+                    if (net != null && net.IsClientInitialized)
+                        net.RpcCorpsePeek(corpse.OwnerId);
+                    else
+                        OfflineWorld.Instance?.TryPeekCorpse(me, corpse, out _);
+                }
+                if (corpse.Items.Count == 0)
+                    GUILayout.Label(NetAvatar.LastPeekFail == "" ? "   (열어 보세요)"
+                                                                 : "   열람 거절 — " + NetAvatar.LastPeekFail);
+                for (int i = 0; i < corpse.Items.Count; i++)
+                    GUILayout.Label("   " + ItemCatalog.DisplayNameOf(corpse.Items[i].TemplateId) +
+                                    " × " + corpse.Items[i].Amount);
+                if (!me.Ghost && Btn("전부 가져가기"))
+                {
+                    if (net != null && net.IsClientInitialized)
+                        net.RpcLoot(corpse.OwnerId);
+                    else
+                        OfflineWorld.Instance?.TryLootCorpse(me, corpse);
+                }
+                GUILayout.Space(6f);
+            }
             if (world.ActiveVendor != null && !me.Ghost)
             {
                 // 상인 이름이 이미 「잡화」다 — 앞에 종류를 또 붙이면 「잡화 잡화」가 된다.
