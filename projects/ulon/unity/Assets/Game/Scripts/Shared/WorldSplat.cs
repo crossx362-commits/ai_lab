@@ -53,6 +53,10 @@ namespace Ulon.Shared
             return Mathf.Clamp01(Mathf.Min(tx, tz) + wobble);
         }
 
+        /// <summary>채광 현장(갱구·광차 자리) — 배치 코드와 지표가 **같은 좌표**를 읽는다.</summary>
+        public static readonly Vector2 MinePit = new Vector2(WorldRegions.Mine.X + 1.5f, WorldRegions.Mine.Z);
+        public const float MinePitRadius = 9f;
+
         /// <summary>이 지역에 해당하는 도포 레이어.</summary>
         public static int LayerOf(string regionObject)
         {
@@ -77,13 +81,28 @@ namespace Ulon.Shared
                 var r = regions[i];
                 float d = new Vector2(wx - r.X, wz - r.Z).magnitude;
                 float wobble = (Mathf.PerlinNoise(wx * 0.05f + i * 13.7f, wz * 0.05f + i * 4.3f) - 0.5f) * (r.Radius * 0.22f);
-                float t = 1f - Mathf.InverseLerp(r.Radius * 0.72f, r.Radius * 1.04f, d + wobble);
+                // **광산은 「바위가 있는 곳」이 아니라 파낸 자리다**(검수·오너 2026-09-09: 「돌이 깔린
+                // 지대인데 바닥이 녹색이면 반려」). 자갈을 지역 밖까지 번지게 해 화면에서 잔디가 아니라
+                // 파낸 땅으로 읽히게 한다. 다른 지역은 그대로다.
+                float spread = r.Object == WorldRegions.MineObject ? 1.35f : 1f;
+                float t = 1f - Mathf.InverseLerp(r.Radius * 0.72f * spread, r.Radius * 1.04f * spread, d + wobble);
                 t = Mathf.Clamp01(t) * 0.95f;
                 if (t > weight)
                 {
                     weight = t;
                     layer = LayerOf(r.Object);
                 }
+            }
+
+            // 채광 현장 바로 앞은 **파낸 흙**이다 — 자갈만 깔면 「돌밭」이지 「캐낸 자리」로는 안 읽힌다.
+            float pitWobble = (Mathf.PerlinNoise(wx * 0.18f + 41f, wz * 0.18f + 12f) - 0.5f) * 2.2f;
+            float pit = 1f - Mathf.Clamp01((new Vector2(wx - MinePit.x, wz - MinePit.y).magnitude + pitWobble
+                                            - MinePitRadius * 0.6f) / (MinePitRadius * 0.5f));
+            pit = Mathf.Clamp01(pit) * 0.95f;
+            if (pit > weight)
+            {
+                weight = pit;
+                layer = Soil;
             }
 
             float flax = FlaxCoverAt(wx, wz);
