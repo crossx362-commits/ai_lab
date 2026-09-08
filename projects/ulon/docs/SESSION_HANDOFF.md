@@ -69,26 +69,22 @@ SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # �
   `61_cart_house`에서 눈으로 보니 **수레는 벽 앞에 서 있고 박혀 보이지 않는다** → 건물 쌍에도 50% 유효.
   다만 AABB는 처마를 포함하므로, 더 조이려면 **콜라이더로 재는 자**가 필요하다(다음 후보).
 
-## 다음 (순서)
-1. MegaKit(모루·화덕/절구통)은 오너가 `_ThirdParty/Quaternius/`에 파일을 넣어야 진행(다운로드는 오너 직행).
-2. 후보(지금 만들지 말 것 — 검수: 「자는 결함이 생겼을 때 세운다」): 콜라이더로 재는 소품↔벽 자,
-   「문 개구부 정면에는 소품이 서지 않는다」, 하늘 원경 초록 띠, 물림 자를 보스 밖 배우로 넓히기,
-   `FacilityPart` 오프셋을 `WorldScale.Kit`에 태우기(지금은 주석만).
+### 하늘 초록 띠 (검수 지시 2026-09-09, `0e8f4622` 푸시 완료)
+원인은 **대기 두께**(`Skybox/Procedural`의 `_AtmosphereThickness`) 0.95였다. 판별 테스트로 갈랐다 —
+노출·해 색·안개를 각각 바꿔도 띠 색은 rgb(178,227,101) 그대로였고 두께만 움직였다
+(0.30→(51,75,171) · 0.40→(70,104,215) · 0.50→(90,133,235) · **0.60→(111,161,230)** ·
+0.75→(141,196,185) · 0.95→(178,227,101)). 감마 공간에서 두꺼운 대기는 산란이 녹색으로 넘어간다.
+0.60 근거: 안개 색(140,178,219)과 같은 하늘 계열이고 0.75부터 g가 b를 넘어 다시 초록으로 기운다.
+**굽는 쪽의 진짜 결함은 값이 세 곳에 갈라져 있던 것**(앰비언트가 `SetupLighting`·`SetupSky`·
+`CreateBootstrapScene`에 각각) — `EnsureWorldAtmosphere()` 한 곳으로 모으고 상수는 `VisualSliceBuilder.World.cs`
+머리에 원장으로 뒀다. 게이트는 픽셀이 아니라 **원장 일치**를 잰다(`SliceSelfCheck.Atmosphere.cs`, 양방향 NC).
 
-### 파일 분할 랩 (검수 조건 2026-09-09, `e5706a43` 푸시 완료)
-**분할 자체는 이미 끝나 있었다** — `8bbbd380`(2026-09-08)에서 `VisualSliceBuilder.cs` 6,737줄이
-주제별 partial 11개(합 8,000줄, 본체 175줄)로 갈라져 있다. `QueueProbe.cs`도 이 트리엔 없다.
-남은 일은 검수가 미리 단 조건 ①②③이었고, 그게 이번 랩의 값이다:
-- ① 소스 텍스트를 읽는 게이트 전수: `ActorRoster`(빌더 함수) · `Wiring`(SliceSelfCheck.cs) ·
-  `ActionSfx`·`Data`·`HudReachable`·`Regions`·`RepairTools`(Client/SliceHud.cs) ·
-  `RecipeData`(Server/OfflineWorld.Travel.cs) · `EffectWiring`·`ServerAuthority`·`Idempotent`·`Reachable`(폴더 훑기).
-  **파일 이름을 박아 둔 것은 `ActorRoster` 하나뿐**이었다(나머지는 폴더 훑기이거나 안 갈라진 파일).
-- ③ 그 하나를 **함수로 찾도록** 바꿨다(`SoleSourceContaining`): 정의가 0곳이면 빈 통과라서 빨간불,
-  2곳 이상이면 판정이 갈리므로 빨간불. 스윕은 흔한 호출이 아니라 **선정 함수 정의**로 잡는다.
-- ② NC 둘: 명단 한 줄 되살리면 FAIL(`명단 1줄`), 함수를 새 partial로 옮기면 그대로 통과하며
-  로그가 옮겨간 파일 이름을 찍는다. (첫 NC는 컴파일 에러로 빨간불이 나 **이유가 다른 빨간불**이었다 —
-  다시 컴파일되는 형태로 넣어 게이트가 문 것을 확인했다.)
-- 배선 중복 검사기는 분할 뒤에도 **게이트 196개·중복 0개**(검수가 말한 176은 그 뒤로 늘어난 값).
+## 다음 (순서)
+1. `FacilityPart` 오프셋을 `WorldScale.Kit`에 태우기(주석은 이미 달렸다 — 다음 배율 변경 전에).
+2. 물림 자(`PropOverlapFrac`)를 보스 밖 **일반 배우**까지.
+3. 문 개구부 정면에는 소품이 서지 않는다.
+4. MegaKit이 도착하면(오너 다운로드, `_ThirdParty/Quaternius/`) 그쪽이 최우선.
+   콜라이더 자는 **여전히 만들지 말 것** — 박혀 보이는 사례가 나오면 그때.
 
 ## 손대지 말 것
 `OfflineWorld*`, `NetAvatar.cs`, 루트 `docs/SESSION_HANDOFF.md`(검수 것),
