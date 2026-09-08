@@ -65,7 +65,17 @@ c472d0e6(물레방아 삭제·지하 제외를 자리로), 5e47eef2(낚시터 �
   시체는 서버가 원장(`FindCorpse`)을 읽어 생김/사라짐만 `ObserversRpc`로 방송.
   실측: 맞은 쪽 클라 `HP 50 → 0` · `유령 False → True` · 시체 주인 `ds-b`가 양쪽 화면 ·
   HUD 문구 `"유령 · 치유사 남서 42m"`. NC `./tools/two_client_check.sh --nc-nosync` → rc=5.
-- **다음: 축 ③ 골드·가방** — 축 ②와 같은 형태로(전/후 숫자 양쪽 json + 값 변조 NC). 축 중간에 다른 랩 금지.
+- **축 ③ 닫음** — `8f8785b5`. 값 동기화(`gold` SyncVar + 가방 한 줄 `템플릿:개수:남은횟수`)와
+  **판정 권한**을 같이 옮겼다: `EconomyAuthority`가 클라 전용 프로세스에서 `WorldBody.Gold`
+  쓰기와 `InventoryBag.Add/TakeOne`을 거절한다(호출부 30곳 대신 길목 둘).
+  실측: 골드 32 → 길드 25 → 7 → 붕대 5 → **2**, 가방 `""` → `"bandage:1:0"`,
+  치트 먹힘 False · 클라 구매 먹힘 False. NC `--nc-localeconomy`로 문을 떼면 둘 다 True → rc=5.
+- **다음: 축 ④ 스킬** — `NetAvatar`의 `skill` SyncVar는 **검술 하나**만 나르고 읽는 곳은 검사 프로브뿐이다
+  (HUD는 여전히 클라 로컬 스킬 값을 그린다). 사실상 손 안 댄 축이다.
+- 미결(축 ④ 또는 그 뒤): ①`OfflineWorld.ActiveVendor`가 **전역 하나**다 — 온라인에서 한 사람이 연
+  상점이 모두의 상점이 된다(축 ③에서 발견, 안 고침) ②시체 껍데기에 **항목이 없다** — 시신 회수의
+  결과(골드·가방)는 이제 내려오지만 「시체 안에 무엇이 있나」를 클라가 보는 것은 「누가 볼 수 있나」를
+  먼저 정해야 해서 뒤로 뺐다.
 - 미결(축 경계에서만): `VisualSliceBuilder` 추가 정리·에셋 팩(Quaternius MegaKit은 오너가 브라우저로
   받아 `_ThirdParty/Quaternius/`, KayKit 5개 파일은 **오너에게 직접** 확인 후 curl).
 
