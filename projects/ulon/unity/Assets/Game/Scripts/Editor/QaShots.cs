@@ -547,16 +547,26 @@ namespace Ulon.Editor
             float bestScore = -99f;
             float bestDist = -1f;
             float bestLit = -2f;
+            bool bestEyeClear = false;                       // 지금 고른 방위가 렌즈 앞이 비었는가
             var blockers = new System.Collections.Generic.List<string>();
             var perBearing = new System.Collections.Generic.List<string>();
             int frontRejected = 0;
             // 마을은 시설이 2~3m 간격으로 붙어 있어 게임 각도에서는 앞집 지붕이 시설을 통째로 덮는다
             // (첫 촬영본 35_fishing이 그랬다). 방위 8 × 내려보는 각 3을 다 재고 제일 잘 보이는 조합을 쓴다.
             float[] pitches = lowAngle ? new[] { 10f, 18f, 26f } : new[] { pitch, 50f, 65f };
-            for (int k = 0; k < 8 * pitches.Length; k++)
+            // **두 바퀴 돈다 — 엄격하게 한 바퀴, 안 되면 풀어서 한 바퀴**(검수 반려 2026-09-09).
+            // 「사람 샷은 렌즈 규칙에서 뺀다」로 두었더니 결함이 그대로 남았다: 은행원·상인은
+            // **자기 집 벽 안에** 카메라가 박힌 채 찍혀 반투명 판이 얼굴을 덮었다(로그: 렌즈 앞
+            // `Banker/Visual` 0.00m). 규칙을 빼는 것과 세계를 좁히지 않는 것은 **양자택일이 아니다** —
+            // 먼저 엄격한 자로 방위를 찾고, 그런 방위가 하나도 없을 때만 풀어서 다시 찾는다.
+            for (int k = 0; k < 16 * pitches.Length; k++)
             {
-                float y = baseYaw + (k % 8) * 45f;
-                float pit = pitches[k / 8];
+                int kk = k % (8 * pitches.Length);
+                bool strictEye = k < 8 * pitches.Length;
+                if (!strictEye && bestSeen >= 0f)
+                    break;                                   // 엄격한 바퀴에서 찾았으면 풀지 않는다
+                float y = baseYaw + (kk % 8) * 45f;
+                float pit = pitches[kk / 8];
                 var eyeK = target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * dist;
                 // 중심선 하나만 쏘면 「앞집 옆을 스쳐 지나가」 0개로 읽힌다(첫 시도가 그랬다) —
                 // 시설 표면 표본에 쏴서 **몇 %가 실제로 이 시설로 먼저 닿는지**를 잰다(차폐 게이트와 같은 방식).
@@ -582,6 +592,15 @@ namespace Ulon.Editor
                             seen++;
                         }
                 float share = total > 0 ? seen / (float)total : 0f;
+                // **시설은 한복판이 뚫려야 한다**(검수 반려 2026-09-09 `34_mortar`).
+                // 표본 비율만 보면 얇은 기둥은 표본 두어 개만 먹어서 「95% 보임」으로 통과하는데,
+                // 화면에서는 그 기둥이 **한가운데를 세로로 가른다**. 뒤로 물러나도 그대로다 —
+                // 물러나기는 프레임을 넓힐 뿐 사이에 선 것을 치우지 못한다. **옆으로 도는 것**이 답이다.
+                if (!byRenderer && strictEye && BlockedByRenderer(eyeK, box.center, go.transform))
+                    continue;
+                // 그리고 **피사체보다 크게 보이는 앞물건**이 있는 방위도 엄격한 바퀴에서 뺀다.
+                if (strictEye && ForegroundHog(eyeK, target, go.transform, radius))
+                    continue;
                 // **사람은 앞에서 찍는다 — 선호가 아니라 규칙이다**(검수 반려 2026-09-07).
                 // 처음엔 점수에 가산점으로 얹었더니 가림 점수에 묻혀 치유사가 뒷모습으로 찍혔다.
                 // 등을 보이는 각은 아예 **후보에서 뺀다** — 얼굴이 없으면 「누구인지」가 화면에 없다.
@@ -624,7 +643,7 @@ namespace Ulon.Editor
                         // **사람 샷에는 이 조항을 안 건다** — 사람은 좁은 마당·좌판 사이에 서 있어서
                         // 눈앞을 비우라고 하면 찍을 방위가 사라진다(실측: 은행원·상인 두 명이 통째로
                         // 못 찍혔다). 「자를 조이면 세계가 좁아진다」 — 조항은 시설 근접에만.
-                        if (!personBox && EyeCrowded(eyeD, target, go.transform))
+                        if ((!personBox || strictEye) && EyeCrowded(eyeD, target, go.transform))
                         {
                             lastBlocker = "(눈앞이 막힘)";
                             continue;
@@ -655,11 +674,19 @@ namespace Ulon.Editor
                     // (ㄱ)안과 다른 점이 그것이다. 그다음에야 **덜 당긴 방위**를 고른다.
                     float lit = SunFacing(pit, y);
                     bool tie = Mathf.Abs(share - bestSeen) <= 0.02f;
+                    // **푸는 바퀴에서도 눈앞은 버리지 않는다 — 탈락 조건에서 우선순위로 내린다.**
+                    // 처음엔 완화 바퀴에서 이 조항을 통째로 껐더니, 은행원처럼 사방이 막힌 사람은
+                    // **우연히 벽 속을 고른** 방위로 찍혔다(반투명 판이 얼굴을 덮음). 같은 만큼 보이면
+                    // 벽에 코를 박지 않은 쪽을 고른다 — 규칙을 끄는 것과 순위를 낮추는 것은 다르다.
+                    bool eyeClear = !EyeCrowded(target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * tryDist,
+                                                target, go.transform);
                     if (share > bestSeen + 0.02f
-                        || (tie && lit > bestLit + 0.05f)
-                        || (tie && Mathf.Abs(lit - bestLit) <= 0.05f && tryDist > bestDist))
+                        || (tie && eyeClear && !bestEyeClear)
+                        || (tie && eyeClear == bestEyeClear && lit > bestLit + 0.05f)
+                        || (tie && eyeClear == bestEyeClear && Mathf.Abs(lit - bestLit) <= 0.05f && tryDist > bestDist))
                     {
                         bestSeen = share; bestYaw = y; bestPitch = pit; bestDist = tryDist; bestLit = lit;
+                        bestEyeClear = eyeClear;
                     }
                     continue;
                 }
@@ -784,8 +811,11 @@ namespace Ulon.Editor
                 // (뒤에서 거리를 다시 당기는 단계가 있다) — 그래서 「후보는 깨끗한데 찍힌 그림은 가로등」이
                 // 나왔다(실측 2026-09-09 `34_mortar`: 후보 통과, 최종 자리에서는 자가 「막힘」).
                 // 여기서는 **뒤로 물러난다** — 앞으로 당기면 더 코를 박는다.
+                // **한 걸음까지만.** 2.5m를 열어 뒀더니 `33_campfire`가 2.7m 물러나 화덕이 프레임에서
+                // 작아졌다(검수가 통과로 봤던 그림이 나빠졌다) — 물러나기는 렌즈를 비우는 임시방편이지
+                // 그림을 만드는 수단이 아니다. 사이에 선 것은 **방위로** 피한다(위 `ForegroundHog`).
                 float grew = 0f;
-                while (!personBox && grew < 2.5f &&
+                while (!personBox && grew < 1.2f &&
                        EyeCrowded(target - rot * Vector3.forward * dist, target, go.transform))
                 {
                     dist += 0.3f;
@@ -1000,6 +1030,48 @@ namespace Ulon.Editor
                     continue;
                 if (Vector3.Dot(to / d, dir) > -0.15f && Vector3.Distance(eye, lookAt) > d + 0.5f)
                     return true;                    // 피사체보다 훨씬 앞에 있는 것이 렌즈를 덮는다
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// **화면을 잡아먹는 앞물건이 있는가**(검수 반려 2026-09-09 — `34_mortar` 가로등).
+        /// 「렌즈 앞 2.2m」로는 못 잡았다: 그 가로등은 3~4m 앞에 있었고, 자는 「안 막힘」이라 했는데
+        /// 화면에서는 한복판을 세로로 갈랐다. 거리로 재던 것을 **각크기**로 바꾼다 — 화면을 얼마나
+        /// 먹느냐는 거리가 아니라 「가까운 것이 커 보인다」의 문제다. 피사체보다 앞에 있고, 시선에서
+        /// 25°(화각 절반) 안에 들고, **피사체보다 크게 보이면** 그 방위는 못 쓴다.
+        /// </summary>
+        static bool ForegroundHog(Vector3 eye, Vector3 lookAt, Transform subject, float subjectRadius)
+        {
+            Vector3 dir = lookAt - eye;
+            float dist = dir.magnitude;
+            if (dist < 0.01f)
+                return false;
+            dir /= dist;
+            float subjAng = Mathf.Atan2(Mathf.Max(subjectRadius, 0.05f), dist);
+            var rends = BlockerCache();
+            for (int i = 0; i < rends.Length; i++)
+            {
+                var r = rends[i];
+                if (r == null || r is ParticleSystemRenderer)
+                    continue;
+                var t = r.transform;
+                if (subject != null && (t == subject || t.IsChildOf(subject) || subject.IsChildOf(t)))
+                    continue;
+                if (t.root.name == "Terrain" || t.name == "Ground")
+                    continue;
+                Vector3 to = r.bounds.center - eye;
+                float d = to.magnitude;
+                if (d < 0.05f || d >= dist)
+                    continue;                                   // 피사체보다 뒤에 있는 것은 배경이다
+                // 문턱은 **피사체 실루엣에 겹치는 만큼**이다(각반경 + 한 뼘 10°). 화면을 넓게(25°·35°)
+                // 잡았더니 `33_campfire`에서 **잘 찍히던 방위까지 죽였다** — 화덕 옆에 비껴 선 가로등은
+                // 그림을 해치지 않는데 「앞물건」으로 걸렸고, 대신 차양이 절반을 덮는 방위가 뽑혔다.
+                // 자를 넓히는 것이 아니라 **묻는 것을 정확히** 한다: 가리는 것만 가린 것이다.
+                if (Vector3.Angle(to, dir) > subjAng * Mathf.Rad2Deg + 10f)
+                    continue;
+                if (Mathf.Atan2(r.bounds.extents.magnitude, d) > subjAng * 0.8f)
+                    return true;
             }
             return false;
         }

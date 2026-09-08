@@ -1810,6 +1810,9 @@ namespace Ulon.Editor
             AssertDoorFitsPerson();                          // 문이 사람보다 큰가 — 킷 배율의 근거
             VisualSliceBuilder.ClearDecorFromRegions();           // 커밋된 씬에 남은 마을 장식은 지역에서 치운다
             AssertVillagePropsNotClashingNegativeControl();       // 종류가 다른 둘을 겹치면 빨간불인가(양방향 NC)
+            VisualSliceBuilder.KeepFireOffWalls();        // 불은 담에서 한 걸음(검수 2026-09-09)
+            AssertFireOffWallsNegativeControl();
+            AssertFireOffWalls();
             AssertVillagePropsNotClashing();                      // 마을 소품끼리 파고들지 않았는가(검수 랩)
             AssertNoRegionIntrusionNegativeControl();      // 지역 안에 남의 배치물을 넣으면 빨간불인가(양방향 NC)
             AssertPlazaClearNegativeControl();             // 광장 마당에 담을 넣으면 빨간불인가(같은 자, 다른 절)

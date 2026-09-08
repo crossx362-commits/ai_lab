@@ -136,6 +136,93 @@ namespace Ulon.Editor
                    "\n장작이 울타리를 뚫고 서 있으면 그 자리는 만든 자리로 안 읽힙니다(§8.2).";
         }
 
+        /// <summary>
+        /// **불과 나무 담 사이는 이만큼 띄운다.** 한 걸음(사람 보폭 ≈1m) — 화면에서 「불이 담에 옮겨붙겠다」로
+        /// 안 읽히는 최소 거리다(검수 판정 2026-09-09). 자와 굽는 쪽(`KeepFireOffWalls`)이 같은 값을 읽는다.
+        /// </summary>
+        internal const float FireWallGap = 1.0f;
+
+        static string FireWallReason(bool log)
+        {
+            var fire = GameObject.Find("Campfire");
+            if (fire == null)
+                throw new InvalidOperationException("화덕(Campfire)이 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            var decor = GameObject.Find("VillageDecor");
+            if (decor == null)
+                throw new InvalidOperationException("VillageDecor가 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            Transform near = null;
+            float best = float.MaxValue;
+            int walls = 0;
+            foreach (var t in decor.GetComponentsInChildren<Transform>(false))
+            {
+                if (!t.name.StartsWith("fence", StringComparison.Ordinal) &&
+                    !t.name.StartsWith("hedge", StringComparison.Ordinal))
+                    continue;
+                if (t.GetComponentInChildren<Renderer>(true) == null)
+                    continue;
+                walls++;
+                float d = new Vector2(t.position.x - fire.transform.position.x,
+                                      t.position.z - fire.transform.position.z).magnitude;
+                if (d < best) { best = d; near = t; }
+            }
+            if (walls == 0)
+                throw new InvalidOperationException("마을 담을 한 조각도 못 읽었습니다 — 잰 것이 없습니다(0이면 실패).");
+            if (log)
+                Debug.Log("[Ulon] 불과 담 — 가장 가까운 담 " + best.ToString("0.00") + "m " +
+                          (near == null ? "(없음)" : near.name) + "(하한 " + FireWallGap.ToString("0.0") + "m)");
+            if (best >= FireWallGap)
+                return "";
+            return "화덕이 나무 담에서 " + best.ToString("0.00") + "m입니다(하한 " + FireWallGap.ToString("0.0") +
+                   "m) — 불이 담에 옮겨붙을 자리에 있으면 그 자리는 만든 자리로 안 읽힙니다.";
+        }
+
+        static void AssertFireOffWalls()
+        {
+            string reason = FireWallReason(true);
+            if (!string.IsNullOrEmpty(reason))
+                throw new InvalidOperationException(reason);
+        }
+
+        /// <summary>양방향 NC — 화덕을 담에 붙이면 빨간불, 되돌리면 초록.</summary>
+        static void AssertFireOffWallsNegativeControl()
+        {
+            var fire = GameObject.Find("Campfire");
+            var decor = GameObject.Find("VillageDecor");
+            if (fire == null || decor == null)
+                throw new InvalidOperationException("불·담 NC 대상이 없습니다(0이면 실패).");
+            Transform wall = null;
+            foreach (var t in decor.GetComponentsInChildren<Transform>(false))
+            {
+                if (!t.name.StartsWith("fence", StringComparison.Ordinal))
+                    continue;
+                if (t.GetComponentInChildren<Renderer>(true) == null)
+                    continue;
+                if (wall == null || string.CompareOrdinal(t.name, wall.name) < 0)
+                    wall = t;                                // 희생양은 정해서 고른다
+            }
+            if (wall == null)
+                throw new InvalidOperationException("불·담 NC 대상 담이 없습니다(0이면 실패).");
+            var kept = fire.transform.position;
+            bool red;
+            try
+            {
+                fire.transform.position = new Vector3(wall.position.x + 0.2f, kept.y, wall.position.z);
+                Physics.SyncTransforms();
+                red = !string.IsNullOrEmpty(FireWallReason(false));
+            }
+            finally
+            {
+                fire.transform.position = kept;
+                Physics.SyncTransforms();
+            }
+            if (!red)
+                throw new InvalidOperationException("불·담 네거티브 컨트롤 실패 — 화덕을 담에 붙였는데 통과했습니다.");
+            string back = FireWallReason(false);
+            if (!string.IsNullOrEmpty(back))
+                throw new InvalidOperationException("불·담 네거티브 컨트롤 실패 — 되돌렸는데도 빨간불입니다: " + back);
+            Debug.Log("[Ulon] 불과 담 양방향 NC 통과 — 붙이면 FAIL · 되돌리면 통과");
+        }
+
         static void AssertVillagePropsNotClashing()
         {
             string reason = VillagePropClashPairsReason(true);

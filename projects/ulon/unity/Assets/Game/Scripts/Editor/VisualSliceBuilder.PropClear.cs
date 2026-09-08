@@ -105,6 +105,54 @@ namespace Ulon.Editor
         /// 누가 비키나: **울타리는 안 비킨다**(마당 경계를 정하는 것이라 옮기면 마당이 어긋난다).
         /// 그 밖에는 **작은 쪽**이 비킨다 — 화덕 옆 장작이 화덕을 밀어내면 그게 더 이상하다.
         /// </summary>
+        /// <summary>
+        /// **불은 나무 담에서 한 걸음 떨어져 탄다**(검수 판정 2026-09-09 — 관통은 없어졌으나 상식에 걸린다).
+        /// 물림 자로는 못 잡는다: 장작과 담은 **닿아 있지 않고 나란히** 서 있다 — 증상이 「파고듦」이
+        /// 아니라 「너무 가까움」이라서 재는 질문이 다르다. 담이 아니라 **불이 비킨다**(줄은 이어져야 한다).
+        /// </summary>
+        public static void KeepFireOffWalls()
+        {
+            var fire = GameObject.Find("Campfire");
+            if (fire == null)
+                return;
+            var decor = GameObject.Find("VillageDecor");
+            if (decor == null)
+                return;
+            if (!GroundFit.WorldBounds(fire.transform, out Bounds fb))
+                return;
+            for (int pass = 0; pass < 6; pass++)
+            {
+                Transform near = null;
+                float best = float.MaxValue;
+                foreach (var t in decor.GetComponentsInChildren<Transform>(false))
+                {
+                    if (!t.name.StartsWith("fence", System.StringComparison.Ordinal) &&
+                        !t.name.StartsWith("hedge", System.StringComparison.Ordinal))
+                        continue;
+                    if (t.GetComponentInChildren<Renderer>(true) == null)
+                        continue;
+                    float d = new Vector2(t.position.x - fire.transform.position.x,
+                                          t.position.z - fire.transform.position.z).magnitude;
+                    if (d < best) { best = d; near = t; }
+                }
+                if (near == null || best >= SliceSelfCheck.FireWallGap)
+                    break;
+                var away = new Vector3(fire.transform.position.x - near.position.x, 0f,
+                                       fire.transform.position.z - near.position.z);
+                if (away.sqrMagnitude < 0.0001f)
+                    away = Vector3.right;
+                // **어디로 비키느냐가 그림을 만든다.** 담 반대로만 밀었더니 화덕이 좌판 차양 밑으로
+                // 들어가, 담에서는 떨어졌는데 근접 샷의 절반을 분홍 차양이 덮었다(실측 2026-09-09).
+                // 담을 등지되 **트인 쪽**(광장)으로 반 걸음 섞어 민다 — 자를 지키면서 화면도 지킨다.
+                var toPlaza = new Vector3(-fire.transform.position.x, 0f, -fire.transform.position.z);
+                var dir = away.normalized + (toPlaza.sqrMagnitude > 0.01f ? toPlaza.normalized * 0.7f : Vector3.zero);
+                if (dir.sqrMagnitude < 0.0001f)
+                    dir = away;
+                fire.transform.position += dir.normalized * (SliceSelfCheck.FireWallGap - best + 0.15f);
+            }
+            SnapRootToGround(fire);
+        }
+
         public static void ClearPropsFromProps()
         {
             int moved = 0;
