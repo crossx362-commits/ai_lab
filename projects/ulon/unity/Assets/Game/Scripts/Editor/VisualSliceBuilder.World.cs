@@ -461,7 +461,8 @@ namespace Ulon.Editor
             var sandLayer = EnsureTerrainLayer("ShoreSand", new Color(0.74f, 0.68f, 0.50f), new Color(0.85f, 0.80f, 0.62f), 8f);
             // §6.1 지역이 **지표로** 구분돼야 한다 — 바닥이 전부 같은 초록이면 소품만 얹힌 모양이다(검수 2026-09-06 관찰).
             var tilledLayer = EnsureTerrainLayer("FarmTilled", new Color(0.30f, 0.21f, 0.13f), new Color(0.47f, 0.34f, 0.21f), 3.5f, 2);
-            var soilLayer = EnsureTerrainLayer("ForestSoil", new Color(0.16f, 0.13f, 0.09f), new Color(0.30f, 0.25f, 0.16f), 9f);
+            // 숲 바닥은 **제 무늬**를 쓴다(pattern 3 부엽토) — 잔풀 잡음이면 마을 광장 흙과 같아 보인다.
+            var soilLayer = EnsureTerrainLayer("ForestSoil", new Color(0.13f, 0.11f, 0.07f), new Color(0.34f, 0.28f, 0.16f), 6f, 3);
             var gravelLayer = EnsureTerrainLayer("MineGravel", new Color(0.28f, 0.26f, 0.24f), new Color(0.55f, 0.52f, 0.47f), 4.5f, 1);
             var roadLayer = EnsureTerrainLayer("DirtRoad", new Color(0.38f, 0.31f, 0.22f), new Color(0.58f, 0.50f, 0.37f), 5f);
 

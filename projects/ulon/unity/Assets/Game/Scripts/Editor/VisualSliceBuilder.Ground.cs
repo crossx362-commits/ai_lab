@@ -518,6 +518,17 @@ namespace Ulon.Editor
                         int grain = (x * 53 + y * 17) & 63;
                         t = Mathf.Clamp01((furrow + grain) / 133f);
                     }
+                    else if (pattern == 3)
+                    {
+                        // 부엽토 — **낙엽 부스러기**. 잔풀 잡음(0)을 그대로 쓰면 숲 바닥이 마을 광장의
+                        // 흙과 같은 무늬가 된다(검수 2026-09-09). 큰 얼룩 + 잎 조각 두 겹이라
+                        // 9m로 깔아도 반복 무늬가 「문양」으로 안 읽힌다.
+                        int px = x / 11, py = y / 9;
+                        int blot = ((px * 48271) ^ (py * 16807)) & 255;                  // 넓은 얼룩
+                        int leaf = ((x * 7 + y * 13) % 17 < 3) ? 200 : 40;               // 흩어진 잎 조각
+                        int grain = (x * 199 + y * 83) & 127;
+                        t = (blot / 255f) * 0.46f + (leaf / 255f) * 0.30f + (grain / 127f) * 0.24f;
+                    }
                     else
                     {
                         int h = (x * 374761 + y * 668265 + x * y * 13) & 255;

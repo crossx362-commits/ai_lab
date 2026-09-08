@@ -131,20 +131,27 @@ namespace Ulon.Editor
                 new Vector2(r.X - 11f, r.Z - 9f), new Vector2(r.X + 10f, r.Z - 10f),
                 new Vector2(r.X - 10f, r.Z + 10f), new Vector2(r.X + 11f, r.Z + 9f),
             };
+            // 뙈기 크기를 갈라 놓는다 — 넷이 같은 정사각형이면 화면은 「스프레드시트」로 읽힌다(검수).
+            float[] halves = { 7.5f, 5.5f, 6.0f, 8.0f };
             for (int p = 0; p < plots.Length; p++)
             {
-                float half = 6.5f;
+                float half = halves[p];
                 // 울타리는 **폭을 재서 이어 붙인다**. 간격을 추측해 띄우면 화면에서 「밭을 두른 울타리」가 아니라
                 // 들판에 말뚝이 흩어진 것으로 읽힌다(검수 반려 4의 첫 샷이 그랬다).
                 FenceRun(parent, fence, new Vector2(plots[p].x - half, plots[p].y - half), new Vector2(plots[p].x + half, plots[p].y - half));
                 FenceRun(parent, fence, new Vector2(plots[p].x - half, plots[p].y + half), new Vector2(plots[p].x + half, plots[p].y + half));
                 FenceRun(parent, fence, new Vector2(plots[p].x - half, plots[p].y - half), new Vector2(plots[p].x - half, plots[p].y + half));
                 FenceRun(parent, fence, new Vector2(plots[p].x + half, plots[p].y - half), new Vector2(plots[p].x + half, plots[p].y + half));
-                for (int row = 0; row < 8; row++)
+                // **고랑으로 심는다** — 8×8 균일 격자는 밭이 아니라 바둑판이었다. 흙 이랑 무늬(pattern 2)가
+                // z를 따라 교차하므로 줄은 **x축 방향**이다: x는 촘촘히(0.95m), z는 이랑 간격(2.1m).
+                int rows = Mathf.Max(2, Mathf.FloorToInt((half * 2f - 1.6f) / 2.1f));
+                int cols = Mathf.Max(3, Mathf.FloorToInt((half * 2f - 1.6f) / 0.95f));
+                for (int row = 0; row < rows; row++)
                 {
-                    for (int col = 0; col < 8; col++)
+                    for (int col = 0; col < cols; col++)
                     {
-                        var pos = new Vector3(plots[p].x - 5.25f + col * 1.5f, 0f, plots[p].y - 5.25f + row * 1.5f);
+                        var pos = new Vector3(plots[p].x - (cols - 1) * 0.475f + col * 0.95f, 0f,
+                                              plots[p].y - (rows - 1) * 1.05f + row * 2.1f);
                         int seed = p * 131 + row * 11 + col;
                         var go = Place(crop, pos, new Vector3(0f, WorldRegions.Rand(seed, 1, 0f, 360f), 0f));
                         if (go == null)
@@ -212,28 +219,50 @@ namespace Ulon.Editor
         {
             var parent = FreshRegion(r);
             int index = 0;
+            // **빈터**(검수 2026-09-09: 「한 종 한 색 균일 밀집이라 크리스마스트리 창고」).
+            // 숲이 숲으로 읽히려면 **나무가 없는 자리**가 있어야 한다 — 빈터가 있어야 밀집이 밀집으로 보인다.
+            var glade = new Vector2(r.X - 4.5f, r.Z + 3f);
+            const float GladeRadius = 7f;
             // 군락 7개·나무 5~9그루로는 「나무가 좀 있는 들판」이다(첫 샷). 숲으로 읽히려면 수관이 서로 겹쳐야 한다.
             for (int cluster = 0; cluster < 14; cluster++)
             {
                 float ca = WorldRegions.Rand(cluster, 11, 0f, 360f) * Mathf.Deg2Rad;
                 float cd = WorldRegions.Rand(cluster, 12, 3f, r.Radius - 5f);
                 var center = new Vector2(r.X + Mathf.Cos(ca) * cd, r.Z + Mathf.Sin(ca) * cd);
-                int count = Mathf.RoundToInt(WorldRegions.Rand(cluster, 13, 9f, 15f));
+                // 바깥 군락은 성기게, 안쪽은 빽빽하게 — 밀도가 어디나 같으면 격자처럼 읽힌다.
+                float edge = Mathf.InverseLerp(r.Radius * 0.4f, r.Radius, cd);
+                int count = Mathf.RoundToInt(WorldRegions.Rand(cluster, 13, 9f, 15f) * Mathf.Lerp(1f, 0.45f, edge));
                 for (int i = 0; i < count; i++)
                 {
                     index++;
                     float a = WorldRegions.Rand(index, 14, 0f, 360f) * Mathf.Deg2Rad;
                     float d = WorldRegions.Rand(index, 15, 0.6f, 5.2f);
                     var pos = new Vector3(center.x + Mathf.Cos(a) * d, 0f, center.y + Mathf.Sin(a) * d);
+                    if (new Vector2(pos.x - glade.x, pos.z - glade.y).magnitude < GladeRadius)
+                        continue;                       // 빈터에는 나무가 안 선다
                     var go = Place(trees[index % trees.Length], pos, new Vector3(0f, WorldRegions.Rand(index, 16, 0f, 360f), 0f));
                     if (go == null)
                         continue;
                     go.transform.SetParent(parent, true);
-                    float sc = WorldRegions.Rand(index, 17, 0.85f, 1.35f);
+                    // 크기 편차를 넓힌다(0.85~1.35 → 0.65~1.6) — 같은 키가 늘어서면 창고 선반이 된다.
+                    float sc = WorldRegions.Rand(index, 17, 0.65f, 1.6f);
                     go.transform.localScale = go.transform.localScale * sc;
                 }
                 Decor(parent, cluster % 2 == 0 ? bush : bushLarge, new Vector3(center.x + 3.2f, 0f, center.y - 2.4f), new Vector3(0f, 40f, 0f));
                 Decor(parent, tuft, new Vector3(center.x - 2.6f, 0f, center.y + 3.1f), new Vector3(0f, 120f, 0f));
+            }
+
+            // 빈터는 **비워 두기만 하면 맨땅**이다 — 사람이 벌목하는 자리로 읽히게 장작과 수레를 둔다.
+            const string Planks = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/planks.fbx";
+            const string CartWood = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/cart.fbx";
+            Decor(parent, Planks, new Vector3(glade.x - 1.4f, 0f, glade.y + 0.8f), new Vector3(0f, 25f, 0f));
+            Decor(parent, Planks, new Vector3(glade.x + 1.6f, 0f, glade.y - 0.6f), new Vector3(0f, 100f, 0f));
+            Decor(parent, CartWood, new Vector3(glade.x + 0.2f, 0f, glade.y + 2.6f), new Vector3(0f, 200f, 0f));
+            for (int i = 0; i < 5; i++)
+            {
+                float a = i * 72f * Mathf.Deg2Rad;
+                Decor(parent, tuft, new Vector3(glade.x + Mathf.Cos(a) * 4.2f, 0f, glade.y + Mathf.Sin(a) * 4.2f),
+                    new Vector3(0f, i * 63f, 0f));
             }
         }
 
