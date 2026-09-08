@@ -153,7 +153,10 @@ namespace Ulon.Editor
 
             var house = new GameObject(HousingPlot.HouseObject);
             house.transform.SetParent(parent, false);
-            house.transform.localPosition = Module(new Vector3(-1f, 0f, -0.2f));
+            // 집은 부지 **서쪽 절반**에 붙인다 — 옛 -1은 2모듈 폭이라 부지 한가운데를 덮었고,
+            // 그 한가운데에 서는 것이 상호작용 기둥(HousePlotStation, 원장 좌표에 0.2m로 묶임)이다.
+            // 기둥을 옮길 수 없으니 집이 비켜선다(마을 소품↔건물 자가 잡았다, 2026-09-09).
+            house.transform.localPosition = Module(new Vector3(-2.1f, 0f, -0.2f));
             Transform hp = house.transform;
             int width = 2;
             int depth = 2;

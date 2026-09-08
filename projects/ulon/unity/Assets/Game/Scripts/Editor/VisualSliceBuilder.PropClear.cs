@@ -51,7 +51,7 @@ namespace Ulon.Editor
                         }
                         else
                         {
-                            props[p].position += PushOut(boxes[p], bldBoxes[b], pen);
+                            props[p].position += PushOut(boxes[p], bldBoxes[b]);
                             moved++;
                         }
                         touched = true;
@@ -65,16 +65,18 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 마을 소품↔건물 정리 — 줄 조각 " + removed + "개 제거 · 소품 " + moved + "개 밀어냄");
         }
 
-        /// <summary>가장 얕게 물린 축의 **가까운 쪽**으로 빼낸다 — 반대편으로 밀면 건물을 통과한다.</summary>
-        static Vector3 PushOut(Bounds prop, Bounds bld, float pen)
+        /// <summary>
+        /// 수평 두 축 중 **덜 물린 쪽**의 가까운 방향으로 빼낸다. 미는 거리는 그 축이 물린 만큼이다 —
+        /// 첫 판은 가장 얕은 축(대개 높이)의 깊이만큼만 밀어 네 번을 돌고도 여전히 박혀 있었다.
+        /// y로는 안 민다: 소품을 공중에 띄우거나 땅에 묻는 것은 수리가 아니다.
+        /// </summary>
+        static Vector3 PushOut(Bounds prop, Bounds bld)
         {
             float dx = Mathf.Min(prop.max.x, bld.max.x) - Mathf.Max(prop.min.x, bld.min.x);
             float dz = Mathf.Min(prop.max.z, bld.max.z) - Mathf.Max(prop.min.z, bld.min.z);
-            // y로는 안 민다 — 소품을 공중에 띄우거나 땅에 묻는 수리는 수리가 아니다.
-            float margin = pen + 0.08f;
             if (dx <= dz)
-                return new Vector3(prop.center.x >= bld.center.x ? margin : -margin, 0f, 0f);
-            return new Vector3(0f, 0f, prop.center.z >= bld.center.z ? margin : -margin);
+                return new Vector3((prop.center.x >= bld.center.x ? 1f : -1f) * (dx + 0.08f), 0f, 0f);
+            return new Vector3(0f, 0f, (prop.center.z >= bld.center.z ? 1f : -1f) * (dz + 0.08f));
         }
     }
 }
