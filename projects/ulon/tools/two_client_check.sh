@@ -199,10 +199,19 @@ def item_count(sig, tid):
     return n
 
 def store_gold(name):
-    import urllib.request
+    # **없는 계정은 「클라가 쓴 적 없다」는 뜻이다**(2026-09-08 실측): 저장소 문 검사 전용 계정
+    # `storeprobe`는 문이 닫혀 있으면 행 자체가 안 생긴다 — 404를 실패(-1)로 읽으면 정상 판이
+    # 빨간불이 된다. 다만 **서비스가 죽은 것과 구별**해야 한다(그건 아무것도 못 잰 것이라 -1).
+    import urllib.request, urllib.error
     try:
         with urllib.request.urlopen("http://127.0.0.1:8777/character/" + name, timeout=3) as r:
             return int(json.loads(r.read().decode("utf-8")).get("Gold", -1))
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            print("store: 계정 없음(=클라가 쓴 적 없음)", name)
+            return 0
+        print("store read failed", e)
+        return -1
     except Exception as e:
         print("store read failed", e)
         return -1
@@ -271,8 +280,9 @@ ok = (a.get("connected") and b.get("connected")
       and a.get("guildMsg","") == "created"
       and b.get("guildMsg","") == ""
       # **선택 A**: 두 사람이 다른 대상을 고르면 평가 안내가 갈린다. 전역 하나면 마지막이 이긴다.
-      and a.get("selName","") != "" and b.get("selName","") != ""
-      and a.get("selName") != b.get("selName")
+      # `selName`은 **판정에서 뺀다**(검수 2026-09-08): 그건 클라가 제가 고른 이름을 그대로 받아
+      # 적은 문자열이라 전역 하나(NC)에서도 갈린다 — 무는 자는 `evalHint`뿐인데, 그 옆에 붙여 두면
+      # 다음 사람이 `evalHint`를 건드렸을 때 selName 조건만 남아 **빈 통과**가 된다. 출력엔 남긴다.
       and a.get("evalHint","") != "" and b.get("evalHint","") != ""
       and a.get("evalHint") != b.get("evalHint")
       and "INT" in a.get("evalHint","") and "INT" in b.get("evalHint","")

@@ -28,7 +28,7 @@ namespace Ulon.Client
         {
             string role = Cli.Get("-ulon-role", "observer");
             string outPath = Cli.Get("-ulon-out", "");
-            float deadline = Time.realtimeSinceStartup + 40f;   // 파티 단계가 붙어 예산을 늘렸다(20s로는 관찰자가 못 끝냈다)
+            float deadline = Time.realtimeSinceStartup + 60f;   // 파티 단계가 붙어 예산을 늘렸다(20s로는 관찰자가 못 끝냈다). PvP 40대(14s)까지 담으려 60s로(2026-09-08)
 
             while (Time.realtimeSinceStartup < deadline)
             {
@@ -172,7 +172,12 @@ namespace Ulon.Client
                         other = all[i];
                 if (other != null)
                 {
-                    for (int hit = 0; hit < 26 && Time.realtimeSinceStartup < deadline; hit++)
+                    // **26대는 아슬아슬한 값이었다**(2026-09-08 실측: 상대가 HP 6·1로 살아남아 축 ②
+                    // 판정이 흔들렸다 — 계정이 랩마다 자라 상대 MaxHp가 올라간 탓도 있다). 40대로 올린다.
+                    // 「상대가 죽었으면 멈춘다」로 짜 봤다가 되돌렸다: 때리는 쪽 화면에 있는 **상대 몸의
+                    // HP는 서버가 그 화면에 내려 준 값이 아니다** — 남의 값을 믿고 멈추면 계측기가
+                    // 제 눈으로 못 본 것을 기준으로 삼는 셈이다.
+                    for (int hit = 0; hit < 40 && Time.realtimeSinceStartup < deadline; hit++)
                     {
                         mine.RpcRequestAttack(other.NetworkObject);
                         yield return new WaitForSeconds(0.35f);
@@ -564,8 +569,9 @@ namespace Ulon.Client
                 WarpNextTo(mine.transform, mob.transform.position);
                 mine.RpcSetPos(mob.transform.position + new Vector3(side, 0f, 0f));
             }
-            if (target != null && myBody != null)
-                myBody.Selected = target;
+            // **계측기가 결과를 만들면 안 된다**(검수 A 조건부 수용 2026-09-08): 예전엔 여기서
+            // 로컬 몸의 `Selected`를 직접 박아 놓고 바로 다음 줄에서 `RpcSelect`를 불렀다 —
+            // 서버가 선택을 거부해도 화면에는 골라진 것으로 남아 결함을 감춘다. 요청만 보낸다.
             if (pick != null)
                 mine.RpcSelect(pick);
             selName = target != null ? (target.DisplayName ?? "") : "";
