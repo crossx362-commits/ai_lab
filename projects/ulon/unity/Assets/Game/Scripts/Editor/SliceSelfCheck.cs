@@ -1789,6 +1789,8 @@ namespace Ulon.Editor
             AssertCampfireHasFire();
             AssertRoleLookNegativeControl();
             AssertRoleLook();
+            AssertHeadgearFoundByPlace();
+            AssertShieldPickedByPlace();
             AssertNoNestedActorsNegativeControl();
             AssertNoNestedActors();
             AssertHouseRoofPiecesDontOverlapNegativeControl();

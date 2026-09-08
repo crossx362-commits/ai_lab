@@ -306,6 +306,43 @@ namespace Ulon.Editor
             return WorldBounds(actor, out bounds, t => IsGear(actor, t) || IsFacilityPart(actor, t));
         }
 
+        /// <summary>머리 장식으로 보는 높이 — 몸(발~정수리)의 이 비율 위에 앉은 것.</summary>
+        public const float HeadgearHeightFrac = 0.80f;
+
+        /// <summary>
+        /// **머리에 쓴 것인가** — 이름(`*Hat*`)이 아니라 **자리와 성질**로도 잰다(랩 ②, 2026-09-09).
+        ///
+        /// 옛 자는 이름에 「Hat」이 들어가는지만 봤다. 그러면 새 팩이 `Helmet`·`Hood`·`Crown`으로 오는
+        /// 순간 조용히 샌다 — 그리고 그 자는 **키 측정에서 뺄 것을 고르는 자**라, 새면 사람 키가
+        /// 모자만큼 부풀어 세계가 그만큼 틀어진다(헥사크의 챙 넓은 모자가 그랬다).
+        ///
+        /// 자리·성질: **스킨드가 아닌 메시**(투구·모자는 뼈에 물린 정적 메시다)가 **몸 위쪽
+        /// <see cref="HeadgearHeightFrac"/> 위에 앉아 있으면** 머리에 쓴 것이다. 몸통 메시는 스킨드라
+        /// 걸리지 않고, 손에 든 것은 그 높이에 안 온다. 이름 원장은 **합집합으로 남긴다** —
+        /// 두 자를 겹쳐 두는 것이 하나를 갈아 끼우는 것보다 안전하다(랩 ① 장비와 같은 방식).
+        /// </summary>
+        public static bool IsHeadgear(Transform actor, Transform t)
+        {
+            for (var p = t; p != null && p != actor; p = p.parent)
+                if (p.name.IndexOf("Hat", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            return HeadgearByPlace(actor, t);
+        }
+
+        /// <summary>이름을 빼고 **자리·성질만으로** 잰다 — NC가 이 자를 직접 겨눈다.</summary>
+        public static bool HeadgearByPlace(Transform actor, Transform t)
+        {
+            var renderer = t.GetComponent<Renderer>();
+            if (renderer == null || renderer is SkinnedMeshRenderer)
+                return false;                                   // 몸은 스킨드다 — 쓴 것은 뼈에 물린 정적 메시
+            if (!WorldBounds(actor, out Bounds body, x => IsGear(actor, x) || IsFacilityPart(actor, x)))
+                return false;
+            if (body.size.y < 0.01f)
+                return false;
+            float line = body.min.y + body.size.y * HeadgearHeightFrac;
+            return renderer.bounds.center.y >= line;
+        }
+
         /// <summary>액터의 **몸** 바운드(장비 제외).</summary>
         public static bool BodyBounds(Transform actor, out Bounds bounds)
         {

@@ -338,12 +338,10 @@ namespace Ulon.Editor
         /// </summary>
         static bool IsHeadgear(Transform t)
         {
-            for (var cur = t; cur != null; cur = cur.parent)
-            {
-                if (cur.name.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-            }
-            return false;
+            var actor = t;
+            while (actor != null && actor.GetComponent<CharacterController>() == null)
+                actor = actor.parent;
+            return GroundFit.IsHeadgear(actor != null ? actor : t.root, t);   // 자는 한 곳(GroundFit)에만 산다
         }
 
         /// <summary>모자를 몸 비례로 줄인다 — 45° 시점에서 챙이 몸을 덮지 않게.</summary>

@@ -135,7 +135,7 @@ namespace Ulon.Editor
             {
                 if (!r.enabled || !r.gameObject.activeInHierarchy)
                     continue;
-                if (r.gameObject.name.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0)
+                if (GroundFit.IsHeadgear(who.transform, r.transform))   // 이름이 아니라 자리·성질(랩 ②)
                 {
                     hat = r.transform;
                     hatBox = hasHat ? Encapsulated(hatBox, r.bounds) : r.bounds;
@@ -316,12 +316,38 @@ namespace Ulon.Editor
             return gear.Count > 0 ? gear[0] : null;
         }
 
+        /// <summary>
+        /// 방패 여럿 중 **하나를 고른다** — 이름(`Round_Shield`)이 아니라 **자리와 크기**로(랩 ②, 2026-09-09).
+        ///
+        /// 옛 자는 정확히 `Round_Shield`인 것을 먼저 집었다. 새 팩이 `Kite_Shield`·`Buckler`로 오면
+        /// 그 자는 조용히 첫 번째를 집는다 — **이름 원장은 언제나 샌다.**
+        /// 성질로 고친다: ①**손에 쥔 것**(손뼈 아래)이 먼저다 — 쥐지 않은 것은 등에 멘 장식이다
+        /// ②그래도 여럿이면 **큰 것**을 남긴다(작은 것은 버클·장식 조각이다).
+        /// </summary>
+        /// <summary>게이트가 **같은 자**를 부르게 여는 창(자가 둘이면 갈린다).</summary>
+        public static Transform PickShieldForCheck(List<Transform> shields) => PickShield(shields);
+
         static Transform PickShield(List<Transform> shields)
         {
+            Transform best = null;
+            float bestScore = -1f;
             for (int i = 0; i < shields.Count; i++)
-                if (shields[i].name == "Round_Shield")
-                    return shields[i];
-            return shields[0];
+            {
+                var rends = shields[i].GetComponentsInChildren<Renderer>(true);
+                if (rends.Length == 0)
+                    continue;
+                Bounds b = rends[0].bounds;
+                for (int k = 1; k < rends.Length; k++)
+                    b.Encapsulate(rends[k].bounds);
+                float size = Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z));
+                float score = (UnderHandBone(shields[i]) ? 100f : 0f) + size;   // 자리가 먼저, 크기가 다음
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = shields[i];
+                }
+            }
+            return best != null ? best : (shields.Count > 0 ? shields[0] : null);
         }
 
 

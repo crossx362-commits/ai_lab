@@ -128,14 +128,13 @@ namespace Ulon.Editor
             return cc.height;
         }
 
+        /// <summary>머리에 쓴 것인가 — 판정은 `GroundFit`에 한 벌만 둔다(이름 ∪ 자리·성질, 랩 ②).</summary>
         static bool IsHeadgearName(Transform t)
         {
-            for (var cur = t; cur != null; cur = cur.parent)
-            {
-                if (cur.name.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-            }
-            return false;
+            var actor = t;
+            while (actor != null && actor.GetComponent<CharacterController>() == null)
+                actor = actor.parent;
+            return GroundFit.IsHeadgear(actor != null ? actor : t.root, t);
         }
     }
 }
