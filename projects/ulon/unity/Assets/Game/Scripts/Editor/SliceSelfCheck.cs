@@ -1795,6 +1795,7 @@ namespace Ulon.Editor
             AssertNoNestedActors();
             AssertHouseRoofPiecesDontOverlapNegativeControl();
             AssertHouseRoofPiecesDontOverlap();
+            AssertHuntSpotsApartNegativeControl();           // 간격 자는 `AssertHuntGround` 안에서 잰다
             AssertActorBodyMatchesCapsuleNegativeControl();  // 먼저 자가 우는지 본다
             AssertActorBodyMatchesCapsule();                // 그림이 충돌체와 같은 크기인가(랩 A)
             AssertGearFoundByPlace();                      // 장비를 이름표로만 찾지 않는가(랩 ①, 양방향 NC)

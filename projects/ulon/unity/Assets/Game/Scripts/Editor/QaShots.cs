@@ -54,9 +54,14 @@ namespace Ulon.Editor
                 Orbit("02_village_wide", new Vector3(0f, 0f, 0f), 55f, 45f),
                 // 마을 쪽(남)에서 북쪽 사냥터를 본다 — 마을이 카메라 **뒤**라 프레임 밖이다
                 // (검수 완료 기준 랩 ⑦: 8체가 다 들어오고 마을이 화면에 없을 것).
+                // 눈 자리는 `VisualSliceBuilder.HuntViewEye` 원장 — 겹침 게이트가 **같은 눈**으로 잰다.
                 Free("03_hunt_mobs",
-                     new Vector3(2.8f, GroundY(2.8f, 21f) + 6.0f, 21f),
-                     new Vector3(2.8f, GroundY(2.8f, 33.5f) + 1.0f, 33.5f)),
+                     new Vector3(VisualSliceBuilder.HuntViewEye.x,
+                                 GroundY(VisualSliceBuilder.HuntViewEye.x, VisualSliceBuilder.HuntViewEye.y) + VisualSliceBuilder.HuntViewEyeHeight,
+                                 VisualSliceBuilder.HuntViewEye.y),
+                     new Vector3(VisualSliceBuilder.HuntViewTarget.x,
+                                 GroundY(VisualSliceBuilder.HuntViewTarget.x, VisualSliceBuilder.HuntViewTarget.y) + VisualSliceBuilder.HuntViewTargetHeight,
+                                 VisualSliceBuilder.HuntViewTarget.y)),
                 // 잡몹이 나란히 선 눈높이 샷 — **키를 서로 비교해서 읽는** 화면(검수 완료 기준 랩 ⑥).
                 // 위에서 내려다보면 원근이 키 차이를 먹는다. 낮게·가까이서 본다.
                 // 마을 반대쪽(북)에서 눈높이로 — 궤도 샷은 지붕이 화면 절반을 먹었다.

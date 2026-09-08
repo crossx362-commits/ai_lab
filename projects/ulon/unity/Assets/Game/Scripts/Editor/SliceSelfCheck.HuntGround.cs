@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Ulon.Editor
@@ -62,6 +63,117 @@ namespace Ulon.Editor
                     "m. 한 줄로 진열된 화면입니다(§8.1).");
 
             AssertMobDressing();
+            AssertHuntSpotsApart();
+        }
+
+        /// <summary>
+        /// **몹끼리 겹쳐 서 있지 않은가**(검수 경증 2026-09-09: `03_hunt_mobs.png` 왼쪽 둘이 거의 한 덩이).
+        ///
+        /// z 산포(`HuntDepthMin`)는 「한 줄 진열」만 잡는다 — 흩어져 있어도 **두 자리가 붙어 있으면**
+        /// 화면에서는 한 마리가 다른 마리를 먹는다.
+        ///
+        /// **월드 거리만 재면 놓친다** — 첫 판이 그랬다: 두 몹이 4.03m 떨어져 있는데도 화면에서는
+        /// 한 덩이였다(`03_hunt_mobs.png`). 카메라 시선 방향으로 늘어서 있었기 때문이다.
+        /// 증상이 화면에 있으면 **화면 쪽에서 재야 한다**: `VisualSliceBuilder.HuntViewEye`
+        /// (QA 샷 카메라와 **같은 눈**)에서 본 **방위각 차**가 몸이 차지하는 각보다 커야 한다.
+        /// 월드 거리는 그대로 바닥으로 함께 잰다(눈을 옮겨도 서로 겹쳐 서 있으면 안 된다).
+        /// </summary>
+        static float HuntSpotGapMin => VisualSliceBuilder.PlayerHeight * 2f;
+
+        /// <summary>몸 폭 — 사람 키에서 유도한다(사람 실루엣은 키의 약 0.4배 폭).</summary>
+        static float BodyWidth => VisualSliceBuilder.PlayerHeight * 0.4f;
+
+        static void AssertHuntSpotsApart()
+        {
+            string reason = HuntSpotGapReason(true);
+            if (!string.IsNullOrEmpty(reason))
+                throw new InvalidOperationException(reason);
+        }
+
+        /// <summary>빨간불 사유(없으면 빈 문자열) — 게이트와 NC가 **같은 자**를 쓴다.</summary>
+        static string HuntSpotGapReason(bool log)
+        {
+            var spots = VisualSliceBuilder.HuntSpots;
+            var pos = new System.Collections.Generic.List<KeyValuePair<string, Vector3>>();
+            for (int i = 0; i < spots.Length; i++)
+            {
+                var go = GameObject.Find(spots[i].Name);
+                if (go != null)
+                    pos.Add(new KeyValuePair<string, Vector3>(spots[i].Name, go.transform.position));
+            }
+            if (pos.Count < 2)
+                return "사냥터 몹을 " + pos.Count + "체밖에 못 쟀습니다 — 잰 것이 없습니다(0이면 실패).";
+
+            Vector2 eye = VisualSliceBuilder.HuntViewEye;
+            float worst = float.MaxValue, worstSlack = float.MaxValue;
+            string worstPair = "", slackPair = "", slackDetail = "";
+            for (int i = 0; i < pos.Count; i++)
+                for (int k = i + 1; k < pos.Count; k++)
+                {
+                    Vector3 a = pos[i].Value, b = pos[k].Value;
+                    float d = new Vector2(a.x - b.x, a.z - b.z).magnitude;
+                    if (d < worst)
+                    {
+                        worst = d;
+                        worstPair = pos[i].Key + "×" + pos[k].Key;
+                    }
+
+                    // 보는 눈에서의 방위각 차 vs 몸이 차지하는 각(가까운 쪽 기준).
+                    Vector2 va = new Vector2(a.x, a.z) - eye, vb = new Vector2(b.x, b.z) - eye;
+                    float apart = Vector2.Angle(va, vb);
+                    float need = Mathf.Atan2(BodyWidth, Mathf.Min(va.magnitude, vb.magnitude)) * Mathf.Rad2Deg;
+                    float slack = apart - need;
+                    if (slack < worstSlack)
+                    {
+                        worstSlack = slack;
+                        slackPair = pos[i].Key + "×" + pos[k].Key;
+                        slackDetail = apart.ToString("0.0") + "° 벌어짐 · 몸이 " + need.ToString("0.0") + "° 차지";
+                    }
+                }
+            if (log)
+                Debug.Log("[Ulon] 사냥터 간격 — 몹 " + pos.Count + "체 · 월드 최소 " + worstPair + " " +
+                          worst.ToString("0.00") + "m(하한 " + HuntSpotGapMin.ToString("0.00") + "m) · 화면 최소 " +
+                          slackPair + " " + slackDetail + "(여유 " + worstSlack.ToString("+0.0;-0.0") + "°)");
+            if (worst < HuntSpotGapMin)
+                return "사냥터 몹 " + worstPair + "이(가) " + worst.ToString("0.00") + "m 거리에 붙어 서 있습니다(하한 " +
+                       HuntSpotGapMin.ToString("0.00") + "m) — 화면에서 한 덩이로 읽힙니다. " +
+                       "`VisualSliceBuilder.HuntSpots`의 자리를 벌리십시오.";
+            if (worstSlack < 0f)
+                return "사냥터 몹 " + slackPair + "이(가) 보는 눈에서 겹쳐 보입니다(" + slackDetail +
+                       ") — 월드 거리는 떨어져 있어도 시선 방향으로 늘어서면 화면에서는 한 덩이입니다. " +
+                       "`VisualSliceBuilder.HuntSpots`의 **방위각**을 벌리십시오.";
+            return "";
+        }
+
+        /// <summary>양방향 NC — 몹 하나를 옆 몹 자리로 옮기면 빨간불, 되돌리면 다시 초록.</summary>
+        static void AssertHuntSpotsApartNegativeControl()
+        {
+            var spots = VisualSliceBuilder.HuntSpots;
+            var a = GameObject.Find(spots[0].Name);
+            var b = GameObject.Find(spots[1].Name);
+            if (a == null || b == null)
+                throw new InvalidOperationException("사냥터 몹 둘을 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
+
+            string before = HuntSpotGapReason(true);
+            if (!string.IsNullOrEmpty(before))
+                throw new InvalidOperationException("사냥터 간격 NC 실패 — 손대기 전부터 빨간불입니다: " + before);
+
+            Vector3 kept = a.transform.position;
+            bool red;
+            try
+            {
+                a.transform.position = b.transform.position;   // 옆 몹 자리로 포갠다
+                red = !string.IsNullOrEmpty(HuntSpotGapReason(false));
+            }
+            finally { a.transform.position = kept; }
+
+            if (!red)
+                throw new InvalidOperationException("사냥터 간격 NC 실패 — 몹 둘을 겹쳐 놨는데 통과했습니다. 빈 통과입니다.");
+            if (!string.IsNullOrEmpty(HuntSpotGapReason(false)))
+                throw new InvalidOperationException("사냥터 간격 NC 실패 — 되돌렸는데 빨간불이 남았습니다(계측이 세계를 바꿨습니다).");
+            if ((a.transform.position - kept).sqrMagnitude > 1e-6f)
+                throw new InvalidOperationException("잰 뒤 몹 자리가 달라졌습니다 — 계측이 세계를 바꿨습니다.");
+            Debug.Log("[Ulon] 사냥터 간격 양방향 NC 통과 — 겹쳐 놓으면 FAIL · 되돌리면 다시 통과");
         }
 
         /// <summary>

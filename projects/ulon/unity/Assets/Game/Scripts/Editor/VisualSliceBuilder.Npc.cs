@@ -679,15 +679,26 @@ namespace Ulon.Editor
         {
             // z를 마을에서 20m 북으로 밀었다(검수 지시 2026-09-07) — 56 샷에서 몹이 담장에 붙어
             // 「마을에 몹이 산다」로 읽혔다. 흩어진 모양(x·z 산포)은 그대로 두고 통째로 옮긴다.
-            ("Skeleton", 0.6f, 33.6f, 168f),
-            ("Bandit", -2.6f, 31.4f, 196f),
-            ("Raider", 2.2f, 35.8f, 152f),
-            ("Rogue", -4.6f, 34.9f, 208f),
-            ("Knight", 4.9f, 31.2f, 174f),
-            ("Acolyte", 6.8f, 35.4f, 160f),
-            ("Minion", 8.7f, 32.1f, 186f),
-            ("SkelRogue", 10.2f, 36.2f, 150f),
+            // 자리를 **보는 눈에서 벌렸다**(검수 경증 2026-09-09: 왼쪽 둘이 한 덩이로 읽힘).
+            // 월드 거리로는 4m 떨어져 있어도 시선 방향으로 늘어서면 화면에서는 겹친다 —
+            // 그래서 `HuntViewEye` 기준 **방위각**을 −30°~+33°에 6.9° 이상 간격으로 흩고,
+            // 이웃한 방위각끼리는 **거리를 번갈아**(11~17m) 둬 활 모양으로 안 보이게 했다.
+            ("Skeleton", -0.4f, 36.2f, 168f),
+            ("Bandit", -1.5f, 31.7f, 196f),
+            ("Raider", 2.2f, 32.2f, 152f),
+            ("Rogue", -5.5f, 35.3f, 208f),
+            ("Knight", 4.4f, 35.9f, 174f),
+            ("Acolyte", 5.9f, 32.5f, 160f),
+            ("Minion", 8.8f, 35.8f, 186f),
+            ("SkelRogue", 9.5f, 31.4f, 150f),
         };
+
+        /// <summary>사냥터를 **보는 눈**(마을 쪽 남에서 북을 본다) — QA 샷 카메라(`03_hunt_mobs`)와
+        /// 겹침 게이트가 이 한 자리를 같이 쓴다. 재는 자와 찍는 자가 다르면 초록인데 화면은 겹친다.</summary>
+        public static readonly Vector2 HuntViewEye = new Vector2(2.8f, 21f);
+        public const float HuntViewEyeHeight = 6.0f;
+        public static readonly Vector2 HuntViewTarget = new Vector2(2.8f, 33.5f);
+        public const float HuntViewTargetHeight = 1.0f;
 
         /// <summary>
         /// 사냥터 잡몹을 흩고 **지표에 세운다**. 두 가지가 겹쳐 있었다:
