@@ -16,8 +16,18 @@ PERSIST = "http://127.0.0.1:8777/character/"
 
 def normalize(j):
     j["Ghost"] = False
-    if float(j.get("Hp", 0)) <= 0:
-        j["Hp"] = 50.0
+    # **픽스처를 결정론으로**(검수 판정 2026-09-08). 예전엔 「HP가 0이면 50으로」만 했다 —
+    # 그러면 계정이 랩마다 자라 MaxHp·데미지가 판마다 달라지고, PvP 타격 수 상수는 **시간을 사는
+    # 유예**가 된다(실제로 26대로 모자라 40으로 올렸다). 시작 상태를 못 박아 타격 수를 유도한다.
+    #   MaxHp = 20 + Str(`StatSet.MaxHpOf`) → Str 30이면 **50**.
+    #   맨손 한 대 = 기본 8 + Str/10(3) + 전술/20(0) + 해부/20(0) = **11**  (`AttackResolve.Resolve`)
+    #   → 필요한 **명중** 수 = ceil(50/11) = 5. 프로브는 재사용(1.1s,`OfflineWorld.attackCooldown`)보다
+    #     조금 긴 **1.2s 간격**으로 때리므로 시도가 곧 명중 → **12번**(명중 5 + 여유 2.4배).
+    #   (`DualClientProbe`의 PvP 반복이 그 12다 — 두 자리가 같은 유도를 공유한다.)
+    j["Str"], j["Dex"], j["Int"] = 30, 25, 30
+    j["Hp"] = 50.0
+    j["Mana"] = 35.0
+    j["Skills"] = []
     # **골드는 「최소 얼마」가 아니라 정확히 32.** 축 ③이 「길드 25 + 붕대 5 = 30을 쓰고 2가 남는다」를
     # 실측하고, 남은 2로는 철검(40)을 못 사는 것으로 치트 거절을 본다 — 여유 골드가 있으면
     # 치트가 성공해도 「원래 살 수 있었다」와 구별이 안 된다(픽스처가 판정을 만든다).
@@ -109,6 +119,23 @@ if [[ ! -x "$CLIENT_BIN" ]]; then
   exit 2
 fi
 
+# **인프라 실패 ≠ 이슈 실패**(검수 판정 2026-09-08). 저장소(8777)가 죽어 있으면 골드 0·가방 빈 값이
+# 내려와 축 ③·④가 통째로 FAIL로 찍혔다 — 그건 결함이 아니라 **못 잰 것**이다. 시작 때 한 번 묻고,
+# 죽었으면 FAIL(1·8)이 아니라 **rc=9 「못 잼」**으로 멈춘다(빨간불과 무응답을 같은 색으로 칠하지 않는다).
+if ! python3 - <<'ALIVE'
+import sys, urllib.request
+try:
+    with urllib.request.urlopen("http://127.0.0.1:8777/character/ds-a", timeout=3) as r:
+        sys.exit(0 if r.read() else 1)
+except Exception:
+    sys.exit(1)
+ALIVE
+then
+  echo "못 잼 — 영속 저장소(http://127.0.0.1:8777)가 응답하지 않습니다. 결함이 아니라 계측 불가입니다." >&2
+  echo "  띄우는 곳: cwd /Users/junholee/ai_lab/projects/ulon, 데이터 .../projects/ulon/data" >&2
+  exit 9
+fi
+
 for source_root in "$ROOT/unity/Assets/Game" "$ROOT/unity/Packages" "$ROOT/unity/ProjectSettings"; do
   newer="$(find "$source_root" -type f ! -name '.gitkeep' ! -name '.DS_Store' -newer "$CLIENT_BIN" -print -quit)"
   if [[ -n "$newer" ]]; then
@@ -148,7 +175,11 @@ sleep 0.6
 "$CLIENT_BIN" -batchmode -nographics -ulon-client -ulon-check -ulon-role observer -ulon-account ds-b "${NC_ARGS[@]}" -ulon-out "$OUT/b.json" -logFile "$OUT/b.log" &
 BPID=$!
 
-for i in {1..120}; do
+# **기다리는 시간은 프로브 예산에서 나온다.** 120×0.4=48s였는데 프로브 예산은 100s다 —
+# 검사가 먼저 지쳐 `cleanup`이 클라를 죽이는 바람에 PvP가 매번 같은 자리에서 잘렸다
+# (상대 HP가 두 판 연속 정확히 6으로 남은 것이 그 증거였다: 못 맞힌 게 아니라 끊긴 것).
+# 프로브 예산 100s + 종료·기록 여유 → 300×0.4=120s.
+for i in {1..300}; do
   if [[ -f "$OUT/a.json" && -f "$OUT/b.json" ]]; then
     break
   fi
@@ -157,7 +188,7 @@ done
 
 # 클라들이 **완전히 종료할 때까지** 기다린다 — 저장소 오염 판정은 종료 시점 동작이라
 # 프로세스가 살아 있는 동안 읽으면 아무것도 못 본다.
-for i in {1..40}; do
+for i in {1..120}; do
   if ! kill -0 "$APID" 2>/dev/null && ! kill -0 "$BPID" 2>/dev/null; then
     break
   fi

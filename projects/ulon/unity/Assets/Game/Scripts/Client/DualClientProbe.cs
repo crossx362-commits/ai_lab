@@ -28,7 +28,11 @@ namespace Ulon.Client
         {
             string role = Cli.Get("-ulon-role", "observer");
             string outPath = Cli.Get("-ulon-out", "");
-            float deadline = Time.realtimeSinceStartup + 60f;   // 파티 단계가 붙어 예산을 늘렸다(20s로는 관찰자가 못 끝냈다). PvP 40대(14s)까지 담으려 60s로(2026-09-08)
+            // 예산은 **마지막 단계가 끝나는 데 필요한 시간**이다 — 60s로는 PvP 12대(14.4s)가 중간에
+            // 잘려 상대가 HP 6으로 살아남았다(실측 2회: 44 피해 = 명중 4회에서 끊김. 때리는 간격을
+            // 0.35s→1.2s로 바꿔도 같은 값이 나온 것이 「끊긴 것이지 못 맞힌 게 아니다」의 증거다).
+            // 앞 단계들(접속·파티·길드·경제·스킬·시체)이 45~50s를 쓰므로 PvP 몫 15s + 여유 = 100s.
+            float deadline = Time.realtimeSinceStartup + 100f;
 
             while (Time.realtimeSinceStartup < deadline)
             {
@@ -177,16 +181,34 @@ namespace Ulon.Client
                     // 「상대가 죽었으면 멈춘다」로 짜 봤다가 되돌렸다: 때리는 쪽 화면에 있는 **상대 몸의
                     // HP는 서버가 그 화면에 내려 준 값이 아니다** — 남의 값을 믿고 멈추면 계측기가
                     // 제 눈으로 못 본 것을 기준으로 삼는 셈이다.
-                    for (int hit = 0; hit < 40 && Time.realtimeSinceStartup < deadline; hit++)
+                    // **40은 유예였지 수리가 아니었다**(검수 판정 2026-09-08). 계정이 자라 MaxHp가 오르는
+                    // 것이 원인이면 언젠가 40도 모자란다 — 상수를 키우는 건 시간을 사는 일이다.
+                    // 그래서 **픽스처를 못 박고**(`two_client_check.sh`가 Str 30·스킬 0·HP 50으로 되돌린다)
+                    // 그 값에서 수를 유도한다:
+                    //   상대 MaxHp = 20 + Str(30) = 50, 맨손 한 대 = 8 + Str/10 = 11 → 명중 5회.
+                    // **때리는 간격도 유도한다.** 0.35s로 퍼부으면 대부분 `attack fail cooldown`으로 버려진다
+                    // (실측: 30번 때려 명중 4번, 44 피해 = 11×4). 재사용 1.1s보다 **조금 긴 1.2s**로 두면
+                    // 시도가 곧 명중이다 → 필요한 12번(명중 5 + 여유 2.4배)이 14.4s, 100s 예산 안.
+                    // 유도가 바뀌면(무기·능력치·재사용) 픽스처와 이 두 수를 같이 고쳐야 한다 — 한 몸이다.
+                    for (int hit = 0; hit < 12 && Time.realtimeSinceStartup < deadline; hit++)
                     {
                         mine.RpcRequestAttack(other.NetworkObject);
-                        yield return new WaitForSeconds(0.35f);
+                        yield return new WaitForSeconds(1.2f);
+                        // 진단용 — 때리는 쪽 화면에 비친 상대 HP(권위 아님, 판정에 안 쓴다).
+                        var ob = other.GetComponent<WorldBody>();
+                        Debug.Log("[Ulon] pvp 시도 " + (hit + 1) + " 상대 화면 HP " +
+                                  (ob != null ? ob.Hp.ToString("0") : "?") + " t " +
+                                  Time.realtimeSinceStartup.ToString("0.0"));
                     }
                 }
             }
             else
             {
-                float until = Time.realtimeSinceStartup + 5f;
+                // **기다리는 쪽의 시간도 때리는 쪽에서 유도한다**(검수 판정 2026-09-08의 뒷맛).
+                // 5s 고정이었는데 때리는 쪽은 명중 5회 = 1.2s×5 = 6s가 필요하다 — 맞는 쪽이 **죽기 전에**
+                // 제 HP를 적어서, 화면 값이 매 판 정확히 6으로 남았다(때리는 쪽 진단 로그에서는
+                // 시도 5에 0이 됐다). 때리는 쪽 창(12×1.2=14.4s)에 자리 잡는 1s를 더해 16s.
+                float until = Time.realtimeSinceStartup + 16f;
                 while (Time.realtimeSinceStartup < until && Time.realtimeSinceStartup < deadline)
                     yield return null;
             }
