@@ -74,6 +74,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureCapBuried();        // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
             VisualSliceBuilder.EnsureOutdoorPropMaterials(); // 야외에 남은 던전 텍스처를 마을 톤으로
+            VisualSliceBuilder.EnsureWorldAtmosphere();    // 대기는 원장 하나에서 — 씬에 옛 값이 남아 있으면 여기서 수렴한다
             VisualSliceBuilder.EnsureDecorClearOfPeople();  // 사람 몸에 박힌 장식은 장식이 비킨다(검수 판정 2026-09-08)
             VisualSliceBuilder.ClearPropsFromBuildings();   // 건물에 박힌 소품도 소품이 비킨다 — 위 `Ensure*`가
                                                            // 집을 다시 지으면(부지 집) 커밋된 덤불이 그 안에 남는다(2026-09-09)
@@ -1801,6 +1802,8 @@ namespace Ulon.Editor
             AssertHuntSpotsApartNegativeControl();           // 간격 자는 `AssertHuntGround` 안에서 잰다
             AssertDoorFitsPersonNegativeControl();           // 배율을 뺀 집은 빨간불이어야 한다(랩 B)
             AssertDoorFitsPerson();                          // 문이 사람보다 큰가 — 킷 배율의 근거
+            AssertAtmosphereFromLedgerNegativeControl();          // 하늘·앰비언트·안개가 원장 하나에서 오는가(양방향 NC)
+            AssertAtmosphereFromLedger();
             AssertVillagePropsClearOfBuildingsNegativeControl();  // 던전 소품 자를 마을로 넓힌 것(양방향 NC)
             AssertVillagePropsClearOfBuildings();             // 울타리가 벽을 뚫고 등이 처마에 박히지 않는가
             AssertActorBodyMatchesCapsuleNegativeControl();  // 먼저 자가 우는지 본다

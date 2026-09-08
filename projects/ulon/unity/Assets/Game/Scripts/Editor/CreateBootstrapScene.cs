@@ -23,8 +23,7 @@ namespace Ulon.Editor
         public static void Create()
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.55f, 0.58f, 0.52f);
+            VisualSliceBuilder.EnsureWorldAtmosphere();   // 대기는 원장 하나에서 — 여기 다시 적지 않는다
             Light sun = Object.FindAnyObjectByType<Light>();
             if (sun != null)
             {

@@ -309,8 +309,7 @@ namespace Ulon.Editor
 
         static void SetupLighting()
         {
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.55f, 0.58f, 0.52f);
+            EnsureWorldAtmosphere();      // 앰비언트는 대기 원장이 정한다 — 여기서 따로 적지 않는다
             Light sun = FindSun();
             if (sun == null)
                 return;
@@ -364,13 +363,53 @@ namespace Ulon.Editor
         /// 안개 범위는 월드 크기를 따라간다 — 42~115m로는 300m 월드에서 산·바다가 통째로 안개에 묻혀
         /// §8.1 「멀리서도 즉시 읽히는 실루엣」이 성립하지 않는다(2026-09-06 조망 샷 실측).
         /// </summary>
+        // ── 대기 원장 ─────────────────────────────────────────────────────────────
+        // 하늘·앰비언트·안개는 **한 곳에서만** 정해진다. 셋이 갈라져 있던 자리다(2026-09-09):
+        // 앰비언트가 `SetupLighting`(0.55,0.58,0.52) · `SetupSky`(0.58,0.62,0.55) ·
+        // `CreateBootstrapScene`(0.55,0.58,0.52) 세 곳에 각각 적혀 마지막에 부른 쪽이 이겼다.
+        // 「해가 셋」과 같은 결의 결함이다 — **값이 여럿이면 화면은 그중 하나만 보여 주고 나머지는 거짓말이다.**
+        public static readonly Color AmbientLight = new Color(0.55f, 0.58f, 0.52f);
+        public static readonly Color FogColor = new Color(0.55f, 0.70f, 0.86f);
+        public const float FogStart = 90f;
+        public static readonly Color SkyTint = new Color(0.4f, 0.58f, 0.95f);
+        public static readonly Color SkyGroundColor = new Color(0.58f, 0.72f, 0.88f);
+        public const float SkyExposure = 1.15f;
+        public const float SkySunSize = 0.04f;
+        /// <summary>
+        /// 대기 두께 — **하늘 색을 정하는 것은 이 값 하나다**(검수 관찰 2026-09-09 `14_world_vista`:
+        /// 「수평선 위 하늘의 넓은 띠가 형광 연두」). 판별 테스트로 원인을 갈랐다: 노출·해 색·안개를
+        /// 각각 바꿔도 띠 색은 rgb(178,227,101) 그대로였고, **두께만** 움직였다
+        /// (0.30→(51,75,171) · 0.40→(70,104,215) · 0.50→(90,133,235) · 0.60→(111,161,230) ·
+        ///  0.75→(141,196,185) · 0.95→(178,227,101)). 감마 공간에서 두꺼운 대기는 산란이 녹색으로 넘어간다.
+        /// 0.60을 고른 근거: 띠 색 (111,161,230)이 안개 색 (140,178,219)과 같은 하늘 계열이고,
+        /// 0.75부터 g가 b를 넘어 다시 초록으로 기운다.
+        /// </summary>
+        public const float SkyAtmosphere = 0.60f;
+
+        /// <summary>하늘·앰비언트·안개를 원장 값으로 맞춘다 — 이 함수 밖에서 대기를 건드리지 마라.</summary>
         public static void EnsureWorldAtmosphere()
         {
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = AmbientLight;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.55f, 0.70f, 0.86f);
-            RenderSettings.fogStartDistance = 90f;
+            RenderSettings.fogColor = FogColor;
+            RenderSettings.fogStartDistance = FogStart;
             RenderSettings.fogEndDistance = WorldTerrain.Span * 1.6f;
+            ApplySkyLedger(RenderSettings.skybox);
+        }
+
+        /// <summary>스카이박스 재질에 원장 값을 새긴다(재질이 없으면 아무것도 안 한다).</summary>
+        public static void ApplySkyLedger(Material sky)
+        {
+            if (sky == null || sky.shader == null || sky.shader.name != "Skybox/Procedural")
+                return;
+            sky.SetFloat("_SunSize", SkySunSize);
+            sky.SetFloat("_AtmosphereThickness", SkyAtmosphere);
+            sky.SetColor("_SkyTint", SkyTint);
+            sky.SetColor("_GroundColor", SkyGroundColor);
+            sky.SetFloat("_Exposure", SkyExposure);
+            EditorUtility.SetDirty(sky);
         }
 
         public static void EnsureVillageTerrain()

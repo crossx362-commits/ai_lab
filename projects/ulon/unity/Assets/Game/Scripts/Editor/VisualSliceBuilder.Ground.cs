@@ -184,17 +184,10 @@ namespace Ulon.Editor
             if (sky != null && shader != null)
             {
                 sky.shader = shader;
-                sky.SetFloat("_SunSize", 0.04f);
-                sky.SetFloat("_AtmosphereThickness", 0.95f);
-                sky.SetColor("_SkyTint", new Color(0.4f, 0.58f, 0.95f));
-                sky.SetColor("_GroundColor", new Color(0.58f, 0.72f, 0.88f));
-                sky.SetFloat("_Exposure", 1.15f);
-                EditorUtility.SetDirty(sky);
+                ApplySkyLedger(sky);          // 값은 대기 원장에서 온다 — 여기는 재질을 만들고 붙일 뿐이다
                 RenderSettings.skybox = sky;
             }
             EnsureWorldAtmosphere();
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.58f, 0.62f, 0.55f);
         }
 
         static void ImproveGround()
