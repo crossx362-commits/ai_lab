@@ -73,6 +73,10 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
             VisualSliceBuilder.EnsureOutdoorPropMaterials(); // 야외에 남은 던전 텍스처를 마을 톤으로
             VisualSliceBuilder.EnsureDecorClearOfPeople();  // 사람 몸에 박힌 장식은 장식이 비킨다(검수 판정 2026-09-08)
+            // **드레싱·역할 외형이 다 끝난 뒤** 그림 크기를 충돌체에 맞춘다(랩 A). 앞쪽에 두었더니
+            // 뒤따르는 역할 외형 패스가 훈련사를 다시 키워 게이트가 1.14배로 빨간불이었다 —
+            // 맞추는 자가 여럿이면 **마지막에 서는 자**가 이긴다.
+            VisualSliceBuilder.EnsureActorBodyMatchesCapsule();
             VisualSliceBuilder.EnsureActorsOnSurface();
             VisualSliceBuilder.EnsureWeaponsAboveFloor();  // 몸을 세운 **뒤** 무기를 바닥 위로(같은 원인의 다른 얼굴)    // **스케일·드레싱이 다 끝난 뒤** 발을 바닥에 다시 붙인다
 
@@ -1783,6 +1787,8 @@ namespace Ulon.Editor
             AssertCampfireHasFire();
             AssertRoleLookNegativeControl();
             AssertRoleLook();
+            AssertActorBodyMatchesCapsuleNegativeControl();  // 먼저 자가 우는지 본다
+            AssertActorBodyMatchesCapsule();                // 그림이 충돌체와 같은 크기인가(랩 A)
             AssertGearFoundByPlace();                      // 장비를 이름표로만 찾지 않는가(랩 ①, 양방향 NC)
             // **맨 끝**에 둔다 — 이 게이트는 빌더를 다시 부르고, 빌더는 첫 줄에서 씬을 다시 연다.
             AssertActorRosterFree();                        // 액터 선정이 이름 명단인가(랩 ③, 양방향 NC)

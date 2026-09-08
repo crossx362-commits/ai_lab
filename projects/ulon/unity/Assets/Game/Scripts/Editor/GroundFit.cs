@@ -281,6 +281,31 @@ namespace Ulon.Editor
             return false;
         }
 
+        /// <summary>시설 부속(`FacPart*`) 밑인가 — **조상까지 올라가며** 본다(이름이 자식에 안 붙어 있다).</summary>
+        public static bool IsFacilityPart(Transform actor, Transform t)
+        {
+            for (var p = t; p != null && p != actor; p = p.parent)
+                if (p.name.StartsWith("FacPart", System.StringComparison.Ordinal))
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 액터의 **사람 몸** 바운드 — 장비도 시설 부속도 뺀다(랩 A, 2026-09-09).
+        ///
+        /// `BodyBounds`는 장비만 뺀다. 그런데 훈련사에는 **시설 장식(2.0m 배너, `FacPart*`)** 이
+        /// 자식으로 달려 있어 「몸 2.00m」로 읽혔고, 그림-충돌체 게이트가 사람이 아니라 배너를 쟀다.
+        /// QA 샷이 같은 함정에 이미 걸려 같은 규칙을 제 안에 적어 두고 있었다 —
+        /// **같은 로직이 두 곳에 살면 재발한다**. 여기 한 곳에 두고 둘 다 부른다.
+        ///
+        /// 스킨드 메시만 세는 방법도 재 봤으나 **틀린다**: KayKit은 투구·머리 장식이 뼈에 물린
+        /// 정적 메시라 사람이 통째로 작아지고(실측 12체가 잘못 커졌다), 그 값으로 맞추면 세계가 틀어진다.
+        /// </summary>
+        public static bool PersonBounds(Transform actor, out Bounds bounds)
+        {
+            return WorldBounds(actor, out bounds, t => IsGear(actor, t) || IsFacilityPart(actor, t));
+        }
+
         /// <summary>액터의 **몸** 바운드(장비 제외).</summary>
         public static bool BodyBounds(Transform actor, out Bounds bounds)
         {

@@ -392,7 +392,7 @@ namespace Ulon.Editor
             // 몸이 2.9m로 읽혔고 카메라가 5.5m 뒤로 물러나 사람이 콩알이 됐다(첫 촬영본 47).
             if (go.GetComponent<CharacterController>() != null &&
                 GroundFit.WorldBounds(go.transform, out Bounds body,
-                    t => GroundFit.IsGear(go.transform, t) || IsFacilityPart(go.transform, t)))
+                    t => GroundFit.IsGear(go.transform, t) || GroundFit.IsFacilityPart(go.transform, t)))
             {
                 box = body;
                 any = true;
@@ -721,15 +721,6 @@ namespace Ulon.Editor
             if (toEye.sqrMagnitude < 0.0001f)
                 return 0f;
             return Vector3.Dot(toEye.normalized, person.forward);
-        }
-
-        /// <summary>시설 부속(FacPart*) 밑인가 — **조상까지 올라가며** 본다(이름이 자식에 안 붙어 있다).</summary>
-        static bool IsFacilityPart(Transform actor, Transform t)
-        {
-            for (var p = t; p != null && p != actor; p = p.parent)
-                if (p.name.StartsWith("FacPart", System.StringComparison.Ordinal))
-                    return true;
-            return false;
         }
 
         /// <summary>

@@ -520,6 +520,70 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// **그림이 충돌체와 같은 크기인가**(랩 A, 2026-09-09 — 대장 판정).
+        ///
+        /// 실측: 액터 15체 중 **플레이어만** 몸 2.63m·캡슐 1.80m로 **1.46배**였다(나머지는 전부 1.00).
+        /// 원인은 크기를 고치는 패스(`EnsureMobSizes`)가 **몹 원장(`MobId`)에 묶인 것만** 손대기
+        /// 때문이다 — 플레이어는 원장 밖이라 어느 패스도 안 봤고, 씬에 저장된 옛 크기가 그대로 남았다.
+        /// 「Ensure가 일찍 반환할 때 이미 있는 것이 옳은지는 아무도 안 본다」의 또 한 사례다.
+        ///
+        /// 그래서 **원장이 아니라 자리로** 잰다: 몸(구운 스킨, 장비 제외)의 키는 그 액터의
+        /// `CharacterController` 높이와 같아야 한다. 캡슐은 모든 액터가 반드시 가지는 것이고
+        /// (없으면 배우도 아니다 — `ActorsToDress`), 전투 거리·카메라·충돌이 이미 그것을 쓴다.
+        /// 멱등: 게이트가 받아 주는 폭(8%) 안이면 손대지 않는다.
+        /// </summary>
+        public static void EnsureActorBodyMatchesCapsule()
+        {
+            var actors = ActorsToDress();
+            var fixedNames = new List<string>();
+            var skipped = new List<string>();
+            for (int i = 0; i < actors.Length; i++)
+            {
+                var root = actors[i].transform;
+                var cc = actors[i].GetComponent<CharacterController>();
+                if (cc == null)
+                    continue;
+                float want = cc.height * root.lossyScale.y;
+                if (want <= 0.01f)
+                {
+                    skipped.Add(root.name + "(캡슐 높이 0)");
+                    continue;
+                }
+                // 키를 **어디에 걸어야 하는가**는 만드는 쪽과 같은 곳이어야 한다(멧돼지 3cm 사고).
+                var target = root.Find("Visual") ?? root;
+                // 사람 몸만 잰다 — 장비도 시설 장식(훈련사 배너 2.0m)도 빼고(GroundFit.PersonBounds).
+                if (!GroundFit.PersonBounds(root, out Bounds b) || b.size.y < 0.01f)
+                {
+                    skipped.Add(root.name + "(사람 몸을 못 쟀다)");
+                    continue;
+                }
+                float before = b.size.y;
+                if (Mathf.Abs(before - want) / want <= 0.08f)
+                    continue;
+                float got = FitSkinHeight(root, target, want);
+                if (GroundFit.PersonBounds(root, out Bounds after))
+                    target.position += new Vector3(0f, root.position.y - after.min.y, 0f);
+                // **메시가 루트 자체에 붙은 액터는 루트를 줄이면 캡슐도 같이 줄어든다**(훈련사 실측:
+                // 그림 2.90→1.75인데 캡슐이 1.75→1.06으로 따라 내려가 비율이 그대로 1.89였다).
+                // 그림만 줄이는 것이 목적이므로 **캡슐의 월드 높이를 원래대로 되돌린다** —
+                // 전투 거리·충돌은 이 값을 쓰니 세계 규칙은 손대지 않는다.
+                if (target == root)
+                {
+                    float lossy = Mathf.Max(0.0001f, root.lossyScale.y);
+                    cc.height = want / lossy;
+                    cc.radius = Mathf.Clamp(cc.height * 0.18f, 0.22f / lossy, 0.4f / lossy);
+                    cc.center = new Vector3(cc.center.x, cc.height * 0.5f, cc.center.z);
+                }
+                fixedNames.Add(root.name + " " + before.ToString("0.00") + "→" + got.ToString("0.00") +
+                               "m(캡슐 " + want.ToString("0.00") + "m" + (target == root ? ", 루트 배율 보정" : "") + ")");
+            }
+            Debug.Log("[Ulon] 그림-충돌체 크기 맞춤 — 액터 " + actors.Length + "체 중 " + fixedNames.Count +
+                      "체 조정" + (skipped.Count > 0 ? "·" + skipped.Count + "체 건너뜀" : "") + ". 조정: " +
+                      (fixedNames.Count == 0 ? "(전부 이미 맞다)" : string.Join(", ", fixedNames)) +
+                      (skipped.Count == 0 ? "" : " / 건너뜀: " + string.Join(", ", skipped)));
+        }
+
+        /// <summary>
         /// 잰 키를 목표에 맞춘다 — **반응을 재서** 맞춘다.
         ///
         /// 「배율을 r배 하면 키도 r배」는 **추측**이다. 멧돼지는 루트를 1/37로 줄이자 키가 1/1170으로
@@ -528,6 +592,31 @@ namespace Ulon.Editor
         /// 여기서는 한 번 곱해 보고 **지수 e = log(변화)/log(배율)** 를 실측한 뒤 그 지수로 푼다.
         /// 사람형(e≈1)도 짐승(e≈2)도 같은 코드로 두세 번에 수렴한다.
         /// </summary>
+        /// <summary>사람 몸만 보고 맞춘다 — 재는 자와 맞추는 자는 하나여야 한다(랩 A).</summary>
+        static float FitSkinHeight(Transform actor, Transform target, float want)
+        {
+            float e = 1f;
+            float got = 0f;
+            for (int pass = 0; pass < 8; pass++)
+            {
+                if (!GroundFit.PersonBounds(actor, out Bounds cur) || cur.size.y < 0.0001f)
+                    return got;
+                got = cur.size.y;
+                if (Mathf.Abs(got - want) / want < 0.02f)
+                    return got;
+                float f = Mathf.Pow(want / got, 1f / Mathf.Clamp(e, 0.5f, 4f));
+                f = Mathf.Clamp(f, 0.02f, 50f);
+                target.localScale = target.localScale * f;
+                if (!GroundFit.PersonBounds(actor, out Bounds next) || next.size.y < 0.0001f)
+                    return got;
+                float lf = Mathf.Log(f);
+                if (Mathf.Abs(lf) > 0.001f)
+                    e = Mathf.Clamp(Mathf.Log(next.size.y / got) / lf, 0.5f, 4f);
+                got = next.size.y;
+            }
+            return got;
+        }
+
         static float FitMeasuredHeight(Transform actor, Transform target, float want)
         {
             float e = 1f;
