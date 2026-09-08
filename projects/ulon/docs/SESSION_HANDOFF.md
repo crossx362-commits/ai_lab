@@ -77,10 +77,14 @@ c472d0e6(물레방아 삭제·지하 제외를 자리로), 5e47eef2(낚시터 �
 - **다음 랩은 검수가 줄 세운다**(축 끝). 남은 것: 위치 권위(`_clientAuthoritative`) · 시체 내용물 ·
   **전역 하나로 들고 있는 상태 전수**(`ActiveVendor`·`Selected` 등, 검수 판정으로 지금 고치지 않음) ·
   `VisualSliceBuilder` 추가 정리 · 에셋 팩.
-- **확인 요청 답(끊긴 클라)**: 재접속하면 서버 값이 이긴다 — `RpcBind`가 **서버 쪽 저장소**를 읽어
-  `CharacterBinder.Apply`로 몸에 얹고, 그 뒤 SyncVar가 덮는다. **다만** `PersistDriver`는 클라
-  프로세스에서도 `OnDestroy → SaveLocal()`로 **자기 계정 스냅샷을 공유 저장소에 쓴다** — 끊긴 클라가
-  제 값을 올려 다음 로그인에 읽힐 수 있다(코드 기준, 아직 실측 아님).
+- **저장소 문 닫음** — `485d3f37`. `CharacterStore.Save/SaveHouse/SaveStable`(저장소로 나가는 자리
+  전수 3곳)에 문을 달고, `EconomyAuthority.ClientOnly`를 **끈적하게** 했다(끊긴 클라는
+  `ClientManager.Started`가 false라 종료 직전에 문이 열린다). 게이트: 정상 판 안에서 클라가
+  검사 전용 계정 `storeprobe`에 12345를 써 보고 **0이어야** 통과 · NC로 문을 떼면 12345 → rc=5.
+- **확인 요청 답(끊긴 클라)**: 재접속하면 서버 값이 이긴다(`RpcBind` → 서버 저장소 → SyncVar).
+  **앞선 보고 정정**: `PersistDriver.OnDestroy → SaveLocal`은 클라에서 **실제로는 안 쓴다** —
+  그 시점엔 `OfflineWorld.Instance`가 이미 null이라 건너뛴다(로그로 확인). 다만 클라가 **직접**
+  `CharacterStore.Save`를 부르면 그대로 써졌고(실측), 그 길을 위에서 막았다.
 - 미결(축 ④ 또는 그 뒤): ①`OfflineWorld.ActiveVendor`가 **전역 하나**다 — 온라인에서 한 사람이 연
   상점이 모두의 상점이 된다(축 ③에서 발견, 안 고침) ②시체 껍데기에 **항목이 없다** — 시신 회수의
   결과(골드·가방)는 이제 내려오지만 「시체 안에 무엇이 있나」를 클라가 보는 것은 「누가 볼 수 있나」를
