@@ -116,6 +116,13 @@ namespace Ulon.Shared
                 layer = Tilled;
             }
 
+            float hunt = HuntCoverAt(wx, wz);
+            if (hunt > weight)
+            {
+                weight = hunt;
+                layer = hunt > 0.62f ? Soil : Gravel;   // 짙은 데는 밟혀 드러난 흙, 옅은 데는 마른 자갈
+            }
+
             float plaza = PlazaCoverAt(wx, wz);
             if (plaza > weight)
             {
@@ -151,6 +158,39 @@ namespace Ulon.Shared
             float ew = Inside(mx, -8f, 10f, mz, -1f, 1f);
             float ns = Inside(mx, -1f, 1f, mz, -7f, 11f);
             return Mathf.Max(square, Mathf.Max(ew, ns));
+        }
+
+        /// <summary>
+        /// **사냥터 — 짐승이 다닌 자리**(검수 랩 ④ 「형광 초록 당구대」).
+        /// 세어 보니 그 일대 지표는 **Grass 98%**였다(`OutdoorCensus` 사냥터 지표) — 도포가 한 겹이면
+        /// 아무리 몹을 잘 흩어도 화면은 당구대다. 밭·광산처럼 **그 자리에서 일어나는 일**을 바닥에 적는다:
+        /// 몹이 도는 안쪽은 밟혀 흙이 드러나고, 바깥으로 가면서 마른 자갈로 성기게 풀린다.
+        /// 얼룩은 결정적 노이즈다 — 매 판 같은 그림이어야 검수가 같은 화면을 본다.
+        /// </summary>
+        public static readonly Vector2 HuntGround = new Vector2(5.88f, 70.35f);
+        /// <summary>
+        /// **무리 모양대로 닳는다** — 잡몹 여덟은 가로 31m·세로 10m로 서 있다(자리 원장 실측).
+        /// 원으로 깔았더니 얼룩이 무리 앞쪽 잔디로 번져 「몹은 잔디에, 흙은 그 앞에」가 됐다.
+        /// 다니는 모양이 곧 닳는 모양이다.
+        /// </summary>
+        public const float HuntRadius = 20f;
+        public const float HuntRadiusZ = 11f;
+
+        public static float HuntCoverAt(float wx, float wz)
+        {
+            float ex = (wx - HuntGround.x) / HuntRadius;
+            float ez = (wz - HuntGround.y) / HuntRadiusZ;
+            float d = Mathf.Sqrt(ex * ex + ez * ez) * HuntRadius;
+            if (d > HuntRadius * 1.35f)
+                return 0f;
+            // 가장자리를 원으로 끊지 않는다 — 둘레를 흔들어 「자연히 닳은 자리」로 만든다.
+            float wobble = (Mathf.PerlinNoise(wx * 0.07f + 91f, wz * 0.07f + 33f) - 0.5f) * 9f;
+            float core = 1f - Mathf.Clamp01((d + wobble - HuntRadius * 0.45f) / (HuntRadius * 0.75f));
+            if (core <= 0f)
+                return 0f;
+            // 안에서도 고르게 칠하지 않는다 — 성글게 벗겨진 얼룩이라야 「밟힌 자리」로 읽힌다.
+            float patch = Mathf.PerlinNoise(wx * 0.16f + 7f, wz * 0.16f + 61f);
+            return Mathf.Clamp01(core * (0.35f + patch * 0.85f));
         }
 
         /// <summary>사각형 안이면 1, 가장자리 한 칸에서 0으로 — 돌포장이 칼로 자른 듯 끝나지 않게.</summary>

@@ -52,6 +52,29 @@ namespace Ulon.Editor
                 if (matUse[k] >= 3)
                     Debug.Log("[Census] 마을 재질 " + k + " × " + matUse[k]);
 
+            // **지표부터 센다**(검수 지시 2026-09-09 — 「형광 초록 당구대」). 소품을 세기 전에
+            // 그 자리에 무엇이 깔려 있는지 본다: 도포가 한 겹이면 화면은 단색이 된다.
+            {
+                var sum = new float[Ulon.Shared.WorldSplat.LayerCount];
+                int n = 0;
+                for (int gx = -6; gx <= 6; gx++)
+                    for (int gz = -6; gz <= 6; gz++)
+                    {
+                        float wx = VisualSliceBuilder.HuntViewTarget.x + gx * 4f;
+                        float wz = VisualSliceBuilder.HuntViewTarget.y + gz * 4f;
+                        int layer = Ulon.Shared.WorldSplat.CoverAt(wx, wz, out float weight);
+                        if (layer >= 0 && layer < sum.Length)
+                            sum[layer] += weight;
+                        sum[0] += Mathf.Max(0f, 1f - (layer >= 0 ? weight : 0f));   // 나머지는 풀이다
+                        n++;
+                    }
+                var names = new[] { "Grass0", "Rock1", "Sand2", "Tilled3", "Soil4", "Gravel5", "Road6", "Cobble7" };
+                for (int L = 0; L < sum.Length; L++)
+                    if (sum[L] / n > 0.005f)
+                        Debug.Log("[Census] 사냥터 지표 " + (L < names.Length ? names[L] : "L" + L) + " 평균 " +
+                                  (sum[L] / n).ToString("0.000"));
+            }
+
             var nodes = new List<Transform>();
             var boxes = new List<Bounds>();
             Collect(nodes, boxes);
@@ -150,6 +173,9 @@ namespace Ulon.Editor
             if (Mathf.Abs(p.x) <= VisualSliceBuilder.VillageFadeRadius &&
                 Mathf.Abs(p.z) <= VisualSliceBuilder.VillageFadeRadius)
                 return "마을";
+            if (new Vector2(p.x - VisualSliceBuilder.HuntViewTarget.x,
+                            p.z - VisualSliceBuilder.HuntViewTarget.y).magnitude <= 30f)
+                return "사냥터";
             if (Near(p, WorldRegions.Meadow)) return "밭";
             if (Near(p, WorldRegions.Forest)) return "숲";
             if (Near(p, WorldRegions.Mine)) return "광산";

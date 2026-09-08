@@ -725,7 +725,9 @@ namespace Ulon.Editor
         /// 겹침 게이트가 이 한 자리를 같이 쓴다. 재는 자와 찍는 자가 다르면 초록인데 화면은 겹친다.</summary>
         public static readonly Vector2 HuntViewEye = new Vector2(2.8f, 21f) * KitScale;
         public const float HuntViewEyeHeight = 6.0f;
-        public static readonly Vector2 HuntViewTarget = new Vector2(2.8f, 33.5f) * KitScale;
+        /// 도포 원장(`WorldSplat.HuntGround`)과 **같은 자리**를 본다 — 바닥이 닳은 곳과 몹이 도는 곳이
+        /// 어긋나면 「밟힌 자리」가 아니라 「얼룩 옆에 선 몹」이 된다.
+        public static readonly Vector2 HuntViewTarget = Ulon.Shared.WorldSplat.HuntGround;
         public const float HuntViewTargetHeight = 1.0f;
 
         /// <summary>
