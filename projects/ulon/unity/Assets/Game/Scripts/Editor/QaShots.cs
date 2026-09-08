@@ -46,6 +46,8 @@ namespace Ulon.Editor
             string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "../../builds/qa"));
             Directory.CreateDirectory(dir);
 
+            BearingNegativeControl("Forge");
+
             var shots = new[]
             {
                 Orbit("01_village_square", new Vector3(0f, 0f, 0f), 20f, 35f),
@@ -376,6 +378,56 @@ namespace Ulon.Editor
         /// 각도(pitch·yaw)는 플레이 카메라와 같게 둔다 — 게임에서 보는 방향 그대로 판정하기 위해서다.
         /// **이건 플레이 거리 샷이 아니다**(자산이 무엇으로 읽히는지 보는 확대 샷이다) — 숨기지 않고 적는다.
         /// </summary>
+
+        /// <summary>
+        /// **방위 선택 네거티브 컨트롤** — 시설 앞에 **콜라이더 없는** 이웃을 세우면 방위가 바뀌는가.
+        ///
+        /// 콜라이더로 걸면 이번 구멍을 못 잰다: 예전 자가 콜라이더 광선이었고, 이웃 좌판·집 지붕에
+        /// 콜라이더가 없어 「100% 보임」이 나왔던 것이 결함의 전부였다(검수 조건 2026-09-09).
+        /// 그래서 막는 물건도 **보이기만 하고 콜라이더가 없는** 것으로 세운다.
+        /// </summary>
+        static void BearingNegativeControl(string facility)
+        {
+            var before = FacilityCloseUp("nc_bearing", facility);
+            var subject = FindSubject(facility);
+            if (subject == null)
+                throw new System.InvalidOperationException("방위 NC 대상이 없습니다: " + facility + "(0이면 실패).");
+
+            var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wall.name = "QaBearingNcWall";
+            Object.DestroyImmediate(wall.GetComponent<Collider>());     // **콜라이더 없이** — 이것이 이번 구멍이다
+            wall.transform.localScale = new Vector3(8f, 8f, 0.4f);
+            var eyeDir = (before.Eye - before.Target);
+            eyeDir.y = 0f;
+            wall.transform.position = before.Target + eyeDir.normalized * 2.0f + Vector3.up * 2f;
+            wall.transform.rotation = Quaternion.LookRotation(eyeDir.normalized);
+            ClearBlockerCache();                                        // 세계가 바뀌었으면 캐시도 버린다
+            Shot after;
+            try
+            {
+                after = FacilityCloseUp("nc_bearing", facility);
+            }
+            finally
+            {
+                Object.DestroyImmediate(wall);
+                ClearBlockerCache();
+            }
+            var back = FacilityCloseUp("nc_bearing", facility);
+
+            float moved = Vector3.Distance(new Vector3(before.Eye.x, 0f, before.Eye.z),
+                                           new Vector3(after.Eye.x, 0f, after.Eye.z));
+            if (moved < 1f)
+                throw new System.InvalidOperationException("방위 네거티브 컨트롤 실패 — " + facility +
+                    " 앞에 콜라이더 없는 벽을 세웠는데 카메라가 " + moved.ToString("0.00") +
+                    "m밖에 안 움직였습니다(가림을 안 재고 있습니다).");
+            float returned = Vector3.Distance(before.Eye, back.Eye);
+            if (returned > 0.5f)
+                throw new System.InvalidOperationException("방위 네거티브 컨트롤 실패 — 벽을 치웠는데 방위가 안 돌아왔습니다(" +
+                    returned.ToString("0.00") + "m).");
+            Debug.Log("[Ulon] 방위 NC 통과 — " + facility + " 앞에 콜라이더 없는 벽을 세우면 카메라가 " +
+                      moved.ToString("0.0") + "m 비켜서고, 치우면 제자리로 돌아온다.");
+        }
+
         static Shot FacilityCloseUp(string name, string objectName) => FacilityCloseUp(name, objectName, null);
 
         /// <param name="beyond">
@@ -392,6 +444,9 @@ namespace Ulon.Editor
         /// </param>
         static Shot FacilityCloseUp(string name, string objectName, Vector3? beyond, bool lowAngle)
         {
+            // **캐시는 한 샷보다 오래 살면 안 된다** — NC가 세계에 판을 세웠다 치웠다 하는데
+            // 캐시가 남아 있으면 자가 옛 세계를 잰다(실측: 은행원 NC가 「둘러쌌는데도 통과」로 울었다).
+            ClearBlockerCache();
             var go = FindSubject(objectName);
             if (go == null)
                 return new Shot { Name = name, Eye = new Vector3(0f, 5f, -5f), Target = Vector3.zero };
@@ -464,35 +519,19 @@ namespace Ulon.Editor
                         for (int sz = -1; sz <= 1; sz++)
                         {
                             var p = box.center + new Vector3(sx * box.extents.x * 0.6f, sy * box.extents.y * 0.6f, sz * box.extents.z * 0.6f);
-                            var seg = p - eyeK;
                             total++;
                             // **사람은 콜라이더로 가려짐을 못 잰다** — 좌판·집 같은 시설은 콜라이더가
                             // 없거나 성기어서 광선이 그냥 통과했고, 「100% 보인다」로 고른 방위에서
                             // 화면엔 벽만 찍혔다(첫 촬영본 46: 상인이 아예 없었다).
                             // 사람 피사체는 **보이는 것**(렌더러 바운드)으로 가려짐을 잰다.
-                            if (byRenderer)
-                            {
-                                if (BlockedByRenderer(eyeK, p, go.transform))
-                                    continue;
-                                seen++;
+                            // **시설도 사람과 같은 자로 잰다**(검수 판정 2026-09-09).
+                            // 예전엔 시설만 **콜라이더 광선**으로 쟀는데 이웃 좌판·집 지붕엔 콜라이더가
+                            // 없어 광선이 그냥 통과했다 — `30_forge`는 「표본 100% 보임」으로 기본 방위를
+                            // 고르고 화면엔 이웃 지붕만 찍혔다. **자가 있는데 고르는 쪽이 안 부른 것**이다.
+                            // 사람 쪽은 이미 렌더러(=보이는 것)로 옳게 재고 있었으므로 그 자를 부른다.
+                            if (BlockedByRenderer(eyeK, p, go.transform))
                                 continue;
-                            }
-                            var hits = Physics.RaycastAll(eyeK, seg.normalized, seg.magnitude, ~0, QueryTriggerInteraction.Ignore);
-                            System.Array.Sort(hits, (u, v) => u.distance.CompareTo(v.distance));
-                            bool blocked = false;
-                            for (int h = 0; h < hits.Length; h++)
-                            {
-                                if (hits[h].collider == null || SliceSelfCheck.IsTerrainCollider(hits[h].collider))
-                                    continue;
-                                // **「내 콜라이더에 맞았는가」로 재면 안 된다** — 발판·돌·분수처럼 콜라이더가
-                                // 없는 시설은 광선이 그냥 통과해 「안 보임」으로 세어졌다(실측 11%).
-                                // 재려는 것은 **가림**이다: 남의 것이 먼저 맞으면 가려진 것이고, 아무것도
-                                // 안 맞으면 뚫려 있는 것이다.
-                                blocked = !hits[h].collider.transform.IsChildOf(go.transform);
-                                break;                      // 가장 가까운 것 하나만 본다
-                            }
-                            if (!blocked)
-                                seen++;
+                            seen++;
                         }
                 float share = total > 0 ? seen / (float)total : 0f;
                 // **사람은 앞에서 찍는다 — 선호가 아니라 규칙이다**(검수 반려 2026-09-07).
@@ -799,6 +838,24 @@ namespace Ulon.Editor
         /// 눈에서 표본점까지 **보이는 것**이 가로막는가 — 콜라이더가 아니라 렌더러 바운드로 잰다.
         /// 피사체 자신과 지형은 막는 것으로 세지 않는다(지형은 발밑이라 늘 걸린다).
         /// </summary>
+
+        /// <summary>
+        /// 가림 판정이 훑는 렌더러 목록 — **한 판에 한 번만** 모은다.
+        /// 시설 근접까지 렌더러로 재게 되면서 호출이 표본 27 × 방위 24로 늘었다.
+        /// 매번 `FindObjectsByType`를 돌면 잰 값은 같은데 시간만 든다.
+        /// 수명은 **한 샷**이다 — `FacilityCloseUp` 첫 줄에서 버린다(NC가 판을 세웠다 치웠다 하므로).
+        /// </summary>
+        static Renderer[] blockerCache;
+
+        static Renderer[] BlockerCache()
+        {
+            if (blockerCache == null)
+                blockerCache = Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            return blockerCache;
+        }
+
+        static void ClearBlockerCache() => blockerCache = null;
+
         static bool BlockedByRenderer(Vector3 eye, Vector3 point, Transform subject)
             => BlockedByRenderer(eye, point, subject, out _);
 
@@ -835,7 +892,7 @@ namespace Ulon.Editor
             if (len < 0.001f)
                 return false;
             var ray = new Ray(eye, seg / len);
-            var rends = Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var rends = BlockerCache();
             for (int i = 0; i < rends.Length; i++)
             {
                 if (!rends[i].enabled || rends[i] is ParticleSystemRenderer)
