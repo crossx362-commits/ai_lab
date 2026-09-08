@@ -234,6 +234,15 @@ namespace Ulon.Editor
             // 지붕은 벽 위에 **걸친다** — 딱 붙여 놓으면 실측에서 0.8m 틈이 생겨 쿼터뷰 광선이 그 틈으로
             // 새고(페이드 대상 0개), 화면에서도 지붕이 떠 보였다.
             float wallTop = BankWallHeight(bank);
+            // **폭은 건물에 맞추되 높이는 눌러 준다**(검수 2026-09-08 「던전 입구 뒤 회색 큰 판」).
+            // `RoomPropObject`는 한 배율로 키우므로 폭 5.4m에 맞추면 지붕 높이가 3.3m가 돼
+            // 벽 2.4m + 지붕 3.3m = 5.7m — 옆 민가(약 4m)보다 커서 화면에서 건물이 아니라 판때기로 읽혔다.
+            const float RoofH = 1.4f;   // 벽 2.4m 위에 얹어 총 3.8m — 민가와 같은 눈높이
+            if (roof != null && BoundsOf(roof.transform, true, out Bounds rh) && rh.size.y > 0.001f)
+            {
+                var s = roof.transform.localScale;
+                roof.transform.localScale = new Vector3(s.x, s.y * (RoofH / rh.size.y), s.z);
+            }
             if (roof != null && BoundsOf(roof.transform, true, out Bounds rb))
                 roof.transform.position += new Vector3(at.x, at.y + wallTop - 0.35f, at.z) - new Vector3(rb.center.x, rb.min.y, rb.center.z);
             var chimney = RoomPropObject(bank.transform, "BankChimney", Town + "chimney.fbx",
