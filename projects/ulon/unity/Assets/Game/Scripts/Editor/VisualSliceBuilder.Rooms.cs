@@ -289,6 +289,9 @@ namespace Ulon.Editor
         /// 방 한가운데는 전투 공간으로 비우고, 소품은 벽 쪽·모서리에 둔다(검수 요구).
         /// 방 구조물과 같은 블로커 레이어라 카메라 앞에 오면 벽처럼 페이드된다.
         /// </summary>
+        /// <summary>짐이 돌기둥을 비켜서는 최소 각(축 기준). 24°는 실측으로 고른 값이다 — 18°에서도 파고들었다.</summary>
+        const float PillarClearDeg = 24f;
+
         public static void EnsureRoomFurnishing()
         {
             const string Dg = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/";
@@ -339,9 +342,16 @@ namespace Ulon.Editor
                 }
 
                 // 벽 쪽 짐 — 궤짝·통·상자. 수로 채우지 않는다(검수: 물량이 곧 반려 사유였다).
-                for (int k = 0; k < 12; k++)
+                // **자리는 12칸이 아니라 8칸**이다(2026-09-08 실측 수리). 예전 12칸(30°마다, 위상 20°)은
+                // 축 방향에 선 돌기둥과 10°(=1.1m)밖에 안 떨어져 `Load5`가 기둥에 **100% 파고들어** 있었다.
+                // 재 본 다른 판 둘은 각각 이렇게 깨졌다: ㉠고리를 안쪽으로(half−3.0m) → 소품이 몰려
+                // **허공 게이트 NC가 죽었다**(자 하나 맞추다 다른 자를 부순다) ㉡겹치는 슬롯만 옆으로 밀기
+                // → 밀린 슬롯이 **이웃 짐과** 겹쳤다. 그래서 자리 자체를 기둥에서 30° 떨어진 8칸으로 바꿨다
+                // (사분면마다 둘 — 분포 게이트 그대로, 종류는 8종 1개씩이라 편중도 없다).
+                for (int k = 0; k < 8; k++)
                 {
-                    float a = (k * 30f + 20f) * Mathf.Deg2Rad;
+                    float deg = (k / 2) * 90f + (k % 2 == 0 ? 30f : 60f);
+                    float a = deg * Mathf.Deg2Rad;
                     float r = half - 1.7f - Mathf.Abs(Jitter(1.2f));
                     var p = new Vector3(center.x + Mathf.Sin(a) * r, y, center.z + Mathf.Cos(a) * r);
                     string fbx = loadFbx[k % loadFbx.Length];
@@ -352,11 +362,31 @@ namespace Ulon.Editor
                     placed += RoomProp(room, "DungeonFurnLoad" + k, fbx, p, a * Mathf.Rad2Deg + 180f, h, true) ? 1 : 0;
                 }
 
+                // **중간 고리 — 시선을 끊는 자리 넷**(검수 2026-09-08: 「소품이 전부 벽에 몰려 방 한가운데가
+                // 텅 비어 창고 벽면처럼 읽힌다」). 전투 공간(중앙 반경 `CombatClearRadius`)은 그대로 비우고,
+                // 그 바깥 반경 4.6m·축 방향 네 자리에 부러진 기둥과 잔해를 둔다 — 벽 짐(반경 6.3m·30°/60°)과는
+                // 각·반경 둘 다 벌어지고, 벽 기둥(같은 축·반경 7.3m)과는 2.7m 떨어진다.
+                for (int k = 0; k < 4; k++)
+                {
+                    float a = k * 90f * Mathf.Deg2Rad;
+                    float r = 4.6f;
+                    var p = new Vector3(center.x + Mathf.Sin(a) * r, y, center.z + Mathf.Cos(a) * r);
+                    bool stump = k % 2 == 0;
+                    placed += RoomProp(room, "DungeonFurnBreak" + k,
+                        stump ? Dg + "pillar.obj" : Dg + "rubble_large.obj",
+                        p, (float)rng.NextDouble() * 360f,
+                        PlayerHeight * (stump ? 0.78f : 0.40f), true) ? 1 : 0;
+                }
+
                 // 잔해 — 모서리에 넷만. 물량으로 쓰면 방이 채석장이 된다(검수 반려).
+                // **네 모서리로 밀어 넣는다**: 예전엔 짐과 같은 반경(half−1.5)에 45°로 놓아서
+                // 30°마다 도는 짐(50°·140°…)과 5°밖에 안 떨어졌고, 실측에서 잔해가 궤짝 안에
+                // **100% 파고들어** 있었다(`AssertPropsNotOverlapping` 첫 판정). 방은 정사각형이라
+                // 45° 방향은 벽까지 half×1.41m다 — 그 사이로 들어가면 짐 고리와 3m 벌어진다.
                 for (int k = 0; k < 4; k++)
                 {
                     float a = (k * 90f + 45f) * Mathf.Deg2Rad;
-                    float r = half - 1.5f;
+                    float r = half * 1.20f;
                     var p = new Vector3(center.x + Mathf.Sin(a) * r, y, center.z + Mathf.Cos(a) * r);
                     placed += RoomProp(room, "DungeonFurnRubble" + k, rubbleFbx[k % rubbleFbx.Length],
                         p, (float)rng.NextDouble() * 360f,
