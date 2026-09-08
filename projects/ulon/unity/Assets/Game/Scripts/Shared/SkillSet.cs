@@ -12,6 +12,20 @@ namespace Ulon.Shared
         readonly SkillLock[] locks = new SkillLock[(int)SkillId.Count];
 
         public float Get(SkillId id) => values[(int)id];
+
+        /// <summary>
+        /// **서버가 알려 준 스킬 원장을 그대로 얹는다** — 문을 지나지 않는 유일한 자리(축 ④).
+        /// 28개를 하나씩 SyncVar로 만들지 않는다: 원장 하나를 한 줄로 받아 **전량**을 여기에 쓴다
+        /// (가방과 같은 형태). 그래야 「대표 몇 개만 서버 값, 나머지는 클라 값」이 안 생긴다.
+        /// </summary>
+        public void ApplyNetworkValues(float[] incoming)
+        {
+            if (incoming == null)
+                return;
+            int n = Math.Min(incoming.Length, values.Length);
+            for (int i = 0; i < n; i++)
+                values[i] = Math.Clamp(incoming[i], 0f, IndividualCap);
+        }
         public SkillLock GetLock(SkillId id) => locks[(int)id];
 
         public void SetLock(SkillId id, SkillLock state) => locks[(int)id] = state;
@@ -34,6 +48,11 @@ namespace Ulon.Shared
 
         public bool TrySet(SkillId id, float value)
         {
+            // **스킬을 올려 주는 쪽은 서버다**(§662 Skill Gain은 서버가 판정, 축 ④).
+            // 클라가 제 값을 올려 놓고 어려운 행동을 시도하는 것을 여기서 막는다 — 문은 하나다
+            // (`EconomyAuthority`, 골드·가방과 같은 문). 받아 적는 자리만 이 문을 지나지 않는다.
+            if (WriteAuthority.Refuse("스킬 변경 " + id))
+                return false;
             int idx = (int)id;
             if (locks[idx] == SkillLock.Locked)
                 return false;
@@ -64,6 +83,8 @@ namespace Ulon.Shared
 
         public void ForceSet(SkillId id, float value, SkillLock lockState)
         {
+            if (WriteAuthority.Refuse("스킬 강제 설정 " + id))
+                return;
             values[(int)id] = Math.Clamp(value, 0f, IndividualCap);
             locks[(int)id] = lockState;
         }

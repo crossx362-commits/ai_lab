@@ -32,6 +32,13 @@ namespace Ulon.Server
             }
         }
 
+        /// <summary>바닥 어셈블리(`Ulon.Shared`)에 문고리를 꽂는다 — 판정은 여기 하나뿐이다.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static void Install()
+        {
+            WriteAuthority.Refuse = Refuse;
+        }
+
         static float nextLogAt;
 
         /// <summary>거절을 조용히 하지 마라 — 왜 안 바뀌었는지 로그가 없으면 다음 사람이 못 찾는다.</summary>

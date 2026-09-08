@@ -27,6 +27,10 @@ namespace Ulon.Client
         // 개수만 보면 다른 물건이 같은 수로 있어도 통과한다(검수 조건 3).
         readonly SyncVar<int> gold = new SyncVar<int>();
         readonly SyncVar<string> bagSig = new SyncVar<string>();
+        // 축 ④ — **스킬 원장 전량을 한 줄로**. 예전엔 `skill`(검술 하나)만 내려왔는데 **읽는 곳이
+        // 검사 프로브뿐**이라 화면은 여전히 클라 로컬 값을 그렸다 — SyncVar가 있는데 화면은 딴 값,
+        // 빈 통과의 전형이다(검수 지적). 그래서 화면이 읽는 자리(`OfflineWorld.SkillsOf`)에 얹는다.
+        readonly SyncVar<string> skillSig = new SyncVar<string>();
         string accountId;
 
         public float SwordSkill => skill.Value;
@@ -35,6 +39,7 @@ namespace Ulon.Client
         public bool ServerGhost => ghost.Value;
         public int ServerGold => gold.Value;
         public string ServerBag => bagSig.Value;
+        public string ServerSkills => skillSig.Value;
 
         public override void OnStartClient()
         {
@@ -72,7 +77,14 @@ namespace Ulon.Client
                     maxHp.Value = body.MaxHp;
                     ghost.Value = body.Ghost;
                     gold.Value = body.Gold;
-                    bagSig.Value = BagSignature(GetComponent<InventoryBag>());
+                    // 문자열 두 줄은 **매 프레임 새로 짜지 않는다**(SyncVar는 값이 같으면 안 나가지만
+                    // 문자열을 만드는 비용은 매 프레임 든다). 0.25초마다면 화면에 늦음이 안 보인다.
+                    if (Time.time >= nextSigAt)
+                    {
+                        nextSigAt = Time.time + 0.25f;
+                        bagSig.Value = BagSignature(GetComponent<InventoryBag>());
+                        skillSig.Value = SkillSignature(OfflineWorld.Instance?.SkillsOf(body));
+                    }
                     PublishCorpse();
                 }
                 return;
@@ -88,6 +100,35 @@ namespace Ulon.Client
             var myBag = GetComponent<InventoryBag>();
             if (myBag != null)
                 myBag.ApplyNetworkItems(ParseBag(bagSig.Value));
+            // **화면이 읽는 자리에 얹는다** — HUD·행동 판정이 보는 것은 `OfflineWorld.SkillsOf(body)`다.
+            var mySkills = OfflineWorld.Instance != null ? OfflineWorld.Instance.SkillsOf(body) : null;
+            if (mySkills != null && !string.IsNullOrEmpty(skillSig.Value))
+                mySkills.ApplyNetworkValues(ParseSkills(skillSig.Value));
+        }
+
+        float nextSigAt;
+
+        /// <summary>스킬 원장을 한 줄로 — `SkillId` 순서대로 값만 `|`로 잇는다(전량, 대표만이 아니다).</summary>
+        internal static string SkillSignature(SkillSet skills)
+        {
+            if (skills == null)
+                return "";
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < (int)SkillId.Count; i++)
+            {
+                if (sb.Length > 0) sb.Append('|');
+                sb.Append(skills.Get((SkillId)i).ToString("0.###"));
+            }
+            return sb.ToString();
+        }
+
+        static float[] ParseSkills(string sig)
+        {
+            var parts = sig.Split('|');
+            var v = new float[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+                float.TryParse(parts[i], out v[i]);
+            return v;
         }
 
         /// <summary>가방을 한 줄로 — `템플릿:개수:남은횟수` 를 `|`로 잇는다(빈 가방은 빈 문자열).</summary>

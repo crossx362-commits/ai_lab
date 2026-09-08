@@ -77,6 +77,8 @@ namespace Ulon.Client
             // 서버가 `attack fail ghost`로 거절하고, 검사는 판마다 결과가 달라진다(실측).
             yield return PvpHp(role, mine, deadline);
             yield return Economy(role, mine, deadline);
+            // 축 ④ — 스킬은 **서버가 올려 준다**. 몹 사냥(아래)이 검술을 올리므로 그 앞뒤로 잰다.
+            SkillsSnapshot(mine, out skSwordBefore, out skMiningBefore, out skMageryBefore, out skillsSeen);
 
             // 살아 있는가·땅 위인가 — 판정은 스크립트가 한다(여기서는 잰 값만 남긴다).
             var myBodyNow = mine.GetComponent<WorldBody>();
@@ -123,6 +125,9 @@ namespace Ulon.Client
             float effectDeadline = Time.realtimeSinceStartup + 2f;
             while (Time.realtimeSinceStartup < effectDeadline && ActionVfx.Played == 0)
                 yield return null;
+
+            SkillsSnapshot(mine, out skSwordAfter, out skMiningAfter, out skMageryAfter, out skillsSeen);
+            SkillCheat(mine);
 
             float hpAfter = body.Hp;
             bool ok = avatars >= 2 && hasMob && hpAfter < hpBefore && ActionVfx.Played > 0 && ActionSfx.Played > 0;
@@ -245,6 +250,49 @@ namespace Ulon.Client
             Debug.Log("[Ulon] 축3 실측 — 골드 " + ecoGoldBefore + " → " + ecoGoldAfter +
                       " · 치트가 먹혔나 " + ecoCheatStuck + " · 클라 구매가 먹혔나 " + ecoLocalBuy);
         }
+
+        /// <summary>
+        /// **화면이 읽는 자리에서 잰다** — HUD도 행동 판정도 `OfflineWorld.SkillsOf(body)`를 본다.
+        /// 대표 셋(검술·채광·마법)만 판정하지만, 값은 **원장 전량**이 같은 한 줄로 내려온다
+        /// (`skillsSeen` = 받은 항목 수. 28개가 다 오는지 여기서 센다 — 대표만 오면 빈 통과다).
+        /// </summary>
+        static void SkillsSnapshot(NetAvatar mine, out float sword, out float mining, out float magery, out int seen)
+        {
+            sword = mining = magery = -1f;
+            seen = 0;
+            var body = mine.GetComponent<WorldBody>();
+            var skills = OfflineWorld.Instance != null && body != null ? OfflineWorld.Instance.SkillsOf(body) : null;
+            if (skills == null)
+                return;
+            sword = skills.Get(SkillId.Swordsmanship);
+            mining = skills.Get(SkillId.Mining);
+            magery = skills.Get(SkillId.Magery);
+            string sig = mine.ServerSkills ?? "";
+            seen = string.IsNullOrEmpty(sig) ? 0 : sig.Split('|').Length;
+        }
+
+        /// <summary>
+        /// **치트 시도** — 클라가 제 스킬을 올려 놓고 어려운 행동을 하려 한다(축 ④, 검수 조건 3).
+        /// 문(`EconomyAuthority`)이 막으면 값이 안 붙는다. NC로 문을 떼면 붙는다.
+        /// </summary>
+        static void SkillCheat(NetAvatar mine)
+        {
+            var body = mine.GetComponent<WorldBody>();
+            var skills = OfflineWorld.Instance != null && body != null ? OfflineWorld.Instance.SkillsOf(body) : null;
+            if (skills == null)
+                return;
+            float seenValue = skills.Get(SkillId.Swordsmanship);
+            skills.TrySet(SkillId.Swordsmanship, 90f);
+            skCheatStuck = skills.Get(SkillId.Swordsmanship) > seenValue + 0.5f;
+            Debug.Log("[Ulon] 축4 실측 — 검술 " + skSwordBefore.ToString("0.###") + " → " +
+                      skSwordAfter.ToString("0.###") + " · 원장 항목 " + skillsSeen +
+                      " · 치트가 먹혔나 " + skCheatStuck);
+        }
+
+        static float skSwordBefore = -1f, skSwordAfter = -1f;
+        static float skMiningBefore = -1f, skMiningAfter = -1f, skMageryBefore = -1f, skMageryAfter = -1f;
+        static int skillsSeen;
+        static bool skCheatStuck;
 
         static int ecoGoldBefore = -1, ecoGoldAfter = -1;
         static string ecoBagBefore = "", ecoBagAfter = "", ecoBagAfterCheat = "";
@@ -469,6 +517,12 @@ namespace Ulon.Client
                           + ",\"ecoBagAfterCheat\":\"" + ecoBagAfterCheat + "\""
                           + ",\"ecoCheatStuck\":" + (ecoCheatStuck ? "true" : "false")
                           + ",\"ecoLocalBuy\":" + (ecoLocalBuy ? "true" : "false")
+                          + ",\"skSwordBefore\":" + skSwordBefore.ToString("0.###")
+                          + ",\"skSwordAfter\":" + skSwordAfter.ToString("0.###")
+                          + ",\"skMiningAfter\":" + skMiningAfter.ToString("0.###")
+                          + ",\"skMageryAfter\":" + skMageryAfter.ToString("0.###")
+                          + ",\"skillsSeen\":" + skillsSeen
+                          + ",\"skCheatStuck\":" + (skCheatStuck ? "true" : "false")
                           + "}";
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, json, new UTF8Encoding(false));

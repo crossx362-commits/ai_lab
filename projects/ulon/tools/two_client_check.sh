@@ -80,6 +80,7 @@ if [[ "${1:-}" == "--nc-nosync" ]]; then
 fi
 # 경제 권한 NC(축 ③) — **클라 쪽 문을 뗀다**(`EconomyAuthority`). 그러면 클라가 제 손으로 골드를
 # 올리고 제 판정으로 물건을 사 넣는다(오늘까지의 실제 동작). 그때 검사는 빨간불이어야 한다.
+# (같은 문이 스킬도 막는다 — 축 ④의 치트 NC도 이 스위치다. 문이 하나라 NC도 하나다.)
 if [[ "${1:-}" == "--nc-localeconomy" ]]; then
   NC_ARGS=(-ulon-nc-localeconomy 1)
   EXPECT_FAIL=1
@@ -207,7 +208,19 @@ ok = (a.get("connected") and b.get("connected")
       #    (이 둘이 참이면 「이름만 서버 권위」다 — 값만 내려오고 정하는 쪽은 클라다.)
       and a.get("ecoCheatStuck") is False and a.get("ecoLocalBuy") is False
       and "iron_sword" not in a.get("ecoBagAfterCheat", "")
+      # **축 ④: 스킬은 서버가 올려 준다**(§662). 화면이 읽는 자리(`OfflineWorld.SkillsOf`)에서 잰다.
+      # ① 몹을 때리면 검술이 오르고 그 값이 **클라 화면 값**으로 내려온다.
+      and a.get("skSwordAfter", -1) > a.get("skSwordBefore", 99)
+      # ② 대표 셋만 오는 게 아니라 **원장 전량**이 같은 한 줄로 온다(항목 수로 센다).
+      and a.get("skillsSeen", 0) >= 28 and b.get("skillsSeen", 0) >= 28
+      # ③ 채집계·마법계도 같은 경로를 탄다 — 값이 안 변해도 **내려와 있어야** 한다(-1이면 못 받은 것).
+      and a.get("skMiningAfter", -1) >= 0 and a.get("skMageryAfter", -1) >= 0
+      # ④ 치트 — 클라가 제 스킬을 올릴 수 없다.
+      and a.get("skCheatStuck") is False and b.get("skCheatStuck") is False
       and alive(a) and alive(b))
+print("축4 스킬 — 검술", a.get("skSwordBefore"), "→", a.get("skSwordAfter"),
+      "· 원장 항목", a.get("skillsSeen"), "· 채광", a.get("skMiningAfter"),
+      "· 마법", a.get("skMageryAfter"), "· 치트 먹힘", a.get("skCheatStuck"))
 print("축3 골드·가방 — 골드", a.get("ecoGoldBefore"), "→", a.get("ecoGoldAfter"),
       "· 가방", repr(a.get("ecoBagBefore")), "→", repr(a.get("ecoBagAfter")),
       "· 치트 먹힘", a.get("ecoCheatStuck"), "· 클라 구매 먹힘", a.get("ecoLocalBuy"))
