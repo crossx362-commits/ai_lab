@@ -428,6 +428,15 @@ namespace Ulon.Editor
                       moved.ToString("0.0") + "m 비켜서고, 치우면 제자리로 돌아온다.");
         }
 
+        /// <summary>근접 샷 거리 여유 — 시설 반대각의 몇 배 거리에서 보나(1.0 = 딱 화면 높이에 꽉 참).</summary>
+        const float CloseUpFramingSlack = 2.0f;
+
+        /// <summary>사람 근접은 온몸이 들어오게 맞춰 둔 옛 값 그대로다(시설만 넓힌다).</summary>
+        const float PersonFramingSlack = 1.35f;
+
+        /// <summary>내려보기 각 1°당 깎는 점수 — 65°가 35°를 이기려면 표본이 6% 더 보여야 한다.</summary>
+        const float SteepPitchPenalty = 0.002f;
+
         static Shot FacilityCloseUp(string name, string objectName) => FacilityCloseUp(name, objectName, null);
 
         /// <param name="beyond">
@@ -486,8 +495,15 @@ namespace Ulon.Editor
             }
             var target = any ? box.center : go.transform.position + Vector3.up;
             float radius = any ? Mathf.Max(box.extents.magnitude, 0.6f) : 1.5f;
-            // 화면 높이의 절반을 채우려면 거리 = 반지름 / tan(화각/2) — 여기에 1.35배 여유(가장자리 잘림 방지).
-            float dist = radius / Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad) * 1.35f;
+            // 거리 = 바운드 **반대각** / tan(화각/2) × 여유. 1.35였을 때 대장간이 프레임에 안 들어오고
+            // 굴뚝·통만 찍혔다(검수 반려 2026-09-09) — 화면 세로는 맞아도 **가로 16:9로 퍼지는 폭**과
+            // 시설이 기울어 선 방향의 대각이 프레임을 넘었다. 2.0이면 시설이 통째로 들어오고
+            // 이웃이 먹는 비율도 같이 준다(아래 실측). 자를 안 만들고 **굽는 쪽 상수 하나**로 듣는다.
+            // **사람은 그대로 1.35다** — 2.0을 사람에게도 먹였더니 훈련사가 화면 높이의 3분의 1로
+            // 줄어 「역할이 서로 다른가」를 읽을 수 없었다(실측 3.3m→4.9m). 사람 근접의 거리는
+            // 이미 온몸이 들어오게 맞춰 둔 값이다 — 시설이 안 들어온다고 사람까지 물리면 개악이다.
+            float slack = go.GetComponent<CharacterController>() != null ? PersonFramingSlack : CloseUpFramingSlack;
+            float dist = radius / Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad) * slack;
             var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
             float pitch = qv != null ? qv.Pitch : 35f;
             float baseYaw = qv != null ? qv.Yaw : 45f;
@@ -497,6 +513,7 @@ namespace Ulon.Editor
             float bestYaw = baseYaw;
             float bestPitch = pitch;
             float bestSeen = -1f;
+            float bestScore = -99f;
             float bestDist = -1f;
             float bestLit = -2f;
             var blockers = new System.Collections.Generic.List<string>();
@@ -604,7 +621,12 @@ namespace Ulon.Editor
                     }
                     continue;
                 }
-                if (share > bestSeen + 0.02f) { bestSeen = share; bestYaw = y; bestPitch = pit; }
+                // **시설은 위에서 내려다보면 지붕만 보인다** — 가림 표본은 「막혔나」만 재고
+                // 「무엇이 화면을 채우나」는 안 잰다(제 차양은 자식이라 가림으로 안 세어진다).
+                // 그래서 급한 내려보기 각에 값을 매긴다: 65°가 35°를 이기려면 6% 더 보여야 한다
+                // (실측: 잡화점이 65°로 넘어가 화면 절반이 제 차양의 분홍 지붕이 됐다).
+                float score = share - pit * SteepPitchPenalty;
+                if (score > bestScore + 0.02f) { bestScore = score; bestSeen = share; bestYaw = y; bestPitch = pit; }
             }
             // **차선으로 찍지 않는다**(검수 지시 2026-09-08). 뚫린 방위가 하나도 없으면 그 사실이
             // 곧 배치 보고다 — 기본 방위로 찍어 두되 **이름과 함께 실패로 올린다**(`PersonShotClear`).
