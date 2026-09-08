@@ -824,6 +824,13 @@ namespace Ulon.Editor
                 if (grew > 0f)
                     Debug.Log("[Ulon] 렌즈 앞 비우기 " + name + " — " + grew.ToString("0.0") + "m 물러났다");
                 var eyeFinal = target - rot * Vector3.forward * dist;
+                // **못 찍는 자리는 못 찍는다고 적는다**(검수 판정 2026-09-09). 은행원은 몸이 은행
+                // 껍데기에 박혀 있지 않다 — 그냥 벽 앞에 서 있고, 근접 하한(1.9m)이 렌즈를 벽 속에
+                // 넣는 것뿐이다. **세계는 옳고 이 각도로 못 찍는 것**이므로, 세계를 비트는 대신 사실을 남긴다.
+                if (personBox && EyeCrowded(eyeFinal, target, go.transform))
+                    Debug.Log("[Ulon] 못 찍는 자리 " + name + " — 카메라가 " + nn + "(" + nd.ToString("0.00") +
+                              "m) 안에 선다. 근접 하한 " + InsidePullFloor.ToString("0.0") +
+                              "m가 렌즈를 벽 속에 넣는다 — 세계는 옳고 이 각도로는 못 찍는다.");
                 Debug.Log("[Ulon] 렌즈 앞 " + name + " — 가장 가까운 남의 물건 " + nd.ToString("0.00") + "m " + nn +
                           " · 자 판정 " + (EyeCrowded(eyeFinal, target, go.transform) ? "막힘" : "안 막힘") +
                           " · 사람샷 " + personBox);

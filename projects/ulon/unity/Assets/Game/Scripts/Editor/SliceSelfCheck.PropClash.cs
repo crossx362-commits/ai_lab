@@ -143,19 +143,9 @@ namespace Ulon.Editor
         internal const float FireWallGap = 1.0f;
 
         /// <summary>
-        /// **가게 사람과 제 가게 벽 사이 최소 거리.** 값은 취향이 아니라 **근접 샷의 하한에서 유도**한다:
-        /// 사람 근접은 1.9m까지 당겨서 찍으므로(`InsidePullFloor`), 사람이 벽에서 그만큼 안 떨어져 있으면
-        /// **카메라가 벽 속에 선다** — 그래서 은행원 타일이 반투명 판으로 찍혔다. 1.0m로 뒀다가 여전히
-        /// 벽 뒤였고(실측 1.15m), 하한 1.9m에 한 뼘을 더해 2.05m로 잡는다.
-        /// 자와 굽는 쪽(`KeepPeopleOffWalls`)이 같은 값을 읽는다.
-        /// </summary>
-        internal const float PersonWallGap = 2.05f;
-
-        /// <summary>
-        /// **방은 사람을 빼고 잰다.** 처음엔 건물 루트 바운드를 그대로 썼는데, 그 바운드에는 **자식으로
-        /// 든 NPC 자신**이 들어 있었다 — 사람을 벽에서 떼면 바운드가 같이 줄어 벽이 사람을 따라왔고,
-        /// 굽는 쪽이 옮겼는데 자는 그대로 「붙어 있다」고 했다(실측 2026-09-09: 옮긴 뒤 0.44m).
-        /// 자가 자기 대상을 기준에 넣으면 그 자는 절대 만족될 수 없다.
+        /// **방은 사람을 빼고 잰다.** 건물 루트 바운드에는 **자식으로 든 NPC 자신**이 들어 있어서,
+        /// 사람을 벽에서 떼면 바운드가 같이 줄어 벽이 사람을 따라왔다(실측 2026-09-09: 옮긴 뒤 0.44m).
+        /// 자가 제 대상을 기준에 넣으면 그 자는 절대 만족되지 않는다.
         /// </summary>
         internal static bool RoomBounds(Transform building, out Bounds room)
         {
@@ -173,19 +163,19 @@ namespace Ulon.Editor
             return any;
         }
 
-        /// <summary>사람과 자기 가게 벽 사이 수평 거리(안에 서 있으면 0).</summary>
-        static float WallDistance(Vector3 pos, Bounds room)
-        {
-            var flat = new Vector3(Mathf.Clamp(pos.x, room.min.x, room.max.x), room.center.y,
-                                   Mathf.Clamp(pos.z, room.min.z, room.max.z));
-            return new Vector2(pos.x - flat.x, pos.z - flat.z).magnitude;
-        }
-
+        /// <summary>
+        /// **묻는 것은 「벽에서 얼마」가 아니라 「몸이 껍데기에 박혔나」다**(검수 판정 2026-09-09).
+        /// 처음엔 근접 샷 하한(1.9m)에서 2.05m를 유도해 사람을 벽에서 떼었는데, 그 자는 **샷을 기준으로
+        /// 세계를 고치는 자**였다. 기준은 화면이 아니라 세계다: 플레이어가 다가갔을 때 몸이 벽을 뚫고
+        /// 있으면 결함이고, 그냥 벽 앞에 서 있는 것뿐이면 세계는 옳고 **샷이 못 찍는 것**이다.
+        /// 그래서 재는 것은 소품↔건물과 같은 질문이다 — 바운드가 겹치는가.
+        /// </summary>
         static string PersonWallReason(bool log)
         {
             var bad = new List<string>();
-            float worst = float.MaxValue;
-            string worstWhat = "(없음)";
+            float worstBite = 0f;                       // 가장 깊이 박힌 깊이
+            float tightest = float.MaxValue;            // 안 박힌 것 중 껍데기에 가장 가까운 틈
+            string worstWhat = "(없음)", tightWhat = "(없음)";
             int counted = 0;
             var all = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < all.Length; i++)
@@ -199,27 +189,48 @@ namespace Ulon.Editor
                     continue;
                 foreach (var who in go.GetComponentsInChildren<Ulon.Server.WorldBody>(true))
                 {
-                    if (who == null)
+                    if (who == null || !GroundFit.WorldBounds(who.transform, out Bounds body))
                         continue;
                     counted++;
-                    float d = WallDistance(who.transform.position, room);
-                    if (d < worst) { worst = d; worstWhat = go.name + "의 " + who.name; }
-                    if (d < PersonWallGap - 0.01f)
-                        bad.Add(go.name + "의 " + who.name + "이(가) 벽에서 " + d.ToString("0.00") +
-                                "m (하한 " + PersonWallGap.ToString("0.00") + "m)");
+                    if (!body.Intersects(room))
+                    {
+                        // 수평으로 얼마나 떨어져 있는지 — 「아슬아슬한가」를 매 판 보이게.
+                        var flat = new Vector3(Mathf.Clamp(body.center.x, room.min.x, room.max.x), 0f,
+                                               Mathf.Clamp(body.center.z, room.min.z, room.max.z));
+                        float gap = new Vector2(body.center.x - flat.x, body.center.z - flat.z).magnitude
+                                    - Mathf.Max(body.extents.x, body.extents.z);
+                        if (gap < tightest) { tightest = gap; tightWhat = go.name + "의 " + who.name; }
+                        continue;
+                    }
+                    // 겹쳤다면 얼마나 — 세 축 중 가장 얕은 겹침이 「박힌 깊이」다(소품 자와 같은 셈).
+                    float least = float.MaxValue;
+                    for (int ax = 0; ax < 3; ax++)
+                        least = Mathf.Min(least, Mathf.Max(0f,
+                            Mathf.Min(body.max[ax], room.max[ax]) - Mathf.Max(body.min[ax], room.min[ax])));
+                    if (least > worstBite) { worstBite = least; worstWhat = go.name + "의 " + who.name; }
+                    if (least >= PersonBodyBite)
+                        bad.Add(go.name + "의 " + who.name + "이(가) 껍데기에 " + least.ToString("0.00") + "m 박혔습니다");
                 }
             }
             if (counted == 0)
                 throw new InvalidOperationException("가게에 딸린 사람을 하나도 못 읽었습니다 — 잰 것이 없습니다(0이면 실패).");
             if (log)
-                Debug.Log("[Ulon] 가게 사람과 벽 — " + counted + "명 · 가장 가까운 " +
-                          worst.ToString("0.00") + "m " + worstWhat + "(하한 " + PersonWallGap.ToString("0.0") + "m)");
+                Debug.Log("[Ulon] 가게 사람과 껍데기 — " + counted + "명 · 가장 깊이 박힌 " +
+                          worstBite.ToString("0.00") + "m " + worstWhat + "(하한 " + PersonBodyBite.ToString("0.00") +
+                          "m) · 안 박힌 것 중 가장 좁은 틈 " +
+                          (tightest == float.MaxValue ? "(없음)" : tightest.ToString("0.00") + "m " + tightWhat));
             if (bad.Count == 0)
                 return "";
             bad.Sort(StringComparer.Ordinal);
-            return "가게 사람이 제 가게 벽에 붙어 서 있습니다 — " + string.Join("; ", bad) +
-                   "\n렌즈가 사람과 벽 사이에 못 들어가면 근접 샷은 반투명 벽만 찍습니다.";
+            return "가게 사람의 몸이 제 가게 껍데기에 박혔습니다 — " + string.Join("; ", bad) +
+                   "\n벽을 뚫고 선 사람은 다가간 플레이어 눈에도 그렇게 보입니다.";
         }
+
+        /// <summary>
+        /// **이만큼 물리면 「박혔다」로 본다.** 사람 어깨너비(≈0.9m)의 4분의 1 — 소품끼리 자와 같은 값을
+        /// 쓴다(같은 질문에 자를 두 벌 두지 않는다). 처마·차양에 어깨가 스치는 것까지 결함으로 만들지 않는다.
+        /// </summary>
+        internal const float PersonBodyBite = 0.25f;
 
         static void AssertPeopleOffWalls()
         {
