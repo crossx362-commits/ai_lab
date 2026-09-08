@@ -11,11 +11,18 @@
 > (`unity/Logs/selfcheck_dev.log`의 "Slice self-check PASS —" 줄). 여기엔 **현재 상태와 다음 단계만** 둔다.
 
 
+## Grok 세션 스톱 (2026-09-08, 오너 「모든 작업 정리하고 스톱」)
+이 세션은 여기서 끝. 감시 모니터 끔. 에디터 WIP(④ OutdoorTone·Village·DungeonPlace)는 클로드 것 — 안 섞음.
+
+## 전역 상태 A — **구현 완료**(`829a1627`, 2026-09-08)
+Selected/Vendor/Trainer/PendingProvoke → `WorldBody`. 거래·파티는 세션 하나, 몸은 참조만.
+실측: A `스켈레톤 INT 25` · B `나 INT 100`. NC `--nc-globalselect` 둘 다 스켈레톤으로 덮여 빨간불.
+**안 옮김(검수 ㉯, 맨 마지막)**: `OfflineWorld.Player` 전역 89곳.
+
 ## 안내 B — **구현 완료**(`5f661ae6` + NC `--nc-nohint`, 2026-09-08)
 Last*는 오프라인·셀프체크용으로 남기고, 온라인 HUD는 `IHintSink` → `NetAvatar.RpcHint(Owner)`만 본다.
 실측 정상판: A `guildMsg=created` · B 빈 값(길드는 양쪽 다 `검사길드`).
 NC `--nc-nohint`: 길드는 그대로 만들어지고 A/B `guildMsg` 둘 다 빈 값 → 빨간불(rc=5).
-다음 큐 **A**(Selected/Active* 를 WorldBody 키로)는 클로드 차선 — Grok은 OfflineWorld* 안 건드린다.
 
 ## 시체 열람 — **구현 완료**(`5f661ae6`, 2026-09-08)
 보기=근접 전원·TargetRpc 응답만(방송 없음) / 가져가기=기존 `loot_right`, **게이트 둘로 분리**.
@@ -48,7 +55,8 @@ NC는 파일을 안 고치고 본문 사본에 한 줄을 복사해 잰다. 실�
 **조용히 틀릴 확률이 가장 높은 자리**. 전문은 검수 보고에 실었다.
 
 ## 지금 위치
-검수 세션(`local_7b28e464-020e-4be4-905a-270a96c891d7`)이 준 우선순위 큐를 따라 작업한다.
+검수 랩 순서: ④(`"Dungeon"` 실내 판정) → **A 닫힘** → ③ 배우 명단 → ①② 이름표/뼈 → 던전 3 방 → MegaKit 대기.
+Grok은 스톱. 클로드는 에디터 ④. 위치 권위(`_clientAuthoritative`)는 보류.
 한 파트가 끝나면 검수에 보고 → QA 지적이 오면 그것을 큐 맨 앞에 넣는다(오너 지시).
 
 ## 실행 명령 (모두 `/Users/junholee/ai_lab/projects/ulon`에서, **유니티 에디터를 닫고**)
