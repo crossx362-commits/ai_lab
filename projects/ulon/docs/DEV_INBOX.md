@@ -95,7 +95,7 @@ SliceHud). **B는 네 것이다 — 나는 안 건드린다.** 시체 내용물(
 ### 현재 차선 원장
 | 차선 | 담당 | 상태 |
 |---|---|---|
-| A 전역 상태 → WorldBody | Grok | 닫힘 `829a1627` (검수 확인 대기: ㉮33곳 전수 ㉯Player 뿌리 ㉰Trade/Party 원장 ㉱2클라 NC) |
+| A 전역 상태 → WorldBody | Grok | **조건부 수용** (검수 2026-09-08). ㉮ 전역 읽기 잔존 0 — `selectedGlobal`은 NC 스위치 전용 / ㉰ 거래·파티는 세션 하나를 양쪽 몸이 참조(`OfflineWorld.Economy.cs:60`·`Social.cs:60`) 통과. ㉯는 별도 차선. **㉱ 미충족** — 검사기가 로컬 몸을 직접 씀(`Client/DualClientProbe.cs:568`), `two_client_check.sh:274` `selName`은 대리 지표(NC에서도 갈린다, 무는 자는 `evalHint`뿐). 둘 수리 후 `--nc-globalselect` 실측 제출 → 그때 닫힘. 담당: 루프 |
 | B Last* → IHintSink/TargetRpc | Grok | 닫힘 `5f661ae6` |
 | 시체 열람 (③ 연 사람만) | Grok | `5f661ae6` |
 | ④ OutdoorTone·Village·DungeonPlace + 에디터 게이트 | 루프 | 진행 |
