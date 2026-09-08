@@ -15,16 +15,15 @@ namespace Ulon.Editor
     /// 재는 것: 소품 쌍의 월드 바운드가 **세 축 모두** 겹칠 때의 파고든 깊이(가장 얕은 축).
     /// 바운드는 실물보다 크므로(통은 원기둥, 잔해는 울퉁불퉁) **스치는 정도는 봐준다** —
     /// 판정은 「깊이가 작은 쪽 소품 두께의 절반을 넘는가」다. 절반을 넘으면 화면에서 한 덩어리로 읽힌다.
-    /// 벽걸이(횃불·등불)는 벽에 박아 다는 것이라 대상에서 빼고, 그 사유를 여기 적는다.
+    ///
+    /// **벽걸이 예외는 지웠다**(2026-09-09). 「횃불은 벽에 박는 것이니 뺀다」던 예외가, 벽 등불 넷이
+    /// 돌기둥 넷과 **같은 축**에 서서 몸통 안에 100% 박혀 있는 것을 못 보게 하는 구멍이었다.
+    /// 벽은 애초에 소품 목록(`DungeonFurn*`)에 없다 — 예외가 실제로 봐주던 것은 기둥뿐이었다.
     /// </summary>
     public static partial class SliceSelfCheck
     {
         /// <summary>파고든 깊이가 작은 쪽 소품 두께의 이 비율을 넘으면 「박혔다」.</summary>
         public const float PropOverlapFrac = 0.5f;
-
-        static bool WallMountedProp(Transform t) =>
-            t.name.StartsWith("DungeonFurnTorch", StringComparison.Ordinal)
-            || t.name.StartsWith("DungeonFurnLantern", StringComparison.Ordinal);
 
         /// <summary>겹친 깊이(m) — 안 겹치면 0. 세 축 중 **가장 얕은 축**이 파고든 깊이다.</summary>
         internal static float Penetration(Bounds a, Bounds b)
@@ -50,8 +49,6 @@ namespace Ulon.Editor
             var boxes = new List<Bounds>();
             foreach (var t in PropNodes(interior))
             {
-                if (WallMountedProp(t))
-                    continue;
                 if (!GroundFit.WorldBounds(t, out Bounds wb))
                     continue;
                 names.Add(t.name);
@@ -93,7 +90,10 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 실내 소품 파고듦 — " + string.Join(" · ", report));
         }
 
-        /// <summary>NC — 소품 하나를 **실제로 이웃 위로 옮겨** 겹쳐 놓으면 빨간불이어야 한다.</summary>
+        /// <summary>
+        /// 양방향 NC — 소품 하나를 **실제로 이웃 위로 옮겨** 겹쳐 놓으면 빨간불, 되돌리면 초록.
+        /// 대상은 **벽 등불과 그 옆 돌기둥**을 우선 고른다: 이 자가 못 보던 자리가 바로 거기였다.
+        /// </summary>
         static void AssertPropsNotOverlappingNegativeControl()
         {
             var interior = GameObject.Find(Dungeon1.InteriorObject);
@@ -102,10 +102,14 @@ namespace Ulon.Editor
             Transform a = null, b = null;
             foreach (var t in PropNodes(interior))
             {
-                if (WallMountedProp(t))
-                    continue;
+                if (t.name == "DungeonFurnPillar0") a = t;
+                else if (t.name == "DungeonFurnTorch0") b = t;
+            }
+            foreach (var t in PropNodes(interior))
+            {
+                if (a != null && b != null) break;
                 if (a == null) a = t;
-                else if (b == null) { b = t; break; }
+                else if (b == null && t != a) b = t;
             }
             if (a == null || b == null)
                 throw new InvalidOperationException("파고듦 NC 대상이 없습니다 — 소품이 둘 미만입니다(0이면 실패).");
@@ -126,7 +130,9 @@ namespace Ulon.Editor
             if (!red)
                 throw new InvalidOperationException("소품 파고듦 네거티브 컨트롤 실패 — " + b.name + "을 " + a.name +
                     " 자리에 겹쳐 놨는데 통과했습니다.");
-            Debug.Log("[Ulon] 실내 소품 파고듦 네거티브 컨트롤 통과 — 둘을 같은 자리에 놓으면 FAIL");
+            AssertPropsNotOverlapping();          // 되돌린 뒤 초록이어야 한다 — 아니면 자가 세계를 더럽힌 것이다
+            Debug.Log("[Ulon] 실내 소품 파고듦 양방향 NC 통과 — " + b.name + "을 " + a.name +
+                      " 자리에 놓으면 FAIL · 되돌리면 다시 통과");
         }
 
         /// <summary>방향 <paramref name="dir"/>(수평)로 두 상자가 물린 길이 — 그만큼 밀면 빠진다.</summary>

@@ -292,6 +292,9 @@ namespace Ulon.Editor
         /// <summary>짐이 돌기둥을 비켜서는 최소 각(축 기준). 24°는 실측으로 고른 값이다 — 18°에서도 파고들었다.</summary>
         const float PillarClearDeg = 24f;
 
+        /// <summary>벽 등불이 기둥 축에서 옆으로 비켜서는 거리. 기둥 반폭 1.6m + 등불 반폭 0.3m + 여유 0.5m.</summary>
+        const float TorchPillarSideOffset = 2.4f;
+
         public static void EnsureRoomFurnishing()
         {
             const string Dg = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/";
@@ -336,9 +339,14 @@ namespace Ulon.Editor
                     float pz = sIdx == 0 ? half - 0.7f : sIdx == 1 ? -half + 0.7f : 0f;
                     placed += RoomProp(room, "DungeonFurnPillar" + sIdx, Dg + (sIdx % 2 == 0 ? "pillar.obj" : "pillar_decorated.obj"),
                         new Vector3(center.x + px, y, center.z + pz), sIdx * 90f, RoomHeightOfWall - RoomFloorTop) ? 1 : 0;
+                    // 벽 등불은 **기둥과 같은 축**에 서 있었다 — 벽에서 0.44m 앞이라 기둥 몸통(폭 2.2~3.2m)
+                    // 안쪽이었고, 파고듦 자가 「벽걸이는 뺀다」로 봐주던 탓에 아무도 못 봤다(2026-09-09 실측:
+                    // Torch0↔Pillar0 100%). 벽은 그대로 두고 **기둥 옆으로 비켜** 단다.
+                    var side = (sIdx < 2 ? Vector3.right : Vector3.forward) * TorchPillarSideOffset;
                     placed += RoomProp(room, "DungeonFurnTorch" + sIdx, Dg + "torch_mounted.obj",
-                        new Vector3(center.x + px * 0.94f, y + 2.0f, center.z + pz * 0.94f), sIdx * 90f + 180f, 1.1f) ? 1 : 0;
-                    RoomTorch(room, new Vector3(center.x + px * 0.85f, y + 2.4f, center.z + pz * 0.85f), half * 0.7f);
+                        new Vector3(center.x + px * 0.94f, y + 2.0f, center.z + pz * 0.94f) + side,
+                        sIdx * 90f + 180f, 1.1f) ? 1 : 0;
+                    RoomTorch(room, new Vector3(center.x + px * 0.85f, y + 2.4f, center.z + pz * 0.85f) + side, half * 0.7f);
                 }
 
                 // 벽 쪽 짐 — 궤짝·통·상자. 수로 채우지 않는다(검수: 물량이 곧 반려 사유였다).
