@@ -1681,6 +1681,8 @@ namespace Ulon.Editor
             AssertNobodyInsideStructure();
             AssertOutdoorPropsNotBlackNegativeControl();    // 소품을 새까맣게 칠하면 빨간불인가
             AssertOutdoorPropsNotBlack();                   // 대낮 야외에 검은 덩어리가 없는가
+            AssertNoDoubleWiredGatesNegativeControl();      // 호출을 한 줄 복사하면 빨간불인가
+            AssertNoDoubleWiredGates();                     // 같은 게이트가 두 번 배선돼 있지 않은가(동시 개발)
             AssertWarpSpotsClearNegativeControl();          // 몹을 출구 위에 세우면 빨간불인가
             AssertWarpSpotsClear();                         // 나가는 자리에 몹이 붙어 있지 않은가
             AssertCompanionOffSightAxisNegativeControl();
