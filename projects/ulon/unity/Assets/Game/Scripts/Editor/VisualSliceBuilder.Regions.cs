@@ -293,8 +293,21 @@ namespace Ulon.Editor
             Decor(parent, poles, mouth + new Vector3(-0.8f, 0f, 2.6f), Vector3.zero);
             Decor(parent, Planks, mouth + new Vector3(-2.4f, 0f, 3.4f), new Vector3(0f, 20f, 0f));
             Decor(parent, Planks, mouth + new Vector3(-3.6f, 0f, -3.2f), new Vector3(0f, 70f, 0f));
-            Decor(parent, Lantern, mouth + new Vector3(-1.2f, 0f, -3.4f), Vector3.zero);
-            Decor(parent, Lantern, mouth + new Vector3(-1.2f, 0f, 3.4f), Vector3.zero);
+            // **마을 가로등을 갱도 옆에 세우지 않는다**(검수 2026-09-09 반려: 「갱도 옆 도시 가로등」).
+            // 광산의 불은 버팀목에 건 횃불이다 — 던전 벽 등불 메시를 쓰고, 야외 던전텍스처 정리 패스가
+            // 마을 나무 톤으로 갈아 끼운다(`EnsureOutdoorPropMaterials` — 이름이 아니라 규칙으로 잡는다).
+            const string TorchMounted = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/torch_mounted.obj";
+            for (int i = 0; i < 2; i++)
+            {
+                float side = i == 0 ? -1f : 1f;
+                var torch = Place(TorchMounted, mouth + new Vector3(-1.1f, 0f, side * 1.5f),
+                    new Vector3(0f, side * 90f, 0f));
+                if (torch == null)
+                    continue;
+                torch.name = "MineTorch" + (i + 1);
+                torch.transform.SetParent(parent, true);
+                torch.transform.localScale *= 1.6f;
+            }
             // 광차 둘 — 「여기서 캐서 실어 나간다」가 한 장면에 들어온다.
             Decor(parent, Cart, mouth + new Vector3(-4.6f, 0f, -0.9f), new Vector3(0f, 90f, 0f));
             Decor(parent, CartHigh, mouth + new Vector3(-6.4f, 0f, 1.6f), new Vector3(0f, 70f, 0f));

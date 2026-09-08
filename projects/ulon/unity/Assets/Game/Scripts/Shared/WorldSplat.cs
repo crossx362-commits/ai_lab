@@ -84,7 +84,10 @@ namespace Ulon.Shared
                 // **광산은 「바위가 있는 곳」이 아니라 파낸 자리다**(검수·오너 2026-09-09: 「돌이 깔린
                 // 지대인데 바닥이 녹색이면 반려」). 자갈을 지역 밖까지 번지게 해 화면에서 잔디가 아니라
                 // 파낸 땅으로 읽히게 한다. 다른 지역은 그대로다.
-                float spread = r.Object == WorldRegions.MineObject ? 1.35f : 1f;
+                // 1.35로는 **현장 주변만** 드러나고 서쪽 바위 대여섯은 여전히 잔디에 박혀 있었다
+                // (검수 재반려). 바위가 서 있는 범위(반경 R−2m)를 자갈이 덮도록 1.75로 넓힌다 —
+                // 바위를 옮기는 게 아니라 **지표를 바위에 맞춘다**.
+                float spread = r.Object == WorldRegions.MineObject ? 1.75f : 1f;
                 float t = 1f - Mathf.InverseLerp(r.Radius * 0.72f * spread, r.Radius * 1.04f * spread, d + wobble);
                 t = Mathf.Clamp01(t) * 0.95f;
                 if (t > weight)
