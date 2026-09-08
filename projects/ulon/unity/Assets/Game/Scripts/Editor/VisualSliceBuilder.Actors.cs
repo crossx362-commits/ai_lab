@@ -861,6 +861,78 @@ namespace Ulon.Editor
             importer.clipAnimations = clips;
         }
 
+        /// <summary>
+        /// **배우 안에 매달린 배우를 푼다**(멱등, 2026-09-09).
+        ///
+        /// 사냥터 기사가 제 밑에 자기 사본을 하나 달고 있었다(`Knight/Knight`, 캡슐 없음, 사냥 구역 밖
+        /// z 31.2). 이름이 같으니 `GameObject.Find("Knight")`가 둘 중 아무나 집었고, 게이트는 내내
+        /// 껍데기를 재고 통과했다 — 마을을 다시 드레싱해 이름이 흔들리자 그제서야 드러났다.
+        ///
+        /// 같은 `MobId`를 가진 자식은 **사본**으로 보고 지운다(몹이 여럿인 것은 정상이지만 몹 **안**에
+        /// 같은 몹이 있는 것은 정상이 아니다). 다른 몹이면 지우지 않고 루트로 풀어 놓고 크게 남긴다 —
+        /// 내용물을 지우는 것은 자의 일이 아니다.
+        /// </summary>
+        public static void EnsureNoNestedActors()
+        {
+            var bodies = UnityEngine.Object.FindObjectsByType<WorldBody>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var copies = new List<GameObject>();
+            var freed = new List<string>();
+            for (int i = 0; i < bodies.Length; i++)
+            {
+                WorldBody host = null;
+                for (var p = bodies[i].transform.parent; p != null && host == null; p = p.parent)
+                    host = p.GetComponent<WorldBody>();
+                if (host == null)
+                    continue;
+                if (string.Equals(host.MobId, bodies[i].MobId, StringComparison.Ordinal))
+                {
+                    // **화면에 서 있던 쪽은 사본이었다** — 진짜 루트(캡슐·NetworkObject·NetMob을 가진 쪽)는
+                    // 지표 10m 아래에 묻혀 있고, 그 밑에 매달린 사본이 사냥터에 서 있었다(실측 2쌍: 기사·도적).
+                    // 게다가 **루트에는 제 그림이 없다** — 사본이 `Visual`을 통째로 갖고 있었다(렌더러 15/12개).
+                    // 그래서 사본을 그냥 지우면 몸만 남고 화면에서 사라진다(자격 원장 게이트가 그것을 잡았다).
+                    //
+                    // 수리는 **몸을 살리고 그림을 물려받는 것**이다(검수 판정 ㉠, 2026-09-09):
+                    // ① 사본을 루트에서 떼고(월드 좌표 보존 — 안 떼면 부모를 옮길 때 따라가 두 배로 튄다)
+                    // ② 사본이 서 있던 **자리(x·z)만** 물려받고 높이는 **지표에서 다시 유도**하고
+                    //    (묻힌 원인이 「옛 평지 시절 y=0」이라 y를 베끼면 원인을 옮겨 심는 것이다)
+                    // ③ 사본의 `Visual`을 루트 밑으로 옮긴 뒤 ④ 껍데기를 지운다.
+                    var copy = bodies[i].transform;
+                    copy.SetParent(null, true);
+                    Vector3 spot = copy.position;
+                    host.transform.position = new Vector3(spot.x, host.transform.position.y, spot.z);
+                    Transform visual = null;
+                    foreach (Transform c in copy)
+                        if (c.GetComponentsInChildren<Renderer>(true).Length > 0)
+                        { visual = c; break; }
+                    if (visual != null)
+                    {
+                        visual.SetParent(host.transform, false);
+                        visual.localPosition = Vector3.zero;
+                        visual.localRotation = Quaternion.identity;
+                        visual.name = "Visual";
+                        var sockets = host.GetComponent<EquipmentSockets>();
+                        if (sockets != null)
+                            sockets.Bind(visual);
+                    }
+                    // 지표 맞춤은 **그림을 물려받은 뒤에** 한다 — 렌더러가 없는 동안 맞추면 잴 것이 없어
+                    // 아무 일도 일어나지 않는다(실측: 먼저 맞췄더니 −10.68m 그대로였다).
+                    SnapRootToGround(host.gameObject);
+                    copies.Add(copy.gameObject);
+                    continue;
+                }
+                bodies[i].transform.SetParent(null, true);
+                freed.Add(bodies[i].name + "(" + bodies[i].MobId + ") ⊂ " + host.name);
+            }
+            for (int i = 0; i < copies.Count; i++)
+            {
+                string what = copies[i].name + " " + copies[i].transform.position.ToString("F1");
+                UnityEngine.Object.DestroyImmediate(copies[i]);
+                Debug.Log("[Ulon] 배우 사본 제거 — " + what + " (제 부모와 같은 MobId, 이름으로 찾는 게이트가 이것을 재고 있었다)");
+            }
+            if (freed.Count > 0)
+                Debug.Log("[Ulon] 배우 겹침 해소 — 루트로 푼 배우 " + freed.Count + "명: " + string.Join(", ", freed));
+        }
+
         static void ConfigureProp(string path)
         {
             var importer = AssetImporter.GetAtPath(path) as ModelImporter;

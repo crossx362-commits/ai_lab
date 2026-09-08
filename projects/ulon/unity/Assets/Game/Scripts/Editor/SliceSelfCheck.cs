@@ -19,6 +19,7 @@ namespace Ulon.Editor
             if (scene.path != scenePath)
                 scene = EditorSceneManager.OpenScene(scenePath);
             VisualSliceBuilder.EnsureVillageTerrain();   // 지형 먼저 — 던전 방이 여기에 구멍을 뚫는다
+            VisualSliceBuilder.EnsureNoNestedActors();   // **자리를 정하는 패스들보다 먼저** 사본을 푼다 — 이름으로 찾는 코드가 껍데기를 집기 전에
             VisualSliceBuilder.EnsureMobArtQualified();    // 맨몸 모델 몹은 지우고 다시 짓는다(검수 자격 규칙)
             VisualSliceBuilder.EnsureMobModelLedger();     // 기대 모델과 다른 몹도 헐고 다시(도적=Rogue, 검수 승인)
             VisualSliceBuilder.EnsureHuntMobs();
@@ -1788,6 +1789,8 @@ namespace Ulon.Editor
             AssertCampfireHasFire();
             AssertRoleLookNegativeControl();
             AssertRoleLook();
+            AssertNoNestedActorsNegativeControl();
+            AssertNoNestedActors();
             AssertHouseRoofPiecesDontOverlapNegativeControl();
             AssertHouseRoofPiecesDontOverlap();
             AssertActorBodyMatchesCapsuleNegativeControl();  // 먼저 자가 우는지 본다
