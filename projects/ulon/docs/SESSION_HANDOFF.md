@@ -70,8 +70,17 @@ c472d0e6(물레방아 삭제·지하 제외를 자리로), 5e47eef2(낚시터 �
   쓰기와 `InventoryBag.Add/TakeOne`을 거절한다(호출부 30곳 대신 길목 둘).
   실측: 골드 32 → 길드 25 → 7 → 붕대 5 → **2**, 가방 `""` → `"bandage:1:0"`,
   치트 먹힘 False · 클라 구매 먹힘 False. NC `--nc-localeconomy`로 문을 떼면 둘 다 True → rc=5.
-- **다음: 축 ④ 스킬** — `NetAvatar`의 `skill` SyncVar는 **검술 하나**만 나르고 읽는 곳은 검사 프로브뿐이다
-  (HUD는 여전히 클라 로컬 스킬 값을 그린다). 사실상 손 안 댄 축이다.
+- **축 ④ 닫음 — (C) 단계 도입 끝** — `d434c3ed`. `skillSig` SyncVar 하나로 **원장 전량(35개)**을
+  내려보내고 **화면이 읽는 자리**(`OfflineWorld.SkillsOf`)에 얹는다. 올려 주는 쪽도 서버 —
+  `SkillSet.TrySet/ForceSet`이 같은 문을 지난다(`Shared`는 참조 없는 바닥이라 `WriteAuthority`
+  문고리만 두고 서버가 기동 때 꽂는다). 실측: 검술 8.5 → 8.6 · 원장 항목 35 · 치트 먹힘 False.
+- **다음 랩은 검수가 줄 세운다**(축 끝). 남은 것: 위치 권위(`_clientAuthoritative`) · 시체 내용물 ·
+  **전역 하나로 들고 있는 상태 전수**(`ActiveVendor`·`Selected` 등, 검수 판정으로 지금 고치지 않음) ·
+  `VisualSliceBuilder` 추가 정리 · 에셋 팩.
+- **확인 요청 답(끊긴 클라)**: 재접속하면 서버 값이 이긴다 — `RpcBind`가 **서버 쪽 저장소**를 읽어
+  `CharacterBinder.Apply`로 몸에 얹고, 그 뒤 SyncVar가 덮는다. **다만** `PersistDriver`는 클라
+  프로세스에서도 `OnDestroy → SaveLocal()`로 **자기 계정 스냅샷을 공유 저장소에 쓴다** — 끊긴 클라가
+  제 값을 올려 다음 로그인에 읽힐 수 있다(코드 기준, 아직 실측 아님).
 - 미결(축 ④ 또는 그 뒤): ①`OfflineWorld.ActiveVendor`가 **전역 하나**다 — 온라인에서 한 사람이 연
   상점이 모두의 상점이 된다(축 ③에서 발견, 안 고침) ②시체 껍데기에 **항목이 없다** — 시신 회수의
   결과(골드·가방)는 이제 내려오지만 「시체 안에 무엇이 있나」를 클라가 보는 것은 「누가 볼 수 있나」를
