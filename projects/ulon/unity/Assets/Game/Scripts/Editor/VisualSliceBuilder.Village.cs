@@ -450,17 +450,12 @@ namespace Ulon.Editor
         {
             MoveNamed("Player", new Vector3(0f, 0f, 0f), Vector3.zero);
             MoveNamed(CompanionObject, CompanionSpot, new Vector3(0f, 180f, 0f));
-            // 사냥터 — 모두 z=13.2에 세워 두니 **7종 일직선 진열**이었다(옛 반려). 깊이·간격·바라보는 방향을
-            // 흩어 무리로 읽히게 한다. 좌표는 사냥 구역 안(마을 북쪽 z 10~17)에 남긴다.
-            MoveNamed("Skeleton", new Vector3(0.6f, 0f, 13.6f), new Vector3(0f, 168f, 0f));
+            // 사냥터 자리는 **`HuntSpots` 한 원장**이다(2026-09-09) — 예전엔 여기 여덟 줄, 스폰 함수에
+            // 또 여덟 줄, `HuntSpots`에 여덟 줄로 **원장이 셋**이었다. 앞의 둘은 z≈11~16(마을 코앞)
+            // 시절 값이라, 다시 구우면 몹이 담장 옆으로 되돌아가 「마을에 몹이 산다」가 재발한다.
+            // 세우기(`EnsureHuntMobs`)와 자리 잡기(`EnsureHuntMobPlacement`)가 같은 원장을 본다.
             EnsureHuntMobs();
-            MoveNamed("Bandit", new Vector3(-2.6f, 0f, 11.4f), new Vector3(0f, 196f, 0f));
-            MoveNamed("Raider", new Vector3(2.2f, 0f, 15.8f), new Vector3(0f, 152f, 0f));
-            MoveNamed("Rogue", new Vector3(-4.6f, 0f, 14.9f), new Vector3(0f, 208f, 0f));
-            MoveNamed("Knight", new Vector3(4.9f, 0f, 11.2f), new Vector3(0f, 174f, 0f));
-            MoveNamed("Acolyte", new Vector3(6.8f, 0f, 15.4f), new Vector3(0f, 160f, 0f));
-            MoveNamed("Minion", new Vector3(8.7f, 0f, 12.1f), new Vector3(0f, 186f, 0f));
-            MoveNamed("SkelRogue", new Vector3(10.2f, 0f, 16.2f), new Vector3(0f, 150f, 0f));
+            EnsureHuntMobPlacement();
             EnsureFieldBoss();
             MoveNamed("Banker", new Vector3(-10.5f, 0f, 8.5f), Vector3.zero);
             var forgeGo = EnsureLandmarkObject("Forge", "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall.fbx", null,
@@ -545,15 +540,24 @@ namespace Ulon.Editor
         {
             // **`Skeleton`도 없으면 세운다.** 예전엔 찾아서 묶기만 했다 — 자격 패스가 지우면
             // 다시 세우는 코드가 파이프라인에 없어 **동료와 똑같이 영영 사라질** 자리였다(랩 ③ 전수 조사).
-            EnsureHuntMob("Skeleton", MobCatalog.Skeleton, SkeletonFbx, new Vector3(0.6f, 0f, 13.6f));
-            EnsureHuntMob("Bandit", MobCatalog.Bandit, RogueFbx, new Vector3(-1.6f, 0f, 13.2f));
-            EnsureHuntMob("Raider", MobCatalog.Raider, KnightFbx, new Vector3(2.4f, 0f, 13.2f));
-            EnsureHuntMob("Rogue", MobCatalog.Rogue, RogueFbx, new Vector3(-3.8f, 0f, 13.2f));
-            EnsureHuntMob("Knight", MobCatalog.Knight, KnightFbx, new Vector3(4.4f, 0f, 13.2f));
-            EnsureHuntMob("Acolyte", MobCatalog.Acolyte, SkeletonMageFbx, new Vector3(6.4f, 0f, 13.2f));
-            EnsureHuntMob("Minion", MobCatalog.Minion, SkeletonMinionFbx, new Vector3(8.4f, 0f, 13.2f));
-            EnsureHuntMob("SkelRogue", MobCatalog.SkelRogue, SkeletonRogueFbx, new Vector3(10.4f, 0f, 13.2f));
-            MoveNamed("SkelRogue", new Vector3(10.4f, 0f, 13.2f), new Vector3(0f, 180f, 0f));
+            // **자리는 여기 없다** — 이름·몹ID·모델만 여기 원장이고, x·z·바라보는 방향은
+            // `HuntSpots`에서 끌어온다(원장 하나). 좌표를 여기 또 적으면 셋이 갈린다.
+            var roster = new (string Name, string MobId, string Fbx)[]
+            {
+                ("Skeleton", MobCatalog.Skeleton, SkeletonFbx),
+                ("Bandit", MobCatalog.Bandit, RogueFbx),
+                ("Raider", MobCatalog.Raider, KnightFbx),
+                ("Rogue", MobCatalog.Rogue, RogueFbx),
+                ("Knight", MobCatalog.Knight, KnightFbx),
+                ("Acolyte", MobCatalog.Acolyte, SkeletonMageFbx),
+                ("Minion", MobCatalog.Minion, SkeletonMinionFbx),
+                ("SkelRogue", MobCatalog.SkelRogue, SkeletonRogueFbx),
+            };
+            for (int i = 0; i < roster.Length; i++)
+            {
+                Vector3 spot = HuntSpotOf(roster[i].Name);
+                EnsureHuntMob(roster[i].Name, roster[i].MobId, roster[i].Fbx, spot);
+            }
         }
 
         static void EnsureHuntMob(string goName, string mobId, string fbx, Vector3 pos)

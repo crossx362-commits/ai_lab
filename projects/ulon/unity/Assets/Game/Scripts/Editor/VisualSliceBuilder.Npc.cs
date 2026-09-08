@@ -693,6 +693,16 @@ namespace Ulon.Editor
             ("SkelRogue", 9.5f, 31.4f, 150f),
         };
 
+        /// <summary>이름으로 사냥터 자리를 찾는다(y는 지표에서 유도) — 원장에 없으면 **세우지 않는다**
+        /// (조용히 0,0에 세우면 마을 한복판에 몹이 선다).</summary>
+        public static Vector3 HuntSpotOf(string name)
+        {
+            for (int i = 0; i < HuntSpots.Length; i++)
+                if (HuntSpots[i].Name == name)
+                    return new Vector3(HuntSpots[i].X, 0f, HuntSpots[i].Z);
+            throw new System.InvalidOperationException("사냥터 자리 원장에 " + name + "이(가) 없습니다.");
+        }
+
         /// <summary>사냥터를 **보는 눈**(마을 쪽 남에서 북을 본다) — QA 샷 카메라(`03_hunt_mobs`)와
         /// 겹침 게이트가 이 한 자리를 같이 쓴다. 재는 자와 찍는 자가 다르면 초록인데 화면은 겹친다.</summary>
         public static readonly Vector2 HuntViewEye = new Vector2(2.8f, 21f);
