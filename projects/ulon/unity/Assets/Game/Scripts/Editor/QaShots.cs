@@ -80,6 +80,15 @@ namespace Ulon.Editor
                 Orbit("11_d3_entrance", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 8f, 20f),
                 // 문구멍 슬랩을 안쪽으로 물린 뒤 **비스듬한 방위에서 판의 앞면이 노출되는지** 본다
                 // (검수 조건 2026-09-08: 정면 한 장 = 11번, 45° 한 장 = 이것).
+                // 물려받은 자의 근거를 화면으로 확인한다(검수 2026-09-09): 허용 50%는 **던전 소품끼리**
+                // 유도한 값이다. 마을에서 가장 깊이 물린 쌍(`cart-high↔House` 36%)이 화면에서
+                // 「박혀 보이는가」를 눈으로 보고, 안 보이면 건물 쌍에도 유효하다고 근거를 적는다.
+                // 자동 방위(FacilityCloseUp)는 첫 판에 이웃 집 처마 **안쪽**을 골라 피사체가 안 보였다 —
+                // 판정 대상이 안 찍히는 샷은 판정이 아니다. 수레↔집 선의 **옆**에서 본다.
+                Free("61_cart_house", new Vector3(-17.4f, GroundY(-17.4f, 12.6f) + 2.2f, 12.6f),
+                     new Vector3(-12.6f, GroundY(-12.6f, 7.2f) + 0.8f, 7.2f)),
+                // 지붕 경증 둘(굴뚝이 지붕 앞으로 뜸 · 박공 주황 널판 돌출)을 재판정할 근접.
+                FacilityCloseUp("62_house_roof", "House"),
                 Angled("60_d3_entrance_45", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 7f, 18f, 90f),
                 PlayCam("12_d3_interior_playcam", Dungeon3.InteriorX, Dungeon3.InteriorZ),
                 Vfx(PlayCam("24_action_vfx", Dungeon3.InteriorX, Dungeon3.InteriorZ)),
@@ -434,6 +443,7 @@ namespace Ulon.Editor
             float bestPitch = pitch;
             float bestSeen = -1f;
             float bestDist = -1f;
+            float bestLit = -2f;
             var blockers = new System.Collections.Generic.List<string>();
             var perBearing = new System.Collections.Generic.List<string>();
             int frontRejected = 0;
@@ -542,10 +552,16 @@ namespace Ulon.Editor
                                            (lastBlocker == "" ? "(막은 이름 없음)" : lastBlocker));
                         continue;
                     }
-                    // 같은 값이면 **덜 당긴 방위**를 고른다 — 껍데기 안으로 들어갈수록 주변이 안 보인다.
-                    if (share > bestSeen + 0.02f || (Mathf.Abs(share - bestSeen) <= 0.02f && tryDist > bestDist))
+                    // 가림이 같으면 **해를 등지지 않는 쪽**을 고른다(검수 지시 2026-09-09: 은행원 칸이
+                    // 그늘로만 찍혔다). 방위를 옮기는 것은 세계를 안 바꾼다 — 사람을 문 밖으로 끌어내는
+                    // (ㄱ)안과 다른 점이 그것이다. 그다음에야 **덜 당긴 방위**를 고른다.
+                    float lit = SunFacing(pit, y);
+                    bool tie = Mathf.Abs(share - bestSeen) <= 0.02f;
+                    if (share > bestSeen + 0.02f
+                        || (tie && lit > bestLit + 0.05f)
+                        || (tie && Mathf.Abs(lit - bestLit) <= 0.05f && tryDist > bestDist))
                     {
-                        bestSeen = share; bestYaw = y; bestPitch = pit; bestDist = tryDist;
+                        bestSeen = share; bestYaw = y; bestPitch = pit; bestDist = tryDist; bestLit = lit;
                     }
                     continue;
                 }
@@ -901,6 +917,29 @@ namespace Ulon.Editor
         }
 
         /// <summary>임의 시점 — 조망 샷용.</summary>
+        /// <summary>
+        /// 이 방위에서 **피사체의 카메라 쪽 면이 얼마나 해를 받는가**(-1~1). 카메라가 있는 쪽 방향과
+        /// 햇빛이 오는 방향이 같을수록 1이다 — 해를 등지고 찍으면 얼굴이 통째로 그늘이다.
+        /// </summary>
+        static float SunFacing(float pitch, float yaw)
+        {
+            var sun = Object.FindFirstObjectByType<Light>(FindObjectsInactive.Include);
+            Light dir = null;
+            foreach (var l in Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (l.type == LightType.Directional) { dir = l; break; }
+            if (dir == null && sun == null)
+                return 0f;
+            Vector3 from = -(dir != null ? dir.transform.forward : sun.transform.forward);  // 햇빛이 오는 쪽
+            Vector2 sunSide = new Vector2(from.x, from.z);
+            if (sunSide.sqrMagnitude < 0.0001f)
+                return 0f;
+            Vector3 eyeDir = -(Quaternion.Euler(pitch, yaw, 0f) * Vector3.forward);          // 카메라가 있는 쪽
+            Vector2 camSide = new Vector2(eyeDir.x, eyeDir.z);
+            if (camSide.sqrMagnitude < 0.0001f)
+                return 0f;
+            return Vector2.Dot(sunSide.normalized, camSide.normalized);
+        }
+
         static Shot Free(string name, Vector3 eye, Vector3 target)
         {
             return new Shot { Name = name, Eye = eye, Target = target };

@@ -387,7 +387,9 @@ namespace Ulon.Editor
             float roofY = floors;
             PlaceHouseRoof(hp, roof, gable, roofY, depth);
             DecorLocal(hp, chimney, new Vector3(1.65f, roofY, depth - 0.55f), Vector3.zero);
-            DecorLocal(hp, Overhang, new Vector3(1.5f, floors, 0.05f), new Vector3(0f, 90f, 0f));
+            // 차양은 **처마 아래**다 — 벽 꼭대기(= 지붕이 시작하는 높이)에 붙였더니 널판이 지붕면을
+            // 뚫고 나와 「지붕에서 판때기가 튀어나온 집」으로 읽혔다(검수 관찰 2026-09-09 `62_house_roof`).
+            DecorLocal(hp, Overhang, new Vector3(1.5f, floors - 0.32f, 0.05f), new Vector3(0f, 90f, 0f));
             if (tall)
                 DecorLocal(hp, Banner, new Vector3(1f, floors + 0.35f, 0.15f), new Vector3(0f, 180f, 0f));
             SnapRootToGround(root);

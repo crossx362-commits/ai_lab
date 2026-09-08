@@ -80,6 +80,14 @@ namespace Ulon.Editor
             Mathf.Abs(b.center.x) <= VisualSliceBuilder.VillageFadeRadius &&
             Mathf.Abs(b.center.z) <= VisualSliceBuilder.VillageFadeRadius;
 
+        /// <summary>축별로 물린 길이(m) — 0 = 안 겹침. 가장 얕은 축이 y면 처마 아래이지 벽 속이 아니다.</summary>
+        static float Overlap(Bounds a, Bounds b, int axis)
+        {
+            float lo = Mathf.Max(a.min[axis], b.min[axis]);
+            float hi = Mathf.Min(a.max[axis], b.max[axis]);
+            return Mathf.Max(0f, hi - lo);
+        }
+
         static string VillagePropClashReason(bool log)
         {
             var propNodes = new List<Transform>();
@@ -103,12 +111,15 @@ namespace Ulon.Editor
                         continue;
                     float thin = Mathf.Min(Thickness(propBoxes[p]), Thickness(bldBoxes[b]));
                     float frac = thin > 0.01f ? pen / thin : 1f;
-                    // 자리까지 적는다 — 「어느 울타리냐」를 사람이 다시 찾게 만들면 자가 반쪽이다.
+                    // 자리와 **어느 축으로 물렸는지**까지 적는다 — 「어느 울타리냐」를 사람이 다시 찾게
+                    // 만들면 자가 반쪽이고, 축을 모르면 「벽에 박힘」과 「처마 밑에 섬」을 구별할 수 없다.
                     string what = propNodes[p].name + "(" + propBoxes[p].center.x.ToString("0.0") + "," +
                                   propBoxes[p].center.z.ToString("0.0") + ")↔" + bldNames[b] + "(" +
                                   bldBoxes[b].center.x.ToString("0.0") + "," + bldBoxes[b].center.z.ToString("0.0") + ") " +
                                   pen.ToString("0.00") + "m(얇은 쪽 " + thin.ToString("0.00") + "m의 " +
-                                  (frac * 100f).ToString("0") + "%)";
+                                  (frac * 100f).ToString("0") + "%, 축별 x" + Overlap(propBoxes[p], bldBoxes[b], 0).ToString("0.00") +
+                                  " y" + Overlap(propBoxes[p], bldBoxes[b], 1).ToString("0.00") +
+                                  " z" + Overlap(propBoxes[p], bldBoxes[b], 2).ToString("0.00") + ")";
                     if (frac > PropOverlapFrac)
                         bad.Add(what);
                     if (frac > worst)
