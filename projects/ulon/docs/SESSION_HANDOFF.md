@@ -25,7 +25,8 @@ SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # �
 
 ## 커밋 꼬리
 `179632d8`(도구 상대경로) → `a824278d`(경보에 머티리얼 목록) → `ea8d2ba3`(계측기 Selected 삭제) →
-`6a1f4ba2`(PERF_BASELINE 문서) → **`0aefd409`(그 본체 코드)**.
+`6a1f4ba2`(PERF_BASELINE 문서) → `0aefd409`(그 본체 코드) → `d8fbcc9e`(인수인계) →
+**`bb57cbe3`(2클라 픽스처 결정론·타격 수 유도·저장소 rc=9)**.
 
 ## 방금 닫은 것 (2026-09-08, 검수 판정 셋)
 1. **재현성 결함(무텍스처 618)** — 원인은 소스가 아니라 **도포 시점**. 풀·흙 도포가 마을을 짓는
@@ -33,6 +34,9 @@ SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # �
    다음 판에서야 초록). `EnsureWorldPropMaterials`로 옮겨 고쳤고, 씬을 커밋 상태로 되돌린 판에서 EXIT=0.
 2. **성능 머티리얼 축** — 자를 「그리는 그림의 가짓수」(셰이더+메인 텍스처+색)로 교체, 양방향 NC
    (사본 36→36 / 다른 그림 36→37·경보). 렌더러는 별도 축, 마을 기준선 730→852.
+4. **2클라 하네스 꼬리 둘** — 픽스처를 Str 30·HP 50·스킬 0으로 못 박고 타격 수를 유도(1.2s×12).
+   맞는 쪽 대기 5s가 **죽기 전에** HP를 적던 것이 「매 판 HP 6」의 범인이었다(16s로 유도).
+   저장소(8777)가 죽으면 FAIL이 아니라 **rc=9 「못 잼」**. 정상판 PASS·NC rc=5·저장소 내림 rc=9 실측.
 3. **보스 칼끝 매몰** — 그립 점을 축으로 각도만 고친다. BoneWarden −0.28→+0.17m,
    IronTyrant −1.10→+0.33m, Hexarch −0.76→+0.23m.
 
