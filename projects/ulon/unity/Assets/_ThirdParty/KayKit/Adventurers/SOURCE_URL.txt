@@ -4,3 +4,6 @@ url: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
 itch: https://kaylousberg.itch.io/kaykit-adventurers
 downloaded: 2026-08-31
 files: Knight.fbx, Barbarian.fbx, sword_1handed.fbx, shield_round.fbx + textures
+files(2026-09-08 추가, 오너 승인): Characters/fbx/RogueHooded.fbx, Assets/fbx/staff.fbx,
+  Assets/fbx/spellbook_closed.fbx, Assets/fbx/dagger.fbx, Assets/fbx/mug_full.fbx
+  (배포처에 spellbook.fbx·mug.fbx는 없다 — 닫힌 책/찬 잔으로 받았다)
