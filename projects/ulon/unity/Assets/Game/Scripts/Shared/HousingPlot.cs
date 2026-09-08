@@ -9,8 +9,8 @@ namespace Ulon.Shared
         public const string ChestObject = "HouseChest";
         public const string VendorObject = "HouseVendor";
         public const int VendorSlot = 100;
-        public const float X = -20.4f;
-        public const float Z = -16.8f;
+        public const float X = -20.4f * WorldScale.Kit;   // 모듈 좌표 × 킷 배율(랩 B)
+        public const float Z = -16.8f * WorldScale.Kit;
         public const int ClaimGold = 25;
         public const float InteractRange = 2.4f;
     }

@@ -20,8 +20,9 @@ namespace Ulon.Editor
                 if (spots[i].Name != spotName)
                     continue;
                 var p = go.transform.position;
-                if (Math.Abs(p.x - spots[i].X) > 0.05f || Math.Abs(p.z - spots[i].Z) > 0.05f)
-                    throw new InvalidOperationException(label + "은(는) 사냥터 자리 x=" + spots[i].X + " z=" + spots[i].Z +
+                Vector3 want = VisualSliceBuilder.HuntSpotWorld(i);   // 원장은 모듈, 씬은 월드(랩 B)
+                if (Math.Abs(p.x - want.x) > 0.05f || Math.Abs(p.z - want.z) > 0.05f)
+                    throw new InvalidOperationException(label + "은(는) 사냥터 자리 x=" + want.x + " z=" + want.z +
                         "에 있어야 합니다(지금 " + p.x.ToString("0.0") + ", " + p.z.ToString("0.0") + ").");
                 return;
             }

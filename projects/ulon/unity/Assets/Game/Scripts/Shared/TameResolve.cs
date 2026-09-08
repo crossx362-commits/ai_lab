@@ -6,8 +6,8 @@ namespace Ulon.Shared
         public const string Object = "TameCritter";
         /// <summary>이름은 원장(mobs.json → MobCatalog)에서만 온다 — 여기 상수로 또 적으면 원장이 둘이 된다.</summary>
         public static string DisplayName => MobCatalog.DisplayNameOf(Id);
-        public const float X = -22.8f;
-        public const float Z = 8.4f;
+        public const float X = -22.8f * WorldScale.Kit;   // 모듈 좌표 × 킷 배율(랩 B)
+        public const float Z = 8.4f * WorldScale.Kit;
         public const int ControlSlots = 1;
         public const float FollowOffsetX = 1.2f;
         public const float FollowOffsetZ = -0.8f;
@@ -20,8 +20,8 @@ namespace Ulon.Shared
         public const string Object = "TameBoar";
         /// <summary>이름은 원장(mobs.json → MobCatalog)에서만 온다.</summary>
         public static string DisplayName => MobCatalog.DisplayNameOf(Id);
-        public const float X = -25.6f;
-        public const float Z = 11.2f;
+        public const float X = -25.6f * WorldScale.Kit;
+        public const float Z = 11.2f * WorldScale.Kit;
         public const int ControlSlots = 1;
     }
 

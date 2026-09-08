@@ -140,10 +140,14 @@ namespace Ulon.Editor
         }
 
 
+        /// <summary>가드존 **밖** 자리 — 20m로 박아 두면 존이 커지는 순간 자가 저 스스로 운다(랩 B).
+        /// 안팎을 재는 모든 자가 이 한 곳을 쓴다.</summary>
+        static float GuardOutside => GuardZone.Radius * 1.25f;
+
         static void AssertGuildWar()
         {
             AssertDungeon3Leftover();
-            if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(20f, 0f))
+            if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(GuardOutside, 0f))   // 「밖」도 반경에서 유도(랩 B)
                 throw new InvalidOperationException("가드존 반경이 마을과 안 맞습니다.");
 
             var noGuild = GuildWarResolve.Declare(new GuildWarRequest { HasGuild = false, IsLeader = true, HasTargetGuild = true });
@@ -175,9 +179,9 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("강화 Resolve는 성공해야 합니다: " + peaceOk.FailReason);
             if (GuildWarResolve.FieldWar(true, true, "g1", "g2", "g2", "g1", 0f, 0f, 0f, 0f))
                 throw new InvalidOperationException("가드존 안 길드전은 FieldWar이 아니어야 합니다.");
-            if (!GuildWarResolve.FieldWar(true, true, "g1", "g2", "g2", "g1", 20f, 0f, 20f, 0f))
+            if (!GuildWarResolve.FieldWar(true, true, "g1", "g2", "g2", "g1", GuardOutside, 0f, GuardOutside, 0f))
                 throw new InvalidOperationException("야외 길드전은 FieldWar이어야 합니다.");
-            if (GuildWarResolve.FieldWar(true, true, "g1", "g2", "", "", 20f, 0f, 20f, 0f))
+            if (GuildWarResolve.FieldWar(true, true, "g1", "g2", "", "", GuardOutside, 0f, GuardOutside, 0f))
                 throw new InvalidOperationException("전쟁 없는 야외는 FieldWar이 아니어야 합니다.");
 
             var worldGo = new GameObject("selfcheck-gwar-world");
@@ -188,8 +192,10 @@ namespace Ulon.Editor
                 var world = OfflineWorld.Instance ?? worldGo.AddComponent<OfflineWorld>();
                 aGo = new GameObject("selfcheck-gwar-a");
                 bGo = new GameObject("selfcheck-gwar-b");
-                aGo.transform.position = new Vector3(20f, 0f, 0f);
-                bGo.transform.position = new Vector3(20f, 0f, 0f);
+                // 「존 밖」 자리도 **반경에서 유도**한다 — 20m로 박아 두면 가드존이 커지는 순간
+                // 더미가 존 안에 들어가 자가 저 스스로 운다(랩 B에서 실제로 걸렸다).
+                aGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
+                bGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
                 var a = aGo.AddComponent<WorldBody>();
                 var b = bGo.AddComponent<WorldBody>();
                 a.IsAvatar = true;
@@ -245,8 +251,8 @@ namespace Ulon.Editor
                 if (world.AtWar(a, b))
                     throw new InvalidOperationException("강화 후 AtWar가 아니어야 합니다.");
 
-                aGo.transform.position = new Vector3(20f, 0f, 0f);
-                bGo.transform.position = new Vector3(20f, 0f, 0f);
+                aGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
+                bGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
                 if (b.Notoriety != NotorietyId.Innocent)
                     throw new InvalidOperationException("강화 직후 B는 무고여야 합니다.");
                 var open = world.TryAttack(b, a);
@@ -275,7 +281,7 @@ namespace Ulon.Editor
         static void AssertDuel()
         {
             AssertDungeon3Leftover();
-            if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(20f, 0f))
+            if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(GuardOutside, 0f))   // 「밖」도 반경에서 유도(랩 B)
                 throw new InvalidOperationException("가드존 반경이 마을과 안 맞습니다.");
 
             var noTarget = DuelResolve.Invite(new DuelRequest { HasTarget = false });
@@ -318,9 +324,9 @@ namespace Ulon.Editor
 
             if (DuelResolve.FieldDuel(true, true, true, 0f, 0f, 0f, 0f))
                 throw new InvalidOperationException("가드존 안 결투는 FieldDuel이 아니어야 합니다.");
-            if (!DuelResolve.FieldDuel(true, true, true, 20f, 0f, 20f, 0f))
+            if (!DuelResolve.FieldDuel(true, true, true, GuardOutside, 0f, GuardOutside, 0f))
                 throw new InvalidOperationException("야외 결투는 FieldDuel이어야 합니다.");
-            if (DuelResolve.FieldDuel(true, true, false, 20f, 0f, 20f, 0f))
+            if (DuelResolve.FieldDuel(true, true, false, GuardOutside, 0f, GuardOutside, 0f))
                 throw new InvalidOperationException("미수락 야외는 FieldDuel이 아니어야 합니다.");
 
             var worldGo = new GameObject("selfcheck-duel-world");
@@ -331,8 +337,8 @@ namespace Ulon.Editor
                 var world = OfflineWorld.Instance ?? worldGo.AddComponent<OfflineWorld>();
                 aGo = new GameObject("selfcheck-duel-a");
                 bGo = new GameObject("selfcheck-duel-b");
-                aGo.transform.position = new Vector3(20f, 0f, 0f);
-                bGo.transform.position = new Vector3(20f, 0f, 0f);
+                aGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
+                bGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
                 var a = aGo.AddComponent<WorldBody>();
                 var b = bGo.AddComponent<WorldBody>();
                 a.IsAvatar = true;
@@ -384,8 +390,8 @@ namespace Ulon.Editor
                 if (a.Notoriety != NotorietyId.Innocent)
                     throw new InvalidOperationException("광장 결투 차단 후에도 무고여야 합니다.");
 
-                aGo.transform.position = new Vector3(20f, 0f, 0f);
-                bGo.transform.position = new Vector3(20f, 0f, 0f);
+                aGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
+                bGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
                 var ended = world.TryDuelEnd(a);
                 if (!ended.Applied)
                     throw new InvalidOperationException("결투 종료 실패: " + ended.FailReason);
@@ -566,7 +572,7 @@ namespace Ulon.Editor
         static void AssertOpenPvpSlice()
         {
             AssertDungeon3Leftover();
-            if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(20f, 0f))
+            if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(GuardOutside, 0f))   // 「밖」도 반경에서 유도(랩 B)
                 throw new InvalidOperationException("가드존 반경이 마을과 안 맞습니다.");
             if (PvpResolve.MurdererThreshold != 5)
                 throw new InvalidOperationException("살인자 기준은 기획 Murder Count 5입니다.");
@@ -579,8 +585,8 @@ namespace Ulon.Editor
                 var world = OfflineWorld.Instance ?? worldGo.AddComponent<OfflineWorld>();
                 aGo = new GameObject("selfcheck-pvp-a");
                 bGo = new GameObject("selfcheck-pvp-b");
-                aGo.transform.position = new Vector3(20f, 0f, 0f);
-                bGo.transform.position = new Vector3(20f, 0f, 0f);
+                aGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
+                bGo.transform.position = new Vector3(GuardOutside, 0f, 0f);
                 var a = aGo.AddComponent<WorldBody>();
                 var b = bGo.AddComponent<WorldBody>();
                 a.IsAvatar = true;

@@ -484,7 +484,7 @@ namespace Ulon.Editor
         }
 
         /// <summary>로그인 스폰(0,0) 둘레에 부속을 놓지 않는 반경 — 스폰이 소품 위에 뜨는 것을 막는다.</summary>
-        const float SpawnClearRadius = 2.6f;
+        const float SpawnClearRadius = 2.6f * KitScale;   // 비울 자리도 킷과 같은 배로(랩 B)
 
         /// <summary>
         /// 부속을 붙일 **기준점** — 시설 본체(부속·사람·불꽃을 뺀 것)의 보이는 중심.
@@ -699,15 +699,25 @@ namespace Ulon.Editor
         {
             for (int i = 0; i < HuntSpots.Length; i++)
                 if (HuntSpots[i].Name == name)
-                    return new Vector3(HuntSpots[i].X, 0f, HuntSpots[i].Z);
+                    return HuntSpotWorld(i);
             throw new System.InvalidOperationException("사냥터 자리 원장에 " + name + "이(가) 없습니다.");
+        }
+
+        /// <summary>
+        /// 사냥터 자리의 **월드 좌표** — 원장은 마을과 같은 모듈 격자로 적혀 있다(랩 B).
+        /// 마을이 킷 배율만큼 넓어지면 사냥터도 같은 배로 물러나야 「마을에 몹이 산다」가 안 된다
+        /// (실측: 배율 뒤 몹이 마을 담장에서 7.3m까지 다가와 게이트가 울었다).
+        /// </summary>
+        public static Vector3 HuntSpotWorld(int i)
+        {
+            return Module(new Vector3(HuntSpots[i].X, 0f, HuntSpots[i].Z));
         }
 
         /// <summary>사냥터를 **보는 눈**(마을 쪽 남에서 북을 본다) — QA 샷 카메라(`03_hunt_mobs`)와
         /// 겹침 게이트가 이 한 자리를 같이 쓴다. 재는 자와 찍는 자가 다르면 초록인데 화면은 겹친다.</summary>
-        public static readonly Vector2 HuntViewEye = new Vector2(2.8f, 21f);
+        public static readonly Vector2 HuntViewEye = new Vector2(2.8f, 21f) * KitScale;
         public const float HuntViewEyeHeight = 6.0f;
-        public static readonly Vector2 HuntViewTarget = new Vector2(2.8f, 33.5f);
+        public static readonly Vector2 HuntViewTarget = new Vector2(2.8f, 33.5f) * KitScale;
         public const float HuntViewTargetHeight = 1.0f;
 
         /// <summary>
@@ -726,8 +736,9 @@ namespace Ulon.Editor
                 var go = GameObject.Find(spot.Name);
                 if (go == null)
                     continue;
-                float y = GroundHeightAt(spot.X, spot.Z);
-                var want = new Vector3(spot.X, y, spot.Z);
+                Vector3 world = HuntSpotWorld(i);
+                float y = GroundHeightAt(world.x, world.z);
+                var want = new Vector3(world.x, y, world.z);
                 if ((go.transform.position - want).sqrMagnitude > 0.0001f)
                     moved++;
                 go.transform.position = want;

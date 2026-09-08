@@ -5,8 +5,8 @@ namespace Ulon.Shared
         public const string Object = "Stable";
         public const string PolesObject = "StablePoles";
         public const string DisplayName = "마구간지기";
-        public const float X = 8.8f;
-        public const float Z = -8.4f;
+        public const float X = 8.8f * WorldScale.Kit;     // 모듈 좌표 × 킷 배율(랩 B)
+        public const float Z = -8.4f * WorldScale.Kit;
         public const float InteractRange = 2.6f;
         public const int GoldCost = 2;
     }

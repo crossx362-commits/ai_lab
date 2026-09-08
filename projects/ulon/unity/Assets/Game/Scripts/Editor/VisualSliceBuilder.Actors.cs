@@ -22,9 +22,24 @@ namespace Ulon.Editor
             return Place(path, pos, Quaternion.Euler(euler));
         }
 
+        /// <summary>
+        /// **킷인가 — 이름이 아니라 출처(자산 경로)로 가린다**(랩 B 조건 ㉰, 검수 2026-09-09).
+        ///
+        /// 배율을 받는 것은 Kenney 팩(1m 모듈로 만들어진 건물·울타리·가로등·간판·나무·덤불·소품)뿐이다.
+        /// 지형은 프리팹이 아니라 애초에 이 문을 안 지나가고, KayKit 던전 소품은 `RoomPropObject`가
+        /// **목표 크기(m)를 강제**하므로 여기서 곱해도 곧 덮어써진다 — 그래서 같은 문을 지나가는
+        /// OpenGameArt 짐승(`Deer.obj`·`Boar.fbx`)만 실제로 갈라 낼 것이 남는다. 그 둘은 실물 크기다.
+        /// </summary>
+        public static bool IsKenneyKit(string assetPath)
+        {
+            return !string.IsNullOrEmpty(assetPath) &&
+                   assetPath.IndexOf("/Kenney/", StringComparison.Ordinal) >= 0;
+        }
+
         static GameObject Place(string path, Vector3 pos, Quaternion rot)
         {
             string displayName = Path.GetFileNameWithoutExtension(path);
+            string sourcePath = path;                       // 출처 판정은 **원본 경로**로 — 아래에서 프리팹 경로로 바뀐다
             // **모델 확장자를 하나만 보면 새 팩에서 조용히 샌다** — OBJ로 배포된 사슴이 RAW 그대로 놓여
             // 「Prefab이어야 한다」 게이트에 걸렸다(2026-09-07). 모델이면 전부 Env 프리팹을 거친다.
             if (IsModelPath(path))
@@ -34,6 +49,12 @@ namespace Ulon.Editor
                 return null;
             var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             go.name = displayName;
+            // **킷은 1m 모듈로 만들어졌고 사람은 1.8m다** — 출처가 Kenney면 배율을 곱한다(랩 B).
+            // 출처는 프리팹 뿌리가 아니라 **원본 모델 경로**에 있다(뿌리에 없으면 한 겹 아래 있다).
+            // KayKit 던전 소품은 `RoomPropObject`가 **절대 크기**로 놓으므로 이 문을 안 지나가고,
+            // 같은 문을 지나가는 OpenGameArt 짐승(사슴·멧돼지)은 킷이 아니라 여기서 갈린다.
+            if (IsKenneyKit(sourcePath))
+                go.transform.localScale *= KitScale;
             float yaw = rot.eulerAngles.y;
             go.transform.SetPositionAndRotation(OnGround(new Vector3(pos.x, 0f, pos.z)) + Vector3.up * pos.y, Quaternion.Euler(0f, yaw, 0f));
             SnapRootToGround(go);

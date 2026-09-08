@@ -38,7 +38,8 @@ namespace Ulon.Editor
             var oak = GameObject.Find("FieldOak");
             if (oak == null)
                 throw new InvalidOperationException("동쪽 FieldOak가 유지되어야 합니다.");
-            if (Vector3.Distance(boss.transform.position, oak.transform.position) > 12f)
+            // 「참나무 곁」은 마을 격자 거리다 — 킷 배율이 붙으면 같은 배로 늘어난다(랩 B).
+            if (Vector3.Distance(boss.transform.position, oak.transform.position) > 12f * VisualSliceBuilder.KitScale)
                 throw new InvalidOperationException("헥사크는 동쪽 필드 아웃라이어여야 합니다.");
             var cc = boss.GetComponent<CharacterController>();
             if (cc == null || Math.Abs(cc.height - MobCatalog.HeightOf(MobCatalog.Hexarch)) > 0.05f)

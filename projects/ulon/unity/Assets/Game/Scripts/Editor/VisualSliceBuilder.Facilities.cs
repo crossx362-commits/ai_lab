@@ -82,7 +82,13 @@ namespace Ulon.Editor
             // 떨어져 나가는데, 이 이른 반환이 그 상태를 그대로 통과시켜 게이트가 「HousePlotStation이
             // 있어야 합니다」로 멈췄다. 그래서 **이름이 아니라 기능으로** 성한지 보고, 성하면 이름만
             // 바로잡고, 상하면 헐고 다시 짓는다 — 다른 `Ensure*`와 같은 수렴 규칙이다.
-            if (GameObject.Find(HousingPlot.RootObject) != null)
+            var liveRoot = GameObject.Find(HousingPlot.RootObject);
+            // **자리도 성한 상태의 일부다**(랩 B) — 킷 배율이 바뀌면 부지 좌표(`HousingPlot.X/Z`)가
+            // 움직인다. 기능만 보고 통과시키면 부지는 옛 자리에 남고 게이트가 「좌표가 달라야…」로 운다.
+            bool placedRight = liveRoot != null &&
+                Mathf.Abs(liveRoot.transform.position.x - HousingPlot.X) < 0.5f &&
+                Mathf.Abs(liveRoot.transform.position.z - HousingPlot.Z) < 0.5f;
+            if (liveRoot != null && placedRight)
             {
                 var liveStation = UnityEngine.Object.FindFirstObjectByType<HousePlotStation>(FindObjectsInactive.Include);
                 var liveChest = UnityEngine.Object.FindFirstObjectByType<HouseChest>(FindObjectsInactive.Include);
@@ -125,9 +131,9 @@ namespace Ulon.Editor
             Vector3 center = OnGround(new Vector3(HousingPlot.X, 0f, HousingPlot.Z));
             root.transform.position = center;
             Transform parent = root.transform;
-            float half = 2.2f;
-            float step = PrefabRunLength(Fence);
-            float gateGap = 1.35f;
+            float half = 2.2f * KitScale;                    // 부지 담장도 킷 격자다(랩 B)
+            float step = PrefabRunLength(Fence) * KitScale;
+            float gateGap = 1.35f * KitScale;
             Decor(parent, Gate, new Vector3(HousingPlot.X, 0f, HousingPlot.Z + half), Vector3.zero);
             PlaceRun(parent, Fence, HousingPlot.X - half, HousingPlot.Z - half, HousingPlot.X + half, HousingPlot.Z - half, 0f, step, 0f, 0f, 0f);
             PlaceRun(parent, Fence, HousingPlot.X - half, HousingPlot.Z + half, HousingPlot.X + half, HousingPlot.Z + half, 0f, step, HousingPlot.X, HousingPlot.Z + half, gateGap);
@@ -147,7 +153,7 @@ namespace Ulon.Editor
 
             var house = new GameObject(HousingPlot.HouseObject);
             house.transform.SetParent(parent, false);
-            house.transform.localPosition = new Vector3(-1f, 0f, -0.2f);
+            house.transform.localPosition = Module(new Vector3(-1f, 0f, -0.2f));
             Transform hp = house.transform;
             int width = 2;
             int depth = 2;
@@ -167,7 +173,7 @@ namespace Ulon.Editor
             SnapRootToGround(house);
             house.SetActive(false);
 
-            Vector3 chestPos = OnGround(new Vector3(HousingPlot.X + 1.6f, 0f, HousingPlot.Z - 1.4f));
+            Vector3 chestPos = OnGround(new Vector3(HousingPlot.X + 1.6f * KitScale, 0f, HousingPlot.Z - 1.4f * KitScale));
             var chest = Place(Bench, chestPos, new Vector3(0f, 90f, 0f));
             if (chest == null)
                 chest = new GameObject(HousingPlot.ChestObject);

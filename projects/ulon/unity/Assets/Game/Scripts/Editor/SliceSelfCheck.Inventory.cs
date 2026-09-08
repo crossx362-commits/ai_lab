@@ -426,14 +426,21 @@ namespace Ulon.Editor
                 if (b.min.y < 0f)
                     throw new InvalidOperationException("Stable이 땅속에 있음 minY=" + b.min.y);
             }
-            float[] lxs = { HousingPlot.X, TameCritter.X, TravelGate.X, -6.8f, -5.2f, -3.6f, HousingPlot.X - 1.6f, -7.5f, 2.5f, -5.5f, 4.5f, 1.2f, -2.2f, Dungeon1.EntranceX, Dungeon2.EntranceX, Dungeon3.EntranceX, FieldBoss.X };
-            float[] lzs = { HousingPlot.Z, TameCritter.Z, TravelGate.Z, 3.4f, 3.4f, -3.6f, HousingPlot.Z + 1.4f, 1.2f, 1.2f, -2.1f, -2.1f, -4.8f, 4.2f, Dungeon1.EntranceZ, Dungeon2.EntranceZ, Dungeon3.EntranceZ, FieldBoss.Z };
+            // **여기 적힌 랜드마크 좌표는 마을 모듈 좌표다** — 킷 배율이 붙은 뒤로는 그대로 쓰면
+            // 자가 옛 마을을 재게 된다(랩 B에서 실제로 걸렸다). 공유 상수(`HousingPlot` 등)는 이미
+            // 월드라 그대로 두고, 여기 박힌 숫자만 `Module`로 옮긴다. 떨어져 있어야 할 거리도 같은 배로.
+            float kit = VisualSliceBuilder.KitScale;
+            float[] lxs = { HousingPlot.X, TameCritter.X, TravelGate.X, -6.8f * kit, -5.2f * kit, -3.6f * kit, HousingPlot.X - 1.6f * kit, -7.5f * kit, 2.5f * kit, -5.5f * kit, 4.5f * kit, 1.2f * kit, -2.2f * kit, Dungeon1.EntranceX, Dungeon2.EntranceX, Dungeon3.EntranceX, FieldBoss.X };
+            float[] lzs = { HousingPlot.Z, TameCritter.Z, TravelGate.Z, 3.4f * kit, 3.4f * kit, -3.6f * kit, HousingPlot.Z + 1.4f * kit, 1.2f * kit, 1.2f * kit, -2.1f * kit, -2.1f * kit, -4.8f * kit, 4.2f * kit, Dungeon1.EntranceZ, Dungeon2.EntranceZ, Dungeon3.EntranceZ, FieldBoss.Z };
+            float apart = 6f * kit;
             for (int i = 0; i < lxs.Length; i++)
             {
                 float dx = pos.x - lxs[i];
                 float dz = pos.z - lzs[i];
-                if ((dx * dx) + (dz * dz) < 36f)
-                    throw new InvalidOperationException("Stable이 집/랜드마크와 겹치면 안 됩니다.");
+                if ((dx * dx) + (dz * dz) < apart * apart)
+                    throw new InvalidOperationException("Stable이 집/랜드마크와 겹치면 안 됩니다(" +
+                        lxs[i].ToString("0.0") + ", " + lzs[i].ToString("0.0") + "에서 " +
+                        Mathf.Sqrt((dx * dx) + (dz * dz)).ToString("0.0") + "m, 최소 " + apart.ToString("0.0") + "m).");
             }
 
             var ghost = StableResolve.Park(new StableRequest { Ghost = true, HasFollower = true, Distance = 1f, Gold = StableYard.GoldCost });

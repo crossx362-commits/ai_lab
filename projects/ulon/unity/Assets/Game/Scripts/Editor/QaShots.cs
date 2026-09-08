@@ -787,24 +787,20 @@ namespace Ulon.Editor
             => BlockedByRenderer(eye, point, subject, out _);
 
         /// <summary>
-        /// **사람이 판정할 만큼 보이는가** — 머리·몸통 두 점만 보면 모자란다(검수 2026-09-09):
-        /// `50_villagers` 첫 칸은 두 점이 뚫린 방위였는데도 나무 기둥이 화면 절반을 먹고 인물이
-        /// 그늘에 잠겨, 판정할 성질(모자 비례·손)이 화면에 없었다.
-        /// 그래서 **실루엣의 좌우 끝과 손 높이까지 다섯 점**을 본다 — 옆에 선 기둥은 좌우 끝에서 걸린다.
+        /// **사람이 판정할 만큼 보이는가** — 머리와 몸통 두 점을 본다.
+        ///
+        /// **다섯 점(실루엣 좌우 끝·손 높이)까지 요구해 봤다가 되돌렸다**(2026-09-09):
+        /// 검수가 지적한 `50_villagers` 첫 칸(은행원)은 **가림이 아니라 그늘 + 벽 페이드**였고
+        /// — 원본 샷에서는 모자 비례도 손도 읽힌다 — 다섯 점으로 조인 결과 고친 것은 없이
+        /// **훈련사가 아예 못 찍히는** 대가만 남았다(전 방위 탈락). 자를 조이면 세계가 좁아진다.
+        /// 남은 밝기 문제는 「후보 방위 중 밝은 쪽 고르기」로 따로 잡는다(검수: 랩 B 뒤로).
         /// </summary>
         static bool PersonBlocked(Vector3 eye, Bounds box, Transform subject, out string blocker)
         {
-            Vector3 flat = box.center - eye; flat.y = 0f;
-            Vector3 right = flat.sqrMagnitude > 0.0001f
-                ? Vector3.Cross(Vector3.up, flat.normalized) * Mathf.Max(box.extents.x, box.extents.z) * 0.8f
-                : Vector3.right * box.extents.x * 0.8f;
             var points = new[]
             {
                 box.center + Vector3.up * box.extents.y * 0.8f,   // 머리
                 box.center,                                        // 몸통
-                box.center + right,                                // 실루엣 오른쪽 끝
-                box.center - right,                                // 실루엣 왼쪽 끝
-                box.center - Vector3.up * box.extents.y * 0.3f,    // 손 높이
             };
             for (int i = 0; i < points.Length; i++)
                 if (BlockedByRenderer(eye, points[i], subject, out blocker))

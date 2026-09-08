@@ -176,9 +176,9 @@ namespace Ulon.Editor
             }
             PaintSceneByName(grassMat, new[] { "grass", "grass_large", "plant_bush", "plant_bushLarge", "ResinBush", "FieldFlax", "grass_leafs", "ground_grass" });
             PaintSceneByName(dirtMat, new[] { "rock_smallA", "rock_largeA", "ground_pathTile" });
-            var roadMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Game/Art/Env/KenneyRoad.mat");
-            if (roadMat != null)
-                PaintSceneByName(roadMat, new[] { "road" });
+            // 도로는 **여기서 마지막으로** 칠해진다 — 앞의 어떤 배정도 이 줄이 덮는다.
+            // 옛 KenneyRoad.mat(알베도 0.62)은 대낮에 포화(255)해 그 위의 효과를 지웠다(KenneyStoneRoadMat 주석의 유도).
+            PaintSceneByName(KenneyStoneRoadMat(), new[] { "road" });
         }
 
         /// <summary>
@@ -425,6 +425,7 @@ namespace Ulon.Editor
         /// </summary>
         static GameObject EnsureLandmarkObject(string name, string modelPath, string legacyName, Vector3 pos, Vector3 euler)
         {
+            pos = Module(pos);                              // 랜드마크 자리도 마을 격자다(랩 B)
             var go = GameObject.Find(name);
             if (go == null && !string.IsNullOrEmpty(legacyName))
             {
@@ -484,7 +485,11 @@ namespace Ulon.Editor
             MoveNamed("SpawnA", new Vector3(-1.2f, 0f, 1.4f), Vector3.zero);
             MoveNamed("SpawnB", new Vector3(1.2f, 0f, 1.4f), Vector3.zero);
             EnsureTrainerNpc();
-            MoveNamed("Trainer", new Vector3(3.6f, 0f, 2.6f), new Vector3(0f, 180f, 0f));
+            // **훈련사는 집 안에 서 있었다**(랩 B에서 드러남): 옛 자리 (3.6, 2.6)은 민가
+            // (SW 2.5,1.2 · 2×2칸) 발자국 **안**이었는데, 킷이 1m일 땐 벽이 무릎높이라 사람이
+            // 위로 솟아 보였을 뿐이다. 벽이 2.1m가 되자 전 방위가 벽에 막혔다.
+            // 집 북쪽 빈 자리로 옮긴다 — 카메라를 비트는 것이 아니라 자리를 고친다.
+            MoveNamed("Trainer", new Vector3(3.6f, 0f, 4.8f), new Vector3(0f, 180f, 0f));
             var healerGo = GameObject.Find("Healer");
             if (healerGo != null)
             {
@@ -644,7 +649,7 @@ namespace Ulon.Editor
                 UnityEngine.Object.DestroyImmediate(old);
             var root = new GameObject("EastField");
             Transform parent = root.transform;
-            var oak = Place(TreeH, new Vector3(18.2f, 0f, 2.4f), Vector3.zero);
+            var oak = Place(TreeH, Module(new Vector3(18.2f, 0f, 2.4f)), Vector3.zero);
             if (oak == null)
                 throw new InvalidOperationException("동쪽 필드 나무 모델 없음");
             oak.name = "FieldOak";
@@ -658,11 +663,11 @@ namespace Ulon.Editor
             node.RespawnSeconds = 8f;
             node.Difficulty = 10f;
             EnsureCollider(oak);
-            Decor(parent, RockA, new Vector3(19.6f, 0f, 0.6f), new Vector3(0f, 20f, 0f));
-            Decor(parent, RockS, new Vector3(17.1f, 0f, 4.2f), new Vector3(0f, 40f, 0f));
-            Decor(parent, Bush, new Vector3(19.8f, 0f, 3.8f), new Vector3(0f, 70f, 0f));
-            Decor(parent, Tuft, new Vector3(17.4f, 0f, 1.1f), new Vector3(0f, 15f, 0f));
-            Decor(parent, Tuft, new Vector3(20.2f, 0f, 2.2f), new Vector3(0f, 95f, 0f));
+            DecorM(parent, RockA, new Vector3(19.6f, 0f, 0.6f), new Vector3(0f, 20f, 0f));
+            DecorM(parent, RockS, new Vector3(17.1f, 0f, 4.2f), new Vector3(0f, 40f, 0f));
+            DecorM(parent, Bush, new Vector3(19.8f, 0f, 3.8f), new Vector3(0f, 70f, 0f));
+            DecorM(parent, Tuft, new Vector3(17.4f, 0f, 1.1f), new Vector3(0f, 15f, 0f));
+            DecorM(parent, Tuft, new Vector3(20.2f, 0f, 2.2f), new Vector3(0f, 95f, 0f));
         }
 
         /// <summary>아마밭 이랑 수·한 줄에 심는 수 — 게이트가 같은 값을 읽는다(두 벌로 적지 않는다).</summary>
@@ -743,11 +748,11 @@ namespace Ulon.Editor
             node.Difficulty = 10f;
             EnsureCollider(flax);
             // 곁가지는 **울타리 밖**에 둔다 — 밭 한가운데 바위가 박혀 있으면 경작지로 안 읽힌다.
-            Decor(parent, RockA, new Vector3(WorldSplat.FlaxX + hx + 1.6f, 0f, WorldSplat.FlaxZ + 1.2f), new Vector3(0f, 30f, 0f));
-            Decor(parent, RockS, new Vector3(WorldSplat.FlaxX - hx - 1.4f, 0f, WorldSplat.FlaxZ - 1.0f), new Vector3(0f, 80f, 0f));
-            Decor(parent, BushS, new Vector3(WorldSplat.FlaxX + hx + 1.2f, 0f, WorldSplat.FlaxZ - hz - 1.3f), new Vector3(0f, 50f, 0f));
-            Decor(parent, Tuft, new Vector3(WorldSplat.FlaxX - hx - 1.1f, 0f, WorldSplat.FlaxZ + hz + 1.0f), new Vector3(0f, 15f, 0f));
-            Decor(parent, Tuft, new Vector3(WorldSplat.FlaxX + 0.6f, 0f, WorldSplat.FlaxZ - hz - 1.5f), new Vector3(0f, 110f, 0f));
+            DecorM(parent, RockA, new Vector3(WorldSplat.FlaxX + hx + 1.6f, 0f, WorldSplat.FlaxZ + 1.2f), new Vector3(0f, 30f, 0f));
+            DecorM(parent, RockS, new Vector3(WorldSplat.FlaxX - hx - 1.4f, 0f, WorldSplat.FlaxZ - 1.0f), new Vector3(0f, 80f, 0f));
+            DecorM(parent, BushS, new Vector3(WorldSplat.FlaxX + hx + 1.2f, 0f, WorldSplat.FlaxZ - hz - 1.3f), new Vector3(0f, 50f, 0f));
+            DecorM(parent, Tuft, new Vector3(WorldSplat.FlaxX - hx - 1.1f, 0f, WorldSplat.FlaxZ + hz + 1.0f), new Vector3(0f, 15f, 0f));
+            DecorM(parent, Tuft, new Vector3(WorldSplat.FlaxX + 0.6f, 0f, WorldSplat.FlaxZ - hz - 1.5f), new Vector3(0f, 110f, 0f));
         }
 
 
@@ -770,9 +775,9 @@ namespace Ulon.Editor
             if (stray != null)
                 UnityEngine.Object.DestroyImmediate(stray);
             var root = new GameObject("NorthField");
-            root.transform.position = new Vector3(-12.2f, 0f, 20.4f);
+            root.transform.position = Module(new Vector3(-12.2f, 0f, 20.4f));
             Transform parent = root.transform;
-            var ore = Place(RockA, new Vector3(-12.2f, 0f, 20.4f), Vector3.zero);
+            var ore = Place(RockA, Module(new Vector3(-12.2f, 0f, 20.4f)), Vector3.zero);
             if (ore == null)
                 throw new InvalidOperationException("북쪽 필드 바위 모델 없음");
             ore.name = "FieldOre";
@@ -786,11 +791,11 @@ namespace Ulon.Editor
             node.RespawnSeconds = 8f;
             node.Difficulty = 10f;
             EnsureCollider(ore);
-            Decor(parent, RockS, new Vector3(-13.6f, 0f, 19.2f), new Vector3(0f, 40f, 0f));
-            Decor(parent, RockS, new Vector3(-10.8f, 0f, 21.6f), new Vector3(0f, 80f, 0f));
-            Decor(parent, Bush, new Vector3(-11.0f, 0f, 19.0f), new Vector3(0f, 55f, 0f));
-            Decor(parent, Tuft, new Vector3(-13.0f, 0f, 21.2f), new Vector3(0f, 15f, 0f));
-            Decor(parent, Tuft, new Vector3(-10.6f, 0f, 20.1f), new Vector3(0f, 110f, 0f));
+            DecorM(parent, RockS, new Vector3(-13.6f, 0f, 19.2f), new Vector3(0f, 40f, 0f));
+            DecorM(parent, RockS, new Vector3(-10.8f, 0f, 21.6f), new Vector3(0f, 80f, 0f));
+            DecorM(parent, Bush, new Vector3(-11.0f, 0f, 19.0f), new Vector3(0f, 55f, 0f));
+            DecorM(parent, Tuft, new Vector3(-13.0f, 0f, 21.2f), new Vector3(0f, 15f, 0f));
+            DecorM(parent, Tuft, new Vector3(-10.6f, 0f, 20.1f), new Vector3(0f, 110f, 0f));
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
         }

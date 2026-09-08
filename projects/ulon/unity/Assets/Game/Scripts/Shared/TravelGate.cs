@@ -4,8 +4,8 @@ namespace Ulon.Shared
     {
         public const string Object = "Moongate";
         public const string DisplayName = "문게이트";
-        public const float X = 12.8f;
-        public const float Z = -22.8f;
+        public const float X = 12.8f * WorldScale.Kit;    // 모듈 좌표 × 킷 배율(랩 B)
+        public const float Z = -22.8f * WorldScale.Kit;
         public const float PlazaX = 0f;
         public const float PlazaZ = 0f;
         public const float InteractRange = 2.6f;

@@ -421,21 +421,40 @@ namespace Ulon.Editor
         /// </summary>
         const int RoomPointLightMin = 3;
 
+        /// <summary>
+        /// **해는 하나다.** 방향광은 자리와 무관하게 세계 전체를 비추므로 등불 하나가 방향광이 되면
+        /// 마을 조도가 그만큼 곱절이 된다 — 2026-09-09 실측: 해 셋(1.18×3)이 광장 화면의 24~39%를
+        /// 순백(255)으로 태웠고, 포화한 픽셀 위에서는 VFX 픽셀 차가 0이라 「효과가 안 읽힘」이 됐다.
+        /// 원인은 빌더가 `FindAnyObjectByType&lt;Light&gt;()`로 **아무 등불이나** 집어 해로 만든 것
+        /// (「고르는 자는 틀려도 빨간불이 안 난다」). 고르는 자를 고쳤으니, 다시 둘이 되면 여기서 운다.
+        /// </summary>
+        static Light SingleSun()
+        {
+            Light sun = null;
+            var strays = new System.Collections.Generic.List<string>();
+            var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < lights.Length; i++)
+            {
+                if (lights[i].type != LightType.Directional)
+                    continue;
+                if (lights[i].gameObject.name == VisualSliceBuilder.SunObject && sun == null)
+                    sun = lights[i];
+                else
+                    strays.Add(lights[i].name + "(I=" + lights[i].intensity.ToString("F2") + ")");
+            }
+            if (strays.Count > 0)
+                throw new InvalidOperationException("방향광이 " + (strays.Count + (sun != null ? 1 : 0)) +
+                    "개입니다 — 해는 " + VisualSliceBuilder.SunObject + " 하나뿐이어야 합니다. 나머지: " +
+                    string.Join(", ", strays) + ". 방향광은 자리와 무관하게 세계 전체를 비춰 지표를 포화시킵니다.");
+            return sun;
+        }
+
         static void AssertDungeonLighting()
         {
             AssertDungeon3Leftover();
             Physics.SyncTransforms();
 
-            Light sun = null;
-            var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            for (int i = 0; i < lights.Length; i++)
-            {
-                if (lights[i].type == LightType.Directional)
-                {
-                    sun = lights[i];
-                    break;
-                }
-            }
+            Light sun = SingleSun();
             if (sun == null)
                 throw new InvalidOperationException("씬에 주광(Directional Light)이 없습니다 — 실내 조명 판정을 할 수 없습니다.");
             if (sun.shadows == LightShadows.None)

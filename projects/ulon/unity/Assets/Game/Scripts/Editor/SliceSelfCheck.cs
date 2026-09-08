@@ -1112,7 +1112,7 @@ namespace Ulon.Editor
                 UnityEngine.Object.DestroyImmediate(gmGo);
             }
 
-            if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(20f, 0f))
+            if (!GuardZone.Contains(0f, 0f) || GuardZone.Contains(GuardZone.Radius * 1.25f, 0f))   // 「밖」도 반경에서 유도(랩 B)
                 throw new InvalidOperationException("가드존 반경이 마을과 안 맞습니다.");
             var notoGo = new GameObject("selfcheck-noto");
             try
@@ -1797,6 +1797,8 @@ namespace Ulon.Editor
             AssertHouseRoofPiecesDontOverlapNegativeControl();
             AssertHouseRoofPiecesDontOverlap();
             AssertHuntSpotsApartNegativeControl();           // 간격 자는 `AssertHuntGround` 안에서 잰다
+            AssertDoorFitsPersonNegativeControl();           // 배율을 뺀 집은 빨간불이어야 한다(랩 B)
+            AssertDoorFitsPerson();                          // 문이 사람보다 큰가 — 킷 배율의 근거
             AssertActorBodyMatchesCapsuleNegativeControl();  // 먼저 자가 우는지 본다
             AssertActorBodyMatchesCapsule();                // 그림이 충돌체와 같은 크기인가(랩 A)
             AssertGearFoundByPlace();                      // 장비를 이름표로만 찾지 않는가(랩 ①, 양방향 NC)

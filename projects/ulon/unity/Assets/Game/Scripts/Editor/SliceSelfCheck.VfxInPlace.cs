@@ -35,6 +35,10 @@ namespace Ulon.Editor
         const float PlayVfxChangedMax = 0.06f;       // 화면의 6%
         // 여유 메모: 야외 Craft가 하한 바로 위다(0.32% vs 0.25%). 야외 효과를 더 줄이면 바로 빨간불이다.
 
+        /// <summary>비면 안 찍는다. 값이 있으면 판정에 쓴 두 프레임을 그 경로로 남긴다 — 수치만으로는
+        /// 「왜 안 읽혔나」를 못 본다(2026-09-09 마을 광장 하한 미달을 이 두 장으로 잡았다).</summary>
+        static string PlayVfxDump = "";
+
         struct PlayVfxMeasure
         {
             public float Changed;      // 바뀐 픽셀 / 전체
@@ -86,7 +90,7 @@ namespace Ulon.Editor
                     Debug.Log("[Ulon] VFX 실화면 " + spots[s].Label + " · " + kinds[k] +
                               " — 바뀐 픽셀 " + (m.Changed * 100f).ToString("F2") + "%, 대비 " + m.Contrast.ToString("F2"));
                     if (m.Changed < PlayVfxChangedMin || m.Contrast < PlayVfxContrastMin)
-                        failures.Add(kinds[k] + "가 " + spots[s].Label + "에서 안 읽힘 — 바뀐 픽셀 " +
+                        failures.Add(DumpVfxFrames(spots[s], kinds[k]) +kinds[k] + "가 " + spots[s].Label + "에서 안 읽힘 — 바뀐 픽셀 " +
                             (m.Changed * 100f).ToString("F2") + "%(하한 " + (PlayVfxChangedMin * 100f).ToString("F2") +
                             "%), 대비 " + m.Contrast.ToString("F2") + "(하한 " + PlayVfxContrastMin + ")");
                     if (m.Changed > PlayVfxChangedMax)
@@ -125,6 +129,22 @@ namespace Ulon.Editor
             if (loud.Changed <= PlayVfxChangedMax)
                 throw new Exception("VFX 실화면 상한 네거티브 컨트롤 실패 — 효과를 2.5배로 키웠는데도 상한 안이었습니다(" +
                     (loud.Changed * 100f).ToString("F2") + "%). 상한이 너무 높아 화면을 덮는 효과를 통과시킵니다.");
+        }
+
+        /// <summary>
+        /// 못 읽힌 자리는 **두 프레임을 남기고** 실패한다 — 수치만으로는 「왜 안 읽혔나」를 못 본다.
+        /// 2026-09-09에 이 두 장이 원인을 갈랐다: 배경이 순백(255)이라 효과가 얹혀도 픽셀 차가 0이었고,
+        /// 그 포화는 해가 셋이어서 생긴 것이었다(SingleSun 게이트).
+        /// </summary>
+        static string DumpVfxFrames(PlayVfxSpot spot, ActionVfx.Kind kind)
+        {
+            string dir = System.IO.Path.GetFullPath(Application.dataPath + "/../../builds/qa");
+            System.IO.Directory.CreateDirectory(dir);
+            string stem = System.IO.Path.Combine(dir, "vfx_fail_" + kind);
+            PlayVfxDump = stem;
+            try { MeasureVfxInPlace(spot, kind, 1f); }
+            finally { PlayVfxDump = ""; }
+            return "[프레임 " + stem + "_before/after.png] ";
         }
 
         static PlayVfxMeasure MeasureVfxInPlace(PlayVfxSpot spot, ActionVfx.Kind kind, float scale)
@@ -175,6 +195,12 @@ namespace Ulon.Editor
                 }
 
                 Color[] after = Shoot(cam, rt, tex);
+                if (!string.IsNullOrEmpty(PlayVfxDump))
+                {
+                    System.IO.File.WriteAllBytes(PlayVfxDump + "_after.png", tex.EncodeToPNG());
+                    tex.SetPixels(before); tex.Apply();
+                    System.IO.File.WriteAllBytes(PlayVfxDump + "_before.png", tex.EncodeToPNG());
+                }
                 return Diff(before, after);
             }
             finally

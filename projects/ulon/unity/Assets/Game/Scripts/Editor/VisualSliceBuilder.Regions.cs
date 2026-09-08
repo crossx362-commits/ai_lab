@@ -294,7 +294,7 @@ namespace Ulon.Editor
                 float x = WorldRegions.Rand(i, 31, -84f, 84f);
                 float z = WorldRegions.Rand(i, 32, -84f, 84f);
                 float distVillage = Mathf.Sqrt(x * x + z * z);
-                if (distVillage < 26f)
+                if (distVillage < 26f * KitScale)          // 마을 가드도 마을과 같은 배로(랩 B)
                     continue;                                  // 마을·광장은 그대로 둔다
                 bool inRegion = false;
                 for (int k = 0; k < regions.Length; k++)
@@ -327,13 +327,30 @@ namespace Ulon.Editor
             go.transform.SetParent(parent, true);
         }
 
+        /// <summary>
+        /// **모듈 좌표 → 월드 좌표**(랩 B). 마을은 통째로 킷의 1m 격자 위에 설계돼 있다 —
+        /// 집 벽은 `x=0.5·1.5`, 도로는 `x+0.5`, 좌판·울타리도 정수 자리다. 킷이 `KitScale`배가 되면
+        /// **간격도 같은 배로 늘어나야** 벽이 서로 파고들지 않는다. 그래서 눈대중으로 좌표를 다시
+        /// 찍지 않고, 모듈 좌표를 그대로 두고 **여기 한 곳에서** 월드로 옮긴다(자가 하나면 안 갈린다).
+        /// 지형·던전 방·사냥터는 실 미터라 이 문을 지나가지 않는다.
+        /// </summary>
+        public static Vector3 Module(Vector3 modulePos) => modulePos * KitScale;
+
+        public static Vector3 Module(float x, float y, float z) => new Vector3(x, y, z) * KitScale;
+
+        /// <summary>모듈 좌표로 놓는 `Decor` — 마을 채우기·도로·울타리가 쓴다.</summary>
+        static void DecorM(Transform parent, string path, Vector3 modulePos, Vector3 euler)
+        {
+            Decor(parent, path, Module(modulePos), euler);
+        }
+
         static GameObject DecorLocal(Transform parent, string path, Vector3 localPos, Vector3 localEuler)
         {
             var go = Place(path, Vector3.zero, Quaternion.Euler(localEuler));
             if (go == null)
                 return null;
             go.transform.SetParent(parent, false);
-            go.transform.localPosition = localPos;
+            go.transform.localPosition = Module(localPos);   // 집 안쪽도 모듈 격자다
             go.transform.localRotation = Quaternion.Euler(localEuler);
             return go;
         }
@@ -342,6 +359,7 @@ namespace Ulon.Editor
         {
             var root = new GameObject("House");
             root.transform.SetParent(parent, false);
+            sw = Module(sw);                                 // 집이 서는 자리도 마을 격자다(랩 B)
             root.transform.SetPositionAndRotation(OnGround(new Vector3(sw.x, 0f, sw.z)), Quaternion.Euler(0f, yaw, 0f));
             Transform hp = root.transform;
             int width = 2;
@@ -397,7 +415,7 @@ namespace Ulon.Editor
                 float yaw = z == depth - 1 && depth > 1 ? 180f : 0f;   // 뒤쪽 마감은 반대로 돌려 닫는다
                 var go = DecorLocal(hp, piece, new Vector3(width * 0.5f, roofY, z + 0.5f), new Vector3(0f, yaw, 0f));
                 if (go != null)
-                    go.transform.localScale = new Vector3(width, 1f, 1f);
+                    go.transform.localScale = new Vector3(width, 1f, 1f) * KitScale;   // 킷 배율 위에 폭만 늘린다
             }
         }
 
@@ -432,8 +450,9 @@ namespace Ulon.Editor
                         continue;
                     pieces.Add(c);
                     high |= c.name.IndexOf("roof-high", StringComparison.Ordinal) >= 0;
-                    roofY = Mathf.Max(roofY, c.localPosition.y);
-                    maxZ = Mathf.Max(maxZ, c.localPosition.z);
+                    // 씬의 로컬 좌표는 **모듈 × KitScale**이다 — 규칙은 모듈 단위로 세워져 있으니 되돌려 읽는다.
+                    roofY = Mathf.Max(roofY, c.localPosition.y / KitScale);
+                    maxZ = Mathf.Max(maxZ, c.localPosition.z / KitScale);
                 }
                 if (pieces.Count == 0)
                     continue;
@@ -443,8 +462,8 @@ namespace Ulon.Editor
                 // 집 폭만큼 늘어나 있다. 증상 목록으로 재면 고친 뒤의 모양이 또 증상으로 걸린다.
                 bool ok = pieces.Count == depth;
                 for (int i = 0; ok && i < pieces.Count; i++)
-                    ok = Mathf.Abs(pieces[i].localPosition.x - Width * 0.5f) < 0.05f
-                         && Mathf.Abs(pieces[i].localScale.x - Width) < 0.05f;
+                    ok = Mathf.Abs(pieces[i].localPosition.x - Width * 0.5f * KitScale) < 0.05f
+                         && Mathf.Abs(pieces[i].localScale.x - Width * KitScale) < 0.05f;
                 if (ok)
                     continue;
                 for (int i = 0; i < pieces.Count; i++)

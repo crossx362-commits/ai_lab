@@ -311,7 +311,7 @@ namespace Ulon.Editor
         {
             RenderSettings.ambientMode = AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.55f, 0.58f, 0.52f);
-            Light sun = UnityEngine.Object.FindAnyObjectByType<Light>();
+            Light sun = FindSun();
             if (sun == null)
                 return;
             sun.type = LightType.Directional;
@@ -319,6 +319,38 @@ namespace Ulon.Editor
             sun.intensity = 1.18f;
             sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             sun.shadows = LightShadows.Soft;
+
+            // 이미 해가 돼 버린 등불을 되돌린다 — 옛 버그가 구워 놓은 씬이 커밋돼 있어서,
+            // 고른 자를 고치는 것만으로는 세계가 안 낫는다(방향광은 자리와 무관하게 세계 전체를 비춘다).
+            var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < lights.Length; i++)
+            {
+                if (lights[i] == sun || lights[i].type != LightType.Directional)
+                    continue;
+                lights[i].type = LightType.Point;
+                Debug.Log("[Ulon] 해가 둘이었다 — " + lights[i].name + "을(를) 점광으로 되돌렸다(방향광은 " + SunObject + " 하나뿐이다).");
+            }
+        }
+
+        /// <summary>
+        /// **해는 골라 오는 게 아니라 지목한다.** 옛 코드는 `FindAnyObjectByType&lt;Light&gt;()`로
+        /// 씬의 **아무 등불이나** 집어 해 설정을 덮어썼다 — 굽는 순번에 따라 화덕 점광(CampfireLight)과
+        /// 테스트 공간 점광(TestChamberLight)이 각각 **또 하나의 태양**(Directional 1.18)이 돼 있었다.
+        /// 실측 2026-09-09: 마을 광장이 해 셋(합 3.54)을 받아 화면의 24~39%가 순백(255)으로 포화 →
+        /// 그 위의 VFX는 픽셀 차 0이라 「효과가 실화면에서 안 읽힘」으로 게이트가 울었다.
+        /// 「고르는 자는 틀려도 빨간불이 안 난다」의 재발 — 이제 이름으로 지목하고, 없으면 만든다.
+        /// </summary>
+        public const string SunObject = "Directional Light";
+
+        static Light FindSun()
+        {
+            var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < lights.Length; i++)
+                if (lights[i].gameObject.name == SunObject)
+                    return lights[i];
+            var go = new GameObject(SunObject);
+            go.transform.position = new Vector3(0f, 3f, 0f);
+            return go.AddComponent<Light>();
         }
 
         static void MakeGround()

@@ -487,7 +487,7 @@ namespace Ulon.Editor
         /// 사람이 머리를 안 부딪는 최소는 `PlayerHeight × 0.85 = 1.53m`이므로
         /// 1.53 / 0.74 = 2.07 → 올려서 2.1(게이트 `AssertDoorFitsPerson`이 이 비를 상시 잰다).
         /// 지형(실 미터)·KayKit 던전 소품은 이 배율의 대상이 아니다.</summary>
-        public const float KitScale = 2.1f;
+        public const float KitScale = Ulon.Shared.WorldScale.Kit;
 
         /// <summary>방 벽 높이(바닥에서 지면까지) — 채움 기둥이 벽과 같은 높이여야 한다.</summary>
         /// <summary>방 벽 높이 — 게이트도 「방 천장 위」를 이 값으로 판별한다(단일 원장).</summary>

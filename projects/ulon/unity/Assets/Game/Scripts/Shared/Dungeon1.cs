@@ -9,8 +9,8 @@ namespace Ulon.Shared
         public const string InteriorObject = "Dungeon1Interior";
         public const string MobObject = "DungeonSkeleton";
         public const string BossObject = "BoneWarden";
-        public const float EntranceX = -18.6f;
-        public const float EntranceZ = -2.8f;
+        public const float EntranceX = -18.6f * WorldScale.Kit;
+        public const float EntranceZ = -2.8f * WorldScale.Kit;
         public const float InteriorX = 68f;
         public const float InteriorZ = 68f;
         public const float ExitX = 65.4f;

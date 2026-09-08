@@ -11,8 +11,8 @@ namespace Ulon.Shared
         public const string BossObject = "IronTyrant";
         // 남서. 가드존(반경 16) 밖이고 던전1 입구에서 15.9f, 던전2에서 33f,
         // 하우징 부지·문게이트·마구간 등 랜드마크에서 전부 6f 이상 떨어져 있다.
-        public const float EntranceX = -14.0f;
-        public const float EntranceZ = -18.0f;
+        public const float EntranceX = -14.0f * WorldScale.Kit;
+        public const float EntranceZ = -18.0f * WorldScale.Kit;
         // 던전1이 (+80,+80), 던전2가 (-80,+80)을 쓴다. 남은 사분면.
         public const float InteriorX = 68f;
         public const float InteriorZ = -68f;

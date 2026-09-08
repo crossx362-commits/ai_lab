@@ -128,10 +128,18 @@ namespace Ulon.Shared
             float n = Mathf.PerlinNoise(wx * 0.028f + 12.3f, wz * 0.028f + 4.7f) * 0.55f;
             n += Mathf.PerlinNoise(wx * 0.07f + 30f, wz * 0.07f) * 0.28f;
             n += Mathf.PerlinNoise(wx * 0.18f, wz * 0.18f + 18f) * 0.17f;
+            // **마을이 앉는 평지는 마을과 같은 배로 넓어진다**(랩 B) — 킷을 2.1배로 키우자 마당·울타리가
+            // 옛 평지(반경 23m) 밖 비탈로 걸어 나가 마구간 마당이 0.21m 기울어 「발이 지표에서 벗어남」이 났다.
+            // 지형 자체는 실 미터지만 **평지의 크기는 마을이 정한다** — 그래서 이 두 반경만 배율을 탄다.
+            // 경사 폭(25m)은 **그대로 둔다** — 배율을 곱해 100m까지 늘렸더니 던전 방이 앉은 자리
+            // (반경 96m)의 지형이 0.4m 내려가 이미 파 둔 방의 실내 카메라가 지표를 뚫었다.
+            // 넓힐 것은 평지이지 경사가 아니다.
+            float flatR = 23f * WorldScale.Kit;
+            float rampR = flatR + 25f;
             float dist = Mathf.Sqrt(wx * wx + wz * wz);
             float flatten = 1f;
-            if (dist > 23f)
-                flatten = dist >= 48f ? 0f : 1f - (dist - 23f) / 25f;
+            if (dist > flatR)
+                flatten = dist >= rampR ? 0f : 1f - (dist - flatR) / (rampR - flatR);
             return n * (1f - flatten) * 2.75f;
         }
 

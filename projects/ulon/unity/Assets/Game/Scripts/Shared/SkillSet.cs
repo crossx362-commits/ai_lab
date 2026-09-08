@@ -618,7 +618,9 @@ namespace Ulon.Shared
 
     public static class GuardZone
     {
-        public const float Radius = 16f;
+        /// <summary>마을 가드존 반경 — **마을과 같은 배로 커진다**(랩 B). 킷을 키우면 마을이 넓어지는데
+        /// 가드존이 그대로면 마구간·여행문 같은 마을 시설이 존 밖으로 걸어 나간다(실측으로 걸렸다).</summary>
+        public const float Radius = 16f * WorldScale.Kit;
 
         public static bool Contains(float x, float z)
         {

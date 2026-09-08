@@ -17,8 +17,11 @@ namespace Ulon.Editor
 {
     public static partial class VisualSliceBuilder
     {
+        /// <summary>이름으로 찾아 **모듈 좌표** 자리에 세운다 — 부르는 곳이 마을 배치뿐이라
+        /// 여기서 월드로 옮긴다(랩 B). 사람·소품 모두 마을이 커지면 같이 밀려나야 한다.</summary>
         static void MoveNamed(string name, Vector3 pos, Vector3 euler)
         {
+            pos = Module(pos);
             var go = GameObject.Find(name);
             if (go == null)
                 return;
@@ -89,7 +92,7 @@ namespace Ulon.Editor
         }
 
         /// <summary>마을 페이드 범위(반경 m) — 가드존 마을 구역. 이 밖은 소품 배치 헬퍼가 이미 레이어를 준다.</summary>
-        public const float VillageFadeRadius = 22f;
+        public const float VillageFadeRadius = 22f * KitScale;   // 마을이 커지면 마을 구역도 같이 커진다(랩 B)
 
         /// <summary>
         /// 건물도 **카메라와 플레이어 사이에 끼면 걷힌다**(검수 랩 D). 카메라 요는 고정이라
@@ -213,7 +216,7 @@ namespace Ulon.Editor
                 {
                     if (!PlazaPath(x, z))
                         continue;
-                    Decor(parent, Road, new Vector3(x + 0.5f, 0.02f, z + 0.5f), Vector3.zero);
+                    DecorM(parent, Road, new Vector3(x + 0.5f, 0.02f, z + 0.5f), Vector3.zero);
                 }
             }
         }
@@ -254,42 +257,42 @@ namespace Ulon.Editor
             const string TreeHC = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/tree-high-crooked.fbx";
             const string RockW = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-wide.fbx";
             const string Poles = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/poles.fbx";
-            Decor(parent, lantern, new Vector3(-2.2f, 0f, -2.2f), Vector3.zero);
-            Decor(parent, lantern, new Vector3(2.2f, 0f, -2.2f), Vector3.zero);
-            Decor(parent, lantern, new Vector3(-2.2f, 0f, 2.2f), Vector3.zero);
-            Decor(parent, lantern, new Vector3(2.2f, 0f, 2.2f), Vector3.zero);
-            Decor(parent, lantern, new Vector3(-7.6f, 0f, 2.2f), Vector3.zero);
-            Decor(parent, lantern, new Vector3(8.6f, 0f, -2.2f), Vector3.zero);
-            Decor(parent, lantern, new Vector3(2.2f, 0f, 9.4f), Vector3.zero);
-            Decor(parent, lantern, new Vector3(-2.2f, 0f, -6.4f), Vector3.zero);
-            Decor(parent, Bench, new Vector3(-5.4f, 0f, -2.4f), new Vector3(0f, 90f, 0f));
-            Decor(parent, Bench, new Vector3(-2.4f, 0f, -5.4f), Vector3.zero);
-            Decor(parent, Stool, new Vector3(-4.6f, 0f, -3.6f), Vector3.zero);
-            Decor(parent, Stool, new Vector3(-2.8f, 0f, -4.6f), Vector3.zero);
-            Decor(parent, StallR, new Vector3(-5.2f, 0f, 4.8f), new Vector3(0f, 90f, 0f));
-            Decor(parent, StallG, new Vector3(4.8f, 0f, -5.2f), new Vector3(0f, 270f, 0f));
-            Decor(parent, CartH, new Vector3(-6.4f, 0f, 3.6f), Vector3.zero);
-            Decor(parent, HedgeL, new Vector3(-4.2f, 0f, 7.4f), Vector3.zero);
-            Decor(parent, HedgeL, new Vector3(5.4f, 0f, 7.4f), Vector3.zero);
-            Decor(parent, hedge, new Vector3(-7.4f, 0f, 1.6f), new Vector3(0f, 90f, 0f));
-            Decor(parent, hedge, new Vector3(7.4f, 0f, -1.6f), new Vector3(0f, 90f, 0f));
-            Decor(parent, Poles, new Vector3(-2.4f, 0f, 8.6f), Vector3.zero);
-            Decor(parent, tree, new Vector3(-14.5f, 0f, -13.5f), Vector3.zero);
-            Decor(parent, treeH, new Vector3(14.8f, 0f, -13.2f), new Vector3(0f, 20f, 0f));
-            Decor(parent, TreeR, new Vector3(14.5f, 0f, 13.8f), new Vector3(0f, 90f, 0f));
-            Decor(parent, TreeHC, new Vector3(-14.2f, 0f, 13.5f), Vector3.zero);
-            Decor(parent, TreeC, new Vector3(-13.2f, 0f, 6.4f), new Vector3(0f, 30f, 0f));
-            Decor(parent, treeH, new Vector3(13.4f, 0f, 5.2f), new Vector3(0f, 70f, 0f));
-            Decor(parent, TreeR, new Vector3(-6.8f, 0f, -13.4f), Vector3.zero);
-            Decor(parent, tree, new Vector3(6.6f, 0f, -13.6f), new Vector3(0f, 50f, 0f));
-            Decor(parent, TreeC, new Vector3(13.8f, 0f, -6.4f), new Vector3(0f, 15f, 0f));
-            Decor(parent, treeH, new Vector3(-13.6f, 0f, -7.8f), Vector3.zero);
-            Decor(parent, bush, new Vector3(-9.2f, 0f, -7.1f), Vector3.zero);
-            Decor(parent, bush, new Vector3(7.6f, 0f, -7.4f), new Vector3(0f, 80f, 0f));
-            Decor(parent, bush, new Vector3(-2.4f, 0f, 10.6f), new Vector3(0f, 40f, 0f));
-            Decor(parent, rockS, new Vector3(8.6f, 0f, 5.4f), Vector3.zero);
-            Decor(parent, rockN, new Vector3(-11.6f, 0f, 5.2f), new Vector3(0f, 25f, 0f));
-            Decor(parent, RockW, new Vector3(9.4f, 0f, -6.8f), new Vector3(0f, 15f, 0f));
+            DecorM(parent, lantern, new Vector3(-2.2f, 0f, -2.2f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(2.2f, 0f, -2.2f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(-2.2f, 0f, 2.2f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(2.2f, 0f, 2.2f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(-7.6f, 0f, 2.2f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(8.6f, 0f, -2.2f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(2.2f, 0f, 9.4f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(-2.2f, 0f, -6.4f), Vector3.zero);
+            DecorM(parent, Bench, new Vector3(-5.4f, 0f, -2.4f), new Vector3(0f, 90f, 0f));
+            DecorM(parent, Bench, new Vector3(-2.4f, 0f, -5.4f), Vector3.zero);
+            DecorM(parent, Stool, new Vector3(-4.6f, 0f, -3.6f), Vector3.zero);
+            DecorM(parent, Stool, new Vector3(-2.8f, 0f, -4.6f), Vector3.zero);
+            DecorM(parent, StallR, new Vector3(-5.2f, 0f, 4.8f), new Vector3(0f, 90f, 0f));
+            DecorM(parent, StallG, new Vector3(4.8f, 0f, -5.2f), new Vector3(0f, 270f, 0f));
+            DecorM(parent, CartH, new Vector3(-6.4f, 0f, 3.6f), Vector3.zero);
+            DecorM(parent, HedgeL, new Vector3(-4.2f, 0f, 7.4f), Vector3.zero);
+            DecorM(parent, HedgeL, new Vector3(5.4f, 0f, 7.4f), Vector3.zero);
+            DecorM(parent, hedge, new Vector3(-7.4f, 0f, 1.6f), new Vector3(0f, 90f, 0f));
+            DecorM(parent, hedge, new Vector3(7.4f, 0f, -1.6f), new Vector3(0f, 90f, 0f));
+            DecorM(parent, Poles, new Vector3(-2.4f, 0f, 8.6f), Vector3.zero);
+            DecorM(parent, tree, new Vector3(-14.5f, 0f, -13.5f), Vector3.zero);
+            DecorM(parent, treeH, new Vector3(14.8f, 0f, -13.2f), new Vector3(0f, 20f, 0f));
+            DecorM(parent, TreeR, new Vector3(14.5f, 0f, 13.8f), new Vector3(0f, 90f, 0f));
+            DecorM(parent, TreeHC, new Vector3(-14.2f, 0f, 13.5f), Vector3.zero);
+            DecorM(parent, TreeC, new Vector3(-13.2f, 0f, 6.4f), new Vector3(0f, 30f, 0f));
+            DecorM(parent, treeH, new Vector3(13.4f, 0f, 5.2f), new Vector3(0f, 70f, 0f));
+            DecorM(parent, TreeR, new Vector3(-6.8f, 0f, -13.4f), Vector3.zero);
+            DecorM(parent, tree, new Vector3(6.6f, 0f, -13.6f), new Vector3(0f, 50f, 0f));
+            DecorM(parent, TreeC, new Vector3(13.8f, 0f, -6.4f), new Vector3(0f, 15f, 0f));
+            DecorM(parent, treeH, new Vector3(-13.6f, 0f, -7.8f), Vector3.zero);
+            DecorM(parent, bush, new Vector3(-9.2f, 0f, -7.1f), Vector3.zero);
+            DecorM(parent, bush, new Vector3(7.6f, 0f, -7.4f), new Vector3(0f, 80f, 0f));
+            DecorM(parent, bush, new Vector3(-2.4f, 0f, 10.6f), new Vector3(0f, 40f, 0f));
+            DecorM(parent, rockS, new Vector3(8.6f, 0f, 5.4f), Vector3.zero);
+            DecorM(parent, rockN, new Vector3(-11.6f, 0f, 5.2f), new Vector3(0f, 25f, 0f));
+            DecorM(parent, RockW, new Vector3(9.4f, 0f, -6.8f), new Vector3(0f, 15f, 0f));
             int[] spots = { -12, -9, -7, -4, 4, 6, 9, 11 };
             for (int i = 0; i < spots.Length; i++)
             {
@@ -297,9 +300,9 @@ namespace Ulon.Editor
                 int z = spots[(i * 3 + 1) % spots.Length];
                 if (PlazaPath(x, z) || PlazaPath(x - 1, z) || PlazaPath(x, z - 1))
                     continue;
-                Decor(parent, Tuft, new Vector3(x + 0.3f, 0f, z - 0.2f), new Vector3(0f, i * 35f, 0f));
+                DecorM(parent, Tuft, new Vector3(x + 0.3f, 0f, z - 0.2f), new Vector3(0f, i * 35f, 0f));
                 if (i % 2 == 0)
-                    Decor(parent, Leaf, new Vector3(x - 0.8f, 0f, z + 0.6f), new Vector3(0f, i * 50f, 0f));
+                    DecorM(parent, Leaf, new Vector3(x - 0.8f, 0f, z + 0.6f), new Vector3(0f, i * 50f, 0f));
             }
         }
 
@@ -358,14 +361,17 @@ namespace Ulon.Editor
             }, 1, Vector3.zero);
 
             // Road gates where plaza roads leave town — openings, not a ring wall.
-            Decor(parent, gate, new Vector3(-8.2f, 0f, 0f), new Vector3(0f, 90f, 0f));
-            Decor(parent, gate, new Vector3(10.2f, 0f, 0f), new Vector3(0f, 90f, 0f));
-            Decor(parent, gate, new Vector3(0f, 0f, -7.2f), Vector3.zero);
-            Decor(parent, gate, new Vector3(0f, 0f, 11.2f), Vector3.zero);
+            DecorM(parent, gate, new Vector3(-8.2f, 0f, 0f), new Vector3(0f, 90f, 0f));
+            DecorM(parent, gate, new Vector3(10.2f, 0f, 0f), new Vector3(0f, 90f, 0f));
+            DecorM(parent, gate, new Vector3(0f, 0f, -7.2f), Vector3.zero);
+            DecorM(parent, gate, new Vector3(0f, 0f, 11.2f), Vector3.zero);
         }
 
+        /// <summary>집터를 두르는 ㄷ자 울타리 — **모듈 좌표**로 받는다(마을은 킷 격자 위에 설계됐다).
+        /// 안에서 월드로 옮긴다: 자리도 조각 간격도 같은 배로 늘어나야 울타리가 이어 붙는다.</summary>
         static void PlaceLotU(Transform parent, string fence, string gate, float x0, float z0, float x1, float z1, int openSide, float step)
         {
+            x0 *= KitScale; z0 *= KitScale; x1 *= KitScale; z1 *= KitScale; step *= KitScale;
             float gx = (x0 + x1) * 0.5f;
             float gz = (z0 + z1) * 0.5f;
             if (openSide != 0)
@@ -382,10 +388,15 @@ namespace Ulon.Editor
             Decor(parent, gate, new Vector3(x, 0f, z), ge);
         }
 
+        /// <summary>밭을 두르는 폐곡선 울타리 — 점들도 **모듈 좌표**다(`PlaceLotU`와 같은 규칙).</summary>
         static void PlaceCurvedLoop(Transform parent, string fence, string gate, Vector3[] pts, int gateIndex, Vector3 gateEuler)
         {
-            float step = PrefabRunLength(fence);
+            float step = PrefabRunLength(fence) * KitScale;
             int n = pts.Length;
+            var world = new Vector3[pts.Length];
+            for (int i = 0; i < pts.Length; i++)
+                world[i] = Module(pts[i]);
+            pts = world;
             for (int i = 0; i < n; i++)
             {
                 int j = (i + 1) % n;
@@ -464,6 +475,17 @@ namespace Ulon.Editor
         /// </summary>
         static Material KenneyGrassMat() =>
             MakeNoiseMat("KenneyGrass", new Color(0.32f, 0.52f, 0.20f), new Color(0.24f, 0.42f, 0.14f));
+
+        /// <summary>
+        /// 광장 도로 — **알베도를 유도해서 정한다**(눈대중 금지).
+        /// 포화의 진짜 원인은 해가 셋이었던 것(FindSun 주석)이고, 이 알베도는 그 위에 남기는 여유다.
+        /// 유도(이 프로젝트는 **감마 공간**: m_ActiveColorSpace 0): 평지에서 NdotL = sin(50°) = 0.77 →
+        /// 조도 = 1.18×0.77 + 0.58(ambient) = 1.48. 화면값 = 알베도 × 1.48이므로 옛 0.62는 0.92(235)로
+        /// 정점 반사·텍스처 흰점이 얹히면 곧장 255다. 목표 화면값 0.80 → 알베도 = 0.80/1.48 = **0.54**.
+        /// 잔디(알베도 0.32 → 0.47)와도 또렷이 갈린다.
+        /// </summary>
+        static Material KenneyStoneRoadMat() =>
+            MakeNoiseMat("KenneyStoneRoad", new Color(0.54f, 0.52f, 0.47f), new Color(0.44f, 0.42f, 0.38f));
 
         static Material KenneyDirtMat() =>
             MakeNoiseMat("KenneyDirt", new Color(0.52f, 0.38f, 0.24f), new Color(0.40f, 0.28f, 0.16f));
