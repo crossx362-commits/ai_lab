@@ -251,7 +251,7 @@ namespace Ulon.Server
             // 사거리는 대상 표면에서(은행과 같은 이유) — 좌판이 크면 중심 기준은 늘 밖이다.
             if (!WithinReach(body.transform.position, vendor.transform, vendor.InteractRange))
                 return new AttackResult { FailReason = "range" };
-            ActiveVendor = vendor;
+            body.ActiveVendor = vendor;
             return new AttackResult { Applied = true };
         }
 
@@ -311,7 +311,7 @@ namespace Ulon.Server
 
         public AttackResult TryBuy(WorldBody body, string templateId)
         {
-            if (body == null || ActiveVendor == null)
+            if (body == null || body.ActiveVendor == null)
                 return new AttackResult { FailReason = "no_vendor" };
             if (body.Ghost)
                 return new AttackResult { FailReason = "ghost" };
@@ -333,7 +333,7 @@ namespace Ulon.Server
 
         public AttackResult TrySell(WorldBody body, string templateId)
         {
-            if (body == null || ActiveVendor == null)
+            if (body == null || body.ActiveVendor == null)
                 return new AttackResult { FailReason = "no_vendor" };
             int price = ItemCatalog.SellPrice(templateId);
             if (price <= 0)
@@ -363,17 +363,17 @@ namespace Ulon.Server
             float dist = Vector3.Distance(body.transform.position, trainer.transform.position);
             if (dist > trainer.InteractRange)
                 return new AttackResult { FailReason = "range" };
-            ActiveTrainer = trainer;
+            body.ActiveTrainer = trainer;
             return new AttackResult { Applied = true };
         }
 
         public AttackResult TryTrain(WorldBody body, SkillId skill)
         {
-            if (body == null || ActiveTrainer == null)
+            if (body == null || body.ActiveTrainer == null)
                 return new AttackResult { FailReason = "no_trainer" };
             if (body.Ghost)
                 return new AttackResult { FailReason = "ghost" };
-            var trainer = ActiveTrainer;
+            var trainer = body.ActiveTrainer;
             var skills = SkillsOf(body);
             float cur = skills.Get(skill);
             if (cur >= trainer.Cap - 0.0001f)

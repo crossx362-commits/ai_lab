@@ -107,7 +107,7 @@ namespace Ulon.Client
             BeginFrame();
             RegisterOwner(this);                            // HUD도 「그린 자」로 자기 이름을 남긴다
             DrawStatusCard(world, me, net);
-            DrawTargetCard(world);
+            DrawTargetCard(world, me);
             DrawQuickbar(world, me, net);
             DrawTabs(world, me);
             DrawPanel(world, me, net);
@@ -234,9 +234,9 @@ namespace Ulon.Client
         }
 
         // ── 상시: 대상 ────────────────────────────────────────────────────────────────
-        void DrawTargetCard(OfflineWorld world)
+        void DrawTargetCard(OfflineWorld world, WorldBody me)
         {
-            var target = world.Selected;
+            var target = me != null ? me.Selected : null;
             string msg = Msg(world, world.Player);
             if ((target == null || !target.Alive) && string.IsNullOrEmpty(msg))
                 return;
@@ -501,7 +501,7 @@ namespace Ulon.Client
 
         void PanelParty(OfflineWorld world, WorldBody me, NetAvatar net)
         {
-            var party = world.ActiveParty;
+            var party = me.Party;
             bool netOpen = PartyView.Open && (net == null || !net.IsServerInitialized);
             GUILayout.Label("파티");
             if (party == null && !netOpen)
@@ -629,7 +629,7 @@ namespace Ulon.Client
             if (guild != null && guild.Pending == me && Btn("수락"))
                 world.TryGuildAccept(me);
             GUILayout.EndHorizontal();
-            var foe = world.Selected;
+            var foe = me.Selected;
             if (guild != null && guild.Leader == me && foe != null && foe != me && world.GuildOf(foe) != null
                 && world.GuildOf(foe) != guild && string.IsNullOrEmpty(guild.WarWithId) && Btn("선전포고"))
             {
@@ -647,7 +647,7 @@ namespace Ulon.Client
         void PanelDuel(OfflineWorld world, WorldBody me, NetAvatar net)
         {
             GUILayout.Label("결투");
-            var foe = world.Selected;
+            var foe = me.Selected;
             var pal = GameObject.Find("Companion");
             var palBody = pal != null ? pal.GetComponent<WorldBody>() : null;
             var duelFoe = foe != null && foe != me && foe.IsAvatar && !foe.IsEnemy ? foe : palBody;
@@ -689,9 +689,9 @@ namespace Ulon.Client
         static int NearbyCount(OfflineWorld world, WorldBody me)
         {
             int n = 0;
-            if (world.ActiveVendor != null) n++;
-            if (world.ActiveTrainer != null) n++;
-            if (world.ActiveTrade != null || TradeView.Open) n++;
+            if (me.ActiveVendor != null) n++;
+            if (me.ActiveTrainer != null) n++;
+            if (me.Trade != null || TradeView.Open) n++;
             if (InRange(me, OfflineWorld.FindStation("Forge"))) n++;
             if (InRange(me, OfflineWorld.FindStation("Carpenter"))) n++;
             if (InRange(me, OfflineWorld.FindStation("Mortar"))) n++;
@@ -772,10 +772,10 @@ namespace Ulon.Client
                 }
                 GUILayout.Space(6f);
             }
-            if (world.ActiveVendor != null && !me.Ghost)
+            if (me.ActiveVendor != null && !me.Ghost)
             {
                 // 상인 이름이 이미 「잡화」다 — 앞에 종류를 또 붙이면 「잡화 잡화」가 된다.
-                GUILayout.Label(world.ActiveVendor.DisplayName + "  ·  살 것");
+                GUILayout.Label(me.ActiveVendor.DisplayName + "  ·  살 것");
                 for (int i = 0; i < ShopBuy.Length; i++)
                 {
                     string id = ShopBuy[i];
@@ -802,10 +802,10 @@ namespace Ulon.Client
                 if (Btn("팔기")) Shop(net, false, shopPick);
                 GUI.enabled = true;
                 GUILayout.EndHorizontal();
-                if (Btn("상점 닫기")) world.CloseVendor();
+                if (Btn("상점 닫기")) world.CloseVendor(me);
                 GUILayout.Space(6f);
             }
-            if (world.ActiveTrainer != null && !me.Ghost)
+            if (me.ActiveTrainer != null && !me.Ghost)
             {
                 GUILayout.Label("훈련  5G / +1  상한 30");
                 for (int i = 0; i < Trainable.Length; i += 3)
@@ -820,7 +820,7 @@ namespace Ulon.Client
                     GUILayout.EndHorizontal();
                 }
                 if (Btn("훈련 닫기"))
-                    world.CloseTrainer();
+                    world.CloseTrainer(me);
                 GUILayout.Space(6f);
             }
             var forge = OfflineWorld.FindStation("Forge");
@@ -937,15 +937,15 @@ namespace Ulon.Client
                 mineOk = iAmA ? TradeView.AcceptA : TradeView.AcceptB;
                 theirOk = iAmA ? TradeView.AcceptB : TradeView.AcceptA;
             }
-            else if (world.ActiveTrade != null && (world.ActiveTrade.A == me || world.ActiveTrade.B == me))
+            else if (me.Trade != null && (me.Trade.A == me || me.Trade.B == me))
             {
                 open = true;
-                var other = world.ActiveTrade.Other(me);
+                var other = me.Trade.Other(me);
                 otherName = other != null ? other.DisplayName : "?";
-                mineOffer = me == world.ActiveTrade.A ? world.ActiveTrade.OfferA : world.ActiveTrade.OfferB;
-                theirs = me == world.ActiveTrade.A ? world.ActiveTrade.OfferB : world.ActiveTrade.OfferA;
-                mineOk = me == world.ActiveTrade.A ? world.ActiveTrade.AcceptA : world.ActiveTrade.AcceptB;
-                theirOk = me == world.ActiveTrade.A ? world.ActiveTrade.AcceptB : world.ActiveTrade.AcceptA;
+                mineOffer = me == me.Trade.A ? me.Trade.OfferA : me.Trade.OfferB;
+                theirs = me == me.Trade.A ? me.Trade.OfferB : me.Trade.OfferA;
+                mineOk = me == me.Trade.A ? me.Trade.AcceptA : me.Trade.AcceptB;
+                theirOk = me == me.Trade.A ? me.Trade.AcceptB : me.Trade.AcceptA;
             }
             if (!open)
                 return;
@@ -964,7 +964,7 @@ namespace Ulon.Client
             if (Btn("취소"))
             {
                 if (net != null && net.IsClientInitialized) net.RpcTradeCancel();
-                else world.CancelTrade();
+                else world.CancelTrade(me);
             }
             GUILayout.EndHorizontal();
         }
@@ -1058,7 +1058,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcCast((int)spell);
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryCast(OfflineWorld.Instance.Player, spell, OfflineWorld.Instance.Selected);
+                OfflineWorld.Instance.TryCast(OfflineWorld.Instance.Player, spell, OfflineWorld.Instance.Player.Selected);
         }
 
         static void Mark(NetAvatar net)
@@ -1090,7 +1090,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcEvaluate();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryEvaluate(OfflineWorld.Instance.Player, OfflineWorld.Instance.Selected);
+                OfflineWorld.Instance.TryEvaluate(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
         }
 
         static void Track(NetAvatar net)
@@ -1100,8 +1100,8 @@ namespace Ulon.Client
             else if (OfflineWorld.Instance != null)
             {
                 var world = OfflineWorld.Instance;
-                if (world.Selected != null)
-                    world.TryTrack(world.Player, world.Selected);
+                if (world.Player != null && world.Player.Selected != null)
+                    world.TryTrack(world.Player, world.Player.Selected);
                 else
                     world.TryTrackCorpse(world.Player, OfflineWorld.FindCorpse(world.Player != null ? world.Player.CharacterId : ""));
             }
@@ -1112,7 +1112,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcLore();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryLore(OfflineWorld.Instance.Player, OfflineWorld.Instance.Selected);
+                OfflineWorld.Instance.TryLore(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
         }
 
         static void Vet(NetAvatar net)
@@ -1120,7 +1120,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcVet();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryVet(OfflineWorld.Instance.Player, OfflineWorld.Instance.Selected);
+                OfflineWorld.Instance.TryVet(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
         }
 
         static void Inscribe(NetAvatar net)
@@ -1144,7 +1144,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcUseScroll();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryUseScroll(OfflineWorld.Instance.Player, OfflineWorld.Instance.Selected);
+                OfflineWorld.Instance.TryUseScroll(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
         }
 
         static void PlayLute(NetAvatar net)
@@ -1160,7 +1160,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcPeace();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryPeace(OfflineWorld.Instance.Player, OfflineWorld.Instance.Selected);
+                OfflineWorld.Instance.TryPeace(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
         }
 
         static void Provoke(NetAvatar net)
@@ -1219,7 +1219,7 @@ namespace Ulon.Client
             else if (OfflineWorld.Instance != null)
             {
                 var me = OfflineWorld.Instance.Player;
-                WorldBody tgt = OfflineWorld.Instance.Selected;
+                WorldBody tgt = OfflineWorld.Instance.Player.Selected;
                 if (tgt == null || !tgt.Ghost || !tgt.IsAvatar || tgt == me)
                     tgt = OfflineWorld.NearestGhostAvatar(me);
                 OfflineWorld.Instance.TryResurrectBandage(me, tgt);
@@ -1257,7 +1257,7 @@ namespace Ulon.Client
             else if (OfflineWorld.Instance != null)
             {
                 var me = OfflineWorld.Instance.Player;
-                WorldBody tgt = OfflineWorld.Instance.Selected;
+                WorldBody tgt = OfflineWorld.Instance.Player.Selected;
                 if (tgt == null || tgt.IsEnemy || !tgt.Alive || tgt.Ghost)
                     tgt = me;
                 OfflineWorld.Instance.TryCurePoison(me, tgt);
@@ -1283,7 +1283,7 @@ namespace Ulon.Client
                     break;
                 }
             }
-            WorldBody enemy = OfflineWorld.Instance.Selected;
+            WorldBody enemy = OfflineWorld.Instance.Player.Selected;
             if (enemy == null || !enemy.IsEnemy || !enemy.Alive || enemy.IsAvatar)
             {
                 enemy = null;
@@ -1528,7 +1528,7 @@ namespace Ulon.Client
             else if (OfflineWorld.Instance != null)
             {
                 var me = OfflineWorld.Instance.Player;
-                WorldBody tgt = OfflineWorld.Instance.Selected;
+                WorldBody tgt = OfflineWorld.Instance.Player.Selected;
                 if (tgt != null && tgt.Ghost && tgt.IsAvatar && tgt != me)
                 {
                     OfflineWorld.Instance.TryResurrectBandage(me, tgt);

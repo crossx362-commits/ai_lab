@@ -97,6 +97,12 @@ if [[ "${1:-}" == "--nc-nohint" ]]; then
   SERVER_ARGS=(-ulon-nc-nohint 1)
   EXPECT_FAIL=1
 fi
+# 선택 전역 NC(검수 A) — 서버가 고른 대상을 하나뿐인 칸에 쓴다. 두 사람이 다른 것을
+# 골라도 마지막 선택이 이기고, 그때 이 검사는 빨간불이어야 한다.
+if [[ "${1:-}" == "--nc-globalselect" ]]; then
+  SERVER_ARGS=(-ulon-nc-globalselect 1)
+  EXPECT_FAIL=1
+fi
 
 if [[ ! -x "$CLIENT_BIN" ]]; then
   echo "missing client: $CLIENT_BIN" >&2
@@ -264,6 +270,12 @@ ok = (a.get("connected") and b.get("connected")
       # **안내 B**: 길드 창설 문구가 **A 화면에만** 온다. B에도 있으면 ObserversRpc 방송이다.
       and a.get("guildMsg","") == "created"
       and b.get("guildMsg","") == ""
+      # **선택 A**: 두 사람이 다른 대상을 고르면 평가 안내가 갈린다. 전역 하나면 마지막이 이긴다.
+      and a.get("selName","") != "" and b.get("selName","") != ""
+      and a.get("selName") != b.get("selName")
+      and a.get("evalHint","") != "" and b.get("evalHint","") != ""
+      and a.get("evalHint") != b.get("evalHint")
+      and "INT" in a.get("evalHint","") and "INT" in b.get("evalHint","")
       # **저장소로 나가는 문**(축 ④ 마지막 구멍): 끊긴 클라가 종료하면서 제 값(12345)을 공유
       # 저장소에 쓰면 서버가 아는 진실이 덮인다. 저장소가 서버 값(2)을 지키고 있어야 한다.
       and store_gold("ds-a") == 2
@@ -285,6 +297,8 @@ print("저장소 — ds-a 골드", store_gold("ds-a"), "(서버 값 2) · 클라
       store_gold("storeprobe"), "(0이어야 한다 — 12345면 문이 열려 있다)")
 print("안내 B — A guildMsg", repr(a.get("guildMsg")), "· B guildMsg", repr(b.get("guildMsg")),
       "(A=created, B 빈 값)")
+print("선택 A — A", repr(a.get("selName")), a.get("evalHint"), "· B", repr(b.get("selName")), b.get("evalHint"),
+      "(대상·안내가 갈려야 한다)")
 print("축4 스킬 — 검술", a.get("skSwordBefore"), "→", a.get("skSwordAfter"),
       "· 원장 항목", a.get("skillsSeen"), "· 채광", a.get("skMiningAfter"),
       "· 마법", a.get("skMageryAfter"), "· 치트 먹힘", a.get("skCheatStuck"))

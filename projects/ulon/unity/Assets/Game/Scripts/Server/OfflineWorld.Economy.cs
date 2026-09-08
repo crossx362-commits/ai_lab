@@ -56,29 +56,33 @@ namespace Ulon.Server
             float dist = Vector3.Distance(from.transform.position, to.transform.position);
             if (dist > 2.8f)
                 return new AttackResult { FailReason = "range" };
-            ActiveTrade = new TradeSession { A = from, B = to };
+            var session = new TradeSession { A = from, B = to };
+            from.Trade = session;
+            to.Trade = session;
             return new AttackResult { Applied = true };
         }
 
         public void SetTradeOffer(WorldBody me, string template)
         {
-            ActiveTrade?.SetOffer(me, template);
+            if (me != null)
+                me.Trade?.SetOffer(me, template);
         }
 
         public AttackResult ConfirmTrade(WorldBody me)
         {
-            if (ActiveTrade == null)
+            var t = me != null ? me.Trade : null;
+            if (t == null)
                 return new AttackResult { FailReason = "no_trade" };
-            if (!ActiveTrade.SetAccept(me, true))
+            if (!t.SetAccept(me, true))
                 return new AttackResult { FailReason = "waiting" };
-            string offerA = ActiveTrade.OfferA;
-            string offerB = ActiveTrade.OfferB;
-            var a = ActiveTrade.A;
-            var b = ActiveTrade.B;
+            string offerA = t.OfferA;
+            string offerB = t.OfferB;
+            var a = t.A;
+            var b = t.B;
             if (!string.IsNullOrEmpty(offerA) && CountItem(Bag(a), offerA) < 1)
-                return CancelTrade("missing");
+                return CancelTrade(me, "missing");
             if (!string.IsNullOrEmpty(offerB) && CountItem(Bag(b), offerB) < 1)
-                return CancelTrade("missing");
+                return CancelTrade(me, "missing");
             if (!string.IsNullOrEmpty(offerA))
             {
                 ConsumeItem(Bag(a), offerA, 1);
@@ -89,14 +93,24 @@ namespace Ulon.Server
                 ConsumeItem(Bag(b), offerB, 1);
                 Bag(a).Add(offerB, 1);
             }
-            ActiveTrade = null;
+            if (a != null) a.Trade = null;
+            if (b != null) b.Trade = null;
             OpLog.Write("trade", PersistDriver.AccountKey(), "trade", (offerA ?? "") + "<->" + (offerB ?? ""));
             return new AttackResult { Applied = true, Hit = true };
         }
 
-        public AttackResult CancelTrade(string reason = "cancel")
+        public AttackResult CancelTrade(string reason = "cancel") => CancelTrade(Player, reason);
+
+        public AttackResult CancelTrade(WorldBody me, string reason = "cancel")
         {
-            ActiveTrade = null;
+            var t = me != null ? me.Trade : null;
+            if (t != null)
+            {
+                if (t.A != null) t.A.Trade = null;
+                if (t.B != null) t.B.Trade = null;
+            }
+            else if (me != null)
+                me.Trade = null;
             return new AttackResult { FailReason = reason };
         }
 

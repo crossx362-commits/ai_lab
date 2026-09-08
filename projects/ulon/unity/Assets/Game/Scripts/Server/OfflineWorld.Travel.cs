@@ -430,11 +430,23 @@ namespace Ulon.Server
 
         bool LootAllowed(WorldBody looter, CorpseNode node)
         {
-            if (ActiveParty == null)
+            if (looter == null)
+                return false;
+            WorldBody owner = null;
+            if (node != null && !string.IsNullOrEmpty(node.OwnerId))
+            {
+                var all = Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
+                for (int i = 0; i < all.Length; i++)
+                    if (all[i] != null && all[i].AccountId == node.OwnerId)
+                    {
+                        owner = all[i];
+                        break;
+                    }
+            }
+            var p = owner != null ? owner.Party : null;
+            if (p == null)
                 return true;
-            if (ActiveParty.Contains(looter))
-                return true;
-            return false;
+            return p.Contains(looter);
         }
 
         static string WeightRefuseMessage(int str, InventoryBag bag)

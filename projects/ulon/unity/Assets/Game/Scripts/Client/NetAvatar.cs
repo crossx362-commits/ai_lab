@@ -378,13 +378,14 @@ namespace Ulon.Client
         [ServerRpc]
         public void RpcTradeCancel()
         {
-            OfflineWorld.Instance?.CancelTrade();
+            OfflineWorld.Instance?.CancelTrade(GetComponent<WorldBody>());
             BroadcastTrade();
         }
 
         void BroadcastTrade()
         {
-            var t = OfflineWorld.Instance != null ? OfflineWorld.Instance.ActiveTrade : null;
+            var me = GetComponent<WorldBody>();
+            var t = me != null ? me.Trade : null;
             if (t == null)
             {
                 RpcTradeState(false, 0, 0, "", "", "", "", false, false);
@@ -503,7 +504,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var result = OfflineWorld.Instance.TryCast(GetComponent<WorldBody>(), (SpellId)spellId, OfflineWorld.Instance.Selected);
+            var result = OfflineWorld.Instance.TryCast(GetComponent<WorldBody>(), (SpellId)spellId, SelectedTarget());
             if (result.Applied)
                 SaveNow();
         }
@@ -544,7 +545,7 @@ namespace Ulon.Client
             if (OfflineWorld.Instance == null)
                 return;
             var body = GetComponent<WorldBody>();
-            WorldBody target = OfflineWorld.Instance.Selected;
+            WorldBody target = SelectedTarget();
             if (target != null && target.Ghost && target.IsAvatar && target != body)
             {
                 var rez = OfflineWorld.Instance.TryResurrectBandage(body, target);
@@ -578,7 +579,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var result = OfflineWorld.Instance.TryEvaluate(GetComponent<WorldBody>(), OfflineWorld.Instance.Selected);
+            var result = OfflineWorld.Instance.TryEvaluate(GetComponent<WorldBody>(), SelectedTarget());
             if (result.Applied)
                 SaveNow();
         }
@@ -591,8 +592,9 @@ namespace Ulon.Client
             var body = GetComponent<WorldBody>();
             var world = OfflineWorld.Instance;
             TrackingResult result;
-            if (world.Selected != null)
-                result = world.TryTrack(body, world.Selected);
+            var pick = world.TargetOf(body);
+            if (pick != null)
+                result = world.TryTrack(body, pick);
             else
                 result = world.TryTrackCorpse(body, OfflineWorld.FindCorpse(body != null ? body.CharacterId : ""));
             if (result.Applied)
@@ -604,7 +606,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var result = OfflineWorld.Instance.TryLore(GetComponent<WorldBody>(), OfflineWorld.Instance.Selected);
+            var result = OfflineWorld.Instance.TryLore(GetComponent<WorldBody>(), SelectedTarget());
             if (result.Applied)
                 SaveNow();
         }
@@ -744,7 +746,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var result = OfflineWorld.Instance.TryVet(GetComponent<WorldBody>(), OfflineWorld.Instance.Selected);
+            var result = OfflineWorld.Instance.TryVet(GetComponent<WorldBody>(), SelectedTarget());
             if (result.Applied)
                 SaveNow();
         }
@@ -774,7 +776,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var result = OfflineWorld.Instance.TryUseScroll(GetComponent<WorldBody>(), OfflineWorld.Instance.Selected);
+            var result = OfflineWorld.Instance.TryUseScroll(GetComponent<WorldBody>(), SelectedTarget());
             if (result.Applied)
                 SaveNow();
         }
@@ -795,7 +797,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var result = OfflineWorld.Instance.TryPeace(GetComponent<WorldBody>(), OfflineWorld.Instance.Selected);
+            var result = OfflineWorld.Instance.TryPeace(GetComponent<WorldBody>(), SelectedTarget());
             if (result.Applied)
                 SaveNow();
         }
@@ -879,7 +881,7 @@ namespace Ulon.Client
             if (OfflineWorld.Instance == null)
                 return;
             var body = GetComponent<WorldBody>();
-            WorldBody target = OfflineWorld.Instance.Selected;
+            WorldBody target = SelectedTarget();
             if (target == null || !target.Ghost || !target.IsAvatar || target == body)
                 target = OfflineWorld.NearestGhostAvatar(body);
             var result = OfflineWorld.Instance.TryResurrectBandage(body, target);
@@ -892,7 +894,7 @@ namespace Ulon.Client
             if (OfflineWorld.Instance == null)
                 return;
             var body = GetComponent<WorldBody>();
-            WorldBody target = OfflineWorld.Instance.Selected;
+            WorldBody target = SelectedTarget();
             if (target == null || target.IsEnemy || !target.Alive || target.Ghost)
                 target = body;
             var result = OfflineWorld.Instance.TryCurePoison(body, target);
@@ -948,7 +950,8 @@ namespace Ulon.Client
 
         void BroadcastParty()
         {
-            var p = OfflineWorld.Instance != null ? OfflineWorld.Instance.ActiveParty : null;
+            var me = GetComponent<WorldBody>();
+            var p = me != null ? me.Party : null;
             if (p == null)
             {
                 RpcPartyState(false, 0, "", "", "");
@@ -1153,6 +1156,22 @@ namespace Ulon.Client
             if (Owner == null || !IsServerInitialized)
                 return;
             RpcHint(Owner, text ?? "");
+        }
+
+        [ServerRpc]
+        public void RpcSelect(NetworkObject nob)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            WorldBody target = nob != null ? nob.GetComponent<WorldBody>() : null;
+            OfflineWorld.Instance.Select(GetComponent<WorldBody>(), target);
+        }
+
+        WorldBody SelectedTarget()
+        {
+            return OfflineWorld.Instance != null
+                ? OfflineWorld.Instance.TargetOf(GetComponent<WorldBody>())
+                : null;
         }
 
         [TargetRpc]

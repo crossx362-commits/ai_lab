@@ -50,56 +50,63 @@ namespace Ulon.Server
             float dist = Vector3.Distance(from.transform.position, to.transform.position);
             if (dist > PartyResolve.InviteRange)
                 return new AttackResult { FailReason = "range" };
-            if (ActiveParty != null && ActiveParty.Leader != from)
+            if (from.Party != null && from.Party.Leader != from)
                 return new AttackResult { FailReason = "not_leader" };
-            if (ActiveParty != null && ActiveParty.Contains(to))
+            if (from.Party != null && from.Party.Contains(to))
                 return new AttackResult { FailReason = "already" };
-            if (ActiveParty != null && ActiveParty.Members.Count >= 3)
+            if (from.Party != null && from.Party.Members.Count >= 3)
                 return new AttackResult { FailReason = "full" };
-            if (ActiveParty == null)
-                ActiveParty = new Party { Leader = from };
+            if (from.Party == null)
+                from.Party = new Party { Leader = from };
             if (!to.IsAvatar)
             {
-                ActiveParty.Add(to);
+                from.Party.Add(to);
+                to.Party = from.Party;
                 return new AttackResult { Applied = true };
             }
-            ActiveParty.Pending = to;
+            from.Party.Pending = to;
+            to.Party = from.Party;
             return new AttackResult { Applied = true };
         }
 
         public AttackResult TryPartyAccept(WorldBody body)
         {
-            if (ActiveParty == null || body == null)
+            if (body == null || body.Party == null)
                 return new AttackResult { FailReason = "no_party" };
-            if (ActiveParty.Pending != body)
+            if (body.Party.Pending != body)
                 return new AttackResult { FailReason = "no_invite" };
-            float dist = Vector3.Distance(body.transform.position, ActiveParty.Leader.transform.position);
+            float dist = Vector3.Distance(body.transform.position, body.Party.Leader.transform.position);
             if (dist > PartyResolve.AcceptRange)
                 return new AttackResult { FailReason = "range" };
-            ActiveParty.Add(body);
+            body.Party.Add(body);
             return new AttackResult { Applied = true };
         }
 
         public AttackResult TryPartyLeave(WorldBody body)
         {
-            if (ActiveParty == null || body == null || !ActiveParty.Contains(body))
+            if (body == null || body.Party == null || !body.Party.Contains(body))
                 return new AttackResult { FailReason = "no_party" };
-            if (body == ActiveParty.Leader)
+            var p = body.Party;
+            if (body == p.Leader)
             {
-                ActiveParty = null;
+                if (p.Leader != null) p.Leader.Party = null;
+                for (int i = 0; i < p.Members.Count; i++)
+                    if (p.Members[i] != null) p.Members[i].Party = null;
+                if (p.Pending != null) p.Pending.Party = null;
                 return new AttackResult { Applied = true };
             }
-            ActiveParty.Members.Remove(body);
+            p.Members.Remove(body);
+            body.Party = null;
             return new AttackResult { Applied = true };
         }
 
         public AttackResult TryPartySay(WorldBody body, string text)
         {
-            if (ActiveParty == null || body == null || !ActiveParty.Contains(body))
+            if (body == null || body.Party == null || !body.Party.Contains(body))
                 return new AttackResult { FailReason = "no_party" };
             if (string.IsNullOrEmpty(text))
                 return new AttackResult { FailReason = "empty" };
-            ActiveParty.Say(body.DisplayName, text);
+            body.Party.Say(body.DisplayName, text);
             return new AttackResult { Applied = true };
         }
 

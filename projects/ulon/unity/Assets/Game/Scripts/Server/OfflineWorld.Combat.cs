@@ -115,8 +115,7 @@ namespace Ulon.Server
                 DefendOwner(target, attacker);
             if (!target.Alive)
             {
-                if (Selected == target)
-                    Selected = null;
+                ClearSelectionOf(target);
                 bool duelKill = AtDuel(attacker, target);
                 if (duelKill)
                     ClearDuel(attacker);
@@ -490,8 +489,8 @@ namespace Ulon.Server
             body.CombatUntil = Time.time + TravelMark.CombatSeconds;
             if (target.IsAvatar)
                 target.RecalcFromInt(targetStats.Int);
-            if (!target.Alive && Selected == target)
-                Selected = null;
+            if (!target.Alive)
+                ClearSelectionOf(target);
             result.Damage = dmg;
             OpLog.Write("scroll", PersistDriver.AccountKey(), target.DisplayName, ItemCatalog.ScrollEmber);
             return result;

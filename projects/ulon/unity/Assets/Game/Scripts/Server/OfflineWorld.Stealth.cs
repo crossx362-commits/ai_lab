@@ -486,8 +486,8 @@ namespace Ulon.Server
 
         public ProvocationResult TryProvokeStep(WorldBody body)
         {
-            WorldBody sel = Selected;
-            if (PendingProvoke == null || PendingProvoke == sel)
+            WorldBody sel = TargetOf(body);
+            if (body.PendingProvoke == null || body.PendingProvoke == sel)
             {
                 if (sel == null)
                     return new ProvocationResult { FailReason = "no_target" };
@@ -495,12 +495,12 @@ namespace Ulon.Server
                     return new ProvocationResult { FailReason = "not_mob" };
                 if (!sel.Alive)
                     return new ProvocationResult { FailReason = "dead" };
-                PendingProvoke = sel;
+                body.PendingProvoke = sel;
                 LastProvokeMessage = Tell(body, sel.DisplayName + " 도발 대상1");
                 return new ProvocationResult { FailReason = "need_second" };
             }
-            ProvocationResult result = TryProvoke(body, PendingProvoke, sel);
-            PendingProvoke = null;
+            ProvocationResult result = TryProvoke(body, body.PendingProvoke, sel);
+            body.PendingProvoke = null;
             return result;
         }
 

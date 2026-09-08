@@ -68,6 +68,14 @@ namespace Ulon.Server
         public float WeakenUntil;
         public float BlessUntil;
         public string ActiveCraftOrder = "";
+        /// <summary>이 사람이 고른 대상 — 전역이 아니다(검수 A).</summary>
+        public WorldBody Selected;
+        public WorldBody PendingProvoke;
+        public VendorStation ActiveVendor;
+        public TrainerStation ActiveTrainer;
+        /// <summary>거래·파티는 두 사람 사이의 것 — 세션 객체는 하나, 몸은 참조만(검수 ㉰).</summary>
+        public TradeSession Trade;
+        public Party Party;
 
         public float Hp { get; private set; }
         public float Mana { get; private set; }

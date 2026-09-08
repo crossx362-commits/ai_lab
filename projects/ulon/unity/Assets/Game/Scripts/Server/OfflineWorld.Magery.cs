@@ -72,8 +72,8 @@ namespace Ulon.Server
                 }
                 if (target.IsAvatar)
                     target.RecalcFromInt(targetStats.Int);
-                if (!target.Alive && Selected == target)
-                    Selected = null;
+                if (!target.Alive)
+                    ClearSelectionOf(target);
                 return new AttackResult { Applied = true, Hit = true, Damage = dmg, SkillBefore = before, SkillAfter = after };
             }
 
@@ -185,8 +185,8 @@ namespace Ulon.Server
                 }
                 if (target.IsAvatar)
                     target.RecalcFromInt(targetStats.Int);
-                if (!target.Alive && Selected == target)
-                    Selected = null;
+                if (!target.Alive)
+                    ClearSelectionOf(target);
                 return new AttackResult { Applied = true, Hit = true, Damage = dmg, SkillBefore = sb, SkillAfter = sa };
             }
 
@@ -324,8 +324,8 @@ namespace Ulon.Server
             }
             if (target.IsAvatar)
                 target.RecalcFromInt(targetStats.Int);
-            if (!target.Alive && Selected == target)
-                Selected = null;
+            if (!target.Alive)
+                ClearSelectionOf(target);
         }
 
     }

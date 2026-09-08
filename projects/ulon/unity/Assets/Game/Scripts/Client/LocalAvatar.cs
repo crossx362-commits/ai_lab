@@ -176,7 +176,11 @@ namespace Ulon.Client
                 bool minePet = mine != null && !string.IsNullOrEmpty(body.OwnerCharacterId) && body.OwnerCharacterId == mine.CharacterId;
                 if (wild || minePet)
                 {
-                    OfflineWorld.Instance?.Select(body);
+                    OfflineWorld.Instance?.Select(mine, body);
+                    var tameNet = GetComponent<NetAvatar>();
+                    var tameNob = body.GetComponent<FishNet.Object.NetworkObject>();
+                    if (tameNet != null && tameNob != null && tameNet.IsClientInitialized)
+                        tameNet.RpcSelect(tameNob);
                     if (wild)
                         TameTarget(body);
                     else
@@ -188,7 +192,11 @@ namespace Ulon.Client
             {
                 if (down)
                 {
-                    OfflineWorld.Instance?.Select(body);
+                    OfflineWorld.Instance?.Select(mine, body);
+                    var atkNet = GetComponent<NetAvatar>();
+                    var atkNob = body.GetComponent<FishNet.Object.NetworkObject>();
+                    if (atkNet != null && atkNob != null && atkNet.IsClientInitialized)
+                        atkNet.RpcSelect(atkNob);
                     chasing = body;
                 }
                 return;
@@ -506,7 +514,7 @@ namespace Ulon.Client
         {
             if (mine == null)
                 return null;
-            var sel = OfflineWorld.Instance != null ? OfflineWorld.Instance.Selected : null;
+            var sel = mine != null ? mine.Selected : null;
             if (sel != null && sel.IsEnemy && sel.Alive && !sel.IsAvatar)
             {
                 float sd = Vector3.Distance(mine.transform.position, sel.transform.position);

@@ -70,6 +70,7 @@ namespace Ulon.Client
             // 「버튼이 고른 것」과 「검사가 고른 것」이 갈린다.
             yield return Party(role, mine, deadline);
             yield return Guild(role, mine, deadline);
+            yield return SelectEval(role, mine, mob, deadline);
             // ── 축 ② 실측: **A가 B를 때렸을 때 B 클라 화면의 숫자가 따라 내려가는가** ──
             // 「줄었다」가 아니라 **전/후 숫자 양쪽**을 남긴다(검수 지시 2026-09-08).
             // 가드존(반지름 16m) 안에서는 아바타끼리 때릴 수 없으므로 둘을 들판으로 옮긴 뒤 친다.
@@ -396,6 +397,7 @@ namespace Ulon.Client
         static string peekFarFail = "", peekNearFail = "", peekFarItems = "", peekNearItems = "";
         static string lootFarBag = "", lootNearBag = "";
 
+        static string selName = "", evalHint = "";
         static string guildMsg = "";
         static int ecoGoldBefore = -1, ecoGoldAfter = -1;
         static string ecoBagBefore = "", ecoBagAfter = "", ecoBagAfterCheat = "";
@@ -533,6 +535,48 @@ namespace Ulon.Client
                       " · 인원 " + guildMembers);
         }
 
+        /// <summary>
+        /// A와 B가 **다른 대상**을 고르면 양쪽 화면·평가 안내가 갈려야 한다(검수 A ㉱).
+        /// A는 몹, B는 옆 사람. NC `-ulon-nc-globalselect`면 서버가 전역 하나라 마지막 선택이 이긴다.
+        /// </summary>
+        static IEnumerator SelectEval(string role, NetAvatar mine, NetMob mob, float deadline)
+        {
+            NetworkObject pick = null;
+            if (role == "attacker")
+                pick = mob != null ? mob.NetworkObject : null;
+            else
+            {
+                var all = FindObjectsByType<NetAvatar>(FindObjectsSortMode.None);
+                for (int i = 0; i < all.Length; i++)
+                {
+                    if (all[i] == null || all[i] == mine || all[i].IsOwner)
+                        continue;
+                    pick = all[i].NetworkObject;
+                    break;
+                }
+            }
+            var myBody = mine.GetComponent<WorldBody>();
+            WorldBody target = pick != null ? pick.GetComponent<WorldBody>() : null;
+            // 둘 다 몹 옆으로 모인다 — A가 몹을 재러 가면 B가 옛 자리에 남아 사거리 밖이 된다.
+            if (mob != null)
+            {
+                float side = role == "attacker" ? 1.2f : 2.4f;
+                WarpNextTo(mine.transform, mob.transform.position);
+                mine.RpcSetPos(mob.transform.position + new Vector3(side, 0f, 0f));
+            }
+            if (target != null && myBody != null)
+                myBody.Selected = target;
+            if (pick != null)
+                mine.RpcSelect(pick);
+            selName = target != null ? (target.DisplayName ?? "") : "";
+            // 둘 다 고른 뒤에 평가한다 — NC 전역이면 마지막 선택이 둘의 평가를 덮는다.
+            yield return new WaitForSeconds(0.8f);
+            mine.RpcEvaluate();
+            yield return new WaitForSeconds(0.55f);
+            evalHint = mine.ClientHint ?? "";
+            Debug.Log("[Ulon] 선택 A(" + role + ") — 대상 「" + selName + "」 안내 「" + evalHint + "」");
+        }
+
         static int GuildRosterCount()
         {
             if (!GuildView.Open || string.IsNullOrEmpty(GuildView.Roster))
@@ -638,6 +682,8 @@ namespace Ulon.Client
                           + ",\"peekNearItems\":\"" + peekNearItems + "\""
                           + ",\"lootFarBag\":\"" + lootFarBag + "\""
                           + ",\"lootNearBag\":\"" + lootNearBag + "\""
+                          + ",\"selName\":\"" + selName.Replace("\"", "") + "\""
+                          + ",\"evalHint\":\"" + evalHint.Replace("\"", "") + "\""
                           + "}";
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, json, new UTF8Encoding(false));

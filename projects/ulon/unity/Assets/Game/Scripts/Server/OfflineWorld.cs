@@ -105,15 +105,45 @@ namespace Ulon.Server
         WorldBody[] bodies = System.Array.Empty<WorldBody>();
 
         public WorldBody Player { get; private set; }
-        public WorldBody Selected { get; private set; }
-        public WorldBody PendingProvoke { get; private set; }
-        public TradeSession ActiveTrade { get; private set; }
-        public VendorStation ActiveVendor { get; private set; }
+        WorldBody selectedGlobal;
 
-        public void CloseVendor() => ActiveVendor = null;
-        public TrainerStation ActiveTrainer { get; private set; }
-        public void CloseTrainer() => ActiveTrainer = null;
-        public Party ActiveParty { get; private set; }
+        /// <summary>오프라인·셀프체크 전용. 온라인 HUD/Rpc는 몸 필드·<see cref="TargetOf"/>.</summary>
+        public WorldBody Selected => Player != null ? Player.Selected : selectedGlobal;
+        public WorldBody PendingProvoke
+        {
+            get => Player != null ? Player.PendingProvoke : null;
+            set { if (Player != null) Player.PendingProvoke = value; }
+        }
+        public TradeSession ActiveTrade
+        {
+            get => Player != null ? Player.Trade : null;
+            set { if (Player != null) Player.Trade = value; }
+        }
+        public VendorStation ActiveVendor
+        {
+            get => Player != null ? Player.ActiveVendor : null;
+            set { if (Player != null) Player.ActiveVendor = value; }
+        }
+        public void CloseVendor() => CloseVendor(Player);
+        public void CloseVendor(WorldBody body)
+        {
+            if (body != null) body.ActiveVendor = null;
+        }
+        public TrainerStation ActiveTrainer
+        {
+            get => Player != null ? Player.ActiveTrainer : null;
+            set { if (Player != null) Player.ActiveTrainer = value; }
+        }
+        public void CloseTrainer() => CloseTrainer(Player);
+        public void CloseTrainer(WorldBody body)
+        {
+            if (body != null) body.ActiveTrainer = null;
+        }
+        public Party ActiveParty
+        {
+            get => Player != null ? Player.Party : null;
+            set { if (Player != null) Player.Party = value; }
+        }
         readonly Dictionary<string, Guild> guilds = new Dictionary<string, Guild>();
         int guildSeq;
         public string LastGuildMessage { get; private set; } = "";
@@ -371,7 +401,37 @@ namespace Ulon.Server
             return rec != null ? rec.Items.Count : 0;
         }
 
-        public void Select(WorldBody body) => Selected = body;
+        public void Select(WorldBody body) => Select(Player, body);
+
+        public void Select(WorldBody who, WorldBody target)
+        {
+            if (Cli.Has("-ulon-nc-globalselect"))
+            {
+                selectedGlobal = target;
+                return;
+            }
+            if (who != null)
+                who.Selected = target;
+        }
+
+        public WorldBody TargetOf(WorldBody who)
+        {
+            if (Cli.Has("-ulon-nc-globalselect"))
+                return selectedGlobal;
+            return who != null ? who.Selected : null;
+        }
+
+        public void ClearSelectionOf(WorldBody dead)
+        {
+            if (dead == null)
+                return;
+            if (selectedGlobal == dead)
+                selectedGlobal = null;
+            var all = Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+                if (all[i] != null && all[i].Selected == dead)
+                    all[i].Selected = null;
+        }
 
         public void SetLocalPlayer(WorldBody body)
         {
