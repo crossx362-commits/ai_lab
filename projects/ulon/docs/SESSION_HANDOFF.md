@@ -35,6 +35,18 @@ NC `--nc-nohint`: 길드는 그대로 만들어지고 A/B `guildMsg` 둘 다 빈
 - 가져가기는 기존 `loot_right`. 보는 것/가져가기 게이트 분리.
 - Grok Bot 쪽은 중복 구현하지 않음 — Claude 자율개발 세션이 이어서 구현.
 
+## ④ 실내/실외를 이름 아닌 자리로 — **완료**(`a52625f9`, 2026-09-08)
+`GroundFit.InDungeonPlace`(지하 방/지표 아래/방 반경 24m 안 1m 이내 솟음/입구 자리) + 밝기 게이트는
+**「하늘이 보이는가」**(위로 광선), 텍스처는 **파일이 사는 폴더**로. 새 게이트 `SliceSelfCheck.DungeonPlace.cs`
+는 양방향 NC(이름 갈아도 그대로 / 들판으로 옮기면 빨간불). 버린 판 둘: 방 중심 반경만(뚜껑·통로가 샘),
+`DungeonBlocker` 레이어(측정 대상 256→1개). 새 자가 잡은 결함: **바깥 암반 링이 지표를 0.1~0.7m 뚫고
+나와 있었다** → 1.4m 내리고 재건 조건에 자리까지 넣음. 실측 렌더러 117개·재질 5종, EXIT=0 2회.
+
+**A는 Grok이 가져갔다**(`829a1627`, 그쪽 세션 종료 `7ea1e4f8`). 그 뒤 남은 빨간불 셋은 내가 닫았다:
+파티 게이트 `world.ActiveParty`→`body.Party`, 상인 `body.ActiveVendor`, **약탈 권리**가 주인을
+`AccountId`로만 찾아 오프라인 파티 잠금이 풀리던 것 → `CorpseNode.OwnerBody`(몸을 직접 붙든다).
+다음 순서(검수): ③ 배우 명단 14개 하드코딩 → `FindObjectsByType<Animator>()`, 그 뒤 ①②, MegaKit 우선.
+
 ## 실내 소품 파고듦 — **게이트 + 수리 완료**(`532318f2`, 2026-09-08)
 `SliceSelfCheck.PropSpacing.cs` — 소품 쌍 바운드의 가장 얕은 축 깊이가 얇은 쪽 두께의 50%를 넘으면 실패.
 수리 전 실측 `Load7↔Rubble2` 100% · `Pillar1↔Load5` 100%. 채택한 판: 짐 8칸(기둥에서 30°)·잔해 네 모서리
