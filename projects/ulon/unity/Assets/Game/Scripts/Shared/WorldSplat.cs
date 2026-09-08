@@ -190,7 +190,20 @@ namespace Ulon.Shared
                 return 0f;
             // 안에서도 고르게 칠하지 않는다 — 성글게 벗겨진 얼룩이라야 「밟힌 자리」로 읽힌다.
             float patch = Mathf.PerlinNoise(wx * 0.16f + 7f, wz * 0.16f + 61f);
-            return Mathf.Clamp01(core * (0.35f + patch * 0.85f));
+            float cover = Mathf.Clamp01(core * (0.35f + patch * 0.85f));
+
+            // **몹이 선 자리는 확실히 드러난다**(검수 지시: 「몹이 밟고 선 것이 무엇인가」가 증상이다).
+            // 얼룩만 깔았을 때 여덟 중 셋이 잔디를, 넷이 옅은 자갈을 밟고 있었다 — 발밑이 초록이면
+            // 밟힌 자리를 아무리 넓혀도 「몹은 잔디에 섰다」로 읽힌다. 자리마다 다져진 원을 얹는다.
+            for (int i = 0; i < HuntRoster.Spots.Length; i++)
+            {
+                var p = HuntRoster.World(i);
+                float dd = new Vector2(wx - p.x, wz - p.y).magnitude;
+                float trample = 1f - Mathf.Clamp01((dd - 1.6f) / 2.6f);
+                if (trample > 0f)
+                    cover = Mathf.Max(cover, 0.55f + trample * 0.45f);
+            }
+            return cover;
         }
 
         /// <summary>사각형 안이면 1, 가장자리 한 칸에서 0으로 — 돌포장이 칼로 자른 듯 끝나지 않게.</summary>

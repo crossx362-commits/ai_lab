@@ -47,6 +47,7 @@ namespace Ulon.Editor
             BuildForest(WorldRegions.Forest, new[] { TreeH, TreeR, TreeC, Tree }, Bush, BushL, Tuft);
             BuildMine(WorldRegions.Mine, RockL, RockW, Poles, Tuft);
             ScatterPlain(new[] { Tuft, Bush, BushL, RockW });
+            ScatterHuntCover(RockW, BushL);
             BuildTestChamber(WorldRegions.TestChamber, Fence, Poles, Cart, RockW);
         }
 
@@ -425,6 +426,48 @@ namespace Ulon.Editor
                 node.Difficulty = 14f;
                 EnsureCollider(vein);
             }
+        }
+
+        /// <summary>
+        /// **사냥터 엄폐물**(검수 지시 2026-09-09 — 「바위 여덟이 무리 바깥에만 있어 엄폐로 안 읽힌다」).
+        /// 평지 산포는 무작위라 무리 **사이**를 비워 둔다 — 엄폐물은 우연히 생기지 않는다.
+        /// 자리는 결정적이다: 무리와 무리 사이·무리 옆에 놓아 「돌아 들어갈 자리」로 읽히게 하고,
+        /// 몹에서 3.5m 넘게 떼어 몸을 가리지 않게 한다(잰 값은 아래 주석의 실측).
+        /// </summary>
+        static void ScatterHuntCover(string rock, string bush)
+        {
+            var old = GameObject.Find("HuntCover");
+            if (old != null)
+                UnityEngine.Object.DestroyImmediate(old);
+            var parent = new GameObject("HuntCover").transform;
+            // (월드 미터) **몹보다 뒤(z가 큰 쪽)에 둔다** — 앞에 놓았더니 카메라와 몹 사이에 들어와
+            // 무리를 가렸다(실측 2026-09-09: 가운데 둘이 바위 뒤로 숨었다). 엄폐물은 무리를 가리는
+            // 것이 아니라 무리가 **돌아 들어갈 자리**여야 한다.
+            var spots = new[]
+            {
+                new Vector3(-11.5f, 0f, 71.5f), new Vector3(-0.5f, 0f, 73.5f), new Vector3(6.5f, 0f, 78.0f),
+                new Vector3(14.0f, 0f, 75.0f), new Vector3(22.0f, 0f, 72.5f),
+            };
+            for (int i = 0; i < spots.Length; i++)
+            {
+                var go = Place(rock, spots[i], new Vector3(0f, WorldRegions.Rand(i, 71, 0f, 360f), 0f));
+                if (go == null)
+                    continue;
+                go.name = "HuntRock" + (i + 1);
+                go.transform.SetParent(parent, true);
+                // 몹보다 크면 「엄폐물」이 아니라 「바위밭」이다 — 사람 키 언저리로 둔다.
+                go.transform.localScale = go.transform.localScale * WorldRegions.Rand(i, 72, 0.85f, 1.25f);
+                // 바위 곁에 덤불 한 그루 — 돌만 놓으면 「바위밭」이지 「숨을 자리」로는 안 읽힌다.
+                var side = new Vector3(spots[i].x + WorldRegions.Rand(i, 73, -2.4f, 2.4f), 0f,
+                                       spots[i].z + WorldRegions.Rand(i, 74, -2.4f, 2.4f));
+                var b = Place(bush, side, new Vector3(0f, WorldRegions.Rand(i, 75, 0f, 360f), 0f));
+                if (b != null)
+                {
+                    b.name = "HuntBush" + (i + 1);
+                    b.transform.SetParent(parent, true);
+                }
+            }
+            Debug.Log("[Ulon] 사냥터 엄폐물 " + parent.childCount + "개");
         }
 
         /// <summary>평지 산포 — 마을 밖 빈 초록을 깨는 잡초·덤불·돌. 지역·마을·던전 자리는 피한다.</summary>

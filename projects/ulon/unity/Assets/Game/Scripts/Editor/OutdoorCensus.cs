@@ -75,6 +75,26 @@ namespace Ulon.Editor
                                   (sum[L] / n).ToString("0.000"));
             }
 
+            // **묻는 것은 「얼룩이 어디 있나」가 아니라 「몹이 밟고 선 것이 무엇인가」다**(검수 지시 2026-09-09).
+            {
+                var names = new[] { "Grass0", "Rock1", "Sand2", "Tilled3", "Soil4", "Gravel5", "Road6", "Cobble7" };
+                int onDirt = 0;
+                for (int i = 0; i < VisualSliceBuilder.HuntSpots.Length; i++)
+                {
+                    var w = VisualSliceBuilder.HuntSpotWorld(i);
+                    int layer = Ulon.Shared.WorldSplat.CoverAt(w.x, w.z, out float weight);
+                    bool dirt = layer == Ulon.Shared.WorldSplat.Soil || layer == Ulon.Shared.WorldSplat.Gravel;
+                    if (dirt && weight >= 0.5f)
+                        onDirt++;
+                    Debug.Log("[Census] 몹 발밑 " + VisualSliceBuilder.HuntSpots[i].Name + " @(" +
+                              w.x.ToString("0.0") + "," + w.z.ToString("0.0") + ") — " +
+                              (layer >= 0 && layer < names.Length ? names[layer] : "Grass0") + " " +
+                              weight.ToString("0.00"));
+                }
+                Debug.Log("[Census] 몹 발밑 요약 — 흙·자갈을 절반 넘게 밟은 몹 " + onDirt + "/" +
+                          VisualSliceBuilder.HuntSpots.Length + "마리");
+            }
+
             var nodes = new List<Transform>();
             var boxes = new List<Bounds>();
             Collect(nodes, boxes);
