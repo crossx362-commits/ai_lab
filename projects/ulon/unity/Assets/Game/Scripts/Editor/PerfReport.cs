@@ -142,6 +142,9 @@ namespace Ulon.Editor
         /// 위치 판정은 `Renderer.bounds`가 아니라 **transform.position**으로 한다 —
         /// 배치모드에서 bounds가 프리팹 원점 값으로 남는 함정이 있었다(2026-09-06 원장).
         /// </summary>
+        /// <summary>직전 `Measure`가 센 머티리얼 이름 — 경보가 났을 때 원인을 대기 위한 것.</summary>
+        public static readonly System.Collections.Generic.List<string> LastMaterialNames = new System.Collections.Generic.List<string>();
+
         public static Count Measure(Spot spot)
         {
             var c = new Count();
@@ -168,6 +171,12 @@ namespace Ulon.Editor
                     if (shared[m] != null) mats.Add(shared[m]);
             }
             c.Materials = mats.Count;
+            // **넘었을 때 「무엇이 늘었나」를 말할 수 있어야 한다** — 숫자만 남기면 다음 사람이
+            // 원인을 못 찾고 상한부터 올린다(그게 자를 헐겁게 하는 길이다).
+            LastMaterialNames.Clear();
+            foreach (var m in mats)
+                LastMaterialNames.Add(m.name);
+            LastMaterialNames.Sort(System.StringComparer.Ordinal);
 
             var cols = UnityEngine.Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < cols.Length; i++)

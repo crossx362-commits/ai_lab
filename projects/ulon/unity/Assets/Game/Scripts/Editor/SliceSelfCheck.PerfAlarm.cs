@@ -49,6 +49,9 @@ namespace Ulon.Editor
                         "). 아무것도 안 재고 통과시키지 않는다.");
                 Alarm(spots[i].Name, "렌더러", c.Renderers, lim.Renderers);
                 Alarm(spots[i].Name, "삼각형", (int)c.Triangles, lim.Triangles);
+                if (c.Materials > lim.Materials)
+                    Debug.Log("[Ulon] 성능 회귀 경보 — " + spots[i].Name + "의 머티리얼 목록: " +
+                              string.Join(", ", PerfReport.LastMaterialNames));
                 Alarm(spots[i].Name, "머티리얼 종류", c.Materials, lim.Materials);
             }
             Debug.Log("[Ulon] 성능 회귀 경보 통과 — **성능 합격이 아니다**(프레임 시간을 아직 못 잰다). " +
