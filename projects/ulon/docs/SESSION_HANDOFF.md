@@ -11,6 +11,12 @@
 > (`unity/Logs/selfcheck_dev.log`의 "Slice self-check PASS —" 줄). 여기엔 **현재 상태와 다음 단계만** 둔다.
 
 
+## 안내 B — **구현 완료**(`5f661ae6` + NC `--nc-nohint`, 2026-09-08)
+Last*는 오프라인·셀프체크용으로 남기고, 온라인 HUD는 `IHintSink` → `NetAvatar.RpcHint(Owner)`만 본다.
+실측 정상판: A `guildMsg=created` · B 빈 값(길드는 양쪽 다 `검사길드`).
+NC `--nc-nohint`: 길드는 그대로 만들어지고 A/B `guildMsg` 둘 다 빈 값 → 빨간불(rc=5).
+다음 큐 **A**(Selected/Active* 를 WorldBody 키로)는 클로드 차선 — Grok은 OfflineWorld* 안 건드린다.
+
 ## 시체 열람 — **구현 완료**(`5f661ae6`, 2026-09-08)
 보기=근접 전원·TargetRpc 응답만(방송 없음) / 가져가기=기존 `loot_right`, **게이트 둘로 분리**.
 실측: 밖 `range` 거절·목록 없음 → 근접 성공·`bandage:1` / 회수는 밖 그대로 → 근접에서 가방 증가.
