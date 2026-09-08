@@ -191,9 +191,7 @@ namespace Ulon.Editor
                 if (string.IsNullOrEmpty(path) || path.IndexOf("/RAW/", StringComparison.OrdinalIgnoreCase) >= 0)
                     throw new InvalidOperationException("마을 랜드마크는 Prefab이어야 합니다(RAW fbx 아님): " + prefabs[i]);
             }
-            var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
-                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            AssertVillageDecorIntact();                        // 자는 한 곳에(Guards)
 
             var stranger = TameResolve.Stay(new PetCommandRequest { HasPet = true, IsOwner = false });
             if (stranger.Applied || stranger.FailReason != "not_owner")

@@ -18,7 +18,8 @@ namespace Ulon.Shared
         public const int Soil = 4;      // 숲 — 어두운 부엽토
         public const int Gravel = 5;    // 광산 — 자갈
         public const int Road = 6;      // 지역을 잇는 길
-        public const int LayerCount = 7;
+        public const int Cobble = 7;    // 마을 광장 — 돌포장
+        public const int LayerCount = 8;
 
         public const float RoadHalfWidth = 2.4f;   // 길 중심에서 이 폭까지는 온전히 길
         public const float RoadFade = 1.8f;        // 그 바깥으로 이 폭만큼 흙이 옅어진다
@@ -115,6 +116,13 @@ namespace Ulon.Shared
                 layer = Tilled;
             }
 
+            float plaza = PlazaCoverAt(wx, wz);
+            if (plaza > weight)
+            {
+                weight = plaza;
+                layer = Cobble;
+            }
+
             var routes = Routes;
             for (int i = 0; i < routes.Length; i++)
             {
@@ -127,6 +135,32 @@ namespace Ulon.Shared
                 }
             }
             return layer;
+        }
+
+        /// <summary>
+        /// **마을 광장 돌포장**(검수 랩 ② — 「01·02가 회색 십자로」).
+        /// 왜 지형인가: 광장 바닥을 킷 `road.fbx` 판으로 깔았더니 **무늬가 안 보였다** — Kenney 모델은
+        /// 색상 아틀라스라 UV가 한 점에 몰려 있어 어떤 텍스처를 씌워도 단색이 된다(2026-09-09 실측:
+        /// 돌포장 무늬를 만들어 104칸을 칠했는데 화면은 회색 한 장). 지형은 UV가 제대로 있어 무늬가 산다.
+        /// 모양은 굽는 쪽 `PlazaPath`와 같다: 가운데 네모 마당 + 길 넷.
+        /// </summary>
+        public static float PlazaCoverAt(float wx, float wz)
+        {
+            float mx = wx / WorldScale.Kit, mz = wz / WorldScale.Kit;
+            float square = Inside(mx, -4f, 4f, mz, -4f, 4f);
+            float ew = Inside(mx, -8f, 10f, mz, -1f, 1f);
+            float ns = Inside(mx, -1f, 1f, mz, -7f, 11f);
+            return Mathf.Max(square, Mathf.Max(ew, ns));
+        }
+
+        /// <summary>사각형 안이면 1, 가장자리 한 칸에서 0으로 — 돌포장이 칼로 자른 듯 끝나지 않게.</summary>
+        static float Inside(float x, float x0, float x1, float z, float z0, float z1)
+        {
+            float fade = 0.6f;
+            float ix = Mathf.Min(x - x0, x1 - x);
+            float iz = Mathf.Min(z - z0, z1 - z);
+            float i = Mathf.Min(ix, iz);
+            return Mathf.Clamp01(i / fade);
         }
 
         public static float DistToSegment(float px, float pz, float ax, float az, float bx, float bz)

@@ -64,7 +64,11 @@ namespace Ulon.Editor
                 {
                     float wx = Mathf.Lerp(routes[i].x, routes[i].z, t);
                     float wz = Mathf.Lerp(routes[i].y, routes[i].w, t);
-                    float v = Sample(alpha, ar, wx, wz, WorldSplat.Road);
+                    // **광장 돌포장도 길이다** — 길이 마을에서 시작하니 첫 구간은 광장 바닥이다.
+                    // 이 자가 묻는 것은 「걸어갈 바닥이 이어지는가」이지 「무슨 재질인가」가 아니다
+                    // (2026-09-09: 광장을 지형 돌포장으로 깔자 t=0.12에서 길 도포 0.00으로 울었다).
+                    float v = Mathf.Max(Sample(alpha, ar, wx, wz, WorldSplat.Road),
+                                        Sample(alpha, ar, wx, wz, WorldSplat.Cobble));
                     if (v < worst) { worst = v; worstT = t; }
                 }
                 Debug.Log("[Ulon] §6.1 길 " + i + " 최약 지점 " + worst.ToString("0.00") + " (t=" + worstT.ToString("0.00") + ", 하한 " + RoadCoverMin + ")");

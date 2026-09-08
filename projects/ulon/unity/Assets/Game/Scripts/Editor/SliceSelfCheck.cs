@@ -72,6 +72,7 @@ namespace Ulon.Editor
             ActionSfxBuilder.EnsureActionSfx();          // 등록 CC0 효과음(§11.2)            // 행동 결과 파티클(§11.2·§18.15)
             VisualSliceBuilder.EnsureRoomFurnishing();     // 넓힌 방을 채운다(§6.1 던전 콘텐츠)
             VisualSliceBuilder.EnsureCapBuried();        // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
+            VisualSliceBuilder.EnsureVillagePlaza();       // 광장 바닥을 원장으로(칸·무늬·가로등, 검수 랩 ②)
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
             VisualSliceBuilder.EnsureOutdoorPropMaterials(); // 야외에 남은 던전 텍스처를 마을 톤으로
             VisualSliceBuilder.EnsureWorldAtmosphere();    // 대기는 원장 하나에서 — 씬에 옛 값이 남아 있으면 여기서 수렴한다

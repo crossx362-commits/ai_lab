@@ -197,21 +197,105 @@ namespace Ulon.Editor
 
         static void PlaceVillageFloor(Transform parent)
         {
-            const string Road = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/road.fbx";
-            ConfigureProp(Road);
+            // **광장 바닥은 킷 판때기가 아니라 지형 도포**(WorldSplat.Cobble)다 — 킷 모델은 색상
+            // 아틀라스라 UV가 한 점이어서 어떤 무늬를 씌워도 단색이 된다(2026-09-09 실측).
             var grassA = KenneyGrassMat();
             var dirtMat = KenneyDirtMat();
             AssignMat("Assets/_ThirdParty/Kenney/Nature/RAW/Models/ground_pathTile.fbx", dirtMat);
             AssignMat("Assets/_ThirdParty/Kenney/Nature/RAW/Models/grass_large.fbx", grassA);
-            for (int x = -18; x < 18; x++)
+        }
+
+        /// <summary>
+        /// **커밋된 씬의 광장 바닥을 원장으로 수렴시킨다**(멱등 보수 패스, 검수 랩 ②).
+        /// `PlaceVillageFloor`는 전체 재드레싱 때만 돌아서, 바닥 규칙을 고쳐도 씬은 그대로였다
+        /// (2026-09-09: 무늬를 돌포장으로 바꾸고 마당을 넓혔는데 화면이 한 픽셀도 안 바뀌었다).
+        /// 여기서는 세 가지만 한다: ①빠진 바닥 칸 채우기 ②전부 돌포장 재질로 ③가로등을 마당 귀퉁이로.
+        /// </summary>
+        public static void EnsureVillagePlaza()
+        {
+            var decor = GameObject.Find("VillageDecor");
+            if (decor == null)
+                return;
+            // ①·② **판때기를 걷어낸다** — 광장 바닥은 이제 지형 도포(WorldSplat.Cobble)다.
+            // 킷 판때기는 UV가 한 점이라 무늬가 안 살고, 지형 위에 겹치면 z-파이팅만 남는다.
+            var doomed = new List<GameObject>();
+            foreach (var t in decor.GetComponentsInChildren<Transform>(true))
+                if (t.name.StartsWith("road", StringComparison.Ordinal))
+                    doomed.Add(t.gameObject);
+            for (int i = 0; i < doomed.Count; i++)
+                UnityEngine.Object.DestroyImmediate(doomed[i]);
+
+            // ③ 마당을 넓혔으니 가운데 서 있던 가로등 넷을 귀퉁이로 옮긴다(원장 자리와 같은 값).
+            var corners = new[]
             {
-                for (int z = -18; z < 18; z++)
+                new Vector3(-3.6f, 0f, -3.6f), new Vector3(3.6f, 0f, -3.6f),
+                new Vector3(-3.6f, 0f, 3.6f), new Vector3(3.6f, 0f, 3.6f),
+            };
+            var old = new[]
+            {
+                new Vector3(-2.2f, 0f, -2.2f), new Vector3(2.2f, 0f, -2.2f),
+                new Vector3(-2.2f, 0f, 2.2f), new Vector3(2.2f, 0f, 2.2f),
+            };
+            int moved = 0;
+            for (int i = 0; i < old.Length; i++)
+            {
+                Vector3 from = Module(old[i]);
+                foreach (var t in decor.GetComponentsInChildren<Transform>(true))
                 {
-                    if (!PlazaPath(x, z))
+                    if (!t.name.StartsWith("lantern", StringComparison.Ordinal))
                         continue;
-                    DecorM(parent, Road, new Vector3(x + 0.5f, 0.02f, z + 0.5f), Vector3.zero);
+                    if (new Vector2(t.position.x - from.x, t.position.z - from.z).magnitude > 0.4f)
+                        continue;
+                    var to = Module(corners[i]);
+                    t.position = new Vector3(to.x, t.position.y, to.z);
+                    SnapRootToGround(t.gameObject);
+                    moved++;
+                    break;
                 }
             }
+            // ④ **빈 중심을 채운다**(검수 랩 ②: 「빈 중심 — 우물·게시판·좌판」).
+            // 우물·게시판은 등록 자산에 없다 → 세우지 않고 미결로 남긴다(가짜를 세우지 않는다, §11).
+            // 있는 것으로 채운다: **분수를 광장 한가운데로**(치유사 = fountain-round, 실재 자산) +
+            // 좌판·벤치·의자·수레를 마당 가장자리에 모아 「사람이 모이는 자리」로 만든다.
+            var fountain = GameObject.Find("Healer");
+            if (fountain != null)
+            {
+                var c = Module(new Vector3(-0.5f, 0f, -0.5f));
+                fountain.transform.position = new Vector3(c.x, fountain.transform.position.y, c.z);
+                SnapRootToGround(fountain);
+            }
+            const string MarketPrefix = "PlazaMarket";
+            var stale = new List<GameObject>();
+            foreach (var t in decor.GetComponentsInChildren<Transform>(true))
+                if (t.name.StartsWith(MarketPrefix, StringComparison.Ordinal))
+                    stale.Add(t.gameObject);
+            for (int i = 0; i < stale.Count; i++)
+                UnityEngine.Object.DestroyImmediate(stale[i]);
+
+            var market = new (string Path, Vector3 At, float Yaw)[]
+            {
+                ("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall-red.fbx",   new Vector3(-3.0f, 0f, 2.6f), 180f),
+                ("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall-green.fbx", new Vector3(2.4f, 0f, 2.6f), 180f),
+                ("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall-bench.fbx", new Vector3(-2.8f, 0f, -2.4f), 90f),
+                ("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall-stool.fbx", new Vector3(2.6f, 0f, -2.6f), 0f),
+                ("Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/cart.fbx",        new Vector3(3.0f, 0f, 0.8f), 90f),
+            };
+            int stalls = 0;
+            for (int i = 0; i < market.Length; i++)
+            {
+                var go = Place(market[i].Path, Module(market[i].At), Quaternion.Euler(0f, market[i].Yaw, 0f));
+                if (go == null)
+                    continue;
+                go.name = MarketPrefix + (i + 1);
+                go.transform.SetParent(decor.transform, true);
+                stalls++;
+            }
+
+            Debug.Log("[Ulon] 광장 좌판 " + stalls + "개 · 분수 " + (fountain != null ? "가운데로" : "없음") +
+                      " (우물·게시판은 등록 자산 없음 — 미결)");
+            Debug.Log("[Ulon] 광장 바닥 — 킷 판때기 " + doomed.Count + "칸을 걷었습니다(바닥은 지형 돌포장) · 가로등 " +
+                      moved + "개를 귀퉁이로");
+            EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
         }
 
         static void TintRenderer(GameObject go, Material mat)
@@ -228,11 +312,17 @@ namespace Ulon.Editor
             }
         }
 
+        /// <summary>
+        /// 광장 바닥이 깔리는 자리(모듈 격자 1칸). **십자로만 깔면 광장이 아니라 교차로다** —
+        /// 검수 2026-09-09: 「01·02가 회색 십자로」. 가운데에 **네모난 마당**을 두고 거기서 길 넷이 뻗는다.
+        /// 마당 크기는 집들 사이 빈 자리에서 나온다: 집 앞마당이 모듈 ±4.8부터 시작하므로 ±3.5까지 깐다.
+        /// </summary>
         static bool PlazaPath(int x, int z)
         {
+            bool square = x >= -4 && x <= 3 && z >= -4 && z <= 3;
             bool eastWest = (z == 0 || z == -1) && x >= -8 && x <= 9;
             bool northSouth = (x == 0 || x == -1) && z >= -7 && z <= 10;
-            return eastWest || northSouth;
+            return square || eastWest || northSouth;
         }
 
         static void PlaceTownFill(Transform parent, string fence, string hedge, string lantern, string tree, string treeH, string bush, string rockS, string rockN)
@@ -250,10 +340,11 @@ namespace Ulon.Editor
             const string TreeHC = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/tree-high-crooked.fbx";
             const string RockW = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-wide.fbx";
             const string Poles = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/poles.fbx";
-            DecorM(parent, lantern, new Vector3(-2.2f, 0f, -2.2f), Vector3.zero);
-            DecorM(parent, lantern, new Vector3(2.2f, 0f, -2.2f), Vector3.zero);
-            DecorM(parent, lantern, new Vector3(-2.2f, 0f, 2.2f), Vector3.zero);
-            DecorM(parent, lantern, new Vector3(2.2f, 0f, 2.2f), Vector3.zero);
+            // 가로등은 **마당 네 귀퉁이**에 선다 — 마당을 넓히자 옛 자리(±2.2)는 한복판이 됐다.
+            DecorM(parent, lantern, new Vector3(-3.6f, 0f, -3.6f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(3.6f, 0f, -3.6f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(-3.6f, 0f, 3.6f), Vector3.zero);
+            DecorM(parent, lantern, new Vector3(3.6f, 0f, 3.6f), Vector3.zero);
             DecorM(parent, lantern, new Vector3(-7.6f, 0f, 2.2f), Vector3.zero);
             DecorM(parent, lantern, new Vector3(8.6f, 0f, -2.2f), Vector3.zero);
             DecorM(parent, lantern, new Vector3(2.2f, 0f, 9.4f), Vector3.zero);
@@ -511,7 +602,9 @@ namespace Ulon.Editor
         /// 잔디(알베도 0.32 → 0.47)와도 또렷이 갈린다.
         /// </summary>
         static Material KenneyStoneRoadMat() =>
-            MakeNoiseMat("KenneyStoneRoad", new Color(0.54f, 0.52f, 0.47f), new Color(0.44f, 0.42f, 0.38f));
+            // 무늬는 **돌포장**(pattern 4) — 알베도 유도는 위 그대로 두고 무늬만 바꾼다.
+            // 줄눈이 어두우므로 밝은 쪽을 돌, 어두운 쪽을 줄눈 그늘로 준다.
+            MakeNoiseMat("KenneyStoneRoad", new Color(0.30f, 0.28f, 0.26f), new Color(0.58f, 0.56f, 0.51f), 4);
 
         static Material KenneyDirtMat() =>
             MakeNoiseMat("KenneyDirt", new Color(0.52f, 0.38f, 0.24f), new Color(0.40f, 0.28f, 0.16f));
@@ -521,7 +614,10 @@ namespace Ulon.Editor
             return MakeNoiseMat(name, a, b, 0);
         }
 
-        /// <summary>pattern 0 = 잔풀 잡음, 1 = 굵은 층리(암석). 풀과 바위가 같은 무늬면 산이 두 색으로만 읽힌다(검수).</summary>
+        /// <summary>
+        /// pattern 0 = 잔풀 잡음, 1 = 굵은 층리(암석), 2 = 이랑(밭), 3 = 부엽토(숲), 4 = 돌포장(광장).
+        /// 풀·바위·길이 같은 무늬면 세계가 두세 색으로만 읽힌다(검수) — **생성기를 나누는 것이 지역 구분이다**.
+        /// </summary>
         static Material MakeNoiseMat(string name, Color a, Color b, int pattern)
         {
             Directory.CreateDirectory(Path.Combine(Application.dataPath, "Game/Art/Env"));
@@ -561,6 +657,22 @@ namespace Ulon.Editor
                         int leaf = ((x * 7 + y * 13) % 17 < 3) ? 200 : 40;               // 흩어진 잎 조각
                         int grain = (x * 199 + y * 83) & 127;
                         t = (blot / 255f) * 0.46f + (leaf / 255f) * 0.30f + (grain / 127f) * 0.24f;
+                    }
+                    else if (pattern == 4)
+                    {
+                        // 돌포장 — **광장 바닥**. 길·잔디·흙이 전부 잔풀 잡음(0)이라 십자로가 아스팔트로
+                        // 읽혔다(검수 2026-09-09, 재질 실측: KenneyStoneRoad 68장·KenneyGrass 132·KenneyDirt 46
+                        // 전부 같은 생성기). 돌은 **줄눈**이 있어야 돌로 읽힌다: 벽돌쌓기로 어긋난 칸 +
+                        // 칸마다 다른 밝기 + 칸 경계의 어두운 줄눈 두 픽셀.
+                        const int Cell = 16;                     // 128px에 8칸 → 1m 타일에 8개, 돌 하나 ≈ 12cm
+                        int row = y / Cell;
+                        int sx = (x + (row % 2) * (Cell / 2)) / Cell;   // 홀수 줄은 반 칸 어긋난다
+                        int ix = (x + (row % 2) * (Cell / 2)) % Cell;
+                        int iy = y % Cell;
+                        bool joint = ix < 2 || iy < 2;           // 줄눈
+                        int stone = ((sx * 73856093) ^ (row * 19349663)) & 255;
+                        int grit = (x * 61 + y * 149) & 31;
+                        t = joint ? 0.02f : Mathf.Clamp01(0.30f + (stone / 255f) * 0.55f + (grit / 31f) * 0.15f);
                     }
                     else
                     {

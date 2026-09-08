@@ -29,6 +29,29 @@ namespace Ulon.Editor
                     Debug.Log("[Census] 사람·짐승 " + wb.name + " @(" + ab.center.x.ToString("0.0") + "," +
                               ab.center.z.ToString("0.0") + ") 크기 " + ab.size.ToString("0.00"));
 
+            // **무엇이 무슨 재질을 쓰나** — 「지역 구분이 없다」류의 병은 대개 재질 공유가 원인이다(숲 사례).
+            var matUse = new Dictionary<string, int>();
+            foreach (var r0 in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                var b0 = r0.bounds;
+                if (Mathf.Abs(b0.center.x) > VisualSliceBuilder.VillageFadeRadius ||
+                    Mathf.Abs(b0.center.z) > VisualSliceBuilder.VillageFadeRadius)
+                    continue;
+                foreach (var m in r0.sharedMaterials)
+                {
+                    if (m == null)
+                        continue;
+                    string k = m.name + " ← " + r0.transform.name;
+                    matUse.TryGetValue(k, out int n);
+                    matUse[k] = n + 1;
+                }
+            }
+            var mk = new List<string>(matUse.Keys);
+            mk.Sort(StringComparer.Ordinal);
+            foreach (var k in mk)
+                if (matUse[k] >= 3)
+                    Debug.Log("[Census] 마을 재질 " + k + " × " + matUse[k]);
+
             var nodes = new List<Transform>();
             var boxes = new List<Bounds>();
             Collect(nodes, boxes);

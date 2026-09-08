@@ -32,9 +32,30 @@ namespace Ulon.Editor
                 if (GameObject.Find(keep[i]) == null)
                     throw new InvalidOperationException("마을 랜드마크가 있어야 합니다: " + keep[i]);
             }
+            AssertVillageDecorIntact();
+        }
+
+        /// <summary>
+        /// 마을 장식이 통째로 사라지지 않았는가. **한 곳에만 둔다** — 같은 판정이 `Pets`에도 복사돼
+        /// 있어서 바닥을 옮겼을 때 두 곳이 같이 울었다(2026-09-09, 「같은 로직이 여러 곳에 살면 재발한다」).
+        /// </summary>
+        internal static void AssertVillageDecorIntact()
+        {
             var decor = GameObject.Find("VillageDecor");
-            if (decor == null || decor.transform.childCount < 200)
+            if (decor == null)
                 throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다.");
+            // **바닥 판때기는 빼고 센다** — 이 자가 지키려는 것은 울타리·집이지 바닥이 아니다.
+            // 광장 바닥이 킷 판때기(68칸)에서 지형 도포로 옮겨 가자 childCount가 200 밑으로 떨어져
+            // 「울타리를 지웠다」고 울었다(2026-09-09). 세는 대상을 뜻에 맞추고, 수도 그만큼만 낮춘다
+            // (200 − 68 = 132 → 130). 낮춘 것이 아니라 **바닥을 빼고 같은 것을 센다**.
+            int solid = 0;
+            foreach (Transform c in decor.transform)
+                if (!c.name.StartsWith("road", StringComparison.Ordinal))
+                    solid++;
+            Debug.Log("[Ulon] 마을 장식 — 바닥 뺀 조각 " + solid + "개(하한 130)");
+            if (solid < 130)
+                throw new InvalidOperationException("VillageDecor 울타리/집을 지우면 안 됩니다(바닥 뺀 조각 " +
+                    solid + "개 < 130).");
         }
 
         static void AssertDungeon3Leftover(string context = null)
