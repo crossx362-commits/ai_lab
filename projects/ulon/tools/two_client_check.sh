@@ -18,12 +18,24 @@ def normalize(j):
     j["Ghost"] = False
     if float(j.get("Hp", 0)) <= 0:
         j["Hp"] = 50.0
-    j["Gold"] = max(int(j.get("Gold", 0)), 100)   # 길드 창설비 25골드 — 검사가 제 전제를 만든다
+    # **골드는 「최소 얼마」가 아니라 정확히 32.** 축 ③이 「길드 25 + 붕대 5 = 30을 쓰고 2가 남는다」를
+    # 실측하고, 남은 2로는 철검(40)을 못 사는 것으로 치트 거절을 본다 — 여유 골드가 있으면
+    # 치트가 성공해도 「원래 살 수 있었다」와 구별이 안 된다(픽스처가 판정을 만든다).
+    j["Gold"] = 32
+    # **픽스처는 실행이 읽는 자리를 되돌린다** — 지난 판의 시체가 남아 있어 축 ②에서 무관한
+    # 계정의 옛 시체가 화면에 있었다(검수 지적). 시체도 같이 지운다.
+    j["CorpseId"] = ""
+    j["Corpse"] = []
+    # 가방도 되돌린다 — 안 지웠더니 붕대가 판마다 쌓여(`bandage:4`) 「이번에 산 것」을
+    # 「원래 있던 것」과 구별할 수 없었다. 픽스처는 **실행이 읽는 자리**를 되돌린다.
+    j["Inventory"] = []
     j["GuildId"] = ""
     j["GuildName"] = ""
     return j
 
-for name in ("ds-a", "ds-b"):
+# `playloop-verify`는 **서버 프로세스 자신의 계정**이다 — 그 계정의 옛 시체가 매 판 되살아나
+# 화면에 남았다. 검사가 세우는 세계에는 지난 판의 잔재가 없어야 한다.
+for name in ("ds-a", "ds-b", "playloop-verify"):
     # **상태 원장은 파일이 아니라 persist 서비스다**(2026-09-08 실측). 파일만 고쳤을 때는
     # 서버가 HTTP로 옛 유령 상태를 읽어 와 파티 초대가 계속 ghost로 거절됐다 — 원장이 둘이면 갈린다.
     try:
@@ -64,6 +76,12 @@ fi
 # (자를 확인하는 방법: 결함을 실제로 만들어 본다 — 원장.)
 if [[ "${1:-}" == "--nc-nosync" ]]; then
   SERVER_ARGS=(-ulon-nc-nosync 1)
+  EXPECT_FAIL=1
+fi
+# 경제 권한 NC(축 ③) — **클라 쪽 문을 뗀다**(`EconomyAuthority`). 그러면 클라가 제 손으로 골드를
+# 올리고 제 판정으로 물건을 사 넣는다(오늘까지의 실제 동작). 그때 검사는 빨간불이어야 한다.
+if [[ "${1:-}" == "--nc-localeconomy" ]]; then
+  NC_ARGS=(-ulon-nc-localeconomy 1)
   EXPECT_FAIL=1
 fi
 
@@ -180,7 +198,19 @@ ok = (a.get("connected") and b.get("connected")
       # 개수가 아니라 **죽은 사람(ds-b)의 시체**가 양쪽 화면에 있는가.
       and "ds-b" in b.get("pvpCorpseOwner", "").split("|")
       and "ds-b" in a.get("pvpCorpseOwner", "").split("|")
+      # **축 ③: 골드·가방은 서버가 정한다**(검수 조건 1~3).
+      # ① 서버가 정한 결과가 클라 화면 값으로 내려오는가 — 길드 25 + 붕대 5를 쓰고 32 → 2.
+      and a.get("ecoGoldBefore", -1) == 7 and a.get("ecoGoldAfter", -1) == 2
+      # ② 가방은 **무엇이 들어 있나**로 본다 — 산 물건(붕대)이 실제로 들어왔는가.
+      and "bandage" not in a.get("ecoBagBefore", "") and "bandage" in a.get("ecoBagAfter", "")
+      # ③ 치트 — 클라가 제 손으로 골드를 올릴 수 없고, 클라가 판정한 구매는 성립하지 않는다.
+      #    (이 둘이 참이면 「이름만 서버 권위」다 — 값만 내려오고 정하는 쪽은 클라다.)
+      and a.get("ecoCheatStuck") is False and a.get("ecoLocalBuy") is False
+      and "iron_sword" not in a.get("ecoBagAfterCheat", "")
       and alive(a) and alive(b))
+print("축3 골드·가방 — 골드", a.get("ecoGoldBefore"), "→", a.get("ecoGoldAfter"),
+      "· 가방", repr(a.get("ecoBagBefore")), "→", repr(a.get("ecoBagAfter")),
+      "· 치트 먹힘", a.get("ecoCheatStuck"), "· 클라 구매 먹힘", a.get("ecoLocalBuy"))
 print("축2 체력 동기화 — 맞은 쪽(b) 클라 HP", b.get("pvpHpBefore"), "→", b.get("pvpHpAfter"),
       "· 유령", b.get("pvpGhostBefore"), "→", b.get("pvpGhostAfter"),
       "· 시체 주인 b", b.get("pvpCorpseOwner"), "a", a.get("pvpCorpseOwner"),

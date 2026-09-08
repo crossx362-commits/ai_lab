@@ -76,6 +76,7 @@ namespace Ulon.Client
             // **몹 사냥보다 먼저 한다** — 몹과 치고받은 뒤에 하면 때리는 쪽이 이미 유령이라
             // 서버가 `attack fail ghost`로 거절하고, 검사는 판마다 결과가 달라진다(실측).
             yield return PvpHp(role, mine, deadline);
+            yield return Economy(role, mine, deadline);
 
             // 살아 있는가·땅 위인가 — 판정은 스크립트가 한다(여기서는 잰 값만 남긴다).
             var myBodyNow = mine.GetComponent<WorldBody>();
@@ -194,6 +195,60 @@ namespace Ulon.Client
             Debug.Log("[Ulon] 축2 실측(" + role + ") — 내 HP " + pvpHpBefore.ToString("0.##") + " → " +
                       pvpHpAfter.ToString("0.##") + " · 유령 " + pvpGhostBefore + " → " + pvpGhostAfter);
         }
+
+        /// <summary>
+        /// **축 ③ 실측 — 골드·가방을 누가 정하는가.** 값이 따라오는지(동기화)와
+        /// **클라가 제 손으로 정할 수 있는지(치트)**를 한 번에 잰다. 앞의 것만 재면
+        /// 「이름만 서버 권위」를 초록불로 넘긴다(검수 조건 1·2).
+        /// </summary>
+        static IEnumerator Economy(string role, NetAvatar mine, float deadline)
+        {
+            var body = mine.GetComponent<WorldBody>();
+            var bag = mine.GetComponent<InventoryBag>();
+            if (body == null || bag == null)
+                yield break;
+            if (role != "attacker")
+            {
+                ecoGoldBefore = ecoGoldAfter = body.Gold;
+                ecoBagBefore = ecoBagAfter = NetAvatar.BagSignature(bag);
+                yield break;
+            }
+            var vendors = Object.FindObjectsByType<VendorStation>(FindObjectsSortMode.None);
+            if (vendors.Length == 0)
+                yield break;
+            var vendor = vendors[0];
+            var spot = vendor.transform.position + new Vector3(1.4f, 0f, 0f);
+            mine.RpcSetPos(spot);
+            WarpNextTo(mine.transform, vendor.transform.position);
+            yield return new WaitForSeconds(1.0f);
+            ecoGoldBefore = body.Gold;
+            ecoBagBefore = NetAvatar.BagSignature(bag);
+            mine.RpcVendor(vendor.gameObject.name);
+            yield return new WaitForSeconds(0.5f);
+            mine.RpcBuy(ItemCatalog.Bandage);
+            yield return new WaitForSeconds(1.0f);
+            ecoGoldAfter = body.Gold;
+            ecoBagAfter = NetAvatar.BagSignature(bag);
+
+            // ── 치트 시도: **클라가 제 손으로** 골드를 올리고 비싼 것을 산다 ──
+            // 오늘의 실제 동작이 이랬다(오프라인 폴백이 클라 프로세스에서 `TryBuy`를 돈다).
+            // 둘 다 거짓이어야 서버 권위다. NC(`-ulon-nc-localeconomy`)로 문을 떼면 둘 다 참이 된다.
+            int seen = body.Gold;
+            body.Gold = seen + 10000;
+            ecoCheatStuck = body.Gold != seen;
+            OfflineWorld.Instance?.TryVendor(body, vendor);       // 클라 제 세계의 상점을 연다
+            var local = OfflineWorld.Instance != null
+                ? OfflineWorld.Instance.TryBuy(body, ItemCatalog.IronSword)
+                : new AttackResult { FailReason = "no_world" };
+            ecoLocalBuy = local.Applied;
+            ecoBagAfterCheat = NetAvatar.BagSignature(bag);
+            Debug.Log("[Ulon] 축3 실측 — 골드 " + ecoGoldBefore + " → " + ecoGoldAfter +
+                      " · 치트가 먹혔나 " + ecoCheatStuck + " · 클라 구매가 먹혔나 " + ecoLocalBuy);
+        }
+
+        static int ecoGoldBefore = -1, ecoGoldAfter = -1;
+        static string ecoBagBefore = "", ecoBagAfter = "", ecoBagAfterCheat = "";
+        static bool ecoCheatStuck, ecoLocalBuy;
 
         static float pvpHpBefore = -1f, pvpHpAfter = -1f;
         static int pvpCorpses;
@@ -407,6 +462,13 @@ namespace Ulon.Client
                           + ",\"pvpCorpses\":" + pvpCorpses
                           + ",\"pvpCorpseOwner\":\"" + pvpCorpseOwner.Replace("\"", "") + "\""
                           + ",\"pvpRecovery\":\"" + pvpRecovery.Replace("\"", "") + "\""
+                          + ",\"ecoGoldBefore\":" + ecoGoldBefore
+                          + ",\"ecoGoldAfter\":" + ecoGoldAfter
+                          + ",\"ecoBagBefore\":\"" + ecoBagBefore + "\""
+                          + ",\"ecoBagAfter\":\"" + ecoBagAfter + "\""
+                          + ",\"ecoBagAfterCheat\":\"" + ecoBagAfterCheat + "\""
+                          + ",\"ecoCheatStuck\":" + (ecoCheatStuck ? "true" : "false")
+                          + ",\"ecoLocalBuy\":" + (ecoLocalBuy ? "true" : "false")
                           + "}";
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, json, new UTF8Encoding(false));

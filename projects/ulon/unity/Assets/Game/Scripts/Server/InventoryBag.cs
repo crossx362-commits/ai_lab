@@ -31,6 +31,8 @@ namespace Ulon.Server
         {
             if (string.IsNullOrEmpty(rec.TemplateId) || rec.Amount <= 0)
                 return;
+            if (EconomyAuthority.Refuse("가방에 넣기 " + rec.TemplateId))
+                return;                                  // 무엇이 가방에 들어오는지는 서버가 정한다(축 ③)
             string parent = rec.ParentContainerId ?? "";
             if (ItemCatalog.Stackable(rec.TemplateId))
             {
@@ -123,6 +125,8 @@ namespace Ulon.Server
 
         public bool TakeOne(string templateId)
         {
+            if (EconomyAuthority.Refuse("가방에서 빼기 " + templateId))
+                return false;
             for (int i = Items.Count - 1; i >= 0; i--)
             {
                 var it = Items[i];
@@ -271,6 +275,19 @@ namespace Ulon.Server
         }
 
         public ItemRecord[] ToArray() => Items.ToArray();
+
+        /// <summary>
+        /// **서버가 알려 준 가방을 그대로 얹는다** — 문(`EconomyAuthority`)을 지나지 않는 유일한 자리.
+        /// 클라는 화면에 그릴 만큼만 받는다(템플릿·개수·남은 횟수). 무게·적재 한도는 이 셋으로 계산된다.
+        /// </summary>
+        public void ApplyNetworkItems(List<ItemRecord> records)
+        {
+            Items.Clear();
+            if (records == null)
+                return;
+            for (int i = 0; i < records.Count; i++)
+                Items.Add(records[i]);
+        }
     }
 
     public sealed class BankVault : MonoBehaviour

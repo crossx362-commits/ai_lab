@@ -21,12 +21,20 @@ namespace Ulon.Client
         readonly SyncVar<float> hp = new SyncVar<float>();
         readonly SyncVar<float> maxHp = new SyncVar<float>();
         readonly SyncVar<bool> ghost = new SyncVar<bool>();
+        // 축 ③ — 골드와 가방. **값만 내리는 것으로는 부족하다**(검수 조건 1): 소비·획득 판정은
+        // 서버가 하고(`EconomyAuthority`가 클라의 손을 막는다) 여기로는 **결과만** 내려온다.
+        // 가방은 「개수」가 아니라 **무엇이 들어 있나**를 실어야 양쪽이 같은지 볼 수 있다 —
+        // 개수만 보면 다른 물건이 같은 수로 있어도 통과한다(검수 조건 3).
+        readonly SyncVar<int> gold = new SyncVar<int>();
+        readonly SyncVar<string> bagSig = new SyncVar<string>();
         string accountId;
 
         public float SwordSkill => skill.Value;
         public float ServerHp => hp.Value;
         public float ServerMaxHp => maxHp.Value;
         public bool ServerGhost => ghost.Value;
+        public int ServerGold => gold.Value;
+        public string ServerBag => bagSig.Value;
 
         public override void OnStartClient()
         {
@@ -63,6 +71,8 @@ namespace Ulon.Client
                     hp.Value = body.Hp;
                     maxHp.Value = body.MaxHp;
                     ghost.Value = body.Ghost;
+                    gold.Value = body.Gold;
+                    bagSig.Value = BagSignature(GetComponent<InventoryBag>());
                     PublishCorpse();
                 }
                 return;
@@ -74,7 +84,44 @@ namespace Ulon.Client
         // 「죽은 사람」으로 거절된다(실측: 이 가드가 없어 파티 0명·길드 1명으로 무너졌다).
             if (maxHp.Value <= 0f)
                 return;
-            body.ApplyNetworkState(hp.Value, maxHp.Value, ghost.Value);
+            body.ApplyNetworkState(hp.Value, maxHp.Value, ghost.Value, gold.Value);
+            var myBag = GetComponent<InventoryBag>();
+            if (myBag != null)
+                myBag.ApplyNetworkItems(ParseBag(bagSig.Value));
+        }
+
+        /// <summary>가방을 한 줄로 — `템플릿:개수:남은횟수` 를 `|`로 잇는다(빈 가방은 빈 문자열).</summary>
+        internal static string BagSignature(InventoryBag bag)
+        {
+            if (bag == null)
+                return "";
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < bag.Items.Count; i++)
+            {
+                if (sb.Length > 0) sb.Append('|');
+                sb.Append(bag.Items[i].TemplateId).Append(':')
+                  .Append(bag.Items[i].Amount).Append(':')
+                  .Append(bag.Items[i].Uses);
+            }
+            return sb.ToString();
+        }
+
+        static System.Collections.Generic.List<ItemRecord> ParseBag(string sig)
+        {
+            var list = new System.Collections.Generic.List<ItemRecord>();
+            if (string.IsNullOrEmpty(sig))
+                return list;
+            var parts = sig.Split('|');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                var f = parts[i].Split(':');
+                if (f.Length < 3)
+                    continue;
+                int.TryParse(f[1], out int amount);
+                int.TryParse(f[2], out int uses);
+                list.Add(new ItemRecord { Slot = i, TemplateId = f[0], Amount = amount, Uses = uses });
+            }
+            return list;
         }
 
         /// <summary>서버가 마지막으로 알린 시체 자리 — 바뀔 때만 방송한다(매 프레임 Rpc 금지).</summary>

@@ -51,6 +51,12 @@ namespace Ulon.Editor
                 // 「촬영용 무대를 세운다」이다. 게임 플레이 경로가 아니므로 뺀다.
                 if (name == "HudShots.cs")
                     continue;
+                // **선언 예외**: `DualClientProbe`는 검사 도구이고, 여기서 `OfflineWorld`를 직접 미는
+                // 자리는 **금지된 행동을 일부러 해 보는 치트 시도**다(축 ③) — 클라가 제 손으로
+                // 골드를 올리고 제 판정으로 물건을 살 수 있는지 재고, `EconomyAuthority`가 그걸
+                // 막는지 확인한다. 「기능이 서버를 안 거친다」가 아니라 **문을 두드려 보는 것**이다.
+                if (name == "DualClientProbe.cs")
+                    continue;
 
                 string[] lines = File.ReadAllLines(file);
                 for (int i = 0; i < lines.Length; i++)

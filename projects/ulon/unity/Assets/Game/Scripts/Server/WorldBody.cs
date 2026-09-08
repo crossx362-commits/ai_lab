@@ -15,7 +15,22 @@ namespace Ulon.Server
         public float MaxHp = 30f;
         public float MaxMana = 35f;
         public bool Ghost;
-        public int Gold;
+        /// <summary>
+        /// **골드는 서버가 정한다**(축 ③). 필드였을 때는 클라 프로세스의 오프라인 폴백이 제 손으로
+        /// 구매·통행료·길드 창설비를 차감했다 — 값을 동기화해도 **정하는 쪽이 클라면 §417 위반**이다.
+        /// 받아 적는 자리(`ApplyNetworkState`)는 이 문을 지나지 않고 필드에 직접 쓴다.
+        /// </summary>
+        public int Gold
+        {
+            get => gold;
+            set
+            {
+                if (EconomyAuthority.Refuse("골드 변경 " + gold + " → " + value))
+                    return;
+                gold = value;
+            }
+        }
+        int gold;
         public int Fame;
         public int Karma;
         public int Notoriety;
@@ -164,8 +179,9 @@ namespace Ulon.Server
         /// persist에 쓴다** — 받아 적어야 할 쪽이 세계를 바꾸는 것이다(원장: 재는 자·비추는 자가
         /// 세계를 바꾸면 안 된다). 죽음의 결과(유령·시체)는 서버가 만들어 따로 내려보낸다.
         /// </summary>
-        public void ApplyNetworkState(float hpValue, float maxHpValue, bool ghostValue)
+        public void ApplyNetworkState(float hpValue, float maxHpValue, bool ghostValue, int goldValue)
         {
+            gold = goldValue;                            // 문을 지나지 않는다 — 이건 서버가 시킨 것이다
             MaxHp = maxHpValue;
             Hp = Mathf.Clamp(hpValue, 0f, Mathf.Max(1f, maxHpValue));
             Ghost = ghostValue;
