@@ -181,35 +181,30 @@ namespace Ulon.Editor
                     continue;
                 if (!SliceSelfCheck.RoomBounds(go.transform, out Bounds room))
                     continue;
-                // **몸이 껍데기에 박힌 것은 자로만 본다** — 실제로 박힌 사람은 없었고(최악 0.12m),
-                // 여기서 또 밀면 이동이 둘로 갈려 건물 바운드가 흔들린다(굴뚝이 3.4m 떴다).
-                // 벽에서 설 자리 하한만큼 뗀다(검수 최신 판정).
                 foreach (var who in go.GetComponentsInChildren<Ulon.Server.WorldBody>(true))
                 {
                     if (who == null || !GroundFit.WorldBounds(who.transform, out Bounds body))
                         continue;
-                    // **틈은 발 자리(중심)로 잰다.** 몸 반경까지 빼면 사람이 반 걸음 더 멀리 나가고,
-                    // 그만큼 건물 루트 바운드가 커져 지표 스냅이 굴뚝을 3.4m 들어 올렸다(실측 2026-09-09).
-                    var pos = who.transform.position;
-                    var flat = new Vector3(Mathf.Clamp(pos.x, room.min.x, room.max.x), 0f,
-                                           Mathf.Clamp(pos.z, room.min.z, room.max.z));
-                    var out3 = new Vector3(pos.x - flat.x, 0f, pos.z - flat.z);
-                    float gap = out3.magnitude;
-                    if (gap >= SliceSelfCheck.PersonWallGap)
+                    if (!body.Intersects(room))
                         continue;
-                    var dir = out3.sqrMagnitude > 0.0001f ? out3.normalized
-                        : new Vector3(pos.x - room.center.x, 0f, pos.z - room.center.z).normalized;
-                    if (dir.sqrMagnitude < 0.0001f)
-                        dir = Vector3.back;
-                    var to = who.transform.position + dir * (SliceSelfCheck.PersonWallGap - gap + 0.15f);
-                    var cc2 = who.GetComponent<CharacterController>();
-                    if (cc2 != null)
-                        cc2.enabled = false;
+                    float least = float.MaxValue;
+                    for (int ax = 0; ax < 3; ax++)
+                        least = Mathf.Min(least, Mathf.Max(0f,
+                            Mathf.Min(body.max[ax], room.max[ax]) - Mathf.Max(body.min[ax], room.min[ax])));
+                    if (least < SliceSelfCheck.PersonBodyBite)
+                        continue;
+                    var out2 = new Vector3(body.center.x - room.center.x, 0f, body.center.z - room.center.z);
+                    if (out2.sqrMagnitude < 0.0001f)
+                        out2 = Vector3.back;
+                    var to = who.transform.position + out2.normalized * (least + 0.15f);
+                    var cc = who.GetComponent<CharacterController>();
+                    if (cc != null)
+                        cc.enabled = false;
                     who.transform.position = OnGround(new Vector3(to.x, 0f, to.z));
-                    if (cc2 != null)
-                        cc2.enabled = true;
-                    Debug.Log("[Ulon] 가게 사람 비켜 세움 — " + go.name + "의 " + who.name + " 벽에서 " +
-                              gap.ToString("0.00") + "m → 하한 " + SliceSelfCheck.PersonWallGap.ToString("0.00") + "m");
+                    if (cc != null)
+                        cc.enabled = true;
+                    Debug.Log("[Ulon] 가게 사람 빼냄 — " + go.name + "의 " + who.name + " 껍데기에 " +
+                              least.ToString("0.00") + "m 박혀 있었다");
                 }
             }
         }

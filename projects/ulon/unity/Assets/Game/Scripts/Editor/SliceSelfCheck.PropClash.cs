@@ -195,10 +195,10 @@ namespace Ulon.Editor
                     if (!body.Intersects(room))
                     {
                         // 수평으로 얼마나 떨어져 있는지 — 「아슬아슬한가」를 매 판 보이게.
-                        var pos = who.transform.position;
-                        var flat = new Vector3(Mathf.Clamp(pos.x, room.min.x, room.max.x), 0f,
-                                               Mathf.Clamp(pos.z, room.min.z, room.max.z));
-                        float gap = new Vector2(pos.x - flat.x, pos.z - flat.z).magnitude;
+                        var flat = new Vector3(Mathf.Clamp(body.center.x, room.min.x, room.max.x), 0f,
+                                               Mathf.Clamp(body.center.z, room.min.z, room.max.z));
+                        float gap = new Vector2(body.center.x - flat.x, body.center.z - flat.z).magnitude
+                                    - Mathf.Max(body.extents.x, body.extents.z);
                         if (gap < tightest) { tightest = gap; tightWhat = go.name + "의 " + who.name; }
                         continue;
                     }
@@ -219,26 +219,12 @@ namespace Ulon.Editor
                           worstBite.ToString("0.00") + "m " + worstWhat + "(하한 " + PersonBodyBite.ToString("0.00") +
                           "m) · 안 박힌 것 중 가장 좁은 틈 " +
                           (tightest == float.MaxValue ? "(없음)" : tightest.ToString("0.00") + "m " + tightWhat));
-            if (log)
-                Debug.Log("[Ulon] 가게 사람과 벽 틈 — 하한 " + PersonWallGap.ToString("0.00") + "m · 가장 좁은 " +
-                          (tightest == float.MaxValue ? "(없음)" : tightest.ToString("0.00") + "m " + tightWhat));
-            if (tightest != float.MaxValue && tightest < PersonWallGap - 0.01f)
-                bad.Add("가게 사람이 벽에서 " + tightest.ToString("0.00") + "m " + tightWhat +
-                        " (하한 " + PersonWallGap.ToString("0.00") + "m — 렌즈가 사람과 벽 사이에 못 들어간다)");
             if (bad.Count == 0)
                 return "";
             bad.Sort(StringComparer.Ordinal);
-            return "가게 사람 배치가 하한을 어겼습니다 — " + string.Join("; ", bad) +
+            return "가게 사람의 몸이 제 가게 껍데기에 박혔습니다 — " + string.Join("; ", bad) +
                    "\n벽을 뚫고 선 사람은 다가간 플레이어 눈에도 그렇게 보입니다.";
         }
-
-        /// <summary>
-        /// **사람이 설 수 있는 자리의 하한**(검수 판정 2026-09-09 — 두 판정이 엇갈려 최신 것을 따른다).
-        /// 근접 샷이 1.9m까지 당기므로 사람이 제 가게 벽에서 그만큼 안 떨어지면 렌즈가 벽 속에 선다.
-        /// 검수는 이 값을 「샷 때문에 사람을 옮기는 것」이 아니라 **사람이 설 자리의 하한**으로 판정했다.
-        /// 아래 `PersonBodyBite`(몸이 껍데기에 박혔나)는 **세계의 자**로 따로 남는다 — 둘은 다른 질문이다.
-        /// </summary>
-        internal const float PersonWallGap = 2.05f;
 
         /// <summary>
         /// **이만큼 물리면 「박혔다」로 본다.** 사람 어깨너비(≈0.9m)의 4분의 1 — 소품끼리 자와 같은 값을
