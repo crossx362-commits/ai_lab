@@ -90,6 +90,7 @@ namespace Ulon.Editor
                 if (!touched)
                     break;
             }
+            ClearPropsFromDoorFronts();
             var p2 = new List<Transform>(); var b2 = new List<Bounds>();
             var n2 = new List<string>(); var bb2 = new List<Bounds>();
             SliceSelfCheck.CollectVillage(p2, b2, n2, bb2);
@@ -110,5 +111,48 @@ namespace Ulon.Editor
                 return new Vector3((prop.center.x >= bld.center.x ? 1f : -1f) * (dx + 0.08f), 0f, 0f);
             return new Vector3(0f, 0f, (prop.center.z >= bld.center.z ? 1f : -1f) * (dz + 0.08f));
         }
+
+        /// <summary>
+        /// **문 앞 한 몸 자리를 비운다** — 가로등·수레가 집 문 정면에 서 있으면 「들어가는 곳」으로 안 읽힌다
+        /// (검수 관찰 2026-09-09). 통로 상자는 게이트(`SliceSelfCheck.CollectDoorFrontZones`)가 잰
+        /// **그 상자 그대로**를 받아 쓴다 — 자를 두 벌 두지 않는다. 미는 방식은 건물 정리와 같다.
+        /// </summary>
+        static void ClearPropsFromDoorFronts()
+        {
+            var zones = new List<Bounds>();
+            SliceSelfCheck.CollectDoorFrontZones(zones);
+            if (zones.Count == 0)
+                return;
+            int moved = 0;
+            for (int pass = 0; pass < 4; pass++)
+            {
+                var props = new List<Transform>();
+                var boxes = new List<Bounds>();
+                var names = new List<string>();
+                var bboxes = new List<Bounds>();
+                SliceSelfCheck.CollectVillage(props, boxes, names, bboxes);
+                bool touched = false;
+                for (int p = 0; p < props.Count; p++)
+                {
+                    if (props[p] == null || SliceSelfCheck.IsFlatMat(boxes[p]))
+                        continue;
+                    for (int z = 0; z < zones.Count; z++)
+                    {
+                        if (!zones[z].Intersects(boxes[p]))
+                            continue;
+                        props[p].position += PushOut(boxes[p], zones[z]);
+                        moved++;
+                        touched = true;
+                        break;
+                    }
+                }
+                Physics.SyncTransforms();
+                if (!touched)
+                    break;
+            }
+            if (moved > 0)
+                Debug.Log("[Ulon] 문 앞 통로 정리 — 소품 " + moved + "개를 문 정면에서 비켜세웠다(문 " + zones.Count + "개).");
+        }
+
     }
 }

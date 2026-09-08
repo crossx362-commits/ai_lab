@@ -22,6 +22,9 @@ namespace Ulon.Editor
 
         static bool IsVillageMat(Bounds b) => b.size.y < VillageMatHeight;
 
+        /// <summary>굽는 쪽도 같은 잣대로 깔개를 가린다(자를 두 벌 두지 않는다).</summary>
+        internal static bool IsFlatMat(Bounds b) => IsVillageMat(b);
+
         /// <summary>
         /// 마을 소품·건물을 모은다. **묶음은 소품이 아니다** — `VillageDecor`·`PlainScatter`처럼
         /// 자기 렌더러 없이 여럿을 담기만 하는 마디는 그 바운드가 마을 전체를 덮어, 그대로 재면
