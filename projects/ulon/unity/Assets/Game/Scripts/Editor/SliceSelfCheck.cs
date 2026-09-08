@@ -77,6 +77,9 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureOutdoorPropMaterials(); // 야외에 남은 던전 텍스처를 마을 톤으로
             VisualSliceBuilder.EnsureWorldAtmosphere();    // 대기는 원장 하나에서 — 씬에 옛 값이 남아 있으면 여기서 수렴한다
             VisualSliceBuilder.EnsureDecorClearOfPeople();  // 사람 몸에 박힌 장식은 장식이 비킨다(검수 판정 2026-09-08)
+            // **소품끼리 먼저 푼다** — 뒤에 오는 건물·문 앞 정리가 그 결과를 다시 훑어,
+            // 비켜난 소품이 문 앞을 막으면 그 자리에서 다시 밀려난다(순서를 바꾸면 NC가 운다).
+            VisualSliceBuilder.ClearPropsFromProps();
             VisualSliceBuilder.ClearPropsFromBuildings();   // 건물에 박힌 소품도 소품이 비킨다 — 위 `Ensure*`가
                                                            // 집을 다시 지으면(부지 집) 커밋된 덤불이 그 안에 남는다(2026-09-09)
             // **드레싱·역할 외형이 다 끝난 뒤** 그림 크기를 충돌체에 맞춘다(랩 A). 앞쪽에 두었더니
@@ -1806,6 +1809,8 @@ namespace Ulon.Editor
             AssertDoorFitsPersonNegativeControl();           // 배율을 뺀 집은 빨간불이어야 한다(랩 B)
             AssertDoorFitsPerson();                          // 문이 사람보다 큰가 — 킷 배율의 근거
             VisualSliceBuilder.ClearDecorFromRegions();           // 커밋된 씬에 남은 마을 장식은 지역에서 치운다
+            AssertVillagePropsNotClashingNegativeControl();       // 종류가 다른 둘을 겹치면 빨간불인가(양방향 NC)
+            AssertVillagePropsNotClashing();                      // 마을 소품끼리 파고들지 않았는가(검수 랩)
             AssertNoRegionIntrusionNegativeControl();             // 지역 안에 남의 배치물을 넣으면 빨간불인가(양방향 NC)
             AssertNoRegionIntrusion();                           // 지역 안에는 그 지역이 놓은 것만(검수 2026-09-09)
             AssertDoorFrontClearNegativeControl();                // 문 개구부 정면에는 소품이 서지 않는다(양방향 NC)

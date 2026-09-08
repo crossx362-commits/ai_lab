@@ -12,7 +12,7 @@ namespace Ulon.Editor
         /// 나머지 소품은 하나뿐이라 빼면 없어진 것이 되므로 **가장 얕은 축으로 밀어낸다**.
         /// 이름을 쓰는 곳은 여기뿐이고(프리팹 이름), **게이트는 이름을 안 본다** — 자와 수리를 갈라 둔다.
         /// </summary>
-        static bool IsRunPiece(string name) =>
+        internal static bool IsRunPiece(string name) =>
             name.StartsWith("fence", System.StringComparison.OrdinalIgnoreCase) ||
             name.StartsWith("hedge", System.StringComparison.OrdinalIgnoreCase);
 
@@ -96,6 +96,63 @@ namespace Ulon.Editor
             SliceSelfCheck.CollectVillage(p2, b2, n2, bb2);
             Debug.Log("[Ulon] 마을 소품↔건물 정리 — 줄 조각 " + removed + "개 제거 · 소품 " + moved +
                       "개 밀어냄 (남은 소품 " + p2.Count + "개 · 건물 " + n2.Count + "채: " + string.Join(",", n2) + ")");
+        }
+
+        /// <summary>
+        /// **소품끼리 파고든 것을 비켜 세운다**(검수 승인 랩 2026-09-09 — 장작이 울타리를 관통).
+        /// 무엇이 결함인지는 자(`SliceSelfCheck.CollectPropClashes`)가 정하고 여기서는 **비키기만** 한다:
+        /// 같은 물건끼리(울타리 줄)·자연물끼리(수관)는 자가 애초에 안 준다.
+        /// 누가 비키나: **울타리는 안 비킨다**(마당 경계를 정하는 것이라 옮기면 마당이 어긋난다).
+        /// 그 밖에는 **작은 쪽**이 비킨다 — 화덕 옆 장작이 화덕을 밀어내면 그게 더 이상하다.
+        /// </summary>
+        public static void ClearPropsFromProps()
+        {
+            int moved = 0;
+            for (int pass = 0; pass < 8; pass++)
+            {
+                var ia = new List<int>();
+                var ib = new List<int>();
+                var deep = new List<float>();
+                var props = new List<Transform>();
+                var boxes = new List<Bounds>();
+                SliceSelfCheck.CollectPropClashes(ia, ib, deep, props, boxes);
+                if (ia.Count == 0)
+                    break;
+                for (int i = 0; i < ia.Count; i++)
+                {
+                    Transform a = props[ia[i]], b = props[ib[i]];
+                    if (a == null || b == null)
+                        continue;
+                    Bounds ba = boxes[ia[i]], bb2 = boxes[ib[i]];
+                    bool aRun = IsRunPiece(a.name), bRun = IsRunPiece(b.name);
+                    Transform mover;
+                    Bounds moverBox, hostBox;
+                    if (aRun != bRun)
+                    {
+                        mover = aRun ? b : a;
+                        moverBox = aRun ? bb2 : ba;
+                        hostBox = aRun ? ba : bb2;
+                    }
+                    else
+                    {
+                        bool aSmall = ba.size.x * ba.size.y * ba.size.z <= bb2.size.x * bb2.size.y * bb2.size.z;
+                        mover = aSmall ? a : b;
+                        moverBox = aSmall ? ba : bb2;
+                        hostBox = aSmall ? bb2 : ba;
+                    }
+                    // **수평으로만, 상대에게서 멀어지는 쪽으로 민다.** 축 하나만 보고 밀면 울타리 두
+                    // 조각 사이에 낀 수레가 판마다 좌우로 오가며 안 빠졌다(실측 2026-09-09: `cart-high`).
+                    // 지표 스냅은 부르지 않는다 — 불꽃 파티클까지 바운드로 재는 화덕이 20m 위로 튄다.
+                    var away = new Vector3(moverBox.center.x - hostBox.center.x, 0f,
+                                           moverBox.center.z - hostBox.center.z);
+                    if (away.sqrMagnitude < 0.0001f)
+                        away = Vector3.right;
+                    mover.position += away.normalized * (deep[i] + 0.30f);
+                    moved++;
+                }
+                Physics.SyncTransforms();
+            }
+            Debug.Log("[Ulon] 마을 소품끼리 정리 — " + moved + "개를 비켜 세웠습니다");
         }
 
         /// <summary>

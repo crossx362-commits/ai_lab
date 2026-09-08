@@ -427,6 +427,34 @@ namespace Ulon.Editor
             if (returned > 0.5f)
                 throw new System.InvalidOperationException("방위 네거티브 컨트롤 실패 — 벽을 치웠는데 방위가 안 돌아왔습니다(" +
                     returned.ToString("0.00") + "m).");
+            // **눈앞 NC** — 카메라가 설 자리에 물건을 놓으면 방위가 바뀌어야 한다(가림 광선으로는 안 잡히는 축).
+            var lens = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            lens.name = "QaEyeNcBlock";
+            Object.DestroyImmediate(lens.GetComponent<Collider>());
+            lens.transform.localScale = new Vector3(0.5f, 3f, 0.5f);
+            lens.transform.position = before.Eye;
+            // **자를 직접 양방향으로 문다.** 방위 전체를 다시 고르게 하는 NC는 못 쓴다 — 최종 눈 자리는
+            // 방위를 고른 뒤 한 번 더 당겨져서, 그 점은 후보 루프가 평가한 점이 아니다(실측: 0.00m).
+            // 그래서 **판정 함수**에 묻는다: 눈 자리에 기둥이 있으면 「막힘」, 치우면 「안 막힘」.
+            ClearBlockerCache();
+            bool crowded, clear;
+            try
+            {
+                crowded = EyeCrowded(before.Eye, subject.transform);
+            }
+            finally
+            {
+                Object.DestroyImmediate(lens);
+                ClearBlockerCache();
+            }
+            clear = EyeCrowded(before.Eye, subject.transform);
+            if (!crowded)
+                throw new System.InvalidOperationException("눈앞 네거티브 컨트롤 실패 — " + facility +
+                    " 카메라 자리에 기둥을 세웠는데 「눈앞이 비었다」고 합니다.");
+            if (clear)
+                throw new System.InvalidOperationException("눈앞 네거티브 컨트롤 실패 — 기둥을 치웠는데도 막혔다고 합니다.");
+            Debug.Log("[Ulon] 눈앞 양방향 NC 통과 — 카메라 자리에 기둥을 세우면 막힘 · 치우면 안 막힘");
+
             Debug.Log("[Ulon] 방위 NC 통과 — " + facility + " 앞에 콜라이더 없는 벽을 세우면 카메라가 " +
                       moved.ToString("0.0") + "m 비켜서고, 치우면 제자리로 돌아온다.");
         }
@@ -590,6 +618,17 @@ namespace Ulon.Editor
                         if (d - 0.3f < stop && d > stop)
                             d = stop;
                         var eyeD = target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * d;
+                        // **눈 앞이 비어 있어야 한다** — 피사체는 안 막혔는데 카메라가 가로등에
+                        // 코를 박고 있으면 화면 절반이 기둥이다(검수 관찰 `34_mortar`, 2026-09-09).
+                        // 광선으로는 안 잡힌다: 막은 것이 피사체와 눈 **사이**가 아니라 눈 **위**에 있다.
+                        // **사람 샷에는 이 조항을 안 건다** — 사람은 좁은 마당·좌판 사이에 서 있어서
+                        // 눈앞을 비우라고 하면 찍을 방위가 사라진다(실측: 은행원·상인 두 명이 통째로
+                        // 못 찍혔다). 「자를 조이면 세계가 좁아진다」 — 조항은 시설 근접에만.
+                        if (!personBox && EyeCrowded(eyeD, target, go.transform))
+                        {
+                            lastBlocker = "(눈앞이 막힘)";
+                            continue;
+                        }
                         if (PersonBlocked(eyeD, box, go.transform, out string bd))
                         {
                             lastBlocker = bd;
@@ -724,6 +763,40 @@ namespace Ulon.Editor
                 PersonShotFront[name] = front;
                 Debug.Log("[Ulon] 사람 샷 정면성 " + name + " — " + front.ToString("0.00") +
                           "(하한 " + PersonFrontMin + ", 1=정면 -1=뒤통수)");
+            }
+            // 고른 자리에서 **렌즈에 가장 가까운 남의 물건**을 적는다 — 화면을 덮는 것의 실체를 숫자로.
+            {
+                var rl = BlockerCache();
+                float nd = float.MaxValue; string nn = "(없음)";
+                for (int i = 0; i < rl.Length; i++)
+                {
+                    var r = rl[i];
+                    if (r == null || r is ParticleSystemRenderer)
+                        continue;
+                    var tt = r.transform;
+                    if (tt == go.transform || tt.IsChildOf(go.transform) || tt.root.name == "Terrain" || tt.name == "Ground")
+                        continue;
+                    var eyeNow = target - rot * Vector3.forward * dist;
+                    float dd = Vector3.Distance(r.bounds.ClosestPoint(eyeNow), eyeNow);
+                    if (dd < nd) { nd = dd; nn = tt.root.name + "/" + r.gameObject.name; }
+                }
+                // **최종 자리에서 한 번 더 묻는다.** 후보 루프에서 통과한 자리와 최종 자리가 다르다
+                // (뒤에서 거리를 다시 당기는 단계가 있다) — 그래서 「후보는 깨끗한데 찍힌 그림은 가로등」이
+                // 나왔다(실측 2026-09-09 `34_mortar`: 후보 통과, 최종 자리에서는 자가 「막힘」).
+                // 여기서는 **뒤로 물러난다** — 앞으로 당기면 더 코를 박는다.
+                float grew = 0f;
+                while (!personBox && grew < 2.5f &&
+                       EyeCrowded(target - rot * Vector3.forward * dist, target, go.transform))
+                {
+                    dist += 0.3f;
+                    grew += 0.3f;
+                }
+                if (grew > 0f)
+                    Debug.Log("[Ulon] 렌즈 앞 비우기 " + name + " — " + grew.ToString("0.0") + "m 물러났다");
+                var eyeFinal = target - rot * Vector3.forward * dist;
+                Debug.Log("[Ulon] 렌즈 앞 " + name + " — 가장 가까운 남의 물건 " + nd.ToString("0.00") + "m " + nn +
+                          " · 자 판정 " + (EyeCrowded(eyeFinal, target, go.transform) ? "막힘" : "안 막힘") +
+                          " · 사람샷 " + personBox);
             }
             Debug.Log("[Ulon] 시설 근접 " + name + "(" + objectName + ") — 바운드 " + (any ? box.size.ToString("0.0") : "(없음)") +
                       ", 거리 " + dist.ToString("0.0") + "m, 방위 " + bestYaw.ToString("0") + "°/내려보기 " +
@@ -880,6 +953,56 @@ namespace Ulon.Editor
         }
 
         static void ClearBlockerCache() => blockerCache = null;
+
+        /// <summary>
+        /// 카메라가 놓일 자리에 **다른 물건이 걸쳐 있는가**. 렌즈 앞 한 뼘(0.35m)까지 본다 —
+        /// 그보다 가까운 물건은 초점 밖 덩어리로 화면을 덮는다.
+        /// </summary>
+        const float EyeClearance = 0.35f;
+
+        /// <summary>렌즈 앞 이 거리 안에 있는 물건은 초점 밖 덩어리로 화면을 덮는다.</summary>
+        const float NearClutter = 2.2f;
+
+        static bool EyeCrowded(Vector3 eye, Transform subject) => EyeCrowded(eye, eye, subject);
+
+        /// <summary>
+        /// 카메라 자리와 **렌즈 앞 한 걸음**이 비어 있는가. 눈 위에 걸친 것만 보면 부족했다 —
+        /// `34_mortar`를 덮은 가로등은 눈에서 1m 앞·옆에 있었다(실측 2026-09-09).
+        /// 그래서 「눈에서 NearClutter 안 + 보는 방향 쪽」에 있는 남의 물건을 본다.
+        /// </summary>
+        static bool EyeCrowded(Vector3 eye, Vector3 lookAt, Transform subject)
+        {
+            Vector3 dir = lookAt - eye;
+            bool haveDir = dir.sqrMagnitude > 0.0001f;
+            if (haveDir)
+                dir = dir.normalized;
+            var rends = BlockerCache();
+            for (int i = 0; i < rends.Length; i++)
+            {
+                var r = rends[i];
+                if (r == null || r is ParticleSystemRenderer)
+                    continue;
+                var t = r.transform;
+                if (subject != null && (t == subject || t.IsChildOf(subject)))
+                    continue;
+                if (t.root.name == "Terrain" || t.name == "Ground")
+                    continue;
+                var b = r.bounds;
+                b.Expand(EyeClearance * 2f);
+                if (b.Contains(eye))
+                    return true;
+                if (!haveDir)
+                    continue;
+                Vector3 near = b.ClosestPoint(eye);
+                Vector3 to = near - eye;
+                float d = to.magnitude;
+                if (d > NearClutter || d < 0.001f)
+                    continue;
+                if (Vector3.Dot(to / d, dir) > -0.15f && Vector3.Distance(eye, lookAt) > d + 0.5f)
+                    return true;                    // 피사체보다 훨씬 앞에 있는 것이 렌즈를 덮는다
+            }
+            return false;
+        }
 
         static bool BlockedByRenderer(Vector3 eye, Vector3 point, Transform subject)
             => BlockedByRenderer(eye, point, subject, out _);
