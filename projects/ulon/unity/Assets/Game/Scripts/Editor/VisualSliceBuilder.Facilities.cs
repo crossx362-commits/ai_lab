@@ -162,13 +162,7 @@ namespace Ulon.Editor
                 DecorLocal(hp, south, new Vector3(x + 0.5f, 0f, 0.5f), new Vector3(0f, 90f, 0f));
                 DecorLocal(hp, Wall, new Vector3(x + 0.5f, 0f, depth - 0.5f), new Vector3(0f, 270f, 0f));
             }
-            for (int z = 0; z < depth; z++)
-            {
-                DecorLocal(hp, Roof, new Vector3(0.5f, 1f, z + 0.5f), Vector3.zero);
-                DecorLocal(hp, Roof, new Vector3(1.5f, 1f, z + 0.5f), new Vector3(0f, 180f, 0f));
-            }
-            DecorLocal(hp, Gable, new Vector3(1f, 1f, 0.5f), new Vector3(0f, 90f, 0f));
-            DecorLocal(hp, Gable, new Vector3(1f, 1f, depth - 0.5f), new Vector3(0f, 270f, 0f));
+            PlaceHouseRoof(hp, Roof, Gable, 1f, depth, width);   // 지붕 규칙은 한 자리 — 민가와 같은 함수
             DecorLocal(hp, Chimney, new Vector3(1.65f, 1f, depth - 0.55f), Vector3.zero);
             SnapRootToGround(house);
             house.SetActive(false);

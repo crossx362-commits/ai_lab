@@ -327,14 +327,15 @@ namespace Ulon.Editor
             go.transform.SetParent(parent, true);
         }
 
-        static void DecorLocal(Transform parent, string path, Vector3 localPos, Vector3 localEuler)
+        static GameObject DecorLocal(Transform parent, string path, Vector3 localPos, Vector3 localEuler)
         {
             var go = Place(path, Vector3.zero, Quaternion.Euler(localEuler));
             if (go == null)
-                return;
+                return null;
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
             go.transform.localRotation = Quaternion.Euler(localEuler);
+            return go;
         }
 
         static void PlaceHouse(Transform parent, Vector3 sw, float yaw, int depth, string wall, string door, string roof, string chimney, bool tall)
@@ -383,14 +384,20 @@ namespace Ulon.Editor
         /// 가로지르는 판때기가 됐다(실측: 박공 1.13×1.16×1.12가 z 0.0~1.1·1.05~2.15를 덮어 네 지붕
         /// 조각과 겹침 → `48_person_Healer`의 「한 장짜리 판」).
         /// </summary>
-        static void PlaceHouseRoof(Transform hp, string roof, string gable, float roofY, int depth)
+        static void PlaceHouseRoof(Transform hp, string roof, string gable, float roofY, int depth, int width = 2)
         {
+            // 조각 하나가 **제 용마루를 가진 1칸짜리 지붕**이다(실측: 앞에서 보면 삼각형이 선다).
+            // 그래서 x로 둘을 나란히 놓으면 용마루가 둘이 되어 지붕이 **M자**로 읽히고 그 골에 벽·굴뚝이
+            // 드러난다(검수 지적 2026-09-09). 한 채는 **용마루 하나**여야 하므로, 폭 방향으로는 조각을
+            // 나누지 않고 **한 장을 집 폭만큼 늘려** 덮고, 깊이(z) 방향으로만 칸을 잇는다.
             for (int z = 0; z < depth; z++)
             {
                 bool end = z == 0 || z == depth - 1;
                 string piece = end ? gable : roof;
-                DecorLocal(hp, piece, new Vector3(0.5f, roofY, z + 0.5f), Vector3.zero);
-                DecorLocal(hp, piece, new Vector3(1.5f, roofY, z + 0.5f), new Vector3(0f, 180f, 0f));
+                float yaw = z == depth - 1 && depth > 1 ? 180f : 0f;   // 뒤쪽 마감은 반대로 돌려 닫는다
+                var go = DecorLocal(hp, piece, new Vector3(width * 0.5f, roofY, z + 0.5f), new Vector3(0f, yaw, 0f));
+                if (go != null)
+                    go.transform.localScale = new Vector3(width, 1f, 1f);
             }
         }
 
@@ -405,18 +412,19 @@ namespace Ulon.Editor
         public static void EnsureHouseRoofs()
         {
             const string Town = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/";
+            const int Width = 2;
             // 집 목록을 **먼저 다 모으고** 나서 고친다 — 훑는 배열에는 지울 조각들도 들어 있어서,
             // 훑으면서 지우면 다음 원소가 이미 죽은 참조가 된다(MissingReferenceException, 2026-09-09).
             var found = new List<Transform>();
             foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                if (t.name == "House")
+                if (t.name == "House" || t.name == Ulon.Shared.HousingPlot.HouseObject)
                     found.Add(t);
             int fixedHouses = 0, houses = found.Count;
             for (int hi = 0; hi < found.Count; hi++)
             {
                 var t = found[hi];
                 var pieces = new List<Transform>();
-                bool high = false, ridgeGable = false;
+                bool high = false;
                 float roofY = 0f, maxZ = 0f;
                 foreach (Transform c in t)
                 {
@@ -426,23 +434,28 @@ namespace Ulon.Editor
                     high |= c.name.IndexOf("roof-high", StringComparison.Ordinal) >= 0;
                     roofY = Mathf.Max(roofY, c.localPosition.y);
                     maxZ = Mathf.Max(maxZ, c.localPosition.z);
-                    // 판때기 증상: 박공이 지붕 칸이 아니라 **용마루(x=1.0)** 위에 서 있다.
-                    if (c.name.IndexOf("gable", StringComparison.Ordinal) >= 0 &&
-                        Mathf.Abs(c.localPosition.x - 1f) < 0.1f)
-                        ridgeGable = true;
                 }
-                if (pieces.Count == 0 || !ridgeGable)
+                if (pieces.Count == 0)
                     continue;
                 int depth = Mathf.Max(2, Mathf.RoundToInt(maxZ + 0.5f));
+                // **증상이 아니라 목표 상태로 잰다**(검수 조건 2026-09-09 — 곱하지 말고 맞춰라):
+                // 성한 지붕은 깊이 칸마다 **한 장씩**, 용마루가 집 한가운데(x=폭/2)를 지나고, 그 한 장이
+                // 집 폭만큼 늘어나 있다. 증상 목록으로 재면 고친 뒤의 모양이 또 증상으로 걸린다.
+                bool ok = pieces.Count == depth;
+                for (int i = 0; ok && i < pieces.Count; i++)
+                    ok = Mathf.Abs(pieces[i].localPosition.x - Width * 0.5f) < 0.05f
+                         && Mathf.Abs(pieces[i].localScale.x - Width) < 0.05f;
+                if (ok)
+                    continue;
                 for (int i = 0; i < pieces.Count; i++)
                     UnityEngine.Object.DestroyImmediate(pieces[i].gameObject);
                 PlaceHouseRoof(t, Town + (high ? "roof-high.fbx" : "roof.fbx"),
-                    Town + (high ? "roof-high-gable-end.fbx" : "roof-gable-end.fbx"), roofY, depth);
+                    Town + (high ? "roof-high-gable-end.fbx" : "roof-gable-end.fbx"), roofY, depth, Width);
                 fixedHouses++;
             }
             if (houses == 0)
                 throw new InvalidOperationException("민가를 한 채도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
-            Debug.Log("[Ulon] 민가 지붕 — " + houses + "채 중 " + fixedHouses + "채의 박공을 용마루에서 끝 칸으로 다시 얹음");
+            Debug.Log("[Ulon] 민가 지붕 — " + houses + "채 중 " + fixedHouses + "채를 용마루 한 줄로 다시 얹음(고칠 것이 없으면 0채)");
         }
 
         static void ReplaceNamedWithModel(string name, string fbx, System.Action<GameObject> setup)

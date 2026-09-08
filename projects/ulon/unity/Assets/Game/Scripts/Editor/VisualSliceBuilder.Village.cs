@@ -17,6 +17,18 @@ namespace Ulon.Editor
 {
     public static partial class VisualSliceBuilder
     {
+        /// <summary>
+        /// 마을을 다시 드레싱한다. **두 번 이상 돌 수 있어야 하는 함수다** — 랩마다 마을을 다시 굽기 때문이다.
+        ///
+        /// 2026-09-09까지는 **한 번만 도는 함수**였다: 첫 판이 킷이 뿌려 둔 오브젝트(`stall`·`fountain-round`)를
+        /// **이름만 바꿔** 랜드마크로 썼기 때문에 두 번째 판에는 재료가 없어 `Forge`·`Vendor`·`Healer`가
+        /// 사라졌고, 프리팹 자산을 지우고 다시 만들던 코드가 씬 인스턴스의 연결을 끊어 주택 부지 표지까지
+        /// 잃었다. 셋 다 고쳤다(`EnsureLandmarkObject`·`EnsureHousingPlot` 기능 검사·프리팹 덮어쓰기).
+        ///
+        /// **아직 안 닫힌 것**: 재드레싱 뒤 사냥터 기사가 이름만 같은 껍데기와 겹쳐 `GameObject.Find`가
+        /// 몸통 없는 쪽을 집는다. 그러니 이 함수를 돌린 뒤에는 **반드시 `tools/slice_selfcheck.sh`를
+        /// 돌려 EXIT=0을 확인하고**, 씬을 커밋하기 전에 QA 샷을 눈으로 볼 것.
+        /// </summary>
         [MenuItem("Ulon/Dress Village")]
         public static void DressVillage()
         {
