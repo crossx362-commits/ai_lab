@@ -482,6 +482,13 @@ namespace Ulon.Editor
         /// 캐릭터 스케일을 바꾸는 순간 또 어긋난다). `SpawnActor("Player", …)`도 이 값을 쓴다.</summary>
         public const float PlayerHeight = 1.8f;
 
+        /// <summary>킷(Kenney FantasyTown, 1m 모듈) 배율 — **유일한 원장**이다.
+        /// 눈대중이 아니라 **잰 값에서 유도했다**: 문 개구부는 원래 크기에서 0.74m,
+        /// 사람이 머리를 안 부딪는 최소는 `PlayerHeight × 0.85 = 1.53m`이므로
+        /// 1.53 / 0.74 = 2.07 → 올려서 2.1(게이트 `AssertDoorFitsPerson`이 이 비를 상시 잰다).
+        /// 지형(실 미터)·KayKit 던전 소품은 이 배율의 대상이 아니다.</summary>
+        public const float KitScale = 2.1f;
+
         /// <summary>방 벽 높이(바닥에서 지면까지) — 채움 기둥이 벽과 같은 높이여야 한다.</summary>
         /// <summary>방 벽 높이 — 게이트도 「방 천장 위」를 이 값으로 판별한다(단일 원장).</summary>
         public const float RoomHeightOfWall = DungeonDepth + 0.15f;
