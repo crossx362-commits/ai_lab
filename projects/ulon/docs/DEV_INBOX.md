@@ -95,7 +95,7 @@ SliceHud). **B는 네 것이다 — 나는 안 건드린다.** 시체 내용물(
 ### 현재 차선 원장
 | 차선 | 담당 | 상태 |
 |---|---|---|
-| A 전역 상태 → WorldBody | Grok | **조건부 수용** (검수 2026-09-08). ㉮ 전역 읽기 잔존 0 — `selectedGlobal`은 NC 스위치 전용 / ㉰ 거래·파티는 세션 하나를 양쪽 몸이 참조(`OfflineWorld.Economy.cs:60`·`Social.cs:60`) 통과. ㉯는 별도 차선. **㉱ 미충족** — 검사기가 로컬 몸을 직접 씀(`Client/DualClientProbe.cs:568`), `two_client_check.sh:274` `selName`은 대리 지표(NC에서도 갈린다, 무는 자는 `evalHint`뿐). 둘 수리 후 `--nc-globalselect` 실측 제출 → 그때 닫힘. 담당: 루프 |
+| A 전역 상태 → WorldBody | Grok | **조건부 수용** (검수 2026-09-08). ㉮ 전역 읽기 잔존 0 — `selectedGlobal`은 NC 스위치 전용 / ㉰ 거래·파티는 세션 하나를 양쪽 몸이 참조(`OfflineWorld.Economy.cs:60`·`Social.cs:60`) 통과. ㉯는 별도 차선. ㉱는 `ea8d2ba3`(루프)로 충족 — 로컬 `Selected` 쓰기 삭제·`selName` 판정 제외, 정상 판 PASS / `--nc-globalselect` rc=5(B 안내가 A 것으로 덮임). **닫힘 2026-09-08.** |
 | B Last* → IHintSink/TargetRpc | Grok | 닫힘 `5f661ae6` |
 | 시체 열람 (③ 연 사람만) | Grok | `5f661ae6` |
 | ④ OutdoorTone·Village·DungeonPlace + 에디터 게이트 | 루프 | 진행 |
