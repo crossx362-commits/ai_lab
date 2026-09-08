@@ -276,7 +276,6 @@ namespace Ulon.Editor
             const string Cart = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/cart.fbx";
             const string CartHigh = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/cart-high.fbx";
             const string Planks = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/planks.fbx";
-            const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
             const string RockSmall = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-small.fbx";
             // **미결: 갱도 입구 조형이 없다**(2026-09-09, 검수 「20_mine이 광산이 아니다」 랩).
             // 시도 셋이 이렇게 깨졌다. ㉠ `wall-arch`·`wall-block`은 Kenney 흰 재질 그대로라 잔디 위
