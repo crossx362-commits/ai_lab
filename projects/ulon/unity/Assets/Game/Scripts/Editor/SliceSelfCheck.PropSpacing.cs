@@ -128,5 +128,19 @@ namespace Ulon.Editor
                     " 자리에 겹쳐 놨는데 통과했습니다.");
             Debug.Log("[Ulon] 실내 소품 파고듦 네거티브 컨트롤 통과 — 둘을 같은 자리에 놓으면 FAIL");
         }
+
+        /// <summary>방향 <paramref name="dir"/>(수평)로 두 상자가 물린 길이 — 그만큼 밀면 빠진다.</summary>
+        internal static float Overlap2D(Bounds a, Bounds b, Vector2 dir)
+        {
+            float dx = Mathf.Min(a.max.x, b.max.x) - Mathf.Max(a.min.x, b.min.x);
+            float dz = Mathf.Min(a.max.z, b.max.z) - Mathf.Max(a.min.z, b.min.z);
+            if (dx <= 0f || dz <= 0f)
+                return 0f;
+            float ax = Mathf.Abs(dir.x), az = Mathf.Abs(dir.y);
+            if (ax < 0.001f) return dz;
+            if (az < 0.001f) return dx;
+            return Mathf.Min(dx / ax, dz / az);
+        }
+
     }
 }

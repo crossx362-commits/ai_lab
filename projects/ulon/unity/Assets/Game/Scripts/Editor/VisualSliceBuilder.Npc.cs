@@ -568,6 +568,12 @@ namespace Ulon.Editor
             // 기준은 **보이는 것의 중심**이다 — 오브젝트 원점이 (0,0,0)에 남아 있는 시설이 있어(실측)
             // transform.position에 붙였더니 조각이 마을 광장 스폰 자리에 떨어져 스폰이 1.35m 떴다.
             Vector3 baseAt = HostAnchor(go.transform);
+            // 오프셋은 **미터 그대로** 둔다. 배율에 태워 봤더니(`Module(offset)`, 2026-09-09) 부두
+            // 낚싯대가 2.1배로 밀려 물 위로 나가 「발이 지표에서 0.27m 벗어남」 빨간불이 났다 —
+            // 조각 **크기**도, 조각끼리의 배치(모닥불 돌 ±0.55m, 부두 위 낚싯대)도 전부 절대 미터라
+            // 자리만 배율에 태우면 한 덩이로 있어야 할 것들이 흩어진다.
+            // 대신 진짜 성질을 지킨다: **부속은 몸통 밖에 선다**(아래 `PushClearOfHost`) —
+            // 배율이 얼마가 되든 몸통이 커진 만큼 부속이 비켜난다.
             var at = new Vector3(baseAt.x, go.transform.position.y, baseAt.z) + offset;
             // **스폰 자리를 막지 않는다** — 목공소가 마을 광장 한복판(0,0)에 서 있어 널빤지가 스폰 위에
             // 떨어졌고, 로그인 직후 플레이어가 1.35m 떠서 착지했다(2026-09-07 실측).
@@ -587,6 +593,8 @@ namespace Ulon.Editor
             // 조각 원점이 모서리인 프리팹이 있다 — 바운드 중심으로 다시 맞춘다(안 맞추면 스폰 자리로 되돌아온다).
             if (made != null && BoundsOf(made.transform, true, out Bounds mb))
                 made.transform.position += new Vector3(at.x - mb.center.x, 0f, at.z - mb.center.z);
+            if (made != null)
+                PushClearOfHost(go.transform, made.transform, offset);
             return made != null;
         }
 
@@ -1191,5 +1199,64 @@ namespace Ulon.Editor
             aura.range = 6.5f;
             aura.shadows = LightShadows.None;
         }
+
+        /// <summary>시설 몸통의 보이는 바운드(부속·NPC는 뺀다 — `HostAnchor`와 같은 잣대).</summary>
+        static bool HostBodyBounds(Transform host, out Bounds box)
+        {
+            bool any = false;
+            box = new Bounds();
+            var rends = host.GetComponentsInChildren<Renderer>(false);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (rends[i] is ParticleSystemRenderer)
+                    continue;
+                bool mine = false;
+                for (var p = rends[i].transform; p != null && p != host; p = p.parent)
+                    if (p.name.StartsWith("FacPart", StringComparison.Ordinal) ||
+                        p.name.StartsWith("YardFence", StringComparison.Ordinal) ||
+                        p.name == CampfireFlameObject || p.name.EndsWith("Npc", StringComparison.Ordinal))
+                    { mine = true; break; }
+                if (mine)
+                    continue;
+                if (!any) { box = rends[i].bounds; any = true; }
+                else box.Encapsulate(rends[i].bounds);
+            }
+            return any;
+        }
+
+        /// <summary>
+        /// **부속은 몸통 밖에 선다** — 킷 배율이 바뀌면 시설 몸통만 커져 굴뚝·통이 그 안으로 파고든다
+        /// (오프셋은 절대 미터라 안 따라간다). 자리를 배율에 태우는 대신 **파고든 만큼 비켜세운다**:
+        /// 배율이 얼마가 되든 성립하고, 조각끼리의 배치(모닥불 돌·부두 낚싯대)는 그대로 남는다.
+        /// 무는 기준은 마을 소품↔건물과 **같은 자**(`SliceSelfCheck.PropOverlapFrac`)를 쓴다.
+        /// </summary>
+        static void PushClearOfHost(Transform host, Transform part, Vector3 offset)
+        {
+            for (int pass = 0; pass < 4; pass++)
+            {
+                if (!HostBodyBounds(host, out Bounds body) || !BoundsOf(part, true, out Bounds pb))
+                    return;
+                float pen = SliceSelfCheck.Penetration(pb, body);
+                if (pen <= 0f)
+                    return;
+                float thin = Mathf.Min(SliceSelfCheck.Thickness(pb), SliceSelfCheck.Thickness(body));
+                if (thin <= 0.01f || pen / thin <= SliceSelfCheck.PropOverlapFrac)
+                    return;
+                // 미는 방향은 **원래 오프셋이 가리키던 쪽** — 설계자가 「이쪽에 붙이려 했다」는 뜻이다.
+                // 오프셋이 0이면(모닥불 장작처럼 한가운데가 자리인 것) 건드리지 않는다.
+                var dir = new Vector2(offset.x, offset.z);
+                if (dir.sqrMagnitude < 0.0001f)
+                    return;
+                dir.Normalize();
+                float need = Mathf.Max(SliceSelfCheck.Overlap2D(pb, body, dir), 0.05f) + 0.05f;
+                var moved = part.position + new Vector3(dir.x * need, 0f, dir.y * need);
+                part.position = new Vector3(moved.x, OnGround(new Vector3(moved.x, 0f, moved.z)).y +
+                                            (part.position.y - OnGround(new Vector3(part.position.x, 0f, part.position.z)).y),
+                                            moved.z);
+                Debug.Log("[Ulon] 시설 부속 " + host.name + "/" + part.name + " 몸통 밖으로 " +
+                          need.ToString("0.00") + "m 비켜세움(배율 " + KitScale + "에서 몸통이 커졌다).");
+            }
+        }
+
     }
 }

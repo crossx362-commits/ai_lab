@@ -307,17 +307,36 @@ namespace Ulon.Editor
                       + " attack=" + (attack != null ? attack.name : "-"));
         }
 
+        // 해 원장 — 밝기·색·각도는 여기 한 줄씩만 있다. 조도 계산(감마: 1.18×sin50° + 앰비언트)이
+        // 이 값을 유도 근거로 쓰므로 두 곳에 적히면 화면값 계산이 거짓이 된다.
+        public static readonly Color SunColor = new Color(1f, 0.95f, 0.85f);
+        public const float SunIntensity = 1.18f;
+        public static readonly Vector3 SunEuler = new Vector3(50f, -30f, 0f);
+
+        /// <summary>해 하나를 원장대로 맞추고, 해가 된 등불은 점광으로 되돌린다.</summary>
+        public static Light EnsureSun()
+        {
+            Light sun = FindSun();
+            if (sun == null)
+                return null;
+            sun.type = LightType.Directional;
+            sun.color = SunColor;
+            sun.intensity = SunIntensity;
+            sun.transform.rotation = Quaternion.Euler(SunEuler);
+            sun.shadows = LightShadows.Soft;
+            DemoteExtraSuns(sun);
+            return sun;
+        }
+
         static void SetupLighting()
         {
             EnsureWorldAtmosphere();      // 앰비언트는 대기 원장이 정한다 — 여기서 따로 적지 않는다
-            Light sun = FindSun();
-            if (sun == null)
+            if (EnsureSun() == null)
                 return;
-            sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.95f, 0.85f);
-            sun.intensity = 1.18f;
-            sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-            sun.shadows = LightShadows.Soft;
+        }
+
+        static void DemoteExtraSuns(Light sun)
+        {
 
             // 이미 해가 돼 버린 등불을 되돌린다 — 옛 버그가 구워 놓은 씬이 커밋돼 있어서,
             // 고른 자를 고치는 것만으로는 세계가 안 낫는다(방향광은 자리와 무관하게 세계 전체를 비춘다).

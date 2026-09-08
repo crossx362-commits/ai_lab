@@ -24,15 +24,11 @@ namespace Ulon.Editor
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             VisualSliceBuilder.EnsureWorldAtmosphere();   // 대기는 원장 하나에서 — 여기 다시 적지 않는다
-            Light sun = Object.FindAnyObjectByType<Light>();
-            if (sun != null)
-            {
-                sun.type = LightType.Directional;
-                sun.color = new Color(1f, 0.95f, 0.85f);
-                sun.intensity = 1.05f;
-                sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-                sun.shadows = LightShadows.Soft;
-            }
+            // **해는 이름으로 지목한다** — 여기 남아 있던 `FindAnyObjectByType<Light>()`가
+            // 「해가 셋」의 씨앗이었다(2026-09-09에 굽는 쪽은 고쳤지만 이 메뉴엔 씨앗이 남아 있었다).
+            // 아무 등불이나 집어 방향광으로 만들면 화덕 점광이 또 하나의 태양이 된다. 밝기 1.05도
+            // 원장(1.18)과 갈라져 있었다 — 함정을 적어 두는 것보다 없애는 편이 싸다(검수 2026-09-09).
+            VisualSliceBuilder.EnsureSun();
 
             var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name = "Ground";
