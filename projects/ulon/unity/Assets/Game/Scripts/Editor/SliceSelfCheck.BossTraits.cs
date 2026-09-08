@@ -57,6 +57,7 @@ namespace Ulon.Editor
         static void AssertBossTraits()
         {
             AssertDungeon3Leftover();
+            AssertBossTraitsNegativeControl();
 
             CheckBossTraits("본워든", Dungeon1.BossObject);
             CheckBossTraits("섀도우캡틴", Dungeon2.BossObject);
@@ -64,6 +65,63 @@ namespace Ulon.Editor
             CheckBossTraits("헥사크", FieldBoss.Object);
 
             Debug.Log("[Ulon] 보스 차별화 통과 — §10.2 요소 " + BossTraitMin + "개↑·왕관 바닥 몸높이 " + CrownBottomRatio + "배↑·무기 " + WeaponLengthRatio + "배↑ (보스 4종)");
+        }
+
+
+        /// <summary>
+        /// **새 자에 붙는 양방향 NC**(검수 조건 2026-09-08). 옛 자(그립 0.10m·팔뚝 60°)를 떼고 세운 자이므로,
+        /// 그 자가 정말 무는지 **결함을 실제로 만들어** 확인한다 — 안 그러면 자를 바꾼 자리가 곧 빈 통과가 된다.
+        ///   ㉠ 무기를 손 밖으로 옮긴다 → 「손이 무기 덩어리 안」이 깨져 빨간불이어야 한다.
+        ///   ㉡ 무기를 몸통 기둥 안으로 당긴다 → 「먼 끝이 기둥 밖」이 깨져 빨간불이어야 한다.
+        /// 둘 다 원위치로 되돌린다(계측이 세계를 바꾸면 안 된다).
+        /// </summary>
+        static void AssertBossTraitsNegativeControl()
+        {
+            var go = GameObject.Find(Dungeon1.BossObject);
+            if (go == null)
+                throw new InvalidOperationException("보스 물림 NC 대상이 없습니다: " + Dungeon1.BossObject + "(0이면 실패).");
+            Transform weaponT = null;
+            var all = go.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length && weaponT == null; i++)
+                if (all[i].name.StartsWith(VisualSliceBuilder.BossWeaponPrefix, StringComparison.Ordinal))
+                    weaponT = all[i];
+            if (weaponT == null)
+                throw new InvalidOperationException("보스 물림 NC — 본워든이 무기를 안 들고 있습니다(0이면 실패).");
+
+            var savedPos = weaponT.position;
+            var savedRot = weaponT.rotation;
+            try
+            {
+                // ㉠ 손 밖으로 — 무기 길이만큼 옆으로 밀면 손 점이 덩어리 밖으로 나간다.
+                weaponT.position = savedPos + Vector3.right * 3f;
+                bool outHand = Red("본워든", Dungeon1.BossObject);
+                weaponT.position = savedPos;
+                if (!outHand)
+                    throw new InvalidOperationException("보스 물림 NC ㉠ 실패 — 무기를 3m 옆으로 옮겼는데 통과했습니다. 「쥐었다」를 아무도 안 재고 있습니다.");
+
+                // ㉡ 몸통 기둥 안으로 — 무기를 몸 중심에 겹쳐 놓으면 먼 끝이 기둥 안이다.
+                var cc = go.GetComponent<CharacterController>();
+                var axis = cc != null ? go.transform.TransformPoint(cc.center) : go.transform.position;
+                weaponT.position = axis;
+                weaponT.rotation = Quaternion.identity;
+                bool inBody = Red("본워든", Dungeon1.BossObject);
+                if (!inBody)
+                    throw new InvalidOperationException("보스 물림 NC ㉡ 실패 — 무기를 몸통 한가운데로 당겼는데 통과했습니다. 「몸에 꽂힌 막대」를 아무도 안 재고 있습니다.");
+            }
+            finally
+            {
+                weaponT.position = savedPos;
+                weaponT.rotation = savedRot;
+            }
+            Debug.Log("[Ulon] 보스 물림 양방향 NC 통과 — 손 밖으로 옮기면 FAIL · 몸통 안으로 당기면 FAIL");
+        }
+
+        /// <summary>결함을 만든 상태에서 게이트를 불러 빨간불인지 본다(같은 판정 코드를 쓴다 — 자는 하나다).</summary>
+        static bool Red(string label, string bossObject)
+        {
+            try { CheckBossTraits(label, bossObject); }
+            catch (InvalidOperationException) { return true; }
+            return false;
         }
 
         static void CheckBossTraits(string label, string bossObject)

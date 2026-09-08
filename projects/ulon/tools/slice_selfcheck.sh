@@ -15,7 +15,8 @@ if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   if ! git -C "$ROOT" diff --quiet -- "$SCENE" 2>/dev/null; then
     BACKUP="$ROOT/builds/scene_backup"
     mkdir -p "$BACKUP"
-    cp "$ROOT/$SCENE" "$BACKUP/Bootstrap.$(date +%Y%m%d-%H%M%S).unity"
+    # 백업은 **한 벌만** 둔다 — 판마다 쌓이면 그게 잔재다(검수 2026-09-08).
+    cp "$ROOT/$SCENE" "$BACKUP/Bootstrap.last.unity"
     git -C "$ROOT" checkout -- "$SCENE"
     echo "씬을 커밋 상태로 되돌렸습니다(백업: $BACKUP) — 게이트는 누적된 씬이 아니라 소스에서 출발한다."
   fi
