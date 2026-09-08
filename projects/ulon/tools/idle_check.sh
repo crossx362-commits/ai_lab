@@ -3,7 +3,7 @@
 # 편집기 샷은 애니메이션이 안 돌아 QaShots가 포즈를 손으로 입힌다 — 그건 게임의 증거가 아니다.
 # 결과: builds/qa/idle_check.md + builds/qa/idle_01_hunt.png
 set -euo pipefail
-ROOT=/Users/junholee/ai_lab/projects/ulon
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"   # 스크립트 자리 기준 — worktree로 옮겨도 제 트리를 잰다
 UNITY="/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS/Unity"
 # 씬 명단을 먼저 덤프한다 — 실행 실측이 「무엇을 안 덮었는지」를 이름으로 적게 하려고.
 "$UNITY" -batchmode -nographics -quit -projectPath "$ROOT/unity" -executeMethod Ulon.Editor.SliceSelfCheck.DumpSceneRoster -logFile "$ROOT/unity/Logs/scene_roster.log"

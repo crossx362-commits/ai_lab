@@ -5,7 +5,7 @@
 #   bash tools/frame_probe.sh --release  → 릴리스 빌드,     builds/qa/frame_times_release.md
 # 릴리스로도 재는 이유: Development 빌드는 프로파일러 훅을 달고 돌아 p95 튐이 부풀 수 있다.
 set -euo pipefail
-ROOT=/Users/junholee/ai_lab/projects/ulon
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"   # 스크립트 자리 기준 — worktree로 옮겨도 제 트리를 잰다
 UNITY="/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS/Unity"
 if [ "${1:-}" = "--release" ]; then
   METHOD=Ulon.Editor.FrameProbeBuild.RunRelease
