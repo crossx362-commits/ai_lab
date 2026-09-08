@@ -23,7 +23,30 @@ namespace Ulon.Editor
         // 앵커(무기 트랜스폼 원점) 거리는 판정에서 뺐다 — 메시 원점이 칼끝인 장비는 그립이 손에 있어도
         // 앵커가 1.8m 떨어진다(섀도우캡틴 실측). 화면 진실은 그립 끝점과 팔뚝 정렬이다.
         // 검수 2026-09-06 반려 2 — bounds 포함은 대리 지표였다(긴 칼의 AABB가 몸을 삼킨다).
-        const float WeaponGripDistMax = 0.10f;      // 그립 끝점 ↔ 손 본
+        // **「손에 가깝다」가 아니라 「어느 쪽이 손에 있나」를 잰다**(검수 판정 2026-09-08).
+        // 옛 0.10m는 킷이 만들어 둔 손 슬롯(`handslot.r`) 자리를 **탈락**시켰다(실측 0.11m) — 그래서
+        // 코드가 무기를 바운드 끝으로 끌어다 손에 「붙여」 놓았고, 화면에서는 자루가 손 밖으로
+        // 밀려 날 밑동이 소매에 닿았다. 자가 맞추는 자를 만든 셈이다.
+        // 새 자: **자루 끝은 손 반경 안**(보스 손은 1.3~1.5배로 커진다 — 0.25m), **날 끝은 손 바깥**(0.5m 밖).
+
+        /// <summary>렌더가 켜진 자식들의 월드 바운드 — 무기 덩어리를 잰다.</summary>
+        static bool BoundsOfEnabledWeapon(Transform t, out Bounds b)
+        {
+            b = new Bounds();
+            bool any = false;
+            var rends = t.GetComponentsInChildren<Renderer>(false);
+            for (int i = 0; i < rends.Length; i++)
+            {
+                if (!rends[i].enabled || rends[i] is ParticleSystemRenderer)
+                    continue;
+                if (!any) { b = rends[i].bounds; any = true; }
+                else b.Encapsulate(rends[i].bounds);
+            }
+            return any;
+        }
+
+        const float WeaponGripDistMax = 0.25f;      // 그립 끝점 ↔ 손 본(손 반경)
+        const float WeaponTipDistMin = 0.50f;       // 날 끝 ↔ 손 본 — 이보다 가까우면 물건을 가운데 쥔 것
         const float WeaponForearmAngleMax = 60f;    // 무기 장축 ↔ 팔꿈치→손 방향
         const float GripAboveNeckMax = 0.00f;       // 그립 y ≤ 목(머리 본) y (검수 2026-09-06 관찰)
         const float CrownAxisOffsetMax = 0.15f;
@@ -113,12 +136,51 @@ namespace Ulon.Editor
                 var fore = BossFit.ForearmDir(hand, go.transform);
                 float angle = Vector3.Angle(along, fore);
                 Debug.Log("[Ulon] 보스 무기 그립 " + label + " 손까지 " + gripD.ToString("0.00") + "m·팔뚝 정렬 " + angle.ToString("0") + "° (한도 " + WeaponGripDistMax + "m/" + WeaponForearmAngleMax + "°)");
-                if (gripD > WeaponGripDistMax)
-                    throw new InvalidOperationException(label + " 무기 그립 끝이 손에서 " + gripD.ToString("0.00") + "m 떨어져 있습니다 — 최대 " + WeaponGripDistMax +
-                        "m. 무기 덩어리는 근처에 있어도 **쥔 것으로 안 읽힙니다**(§8.1). 손 본 위치로 그립 끝을 옮기세요.");
-                if (angle > WeaponForearmAngleMax)
-                    throw new InvalidOperationException(label + " 무기 장축이 팔뚝 방향과 " + angle.ToString("0") + "° 어긋났습니다 — 최대 " + WeaponForearmAngleMax +
-                        "°. 칼이 몸에 가로로 꽂힌 막대로 보입니다(§8.1).");
+                // **「어느 끝이 손에 있나」를 물으면 석궁·지팡이에서 틀린다** — 실측: 섀도우캡틴 석궁의
+                // 바운드 끝은 손에서 1.67m다(석궁은 가운데 개머리를 쥔다). 자를 모양에 안 기대게 바꾼다:
+                //   ㉠ 무기가 **손 슬롯/손뼈 아래**에 달려 있는가(킷이 쥐라고 만든 자리)
+                //   ㉡ **손 점이 무기 덩어리 안**에 있는가(가까이 있는 것과 물려 있는 것을 가른다)
+                //   ㉢ 먼 끝이 **몸통 기둥 밖**인가(아래에서 따로 잰다)
+                bool underHand = false;
+                for (var t = weaponT; t != null && !underHand; t = t.parent)
+                    underHand = t == hand;
+                if (!underHand)
+                    throw new InvalidOperationException(label + " 무기가 손뼈(" + hand.name +
+                        ") 아래에 달려 있지 않습니다 — 옆에 세워 둔 것은 쥔 것이 아닙니다(§8.1).");
+                if (BoundsOfEnabledWeapon(weaponT, out Bounds wBounds))
+                {
+                    var padded = wBounds;
+                    padded.Expand(WeaponGripDistMax);          // 손 반경만큼 봐준다(손이 표면에 걸친 경우)
+                    Debug.Log("[Ulon] 보스 무기 물림 " + label + " 손이 무기 덩어리 안? " + padded.Contains(hand.position) +
+                              " (덩어리 " + wBounds.size.ToString("0.00") + ")");
+                    if (!padded.Contains(hand.position))
+                        throw new InvalidOperationException(label + " 손이 무기 덩어리 밖에 있습니다 — 무기는 " +
+                            wBounds.center.ToString("0.0") + " 크기 " + wBounds.size.ToString("0.0") + ", 손은 " +
+                            hand.position.ToString("0.0") + ". 가까이 둔 것과 **쥔 것**은 다릅니다(§8.1).");
+                }
+                // **팔뚝 정렬 각도는 이제 재기만 하고 막지 않는다**(검수 판정 2026-09-08).
+                // 이 각도 한도(60°)는 무기를 손 슬롯에서 떼어 **팔뚝 방향으로 돌려 놓으라**는 요구였고,
+                // 그 요구가 곧 「자루가 손 밖으로 밀려나는」 그림을 만들었다(실측: 슬롯 그대로면 90°인데
+                // 화면에서는 손이 자루를 제대로 쥐고 있다 — 킷이 그렇게 만들어 둔 자리다).
+                // 걱정했던 것은 각도가 아니라 **칼이 몸에 가로로 꽂혀 보이는 것**이므로, 자도 그것을 잰다:
+                // 날 끝이 **몸통 기둥 밖**에 있어야 한다(안에 있으면 몸을 관통한 막대로 읽힌다).
+                // 몸통 기둥은 **몸이 정의한 것**(CharacterController)으로 잰다 — 렌더러 바운드로 재면
+                // 무기 자신이 그 바운드에 들어 있어서 기둥이 무기 길이만큼 부풀고, 석궁처럼 폭 넓은
+                // 물건은 「제 몸에 꽂혔다」로 잘못 읽힌다(실측: 반경이 1.07m로 부풀었다).
+                var ccBody = go.GetComponent<CharacterController>();
+                if (ccBody != null)
+                {
+                    float scale = Mathf.Max(go.transform.lossyScale.x, go.transform.lossyScale.z);
+                    float bodyR = ccBody.radius * scale;
+                    Vector3 axis = go.transform.TransformPoint(ccBody.center);
+                    var flatTip = new Vector2(tip.x - axis.x, tip.z - axis.z);
+                    Debug.Log("[Ulon] 보스 무기 날끝 " + label + " 몸통 중심에서 " + flatTip.magnitude.ToString("0.00") +
+                              "m (몸통 반경 " + bodyR.ToString("0.00") + "m)");
+                    if (flatTip.magnitude < bodyR)
+                        throw new InvalidOperationException(label + " 무기 날 끝이 몸통 기둥 안(중심에서 " +
+                            flatTip.magnitude.ToString("0.00") + "m < 반경 " + bodyR.ToString("0.00") +
+                            "m)에 있습니다 — 몸에 가로로 꽂힌 막대로 보입니다(§8.1).");
+                }
 
                 // 자세 — 그립이 어깨보다 높으면 칼이 얼굴을 가로지른다(검수 2026-09-06 관찰).
                 // 기준을 「어깨 본」으로 잡으려다 두 번 헛짚었다: 이름 검색은 모델 루트의 메시("Knight_ArmRight",

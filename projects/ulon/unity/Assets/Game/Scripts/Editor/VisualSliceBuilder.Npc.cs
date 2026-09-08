@@ -881,8 +881,32 @@ namespace Ulon.Editor
         /// 게이트(`AssertGearAboveFloor`)와 **같은 자**로 바닥을 잡는다 — 재는 자와 맞추는 자가 둘이면
         /// 한쪽만 통과하는 일이 생긴다. 도는 방향은 짐작하지 않고 **양쪽을 재서** 올라가는 쪽을 고른다.
         /// </summary>
-        static void LiftWeaponAboveFloor(GameObject actor, Transform weapon)
+
+        /// <summary>자루 끝·날 끝이 손뼈에서 각각 얼마나 떨어져 있는지 — 「쥐었다」는 자루가 손 안일 때다.</summary>
+        static void LogGripFit(GameObject actor, Transform weapon, Transform handBone, string when)
         {
+            if (actor == null || weapon == null || handBone == null)
+                return;
+            if (!BossFit.WeaponAxis(weapon, out Vector3 grip, out Vector3 tip))
+                return;
+            var sb = new System.Text.StringBuilder();
+            for (var t = weapon; t != null && t != actor.transform; t = t.parent)
+                sb.Insert(0, "/" + t.name);
+            Debug.Log("[Ulon] 무기 쥠새(" + when + ") " + actor.name + " — 무기 " + sb +
+                      " 손뼈 " + handBone.name +
+                      " 크기 " + (BoundsOfEnabled(weapon, out Bounds wbb) ? wbb.size.ToString("0.00") : "?") +
+                      " — 자루↔손 " + Vector3.Distance(grip, handBone.position).ToString("0.00") +
+                      "m · 날끝↔손 " + Vector3.Distance(tip, handBone.position).ToString("0.00") + "m");
+            if (false) Debug.Log("[Ulon] 무기 쥠새(" + when + ") " + actor.name +
+                      " — 자루↔손 " + Vector3.Distance(grip, handBone.position).ToString("0.00") +
+                      "m · 날끝↔손 " + Vector3.Distance(tip, handBone.position).ToString("0.00") + "m");
+        }
+
+        static void LiftWeaponAboveFloor(GameObject actor, Transform weapon, Transform handBone)
+        {
+            // **「손에 가깝다」와 「쥐었다」는 다르다**(검수 판정 2026-09-08). 회전 때문에 자루가 손을
+            // 빠져나간 것인지 원래 그랬는지는 **짐작하지 말고 회전 전후를 재서** 남긴다.
+            LogGripFit(actor, weapon, handBone, "회전 전");
             const float Want = 0.10f;
             if (actor == null || weapon == null)
                 return;
@@ -914,6 +938,7 @@ namespace Ulon.Editor
                 }
                 weapon.RotateAround(grip, axis, 5f * sign);
             }
+            LogGripFit(actor, weapon, handBone, "회전 후");
             if (BoundsOfEnabled(weapon, out Bounds end))
                 Debug.Log("[Ulon] 보스 무기 들어올림 — " + actor.name + " 최저점 " +
                           (start.min.y - floorY).ToString("0.00") + "m → " + (end.min.y - floorY).ToString("0.00") + "m (바닥 기준)");
@@ -984,7 +1009,15 @@ namespace Ulon.Editor
                 }
                 // 무기 덩어리 한가운데를 손에 맞추면 **칼이 얼굴 옆에 가로로 뜬다**(검수 2026-09-06 반려 2):
                 // 손 안에 들어와야 하는 건 무기 전체가 아니라 **그립 끝**이고, 칼날은 팔뚝 방향으로 뻗어야 한다.
-                if (handBone != null && BossFit.WeaponAxis(weapon, out Vector3 grip, out Vector3 tip))
+                // **손 슬롯이 있으면 슬롯을 믿는다**(검수 판정 2026-09-08 「손에 가깝다 ≠ 쥐었다」).
+                // 실측으로 안 것: 무기는 `…/hand.r/handslot.r/` 밑에 달려 있다 — 킷이 **쥐라고 만들어 둔 자리**다.
+                // 그런데 아래 맞춤은 무기 **바운드 끝**을 손뼈 위치로 끌어다 놓는다. 칼자루는 메시의
+                // 바운드 끝이 아니므로, 손은 물건의 맨 끝을 잡고 칼몸은 팔뚝 옆으로 밀려난다
+                // (사진에서 「자루가 손 안에 없고 날 밑동이 소매에 닿은」 그 모습).
+                // 회전 전후를 재 보니 자루↔손 0.00m로 **같았다** — 회전이 만든 것이 아니라
+                // 처음부터 이 맞춤이 만든 것이다(그리고 그 자를 그대로 게이트로 쓰면 언제나 통과다).
+                bool inHandSlot = handBone != null && handBone.name.StartsWith("handslot", StringComparison.OrdinalIgnoreCase);
+                if (!inHandSlot && handBone != null && BossFit.WeaponAxis(weapon, out Vector3 grip, out Vector3 tip))
                 {
                     var along = tip - grip;
                     var fore = BossFit.ForearmDir(handBone, boss.transform);
@@ -998,7 +1031,7 @@ namespace Ulon.Editor
                 // 들려 있어도 팔뚝 방향으로 뻗은 칼끝이 바닥 밑으로 내려간다.
                 // 고치는 자리는 **그립이 아니라 각도**다: 그립 점을 축으로 돌리면 손과의 관계는 그대로고
                 // (같은 함수가 바로 위에서 맞춘 것을 안 깨뜨린다) 칼끝만 올라온다.
-                LiftWeaponAboveFloor(boss, weapon);
+                LiftWeaponAboveFloor(boss, weapon, handBone);
             }
 
             // 1-b) **1몹 1무기**(P1 #7) — 보스 드레싱이 큰 무기를 새로 붙이면 원래 들고 있던 칼이
