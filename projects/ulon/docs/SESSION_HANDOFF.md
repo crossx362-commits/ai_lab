@@ -134,6 +134,16 @@ anvil/forge/furnace/smithy 계열 0건**이라 **교체하지 않는다**(그럴
 없으니 그 예외가 봐주던 것은 기둥뿐). 예외를 지우고(소품 20→24개) 굽는 쪽에서 등불·광원을 기둥
 축에서 2.4m 옆으로 옮겼다. NC는 등불을 제 기둥 자리에 놓으면 FAIL·되돌리면 초록.
 
+### 예외 전수 감사 (검수 지시 2026-09-09, `a03aa63a` 푸시 완료)
+`SliceSelfCheck.Exclusions.cs` — 이름으로 대상을 빼는 조항을 선언하고 **매 판 조항별 제외 이름·수**를
+찍는다(소품 72개 중 기둥 12·등불 12·접지 등불 12). **0개를 빼는 조항은 빨간불**(죽은 예외).
+NC는 유령 조항(`DungeonFurnGhost`)을 넣으면 FAIL·빼면 초록. 죽어 있던 `DungeonFurnLantern` 조항
+둘(`PropScale`·`RoomFurnish`)은 삭제. 곁가지로 문 앞 NC의 간헐 통과를 고쳤다(희생양이 씬 순회
+순서라 판마다 달랐고 높이를 안 맞춰 옮겼다 — 이제 문에서 가장 가까운 「자가 재는 소품」을 높이까지).
+**아직 감사 밖**: `WorldMaterials`의 이름 접두사 넷(MountainRock·IronVein·Dungeon·Kenney) —
+대상 집합이 재질 목록이라 다른 우주가 필요하다. 소스 파일 이름 예외 다섯(NetAvatar·HudShots·
+DualClientProbe·ActionVfx·ActionSfx)은 파일 실재 확인 완료(죽은 것 없음).
+
 ## 다음 (순서)
 1. **큐가 비었다** — 검수에 다음 랩 지정을 요청한 상태.
 2. MegaKit(모루·화덕)은 오너 다운로드 대기(검수가 대장에 올림). 도착하면 **최우선** —
