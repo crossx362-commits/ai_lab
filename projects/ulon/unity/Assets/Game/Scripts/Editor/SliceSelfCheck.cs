@@ -1790,6 +1790,7 @@ namespace Ulon.Editor
             AssertRoleLookNegativeControl();
             AssertRoleLook();
             AssertHeadgearFoundByPlace();
+            LogRigExempt();                                  // 뼈대 규칙의 예외를 매 판 세어 남긴다(제외는 조용히 넓어진다)
             AssertShieldPickedByPlace();
             AssertNoNestedActorsNegativeControl();
             AssertNoNestedActors();

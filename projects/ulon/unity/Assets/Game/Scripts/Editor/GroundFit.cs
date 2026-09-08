@@ -317,11 +317,21 @@ namespace Ulon.Editor
         /// 뼈대(루트 본) 밖에서 액터 루트에 바로 매달린 정적 메시는 그 사람이 **서 있는 시설**이다.
         /// 스킨드 메시가 아예 없는 액터(소품·구조물)에는 이 규칙을 적용하지 않는다.
         /// </summary>
+        /// <summary>
+        /// 뼈대 규칙의 **예외에 걸린 액터** — 스킨드 메시가 없어 이 규칙을 적용하지 못한 것들.
+        /// **제외 경로는 조용히 넓어진다**(검수 조건 2026-09-09) — 그래서 매 판 이름과 수를 찍는다.
+        /// 이 목록이 갑자기 길어지면 그건 「자가 죽은 것」이지 「세계가 깨끗해진 것」이 아니다.
+        /// </summary>
+        public static readonly SortedSet<string> RigExempt = new SortedSet<string>();
+
         public static bool OutsideRig(Transform actor, Transform t)
         {
             var skins = actor.GetComponentsInChildren<SkinnedMeshRenderer>(false);
             if (skins.Length == 0)
+            {
+                RigExempt.Add(actor.name);
                 return false;
+            }
             for (int i = 0; i < skins.Length; i++)
             {
                 if (t == skins[i].transform || t.IsChildOf(skins[i].transform))

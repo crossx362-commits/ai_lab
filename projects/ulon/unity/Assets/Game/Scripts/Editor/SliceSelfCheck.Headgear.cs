@@ -105,6 +105,20 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("방패 탐침이 씬에 남았습니다 — 계측이 세계를 바꿨습니다.");
         }
 
+        /// <summary>
+        /// **뼈대 규칙(사람 몸 = 스킨드 + 그 뼈대에 물린 것)의 예외를 세어 남긴다**(검수 조건 2026-09-09).
+        ///
+        /// 「스킨드가 없는 액터에는 적용하지 않는다」는 제외 경로이고, **제외는 조용히 넓어진다** —
+        /// 넓어진 줄 모르면 게이트는 죽은 채로 초록을 낸다. 그래서 판정하지 않고 **매 판 이름과 수만**
+        /// 찍는다(기준점이 있으면 늘어난 판에서 눈에 띈다).
+        /// </summary>
+        static void LogRigExempt()
+        {
+            var names = new List<string>(GroundFit.RigExempt);
+            Debug.Log("[Ulon] 뼈대 규칙 예외 — 스킨드 없는 액터 " + names.Count + "체" +
+                      (names.Count > 0 ? ": " + string.Join(", ", names) : ""));
+        }
+
         static GameObject ProbeActor()
         {
             var who = GameObject.Find("Player");
