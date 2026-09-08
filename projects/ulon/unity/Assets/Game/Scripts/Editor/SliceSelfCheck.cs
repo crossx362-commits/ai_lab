@@ -1671,6 +1671,8 @@ namespace Ulon.Editor
             AssertCreatureArtNegativeControl();
             AssertVillagerLooksNegativeControl();           // 두 사람을 같게 만들면 빨간불인가(랩 ③사람)
             AssertVillagerLooksDistinct();                  // 5역할이 화면에서 갈리는가 — 존재가 아니라 차이
+            AssertBarehandVillagersNegativeControl();       // 손에 물건을 쥐여 주면 빨간불인가
+            AssertBarehandVillagers();                      // 맨손이어야 할 사람 손이 실제로 비었는가(이름 아닌 위치로)
             AssertVillagerHatFitsNegativeControl();         // 모자를 키우면 빨간불인가
             AssertVillagerHatFits();                        // 챙이 사람을 덮지 않는가(§8.1)
             AssertGearDressedNegativeControl();             // 꺼 둔 장비를 켜면 빨간불인가

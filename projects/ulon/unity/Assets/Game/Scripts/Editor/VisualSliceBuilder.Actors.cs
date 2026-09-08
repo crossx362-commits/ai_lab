@@ -223,6 +223,34 @@ namespace Ulon.Editor
         /// <summary>장비 이름인가(게이트도 같은 판정을 쓴다).</summary>
         public static bool IsGearName(string n) => ContainsGearName(n);
 
+        /// <summary>손뼈에서 이 거리 안에 있으면 「손에 든 것」 — 세우는 자와 게이트가 같이 쓴다.</summary>
+        public const float HandHoldRadius = 0.35f;
+
+        /// <summary>
+        /// **이름이 아니라 자리로 「든 것」을 찾는다**(2026-09-08). 이름 목록은 모델을 받을 때마다
+        /// 샌다 — 후드 도적의 칼은 `Knife`, 그 다음엔 `Throwable`·`Spellbook`이 나왔다.
+        /// 손뼈 근처에 켜져 있는 **비스킨드** 렌더러를 전부 센다(몸 자체는 손뼈를 품으므로 제외).
+        /// </summary>
+        public static List<Renderer> HeldNearHands(GameObject who)
+        {
+            var held = new List<Renderer>();
+            var hands = new List<Transform>();
+            foreach (var t in who.GetComponentsInChildren<Transform>(true))
+                if (t.name.IndexOf("Hand", StringComparison.OrdinalIgnoreCase) >= 0)
+                    hands.Add(t);
+            if (hands.Count == 0)
+                return held;
+            foreach (var r in who.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r.enabled || !r.gameObject.activeInHierarchy || r is ParticleSystemRenderer || r is SkinnedMeshRenderer)
+                    continue;
+                for (int i = 0; i < hands.Count; i++)
+                    if (Vector3.Distance(r.bounds.center, hands[i].position) <= HandHoldRadius)
+                    { held.Add(r); break; }
+            }
+            return held;
+        }
+
         /// <summary>손에 드는 **무기**인가 — 방패·화살통은 무기가 아니다(1몹 1무기 판정용).</summary>
         public static bool IsWeaponName(string n)
         {
@@ -242,7 +270,13 @@ namespace Ulon.Editor
                 || n.IndexOf("Quiver", StringComparison.OrdinalIgnoreCase) >= 0
                 || n.IndexOf("Dagger", StringComparison.OrdinalIgnoreCase) >= 0
                 || n.IndexOf("Wand", StringComparison.OrdinalIgnoreCase) >= 0
-                || n.IndexOf("Crossbow", StringComparison.OrdinalIgnoreCase) >= 0;
+                || n.IndexOf("Crossbow", StringComparison.OrdinalIgnoreCase) >= 0
+                // **이름 원장은 모델을 받을 때마다 새는 자다** — 후드 도적(2026-09-08 도입)의 칼은
+                // `Knife`·`Knife_Offhand`라 이 목록에 없었고, 「맨손」이어야 할 치유사가 칼을 든 채
+                // 화면에 섰다(48_person_Healer 실측). 그래서 이름을 늘리는 동시에
+                // **손에 켜진 것이 있는지 실물로 재는 게이트**(`AssertBarehandVillagers`)를 같이 두었다.
+                || n.IndexOf("Knife", StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("Blade", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         static void AttachIf(EquipmentSockets sockets, string path, Transform socket)

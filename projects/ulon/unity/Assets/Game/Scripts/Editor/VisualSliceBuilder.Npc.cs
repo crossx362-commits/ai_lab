@@ -58,16 +58,23 @@ namespace Ulon.Editor
         /// 이유는 손이 빈 역할이 둘 있기 때문이다. **두 축을 같이 본다**(게이트도 같은 두 축을 잰다).
         /// 멱등 — 매 실행 같은 결과가 되게 「켤 것」과 「끌 것」을 둘 다 명시한다.
         /// </summary>
+        /// <summary>
+        /// **마을 사람 외형 원장 — 세우는 자와 재는 자가 같이 읽는다.** 예전엔 이 표가
+        /// `EnsureVillagerLooks` 안에만 있어서 게이트가 「맨손이어야 할 사람」이 누구인지 몰랐다
+        /// (원장: 재는 자와 맞추는 자는 하나여야 한다).
+        /// </summary>
+        public static readonly (string Host, string Gear, Color Tint, string Why)[] VillagerSpecs =
+        {
+            ("Healer",  "",             new Color(0.62f, 0.92f, 0.86f), "치유사 — 칼·방패를 내려놓아야 경비로 안 읽힌다"),
+            ("Trainer", "2H_Staff",     new Color(0.86f, 0.34f, 0.28f), "훈련사 — 가르치는 도구 하나만(완드까지 둘은 무기 둘이다)"),
+            ("Banker",  "",             new Color(0.30f, 0.36f, 0.62f), "은행원 — 훈련사와 같은 Mage 몸이라 색·장비로 가른다"),
+            ("Vendor",  "",             new Color(0.92f, 0.78f, 0.30f), "상인 — 마구간지기와 같은 Rogue 몸이라 색으로 가른다"),
+            ("Stable",  "1H_Crossbow",  new Color(0.48f, 0.34f, 0.20f), "마구간지기 — 짐승을 다루는 손에 무언가 들려야 상인과 갈린다"),
+        };
+
         public static void EnsureVillagerLooks()
         {
-            var specs = new (string Host, string Gear, Color Tint, string Why)[]
-            {
-                ("Healer",  "",             new Color(0.62f, 0.92f, 0.86f), "치유사 — 칼·방패를 내려놓아야 경비로 안 읽힌다"),
-                ("Trainer", "2H_Staff",     new Color(0.86f, 0.34f, 0.28f), "훈련사 — 가르치는 도구 하나만(완드까지 둘은 무기 둘이다)"),
-                ("Banker",  "",             new Color(0.30f, 0.36f, 0.62f), "은행원 — 훈련사와 같은 Mage 몸이라 색·장비로 가른다"),
-                ("Vendor",  "",             new Color(0.92f, 0.78f, 0.30f), "상인 — 마구간지기와 같은 Rogue 몸이라 색으로 가른다"),
-                ("Stable",  "1H_Crossbow",  new Color(0.48f, 0.34f, 0.20f), "마구간지기 — 짐승을 다루는 손에 무언가 들려야 상인과 갈린다"),
-            };
+            var specs = VillagerSpecs;
             var people = VillagerLook.Villagers();
             int done = 0;
             var lines = new List<string>();
@@ -86,6 +93,12 @@ namespace Ulon.Editor
                         continue;
                     t.gameObject.SetActive(t.name == specs[s].Gear);
                 }
+                // ①-b **자리로 한 번 더** — 이름 목록에 없는 것이 손에 남아 있었다(치유사 `Throwable`,
+                //      은행원 `Spellbook`). 선언한 장비가 아니면서 손뼈 근처에 켜져 있는 것은 끈다.
+                Physics.SyncTransforms();
+                foreach (var r in HeldNearHands(who))
+                    if (r.gameObject.name != specs[s].Gear)
+                        r.gameObject.SetActive(false);
                 // ② 몸 색 — 장비를 뺀 몸 렌더러에만 칠한다(칼날 색이 그 사람의 색이 되면 안 된다).
                 var mat = TintMaterial(specs[s].Host, specs[s].Tint, who);
                 if (mat != null)
