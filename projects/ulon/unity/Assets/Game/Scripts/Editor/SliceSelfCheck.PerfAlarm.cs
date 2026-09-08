@@ -113,7 +113,13 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("머티리얼 자 NC ㉠ 실패 — 같은 그림의 사본을 물렸는데 종류가 " +
                         before + "→" + dup + "로 늘었습니다. 자가 아직 인스턴스를 세고 있습니다.");
 
-                // ㉡ **다른 그림**을 물린다 — 씬에 없던 재질 에셋을 찾아 꽂는다.
+                // ㉡ **다른 그림**을 세운다 — 지금 이 자리에 없는 재질 에셋을 찾는다.
+                // **㉠의 흔적을 먼저 지운다**: 위에서 희생 렌더러에 사본을 물리고 그 사본을 지웠기 때문에
+                // 희생 렌더러의 **원래 재질이 목록에서 빠진 채**였다. 그 상태로 「없는 재질」을 고르면
+                // 바로 그 원래 재질(BoarHide)이 뽑히고, 다시 세워 봐야 제자리로 돌아올 뿐이라 25→25가 된다
+                // (2026-09-09 간헐 실패의 진짜 원인 — 재는 자가 제가 만든 구멍을 세계로 착각했다).
+                victim.sharedMaterial = saved;
+                PerfReport.Measure(spot);
                 Material foreign = null;
                 var guids = UnityEditor.AssetDatabase.FindAssets("t:Material", new[] { "Assets/Game/Art/Env" });
                 var here = new HashSet<string>(PerfReport.LastMaterialNames);
@@ -125,11 +131,27 @@ namespace Ulon.Editor
                 }
                 if (foreign == null)
                     throw new InvalidOperationException("머티리얼 자 NC ㉡ 대상이 없습니다 — 씬에 없는 재질 에셋을 못 찾았습니다.");
-                victim.sharedMaterial = foreign;
-                int added = PerfReport.Measure(spot).Materials;
+                // **바꿔 끼우지 않고 하나 더 세운다**(2026-09-09 간헐 실패 수리). 예전엔 희생 렌더러의
+                // 재질을 갈아 끼웠는데, 그 재질을 그 자리에서 **혼자 쓰고 있으면 하나 빠지고 하나 들어와
+                // 종류가 그대로**다(실측 25→25). 어느 렌더러가 뽑히느냐는 `FindObjectsByType` 순서라
+                // 판이 바뀔 때마다 붙었다 떨어졌다 했다 — **간헐적으로 우는 자는 자가 아니다.**
+                // 새 물건을 하나 세우면 공유 여부와 무관하게 반드시 +1이다.
+                var extra = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                extra.name = "PerfNcForeignMat";
+                extra.transform.position = spot.Center;
+                extra.GetComponent<Renderer>().sharedMaterial = foreign;
+                int added;
+                try
+                {
+                    added = PerfReport.Measure(spot).Materials;
+                }
+                finally
+                {
+                    UnityEngine.Object.DestroyImmediate(extra);
+                }
                 if (added <= before)
                     throw new InvalidOperationException("머티리얼 자 NC ㉡ 실패 — 다른 그림(" + foreign.name +
-                        ")을 물렸는데 종류가 " + before + "→" + added + "입니다. 자가 새 재질을 못 봅니다.");
+                        ")을 쓰는 물건을 하나 더 세웠는데 종류가 " + before + "→" + added + "입니다. 자가 새 재질을 못 봅니다.");
                 bool red = false;
                 try { Alarm(spot.Name, "머티리얼 종류", added, before); }
                 catch (InvalidOperationException) { red = true; }

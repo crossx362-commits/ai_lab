@@ -115,6 +115,9 @@ namespace Ulon.Editor
                 Stand(PlayCamOutdoor("28_facilities", -5.2f, 3.4f)),
                 Stand(PlayCamOutdoor("29_forge_carpenter", -6.8f, 5.2f)),
                 // 시설별 **진짜 근접** — 28·29는 플레이 거리라 시설이 수십 픽셀이었다(검수 반려).
+                // **미결**: 이 장은 지금 판정 불가다 — 대장간 몸통이 1.0×0.4×0.7m 무릎 높이 판매대라
+                // 화면에 「대장간」으로 읽힐 것이 없다(방위·거리 랩에서 카메라 쪽은 다 맞췄다).
+                // 근거와 조치는 `RoleLook.cs`의 Forge 항목에 적어 뒀다 — MegaKit(모루·화덕) 도착 시 최우선.
                 FacilityCloseUp("30_forge", "Forge"),
                 FacilityCloseUp("31_carpenter", "Carpenter"),
                 FacilityCloseUp("32_vendor", "Vendor"),

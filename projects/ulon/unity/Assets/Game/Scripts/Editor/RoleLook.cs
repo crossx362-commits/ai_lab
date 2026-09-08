@@ -85,6 +85,12 @@ namespace Ulon.Editor
             new Facility { Object = "Vendor", Role = "상점", MinHeightFrac = 0.5f, ServiceDesk = true,
                 PartMeshes = new[] { "stall-green.fbx", "stall-red.fbx", "banner-red.fbx", "crates_stacked.obj", "box_large.obj" },
                 PartWhy = "차양·쌓인 물건이 있어야 「파는 곳」으로 읽힌다" },
+            // **미결(2026-09-09) — `30_forge`는 지금 판정 불가다.** 대장간 몸통(`stall.fbx`)이
+            // 실측 **1.0 × 0.4 × 0.7m 무릎 높이 판매대**이고 부속(굴뚝 2.6m·통 1.0m)이 몸통보다 크다.
+            // 어느 방위·어느 거리에서 찍어도 굴뚝과 통만 보이므로 **카메라로는 못 고친다**(거리 랩에서 확인).
+            // 가진 자산 전수(모델 96개)에 **모루·화로·대장간 몸통이 없다** — 킷 검색 결과
+            // anvil/forge/furnace/smithy 계열 0건. 그럴듯한 다른 모델을 끼우지 않는다(다음 사람이 지울 물건이다).
+            // **MegaKit(모루·화덕) 도착 시 최우선.** EXIT=0만 보고 괜찮다고 읽지 마라 — 이 줄이 미결 표시다.
             new Facility { Object = "Forge", Role = "대장간", MinHeightFrac = 0.5f,
                 PartMeshes = new[] { "anvil.fbx", "forge.fbx", "chimney.fbx" },
                 PartWhy = "모루·화로·굴뚝이 있어야 상점과 갈린다(지금 둘 다 stall.fbx)" },
