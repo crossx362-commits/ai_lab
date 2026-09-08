@@ -174,11 +174,22 @@ namespace Ulon.Editor
                 var t = stack.Pop();
                 if (t.name == "Ground" || t.name.StartsWith("Terrain", StringComparison.Ordinal))
                     continue;
+                // **건물 판정을 사람 판정보다 먼저 한다.** 은행처럼 NPC를 자식으로 품은 건물은
+                // 「사람이 들어 있으니 건너뛴다」에 걸려 **한 번도 안 세어졌다** — 그래서 `50_villagers`의
+                // 반투명 판이 무엇인지 물었을 때 목록에 은행이 없었다(실측 2026-09-09).
+                if (VisualSliceBuilder.IsBuildingObject(t.name))
+                {
+                    if (GroundFit.WorldBounds(t, out Bounds bb0))
+                        Debug.Log("[Census] 건물 " + t.name + " @(" + bb0.center.x.ToString("0.0") + "," +
+                                  bb0.center.z.ToString("0.0") + ") 크기 " + bb0.size.ToString("0.00") +
+                                  " · 안에 든 사람 " + t.GetComponentsInChildren<Ulon.Server.WorldBody>(true).Length + "명");
+                    continue;
+                }
                 if (t.GetComponentInChildren<Ulon.Server.WorldBody>(true) != null)
                     continue;
                 if (t.GetComponentInChildren<Renderer>(true) == null)
                     continue;
-                if (VisualSliceBuilder.IsBuildingObject(t.name))
+                if (false)
                 {
                     if (GroundFit.WorldBounds(t, out Bounds bb))
                         Debug.Log("[Census] 건물 " + t.name + " @(" + bb.center.x.ToString("0.0") + "," +

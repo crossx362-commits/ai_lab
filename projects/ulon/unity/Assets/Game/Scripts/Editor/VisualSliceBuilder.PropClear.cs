@@ -148,9 +148,62 @@ namespace Ulon.Editor
                 var dir = away.normalized + (toPlaza.sqrMagnitude > 0.01f ? toPlaza.normalized * 0.7f : Vector3.zero);
                 if (dir.sqrMagnitude < 0.0001f)
                     dir = away;
-                fire.transform.position += dir.normalized * (SliceSelfCheck.FireWallGap - best + 0.15f);
+                var step = dir.normalized * (SliceSelfCheck.FireWallGap - best + 0.15f);
+                var moved = fire.transform.position + step;
+                // **지표 스냅을 부르지 않는다** — 불꽃 파티클이 바운드에 들어가 화덕이 10m 튄다
+                // (같은 함정을 두 번 밟았다: 소품 정리 때 한 번, 저장 앞으로 옮기면서 또 한 번).
+                // 높이는 지표에서 직접 읽는다.
+                fire.transform.position = new Vector3(moved.x, GroundY(moved.x, moved.z), moved.z);
             }
-            SnapRootToGround(fire);
+        }
+
+        /// <summary>
+        /// **가게 안 사람은 벽에 등을 붙이고 서지 않는다**(검수 지시 2026-09-09 — `50_villagers` 반투명 판).
+        /// 세어 보니 은행원은 은행 바운드 **안쪽, 남벽에서 0.53m**에 서 있었다(건물 5.4×6.5m).
+        /// 그래서 어느 방위에서 찍어도 렌즈와 얼굴 사이에 자기 가게 벽이 들어왔다(로그: 렌즈 앞
+        /// `Banker/Visual` 0.00m · 표본 0%). **문 밖으로 끌어내는 것이 아니다** — 방 안에서 벽으로부터
+        /// 한 걸음 떨어뜨리는 것이고, 벽에 파묻혀 선 배치 자체가 화면에서 이상하다.
+        /// </summary>
+        public static void KeepPeopleOffWalls()
+        {
+            var all = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                var go = all[i];
+                if (go == null || !go.scene.IsValid() || go.transform.parent != null)
+                    continue;
+                if (!IsBuildingObject(go.name))
+                    continue;
+                if (!SliceSelfCheck.RoomBounds(go.transform, out Bounds room))
+                    continue;
+                foreach (var who in go.GetComponentsInChildren<Ulon.Server.WorldBody>(true))
+                {
+                    if (who == null)
+                        continue;
+                    var pos = who.transform.position;
+                    var flat = new Vector3(Mathf.Clamp(pos.x, room.min.x, room.max.x), 0f,
+                                           Mathf.Clamp(pos.z, room.min.z, room.max.z));
+                    var out2 = new Vector3(pos.x - flat.x, 0f, pos.z - flat.z);
+                    float d = out2.magnitude;
+                    if (d >= SliceSelfCheck.PersonWallGap)
+                        continue;
+                    // 벽에서 **바깥으로** 민다 — 가게 앞에 서는 것이 제자리다. 방향을 못 정하면
+                    // (사람이 벽면과 같은 자리) 가게 중심 반대쪽으로 낸다.
+                    var dir = d > 0.05f ? out2.normalized
+                        : new Vector3(pos.x - room.center.x, 0f, pos.z - room.center.z).normalized;
+                    if (dir.sqrMagnitude < 0.0001f)
+                        dir = Vector3.back;
+                    var to = new Vector3(pos.x, 0f, pos.z) + dir * (SliceSelfCheck.PersonWallGap - d + 0.15f);
+                    var cc = who.GetComponent<CharacterController>();
+                    if (cc != null)
+                        cc.enabled = false;
+                    who.transform.position = OnGround(new Vector3(to.x, 0f, to.z));
+                    if (cc != null)
+                        cc.enabled = true;
+                    Debug.Log("[Ulon] 가게 사람 비켜 세움 — " + go.name + "의 " + who.name + " 벽에서 " +
+                              d.ToString("0.00") + "m → " + SliceSelfCheck.PersonWallGap.ToString("0.00") + "m 밖으로");
+                }
+            }
         }
 
         public static void ClearPropsFromProps()

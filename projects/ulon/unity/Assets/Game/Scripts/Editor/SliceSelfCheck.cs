@@ -343,6 +343,13 @@ namespace Ulon.Editor
                 || Math.Abs(boss3Definition.Height - boss2Definition.Height) < 0.0001f
                 || MobCatalog.HostileKindCount != 8)
                 throw new InvalidOperationException("필드 네임드 엘리트 헥사크는 본워든/섀도우캡틴과 다른 HP/키/드랍의 별도 보스여야 합니다.");
+            // **비켜 세우기는 저장 앞에서.** 아래 두 패스를 저장 뒤에 배선했다가, 자는 초록인데
+            // 화면은 그대로인 판을 세 번 냈다 — 씬에 안 남으니 QA 샷은 옛 자리를 찍는다(2026-09-09).
+            VisualSliceBuilder.KeepPeopleOffWalls();      // 가게 사람은 벽에서 두 걸음(검수 2026-09-09)
+            // **자도 저장 앞에서 잰다.** 저장 뒤에 쟀더니 사람이 원자리로 돌아간 값을 봤다 —
+            // QA 샷이 보는 것은 **저장된 씬**이므로, 자는 저장되는 그 상태를 재야 한다.
+            AssertPeopleOffWallsNegativeControl();
+            AssertPeopleOffWalls();
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
 

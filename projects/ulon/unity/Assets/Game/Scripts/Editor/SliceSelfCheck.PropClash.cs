@@ -142,6 +142,138 @@ namespace Ulon.Editor
         /// </summary>
         internal const float FireWallGap = 1.0f;
 
+        /// <summary>
+        /// **가게 사람과 제 가게 벽 사이 최소 거리.** 값은 취향이 아니라 **근접 샷의 하한에서 유도**한다:
+        /// 사람 근접은 1.9m까지 당겨서 찍으므로(`InsidePullFloor`), 사람이 벽에서 그만큼 안 떨어져 있으면
+        /// **카메라가 벽 속에 선다** — 그래서 은행원 타일이 반투명 판으로 찍혔다. 1.0m로 뒀다가 여전히
+        /// 벽 뒤였고(실측 1.15m), 하한 1.9m에 한 뼘을 더해 2.05m로 잡는다.
+        /// 자와 굽는 쪽(`KeepPeopleOffWalls`)이 같은 값을 읽는다.
+        /// </summary>
+        internal const float PersonWallGap = 2.05f;
+
+        /// <summary>
+        /// **방은 사람을 빼고 잰다.** 처음엔 건물 루트 바운드를 그대로 썼는데, 그 바운드에는 **자식으로
+        /// 든 NPC 자신**이 들어 있었다 — 사람을 벽에서 떼면 바운드가 같이 줄어 벽이 사람을 따라왔고,
+        /// 굽는 쪽이 옮겼는데 자는 그대로 「붙어 있다」고 했다(실측 2026-09-09: 옮긴 뒤 0.44m).
+        /// 자가 자기 대상을 기준에 넣으면 그 자는 절대 만족될 수 없다.
+        /// </summary>
+        internal static bool RoomBounds(Transform building, out Bounds room)
+        {
+            room = new Bounds();
+            bool any = false;
+            foreach (var r in building.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is ParticleSystemRenderer)
+                    continue;
+                if (r.GetComponentInParent<Ulon.Server.WorldBody>() != null)
+                    continue;                                   // 그 방에 든 사람은 방의 일부가 아니다
+                if (!any) { room = r.bounds; any = true; }
+                else room.Encapsulate(r.bounds);
+            }
+            return any;
+        }
+
+        /// <summary>사람과 자기 가게 벽 사이 수평 거리(안에 서 있으면 0).</summary>
+        static float WallDistance(Vector3 pos, Bounds room)
+        {
+            var flat = new Vector3(Mathf.Clamp(pos.x, room.min.x, room.max.x), room.center.y,
+                                   Mathf.Clamp(pos.z, room.min.z, room.max.z));
+            return new Vector2(pos.x - flat.x, pos.z - flat.z).magnitude;
+        }
+
+        static string PersonWallReason(bool log)
+        {
+            var bad = new List<string>();
+            float worst = float.MaxValue;
+            string worstWhat = "(없음)";
+            int counted = 0;
+            var all = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length; i++)
+            {
+                var go = all[i];
+                if (go == null || !go.scene.IsValid() || go.transform.parent != null)
+                    continue;
+                if (!VisualSliceBuilder.IsBuildingObject(go.name))
+                    continue;
+                if (!RoomBounds(go.transform, out Bounds room))
+                    continue;
+                foreach (var who in go.GetComponentsInChildren<Ulon.Server.WorldBody>(true))
+                {
+                    if (who == null)
+                        continue;
+                    counted++;
+                    float d = WallDistance(who.transform.position, room);
+                    if (d < worst) { worst = d; worstWhat = go.name + "의 " + who.name; }
+                    if (d < PersonWallGap - 0.01f)
+                        bad.Add(go.name + "의 " + who.name + "이(가) 벽에서 " + d.ToString("0.00") +
+                                "m (하한 " + PersonWallGap.ToString("0.00") + "m)");
+                }
+            }
+            if (counted == 0)
+                throw new InvalidOperationException("가게에 딸린 사람을 하나도 못 읽었습니다 — 잰 것이 없습니다(0이면 실패).");
+            if (log)
+                Debug.Log("[Ulon] 가게 사람과 벽 — " + counted + "명 · 가장 가까운 " +
+                          worst.ToString("0.00") + "m " + worstWhat + "(하한 " + PersonWallGap.ToString("0.0") + "m)");
+            if (bad.Count == 0)
+                return "";
+            bad.Sort(StringComparer.Ordinal);
+            return "가게 사람이 제 가게 벽에 붙어 서 있습니다 — " + string.Join("; ", bad) +
+                   "\n렌즈가 사람과 벽 사이에 못 들어가면 근접 샷은 반투명 벽만 찍습니다.";
+        }
+
+        static void AssertPeopleOffWalls()
+        {
+            string reason = PersonWallReason(true);
+            if (!string.IsNullOrEmpty(reason))
+                throw new InvalidOperationException(reason);
+        }
+
+        /// <summary>양방향 NC — 가게 안 사람을 벽에 붙이면 빨간불, 되돌리면 초록.</summary>
+        static void AssertPeopleOffWallsNegativeControl()
+        {
+            Ulon.Server.WorldBody victim = null;
+            GameObject shop = null;
+            Bounds room = new Bounds();
+            var all = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < all.Length && victim == null; i++)
+            {
+                var go = all[i];
+                if (go == null || !go.scene.IsValid() || go.transform.parent != null)
+                    continue;
+                if (!VisualSliceBuilder.IsBuildingObject(go.name) || go.name != "Banker")
+                    continue;                                   // 희생양은 정해서 고른다 — 은행 하나
+                if (!RoomBounds(go.transform, out room))
+                    continue;
+                var inside = go.GetComponentsInChildren<Ulon.Server.WorldBody>(true);
+                if (inside.Length > 0) { victim = inside[0]; shop = go; }
+            }
+            if (victim == null || shop == null)
+                throw new InvalidOperationException("가게 안 사람 NC 대상이 없습니다(0이면 실패).");
+            var kept = victim.transform.position;
+            var cc = victim.GetComponent<CharacterController>();
+            bool red;
+            try
+            {
+                if (cc != null) cc.enabled = false;
+                victim.transform.position = new Vector3(room.center.x, kept.y, room.min.z - 0.05f);
+                Physics.SyncTransforms();
+                red = !string.IsNullOrEmpty(PersonWallReason(false));
+            }
+            finally
+            {
+                victim.transform.position = kept;
+                if (cc != null) cc.enabled = true;
+                Physics.SyncTransforms();
+            }
+            if (!red)
+                throw new InvalidOperationException("가게 안 사람 네거티브 컨트롤 실패 — " + victim.name +
+                    "을(를) " + shop.name + " 벽에 붙였는데 통과했습니다.");
+            string back = PersonWallReason(false);
+            if (!string.IsNullOrEmpty(back))
+                throw new InvalidOperationException("가게 안 사람 네거티브 컨트롤 실패 — 되돌렸는데도 빨간불입니다: " + back);
+            Debug.Log("[Ulon] 가게 안 사람 양방향 NC 통과 — 벽에 붙이면 FAIL · 되돌리면 통과");
+        }
+
         static string FireWallReason(bool log)
         {
             var fire = GameObject.Find("Campfire");
