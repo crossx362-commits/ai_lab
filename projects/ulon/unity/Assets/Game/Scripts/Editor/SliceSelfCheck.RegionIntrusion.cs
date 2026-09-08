@@ -36,7 +36,12 @@ namespace Ulon.Editor
         static string NearestOutsiderWhat = "(없음)";
 
         /// <summary>지역 물건 곁에 선 남의 배치물을 모은다(자는 재기만 한다). 굽는 쪽도 이 자를 부른다.</summary>
-        internal static void CollectRegionIntruders(List<string> found, List<Transform> nodes = null)
+        /// <param name="margin">
+        /// **굽는 쪽은 자보다 한 뼘 넓게 비운다**(검수 지시 2026-09-09). 매 판 찍는 「가장 가까운 이웃」이
+        /// 문턱과 같은 2.0m까지 붙어 있었다 — 한 판만 틀어져도 걸린다. **자를 조이는 대신 여유를 만든다**:
+        /// 재는 문턱은 그대로 두고, 치우는 쪽만 이 여유를 더해 미리 비운다.
+        /// </param>
+        internal static void CollectRegionIntruders(List<string> found, List<Transform> nodes = null, float margin = 0f)
         {
             NearestOutsider = float.MaxValue;
             NearestOutsiderWhat = "(없음)";
@@ -110,9 +115,10 @@ namespace Ulon.Editor
                 if (best < NearestOutsider)
                 {
                     NearestOutsider = best;
-                    NearestOutsiderWhat = root.name + "/" + t.name + " ↔ " + mineOwner[hit] + "의 " + mineName[hit];
+                    NearestOutsiderWhat = root.name + "/" + t.name + " @(" + wb.center.x.ToString("0.0") + "," +
+                                          wb.center.z.ToString("0.0") + ") ↔ " + mineOwner[hit] + "의 " + mineName[hit];
                 }
-                if (best > RegionIntrusionRange)
+                if (best > RegionIntrusionRange + margin)
                     continue;
                 found.Add(mineOwner[hit] + "의 " + mineName[hit] + "에서 " + best.ToString("0.0") + "m 앞에 " +
                           root.name + "/" + t.name + " @(" + wb.center.x.ToString("0.0") + "," +

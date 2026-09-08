@@ -55,6 +55,11 @@ namespace Ulon.Editor
             return pos;
         }
 
+        /// <summary>
+        /// **불·연기처럼 파티클을 단 것에는 이 함수를 부르지 마라**(검수 지시 2026-09-09 — 두 번 밟았다).
+        /// `CombinedBounds`가 파티클 렌더러 바운드까지 삼켜 화덕이 10~20m 위로 튄다. 그런 것은
+        /// 지표 높이를 직접 읽어 y만 넣는다: `new Vector3(x, GroundY(x, z), z)`.
+        /// </summary>
         static void SnapRootToGround(GameObject go)
         {
             if (go == null)
@@ -473,7 +478,7 @@ namespace Ulon.Editor
         {
             var found = new System.Collections.Generic.List<string>();
             var nodes = new System.Collections.Generic.List<Transform>();
-            SliceSelfCheck.CollectRegionIntruders(found, nodes);
+            SliceSelfCheck.CollectRegionIntruders(found, nodes, 0.5f);   // 자보다 한 뼘 넓게 비운다
             int gone = 0;
             for (int i = 0; i < nodes.Count; i++)
             {
