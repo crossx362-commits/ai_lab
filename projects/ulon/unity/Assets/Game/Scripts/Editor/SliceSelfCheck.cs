@@ -1695,6 +1695,8 @@ namespace Ulon.Editor
             AssertDungeonPlaceByPosition();                 // 실내/실외를 이름 아닌 자리로 가르는가(④)
             AssertPropsNotOverlappingNegativeControl();     // 소품 둘을 같은 자리에 놓으면 빨간불인가
             AssertPropsNotOverlapping();                    // 실내 소품이 서로 파고들지 않았는가(§8.2)
+            AssertExclusionsAliveNegativeControl();         // 유령 조항을 넣으면 빨간불인가(양방향 NC)
+            AssertExclusionsAlive();                        // 선언한 예외가 실제로 무엇을 빼는가 — 매 판 이름·수
             AssertNoDoubleWiredGatesNegativeControl();      // 호출을 한 줄 복사하면 빨간불인가
             AssertNoDoubleWiredGates();                     // 같은 게이트가 두 번 배선돼 있지 않은가(동시 개발)
             AssertWarpSpotsClearNegativeControl();          // 몹을 출구 위에 세우면 빨간불인가

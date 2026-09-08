@@ -62,13 +62,12 @@ namespace Ulon.Editor
             return measured;
         }
 
-        /// <summary>기둥은 천장까지, 횃불은 벽 2m에 있는 것이 정상이다 — 비율 자에서 뺀다.</summary>
-        static bool IsStructureProp(Transform t)
-        {
-            return t.name.StartsWith("DungeonFurnPillar", StringComparison.Ordinal)
-                || t.name.StartsWith("DungeonFurnTorch", StringComparison.Ordinal)
-                || t.name.StartsWith("DungeonFurnLantern", StringComparison.Ordinal);
-        }
+        /// <summary>
+        /// 기둥은 천장까지, 벽 등불은 벽 2m에 있는 것이 정상이다 — 비율 자에서 뺀다.
+        /// 조항은 **선언된 예외**(`PropScaleStructureExclusion`)에 있고, 매 판 감사가 무엇이 빠졌는지 센다.
+        /// 여기 있던 「DungeonFurnLantern」은 **만들어지지도 않는 이름**이라 지웠다(2026-09-09 감사).
+        /// </summary>
+        static bool IsStructureProp(Transform t) => PropScaleStructureExclusion.Excludes(t.name);
 
         /// <summary>네거티브 컨트롤 — 통 하나를 실제로 2배로 키우면 빨간불이어야 한다.</summary>
         static void AssertPropScaleNegativeControl()

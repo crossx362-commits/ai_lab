@@ -82,8 +82,9 @@ namespace Ulon.Editor
                 // 전역 발 높이 게이트(`AssertFootOnGround`)는 지하 방 구조물을 건너뛴다(지표 기준이라 못 잰다).
                 // 그러니 **방 안에서는 여기가 그 역할**을 한다 — 소품 발이 방 바닥 윗면에 붙어 있는가.
                 // 벽에 거는 것(횃불·등불)은 바닥에 발이 없다 — 이름으로 빼되, 나머지는 전부 잰다.
-                bool wallMounted = t.name.StartsWith("DungeonFurnTorch", StringComparison.Ordinal)
-                    || t.name.StartsWith("DungeonFurnLantern", StringComparison.Ordinal);
+                // 조항은 **선언된 예외**에 있다 — 매 판 감사가 무엇이 빠졌는지 이름과 수로 찍는다.
+                // 여기 있던 「DungeonFurnLantern」은 만들어지지도 않는 이름이라 지웠다(2026-09-09 감사).
+                bool wallMounted = RoomFurnishFootExclusion.Excludes(t.name);
                 if (!wallMounted && GroundFit.WorldBounds(t, out Bounds wb))
                 {
                     // **공식이 아니라 실물 바닥 판**을 잰다(검수 승인 2026-09-07) —

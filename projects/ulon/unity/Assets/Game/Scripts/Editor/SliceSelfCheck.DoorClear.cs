@@ -160,12 +160,37 @@ namespace Ulon.Editor
             if (props.Count == 0)
                 throw new InvalidOperationException("문 앞 NC 대상 소품이 없습니다(0이면 실패).");
 
-            Transform victim = props[0];
+            // **희생양은 정해서 고른다** — `props[0]`은 씬 순회 순서라 판마다 달랐고, 어떤 판에는
+            // 바닥 깔개(자가 봐주는 것)나 광맥이 뽑혀 NC가 간헐적으로 통과했다(실측: `HouseChest`·`IronVein`).
+            // 문 앞에서 가장 가까운 **자가 실제로 재는 소품**을 고르면 판마다 같은 것이 뽑힌다.
+            Transform victim = null;
+            float bestD = float.MaxValue;
+            for (int p = 0; p < props.Count; p++)
+            {
+                if (props[p] == null || IsVillageMat(boxes[p]))
+                    continue;
+                float d = Vector3.Distance(boxes[p].center, zone.center);
+                if (d < bestD - 0.001f ||
+                    (Mathf.Abs(d - bestD) <= 0.001f && victim != null &&
+                     string.CompareOrdinal(props[p].name, victim.name) < 0))
+                {
+                    bestD = d;
+                    victim = props[p];
+                }
+            }
+            if (victim == null)
+                throw new InvalidOperationException("문 앞 NC 대상 소품이 없습니다 — 전부 바닥 깔개입니다(0이면 실패).");
             var kept = victim.position;
             bool red;
             try
             {
-                victim.position = new Vector3(zone.center.x, victim.position.y, zone.center.z);
+                // **높이까지 맞춰 옮긴다** — x·z만 옮기고 제 높이를 남겨 두면, 지형이 다른 집의 문
+                // 앞으로 갔을 때 상자가 통로 상자와 y로 안 겹쳐 NC가 간헐적으로 통과했다(실측:
+                // `HouseChest`. 「간헐적으로 우는 자는 자가 아니다」).
+                var vb = victim.GetComponentInChildren<Renderer>() != null
+                    ? victim.GetComponentInChildren<Renderer>().bounds
+                    : new Bounds(victim.position, Vector3.zero);
+                victim.position += zone.center - vb.center;
                 Physics.SyncTransforms();
                 red = !string.IsNullOrEmpty(DoorFrontClearReason(false));
             }
