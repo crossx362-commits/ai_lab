@@ -112,6 +112,7 @@ namespace Ulon.Shared
 
             h = CarveLake(wx, wz, h);
             h = CarveRiver(wx, wz, h);
+            h = RaisePier(wx, wz, h);
             return Mathf.Clamp(h, 0f, MaxHeight);
         }
 
@@ -154,6 +155,48 @@ namespace Ulon.Shared
             // 물가는 뭍 높이에서 서서히 내려가야 한다 — 바로 수면 높이로 떨어뜨리면 3m 수직 절벽이 된다.
             float bed = Mathf.Lerp(h, SeaLevel - LakeDepth, t);
             return Mathf.Min(h, bed);
+        }
+
+        /// <summary>
+        /// **잔교 둑** — 부두가 물에 닿게 하는 것은 소품이 아니라 **지형**이다(검수 큐 ⑤, 2026-09-09:
+        /// 「부두가 물 위 판때기 하나고 뭍과 이어지지도 않았다」). 낚시터는 게이트상 물가에 있었지만
+        /// (수면 대비 +0.1m) 주변이 평평해 화면에서는 물 한가운데 떠 있는 판으로 읽혔다.
+        ///
+        /// 소품을 물 위로 띄우는 수리는 **발 높이 게이트와 싸우는 길**이라 택하지 않았다 — 대신
+        /// 호수 중심에서 마을 쪽으로 **좁은 둑**을 수면 위로 남긴다. 부두 조각은 지표에 스냅되므로
+        /// 저절로 그 둑 위에 서고, 화면은 「뭍에서 물로 뻗은 잔교」가 된다.
+        /// </summary>
+        // 물가에서 물 쪽으로 뻗는 길이. **9m로는 잔교가 거의 물에 안 나간다** — 이 호숫가는
+        // 비탈이 급해 둑 시작점에서 4m만 가면 지표가 이미 5.4m(뭍)였다(실측 2026-09-09).
+        public const float PierLength = 14f;
+        // 둑 반폭. 사람 1.4m만 보면 1.5로 충분하지만, 널판 옆에 말뚝을 박으려면 그 자리도
+        // 평평해야 한다(발 높이 자는 조각 밑면을 지표에 맞춘다) — 1.5에서는 말뚝이 전부 물에 섰다.
+        public const float PierHalfWidth = 2.4f;
+        public const float PierTop = SeaLevel + 0.35f;
+
+        static float RaisePier(float wx, float wz, float h)
+        {
+            // 호수 중심 → 마을(원점) 방향이 물가다. 그 선을 따라 뻗는다.
+            var cx = LakeX; var cz = LakeZ;
+            float dx = -cx, dz = -cz;
+            float len = Mathf.Sqrt(dx * dx + dz * dz);
+            if (len < 0.001f)
+                return h;
+            dx /= len; dz /= len;
+            // 물가 지점(호수 반경의 92% 자리)에서 안쪽으로 PierLength만큼.
+            float shoreD = LakeRadius * 0.92f;
+            float sx = cx + dx * shoreD, sz = cz + dz * shoreD;
+            float ex = cx + dx * (shoreD - PierLength), ez = cz + dz * (shoreD - PierLength);
+            // 선분까지의 거리.
+            float vx = ex - sx, vz = ez - sz;
+            float t = Mathf.Clamp01(((wx - sx) * vx + (wz - sz) * vz) / (vx * vx + vz * vz));
+            float px = sx + vx * t, pz = sz + vz * t;
+            float d = Mathf.Sqrt((wx - px) * (wx - px) + (wz - pz) * (wz - pz));
+            if (d > PierHalfWidth * 1.8f)
+                return h;
+            // 가장자리는 물로 흘러내린다 — 수직 벽이면 화면에서 콘크리트 부두가 된다.
+            float w = 1f - Mathf.Clamp01((d - PierHalfWidth) / (PierHalfWidth * 0.8f));
+            return Mathf.Max(h, Mathf.Lerp(h, PierTop, w));
         }
 
         static float CarveRiver(float wx, float wz, float h)

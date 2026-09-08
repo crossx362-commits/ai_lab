@@ -343,6 +343,28 @@ namespace Ulon.Editor
         /// `EnsureFootOnGround`가 발판을 다시 둑 위로 끌어올렸다(실측: 수면 +5.1m인데 게이트 초록불).
         /// 그래서 **실제 하이트맵을 걸어 수면과 만나는 지점**을 찾고, 그 뒤에는 아무도 안 건드리게 한다.
         /// </summary>
+        /// <summary>
+        /// 잔교 조각을 놓아도 되는 자리인가 — **수면 위이고 그 둘레가 평평한가**.
+        /// 둘레를 안 보면 조각이 둑 끝·둑 어깨에 걸쳐 놓여 `SnapRootToGround`가 가장 높은 모서리에
+        /// 맞추고, 발 높이 게이트가 「1.44m 떠 있다」고 문다(실측 2026-09-09).
+        /// </summary>
+        static bool PierFooting(Vector3 p, float reach)
+        {
+            float c = GroundY(p.x, p.z);
+            float worst = 0f;
+            for (int i = 0; i < 4; i++)
+            {
+                float a = i * 90f * Mathf.Deg2Rad;
+                float h = GroundY(p.x + Mathf.Cos(a) * reach, p.z + Mathf.Sin(a) * reach);
+                worst = Mathf.Max(worst, Mathf.Abs(h - c));
+            }
+            bool ok = c >= WorldTerrain.SeaLevel + 0.05f && worst <= 0.15f;
+            Debug.Log("[Ulon] 잔교 자리 (" + p.x.ToString("0.0") + "," + p.z.ToString("0.0") +
+                      ") 지표 " + c.ToString("0.00") + " · 둘레 최대차 " + worst.ToString("0.00") +
+                      " → " + (ok ? "놓음" : "건너뜀"));
+            return ok;
+        }
+
         public static bool EnsureFishingSpotAtWater()
         {
             var go = GameObject.Find("FishingSpot");
@@ -368,6 +390,52 @@ namespace Ulon.Editor
                 Debug.Log("[Ulon] 낚시터를 물가로 옮긴다 — " + go.transform.position.ToString("0.0") + " → " +
                           want.ToString("0.0") + " (수면 " + WorldTerrain.SeaLevel + "m)");
             go.transform.position = want;
+
+            // 잔교 널판 — 지형 둑(`WorldTerrain.RaisePier`) 위에 깔아 「물로 뻗은 나무 다리」로 읽히게.
+            // 조각은 지표에 스냅되므로 둑을 따라 놓기만 하면 된다(띄우지 않는다).
+            // 널판은 **낚시터의 자식으로 두지 않는다** — 뒤에 도는 시설 패스가 낚시터를 다시 지으면
+            // 같이 사라진다(실측: 4장 만들었다는 로그는 남는데 저장된 씬에는 없었다).
+            var pier = GameObject.Find("FishingPier");
+            if (pier != null)
+                UnityEngine.Object.DestroyImmediate(pier);
+            pier = new GameObject("FishingPier");
+            const string PierPlank = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/planks.fbx";
+            const string PierPole = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/poles.fbx";
+            // `want`는 호수 중심에서 걸어 나오다 처음 만난 뭍 = **둑의 끝**이다. 그러니 널판은
+            // `dir`(뭍 쪽)으로 깔아야 둑을 덮는다 — 반대로 깔았더니 물속에 잠겨 보이지 않았다(실측).
+            var away = new Vector3(dir.x, 0f, dir.y);
+            float yaw = Mathf.Atan2(-away.x, -away.z) * Mathf.Rad2Deg;
+            int made = 0, poles = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                var p = want + away * (1.2f + i * 2.2f);
+                // **물 위에는 안 놓는다** — 둑을 벗어난 조각은 호수 바닥에 스냅돼 「1.44m 떠 있다」로
+                // 발 높이 게이트가 문다(실측). 지표가 수면 위인 자리만 쓴다.
+                if (!PierFooting(p, 1.0f))
+                    continue;
+                var plank = Place(PierPlank, new Vector3(p.x, 0f, p.z), new Vector3(0f, yaw, 0f));
+                if (plank == null)
+                    continue;
+                plank.name = "PierPlank" + (i + 1);
+                plank.transform.SetParent(pier.transform, true);
+                made++;
+            }
+            for (int i = 0; i < 2; i++)
+            {
+                // 말뚝은 **널판 옆**에 선다 — 가운데 박으면 잔교 한복판을 막는다(실측 화면).
+                var side = new Vector3(-away.z, 0f, away.x) * 1.4f;
+                var p = want + away * (1.6f + i * 2.8f) + side;   // 한쪽 갓길에 나란히 — 반대쪽은 비탈이라 발이 뜬다
+                if (!PierFooting(p, 0.9f))
+                    continue;
+                var pole = Place(PierPole, new Vector3(p.x, 0f, p.z), new Vector3(0f, yaw, 0f));
+                if (pole == null)
+                    continue;
+                pole.name = "PierPole" + (i + 1);
+                pole.transform.SetParent(pier.transform, true);
+                poles++;
+            }
+            Debug.Log("[Ulon] 잔교 — 널판 " + made + "장·말뚝 " + poles + "개 (둑 끝 " + want.ToString("0.0") +
+                      ", 뭍 방향 " + away.ToString("0.00") + ")");
             return true;
         }
 
