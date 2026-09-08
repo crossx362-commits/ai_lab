@@ -1,66 +1,48 @@
-# SESSION HANDOFF — Ulon 자율 개발루프
+# SESSION HANDOFF — Ulon 자율 개발 루프
 
-## 이 세션의 자리
-- **작업 트리는 `/Users/junholee/ai_lab-loop`**(브랜치 `loop-claude`, 푸시는 `git push origin HEAD:master`).
-  공유 트리 `/Users/junholee/ai_lab`은 **남의 것**이다(Grok·Codex `autodev`). 산출물 경로를 보고할 때는
-  **어느 트리인지**를 같이 적는다.
-- 랩 모양: 읽기 → 하나 만들기 → **내 눈으로 검증**(셀프체크 EXIT=0 **두 번** + QA PNG를 실제로 열어 보기)
-  → 커밋·푸시 → 검수(`local_7b28e464-020e-4be4-905a-270a96c891d7`)에 보고 → 이 파일 갱신.
-- 안건 판정은 대장(`local_07be93d8-1ac7-44a4-8d67-c82f238176a1`). 오너 직행은 셋뿐 —
-  다운로드·되돌릴 수 없는 삭제·돈. 보고 끝에는 항상 **「구조 한 줄」**.
+## 자리
+- 작업 트리 **`/Users/junholee/ai_lab-loop`**, 브랜치 `loop-claude`, 푸시는 `git push origin HEAD:master`.
+- `/Users/junholee/ai_lab`는 **남의 트리**(검수·Grok·Codex `autodev`) — 건드리지 않는다.
+- 보고는 검수 세션 `local_7b28e464-020e-4be4-905a-270a96c891d7`. 안건 판정은 대장
+  `local_07be93d8-1ac7-44a4-8d67-c82f238176a1`. 오너 직행은 셋뿐 — 다운로드·되돌릴 수 없는 삭제·돈.
 
-## 도구
+## 도구 (모두 `projects/ulon`에서)
 ```bash
-cd /Users/junholee/ai_lab-loop/projects/ulon
-pgrep -f "Unity.*-batchmode"                      # 먼저 확인(유니티는 한 프로젝트 한 인스턴스)
-SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # 스크립트 고쳤으면 두 번
-./tools/qa_shots.sh                                # builds/qa/*.png
-./tools/rebuild_client.sh && ./tools/two_client_check.sh
+SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # 편집 뒤 두 판 EXIT=0
+./tools/qa_shots.sh            # builds/qa/*.png — 찍고 **눈으로 본다**
 ```
-- 2클라 하네스 전에 **영속 서비스가 살아 있어야 한다**: `http://127.0.0.1:8777/character/<key>`,
-  cwd `/Users/junholee/ai_lab/projects/ulon`, 데이터 `.../projects/ulon/data`. 빈 응답이면 죽여서 다시 띄운다.
-- **`git add -A` 금지**(경로 명시). add와 commit은 한 호흡. `git add`에 없는 경로를 섞으면 **명령 전체가
-  실패**하고 아무것도 안 올라간다 — 커밋 뒤 `git show --stat`으로 **무엇이 들어갔는지 확인**할 것
-  (2026-09-08 실제로 문서만 올라갔다).
+- 유니티는 프로젝트당 한 인스턴스(`pgrep -f "Unity.*-batchmode"` 먼저).
+- `-nographics`로는 카메라 렌더가 죽는다(SIGSEGV) — 렌더가 필요하면 빼라.
+- 셀프체크는 매 판 `Bootstrap.unity`를 **커밋 상태로 되돌리고** 시작한다(백업 한 벌).
+- **씬은 커밋된 산출물이다** — 배치 코드만 고치면 화면은 안 바뀐다. 재드레싱(`Dress Village`)은
+  랜드마크를 잃고, 전체 재빌드(`Build Visual Slice`)는 쌓인 것을 잃는다. **`Ensure*` 멱등 패스로
+  수렴시켜라**(예: `VisualSliceBuilder.EnsureHouseRoofs`).
+- 유니티가 오염시킨 자산을 되돌릴 땐 **자산 경로만** 지정 — `git checkout -- Assets`는 내 편집도 지운다.
 
 ## 커밋 꼬리
-`bb57cbe3`(2클라 픽스처 결정론·rc=9) → `032667d4` → `44e5149b` → `7e485a23` → `2d8524e0` →
-`1b6f60ea`(rc=9 문 구멍 둘) → `f7d0209e`(보스 물림 양방향 NC·씬 백업 한 벌·크래시 덤프 삭제) →
-`18c614af`(은행 지붕 높이) → **`3e5cedb1`(배우 전수 스윕 + 명단 게이트)**.
+`74023bb6`(랩 A 그림/캡슐) → `b997e5ee`(박공 자리) → `e1e07bed`(지붕 규칙 한 자리·수리 패스·겹침 게이트)
 
-## 방금 닫은 것 (2026-09-08 후반)
-5. **보스 물림 자 양방향 NC**(`f7d0209e`) — 손 밖으로 옮기면 FAIL·몸통 안으로 당기면 FAIL, 되돌리는 것까지.
-6. **회색 큰 판 = 은행 지붕**(`18c614af`) — 폭 5.4m를 시켰더니 높이가 3.3m로 따라 올라갔다. 세로만 눌러 총 3.8m.
-7. **배우 명단 → 전수 스윕**(`3e5cedb1`) — `ActorsToDress()` 하나로 선정 통일(22명), 소스+행동 양방향 NC.
-   **게이트가 빌더 본체를 다시 부르면 안 된다**(QA 샷을 깨뜨렸다 — 원장 참조).
+## 닫힌 것
+보스 그립 양방향 NC · mono_crash 정리 · 은행 지붕 높이/타일링 · 배우 전수 스윕(③) ·
+장비를 자리로 찾기(①) · 랩 A 그림↔캡슐 맞춤 · **민가 지붕 판때기**(검수 발견, 7채 중 7채 수리)
 
-## 앞선 판정 셋 (2026-09-08 전반)
-1. **재현성 결함(무텍스처 618)** — 원인은 소스가 아니라 **도포 시점**. 풀·흙 도포가 마을을 짓는
-   도중에만 돌아, 뒤에 세워지는 던전 돌길 타일이 그 판에서 안 칠해졌다(씬이 매 실행 저장되므로
-   다음 판에서야 초록). `EnsureWorldPropMaterials`로 옮겨 고쳤고, 씬을 커밋 상태로 되돌린 판에서 EXIT=0.
-2. **성능 머티리얼 축** — 자를 「그리는 그림의 가짓수」(셰이더+메인 텍스처+색)로 교체, 양방향 NC
-   (사본 36→36 / 다른 그림 36→37·경보). 렌더러는 별도 축, 마을 기준선 730→852.
-4. **2클라 하네스 꼬리 둘** — 픽스처를 Str 30·HP 50·스킬 0으로 못 박고 타격 수를 유도(1.2s×12).
-   맞는 쪽 대기 5s가 **죽기 전에** HP를 적던 것이 「매 판 HP 6」의 범인이었다(16s로 유도).
-   저장소(8777)가 죽으면 FAIL이 아니라 **rc=9 「못 잼」**. 정상판 PASS·NC rc=5·저장소 내림 rc=9 실측.
-3. **보스 칼끝 매몰** — 그립 점을 축으로 각도만 고친다. BoneWarden −0.28→+0.17m,
-   IronTyrant −1.10→+0.33m, Hexarch −0.76→+0.23m.
-
-## 다음 큐
-1. **①② 장비 이름표·손/모자/방패 뼈 고르기** — ③과 같은 성질의 자리다(이름이 아니라 자리·성질로).
-   `AvatarFor(rootName)` 이름 표도 아직 남아 있다(이제는 폴백이지만 원장이 둘이다).
-3. MegaKit(대장간 모루·화덕 / 절구통)은 오너가 `_ThirdParty/Quaternius/`에 파일을 넣어 줘야 열린다(다운로드는 오너 직행).
+## 다음 (순서)
+1. **랩 ② 뼈 고르기** — `PickShield`는 정확 이름 `"Round_Shield"`, 모자는 substring `"Hat"`
+   (`FitVillagerHat`·`IsHeadgear`). **이름이 아니라 자리·성질**로 바꾸고 양방향 NC + 화면 한 장.
+2. **랩 B — `KitScale = 2.0` 단일 원장**(검수/대장 판정). Game Variant 프리팹 층(§12.2)에서
+   **Kenney 킷 전부**(건물·울타리·가로등·간판·나무·덤불·소품). 지형 제외(실 미터), KayKit 던전 소품 제외.
+   배치 간격·마을 반경·가드존은 상수에서 유도(눈대중 재배치 금지). 게이트는 **문/사람 ≥ 0.85 비율**,
+   NC는 `KitScale=1`이면 빨간불. 같은 랩에서 나무·덤불이 언덕 대비 과대한지도 본다.
+3. **절대 미터 한도를 비율로** — 플레이어가 작아지면서 상대적으로 헐거워졌다.
+   특히 `SliceSelfCheck.BossTraits.cs`의 `WeaponGripDistMax = 0.25f`·`WeaponTipDistMin = 0.50f`.
+4. MegaKit(대장간 모루·화덕 / 절구통)은 오너가 `_ThirdParty/Quaternius/`에 파일을 넣어야 진행
+   (다운로드는 오너 직행).
 
 ## 손대지 말 것
-- `OfflineWorld*`, `NetAvatar.cs`(A 차선), 루트 `docs/SESSION_HANDOFF.md`(검수 것),
-  `.worktrees/herdr-*`·`autodev-*`, `OfflineWorld.Player`(89곳·미배정 — 잡으려면 DEV_INBOX에 한 줄 먼저).
-- 남의 변경은 **되돌리지 않는다**. 충돌 시 상대를 보존, 자동 병합 실패면 `merge --abort`. 강제 푸시 금지.
+`OfflineWorld*`, `NetAvatar.cs`, 루트 `docs/SESSION_HANDOFF.md`(검수 것),
+`.worktrees/herdr-*`·`autodev-*`, `OfflineWorld.Player`.
 
-## 원장 문장(이번 랩)
-- **재는 자가 세계를 바꾸면 그 판의 초록도 빨강도 못 믿는다** — NC를 걸려고 본체를 한 번 더 돌리지 말고,
-  재는 성질을 부작용 없는 함수로 빼라.
-- **게이트가 시켜서 넣은 보정 코드는 게이트와 한 몸이다** — 화면이 틀렸는데 게이트가 초록이면 그 코드부터 의심.
-- **같은 소스에서 트리마다 결과가 다르면 환경 차이가 아니라 재현성 결함이다** — 그리고 그 원인은
-  대개 「무엇을 하느냐」가 아니라 **언제 하느냐**다.
-- **숫자가 상한에 걸리면 상한이 아니라 내역을 먼저 열어라** — 84 중 34개가 같은 그림이었다.
-- **명령이 성공했는지와 내용이 들어갔는지는 다른 질문이다**(`git add` 실패 → 문서만 커밋).
+## 랩 규칙
+읽기 → 하나 만들기 → **내 눈으로 검증**(셀프체크 두 판 EXIT=0 + QA PNG 실제로 보기) →
+커밋·푸시(`git add -A` 금지, 경로 명시, add+commit 한 호흡) → 검수 보고 → 이 파일 갱신.
+보고 끝에 **「구조 한 줄」**(잔재·비대 목록 + 원칙 한 줄).
