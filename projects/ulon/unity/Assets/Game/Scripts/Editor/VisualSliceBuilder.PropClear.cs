@@ -22,6 +22,34 @@ namespace Ulon.Editor
         /// </summary>
         public static void ClearPropsFromBuildings()
         {
+            // 꺼진 건물은 렌더러가 꺼져 있어 **바운드를 못 잰다** — 잠깐 켜서 재고 되돌린다.
+            // (부지 집은 계약 전까지 꺼져 있다. 못 재면 그 자리는 빈 땅으로 보이고 덤불이 그대로 박힌다.)
+            var woken = new List<GameObject>();
+            var everything = UnityEngine.Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < everything.Length; i++)
+            {
+                var go = everything[i];
+                if (go != null && go.scene.IsValid() && !go.activeSelf && IsBuildingObject(go.name))
+                {
+                    go.SetActive(true);
+                    woken.Add(go);
+                }
+            }
+            try
+            {
+                ClearPropsFromBuildingsPass();
+            }
+            finally
+            {
+                for (int i = 0; i < woken.Count; i++)
+                    if (woken[i] != null)
+                        woken[i].SetActive(false);
+                Physics.SyncTransforms();
+            }
+        }
+
+        static void ClearPropsFromBuildingsPass()
+        {
             int removed = 0, moved = 0;
             for (int pass = 0; pass < 4; pass++)
             {
@@ -62,7 +90,11 @@ namespace Ulon.Editor
                 if (!touched)
                     break;
             }
-            Debug.Log("[Ulon] 마을 소품↔건물 정리 — 줄 조각 " + removed + "개 제거 · 소품 " + moved + "개 밀어냄");
+            var p2 = new List<Transform>(); var b2 = new List<Bounds>();
+            var n2 = new List<string>(); var bb2 = new List<Bounds>();
+            SliceSelfCheck.CollectVillage(p2, b2, n2, bb2);
+            Debug.Log("[Ulon] 마을 소품↔건물 정리 — 줄 조각 " + removed + "개 제거 · 소품 " + moved +
+                      "개 밀어냄 (남은 소품 " + p2.Count + "개 · 건물 " + n2.Count + "채: " + string.Join(",", n2) + ")");
         }
 
         /// <summary>
