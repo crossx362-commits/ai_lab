@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Ulon.Shared;
 using UnityEngine;
 
 namespace Ulon.Editor
@@ -39,7 +40,28 @@ namespace Ulon.Editor
             AssertActorRosterFreeBehaviour();
         }
 
-        /// <summary>소스 — 빌더가 이름 명단으로 액터를 고르지 않는가.</summary>
+        /// <summary>
+        /// **옛 이름 명단** — `FixCharacterAnimation`이 2026-09-08까지 손으로 적어 두던 14줄.
+        /// 지우지 않고 남긴다: 스윕이 **누구를 새로 덮었는지**를 이름으로 말하려면 옛 경계가 필요하다.
+        /// 「고르는 대상이 늘었다」는 「그들이 이제 움직인다」가 아니다(검수 조건 2026-09-08) —
+        /// 움직이는지는 `AssertActorsAnimated`가 전수로 따로 잰다.
+        /// </summary>
+        static readonly string[] ActorRosterOldNames =
+        {
+            "Player", "Companion", "Skeleton", "Bandit", "Raider", "Rogue", "Knight",
+            "Acolyte", "Minion", "SkelRogue",
+            Dungeon1.BossObject, Dungeon2.BossObject, Dungeon3.BossObject, FieldBoss.Object,
+        };
+
+        /// <summary>
+        /// 소스 — 빌더가 이름 명단으로 액터를 고르지 않는가.
+        ///
+        /// **이 검사는 보조다.** 문자열 모양(`StripAndAssign(GameObject.Find(`)으로 재므로
+        /// 명단이 다른 모양으로 부활하면(`var go = GameObject.Find("Healer"); StripAndAssign(go);`)
+        /// 그대로 지나간다 — **대상을 모양으로 재는 자**의 한계다(검수 지적 2026-09-08).
+        /// **판정은 행동 NC①이 한다**(명단 밖 새 사람형을 실제로 고르는가). 이 검사는 「스윕이라고
+        /// 써 놓고 안 도는」 반대편 구멍을 막는 겹띠일 뿐이니, 문자열이 초록이라고 안심하지 마라.
+        /// </summary>
         static void AssertActorRosterFreeSource()
         {
             string builderPath = Path.Combine(Application.dataPath, ActorRosterBuilderSource);
@@ -97,6 +119,7 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("배우 명단 NC② 실패 — 몸(CharacterController)을 뗀 " +
                         ActorRosterProbeName + "를 여전히 골랐습니다. 자가 아무나 고르면 빈 통과입니다.");
                 Debug.Log("[Ulon] 배우 명단 NC② 통과 — 몸을 떼자 " + ActorRosterProbeName + "를 안 골랐다");
+                LogActorsOutsideOldRoster();
             }
             finally
             {
@@ -106,6 +129,30 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("탐침이 씬에 남았습니다 — 계측이 세계를 바꿨습니다.");
             if (VisualSliceBuilder.ActorsToDress().Length != before)
                 throw new InvalidOperationException("잰 뒤 배우 수가 달라졌습니다 — 계측이 세계를 바꿨습니다.");
+        }
+
+        /// <summary>옛 명단 밖이던 배우를 **이름으로** 찍는다 — 개수는 남의 것으로도 채워진다.</summary>
+        static void LogActorsOutsideOldRoster()
+        {
+            var picked = VisualSliceBuilder.ActorsToDress();
+            var outside = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < picked.Length; i++)
+            {
+                if (picked[i] == null || picked[i].name == ActorRosterProbeName)
+                    continue;
+                bool known = false;
+                for (int k = 0; k < ActorRosterOldNames.Length; k++)
+                    if (string.Equals(picked[i].name, ActorRosterOldNames[k], StringComparison.Ordinal))
+                        known = true;
+                if (known)
+                    continue;
+                var anim = picked[i].GetComponentInChildren<Animator>(true);
+                outside.Add(picked[i].name + (anim != null && anim.runtimeAnimatorController != null
+                    ? "(컨트롤러 " + anim.runtimeAnimatorController.name + ")"
+                    : "(컨트롤러 없음 — T포즈)"));
+            }
+            Debug.Log("[Ulon] 옛 이름 명단 밖이던 배우 " + outside.Count + "명 — " + string.Join(", ", outside) +
+                      " · 「고른다」와 「움직인다」는 다른 질문이라 움직임은 AssertActorsAnimated가 전수로 잰다");
         }
 
         static bool ActorRosterPicked(GameObject probe)
