@@ -34,6 +34,9 @@ namespace Ulon.Editor
         ///   1) 발이 지표에 있는가(지형을 올린 뒤 y=0에 남아 **땅속에 묻힌** 몹이 6체 있었다),
         ///   2) 한 줄로 서 있지 않은가(옛 「7종 일직선 진열」 반려).
         /// </summary>
+        // **이 자는 절대값으로 둔다**(검수 판정 2026-09-09) — 발이 땅에 닿았는가는 몸 크기와 무관한
+        // 접지 판정이고, 비율로 바꾸면 큰 몹일수록 더 떠도 통과한다. 대신 **매 판 실측 여유를 남긴다**
+        // — 한도만 찍는 로그는 「지금 얼마나 아슬아슬한가」를 안 말해 준다.
         const float FootErrorMax = 0.10f;      // 발끝과 지표의 차
         const float HuntDepthMin = 3.0f;       // z 산포(최대−최소)
 
@@ -41,6 +44,8 @@ namespace Ulon.Editor
         {
             var spots = VisualSliceBuilder.HuntSpots;
             float zMin = float.MaxValue, zMax = float.MinValue;
+            float worstFootErr = 0f;
+            string worstFoot = "없음";
             int n = 0;
             for (int i = 0; i < spots.Length; i++)
             {
@@ -50,6 +55,11 @@ namespace Ulon.Editor
                 var p = go.transform.position;
                 float ground = VisualSliceBuilder.GroundHeightAt(p.x, p.z);
                 float err = p.y - ground;
+                if (Mathf.Abs(err) > worstFootErr)
+                {
+                    worstFootErr = Mathf.Abs(err);
+                    worstFoot = spots[i].Name + " " + err.ToString("+0.00;-0.00") + "m";
+                }
                 if (Mathf.Abs(err) > FootErrorMax)
                     throw new InvalidOperationException("사냥터 몹 " + spots[i].Name + "의 발이 지표에서 " + err.ToString("+0.00;-0.00") +
                         "m 어긋났습니다 — 최대 " + FootErrorMax + "m. " + (err < 0f ? "땅속에 묻혀 화면에 안 보입니다" : "공중에 떠 있습니다") + "(§8.1).");
@@ -58,7 +68,8 @@ namespace Ulon.Editor
                 n++;
             }
             float depth = zMax - zMin;
-            Debug.Log("[Ulon] 사냥터 계측 — 몹 " + n + "체·발 오차 " + FootErrorMax + "m 이내·z 산포 " + depth.ToString("0.0") + "m (하한 " + HuntDepthMin + "m)");
+            Debug.Log("[Ulon] 사냥터 계측 — 몹 " + n + "체·발 오차 최대 " + worstFoot + "(한도 " + FootErrorMax + "m, 여유 " +
+                      (FootErrorMax - worstFootErr).ToString("0.00") + "m)·z 산포 " + depth.ToString("0.0") + "m (하한 " + HuntDepthMin + "m)");
             if (depth < HuntDepthMin)
                 throw new InvalidOperationException("사냥터 몹이 z " + depth.ToString("0.0") + "m 안에 모두 서 있습니다 — 최소 " + HuntDepthMin +
                     "m. 한 줄로 진열된 화면입니다(§8.1).");

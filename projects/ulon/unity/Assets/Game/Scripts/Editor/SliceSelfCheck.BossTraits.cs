@@ -45,11 +45,20 @@ namespace Ulon.Editor
             return any;
         }
 
-        const float WeaponGripDistMax = 0.25f;      // 그립 끝점 ↔ 손 본(손 반경)
-        const float WeaponTipDistMin = 0.50f;       // 날 끝 ↔ 손 본 — 이보다 가까우면 물건을 가운데 쥔 것
-        const float WeaponForearmAngleMax = 60f;    // 무기 장축 ↔ 팔꿈치→손 방향
+        // **미터가 아니라 비율로 잰다**(검수 지시 2026-09-09). 절대 미터는 「사람 1.8m」를 조용히
+        // 전제한다 — 몸이 커지면(보스 2.45~2.65m, 킷 배율 2.1) 같은 0.25m가 다른 뜻이 된다.
+        // 유도: 손 반경 0.25m는 **키 1.8m 사람 기준**이었다 → 0.25/1.8 = 0.139 → 0.14.
+        const float WeaponGripPadRatio = 0.14f;     // 손 반경 ÷ 몸 높이 (옛 0.25m @ 1.8m)
+        // (옛 `WeaponTipDistMin = 0.50f`는 **한 번도 쓰이지 않았다** — 「어느 끝이 손에 있나」를 묻는
+        //  자는 석궁·지팡이에서 틀려서 ㉠㉡㉢ 규칙으로 갈아치웠고, 상수만 남아 있었다. 지웠다.)
+        const float WeaponForearmAngleMax = 60f;    // 무기 장축 ↔ 팔꿈치→손 방향 (각도는 이미 무차원)
         const float GripAboveNeckMax = 0.00f;       // 그립 y ≤ 목(머리 본) y (검수 2026-09-06 관찰)
-        const float CrownAxisOffsetMax = 0.15f;
+        // 유도: 옛 0.15m를 실측 머리 폭(1.05~1.11m)으로 나누면 0.14 — 값은 그대로고 뜻만 몸에 붙는다.
+        // 왕관이 머리 중심에서 벗어나도 되는 한도 — **머리 폭의 비**로 잰다(옛 0.15m 절대값).
+        // 유도: 옛 값은 큰 보스 머리 폭 1.05m에서 잡힌 것이라 0.15/1.05 ≒ 0.14 → 0.15로 물려받는다.
+        // 실측 여유(2026-09-09 네 보스): 본워든 0.00 · 섀도우캡틴 0.00 · 강철폭군 0.00 · 헥사크 0.01 —
+        // 한도까지 10배 여유. 머리 폭 0.50m인 본워든에게도 같은 뜻이 되는 것이 절대값과 다른 점이다.
+        const float CrownAxisOffsetHeadFrac = 0.15f;
         // 검수 2026-09-06 반려 1 — 수평만 재서 수직이 무검사로 남았다.
         const float CrownSitGapMax = 0.03f;         // 왕관 바닥이 정수리 위로 떠도 되는 한도
         const float CrownWidthRatioMax = 1.4f;      // 왕관 지름 ≤ 머리 폭 × 이 값
@@ -193,7 +202,9 @@ namespace Ulon.Editor
                 var along = (tip - grip).normalized;
                 var fore = BossFit.ForearmDir(hand, go.transform);
                 float angle = Vector3.Angle(along, fore);
-                Debug.Log("[Ulon] 보스 무기 그립 " + label + " 손까지 " + gripD.ToString("0.00") + "m·팔뚝 정렬 " + angle.ToString("0") + "° (한도 " + WeaponGripDistMax + "m/" + WeaponForearmAngleMax + "°)");
+                Debug.Log("[Ulon] 보스 무기 그립 " + label + " 손까지 " + gripD.ToString("0.00") + "m·팔뚝 정렬 " + angle.ToString("0") + "° (손 반경 여유 " +
+                          (bodyH * WeaponGripPadRatio).ToString("0.00") + "m = 몸높이 " + bodyH.ToString("0.00") + "×" +
+                          WeaponGripPadRatio + " · 각 한도 " + WeaponForearmAngleMax + "°)");
                 // **「어느 끝이 손에 있나」를 물으면 석궁·지팡이에서 틀린다** — 실측: 섀도우캡틴 석궁의
                 // 바운드 끝은 손에서 1.67m다(석궁은 가운데 개머리를 쥔다). 자를 모양에 안 기대게 바꾼다:
                 //   ㉠ 무기가 **손 슬롯/손뼈 아래**에 달려 있는가(킷이 쥐라고 만든 자리)
@@ -208,7 +219,7 @@ namespace Ulon.Editor
                 if (BoundsOfEnabledWeapon(weaponT, out Bounds wBounds))
                 {
                     var padded = wBounds;
-                    padded.Expand(WeaponGripDistMax);          // 손 반경만큼 봐준다(손이 표면에 걸친 경우)
+                    padded.Expand(bodyH * WeaponGripPadRatio);  // 손 반경만큼 봐준다 — 몸에 비례한다(큰 보스는 손도 크다)
                     Debug.Log("[Ulon] 보스 무기 물림 " + label + " 손이 무기 덩어리 안? " + padded.Contains(hand.position) +
                               " (덩어리 " + wBounds.size.ToString("0.00") + ")");
                     if (!padded.Contains(hand.position))
@@ -285,13 +296,22 @@ namespace Ulon.Editor
             // 왕관 — 수평 축만 재면 결함이 **수직으로** 빠져나간다(검수 반려 1). 정수리 위 부착과 크기를 함께 잰다.
             if (crownT != null)
             {
-                Vector3 axis = go.transform.position + cc.center;
-                float off = new Vector2(crownT.position.x - axis.x, crownT.position.z - axis.z).magnitude;
-                if (off > CrownAxisOffsetMax)
-                    throw new InvalidOperationException(label + " 왕관이 몸 축에서 수평으로 " + off.ToString("0.00") + "m 벗어났습니다 — 최대 " + CrownAxisOffsetMax + "m(§8.1).");
-
-                if (!BossFit.HeadMetrics(go, out float headTopY, out float headW, out Vector3 _))
+                if (!BossFit.HeadMetrics(go, out float headTopY, out float headW, out Vector3 headC))
                     throw new InvalidOperationException(label + " 머리 정점을 못 읽었습니다 — 왕관 부착을 검사할 수 없습니다(§10.2).");
+                // **재는 자와 맞추는 자를 하나로.** 옛 자는 관을 **몸 축**(CharacterController 중심)과 견줬는데
+                // 빌더는 관을 **두개골 중심**(BossFit.HeadMetrics)에 얹는다. 본워든처럼 머리가 몸 축에서
+                // 비켜난 골격에서는 관이 제자리에 얹혀 있어도 0.127m로 읽혔다 — 관이 아니라 **자세**를 잰 것이다.
+                // 이제 빌더가 겨눈 그 점에서 잰다.
+                CrownAxisNegativeControl(label, crownT, headC, headW);
+                float off = new Vector2(crownT.position.x - headC.x, crownT.position.z - headC.z).magnitude;
+                float offMax = headW * CrownAxisOffsetHeadFrac;   // 얼마나 비뚤어도 되는지는 **머리 폭**이 정한다
+                Debug.Log("[Ulon] 보스 왕관 축 " + label + " 두개골 중심에서 " + off.ToString("0.000") + "m · 머리 폭 " +
+                          headW.ToString("0.00") + "m · 비 " + (off / Mathf.Max(0.01f, headW)).ToString("0.00") +
+                          " (한도 ×" + CrownAxisOffsetHeadFrac + ")");
+                if (off > offMax)
+                    throw new InvalidOperationException(label + " 왕관이 두개골 중심에서 수평으로 " + off.ToString("0.00") +
+                        "m 벗어났습니다 — 최대 " + offMax.ToString("0.00") + "m(머리 폭 " + headW.ToString("0.00") +
+                        "m × " + CrownAxisOffsetHeadFrac + ", §8.1).");
                 if (!RenderBounds(crownT, out Bounds cb2))
                     throw new InvalidOperationException(label + " 왕관 렌더러가 없습니다(§10.2).");
                 float gap = cb2.min.y - headTopY;          // +면 공중에 떠 있다
@@ -325,5 +345,30 @@ namespace Ulon.Editor
             }
             return any;
         }
+
+        /// <summary>
+        /// 왕관 축 자의 양방향 NC — 관을 머리 폭만큼 옆으로 밀면 빨간불, 되돌리면 초록.
+        /// 이 자는 빌더가 겨눈 점(두개골 중심)에서 재므로 **갓 구운 씬에서는 늘 0**이다.
+        /// 그래서 「늘 초록인 자」가 아님을 매 판 증명한다 — 나중에 다른 패스가 관을 밀면 잡으라고 둔 자다.
+        /// </summary>
+        static void CrownAxisNegativeControl(string label, Transform crownT, Vector3 headC, float headW)
+        {
+            var keep = crownT.position;
+            bool red;
+            try
+            {
+                crownT.position = keep + new Vector3(headW, 0f, 0f);
+                red = new Vector2(crownT.position.x - headC.x, crownT.position.z - headC.z).magnitude
+                      > headW * CrownAxisOffsetHeadFrac;
+            }
+            finally
+            {
+                crownT.position = keep;
+            }
+            if (!red)
+                throw new InvalidOperationException(label + " 왕관 축 네거티브 컨트롤 실패 — 관을 머리 폭 " +
+                    headW.ToString("0.00") + "m만큼 옆으로 밀었는데 통과했습니다.");
+        }
+
     }
 }

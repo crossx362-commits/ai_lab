@@ -15,7 +15,11 @@ namespace Ulon.Editor
     /// </summary>
     public static partial class SliceSelfCheck
     {
-        /// <summary>바닥 아래로 허용하는 깊이 — 접지 오차(0.05m) 수준. 그 아래는 화면에서 「박혔다」로 읽힌다.</summary>
+        /// <summary>
+        /// 바닥 아래로 허용하는 깊이 — 접지 오차(0.05m) 수준. 그 아래는 화면에서 「박혔다」로 읽힌다.
+        /// **절대값으로 둔다**(검수 판정 2026-09-09): 바닥을 뚫었는가는 몸 크기와 무관하다.
+        /// 대신 **매 판 가장 아슬아슬한 여유**를 요약 줄에 남긴다 — 「0건」만으로는 다가오는 것을 못 본다.
+        /// </summary>
         const float GearBelowFloorMax = 0.05f;
 
         static List<Renderer> WeaponRenderers(Transform actor)
@@ -49,6 +53,8 @@ namespace Ulon.Editor
             if (actors.Count == 0)
                 throw new InvalidOperationException("액터를 한 명도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
             int measured = 0, armed = 0;
+            float worstBelow = float.NegativeInfinity;
+            string worstWho = "없음";
             var offenders = new List<(string Who, string What, float Below)>();
             for (int i = 0; i < actors.Count; i++)
             {
@@ -68,12 +74,18 @@ namespace Ulon.Editor
                     // **통과도 값으로 남긴다** — 「0건」만 찍으면 통과와 미검사가 로그에서 같아 보인다.
                     Debug.Log("[Ulon]   장비 여유 " + actors[i].name + "/" + weapons[k].gameObject.name + " " +
                               (-below).ToString("0.00") + "m");
+                    if (below > worstBelow)
+                    {
+                        worstBelow = below;
+                        worstWho = actors[i].name + "/" + weapons[k].gameObject.name;
+                    }
                     if (below > GearBelowFloorMax)
                         offenders.Add((actors[i].name, weapons[k].gameObject.name, below));
                 }
             }
             Debug.Log("[Ulon] 장비-바닥 — 무장 액터 " + armed + "명, 잰 장비 " + measured + "개, 바닥 아래로 " +
-                      GearBelowFloorMax + "m 넘게 내려간 것 " + offenders.Count + "개");
+                      GearBelowFloorMax + "m 넘게 내려간 것 " + offenders.Count + "개 · 가장 아슬아슬한 것 " +
+                      worstWho + " 여유 " + (measured > 0 ? (GearBelowFloorMax - worstBelow).ToString("0.00") + "m" : "-"));
             if (measured == 0)
                 throw new InvalidOperationException("잰 장비가 0개입니다 — 무기 이름 규칙이 죽었습니다(0이면 실패).");
             for (int i = 0; i < offenders.Count && i < 10; i++)
