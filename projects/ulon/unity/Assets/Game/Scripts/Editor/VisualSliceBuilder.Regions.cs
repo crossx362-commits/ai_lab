@@ -366,13 +366,17 @@ namespace Ulon.Editor
                 }
             }
             float roofY = floors;
+            // 박공(gable-end)은 **용마루가 끝나는 칸**을 지붕 조각 대신 채우는 마감재다 — 지붕 칸과
+            // 같은 방향으로 놓는다. 2026-09-09까지는 용마루 한가운데(x=1.0)에 90°/270°로 돌려 세워
+            // 지붕을 가로지르는 판때기가 됐다(실측: 박공 1.13×1.16×1.12가 z 0.0~1.1·1.05~2.15를 덮어
+            // 네 지붕 조각과 겹침 → `48_person_Healer`의 「한 장짜리 판」).
             for (int z = 0; z < depth; z++)
             {
-                DecorLocal(hp, roof, new Vector3(0.5f, roofY, z + 0.5f), Vector3.zero);
-                DecorLocal(hp, roof, new Vector3(1.5f, roofY, z + 0.5f), new Vector3(0f, 180f, 0f));
+                bool end = z == 0 || z == depth - 1;
+                string piece = end ? gable : roof;
+                DecorLocal(hp, piece, new Vector3(0.5f, roofY, z + 0.5f), Vector3.zero);
+                DecorLocal(hp, piece, new Vector3(1.5f, roofY, z + 0.5f), new Vector3(0f, 180f, 0f));
             }
-            DecorLocal(hp, gable, new Vector3(1f, roofY, 0.5f), new Vector3(0f, 90f, 0f));
-            DecorLocal(hp, gable, new Vector3(1f, roofY, depth - 0.5f), new Vector3(0f, 270f, 0f));
             DecorLocal(hp, chimney, new Vector3(1.65f, roofY, depth - 0.55f), Vector3.zero);
             DecorLocal(hp, Overhang, new Vector3(1.5f, floors, 0.05f), new Vector3(0f, 90f, 0f));
             if (tall)
