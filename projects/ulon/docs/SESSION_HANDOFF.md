@@ -28,6 +28,19 @@ NC `--nc-nohint`: 길드는 그대로 만들어지고 A/B `guildMsg` 둘 다 빈
 - 가져가기는 기존 `loot_right`. 보는 것/가져가기 게이트 분리.
 - Grok Bot 쪽은 중복 구현하지 않음 — Claude 자율개발 세션이 이어서 구현.
 
+## ㉡ 게이트 중복 배선 검출 — **완료**(`1fcdca86`, 2026-09-08)
+`SliceSelfCheck.Wiring.cs` — 실행 목록(`SliceSelfCheck.cs`)의 **인자 없는** `AssertXxx();`를 이름별로 센다.
+인자 있는 호출까지 세면 `AssertHuntSpot("졸병", …)` 같은 **대상마다 부르는 도우미**가 오검출된다(실측).
+NC는 파일을 안 고치고 본문 사본에 한 줄을 복사해 잰다. 실측: 게이트 176종·중복 0, NC 빨간불, EXIT=0 2회.
+
+## ㉠ 「이름으로 고르는 자」 전수 — **목록만 작성**(고치지 않음, 검수 지시)
+약 409곳/67파일. 대부분(≈270)은 **NAME-NECESSARY** — 빌더가 그 이름으로 만들고 다시 찾는 원장 키다.
+바꿀 수 있는 것(우선순위 순): ①`VisualSliceBuilder.Npc.cs` 장비 이름표 ~20곳 → 손뼈 자식(위치)·`GearSlot` 마커
+②`Actors.cs` 손/모자/방패 뼈 고르기 7곳 → `HumanBodyBones` ③`VisualSliceBuilder.cs:54-67` 배우 명단 14곳 →
+`FindObjectsByType<Animator>()`(**새 배우가 조용히 빠진다** — 이름 목록은 모델 늘 때마다 새는 자)
+④`"Dungeon"` 문자열로 실내/실외 판정 3곳(`SliceSelfCheck.OutdoorTone.cs:40`, `Village.cs:255,258`) →
+**조용히 틀릴 확률이 가장 높은 자리**. 전문은 검수 보고에 실었다.
+
 ## 지금 위치
 검수 세션(`local_7b28e464-020e-4be4-905a-270a96c891d7`)이 준 우선순위 큐를 따라 작업한다.
 한 파트가 끝나면 검수에 보고 → QA 지적이 오면 그것을 큐 맨 앞에 넣는다(오너 지시).
