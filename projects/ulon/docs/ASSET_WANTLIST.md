@@ -17,7 +17,31 @@
 | 우물·게시판 | 큐 ② 마을 광장 | 아직 안 감 |
 | 부두 판때기·말뚝 | 큐 ⑤ 물가 | 아직 안 감 |
 
-## 팩 후보 (최소 수로 묶음)
+## A. 확인됨 — **물건 단위로 페이지가 열리는 것**(poly.pizza, 전부 CC0 명시)
+
+단품이면 끝나는 것은 여기서 끝낸다. 각 줄은 **그 물건이 있다는 것이 확인된** 항목이다.
+
+| 물건 | 모델 | 제작자 | URL | 라이선스 | 형식 |
+|---|---|---|---|---|---|
+| 모루 | Workbench Anvil | Kenney | https://poly.pizza/m/bY1pp3kAAb | CC0(페이지 명시) | OBJ/glTF |
+| 대장간(건물) | Blacksmith | Quaternius | https://poly.pizza/m/bV52eTG1Aj | CC0(페이지 명시) | FBX/glTF |
+| 마구간(건물) | Fantasy Stable | Quaternius | https://poly.pizza/m/qhNQSOGGbi | CC0(페이지 명시) | FBX/glTF |
+| 목공소(건물) | Fantasy Sawmill · Sawmill · Sawmill Saw | Quaternius | https://poly.pizza/m/alxTTFjKDM · /m/UTJHANd25O · /m/suqpa3jKWg | Quaternius 업로드(개별 페이지 확인 필요) | FBX/glTF |
+
+## B. 미확인 — **팩(모듈 세트가 필요한 것)**
+
+목차를 공개하지 않는 팩이다. 「그 안에 있다」는 **개연성이지 확인이 아니다** — 받아 봐야 안다.
+
+| 팩 | 노리는 물건 | 출처 URL | 받는 방법 | 라이선스 |
+|---|---|---|---|---|
+| Kenney **Modular Cave Kit** | **갱도 입구**·터널·동굴 벽 40점 | https://kenney.nl/assets/modular-cave-kit | 직접 zip `kenney.nl/media/pages/assets/modular-cave-kit/37ec3cb12d-1783667097/kenney_modular-cave-kit_1.0.zip` (**curl 가능**) | CC0(팩 페이지 명시) |
+| Quaternius **Fantasy Props MegaKit**(이미 승인·파일 대기) | 절구통·화덕·작업대·궤짝 등 200+ | https://quaternius.com/packs/fantasypropsmegakit.html | 사이트 직접 / itch (GitHub 없음) | CC0(팩 페이지 명시) |
+| Quaternius **Medieval Village MegaKit** | 마을 건물 모듈 300+ (A의 단품으로 부족할 때) | https://quaternius.com/packs/medievalvillage.html | 사이트/itch(무료판은 일부만) | CC0(팩 페이지 명시) |
+
+**갱도 입구는 단품으로 못 찾았다** — poly.pizza에서 mine/cave/tunnel entrance를 훑었지만 쓸 만한 단품이 없었다(나온 것은 맨홀 뚜껑·사원 입구·포털 문 따위였다). 그래서 갱도 입구만은 B에 남는다.
+**절구통도 단품은 유료 픽밖에 없었다**(Poly by Google·MilkAndBanana의 mortar and pestle) — CC0 확인 못 함.
+
+## (참고) 원래 팩 후보 표
 
 | 팩 | 덮는 물건 | 출처 URL | 받는 방법 | 라이선스 |
 |---|---|---|---|---|
