@@ -77,7 +77,7 @@ namespace Ulon.Editor
                 var partyInvite = world.TryPartyInvite(body, pal);
                 if (!partyInvite.Applied)
                     throw new InvalidOperationException("길드와 파티는 별개여야 합니다: " + partyInvite.FailReason);
-                if (world.ActiveParty == null)
+                if (body.Party == null)
                     throw new InvalidOperationException("파티가 유지되어야 합니다.");
                 // accept party for avatar
                 var partyAccept = world.TryPartyAccept(pal);
@@ -110,7 +110,7 @@ namespace Ulon.Editor
                 if (string.IsNullOrEmpty(body.GuildId) || body.GuildName != "Ulons")
                     throw new InvalidOperationException("멤버 탈퇴는 리더 길드를 유지해야 합니다.");
                 // party still distinct
-                if (world.ActiveParty == null || !world.ActiveParty.Contains(pal))
+                if (body.Party == null || !body.Party.Contains(pal))
                     throw new InvalidOperationException("길드 탈퇴가 파티를 깨면 안 됩니다.");
 
                 // re-invite and leader leave dissolves
@@ -124,7 +124,7 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("리더 탈퇴는 길드를 해산해야 합니다.");
                 if (world.FindGuild(gid) != null)
                     throw new InvalidOperationException("해산된 길드는 없어야 합니다.");
-                if (world.ActiveParty == null)
+                if (body.Party == null)
                     throw new InvalidOperationException("길드 해산이 파티를 깨면 안 됩니다.");
                 world.TryPartyLeave(body);
             }
@@ -824,14 +824,14 @@ namespace Ulon.Editor
                 var vendorHit = world.TrySpeechKeyword(body, "vendor");
                 if (!vendorHit.Applied)
                     throw new InvalidOperationException("vendor 키워드는 Applied여야 합니다: " + vendorHit.FailReason);
-                if (world.ActiveVendor == null)
+                if (body.ActiveVendor == null)
                     throw new InvalidOperationException("vendor 키워드는 ActiveVendor를 열어야 합니다.");
                 if (world.LastSpeechMessage != "상점")
                     throw new InvalidOperationException("vendor LastSpeechMessage는 상점이어야 합니다.");
                 world.CloseVendor();
 
                 var shopKo = world.TrySpeechKeyword(body, "상점");
-                if (!shopKo.Applied || world.ActiveVendor == null || world.LastSpeechMessage != "상점")
+                if (!shopKo.Applied || body.ActiveVendor == null || world.LastSpeechMessage != "상점")
                     throw new InvalidOperationException("상점 키워드도 vendor 경로여야 합니다.");
                 world.CloseVendor();
 

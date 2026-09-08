@@ -432,12 +432,17 @@ namespace Ulon.Server
         {
             if (looter == null)
                 return false;
-            WorldBody owner = null;
-            if (node != null && !string.IsNullOrEmpty(node.OwnerId))
+            WorldBody owner = node != null ? node.OwnerBody : null;
+            if (owner == null && node != null && !string.IsNullOrEmpty(node.OwnerId))
             {
                 var all = Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
+                // **주인을 찾는 자는 시체에 이름을 적은 자와 같아야 한다**(2026-09-08 실측):
+                // 시체의 `OwnerId`는 `HandleDeath`가 `AccountOf(body)`로 적는다 — 계정이 없으면
+                // 캐릭터 id, 그것도 없으면 프로세스 계정으로 내려간다. 여기서 `AccountId`만 보면
+                // 오프라인 몸(계정 빈 값)의 주인을 **아무도 못 찾아** 파티 잠금이 통째로 풀린다
+                // (셀프체크 「파티 밖은 룻하면 안 됩니다」가 이걸 잡았다).
                 for (int i = 0; i < all.Length; i++)
-                    if (all[i] != null && all[i].AccountId == node.OwnerId)
+                    if (all[i] != null && AccountOf(all[i]) == node.OwnerId)
                     {
                         owner = all[i];
                         break;

@@ -21,6 +21,7 @@ namespace Ulon.Server
             var node = go.AddComponent<CorpseNode>();
             node.CorpseId = System.Guid.NewGuid().ToString("N");
             node.OwnerId = ownerId ?? "";
+            node.OwnerBody = body;
             node.LastKind = string.IsNullOrEmpty(body.DisplayName) ? "시체" : body.DisplayName;
             node.LastX = body.transform.position.x;
             node.LastY = body.transform.position.y;

@@ -758,10 +758,10 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("초대 대상 선정 실패 — 사거리 " +
                         PartyResolve.InviteRange + "m 안에 몸이 있는데 HUD가 쓰는 선정 함수가 아무것도 못 골랐습니다.");
                 var invited = world.TryPartyInvite(body, pal);
-                if (!invited.Applied || world.ActiveParty == null || !world.ActiveParty.Contains(pal))
+                if (!invited.Applied || body.Party == null || !body.Party.Contains(pal))
                     throw new InvalidOperationException("파티 초대 실패: " + invited.FailReason);
                 var said = world.TryPartySay(body, "hi");
-                if (!said.Applied || world.ActiveParty.Chat.Count < 1)
+                if (!said.Applied || body.Party.Chat.Count < 1)
                     throw new InvalidOperationException("파티 채팅 실패");
                 bag.Add("resin", 1);
                 world.HandleDeath(body, "mage-check");
@@ -1681,6 +1681,8 @@ namespace Ulon.Editor
             AssertNobodyInsideStructure();
             AssertOutdoorPropsNotBlackNegativeControl();    // 소품을 새까맣게 칠하면 빨간불인가
             AssertOutdoorPropsNotBlack();                   // 대낮 야외에 검은 덩어리가 없는가
+            AssertDungeonPlaceByPositionNegativeControl();  // 이름을 갈면 그대로, 들판으로 옮기면 빨간불인가
+            AssertDungeonPlaceByPosition();                 // 실내/실외를 이름 아닌 자리로 가르는가(④)
             AssertPropsNotOverlappingNegativeControl();     // 소품 둘을 같은 자리에 놓으면 빨간불인가
             AssertPropsNotOverlapping();                    // 실내 소품이 서로 파고들지 않았는가(§8.2)
             AssertNoDoubleWiredGatesNegativeControl();      // 호출을 한 줄 복사하면 빨간불인가

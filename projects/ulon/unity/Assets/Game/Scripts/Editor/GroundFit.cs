@@ -101,6 +101,62 @@ namespace Ulon.Editor
             return false;
         }
 
+        /// <summary>
+        /// 방 구조물이 퍼져 있는 반경 — 바깥 암반 링이 방 반경 + `RockRingGap`(14m)까지 나간다.
+        /// **레이어로 거르는 판도 재 봤다가 버렸다**: `DungeonBlocker`로 빼자 밝기 게이트의 측정
+        /// 대상이 256개에서 **1개**로 줄었다(마을 소품도 같은 레이어를 쓴다) — 자를 무디게 하는 수리다.
+        /// </summary>
+        public const float DungeonStructureRadius = 24f;
+
+        /// <summary>던전 입구 문틀이 차지하는 자리의 반경(수평) — 입구는 지상이라 `InDungeonRoom`으로는 안 잡힌다.</summary>
+        public const float DungeonEntranceRadius = 8f;
+
+        /// <summary>
+        /// **던전 자리인가 — 이름이 아니라 자리로 판정한다**(검수 우선순위 ④, 2026-09-08).
+        ///
+        /// 예전 판정은 `transform.root.name`에 "Dungeon"이 들어가는지였다. 이름 규약이 바뀌거나
+        /// 누가 뿌리를 갈아 끼우면 **게이트의 제외 조건이 조용히 넓어져 빈 통과가 된다** —
+        /// 같은 계열로 이미 두 번 데었다(접두사로 「Watermill」을 물로 셌던 `GroundFit`, 방 제외 조건).
+        /// 지하 방 안(`InDungeonRoom`)이거나 던전 **입구 자리** 반경 안이면 던전 자리다.
+        /// </summary>
+        public static bool InDungeonPlace(Bounds b)
+        {
+            if (InDungeonRoom(b))
+                return true;
+            // **꼭대기가 지표 아래면 그것은 야외가 아니다** — 자리 하나로 끝나는 잣대다.
+            // 방 중심 반경으로 재 봤더니 계속 새어 나왔다(실측 순서대로: 암반 뚜껑은 방보다 넓어
+            // 12m를 넘었고, 반경을 20m로 키우자 이번엔 **입구↔방을 잇는 통로**가 두 중심 어디에서도
+            // 멀어서 야외로 읽혔다). 반경을 계속 키우는 것은 자를 헐겁게 만드는 일이라 그만뒀다.
+            if (b.max.y <= TerrainY(b.center.x, b.center.z))
+                return true;
+            // 방 구조물은 **경사에서 지표를 살짝 뚫고 나온다** — 실측: 던전 3 남벽 꼭대기 11.2m,
+            // 그 자리 지표 10.9m(방 깊이는 중심 지면 기준이라 경사면에서 0.3~0.5m가 비어져 나온다).
+            // 방 중심 DungeonStructureRadius 안에서 그 정도로 나온 것은 야외 소품이 아니라 방의 일부다.
+            for (int i = 0; i < 3; i++)
+            {
+                float cx = i == 0 ? Dungeon1.InteriorX : i == 1 ? Dungeon2.InteriorX : Dungeon3.InteriorX;
+                float cz = i == 0 ? Dungeon1.InteriorZ : i == 1 ? Dungeon2.InteriorZ : Dungeon3.InteriorZ;
+                float rx = b.center.x - cx, rz = b.center.z - cz;
+                if ((rx * rx) + (rz * rz) > DungeonStructureRadius * DungeonStructureRadius)
+                    continue;
+                if (b.max.y <= TerrainY(b.center.x, b.center.z) + 1f)
+                    return true;
+            }
+            var entrances = new[]
+            {
+                (Dungeon1.EntranceX, Dungeon1.EntranceZ),
+                (Dungeon2.EntranceX, Dungeon2.EntranceZ),
+                (Dungeon3.EntranceX, Dungeon3.EntranceZ),
+            };
+            for (int i = 0; i < entrances.Length; i++)
+            {
+                float dx = b.center.x - entrances[i].Item1, dz = b.center.z - entrances[i].Item2;
+                if ((dx * dx) + (dz * dz) <= DungeonEntranceRadius * DungeonEntranceRadius)
+                    return true;
+            }
+            return false;
+        }
+
         /// <summary>세계만 한 판(바다 수면 등)의 가로폭 하한.</summary>
         public const float WorldScaleSize = 200f;
 

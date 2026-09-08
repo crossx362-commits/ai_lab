@@ -37,13 +37,29 @@ namespace Ulon.Editor
             if (r == null || !OurEnvMaterial(r.sharedMaterial))
                 return false;
             var t = r.transform;
-            if (t.root.name.IndexOf("Dungeon", StringComparison.OrdinalIgnoreCase) >= 0)
+            // **제외 조건을 이름에서 성질로**(검수 우선순위 ④, 2026-09-08): 예전엔 뿌리 이름에
+            // "Dungeon"이 들어가는지로 실내를 뺐다 — 이름을 갈면 이 게이트의 제외가 조용히 넓어져
+            // 빈 통과가 된다. 이 게이트가 재는 것은 「**대낮**에 검은 덩어리인가」이므로,
+            // 실내의 정의도 좌표가 아니라 **하늘이 보이는가**여야 한다(위로 광선을 쏴 막히면 실내).
+            // 좌표(방 중심 반경)로 두 판을 재 봤지만 뚜껑·통로가 계속 새어 나왔고, 반경을 키우는 것은
+            // 자를 헐겁게 만드는 일이라 그만뒀다 — 이 잣대는 방을 옮겨도 따라온다.
+            // 두 성질을 **함께** 본다: 머리 위가 막혔거나(실내), 아예 지표 아래·던전 입구 자리이거나.
+            // 광선 하나로는 **암반 뚜껑**을 못 뺀다 — 뚜껑 위는 지형에 구멍이 뚫려 있어 하늘이 보인다
+            // (실측). 뚜껑은 「지표 아래」로 걸리고, 방 안 소품·벽은 광선으로 걸린다.
+            if (UnderCover(r) || GroundFit.InDungeonPlace(r.bounds))
                 return false;
             if (IsBodyPart(t) || r.GetComponentInParent<CharacterController>() != null)
                 return false;
             if (r.GetComponentInParent<Terrain>() != null)
                 return false;
             return r.bounds.size.y >= 0.4f;
+        }
+
+        /// <summary>머리 위가 막혀 있는가 — 제 바운드 꼭대기 바로 위에서 하늘로 광선을 쏜다.</summary>
+        static bool UnderCover(Renderer r)
+        {
+            var from = new Vector3(r.bounds.center.x, r.bounds.max.y + 0.05f, r.bounds.center.z);
+            return Physics.Raycast(from, Vector3.up, 400f, ~0, QueryTriggerInteraction.Ignore);
         }
 
         static bool OurEnvMaterial(Material m)
@@ -99,7 +115,11 @@ namespace Ulon.Editor
                     tone = EffectiveTone(m);
                     seen[m.name] = tone;
                     if (tone < OutdoorToneMin)
-                        bad.Add(m.name + " " + tone.ToString("0.00") + " (" + GroundFit.NodePath(rends[i].transform) + ")");
+                        // **왜 야외로 봤는지**까지 적는다 — 제외 조건을 성질로 바꾼 뒤로는
+                        // 「이게 왜 야외냐」가 첫 질문이 된다(침묵으로 빼지도, 침묵으로 넣지도 않는다).
+                        bad.Add(m.name + " " + tone.ToString("0.00") + " (" + GroundFit.NodePath(rends[i].transform) +
+                                ", 꼭대기 " + rends[i].bounds.max.y.ToString("0.0") +
+                                " 지표 " + GroundFit.TerrainY(rends[i].bounds.center.x, rends[i].bounds.center.z).ToString("0.0") + ")");
                 }
             }
             if (looked == 0)

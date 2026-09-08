@@ -506,6 +506,7 @@ namespace Ulon.Editor
                 float measured = -1f;
                 bool hasDoorBack = false;
                 bool hasRockFill = false;
+                bool ringSunk = true;
                 float floorSpan = -1f;
                 for (int c = 0; c < room.childCount; c++)
                 {
@@ -513,7 +514,14 @@ namespace Ulon.Editor
                     if (child.name == "DungeonWallDoorBack")
                         hasDoorBack = true;
                     if (child.name.StartsWith("DungeonRockFill", StringComparison.Ordinal))
+                    {
                         hasRockFill = true;
+                        // **있다/없다만 보면 옛 판이 그대로 남는다** — 링을 지표 아래로 내린 뒤에도
+                        // `Ensure*`가 일찍 반환해 씬은 예전 높이였다(2026-09-08). 자리까지 본다.
+                        var fr = child.GetComponent<Renderer>();
+                        if (fr != null && fr.bounds.max.y > GroundFit.TerrainY(fr.bounds.center.x, fr.bounds.center.z))
+                            ringSunk = false;
+                    }
                     if (child.name == "DungeonFloor")
                         floorSpan = child.localScale.x;
                     if (!child.name.StartsWith("DungeonWall", StringComparison.Ordinal) || child.name.StartsWith("DungeonWallDoor", StringComparison.Ordinal))
@@ -523,7 +531,7 @@ namespace Ulon.Editor
                 }
                 bool sizeOk = measured >= 0f && Mathf.Abs(measured - rooms[i].Half) < 0.05f;
                 bool floorOk = Mathf.Abs(floorSpan - (rooms[i].Half * 2f + RockRingGap * 2f + 4f)) < 0.05f;
-                if (sizeOk && hasDoorBack && hasRockFill && floorOk)
+                if (sizeOk && hasDoorBack && hasRockFill && ringSunk && floorOk)
                     continue;
 
                 int removed = 0;
@@ -675,12 +683,17 @@ namespace Ulon.Editor
                 // 거기에 아무것도 없으면 화면 아래가 통째로 검다(검수 2026-09-06 B, 실측 허공 0.18).
                 // 방을 한 겹 더 둘러싸는 **바깥 암반 링**을 두른다. 눈이 어디에 서든 시선 끝에 돌이 있다.
                 // (속을 채운 덩어리는 답이 아니다 — 덩어리 **안**에서 쏜 레이는 아무것도 못 맞는다.)
+                // 링 꼭대기를 **지표 아래로 내린다**(2026-09-08 실측): 예전엔 방 벽과 같은 높이라
+                // 경사면에서 꼭대기가 지표를 0.1~0.7m 뚫고 나왔고, 어두운 던전 텍스처 그대로라
+                // 들판에 검은 턱이 생겼다(성질 기반 밝기 게이트가 이걸 잡았다 — 이름 기반일 땐
+                // 뿌리 이름이 Dungeon이라 통째로 제외돼 **보이지 않던 결함**이다).
+                const float RingSink = 1.4f;
                 float ringR = half + RockRingGap;
                 float ringLen = ringR * 2f + t * 2f;
-                RoomSlab(room, "DungeonRockFillNorth", new Vector3(center.x, y + wallH * 0.5f, center.z + ringR), new Vector3(ringLen, wallH, t), wallMat);
-                RoomSlab(room, "DungeonRockFillSouth", new Vector3(center.x, y + wallH * 0.5f, center.z - ringR), new Vector3(ringLen, wallH, t), wallMat);
-                RoomSlab(room, "DungeonRockFillEast", new Vector3(center.x + ringR, y + wallH * 0.5f, center.z), new Vector3(t, wallH, ringLen), wallMat);
-                RoomSlab(room, "DungeonRockFillWest", new Vector3(center.x - ringR, y + wallH * 0.5f, center.z), new Vector3(t, wallH, ringLen), wallMat);
+                RoomSlab(room, "DungeonRockFillNorth", new Vector3(center.x, y + wallH * 0.5f - RingSink, center.z + ringR), new Vector3(ringLen, wallH, t), wallMat);
+                RoomSlab(room, "DungeonRockFillSouth", new Vector3(center.x, y + wallH * 0.5f - RingSink, center.z - ringR), new Vector3(ringLen, wallH, t), wallMat);
+                RoomSlab(room, "DungeonRockFillEast", new Vector3(center.x + ringR, y + wallH * 0.5f - RingSink, center.z), new Vector3(t, wallH, ringLen), wallMat);
+                RoomSlab(room, "DungeonRockFillWest", new Vector3(center.x - ringR, y + wallH * 0.5f - RingSink, center.z), new Vector3(t, wallH, ringLen), wallMat);
             }
 
             for (int c = 0; c < 4; c++)

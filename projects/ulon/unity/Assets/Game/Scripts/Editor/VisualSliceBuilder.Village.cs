@@ -252,10 +252,15 @@ namespace Ulon.Editor
             if (r == null || r.sharedMaterial == null || !r.sharedMaterial.HasProperty("_MainTex"))
                 return false;
             var tex = r.sharedMaterial.mainTexture;
-            if (tex == null || tex.name.IndexOf("dungeon", StringComparison.OrdinalIgnoreCase) < 0)
+            // **텍스처 이름이 아니라 그 파일이 사는 자리**로 본다 — 이름은 임포터·리네임에 흔들리지만
+            // 「던전 킷 폴더에서 온 텍스처인가」는 자산의 성질이다(검수 우선순위 ④).
+            string texPath = UnityEditor.AssetDatabase.GetAssetPath(tex);
+            if (tex == null || string.IsNullOrEmpty(texPath) ||
+                texPath.IndexOf("/Dungeon/", StringComparison.OrdinalIgnoreCase) < 0)
                 return false;
-            // 던전 뿌리(입구 문틀 포함) 안이면 던전 텍스처가 **맞는 자리**다.
-            return r.transform.root.name.IndexOf("Dungeon", StringComparison.OrdinalIgnoreCase) < 0;
+            // 던전 자리(지하 방·입구 문틀) 안이면 던전 텍스처가 **맞는 자리**다 —
+            // 예전엔 `root.name`에 "Dungeon"이 있는지로 봤고, 그건 이름을 갈면 새는 자였다.
+            return !(GroundFit.WorldBounds(r.transform, out Bounds wb) && GroundFit.InDungeonPlace(wb));
         }
 
         static int PaintSceneByName(Material mat, string[] names)
