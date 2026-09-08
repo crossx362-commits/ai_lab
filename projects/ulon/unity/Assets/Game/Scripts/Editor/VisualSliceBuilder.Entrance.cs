@@ -229,22 +229,43 @@ namespace Ulon.Editor
                 }
             }
             // 지붕·굴뚝 — 지붕이 없으면 위에서 본 화면에서 그냥 벽 네 장이다(§8.2 「문·창·지붕」).
-            var roof = RoomPropObject(bank.transform, "BankRoof", Town + "roof.fbx",
-                new Vector3(at.x, at.y, at.z), 0f, Half * 2f + 0.6f, false);
             // 지붕은 벽 위에 **걸친다** — 딱 붙여 놓으면 실측에서 0.8m 틈이 생겨 쿼터뷰 광선이 그 틈으로
             // 새고(페이드 대상 0개), 화면에서도 지붕이 떠 보였다.
             float wallTop = BankWallHeight(bank);
-            // **폭은 건물에 맞추되 높이는 눌러 준다**(검수 2026-09-08 「던전 입구 뒤 회색 큰 판」).
-            // `RoomPropObject`는 한 배율로 키우므로 폭 5.4m에 맞추면 지붕 높이가 3.3m가 돼
-            // 벽 2.4m + 지붕 3.3m = 5.7m — 옆 민가(약 4m)보다 커서 화면에서 건물이 아니라 판때기로 읽혔다.
-            const float RoofH = 1.4f;   // 벽 2.4m 위에 얹어 총 3.8m — 민가와 같은 눈높이
-            if (roof != null && BoundsOf(roof.transform, true, out Bounds rh) && rh.size.y > 0.001f)
-            {
-                var s = roof.transform.localScale;
-                roof.transform.localScale = new Vector3(s.x, s.y * (RoofH / rh.size.y), s.z);
-            }
-            if (roof != null && BoundsOf(roof.transform, true, out Bounds rb))
-                roof.transform.position += new Vector3(at.x, at.y + wallTop - 0.35f, at.z) - new Vector3(rb.center.x, rb.min.y, rb.center.z);
+            // **한 장을 늘리지 않고 네 장을 깐다**(검수 2026-09-08 P3).
+            //
+            // ①처음엔 지붕 한 장을 건물 폭(5.4m)에 맞췄다 — `RoomPropObject`는 **한 배율**로 키우므로
+            //   높이도 3.3m로 따라 올라가 벽 2.4m와 합쳐 5.7m, 민가(약 4m) 옆에서 회색 판때기였다.
+            // ②그래서 세로만 눌렀더니 높이는 맞았지만 **기울기가 뭉개져** 창고처럼 읽혔다(검수 지적).
+            // ③답은 민가가 이미 쓰는 방식이었다 — 민가(`PlaceHouse`)는 지붕을 **모듈 조각으로 타일링**한다.
+            //   조각을 원 비율 그대로 두고 여러 장 까니 기울기도 높이도 저절로 맞는다.
+            //   **큰 건물에 큰 조각이 아니라, 같은 조각을 더 많이.**
+            const float Tile = Half + 0.3f;             // 한 장이 덮는 폭(겹침 0.3m 포함)
+            float ridgeY = 0f;
+            for (int gx = 0; gx < 2; gx++)
+                for (int gz = 0; gz < 2; gz++)
+                {
+                    // x 두 장이 마주 보며 용마루를 만든다(민가와 같은 yaw 0/180), z로 두 장 잇는다.
+                    var piece = RoomPropObject(bank.transform, "BankRoof" + gx + gz, Town + "roof.fbx",
+                        new Vector3(at.x, at.y, at.z), gx == 0 ? 0f : 180f, Tile, false);
+                    if (piece == null || !BoundsOf(piece.transform, true, out Bounds pb))
+                        continue;
+                    float px = at.x + (gx == 0 ? -1f : 1f) * Tile * 0.5f;
+                    float pz = at.z + (gz == 0 ? -1f : 1f) * Tile * 0.5f;
+                    piece.transform.position += new Vector3(px, at.y + wallTop - 0.2f, pz)
+                                                - new Vector3(pb.center.x, pb.min.y, pb.center.z);
+                    if (BoundsOf(piece.transform, true, out Bounds after))
+                        ridgeY = Mathf.Max(ridgeY, after.max.y - at.y);
+                }
+            // 박공(양 끝 막이)은 **안 붙인다** — 붙여 보니 조각 깊이가 그대로 더해져 건물 z가 8.1m가 됐고,
+            // `GroundFit`이 가로 8m 넘는 것을 「한 물건이 아니라 통」으로 보고 자식으로 내려가 굴뚝이
+            // 「지표에서 3.4m 떠 있다」로 빨간불이 났다(실측). 이 킷의 `roof.fbx`는 한 장이 이미 양 사면을
+            // 가진 조각이라 끝이 뚫리지 않는다 — 민가가 박공을 쓰는 이유는 그쪽 조각이 외사면이기 때문이다.
+            BoundsOf(bank.transform, true, out Bounds bankB);
+            Debug.Log("[Ulon] 은행 지붕 — 조각 " + Tile.ToString("0.0") + "m 네 장, 용마루 높이 " +
+                      ridgeY.ToString("0.00") + "m(벽 " + wallTop.ToString("0.00") + "m 위) · 건물 바운드 " +
+                      bankB.size.x.ToString("0.00") + "×" + bankB.size.z.ToString("0.00") + "×" +
+                      bankB.size.y.ToString("0.00") + "m");
             var chimney = RoomPropObject(bank.transform, "BankChimney", Town + "chimney.fbx",
                 new Vector3(at.x + 1.2f, at.y, at.z + 1.2f), 0f, 1.2f, true);
             if (chimney != null)
