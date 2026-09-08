@@ -135,6 +135,8 @@ namespace Ulon.Client
                 : hpAfter >= hpBefore ? "hp_unchanged"
                 : "effect_missing";   // 피해는 갔는데 불티·소리가 이 화면엔 안 왔다
             Write(outPath, true, status, avatars, true, hpBefore, hpAfter);
+            if (role == "attacker")
+                StoreWriteExperiment(mine);
             Quit();
         }
 
@@ -287,6 +289,42 @@ namespace Ulon.Client
             Debug.Log("[Ulon] 축4 실측 — 검술 " + skSwordBefore.ToString("0.###") + " → " +
                       skSwordAfter.ToString("0.###") + " · 원장 항목 " + skillsSeen +
                       " · 치트가 먹혔나 " + skCheatStuck);
+        }
+
+        /// <summary>
+        /// **격리 실험 — 끊긴 클라가 공유 저장소를 덮는가**(검수 지시 2026-09-08).
+        ///
+        /// 앞선 판에서 저장소 값이 서버 것(`2`)이었던 것은 **동기화가 매 프레임 되돌린 결과**라
+        /// 이 경로를 가른 실험이 아니었다. 그래서 **동기화가 덮을 수 없는 상태**를 만든다:
+        /// 접속을 끊고 → 제 값을 굴리고 → 종료한다(`PersistDriver.OnDestroy → SaveLocal`).
+        /// 판정은 이 프로세스가 아니라 **저장소를 읽는 검사 스크립트**가 한다(json에는 안 남는다 —
+        /// 이 시점엔 이미 json을 썼다). 문이 닫혀 있으면 저장소는 서버 값 그대로여야 한다.
+        /// </summary>
+        static void StoreWriteExperiment(NetAvatar mine)
+        {
+            var body = mine.GetComponent<WorldBody>();
+            // ① **문 두드리기** — 클라가 제 손으로 공유 저장소에 자기 스냅샷을 쓴다(골드 12345).
+            //    이게 통하면 서버가 아는 진실이 덮인다. 문이 닫혀 있으면 저장소는 그대로여야 한다.
+            //    (아래 ②는 종료 경로 실험인데, 실측 결과 `OnDestroy` 시점엔 `OfflineWorld.Instance`가
+            //     이미 null이라 그 경로로는 안 써진다 — 파괴 순서에 기댄 안전이라 문을 따로 달았다.)
+            if (body != null && OfflineWorld.Instance != null)
+            {
+                // 저장 대상은 **검사 전용 계정**이다 — 제 계정(`ds-a`)에 쓰면 잠시 뒤 서버가 접속 종료
+                // 처리로 제 값을 덮어써서, 「막혔다」와 「썼는데 서버가 되돌렸다」가 구별되지 않는다
+                // (실측으로 확인한 함정). 아무도 안 쓰는 자리에 써 봐야 문이 열렸는지 알 수 있다.
+                var snap = CharacterBinder.Capture("storeprobe", body,
+                    OfflineWorld.Instance.SkillsOf(body), OfflineWorld.Instance.StatsOf(body));
+                snap.Gold = 12345;
+                CharacterStore.Save(snap);
+                Debug.Log("[Ulon] 저장소 실험 — 클라가 직접 저장소에 골드 12345를 써 봤다");
+            }
+            var nm = FishNet.InstanceFinder.NetworkManager;
+            if (nm != null)
+                nm.ClientManager.StopConnection();
+            if (body != null)
+                body.Gold = 12345;                       // 끊긴 클라가 제 값을 굴린다
+            Debug.Log("[Ulon] 저장소 실험 — 접속 끊고 골드 " + (body != null ? body.Gold : -1) +
+                      " 로 두고 종료한다(저장소가 이걸 받으면 구멍이다)");
         }
 
         static float skSwordBefore = -1f, skSwordAfter = -1f;

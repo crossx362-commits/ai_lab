@@ -27,8 +27,14 @@ namespace Ulon.Server
                     return false;
                 var nm = FishNet.InstanceFinder.NetworkManager;
                 if (nm == null)
-                    return false;                        // 싱글 플레이(오프라인)는 그대로 제가 정한다
-                return nm.ClientManager.Started && !nm.ServerManager.Started;
+                    return joinedRemote;                 // 싱글 플레이(오프라인)는 그대로 제가 정한다
+                if (nm.ClientManager.Started && !nm.ServerManager.Started)
+                    joinedRemote = true;
+                // **접속이 끊겼다고 다시 제 주인이 되지 않는다**(2026-09-08 실측 지시).
+                // 끊긴 클라는 `ClientManager.Started`가 false라, 이 판정이 「현재 상태」만 보면
+                // 종료 직전에 문이 활짝 열린다 — 그때 `PersistDriver.OnDestroy`가 제 값을
+                // **공유 저장소에 쓴다**. 한 번 남의 세계에 들어갔으면 프로세스가 끝날 때까지 손님이다.
+                return joinedRemote;
             }
         }
 
@@ -39,6 +45,7 @@ namespace Ulon.Server
             WriteAuthority.Refuse = Refuse;
         }
 
+        static bool joinedRemote;
         static float nextLogAt;
 
         /// <summary>거절을 조용히 하지 마라 — 왜 안 바뀌었는지 로그가 없으면 다음 사람이 못 찾는다.</summary>

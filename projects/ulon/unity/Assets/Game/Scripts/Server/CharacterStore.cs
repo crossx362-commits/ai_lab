@@ -103,6 +103,12 @@ namespace Ulon.Server
 
         public static CharacterSnapshot Save(CharacterSnapshot snap)
         {
+            // **저장소로 나가는 문**(2026-09-08 축 ④ 마지막 구멍). 축 ③·④에서 단 문은 「메모리의 값」
+            // 이었고 저장소로 나가는 길은 열려 있었다 — 클라 프로세스가 종료될 때 제 스냅샷을
+            // 공유 저장소에 써서 **서버가 아는 진실을 덮었다**. 문은 부르는 자리마다가 아니라
+            // 여기 하나에 단다(호출부가 여럿이면 하나 막아도 옆으로 샌다).
+            if (EconomyAuthority.Refuse("저장소 쓰기(캐릭터)"))
+                return snap;
             if (snap == null || string.IsNullOrEmpty(snap.AccountId))
                 return snap;
             PackSnap(snap);
@@ -156,6 +162,12 @@ namespace Ulon.Server
 
         public static HouseSnapshot SaveHouse(HouseSnapshot snap)
         {
+            // **저장소로 나가는 문**(2026-09-08 축 ④ 마지막 구멍). 축 ③·④에서 단 문은 「메모리의 값」
+            // 이었고 저장소로 나가는 길은 열려 있었다 — 클라 프로세스가 종료될 때 제 스냅샷을
+            // 공유 저장소에 써서 **서버가 아는 진실을 덮었다**. 문은 부르는 자리마다가 아니라
+            // 여기 하나에 단다(호출부가 여럿이면 하나 막아도 옆으로 샌다).
+            if (EconomyAuthority.Refuse("저장소 쓰기(집)"))
+                return snap;
             if (snap == null || string.IsNullOrEmpty(snap.PlotId))
                 return snap;
             EnsureRunning();
@@ -206,6 +218,12 @@ namespace Ulon.Server
 
         public static StableSnapshot SaveStable(StableSnapshot snap)
         {
+            // **저장소로 나가는 문**(2026-09-08 축 ④ 마지막 구멍). 축 ③·④에서 단 문은 「메모리의 값」
+            // 이었고 저장소로 나가는 길은 열려 있었다 — 클라 프로세스가 종료될 때 제 스냅샷을
+            // 공유 저장소에 써서 **서버가 아는 진실을 덮었다**. 문은 부르는 자리마다가 아니라
+            // 여기 하나에 단다(호출부가 여럿이면 하나 막아도 옆으로 샌다).
+            if (EconomyAuthority.Refuse("저장소 쓰기(마구간)"))
+                return snap;
             if (snap == null || string.IsNullOrEmpty(snap.CharacterId))
                 return snap;
             EnsureRunning();

@@ -21,7 +21,7 @@ def normalize(j):
     # **골드는 「최소 얼마」가 아니라 정확히 32.** 축 ③이 「길드 25 + 붕대 5 = 30을 쓰고 2가 남는다」를
     # 실측하고, 남은 2로는 철검(40)을 못 사는 것으로 치트 거절을 본다 — 여유 골드가 있으면
     # 치트가 성공해도 「원래 살 수 있었다」와 구별이 안 된다(픽스처가 판정을 만든다).
-    j["Gold"] = 32
+    j["Gold"] = 0 if name == "storeprobe" else 32
     # **픽스처는 실행이 읽는 자리를 되돌린다** — 지난 판의 시체가 남아 있어 축 ②에서 무관한
     # 계정의 옛 시체가 화면에 있었다(검수 지적). 시체도 같이 지운다.
     j["CorpseId"] = ""
@@ -35,7 +35,9 @@ def normalize(j):
 
 # `playloop-verify`는 **서버 프로세스 자신의 계정**이다 — 그 계정의 옛 시체가 매 판 되살아나
 # 화면에 남았다. 검사가 세우는 세계에는 지난 판의 잔재가 없어야 한다.
-for name in ("ds-a", "ds-b", "playloop-verify"):
+# `storeprobe`는 **저장소 문을 두드려 보는 전용 계정**이다 — 아무도 안 쓰는 자리라야
+# 「클라가 썼다」와 「서버가 되돌렸다」가 구별된다. 매 판 0으로 되돌린다.
+for name in ("ds-a", "ds-b", "playloop-verify", "storeprobe"):
     # **상태 원장은 파일이 아니라 persist 서비스다**(2026-09-08 실측). 파일만 고쳤을 때는
     # 서버가 HTTP로 옛 유령 상태를 읽어 와 파티 초대가 계속 ghost로 거절됐다 — 원장이 둘이면 갈린다.
     try:
@@ -137,6 +139,15 @@ for i in {1..120}; do
   sleep 0.4
 done
 
+# 클라들이 **완전히 종료할 때까지** 기다린다 — 저장소 오염 판정은 종료 시점 동작이라
+# 프로세스가 살아 있는 동안 읽으면 아무것도 못 본다.
+for i in {1..40}; do
+  if ! kill -0 "$APID" 2>/dev/null && ! kill -0 "$BPID" 2>/dev/null; then
+    break
+  fi
+  sleep 0.5
+done
+
 echo "=== a.json ==="
 cat "$OUT/a.json" 2>/dev/null || echo "(missing)"
 echo
@@ -158,6 +169,15 @@ def alive(x):
     if y is None or g is None:
         return False
     return abs(y - g) <= 1.0 and x.get("status") == "ok"
+
+def store_gold(name):
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:8777/character/" + name, timeout=3) as r:
+            return int(json.loads(r.read().decode("utf-8")).get("Gold", -1))
+    except Exception as e:
+        print("store read failed", e)
+        return -1
 
 def load(p):
     return json.loads(pathlib.Path(p).read_text(encoding="utf-8-sig"))
@@ -217,7 +237,14 @@ ok = (a.get("connected") and b.get("connected")
       and a.get("skMiningAfter", -1) >= 0 and a.get("skMageryAfter", -1) >= 0
       # ④ 치트 — 클라가 제 스킬을 올릴 수 없다.
       and a.get("skCheatStuck") is False and b.get("skCheatStuck") is False
+      # **저장소로 나가는 문**(축 ④ 마지막 구멍): 끊긴 클라가 종료하면서 제 값(12345)을 공유
+      # 저장소에 쓰면 서버가 아는 진실이 덮인다. 저장소가 서버 값(2)을 지키고 있어야 한다.
+      and store_gold("ds-a") == 2
+      # 그리고 **클라가 직접 저장소에 쓰는 길**도 막혔는가 — 검사 전용 계정에 12345를 써 본다.
+      and store_gold("storeprobe") == 0
       and alive(a) and alive(b))
+print("저장소 — ds-a 골드", store_gold("ds-a"), "(서버 값 2) · 클라 직접 쓰기 storeprobe",
+      store_gold("storeprobe"), "(0이어야 한다 — 12345면 문이 열려 있다)")
 print("축4 스킬 — 검술", a.get("skSwordBefore"), "→", a.get("skSwordAfter"),
       "· 원장 항목", a.get("skillsSeen"), "· 채광", a.get("skMiningAfter"),
       "· 마법", a.get("skMageryAfter"), "· 치트 먹힘", a.get("skCheatStuck"))
