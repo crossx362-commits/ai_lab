@@ -30,6 +30,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureBossDressing();
             VisualSliceBuilder.EnsureEntranceClearance();
             VisualSliceBuilder.EnsureWorldRegions();
+            VisualSliceBuilder.EnsureHouseRoofs();   // 커밋된 씬의 민가 지붕도 규칙으로 수렴시킨다(판때기 수리)
             VisualSliceBuilder.EnsureFishSpot();
             VisualSliceBuilder.EnsureNoRolelessWatermill();  // 역할 원장에 없는 장식 물레방아는 지운다(검수 판정)
             VisualSliceBuilder.EnsureCampfire();
@@ -1787,6 +1788,8 @@ namespace Ulon.Editor
             AssertCampfireHasFire();
             AssertRoleLookNegativeControl();
             AssertRoleLook();
+            AssertHouseRoofPiecesDontOverlapNegativeControl();
+            AssertHouseRoofPiecesDontOverlap();
             AssertActorBodyMatchesCapsuleNegativeControl();  // 먼저 자가 우는지 본다
             AssertActorBodyMatchesCapsule();                // 그림이 충돌체와 같은 크기인가(랩 A)
             AssertGearFoundByPlace();                      // 장비를 이름표로만 찾지 않는가(랩 ①, 양방향 NC)

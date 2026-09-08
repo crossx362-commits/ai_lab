@@ -366,10 +366,25 @@ namespace Ulon.Editor
                 }
             }
             float roofY = floors;
-            // 박공(gable-end)은 **용마루가 끝나는 칸**을 지붕 조각 대신 채우는 마감재다 — 지붕 칸과
-            // 같은 방향으로 놓는다. 2026-09-09까지는 용마루 한가운데(x=1.0)에 90°/270°로 돌려 세워
-            // 지붕을 가로지르는 판때기가 됐다(실측: 박공 1.13×1.16×1.12가 z 0.0~1.1·1.05~2.15를 덮어
-            // 네 지붕 조각과 겹침 → `48_person_Healer`의 「한 장짜리 판」).
+            PlaceHouseRoof(hp, roof, gable, roofY, depth);
+            DecorLocal(hp, chimney, new Vector3(1.65f, roofY, depth - 0.55f), Vector3.zero);
+            DecorLocal(hp, Overhang, new Vector3(1.5f, floors, 0.05f), new Vector3(0f, 90f, 0f));
+            if (tall)
+                DecorLocal(hp, Banner, new Vector3(1f, floors + 0.35f, 0.15f), new Vector3(0f, 180f, 0f));
+            SnapRootToGround(root);
+        }
+
+        /// <summary>
+        /// 민가 지붕 한 채를 놓는 **단 하나의 규칙** — 새로 짓는 집(`PlaceHouse`)과 이미 지어진 집을
+        /// 고치는 패스(`EnsureHouseRoofs`)가 같은 함수를 부른다(자가 둘이면 언젠가 갈린다).
+        ///
+        /// 박공(gable-end)은 **용마루가 끝나는 칸**을 지붕 조각 대신 채우는 마감재다 — 지붕 칸과 같은
+        /// 방향으로 놓는다. 2026-09-09까지는 용마루 한가운데(x=1.0)에 90°/270°로 돌려 세워 지붕을
+        /// 가로지르는 판때기가 됐다(실측: 박공 1.13×1.16×1.12가 z 0.0~1.1·1.05~2.15를 덮어 네 지붕
+        /// 조각과 겹침 → `48_person_Healer`의 「한 장짜리 판」).
+        /// </summary>
+        static void PlaceHouseRoof(Transform hp, string roof, string gable, float roofY, int depth)
+        {
             for (int z = 0; z < depth; z++)
             {
                 bool end = z == 0 || z == depth - 1;
@@ -377,11 +392,57 @@ namespace Ulon.Editor
                 DecorLocal(hp, piece, new Vector3(0.5f, roofY, z + 0.5f), Vector3.zero);
                 DecorLocal(hp, piece, new Vector3(1.5f, roofY, z + 0.5f), new Vector3(0f, 180f, 0f));
             }
-            DecorLocal(hp, chimney, new Vector3(1.65f, roofY, depth - 0.55f), Vector3.zero);
-            DecorLocal(hp, Overhang, new Vector3(1.5f, floors, 0.05f), new Vector3(0f, 90f, 0f));
-            if (tall)
-                DecorLocal(hp, Banner, new Vector3(1f, floors + 0.35f, 0.15f), new Vector3(0f, 180f, 0f));
-            SnapRootToGround(root);
+        }
+
+        /// <summary>
+        /// 이미 씬에 박혀 있는 민가의 지붕을 **위 규칙으로 다시 얹는다**(멱등).
+        ///
+        /// 씬은 커밋된 산출물이라, 배치 코드만 고치면 **마을을 통째로 다시 드레싱할 때까지** 화면은
+        /// 그대로다. 그런데 재드레싱은 랜드마크(대장간·잡화)를 잃는 등 부작용이 커서 지붕 하나 고치자고
+        /// 돌릴 것이 못 된다(2026-09-09 실측). 그래서 다른 `Ensure*` 패스처럼 **자기 자리만 고치는**
+        /// 패스로 둔다 — 셀프체크가 매 판 부르므로 커밋된 씬이 무엇이든 지붕은 규칙대로 수렴한다.
+        /// </summary>
+        public static void EnsureHouseRoofs()
+        {
+            const string Town = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/";
+            // 집 목록을 **먼저 다 모으고** 나서 고친다 — 훑는 배열에는 지울 조각들도 들어 있어서,
+            // 훑으면서 지우면 다음 원소가 이미 죽은 참조가 된다(MissingReferenceException, 2026-09-09).
+            var found = new List<Transform>();
+            foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (t.name == "House")
+                    found.Add(t);
+            int fixedHouses = 0, houses = found.Count;
+            for (int hi = 0; hi < found.Count; hi++)
+            {
+                var t = found[hi];
+                var pieces = new List<Transform>();
+                bool high = false, ridgeGable = false;
+                float roofY = 0f, maxZ = 0f;
+                foreach (Transform c in t)
+                {
+                    if (!c.name.StartsWith("roof", StringComparison.Ordinal))
+                        continue;
+                    pieces.Add(c);
+                    high |= c.name.IndexOf("roof-high", StringComparison.Ordinal) >= 0;
+                    roofY = Mathf.Max(roofY, c.localPosition.y);
+                    maxZ = Mathf.Max(maxZ, c.localPosition.z);
+                    // 판때기 증상: 박공이 지붕 칸이 아니라 **용마루(x=1.0)** 위에 서 있다.
+                    if (c.name.IndexOf("gable", StringComparison.Ordinal) >= 0 &&
+                        Mathf.Abs(c.localPosition.x - 1f) < 0.1f)
+                        ridgeGable = true;
+                }
+                if (pieces.Count == 0 || !ridgeGable)
+                    continue;
+                int depth = Mathf.Max(2, Mathf.RoundToInt(maxZ + 0.5f));
+                for (int i = 0; i < pieces.Count; i++)
+                    UnityEngine.Object.DestroyImmediate(pieces[i].gameObject);
+                PlaceHouseRoof(t, Town + (high ? "roof-high.fbx" : "roof.fbx"),
+                    Town + (high ? "roof-high-gable-end.fbx" : "roof-gable-end.fbx"), roofY, depth);
+                fixedHouses++;
+            }
+            if (houses == 0)
+                throw new InvalidOperationException("민가를 한 채도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
+            Debug.Log("[Ulon] 민가 지붕 — " + houses + "채 중 " + fixedHouses + "채의 박공을 용마루에서 끝 칸으로 다시 얹음");
         }
 
         static void ReplaceNamedWithModel(string name, string fbx, System.Action<GameObject> setup)
