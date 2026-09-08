@@ -291,7 +291,7 @@ namespace Ulon.Editor
         public static void EnsureVillageTerrain()
         {
             Directory.CreateDirectory(Path.Combine(Application.dataPath, "Game/Art/Env"));
-            var grass = MakeNoiseMat("KenneyGrass", new Color(0.30f, 0.50f, 0.18f), new Color(0.22f, 0.40f, 0.12f));
+            var grass = KenneyGrassMat();
             var tex = grass != null ? grass.mainTexture as Texture2D : null;
             if (tex == null)
                 tex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Game/Art/Env/KenneyGrass.png");

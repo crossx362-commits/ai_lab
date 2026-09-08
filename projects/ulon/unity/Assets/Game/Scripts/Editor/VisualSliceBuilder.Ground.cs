@@ -203,8 +203,8 @@ namespace Ulon.Editor
         {
             const string Road = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/road.fbx";
             ConfigureProp(Road);
-            var grassA = MakeNoiseMat("KenneyGrass", new Color(0.30f, 0.50f, 0.18f), new Color(0.22f, 0.40f, 0.12f));
-            var dirtMat = MakeNoiseMat("KenneyDirt", new Color(0.52f, 0.38f, 0.24f), new Color(0.4f, 0.28f, 0.16f));
+            var grassA = KenneyGrassMat();
+            var dirtMat = KenneyDirtMat();
             AssignMat("Assets/_ThirdParty/Kenney/Nature/RAW/Models/ground_pathTile.fbx", dirtMat);
             AssignMat("Assets/_ThirdParty/Kenney/Nature/RAW/Models/grass_large.fbx", grassA);
             for (int x = -18; x < 18; x++)
@@ -453,6 +453,20 @@ namespace Ulon.Editor
                 Decor(parent, model, new Vector3(x, 0f, z), new Vector3(0f, along, 0f));
             }
         }
+
+
+        /// <summary>
+        /// **한 이름에 한 색.**(검수 판정 2026-09-08, 재현성 뿌리) `MakeNoiseMat`은 이름으로 PNG를 쓰는데
+        /// `KenneyGrass`를 부르는 자리가 **두 가지 색 쌍**을 넘기고 있었다(0.30/0.50/0.18 대 0.32/0.52/0.20).
+        /// 그래서 매 실행 마지막에 부른 쪽이 파일을 덮어써 `Art/Env/KenneyGrass.png`가 **상시 dirty**였다 —
+        /// 생성물이 소스 자리에서 판마다 흔들리면 「이 판에서만 참」인 초록이 된다.
+        /// 색을 여기 한 자리에 두고 모두가 이것만 부른다(같은 로직이 여러 곳에 살면 재발한다).
+        /// </summary>
+        static Material KenneyGrassMat() =>
+            MakeNoiseMat("KenneyGrass", new Color(0.32f, 0.52f, 0.20f), new Color(0.24f, 0.42f, 0.14f));
+
+        static Material KenneyDirtMat() =>
+            MakeNoiseMat("KenneyDirt", new Color(0.52f, 0.38f, 0.24f), new Color(0.40f, 0.28f, 0.16f));
 
         static Material MakeNoiseMat(string name, Color a, Color b)
         {

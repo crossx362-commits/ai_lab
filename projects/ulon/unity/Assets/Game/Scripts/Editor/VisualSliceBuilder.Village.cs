@@ -134,8 +134,8 @@ namespace Ulon.Editor
 
         static void ApplyVillageMaterials()
         {
-            var grassMat = MakeNoiseMat("KenneyGrass", new Color(0.32f, 0.52f, 0.2f), new Color(0.24f, 0.42f, 0.14f));
-            var dirtMat = MakeNoiseMat("KenneyDirt", new Color(0.52f, 0.38f, 0.24f), new Color(0.4f, 0.28f, 0.16f));
+            var grassMat = KenneyGrassMat();
+            var dirtMat = KenneyDirtMat();
             string[] grassFbx =
             {
                 "Assets/_ThirdParty/Kenney/Nature/RAW/Models/grass_large.fbx",
@@ -211,8 +211,8 @@ namespace Ulon.Editor
             // 그 뒤에 세워진다. 그래서 「이번 판에서 그 물건이 언제 생겼나」에 따라 결과가 갈렸다
             // (같은 소스, 다른 결과 = 재현성 결함이지 환경 차이가 아니다).
             // 바위가 이미 이 함수로 옮겨온 것과 같은 이유다: **소품이 전부 놓인 뒤에 칠한다.**
-            var grassMat = MakeNoiseMat("KenneyGrass", new Color(0.32f, 0.52f, 0.2f), new Color(0.24f, 0.42f, 0.14f));
-            var dirtMat = MakeNoiseMat("KenneyDirt", new Color(0.52f, 0.38f, 0.24f), new Color(0.4f, 0.28f, 0.16f));
+            var grassMat = KenneyGrassMat();
+            var dirtMat = KenneyDirtMat();
             int greens = PaintSceneByName(grassMat, new[] { "grass", "grass_large", "plant_bush", "plant_bushLarge", "ResinBush", "FieldFlax", "grass_leafs", "ground_grass" });
             int dirts = PaintSceneByName(dirtMat, new[] { "rock_smallA", "rock_largeA", "ground_pathTile" });
             Debug.Log("[Ulon] 소품 재질 — 바위 렌더러 " + rocks + "개 암석 도포, 광맥 " + veins + "개 철광 도포, " +
