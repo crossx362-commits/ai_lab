@@ -295,6 +295,8 @@ namespace Ulon.Editor
 
             // 대장간 — 굴뚝(화로의 연기)·통. 저장소에 모루·화로 메시가 없어 **굴뚝으로 대신**했다.
             // 화면에서 「대장간」으로 안 읽히면 그 샷이 곧 오너 안건의 근거다(검수 지시).
+            // 이 오프셋(0.7, 0, 0.5)은 **미터 절대값이라 `WorldScale.Kit`을 따라가지 않는다** —
+            // 배율을 바꾸면 시설만 커지고 부속은 제자리라 여기부터 확인할 것(검수 2026-09-09).
             touched += FacilityPart("Forge", "Chimney", Town + "chimney.fbx", new Vector3(0.7f, 0f, 0.5f), 2.6f, true) ? 1 : 0;
             touched += FacilityPart("Forge", "Barrel", Dg + "barrel_large.obj", new Vector3(-0.8f, 0f, 0.4f), 1.0f, true) ? 1 : 0;
 

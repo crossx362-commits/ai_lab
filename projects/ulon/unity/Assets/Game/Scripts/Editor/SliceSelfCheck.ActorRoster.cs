@@ -31,8 +31,22 @@ namespace Ulon.Editor
     {
         /// <summary>어느 명단에도 없는 이름 — 명단 방식이면 **반드시** 빠지는 자리다.</summary>
         const string ActorRosterProbeName = "SelfcheckRosterProbe";
-        const string ActorRosterBuilderSource = "Game/Scripts/Editor/VisualSliceBuilder.cs";
-        const string ActorRosterSweepSource = "Game/Scripts/Editor/VisualSliceBuilder.World.cs";
+        /// <summary>
+        /// 소스를 읽는 자는 **파일 이름이 아니라 함수로** 찾는다(2026-09-09).
+        /// 옛 자는 `Game/Scripts/Editor/VisualSliceBuilder.cs`를 경로로 열었다 — 그 파일이 6,737줄에서
+        /// partial 11개로 갈라지던 날, 함수가 옆 파일로 옮겨졌으면 자는 **「소스를 못 찾았습니다」로 죽거나
+        /// 더 나쁘게는 빈 통과**가 됐다. 자가 지켜야 하는 성질은 「그 함수가 명단으로 안 고른다」이지
+        /// 「그 함수가 그 파일에 있다」가 아니다. 그래서 에디터 폴더를 훑어 **정의가 있는 파일 하나**를 찾는다.
+        /// 둘 이상이면 판정이 갈리므로 그것도 빨간불이다.
+        /// </summary>
+        const string ActorRosterEditorDir = "Game/Scripts/Editor";
+        const string ActorRosterGateFile = "SliceSelfCheck.ActorRoster.cs";
+        const string ActorRosterBuilderMark = "public static void FixCharacterAnimation()";
+        // 스윕 표시는 **선정 함수의 정의**로 잡는다 — `FindObjectsByType<CharacterController>`는
+        // 12곳에서 쓰이는 흔한 호출이라 그것으로 파일을 특정하면 「12곳에 있다」로 늘 빨간불이다.
+        // 자가 지키는 성질은 「선정 함수가 전수로 훑는다」이므로, 함수를 찾고 **그 안에** 스윕이 있는지 본다.
+        const string ActorRosterSweepMark = "public static GameObject[] ActorsToDress()";
+        const string ActorRosterSweepCall = "FindObjectsByType<CharacterController>";
 
         static void AssertActorRosterFree()
         {
@@ -64,13 +78,10 @@ namespace Ulon.Editor
         /// </summary>
         static void AssertActorRosterFreeSource()
         {
-            string builderPath = Path.Combine(Application.dataPath, ActorRosterBuilderSource);
-            string sweepPath = Path.Combine(Application.dataPath, ActorRosterSweepSource);
-            if (!File.Exists(builderPath) || !File.Exists(sweepPath))
-                throw new InvalidOperationException("빌더 소스를 못 찾았습니다: " + builderPath + " / " + sweepPath +
-                    " — 못 읽은 것을 통과로 적지 않는다.");
+            string builderPath = SoleSourceContaining(ActorRosterBuilderMark);
+            string sweepPath = SoleSourceContaining(ActorRosterSweepMark);
             string src = File.ReadAllText(builderPath);
-            int begin = src.IndexOf("public static void FixCharacterAnimation()", StringComparison.Ordinal);
+            int begin = src.IndexOf(ActorRosterBuilderMark, StringComparison.Ordinal);
             if (begin < 0)
                 throw new InvalidOperationException("FixCharacterAnimation을 소스에서 못 찾았습니다 — 게이트가 빈 통과입니다.");
             int end = src.IndexOf("[MenuItem(", begin, StringComparison.Ordinal);
@@ -81,8 +92,13 @@ namespace Ulon.Editor
                 roster++;
             bool picks = body.Contains("ActorsToDress()");
             // 스윕은 선정 함수 **한 곳**에만 있어야 한다 — 자가 둘이면 또 갈린다.
-            bool sweep = File.ReadAllText(sweepPath).Contains("FindObjectsByType<CharacterController>");
-            Debug.Log("[Ulon] 배우 명단 없음(소스) — 선정 함수 " + (picks ? "사용" : "미사용") +
+            string sweepSrc = File.ReadAllText(sweepPath);
+            int sBegin = sweepSrc.IndexOf(ActorRosterSweepMark, StringComparison.Ordinal);
+            int sEnd = sweepSrc.IndexOf("\n        public ", sBegin + 1, StringComparison.Ordinal);
+            string sweepBody = sEnd > sBegin ? sweepSrc.Substring(sBegin, sEnd - sBegin) : sweepSrc.Substring(sBegin);
+            bool sweep = sweepBody.Contains(ActorRosterSweepCall);
+            Debug.Log("[Ulon] 배우 명단 없음(소스) — " + Path.GetFileName(builderPath) + "·" +
+                      Path.GetFileName(sweepPath) + " · 선정 함수 " + (picks ? "사용" : "미사용") +
                       ", 전수 스윕 " + (sweep ? "있음" : "없음") + ", 이름 명단 " + roster + "줄");
             if (!picks || !sweep || roster > 0)
                 throw new InvalidOperationException("FixCharacterAnimation이 이름 명단으로 액터를 고릅니다(명단 " + roster +
@@ -163,5 +179,39 @@ namespace Ulon.Editor
                     return true;
             return false;
         }
+
+        /// <summary>
+        /// 에디터 소스 폴더에서 그 표시가 **딱 한 파일**에 있는지 찾아 경로를 준다.
+        /// 0개면 자가 빈 통과가 되고, 2개 이상이면 어느 쪽을 재느냐로 판정이 갈린다 — 둘 다 빨간불이다.
+        /// (파일이 갈라져도 자가 따라가게 하는 값싼 방법이자, **못 읽은 것을 통과로 적지 않는** 장치다.)
+        /// </summary>
+        static string SoleSourceContaining(string mark)
+        {
+            string dir = Path.Combine(Application.dataPath, ActorRosterEditorDir);
+            if (!Directory.Exists(dir))
+                throw new InvalidOperationException("에디터 소스 폴더를 못 찾았습니다: " + dir + " — 못 읽은 것을 통과로 적지 않는다.");
+            var hits = new System.Collections.Generic.List<string>();
+            foreach (string f in Directory.GetFiles(dir, "*.cs", SearchOption.AllDirectories))
+            {
+                // **자기 자신은 빼고 센다** — 표시 문자열이 이 파일에 리터럴로 적혀 있으므로,
+                // 안 빼면 「두 곳에 있다」로 늘 빨간불이 난다(자가 자기 그림자를 밟는 자리다).
+                if (Path.GetFileName(f) == ActorRosterGateFile)
+                    continue;
+                if (File.ReadAllText(f).Contains(mark))
+                    hits.Add(f);
+            }
+            if (hits.Count == 0)
+                throw new InvalidOperationException("소스에서 `" + mark + "`를 못 찾았습니다 — 게이트가 빈 통과입니다.");
+            if (hits.Count > 1)
+            {
+                for (int i = 0; i < hits.Count; i++)
+                    hits[i] = Path.GetFileName(hits[i]);
+                hits.Sort(StringComparer.Ordinal);
+                throw new InvalidOperationException("`" + mark + "`가 " + hits.Count + "곳에 있습니다(" +
+                    string.Join(", ", hits) + ") — 자가 어느 쪽을 재느냐로 판정이 갈립니다. 한 곳에 두십시오.");
+            }
+            return hits[0];
+        }
+
     }
 }
