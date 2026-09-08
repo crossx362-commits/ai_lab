@@ -32,7 +32,9 @@ namespace Ulon.Editor
                 return;
             }
             int made = 0;
-            made += ServiceNpc("Healer", KnightFbx, "치유사", new Vector3(1.5f, 0f, 0.9f), ctrl) ? 1 : 0;
+            // 치유사는 **후드 로브**다 — Knight(판금)일 때 「경비로 읽힌다」로 §8.1 불합격이었고,
+            // 식별 축이 청록 틴트 하나뿐이었다(가슴 꽃 문양은 Knight 기본 텍스처라 우리 표식이 아니다).
+            made += ServiceNpc("Healer", RogueHoodedFbx, "치유사", new Vector3(1.5f, 0f, 0.9f), ctrl) ? 1 : 0;
             made += ServiceNpc("Stable", RogueFbx, "마구간지기", new Vector3(1.3f, 0f, -0.9f), ctrl) ? 1 : 0;
             // 표시명이 「은행」·「잡화」라 접미사 규칙엔 안 걸리지만, §18.19가 말하는 마을 서비스는
             // **말을 거는 상대**다(검수: 「은행원·상인이 좌판인 것이 위반의 본체」).
@@ -41,7 +43,7 @@ namespace Ulon.Editor
             made += ServiceNpc("Vendor", RogueFbx, "상인", new Vector3(0f, 0f, -1.6f), ctrl) ? 1 : 0;
             Physics.SyncTransforms();
             Debug.Log("[Ulon] 마을 서비스 NPC — " + made + "명(치유사·마구간지기·은행원·상인). 표시명만 사람이던 자리에 사람을 세운다(§18.19). " +
-                      "저장소 사람 모델이 3종뿐이라 모델은 겹친다(치유사=Knight, 훈련사·은행원=Mage, 마구간지기·상인=Rogue) — 숨기지 않고 적어 둔다.");
+                      "사람 모델 4종(치유사=RogueHooded, 훈련사·은행원=Mage, 마구간지기·상인=Rogue) — 겹치는 짝은 색·든 것으로 가른다.");
         }
 
         /// <summary>

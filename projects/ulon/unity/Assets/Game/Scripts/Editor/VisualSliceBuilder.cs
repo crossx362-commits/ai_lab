@@ -22,6 +22,9 @@ namespace Ulon.Editor
         const string BarbarianFbx = "Assets/_ThirdParty/KayKit/Adventurers/RAW/Characters/Barbarian.fbx";
         const string MageFbx = "Assets/_ThirdParty/KayKit/Adventurers/RAW/Characters/Mage.fbx";
         const string RogueFbx = "Assets/_ThirdParty/KayKit/Adventurers/RAW/Characters/Rogue.fbx";
+        // 후드 로브 — **치유사 전용**(2026-09-08 도입). 판금(Knight)이라 「경비로 읽힌다」던 §8.1
+        // 불합격을 푸는 자리다. 다른 역할에 돌려쓰면 그 식별 축이 다시 무너진다.
+        const string RogueHoodedFbx = "Assets/_ThirdParty/KayKit/Adventurers/RAW/Characters/RogueHooded.fbx";
         const string SkeletonFbx = "Assets/_ThirdParty/KayKit/Skeletons/RAW/Characters/Skeleton_Warrior.fbx";
         const string SkeletonMageFbx = "Assets/_ThirdParty/KayKit/Skeletons/RAW/Characters/Skeleton_Mage.fbx";
         const string SkeletonMinionFbx = "Assets/_ThirdParty/KayKit/Skeletons/RAW/Characters/Skeleton_Minion.fbx";
