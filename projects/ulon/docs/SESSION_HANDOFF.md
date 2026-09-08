@@ -1,7 +1,20 @@
 # SESSION HANDOFF — Ulon (자율개발 루프 세션)
 
+> **⚠️ Grok 세션이 같은 저장소(origin/master)·같은 유니티 프로젝트에서 병행 개발 중**(오너 공지
+> 2026-09-08). 규칙: ①랩 시작 전 `git pull --rebase origin master`, 끝에 add+commit+push 한 호흡
+> ②내가 안 만든 변경·커밋은 Grok 것일 수 있으니 **되돌리거나 「잔재」로 정리하지 마라**(의심되면
+> 대장에 파일 경로만) ③충돌 시 **상대 변경 보존 우선**, 자동 병합 실패면 즉시 `merge --abort`
+> ④force-push 금지 ⑤차선 협상은 `docs/DEV_INBOX.md`. **유니티는 프로젝트 하나를 두 인스턴스가
+> 못 연다** — `slice_selfcheck.sh`/`qa_shots.sh`/`rebuild_client.sh` 전에 `pgrep -f "Unity.*-batchmode"`.
+
 > 지금까지 슬라이스에 들어간 기능 전량은 `SliceSelfCheck` PASS 로그 한 줄에 나열돼 있다
 > (`unity/Logs/selfcheck_dev.log`의 "Slice self-check PASS —" 줄). 여기엔 **현재 상태와 다음 단계만** 둔다.
+
+
+## 오너 판정 잠금 (2026-09-08, 봇관리 전달)
+- **시체 내용물 가시성 = 가까이 온 사람 전부(②).** 보는 건 근접 전원·서버 열람 Rpc 응답으로만·방송 금지.
+- 가져가기는 기존 `loot_right`. 보는 것/가져가기 게이트 분리.
+- Grok Bot 쪽은 중복 구현하지 않음 — Claude 자율개발 세션이 이어서 구현.
 
 ## 지금 위치
 검수 세션(`local_7b28e464-020e-4be4-905a-270a96c891d7`)이 준 우선순위 큐를 따라 작업한다.
@@ -81,6 +94,16 @@ c472d0e6(물레방아 삭제·지하 제외를 자리로), 5e47eef2(낚시터 �
   내 시체/남의 시체가 화면에서 구별되는지 한 줄 확인) → ④위치 권위 보류.
 - **전역 상태 전수 근거 실측**: 길드 창설 뒤 **클라의 `LastGuildMessage`가 양쪽 다 빈 문자열**이다
   (길드는 만들어졌는데 안내는 안 온다) — 안내 문구 27개가 서버에만 채워지는 것을 실측으로 확정.
+- **전역 상태 기록(검수 판정으로 「기록만」)**:
+  · C — `TradeView`/`PartyView`/`GuildView`는 각 클라가 자기 것 하나만 봐서 지금은 성립한다.
+    다만 **「한 번에 한 창」이 코드 전제로 박혀 있다** — 거래창을 여럿 열려는 날 여기서 걸린다.
+  · E — **호스트에서 돌리면 `ActionVfx.Played`가 남의 효과까지 센다.** 지금은 클라가 분리돼 무해하지만
+    **호스트 모드가 생기는 날 이 게이트는 거짓 통과가 된다**(미래의 우리가 이 자리를 못 찾으면 그 자를 믿는다).
+- **A 이사 대상 읽는 자리 전수(검수 요청, 착수 전 목록)**: `Player` 읽기 **89곳**(SliceHud 52 ·
+  HudShots 13 · PersistDriver 8 · OfflineWorld 8 · PlayLoopCheck 3 · NetAvatar 2 · Death/Combat/IdleCheck 각 1),
+  쓰기 2곳(`OfflineWorld.cs:189`·`:378`). `PlayerSkills` 1곳·`PlayerStats` 2곳(전부 SliceHud).
+  `Selected` 읽기 **33곳**(SliceHud 15 · NetAvatar 11 · Combat 2 · Magery 3 · Stealth 1 · LocalAvatar 1),
+  쓰기 10곳(`Select()` 본체 1 · 내부 해제 5 · 호출 4).
 - **다음 랩은 검수가 줄 세운다**(축 끝). 남은 것: 위치 권위(`_clientAuthoritative`) · 시체 내용물 ·
   **전역 하나로 들고 있는 상태 전수**(`ActiveVendor`·`Selected` 등, 검수 판정으로 지금 고치지 않음) ·
   `VisualSliceBuilder` 추가 정리 · 에셋 팩.
