@@ -79,12 +79,23 @@ SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh   # �
 `CreateBootstrapScene`에 각각) — `EnsureWorldAtmosphere()` 한 곳으로 모으고 상수는 `VisualSliceBuilder.World.cs`
 머리에 원장으로 뒀다. 게이트는 픽셀이 아니라 **원장 일치**를 잰다(`SliceSelfCheck.Atmosphere.cs`, 양방향 NC).
 
+### 시설 부속·해 씨앗 (검수 지시 2026-09-09, 푸시 완료)
+- **부속을 Kit에 태우는 것은 틀린 수리였다**: `Module(offset)`로 바꿨더니 부두 낚싯대가 2.1배로
+  밀려 물 위로 나가 발-지표 게이트가 울었다(-0.27m). 조각 크기도 조각끼리의 배치(모닥불 돌 ±0.55m)도
+  전부 절대 미터라 **자리만 배율에 태우면 한 덩이가 흩어진다.** 지켜야 할 성질은
+  「부속은 몸통 밖에 선다」였다 → `PushClearOfHost`(파고들면 원래 오프셋 쪽으로 비켜세움,
+  무는 기준은 `PropOverlapFrac` 재사용, 방향별 물린 길이는 `SliceSelfCheck.Overlap2D`).
+  실측 5개가 비켜섰다(목공소 널판 0.63m·기둥 0.13m·계단 0.29m, 절구통 0.19m, 마구간 울타리 0.15m).
+- **해 씨앗 제거**: `CreateBootstrapScene`에 남아 있던 `FindAnyObjectByType<Light>()`와 밝기 1.05.
+  해 원장(`SunColor`/`SunIntensity`/`SunEuler`)과 `EnsureSun()`으로 두 호출부가 같은 것을 부른다.
+
 ## 다음 (순서)
-1. `FacilityPart` 오프셋을 `WorldScale.Kit`에 태우기(주석은 이미 달렸다 — 다음 배율 변경 전에).
-2. 물림 자(`PropOverlapFrac`)를 보스 밖 **일반 배우**까지.
-3. 문 개구부 정면에는 소품이 서지 않는다.
-4. MegaKit이 도착하면(오너 다운로드, `_ThirdParty/Quaternius/`) 그쪽이 최우선.
+1. 물림 자(`PropOverlapFrac`)를 보스 밖 **일반 배우**까지.
+2. 문 개구부 정면에는 소품이 서지 않는다.
+3. MegaKit이 도착하면(오너 다운로드, `_ThirdParty/Quaternius/`) 그쪽이 최우선.
    콜라이더 자는 **여전히 만들지 말 것** — 박혀 보이는 사례가 나오면 그때.
+4. 곁가지(급하지 않음): `FacilityCloseUp` 자동 방위가 또 이웃 처마 안쪽을 골랐다(`30_forge`) —
+   판정 대상이 안 찍히는 샷이다. 그 샷으로 판정할 일이 생기면 `Free` 좌표로 바꿔라.
 
 ## 손대지 말 것
 `OfflineWorld*`, `NetAvatar.cs`, 루트 `docs/SESSION_HANDOFF.md`(검수 것),
