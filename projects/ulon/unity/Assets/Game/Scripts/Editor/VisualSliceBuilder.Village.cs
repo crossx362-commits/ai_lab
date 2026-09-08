@@ -401,6 +401,39 @@ namespace Ulon.Editor
             AssertHousesOnGround();
         }
 
+        /// <summary>
+        /// 마을 랜드마크가 **없으면 만든다**(멱등).
+        ///
+        /// 첫 드레싱은 킷이 뿌려 둔 오브젝트(`stall`·`fountain-round`·`plant_bushLarge`)를 **이름만 바꿔**
+        /// 랜드마크로 썼다. 그래서 마을을 **두 번째로 드레싱하면 재료가 없다** — 2026-09-09에 실제로
+        /// `Forge`→`Vendor` 순으로 사라져 게이트가 「마을 랜드마크가 있어야 합니다」로 멈췄고,
+        /// 지붕 한 곳을 고치려던 랩이 마을을 다시 굽지 못해 막혔다.
+        /// 「고치는 자를 고치는 랩이 세계를 고치는 랩보다 먼저」다 — 다시 굽는 도구가 한 번만 도는 도구면
+        /// 그 도구로 세운 세계는 손댈 수 없다.
+        /// </summary>
+        static GameObject EnsureLandmarkObject(string name, string modelPath, string legacyName, Vector3 pos, Vector3 euler)
+        {
+            var go = GameObject.Find(name);
+            if (go == null && !string.IsNullOrEmpty(legacyName))
+            {
+                go = GameObject.Find(legacyName);          // 옛 방식: 킷이 놓아 둔 물건을 이름만 바꿔 쓴다
+                if (go != null)
+                    go.name = name;
+            }
+            if (go == null)
+            {
+                go = Place(modelPath, pos, euler);          // 재료가 없으면 **만든다** — 두 번째 판을 위해
+                if (go == null)
+                    throw new InvalidOperationException("랜드마크 모델이 없습니다: " + modelPath);
+                go.name = name;
+                Debug.Log("[Ulon] 마을 랜드마크 " + name + " 새로 세움 — 재드레싱에도 남는다");
+            }
+            go.transform.SetPositionAndRotation(OnGround(new Vector3(pos.x, 0f, pos.z)) + Vector3.up * pos.y,
+                Quaternion.Euler(0f, euler.y, 0f));
+            SnapRootToGround(go);
+            return go;
+        }
+
         static void PlaceLandmarks()
         {
             MoveNamed("Player", new Vector3(0f, 0f, 0f), Vector3.zero);
@@ -418,32 +451,28 @@ namespace Ulon.Editor
             MoveNamed("SkelRogue", new Vector3(10.2f, 0f, 16.2f), new Vector3(0f, 150f, 0f));
             EnsureFieldBoss();
             MoveNamed("Banker", new Vector3(-10.5f, 0f, 8.5f), Vector3.zero);
-            MoveNamed("Forge", new Vector3(-6.8f, 0f, 3.4f), new Vector3(0f, 90f, 0f));
+            var forgeGo = EnsureLandmarkObject("Forge", "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall.fbx", null,
+                new Vector3(-6.8f, 0f, 3.4f), new Vector3(0f, 90f, 0f));
+            var cs = forgeGo.GetComponent<CraftStation>() ?? forgeGo.AddComponent<CraftStation>();
+            cs.RecipeId = "iron_sword";
+            cs.DisplayName = "대장간";
+            EnsureCollider(forgeGo);
             EnsureCarpenterLandmark();
-            MoveNamed("Vendor", new Vector3(-5.2f, 0f, 3.4f), new Vector3(0f, 90f, 0f));
-            MoveNamed("stall", new Vector3(-5.2f, 0f, 3.4f), new Vector3(0f, 90f, 0f));
-            var stall = GameObject.Find("stall");
-            if (stall != null)
-                stall.name = "Vendor";
-            var vendorGo = GameObject.Find("Vendor");
-            if (vendorGo != null)
-            {
-                var vs = vendorGo.GetComponent<VendorStation>() ?? vendorGo.AddComponent<VendorStation>();
-                vs.DisplayName = "잡화";
-                EnsureCollider(vendorGo);
-            }
-            MoveNamed("Healer", new Vector3(-3.6f, 0f, -3.6f), Vector3.zero);
-            MoveNamed("fountain-round", new Vector3(-3.6f, 0f, -3.6f), Vector3.zero);
-            var healer = GameObject.Find("fountain-round");
-            if (healer != null)
-                healer.name = "Healer";
-            MoveNamed("IronVein", new Vector3(9.8f, 0f, -3.4f), Vector3.zero);
+            var vendorGo = EnsureLandmarkObject("Vendor", "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall.fbx", "stall",
+                new Vector3(-5.2f, 0f, 3.4f), new Vector3(0f, 90f, 0f));
+            var vs = vendorGo.GetComponent<VendorStation>() ?? vendorGo.AddComponent<VendorStation>();
+            vs.DisplayName = "잡화";
+            EnsureCollider(vendorGo);
+            EnsureLandmarkObject("Healer", "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/fountain-round.fbx", "fountain-round",
+                new Vector3(-3.6f, 0f, -3.6f), Vector3.zero);
+            var ironGo = EnsureLandmarkObject("IronVein", "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-large.fbx", null,
+                new Vector3(9.8f, 0f, -3.4f), Vector3.zero);
+            var ironNode = ironGo.GetComponent<ResourceNode>() ?? ironGo.AddComponent<ResourceNode>();
+            ironNode.ResourceId = "iron_ore";
+            ironNode.DisplayName = "철 광맥";
             MoveNamed("OakTree", new Vector3(12f, 0f, 12.5f), Vector3.zero);
-            MoveNamed("ResinBush", new Vector3(4.6f, 0f, -3.6f), Vector3.zero);
-            MoveNamed("plant_bushLarge", new Vector3(4.6f, 0f, -3.6f), Vector3.zero);
-            var bush = GameObject.Find("plant_bushLarge");
-            if (bush != null)
-                bush.name = "ResinBush";
+            EnsureLandmarkObject("ResinBush", "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bushLarge.fbx",
+                "plant_bushLarge", new Vector3(4.6f, 0f, -3.6f), Vector3.zero);
             MoveNamed("cart", new Vector3(-7.4f, 0f, 6.4f), Vector3.zero);
             MoveNamed("SpawnA", new Vector3(-1.2f, 0f, 1.4f), Vector3.zero);
             MoveNamed("SpawnB", new Vector3(1.2f, 0f, 1.4f), Vector3.zero);

@@ -77,10 +77,25 @@ namespace Ulon.Editor
 
         public static void EnsureHousingPlot()
         {
+            // **「루트가 있으니 됐다」는 두 번째 판에서 거짓말이 된다**(2026-09-09 실측).
+            // 마을을 다시 드레싱하면 부지 안 물건이 프리팹 이름(`Poles`)으로 되돌아가고 기능 컴포넌트가
+            // 떨어져 나가는데, 이 이른 반환이 그 상태를 그대로 통과시켜 게이트가 「HousePlotStation이
+            // 있어야 합니다」로 멈췄다. 그래서 **이름이 아니라 기능으로** 성한지 보고, 성하면 이름만
+            // 바로잡고, 상하면 헐고 다시 짓는다 — 다른 `Ensure*`와 같은 수렴 규칙이다.
             if (GameObject.Find(HousingPlot.RootObject) != null)
             {
-                EnsureHouseVendor();
-                return;
+                var liveStation = UnityEngine.Object.FindFirstObjectByType<HousePlotStation>(FindObjectsInactive.Include);
+                var liveChest = UnityEngine.Object.FindFirstObjectByType<HouseChest>(FindObjectsInactive.Include);
+                if (liveStation != null && liveChest != null)
+                {
+                    liveStation.gameObject.name = HousingPlot.StationObject;
+                    liveChest.gameObject.name = HousingPlot.ChestObject;
+                    EnsureHouseVendor();
+                    return;
+                }
+                Debug.Log("[Ulon] 주택 부지 재건 — 기능(" +
+                          (liveStation == null ? "부지 표지 없음" : "부지 표지 있음") + "·" +
+                          (liveChest == null ? "상자 없음" : "상자 있음") + ")이 빠져 헐고 다시 짓는다");
             }
             const string Fence = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/fence.fbx";
             const string Poles = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/poles.fbx";

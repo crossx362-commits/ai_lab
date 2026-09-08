@@ -179,8 +179,11 @@ namespace Ulon.Editor
             if (IsFenceModel(fbxPath))
                 BakeFenceUpright(visual);
             SnapVisualFeet(root, visual);
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) != null)
-                AssetDatabase.DeleteAsset(prefabPath);
+            // **지우고 새로 만들면 씬에 있던 인스턴스가 끊긴다** — 프리팹 자산을 지우는 순간 그것을 쓰던
+            // 씬 오브젝트는 연결이 끊겨 이름이 프리팹 이름으로 돌아가고 붙여 둔 기능 컴포넌트를 잃는다.
+            // 마을을 두 번째로 드레싱할 때 `Forge`·`Vendor`·`Healer`·주택 부지 표지·기사가 차례로
+            // 사라진 원인이 이 한 줄이었다(2026-09-09 실측 — 게이트가 넷을 차례로 잡았다).
+            // 같은 경로에 그대로 덮어쓰면 GUID가 유지되어 인스턴스가 살아 있는 채 내용만 갱신된다.
             PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             UnityEngine.Object.DestroyImmediate(root);
             return prefabPath;
@@ -561,8 +564,11 @@ namespace Ulon.Editor
                     anim.avatar = src.avatar;
             }
             SnapVisualFeet(root, visual);
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) != null)
-                AssetDatabase.DeleteAsset(prefabPath);
+            // **지우고 새로 만들면 씬에 있던 인스턴스가 끊긴다** — 프리팹 자산을 지우는 순간 그것을 쓰던
+            // 씬 오브젝트는 연결이 끊겨 이름이 프리팹 이름으로 돌아가고 붙여 둔 기능 컴포넌트를 잃는다.
+            // 마을을 두 번째로 드레싱할 때 `Forge`·`Vendor`·`Healer`·주택 부지 표지·기사가 차례로
+            // 사라진 원인이 이 한 줄이었다(2026-09-09 실측 — 게이트가 넷을 차례로 잡았다).
+            // 같은 경로에 그대로 덮어쓰면 GUID가 유지되어 인스턴스가 살아 있는 채 내용만 갱신된다.
             PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             UnityEngine.Object.DestroyImmediate(root);
             return prefabPath;
