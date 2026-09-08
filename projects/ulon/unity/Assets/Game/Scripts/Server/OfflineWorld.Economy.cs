@@ -230,7 +230,8 @@ namespace Ulon.Server
         }
 
 
-        static string AccountOf(WorldBody body)
+        /// <summary>이 몸이 누구 것인가 — **계정 원장은 여기 하나뿐이다**(시체·집·거래가 같이 쓴다).</summary>
+        internal static string AccountOf(WorldBody body)
         {
             if (body != null && !string.IsNullOrEmpty(body.AccountId))
                 return body.AccountId;

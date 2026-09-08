@@ -9,9 +9,24 @@ namespace Ulon.Client
     public sealed class NetAvatar : NetworkBehaviour
     {
         readonly SyncVar<float> skill = new SyncVar<float>();
+        // **축 ② — 체력·사망/유령을 서버가 말한다**(오너 결정 (C) 단계 도입, 2026-09-08).
+        //
+        // 왜 필요한가: `WorldBody`는 `NetworkBehaviour`가 아니라 평범한 MonoBehaviour라
+        // Hp·Ghost가 그냥 필드였고, HUD는 **클라의 로컬 값**을 그렸다. 실측에서 서버가 「유령이라
+        // 거절」하는 동안 클라 화면은 `HP 0 · 유령 False`였다 — 죽어도 유령 화면이 안 뜨고
+        // 부활 안내도 안 떴다는 뜻이다(`docs/NETWORK_STATE_AUDIT.md`).
+        //
+        // 방향은 하나뿐이다: **서버가 쓰고 클라는 받아 적는다.** 클라가 자기 값으로 되돌리면
+        // 그건 「절반만 서버 권위」이고 지금보다 나쁘다(검수 판정).
+        readonly SyncVar<float> hp = new SyncVar<float>();
+        readonly SyncVar<float> maxHp = new SyncVar<float>();
+        readonly SyncVar<bool> ghost = new SyncVar<bool>();
         string accountId;
 
         public float SwordSkill => skill.Value;
+        public float ServerHp => hp.Value;
+        public float ServerMaxHp => maxHp.Value;
+        public bool ServerGhost => ghost.Value;
 
         public override void OnStartClient()
         {
@@ -31,6 +46,79 @@ namespace Ulon.Client
             var body = GetComponent<WorldBody>();
             OfflineWorld.Instance?.SetLocalPlayer(body);
             RpcBind(PersistDriver.AccountKey());
+        }
+
+        void Update()
+        {
+            var body = GetComponent<WorldBody>();
+            if (body == null)
+                return;
+            if (IsServerInitialized)
+            {
+                // 서버가 원장이다 — 몸의 값을 그대로 싣는다. SyncVar는 값이 바뀔 때만 나간다.
+                // NC 스위치가 켜져 있으면 **싣지 않는다** — 동기화 경로를 실제로 끊어 놓고
+                // 검사가 빨간불인지 본다(게이트를 끄는 NC는 아무것도 증명하지 않는다).
+                if (!Cli.Has("-ulon-nc-nosync"))
+                {
+                    hp.Value = body.Hp;
+                    maxHp.Value = body.MaxHp;
+                    ghost.Value = body.Ghost;
+                    PublishCorpse();
+                }
+                return;
+            }
+            // 클라는 받아 적기만 한다. 여기서 로컬 시뮬레이션이 덮어써도 다음 프레임에 되돌아온다 —
+            // 화면이 흔들리면 그건 클라가 아직 자기 세계를 돌리고 있다는 신호다(축 ②의 반쪽).
+            // **서버가 아직 한 번도 내보내지 않았으면 덮지 않는다.** SyncVar 초기값은 0이라, 그대로
+        // 쓰면 접속 직후 몇 프레임 동안 **모든 아바타가 HP 0**이 되고 그 사이에 파티·길드 초대가
+        // 「죽은 사람」으로 거절된다(실측: 이 가드가 없어 파티 0명·길드 1명으로 무너졌다).
+            if (maxHp.Value <= 0f)
+                return;
+            body.ApplyNetworkState(hp.Value, maxHp.Value, ghost.Value);
+        }
+
+        /// <summary>서버가 마지막으로 알린 시체 자리 — 바뀔 때만 방송한다(매 프레임 Rpc 금지).</summary>
+        string corpseSent = "";
+
+        /// <summary>
+        /// **시체는 서버에만 있었다**(축 ② 실측). `HandleDeath`가 만드는 `Corpse`는 평범한
+        /// GameObject라 클라 화면에는 아무것도 안 뜬다 — 죽은 사람도, 옆 사람도 시체를 못 봤다.
+        /// 그래서 **서버가 시체 원장(`FindCorpse`)을 매 틱 읽어** 생김/사라짐만 방송한다.
+        /// 제거 경로(약탈·교체·소멸)가 여럿이라 각 호출부에 방송을 심으면 하나를 빠뜨린다 —
+        /// 원장 하나를 보고 판단한다(같은 로직이 여러 곳에 살면 재발한다).
+        /// </summary>
+        void PublishCorpse()
+        {
+            if (string.IsNullOrEmpty(accountId))
+                return;
+            var node = OfflineWorld.FindCorpse(accountId);
+            string now = node == null ? "" : node.CorpseId + "@" +
+                         node.transform.position.x.ToString("0.0") + "," +
+                         node.transform.position.y.ToString("0.0") + "," +
+                         node.transform.position.z.ToString("0.0");
+            if (now == corpseSent)
+                return;
+            corpseSent = now;
+            if (node == null)
+                RpcCorpseGone(accountId);
+            else
+                RpcCorpse(accountId, node.CorpseId, node.LastKind, node.transform.position, node.SecondsLeft);
+        }
+
+        [ObserversRpc]
+        void RpcCorpse(string ownerId, string corpseId, string kind, Vector3 pos, float secondsLeft)
+        {
+            if (IsServerInitialized)
+                return;                      // 서버에는 진짜 시체가 이미 있다
+            OfflineWorld.Instance?.ApplyCorpseView(ownerId, corpseId, kind, pos, secondsLeft, GetComponent<WorldBody>());
+        }
+
+        [ObserversRpc]
+        void RpcCorpseGone(string ownerId)
+        {
+            if (IsServerInitialized)
+                return;
+            OfflineWorld.Instance?.RemoveCorpseView(ownerId);
         }
 
         public override void OnStopNetwork()

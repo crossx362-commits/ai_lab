@@ -70,6 +70,12 @@ namespace Ulon.Client
             // 「버튼이 고른 것」과 「검사가 고른 것」이 갈린다.
             yield return Party(role, mine, deadline);
             yield return Guild(role, mine, deadline);
+            // ── 축 ② 실측: **A가 B를 때렸을 때 B 클라 화면의 숫자가 따라 내려가는가** ──
+            // 「줄었다」가 아니라 **전/후 숫자 양쪽**을 남긴다(검수 지시 2026-09-08).
+            // 가드존(반지름 16m) 안에서는 아바타끼리 때릴 수 없으므로 둘을 들판으로 옮긴 뒤 친다.
+            // **몹 사냥보다 먼저 한다** — 몹과 치고받은 뒤에 하면 때리는 쪽이 이미 유령이라
+            // 서버가 `attack fail ghost`로 거절하고, 검사는 판마다 결과가 달라진다(실측).
+            yield return PvpHp(role, mine, deadline);
 
             // 살아 있는가·땅 위인가 — 판정은 스크립트가 한다(여기서는 잰 값만 남긴다).
             var myBodyNow = mine.GetComponent<WorldBody>();
@@ -131,8 +137,68 @@ namespace Ulon.Client
         static string guildName = "";
         static int guildMembers;
 
-        /// <summary>**아바타가 땅 위에 살아 있는가** — 접속 자리 y=0 사고를 다시 놓치지 않기 위한 값들
-        /// (검수 지시 2026-09-08: 세계가 무너진 채로 초록불이 켜져 있었다).</summary>
+        /// <summary>
+        /// **축 ②의 실측** — 가드존 밖에서 A가 B를 때리고, **B 클라가 들고 있는 HP**를 전/후로 남긴다.
+        /// 서버가 아는 값이 아니라 **화면이 읽는 값**을 재는 것이 요점이다(그래서 자기 몸에서 읽는다).
+        /// </summary>
+        static IEnumerator PvpHp(string role, NetAvatar mine, float deadline)
+        {
+            // 지면(`LandBase`) 위에 세운다 — y=0으로 보내면 땅 10m 아래로 떨어진다(2026-09-08 낙하 사고).
+            var field = new Vector3(role == "attacker" ? 26f : 24.6f, Ulon.Shared.WorldTerrain.LandBase, 26f);
+            mine.RpcSetPos(field);
+            WarpNextTo(mine.transform, field);
+            yield return new WaitForSeconds(1.0f);
+            var myBody = mine.GetComponent<WorldBody>();
+            pvpHpBefore = myBody != null ? myBody.Hp : -1f;
+            pvpGhostBefore = myBody != null && myBody.Ghost;
+            if (role == "attacker")
+            {
+                // 상대 아바타를 찾는다 — 내 것이 아닌 NetAvatar.
+                NetAvatar other = null;
+                var all = Object.FindObjectsByType<NetAvatar>(FindObjectsSortMode.None);
+                for (int i = 0; i < all.Length && other == null; i++)
+                    if (all[i] != mine)
+                        other = all[i];
+                if (other != null)
+                {
+                    for (int hit = 0; hit < 26 && Time.realtimeSinceStartup < deadline; hit++)
+                    {
+                        mine.RpcRequestAttack(other.NetworkObject);
+                        yield return new WaitForSeconds(0.35f);
+                    }
+                }
+            }
+            else
+            {
+                float until = Time.realtimeSinceStartup + 5f;
+                while (Time.realtimeSinceStartup < until && Time.realtimeSinceStartup < deadline)
+                    yield return null;
+            }
+            pvpHpAfter = myBody != null ? myBody.Hp : -1f;
+            pvpGhostAfter = myBody != null && myBody.Ghost;
+            // **죽음의 결과가 이 화면에 왔는가** — 유령 여부만이 아니라 **시체가 보이는지**와
+            // HUD가 그리는 안내 문구 그대로를 남긴다(맞은 쪽·때린 쪽 양쪽 json에서 본다).
+            var corpses = Object.FindObjectsByType<Ulon.Server.CorpseNode>(FindObjectsSortMode.None);
+            // **몇 구인가가 아니라 「누구의 시체인가」**를 남긴다 — 첫 실측에서 화면에 있던 시체는
+            // 무관한 계정(`playloop-verify`)의 옛 시체였고, 개수만 셌다면 **동기화가 0건이어도
+            // 초록불**이었다(원장: 무엇이 거기 있는지부터 세라).
+            pvpCorpses = corpses.Length;
+            var owners = new System.Text.StringBuilder();
+            for (int i = 0; i < corpses.Length; i++)
+            {
+                if (owners.Length > 0) owners.Append('|');
+                owners.Append(corpses[i].OwnerId);
+            }
+            pvpCorpseOwner = owners.ToString();
+            pvpRecovery = SliceHud.RecoveryLine(myBody);
+            Debug.Log("[Ulon] 축2 실측(" + role + ") — 내 HP " + pvpHpBefore.ToString("0.##") + " → " +
+                      pvpHpAfter.ToString("0.##") + " · 유령 " + pvpGhostBefore + " → " + pvpGhostAfter);
+        }
+
+        static float pvpHpBefore = -1f, pvpHpAfter = -1f;
+        static int pvpCorpses;
+        static string pvpCorpseOwner = "", pvpRecovery = "";
+        static bool pvpGhostBefore, pvpGhostAfter;
         static float myY, myGroundY, myHp;
         static bool myGhost;
         static float myMaxHp, myMana, mySkill;
@@ -334,6 +400,13 @@ namespace Ulon.Client
                           + ",\"bag\":" + myBag
                           + ",\"skill\":" + mySkill.ToString("0.##")
                           + ",\"name\":\"" + myName.Replace("\"", "") + "\""
+                          + ",\"pvpHpBefore\":" + pvpHpBefore.ToString("0.##")
+                          + ",\"pvpHpAfter\":" + pvpHpAfter.ToString("0.##")
+                          + ",\"pvpGhostBefore\":" + (pvpGhostBefore ? "true" : "false")
+                          + ",\"pvpGhostAfter\":" + (pvpGhostAfter ? "true" : "false")
+                          + ",\"pvpCorpses\":" + pvpCorpses
+                          + ",\"pvpCorpseOwner\":\"" + pvpCorpseOwner.Replace("\"", "") + "\""
+                          + ",\"pvpRecovery\":\"" + pvpRecovery.Replace("\"", "") + "\""
                           + "}";
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, json, new UTF8Encoding(false));

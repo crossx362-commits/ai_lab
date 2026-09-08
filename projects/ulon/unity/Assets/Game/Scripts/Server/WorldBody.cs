@@ -123,7 +123,11 @@ namespace Ulon.Server
             {
                 Ghost = true;
                 if (OfflineWorld.Instance != null)
-                    OfflineWorld.Instance.HandleDeath(this, PersistDriver.AccountKey());
+                    // **죽은 사람의 계정으로 시체를 남긴다.** 예전엔 `PersistDriver.AccountKey()`를
+                    // 썼는데 그건 **이 프로세스의 계정**이라, 서버에서는 누가 죽든 시체가 전부
+                    // 서버 계정(`playloop-verify`) 앞으로 쌓였다 — 남의 시체를 제 것으로 찾는다
+                    // (2026-09-08 축 ② 실측에서 발견). 계정 원장은 `AccountOf` 하나다.
+                    OfflineWorld.Instance.HandleDeath(this, OfflineWorld.AccountOf(this));
             }
             // Bonded pet: Ghost remains (no corpse loot). Unbonded mob/pet just hides.
             bool petBondDeath = !IsAvatar && Bonded && !string.IsNullOrEmpty(OwnerCharacterId)
@@ -135,6 +139,12 @@ namespace Ulon.Server
                 PetGuard = false;
                 PetAttackTarget = null;
             }
+            ApplyVisibility();
+        }
+
+        /// <summary>죽어서 사라져야 하는 몸(유령이 아닌 몹)을 화면·물리에서 숨긴다.</summary>
+        void ApplyVisibility()
+        {
             bool hide = Hp <= 0f && !IsAvatar && !Ghost;
             var cols = GetComponentsInChildren<Collider>();
             for (int i = 0; i < cols.Length; i++)
@@ -145,6 +155,21 @@ namespace Ulon.Server
             var rends = GetComponentsInChildren<Renderer>();
             for (int i = 0; i < rends.Length; i++)
                 rends[i].enabled = !hide;
+        }
+
+        /// <summary>
+        /// **서버가 내려준 값을 그대로 얹는다 — 죽음 처리는 하지 않는다**(축 ②, 2026-09-08).
+        ///
+        /// `SetHp`를 그냥 쓰면 클라가 제 손으로 `HandleDeath`를 돌려 **시체를 하나 더 만들고
+        /// persist에 쓴다** — 받아 적어야 할 쪽이 세계를 바꾸는 것이다(원장: 재는 자·비추는 자가
+        /// 세계를 바꾸면 안 된다). 죽음의 결과(유령·시체)는 서버가 만들어 따로 내려보낸다.
+        /// </summary>
+        public void ApplyNetworkState(float hpValue, float maxHpValue, bool ghostValue)
+        {
+            MaxHp = maxHpValue;
+            Hp = Mathf.Clamp(hpValue, 0f, Mathf.Max(1f, maxHpValue));
+            Ghost = ghostValue;
+            ApplyVisibility();
         }
 
         public void Resurrect()

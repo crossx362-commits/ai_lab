@@ -59,6 +59,13 @@ if [[ "${1:-}" == "--nc-spawn" ]]; then
   SERVER_ARGS=(-ulon-nc-spawn 1)
   EXPECT_FAIL=1
 fi
+# 체력 동기화 NC(축 ②) — **서버가 값을 내보내는 것만 끊는다**. 서버 세계에서는 여전히 맞아서
+# HP가 줄지만 클라 화면 숫자는 그대로여야 하고, 그러면 이 검사는 빨간불이어야 한다.
+# (자를 확인하는 방법: 결함을 실제로 만들어 본다 — 원장.)
+if [[ "${1:-}" == "--nc-nosync" ]]; then
+  SERVER_ARGS=(-ulon-nc-nosync 1)
+  EXPECT_FAIL=1
+fi
 
 if [[ ! -x "$CLIENT_BIN" ]]; then
   echo "missing client: $CLIENT_BIN" >&2
@@ -161,7 +168,23 @@ ok = (a.get("connected") and b.get("connected")
       and a.get("guildName","") != "" and a.get("guildName") == b.get("guildName")
       # **아바타가 땅 위에 살아 있는가** — 접속 자리 y=0으로 두 아바타가 떨어져 죽은 채로
       # 이 검사가 초록불이던 적이 있다(2026-09-08). 세계가 무너졌는지부터 본다.
+      # **축 ②: 맞은 사람의 클라 화면 숫자가 따라 내려가는가**(검수 지시 2026-09-08).
+      # 「줄었다」가 아니라 **전/후 숫자 양쪽**을 json에 남기고 그걸로 판정한다. 재는 자리는
+      # 서버의 WorldBody가 아니라 **관전 클라가 제 몸에서 읽는 값** — 화면이 읽는 자리다.
+      and b.get("pvpHpBefore", -1) > 0
+      and b.get("pvpHpAfter", 99) < b.get("pvpHpBefore", 0)
+      # **죽음까지가 이 축의 끝이다**(검수 지시): 맞은 쪽이 유령이 되고, **시체와 부활 안내가
+      # 맞은 쪽 화면에도, 옆 사람 화면에도** 떠야 한다. 시체는 서버에만 있던 물건이었다.
+      and b.get("pvpGhostAfter") is True
+      and b.get("pvpRecovery", "").startswith("유령")
+      # 개수가 아니라 **죽은 사람(ds-b)의 시체**가 양쪽 화면에 있는가.
+      and "ds-b" in b.get("pvpCorpseOwner", "").split("|")
+      and "ds-b" in a.get("pvpCorpseOwner", "").split("|")
       and alive(a) and alive(b))
+print("축2 체력 동기화 — 맞은 쪽(b) 클라 HP", b.get("pvpHpBefore"), "→", b.get("pvpHpAfter"),
+      "· 유령", b.get("pvpGhostBefore"), "→", b.get("pvpGhostAfter"),
+      "· 시체 주인 b", b.get("pvpCorpseOwner"), "a", a.get("pvpCorpseOwner"),
+      "· 안내", repr(b.get("pvpRecovery")))
 print("PASS" if ok else "FAIL", a, b)
 sys.exit(0 if ok else 5)
 PY

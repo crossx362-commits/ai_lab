@@ -34,6 +34,41 @@ namespace Ulon.Server
             return new AttackResult { Applied = true, Hit = true };
         }
 
+        /// <summary>
+        /// **클라가 보는 시체** — 서버가 알려 준 자리에 껍데기만 세운다(가방 내용물은 없다).
+        /// 약탈은 그대로 서버 Rpc가 처리하므로 여기 항목을 채우면 그게 두 번째 원장이 된다.
+        /// </summary>
+        public void ApplyCorpseView(string ownerId, string corpseId, string kind, Vector3 pos, float secondsLeft, WorldBody bodyForVisual)
+        {
+            var existing = FindCorpse(ownerId);
+            if (existing != null && existing.CorpseId == corpseId)
+            {
+                existing.transform.position = pos;
+                return;
+            }
+            if (existing != null)
+                KillGo(existing.gameObject);
+            var go = SpawnCorpseGo(bodyForVisual);
+            go.transform.position = pos;
+            var node = go.GetComponent<CorpseNode>();
+            if (node == null)
+                node = go.AddComponent<CorpseNode>();
+            node.CorpseId = corpseId;
+            node.OwnerId = ownerId ?? "";
+            node.LastKind = string.IsNullOrEmpty(kind) ? "시체" : kind;
+            node.LastX = pos.x; node.LastY = pos.y; node.LastZ = pos.z;
+            node.SpawnedAt = Time.time;
+            node.DecaySeconds = secondsLeft > 0f ? secondsLeft : 900f;
+        }
+
+        /// <summary>서버에서 시체가 사라졌다(약탈·소멸) — 화면에서도 치운다.</summary>
+        public void RemoveCorpseView(string ownerId)
+        {
+            var existing = FindCorpse(ownerId);
+            if (existing != null)
+                KillGo(existing.gameObject);
+        }
+
         static GameObject SpawnCorpseGo(WorldBody body)
         {
             var go = new GameObject("Corpse");

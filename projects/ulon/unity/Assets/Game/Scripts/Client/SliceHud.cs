@@ -939,7 +939,9 @@ namespace Ulon.Client
         }
 
 
-        static string RecoveryLine(WorldBody me)
+        /// <summary>회복 안내 한 줄 — **화면에 그려지는 그 문자열**. 검사도 이 함수를 부른다
+        /// (재는 자와 그리는 자가 둘이면 화면과 검사가 갈린다, 원장).</summary>
+        internal static string RecoveryLine(WorldBody me)
         {
             if (me == null)
                 return "";
