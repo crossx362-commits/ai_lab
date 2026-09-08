@@ -27,7 +27,7 @@ namespace Ulon.Editor
             || t.name.StartsWith("DungeonFurnLantern", StringComparison.Ordinal);
 
         /// <summary>겹친 깊이(m) — 안 겹치면 0. 세 축 중 **가장 얕은 축**이 파고든 깊이다.</summary>
-        static float Penetration(Bounds a, Bounds b)
+        internal static float Penetration(Bounds a, Bounds b)
         {
             float dx = Mathf.Min(a.max.x, b.max.x) - Mathf.Max(a.min.x, b.min.x);
             float dy = Mathf.Min(a.max.y, b.max.y) - Mathf.Max(a.min.y, b.min.y);
@@ -38,7 +38,7 @@ namespace Ulon.Editor
         }
 
         /// <summary>이 소품의 「두께」 — 가장 얇은 쪽. 얇은 널빤지를 두꺼운 통 기준으로 재면 봐주게 된다.</summary>
-        static float Thickness(Bounds b) => Mathf.Min(b.size.x, Mathf.Min(b.size.y, b.size.z));
+        internal static float Thickness(Bounds b) => Mathf.Min(b.size.x, Mathf.Min(b.size.y, b.size.z));
 
         static void CheckPropSpacing(string label, string interiorObject, List<string> report)
         {

@@ -83,7 +83,7 @@ namespace Ulon.Editor
             HousingPlot.HouseObject, HousingPlot.VendorObject,
         };
 
-        static bool IsBuilding(string name)
+        public static bool IsBuildingObject(string name)
         {
             for (int i = 0; i < BuildingObjects.Length; i++)
                 if (BuildingObjects[i] == name)
@@ -144,7 +144,7 @@ namespace Ulon.Editor
                 if (IsCharacterArt(go.transform))
                     continue;
                 string n = go.name;
-                if (IsBuilding(n) || n == "FishingSpot" || n == "Campfire" || n == "Mortar"
+                if (IsBuildingObject(n) || n == "FishingSpot" || n == "Campfire" || n == "Mortar"
                     || n == "OakTree" || n == "IronVein")
                     SnapRootToGround(go);
             }
@@ -160,7 +160,7 @@ namespace Ulon.Editor
                 if (go == null || !go.scene.IsValid())
                     continue;
                 string n = go.name;
-                if (!IsBuilding(n))
+                if (!IsBuildingObject(n))
                     continue;
                 Bounds b = CombinedBounds(go);
                 if (b.min.y < -0.05f)

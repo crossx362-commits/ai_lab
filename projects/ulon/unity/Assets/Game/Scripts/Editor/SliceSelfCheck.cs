@@ -1799,6 +1799,8 @@ namespace Ulon.Editor
             AssertHuntSpotsApartNegativeControl();           // 간격 자는 `AssertHuntGround` 안에서 잰다
             AssertDoorFitsPersonNegativeControl();           // 배율을 뺀 집은 빨간불이어야 한다(랩 B)
             AssertDoorFitsPerson();                          // 문이 사람보다 큰가 — 킷 배율의 근거
+            AssertVillagePropsClearOfBuildingsNegativeControl();  // 던전 소품 자를 마을로 넓힌 것(양방향 NC)
+            AssertVillagePropsClearOfBuildings();             // 울타리가 벽을 뚫고 등이 처마에 박히지 않는가
             AssertActorBodyMatchesCapsuleNegativeControl();  // 먼저 자가 우는지 본다
             AssertActorBodyMatchesCapsule();                // 그림이 충돌체와 같은 크기인가(랩 A)
             AssertGearFoundByPlace();                      // 장비를 이름표로만 찾지 않는가(랩 ①, 양방향 NC)

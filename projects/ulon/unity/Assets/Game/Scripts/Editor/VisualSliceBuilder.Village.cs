@@ -40,6 +40,7 @@ namespace Ulon.Editor
             ImproveGround();
             DressVillageInOpenScene();
             EnsureHousingPlot();
+            ClearPropsFromBuildings();       // 집이 다 선 뒤에 훑는다 — 울타리는 집보다 먼저 놓인다
             EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             EditorSceneManager.SaveOpenScenes();
             Debug.Log("[Ulon] Village: road-aligned houses, plaza off cross, hunt north, env prefabs");
