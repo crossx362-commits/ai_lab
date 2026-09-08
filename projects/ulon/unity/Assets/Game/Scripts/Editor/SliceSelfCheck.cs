@@ -1783,6 +1783,7 @@ namespace Ulon.Editor
             AssertCampfireHasFire();
             AssertRoleLookNegativeControl();
             AssertRoleLook();
+            AssertGearFoundByPlace();                      // 장비를 이름표로만 찾지 않는가(랩 ①, 양방향 NC)
             // **맨 끝**에 둔다 — 이 게이트는 빌더를 다시 부르고, 빌더는 첫 줄에서 씬을 다시 연다.
             AssertActorRosterFree();                        // 액터 선정이 이름 명단인가(랩 ③, 양방향 NC)
 

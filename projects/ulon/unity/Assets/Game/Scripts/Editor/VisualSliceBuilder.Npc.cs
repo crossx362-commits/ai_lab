@@ -244,10 +244,9 @@ namespace Ulon.Editor
                 var weapons = new List<Transform>();
                 var shields = new List<Transform>();
                 bool armed = false, shielded = false;
-                foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                // 장비를 **이름 원장 또는 손자리**로 찾는다(랩 ①) — 이름만 보면 새 팩의 새 이름이 샌다.
+                foreach (var t in GearOnActor(root.gameObject))
                 {
-                    if (!IsGearName(t.name))
-                        continue;
                     var r = t.GetComponent<Renderer>();
                     if (r == null)
                         continue;
@@ -257,8 +256,9 @@ namespace Ulon.Editor
                         shields.Add(t);
                         shielded |= visible;
                     }
-                    else if (IsWeaponName(t.name))
+                    else if (IsWeaponName(t.name) || UnderHandBone(t))
                     {
+                        // 이름 목록에 없어도 **손에 쥐고 있으면 무기다** — 방패·화살통은 위에서 갈렸다.
                         weapons.Add(t);
                         armed |= visible;
                     }

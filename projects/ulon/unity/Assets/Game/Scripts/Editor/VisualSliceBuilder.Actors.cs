@@ -223,6 +223,45 @@ namespace Ulon.Editor
         /// <summary>장비 이름인가(게이트도 같은 판정을 쓴다).</summary>
         public static bool IsGearName(string n) => ContainsGearName(n);
 
+        /// <summary>
+        /// **한 사람이 걸친 장비 전수** — 이름 원장 **또는** 손자리로 찾는다(랩 ①, 2026-09-08).
+        ///
+        /// 이름만 보던 자는 모델을 받을 때마다 샜다: 후드 도적의 칼이 `Knife`라 목록 밖이었고
+        /// 「맨손」이어야 할 치유사가 칼을 든 채 화면에 섰다(`48_person_Healer` 실측). 이름을 늘리는
+        /// 것은 **다음 팩에서 또 새는 수리**다 — 새 팩이 `Throwable`·`Spellbook`을 들고 오면 그만이다.
+        ///
+        /// 그래서 자를 하나 더 세운다: **손뼈(또는 킷이 쥐라고 만들어 둔 `handslot`) 밑에 매달린
+        /// 비스킨드 렌더러는 이름이 무엇이든 든 것이다.** 자리는 이름과 달리 팩이 바뀌어도 남는다.
+        /// 둘의 **합집합**을 쓰는 이유 — 등에 멘 칼처럼 손 밖에 달린 것도 실루엣에서는 장비이고
+        /// (그건 이름이 잡는다), 손에 쥔 새 이름은 자리가 잡는다. 한쪽만 쓰면 각각 한 종류씩 샌다.
+        /// **부작용 없음** — 게이트가 이 함수를 그대로 불러 NC를 걸 수 있게 순수 함수로 둔다.
+        /// </summary>
+        public static List<Transform> GearOnActor(GameObject who)
+        {
+            var found = new List<Transform>();
+            if (who == null)
+                return found;
+            foreach (var t in who.GetComponentsInChildren<Transform>(true))
+            {
+                var r = t.GetComponent<Renderer>();
+                if (r == null || r is ParticleSystemRenderer)
+                    continue;
+                if (ContainsGearName(t.name) || (!(r is SkinnedMeshRenderer) && UnderHandBone(t)))
+                    found.Add(t);
+            }
+            return found;
+        }
+
+        /// <summary>이 노드가 손뼈 밑에 매달려 있는가 — 몸(스킨드)은 손뼈를 품으므로 부르는 쪽에서 뺀다.</summary>
+        public static bool UnderHandBone(Transform t)
+        {
+            for (Transform p = t.parent; p != null; p = p.parent)
+                if (p.name.StartsWith("handslot", StringComparison.OrdinalIgnoreCase)
+                    || p.name.StartsWith("hand", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            return false;
+        }
+
         /// <summary>손뼈에서 이 거리 안에 있으면 「손에 든 것」 — 세우는 자와 게이트가 같이 쓴다.</summary>
         public const float HandHoldRadius = 0.35f;
 
