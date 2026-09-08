@@ -152,6 +152,8 @@ namespace Ulon.Editor
                     {
                         var pos = new Vector3(plots[p].x - (cols - 1) * 0.475f + col * 0.95f, 0f,
                                               plots[p].y - (rows - 1) * 1.05f + row * 2.1f);
+                        if (!ClearOfDungeonMouths(pos))
+                            continue;                           // 입구 마당에는 작물을 안 심는다
                         int seed = p * 131 + row * 11 + col;
                         var go = Place(crop, pos, new Vector3(0f, WorldRegions.Rand(seed, 1, 0f, 360f), 0f));
                         if (go == null)
@@ -167,7 +169,10 @@ namespace Ulon.Editor
             {
                 float a = WorldRegions.Rand(i, 2, 0f, 360f) * Mathf.Deg2Rad;
                 float d = WorldRegions.Rand(i, 3, 8f, r.Radius);
-                Decor(parent, i % 2 == 0 ? tuft : bush, new Vector3(r.X + Mathf.Cos(a) * d, 0f, r.Z + Mathf.Sin(a) * d), new Vector3(0f, a * Mathf.Rad2Deg, 0f));
+                var at = new Vector3(r.X + Mathf.Cos(a) * d, 0f, r.Z + Mathf.Sin(a) * d);
+                if (!ClearOfDungeonMouths(at))
+                    continue;                                   // 산포도 입구 마당은 비운다(울타리·작물과 같은 자)
+                Decor(parent, i % 2 == 0 ? tuft : bush, at, new Vector3(0f, a * Mathf.Rad2Deg, 0f));
             }
         }
 
@@ -196,6 +201,28 @@ namespace Ulon.Editor
         }
 
         /// <summary>두 점을 잇는 연속된 울타리 줄.</summary>
+        /// <summary>
+        /// **던전 입구 앞은 지역이 비워 준다**(검수 2026-09-09 「밭 한가운데 소품 무더기」의 진짜 정체).
+        /// 세어 보니 그 무더기는 던전 2 입구(38,-25)였고, 농경지 세 번째 뙈기가 그 위에 덮여 있었다
+        /// — 밭이 입구를 삼켰지 무더기가 밭에 들어온 게 아니다. 입구 셋 모두에 같은 마당을 준다.
+        /// 반경은 입구 조형의 폭(≈4m)에 사람이 서서 들고 나는 마당 한 겹을 더한 값이다.
+        /// </summary>
+        public const float LandmarkYard = 9f;
+
+        static bool ClearOfDungeonMouths(Vector3 p)
+        {
+            var mouths = new[]
+            {
+                new Vector2(Dungeon1.EntranceX, Dungeon1.EntranceZ),
+                new Vector2(Dungeon2.EntranceX, Dungeon2.EntranceZ),
+                new Vector2(Dungeon3.EntranceX, Dungeon3.EntranceZ),
+            };
+            for (int i = 0; i < mouths.Length; i++)
+                if (new Vector2(p.x - mouths[i].x, p.z - mouths[i].y).magnitude < LandmarkYard)
+                    return false;
+            return true;
+        }
+
         static void FenceRun(Transform parent, string path, Vector2 from, Vector2 to)
         {
             Vector2 d = to - from;
@@ -210,6 +237,8 @@ namespace Ulon.Editor
             for (int i = 0; i < count; i++)
             {
                 Vector2 p = from + d * ((i + 0.5f) / count);
+                if (!ClearOfDungeonMouths(new Vector3(p.x, 0f, p.y)))
+                    continue;                                   // 입구 앞에서는 울타리가 끊긴다(문이 있는 곳이다)
                 Decor(parent, path, new Vector3(p.x, 0f, p.y), new Vector3(0f, yaw, 0f));
             }
         }

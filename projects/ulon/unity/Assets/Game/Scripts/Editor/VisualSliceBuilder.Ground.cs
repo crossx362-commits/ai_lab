@@ -322,6 +322,35 @@ namespace Ulon.Editor
             cam.transform.SetPositionAndRotation(target - rot * Vector3.forward * 16f, rot);
         }
 
+        /// <summary>
+        /// **커밋된 씬에 남은 마을 장식 중 지역 물건 곁에 낀 것을 치운다**(멱등 보수 패스).
+        /// 빌더 좌표만 고치면 안 고쳐진다 — `VillageDecor`는 전체 재드레싱 때만 다시 만들어지고,
+        /// 셀프체크는 커밋된 씬을 그대로 읽는다(2026-09-09: 숲 속 울타리 11조각이 그렇게 남아 있었다).
+        /// **재는 자는 하나다** — 어디까지가 「낀 것」인지는 `SliceSelfCheck`가 정하고 여기서는 치우기만 한다.
+        /// </summary>
+        public static int ClearDecorFromRegions()
+        {
+            var found = new System.Collections.Generic.List<string>();
+            var nodes = new System.Collections.Generic.List<Transform>();
+            SliceSelfCheck.CollectRegionIntruders(found, nodes);
+            int gone = 0;
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                if (nodes[i] == null)
+                    continue;
+                var root = nodes[i];
+                while (root.parent != null)
+                    root = root.parent;
+                if (root.name != "VillageDecor")
+                    continue;                                  // 남의 원장 물건은 그 원장이 옮긴다(여기서 지우면 원인이 숨는다)
+                UnityEngine.Object.DestroyImmediate(nodes[i].gameObject);
+                gone++;
+            }
+            if (gone > 0)
+                Debug.Log("[Ulon] 지역 물건 곁에 남아 있던 마을 장식 " + gone + "개를 치웠습니다(자리는 원장이 정한다)");
+            return gone;
+        }
+
         static void PlacePaddockFences(Transform parent, string fence, string gate)
         {
             float step = PrefabRunLength(fence);
@@ -346,11 +375,15 @@ namespace Ulon.Editor
                 new Vector3(9.6f, 0f, -19.4f), new Vector3(7.6f, 0f, -23.4f), new Vector3(1.6f, 0f, -24.4f),
                 new Vector3(-2.8f, 0f, -22.6f), new Vector3(-3.4f, 0f, -19.2f)
             }, 1, Vector3.zero);
+            // **북쪽 방목장은 동쪽에 둔다** — 옛 자리(x 음수)는 킷 배율을 타고 북서 숲
+            // (WorldRegions.Forest, 중심 (-46,50)·반경 30) **안**으로 들어가 마을 울타리가 나무
+            // 사이에 서 있었다(2026-09-09 실측: 조각 14개, 가장 가까운 나무까지 1.4m).
+            // 모양은 그대로 두고 x만 뒤집는다 — 동북쪽은 지역 셋 어디에도 안 걸린다.
             PlaceCurvedLoop(parent, fence, gate, new[]
             {
-                new Vector3(-17.8f, 0f, 17.0f), new Vector3(-12.2f, 0f, 17.0f), new Vector3(-7.2f, 0f, 17.4f),
-                new Vector3(-5.8f, 0f, 21.2f), new Vector3(-8.4f, 0f, 24.8f), new Vector3(-13.6f, 0f, 25.4f),
-                new Vector3(-18.2f, 0f, 23.0f), new Vector3(-18.8f, 0f, 19.2f)
+                new Vector3(17.8f, 0f, 17.0f), new Vector3(12.2f, 0f, 17.0f), new Vector3(7.2f, 0f, 17.4f),
+                new Vector3(5.8f, 0f, 21.2f), new Vector3(8.4f, 0f, 24.8f), new Vector3(13.6f, 0f, 25.4f),
+                new Vector3(18.2f, 0f, 23.0f), new Vector3(18.8f, 0f, 19.2f)
             }, 1, Vector3.zero);
 
             // Road gates where plaza roads leave town — openings, not a ring wall.

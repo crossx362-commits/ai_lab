@@ -1804,6 +1804,9 @@ namespace Ulon.Editor
             AssertHuntSpotsApartNegativeControl();           // 간격 자는 `AssertHuntGround` 안에서 잰다
             AssertDoorFitsPersonNegativeControl();           // 배율을 뺀 집은 빨간불이어야 한다(랩 B)
             AssertDoorFitsPerson();                          // 문이 사람보다 큰가 — 킷 배율의 근거
+            VisualSliceBuilder.ClearDecorFromRegions();           // 커밋된 씬에 남은 마을 장식은 지역에서 치운다
+            AssertNoRegionIntrusionNegativeControl();             // 지역 안에 남의 배치물을 넣으면 빨간불인가(양방향 NC)
+            AssertNoRegionIntrusion();                           // 지역 안에는 그 지역이 놓은 것만(검수 2026-09-09)
             AssertDoorFrontClearNegativeControl();                // 문 개구부 정면에는 소품이 서지 않는다(양방향 NC)
             AssertDoorFrontClear();
             AssertActorWeaponsHeldNegativeControl();              // 물림 자 셋을 보스 밖 일반 배우까지(양방향 NC)
