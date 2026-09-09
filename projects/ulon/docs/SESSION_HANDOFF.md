@@ -592,6 +592,12 @@ CliffDark(10번째)가 **아예 안 그려졌다.** 자는 「한 겹 2%」로 �
    절벽 바위는 **두 번 실패해 닫혔다 — 세 번째는 없다**(검수).
 5. MegaKit·Cave Kit·**꽃/잔풀**은 오너 다운로드 대기(`docs/ASSET_WANTLIST.md`, 대장이 재촉 중).
 
+## 원장(LESSONS.md)은 이 가지에 없다 — 이렇게 읽는다
+`projects/ulon/docs/LESSONS.md`는 `master`에만 있고 `loop-claude`에는 없다(검수 안내 2026-09-09).
+```bash
+git fetch origin qa-claude && git show origin/qa-claude:projects/ulon/docs/LESSONS.md
+```
+
 ## 손대지 말 것
 `OfflineWorld*`, `NetAvatar.cs`, 루트 `docs/SESSION_HANDOFF.md`(검수 것),
 `.worktrees/herdr-*`·`autodev-*`, `OfflineWorld.Player`.
