@@ -86,8 +86,14 @@ namespace Ulon.Editor
             for (float d = 0f; d < Cap; d += Step)
             {
                 float x = wx + dx * d, z = wz + dz * d;
-                float sand = oldRule ? WorldSplat.ShoreSandHeightAt(x, z) : WorldSplat.ShoreSandAt(x, z);
-                if (sand < 0.5f)
+                // **폭은 「모래 폭」이 아니라 「전이대(잔디 아님) 폭」이다**(검수 판정 2026-09-09).
+                // 안식각 상한을 넣자 급한 물가의 모래가 자갈(너덜)로 바뀌었고, 모래 한 겹만 읽던
+                // 이 자가 **0.0m**라고 울었다 — 화면에서는 띠가 그대로 있는데 자만 눈이 멀었다.
+                // 내가 만든 자였고 같은 병이었다: 겹이 갈리면 계열 합으로 읽어야 한다.
+                float band = oldRule
+                    ? WorldSplat.ShoreSandHeightAt(x, z)
+                    : WorldSplat.ShoreSandAt(x, z) + WorldSplat.ShoreScreeAt(x, z);
+                if (band < 0.5f)
                     return d;
             }
             return Cap;

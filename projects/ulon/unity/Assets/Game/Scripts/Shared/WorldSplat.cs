@@ -588,7 +588,43 @@ namespace Ulon.Shared
             return Mathf.Max(0f, 1f - Mathf.Clamp01((h - WorldTerrain.SeaLevel - flat) / fade));
         }
 
+        /// <summary>
+        /// **모래는 안식각(34°)보다 급한 면에 못 쌓인다**(호수 절개면 셈 + 검수 판정 2026-09-09).
+        /// 세어 보니 호수 둘레 30°↑ 사면 723㎡가 **모래 79%**였고 화면에서는 무늬 없는 탄색 민 벽이었다.
+        /// 산 절벽은 같은 자로 바위 34%·그늘바위 29%라 결이 산다 — 차이는 **벽 판정이 50°부터**라
+        /// 30~50°가 아무도 안 맡은 구간이었던 것이다.
+        /// **벽 판정 하한은 안 내린다**(암벽 풀·중턱 풀·결 자가 같이 읽는 원장이다).
+        /// 각은 취향이 아니라 마른 모래의 안식각에서 온다: 25°에서 줄기 시작해 34°에서 0.
+        /// </summary>
+        public const float ShoreSlopeFrom = 0.466f;   // tan 25°
+        public const float ShoreSlopeTo = 0.675f;     // tan 34° — 마른 모래의 안식각
+        public static float ShoreSlopeLimit(float wx, float wz)
+        {
+            float tan = MacroSlopeTan(wx, wz);
+            return 1f - Mathf.Clamp01((tan - ShoreSlopeFrom) / (ShoreSlopeTo - ShoreSlopeFrom));
+        }
+
+        /// <summary>
+        /// **비운 자리는 너덜로 채운다 — 무주공산을 만들지 마라**(검수 조건 2026-09-09).
+        /// 모래를 걷기만 하면 그 자리에 **잔디**가 도로 올라와 수직 절벽이 된다(무주공산이 자리만
+        /// 옮긴다). 걷어낸 몫이 그대로 자갈(너덜)이 되므로 **경계가 저절로 겹친다** — 두 규칙 사이에
+        /// 빈 각도가 없다: 25° 아래는 모래 1·너덜 0, 34° 위는 모래 0·너덜 1, 그 사이는 나뉘어 갖는다.
+        /// </summary>
+        public static float ShoreScreeAt(float wx, float wz)
+        {
+            return ShoreSandRaw(wx, wz) * (1f - ShoreSlopeLimit(wx, wz));
+        }
+
         public static float ShoreSandAt(float wx, float wz)
+        {
+            return ShoreSandRaw(wx, wz) * ShoreSlopeLimit(wx, wz);
+        }
+
+        /// <summary>
+        /// **사면 상한을 안 씌운 값 — 반대쪽 한계 표본으로만 쓴다**(`ShoreSandHeightAt`과 같은 자리).
+        /// 굽는 쪽에서 부르지 마라: 부르면 호수 사면이 다시 모래 79%가 된다.
+        /// </summary>
+        public static float ShoreSandRaw(float wx, float wz)
         {
             float h = WorldTerrain.HeightAt(wx, wz);
             if (h < WorldTerrain.SeaLevel)

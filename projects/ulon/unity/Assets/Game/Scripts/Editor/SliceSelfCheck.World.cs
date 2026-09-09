@@ -210,11 +210,16 @@ namespace Ulon.Editor
                     if (Mathf.Abs(h - WorldTerrain.SeaLevel) < 0.8f)
                     {
                         shoreN++;
-                        if (sd >= g && sd >= r) shoreSand++;
+                        // **이 자가 막으려던 것은 「잔디가 물에 수직으로 잘리는 것」이지 「모래가 적은 것」이
+                        // 아니다**(검수 판정 2026-09-09). 안식각 위 물가는 **자갈·바위**가 맞으므로 모래
+                        // 한 겹만 읽으면 옳게 칠한 급경사 물가가 거짓 빨간불이 된다(실측 0.90→0.17).
+                        // 값(0.6)은 그대로 두고 **계열 합**을 읽는다 — 풀 두 겹·바위 두 겹에서 쓴 그 처방이다.
+                        float gravel = maps[az, ax, Ulon.Shared.WorldSplat.Gravel];
+                        if (sd + r + gravel >= g) shoreSand++;
                     }
                 }
             }
-            Debug.Log("[Ulon] 지형 계측 중턱 풀 " + (midN > 0 ? midG / (float)midN : 0f).ToString("0.00") + " 바위 " + (midN > 0 ? midR / (float)midN : 0f).ToString("0.00") + " / 물가 모래 " + (shoreN > 0 ? shoreSand / (float)shoreN : 0f).ToString("0.00") + " (표본 " + midN + "·" + shoreN + " · 벽이라 뺀 자리 " + midWall + ")");
+            Debug.Log("[Ulon] 지형 계측 중턱 풀 " + (midN > 0 ? midG / (float)midN : 0f).ToString("0.00") + " 바위 " + (midN > 0 ? midR / (float)midN : 0f).ToString("0.00") + " / 물가 잔디아님 " + (shoreN > 0 ? shoreSand / (float)shoreN : 0f).ToString("0.00") + " (표본 " + midN + "·" + shoreN + " · 벽이라 뺀 자리 " + midWall + ")");
             if (midN < 20)
                 throw new InvalidOperationException("산 중턱 표본이 " + midN + "개뿐입니다 — 산비탈이 사실상 없습니다.");
             if (midWall == 0)
@@ -224,7 +229,7 @@ namespace Ulon.Editor
             if (shoreN < 20)
                 throw new InvalidOperationException("물가 표본이 " + shoreN + "개뿐입니다 — 물가 경사가 절벽입니다.");
             if (shoreSand / (float)shoreN < ShoreSandShareMin)
-                throw new InvalidOperationException("물가 도포 중 모래가 " + (shoreSand / (float)shoreN).ToString("0.00") + "입니다 — 최소 " + ShoreSandShareMin + ". 잔디가 물에 수직으로 잘립니다(§8.2).");
+                throw new InvalidOperationException("물가 표본 중 잔디가 아닌 자리가 " + (shoreSand / (float)shoreN).ToString("0.00") + "입니다 — 최소 " + ShoreSandShareMin + ". 잔디가 물에 수직으로 잘립니다(§8.2).");
 
             // ④ 콘텐츠 좌표가 전부 뭍에 있는가 — 지형을 넓히거나 파면 여기서 P0가 재발한다.
             CheckOnLand(terrain, origin, "마을 광장", 0f, 0f);

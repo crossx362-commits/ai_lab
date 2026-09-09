@@ -551,13 +551,17 @@ namespace Ulon.Editor
                     // (`WorldSplat.ShoreSandAt`). 여기 인라인으로 살던 옛 높이 규칙은 가파른 둑에서
                     // 폭이 0에 수렴해 잔디가 물에 수직으로 잘렸다(`15_lake_river`).
                     float sand = WorldSplat.ShoreSandAt(wx, wz);
+                    // **안식각 위의 물가는 자갈이다** — 모래를 걷은 몫을 너덜이 그대로 받는다.
+                    // 안 받으면 그 자리에 잔디가 올라와 물가가 다시 수직으로 잘린다(검수 조건).
+                    float scree = WorldSplat.ShoreScreeAt(wx, wz);
+                    float shoreAll = Mathf.Clamp01(sand + scree);
 
-                    float grassW = Mathf.Max(0f, 1f - sand) * Mathf.Max(0f, 1f - rock);
-                    float rockW = Mathf.Max(0f, 1f - sand) * rock;
+                    float grassW = Mathf.Max(0f, 1f - shoreAll) * Mathf.Max(0f, 1f - rock);
+                    float rockW = Mathf.Max(0f, 1f - shoreAll) * rock;
 
                     // 지역 지표·길 — 원장(WorldSplat)이 계산하고 Assert도 같은 함수를 읽는다.
                     int cover = WorldSplat.CoverAt(wx, wz, out float coverW);
-                    coverW *= Mathf.Max(0f, 1f - sand) * Mathf.Max(0f, 1f - rock * 0.45f);
+                    coverW *= Mathf.Max(0f, 1f - shoreAll) * Mathf.Max(0f, 1f - rock * 0.45f);
                     float keep = Mathf.Max(0f, 1f - coverW);
 
                     var w = new float[WorldSplat.LayerCount];
@@ -581,6 +585,7 @@ namespace Ulon.Editor
                     w[WorldSplat.Rock] = rockW * keep * (1f - darkShare);
                     w[WorldSplat.CliffDark] = rockW * keep * darkShare;
                     w[WorldSplat.Sand] = sand;
+                    w[WorldSplat.Gravel] += scree;
                     if (cover >= 0)
                         w[cover] += coverW;
                     float sum = 0.0001f;

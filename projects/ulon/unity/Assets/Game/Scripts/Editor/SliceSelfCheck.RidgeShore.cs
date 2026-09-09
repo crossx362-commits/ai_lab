@@ -87,9 +87,17 @@ namespace Ulon.Editor
                 if (shore < 0f)
                     continue;
                 float width = 0f;
+                // **폭은 「모래 폭」이 아니라 「전이대(잔디 아님) 폭」이다**(검수 판정 2026-09-09).
+                // 안식각 위 물가에서 모래가 자갈로 바뀌면 모래 한 겹만 읽는 자는 띠가 사라졌다고
+                // 하지만(실측 폭 차이 3.4m→1.5m), 화면에서 띠는 그대로 있다. 이 자가 막으려던 것은
+                // **물가가 잔디로 수직으로 잘리는 것**이므로 계열 합으로 묻는다.
                 for (float d = shore; d > shore - 30f; d -= 0.5f)
                 {
-                    if (Sample(alpha, ar, ca * d, sa * d, WorldSplat.Sand) < 0.5f)
+                    float notGrass = Sample(alpha, ar, ca * d, sa * d, WorldSplat.Sand)
+                                   + Sample(alpha, ar, ca * d, sa * d, WorldSplat.Gravel)
+                                   + Sample(alpha, ar, ca * d, sa * d, WorldSplat.Rock)
+                                   + Sample(alpha, ar, ca * d, sa * d, WorldSplat.CliffDark);
+                    if (notGrass < 0.5f)
                         break;
                     width = shore - d;
                 }
@@ -101,7 +109,7 @@ namespace Ulon.Editor
             if (wn < 8)
                 throw new InvalidOperationException("해안 표본이 " + wn + "곳뿐입니다 — 이 자는 아무것도 재지 않았습니다.");
             float wavg = wsum / wn;
-            Debug.Log("[Ulon] §8.2 해안 모래띠 — 방위 " + wn + "곳 평균 " + wavg.ToString("0.0") + "m · " +
+            Debug.Log("[Ulon] §8.2 해안 전이대(잔디 아님) — 방위 " + wn + "곳 평균 " + wavg.ToString("0.0") + "m · " +
                       wmin.ToString("0.0") + "~" + wmax.ToString("0.0") + "m (폭 차이 하한 " + ShoreWidthSpanMin +
                       "m, 평균 하한 " + ShoreWidthAvgMin + "m)");
 
@@ -122,7 +130,7 @@ namespace Ulon.Editor
                 return "암면 표본의 " + (blurShare * 100f).ToString("0") + "%가 두 겹의 중간값입니다 — 상한 " +
                        (CliffBlurShareMax * 100f).ToString("0") + "%. 자리마다 반반이면 화면에서는 한 톤입니다(§8.2).";
             if (shoreSpan < ShoreWidthSpanMin)
-                return "해안 모래띠의 넓은 곳과 좁은 곳 차이가 " + shoreSpan.ToString("0.0") + "m입니다 — 최소 " +
+                return "해안 전이대의 넓은 곳과 좁은 곳 차이가 " + shoreSpan.ToString("0.0") + "m입니다 — 최소 " +
                        ShoreWidthSpanMin + "m. 폭이 어디나 같으면 해안선이 아니라 두른 띠로 읽힙니다(§8.2).";
             if (shoreAvg < ShoreWidthAvgMin)
                 return "해안 모래띠 평균이 " + shoreAvg.ToString("0.0") + "m입니다 — 최소 " + ShoreWidthAvgMin +
