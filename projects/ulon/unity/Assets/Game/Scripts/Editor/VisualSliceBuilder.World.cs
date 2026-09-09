@@ -547,13 +547,10 @@ namespace Ulon.Editor
                     // **폭이 어디나 같으면 「해안선」이 아니라 「띠를 두른 것」이다**(검수 랩 ⑥ —
                     // 세어 보니 방위 16곳 모래띠가 1.5~4.5m로 사실상 균일했다). 해안을 따라 도는
                     // 저주파 노이즈로 **너른 모래사장과 바위가 물까지 내려온 구간**을 갈라 만든다.
-                    float beach = Mathf.PerlinNoise(wx * 0.012f + 29.3f, wz * 0.012f + 64.1f);
-                    float flatBand = Mathf.Lerp(0.15f, 2.0f, beach);     // 물가에서 이만큼은 온전히 모래
-                    float sandFade = Mathf.Lerp(0.7f, 4.2f, beach);      // 그 바깥으로 이만큼 옅어진다
-                    float sand = 1f - Mathf.Clamp01((Mathf.Abs(h - WorldTerrain.SeaLevel) - flatBand) / sandFade);
-                    if (h < WorldTerrain.SeaLevel)
-                        sand = 1f;                                   // 물속 바닥도 모래
-                    sand = Mathf.Max(sand, 0f);
+                    // **띠 폭은 높이가 아니라 물가까지의 수평 거리에서 유도한다** — 규칙은 원장에 있다
+                    // (`WorldSplat.ShoreSandAt`). 여기 인라인으로 살던 옛 높이 규칙은 가파른 둑에서
+                    // 폭이 0에 수렴해 잔디가 물에 수직으로 잘렸다(`15_lake_river`).
+                    float sand = WorldSplat.ShoreSandAt(wx, wz);
 
                     float grassW = Mathf.Max(0f, 1f - sand) * Mathf.Max(0f, 1f - rock);
                     float rockW = Mathf.Max(0f, 1f - sand) * rock;

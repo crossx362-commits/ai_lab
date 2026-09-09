@@ -532,6 +532,83 @@ namespace Ulon.Shared
             return best;
         }
 
+        /// <summary>
+        /// **물가 모래띠 원장**(곁가지 「물가 다듬기」, 2026-09-09). 굽는 쪽에 인라인으로 살던 규칙을
+        /// 여기로 옮겼다 — 굽는 쪽·자·게이트가 **같은 함수**를 읽는다(같은 로직이 두 곳에 살면 재발한다).
+        ///
+        /// **옛 규칙의 결함**: 띠를 **높이차**(|h − 해수면|)로만 깔았다. 그러면 띠의 **수평 폭이
+        /// 둑의 경사에 반비례**한다 — 완만한 물가는 넓은 백사장이 되고, 가파른 둑에서는 폭이 0에
+        /// 수렴해 **잔디가 물에 수직으로 잘린다**(§8.2). 화면에서 본 것이 그것이다(`15_lake_river`).
+        ///
+        /// **고친 방식**: 「띠의 폭」은 높이가 아니라 **물가로부터의 수평 거리**다. 수평 거리는
+        /// 지표를 훑지 않고 그 자리 경사로 유도한다 — 물가에서 이만큼 올라왔으면 대략 `dh / tan θ`만큼
+        /// 걸어온 것이다. 두 규칙 중 **넓은 쪽**을 쓴다: 평평한 여울(높이차 작음)도, 가파른 둑
+        /// (수평 거리 작음)도 둘 다 물가다.
+        /// </summary>
+        public const float ShoreFlatMin = 0.15f;    // 높이 규칙 — 이만큼(m)은 온전히 모래
+        public const float ShoreFlatMax = 2.0f;
+        public const float ShoreFadeMin = 0.7f;
+        public const float ShoreFadeMax = 4.2f;
+        /// <summary>수평 규칙의 폭(m) — **문·길과 달리 물가는 미터로 유도할 것이 없다**: 화면에서
+        /// 사람(1.4m)이 두어 걸음 걸을 만큼이 「물가」로 읽히는 최소치라 보고 2.2m에서 시작한다.</summary>
+        public const float ShoreHorizMin = 1.8f;
+        public const float ShoreHorizMax = 4.5f;
+        public const float ShoreHorizFadeMin = 2.0f;
+        public const float ShoreHorizFadeMax = 5.0f;
+        /// <summary>
+        /// **수평 규칙에는 뚜껑이 필요하다**(첫 판 실측). 경사가 아주 완만한 물가에서는 「걸어온 거리」가
+        /// 좀처럼 안 늘어 모래가 **내륙 30m까지** 번졌다(자의 상한에 닿았다) — 백사장이 아니라 사막이다.
+        /// 물가에서 이만큼을 넘으면 무슨 경사든 모래가 끝난다.
+        /// </summary>
+        public const float ShoreHorizCap = 9f;
+        /// <summary>물가를 따라 도는 저주파 — 너른 백사장과 바위가 물까지 내려온 구간을 가른다(랩 ⑥).</summary>
+        public static float ShoreBeachAt(float wx, float wz)
+        {
+            return Mathf.PerlinNoise(wx * 0.012f + 29.3f, wz * 0.012f + 64.1f);
+        }
+
+        /// <summary>물가 둑의 경사(tan) — 산 형태를 읽는 `MacroSlopeTan`과 달리 **둑 하나**를 읽는 2m 자.</summary>
+        public static float BankSlopeTan(float wx, float wz)
+        {
+            return SlopeTanAt(wx, wz, 2f);
+        }
+
+        /// <summary>
+        /// **옛 높이 규칙 — 반대쪽 한계 표본으로만 쓴다**(`DarkCliffPlanarAt`과 같은 자리).
+        /// 굽는 쪽에서 부르지 마라: 부르면 가파른 둑에서 잔디가 다시 물에 수직으로 잘린다.
+        /// </summary>
+        public static float ShoreSandHeightAt(float wx, float wz)
+        {
+            float h = WorldTerrain.HeightAt(wx, wz);
+            if (h < WorldTerrain.SeaLevel)
+                return 1f;                                  // 물속 바닥도 모래
+            float beach = ShoreBeachAt(wx, wz);
+            float flat = Mathf.Lerp(ShoreFlatMin, ShoreFlatMax, beach);
+            float fade = Mathf.Lerp(ShoreFadeMin, ShoreFadeMax, beach);
+            return Mathf.Max(0f, 1f - Mathf.Clamp01((h - WorldTerrain.SeaLevel - flat) / fade));
+        }
+
+        public static float ShoreSandAt(float wx, float wz)
+        {
+            float h = WorldTerrain.HeightAt(wx, wz);
+            if (h < WorldTerrain.SeaLevel)
+                return 1f;
+            float beach = ShoreBeachAt(wx, wz);
+            float byHeight = ShoreSandHeightAt(wx, wz);
+            // 경사가 0에 가까우면 「걸어온 거리」가 무한이 된다 — 그 자리는 높이 규칙이 답한다.
+            float tan = Mathf.Max(BankSlopeTan(wx, wz), 0.05f);
+            float walked = (h - WorldTerrain.SeaLevel) / tan;
+            float flat = Mathf.Lerp(ShoreHorizMin, ShoreHorizMax, beach);
+            float fade = Mathf.Lerp(ShoreHorizFadeMin, ShoreHorizFadeMax, beach);
+            float byWalk = Mathf.Max(0f, 1f - Mathf.Clamp01((walked - flat) / fade));
+            byWalk *= 1f - Mathf.Clamp01((walked - ShoreHorizCap) / 2f);
+            // **모래는 벽에 안 붙는다.** 수평 규칙은 가파를수록 넓어지므로, 그대로 두면 물까지 내려온
+            // 60~80° 해안 절벽을 통째로 모래로 덮는다 — 첫 판에 암벽 결 자가 0.061→0.050으로 떨어져
+            // 그것을 물었다(§8.2: 벽이 점토 면으로 읽힌다). 벽 판정은 원장의 것을 그대로 쓴다.
+            byWalk *= 1f - WallRockAt(wx, wz);
+            return Mathf.Max(byHeight, byWalk);
+        }
+
         /// <summary>사각형 안이면 1, 가장자리 한 칸에서 0으로 — 돌포장이 칼로 자른 듯 끝나지 않게.</summary>
         static float Inside(float x, float x0, float x1, float z, float z0, float z1)
         {
