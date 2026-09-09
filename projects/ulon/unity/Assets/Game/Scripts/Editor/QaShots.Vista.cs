@@ -85,8 +85,15 @@ namespace Ulon.Editor
         ///
         /// 양안을 「보이나」로만 물은 둘째 판도 죽은 장이었다(「양안 7/7·7/7」인데 화면은 여전히
         /// 물 천지). **보이는 것과 크게 보이는 것은 다르다** — 물가가 화면 구석에 1px로 걸려도
-        /// 「보임」이다. 그래서 넷째 인자로 **양안이 화면에서 벌어진 폭**을 곱한다: 그 값이 커야
-        /// 카메라가 강을 **가로질러 내려다보고** 서고, 그제야 강폭이 화면에서 읽힌다.
+        /// 「보임」이다. 그래서 **양안이 화면에서 벌어진 폭**을 인자로 넣었다.
+        ///
+        /// 셋째 판도 반려였다(검수: 「강으로 안 읽힌다 — 굽이가 굽이로 안 보이고 하늘도 없다」).
+        /// **크기 인자를 최댓값으로 좇으면 카메라가 코앞까지 온다** — 12m에서 물가 접사가 됐다.
+        /// 원장 문장(`00c165e0`)대로 셋을 고쳤다:
+        ///   ① 화면 강폭은 **목표 구간**(0.25~0.45)에서 최대고 그 밖은 감점 — 상한 없는 크기는 코앞을 부른다.
+        ///   ② **굽이 인자 신설** — 중심선을 화면에 투영해 **방향이 꺾인 각도의 합**을 잰다.
+        ///      이 샷의 질문이 「굽이가 굽이로 보이나」인데 **묻는 인자가 하나도 없었다**(곧은 자락도 만점).
+        ///   ③ **하늘이 프레임에 들 것** — 근접이라도 물만 가득하면 규모를 못 읽는다.
         ///
         /// 대상 구간은 **굽이 정점 언저리**다. 중심선이 `sin((x−RiverFromX)·0.06)`이므로 극값은
         /// 위상 −π/2, 곧 x ≈ −106이다(원장에서 유도한다 — 상수로 박으면 원장이 바뀔 때 어긋난다).
@@ -151,7 +158,18 @@ namespace Ulon.Editor
                 for (int i = 0; i < pairs; i++)
                     widthOnScreen += Mathf.Abs(ScreenU(eye, center, right[i]) - ScreenU(eye, center, left[i]));
                 widthOnScreen = pairs > 0 ? widthOnScreen / pairs : 0f;
-                float score = seen / (float)targets.Count * spread * banks * widthOnScreen;
+                // ① 목표 구간 — 0.25~0.45에서 1, 밖으로 나갈수록 깎는다.
+                float widthScore = widthOnScreen < 0.25f
+                    ? widthOnScreen / 0.25f
+                    : (widthOnScreen <= 0.45f ? 1f : Mathf.Max(0f, 1f - (widthOnScreen - 0.45f) / 0.35f));
+                // ② 굽이 — 화면에 투영한 중심선이 얼마나 꺾이나(각도 합, 라디안).
+                float bend = ScreenBend(eye, center, targets);
+                float bendScore = Mathf.Clamp01(bend / 1.0f);
+                // ③ 하늘 — 카메라가 지평선 위를 조금이라도 담나(피치가 너무 가파르면 물만 남는다).
+                float pitch = Mathf.Asin(Mathf.Clamp01((eye.y - center.y) / Mathf.Max(0.001f, (center - eye).magnitude)));
+                bool skyInFrame = pitch < (55f * 0.5f * Mathf.Deg2Rad);
+                if (!skyInFrame) continue;
+                float score = seen / (float)targets.Count * spread * banks * widthScore * bendScore;
                 if (score > bestScore)
                 {
                     bestScore = score;
@@ -159,11 +177,49 @@ namespace Ulon.Editor
                     bestWhere = "요 " + yaw.ToString("0") + "° · 거리 " + dist.ToString("0") + "m · 높이 " +
                                 high.ToString("0") + "m → 중심선 " + seen + "/" + targets.Count +
                                 " · 가로 퍼짐 " + spread.ToString("0.00") + " · 양안 " + lSeen + "/" + left.Count +
-                                "·" + rSeen + "/" + right.Count + " · 화면 강폭 " + widthOnScreen.ToString("0.00");
+                                "·" + rSeen + "/" + right.Count + " · 화면 강폭 " + widthOnScreen.ToString("0.00") +
+                                " · 굽이 " + bend.ToString("0.00") + "rad · 피치 " +
+                                (pitch * Mathf.Rad2Deg).ToString("0") + "°";
                 }
             }
             Debug.Log("[샷] 강 굽이 자리 유도 — 정점 x=" + peakX.ToString("0") + " · " + bestWhere);
             return new Shot { Name = name, Eye = bestEye, Target = center };
+        }
+
+        /// <summary>
+        /// 화면에 투영한 중심선이 **얼마나 꺾이나** — 이웃한 세 점이 이루는 방향 변화의 합(라디안).
+        /// 곧은 자락은 0에 가깝다. 「굽이가 굽이로 보이나」를 묻는 유일한 인자다.
+        /// </summary>
+        static float ScreenBend(Vector3 eye, Vector3 look, System.Collections.Generic.List<Vector3> pts)
+        {
+            var uv = new System.Collections.Generic.List<Vector2>();
+            foreach (var p in pts)
+            {
+                if (!PointVisible(eye, look, p)) continue;
+                uv.Add(new Vector2(ScreenU(eye, look, p), ScreenV(eye, look, p)));
+            }
+            float sum = 0f;
+            for (int i = 2; i < uv.Count; i++)
+            {
+                var a = uv[i - 1] - uv[i - 2];
+                var b = uv[i] - uv[i - 1];
+                if (a.sqrMagnitude < 1e-8f || b.sqrMagnitude < 1e-8f) continue;
+                sum += Mathf.Abs(Vector2.SignedAngle(a, b)) * Mathf.Deg2Rad;
+            }
+            return sum;
+        }
+
+        /// <summary>이 점이 화면 세로 어디에 찍히나(0 위 ~ 1 아래).</summary>
+        static float ScreenV(Vector3 eye, Vector3 look, Vector3 p)
+        {
+            var fwd = (look - eye).normalized;
+            var v = p - eye;
+            float depth = Vector3.Dot(v, fwd);
+            if (depth < 0.5f) return 0.5f;
+            var right = Vector3.Cross(Vector3.up, fwd).normalized;
+            var up = Vector3.Cross(fwd, right);
+            float tanY = Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad);
+            return Mathf.Clamp01(0.5f - Vector3.Dot(v, up) / (depth * tanY) * 0.5f);
         }
 
         /// <summary>이 점이 화면 가로 어디에 찍히나(0 왼쪽 ~ 1 오른쪽) — 굽이가 퍼졌는지 보려고 쓴다.</summary>
