@@ -211,6 +211,8 @@ namespace Ulon.Editor
             // 입구 근접이 대낮에 타지 않는가 — 포화는 렌더에서만 보인다(검수 큐 2).
             SliceSelfCheck.AssertEntranceNotBlownOut();
             SliceSelfCheck.AssertWaterNotBlownOut();
+            // 근접에서 텍셀이 격자로 보이지 않는가 — 화면에서만 재진다(검수 지시 2026-09-10).
+            SliceSelfCheck.AssertTexelNotBlocky();
             SliceSelfCheck.AssertActionVfxOnScreen();
             SliceSelfCheck.AssertActionVfxNegativeControl();
             // 검은 배경에서 보이는 것과 **실제 플레이 프레임**에서 읽히는 것은 다르다(검수 랩 D).

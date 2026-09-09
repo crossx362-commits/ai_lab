@@ -676,6 +676,26 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// **무늬 텍스처 한 변(px)** — 전 지형·바닥 공용. 옛값 128은 근접에서 텍셀 하나가 화면
+        /// 1.7~2.5px로 보여 「격자」로 읽혔다(검수 관찰 2026-09-10, 셈 `be7893de`: 하이트맵·알파맵
+        /// 격자는 무죄이고 범인이 텍셀이었다).
+        ///
+        /// **무늬의 세계 크기는 이 값에 안 딸린다** — 아래 생성기는 구조 항(덩어리·층리·이랑·잎·돌칸)을
+        /// `fx`,`fy`(항상 128 자 눈금)로 계산하고, 낟알 항만 실제 좌표로 계산한다. 그래서 해상도를
+        /// 올리면 **돌 하나가 작아지는 게 아니라 돌 가장자리가 매끄러워지고 낟알이 촘촘해진다**.
+        /// 이 분리가 없으면 512로 올리는 순간 광장 돌이 3cm 자갈이 된다.
+        /// </summary>
+        /// 후보를 나란히 재고 골랐다(`OutdoorCensus.RunTexelGrain`, `64_river_bend` 기준):
+        ///   128 → 텍셀 1.79px · 1px 넘는 자리 67.2% · 지형 10겹 0.47MB
+        ///   **256 → 0.89px · 45.7% · 1.88MB (채택 — 중앙값이 1px 아래로 내려가는 가장 싼 값)**
+        ///   512 → 0.45px · 16.2% · 7.50MB
+        /// 512는 4배를 더 쓰고도 **화면에서 더 나아 보이지 않았다** — 강둑에 남은 바둑판이
+        /// 텍셀이 아니라 **무늬 자체의 덩어리**(pattern 1의 6칸 해시)라 세 판이 그 자리에서 똑같다.
+        /// 조망 무늬 세기는 3.03 → 2.46으로 내려가지만 `14`를 나란히 놓고 봐도 눈에는 같다
+        /// (뭉개진 것은 원래 그 거리에서 안 읽히던 잔결이다).
+        internal static int NoiseRes = 256;
+
+        /// <summary>
         /// pattern 0 = 잔풀 잡음, 1 = 굵은 층리(암석), 2 = 이랑(밭), 3 = 부엽토(숲), 4 = 돌포장(광장).
         /// 풀·바위·길이 같은 무늬면 세계가 두세 색으로만 읽힌다(검수) — **생성기를 나누는 것이 지역 구분이다**.
         /// </summary>
@@ -684,27 +704,32 @@ namespace Ulon.Editor
             Directory.CreateDirectory(Path.Combine(Application.dataPath, "Game/Art/Env"));
             string texPath = "Assets/Game/Art/Env/" + name + ".png";
             string matPath = "Assets/Game/Art/Env/" + name + ".mat";
-            var tex = new Texture2D(128, 128, TextureFormat.RGB24, false);
+            int R = Mathf.Max(64, NoiseRes);
+            var tex = new Texture2D(R, R, TextureFormat.RGB24, false);
             tex.filterMode = FilterMode.Point;
             tex.wrapMode = TextureWrapMode.Repeat;
-            for (int y = 0; y < 128; y++)
+            var px32 = new Color32[R * R];
+            for (int y = 0; y < R; y++)
             {
-                for (int x = 0; x < 128; x++)
+                // `fx`,`fy` = **128 자 눈금**(구조 항 전용). 해상도를 올려도 무늬의 세계 크기는 그대로다.
+                int fy = y * 128 / R;
+                for (int x = 0; x < R; x++)
                 {
+                    int fx = x * 128 / R;
                     float t;
                     if (pattern == 1)
                     {
                         // 굵은 덩어리 + 사선 층리 — 잔풀 잡음과 눈에 띄게 다른 무늬.
-                        int bx = x / 6, by = y / 6;
+                        int bx = fx / 6, by = fy / 6;
                         int hb = ((bx * 92837) ^ (by * 68927) ^ ((bx + by) * 15731)) & 255;
-                        int band = ((x + y * 3) / 9 * 47) & 255;
+                        int band = ((fx + fy * 3) / 9 * 47) & 255;
                         int grit = (x * 61 + y * 149) & 63;
                         t = (hb / 255f) * 0.52f + (band / 255f) * 0.28f + (grit / 63f) * 0.20f;
                     }
                     else if (pattern == 2)
                     {
                         // 이랑 — 갈아엎은 밭. 줄무늬가 있어야 「경작지」로 읽힌다.
-                        int furrow = ((y / 5) % 2) * 70;
+                        int furrow = ((fy / 5) % 2) * 70;
                         int grain = (x * 53 + y * 17) & 63;
                         t = Mathf.Clamp01((furrow + grain) / 133f);
                     }
@@ -713,9 +738,9 @@ namespace Ulon.Editor
                         // 부엽토 — **낙엽 부스러기**. 잔풀 잡음(0)을 그대로 쓰면 숲 바닥이 마을 광장의
                         // 흙과 같은 무늬가 된다(검수 2026-09-09). 큰 얼룩 + 잎 조각 두 겹이라
                         // 9m로 깔아도 반복 무늬가 「문양」으로 안 읽힌다.
-                        int px = x / 11, py = y / 9;
-                        int blot = ((px * 48271) ^ (py * 16807)) & 255;                  // 넓은 얼룩
-                        int leaf = ((x * 7 + y * 13) % 17 < 3) ? 200 : 40;               // 흩어진 잎 조각
+                        int bpx = fx / 11, bpy = fy / 9;
+                        int blot = ((bpx * 48271) ^ (bpy * 16807)) & 255;                // 넓은 얼룩
+                        int leaf = ((x * 7 + y * 13) % 17 < 3) ? 200 : 40;               // 잎 조각(낟알 쪽)
                         int grain = (x * 199 + y * 83) & 127;
                         t = (blot / 255f) * 0.46f + (leaf / 255f) * 0.30f + (grain / 127f) * 0.24f;
                     }
@@ -725,11 +750,11 @@ namespace Ulon.Editor
                         // 읽혔다(검수 2026-09-09, 재질 실측: KenneyStoneRoad 68장·KenneyGrass 132·KenneyDirt 46
                         // 전부 같은 생성기). 돌은 **줄눈**이 있어야 돌로 읽힌다: 벽돌쌓기로 어긋난 칸 +
                         // 칸마다 다른 밝기 + 칸 경계의 어두운 줄눈 두 픽셀.
-                        const int Cell = 16;                     // 128px에 8칸 → 1m 타일에 8개, 돌 하나 ≈ 12cm
-                        int row = y / Cell;
-                        int sx = (x + (row % 2) * (Cell / 2)) / Cell;   // 홀수 줄은 반 칸 어긋난다
-                        int ix = (x + (row % 2) * (Cell / 2)) % Cell;
-                        int iy = y % Cell;
+                        const int Cell = 16;                     // 128 자로 8칸 → 1m 타일에 8개, 돌 하나 ≈ 12cm
+                        int row = fy / Cell;
+                        int sx = (fx + (row % 2) * (Cell / 2)) / Cell;   // 홀수 줄은 반 칸 어긋난다
+                        int ix = (fx + (row % 2) * (Cell / 2)) % Cell;
+                        int iy = fy % Cell;
                         bool joint = ix < 2 || iy < 2;           // 줄눈
                         int stone = ((sx * 73856093) ^ (row * 19349663)) & 255;
                         int grit = (x * 61 + y * 149) & 31;
@@ -737,13 +762,17 @@ namespace Ulon.Editor
                     }
                     else
                     {
+                        // 잔풀 잡음에는 **구조가 없다** — 전부 낟알이다. 그래서 두 겹 모두 실제
+                        // 좌표로 둔다(해상도를 올리면 풀결이 그만큼 잘아진다). 구조 항을 가진
+                        // 무늬(1·2·3·4)만 `fx`,`fy`로 세계 크기를 지킨다.
                         int h = (x * 374761 + y * 668265 + x * y * 13) & 255;
                         int h2 = (x * 127 + y * 311) & 255;
                         t = (h / 255f) * 0.65f + (h2 / 255f) * 0.35f;
                     }
-                    tex.SetPixel(x, y, Color.Lerp(a, b, t));
+                    px32[y * R + x] = Color.Lerp(a, b, t);
                 }
             }
+            tex.SetPixels32(px32);
             tex.Apply();
             File.WriteAllBytes(Path.Combine(Application.dataPath, "Game/Art/Env/" + name + ".png"), tex.EncodeToPNG());
             AssetDatabase.ImportAsset(texPath);
