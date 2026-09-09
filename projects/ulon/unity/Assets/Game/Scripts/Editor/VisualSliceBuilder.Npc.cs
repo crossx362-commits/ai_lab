@@ -1013,6 +1013,9 @@ namespace Ulon.Editor
 
         public static void DressBoss(GameObject boss, Color tint)
         {
+            // **투구를 먼저 걷는다** — 아래에서 왕관이 `HeadMetrics`로 머리를 재기 때문이다.
+            // 뒤에 걷으면 왕관만 투구 크기로 남아 실루엣 게이트가 문다(실측 2026-09-09).
+            HelmetOffFor(boss);
             if (boss == null)
                 return;
 

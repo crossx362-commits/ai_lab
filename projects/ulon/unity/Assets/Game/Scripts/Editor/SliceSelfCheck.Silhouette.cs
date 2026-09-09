@@ -48,13 +48,25 @@ namespace Ulon.Editor
             Bounds body = new Bounds();
             bool hasHat = false;
             bool hasBody = false;
+            // **무엇을 모자로 세었는지 적는다** — 이름을 안 적으면 「모자 폭 1.42m」가 왕관인지 투구인지
+            // 꺼진 렌더러인지 알 수 없어, 고치는 쪽이 엉뚱한 것을 줄이게 된다(실제로 한 번 그랬다).
+            string hatNames = "";
             var rends = bossGo.GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < rends.Length; i++)
             {
+                // **꺼진 렌더러는 화면에 없다 — 세지 않는다**(실측 2026-09-09).
+                // 보스 투구를 걷었더니 이 자가 **꺼진 투구**를 여전히 「모자 1.42m」로 세어 빨간불을 냈다.
+                // 화면에는 맨머리와 왕관만 있었다. 완화가 아니라 **잣대 교정**이다 — 이 자가 잡아야 할
+                // 「모자가 몸을 덮는다」는 보이는 것들 사이의 관계다. NC(모자를 원래 크기로 되돌리기)는
+                // 그대로 빨간불이어야 하고, 실제로 그렇다.
+                if (!rends[i].enabled || !rends[i].gameObject.activeInHierarchy || rends[i] is ParticleSystemRenderer)
+                    continue;
                 if (IsHeadgearName(rends[i].transform))
                 {
                     if (!hasHat) { hat = rends[i].bounds; hasHat = true; }
                     else hat.Encapsulate(rends[i].bounds);
+                    hatNames += " " + rends[i].name + "(" + Mathf.Max(rends[i].bounds.size.x, rends[i].bounds.size.z).ToString("0.00") +
+                                (rends[i].enabled ? "" : ",꺼짐") + ")";
                 }
                 else
                 {
@@ -72,7 +84,7 @@ namespace Ulon.Editor
                 float hatW = Mathf.Max(hat.size.x, hat.size.z);
                 float bodyW = Mathf.Max(body.size.x, body.size.z);
                 var ccm = bossGo.GetComponent<CharacterController>();
-                Debug.Log("[Ulon] 실루엣 계측 " + label + " hatW=" + hatW.ToString("0.00") + " bodyW=" + bodyW.ToString("0.00") + " ccR=" + (ccm != null ? ccm.radius : 0f).ToString("0.00") + " ccH=" + (ccm != null ? ccm.height : 0f).ToString("0.00"));
+                Debug.Log("[Ulon] 실루엣 계측 " + label + " hatW=" + hatW.ToString("0.00") + " bodyW=" + bodyW.ToString("0.00") + " ccR=" + (ccm != null ? ccm.radius : 0f).ToString("0.00") + " ccH=" + (ccm != null ? ccm.height : 0f).ToString("0.00") + " · 모자로 센 것:" + hatNames);
                 if (bodyW > 0.01f && hatW > bodyW * HeadgearWidthMax)
                     throw new InvalidOperationException(label + " 모자 폭 " + hatW.ToString("0.00") + "m가 몸 폭 " + bodyW.ToString("0.00") + "m의 " + HeadgearWidthMax + "배를 넘습니다 — 45° 시점에서 몸이 모자에 가려집니다.");
             }
