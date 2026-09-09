@@ -171,6 +171,56 @@ namespace Ulon.Editor
                       string.Join("\n  ", line) + "\n  이웃 틈(음수=겹침): " + string.Join(" · ", gaps));
         }
 
+        /// <summary>
+        /// **입구 둘레에 무엇이 서 있나** — 던전 문 앞이 남의 땅(밭·숲·광산) 한복판인가를 센다
+        /// (`09`에서 문틀이 밭 이랑 한복판에 서 있다는 관찰, 2026-09-09). 고치지 않는다 — 세기만.
+        /// 지역 거리는 **중심과 반경**으로, 소품은 **이름 무리**로 센다(이름 하나하나는 못 읽는다).
+        /// </summary>
+        public static void RunEntranceSurround()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            Surround("07/D1", Dungeon1.EntranceX, Dungeon1.EntranceZ);
+            Surround("09/D2", Dungeon2.EntranceX, Dungeon2.EntranceZ);
+            Surround("11/D3", Dungeon3.EntranceX, Dungeon3.EntranceZ);
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static void Surround(string tag, float ex, float ez)
+        {
+            var regions = WorldRegions.All;
+            var reg = new List<string>();
+            for (int i = 0; i < regions.Length; i++)
+            {
+                float d = new Vector2(ex - regions[i].X, ez - regions[i].Z).magnitude;
+                reg.Add(regions[i].Name + " " + d.ToString("0.0") + "m/반경 " + regions[i].Radius.ToString("0") +
+                        (d <= regions[i].Radius ? " **안**" : ""));
+            }
+            // 둘레 12m 안의 소품을 이름 앞머리로 묶어 센다(같은 킷 모델은 뒤에 숫자가 붙는다).
+            var groups = new Dictionary<string, int>();
+            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            {
+                var t = r.transform;
+                if (t.root.name == "Terrain" || t.name == "Ground")
+                    continue;
+                var p = t.position;
+                if (new Vector2(p.x - ex, p.z - ez).magnitude > 12f)
+                    continue;
+                string n = t.root.name == t.name ? t.name : t.root.name + "/" + t.name;
+                n = n.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+                groups[n] = groups.TryGetValue(n, out int v) ? v + 1 : 1;
+            }
+            var list = new List<KeyValuePair<string, int>>(groups);
+            list.Sort((a, b) => b.Value.CompareTo(a.Value));
+            var parts = new List<string>();
+            for (int i = 0; i < list.Count && i < 10; i++)
+                parts.Add(list[i].Key + "×" + list[i].Value);
+            Debug.Log("[Ulon] 입구 둘레 " + tag + " — 지역: " + string.Join(" · ", reg) +
+                      "\n  12m 안 소품: " + string.Join(" · ", parts));
+        }
+
         /// <summary>이 자리의 지표 높이 — 위에서 쏴서 가장 낮은 것(같은 규칙을 `ShotEye`도 쓴다).</summary>
         static float GroundAt(Vector3 above)
         {

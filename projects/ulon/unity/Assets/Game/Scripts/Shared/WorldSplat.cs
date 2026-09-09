@@ -328,7 +328,7 @@ namespace Ulon.Shared
                 // 바위를 옮기는 게 아니라 **지표를 바위에 맞춘다**.
                 float spread = r.Object == WorldRegions.MineObject ? 1.75f : 1f;
                 float t = 1f - Mathf.InverseLerp(r.Radius * 0.72f * spread, r.Radius * 1.04f * spread, d + wobble);
-                t = Mathf.Clamp01(t) * 0.95f;
+                t = Mathf.Clamp01(t) * 0.95f * EntranceClearAt(wx, wz);
                 if (t > weight)
                 {
                     weight = t;
@@ -452,6 +452,34 @@ namespace Ulon.Shared
                     cover = Mathf.Max(cover, 0.55f + trample * 0.45f);
             }
             return cover;
+        }
+
+        /// <summary>
+        /// **밭·숲·광산은 던전 문 앞을 비켜 간다**(검수 관찰 2026-09-09: 「`09`의 문틀이 밭 이랑
+        /// 한복판에 서 있다」). 세어 보니 던전 2 입구는 **남동 농경지 중심에서 14.3m, 반경 26m 안**이라
+        /// 문이 밭 한가운데 서 있는 것이 맞았다(둘레 24m의 지표 59%가 갈아엎은 흙).
+        ///
+        /// **세계는 안 옮긴다** — 입구를 옮기면 워프·도달 게이트를 건드리고, 지역을 옮기면 그 지역의
+        /// 소품 전부가 따라간다. 대신 **사람이 하는 대로** 둔다: 던전 문 앞은 갈지 않는다.
+        /// 문에서 7m 안은 지역 도포를 0으로 두고 12m에서 원래대로 돌아온다(그 사이는 페이드).
+        ///
+        /// **반경을 더 키우지 마라**: 지역 도포 하한 게이트가 중심 반경의 절반까지를 표본으로 삼으므로,
+        /// 넓히면 「밭 바닥이 초원과 같다」로 그 자가 운다(밭을 지우는 것이 목적이 아니다).
+        /// </summary>
+        public const float EntranceFieldClear = 7f;    // 이 안은 갈지 않는다
+        public const float EntranceFieldFade = 12f;    // 여기서 원래 밭으로 돌아온다
+
+        public static float EntranceClearAt(float wx, float wz)
+        {
+            float keep = 1f;
+            for (int i = 0; i < 3; i++)
+            {
+                float ex = i == 0 ? Dungeon1.EntranceX : i == 1 ? Dungeon2.EntranceX : Dungeon3.EntranceX;
+                float ez = i == 0 ? Dungeon1.EntranceZ : i == 1 ? Dungeon2.EntranceZ : Dungeon3.EntranceZ;
+                float d = new Vector2(wx - ex, wz - ez).magnitude;
+                keep = Mathf.Min(keep, Mathf.Clamp01((d - EntranceFieldClear) / (EntranceFieldFade - EntranceFieldClear)));
+            }
+            return keep;
         }
 
         /// <summary>

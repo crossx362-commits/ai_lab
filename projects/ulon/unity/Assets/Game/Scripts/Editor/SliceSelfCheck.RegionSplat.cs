@@ -32,6 +32,7 @@ namespace Ulon.Editor
             var alpha = data.GetAlphamaps(0, 0, ar, ar);
 
             var regions = WorldRegions.All;
+            int entranceSkipped = 0;
             for (int k = 0; k < regions.Length; k++)
             {
                 var r = regions[k];
@@ -44,6 +45,15 @@ namespace Ulon.Editor
                     {
                         float wx = r.X + Mathf.Sin(a * Mathf.Deg2Rad) * rad;
                         float wz = r.Z + Mathf.Cos(a * Mathf.Deg2Rad) * rad;
+                        // **던전 문 앞은 표본에서 뺀다** — 사람은 던전 입구를 갈아엎지 않는다
+                        // (`WorldSplat.EntranceClearAt`, 굽는 쪽과 **같은 함수**). 자를 무르게 하는 것과
+                        // 표본을 고치는 것은 다르다: 하한 0.5는 그대로 두고, 밭이 아닌 자리를 밭으로 세지 않는다.
+                        // 랩 ⑨에서 배운 그대로다 — **뺀 수를 찍고, 한 자리도 안 빼면 죽은 예외로 실패**한다.
+                        if (WorldSplat.EntranceClearAt(wx, wz) < 0.5f)
+                        {
+                            entranceSkipped++;
+                            continue;
+                        }
                         sum += Sample(alpha, ar, wx, wz, layerIdx);
                         n++;
                     }
@@ -54,6 +64,11 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("§6.1 " + r.Name + " 바닥의 " + data.terrainLayers[layerIdx].name + " 도포가 " + avg.ToString("0.00") +
                         "입니다 — 최소 " + RegionCoverMin + ". 지역 바닥이 초원과 같아 소품만 얹힌 모양입니다(§8.2).");
             }
+
+            Debug.Log("[Ulon] §6.1 지역 지표 — 던전 문 앞이라 뺀 표본 " + entranceSkipped + "곳");
+            if (entranceSkipped == 0)
+                throw new InvalidOperationException("지역 지표 표본에서 던전 문 앞을 한 자리도 빼지 않았습니다 — " +
+                    "예외가 죽었거나(WorldSplat.EntranceClearAt) 입구가 지역 밖으로 옮겨진 것입니다. 둘 다 확인하십시오.");
 
             // 길 — 마을에서 각 지역까지 실제로 이어져 있나. 중간 지점을 따라 훑는다.
             var routes = WorldSplat.Routes;
