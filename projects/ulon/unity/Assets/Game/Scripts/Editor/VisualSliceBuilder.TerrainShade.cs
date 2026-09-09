@@ -18,6 +18,10 @@ namespace Ulon.Editor
         /// 재질에서 조용히 어긋나기 때문이다. 알파맵에서 직접 구워 꽂고, **그 일치를 자가 잰다**
         /// (자는 알파맵을 읽고 화면은 컨트롤 텍스처를 읽는다 — 둘이 어긋나면 「자는 초록, 화면은 딴것」).
         /// </summary>
+        /// **누가 언제 다시 굽는가**: `TerrainCtrl0~2.asset`(각 2.8MB)은 손으로 만든 자산이 아니라
+        /// **이 함수가 매 빌드 알파맵에서 다시 굽는 생성물**이다. 지금은 도포가 결정적이라 바이트가
+        /// 같아 재커밋되지 않지만, 도포 규칙이 바뀌면 8.4MB가 통째로 다시 커밋된다 —
+        /// 그런 판이 잦아지면 git 추적에서 빼고 빌드 산출물로 돌려라(검수 2026-09-09).
         public const string TriplanarShader = "Ulon/TerrainTriplanar";
         const string CtrlPathFmt = "Assets/Game/Art/Env/TerrainCtrl{0}.asset";
         const string TerrainMatPath = "Assets/Game/Art/Env/TerrainTriplanar.mat";

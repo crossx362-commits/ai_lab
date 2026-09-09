@@ -35,6 +35,31 @@ namespace Ulon.Shared
         public const int CliffDark = 9;
         public const int LayerCount = 10;
 
+        /// <summary>
+        /// **풀은 벽에 안 붙는다**(검수 랩 ⑨ — 상식 모순). 삼면 투영으로 암석 결은 살아났는데
+        /// 앞쪽 절벽에 **초록·누런 띠가 커튼처럼 흘러내렸다**. 60m 수직 암벽에 풀은 자라지 않는다.
+        ///
+        /// 뿌리는 「산 중턱까지 풀이 올라간다」를 위해 걸어 둔 **바위 상한**이었다(고도 22m 아래에서
+        /// rock ≤ 0.42~0.87). 그 상한이 **경사를 안 봤다** — 중턱 비탈에도, 80° 암벽에도 똑같이 걸려
+        /// 풀을 남겼다. 그래서 상한 자체를 없애지 않고 **급경사에서만 풀어 준다**: 55°부터 풀리기
+        /// 시작해 70°면 상한이 사라진다(= 바위 그대로).
+        ///
+        /// **45°부터 자르는 판은 실제로 돌려 보고 물렀다** — 중턱 풀이 0.66 → **0.20**으로 떨어져
+        /// 「산 중턱 도포가 한쪽으로 쏠렸다」 자가 울었다(하한 0.35). 이 산은 6~18m 띠의 상당 부분이
+        /// 45°를 넘는다. 벽에서 풀을 떼려다 **중턱을 회색 한 장으로 만들면 지난 반려로 되돌아간다** —
+        /// 두 자를 동시에 만족시키는 창이 55~70°다.
+        ///
+        /// 굽는 쪽과 재는 쪽이 **같은 이 함수**를 읽는다. slope는 tan(경사각).
+        /// </summary>
+        public const float WallSlopeFrom = 1.43f;   // tan 55°
+        public const float WallSlopeTo = 2.75f;     // tan 70°
+
+        /// <summary>이 경사에서 「중턱 풀」 상한을 얼마나 풀어 줄지(0 = 그대로, 1 = 상한 없음).</summary>
+        public static float WallRockAt(float slope)
+        {
+            return Mathf.Clamp01((slope - WallSlopeFrom) / (WallSlopeTo - WallSlopeFrom));
+        }
+
         /// <summary>이 자리의 바위 중 **그늘진 절벽 바위가 차지하는 몫**(0~1).</summary>
         public static float DarkCliffAt(float wx, float wz)
         {

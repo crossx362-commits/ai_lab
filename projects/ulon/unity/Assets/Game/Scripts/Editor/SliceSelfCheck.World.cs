@@ -172,7 +172,12 @@ namespace Ulon.Editor
 
             // ③-2 「어디에 칠했는지」 — 전체 비율만 보면 산 전체가 회색 한 장이어도 통과한다(검수 반려).
             //     산 중턱 구간에 풀과 바위가 **섞여** 있는지, 물가에 모래가 있는지 위치로 본다.
-            int midG = 0, midR = 0, midN = 0, shoreN = 0, shoreSand = 0;
+            // **벽은 중턱이 아니다**(검수 랩 ⑨). 이 자는 높이로만 표본을 골랐다 — 그래서 6~18m 띠에
+            //     들어오는 **55°↑ 암벽**까지 「중턱」으로 세고 「여기에도 풀이 섞여야 한다」고 요구했다.
+            //     그 요구가 곧 화면의 **초록 커튼**이었다: 수직 암벽에 풀이 흘러내렸다.
+            //     제외 기준은 새로 정하지 않고 **도포 원장의 벽 규칙**(`WorldSplat.WallSlopeFrom`)을 그대로
+            //     읽는다 — 굽는 쪽이 풀을 걷기 시작하는 바로 그 각이다. 뺀 수는 매 판 찍는다(죽은 예외 금지).
+            int midG = 0, midR = 0, midN = 0, shoreN = 0, shoreSand = 0, midWall = 0;
             for (int gz = 0; gz < 120; gz++)
             {
                 for (int gx = 0; gx < 120; gx++)
@@ -192,6 +197,14 @@ namespace Ulon.Editor
                     float sd = maps[az, ax, Ulon.Shared.WorldSplat.Sand];
                     if (h > WorldTerrain.LandBase + 6f && h < WorldTerrain.LandBase + 18f)
                     {
+                        const float sd2 = 1.5f;
+                        float shx = WorldTerrain.HeightAt(wx + sd2, wz) - WorldTerrain.HeightAt(wx - sd2, wz);
+                        float shz = WorldTerrain.HeightAt(wx, wz + sd2) - WorldTerrain.HeightAt(wx, wz - sd2);
+                        if (Mathf.Sqrt(shx * shx + shz * shz) / (2f * sd2) >= Ulon.Shared.WorldSplat.WallSlopeFrom)
+                        {
+                            midWall++;
+                            continue;   // 벽은 「암벽 풀」 자가 따로 잰다(거기서는 풀이 있으면 빨간불)
+                        }
                         midN++;
                         if (g > 0.35f) midG++;
                         if (r > 0.35f) midR++;
@@ -203,9 +216,11 @@ namespace Ulon.Editor
                     }
                 }
             }
-            Debug.Log("[Ulon] 지형 계측 중턱 풀 " + (midN > 0 ? midG / (float)midN : 0f).ToString("0.00") + " 바위 " + (midN > 0 ? midR / (float)midN : 0f).ToString("0.00") + " / 물가 모래 " + (shoreN > 0 ? shoreSand / (float)shoreN : 0f).ToString("0.00") + " (표본 " + midN + "·" + shoreN + ")");
+            Debug.Log("[Ulon] 지형 계측 중턱 풀 " + (midN > 0 ? midG / (float)midN : 0f).ToString("0.00") + " 바위 " + (midN > 0 ? midR / (float)midN : 0f).ToString("0.00") + " / 물가 모래 " + (shoreN > 0 ? shoreSand / (float)shoreN : 0f).ToString("0.00") + " (표본 " + midN + "·" + shoreN + " · 벽이라 뺀 자리 " + midWall + ")");
             if (midN < 20)
                 throw new InvalidOperationException("산 중턱 표본이 " + midN + "개뿐입니다 — 산비탈이 사실상 없습니다.");
+            if (midWall == 0)
+                throw new InvalidOperationException("「벽은 중턱이 아니다」 조항이 한 자리도 안 뺐습니다 — 죽은 예외입니다(§예외 감사).");
             if (midG / (float)midN < MixedBandShareMin || midR / (float)midN < MixedBandShareMin)
                 throw new InvalidOperationException("산 중턱 도포가 한쪽으로 쏠렸습니다(풀 " + (midG / (float)midN).ToString("0.00") + " · 바위 " + (midR / (float)midN).ToString("0.00") + ") — 각각 " + MixedBandShareMin + " 이상이어야 합니다. 산이 무채색 한 장으로 읽히고 밑동이 칼로 자른 듯 끊깁니다(§8.2).");
             if (shoreN < 20)
