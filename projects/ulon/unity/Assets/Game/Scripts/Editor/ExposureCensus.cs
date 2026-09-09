@@ -256,7 +256,9 @@ namespace Ulon.Editor
             cam.targetTexture = rt;
             try
             {
-                foreach (float v in new[] { 3.4f, 2.4f, 1.6f, 1.0f, 0.6f })
+                // 0f는 **기저**다 — 오라를 껐을 때 남는 초록은 잔디에서 온다. 이걸 모르면
+                // 「1.6에서 10.1%」가 거의 다 걷은 것인지 아직 절반인지 판단할 수 없다(검수 지시).
+                foreach (float v in new[] { 3.4f, 2.4f, 1.6f, 1.0f, 0.6f, 0f })
                 {
                     for (int i = 0; i < lights.Count; i++) lights[i].intensity = v;
                     string line = "[노출] 보스 오라 세기 " + v.ToString("0.0");

@@ -67,6 +67,22 @@ namespace Ulon.Shared
         public const float RiverFromX = -80f;
         public const float RiverToX = -140f;
 
+        // **호수는 닫힌 물이고 출구는 하나뿐이다**(대장 판정 2026-09-10: 「호수가 만이 됐다」).
+        // 물가에서 뭍으로 올라가는 완만한 둑의 수평 폭 — 물 반경 **바깥**에 둔다.
+        // 옛 규칙은 이 둑을 반경 **안쪽** 60%에 두어 물이 원장 21m가 아니라 12m에서 끝났다.
+        // 판정 방향은 「자를 실물에 맞추지 말고 `carve`를 원장에 맞춘다」이므로 둑을 밖으로 옮긴다.
+        public const float ShoreRamp = 8f;
+        // 호수 출구의 반폭 — 여기서 강이 시작한다. 출구 폭(6m)은 호수 지름(42m)의 1/7이라
+        // 화면에서 「트인 후미」가 아니라 **목**으로 읽힌다. 하류로 가며 `RiverHalfWidth`로 넓어진다.
+        public const float OutletHalfWidth = 3f;
+        // 출구에서 온전한 강폭이 되기까지의 거리.
+        public const float OutletRunway = 20f;
+
+        /// <summary>NC 전용 — 켜면 출구를 막는다(강이 호수에서 끊겨야 자가 운다). 굽는 쪽은 끄고 쓴다.</summary>
+        public static bool OutletDisabled = false;
+        /// <summary>NC 전용 — 켜면 옛 규칙으로 되돌린다(둑이 반경 안쪽 → 호수가 바다와 합쳐진다).</summary>
+        public static bool LakeSealDisabled = false;
+
         /// <summary>월드 좌표의 지형 높이(미터).</summary>
         public static float HeightAt(float wx, float wz)
         {
@@ -163,17 +179,37 @@ namespace Ulon.Shared
             return n * (1f - flatten) * 2.75f;
         }
 
+        /// <summary>
+        /// **호수를 원장 반경대로 판다**(대장 판정 2026-09-10).
+        ///
+        /// 옛 규칙은 완만한 둑을 반경 **안쪽** 60%에 두어, 물이 `LakeRadius`(21m)가 아니라
+        /// **12m**에서 끝났다(실측). 「자를 실물에 맞추지 말고 `carve`를 원장에 맞춘다」가 판정이므로
+        /// 둑을 **반경 바깥**(`ShoreRamp`)으로 옮긴다 — 물가는 21m에 서고, 급경사 걱정은
+        /// 밖의 둑이 받는다(§8.2의 「잔디가 물에 수직으로 잘린다」는 그대로 피한다).
+        /// </summary>
         static float CarveLake(float wx, float wz, float h)
         {
             float d = Mathf.Sqrt((wx - LakeX) * (wx - LakeX) + (wz - LakeZ) * (wz - LakeZ));
-            if (d > LakeRadius)
+            if (LakeSealDisabled)
+            {
+                // NC — 옛 규칙 그대로(둑이 반경 안쪽). 물이 12m에서 끝나 강 채널이 둑을 통째로
+                // 헐고 지나가므로 호수가 바다와 한 몸이 된다. 게이트가 이걸 물어야 한다.
+                if (d > LakeRadius)
+                    return h;
+                float tOld = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - d / LakeRadius) / 0.6f));
+                return Mathf.Min(h, Mathf.Lerp(h, SeaLevel - LakeDepth, tOld));
+            }
+            if (d > LakeRadius + ShoreRamp)
                 return h;
-            // 바깥 40%만 완만한 둑, 안쪽은 넓은 수면 — 중심 한 점만 깊으면 물이 손톱만큼만 보인다.
-            // 둑을 넓게(바깥 60%) — 급경사면 물가 모래 띠가 안 생기고 잔디가 물에 수직으로 잘린다(§8.2).
-            float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - d / LakeRadius) / 0.6f));
-            // 물가는 뭍 높이에서 서서히 내려가야 한다 — 바로 수면 높이로 떨어뜨리면 3m 수직 절벽이 된다.
-            float bed = Mathf.Lerp(h, SeaLevel - LakeDepth, t);
-            return Mathf.Min(h, bed);
+            if (d <= LakeRadius)
+            {
+                // 가장자리도 수면 **아래**여야 물가가 반경에 선다 — 0으로 수렴시키면 다시 안쪽에서 끝난다.
+                float t = Mathf.SmoothStep(0f, 1f, 1f - d / LakeRadius);
+                return Mathf.Min(h, SeaLevel - Mathf.Lerp(0.25f, LakeDepth, t));
+            }
+            // 물가 밖 둑 — 수면 언저리에서 뭍 높이로 서서히. 여기서 모래 띠가 난다.
+            float u = Mathf.SmoothStep(0f, 1f, (d - LakeRadius) / ShoreRamp);
+            return Mathf.Min(h, Mathf.Lerp(SeaLevel + 0.05f, h, u));
         }
 
         /// <summary>
@@ -218,6 +254,22 @@ namespace Ulon.Shared
             return Mathf.Max(h, Mathf.Lerp(h, PierTop, w));
         }
 
+        /// <summary>이 x에서 강 물길의 반폭 — 호수 출구는 좁고(목), 하류로 가며 원장 폭이 된다.</summary>
+        public static float ChannelHalfWidth(float wx)
+        {
+            float outlet = LakeX - LakeRadius;                       // 호수 물가 — 여기가 목이다
+            float t = Mathf.InverseLerp(outlet, outlet - OutletRunway, wx);
+            return Mathf.Lerp(OutletHalfWidth, RiverHalfWidth, Mathf.SmoothStep(0f, 1f, t));
+        }
+
+        /// <summary>
+        /// **강은 원장 폭대로 흐르고, 하구도 넓히지 않는다**(대장 판정 2026-09-10).
+        ///
+        /// 옛 규칙은 ①폭 감쇠 꼬리(`RiverHalfWidth * 2.2`)로 젖은 폭이 **15.5~17.5m**가 됐고
+        /// ②하구를 일부러 넓혀(`mouth`) 바다와 구분이 안 됐다. 둘 다 걷는다 — 폭은
+        /// `ChannelHalfWidth`가 정하고(출구 3m → 하류 6m), 완만한 둑은 **채널 밖**에 둔다
+        /// (호수와 **같은 규칙**이다: 규칙을 늘리지 않고 대상만 넓힌다).
+        /// </summary>
         static float CarveRiver(float wx, float wz, float h)
         {
             if (wx > RiverFromX || wx < RiverToX)
@@ -225,13 +277,35 @@ namespace Ulon.Shared
             // 살짝 굽은 물길 — 직선 수로는 화면에서 인공물로 읽힌다.
             float centerZ = RiverZ + Mathf.Sin((wx - RiverFromX) * 0.06f) * 6f;
             float d = Mathf.Abs(wz - centerZ);
-            if (d > RiverHalfWidth * 2.2f)
+            if (LakeSealDisabled)
+            {
+                // NC — 옛 규칙 그대로. **호수만 되돌려서는 「만」이 재현되지 않는다**: 옛 화면의 만은
+                // 얕은 호수와 **넓은 강 채널**(감쇠 꼬리 15~17m + 하구 넓힘)이 함께 만든 것이었다.
+                // 한쪽만 되돌린 첫 판에서 NC가 「봉합을 안 본다」고 잘못 울었다.
+                if (d > RiverHalfWidth * 2.2f)
+                    return h;
+                float tOld = Mathf.SmoothStep(0f, 1f, 1f - Mathf.Clamp01((d - RiverHalfWidth) / (RiverHalfWidth * 1.2f)));
+                float mouth = Mathf.InverseLerp(RiverFromX, RiverToX, wx);
+                return Mathf.Min(h, Mathf.Lerp(h, SeaLevel - (1.2f + 1.4f * mouth) * tOld, tOld));
+            }
+            float half = ChannelHalfWidth(wx);
+            if (OutletDisabled)
+            {
+                // NC — 출구를 막는다. 호수 물가 바깥 한 뼘에서 강을 안 판다: 강이 호수에서 끊긴다.
+                float outlet = LakeX - LakeRadius;
+                if (wx <= outlet && wx > outlet - 12f)
+                    return h;
+            }
+            float ramp = half * 1.2f;
+            if (d > half + ramp)
                 return h;
-            float t = Mathf.SmoothStep(0f, 1f, 1f - Mathf.Clamp01((d - RiverHalfWidth) / (RiverHalfWidth * 1.2f)));
-            // 바다에 가까울수록 넓고 깊게 — 하구가 강과 같은 폭이면 「수로」로 읽힌다.
-            float mouth = Mathf.InverseLerp(RiverFromX, RiverToX, wx);
-            float bed = SeaLevel - (1.2f + 1.4f * mouth) * t;
-            return Mathf.Min(h, Mathf.Lerp(h, bed, t));
+            if (d <= half)
+            {
+                float t = Mathf.SmoothStep(0f, 1f, 1f - d / half);
+                return Mathf.Min(h, SeaLevel - Mathf.Lerp(0.25f, 1.4f, t));
+            }
+            float u = Mathf.SmoothStep(0f, 1f, (d - half) / ramp);
+            return Mathf.Min(h, Mathf.Lerp(SeaLevel + 0.05f, h, u));
         }
     }
 }

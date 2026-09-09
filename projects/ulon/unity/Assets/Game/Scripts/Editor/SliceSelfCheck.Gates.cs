@@ -141,6 +141,7 @@ namespace Ulon.Editor
             Gate(AssertRoadOffMound);        // 길은 문 뒤 언덕을 넘지 않는다(산꼭대기로 가는 길 금지)
             Gate(AssertMoundBehind);         // 문 뒤에 산이 있나(시선으로 — 문구멍은 뚫리고 문 위는 막힌다)
             Gate(AssertShoreBand);           // 물가에 걸어 다닐 만한 띠가 있는가(폭은 높이가 아니라 수평 거리)
+            Gate(AssertLakeSealed);          // 호수는 닫힌 물인가 · 출구 하나로 강이 흐르는가(대장 판정)
             Gate(AssertPlaneMix);            // 두 벽 평면이 겹쳐 격자를 그리는가(검수 랩 ㉧)
             Gate(AssertWorldMaterials);
             Gate(AssertServerAuthorityWiring);
