@@ -76,6 +76,7 @@ namespace Ulon.Editor
             }
             SweepEntranceLight();
             BlameLights("06_field_boss");
+            SweepBossAura();
             Debug.Log("[노출] 읽는 법 — 「250↑ 몫 / R·G 동시 250↑ 몫 / 평균 밝기」. 조건을 껐을 때 크게 내려간 것이 태우는 자다.");
             if (Application.isBatchMode)
                 UnityEditor.EditorApplication.Exit(0);
@@ -219,6 +220,58 @@ namespace Ulon.Editor
             }
             finally
             {
+                cam.targetTexture = null; RenderTexture.active = null;
+                Object.DestroyImmediate(camGo); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
+            }
+        }
+
+        /// <summary>
+        /// **오라 세기도 재서 고른다**(검수 조건 2026-09-09 — 「값은 07처럼 스윕으로」).
+        /// 보스 근접 셋(`06`·`17`·`41`)에서 같이 읽는다 — 한 샷만 보고 내리면 다른 보스 샷이 어두워진다.
+        /// </summary>
+        static void SweepBossAura()
+        {
+            var lights = new System.Collections.Generic.List<Light>();
+            var keep = new System.Collections.Generic.List<float>();
+            foreach (var l in Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                if (l != null && l.name.StartsWith("BossAura")) { lights.Add(l); keep.Add(l.intensity); }
+            if (lights.Count == 0) { Debug.LogWarning("[노출] 보스 오라를 못 찾았습니다."); return; }
+
+            var shots = QaShots.BuildShots();
+            string[] want = { "06_field_boss", "17_boss_closeup", "41_boss3" };
+            var cams = new System.Collections.Generic.List<(string Name, Vector3 Eye, Vector3 Look)>();
+            for (int i = 0; i < shots.Length; i++)
+                for (int k = 0; k < want.Length; k++)
+                    if (QaShots.NameOf(shots[i]) == want[k])
+                    {
+                        QaShots.EyeOf(shots[i], out Vector3 e, out Vector3 l);
+                        cams.Add((want[k], e, l));
+                    }
+
+            var camGo = new GameObject("ExposureAuraCam");
+            var cam = camGo.AddComponent<Camera>();
+            cam.fieldOfView = 55f; cam.nearClipPlane = 0.05f; cam.farClipPlane = 500f;
+            var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32);
+            var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
+            cam.targetTexture = rt;
+            try
+            {
+                foreach (float v in new[] { 3.4f, 2.4f, 1.6f, 1.0f, 0.6f })
+                {
+                    for (int i = 0; i < lights.Count; i++) lights[i].intensity = v;
+                    string line = "[노출] 보스 오라 세기 " + v.ToString("0.0");
+                    for (int c = 0; c < cams.Count; c++)
+                    {
+                        camGo.transform.position = cams[c].Eye;
+                        camGo.transform.LookAt(cams[c].Look);
+                        line += " · " + cams[c].Name + " " + Measure(cam, rt, tex);
+                    }
+                    Debug.Log(line);
+                }
+            }
+            finally
+            {
+                for (int i = 0; i < lights.Count; i++) lights[i].intensity = keep[i];
                 cam.targetTexture = null; RenderTexture.active = null;
                 Object.DestroyImmediate(camGo); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
             }

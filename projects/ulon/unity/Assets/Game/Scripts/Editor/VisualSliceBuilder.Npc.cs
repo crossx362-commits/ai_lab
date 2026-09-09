@@ -1199,7 +1199,13 @@ namespace Ulon.Editor
             var aura = auraGo.AddComponent<Light>();
             aura.type = LightType.Point;
             aura.color = tint;
-            aura.intensity = 3.4f;
+            // **대낮 야외에서 화면을 태우지 않는 세기**(2026-09-09, 재서 골랐다 — 검수 승인 한 줄 수리).
+            // 옛 3.4는 `06_field_boss`를 250↑ 포화 6.2%로 태웠다(야외 광각은 2%대). 점광을 하나씩 꺼
+            // 이름을 대는 셈이 이 오라를 단독 범인으로 지목했다(`ExposureCensus.BlameLights` −5.8).
+            // 세 보스 샷에서 나란히 스윕한 값: 3.4→06 6.2 · 2.4→3.0 · **1.6→1.1** · 1.0→0.4.
+            // 실내(`17`·`41`)는 세기에 거의 안 움직인다(평균 밝기 107.6→106.5) — 즉 **오라를 내려도
+            // 실내 보스는 어두워지지 않는다.** 존재·색·형태는 그대로이고 `AssertBossTraits`가 계속 지킨다.
+            aura.intensity = 1.6f;
             aura.range = 6.5f;
             aura.shadows = LightShadows.None;
         }
