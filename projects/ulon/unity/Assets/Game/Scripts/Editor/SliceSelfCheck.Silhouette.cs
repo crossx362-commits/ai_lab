@@ -108,31 +108,41 @@ namespace Ulon.Editor
             }
             Debug.Log("[Ulon] 배너 실루엣 통과 —" + report);
 
-            // NC — 배너를 기둥에서 **옆으로 떼면** 「걸려 보인다」가 무너져야 한다.
+            // **NC — 등불을 문구멍 앞으로 옮기면 「등불이 문을 덮는다」가 물어야 한다.**
+            // 예전 NC는 배너를 기둥에서 떼는 것이었는데, **배너를 걷은 뒤로 매 판 조용히 건너뛰어졌다**
+            // (2026-09-09 발견: 로그 한 줄, 게이트는 초록불). 지금 이 자가 실제로 판정하는 것은
+            // 「등불이 문구멍을 덮나」이므로 **NC도 그 자리에서** 건다. 못 세우면 건너뛰지 않고 실패한다.
             var root2 = GameObject.Find(Dungeon2.RootObject);
-            var banners = EntranceCensus.FindChildren(root2 != null ? root2.transform : null, "banner");
-            if (banners.Count == 0)
-            {
-                Debug.LogWarning("[Ulon] 배너 실루엣 NC 건너뜀 — 던전 2 배너를 못 찾았다(자가 무력할 수 있다)");
-                return;
-            }
-            var keep = new System.Collections.Generic.List<Vector3>();
+            var lanterns = EntranceCensus.FindChildren(root2 != null ? root2.transform : null, "lantern");
+            if (lanterns.Count == 0)
+                throw new InvalidOperationException("배너 실루엣 네거티브 컨트롤을 세울 등불이 던전 2 입구에 없습니다 — " +
+                    "**NC를 못 세우는 자는 게이트가 아니라 로그다.**");
+            var portal2 = EntranceCensus.FindChild(root2.transform, VisualSliceBuilder.EntrancePortalObject);
+            if (portal2 == null)
+                throw new InvalidOperationException("배너 실루엣 네거티브 컨트롤 — 던전 2 포털이 없습니다(자가 무력합니다).");
             EntranceCensus.ShotEye(Dungeon2.EntranceX, Dungeon2.EntranceZ, out Vector3 ncEye, out Vector3 _);
-            var away = ncEye - new Vector3(Dungeon2.EntranceX, ncEye.y, Dungeon2.EntranceZ);
-            away = new Vector3(-away.z, 0f, away.x).normalized;      // 화면 가로로 밀어야 실루엣이 떨어진다
-            // **6m** — 3m로는 기둥이 화면에서 넓어(3,877px) 여전히 26% 겹쳤다. NC는 「걸림이 무너지는
-            // 자리」까지 밀어야 자의 힘을 잰다(원장: 약한 NC의 통과는 나의 게으름이다).
-            foreach (var b in banners) { keep.Add(b.position); b.position += away * 6.0f; }
+            var lantern = lanterns[0];
+            var keepPos = lantern.position;
+            // **구멍 자리에서 카메라 쪽으로 한 뼘** — 문 자리(지면)에서 밀면 높이가 안 맞아 아무것도
+            // 안 가린다(문구멍 NC에서 이미 두 판을 잃은 함정이다). 옮긴 뒤 바운드 중심을 맞춘다.
+            var ncSpot = portal2.position + (ncEye - portal2.position).normalized * 0.3f;
+            lantern.position = ncSpot;
             Physics.SyncTransforms();
+            var lr = lantern.GetComponentInChildren<Renderer>();
+            if (lr != null)
+            {
+                lantern.position += ncSpot - lr.bounds.center;
+                Physics.SyncTransforms();
+            }
             EntranceCensus.ReadEntrance(Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ,
                                         out EntranceCensus.Readout nc);
-            for (int i = 0; i < banners.Count; i++) banners[i].position = keep[i];
+            lantern.position = keepPos;
             Physics.SyncTransforms();
-            if (nc.BannerPillar >= 0.03f)
-                throw new InvalidOperationException("배너 실루엣 네거티브 컨트롤 ① 실패 — 기둥에서 6m 떼어도 " +
-                    (nc.BannerPillar * 100f).ToString("0") + "% 겹칩니다. 자가 겹침을 못 잽니다.");
-            Debug.Log("[Ulon] 배너 실루엣 NC ① 통과 — 기둥에서 떼면 겹침 " +
-                      (nc.BannerPillar * 100f).ToString("0") + "%로 무너진다");
+            if (nc.LanternMouth <= MaxMouth)
+                throw new InvalidOperationException("배너 실루엣 네거티브 컨트롤 실패 — 등불을 문구멍 앞으로 옮겼는데도 " +
+                    (nc.LanternMouth * 100f).ToString("0") + "%로 통과했습니다. 자가 무력합니다.");
+            Debug.Log("[Ulon] 배너 실루엣 NC 통과 — 등불을 문 앞으로 옮기면 문구멍 가림 " +
+                      (nc.LanternMouth * 100f).ToString("0") + "%로 걸린다");
 
             // NC ②(기둥노출)는 **세울 수 없어 뺐다**: 배너를 기둥 정면에 세워도 기둥은 98% 보인다
             // — 배너가 기둥보다 작아 애초에 삼킬 수 없다. **NC를 못 세우는 자는 게이트가 아니라 로그다.**
@@ -171,27 +181,25 @@ namespace Ulon.Editor
             }
             Debug.Log("[Ulon] 문구멍 가림(화면) 통과 —" + report);
 
-            // NC — 던전 1 배너를 문 앞으로 밀어 자가 무는지 본다.
+            // NC — 던전 1 **등불**을 문 앞으로 밀어 자가 무는지 본다.
+            // **예전엔 배너를 밀었고, 배너를 걷은 뒤로 이 NC가 매 판 조용히 건너뛰어졌다**(2026-09-09 발견:
+            // 로그에 「배너를 못 찾았다」 한 줄, 게이트는 초록불). **NC를 못 세우는 자는 게이트가 아니라
+            // 로그다** — 그래서 ①상시 있는 물건(등불)으로 바꾸고 ②못 찾으면 **건너뛰지 않고 실패**시킨다.
             var root = GameObject.Find(Dungeon1.RootObject);
             Transform banner = null;
             if (root != null)
                 foreach (var tr in root.GetComponentsInChildren<Transform>(true))
-                    if (tr.name.StartsWith("banner-red", StringComparison.Ordinal)) { banner = tr; break; }
+                    if (tr.name.StartsWith("lantern", StringComparison.Ordinal)) { banner = tr; break; }
             if (banner == null)
-            {
-                Debug.LogWarning("[Ulon] 문구멍 네거티브 컨트롤 건너뜀 — 배너를 못 찾았다(자가 무력할 수 있다)");
-                return;
-            }
+                throw new InvalidOperationException("문구멍 네거티브 컨트롤을 세울 물건(등불)이 던전 1 입구에 없습니다 — " +
+                    "**NC를 못 세우는 자는 게이트가 아니라 로그다**. 등불이 사라진 것인지 이름이 바뀐 것인지 보십시오.");
             var keep = banner.position;
             // **구멍 자체의 앞**에 세운다 — 문 자리(지면 좌표)에서 밀면 높이가 안 맞아 화면에서
             // 아무것도 안 가리고, NC가 「자가 무력하다」고 스스로 울었다(두 판이 실제로 그랬다).
             // 그래서 **자가 구멍이라고 부르는 그것**(포털 판)의 자리에서 카메라 쪽으로 밀어 세운다.
             var portalTr = EntranceCensus.FindChild(root.transform, VisualSliceBuilder.EntrancePortalObject);
             if (portalTr == null)
-            {
-                Debug.LogWarning("[Ulon] 문구멍 네거티브 컨트롤 건너뜀 — 포털을 못 찾았다");
-                return;
-            }
+                throw new InvalidOperationException("문구멍 네거티브 컨트롤 — 던전 1 포털을 못 찾았습니다(자가 무력합니다).");
             EntranceCensus.ShotEye(Dungeon1.EntranceX, Dungeon1.EntranceZ, out Vector3 ncEye, out Vector3 _);
             // **원점이 아니라 보이는 몸을 맞춘다** — 배너는 원점이 장대 밑이라 원점을 구멍 자리에
             // 놓으면 천이 구멍 **위로** 뜬다(실제로 두 판 연속 「자가 무력하다」가 나왔고, 원인은 자가
@@ -239,10 +247,93 @@ namespace Ulon.Editor
             banner.rotation = keepRot;
             Physics.SyncTransforms();
             if (ncShare <= Max)
-                throw new InvalidOperationException("문구멍 네거티브 컨트롤 실패 — 배너를 문 앞으로 옮겼는데도 " +
+                throw new InvalidOperationException("문구멍 네거티브 컨트롤 실패 — 등불을 문 앞으로 옮겼는데도 " +
                     (ncShare * 100f).ToString("0") + "%로 통과했습니다. 자가 무력합니다.");
-            Debug.Log("[Ulon] 문구멍 네거티브 컨트롤 통과 — 배너를 문 앞으로 옮기면 " +
+            Debug.Log("[Ulon] 문구멍 네거티브 컨트롤 통과 — 등불을 문 앞으로 옮기면 " +
                       (ncShare * 100f).ToString("0") + "%로 걸린다");
+        }
+
+        /// <summary>
+        /// **문이 닫혀 있나**(검수 지시 2026-09-09 — 못 세웠던 「샘」 자의 자리).
+        ///
+        /// 앞의 자(`AssertEntranceMouthClear`)는 「문구멍 **앞을** 무엇이 가리나」만 물었다. 그래서
+        /// 포털이 **옆으로 서면 가리는 것이 없어 0% = 초록불**이었고, 던전 3은 화면에서 검은 막대기
+        /// 하나에 문구멍이 활짝 열린 채 여러 판을 통과했다. 「가렸나」와 「닫혔나」는 다른 질문이다.
+        ///
+        /// 문구멍 띠는 **문틀에서** 유도한다(포털이 어디로 가든 띠는 제자리다). 그 안에서 둘을 묻는다:
+        /// **채움**(포털이 띠를 채운 몫)과 **샘**(던전의 어떤 것도 없어 바깥이 그대로 보이는 몫).
+        /// </summary>
+        const float PortalFillMin = 0.45f;   // 실측 0.68~0.81 — 아래는 판이 비껴 선 것이다
+        const float PortalLeakMax = 0.15f;   // 실측 0.01~0.04 · 옆으로 선 판은 0.47이었다
+
+        static void AssertEntrancePortalCloses()
+        {
+            var spots = new (string Tag, string Root, float X, float Z, float Yaw)[]
+            {
+                ("던전 1", Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ, Dungeon1.EntranceYaw),
+                ("던전 2", Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ, Dungeon2.EntranceYaw),
+                ("던전 3", Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ, Dungeon3.EntranceYaw),
+            };
+            string report = "";
+            foreach (var s in spots)
+            {
+                if (!EntranceCensus.ReadPortal(s.Root, s.X, s.Z, s.Yaw, out EntranceCensus.PortalRead r))
+                    throw new InvalidOperationException(s.Tag + " 문을 화면에서 못 쟀습니다 — " + r.What +
+                        ". **못 재는 자를 초록불로 남기지 않는다.**");
+                report += " · " + s.Tag + " 채움 " + (r.Fill * 100f).ToString("0") + "%/샘 " +
+                          (r.Leak * 100f).ToString("0") + "%";
+                if (r.Fill < PortalFillMin)
+                    throw new InvalidOperationException(s.Tag + " 문짝이 문구멍의 " + (r.Fill * 100f).ToString("0") +
+                        "%만 채웁니다 — 최소 " + (PortalFillMin * 100f).ToString("0") + "%. 판이 문을 가로지르지 않고 " +
+                        "옆으로 서 있는 것입니다(`RoomSlab`은 로컬 x가 두께다 — 요는 진입로 방위 + 90°).");
+                if (r.Leak > PortalLeakMax)
+                    throw new InvalidOperationException(s.Tag + " 문구멍으로 바깥 세계가 " + (r.Leak * 100f).ToString("0") +
+                        "% 보입니다 — 상한 " + (PortalLeakMax * 100f).ToString("0") + "%. 문이 안 닫혔습니다.");
+            }
+            Debug.Log("[Ulon] 문 닫힘(화면) 통과 —" + report);
+
+            // **NC 둘 — 자리를 재서 골랐다.**
+            // ①포털을 90° 돌린다. **던전 1에서 돌리면 채움 58%·샘 1%로 여전히 통과한다**(실측):
+            //   그 입구는 카메라가 비스듬해서 안쪽으로 뻗은 판도 화면을 막는다 — 즉 **그 자리에서는
+            //   90°가 결함을 안 만든다**. 결함을 만드는 자리는 던전 3이고(고치기 전 실물이 채움 4%·샘 47%),
+            //   그래서 NC는 **결함이 실제로 나는 자리**에서 건다. 「자가 안 움직이는 자리는 그 화면의
+            //   원인이 다른 것이다」 — 자리를 안 고르면 NC가 자를 봐준다.
+            // ②문짝을 아예 끈다 — 「닫혔나」를 묻는 자라면 **문이 없으면 반드시 울어야** 한다.
+            var d3 = GameObject.Find(Dungeon3.RootObject);
+            var p3 = d3 == null ? null : EntranceCensus.FindChild(d3.transform, VisualSliceBuilder.EntrancePortalObject);
+            if (p3 == null)
+                throw new InvalidOperationException("문 닫힘 네거티브 컨트롤 — 던전 3 포털이 없습니다(자가 무력합니다).");
+            var keep3 = p3.rotation;
+            p3.rotation = keep3 * Quaternion.Euler(0f, 90f, 0f);
+            Physics.SyncTransforms();
+            EntranceCensus.ReadPortal(Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ,
+                                      Dungeon3.EntranceYaw, out EntranceCensus.PortalRead nc);
+            p3.rotation = keep3;
+            Physics.SyncTransforms();
+            if (nc.Fill >= PortalFillMin || nc.Leak <= PortalLeakMax)
+                throw new InvalidOperationException("문 닫힘 네거티브 컨트롤 ① 실패 — 던전 3 포털을 90° 돌렸는데 채움 " +
+                    (nc.Fill * 100f).ToString("0") + "% · 샘 " + (nc.Leak * 100f).ToString("0") +
+                    "%로 통과했습니다. 자가 무력합니다.");
+
+            var d1 = GameObject.Find(Dungeon1.RootObject);
+            var p1 = d1 == null ? null : EntranceCensus.FindChild(d1.transform, VisualSliceBuilder.EntrancePortalObject);
+            if (p1 == null)
+                throw new InvalidOperationException("문 닫힘 네거티브 컨트롤 — 던전 1 포털이 없습니다(자가 무력합니다).");
+            var rend1 = p1.GetComponent<Renderer>();
+            if (rend1 == null)
+                throw new InvalidOperationException("문 닫힘 네거티브 컨트롤 — 던전 1 포털에 렌더러가 없습니다.");
+            rend1.enabled = false;
+            EntranceCensus.ReadPortal(Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ,
+                                      Dungeon1.EntranceYaw, out EntranceCensus.PortalRead nc2);
+            rend1.enabled = true;
+            if (nc2.Fill >= PortalFillMin || nc2.Leak <= PortalLeakMax)
+                throw new InvalidOperationException("문 닫힘 네거티브 컨트롤 ② 실패 — 던전 1 문짝을 껐는데 채움 " +
+                    (nc2.Fill * 100f).ToString("0") + "% · 샘 " + (nc2.Leak * 100f).ToString("0") +
+                    "%로 통과했습니다. 자가 무력합니다.");
+            Debug.Log("[Ulon] 문 닫힘 네거티브 컨트롤 통과 — 던전 3 포털 90° 회전: 채움 " +
+                      (nc.Fill * 100f).ToString("0") + "%/샘 " + (nc.Leak * 100f).ToString("0") +
+                      "% · 던전 1 문짝 끔: 채움 " + (nc2.Fill * 100f).ToString("0") + "%/샘 " +
+                      (nc2.Leak * 100f).ToString("0") + "%");
         }
 
         static void AssertBossHeadgearFramed()

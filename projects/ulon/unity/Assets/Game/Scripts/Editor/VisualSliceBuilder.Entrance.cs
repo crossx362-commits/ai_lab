@@ -438,8 +438,16 @@ namespace Ulon.Editor
                 mouthH = top - gy;
                 mouthMidY = gy + mouthH * 0.5f;
             }
+            // **판은 문을 가로질러 서야 한다 — 방향이 90° 틀어져 있었다**(검수 화면 2026-09-09).
+            // `RoomSlab`은 **로컬 x가 두께**인데 `approachYaw`를 그대로 주면 그 얇은 축이 `EntranceSide`
+            // (문이 늘어선 방향)에 놓인다 — 즉 판이 문을 **막는 대신 안쪽으로 뻗는다**. 던전 3(요 45°)에서
+            // 화면에 **검은 막대기 하나**로 서고 문구멍이 활짝 열려 들판이 보였던 것이 이것이다.
+            // 자가 못 잡은 이유도 같다: 옛 자는 「문구멍 **앞을** 무엇이 가리나」만 물어서, 옆으로 선
+            // 판은 가리는 것이 없어 **0% = 초록불**이었다. 새 자(`EntranceCensus.ReadPortal`)는
+            // 문틀에서 유도한 띠에서 **채움과 샘**을 묻는다.
+            // 90°를 더하면 넓은 축(로컬 z)이 `EntranceSide`에, 얇은 축이 `EntranceInward`에 놓인다.
             RoomSlab(frame.transform, EntrancePortalObject, new Vector3(back.x, mouthMidY, back.z),
-                new Vector3(0.12f, mouthH, mouthW), portalMat, approachYaw);
+                new Vector3(0.12f, mouthH, mouthW), portalMat, approachYaw + 90f);
             Debug.Log("[Ulon] 문구멍 판 — 문틀에서 유도한 " + mouthW.ToString("0.00") + "×" + mouthH.ToString("0.00") +
                       "m (옛 상수 1.50×2.50m는 상인방 아래로 0.31m가 뚫려 있었다)");
         }
