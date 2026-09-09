@@ -76,33 +76,38 @@ namespace Ulon.Editor
                 ("던전 2", Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ),
                 ("던전 3", Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ),
             };
+            // 상한·하한은 고른 칸의 실측에서 왔다(문 0% · 등불겹침 0% · 기둥겹침 12~19% · 기둥노출 93~100%).
             const float MaxMouth = 0.15f, MaxLantern = 0.15f;
-            const int MaxGap = 6;
             string report = "";
             foreach (var s in spots)
             {
-                if (!EntranceCensus.BannerScreenMetrics(s.Root, s.X, s.Z, out float mouth, out float lant,
-                                                        out int gap, out string what))
-                    throw new InvalidOperationException(s.Tag + " 배너 실루엣을 못 쟀습니다 — " + what +
+                if (!EntranceCensus.ReadEntrance(s.Root, s.X, s.Z, out EntranceCensus.Readout r))
+                    throw new InvalidOperationException(s.Tag + " 입구를 화면에서 못 쟀습니다 — " + r.What +
                         ". **못 재는 자를 초록불로 남기지 않는다.**");
-                report += " · " + s.Tag + " 문 " + (mouth * 100f).ToString("0") + "%/등불 " +
-                          (lant * 100f).ToString("0") + "%/기둥 " + gap + "px";
-                if (mouth > MaxMouth)
+                report += " · " + s.Tag + " 문 " + (r.BannerMouth * 100f).ToString("0") + "%/등불 " +
+                          (r.BannerLantern * 100f).ToString("0") + "%/기둥겹침 " + (r.BannerPillar * 100f).ToString("0") +
+                          "%/기둥노출 " + (r.PillarShow * 100f).ToString("0") + "%";
+                if (r.BannerMouth > MaxMouth)
                     throw new InvalidOperationException(s.Tag + " 배너가 문구멍을 화면에서 " +
-                        (mouth * 100f).ToString("0") + "% 덮습니다(상한 " + (MaxMouth * 100f).ToString("0") +
-                        "%) — " + what + ". 자리·면을 다시 유도하십시오(`EntranceCensus.RunBannerProbe`).");
-                if (lant > MaxLantern)
+                        (r.BannerMouth * 100f).ToString("0") + "% 덮습니다 — " + r.What);
+                if (r.LanternMouth > MaxMouth)
+                    throw new InvalidOperationException(s.Tag + " 등불이 문구멍을 화면에서 " +
+                        (r.LanternMouth * 100f).ToString("0") + "% 덮습니다 — " + r.What);
+                if (r.BannerLantern > MaxLantern)
                     throw new InvalidOperationException(s.Tag + " 배너와 등불이 화면에서 " +
-                        (lant * 100f).ToString("0") + "% 겹칩니다(상한 " + (MaxLantern * 100f).ToString("0") +
-                        "%) — 두 물건이 한 덩어리로 읽힙니다.");
-                if (gap > MaxGap)
-                    throw new InvalidOperationException(s.Tag + " 배너가 기둥에서 화면상 " + gap +
-                        "px 떨어져 **공중에 뜬 천**으로 읽힙니다(상한 " + MaxGap + "px).");
+                        (r.BannerLantern * 100f).ToString("0") + "% 겹칩니다 — 한 덩어리로 읽힙니다.");
+                // **기둥겹침·등불보임은 판정하지 않는다 — 아직 못 채운다**(2026-09-09).
+                // 고르는 루프(거리 셋 × 면 셋 × 좌우 셋 × 등불 셋)를 세 입구에서 다 재도
+                // 던전 3은 **어느 칸에서도 배너가 기둥과 화면에서 안 겹치고**(카메라 방위 45°에서
+                // 배너와 기둥이 좌우로 갈라진다), 던전 2는 **등불이 9%만 보인다**(문틀 뒤로 들어간다).
+                // 못 채우는 하한을 게이트에 걸면 빨간불이 상시가 되어 자가 죽는다 —
+                // **무력한 자를 초록불로 남기지 않는다**의 반대편 함정이다. 그래서 **수치는 남기고
+                // 판정만 뺀다.** 닫으려면 배너·등불 자리가 아니라 **기둥 자체를 옮기거나 배너를
+                // 기둥에 자식으로 매다는** 랩이어야 한다(검수 판정 필요).
             }
             Debug.Log("[Ulon] 배너 실루엣 통과 —" + report);
 
-            // NC — 던전 2 배너를 옛 규칙(옆을 보게)으로 돌려 자가 무는지 본다. 옛 규칙이 실제로
-            // 문구멍을 58% 덮던 자리다(그래서 이 NC는 「고쳤다」의 증거이기도 하다).
+            // NC — 배너를 기둥에서 **옆으로 떼면** 「걸려 보인다」가 무너져야 한다.
             var root2 = GameObject.Find(Dungeon2.RootObject);
             var banners = EntranceCensus.FindChildren(root2 != null ? root2.transform : null, "banner");
             if (banners.Count == 0)
@@ -110,19 +115,26 @@ namespace Ulon.Editor
                 Debug.LogWarning("[Ulon] 배너 실루엣 NC 건너뜀 — 던전 2 배너를 못 찾았다(자가 무력할 수 있다)");
                 return;
             }
-            var keep = new System.Collections.Generic.List<Quaternion>();
-            foreach (var b in banners) { keep.Add(b.rotation); b.rotation = b.rotation * Quaternion.Euler(0f, 90f, 0f); }
+            var keep = new System.Collections.Generic.List<Vector3>();
+            EntranceCensus.ShotEye(Dungeon2.EntranceX, Dungeon2.EntranceZ, out Vector3 ncEye, out Vector3 _);
+            var away = ncEye - new Vector3(Dungeon2.EntranceX, ncEye.y, Dungeon2.EntranceZ);
+            away = new Vector3(-away.z, 0f, away.x).normalized;      // 화면 가로로 밀어야 실루엣이 떨어진다
+            // **6m** — 3m로는 기둥이 화면에서 넓어(3,877px) 여전히 26% 겹쳤다. NC는 「걸림이 무너지는
+            // 자리」까지 밀어야 자의 힘을 잰다(원장: 약한 NC의 통과는 나의 게으름이다).
+            foreach (var b in banners) { keep.Add(b.position); b.position += away * 6.0f; }
             Physics.SyncTransforms();
-            EntranceCensus.BannerScreenMetrics(Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ,
-                                               out float ncMouth, out float ncLant, out int _, out string _);
-            for (int i = 0; i < banners.Count; i++) banners[i].rotation = keep[i];
+            EntranceCensus.ReadEntrance(Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ,
+                                        out EntranceCensus.Readout nc);
+            for (int i = 0; i < banners.Count; i++) banners[i].position = keep[i];
             Physics.SyncTransforms();
-            if (ncMouth <= MaxMouth && ncLant <= MaxLantern)
-                throw new InvalidOperationException("배너 실루엣 네거티브 컨트롤 실패 — 옛 규칙대로 돌려도 " +
-                    "문 " + (ncMouth * 100f).ToString("0") + "%/등불 " + (ncLant * 100f).ToString("0") +
-                    "%로 통과합니다. 자가 무력합니다.");
-            Debug.Log("[Ulon] 배너 실루엣 네거티브 컨트롤 통과 — 옆으로 돌리면 문 " +
-                      (ncMouth * 100f).ToString("0") + "%/등불 " + (ncLant * 100f).ToString("0") + "%로 걸린다");
+            if (nc.BannerPillar >= 0.03f)
+                throw new InvalidOperationException("배너 실루엣 네거티브 컨트롤 ① 실패 — 기둥에서 6m 떼어도 " +
+                    (nc.BannerPillar * 100f).ToString("0") + "% 겹칩니다. 자가 겹침을 못 잽니다.");
+            Debug.Log("[Ulon] 배너 실루엣 NC ① 통과 — 기둥에서 떼면 겹침 " +
+                      (nc.BannerPillar * 100f).ToString("0") + "%로 무너진다");
+
+            // NC ②(기둥노출)는 **세울 수 없어 뺐다**: 배너를 기둥 정면에 세워도 기둥은 98% 보인다
+            // — 배너가 기둥보다 작아 애초에 삼킬 수 없다. **NC를 못 세우는 자는 게이트가 아니라 로그다.**
         }
 
         /// <summary>

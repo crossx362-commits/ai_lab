@@ -66,12 +66,19 @@ namespace Ulon.Editor
             return new Vector3(inward.z, 0f, -inward.x);
         }
 
-        /// <summary>배너를 진입로 쪽으로 물리는 거리 — 화면 실루엣 탐색에서 나온 값(`BannerPose` 주석).</summary>
+        /// <summary>
+        /// 배너를 진입로 쪽으로 물리는 거리. **0.8m로 옮겨 봤다가 되돌렸다**(2026-09-09):
+        /// 등불을 진입로 쪽으로 같이 밀면 지표는 좋은데 화면에서 등불이 기둥에 파묻히고,
+        /// 등불을 제자리에 두면 배너와 **25% 겹친다**(상한 15%). 두 물건이 한 화면에서 서로를 묶는다.
+        /// </summary>
         public const float BannerPush = 0.4f;
 
         /// <summary>
-        /// 배너 면이 진입로에서 **비스듬히 바깥을 보는 각**. 정면(0°)이면 카메라에 **거대한 붉은 판**으로
-        /// 서고, 옆(90°)이면 등불과 한 덩어리로 읽힌다 — 둘 다 화면에서 재서 걸렀다.
+        /// 배너 면이 진입로에서 **비스듬히 바깥을 보는 각**. 0°면 카메라에 거대한 붉은 판으로 서고,
+        /// 90°면 등불과 한 덩어리로 읽힌다. **180°(오는 사람 정면)도 재 봤다가 되돌렸다**(2026-09-09):
+        /// 기둥과 겹치는 몫은 12~19%로 좋아지는데 **던전 1에서 등불과 25~27% 겹친다**(상한 15%).
+        /// 135°는 문구멍·등불을 피하지만 기둥과는 2%만 겹쳐 **아직 「걸린 천」으로는 안 읽힌다** —
+        /// 그 결함은 자리로 못 풀었다(기둥을 옮기거나 배너를 기둥의 자식으로 매다는 랩이 필요하다).
         /// </summary>
         public const float BannerFace = 135f;
 
@@ -98,11 +105,37 @@ namespace Ulon.Editor
         /// 세 입구에서 전부 재고, 문구멍 가림·등불 겹침·기둥까지의 화면 거리 셋을 함께 낮추는 칸을 골랐다).
         /// **한 값만 따로 바꾸지 마라** — 거리와 면은 같이 골라진 한 칸이다.
         /// </summary>
+        /// <summary>
+        /// 등불을 기둥에서 안쪽으로 물리는 거리 — 음수면 진입로 쪽이다.
+        /// **검수가 이 자리를 열어 줬지만 옮기지 않고 2026-09-08 자리로 되돌렸다**(2026-09-09):
+        /// 진입로 쪽(−1.2m)으로 밀면 지표는 좋아지는데 **화면에서 등불이 기둥에 파묻혀 꼭대기에 얹힌
+        /// 컵처럼** 보인다(샷으로 확인). 자가 좋아졌는데 화면이 나빠지면 **화면이 이긴다.**
+        /// </summary>
+        public const float LanternPush = 0.6f;
+
+        /// <summary>
+        /// **등불 한 개의 자리**(붙이는 쪽·재는 쪽이 같은 함수). 기둥 바깥면에 서되 안쪽으로 물린다.
+        /// 2026-09-08 판정으로 「문 통로 밖」에 세운 자리이고, 2026-09-09 검수가 **화면이 우선한다며
+        /// 다시 열어** 배너·기둥과 함께 고르는 루프에 넣었다.
+        /// </summary>
+        public static Vector3 LanternPose(Vector3 pillar, float approachYaw, int side, float push)
+        {
+            var right = EntranceSide(approachYaw);
+            return pillar + right * (EntrancePillarHalf * side) + EntranceInward(approachYaw) * push;
+        }
+
+        /// <summary>배너를 기둥 바깥면에서 더 밀어내는 양(음수면 기둥 쪽으로 당긴다) — 함께 고른 값.</summary>
+        public const float BannerLateral = 0f;
+
         public static void BannerPose(Vector3 pillar, float approachYaw, int side, float push,
+                                      out Vector3 position, out float yaw)
+            => BannerPose(pillar, approachYaw, side, push, BannerLateral, out position, out yaw);
+
+        public static void BannerPose(Vector3 pillar, float approachYaw, int side, float push, float lateral,
                                       out Vector3 position, out float yaw)
         {
             var right = EntranceSide(approachYaw);
-            position = pillar + right * ((EntrancePillarHalf + 0.05f) * side)
+            position = pillar + right * ((EntrancePillarHalf + 0.05f + lateral) * side)
                        + EntranceApproach(approachYaw) * push + Vector3.up * 2.0f;
             bool nc = System.Environment.GetEnvironmentVariable("ULON_BANNER_NC") == "1";
             yaw = approachYaw + (nc ? 90f * side : BannerFace);
@@ -133,7 +166,7 @@ namespace Ulon.Editor
                 // **등불은 문 통로 밖에 선다**(검수 판정 2026-09-08). 예전엔 `flank + fwd*1.3`이라
                 // 지나가는 자리에 서 있었고, 입구 샷에서는 검은 문판 한가운데 회색 기둥으로 읽혔다.
                 // 물건 자체는 맞으니 옮기기만 한다 — 기둥 바깥쪽으로.
-                Decor(parent, Lantern, pillar + right * (PillarHalf * side) + inward * 0.6f,
+                Decor(parent, Lantern, LanternPose(pillar, approachYaw, side, LanternPush),
                       new Vector3(0f, approachYaw, 0f));
                 // **벽걸이 물건은 벽에 붙인다**(검수 판정 2026-09-08). `banner-red`는 장대+브래킷+천이
                 // 한 몸인 **벽에 거는** 소품인데, 걸 것 없이 공중(up 1.6m)에 세워 둬서 화면에서는
@@ -162,7 +195,7 @@ namespace Ulon.Editor
                 }
                 var lightGo = new GameObject("DungeonEntranceLight");
                 lightGo.transform.SetParent(parent, true);
-                lightGo.transform.position = OnGround(pillar + right * (PillarHalf * side)) + Vector3.up * 2.2f;
+                lightGo.transform.position = OnGround(LanternPose(pillar, approachYaw, side, LanternPush)) + Vector3.up * 2.2f;
                 var light = lightGo.AddComponent<Light>();
                 light.type = LightType.Point;
                 light.color = new Color(1f, 0.72f, 0.42f);
