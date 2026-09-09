@@ -25,6 +25,55 @@ namespace Ulon.Editor
         /// 판정은 `QaShots.HeadgearFramed`(찍을 때와 **같은 프레이밍 함수**)가 한다.
         /// NC: 왕관을 2m 띄우면 프레임 밖으로 나가 빨간불이어야 한다(끝나면 되돌린다).
         /// </summary>
+        /// <summary>
+        /// **문구멍이 소품에 가려지지 않았는가**(검수 판정 2026-09-09).
+        /// 입구 샷에서 배너가 문구멍을 43~71% 덮고 있었다 — 「입구가 소품에 가려진 입구」다.
+        /// 원인은 `fwd`가 안쪽이라는 부호였고, 이 파일에서 **세 번째로 물린 같은 함정**이라
+        /// 눈 대신 자로 못박는다. 셈과 같은 함수(`EntranceCensus.MouthBlockShare`)를 쓴다.
+        /// NC: 배너를 문구멍 쪽으로 옮기면 빨간불이어야 한다(끝나면 되돌린다).
+        /// </summary>
+        static void AssertEntranceMouthClear()
+        {
+            var spots = new (string Tag, string Root, float X, float Z)[]
+            {
+                ("던전 1", Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ),
+                ("던전 2", Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ),
+                ("던전 3", Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ),
+            };
+            const float Max = 0.20f;      // 표본 49개 중 열 개까지 — 그 이상이면 화면에서 문이 안 읽힌다
+            string report = "";
+            foreach (var s in spots)
+            {
+                float share = EntranceCensus.MouthBlockShare(s.Root, s.X, s.Z, out string who);
+                report += " · " + s.Tag + " " + (share * 100f).ToString("0") + "%" + (who == "" ? "" : "(" + who.Trim() + ")");
+                if (share > Max)
+                    throw new InvalidOperationException(s.Tag + " 문구멍이 " + (share * 100f).ToString("0") +
+                        "% 가려졌습니다 —" + who + ". 소품을 치우지 말고 **문설주 바깥으로 옮기십시오**(입구 표식이다).");
+            }
+            Debug.Log("[Ulon] 문구멍 가림 통과 —" + report);
+
+            // NC — 배너 하나를 문구멍 쪽으로 밀어 자가 무는지 본다.
+            var root = GameObject.Find(Dungeon1.RootObject);
+            Transform banner = null;
+            if (root != null)
+                foreach (var tr in root.GetComponentsInChildren<Transform>(true))
+                    if (tr.name.StartsWith("banner-red", StringComparison.Ordinal)) { banner = tr; break; }
+            if (banner == null)
+            {
+                Debug.LogWarning("[Ulon] 문구멍 네거티브 컨트롤 건너뜀 — 배너를 못 찾았다(자가 무력할 수 있다)");
+                return;
+            }
+            var keep = banner.position;
+            banner.position = new Vector3(Dungeon1.EntranceX, keep.y, Dungeon1.EntranceZ) - (keep - new Vector3(Dungeon1.EntranceX, keep.y, Dungeon1.EntranceZ)).normalized * 1.6f;
+            Physics.SyncTransforms();
+            bool caught = EntranceCensus.MouthBlockShare(Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ, out _) > Max;
+            banner.position = keep;
+            Physics.SyncTransforms();
+            if (!caught)
+                throw new InvalidOperationException("문구멍 네거티브 컨트롤 실패 — 배너를 문 앞으로 옮겼는데도 통과했습니다.");
+            Debug.Log("[Ulon] 문구멍 네거티브 컨트롤 통과 — 배너를 문 앞으로 옮기면 FAIL");
+        }
+
         static void AssertBossHeadgearFramed()
         {
             if (!QaShots.HeadgearFramed(out string report))

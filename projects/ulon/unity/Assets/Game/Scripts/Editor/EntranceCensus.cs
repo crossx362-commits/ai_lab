@@ -53,6 +53,96 @@ namespace Ulon.Editor
             return lowest;
         }
 
+        /// <summary>
+        /// **문 구멍이 소품에 가려졌나 — 센다**(검수 관찰 2026-09-09: 「기둥이 포털 판의 절반을 먹는다」).
+        /// QA 입구 샷과 **같은 카메라 자리**(`Orbit` 8m/20°)에서 문구멍 표면 격자로 광선을 쏘아,
+        /// 문틀·포털·게이트가 아닌 것이 막으면 가림으로 센다. 막은 것의 이름을 같이 적는다 —
+        /// 이름이 없으면 무엇을 옮겨야 하는지 알 수 없다(왕관 사건에서 값을 치른 교훈).
+        /// </summary>
+        public static void RunMouth()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            Mouth("07/D1", Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ);
+            Mouth("09/D2", Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ);
+            Mouth("11/D3", Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ);
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static void Mouth(string tag, string rootName, float ex, float ez)
+        {
+            float share = MouthBlockShare(rootName, ex, ez, out string who);
+            Debug.Log("[입구] " + tag + " 문구멍 가림 **" + (share * 100f).ToString("0") + "%** 막은 것:" +
+                      (who == "" ? " 없음" : who));
+        }
+
+        /// <summary>
+        /// **문구멍이 가려진 비율**(0~1)과 막은 것의 이름 — 게이트와 셈이 **같은 함수**를 쓴다.
+        /// 같은 판정이 두 곳에 살면 하나만 고쳐져 어긋난다(이 저장소가 여러 번 밟은 함정).
+        /// </summary>
+        public static float MouthBlockShare(string rootName, float ex, float ez, out string who)
+        {
+            who = "";
+            var root = GameObject.Find(rootName);
+            Renderer portal = null;
+            Transform frame = null;
+            if (root != null)
+                foreach (var tr in root.GetComponentsInChildren<Transform>(true))
+                {
+                    if (tr.name == VisualSliceBuilder.EntrancePortalObject && portal == null)
+                        portal = tr.GetComponent<Renderer>();
+                    if (tr.name == VisualSliceBuilder.EntranceFrameObject && frame == null)
+                        frame = tr;
+                }
+            if (portal == null)
+            {
+                who = "(포털 없음)";
+                return 0f;
+            }
+            // QA 샷과 같은 눈: `Orbit(대상, 8m, 20°)`.
+            var hits = Physics.RaycastAll(new Vector3(ex, 500f, ez), Vector3.down, 1000f);
+            float gy = float.MaxValue;
+            for (int i = 0; i < hits.Length; i++) gy = Mathf.Min(gy, hits[i].point.y);
+            var look = new Vector3(ex, gy + 1.2f, ez);
+            float rad = 20f * Mathf.Deg2Rad;
+            var eye = look + new Vector3(-8f * Mathf.Cos(rad), 8f * Mathf.Sin(rad) + 1.5f, -8f * Mathf.Cos(rad)) * 0.7071f;
+
+            var b = portal.bounds;
+            int blocked = 0, total = 0;
+            var names = new System.Collections.Generic.Dictionary<string, int>();
+            for (int gx = 0; gx < 7; gx++)
+                for (int gyi = 0; gyi < 7; gyi++)
+                {
+                    var p = new Vector3(
+                        Mathf.Lerp(b.min.x, b.max.x, (gx + 0.5f) / 7f),
+                        Mathf.Lerp(b.min.y, b.max.y, (gyi + 0.5f) / 7f),
+                        Mathf.Lerp(b.min.z, b.max.z, (gx + 0.5f) / 7f));
+                    total++;
+                    var seg = p - eye;
+                    float len = seg.magnitude;
+                    var ray = new Ray(eye, seg / len);
+                    foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                    {
+                        if (!r.enabled || r is ParticleSystemRenderer) continue;
+                        var tr = r.transform;
+                        if (tr == portal.transform) continue;
+                        if (frame != null && tr.IsChildOf(frame)) continue;      // 문틀 자신은 문이다
+                        if (tr.root.name == "Terrain" || tr.name == "Ground") continue;
+                        if (r.bounds.IntersectRay(ray, out float d) && d < len - 0.05f)
+                        {
+                            blocked++;
+                            string nm = tr.parent != null ? tr.parent.name + "/" + r.name : r.name;
+                            names[nm] = names.TryGetValue(nm, out int c) ? c + 1 : 1;
+                            break;
+                        }
+                    }
+                }
+            foreach (var kv in names) who += " " + kv.Key + "×" + kv.Value;
+            return total > 0 ? blocked / (float)total : 0f;
+        }
+
         static void One(string tag, float ex, float ez, float approachYaw)
         {
             float rad = approachYaw * Mathf.Deg2Rad;

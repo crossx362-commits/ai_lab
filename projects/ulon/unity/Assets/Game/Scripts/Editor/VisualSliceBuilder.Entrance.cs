@@ -73,8 +73,14 @@ namespace Ulon.Editor
                 // **벽걸이 물건은 벽에 붙인다**(검수 판정 2026-09-08). `banner-red`는 장대+브래킷+천이
                 // 한 몸인 **벽에 거는** 소품인데, 걸 것 없이 공중(up 1.6m)에 세워 둬서 화면에서는
                 // 「문 양옆에 뜬 도끼·망치 4개」로 읽혔다(검수 관찰). 기둥 앞면에 붙여 건다.
-                var bannerGo = Place(Banner, pillar + fwd * (PillarHalf + 0.05f) + Vector3.up * 2.0f,
-                                     new Vector3(0f, approachYaw, 0f));
+                // **배너는 기둥의 「바깥쪽 옆면」에 건다**(실측 2026-09-09).
+                // 예전엔 `fwd`(=안쪽) 면에 걸어 배너가 **문구멍을 43~71% 덮고** 있었다. 반대 면(-fwd)으로
+                // 옮겨 보니 이번엔 던전 3이 **100%** — 카메라 방위가 입구마다 달라서 **앞뒤 어느 면도
+                // 세 입구에 동시에 안전하지 않다.** 문구멍은 두 기둥 **사이**에 있으므로, 기둥에서
+                // **문 반대쪽(바깥 옆면)**에 걸면 어느 각도에서도 문과 카메라 사이에 들어오지 않는다.
+                // 치우지 않고 자리만 옮긴다 — 배너는 입구 표식이다.
+                var bannerGo = Place(Banner, pillar + right * ((PillarHalf + 0.05f) * side) + Vector3.up * 2.0f,
+                                     new Vector3(0f, approachYaw + 90f * side, 0f));
                 if (bannerGo != null)
                 {
                     bannerGo.transform.SetParent(parent, true);
