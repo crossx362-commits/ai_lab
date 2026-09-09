@@ -122,14 +122,35 @@ namespace Ulon.Shared
         /// </summary>
         static float TriNoise(float wx, float wy, float wz, Vector3 n, float f, float ox, float oz)
         {
+            return TriNoise(wx, wy, wz, n, f, ox, oz, 1f);
+        }
+
+        /// <summary>
+        /// `aniso`는 **벽에서 높이 방향으로만 주파수를 올린다** — 가로로 누운 띠, 곧 **층리**가 된다
+        /// (검수 랩 ㉥: 「덩이는 크기만 맞으면 되는 것이 아니다 — 지형이 가진 방향을 안 따르면
+        /// 무늬가 아니라 얼룩이 된다」). 등방 잡음은 화면에서 곰팡이·위장 무늬로 읽혔다.
+        /// **위에서 본 면(평지)은 건드리지 않는다** — 평지에 층리는 없다.
+        /// </summary>
+        static float TriNoise(float wx, float wy, float wz, Vector3 n, float f, float ox, float oz, float aniso)
+        {
+            // **등고선 좌표로 뽑는 판은 재보고 걷었다**(랩 ㉥). 「낙하선에 수직인 방향으로 잰 거리」
+            // 하나로 벽 무늬를 뽑으면 격자는 없어지지만, 법선이 자리마다 돌아 그 좌표가 함께 돌기
+            // 때문에 무늬가 **낙하선을 따라 이어졌다** — 자도 그렇게 말했다(낙하선/등고선 비율
+            // 1.63 → 1.22로 떨어짐 = 등고선 쪽으로 더 많이 변한다 = 세로줄). 화면도 같았다.
             Vector3 bw = new Vector3(Mathf.Pow(Mathf.Abs(n.x), 4f), Mathf.Pow(Mathf.Abs(n.y), 4f), Mathf.Pow(Mathf.Abs(n.z), 4f));
             float s = bw.x + bw.y + bw.z;
             bw /= Mathf.Max(s, 1e-4f);
-            float top = Mathf.PerlinNoise(wx * f + ox, wz * f + oz);        // 위에서 본 면
-            float side = Mathf.PerlinNoise(wz * f + ox, wy * f + oz);       // 동서 벽
-            float front = Mathf.PerlinNoise(wx * f + ox, wy * f + oz);      // 남북 벽
+            float top = Mathf.PerlinNoise(wx * f + ox, wz * f + oz);                    // 위에서 본 면
+            float side = Mathf.PerlinNoise(wz * f + ox, wy * f * aniso + oz);           // 동서 벽
+            float front = Mathf.PerlinNoise(wx * f + ox, wy * f * aniso + oz);          // 남북 벽
             return bw.y * top + bw.x * side + bw.z * front;
         }
+
+        /// <summary>
+        /// 벽에서 덩이를 **등고선 방향으로 눕히는 정도**(가로:세로). 실제 암반의 어두운 부분은
+        /// 둥근 반점이 아니라 **층리**다 — 등방 덩이는 화면에서 곰팡이로 읽혔다(검수 랩 ㉥).
+        /// </summary>
+        const float LayerAniso = 4f;
 
         /// <summary>이 자리의 바위 중 **그늘진 절벽 바위가 차지하는 몫**(0~1).</summary>
         public static float DarkCliffAt(float wx, float wz)
@@ -148,15 +169,15 @@ namespace Ulon.Shared
             // 그래서 「어두운 덩이가 골에 앉는다」로 보이던 것도 골이 아니라 **낙하선**이었다.
             float wy = WorldTerrain.HeightAt(wx, wz);
             Vector3 n = SurfaceNormal(wx, wz);
-            float broad = TriNoise(wx, wy, wz, n, 0.045f, 41.7f, 12.9f);
-            float mid = TriNoise(wx, wy, wz, n, 0.092f, 8.2f, 77.5f);
+            float broad = TriNoise(wx, wy, wz, n, 0.045f, 41.7f, 12.9f, LayerAniso);
+            float mid = TriNoise(wx, wy, wz, n, 0.092f, 8.2f, 77.5f, LayerAniso);
             // **두 자리를 같이 놓고 더한 세 번째 주기**(검수 랩 ㉣). 화면에서 세어 보니 한 톤 구간이
             // `16`(가까운 수직 암벽)에서 표면 68m·화면폭 28%, `03`(먼 둥근 능선)에서 34m·36%였다 —
             // **화면 비율은 비슷한데 표면 길이는 두 배**라, 주기 하나로 둘을 맞출 수 없다.
             // 그래서 큰 덩이를 지우고 새로 잡는 대신 **큰 덩이 안을 다시 가르는 잔 주기(7m)**를 얹는다:
             // 먼 능선에서는 세부가 되고, 가까운 벽에서는 68m짜리 한 톤을 끊는다.
             // (텍스처 주기를 키우던 랩 ⑫와 다른 자리다 — 여기는 잡음이라 되감김 막대가 없다.)
-            float fine = TriNoise(wx, wy, wz, n, 0.145f, 55.1f, 30.6f);
+            float fine = TriNoise(wx, wy, wz, n, 0.145f, 55.1f, 30.6f, LayerAniso);
             // **잔 주기는 벽에서만 얹는다.** 전면에 얹어 보고 두 자리를 같이 재서 알았다:
             // `16`(벽)은 한 톤 68m → 44m로 끊겼는데 `03`(둥근 능선)은 34m → 46m로 **되레 길어졌다**
             // (그 화면은 밝은 쪽이 압도적이라, 잔 주기가 어두운 점을 흩뿌리며 밝은 구간을 되레 이었다).
