@@ -348,6 +348,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.KeepPeopleOffWalls();      // 가게 사람은 벽에서 두 걸음(검수 2026-09-09)
             VisualSliceBuilder.SpreadTreeTones();         // 나무는 한 색이 아니다(검수 랩 ⑤)
             AssertTreeTones();
+            VisualSliceBuilder.ScatterCliffRocks();       // 절벽 세로줄은 물건으로 끊는다(검수 랩 ⑦)
+            AssertCliffRocks();
             // **자도 저장 앞에서 잰다.** 저장 뒤에 쟀더니 사람이 원자리로 돌아간 값을 봤다 —
             // QA 샷이 보는 것은 **저장된 씬**이므로, 자는 저장되는 그 상태를 재야 한다.
             AssertPeopleOffWallsNegativeControl();
