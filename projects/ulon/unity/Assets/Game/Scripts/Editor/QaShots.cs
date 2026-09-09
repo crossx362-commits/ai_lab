@@ -112,6 +112,10 @@ namespace Ulon.Editor
                 Orbit("20_mine", new Vector3(WorldRegions.Mine.X, 0f, WorldRegions.Mine.Z), 30f, 26f),
                 Orbit("21_testchamber", new Vector3(WorldRegions.TestChamber.X, 0f, WorldRegions.TestChamber.Z), 24f, 22f),
                 Free("14_world_vista", new Vector3(-165f, 95f, -165f), new Vector3(0f, WorldTerrain.LandBase, 0f)),
+                // **부두에서 건너편 절개면을 마주 본다**(검수 조건 2026-09-09 — 안식각·너덜 랩).
+                // 조망(15)에서는 그 면이 멀어 얼룩이 안 읽힌다. 자리는 지형 원장에서 유도한다:
+                // 부두는 호수 중심에서 마을 쪽으로 반경 92% 자리에 서서 안쪽으로 14m 뻗는다.
+                PierAcross("63_pier_cutface"),
                 Free("15_lake_river", new Vector3(WorldTerrain.LakeX + 46f, 40f, WorldTerrain.LakeZ + 46f), new Vector3(WorldTerrain.LakeX - 12f, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),
                 // 효과를 **야외 대낮**에서도 한 장(실내만 보면 어두운 배경 덕을 본다), 그리고
                 // 풍차(은행) 뒤에 선 자리 — 건물을 페이드 대상에 올린 뒤 화면이 어떻게 보이는지(검수 요구).
@@ -580,6 +584,22 @@ namespace Ulon.Editor
             float rad = Pitch * Mathf.Deg2Rad;
             var eye = t + front * (Dist * Mathf.Cos(rad)) + Vector3.up * (Dist * Mathf.Sin(rad) + 1.5f);
             return new Shot { Name = name, Eye = eye, Target = t };
+        }
+
+        /// <summary>부두 끝에 서서 호수 건너 절개면을 본다 — 자리는 `WorldTerrain`의 부두 규칙에서 유도한다.</summary>
+        static Shot PierAcross(string name)
+        {
+            var dir = new Vector2(-WorldTerrain.LakeX, -WorldTerrain.LakeZ).normalized;   // 호수 중심 → 마을
+            float tipD = WorldTerrain.LakeRadius * 0.92f - WorldTerrain.PierLength;
+            var tip = new Vector2(WorldTerrain.LakeX + dir.x * tipD, WorldTerrain.LakeZ + dir.y * tipD);
+            var far = new Vector2(WorldTerrain.LakeX - dir.x * WorldTerrain.LakeRadius,
+                                  WorldTerrain.LakeZ - dir.y * WorldTerrain.LakeRadius);
+            return new Shot
+            {
+                Name = name,
+                Eye = new Vector3(tip.x, WorldTerrain.PierTop + 1.6f, tip.y),
+                Target = new Vector3(far.x, WorldTerrain.SeaLevel + 2.5f, far.y),
+            };
         }
 
         /// <summary>요를 지정해 비스듬히 본다 — 정면에서만 멀쩡한 배치를 걸러내는 각이다.</summary>
