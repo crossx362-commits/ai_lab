@@ -56,8 +56,16 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("문구멍 밝기 NC를 세울 포털 렌더러가 없습니다 — " +
                     "**NC를 못 세우는 자는 게이트가 아니라 로그다.**");
             var keep = new List<Material[]>();
+            // **NC는 결함을 확실히 만들어야 한다.** 예전엔 그냥 `Standard`를 끼웠고, 그 판이 밝았던 것은
+            // 옆에 선 등불이 3.2세기로 세계를 태우고 있었기 때문이다 — 등불을 0.8로 내리자(과노출 랩)
+            // 같은 NC가 18%까지밖에 안 올라 「자가 무력하다」고 울었다. **자가 약해진 것이 아니라
+            // NC가 남의 밝기에 얹혀 있었다.** 그래서 스스로 빛나게 만든다: 이 자가 묻는 것은
+            // 「구멍이 어두운가」이므로, NC는 「밝은 문짝」을 조명과 무관하게 세워야 한다.
             var lit = new Material(Shader.Find("Standard"));
             lit.mainTexture = rends[0].sharedMaterial != null ? rends[0].sharedMaterial.mainTexture : null;
+            lit.EnableKeyword("_EMISSION");
+            lit.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            lit.SetColor("_EmissionColor", new Color(0.8f, 0.8f, 0.8f));
             foreach (var r in rends) { keep.Add(r.sharedMaterials); r.sharedMaterial = lit; }
             bool ok = EntranceCensus.ReadMouthDark(Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ,
                                                   Dungeon1.EntranceYaw, out float ncRatio, out _, out _, out _);

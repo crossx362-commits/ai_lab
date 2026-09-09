@@ -336,7 +336,13 @@ namespace Ulon.Editor
                 var light = lightGo.AddComponent<Light>();
                 light.type = LightType.Point;
                 light.color = new Color(1f, 0.72f, 0.42f);
-                light.intensity = 3.2f;
+                // **대낮 근접 화면을 태우지 않는 세기**(2026-09-09, 재서 골랐다).
+                // 옛 3.2는 `07`을 250↑ 포화 **29.4%**·R·G 동시 21.9%로 태워 잔디도 석재도
+                // 흰 덩어리였다(야외 광각은 `02` 2.3 / `18` 1.8). 후보를 나란히 렌더해 보니
+                // 3.2→29.4 · 2.4→21.7 · 1.8→14.6 · 1.2→7.4 · **0.8→3.3** · 0.5→1.5이고,
+                // 0.8이 야외 광각 언저리로 내려오면서 평균 밝기는 162(등불을 끄면 154)라
+                // **등불이 제 몫도 한다**. 셈은 `ExposureCensus.RunEntranceExposure`.
+                light.intensity = 0.8f;
                 light.range = 9f;
                 light.shadows = LightShadows.None;
             }
