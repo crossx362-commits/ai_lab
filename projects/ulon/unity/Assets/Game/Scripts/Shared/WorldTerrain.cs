@@ -126,6 +126,9 @@ namespace Ulon.Shared
             // 올렸고, 부두 널판이 지표에서 0.20m 떠 발-지표 자가 울었다(자가 잡았다).
             // 수면에서 1.5m 위부터 서서히 올린다 — 물가 자체는 평지로 남는다.
             h += EntranceGeom.MoundRise(wx, wz) * Mathf.Clamp01((h - SeaLevel - 1.5f) / 2f);
+            // **밭 자리는 고른다** — 농경지 뙈기가 앉을 사각형을 그 중심 높이로 끌어당긴다(`FarmPlots`).
+            // 지역 안에 고저차 2.5m짜리 평지가 넷 나오지 않아서다(실측 5.3m) — 사람은 밭을 낼 때 땅을 고른다.
+            h = FarmPlots.Flatten(wx, wz, h, WorldRegions.Meadow);
             return Mathf.Clamp(h, 0f, MaxHeight);
         }
 

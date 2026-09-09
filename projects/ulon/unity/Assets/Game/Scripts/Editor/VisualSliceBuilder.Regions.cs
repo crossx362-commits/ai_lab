@@ -127,13 +127,12 @@ namespace Ulon.Editor
         static void BuildMeadow(WorldRegions.Region r, string fence, string crop, string tuft, string cart, string bush)
         {
             var parent = FreshRegion(r);
-            var plots = new[]
-            {
-                new Vector2(r.X - 11f, r.Z - 9f), new Vector2(r.X + 10f, r.Z - 10f),
-                new Vector2(r.X - 10f, r.Z + 10f), new Vector2(r.X + 11f, r.Z + 9f),
-            };
+            // **자리는 원장이 정한다**(`FarmPlots`) — 그리고 그 자리는 지형이 평평하게 받아 준다
+            // (`FarmPlots.Flatten`, `WorldTerrain.HeightAt`에서 부른다). 셈 실측으로 뙈기 4가
+            // 고저차 6.2m·평균 14.3°였고 `18_meadow`에서 울타리가 언덕을 탔다.
+            var plots = FarmPlots.Base(r);
             // 뙈기 크기를 갈라 놓는다 — 넷이 같은 정사각형이면 화면은 「스프레드시트」로 읽힌다(검수).
-            float[] halves = { 7.5f, 5.5f, 6.0f, 8.0f };
+            float[] halves = FarmPlots.Halves;
             for (int p = 0; p < plots.Length; p++)
             {
                 float half = halves[p];
