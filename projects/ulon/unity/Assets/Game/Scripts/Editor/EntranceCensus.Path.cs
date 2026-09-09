@@ -239,9 +239,34 @@ namespace Ulon.Editor
                 UnityEditor.EditorApplication.Exit(0);
         }
 
-        static void Neighbors(string tag, string rootName, float ex, float ez)
+        /// <summary>
+        /// **플레이 눈에서도 한 번**(검수 판정 2026-09-09: 「0.0%는 어느 눈에서 참인지 같이 적어라」).
+        /// 같은 물건을 런타임 카메라 자세(`QuarterViewCamera`의 피치·요·거리)에서 다시 센다 —
+        /// QA 눈 하나로 「화면에 없다」고 하면 플레이 눈에서 되살아날 수 있다.
+        /// </summary>
+        public static void RunEntranceNeighborsPlayCam()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            Neighbors("11/D3(플레이눈)", Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ, true);
+            Neighbors("07/D1(플레이눈)", Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ, true);
+            Neighbors("09/D2(플레이눈)", Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ, true);
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static void Neighbors(string tag, string rootName, float ex, float ez, bool playCam = false)
         {
             ShotEye(ex, ez, out Vector3 eye, out Vector3 look);
+            if (playCam)
+            {
+                var qv = UnityEngine.Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
+                float pitch = qv != null ? qv.Pitch : 35f, yaw = qv != null ? qv.Yaw : 45f;
+                float dist = qv != null ? qv.Distance : 12f;
+                look = new Vector3(ex, GroundAt(new Vector3(ex, 500f, ez)) + 1.0f, ez);
+                eye = look - Quaternion.Euler(pitch, yaw, 0f) * Vector3.forward * dist;
+            }
             var mine = GameObject.Find(rootName);
             var lines = new List<string>();
             foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
