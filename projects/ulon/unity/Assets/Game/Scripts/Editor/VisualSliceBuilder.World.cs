@@ -481,7 +481,12 @@ namespace Ulon.Editor
             var tilledLayer = EnsureTerrainLayer("FarmTilled", new Color(0.30f, 0.21f, 0.13f), new Color(0.47f, 0.34f, 0.21f), 3.5f, 2);
             // 숲 바닥은 **제 무늬**를 쓴다(pattern 3 부엽토) — 잔풀 잡음이면 마을 광장 흙과 같아 보인다.
             var soilLayer = EnsureTerrainLayer("ForestSoil", new Color(0.13f, 0.11f, 0.07f), new Color(0.34f, 0.28f, 0.16f), 6f, 3);
-            var gravelLayer = EnsureTerrainLayer("MineGravel", new Color(0.28f, 0.26f, 0.24f), new Color(0.55f, 0.52f, 0.47f), 4.5f, 1);
+            // **자갈은 젖은 돌 부스러기지 마른 모래가 아니다**(2026-09-09, `63_pier_cutface`).
+            // 호수 절개면(수면 +0~6m, 경사 31~35°)은 셈으로는 자갈 77~94%인데 화면은 크림색 186으로
+            // 바로 옆 모래톱(238)과 한 톤이었다 — 텍스처 평균이 100이어도 대낮 직사광이 그만큼 올린다.
+            // 산 바위(평균 120)가 화면 118로 읽히는 것과 대조하면, 젖은 자갈은 **바위보다 어두워야** 한다.
+            // 톤을 내리고 폭을 넓힌다(알갱이가 보이게) — 광산(20)도 같은 겹이라 거기서도 확인한다.
+            var gravelLayer = EnsureTerrainLayer("MineGravel", new Color(0.17f, 0.16f, 0.15f), new Color(0.44f, 0.41f, 0.37f), 4.5f, 1);
             // 광장은 **돌포장**(pattern 4) — 길 흙(0)과 같은 무늬면 십자로가 아스팔트로 읽힌다(검수 랩 ②).
             var cobbleLayer = EnsureTerrainLayer("PlazaCobble", new Color(0.30f, 0.28f, 0.26f), new Color(0.60f, 0.58f, 0.53f), 2f, 4);
             var roadLayer = EnsureTerrainLayer("DirtRoad", new Color(0.38f, 0.31f, 0.22f), new Color(0.58f, 0.50f, 0.37f), 5f);
