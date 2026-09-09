@@ -19,9 +19,14 @@ namespace Ulon.Editor
         /// (자는 알파맵을 읽고 화면은 컨트롤 텍스처를 읽는다 — 둘이 어긋나면 「자는 초록, 화면은 딴것」).
         /// </summary>
         /// **누가 언제 다시 굽는가**: `TerrainCtrl0~2.asset`(각 2.8MB)은 손으로 만든 자산이 아니라
-        /// **이 함수가 매 빌드 알파맵에서 다시 굽는 생성물**이다. 지금은 도포가 결정적이라 바이트가
-        /// 같아 재커밋되지 않지만, 도포 규칙이 바뀌면 8.4MB가 통째로 다시 커밋된다 —
-        /// 그런 판이 잦아지면 git 추적에서 빼고 빌드 산출물로 돌려라(검수 2026-09-09).
+        /// **이 함수가 매 빌드 알파맵에서 다시 굽는 생성물**이다. 도포 규칙이 바뀔 때마다 8.4MB가
+        /// 통째로 재커밋돼(두 판 연속) **git 추적에서 뺐다**(`.gitignore`, 검수 판정 2026-09-09).
+        /// 파일이 없는 상태에서 빌더를 돌려 **다시 구워지고 씬이 안 깨지는 것**을 확인했다.
+        ///
+        /// **되돌릴 조건**: 빌더를 안 돌리고 **씬만 여는 사람**이 생길 때. 그런 사람에게는 이 텍스처가
+        /// 없는 지형이 넘어가므로, 그때는 히스토리에서 되살려 다시 추적한다.
+        /// (부작용 하나: 새로 구우면 .meta GUID가 새로 나서 `TerrainTriplanar.mat`의 참조가 갱신된다 —
+        /// 그 재질만 작게 변경으로 잡힌다. 8.4MB와 바꾼 값이다.)
         public const string TriplanarShader = "Ulon/TerrainTriplanar";
         const string CtrlPathFmt = "Assets/Game/Art/Env/TerrainCtrl{0}.asset";
         const string TerrainMatPath = "Assets/Game/Art/Env/TerrainTriplanar.mat";
