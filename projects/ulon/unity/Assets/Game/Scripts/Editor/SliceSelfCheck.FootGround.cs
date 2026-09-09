@@ -39,7 +39,21 @@ namespace Ulon.Editor
                       GroundFit.LastExcluded.Count + "개: " +
                       string.Join(", ", GroundFit.LastExcluded.GetRange(0, Mathf.Min(12, GroundFit.LastExcluded.Count))));
             for (int i = 0; i < offenders.Count && i < 15; i++)
-                Debug.Log("[Ulon]   발 높이 이탈 " + offenders[i].Name + " " + offenders[i].Dy.ToString("0.00") + "m");
+            {
+                string extra = "";
+                for (int j = 0; j < items.Count; j++)
+                {
+                    if (GroundFit.NodePath(items[j]) != offenders[i].Name)
+                        continue;
+                    var p = items[j].position;
+                    extra = " · 지금 y=" + p.y.ToString("0.00");
+                    if (VisualSliceBuilder.FootSnapshot.TryGetValue(offenders[i].Name, out float y0))
+                        extra += " · 빌드 직후 y=" + y0.ToString("0.00") + "(차 " + (p.y - y0).ToString("0.00") + ")";
+                    extra += " · 언덕 " + Ulon.Shared.EntranceGeom.MoundRise(p.x, p.z).ToString("0.00") + "m";
+                    break;
+                }
+                Debug.Log("[Ulon]   발 높이 이탈 " + offenders[i].Name + " " + offenders[i].Dy.ToString("0.00") + "m" + extra);
+            }
             if (offenders.Count > 0)
                 throw new InvalidOperationException("§8.1 배치물 " + offenders.Count + "개의 발/밑면이 지표에서 " +
                     GlobalFootErrorMax + "m 넘게 벗어났습니다(최악 " + offenders[0].Name + " " + offenders[0].Dy.ToString("0.00") +

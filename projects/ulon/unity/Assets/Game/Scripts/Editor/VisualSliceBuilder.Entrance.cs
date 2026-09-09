@@ -70,9 +70,10 @@ namespace Ulon.Editor
         /// </summary>
         public static Vector3 EntranceFront(Vector3 pos, float approachYaw)
         {
-            var inward = EntranceInward(approachYaw);
-            var toVillage = new Vector3(-pos.x, 0f, -pos.z);   // 마을은 원점이다
-            return Vector3.Dot(inward, toVillage) > 0f ? inward : -inward;
+            // **규칙은 `Shared/EntranceGeom`에 있다** — 지형(문 뒤 언덕)도 같은 규칙을 읽어야 하므로
+            // 아래로 내렸다. 여기서 다시 유도하지 마라(부호를 두 곳에서 유도하면 또 갈린다).
+            var f = Ulon.Shared.EntranceGeom.Front(pos.x, pos.z, approachYaw);
+            return new Vector3(f.x, 0f, f.y);
         }
 
         /// <summary>문을 마주 봤을 때의 **좌우 축** — 두 기둥이 늘어선 방향.</summary>

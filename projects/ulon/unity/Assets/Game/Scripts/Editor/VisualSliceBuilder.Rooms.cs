@@ -259,26 +259,77 @@ namespace Ulon.Editor
                    n.StartsWith("watermill (", StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// 배치물을 지표에 다시 앉힌다. **한 판으로는 안 끝난다** — 담는 그릇(`PlainScatter` 같은 묶음
+        /// 노드)도 같은 목록에 있어서, 그릇이 자식보다 **나중에** 옮겨지면 방금 맞춘 자식이 다시 어긋난다
+        /// (문 뒤 언덕 랩 실측: `PlainScatter/plant_bush` −0.19m가 한 판 뒤에도 남았다).
+        /// 그래서 **더 움직일 것이 없을 때까지** 돌린다(상한 4판) — 남으면 그건 진짜 결함이고 자가 잡는다.
+        /// </summary>
+        /// <summary>
+        /// **하나만** 지표에 다시 앉힌다. 소품을 옆으로 밀어내는 패스(`ClearPropsFrom*`)는 비탈에서
+        /// 밀면 그만큼 지표가 달라진다 — 밀고 그냥 두면 발이 0.2m 묻힌다(2026-09-09 실측
+        /// `PlainScatter/plant_bush` −0.19m). 전체 스냅을 한 번 더 돌릴 수는 없다: 낚시터처럼
+        /// **스냅 뒤에 일부러 물가로 내려놓은 것**을 다시 둑 위로 끌어올린다(Entrance.cs 기록).
+        /// 그래서 **민 놈만** 다시 앉힌다.
+        /// </summary>
+        public static void SnapToGround(Transform t)
+        {
+            if (t == null || !GroundFit.BodyBounds(t, out Bounds b))
+                return;
+            float dy = GroundFit.ExpectedGroundY(t, b) - b.min.y;
+            if (Mathf.Abs(dy) < 0.02f)
+                return;
+            t.position += new Vector3(0f, dy, 0f);
+        }
+
         public static void EnsureFootOnGround()
         {
-            var items = GroundFit.Candidates();
-            int moved = 0;
-            float worst = 0f;
-            string worstName = "";
-            for (int i = 0; i < items.Count; i++)
+            const int MaxPasses = 4;
+            for (int pass = 1; pass <= MaxPasses; pass++)
             {
-                if (!GroundFit.BodyBounds(items[i], out Bounds b))
-                    continue;
-                float dy = GroundFit.ExpectedGroundY(items[i], b) - b.min.y;
-                if (Mathf.Abs(dy) < 0.02f)
-                    continue;
-                items[i].position += new Vector3(0f, dy, 0f);
-                moved++;
-                if (Mathf.Abs(dy) > Mathf.Abs(worst)) { worst = dy; worstName = items[i].name; }
+                var items = GroundFit.Candidates();
+                int moved = 0;
+                float worst = 0f;
+                string worstName = "";
+                for (int i = 0; i < items.Count; i++)
+                {
+                    if (!GroundFit.BodyBounds(items[i], out Bounds b))
+                        continue;
+                    float dy = GroundFit.ExpectedGroundY(items[i], b) - b.min.y;
+                    if (Mathf.Abs(dy) < 0.02f)
+                        continue;
+                    items[i].position += new Vector3(0f, dy, 0f);
+                    moved++;
+                    if (Mathf.Abs(dy) > Mathf.Abs(worst)) { worst = dy; worstName = GroundFit.NodePath(items[i]); }
+                }
+                if (moved == 0)
+                    break;
+                Debug.Log("[Ulon] 배치물 지표 스냅 " + pass + "판 — " + moved + "개 이동(최대 " + worstName + " " +
+                          worst.ToString("0.00") + "m)");
             }
-            if (moved > 0)
-                Debug.Log("[Ulon] 배치물 지표 스냅 — " + moved + "개 이동(최대 " + worstName + " " + worst.ToString("0.00") + "m)");
+            Physics.SyncTransforms();
+            {   // 스냅이 끝난 자리에서 **다시 재서** 남은 최악값을 적는다 — 「고쳤다」와 「맞다」는 다르다.
+                var chk = GroundFit.Candidates();
+                float w = 0f; string wn = "";
+                for (int i = 0; i < chk.Count; i++)
+                {
+                    if (!GroundFit.BodyBounds(chk[i], out Bounds cb))
+                        continue;
+                    float dy = cb.min.y - GroundFit.ExpectedGroundY(chk[i], cb);
+                    if (Mathf.Abs(dy) > Mathf.Abs(w)) { w = dy; wn = GroundFit.NodePath(chk[i]); }
+                }
+                Debug.Log("[Ulon] 지표 스냅 뒤 최악 " + wn + " " + w.ToString("0.00") + "m");
+            }
+            // 빌드 직후 자리를 적어 둔다 — 나중에 자가 물면 「누가 옮겼나 vs 자가 딴 걸 재나」를 가른다.
+            FootSnapshot.Clear();
+            var after = GroundFit.Candidates();
+            for (int i = 0; i < after.Count; i++)
+                FootSnapshot[GroundFit.NodePath(after[i])] = after[i].position.y;
         }
+
+        /// <summary>빌드 직후(지표 스냅 끝) 각 배치물의 y — 진단용.</summary>
+        public static readonly System.Collections.Generic.Dictionary<string, float> FootSnapshot =
+            new System.Collections.Generic.Dictionary<string, float>();
 
         /// <summary>
         /// 넓힌 방을 **채운다**(검수 2026-09-06 관찰: 반경 6→8m로 늘린 만큼 실내가 빈 바닥이 됐다).

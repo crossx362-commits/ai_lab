@@ -80,6 +80,7 @@ namespace Ulon.Editor
                         else
                         {
                             props[p].position += PushOut(boxes[p], bldBoxes[b]);
+                            SnapToGround(props[p]);   // 옆으로 밀었으면 높이도 다시 잡는다(비탈)
                             moved++;
                         }
                         touched = true;
@@ -252,6 +253,7 @@ namespace Ulon.Editor
                     if (away.sqrMagnitude < 0.0001f)
                         away = Vector3.right;
                     mover.position += away.normalized * (deep[i] + 0.30f);
+                    SnapToGround(mover);      // 옆으로 밀었으면 높이도 다시 잡는다(비탈)
                     moved++;
                 }
                 Physics.SyncTransforms();
@@ -302,6 +304,7 @@ namespace Ulon.Editor
                         if (!zones[z].Intersects(boxes[p]))
                             continue;
                         props[p].position += PushOut(boxes[p], zones[z]);
+                        SnapToGround(props[p]);   // 옆으로 밀었으면 높이도 다시 잡는다(비탈)
                         moved++;
                         touched = true;
                         break;

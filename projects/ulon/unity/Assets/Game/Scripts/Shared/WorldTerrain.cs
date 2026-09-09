@@ -120,6 +120,12 @@ namespace Ulon.Shared
             h = CarveLake(wx, wz, h);
             h = CarveRiver(wx, wz, h);
             h = RaisePier(wx, wz, h);
+            // **문 뒤에는 산자락이 있어야 한다**(대장 승인 2026-09-09 ⓐ). 규칙과 상수는 입구 원장에
+            // 있다(`EntranceGeom`) — 지형과 빌더가 문의 방향을 따로 유도하면 언덕과 문이 어긋난다.
+            // **언덕은 물가를 안 건드린다** — 첫 판에 던전 1의 언덕이 호수 쪽으로 뻗어 지형을 밀어
+            // 올렸고, 부두 널판이 지표에서 0.20m 떠 발-지표 자가 울었다(자가 잡았다).
+            // 수면에서 1.5m 위부터 서서히 올린다 — 물가 자체는 평지로 남는다.
+            h += EntranceGeom.MoundRise(wx, wz) * Mathf.Clamp01((h - SeaLevel - 1.5f) / 2f);
             return Mathf.Clamp(h, 0f, MaxHeight);
         }
 
