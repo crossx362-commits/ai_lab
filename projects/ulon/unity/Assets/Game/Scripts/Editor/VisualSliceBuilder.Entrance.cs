@@ -97,6 +97,13 @@ namespace Ulon.Editor
             BuildEntranceFrame(parent, pos, approachYaw);
         }
 
+        // **입구 둔덕은 실패했다 — 다시 만들지 마라**(화면 랩 2, 2026-09-09).
+        // 「평지에 선 문」을 고치려고 문 뒤 반원에 `rock_largeA` 일곱을 문틀 높이(4.09m)에서 유도해
+        // 둘렀다. 두 번 다 화면을 잃었다: ①`fwd`가 안쪽이라 첫 판은 바위가 **카메라와 문 사이**에
+        // 쌓였고, ②부호를 고친 뒤에도 그 바위는 이 프로젝트에서 **잔디색이고 4m가 넘어** 근접 샷을
+        // 통째로 덮었다(`07_d1_entrance`가 초록 덩이). **두 판 모두 셀프체크는 EXIT=0**이었다 —
+        // 자는 입구가 가려졌는지 안 본다. 지하감은 소품으로 두르는 것이 아니라 **지형을 파는 쪽**이고,
+        // 그건 워프 착지·도달 게이트를 건드리므로 판정을 받고 시작할 일이다.
         /// <summary>입구 문틀 루트·문구멍의 이름 원장 — 빌더와 자격 게이트가 **같은 상수**를 본다.</summary>
         public const string EntranceFrameObject = "DungeonEntranceFrame";
         public const string EntrancePortalObject = "EntrancePortal";
