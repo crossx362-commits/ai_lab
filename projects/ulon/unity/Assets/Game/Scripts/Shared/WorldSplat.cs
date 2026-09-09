@@ -91,6 +91,46 @@ namespace Ulon.Shared
             return WallRockFromTan(MacroSlopeTan(wx, wz));
         }
 
+        /// <summary>
+        /// **옛 평면 마스크 — 반대쪽 한계 표본으로만 쓴다**(랩 ㉡). 셰이더의 `_PlanarOnly`와 같은 자리다:
+        /// 「고쳤다」를 증명하려면 **안 고친 것을 같은 자리로 재서 빨간불**을 봐야 한다.
+        /// 굽는 쪽에서 부르지 마라 — 부르면 낙하선 얼룩이 돌아온다.
+        /// </summary>
+        public static float DarkCliffPlanarAt(float wx, float wz)
+        {
+            float broad = Mathf.PerlinNoise(wx * 0.032f + 41.7f, wz * 0.032f + 12.9f);
+            float mid = Mathf.PerlinNoise(wx * 0.065f + 8.2f, wz * 0.065f + 77.5f);
+            return Mathf.Clamp(Mathf.Clamp01((Mathf.Max(broad, mid * 0.94f) - 0.47f) / 0.20f), 0.05f, 0.95f);
+        }
+
+        /// <summary>
+        /// 이 자리의 지표 법선. 마스크를 섞는 데만 쓰므로 **잔주름이 아니라 면**을 읽어야 한다 —
+        /// 2m 자다(0.587m 자는 잡음, 8m 자는 벽 밑 단까지 끌어온다는 것을 `MacroSlopeTan`에서 배웠다).
+        /// </summary>
+        static Vector3 SurfaceNormal(float wx, float wz)
+        {
+            const float d = 2f;
+            float hx = WorldTerrain.HeightAt(wx + d, wz) - WorldTerrain.HeightAt(wx - d, wz);
+            float hz = WorldTerrain.HeightAt(wx, wz + d) - WorldTerrain.HeightAt(wx, wz - d);
+            return new Vector3(-hx / (2f * d), 1f, -hz / (2f * d)).normalized;
+        }
+
+        /// <summary>
+        /// 세 평면에서 뽑은 잡음을 법선으로 섞는다 — **셰이더가 무늬를 뽑는 방식과 같다**
+        /// (`TerrainTriplanar.shader`, 날카로움 4). 무늬와 마스크가 다른 투영을 쓰면 무늬는 안 늘어나는데
+        /// 섞는 규칙만 늘어나 화면에는 **얼룩이 흘러내리는 물때**로 남는다.
+        /// </summary>
+        static float TriNoise(float wx, float wy, float wz, Vector3 n, float f, float ox, float oz)
+        {
+            Vector3 bw = new Vector3(Mathf.Pow(Mathf.Abs(n.x), 4f), Mathf.Pow(Mathf.Abs(n.y), 4f), Mathf.Pow(Mathf.Abs(n.z), 4f));
+            float s = bw.x + bw.y + bw.z;
+            bw /= Mathf.Max(s, 1e-4f);
+            float top = Mathf.PerlinNoise(wx * f + ox, wz * f + oz);        // 위에서 본 면
+            float side = Mathf.PerlinNoise(wz * f + ox, wy * f + oz);       // 동서 벽
+            float front = Mathf.PerlinNoise(wx * f + ox, wy * f + oz);      // 남북 벽
+            return bw.y * top + bw.x * side + bw.z * front;
+        }
+
         /// <summary>이 자리의 바위 중 **그늘진 절벽 바위가 차지하는 몫**(0~1).</summary>
         public static float DarkCliffAt(float wx, float wz)
         {
@@ -101,8 +141,15 @@ namespace Ulon.Shared
             // 자리마다 중간값을 만들어 화면에서 **한 톤**으로 뭉갠다.
             // **덩이 크기는 한 화면에 서넛**이 들어와야 한다 — 55m 덩이로 잡았더니 앞쪽 절벽 한 면이
             // 통째로 한 덩이에 들어가 화면에서는 여전히 한 톤이었다(샷으로 확인). 31m 위에 15m를 겹친다.
-            float broad = Mathf.PerlinNoise(wx * 0.032f + 41.7f, wz * 0.032f + 12.9f);
-            float mid = Mathf.PerlinNoise(wx * 0.065f + 8.2f, wz * 0.065f + 77.5f);
+            // **마스크도 삼면으로 뽑는다**(검수 랩 ㉡ 판별 테스트). 랩 ⑧에서 무늬는 삼면으로 고쳤는데
+            // **무늬를 섞는 규칙**은 여전히 XZ 평면 좌표였다 — 급경사에서는 XZ로 1m 가는 동안 표면은
+            // 7m를 가므로 마스크가 **정확히 낙하선 방향으로 늘어난다.** 빨강 판별 테스트로 봤다:
+            // 평면 마스크는 산 정수리에서 아래로 흘러내리는 **빨간 세로 줄**로 떴다(덩이가 아니었다).
+            // 그래서 「어두운 덩이가 골에 앉는다」로 보이던 것도 골이 아니라 **낙하선**이었다.
+            float wy = WorldTerrain.HeightAt(wx, wz);
+            Vector3 n = SurfaceNormal(wx, wz);
+            float broad = TriNoise(wx, wy, wz, n, 0.032f, 41.7f, 12.9f);
+            float mid = TriNoise(wx, wy, wz, n, 0.065f, 8.2f, 77.5f);
             // 문턱 0.47은 균형에서 나왔다(0.42 → 밝은 17%·어두운 52%, 0.52 → 54%·16%, 0.47이 그 사이) — 두 잡음의 최댓값은 위로 치우치므로 0.42로 자르면
             // 어두운 덩이가 52%로 쏠린다(자가 잡았다).
             return Mathf.Clamp(Mathf.Clamp01((Mathf.Max(broad, mid * 0.94f) - 0.47f) / 0.20f), 0.05f, 0.95f);
