@@ -32,7 +32,7 @@ namespace Ulon.Editor
             var alpha = data.GetAlphamaps(0, 0, ar, ar);
 
             var regions = WorldRegions.All;
-            int entranceSkipped = 0;
+            int entranceSkipped = 0, moundSkipped = 0;
             for (int k = 0; k < regions.Length; k++)
             {
                 var r = regions[k];
@@ -54,6 +54,14 @@ namespace Ulon.Editor
                             entranceSkipped++;
                             continue;
                         }
+                        // **문 뒤 언덕도 지역이 아니다** — 산자락을 갈아엎은 밭으로 세면, 언덕에서
+                        // 도포를 걷는 규칙(`WorldSplat.MoundFade`)을 넣는 순간 이 자가 운다(실측 0.37).
+                        // 굽는 쪽과 **같은 자**를 읽어 표본에서 뺀다(자를 무르게 하는 것이 아니다).
+                        if (WorldSplat.MoundFade(wx, wz) < 0.5f)
+                        {
+                            moundSkipped++;
+                            continue;
+                        }
                         sum += Sample(alpha, ar, wx, wz, layerIdx);
                         n++;
                     }
@@ -69,6 +77,10 @@ namespace Ulon.Editor
             if (entranceSkipped == 0)
                 throw new InvalidOperationException("지역 지표 표본에서 던전 문 앞을 한 자리도 빼지 않았습니다 — " +
                     "예외가 죽었거나(WorldSplat.EntranceClearAt) 입구가 지역 밖으로 옮겨진 것입니다. 둘 다 확인하십시오.");
+            Debug.Log("[Ulon] §6.1 지역 지표 — 문 뒤 언덕이라 뺀 표본 " + moundSkipped + "곳");
+            if (moundSkipped == 0)
+                throw new InvalidOperationException("지역 지표 표본에서 문 뒤 언덕을 한 자리도 빼지 않았습니다 — " +
+                    "예외가 죽었거나(WorldSplat.MoundFade) 언덕이 지역 밖으로 옮겨진 것입니다. 둘 다 확인하십시오.");
 
             // 길 — 마을에서 각 지역까지 실제로 이어져 있나. 중간 지점을 따라 훑는다.
             var routes = WorldSplat.Routes;

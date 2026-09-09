@@ -270,9 +270,15 @@ namespace Ulon.Shared
         /// 경사 임계로는 안 걸린다 — 걸리는 것은 「여기가 문 뒤 언덕인가」다. 문 앞·문턱은
         /// `MoundRise`가 0이라 입구 앞길·광장은 그대로다.
         /// </summary>
-        public const float RoadMoundCut = 2.0f;    // 언덕이 이만큼 솟으면 길은 사라진다
+        public const float RoadMoundCut = 2.0f;    // 언덕이 이만큼 솟으면 길·지역 도포는 사라진다
 
-        public static float RoadMoundFade(float wx, float wz)
+        /// <summary>
+        /// 문 뒤 언덕에서 인공 지표(길·지역 도포)가 물러나는 정도. 걷어낸 몫은 **기본 잔디**가 채우므로
+        /// 경계는 저절로 겹친다(원장: 걷어낸 몫을 그대로 다른 것으로 채우면 경계가 저절로 겹친다).
+        /// 밭에도 같은 자를 쓴다 — 셈 실측(2026-09-09): 밭 도포 1210칸 중 **392칸이 언덕 위**였고
+        /// 그 자리가 `18`에서 「맨흙 언덕」으로 읽혔다. 경사 때문이 아니다(그 지역엔 20°↑가 0칸).
+        /// </summary>
+        public static float MoundFade(float wx, float wz)
         {
             return 1f - Mathf.Clamp01(EntranceGeom.MoundRise(wx, wz) / RoadMoundCut);
         }
@@ -346,7 +352,9 @@ namespace Ulon.Shared
                 // 바위를 옮기는 게 아니라 **지표를 바위에 맞춘다**.
                 float spread = r.Object == WorldRegions.MineObject ? 1.75f : 1f;
                 float t = 1f - Mathf.InverseLerp(r.Radius * 0.72f * spread, r.Radius * 1.04f * spread, d + wobble);
-                t = Mathf.Clamp01(t) * 0.95f * EntranceClearAt(wx, wz);
+                // **문 뒤 언덕은 지역이 아니다** — 산자락이 갈아엎은 흙으로 덮이면 「맨흙 언덕」이 된다.
+                // 길과 같은 자를 쓴다(같은 이야기를 두 벌로 적지 않는다).
+                t = Mathf.Clamp01(t) * 0.95f * EntranceClearAt(wx, wz) * MoundFade(wx, wz);
                 if (t > weight)
                 {
                     weight = t;
@@ -387,7 +395,7 @@ namespace Ulon.Shared
             }
 
             var routes = Routes;
-            float mound = RoadMoundFade(wx, wz);
+            float mound = MoundFade(wx, wz);
             for (int i = 0; i < routes.Length; i++)
             {
                 float d = DistToSegment(wx, wz, routes[i].x, routes[i].y, routes[i].z, routes[i].w);

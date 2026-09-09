@@ -8,7 +8,7 @@
 (`git add -A` 금지, 경로 명시) → 검수 보고(끝에 「구조 한 줄」) → 이 파일 갱신.
 안건 판정은 대장, 보고는 검수. 오너 직행은 셋(다운로드·되돌릴 수 없는 삭제·돈).
 
-## 지금까지 (tip `af3e3aa5`)
+## 지금까지 (tip = 이 커밋)
 지하감 ⓐ **문 뒤 언덕** 랩을 대장 조건 넷 그대로 닫았다. 원장 `Shared/EntranceGeom.cs`(세 입구·앞
 방향·언덕 상수·`MoundRise`·NC용 `MoundDisabled`), 게이트 `Editor/SliceSelfCheck.MoundBehind.cs`
 (문구멍 시선은 뚫림·문 위 3m 시선은 뒤 30m 안에서 막힘, NC는 「언덕이 앞당긴 거리 ≥3m」),
@@ -33,9 +33,19 @@
 
 `13_d1_room_cutaway`도 고쳤다(`af3e3aa5`): 이름만 절단면이고 화면은 지표 잔디였다 —
 찍는 동안 지형·뚜껑을 걷는다(`CutAway` 플래그 + `AssertCutAwayShotsUncover`).
-**구조 축 미결이던 `VisualSliceBuilder.cs` 6,737줄 분할은 이미 끝나 있다** — 지금 최대는
-`VisualSliceBuilder.Npc.cs` 1,266줄이고 저장소 최대는 `Shared/AttackResolve.cs` 1,472줄(손대지 말 것).
+**`VisualSliceBuilder.cs` 분할은 이미 끝났다 — 다시 열지 마라(검수 지시, 세 번째 재발).**
+파일 크기는 옛 수치를 적지 말고 그때그때 센다:
+`find unity/Assets/Game/Scripts -name '*.cs' -exec wc -l {} + | sort -rn | head`
+큰 셋(`AttackResolve`·`VisualSliceBuilder.Npc`·`NetAvatar`)은 손대지 않는다.
+
+밭 도포가 문 뒤 둔덕을 덮던 것도 닫았다: 검수의 「경사 탓」 짐작은 셈
+(`OutdoorCensus.RunFieldSplatSlope`)으로 기각됐고(밭 1210칸 중 20°↑ 0개, 최급 17.0°)
+진짜 원인은 **언덕과 겹친 밭 392칸(32%)**이었다. 길에만 쓰던 `WorldSplat.MoundFade`를
+지역 도포에도 곱해 걷어낸 몫은 기본 잔디가 채운다(경계는 저절로 겹친다). 게이트
+`SliceSelfCheck.RoadMound.cs`는 길만이 아니라 인공 지표 넷(Road·Tilled·Soil·Gravel)을 묻고,
+`SliceSelfCheck.RegionSplat.cs` 표본은 굽는 쪽과 **같은 자**로 언덕을 뺀다(뺀 수 19곳을 찍고
+0이면 죽은 예외로 실패).
 
 ## 다음 착수
-큐가 비었다. 야외·실내 샷을 돌며 새 안건을 세울 것. **인상은 가설이다** — 이번 세션에 화면에서
+**`07` 등불 그림자**(검수 지정). 그다음 큐는 비었다. 야외·실내 샷을 돌며 새 안건을 세울 것. **인상은 가설이다** — 이번 세션에 화면에서
 의심한 넷 중 셋이 셈에서 기각됐다. 셈을 먼저 만들고, 0을 보고하는 자에는 판별 테스트를 붙여라.

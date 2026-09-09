@@ -30,28 +30,40 @@ namespace Ulon.Editor
                     if (EntranceGeom.MoundRise(x, z) <= WorldSplat.RoadMoundCut)
                         continue;
                     int layer = WorldSplat.CoverAt(x, z, out float w);
-                    if (w >= 0.5f && layer == WorldSplat.Road)
+                    // 길만이 아니라 **지역 도포(밭·숲 바닥·광산 자갈)**도 언덕 위에 오면 안 된다 —
+                    // 셈 실측으로 밭 도포 392칸이 언덕 위에 있었고 화면에서 「맨흙 언덕」이었다.
+                    bool manmade = layer == WorldSplat.Road || layer == WorldSplat.Tilled ||
+                                   layer == WorldSplat.Soil || layer == WorldSplat.Gravel;
+                    if (w >= 0.5f && manmade)
                     {
                         onMound++;
                         if (where.Length == 0)
                             where = d.Root + " (" + x.ToString("0") + "," + z.ToString("0") + ")";
                     }
-                    // NC — 규칙(언덕 페이드)이 없었다면 여기가 길이었나.
+                    // NC — 규칙(언덕 페이드)이 없었다면 여기가 길이나 지역 도포였나.
                     float dist = float.MaxValue;
                     var routes = WorldSplat.Routes;
                     for (int i = 0; i < routes.Length; i++)
                         dist = Mathf.Min(dist, WorldSplat.DistToSegment(x, z, routes[i].x, routes[i].y, routes[i].z, routes[i].w));
-                    if (1f - Mathf.Clamp01((dist - WorldSplat.RoadHalfWidth) / WorldSplat.RoadFade) >= 0.5f)
+                    bool roadHere = 1f - Mathf.Clamp01((dist - WorldSplat.RoadHalfWidth) / WorldSplat.RoadFade) >= 0.5f;
+                    bool regionHere = false;
+                    var rr = WorldRegions.All;
+                    for (int i = 0; i < rr.Length && !regionHere; i++)
+                    {
+                        float dd = new Vector2(x - rr[i].X, z - rr[i].Z).magnitude;
+                        regionHere = dd < rr[i].Radius * 0.72f;
+                    }
+                    if (roadHere || regionHere)
                         wouldBe++;
                 }
             }
             if (onMound > 0)
                 throw new InvalidOperationException("문 뒤 언덕 위에 길 도포가 " + onMound + "칸 있습니다(" + where +
-                    ") — 길이 산꼭대기로 올라갑니다.");
+                    ") — 인공 지표가 산자락을 덮습니다.");
             if (wouldBe == 0)
                 throw new InvalidOperationException("길-언덕 네거티브 컨트롤 실패 — 규칙을 빼도 언덕 위에 길이 없습니다. " +
                     "이 자는 아무것도 재고 있지 않습니다.");
-            Debug.Log("[Ulon] 길은 언덕을 넘지 않는다 — 언덕 위 길 0칸(규칙이 없었다면 " + wouldBe + "칸)");
+            Debug.Log("[Ulon] 길·지역 도포는 언덕을 넘지 않는다 — 언덕 위 0칸(규칙이 없었다면 " + wouldBe + "칸)");
         }
     }
 }
