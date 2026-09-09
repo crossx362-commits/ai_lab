@@ -71,6 +71,37 @@ namespace Ulon.Editor
                 UnityEditor.EditorApplication.Exit(0);
         }
 
+        /// <summary>문틀 조각들의 실제 치수 — 문구멍이 어디부터 어디까지인지 유도하려면 먼저 재야 한다.</summary>
+        public static void RunFrame()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            var root = GameObject.Find(Dungeon1.RootObject);
+            if (root != null)
+                foreach (var tr in root.GetComponentsInChildren<Transform>(true))
+                {
+                    var r = tr.GetComponent<Renderer>();
+                    if (r == null || !r.enabled || r is ParticleSystemRenderer) continue;
+                    bool inFrame = false;
+                    for (var q = tr; q != null; q = q.parent)
+                        if (q.name.StartsWith("Entrance") || q.name.StartsWith("Dungeon" ) || q.name.StartsWith("banner") || q.name.StartsWith("lantern"))
+                        { inFrame = q.name != Dungeon1.RootObject; if (inFrame) break; }
+                    if (inFrame)
+                        Debug.Log("[문틀] " + PathOf(tr) +
+                                  " 중심 " + r.bounds.center.ToString("0.00") + " 크기 " + r.bounds.size.ToString("0.00"));
+                }
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static string PathOf(Transform t)
+        {
+            string s = t.name;
+            for (var q = t.parent; q != null; q = q.parent) s = q.name + "/" + s;
+            return s;
+        }
+
         public static void RunMouth()
         {
             const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
@@ -85,9 +116,9 @@ namespace Ulon.Editor
 
         static void Mouth(string tag, string rootName, float ex, float ez)
         {
-            float share = MouthBlockShare(rootName, ex, ez, out string who);
-            Debug.Log("[입구] " + tag + " 문구멍 가림 **" + (share * 100f).ToString("0") + "%** 막은 것:" +
-                      (who == "" ? " 없음" : who));
+            float share = MouthBlockShare(rootName, ex, ez, out string who, out float leak);
+            Debug.Log("[입구] " + tag + " 문구멍 가림 **" + (share * 100f).ToString("0") + "%** · 바깥이 새는 " +
+                      (leak * 100f).ToString("0") + "% · 막은 것:" + (who == "" ? " 없음" : who));
         }
 
         /// <summary>
@@ -95,8 +126,18 @@ namespace Ulon.Editor
         /// 같은 판정이 두 곳에 살면 하나만 고쳐져 어긋난다(이 저장소가 여러 번 밟은 함정).
         /// </summary>
         public static float MouthBlockShare(string rootName, float ex, float ez, out string who)
+            => MouthBlockShare(rootName, ex, ez, out who, out _);
+
+        /// <summary>
+        /// 문구멍이 **소품에 가려진 비율**과, 그 구멍으로 **바깥 세계가 새는 비율**을 함께 잰다.
+        /// 「샘」은 구멍 격자를 지나 **끝까지** 쏜 광선의 첫 히트가 지형·마을이거나 아무것도 없는 경우다 —
+        /// `qa_sky.py`가 파랑만 세어 0.10%를 냈을 때 실제로 새던 것은 하늘이 아니라 **초록 들판**이었다.
+        /// **한 색만 세는 자는 다른 색으로 새는 것을 못 본다**(검수 원장 2026-09-09).
+        /// </summary>
+        public static float MouthBlockShare(string rootName, float ex, float ez, out string who, out float leak)
         {
             who = "";
+            leak = 0f;
             var root = GameObject.Find(rootName);
             Renderer portal = null;
             Transform frame = null;
@@ -113,6 +154,7 @@ namespace Ulon.Editor
                 who = "(포털 없음)";
                 return 0f;
             }
+            int leaked = 0;
             // QA 샷과 같은 눈: `Orbit(대상, 8m, 20°)`.
             var hits = Physics.RaycastAll(new Vector3(ex, 500f, ez), Vector3.down, 1000f);
             float gy = float.MaxValue;
@@ -121,21 +163,79 @@ namespace Ulon.Editor
             float rad = 20f * Mathf.Deg2Rad;
             var eye = look + new Vector3(-8f * Mathf.Cos(rad), 8f * Mathf.Sin(rad) + 1.5f, -8f * Mathf.Cos(rad)) * 0.7071f;
 
+            // **영역은 포털이 아니라 문틀에서 잡는다** — 포털 바운드로 격자를 만들면 자가 대상을 따라가서,
+            // 판을 절반으로 줄여도 격자도 같이 줄어 「샘 0%」가 나온다(네거티브 컨트롤이 실제로 그렇게 실패했다).
+            // 구멍은 **두 기둥 사이·상인방 아래**다 — 판이 그 구멍을 덮는지 물어야 판이 작아진 것을 본다.
             var b = portal.bounds;
+            if (frame != null)
+            {
+                Transform q1 = null, q2 = null, ql = null;
+                foreach (var tr in frame.GetComponentsInChildren<Transform>(true))
+                {
+                    if (tr.name == "EntrancePillar1") q1 = tr;
+                    else if (tr.name == "EntrancePillar2") q2 = tr;
+                    else if (tr.name == "EntranceLintel") ql = tr;
+                }
+                if (q1 != null && q2 != null)
+                {
+                    Bounds a1 = new Bounds(), a2 = new Bounds();
+                    bool ok1 = false, ok2 = false;
+                    foreach (var r in q1.GetComponentsInChildren<Renderer>(true))
+                        if (r.enabled && !(r is ParticleSystemRenderer)) { if (!ok1) { a1 = r.bounds; ok1 = true; } else a1.Encapsulate(r.bounds); }
+                    foreach (var r in q2.GetComponentsInChildren<Renderer>(true))
+                        if (r.enabled && !(r is ParticleSystemRenderer)) { if (!ok2) { a2 = r.bounds; ok2 = true; } else a2.Encapsulate(r.bounds); }
+                    if (ok1 && ok2)
+                    {
+                        var mouth = new Bounds(a1.center, Vector3.zero);
+                        mouth.Encapsulate(a2.center);
+                        float top = Mathf.Min(a1.max.y, a2.max.y);
+                        if (ql != null)
+                            foreach (var r in ql.GetComponentsInChildren<Renderer>(true))
+                                if (r.enabled && !(r is ParticleSystemRenderer)) { top = r.bounds.min.y; break; }
+                        float floorY = Mathf.Min(a1.min.y, a2.min.y);
+                        mouth.Encapsulate(new Vector3(mouth.center.x, floorY, mouth.center.z));
+                        mouth.Encapsulate(new Vector3(mouth.center.x, top, mouth.center.z));
+                        // 판이 있는 평면으로 옮긴다(깊이는 얇게) — 격자는 그 면 위에서 만든다.
+                        mouth.center = new Vector3(portal.bounds.center.x, mouth.center.y, portal.bounds.center.z);
+                        b = mouth;
+                    }
+                }
+            }
             int blocked = 0, total = 0;
+            // **점 49개는 얇은 것을 놓친다**(검수 관찰 2026-09-09: 자는 0%인데 화면엔 붉은 선).
+            // 배너는 폭 0.19m라 성긴 격자 사이로 그대로 빠졌다. 격자를 화면 실루엣만큼 촘촘히 한다.
+            const int G = 48;
             var names = new System.Collections.Generic.Dictionary<string, int>();
-            for (int gx = 0; gx < 7; gx++)
-                for (int gyi = 0; gyi < 7; gyi++)
+            var all = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+            for (int gx = 0; gx < G; gx++)
+                for (int gyi = 0; gyi < G; gyi++)
                 {
                     var p = new Vector3(
-                        Mathf.Lerp(b.min.x, b.max.x, (gx + 0.5f) / 7f),
-                        Mathf.Lerp(b.min.y, b.max.y, (gyi + 0.5f) / 7f),
-                        Mathf.Lerp(b.min.z, b.max.z, (gx + 0.5f) / 7f));
+                        Mathf.Lerp(b.min.x, b.max.x, (gx + 0.5f) / G),
+                        Mathf.Lerp(b.min.y, b.max.y, (gyi + 0.5f) / G),
+                        Mathf.Lerp(b.min.z, b.max.z, (gx + 0.5f) / G));
                     total++;
                     var seg = p - eye;
                     float len = seg.magnitude;
                     var ray = new Ray(eye, seg / len);
-                    foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                    // **끝까지 쏴서 첫 히트를 본다** — 그것이 지형·마을이거나 아무것도 없으면 구멍이 샌다.
+                    float firstD = float.MaxValue;
+                    bool firstIsWorld = true;
+                    for (int i = 0; i < all.Length; i++)
+                    {
+                        var rr = all[i];
+                        if (!rr.enabled || rr is ParticleSystemRenderer) continue;
+                        if (!rr.bounds.IntersectRay(ray, out float dd) || dd >= firstD) continue;
+                        var trr = rr.transform;
+                        bool isDoor = trr == portal.transform || (frame != null && trr.IsChildOf(frame));
+                        bool isWorld = trr.root.name == "Terrain" || trr.name == "Ground" ||
+                                       !(isDoor || trr.root.name == rootName);
+                        firstD = dd;
+                        firstIsWorld = isWorld && !isDoor;
+                    }
+                    if (firstD == float.MaxValue || firstIsWorld)
+                        leaked++;
+                    foreach (var r in all)
                     {
                         if (!r.enabled || r is ParticleSystemRenderer) continue;
                         var tr = r.transform;
@@ -152,6 +252,7 @@ namespace Ulon.Editor
                     }
                 }
             foreach (var kv in names) who += " " + kv.Key + "×" + kv.Value;
+            leak = total > 0 ? leaked / (float)total : 0f;
             return total > 0 ? blocked / (float)total : 0f;
         }
 

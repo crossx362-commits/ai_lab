@@ -66,15 +66,20 @@ namespace Ulon.Editor
             string report = "";
             foreach (var s in spots)
             {
-                float share = EntranceCensus.MouthBlockShare(s.Root, s.X, s.Z, out string who);
-                report += " · " + s.Tag + " " + (share * 100f).ToString("0") + "%" + (who == "" ? "" : "(" + who.Trim() + ")");
+                float share = EntranceCensus.MouthBlockShare(s.Root, s.X, s.Z, out string who, out float leak);
+                report += " · " + s.Tag + " 가림 " + (share * 100f).ToString("0") + "%/샘 " + (leak * 100f).ToString("0") + "%" +
+                          (who == "" ? "" : "(" + who.Trim() + ")");
                 if (share > Max)
                     throw new InvalidOperationException(s.Tag + " 문구멍이 " + (share * 100f).ToString("0") +
                         "% 가려졌습니다 —" + who + ". 소품을 치우지 말고 **문설주 바깥으로 옮기십시오**(입구 표식이다).");
+                // **「샘」은 재기만 하고 판정하지 않는다 — 이 자는 네거티브 컨트롤을 못 넘었다**(2026-09-09).
+                // 판을 절반으로 줄여도 샘이 0%로 나온다: 바운드 광선이라 문 뒤의 옆벽·기둥·잔해가
+                // 넓은 상자로 걸려 「바깥」에 닿기 전에 먼저 맞는다. **무력한 자를 초록불로 남기면
+                // 그게 곧 빈 통과다** — 수치는 참고로만 로그에 남기고, 판정은 화면과 가림 자가 한다.
             }
             Debug.Log("[Ulon] 문구멍 가림 통과 —" + report);
 
-            // NC — 배너 하나를 문구멍 쪽으로 밀어 자가 무는지 본다.
+            // NC ② — 배너 하나를 문구멍 쪽으로 밀어 가림 자가 무는지 본다.
             var root = GameObject.Find(Dungeon1.RootObject);
             Transform banner = null;
             if (root != null)

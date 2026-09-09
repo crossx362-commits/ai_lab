@@ -42,6 +42,30 @@ namespace Ulon.Editor
                       "개(자리·콜라이더·상호작용은 그대로, 문은 EntrancePortal이 읽힌다)");
         }
 
+        /// <summary>
+        /// **입구의 「안쪽」** — 문을 지나 던전으로 들어가는 방향. `approachYaw`가 가리키는 그쪽이다.
+        ///
+        /// 이 파일에서 **같은 부호에 세 번 물렸다**(문구멍 물리기 · 입구 둔덕 · 배너). 세 번 다
+        /// 주석에는 「앞면」이라 적혀 있었고 코드는 안쪽을 가리켰다 — **주석은 세 번 다 그대로였다.**
+        /// 그래서 방향을 **이름 붙인 함수로 고정한다**: 부르는 쪽이 `Inward`/`Approach`라고 쓰면
+        /// 다음 사람이 부호를 다시 유도할 일이 없다(검수 원장 2026-09-09).
+        /// </summary>
+        public static Vector3 EntranceInward(float approachYaw)
+        {
+            float rad = approachYaw * Mathf.Deg2Rad;
+            return new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));
+        }
+
+        /// <summary>**입구의 「바깥쪽」** — 사람이 걸어오는 진입로 방향(`EntranceInward`의 반대).</summary>
+        public static Vector3 EntranceApproach(float approachYaw) => -EntranceInward(approachYaw);
+
+        /// <summary>문을 마주 봤을 때의 **좌우 축** — 두 기둥이 늘어선 방향.</summary>
+        public static Vector3 EntranceSide(float approachYaw)
+        {
+            var inward = EntranceInward(approachYaw);
+            return new Vector3(inward.z, 0f, -inward.x);
+        }
+
         public static void BuildDungeonEntrance(Transform parent, Vector3 pos, float approachYaw)
         {
             const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
@@ -54,9 +78,8 @@ namespace Ulon.Editor
                     ConfigureProp(models[i]);
             }
 
-            float rad = approachYaw * Mathf.Deg2Rad;
-            var fwd = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));   // 입구가 바라보는 쪽(=접근로)
-            var right = new Vector3(fwd.z, 0f, -fwd.x);
+            var inward = EntranceInward(approachYaw);      // **안쪽**(던전 쪽) — 이름으로 고정한다
+            var right = EntranceSide(approachYaw);
 
             // 문틀 치수와 **같은 값**을 쓴다 — 등불·배너가 문구멍 안으로 들어오지 않게 하려면
             // 문 반폭과 기둥 반폭을 알아야 한다(`BuildEntranceFrame`의 DoorHalf 1.25m·기둥 지름 2.23m).
@@ -68,7 +91,7 @@ namespace Ulon.Editor
                 // **등불은 문 통로 밖에 선다**(검수 판정 2026-09-08). 예전엔 `flank + fwd*1.3`이라
                 // 지나가는 자리에 서 있었고, 입구 샷에서는 검은 문판 한가운데 회색 기둥으로 읽혔다.
                 // 물건 자체는 맞으니 옮기기만 한다 — 기둥 바깥쪽으로.
-                Decor(parent, Lantern, pillar + right * (PillarHalf * side) + fwd * 0.6f,
+                Decor(parent, Lantern, pillar + right * (PillarHalf * side) + inward * 0.6f,
                       new Vector3(0f, approachYaw, 0f));
                 // **벽걸이 물건은 벽에 붙인다**(검수 판정 2026-09-08). `banner-red`는 장대+브래킷+천이
                 // 한 몸인 **벽에 거는** 소품인데, 걸 것 없이 공중(up 1.6m)에 세워 둬서 화면에서는
@@ -79,7 +102,10 @@ namespace Ulon.Editor
                 // 세 입구에 동시에 안전하지 않다.** 문구멍은 두 기둥 **사이**에 있으므로, 기둥에서
                 // **문 반대쪽(바깥 옆면)**에 걸면 어느 각도에서도 문과 카메라 사이에 들어오지 않는다.
                 // 치우지 않고 자리만 옮긴다 — 배너는 입구 표식이다.
-                var bannerGo = Place(Banner, pillar + right * ((PillarHalf + 0.05f) * side) + Vector3.up * 2.0f,
+                // 등불도 기둥 옆에 서므로 **진입로 쪽으로 한 걸음 물려** 건다 — 안 그러면 배너 천이
+                // 등불 기둥과 겹쳐 「공중에 뜬 천」으로 읽힌다(검수 관찰 2026-09-09).
+                var bannerGo = Place(Banner, pillar + right * ((PillarHalf + 0.05f) * side)
+                                             + EntranceApproach(approachYaw) * 0.8f + Vector3.up * 2.0f,
                                      new Vector3(0f, approachYaw + 90f * side, 0f));
                 if (bannerGo != null)
                 {
@@ -97,8 +123,9 @@ namespace Ulon.Editor
                 light.shadows = LightShadows.None;
             }
 
+            // 돌길은 **진입로 쪽**으로 깐다 — 사람이 걸어오는 자리다.
             for (int i = 1; i <= 4; i++)
-                Decor(parent, PathTile, pos + fwd * (1.6f * i), new Vector3(0f, approachYaw, 0f));
+                Decor(parent, PathTile, pos + EntranceApproach(approachYaw) * (1.6f * i), new Vector3(0f, approachYaw, 0f));
 
             BuildEntranceFrame(parent, pos, approachYaw);
         }
@@ -120,9 +147,8 @@ namespace Ulon.Editor
         /// </summary>
         static void BuildEntranceFrame(Transform parent, Vector3 pos, float approachYaw)
         {
-            float rad = approachYaw * Mathf.Deg2Rad;
-            var fwd = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));
-            var right = new Vector3(fwd.z, 0f, -fwd.x);
+            var inward = EntranceInward(approachYaw);
+            var right = EntranceSide(approachYaw);
 
             // 문틀 — **등록 CC0 조각으로만 세운다**(검수 2026-09-07 반려). 옛 문틀은 무텍스처 검은
             // 직육면체 3개(기둥 2 + 상인방)라 §8.2가 막는 「프리미티브 색칠 큐브」 그 자체였다 —
@@ -165,7 +191,7 @@ namespace Ulon.Editor
             // 옆벽 — 기둥과 **같은 줄이 아니라 뒤로 물려** 벽처럼 겹치게 한다(기둥보다 낮되 0.5m 안).
             for (int side = -1; side <= 1; side += 2)
             {
-                Vector3 wing = pos + right * (2.3f * side) - fwd * 1.1f;
+                Vector3 wing = pos + right * (2.3f * side) - inward * 1.1f;
                 // 옆벽도 민 조각이다 — 장식 기둥으로 세우면 「기둥이 네 개」로 읽힌다(검수 지적).
                 RoomPropObject(frame.transform, "EntranceWing" + (side > 0 ? 1 : 2), PlainPillar,
                     new Vector3(wing.x, gy, wing.z), approachYaw, 2.8f, true);
@@ -176,13 +202,42 @@ namespace Ulon.Editor
             // **자리를 안쪽으로 물린다**(검수 2026-09-08): 앞면이 기둥과 거의 같은 평면에 있어서
             // 그림자가 안 생겨 「통로」가 아니라 **세워 둔 검은 판**으로 읽혔다. 문설주보다 0.55m
             // 안으로 넣으면 기둥·상인방이 그늘을 드리워 **그림자 진 구멍**이 된다. 조각은 그대로다.
-            // **부호 주의**: `fwd`는 진입로 쪽이 아니라 **안쪽**을 가리킨다 — 실측으로 확인했다
-            // (옛 `-fwd*0.55`는 판을 기둥보다 **앞으로** 내놓고 있었고, 그래서 통로가 아니라 판으로 읽혔다).
+            // **방향은 `EntranceInward`가 준다** — 부호를 여기서 다시 유도하지 마라(세 번 물렸다).
             // 0.9m까지 밀었더니 **나가기 워프 착지 자리**를 판이 차지해 게이트가 빨간불을 냈다 —
             // 물리는 깊이는 「보기 좋은 만큼」이 아니라 착지 자리가 허락하는 만큼이다.
-            Vector3 back = pos + fwd * 0.55f;
-            RoomSlab(frame.transform, EntrancePortalObject, new Vector3(back.x, gy + 1.25f, back.z),
-                new Vector3(1.5f, 2.5f, 0.12f), portalMat, approachYaw);
+            //
+            // **크기는 문틀을 재서 유도한다**(검수 2026-09-09). 예전엔 1.5×2.5 상수라 아치 구멍보다
+            // 작았고, 실측하니 **상인방 아래로 0.31m가 뚫려** 그 틈으로 들판이 보였다. 화면에서
+            // 「문 너머로 바깥이 보인다」던 것의 실체다 — `qa_sky.py`가 0.10%를 낸 건 **파랑만 셌기**
+            // 때문이고, 새던 것은 하늘이 아니라 초록 들판이었다. 판은 기둥 바깥면 사이를 덮고
+            // 상인방 윗면까지 올라간다(앞에 선 기둥·상인방이 가려 「검은 판때기」로는 안 읽힌다).
+            Vector3 back = pos + inward * 0.55f;
+            float mouthW = 1.5f, mouthH = 2.5f, mouthMidY = gy + 1.25f;
+            // **구멍은 두 기둥 「사이」와 상인방 「아래」다** — 크기를 그 둘에서 유도한다.
+            // 두 번 헛짚었다: 문틀 전체를 덮으면 5.85m(검은 담), 기둥 바깥면까지면 4.29m인데
+            // 화면에서는 **문틀보다 큰 검은 판**이 뒤에 서서 문이 아니라 판때기로 읽혔다(실측 화면).
+            // 폭은 **기둥 중심 간격**(기둥이 앞에서 양옆을 가린다), 높이는 **상인방 아랫면까지**.
+            Transform p1 = null, p2 = null, lin = null;
+            foreach (var tr in frame.transform.GetComponentsInChildren<Transform>(true))
+            {
+                if (tr.name == "EntrancePillar1") p1 = tr;
+                else if (tr.name == "EntrancePillar2") p2 = tr;
+                else if (tr.name == "EntranceLintel") lin = tr;
+            }
+            if (p1 != null && p2 != null && BoundsOf(p1, true, out Bounds b1) && BoundsOf(p2, true, out Bounds b2))
+            {
+                mouthW = Vector3.Distance(new Vector3(b1.center.x, 0f, b1.center.z),
+                                          new Vector3(b2.center.x, 0f, b2.center.z));
+                float top = b1.max.y;
+                if (lin != null && BoundsOf(lin, true, out Bounds bl))
+                    top = bl.min.y + 0.15f;              // 상인방에 살짝 물려 위 틈을 없앤다
+                mouthH = top - gy;
+                mouthMidY = gy + mouthH * 0.5f;
+            }
+            RoomSlab(frame.transform, EntrancePortalObject, new Vector3(back.x, mouthMidY, back.z),
+                new Vector3(0.12f, mouthH, mouthW), portalMat, approachYaw);
+            Debug.Log("[Ulon] 문구멍 판 — 문틀에서 유도한 " + mouthW.ToString("0.00") + "×" + mouthH.ToString("0.00") +
+                      "m (옛 상수 1.50×2.50m는 상인방 아래로 0.31m가 뚫려 있었다)");
         }
 
         /// <summary>
