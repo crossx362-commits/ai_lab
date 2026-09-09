@@ -472,7 +472,13 @@ CliffDark(10번째)가 **아예 안 그려졌다.** 자는 「한 겹 2%」로 �
   열고 있었다(ActionSfx·Data·HudReachable·Regions·RepairTools). 파일을 가르자 배선은 그대로인데 전부
   빨간불 — `SliceSelfCheck.HudSource.cs`(`HudSourceText`/`HudSourceLines`)가 `SliceHud*.cs`를 이어 붙여
   준다. NC 확인: Heal 소리 배선 한 줄을 바꾸면 rc=1.
-- **HUD 샷은 전후 비교의 자가 안 선다**(다음 사람 주의): `tools/hud_shots.sh`는 저장된 계정으로 도는
+- **HUD 샷 전후 비교는 이제 선다**(㉮, 2026-09-09): `hud_shots.sh`가 계정(`ulon-hudshot`)과
+  시계(`Time.captureFramerate=30`)를 고정하고 찍은 뒤 계정을 지운다. 같은 코드 두 판 **보이는 차이
+  0장**이고, **기계에 qa_shots를 같이 돌려 부하를 걸어도 0장**이다. NC는 `ULON_HUD_STATE_NC=1`
+  (계정·시계 둘 다 끔) — 빨간불이 **1장뿐이라 약하다**(연달아 돌면 실시간이 우연히 비슷해진다).
+  **지우는 자리 함정**: 스탠드얼론 저장은 `builds/frameprobe/data/accounts`다(저장소 쪽
+  `data/accounts` 아님) — 처음엔 엉뚱한 파일을 지우며 아무것도 안 지웠는데 화면은 조용했다.
+- (옛 기록) **전에는 자가 안 섰다**: `tools/hud_shots.sh`는 저장된 계정으로 도는
   스탠드얼론이라 **판마다 상태가 누적**된다(HP·STR·서 있는 자리가 달라진다). 분할 전후 5장이
   「보이는 차이」로 떴지만 그림을 보면 **사냥터 vs 마을** — HUD가 아니라 세계다. HUD 요소(상태 카드·
   퀵바·탭)는 두 그림에서 같다. **고치려면 hud_shots를 고정 상태(새 계정·고정 자리)에서 찍게 해야 한다.**
