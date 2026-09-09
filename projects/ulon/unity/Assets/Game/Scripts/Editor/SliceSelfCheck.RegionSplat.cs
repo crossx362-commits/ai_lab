@@ -20,6 +20,7 @@ namespace Ulon.Editor
 
         static void AssertRegionSplat()
         {
+            AssertGrassToneNegativeControl();
             var terrain = Terrain.activeTerrain;
             if (terrain == null || terrain.terrainData == null)
                 throw new InvalidOperationException("지형이 없습니다 — 지역 도포를 검사할 수 없습니다.");
@@ -78,7 +79,10 @@ namespace Ulon.Editor
             }
 
             // 반대쪽 한계 — 온 세상을 흙으로 칠해도 위 판정은 통과한다. 지역·길 밖 평지는 풀이어야 한다.
+            // **풀은 이제 두 겹이다**(짙은 풀 + 마른 풀, 검수 랩 ⑤). 이 자가 묻는 것은 「흙이 아니라
+            // 풀인가」이므로 **풀 계열의 합**을 잰다 — 하한 0.80은 그대로다(검수 지시: 건드리지 마라).
             float gsum = 0f;
+            float drySum = 0f;
             int gn = 0;
             for (float x = -80f; x <= 80f; x += 8f)
             {
@@ -89,17 +93,58 @@ namespace Ulon.Editor
                         continue;                                   // 물가·산비탈은 모래·바위가 맞다
                     if (WorldSplat.CoverAt(x, z, out float cover) >= 0 && cover > 0.05f)
                         continue;                                   // 지역·길은 흙이 맞다
-                    gsum += Sample(alpha, ar, x, z, WorldSplat.Grass);
+                    float lush = Sample(alpha, ar, x, z, WorldSplat.Grass);
+                    float dry = Sample(alpha, ar, x, z, WorldSplat.DryGrass);
+                    gsum += lush + dry;
+                    drySum += dry;
                     gn++;
                 }
             }
+            if (gn == 0)
+                throw new InvalidOperationException("지역 밖 평지 표본이 0곳입니다 — 이 자는 아무것도 재지 않았습니다.");
             float grassAvg = gn == 0 ? 0f : gsum / gn;
             Debug.Log("[Ulon] §6.1 지역 밖 평지 풀 " + grassAvg.ToString("0.00") + " (표본 " + gn + "곳, 하한 " + PlainGrassMin + ")");
             if (grassAvg < PlainGrassMin)
                 throw new InvalidOperationException("지역·길 밖 평지의 풀 도포가 " + grassAvg.ToString("0.00") + "입니다 — 최소 " + PlainGrassMin +
                     ". 온 세상이 흙바닥이면 지역 구분이 사라집니다(§8.2).");
 
+            // **초록이 몇 가지인가**(검수 랩 ⑤ — 「흙이 적은 것이 아니라 초록이 한 톤인 것」).
+            // 풀 총량은 위 자가 지키고, 이 자는 그 풀이 **한 색인지**를 묻는다. 양쪽으로 잰다:
+            // 갈리지 않으면 당구대이고, 마른 풀이 다 먹으면 초원이 마른 들판이 된다.
+            float dryAvg = drySum / gn;
+            Debug.Log("[Ulon] §8.2 평지 잔디 톤 — 마른 풀 몫 " + dryAvg.ToString("0.00") +
+                      " (허용 " + DryToneMin + "~" + DryToneMax + ", 표본 " + gn + "곳)");
+            string tone = GrassToneVerdict(dryAvg);
+            if (tone != null)
+                throw new InvalidOperationException(tone);
+
             Debug.Log("[Ulon] §6.1 지역 지표·길 통과 — 밭/숲/광산 도포 + 길 3갈래, 지역 밖 평지 풀 " + grassAvg.ToString("0.00"));
+        }
+
+        const float DryToneMin = 0.12f;    // 이보다 적으면 갈린 티가 안 난다(=한 톤)
+        const float DryToneMax = 0.55f;    // 이보다 많으면 초원이 마른 들판으로 넘어간다
+
+        /// <summary>마른 풀 몫에 대한 판정만 한다 — 표본과 분리해 두어야 반대쪽 한계를 그냥 부를 수 있다.</summary>
+        static string GrassToneVerdict(float dryAvg)
+        {
+            if (dryAvg < DryToneMin)
+                return "평지 잔디의 마른 풀 몫이 " + dryAvg.ToString("0.00") + "입니다 — 최소 " + DryToneMin +
+                       ". 초록이 한 톤이면 들판이 당구대로 읽힙니다(§8.2).";
+            if (dryAvg > DryToneMax)
+                return "평지 잔디의 마른 풀 몫이 " + dryAvg.ToString("0.00") + "입니다 — 최대 " + DryToneMax +
+                       ". 초원이 통째로 마른 들판이 됐습니다(§8.2).";
+            return null;
+        }
+
+        /// <summary>반대쪽 한계 — 갈리지 않은 값과 다 마른 값에서 **반드시** 빨간불이 나야 한다.</summary>
+        static void AssertGrassToneNegativeControl()
+        {
+            if (GrassToneVerdict(0f) == null)
+                throw new InvalidOperationException("반대쪽 한계 실패 — 마른 풀이 0인데도 잔디 톤 자가 통과했습니다.");
+            if (GrassToneVerdict(1f) == null)
+                throw new InvalidOperationException("반대쪽 한계 실패 — 온 들판이 마른 풀인데도 잔디 톤 자가 통과했습니다.");
+            if (GrassToneVerdict((DryToneMin + DryToneMax) * 0.5f) != null)
+                throw new InvalidOperationException("반대쪽 한계 실패 — 허용 범위 한가운데인데 잔디 톤 자가 걸렸습니다.");
         }
 
         static float Sample(float[,,] alpha, int ar, float wx, float wz, int layer)

@@ -467,11 +467,15 @@ namespace Ulon.Editor
             // 광장은 **돌포장**(pattern 4) — 길 흙(0)과 같은 무늬면 십자로가 아스팔트로 읽힌다(검수 랩 ②).
             var cobbleLayer = EnsureTerrainLayer("PlazaCobble", new Color(0.30f, 0.28f, 0.26f), new Color(0.60f, 0.58f, 0.53f), 2f, 4);
             var roadLayer = EnsureTerrainLayer("DirtRoad", new Color(0.38f, 0.31f, 0.22f), new Color(0.58f, 0.50f, 0.37f), 5f);
+            // **마른 풀**(검수 랩 ⑤) — 잔디와 **같은 잔풀 무늬**(pattern 0)에 색만 누렇게 뺀다.
+            // 무늬까지 다르면 다른 지질로 읽혀 「초원 안의 얼룩」이 아니라 「밭이 번진 것」이 된다.
+            // 타일링도 12가 아닌 9로 어긋내 두 겹이 같은 자리에서 같은 격자로 반복되지 않게 한다.
+            var dryLayer = EnsureTerrainLayer("MeadowDry", new Color(0.46f, 0.45f, 0.24f), new Color(0.70f, 0.66f, 0.38f), 9f);
 
             int res = 513;
             data.heightmapResolution = res;
             data.size = new Vector3(WorldTerrain.Span, WorldTerrain.MaxHeight, WorldTerrain.Span);
-            data.terrainLayers = new[] { layer, rockLayer, sandLayer, tilledLayer, soilLayer, gravelLayer, roadLayer, cobbleLayer };
+            data.terrainLayers = new[] { layer, rockLayer, sandLayer, tilledLayer, soilLayer, gravelLayer, roadLayer, cobbleLayer, dryLayer };
             float[,] heights = new float[res, res];
             float half = WorldTerrain.Span * 0.5f;
             for (int z = 0; z < res; z++)
@@ -524,7 +528,11 @@ namespace Ulon.Editor
                     float keep = Mathf.Max(0f, 1f - coverW);
 
                     var w = new float[WorldSplat.LayerCount];
-                    w[WorldSplat.Grass] = grassW * keep;
+                    // **풀은 한 겹이 아니라 두 겹이다**(검수 랩 ⑤). 총량 `grassW * keep`은 그대로 두고
+                    // 짙은 풀·마른 풀로 **나눠서만** 칠한다 — 흙 비율을 건드리지 않고 초록을 가른다.
+                    float dryShare = WorldSplat.DryGrassAt(wx, wz);
+                    w[WorldSplat.Grass] = grassW * keep * (1f - dryShare);
+                    w[WorldSplat.DryGrass] = grassW * keep * dryShare;
                     w[WorldSplat.Rock] = rockW * keep;
                     w[WorldSplat.Sand] = sand;
                     if (cover >= 0)

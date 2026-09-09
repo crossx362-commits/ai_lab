@@ -19,7 +19,32 @@ namespace Ulon.Shared
         public const int Gravel = 5;    // 광산 — 자갈
         public const int Road = 6;      // 지역을 잇는 길
         public const int Cobble = 7;    // 마을 광장 — 돌포장
-        public const int LayerCount = 8;
+        /// <summary>
+        /// **마른 풀**(검수 랩 ⑤ 「초록 한 톤」). 세어 보니 지역 밖 평지 표본 253곳 중 **184곳(73%)이
+        /// 지표 한 겹**이었다 — 흙이 적은 게 아니라 초록이 한 가지인 것이 증상이다. 그래서 흙 비율은
+        /// 그대로 두고 **잔디 안에서** 가른다: 같은 풀 자리를 짙은 풀과 마른 풀 둘로 나눠 칠한다.
+        /// 두 겹의 합은 언제나 옛 풀 한 겹과 같다 — 「지역 밖 평지 풀 하한 0.80」은 그래서 안 흔들린다.
+        /// </summary>
+        public const int DryGrass = 8;
+        public const int LayerCount = 9;
+
+        /// <summary>이 자리의 풀 중 **마른 풀이 차지하는 몫**(0~1). 굽는 쪽·재는 쪽이 같이 읽는다.</summary>
+        public static float DryGrassAt(float wx, float wz)
+        {
+            // 저주파 얼룩이 톤을 가르고(멀리서 보이는 무늬), 고주파가 경계를 흐트러뜨린다(줄무늬 방지).
+            // **완만하게 섞으면 화면에서는 그냥 탁해진다.** 첫 판이 그랬다: 마른 풀 몫이 평균 0.27인데
+            // 값 대부분이 중간대(0.2~0.4)라 두 겹이 섞여 **한 톤이 조금 흐려졌을 뿐**이었다(마을 넓은
+            // 샷에서 확인). 얼룩으로 읽히려면 자리마다 **거의 마른 풀이거나 거의 짙은 풀**이어야 한다 —
+            // 그래서 전환 구간을 좁혀(0.34 → 0.13) 경계를 세우고, 얼룩 주기도 38m에서 22m로 줄인다.
+            // 주기가 하나면 **얼룩과 얼룩 사이가 통째로 비는 자리**가 생긴다 — 22m 주기 하나로 깔았더니
+            // 마을은 갈렸는데 사냥터 앞쪽 30m가 균일한 초록이었다(샷으로 확인). 큰 얼룩 위에 중간 얼룩을
+            // 겹쳐 어느 화면에서도 한 톤 구간이 남지 않게 한다.
+            float broad = Mathf.PerlinNoise(wx * 0.045f + 17.3f, wz * 0.045f + 53.1f);
+            float mid = Mathf.PerlinNoise(wx * 0.090f + 63.9f, wz * 0.090f + 21.4f);
+            float fine = Mathf.PerlinNoise(wx * 0.140f + 5.7f, wz * 0.140f + 88.4f) - 0.5f;
+            float b = Mathf.Max(broad, mid * 0.92f);
+            return Mathf.Clamp01((b + fine * 0.30f - 0.52f) / 0.13f) * 0.90f;
+        }
 
         public const float RoadHalfWidth = 2.4f;   // 길 중심에서 이 폭까지는 온전히 길
         public const float RoadFade = 1.8f;        // 그 바깥으로 이 폭만큼 흙이 옅어진다

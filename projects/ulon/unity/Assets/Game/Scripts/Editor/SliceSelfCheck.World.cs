@@ -178,7 +178,11 @@ namespace Ulon.Editor
                     float h = terrain.SampleHeight(new Vector3(wx, 0f, wz)) + origin.y;
                     int ax = Mathf.Clamp(Mathf.RoundToInt((wx + halfSpan) / WorldTerrain.Span * (ar - 1)), 0, ar - 1);
                     int az = Mathf.Clamp(Mathf.RoundToInt((wz + halfSpan) / WorldTerrain.Span * (ar - 1)), 0, ar - 1);
-                    float g = maps[az, ax, 0], r = maps[az, ax, 1], sd = maps[az, ax, 2];
+                    // **풀은 두 겹이다**(짙은 풀 + 마른 풀, 검수 랩 ⑤). 이 자가 묻는 것은 「중턱에 풀이
+                    // 섞여 있나」이므로 **풀 계열의 합**을 본다 — 한 겹만 보면 마른 풀로 간 몫이 사라져
+                    // 멀쩡한 중턱이 「바위로 쏠렸다」로 읽힌다(실측 0.33으로 울었다).
+                    float g = maps[az, ax, Ulon.Shared.WorldSplat.Grass] + maps[az, ax, Ulon.Shared.WorldSplat.DryGrass];
+                    float r = maps[az, ax, Ulon.Shared.WorldSplat.Rock], sd = maps[az, ax, Ulon.Shared.WorldSplat.Sand];
                     if (h > WorldTerrain.LandBase + 6f && h < WorldTerrain.LandBase + 18f)
                     {
                         midN++;

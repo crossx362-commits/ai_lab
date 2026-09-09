@@ -95,6 +95,63 @@ namespace Ulon.Editor
                           VisualSliceBuilder.HuntSpots.Length + "마리");
             }
 
+            // **「초록 한 톤」을 센다**(검수 랩 ⑤). 증상은 흙이 적은 것이 아니라 초록이 한 톤인 것이다 —
+            // 그러니 세는 것도 「흙 비율」이 아니라 **초록이 몇 가지인가**다: 평지 표본이 밟는 잔디 계열
+            // 레이어 종수와, 야외 나무가 쓰는 **재질 색의 종수**.
+            {
+                // 세는 것은 **칠해진 결과**다(알파맵) — 함수가 무엇을 계산하든 화면에 깔린 것이 기준이다.
+                var terr = Terrain.activeTerrain;
+                if (terr != null && terr.terrainData != null)
+                {
+                    var td = terr.terrainData;
+                    int ar2 = td.alphamapResolution;
+                    var alpha2 = td.GetAlphamaps(0, 0, ar2, ar2);
+                    float half2 = WorldTerrain.Span * 0.5f;
+                    int plain = 0, oneTone = 0;
+                    for (float x = -80f; x <= 80f; x += 8f)
+                        for (float z = -80f; z <= 80f; z += 8f)
+                        {
+                            float h = WorldTerrain.HeightAt(x, z);
+                            if (h < WorldTerrain.SeaLevel + 2f || h > WorldTerrain.LandBase + 6f)
+                                continue;
+                            if (Ulon.Shared.WorldSplat.CoverAt(x, z, out float cover) >= 0 && cover > 0.05f)
+                                continue;
+                            int ix = Mathf.Clamp(Mathf.RoundToInt((x + half2) / WorldTerrain.Span * (ar2 - 1)), 0, ar2 - 1);
+                            int iz = Mathf.Clamp(Mathf.RoundToInt((z + half2) / WorldTerrain.Span * (ar2 - 1)), 0, ar2 - 1);
+                            plain++;
+                            int tones = 0;
+                            for (int L = 0; L < td.alphamapLayers; L++)
+                                if (alpha2[iz, ix, L] > 0.12f)
+                                    tones++;
+                            if (tones <= 1)
+                                oneTone++;      // 이 자리에는 초록이 한 겹뿐이다
+                        }
+                    Debug.Log("[Census] 평지 잔디 톤 — 표본 " + plain + "곳 중 한 겹뿐 " + oneTone + "곳(" +
+                              (plain == 0 ? 0f : oneTone * 100f / plain).ToString("0") + "%) · 지형 레이어 " +
+                              td.alphamapLayers + "종");
+                }
+
+                var treeTone = new Dictionary<string, int>();
+                int trees = 0;
+                foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                {
+                    if (t.name.IndexOf("tree", StringComparison.OrdinalIgnoreCase) < 0)
+                        continue;
+                    var rr = t.GetComponentInChildren<Renderer>(true);
+                    if (rr == null || rr.sharedMaterial == null)
+                        continue;
+                    trees++;
+                    string key = rr.sharedMaterial.name + " " + ColorUtility.ToHtmlStringRGB(rr.sharedMaterial.color);
+                    treeTone.TryGetValue(key, out int n2);
+                    treeTone[key] = n2 + 1;
+                }
+                var tk = new List<string>(treeTone.Keys);
+                tk.Sort(StringComparer.Ordinal);
+                Debug.Log("[Census] 나무 " + trees + "그루 · 색 " + tk.Count + "종");
+                foreach (var k in tk)
+                    Debug.Log("[Census] 나무 색 " + k + " × " + treeTone[k]);
+            }
+
             var nodes = new List<Transform>();
             var boxes = new List<Bounds>();
             Collect(nodes, boxes);
