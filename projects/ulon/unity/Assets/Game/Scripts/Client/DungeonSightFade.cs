@@ -64,10 +64,35 @@ namespace Ulon.Client
                     continue;
                 if (except != null && rend.transform.IsChildOf(except))
                     continue;
+                // **대상 뒤에 있는 것은 대상을 가릴 수 없다**(검수 판정 2026-09-09).
+                // 구를 쓸어 보내므로 대상 **옆·뒤**를 스친 것까지 「사이에 낀 것」으로 잡혔다:
+                // 은행 근접 샷에서 은행원 **뒤 3.4m**의 은행이 통째로 비쳐 화면 절반이 유령이 됐다.
+                // 가릴 수 없는 것을 가린 셈 치고 지우는 것이라 상식 모순이다 — 거리 하나로 가른다.
+                if (!IgnoreBehindRuleForNc && BehindTarget(rend, eye, look))
+                    continue;
                 Ghost(rend);
                 hidden.Add(rend);
             }
         }
+
+        /// <summary>
+        /// 눈에서 이 물건의 **가장 가까운 점**까지가 대상보다 멀면 그것은 대상 뒤다 — 가릴 수 없다.
+        /// 재는 쪽(QA 근접 프레이밍)과 찍는 쪽이 **이 한 함수**를 같이 부른다: 같은 판정이 두 곳에
+        /// 따로 살면 한쪽만 고쳐져 화면과 숫자가 갈린다(이 저장소가 여러 번 밟은 함정).
+        /// </summary>
+        public static bool BehindTarget(Renderer rend, Vector3 eye, Vector3 look)
+        {
+            float toLook = Vector3.Distance(eye, look);
+            return Vector3.Distance(eye, rend.bounds.ClosestPoint(eye)) > toLook + 0.1f;
+        }
+
+        /// <summary>
+        /// **네거티브 컨트롤 전용 스위치** — 켜면 「대상 뒤는 안 비친다」 규칙이 없던 때로 돌아간다.
+        /// 규칙을 넣고 나면 방위 고르는 쪽이 그런 자리를 아예 안 골라서, 씬을 흔들어도 결함이
+        /// 안 만들어진다. 그래서 **규칙 자체를 끄고** 「그때는 은행이 다시 비치는가」를 본다.
+        /// `ULON_FADE_NC=1`로 QA 샷을 돌리면 켜진다.
+        /// </summary>
+        public static bool IgnoreBehindRuleForNc;
 
         /// <summary>
         /// **가리지 말고 비치게 한다**(검수 판정 2026-09-07). 렌더러를 끄면 건물 한 채가 통째로 증발해

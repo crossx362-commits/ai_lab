@@ -43,6 +43,14 @@ namespace Ulon.Editor
         {
             EditorSceneManager.OpenScene("Assets/Game/Scenes/Bootstrap.unity");
 
+            // **반대쪽 한계는 환경변수 하나로 재현된다** — `ULON_FADE_NC=1 ./tools/qa_shots.sh`.
+            // 「대상 뒤는 안 비친다」를 끄면 은행이 다시 통째로 비쳐야 한다. 켜진 판을 모르고 보면
+            // 안 되므로 **로그 첫 줄에 상태를 찍는다**(끈 채로 찍힌 그림을 정상판으로 읽는 사고 방지).
+            Ulon.Client.DungeonSightFade.IgnoreBehindRuleForNc =
+                System.Environment.GetEnvironmentVariable("ULON_FADE_NC") == "1";
+            if (Ulon.Client.DungeonSightFade.IgnoreBehindRuleForNc)
+                Debug.Log("[Ulon] ⚠ 반대쪽 한계 판 — 「대상 뒤는 안 비친다」를 끄고 찍는다(정상판 아님)");
+
             string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "../../builds/qa"));
             Directory.CreateDirectory(dir);
 
@@ -209,10 +217,7 @@ namespace Ulon.Editor
                     camGo.transform.LookAt(shot.Target);
                     var faded = new System.Collections.Generic.List<Renderer>();
                     if (shot.PlayCamera)
-                    {
                         Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, Ulon.Client.DungeonSightFade.DefaultRadius, faded, shot.Subject);
-                        RestoreBehind(shot, faded);
-                    }
                     // **무엇이 반투명해졌는지 이름으로 남긴다** — 화면에 유령이 보이면 그것이 벽 장식인지
                     // 피사체의 일부인지 로그로 갈린다(검수 의심 2026-09-07: 41 오른쪽 반투명 칼날).
                     for (int f = 0; f < faded.Count && f < 12; f++)
@@ -914,46 +919,6 @@ namespace Ulon.Editor
         }
 
         /// <summary>
-        /// **대상 뒤에 선 것은 가림이 아니다** — 비치게 만든 것 중 대상보다 먼 것을 원래대로 돌린다
-        /// (랩 ㉨ 반려, 2026-09-09).
-        ///
-        /// 은행원 근접 샷의 오른쪽 절반이 유령 건물이었다. 이유를 세어 보니 비친 것은 **은행 자신**인데,
-        /// 은행은 카메라와 은행원 **사이**가 아니라 은행원 **뒤** 3.4m에 있다. `Hide`는 반경 2.2m 구를
-        /// 쓸어 보내므로 대상 근처의 큰 벽이 옆구리에 스치고, 그러면 **가리지도 않은 건물이 통째로
-        /// 반투명**이 된다. 「막았나」가 아니라 「스쳤나」를 센 것이다.
-        ///
-        /// 판정은 거리 하나로 한다: 눈에서 그 물건의 가장 가까운 점까지가 **대상보다 멀면** 그것은
-        /// 대상을 가릴 수 없다. 런타임 `DungeonSightFade`는 건드리지 않는다 — 던전 실내 샷 넷이
-        /// 그 규칙 위에 서 있으므로, 고치려면 그 넷을 전후로 같이 내야 한다(이 랩의 축이 아니다).
-        ///
-        /// **지금은 한 번도 안 걸린다**(실측 0건). 고르는 쪽이 이 조항을 같이 읽어(`GhostShare`)
-        /// 대상 뒤가 비치는 방위를 **애초에 안 고르기** 때문이다. 그래도 남긴다 — 남길 이유는
-        /// 「혹시 몰라서」가 아니라 **재는 쪽과 찍는 쪽이 같은 규칙을 읽어야 하기 때문**이다.
-        /// 방위 후보가 하나뿐인 사람이 생기면 그때 이 줄이 화면과 숫자를 맞춰 준다.
-        /// </summary>
-        static void RestoreBehind(Shot shot, System.Collections.Generic.List<Renderer> faded)
-        {
-            float toTarget = Vector3.Distance(shot.Eye, shot.Target);
-            var behind = new System.Collections.Generic.List<Renderer>();
-            for (int i = 0; i < faded.Count; i++)
-            {
-                if (faded[i] == null)
-                    continue;
-                if (Vector3.Distance(shot.Eye, faded[i].bounds.ClosestPoint(shot.Eye)) > toTarget + 0.1f)
-                    behind.Add(faded[i]);
-            }
-            if (behind.Count == 0)
-                return;
-            Ulon.Client.DungeonSightFade.Restore(behind);
-            for (int i = 0; i < behind.Count; i++)
-            {
-                faded.Remove(behind[i]);
-                Debug.Log("[Ulon] 유령 취소 " + shot.Name + " ← " + behind[i].transform.root.name + "/" + behind[i].name +
-                          "(대상보다 뒤에 있다)");
-            }
-        }
-
-        /// <summary>
         /// **유령이 화면을 얼마나 덮나**(랩 ㉨ 반려, 2026-09-09) — 눈에서 화면 격자로 광선을 쏘아
         /// **페이드될 것**(반투명이 될 벽·지붕)에 맞는 칸의 비율을 돌려준다.
         ///
@@ -988,8 +953,9 @@ namespace Ulon.Editor
                     continue;                                  // 발밑 바닥은 화면을 안 가린다(Hide와 같은 조항)
                 if (subject != null && rend.transform.IsChildOf(subject))
                     continue;
-                if (Vector3.Distance(eye, rend.bounds.ClosestPoint(eye)) > len + 0.1f)
-                    continue;                                  // 대상 뒤는 가림이 아니다(찍는 쪽과 같은 조항)
+                if (!Ulon.Client.DungeonSightFade.IgnoreBehindRuleForNc &&
+                    Ulon.Client.DungeonSightFade.BehindTarget(rend, eye, look))
+                    continue;                                  // 대상 뒤는 가림이 아니다(찍는 쪽과 **같은 함수**)
                 ghosts.Add(rend);
             }
             if (ghosts.Count == 0)
