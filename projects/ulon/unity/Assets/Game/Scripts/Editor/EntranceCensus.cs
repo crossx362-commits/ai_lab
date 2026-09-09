@@ -24,7 +24,7 @@ namespace Ulon.Editor
     /// **이 자가 못 보는 것**: 빛과 그림자는 안 잰다 — 화면(`qa_shots`)이 판정한다.
     /// 지표는 `WorldTerrain`의 하이트맵이 아니라 **씬의 실제 지형**을 물리로 찍는다(빌더가 뒤에 손댔을 수 있다).
     /// </summary>
-    public static class EntranceCensus
+    public static partial class EntranceCensus
     {
         public static void Run()
         {

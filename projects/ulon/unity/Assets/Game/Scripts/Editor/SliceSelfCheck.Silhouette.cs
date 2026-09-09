@@ -54,6 +54,88 @@ namespace Ulon.Editor
             Debug.Log("[Ulon] 보스 두 샷 네거티브 컨트롤 통과 — 피하기를 끄면 " + ncGap.ToString("0") + "°로 붙는다");
         }
 
+        /// <summary>
+        /// **배너가 화면에서 읽히는가** — ①문구멍을 안 가리고 ②등불과 안 겹치고 ③기둥에 붙어 보이는가.
+        /// 광선이 아니라 **화면 실루엣**으로 묻는다(`EntranceCensus.BannerScreenMetrics`): 앞 랩의
+        /// 광선 자는 던전 2에서 「가림 0%」라고 했는데 화면에서는 배너가 문구멍의 **58%**를 덮고 있었다.
+        ///
+        /// 상한은 **재서 잡았다**(고른 자리에서의 실측 최악에 여유 반 발짝):
+        /// 고른 칸(진입로 0.4m·면 135°)의 실측은 세 입구 모두 문구멍 0.0% · 등불 0.0~0.3% · 기둥 0px다.
+        /// 상한은 문구멍 0.15 · 등불 0.15 · 기둥 6px — 실측과 상한 사이의 여유가 곧 「자리를 조금
+        /// 움직여도 되는 폭」이고, 그 폭을 넘으면 화면에서 읽히는 것이 바뀐다.
+        /// 「기둥에 붙어 보이나」를 거리로 묻는 이유: 겹침으로 물으면 **배너 뒤에 완전히 숨은 기둥**도
+        /// 통과한다 — 무엇에 걸린 천인지는 **닿아 있어야** 읽힌다.
+        ///
+        /// NC: 배너를 옛 규칙대로 옆으로 돌리면(던전 2) 문구멍 가림이 상한을 넘어야 한다.
+        /// </summary>
+        static void AssertEntranceBannerReads()
+        {
+            var spots = new (string Tag, string Root, float X, float Z)[]
+            {
+                ("던전 1", Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ),
+                ("던전 2", Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ),
+                ("던전 3", Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ),
+            };
+            const float MaxMouth = 0.15f, MaxLantern = 0.15f;
+            const int MaxGap = 6;
+            string report = "";
+            foreach (var s in spots)
+            {
+                if (!EntranceCensus.BannerScreenMetrics(s.Root, s.X, s.Z, out float mouth, out float lant,
+                                                        out int gap, out string what))
+                    throw new InvalidOperationException(s.Tag + " 배너 실루엣을 못 쟀습니다 — " + what +
+                        ". **못 재는 자를 초록불로 남기지 않는다.**");
+                report += " · " + s.Tag + " 문 " + (mouth * 100f).ToString("0") + "%/등불 " +
+                          (lant * 100f).ToString("0") + "%/기둥 " + gap + "px";
+                if (mouth > MaxMouth)
+                    throw new InvalidOperationException(s.Tag + " 배너가 문구멍을 화면에서 " +
+                        (mouth * 100f).ToString("0") + "% 덮습니다(상한 " + (MaxMouth * 100f).ToString("0") +
+                        "%) — " + what + ". 자리·면을 다시 유도하십시오(`EntranceCensus.RunBannerProbe`).");
+                if (lant > MaxLantern)
+                    throw new InvalidOperationException(s.Tag + " 배너와 등불이 화면에서 " +
+                        (lant * 100f).ToString("0") + "% 겹칩니다(상한 " + (MaxLantern * 100f).ToString("0") +
+                        "%) — 두 물건이 한 덩어리로 읽힙니다.");
+                if (gap > MaxGap)
+                    throw new InvalidOperationException(s.Tag + " 배너가 기둥에서 화면상 " + gap +
+                        "px 떨어져 **공중에 뜬 천**으로 읽힙니다(상한 " + MaxGap + "px).");
+            }
+            Debug.Log("[Ulon] 배너 실루엣 통과 —" + report);
+
+            // NC — 던전 2 배너를 옛 규칙(옆을 보게)으로 돌려 자가 무는지 본다. 옛 규칙이 실제로
+            // 문구멍을 58% 덮던 자리다(그래서 이 NC는 「고쳤다」의 증거이기도 하다).
+            var root2 = GameObject.Find(Dungeon2.RootObject);
+            var banners = EntranceCensus.FindChildren(root2 != null ? root2.transform : null, "banner");
+            if (banners.Count == 0)
+            {
+                Debug.LogWarning("[Ulon] 배너 실루엣 NC 건너뜀 — 던전 2 배너를 못 찾았다(자가 무력할 수 있다)");
+                return;
+            }
+            var keep = new System.Collections.Generic.List<Quaternion>();
+            foreach (var b in banners) { keep.Add(b.rotation); b.rotation = b.rotation * Quaternion.Euler(0f, 90f, 0f); }
+            Physics.SyncTransforms();
+            EntranceCensus.BannerScreenMetrics(Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ,
+                                               out float ncMouth, out float ncLant, out int _, out string _);
+            for (int i = 0; i < banners.Count; i++) banners[i].rotation = keep[i];
+            Physics.SyncTransforms();
+            if (ncMouth <= MaxMouth && ncLant <= MaxLantern)
+                throw new InvalidOperationException("배너 실루엣 네거티브 컨트롤 실패 — 옛 규칙대로 돌려도 " +
+                    "문 " + (ncMouth * 100f).ToString("0") + "%/등불 " + (ncLant * 100f).ToString("0") +
+                    "%로 통과합니다. 자가 무력합니다.");
+            Debug.Log("[Ulon] 배너 실루엣 네거티브 컨트롤 통과 — 옆으로 돌리면 문 " +
+                      (ncMouth * 100f).ToString("0") + "%/등불 " + (ncLant * 100f).ToString("0") + "%로 걸린다");
+        }
+
+        /// <summary>
+        /// **문구멍이 화면에서 가려졌나** — 광선이 아니라 실루엣으로 묻는다(`EntranceCensus.MouthScreenShare`).
+        ///
+        /// 옛 자(`MouthBlockShare`)는 문틀 사각형에 격자를 깔고 광선을 쐈다. 그 사각형의 가장자리는
+        /// 화면에서 **기둥 뒤**여서, 거기 선 배너를 「25% 가림」이라 부르며 빨간불을 냈다 —
+        /// 그런데 그 판의 샷에는 가려진 것이 없었다(눈으로 확인). **두 자가 다투면 화면이 이긴다.**
+        /// 옛 자는 지우지 않고 **셈으로 남긴다**(`EntranceCensus.RunMouth`) — 문틀 안쪽 물건을 세는 데는
+        /// 여전히 쓸모가 있지만, **판정은 화면이 한다.**
+        ///
+        /// NC: 배너를 문 앞으로 옮기면 상한을 넘어야 한다.
+        /// </summary>
         static void AssertEntranceMouthClear()
         {
             var spots = new (string Tag, string Root, float X, float Z)[]
@@ -62,24 +144,21 @@ namespace Ulon.Editor
                 ("던전 2", Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ),
                 ("던전 3", Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ),
             };
-            const float Max = 0.20f;      // 표본 49개 중 열 개까지 — 그 이상이면 화면에서 문이 안 읽힌다
+            const float Max = 0.20f;
             string report = "";
             foreach (var s in spots)
             {
-                float share = EntranceCensus.MouthBlockShare(s.Root, s.X, s.Z, out string who, out float leak);
-                report += " · " + s.Tag + " 가림 " + (share * 100f).ToString("0") + "%/샘 " + (leak * 100f).ToString("0") + "%" +
-                          (who == "" ? "" : "(" + who.Trim() + ")");
+                if (!EntranceCensus.MouthScreenShare(s.Root, s.X, s.Z, out float share, out string who, out int px))
+                    throw new InvalidOperationException(s.Tag + " 문구멍을 화면에서 못 쟀습니다 — " + who +
+                        ". **못 재는 자를 초록불로 남기지 않는다.**");
+                report += " · " + s.Tag + " 가림 " + (share * 100f).ToString("0") + "%(" + who + ", 구멍 " + px + "px)";
                 if (share > Max)
-                    throw new InvalidOperationException(s.Tag + " 문구멍이 " + (share * 100f).ToString("0") +
-                        "% 가려졌습니다 —" + who + ". 소품을 치우지 말고 **문설주 바깥으로 옮기십시오**(입구 표식이다).");
-                // **「샘」은 재기만 하고 판정하지 않는다 — 이 자는 네거티브 컨트롤을 못 넘었다**(2026-09-09).
-                // 판을 절반으로 줄여도 샘이 0%로 나온다: 바운드 광선이라 문 뒤의 옆벽·기둥·잔해가
-                // 넓은 상자로 걸려 「바깥」에 닿기 전에 먼저 맞는다. **무력한 자를 초록불로 남기면
-                // 그게 곧 빈 통과다** — 수치는 참고로만 로그에 남기고, 판정은 화면과 가림 자가 한다.
+                    throw new InvalidOperationException(s.Tag + " 문구멍이 화면에서 " + (share * 100f).ToString("0") +
+                        "% 가려졌습니다 — " + who + ". 치우지 말고 **문설주 바깥으로 옮기십시오**(입구 표식이다).");
             }
-            Debug.Log("[Ulon] 문구멍 가림 통과 —" + report);
+            Debug.Log("[Ulon] 문구멍 가림(화면) 통과 —" + report);
 
-            // NC ② — 배너 하나를 문구멍 쪽으로 밀어 가림 자가 무는지 본다.
+            // NC — 던전 1 배너를 문 앞으로 밀어 자가 무는지 본다.
             var root = GameObject.Find(Dungeon1.RootObject);
             Transform banner = null;
             if (root != null)
@@ -91,14 +170,66 @@ namespace Ulon.Editor
                 return;
             }
             var keep = banner.position;
-            banner.position = new Vector3(Dungeon1.EntranceX, keep.y, Dungeon1.EntranceZ) - (keep - new Vector3(Dungeon1.EntranceX, keep.y, Dungeon1.EntranceZ)).normalized * 1.6f;
+            // **구멍 자체의 앞**에 세운다 — 문 자리(지면 좌표)에서 밀면 높이가 안 맞아 화면에서
+            // 아무것도 안 가리고, NC가 「자가 무력하다」고 스스로 울었다(두 판이 실제로 그랬다).
+            // 그래서 **자가 구멍이라고 부르는 그것**(포털 판)의 자리에서 카메라 쪽으로 밀어 세운다.
+            var portalTr = EntranceCensus.FindChild(root.transform, VisualSliceBuilder.EntrancePortalObject);
+            if (portalTr == null)
+            {
+                Debug.LogWarning("[Ulon] 문구멍 네거티브 컨트롤 건너뜀 — 포털을 못 찾았다");
+                return;
+            }
+            EntranceCensus.ShotEye(Dungeon1.EntranceX, Dungeon1.EntranceZ, out Vector3 ncEye, out Vector3 _);
+            // **원점이 아니라 보이는 몸을 맞춘다** — 배너는 원점이 장대 밑이라 원점을 구멍 자리에
+            // 놓으면 천이 구멍 **위로** 뜬다(실제로 두 판 연속 「자가 무력하다」가 나왔고, 원인은 자가
+            // 아니라 NC였다). 그래서 렌더러 바운드 중심을 구멍 중심에 맞춘다.
+            var keepRot = banner.rotation;
+            // **면도 돌려 세운다** — 천은 얇은 판이라 비스듬히 세우면 구멍 앞에 놓아도 137px밖에
+            // 안 되고, 그래서는 「자가 큰 가림을 잡는가」를 못 묻는다. NC는 **가리는 쪽에 유리하게**
+            // 만들어야 자의 힘을 잰다(약한 NC를 통과시키면 그게 곧 빈 통과다).
+            var br = banner.GetComponentInChildren<Renderer>();
+            // 거리는 **0.3m** — 1.2m로 당겼더니 배너가 눈에 너무 가까워 프레임 밖으로 나가며 178px로
+            // 줄었다(가까이 둘수록 크게 덮을 것 같지만, 화면은 그렇게 굴지 않는다).
+            var ncTarget = portalTr.position + (ncEye - portalTr.position).normalized * 0.3f;
+            banner.position = ncTarget;
+            // 어느 회전이 천을 **넓게** 보이게 하는지는 모델의 축이 정한다(forward가 천의 법선이라는
+            // 보장이 없다 — 실제로 카메라를 향하게 했더니 43px로 **선처럼** 얇아졌다). 그래서 두 후보를
+            // 그려 보고 넓은 쪽을 고른다. **NC는 가리는 쪽에 유리해야** 자의 힘을 잰다.
+            EntranceCensus.ShotEye(Dungeon1.EntranceX, Dungeon1.EntranceZ, out Vector3 ncEye2, out Vector3 ncLook2);
+            var faceCam = Quaternion.LookRotation(new Vector3(ncEye.x - ncTarget.x, 0f, ncEye.z - ncTarget.z));
+            int wide = 0;
+            Quaternion bestRot = faceCam;
+            for (int k = 0; k < 2; k++)
+            {
+                banner.rotation = faceCam * Quaternion.Euler(0f, 90f * k, 0f);
+                banner.position = ncTarget;
+                Physics.SyncTransforms();
+                var probe = EntranceCensus.Draw(banner, ncEye2, ncLook2);
+                if (probe.Pixels > wide) { wide = probe.Pixels; bestRot = banner.rotation; }
+            }
+            banner.rotation = bestRot;
             Physics.SyncTransforms();
-            bool caught = EntranceCensus.MouthBlockShare(Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ, out _) > Max;
+            if (br != null)
+            {
+                // **원점이 아니라 보이는 몸을 맞춘다** — 배너는 원점이 장대 밑이고 천은 옆으로 매달려
+                // 있어서, 원점을 구멍 앞에 놓으면 화면에서는 **딴 자리**에 선다(실제로 세 판 연속
+                // 「자가 무력하다」가 나왔고 원인은 자가 아니라 NC였다 — 배너 723px가 구멍을 0% 덮었다).
+                // 옮긴 뒤 바운드 중심을 다시 읽어 세 축 전부 보정한다.
+                Physics.SyncTransforms();
+                banner.position += ncTarget - br.bounds.center;
+                Physics.SyncTransforms();
+            }
+            Physics.SyncTransforms();
+            EntranceCensus.MouthScreenShare(Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ,
+                                            out float ncShare, out string _, out int _);
             banner.position = keep;
+            banner.rotation = keepRot;
             Physics.SyncTransforms();
-            if (!caught)
-                throw new InvalidOperationException("문구멍 네거티브 컨트롤 실패 — 배너를 문 앞으로 옮겼는데도 통과했습니다.");
-            Debug.Log("[Ulon] 문구멍 네거티브 컨트롤 통과 — 배너를 문 앞으로 옮기면 FAIL");
+            if (ncShare <= Max)
+                throw new InvalidOperationException("문구멍 네거티브 컨트롤 실패 — 배너를 문 앞으로 옮겼는데도 " +
+                    (ncShare * 100f).ToString("0") + "%로 통과했습니다. 자가 무력합니다.");
+            Debug.Log("[Ulon] 문구멍 네거티브 컨트롤 통과 — 배너를 문 앞으로 옮기면 " +
+                      (ncShare * 100f).ToString("0") + "%로 걸린다");
         }
 
         static void AssertBossHeadgearFramed()

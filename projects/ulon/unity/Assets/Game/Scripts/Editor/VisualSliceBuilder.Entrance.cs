@@ -66,6 +66,48 @@ namespace Ulon.Editor
             return new Vector3(inward.z, 0f, -inward.x);
         }
 
+        /// <summary>배너를 진입로 쪽으로 물리는 거리 — 화면 실루엣 탐색에서 나온 값(`BannerPose` 주석).</summary>
+        public const float BannerPush = 0.4f;
+
+        /// <summary>
+        /// 배너 면이 진입로에서 **비스듬히 바깥을 보는 각**. 정면(0°)이면 카메라에 **거대한 붉은 판**으로
+        /// 서고, 옆(90°)이면 등불과 한 덩어리로 읽힌다 — 둘 다 화면에서 재서 걸렀다.
+        /// </summary>
+        public const float BannerFace = 135f;
+
+        /// <summary>기둥 반폭 — 문틀(`BuildEntranceFrame`)의 기둥 지름 2.23m에서 온다.</summary>
+        public const float EntrancePillarHalf = 1.12f;
+
+        /// <summary>문 반폭 — 문틀과 같은 값(등불·배너가 문구멍에 안 들어오게 하려면 둘 다 알아야 한다).</summary>
+        public const float EntranceDoorHalf = 1.25f;
+
+        /// <summary>
+        /// **배너 한 장의 자리와 면**(붙이는 쪽·재는 쪽이 **같은 함수**를 쓴다).
+        ///
+        /// 이 함수가 따로 있는 이유는 실패에서 왔다(2026-09-09): 후보 자리를 고르는 셈
+        /// (`EntranceCensus.RunBannerProbe`)이 배너를 **제 나름의 식**으로 옮겨 재고 「이 자리가 최선」
+        /// 이라고 했는데, 빌더가 실제로 놓은 자리는 그것과 달라 던전 1이 문구멍을 **73%** 덮었다.
+        /// 예측과 결과가 어긋난 것이 아니라 **애초에 다른 것을 잰 것**이다.
+        /// 왕관 사고에서 배운 그 문장이 자리 고르기에도 그대로 적용된다.
+        ///
+        /// 규칙: 기둥의 **바깥 옆면**에 붙이고(문구멍은 두 기둥 사이라 어느 각도에서도 안 걸린다),
+        /// **진입로 쪽으로 한 걸음** 물리고(등불이 기둥 안쪽에 서므로 겹치지 않게),
+        /// 면은 진입로에서 비스듬히 바깥(`BannerFace`) — `ULON_BANNER_NC=1`이면 옛 규칙(옆을 봄)으로 되돌린다.
+        ///
+        /// **값은 고르는 루프에서 나왔다**(`EntranceCensus.RunBannerProbe`: 진입로 거리 넷 × 면 여덟을
+        /// 세 입구에서 전부 재고, 문구멍 가림·등불 겹침·기둥까지의 화면 거리 셋을 함께 낮추는 칸을 골랐다).
+        /// **한 값만 따로 바꾸지 마라** — 거리와 면은 같이 골라진 한 칸이다.
+        /// </summary>
+        public static void BannerPose(Vector3 pillar, float approachYaw, int side, float push,
+                                      out Vector3 position, out float yaw)
+        {
+            var right = EntranceSide(approachYaw);
+            position = pillar + right * ((EntrancePillarHalf + 0.05f) * side)
+                       + EntranceApproach(approachYaw) * push + Vector3.up * 2.0f;
+            bool nc = System.Environment.GetEnvironmentVariable("ULON_BANNER_NC") == "1";
+            yaw = approachYaw + (nc ? 90f * side : BannerFace);
+        }
+
         public static void BuildDungeonEntrance(Transform parent, Vector3 pos, float approachYaw)
         {
             const string Lantern = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
@@ -83,8 +125,8 @@ namespace Ulon.Editor
 
             // 문틀 치수와 **같은 값**을 쓴다 — 등불·배너가 문구멍 안으로 들어오지 않게 하려면
             // 문 반폭과 기둥 반폭을 알아야 한다(`BuildEntranceFrame`의 DoorHalf 1.25m·기둥 지름 2.23m).
-            const float DoorHalf = 1.25f;
-            const float PillarHalf = 1.12f;
+            const float DoorHalf = EntranceDoorHalf;
+            const float PillarHalf = EntrancePillarHalf;
             for (int side = -1; side <= 1; side += 2)
             {
                 Vector3 pillar = pos + right * (DoorHalf * side);
@@ -104,9 +146,15 @@ namespace Ulon.Editor
                 // 치우지 않고 자리만 옮긴다 — 배너는 입구 표식이다.
                 // 등불도 기둥 옆에 서므로 **진입로 쪽으로 한 걸음 물려** 건다 — 안 그러면 배너 천이
                 // 등불 기둥과 겹쳐 「공중에 뜬 천」으로 읽힌다(검수 관찰 2026-09-09).
-                var bannerGo = Place(Banner, pillar + right * ((PillarHalf + 0.05f) * side)
-                                             + EntranceApproach(approachYaw) * 0.8f + Vector3.up * 2.0f,
-                                     new Vector3(0f, approachYaw + 90f * side, 0f));
+                // **면은 진입로를 향한다**(화면 실루엣 탐색 2026-09-09). 옛 규칙 `approachYaw + 90*side`는
+                // 천을 옆으로 돌려 세워 카메라에서 **거대한 붉은 판**으로 서고, 던전 2에서는 그 판이
+                // **문구멍을 58% 덮고 등불과 59% 겹쳤다**(광선으로 재던 앞 자는 0%라고 했다 —
+                // 「가렸나」는 화면에서 물어야 한다). 자리(옆 0.05m·진입로 0.8m)는 재서 **그대로가 최선**이었다:
+                // 진입로 거리 다섯 값 × 면 넷 × 좌우 셋을 세 입구에서 전부 재 보니 이 조합만 셋 다 낮았다
+                // (`EntranceCensus.RunBannerProbe`). **고르는 루프에서 나온 값이므로 상수로 박지 말고
+                // 규칙으로 읽어라** — 「기둥 바깥 옆면에, 진입로 쪽으로 한 걸음, 면은 오는 사람 쪽」.
+                BannerPose(pillar, approachYaw, side, BannerPush, out Vector3 bannerPos, out float bannerYaw);
+                var bannerGo = Place(Banner, bannerPos, new Vector3(0f, bannerYaw, 0f));
                 if (bannerGo != null)
                 {
                     bannerGo.transform.SetParent(parent, true);
