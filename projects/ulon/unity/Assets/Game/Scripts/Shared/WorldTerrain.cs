@@ -59,7 +59,11 @@ namespace Ulon.Shared
 
         // 강 — 호수에서 서쪽 바다까지. 산 띠를 협곡으로 통과한다.
         public const float RiverZ = 10f;
-        public const float RiverHalfWidth = 4.5f;
+        // 폭 9m짜리 물길은 **조망에서 실 한 줄**이라 「강이 없다」로 읽혔다(검수 랩 ⑥, 14_world_vista).
+        // 섬 한 변이 300m다 — 물길이 지형의 일부로 읽히려면 그 축척에 맞아야 한다.
+        // 8m(폭 16m)로 넓혔더니 이번엔 **호수가 바다로 트인 후미**가 됐다 — 담수호가 아니게 된다.
+        // 조망에서 보이되 호수와 바다 사이에 **목**이 남을 만큼만: 호수 지름 42m의 1/3 아래.
+        public const float RiverHalfWidth = 6.0f;
         public const float RiverFromX = -80f;
         public const float RiverToX = -140f;
 
@@ -119,8 +123,11 @@ namespace Ulon.Shared
         /// <summary>산괴 마스크 — 0에 가까우면 고개(넘어갈 수 있는 낮은 안부), 1이면 큰 산덩어리.</summary>
         public static float Massif(float wx, float wz)
         {
-            float n = Mathf.PerlinNoise(wx * 0.0075f + 41.7f, wz * 0.0075f + 3.3f);
-            return Mathf.Lerp(0.15f, 1.6f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.32f, 0.78f, n)));
+            // **산이 사방을 고르게 두르면 섬이 「대접」으로 읽힌다**(검수 랩 ⑥, 14_world_vista).
+            // 마스크 주기를 늘리고(133m → 180m) 대비를 키워 **높은 산괴와 낮은 고개**를 크게 가른다 —
+            // 산을 없애는 것이 아니라 **한쪽을 낮춰** 바다가 안쪽으로 들여다보이게 하는 것이다.
+            float n = Mathf.PerlinNoise(wx * 0.0055f + 41.7f, wz * 0.0055f + 3.3f);
+            return Mathf.Lerp(0.08f, 1.7f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.40f, 0.74f, n)));
         }
 
         /// <summary>마을 주변은 평평하게, 바깥으로 갈수록 완만한 기복.</summary>
@@ -209,7 +216,9 @@ namespace Ulon.Shared
             if (d > RiverHalfWidth * 2.2f)
                 return h;
             float t = Mathf.SmoothStep(0f, 1f, 1f - Mathf.Clamp01((d - RiverHalfWidth) / (RiverHalfWidth * 1.2f)));
-            float bed = SeaLevel - 1.2f * t;
+            // 바다에 가까울수록 넓고 깊게 — 하구가 강과 같은 폭이면 「수로」로 읽힌다.
+            float mouth = Mathf.InverseLerp(RiverFromX, RiverToX, wx);
+            float bed = SeaLevel - (1.2f + 1.4f * mouth) * t;
             return Mathf.Min(h, Mathf.Lerp(h, bed, t));
         }
     }
