@@ -19,6 +19,39 @@ namespace Ulon.Editor
         // 0.70이면 고친 상태는 통과하고 결함 상태는 잡힌다 — 이 값으로 네거티브 컨트롤이 빨간불을 낸다.
         const float HeadgearWidthMax = 0.70f;
 
+        /// <summary>
+        /// **보스 표식이 프레임 안인가**(검수 지시 2026-09-09). 「투구를 걷었더니 왕관이 화면 위로
+        /// 잘려 그냥 사람 얼굴이 됐다」를 자로 만든 것 — 그때 이 자가 없어서 화면이 유일한 자였다.
+        /// 판정은 `QaShots.HeadgearFramed`(찍을 때와 **같은 프레이밍 함수**)가 한다.
+        /// NC: 왕관을 2m 띄우면 프레임 밖으로 나가 빨간불이어야 한다(끝나면 되돌린다).
+        /// </summary>
+        static void AssertBossHeadgearFramed()
+        {
+            if (!QaShots.HeadgearFramed(out string report))
+                throw new InvalidOperationException("보스 샷에서 머리 표식이 프레임 밖입니다 —" + report +
+                    " (표식이 화면 밖이면 그 샷은 보스의 샷이 아니다. 카메라를 물리십시오 — 왕관·투구를 건드리지 말고.)");
+            Debug.Log("[Ulon] 보스 표식 프레임 통과 —" + report);
+
+            // 네거티브 컨트롤 — 자가 살아 있는지 그 자리에서 증명한다.
+            var boss = GameObject.Find(Dungeon3.BossObject);
+            Transform crown = null;
+            if (boss != null)
+                foreach (var tr in boss.GetComponentsInChildren<Transform>(true))
+                    if (tr.name == VisualSliceBuilder.BossCrownObject) { crown = tr; break; }
+            if (crown == null)
+            {
+                Debug.LogWarning("[Ulon] 보스 표식 네거티브 컨트롤 건너뜀 — 왕관을 못 찾았다(자가 무력할 수 있다)");
+                return;
+            }
+            var keep = crown.position;
+            crown.position = keep + Vector3.up * 2f;
+            bool caught = !QaShots.HeadgearFramed(out string ncReport);
+            crown.position = keep;
+            if (!caught)
+                throw new InvalidOperationException("보스 표식 네거티브 컨트롤 실패 — 왕관을 2m 띄웠는데도 통과했습니다:" + ncReport);
+            Debug.Log("[Ulon] 보스 표식 네거티브 컨트롤 통과 — 왕관을 2m 띄우면 FAIL");
+        }
+
         static void AssertBossSilhouette()
         {
             AssertDungeon3Leftover();

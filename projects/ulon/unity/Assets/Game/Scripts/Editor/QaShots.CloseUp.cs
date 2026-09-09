@@ -62,7 +62,43 @@ namespace Ulon.Editor
                 any = true;
                 Debug.Log("[Ulon] 근접 바운드 " + name + " ← 사람 몸 " + body.size.ToString("0.0"));
             }
+            // **머리 장비 상단까지 프레임에 넣는다**(검수 판정 2026-09-09).
+            // 몸 바운드는 장비를 뺀다 — 그 규칙이 맞는데, **왕관은 「보스임을 읽게 하는 표식」**이라
+            // 프레임 밖으로 나가면 그 샷은 보스의 샷이 아니게 된다(실측 `41_boss3`: 투구를 걷었더니
+            // 맨머리만 남고 왕관이 화면 위로 잘려 그냥 사람 얼굴이 됐다). 그래서 **머리 장비만** 다시 넣는다.
+            // 자리는 `BossFit.HeadMetrics`가 정한 그 왕관이고, 여기서는 그 결과물의 바운드를 그대로 쓴다.
+            if (any)
+            {
+                foreach (var t in go.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name != VisualSliceBuilder.BossCrownObject)
+                        continue;
+                    bool gotCrown = false;
+                    Bounds crownBox = new Bounds();
+                    foreach (var cr in t.GetComponentsInChildren<Renderer>(true))
+                    {
+                        if (!cr.enabled || cr is ParticleSystemRenderer)
+                            continue;
+                        if (!gotCrown) { crownBox = cr.bounds; gotCrown = true; }
+                        else crownBox.Encapsulate(cr.bounds);
+                    }
+                    if (gotCrown)
+                    {
+                        box.Encapsulate(crownBox);
+                        Debug.Log("[Ulon] 근접 바운드 " + name + " ← 머리 장비 " + t.name + " 상단 " +
+                                  crownBox.max.y.ToString("0.00") + "m를 프레임에 넣는다");
+                    }
+                    break;
+                }
+            }
             bool personBox = any;                       // 사람 몸을 이미 쟀으면 아래 시설 루프는 돌지 않는다
+            // **당김 하한은 피사체를 재서 정한다**(2026-09-09). 상수 1.9m는 키 1.8m 사람 기준이라,
+            // 왕관까지 2.9m가 되는 보스를 당기면 **표식이 화면 위로 잘린다**(`41_boss3`가 그랬다).
+            // 55° 화각에서 높이 h가 화면에 꽉 차는 거리는 h/(2·tan27.5°) ≈ h·0.96이다 — 그 아래로는 안 당긴다.
+            // **여유를 더 주면 오히려 나빠진다**: 1.06배로 늘렸더니 하한이 올라가 「껍데기 안 당기기」가
+            // 다른 방위·각을 고르게 됐고 왕관이 다시 프레임 밖(1.02)으로 나갔다(실측). 거리는 하나의
+            // 손잡이가 아니다 — 방위를 고르는 루프와 물려 있다.
+            float pullFloor = InsidePullFloor;
             for (int i = 0; i < rends.Length && !personBox; i++)
             {
                 if (!rends[i].enabled || !rends[i].gameObject.activeInHierarchy)
@@ -79,6 +115,8 @@ namespace Ulon.Editor
                 else box.Encapsulate(rends[i].bounds);
                 Debug.Log("[Ulon] 근접 바운드 " + name + " ← " + rends[i].gameObject.name + " " + rends[i].bounds.size.ToString("0.0"));
             }
+            if (any)
+                pullFloor = Mathf.Max(InsidePullFloor, box.size.y * 0.96f);
             var target = any ? box.center : go.transform.position + Vector3.up;
             float radius = any ? Mathf.Max(box.extents.magnitude, 0.6f) : 1.5f;
             // 거리 = 바운드 **반대각** / tan(화각/2) × 여유. 1.35였을 때 대장간이 프레임에 안 들어오고
@@ -187,7 +225,7 @@ namespace Ulon.Editor
                     // 처음엔 `d >= 하한`으로만 돌렸더니, 원래 거리가 이미 1.9m 아래인 작은 피사체는
                     // 루프가 **한 번도 안 돌아** 「전 방위가 막혔다」로 보고됐다(실측: 마구간지기 —
                     // 실제로는 아무것도 안 막고 있었다). 원래 거리는 언제나 한 번 잰다.
-                    float stop = Mathf.Min(dist, InsidePullFloor);
+                    float stop = Mathf.Min(dist, pullFloor);
                     for (float d = dist; d >= stop - 0.01f; d -= 0.3f)
                     {
                         // 0.3m 격자가 하한을 건너뛰면 「1.9m에서 보이는데 못 찾는」 일이 생긴다(실측 은행원).
@@ -288,7 +326,7 @@ namespace Ulon.Editor
                     for (int k = 0; k < 8 * pitches.Length && clears < 0f; k++)
                     {
                         float y2 = baseYaw + (k % 8) * 45f, pit2 = pitches[k / 8];
-                        for (float d = InsidePullFloor; d >= 0.9f; d -= 0.15f)
+                        for (float d = pullFloor; d >= 0.9f; d -= 0.15f)
                         {
                             var e2 = target - Quaternion.Euler(pit2, y2, 0f) * Vector3.forward * d;
                             if (PersonBlocked(e2, box, go.transform, out _))
@@ -343,7 +381,7 @@ namespace Ulon.Editor
                 // 유령이 남는 것보다 대상이 안 찍히는 것이 나쁘다.
                 // 하한은 껍데기 안으로 들어갈 때 쓰는 하한과 **같은 값**을 쓴다 — 안 그러면
                 // 애써 1.9m로 정한 자리를 이 루프가 1.5m까지 다시 당겨 얼굴만 남긴다(실측).
-                float floor = Mathf.Max(InsidePullFloor, dist * 0.7f);
+                float floor = Mathf.Max(pullFloor, dist * 0.7f);
                 int pulled = 0;
                 while (dist > floor && FadeBlocked(target - rot * Vector3.forward * dist, target, go.transform))
                 {
@@ -826,6 +864,74 @@ namespace Ulon.Editor
                 break;
             }
             return dist;
+        }
+
+        /// <summary>
+        /// **머리 장비 상단이 프레임 안인가 — 보스 샷의 자**(검수 지시 2026-09-09, 조건 2).
+        ///
+        /// 「보스임을 읽게 하는 표식이 화면 밖이면 그 샷은 보스의 샷이 아니다」를 자로 만든다.
+        /// 이 자가 없어서 `41_boss3`는 왕관이 잘린 채 **초록불로 지나갔다** — 화면이 유일한 자였다.
+        /// 네 보스 샷(17·39·40·41)의 카메라를 **찍을 때와 같은 함수로** 만들고, 왕관 상단 점을
+        /// 그 카메라 화면에 투영해 위아래·좌우 경계 안에 있는지 본다.
+        ///
+        /// **이 자가 못 보는 것**: 가림은 안 본다(프레임 안이어도 벽에 가릴 수 있다 — 그건 다른 자가 본다).
+        /// </summary>
+        public static bool HeadgearFramed(out string report)
+        {
+            var checks = new (string Shot, string Object)[]
+            {
+                ("17_boss_closeup", Dungeon3.BossObject),
+                ("39_boss1", Dungeon1.BossObject),
+                ("40_boss2", Dungeon2.BossObject),
+                ("41_boss3", Dungeon3.BossObject),
+            };
+            bool ok = true;
+            report = "";
+            for (int i = 0; i < checks.Length; i++)
+            {
+                var go = FindSubject(checks[i].Object);
+                if (go == null)
+                {
+                    report += " · " + checks[i].Shot + " 대상 없음";
+                    ok = false;
+                    continue;
+                }
+                Bounds crown = new Bounds();
+                bool hasCrown = false;
+                foreach (var t in go.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t.name != VisualSliceBuilder.BossCrownObject)
+                        continue;
+                    foreach (var cr in t.GetComponentsInChildren<Renderer>(true))
+                    {
+                        if (!cr.enabled || cr is ParticleSystemRenderer)
+                            continue;
+                        if (!hasCrown) { crown = cr.bounds; hasCrown = true; }
+                        else crown.Encapsulate(cr.bounds);
+                    }
+                    break;
+                }
+                if (!hasCrown)
+                {
+                    // **왕관이 없는 보스는 이 자의 대상이 아니다** — 「없다」와 「밖으로 나갔다」는 다르다.
+                    report += " · " + checks[i].Shot + " 왕관 없음(대상 아님)";
+                    continue;
+                }
+                var shot = checks[i].Shot == "17_boss_closeup"
+                    ? BossCloseUp(checks[i].Shot, Dungeon3.BossX, Dungeon3.BossZ)
+                    : FacilityCloseUp(checks[i].Shot, checks[i].Object, null, true);
+                var rot = Quaternion.LookRotation((shot.Target - shot.Eye).normalized, Vector3.up);
+                var local = Quaternion.Inverse(rot) * (new Vector3(crown.center.x, crown.max.y, crown.center.z) - shot.Eye);
+                float tanY = Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad), tanX = tanY * (W / (float)H);
+                float sy = local.z > 0.01f ? local.y / (local.z * tanY) : 9f;
+                float sx = local.z > 0.01f ? local.x / (local.z * tanX) : 9f;
+                bool inFrame = Mathf.Abs(sy) <= 0.97f && Mathf.Abs(sx) <= 0.97f;
+                report += " · " + checks[i].Shot + " 왕관 상단 화면 " + sx.ToString("0.00") + "," + sy.ToString("0.00") +
+                          (inFrame ? " 안" : " **밖**");
+                if (!inFrame)
+                    ok = false;
+            }
+            return ok;
         }
 
         /// <summary>보스 근접 — 왕관·큰 무기를 확인하는 검수용 샷(검수 요청 2026-09-06).</summary>

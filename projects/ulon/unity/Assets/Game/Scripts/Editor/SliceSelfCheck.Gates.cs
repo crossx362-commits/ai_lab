@@ -148,6 +148,7 @@ namespace Ulon.Editor
             Gate(AssertHudControlsNegativeControl);
             Gate(AssertBossSilhouetteHeadgearNegativeControl);   // 모자를 되돌리면 빨간불인가(분모 오염 감시)
             Gate(AssertBossSilhouette);
+            Gate(AssertBossHeadgearFramed);
             Gate(AssertBossTraits);
             Gate(AssertDungeonEntrance);
             Gate(AssertItemDataFile);
