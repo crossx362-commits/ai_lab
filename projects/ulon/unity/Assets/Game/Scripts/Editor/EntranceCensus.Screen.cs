@@ -31,7 +31,14 @@ namespace Ulon.Editor
         const float ShotDist = 8f;
         const float ShotPitch = 20f;
 
-        /// <summary>QA `Orbit(대상, 8m, 20°)`과 **같은 눈**. 재는 자가 여럿이라 한 자리에 둔다.</summary>
+        /// <summary>
+        /// QA 입구 샷과 **같은 눈**(`QaShots.EntranceOrbit`, 8m·20°). 재는 자가 여럿이라 한 자리에 둔다.
+        ///
+        /// **눈은 진입로에 선다**(검수 판정 2026-09-09). 예전엔 고정 대각 (−x,−z)이라 D1·D3를
+        /// **문 뒤에서** 찍었다 — 플레이어가 절대 서지 않는 자리다. 그래서 `11`이 예뻤던 것이고,
+        /// 문짝을 옳은 쪽으로 옮기면 그 두 장이 나빠지는 것처럼 보였다. 방위는 입구 원장
+        /// (`Dungeon*.EntranceYaw`)에서 유도한다 — **자리를 모르는 좌표로는 부르지 못한다**(아래 `YawFor`).
+        /// </summary>
         public static void ShotEye(float ex, float ez, out Vector3 eye, out Vector3 look)
         {
             var hits = Physics.RaycastAll(new Vector3(ex, 500f, ez), Vector3.down, 1000f);
@@ -39,8 +46,27 @@ namespace Ulon.Editor
             for (int i = 0; i < hits.Length; i++) gy = Mathf.Min(gy, hits[i].point.y);
             if (gy == float.MaxValue) gy = 0f;
             look = new Vector3(ex, gy + 1.2f, ez);
+            var front = VisualSliceBuilder.EntranceFront(new Vector3(ex, 0f, ez), YawFor(ex, ez));
             float rad = ShotPitch * Mathf.Deg2Rad;
-            eye = look + new Vector3(-ShotDist * Mathf.Cos(rad), ShotDist * Mathf.Sin(rad) + 1.5f, -ShotDist * Mathf.Cos(rad)) * 0.7071f;
+            eye = look + front * (ShotDist * Mathf.Cos(rad)) + Vector3.up * (ShotDist * Mathf.Sin(rad) + 1.5f);
+        }
+
+        /// <summary>
+        /// 이 좌표가 어느 입구인지 원장에서 찾는다. **못 찾으면 던진다** — 입구가 아닌 자리에서
+        /// 부르면 방위를 지어내게 되고, 지어낸 방위로 잰 값은 세계가 아니다.
+        /// </summary>
+        public static float YawFor(float ex, float ez)
+        {
+            if (Near(ex, ez, Dungeon1.EntranceX, Dungeon1.EntranceZ)) return Dungeon1.EntranceYaw;
+            if (Near(ex, ez, Dungeon2.EntranceX, Dungeon2.EntranceZ)) return Dungeon2.EntranceYaw;
+            if (Near(ex, ez, Dungeon3.EntranceX, Dungeon3.EntranceZ)) return Dungeon3.EntranceYaw;
+            throw new System.InvalidOperationException("입구가 아닌 자리(" + ex.ToString("0.0") + ", " + ez.ToString("0.0") +
+                                                       ")에서 입구 눈을 불렀습니다 — 방위를 유도할 원장이 없습니다.");
+        }
+
+        static bool Near(float ax, float az, float bx, float bz)
+        {
+            return Mathf.Abs(ax - bx) < 0.5f && Mathf.Abs(az - bz) < 0.5f;
         }
 
         /// <summary>화면 한 장 분량의 깊이 그림 — 픽셀마다 「가장 앞선 것까지의 거리」(안 찍힌 곳은 ∞).</summary>

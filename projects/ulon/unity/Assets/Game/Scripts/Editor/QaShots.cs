@@ -79,15 +79,15 @@ namespace Ulon.Editor
                      new Vector3(2.8f, GroundY(2.8f, 45f) + 4.0f, 45f),
                      new Vector3(2.8f, GroundY(2.8f, 33.5f) + 1.0f, 33.5f)),
                 Orbit("06_field_boss", new Vector3(22.6f, 0f, 8.4f), 10f, 25f),
-                Orbit("07_d1_entrance", new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ), 8f, 20f),
+                EntranceOrbit("07_d1_entrance", Dungeon1.EntranceX, Dungeon1.EntranceZ, Dungeon1.EntranceYaw),
                 PlayCam("08_d1_interior_playcam", Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 // 귀퉁이에 선 화면 — 카메라 눈이 벽 밖으로 나가는 최악 자리(검수 2026-09-06 B).
                 PlayCam("23_d1_corner_playcam", Dungeon1.InteriorX + 6f, Dungeon1.InteriorZ + 6f, Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 Inside("08_d1_interior", Dungeon1.InteriorX, Dungeon1.InteriorZ, Dungeon1.BossX, Dungeon1.BossZ),
-                Orbit("09_d2_entrance", new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ), 8f, 20f),
+                EntranceOrbit("09_d2_entrance", Dungeon2.EntranceX, Dungeon2.EntranceZ, Dungeon2.EntranceYaw),
                 PlayCam("10_d2_interior_playcam", Dungeon2.InteriorX, Dungeon2.InteriorZ),
                 Inside("10_d2_interior", Dungeon2.InteriorX, Dungeon2.InteriorZ, Dungeon2.BossX, Dungeon2.BossZ),
-                Orbit("11_d3_entrance", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 8f, 20f),
+                EntranceOrbit("11_d3_entrance", Dungeon3.EntranceX, Dungeon3.EntranceZ, Dungeon3.EntranceYaw),
                 // 문구멍 슬랩을 안쪽으로 물린 뒤 **비스듬한 방위에서 판의 앞면이 노출되는지** 본다
                 // (검수 조건 2026-09-08: 정면 한 장 = 11번, 45° 한 장 = 이것).
                 // 물려받은 자의 근거를 화면으로 확인한다(검수 2026-09-09): 허용 50%는 **던전 소품끼리**
@@ -560,6 +560,23 @@ namespace Ulon.Editor
             var t = new Vector3(target.x, y + 1.2f, target.z);
             float rad = pitch * Mathf.Deg2Rad;
             var eye = t + new Vector3(-dist * Mathf.Cos(rad), dist * Mathf.Sin(rad) + 1.5f, -dist * Mathf.Cos(rad)) * 0.7071f;
+            return new Shot { Name = name, Eye = eye, Target = t };
+        }
+
+        /// <summary>
+        /// **입구는 진입로에 서서 본다**(검수 판정 2026-09-09). `Orbit`은 눈을 고정 대각 (−x,−z)에
+        /// 두는데, 그러면 D1·D3는 **문 뒤에서** 찍힌다 — 플레이어가 절대 서지 않는 자리다.
+        /// 거리·각(8m·20°)은 `Orbit` 그대로 두고 **방위만** 입구 원장에서 유도한다.
+        /// 자(`EntranceCensus.ShotEye`)도 같은 규칙을 읽는다 — 눈이 갈리면 숫자는 화면이 아니다.
+        /// </summary>
+        static Shot EntranceOrbit(string name, float ex, float ez, float yaw)
+        {
+            const float Dist = 8f, Pitch = 20f;
+            float y = GroundY(ex, ez);
+            var t = new Vector3(ex, y + 1.2f, ez);
+            var front = VisualSliceBuilder.EntranceFront(new Vector3(ex, 0f, ez), yaw);
+            float rad = Pitch * Mathf.Deg2Rad;
+            var eye = t + front * (Dist * Mathf.Cos(rad)) + Vector3.up * (Dist * Mathf.Sin(rad) + 1.5f);
             return new Shot { Name = name, Eye = eye, Target = t };
         }
 

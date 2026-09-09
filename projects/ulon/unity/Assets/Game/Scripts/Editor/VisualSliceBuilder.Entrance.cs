@@ -59,6 +59,22 @@ namespace Ulon.Editor
         /// <summary>**입구의 「바깥쪽」** — 사람이 걸어오는 진입로 방향(`EntranceInward`의 반대).</summary>
         public static Vector3 EntranceApproach(float approachYaw) => -EntranceInward(approachYaw);
 
+        /// <summary>
+        /// **오는 사람이 서는 쪽 — 이름이 아니라 자리에서 유도한다**(검수 판정 2026-09-09).
+        ///
+        /// `EntranceInward`는 이름만 「안쪽」이었다. 실측하면 **세 입구 모두 그쪽에 마을이 있다**
+        /// (D1 −39/−5.9 · D2 38.6/−25.2 · D3 −29.4/−37.8 — 전부 approach·(마을−문) &lt; 0).
+        /// 이름으로 부호를 고정해 두었더니 이번엔 **이름이 부호를 봐줬다**: 문짝이 오는 사람 쪽으로
+        /// 물려 서서 `09`에서 아치 앞에 선 검은 판이 됐다. 그래서 부호를 **좌표가 정한다** —
+        /// 마을(원점) 쪽이 앞이다. 문짝·QA 눈·자가 전부 이 함수 하나를 읽는다(세 입구 같은 규칙 하나).
+        /// </summary>
+        public static Vector3 EntranceFront(Vector3 pos, float approachYaw)
+        {
+            var inward = EntranceInward(approachYaw);
+            var toVillage = new Vector3(-pos.x, 0f, -pos.z);   // 마을은 원점이다
+            return Vector3.Dot(inward, toVillage) > 0f ? inward : -inward;
+        }
+
         /// <summary>문을 마주 봤을 때의 **좌우 축** — 두 기둥이 늘어선 방향.</summary>
         public static Vector3 EntranceSide(float approachYaw)
         {
@@ -415,7 +431,10 @@ namespace Ulon.Editor
             // 「문 너머로 바깥이 보인다」던 것의 실체다 — `qa_sky.py`가 0.10%를 낸 건 **파랑만 셌기**
             // 때문이고, 새던 것은 하늘이 아니라 초록 들판이었다. 판은 기둥 바깥면 사이를 덮고
             // 상인방 윗면까지 올라간다(앞에 선 기둥·상인방이 가려 「검은 판때기」로는 안 읽힌다).
-            Vector3 back = pos + inward * 0.55f;
+            // **물리는 쪽은 「오는 사람의 반대편」이다**(검수 판정 2026-09-09). 여기 `inward`를 그대로
+            // 쓰면 세 입구 모두 **마을 쪽**으로 물려 서서, 오는 사람에게는 아치가 어둠을 두른 것이
+            // 아니라 **아치 앞에 선 검은 판**으로 보인다(`09`가 그 증상이었다). 부호는 좌표가 정한다.
+            Vector3 back = pos - EntranceFront(pos, approachYaw) * 0.55f;
             float mouthW = 1.5f, mouthH = 2.5f, mouthMidY = gy + 1.25f;
             // **구멍은 두 기둥 「사이」와 상인방 「아래」다** — 크기를 그 둘에서 유도한다.
             // 두 번 헛짚었다: 문틀 전체를 덮으면 5.85m(검은 담), 기둥 바깥면까지면 4.29m인데

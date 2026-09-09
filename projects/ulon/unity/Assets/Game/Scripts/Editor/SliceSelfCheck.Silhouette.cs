@@ -125,18 +125,37 @@ namespace Ulon.Editor
             var keepPos = lantern.position;
             // **구멍 자리에서 카메라 쪽으로 한 뼘** — 문 자리(지면)에서 밀면 높이가 안 맞아 아무것도
             // 안 가린다(문구멍 NC에서 이미 두 판을 잃은 함정이다). 옮긴 뒤 바운드 중심을 맞춘다.
-            var ncSpot = portal2.position + (ncEye - portal2.position).normalized * 0.3f;
-            lantern.position = ncSpot;
-            Physics.SyncTransforms();
+            // **구멍은 문틀 사이지 판때기 자리가 아니다** — 문짝을 오는 사람 반대편으로 옮긴 뒤
+            // 판 자리에서 밀었더니 NC 물건이 **아치 뒤에** 서서 12%밖에 안 덮었다(자가 무력하다고
+            // 스스로 울었다). 높이만 판에서 받고 **자리는 문에서** 받는다.
+            var ncMouth2 = new Vector3(Dungeon2.EntranceX, portal2.position.y, Dungeon2.EntranceZ);
+            // **거리도 골라서 세운다** — 눈이 진입로로 옮겨 오면서 구멍이 통째로 보이게 됐고(1407px),
+            // 한 뼘 앞의 등불은 그 큰 구멍의 13%밖에 못 덮었다. NC는 **가리는 쪽에 유리해야** 자의
+            // 힘을 재므로, 몇 걸음을 재 보고 **가장 크게 덮는 자리**를 쓴다(회전을 고르는 것과 같은 규칙).
             var lr = lantern.GetComponentInChildren<Renderer>();
-            if (lr != null)
+            var nc = new EntranceCensus.Readout();
+            float bestMouth = -1f;
+            // **크기도 가리는 쪽에 유리하게** — 등불은 구멍(2.50×2.96m)에 비해 작아서 어느 자리에
+            // 세워도 14%가 한계였다(하한 15%). 자가 무력한 것이 아니라 **NC가 약했다**. 재는 동안만
+            // 키우고 되돌린다 — NC가 묻는 것은 「큰 가림을 자가 무나」이지 등불의 실제 크기가 아니다.
+            var keepScale = lantern.localScale;
+            lantern.localScale = keepScale * 3f;
+            foreach (float step in new[] { 0.3f, 1.5f, 3.0f, 4.5f })
             {
-                lantern.position += ncSpot - lr.bounds.center;
+                var ncSpot = ncMouth2 + (ncEye - ncMouth2).normalized * step;
+                lantern.position = ncSpot;
                 Physics.SyncTransforms();
+                if (lr != null)
+                {
+                    lantern.position += ncSpot - lr.bounds.center;
+                    Physics.SyncTransforms();
+                }
+                EntranceCensus.ReadEntrance(Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ,
+                                            out EntranceCensus.Readout probe);
+                if (probe.LanternMouth > bestMouth) { bestMouth = probe.LanternMouth; nc = probe; }
             }
-            EntranceCensus.ReadEntrance(Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ,
-                                        out EntranceCensus.Readout nc);
             lantern.position = keepPos;
+            lantern.localScale = keepScale;
             Physics.SyncTransforms();
             if (nc.LanternMouth <= MaxMouth)
                 throw new InvalidOperationException("배너 실루엣 네거티브 컨트롤 실패 — 등불을 문구멍 앞으로 옮겼는데도 " +
@@ -211,38 +230,43 @@ namespace Ulon.Editor
             var br = banner.GetComponentInChildren<Renderer>();
             // 거리는 **0.3m** — 1.2m로 당겼더니 배너가 눈에 너무 가까워 프레임 밖으로 나가며 178px로
             // 줄었다(가까이 둘수록 크게 덮을 것 같지만, 화면은 그렇게 굴지 않는다).
-            var ncTarget = portalTr.position + (ncEye - portalTr.position).normalized * 0.3f;
-            banner.position = ncTarget;
-            // 어느 회전이 천을 **넓게** 보이게 하는지는 모델의 축이 정한다(forward가 천의 법선이라는
-            // 보장이 없다 — 실제로 카메라를 향하게 했더니 43px로 **선처럼** 얇아졌다). 그래서 두 후보를
-            // 그려 보고 넓은 쪽을 고른다. **NC는 가리는 쪽에 유리해야** 자의 힘을 잰다.
+            // **자리는 문에서, 높이만 판에서**(위 NC와 같은 이유 — 판은 이제 오는 사람 반대편에 선다).
+            var ncMouth = new Vector3(Dungeon1.EntranceX, portalTr.position.y, Dungeon1.EntranceZ);
+            // **거리도 골라서 세운다**(2026-09-09): 눈이 진입로로 옮겨 오면서 구멍이 통째로 보이게 돼
+            // (1407px) 한 뼘 앞의 등불은 13%밖에 못 덮었다. 몇 걸음을 재 보고 가장 크게 덮는 자리를 쓴다.
             EntranceCensus.ShotEye(Dungeon1.EntranceX, Dungeon1.EntranceZ, out Vector3 ncEye2, out Vector3 ncLook2);
-            var faceCam = Quaternion.LookRotation(new Vector3(ncEye.x - ncTarget.x, 0f, ncEye.z - ncTarget.z));
-            int wide = 0;
-            Quaternion bestRot = faceCam;
-            for (int k = 0; k < 2; k++)
+            float ncShare = -1f;
+            foreach (float step in new[] { 0.3f, 1.5f, 3.0f, 4.5f })
             {
-                banner.rotation = faceCam * Quaternion.Euler(0f, 90f * k, 0f);
+                var ncTarget = ncMouth + (ncEye - ncMouth).normalized * step;
+                // 어느 회전이 물건을 **넓게** 보이게 하는지는 모델의 축이 정한다(forward가 면의 법선이라는
+                // 보장이 없다 — 카메라를 향하게 했더니 43px로 **선처럼** 얇아진 적이 있다). 두 후보를
+                // 그려 보고 넓은 쪽을 고른다. **NC는 가리는 쪽에 유리해야** 자의 힘을 잰다.
+                var faceCam = Quaternion.LookRotation(new Vector3(ncEye.x - ncTarget.x, 0f, ncEye.z - ncTarget.z));
+                int wide = 0;
+                Quaternion bestRot = faceCam;
+                for (int k = 0; k < 2; k++)
+                {
+                    banner.rotation = faceCam * Quaternion.Euler(0f, 90f * k, 0f);
+                    banner.position = ncTarget;
+                    Physics.SyncTransforms();
+                    var probe = EntranceCensus.Draw(banner, ncEye2, ncLook2);
+                    if (probe.Pixels > wide) { wide = probe.Pixels; bestRot = banner.rotation; }
+                }
+                banner.rotation = bestRot;
                 banner.position = ncTarget;
                 Physics.SyncTransforms();
-                var probe = EntranceCensus.Draw(banner, ncEye2, ncLook2);
-                if (probe.Pixels > wide) { wide = probe.Pixels; bestRot = banner.rotation; }
+                if (br != null)
+                {
+                    // **원점이 아니라 보이는 몸을 맞춘다** — 원점이 물건의 밑이면 몸은 구멍 **위로** 뜬다
+                    // (세 판 연속 「자가 무력하다」가 났고 원인은 자가 아니라 NC였다).
+                    banner.position += ncTarget - br.bounds.center;
+                    Physics.SyncTransforms();
+                }
+                EntranceCensus.MouthScreenShare(Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ,
+                                                out float probeShare, out string _, out int _);
+                if (probeShare > ncShare) ncShare = probeShare;
             }
-            banner.rotation = bestRot;
-            Physics.SyncTransforms();
-            if (br != null)
-            {
-                // **원점이 아니라 보이는 몸을 맞춘다** — 배너는 원점이 장대 밑이고 천은 옆으로 매달려
-                // 있어서, 원점을 구멍 앞에 놓으면 화면에서는 **딴 자리**에 선다(실제로 세 판 연속
-                // 「자가 무력하다」가 나왔고 원인은 자가 아니라 NC였다 — 배너 723px가 구멍을 0% 덮었다).
-                // 옮긴 뒤 바운드 중심을 다시 읽어 세 축 전부 보정한다.
-                Physics.SyncTransforms();
-                banner.position += ncTarget - br.bounds.center;
-                Physics.SyncTransforms();
-            }
-            Physics.SyncTransforms();
-            EntranceCensus.MouthScreenShare(Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ,
-                                            out float ncShare, out string _, out int _);
             banner.position = keep;
             banner.rotation = keepRot;
             Physics.SyncTransforms();
