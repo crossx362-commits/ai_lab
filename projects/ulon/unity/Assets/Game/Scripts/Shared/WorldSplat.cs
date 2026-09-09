@@ -161,6 +161,32 @@ namespace Ulon.Shared
         /// </summary>
         public const float PlaneSharp = 16f;
 
+        /// <summary>
+        /// 마스크가 0에서 1로 건너가는 **폭**(값이 클수록 중간톤이 늘어 화면 대비가 낮아진다).
+        /// `ULON_MASK_SPREAD`로 덮어쓸 수 있다 — **네거티브 컨트롤 전용**이다(좁히면 대비가 올라야 한다).
+        /// </summary>
+        public static float MaskSpread
+        {
+            get
+            {
+                var s = System.Environment.GetEnvironmentVariable("ULON_MASK_SPREAD");
+                return !string.IsNullOrEmpty(s) && float.TryParse(s, out float v) && v > 0.001f ? v : 0.20f;
+            }
+        }
+
+        /// <summary>
+        /// 마스크의 **양 끝을 안으로 당기는 정도**(0이면 순수 두 톤, 클수록 두 바위가 늘 섞여 대비가 낮다).
+        /// `ULON_MASK_FLOOR`로 덮어쓴다 — **NC 전용**(0.02로 낮추면 화면 대비가 올라야 한다).
+        /// </summary>
+        public static float MaskFloor
+        {
+            get
+            {
+                var s = System.Environment.GetEnvironmentVariable("ULON_MASK_FLOOR");
+                return !string.IsNullOrEmpty(s) && float.TryParse(s, out float v) && v >= 0f && v < 0.5f ? v : 0.18f;
+            }
+        }
+
         /// <summary>이 자리의 바위 중 **그늘진 절벽 바위가 차지하는 몫**(0~1).</summary>
         public static float DarkCliffAt(float wx, float wz)
         {
@@ -203,10 +229,16 @@ namespace Ulon.Shared
             // 늘었다**(그 면은 고지대라 통째로 밝은 쪽으로 밀렸다 — 톤이 갈린 게 아니라 바뀐 것뿐).
             // `03`은 28.1% → 25.0%로 좋아졌지만 **고치려던 자리가 나빠졌으므로 걷는다.**
             float b = Mathf.Max(broad, mid * 0.94f) + (fine - 0.5f) * 0.70f * steep;
-            // **대비를 낮추려면 여기다**(검수 메모 2026-09-09, 반려 아님): `03`의 띠 대비가 반 발짝 세다.
-            // 지금은 만지지 않는다 — 화면에서 「얼룩」이라는 말이 나오면 그때 나누는 폭 0.20을 한 단계
-            // 넓혀(예 0.24) 대비를 낮춘다. 평균 0.47은 그대로 둔다(밝기가 아니라 대비가 논점이다).
-            return Mathf.Clamp(Mathf.Clamp01((b - 0.47f) / 0.20f), 0.05f, 0.95f);
+            // **대비 손잡이는 나누는 폭이 아니라 여기다**(2026-09-09, 재보고 알았다). 검수 메모가
+            // 예고한 「폭 0.20 → 0.24」를 실제로 해서 두 자리를 쟀더니 **화면 대비는 39.6 → 37.7**로
+            // 거의 안 움직였는데(`16`은 74.4 → 74.3), 암면 한 톤 게이트가 **어두운 덩이 20% 미만**으로
+            // 빨간불을 냈다. 이유: 잡음 값 대부분이 문턱에서 멀어 **이미 양 끝에 포화**돼 있다 —
+            // 폭을 넓혀 봐야 중간톤은 문턱 언저리 좁은 띠에서만 늘고, 대신 **덩이 배분**이 무너진다.
+            // 화면 대비를 만드는 것은 마스크가 얼마나 빨리 건너가느냐가 아니라 **양 끝이 얼마나
+            // 극단이냐**다. 그래서 폭은 0.20으로 두고 **양 끝을 안으로 당긴다**(`MaskFloor`):
+            // 어두운 자리에도 밝은 바위가 조금 섞여 톤 차가 줄되, 어느 쪽이 어두운가는 안 바뀌므로
+            // 덩이 배분 게이트는 그대로 선다. 재는 자는 `tools/qa_band.py`(오츠로 가른 두 평균의 차).
+            return Mathf.Clamp(Mathf.Clamp01((b - 0.47f) / MaskSpread), MaskFloor, 1f - MaskFloor);
         }
 
         /// <summary>이 자리의 풀 중 **마른 풀이 차지하는 몫**(0~1). 굽는 쪽·재는 쪽이 같이 읽는다.</summary>
