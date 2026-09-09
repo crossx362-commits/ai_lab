@@ -135,6 +135,162 @@ namespace Ulon.Editor
             }
         }
 
+        /// <summary>
+        /// 게이트가 쓰는 값 — 15 화면에서 **호수 수면 ÷ 바다 수면 밝기 비**. `gloss`가 NaN이 아니면
+        /// 그 매끄러움으로 재고 되돌린다(NC용). 셈과 **같은 렌더·같은 분류**를 쓴다.
+        /// </summary>
+        public static float LakeSeaLumaRatio(float gloss)
+        {
+            var shots = QaShots.BuildShots();
+            int idx = -1;
+            for (int i = 0; i < shots.Length; i++)
+                if (QaShots.NameOf(shots[i]) == "15_lake_river") { idx = i; break; }
+            if (idx < 0) return -1f;
+            QaShots.EyeOf(shots[idx], out Vector3 eye, out Vector3 look);
+
+            var camGo = new GameObject("WaterToneGateCam");
+            var cam = camGo.AddComponent<Camera>();
+            cam.fieldOfView = 55f; cam.nearClipPlane = 0.05f; cam.farClipPlane = 500f;
+            var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32);
+            var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
+            cam.targetTexture = rt;
+            camGo.transform.position = eye;
+            camGo.transform.LookAt(look);
+
+            var water = GameObject.Find(VisualSliceBuilder.WaterObject);
+            var rend = water != null ? water.GetComponent<Renderer>() : null;
+            var mat = rend != null ? rend.sharedMaterial : null;
+            float keep = mat != null ? mat.GetFloat("_Glossiness") : 0f;
+            if (mat != null && !float.IsNaN(gloss)) mat.SetFloat("_Glossiness", gloss);
+            try
+            {
+                Tone(cam, rt, tex, out Vector3 lake, out Vector3 sea, out _, out int nl, out int ns, out _);
+                if (nl < 50 || ns < 50) return -1f;
+                return Lum(lake) / Mathf.Max(1f, Lum(sea));
+            }
+            finally
+            {
+                if (mat != null && !float.IsNaN(gloss)) mat.SetFloat("_Glossiness", keep);
+                cam.targetTexture = null; RenderTexture.active = null;
+                Object.DestroyImmediate(camGo); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
+            }
+        }
+
+        /// <summary>
+        /// **한 화면에서 같은 물이 두 물감인가**(검수 판정 2026-09-10).
+        ///
+        /// 흰 포화는 닫혔는데 남은 절반이 결함이었다: 호수 아래쪽 (188,244,247) 대 바다 (83,148,180) —
+        /// **같은 재질인데 호수가 바다보다 두 배 밝다.** 출구 목은 바다에 가까우니 재질이 아니라
+        /// **자리(정반사 로브)** 탓이고, 화면에서 호수만 **우유빛 얕은 웅덩이**로 읽힌다.
+        /// 포화가 0이어도 「한 화면에서 같은 물이 두 물감」이면 상식이 깨진다.
+        ///
+        /// 그래서 눈금을 바꾼다. 포화 몫이 아니라 **호수 수면색과 바다 수면색의 차**(밝기·채도)다.
+        /// 픽셀을 가르는 법: 화면 격자마다 카메라 광선을 쏴 **수면 평면**과 만나는 점을 구하고,
+        /// 지형에 먼저 막히면 버린 뒤, 그 점이 호수 반경 안이면 호수·해안 밖이면 바다로 센다.
+        /// (같은 화면에서 재야 한다 — 따로 찍은 두 장은 노출·시각이 달라 비교가 안 된다.)
+        ///
+        /// **이 자가 못 보는 것**: 물결 무늬가 살아 있는지는 못 본다. 차가 0이어도 물이 죽은 판일 수
+        /// 있으므로 **합격선은 눈이다** — 「호수와 바다가 같은 물로 보이나」.
+        /// </summary>
+        public static void RunWaterTone()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var shots = QaShots.BuildShots();
+            int idx = -1;
+            for (int i = 0; i < shots.Length; i++)
+                if (QaShots.NameOf(shots[i]) == "15_lake_river") { idx = i; break; }
+            if (idx < 0) { Debug.LogError("[물빛] 15_lake_river를 못 찾았습니다."); return; }
+            QaShots.EyeOf(shots[idx], out Vector3 eye, out Vector3 look);
+
+            var camGo = new GameObject("WaterToneCam");
+            var cam = camGo.AddComponent<Camera>();
+            cam.fieldOfView = 55f; cam.nearClipPlane = 0.05f; cam.farClipPlane = 500f;
+            var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32);
+            var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
+            cam.targetTexture = rt;
+            camGo.transform.position = eye;
+            camGo.transform.LookAt(look);
+
+            var water = GameObject.Find(VisualSliceBuilder.WaterObject);
+            var rend = water != null ? water.GetComponent<Renderer>() : null;
+            var mat = rend != null ? rend.sharedMaterial : null;
+            if (mat == null) { Debug.LogError("[물빛] 수면 재질을 못 찾았습니다."); return; }
+            float gloss0 = mat.GetFloat("_Glossiness");
+
+            foreach (float g in new[] { gloss0, 0.55f, 0.40f, 0.25f, 0f })
+            {
+                mat.SetFloat("_Glossiness", g);
+                Tone(cam, rt, tex, out Vector3 lake, out Vector3 sea, out Vector3 neck,
+                     out int nl, out int ns, out int nn);
+                if (nl < 50 || ns < 50)
+                {
+                    Debug.LogWarning("[물빛] 표본이 호수 " + nl + " · 바다 " + ns + "픽셀뿐입니다 — 못 잽니다.");
+                    break;
+                }
+                Debug.Log("[물빛] 매끄러움 " + g.ToString("0.00") +
+                          " — 호수 " + Str(lake) + "(" + nl + "px) · 바다 " + Str(sea) + "(" + ns + "px) · 목 " +
+                          Str(neck) + "(" + nn + "px) · **밝기 비 " + (Lum(lake) / Mathf.Max(1f, Lum(sea))).ToString("0.00") +
+                          " · 채도 차 " + (Sat(lake) - Sat(sea)).ToString("0.00") + "**");
+            }
+            mat.SetFloat("_Glossiness", gloss0);
+
+            cam.targetTexture = null; RenderTexture.active = null;
+            Object.DestroyImmediate(camGo); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static string Str(Vector3 c) =>
+            "(" + c.x.ToString("0") + "," + c.y.ToString("0") + "," + c.z.ToString("0") + ")";
+        static float Lum(Vector3 c) => (c.x + c.y + c.z) / 3f;
+        static float Sat(Vector3 c)
+        {
+            float mx = Mathf.Max(c.x, Mathf.Max(c.y, c.z)), mn = Mathf.Min(c.x, Mathf.Min(c.y, c.z));
+            return mx < 1f ? 0f : (mx - mn) / mx;
+        }
+
+        /// <summary>화면 픽셀을 호수·바다·목으로 갈라 평균색을 낸다 — 광선을 수면 평면에 쏜다.</summary>
+        static void Tone(Camera cam, RenderTexture rt, Texture2D tex,
+                         out Vector3 lake, out Vector3 sea, out Vector3 neck,
+                         out int nl, out int ns, out int nn)
+        {
+            cam.Render();
+            RenderTexture.active = rt;
+            tex.ReadPixels(new Rect(0, 0, W, H), 0, 0);
+            tex.Apply();
+            RenderTexture.active = null;
+            var px = tex.GetPixels32();
+
+            Vector3 sl = Vector3.zero, ss = Vector3.zero, sn = Vector3.zero;
+            nl = ns = nn = 0;
+            float y = WorldTerrain.SeaLevel;
+            for (int j = 0; j < H; j += 2)
+                for (int i = 0; i < W; i += 2)
+                {
+                    var ray = cam.ScreenPointToRay(new Vector3(i, j, 0f));
+                    if (ray.direction.y >= -0.001f) continue;                 // 수면을 향해 내려가는 광선만
+                    float t = (y - ray.origin.y) / ray.direction.y;
+                    if (t <= 0f) continue;
+                    var p = ray.origin + ray.direction * t;
+                    // 지형에 먼저 막히면 그 픽셀은 물이 아니다(뭍·언덕이다).
+                    if (Physics.Raycast(ray.origin, ray.direction, out RaycastHit hit, t - 0.5f) &&
+                        hit.distance < t - 0.5f) continue;
+                    var c = px[j * W + i];
+                    var v = new Vector3(c.r, c.g, c.b);
+                    float dLake = new Vector2(p.x - WorldTerrain.LakeX, p.z - WorldTerrain.LakeZ).magnitude;
+                    float dOrigin = new Vector2(p.x, p.z).magnitude;
+                    if (dLake < WorldTerrain.LakeRadius - 3f) { sl += v; nl++; }
+                    else if (dOrigin > WorldTerrain.CoastEnd + 6f) { ss += v; ns++; }
+                    else if (dLake < WorldTerrain.LakeRadius + 25f) { sn += v; nn++; }
+                }
+            lake = nl > 0 ? sl / nl : Vector3.zero;
+            sea = ns > 0 ? ss / ns : Vector3.zero;
+            neck = nn > 0 ? sn / nn : Vector3.zero;
+        }
+
         /// <summary>가장 센 방향광 — 태양이다(이름에 기대지 않는다: 씬이 바뀌면 이름은 어긋난다).</summary>
         static Light SunLight()
         {

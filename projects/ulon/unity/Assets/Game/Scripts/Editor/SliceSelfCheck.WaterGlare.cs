@@ -21,6 +21,7 @@ namespace Ulon.Editor
         /// NC: 매끄러움을 옛 0.85로 되돌리면 물어야 한다.
         /// </summary>
         const float WaterWhiteMax = 0.005f;
+        const float LakeSeaLumaMax = 1.25f;
 
         public static void AssertWaterNotBlownOut()
         {
@@ -39,6 +40,25 @@ namespace Ulon.Editor
                         "수면 재질 매끄러움을 보십시오.");
             }
             Debug.Log("[Ulon] 수면 반사 통과 — 상한 " + (WaterWhiteMax * 100f).ToString("0.0") + "%" + report);
+
+            // **한 화면에서 같은 물이 두 물감이면 안 된다**(검수 판정 2026-09-10). 포화가 0이어도
+            // 호수가 바다보다 두 배 밝으면 우유빛 웅덩이로 읽힌다 — 포화 자는 그걸 못 본다.
+            // 합격선은 눈이지만, 되돌아가는 것을 막으려고 넉넉한 상한을 둔다(실측 1.09).
+            float ratio = ExposureCensus.LakeSeaLumaRatio(float.NaN);
+            if (ratio < 0f)
+                throw new InvalidOperationException("수면 색차 — 호수·바다 표본이 모자랍니다. " +
+                    "**못 재는 자를 초록불로 남기지 않는다.**");
+            Debug.Log("[Ulon] 수면 색차 — 호수÷바다 밝기 비 " + ratio.ToString("0.00") +
+                      " (상한 " + LakeSeaLumaMax.ToString("0.00") + ")");
+            if (ratio > LakeSeaLumaMax)
+                throw new InvalidOperationException("호수가 바다보다 " + ratio.ToString("0.00") +
+                    "배 밝습니다(상한 " + LakeSeaLumaMax.ToString("0.00") +
+                    ") — 한 화면에서 같은 물이 두 물감으로 보입니다.");
+            float ncRatio = ExposureCensus.LakeSeaLumaRatio(0.55f);
+            if (ncRatio <= LakeSeaLumaMax)
+                throw new InvalidOperationException("수면 색차 네거티브 컨트롤 실패 — 매끄러움 0.55에서 " +
+                    ncRatio.ToString("0.00") + "배로 통과합니다. 자가 무력합니다.");
+            Debug.Log("[Ulon] 수면 색차 네거티브 컨트롤 통과 — 0.55에서 " + ncRatio.ToString("0.00") + "배로 걸린다");
 
             float nc = ExposureCensus.WhiteShareWithGloss("15_lake_river", 0.85f);
             if (nc <= WaterWhiteMax)
