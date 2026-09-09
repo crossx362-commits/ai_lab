@@ -594,6 +594,10 @@ namespace Ulon.Editor
             if (col != null)
                 col.terrainData = data;
 
+            // **투영을 바꾼다**(랩 ⑧) — 기본 지형 셰이더의 XZ 평면 투영이 82° 절벽에서 무늬를
+            // 세로로 늘린다. 알파맵을 다 칠한 **뒤에** 굽는다: 컨트롤 텍스처는 알파맵의 사본이다.
+            ApplyTriplanarTerrain(terrain, data, alpha);
+
             EnsureWater();
             EnsureWorldAtmosphere();
         }

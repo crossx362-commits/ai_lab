@@ -1739,6 +1739,7 @@ namespace Ulon.Editor
             AssertWorldRegions();
             AssertRegionSplat();
             AssertRidgeAndShore();       // 절벽이 한 겹인가 · 해안 폭이 자리마다 다른가(검수 랩 ⑥)
+            AssertTerrainProjection();   // 경사면에서 무늬가 세로로 늘어나는가(검수 랩 ⑧)
             AssertWorldMaterials();
             AssertServerAuthorityWiring();
             AssertReachableFeatures();
