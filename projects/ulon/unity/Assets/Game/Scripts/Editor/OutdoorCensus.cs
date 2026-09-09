@@ -257,6 +257,39 @@ namespace Ulon.Editor
                                    .Append(mac[b]).Append("곳(").Append((mac[b] * 100f / Mathf.Max(1, total)).ToString("0"))
                                    .Append("%) 그 자리 0.587m 자로는 평균 ").Append((fineSum[b] / mac[b]).ToString("0")).Append("° · ");
                         Debug.Log(sb2.ToString());
+
+                        // **고지대에 지역 지표(밭·부엽토·자갈)가 칠해진 자리** — 산비탈에 밭 무늬가
+                        // 얹히면 화면에서 「갈색 판때기」로 읽힌다. 어느 겹이 어디에 있는지만 찍는다.
+                        {
+                            var hi = new Dictionary<int, int>();
+                            var where = new Dictionary<int, Vector2>();
+                            for (float x = -145f; x <= 145f; x += 2f)
+                                for (float z = -145f; z <= 145f; z += 2f)
+                                {
+                                    float h5 = WorldTerrain.HeightAt(x, z);
+                                    if (h5 < WorldTerrain.LandBase + 16f)
+                                        continue;
+                                    int ix5 = Mathf.Clamp(Mathf.RoundToInt((x + half3) / WorldTerrain.Span * (ar3 - 1)), 0, ar3 - 1);
+                                    int iz5 = Mathf.Clamp(Mathf.RoundToInt((z + half3) / WorldTerrain.Span * (ar3 - 1)), 0, ar3 - 1);
+                                    int[] layers = { WorldSplat.Tilled, WorldSplat.Soil, WorldSplat.Gravel, WorldSplat.Road, WorldSplat.Cobble };
+                                    for (int q = 0; q < layers.Length; q++)
+                                        if (alpha3[iz5, ix5, layers[q]] > 0.5f)
+                                        {
+                                            hi.TryGetValue(layers[q], out int n5);
+                                            hi[layers[q]] = n5 + 1;
+                                            if (!where.ContainsKey(layers[q]))
+                                                where[layers[q]] = new Vector2(x, z);
+                                        }
+                                }
+                            var names5 = new[] { "풀", "바위", "모래", "밭", "부엽토", "자갈", "길", "돌포장", "마른풀", "절벽" };
+                            var sb3 = new System.Text.StringBuilder("[Census] 고지대(16m↑) 지역 지표 — ");
+                            if (hi.Count == 0)
+                                sb3.Append("없음");
+                            foreach (var kv in hi)
+                                sb3.Append(names5[kv.Key]).Append(" ").Append(kv.Value).Append("곳(첫 자리 ")
+                                   .Append(where[kv.Key].x.ToString("0")).Append(",").Append(where[kv.Key].y.ToString("0")).Append(") · ");
+                            Debug.Log(sb3.ToString());
+                        }
                     }
                 }
 

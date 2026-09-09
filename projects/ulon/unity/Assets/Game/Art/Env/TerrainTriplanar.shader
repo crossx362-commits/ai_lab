@@ -27,6 +27,7 @@ Shader "Ulon/TerrainTriplanar"
         _L6 ("길", 2D) = "white" {}
         _L7 ("돌포장", 2D) = "white" {}
         _L8 ("마른 풀", 2D) = "white" {}
+        _L9 ("그늘진 절벽", 2D) = "white" {}
         _Tiles0 ("타일 0-3(m)", Vector) = (12, 3, 8, 3.5)
         _Tiles1 ("타일 4-7(m)", Vector) = (6, 4.5, 5, 2)
         _Tiles2 ("타일 8-11(m)", Vector) = (9, 1, 1, 1)
@@ -48,7 +49,7 @@ Shader "Ulon/TerrainTriplanar"
         #pragma target 3.5
 
         sampler2D _Ctrl0, _Ctrl1, _Ctrl2;
-        sampler2D _L0, _L1, _L2, _L3, _L4, _L5, _L6, _L7, _L8;
+        sampler2D _L0, _L1, _L2, _L3, _L4, _L5, _L6, _L7, _L8, _L9;
         float4 _Tiles0, _Tiles1, _Tiles2;
         float _WorldSpan, _TriSharp, _PlanarOnly;
 
@@ -91,8 +92,13 @@ Shader "Ulon/TerrainTriplanar"
             col += c1.b * TriSample(_L6, IN.worldPos, bw, _Tiles1.z);
             col += c1.a * TriSample(_L7, IN.worldPos, bw, _Tiles1.w);
             col += c2.r * TriSample(_L8, IN.worldPos, bw, _Tiles2.x);
+            // **10겹째를 빠뜨렸었다**(랩 ⑪에서 발견). `WorldSplat.LayerCount`는 10인데 셰이더가 9겹만
+            // 더해서 **그늘진 절벽(CliffDark)이 아예 안 그려졌다** — 도포는 두 겹인데 화면은 한 겹.
+            // 게다가 그 겹이 우세한 자리는 `wsum`이 0에 가까워져, 나눗셈이 **남은 티끌 가중치를 증폭**해
+            // 산비탈에 갈색 판때기가 떴다. 겹을 늘릴 땐 **원장·굽는 쪽·셰이더 셋을 같이** 고쳐라.
+            col += c2.g * TriSample(_L9, IN.worldPos, bw, _Tiles2.y);
 
-            half wsum = c0.r + c0.g + c0.b + c0.a + c1.r + c1.g + c1.b + c1.a + c2.r;
+            half wsum = c0.r + c0.g + c0.b + c0.a + c1.r + c1.g + c1.b + c1.a + c2.r + c2.g;
             o.Albedo = col / max(wsum, 1e-3);
             o.Metallic = 0;
             o.Smoothness = 0.05;

@@ -71,6 +71,10 @@ Material:
         m_Texture: {fileID: 2800000, guid: 31532f00d0e8c47a5aa531733deaed80, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _L9:
+        m_Texture: {fileID: 2800000, guid: 587c89118ba684209a760e9dbdf8a117, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _PlanarOnly: 0

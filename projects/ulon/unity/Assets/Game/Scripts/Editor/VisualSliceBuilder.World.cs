@@ -459,10 +459,18 @@ namespace Ulon.Editor
             // 풀(잡음·타일 12)과 **다른 무늬·다른 타일링**이어야 산이 별개의 지질로 읽힌다(검수 재반려).
             // 타일 7m는 **세로로 늘어난 줄무늬를 그만큼 길게** 만든다(82° 절벽에서 실측). 무늬를 잘게
             // 하면 같은 늘어남도 눈에 「긴 스미어」가 아니라 「거친 암면」으로 읽힌다.
-            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.20f, 0.18f, 0.17f), new Color(0.63f, 0.58f, 0.50f), 3.0f, 1);
+            // **톤은 벌리고 주기는 그대로 둔다**(검수 랩 ⑪ — 주기 쪽은 화면이 반대로 답했다).
+            // 옛 두 겹은 0.41 대 0.32(1.28배)라 화면에서 구분이 안 됐다(자는 「한 겹 2%」로 초록이었다 —
+            // **자는 가중치를 보고 눈은 색을 본다**). 밝고 따뜻한 암면 ↔ 어둡고 찬 절벽으로 벌린다.
+            //
+            // **주기를 키우는 안은 돌려 보고 걷었다**(가설: 「60m 벽에 2m 주기면 잔모래로 읽힌다」).
+            // 3.0→9m, 1.8→5.5m로 키웠더니 ①무늬 1의 `band` 항(`&255` 되감김)이 폭 30cm짜리 **검은 사선
+            // 막대**로 자랐고 ②대신 넣은 층리 무늬(무늬 5)는 벽 전체가 **거대한 체커보드**가 됐다.
+            // 작게 깔 때 안 보이던 것이 크게 깔면 무늬가 된다. **화면 증거는 「주기를 키우지 마라」다.**
+            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.30f, 0.27f, 0.23f), new Color(0.72f, 0.66f, 0.55f), 3.0f, 1);
             // 그늘진 절벽 — 같은 층리 무늬(pattern 1)에 **더 잘게·더 어둡게**. 두 겹이 서로 다른
             // 주기로 반복해야 늘어난 줄이 한 줄로 이어지지 않는다.
-            var cliffLayer = EnsureTerrainLayer("CliffDark", new Color(0.16f, 0.15f, 0.15f), new Color(0.48f, 0.45f, 0.42f), 1.8f, 1);
+            var cliffLayer = EnsureTerrainLayer("CliffDark", new Color(0.14f, 0.14f, 0.17f), new Color(0.34f, 0.33f, 0.37f), 1.8f, 1);
             var sandLayer = EnsureTerrainLayer("ShoreSand", new Color(0.74f, 0.68f, 0.50f), new Color(0.85f, 0.80f, 0.62f), 8f);
             // §6.1 지역이 **지표로** 구분돼야 한다 — 바닥이 전부 같은 초록이면 소품만 얹힌 모양이다(검수 2026-09-06 관찰).
             var tilledLayer = EnsureTerrainLayer("FarmTilled", new Color(0.30f, 0.21f, 0.13f), new Color(0.47f, 0.34f, 0.21f), 3.5f, 2);
@@ -523,6 +531,13 @@ namespace Ulon.Editor
                     if (h < WorldTerrain.LandBase + 22f)
                         rock = Mathf.Min(rock, Mathf.Lerp(0.42f + mottle * 0.45f, 1f, WorldSplat.WallRockAt(wx, wz)));
 
+                    // **둥근 능선에 풀 한 포기 없는 건 상식 모순이다**(검수 랩 ⑪ ④). 여기 바위는 대부분
+                    // **높이**로 깔린다(LandBase+26m 위는 경사와 무관하게 rock=1) — 그래서 완만한 산꼭대기가
+                    // 맨바위가 된다. 벽은 그대로 두고 **완만한 데만** 마른 풀·이끼를 얇게 남긴다:
+                    // 남기는 몫은 벽 규칙의 반대값이라 60°↑ 벽에서는 0이 되고 「암벽 풀」 자와 안 부딪힌다.
+                    float gentle = 1f - WorldSplat.WallRockAt(wx, wz);
+                    rock = Mathf.Min(rock, 1f - 0.22f * gentle);
+
                     // 물가 — 수면 언저리는 모래. 잔디가 물에 수직으로 잘리면 §8.2 위반이다.
                     // **폭이 어디나 같으면 「해안선」이 아니라 「띠를 두른 것」이다**(검수 랩 ⑥ —
                     // 세어 보니 방위 16곳 모래띠가 1.5~4.5m로 사실상 균일했다). 해안을 따라 도는
@@ -547,14 +562,20 @@ namespace Ulon.Editor
                     // **풀은 한 겹이 아니라 두 겹이다**(검수 랩 ⑤). 총량 `grassW * keep`은 그대로 두고
                     // 짙은 풀·마른 풀로 **나눠서만** 칠한다 — 흙 비율을 건드리지 않고 초록을 가른다.
                     float dryShare = WorldSplat.DryGrassAt(wx, wz);
+                    // 높은 데 남는 풀은 잔디밭이 아니라 **마른 풀·이끼**다 — 능선에 초록 융단이 깔리면
+                    // 바로 그것이 다시 상식 모순이다.
+                    if (h > WorldTerrain.LandBase + 18f)
+                        dryShare = Mathf.Max(dryShare, 0.72f);
                     w[WorldSplat.Grass] = grassW * keep * (1f - dryShare);
                     w[WorldSplat.DryGrass] = grassW * keep * dryShare;
-                    // **바위도 두 겹이다**(검수 랩 ⑥). 총량은 그대로, 밝은 암면과 그늘진 절벽으로 나눈다 —
-                    // 급경사일수록 그늘 쪽을 조금 더 섞어 늘어난 줄무늬가 한 줄로 이어지지 않게 한다.
-                    // 한쪽으로 포화시키지 않는다 — 0이나 1이 되면 그 자리는 다시 **한 겹**이고,
-                    // 겹쳐야 끊기는 줄무늬가 도로 이어진다.
-                    float darkShare = Mathf.Clamp(WorldSplat.DarkCliffAt(wx, wz)
-                                                  + Mathf.Clamp01((slope - 0.7f) * 0.25f) * 0.2f, 0.14f, 0.86f);
+                    // **바위도 두 겹이다**(검수 랩 ⑥). 총량은 그대로, 밝은 암면과 그늘진 절벽으로 나눈다.
+                    // **포화를 막던 0.14~0.86 조임도 걷는다**(랩 ⑪): 그 이유였던 「겹쳐야 세로줄이 끊긴다」는
+                    // 랩 ⑧에서 투영을 고쳐 사라졌고, 남은 것은 **자리마다 중간값 = 화면에서 한 톤**이라는
+                    // 부작용뿐이었다. 이제 덩이가 서로 다른 톤으로 서야 한다(원장 `DarkCliffAt`).
+                    // 급경사에 그늘 쪽을 더 섞던 항도 걷었다 — 그 이유(「늘어난 줄무늬가 한 줄로
+                    // 이어지지 않게」) 역시 랩 ⑧에서 사라졌고, 남은 효과는 **어두운 덩이 쪽으로 쏠림**뿐이었다
+                    // (자 실측 밝은 덩이 17% / 어두운 52%). 덩이는 원장 노이즈 하나로만 가른다.
+                    float darkShare = WorldSplat.DarkCliffAt(wx, wz);
                     w[WorldSplat.Rock] = rockW * keep * (1f - darkShare);
                     w[WorldSplat.CliffDark] = rockW * keep * darkShare;
                     w[WorldSplat.Sand] = sand;
