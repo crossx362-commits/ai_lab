@@ -696,6 +696,18 @@ namespace Ulon.Editor
         internal static int NoiseRes = 256;
 
         /// <summary>
+        /// **판별 테스트 전용** — 이 이름의 겹은 무늬 없이 단색으로 굽는다(빈 문자열이면 평소대로).
+        /// 「이 겹의 무늬가 화면의 그 얼룩인가」를 가르려면 무늬만 지운 판을 나란히 봐야 하는데,
+        /// `TerrainLayer.diffuseTexture`를 런타임에 갈아 끼우는 것은 **먹지 않았다**(평균 밝기까지
+        /// 소수점 아래로 같았다 — 조건을 바꿨는데 화면이 안 바뀌면 그 조건은 아무 말도 못 한다).
+        /// 그래서 **굽는 길로 되돌아왔다**: 같은 생성기가 단색을 쓰게 하고 지형을 다시 굽는다.
+        /// </summary>
+        internal static string FlatLayerForCensus = "";
+
+        /// <summary>**후보를 나란히 굽기 위한 자리** — 0 이상이면 자갈 겹이 그 무늬로 구워진다(−1이면 원장).</summary>
+        internal static int GravelPatternOverride = -1;
+
+        /// <summary>
         /// pattern 0 = 잔풀 잡음, 1 = 굵은 층리(암석), 2 = 이랑(밭), 3 = 부엽토(숲), 4 = 돌포장(광장).
         /// 풀·바위·길이 같은 무늬면 세계가 두세 색으로만 읽힌다(검수) — **생성기를 나누는 것이 지역 구분이다**.
         /// </summary>
@@ -760,6 +772,42 @@ namespace Ulon.Editor
                         int grit = (x * 61 + y * 149) & 31;
                         t = joint ? 0.02f : Mathf.Clamp01(0.30f + (stone / 255f) * 0.55f + (grit / 31f) * 0.15f);
                     }
+                    else if (pattern == 6)
+                    {
+                        // **후보 ①②를 합친 판**(검수가 준 처방 셋 중 둘): 층리 항을 빼고, 해시 칸을
+                        // **모서리 사이 보간**으로 부드럽게 잇는다. 무늬 1과 같은 덩어리 크기를 쓰되
+                        // 칸 경계의 칼금이 사라지므로 「바둑판」이 아니라 「얼룩」이 되는지 본다.
+                        const int C = 6;
+                        float gx = fx / (float)C, gy = fy / (float)C;
+                        int x0i = Mathf.FloorToInt(gx), y0i = Mathf.FloorToInt(gy);
+                        float tx = gx - x0i, ty = gy - y0i;
+                        tx = tx * tx * (3f - 2f * tx); ty = ty * ty * (3f - 2f * ty);
+                        float h00 = (((x0i * 92837) ^ (y0i * 68927)) & 255) / 255f;
+                        float h10 = ((((x0i + 1) * 92837) ^ (y0i * 68927)) & 255) / 255f;
+                        float h01 = (((x0i * 92837) ^ ((y0i + 1) * 68927)) & 255) / 255f;
+                        float h11 = ((((x0i + 1) * 92837) ^ ((y0i + 1) * 68927)) & 255) / 255f;
+                        float hb = Mathf.Lerp(Mathf.Lerp(h00, h10, tx), Mathf.Lerp(h01, h11, tx), ty);
+                        int grit = (x * 61 + y * 149) & 63;
+                        t = hb * 0.72f + (grit / 63f) * 0.28f;
+                    }
+                    else if (pattern == 5)
+                    {
+                        // **자갈 — 층리를 뺀 후보**(둑 바둑판 랩 2026-09-10). 무늬 1은 산 암벽을 위한
+                        // 것이라 **사선 층리**가 들어 있는데, 셈이 화면의 바둑판 주기를 그 항으로
+                        // 지목했다(가로 자기상관이 8px에서 −0.32로 골이 진다 = 32cm ≈ 층리 간격).
+                        // 자갈은 **층리가 없다** — 크기가 제각각인 돌 알갱이 + 그 사이 그늘이다.
+                        // 칸을 어긋내고 칸마다 밝기를 따로 줘서 **줄이 서지 않게** 한다.
+                        int cs = 3;                                  // 칸 3fx = 타일 4.5m에서 돌 하나 ≈ 10cm
+                        int cx = fx / cs, cy = fy / cs;
+                        int jit = ((cx * 19349663) ^ (cy * 83492791)) & 3;   // 칸마다 반 칸씩 흔든다
+                        cx = (fx + jit) / cs;
+                        int peb = ((cx * 73856093) ^ (cy * 19349663) ^ ((cx * cy) * 8353)) & 255;
+                        int inx = (fx + jit) % cs, iny = fy % cs;
+                        bool crack = inx == 0 || iny == 0;           // 돌 사이 그늘
+                        int grit = (x * 61 + y * 149) & 63;
+                        t = crack ? 0.10f + (grit / 63f) * 0.10f
+                                  : Mathf.Clamp01(0.22f + (peb / 255f) * 0.62f + (grit / 63f) * 0.16f);
+                    }
                     else
                     {
                         // 잔풀 잡음에는 **구조가 없다** — 전부 낟알이다. 그래서 두 겹 모두 실제
@@ -769,6 +817,7 @@ namespace Ulon.Editor
                         int h2 = (x * 127 + y * 311) & 255;
                         t = (h / 255f) * 0.65f + (h2 / 255f) * 0.35f;
                     }
+                    if (name == FlatLayerForCensus) t = 0.5f;     // 판별 테스트: 무늬만 지운다
                     px32[y * R + x] = Color.Lerp(a, b, t);
                 }
             }

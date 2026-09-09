@@ -486,7 +486,8 @@ namespace Ulon.Editor
             // 바로 옆 모래톱(238)과 한 톤이었다 — 텍스처 평균이 100이어도 대낮 직사광이 그만큼 올린다.
             // 산 바위(평균 120)가 화면 118로 읽히는 것과 대조하면, 젖은 자갈은 **바위보다 어두워야** 한다.
             // 톤을 내리고 폭을 넓힌다(알갱이가 보이게) — 광산(20)도 같은 겹이라 거기서도 확인한다.
-            var gravelLayer = EnsureTerrainLayer("MineGravel", new Color(0.17f, 0.16f, 0.15f), new Color(0.44f, 0.41f, 0.37f), 4.5f, 1);
+            var gravelLayer = EnsureTerrainLayer("MineGravel", new Color(0.17f, 0.16f, 0.15f), new Color(0.44f, 0.41f, 0.37f), 4.5f,
+                                                 GravelPatternOverride >= 0 ? GravelPatternOverride : 5);
             // 광장은 **돌포장**(pattern 4) — 길 흙(0)과 같은 무늬면 십자로가 아스팔트로 읽힌다(검수 랩 ②).
             var cobbleLayer = EnsureTerrainLayer("PlazaCobble", new Color(0.30f, 0.28f, 0.26f), new Color(0.60f, 0.58f, 0.53f), 2f, 4);
             var roadLayer = EnsureTerrainLayer("DirtRoad", new Color(0.38f, 0.31f, 0.22f), new Color(0.58f, 0.50f, 0.37f), 5f);
