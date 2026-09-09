@@ -18,39 +18,7 @@ namespace Ulon.Editor
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             if (scene.path != scenePath)
                 scene = EditorSceneManager.OpenScene(scenePath);
-            VisualSliceBuilder.EnsureVillageTerrain();   // 지형 먼저 — 던전 방이 여기에 구멍을 뚫는다
-            VisualSliceBuilder.EnsureNoNestedActors();   // **자리를 정하는 패스들보다 먼저** 사본을 푼다 — 이름으로 찾는 코드가 껍데기를 집기 전에
-            VisualSliceBuilder.EnsureMobArtQualified();    // 맨몸 모델 몹은 지우고 다시 짓는다(검수 자격 규칙)
-            VisualSliceBuilder.EnsureMobModelLedger();     // 기대 모델과 다른 몹도 헐고 다시(도적=Rogue, 검수 승인)
-            VisualSliceBuilder.EnsureHuntMobs();
-            VisualSliceBuilder.EnsureHuntMobPlacement();
-            // 크기를 **드레싱보다 먼저** 맞춘다 — 왕관·무기는 정수리·손 위치에 맞춰 붙는데,
-            // 뒤에서 몸 크기를 바꾸면 그 부착이 통째로 어긋난다(실제로 섀도우캡틴 관이 1.00m 떴다).
-            VisualSliceBuilder.EnsureMobSizes();           // 원장 키로(랩 ⑥ — 재는 자와 맞추는 자가 갈려 있었다)
-            VisualSliceBuilder.EnsureMobDressing();
-            VisualSliceBuilder.EnsureBossDressing();
-            VisualSliceBuilder.EnsureEntranceClearance();
-            VisualSliceBuilder.EnsureWorldRegions();
-            VisualSliceBuilder.EnsureHouseRoofs();   // 커밋된 씬의 민가 지붕도 규칙으로 수렴시킨다(판때기 수리)
-            VisualSliceBuilder.EnsureFishSpot();
-            VisualSliceBuilder.EnsureNoRolelessWatermill();  // 역할 원장에 없는 장식 물레방아는 지운다(검수 판정)
-            VisualSliceBuilder.EnsureCampfire();
-            VisualSliceBuilder.EnsureMortar();
-            VisualSliceBuilder.EnsureLockedCrate();
-            VisualSliceBuilder.EnsureHousingPlot();
-            VisualSliceBuilder.EnsureHouseVendor();
-            VisualSliceBuilder.EnsureTameCritter();
-            VisualSliceBuilder.EnsureTameBoar();
-            VisualSliceBuilder.EnsureMoongate();
-            VisualSliceBuilder.EnsureStable();
-            VisualSliceBuilder.EnsureEastField();
-            VisualSliceBuilder.EnsureSouthField();
-            VisualSliceBuilder.EnsureNorthField();
-            VisualSliceBuilder.EnsureDungeon1();
-            VisualSliceBuilder.EnsureDungeon2();
-            VisualSliceBuilder.EnsureDungeon3();
-            VisualSliceBuilder.EnsureFieldBoss();
-            VisualSliceBuilder.EnsureFootOnGround();       // 지형이 올라가면 배치물도 따라 올린다(검수 A)
+            RunBuild();
             // 이미 만들어진 씬은 빌더 수정만으로 안 고쳐진다 — 멱등 보수 패스로 돌린다(검수 랩 D).
             Debug.Log("[Ulon] 건물 시야 페이드 — 레이어 올린 렌더러 " + VisualSliceBuilder.EnsureBuildingsFadeable() + "개");
             VisualSliceBuilder.EnsureBankBuilding();       // 은행을 들어갈 수 있는 건물로(검수 P1)
@@ -83,6 +51,9 @@ namespace Ulon.Editor
             VisualSliceBuilder.ClearPropsFromBuildings();   // 건물에 박힌 소품도 소품이 비킨다 — 위 `Ensure*`가
                                                            // 집을 다시 지으면(부지 집) 커밋된 덤불이 그 안에 남는다(2026-09-09)
             // **드레싱·역할 외형이 다 끝난 뒤** 그림 크기를 충돌체에 맞춘다(랩 A). 앞쪽에 두었더니
+            // **여기 있어야 한다** — 위 배치 패스 뒤, 아래 네트워크 배선 앞이다.
+            // 분할 첫 판에 이 넉 줄을 `RunBuild`로 올렸다가 **스물일곱 문장을 건너뛰어 먼저 돌았고**,
+            // 치유사 샷이 10만 픽셀 달라졌다(발·포즈). 순서가 곧 뜻인 자리는 옮기지 마라.
             // 뒤따르는 역할 외형 패스가 훈련사를 다시 키워 게이트가 1.14배로 빨간불이었다 —
             // 맞추는 자가 여럿이면 **마지막에 서는 자**가 이긴다.
             VisualSliceBuilder.EnsureActorBodyMatchesCapsule();
@@ -90,33 +61,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureWeaponsAboveFloor();  // 몸을 세운 **뒤** 무기를 바닥 위로(같은 원인의 다른 얼굴)    // **스케일·드레싱이 다 끝난 뒤** 발을 바닥에 다시 붙인다
 
             VisualSliceBuilder.EnsureCameraSightFade();
-            if (VisualSliceBuilder.ConfigureHumanoid(
-                    "Assets/_ThirdParty/KayKit/Skeletons/RAW/Characters/Skeleton_Warrior.fbx",
-                    true))
-                throw new InvalidOperationException("이미 설정된 Humanoid FBX를 셀프체크가 다시 임포트하면 안 됩니다.");
-            NetworkSliceSetup.WireMob("Skeleton");
-            NetworkSliceSetup.WireMob("Bandit");
-            NetworkSliceSetup.WireMob("Raider");
-            NetworkSliceSetup.WireMob("Rogue");
-            NetworkSliceSetup.WireMob("Knight");
-            NetworkSliceSetup.WireMob("Acolyte");
-            NetworkSliceSetup.WireMob("Minion");
-            NetworkSliceSetup.WireMob("SkelRogue");
-            NetworkSliceSetup.WireMob(Dungeon1.MobObject);
-            NetworkSliceSetup.WireMob(Dungeon1.BossObject);
-            NetworkSliceSetup.WireMob(Dungeon2.MobObject);
-            NetworkSliceSetup.WireMob(Dungeon2.BossObject);
-            NetworkSliceSetup.WireMob(Dungeon3.MobObject);
-            NetworkSliceSetup.WireMob(Dungeon3.BossObject);
-            NetworkSliceSetup.WireMob(FieldBoss.Object);
-            NetworkSliceSetup.EnsureSceneObjectIds(scene);
-            foreach (var networkObject in UnityEngine.Object.FindObjectsByType<NetworkObject>(FindObjectsSortMode.None))
-            {
-                var serialized = new SerializedObject(networkObject);
-                var sceneId = serialized.FindProperty("SceneId");
-                if (sceneId == null || sceneId.ulongValue == 0)
-                    throw new InvalidOperationException("씬 NetworkObject SceneId가 비어 있습니다: " + networkObject.name);
-            }
+
+            RunNetWiring(scene);
 
             var bandit = GameObject.Find("Bandit");
             var banditBody = bandit != null ? bandit.GetComponent<WorldBody>() : null;
