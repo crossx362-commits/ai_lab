@@ -36,6 +36,9 @@ namespace Ulon.Editor
             public bool Vfx;         // 행동 효과 3종을 나란히 재생해 같이 찍는다
             public bool StandPlayer; // 플레이어를 그 자리에 실제로 세우고 찍는다(가려짐을 눈으로 보려면 몸이 있어야 한다)
             public Transform Subject; // 근접 샷의 피사체 — 자기 자신이 페이드에 물리지 않게 뺀다
+            // **절단면 샷** — 지형과 뚜껑을 찍는 동안만 걷는다. 방은 지하 6m라, 걷지 않으면
+            // 「방 절단면」이라는 이름의 샷이 **지표 잔디만** 담는다(2026-09-09 실측: 13이 그랬다).
+            public bool CutAway;
         }
 
         [MenuItem("Ulon/QA Shots")]
@@ -103,7 +106,7 @@ namespace Ulon.Editor
                 PlayCam("12_d3_interior_playcam", Dungeon3.InteriorX, Dungeon3.InteriorZ),
                 Vfx(PlayCam("24_action_vfx", Dungeon3.InteriorX, Dungeon3.InteriorZ)),
                 Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
-                Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ),
+                CutAway(Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ)),
                 // §8.1 멀리서도 읽히는 실루엣 — 산·바다 조망, 호수·강 조망.
                 BossCloseUp("17_boss_closeup", Dungeon3.BossX, Dungeon3.BossZ),
                 ActorCloseUp("22_mob_closeup", Dungeon3.MobObject),
@@ -237,6 +240,7 @@ namespace Ulon.Editor
             var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
             try
             {
+                AssertCutAwayShotsUncover(shots);
                 cam.targetTexture = rt;
                 for (int i = 0; i < shots.Length; i++)
                 {
@@ -251,6 +255,22 @@ namespace Ulon.Editor
                     for (int f = 0; f < faded.Count && f < 12; f++)
                         if (faded[f] != null)
                             Debug.Log("[Ulon] 샷 페이드 " + shot.Name + " ← " + faded[f].transform.root.name + "/" + faded[f].name);
+                    // 절단면 — 지형과 뚜껑을 잠깐 걷는다(찍고 바로 되돌린다).
+                    var terrain = shot.CutAway ? Terrain.activeTerrain : null;
+                    var capsHidden = new System.Collections.Generic.List<Renderer>();
+                    if (terrain != null)
+                    {
+                        terrain.drawHeightmap = false;
+                        foreach (var rd in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                        {
+                            string rn = rd.transform.name;
+                            if (!rn.StartsWith("DungeonCap", System.StringComparison.Ordinal) &&
+                                !rn.StartsWith("CapDress", System.StringComparison.Ordinal))
+                                continue;
+                            rd.enabled = false;
+                            capsHidden.Add(rd);
+                        }
+                    }
                     var vfx = shot.Vfx ? SliceSelfCheck.SpawnVfxTrio(shot.Target) : null;
                     // **여기서 난 효과에도 씨앗을 박는다**(랩 ㉬) — 위의 고정 루프는 씬을 연 순간의
                     // 파티클만 봤고, 이 셋은 **샷 직전에 태어나서** 그 그물을 빠져나갔다.
@@ -265,6 +285,13 @@ namespace Ulon.Editor
                     cam.Render();
                     if (player != null) player.transform.position = savedPlayer;
                     if (vfx != null) Object.DestroyImmediate(vfx);
+                    if (terrain != null)
+                    {
+                        terrain.drawHeightmap = true;
+                        for (int c = 0; c < capsHidden.Count; c++)
+                            if (capsHidden[c] != null)
+                                capsHidden[c].enabled = true;
+                    }
                     Ulon.Client.DungeonSightFade.Restore(faded);
                     RenderTexture.active = rt;
                     tex.ReadPixels(new Rect(0, 0, W, H), 0, 0);
@@ -627,6 +654,27 @@ namespace Ulon.Editor
         static Shot PlayCam(string name, float cx, float cz) => PlayCam(name, cx, cz, cx, cz);
 
         static Shot Vfx(Shot shot) { shot.Vfx = true; return shot; }
+
+        /// <summary>지형·뚜껑을 걷고 찍는다 — 「절단면」은 덮개를 치워야 절단면이다.</summary>
+        static Shot CutAway(Shot shot) { shot.CutAway = true; return shot; }
+
+        /// <summary>
+        /// **절단면 샷은 덮개를 걷어야 한다** — 그러지 않으면 이름만 「절단면」이고 화면은 지표 잔디다
+        /// (2026-09-09 실측: `13`이 before·after 모두 방 대신 지상 벽 윤곽만 담고 있었다).
+        /// 왜 자가 필요한가: 이 조건은 **샷 목록에서 한 글자 지우면 조용히 사라진다** — 화면은
+        /// 여전히 나오고, 다만 아무것도 안 보여 준다. 그래서 이름에 `cutaway`가 든 샷은 플래그를 강제한다.
+        /// </summary>
+        static void AssertCutAwayShotsUncover(Shot[] shots)
+        {
+            for (int i = 0; i < shots.Length; i++)
+            {
+                if (shots[i].Name == null || shots[i].Name.IndexOf("cutaway", System.StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+                if (!shots[i].CutAway)
+                    throw new System.InvalidOperationException("샷 " + shots[i].Name +
+                        "은 이름이 절단면인데 덮개를 걷지 않습니다 — 지형과 뚜껑이 방을 가려 지표만 찍힙니다.");
+            }
+        }
 
         /// <summary>
         /// **런타임과 같은 규칙으로** 줌을 고른다 — `QuarterViewCamera.IsIndoor`가 실내라고 하면 실내 줌.
