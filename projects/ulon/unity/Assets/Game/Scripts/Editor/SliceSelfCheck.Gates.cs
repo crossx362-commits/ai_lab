@@ -158,6 +158,7 @@ namespace Ulon.Editor
             Gate(AssertEntrancePortalCloses);
             Gate(AssertEntranceBannerReads);
             Gate(AssertBossShotsDiffer);
+            Gate(AssertShotSubjectFramed);   // 샷의 주인공이 프레임에 담겼나 — 「죽은 장」을 눈이 아니라 자로
             Gate(AssertBossTraits);
             Gate(AssertDungeonEntrance);
             Gate(AssertItemDataFile);

@@ -726,7 +726,11 @@ namespace Ulon.Editor
                 Free("56_mob_lineup",
                      new Vector3(2.8f, GroundY(2.8f, 45f) + 4.0f, 45f),
                      new Vector3(2.8f, GroundY(2.8f, 33.5f) + 1.0f, 33.5f)),
-                Orbit("06_field_boss", new Vector3(22.6f, 0f, 8.4f), 10f, 25f),
+                // **자리는 보스에게서 받는다**(죽은 장 훑기 2026-09-09). 고정 좌표 궤도라 보스가 옮겨진 뒤로
+                // 이 장은 주인공이 **0.1%(51px)**인 채 오래 찍혀 왔다 — 화면 절반이 빈 흙바닥이었다.
+                // 자리를 보스로 옮겨도 10m 궤도로는 0.8%다(몸이 얇아 거리를 좁혀야 담긴다). 그래서
+                // **크기에서 거리를 유도하는** 근접 프레이밍을 쓴다 — 39·40 보스 샷과 같은 규칙이다.
+                FacilityCloseUp("06_field_boss", FieldBoss.Object, null, true),
                 EntranceOrbit("07_d1_entrance", Dungeon1.EntranceX, Dungeon1.EntranceZ, Dungeon1.EntranceYaw),
                 PlayCam("08_d1_interior_playcam", Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 // 귀퉁이에 선 화면 — 카메라 눈이 벽 밖으로 나가는 최악 자리(검수 2026-09-06 B).
