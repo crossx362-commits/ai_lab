@@ -1735,6 +1735,7 @@ namespace Ulon.Editor
             AssertFootNegativeControl();
             AssertWorldRegions();
             AssertRegionSplat();
+            AssertRidgeAndShore();       // 절벽이 한 겹인가 · 해안 폭이 자리마다 다른가(검수 랩 ⑥)
             AssertWorldMaterials();
             AssertServerAuthorityWiring();
             AssertReachableFeatures();

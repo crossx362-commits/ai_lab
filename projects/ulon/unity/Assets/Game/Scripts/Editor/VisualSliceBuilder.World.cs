@@ -457,7 +457,12 @@ namespace Ulon.Editor
             }
             // 무채색 한 장으로 보이던 바위에 갈색기·명암 폭을 준다(§8.2).
             // 풀(잡음·타일 12)과 **다른 무늬·다른 타일링**이어야 산이 별개의 지질로 읽힌다(검수 재반려).
-            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.20f, 0.18f, 0.17f), new Color(0.63f, 0.58f, 0.50f), 7f, 1);
+            // 타일 7m는 **세로로 늘어난 줄무늬를 그만큼 길게** 만든다(82° 절벽에서 실측). 무늬를 잘게
+            // 하면 같은 늘어남도 눈에 「긴 스미어」가 아니라 「거친 암면」으로 읽힌다.
+            var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.20f, 0.18f, 0.17f), new Color(0.63f, 0.58f, 0.50f), 3.0f, 1);
+            // 그늘진 절벽 — 같은 층리 무늬(pattern 1)에 **더 잘게·더 어둡게**. 두 겹이 서로 다른
+            // 주기로 반복해야 늘어난 줄이 한 줄로 이어지지 않는다.
+            var cliffLayer = EnsureTerrainLayer("CliffDark", new Color(0.16f, 0.15f, 0.15f), new Color(0.48f, 0.45f, 0.42f), 1.8f, 1);
             var sandLayer = EnsureTerrainLayer("ShoreSand", new Color(0.74f, 0.68f, 0.50f), new Color(0.85f, 0.80f, 0.62f), 8f);
             // §6.1 지역이 **지표로** 구분돼야 한다 — 바닥이 전부 같은 초록이면 소품만 얹힌 모양이다(검수 2026-09-06 관찰).
             var tilledLayer = EnsureTerrainLayer("FarmTilled", new Color(0.30f, 0.21f, 0.13f), new Color(0.47f, 0.34f, 0.21f), 3.5f, 2);
@@ -475,7 +480,7 @@ namespace Ulon.Editor
             int res = 513;
             data.heightmapResolution = res;
             data.size = new Vector3(WorldTerrain.Span, WorldTerrain.MaxHeight, WorldTerrain.Span);
-            data.terrainLayers = new[] { layer, rockLayer, sandLayer, tilledLayer, soilLayer, gravelLayer, roadLayer, cobbleLayer, dryLayer };
+            data.terrainLayers = new[] { layer, rockLayer, sandLayer, tilledLayer, soilLayer, gravelLayer, roadLayer, cobbleLayer, dryLayer, cliffLayer };
             float[,] heights = new float[res, res];
             float half = WorldTerrain.Span * 0.5f;
             for (int z = 0; z < res; z++)
@@ -513,8 +518,14 @@ namespace Ulon.Editor
                     if (h < WorldTerrain.LandBase + 22f)
                         rock = Mathf.Min(rock, 0.42f + mottle * 0.45f);
 
-                    // 물가 — 수면 ±2m는 모래. 잔디가 물에 수직으로 잘리면 §8.2 위반이다.
-                    float sand = 1f - Mathf.Clamp01((Mathf.Abs(h - WorldTerrain.SeaLevel) - 0.8f) / 2.0f);
+                    // 물가 — 수면 언저리는 모래. 잔디가 물에 수직으로 잘리면 §8.2 위반이다.
+                    // **폭이 어디나 같으면 「해안선」이 아니라 「띠를 두른 것」이다**(검수 랩 ⑥ —
+                    // 세어 보니 방위 16곳 모래띠가 1.5~4.5m로 사실상 균일했다). 해안을 따라 도는
+                    // 저주파 노이즈로 **너른 모래사장과 바위가 물까지 내려온 구간**을 갈라 만든다.
+                    float beach = Mathf.PerlinNoise(wx * 0.012f + 29.3f, wz * 0.012f + 64.1f);
+                    float flatBand = Mathf.Lerp(0.15f, 2.0f, beach);     // 물가에서 이만큼은 온전히 모래
+                    float sandFade = Mathf.Lerp(0.7f, 4.2f, beach);      // 그 바깥으로 이만큼 옅어진다
+                    float sand = 1f - Mathf.Clamp01((Mathf.Abs(h - WorldTerrain.SeaLevel) - flatBand) / sandFade);
                     if (h < WorldTerrain.SeaLevel)
                         sand = 1f;                                   // 물속 바닥도 모래
                     sand = Mathf.Max(sand, 0f);
@@ -533,7 +544,14 @@ namespace Ulon.Editor
                     float dryShare = WorldSplat.DryGrassAt(wx, wz);
                     w[WorldSplat.Grass] = grassW * keep * (1f - dryShare);
                     w[WorldSplat.DryGrass] = grassW * keep * dryShare;
-                    w[WorldSplat.Rock] = rockW * keep;
+                    // **바위도 두 겹이다**(검수 랩 ⑥). 총량은 그대로, 밝은 암면과 그늘진 절벽으로 나눈다 —
+                    // 급경사일수록 그늘 쪽을 조금 더 섞어 늘어난 줄무늬가 한 줄로 이어지지 않게 한다.
+                    // 한쪽으로 포화시키지 않는다 — 0이나 1이 되면 그 자리는 다시 **한 겹**이고,
+                    // 겹쳐야 끊기는 줄무늬가 도로 이어진다.
+                    float darkShare = Mathf.Clamp(WorldSplat.DarkCliffAt(wx, wz)
+                                                  + Mathf.Clamp01((slope - 0.7f) * 0.25f) * 0.2f, 0.14f, 0.86f);
+                    w[WorldSplat.Rock] = rockW * keep * (1f - darkShare);
+                    w[WorldSplat.CliffDark] = rockW * keep * darkShare;
                     w[WorldSplat.Sand] = sand;
                     if (cover >= 0)
                         w[cover] += coverW;
@@ -547,6 +565,9 @@ namespace Ulon.Editor
             data.SetAlphamaps(0, 0, alpha);
             EditorUtility.SetDirty(data);
             // TerrainData는 에셋이다 — 저장하지 않으면 씬을 다시 열 때 디스크의 옛 지형이 돌아온다.
+            // **생성물이 에셋이면 저장까지가 수리다**(두 번 밟았다 — 지형, 그리고 나무 tint 재질).
+            // 자는 메모리를 보고 화면은 디스크를 본다: `SetDirty`만 하면 셀프체크는 초록인데 QA 샷은
+            // 옛 값을 찍는다. 새 재질·새 레이어를 만드는 패스는 반드시 이 호출까지 함께 넣어라.
             AssetDatabase.SaveAssets();
             var found = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = found.Length - 1; i >= 0; i--)

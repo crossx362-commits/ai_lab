@@ -137,7 +137,13 @@ namespace Ulon.Editor
                 FacilityCloseUp("43_boar", TameBoar.Object, null, true),
                 // 마구간 마당의 짐승 — 「빈 마당」 반려의 완료 근거(동물 랩).
                 FacilityCloseUp("44_stable_beast", VisualSliceBuilder.StableBeastObject, null, true),
-                Free("16_mountain_ridge", new Vector3(60f, 30f, 60f), new Vector3(WorldTerrain.MountainPeak, WorldTerrain.LandBase + 18f, WorldTerrain.MountainPeak * 0.4f)),
+                // **볕 받는 면에서 본다.** 해는 `SunEuler`(50°, −30°)라 +x·−z 쪽 면이 볕이고 반대편은
+                // 통째로 그늘이다 — 옛 자리(60,30,60)는 그 그늘 면을 정면으로 봐서 산이 검은 실루엣
+                // 한 장이었다(before 샷). 세계를 밝히는 대신 **눈을 볕 쪽으로 옮긴다**: 조명을 만지면
+                // 온 세계 스물한 샷이 같이 바뀐다.
+                // 가까이 붙으면 **늘어난 무늬가 같이 커진다** — 첫 시도(120,34,−40)는 절벽이 화면을 채워
+                // 스미어가 더 적나라했다. 능선이 이어지는 모양을 보여줄 만큼 물러선다.
+                Free("16_mountain_ridge", new Vector3(158f, 72f, -86f), new Vector3(78f, WorldTerrain.LandBase + 24f, 26f)),
             };
 
             // **마을 사람 근접** — 5역할이 서로 다른 모습인지 눈으로 본다(검수 랩 ③사람 완료 기준).

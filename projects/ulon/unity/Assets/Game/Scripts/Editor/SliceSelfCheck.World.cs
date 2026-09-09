@@ -150,11 +150,15 @@ namespace Ulon.Editor
             {
                 for (int x = 0; x < ar; x += 4)
                 {
-                    for (int l = 0; l < 3; l++)
-                    {
-                        if (maps[z, x, l] > 0.5f)
-                            share[l] += 1f;
-                    }
+                    // **풀도 바위도 두 겹이다**(짙은 풀/마른 풀, 밝은 암면/그늘진 절벽 — 랩 ⑤·⑥).
+                    // 한 겹씩만 세면 갈라 칠할수록 각 겹이 0.5를 못 넘어 「바위가 1.7%뿐」으로 뒤집힌다.
+                    // 이 자가 묻는 것은 「화면에 세 가지 지표가 다 있나」이므로 **계열 합**으로 센다.
+                    float fGrass = maps[z, x, Ulon.Shared.WorldSplat.Grass] + maps[z, x, Ulon.Shared.WorldSplat.DryGrass];
+                    float fRock = maps[z, x, Ulon.Shared.WorldSplat.Rock] + maps[z, x, Ulon.Shared.WorldSplat.CliffDark];
+                    float fSand = maps[z, x, Ulon.Shared.WorldSplat.Sand];
+                    if (fGrass > 0.5f) share[0] += 1f;
+                    if (fRock > 0.5f) share[1] += 1f;
+                    if (fSand > 0.5f) share[2] += 1f;
                 }
             }
             float cells = Mathf.Ceil(ar / 4f) * Mathf.Ceil(ar / 4f);
@@ -182,7 +186,10 @@ namespace Ulon.Editor
                     // 섞여 있나」이므로 **풀 계열의 합**을 본다 — 한 겹만 보면 마른 풀로 간 몫이 사라져
                     // 멀쩡한 중턱이 「바위로 쏠렸다」로 읽힌다(실측 0.33으로 울었다).
                     float g = maps[az, ax, Ulon.Shared.WorldSplat.Grass] + maps[az, ax, Ulon.Shared.WorldSplat.DryGrass];
-                    float r = maps[az, ax, Ulon.Shared.WorldSplat.Rock], sd = maps[az, ax, Ulon.Shared.WorldSplat.Sand];
+                    // **바위도 두 겹이다**(밝은 암면 + 그늘진 절벽, 검수 랩 ⑥) — 풀에서 겪은 그대로,
+                    // 한 겹만 읽으면 멀쩡한 중턱이 「풀로 쏠렸다」로 뒤집힌다. 계열 합을 읽는다.
+                    float r = maps[az, ax, Ulon.Shared.WorldSplat.Rock] + maps[az, ax, Ulon.Shared.WorldSplat.CliffDark];
+                    float sd = maps[az, ax, Ulon.Shared.WorldSplat.Sand];
                     if (h > WorldTerrain.LandBase + 6f && h < WorldTerrain.LandBase + 18f)
                     {
                         midN++;

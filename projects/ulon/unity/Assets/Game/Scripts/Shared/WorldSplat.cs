@@ -26,7 +26,26 @@ namespace Ulon.Shared
         /// 두 겹의 합은 언제나 옛 풀 한 겹과 같다 — 「지역 밖 평지 풀 하한 0.80」은 그래서 안 흔들린다.
         /// </summary>
         public const int DryGrass = 8;
-        public const int LayerCount = 9;
+        /// <summary>
+        /// **그늘진 절벽 바위**(검수 랩 ⑥ 「산 표면이 세로로 늘어난다」). 유니티 지형은 도포를
+        /// **평면(XZ)으로 투영**하므로 경사가 설수록 무늬가 세로로 늘어난다 — 세어 보니 이 산은
+        /// **최대 82°**다. 투영을 바꾸려면 지형 셰이더를 갈아야 하니, 대신 **늘어난 줄무늬를 끊는다**:
+        /// 바위를 두 겹으로 갈라 다른 타일링·다른 색으로 얼룩지게 한다(경사면 39%가 한 겹이었다).
+        /// </summary>
+        public const int CliffDark = 9;
+        public const int LayerCount = 10;
+
+        /// <summary>이 자리의 바위 중 **그늘진 절벽 바위가 차지하는 몫**(0~1).</summary>
+        public static float DarkCliffAt(float wx, float wz)
+        {
+            // 잔디와 **다른 주기**를 쓴다 — 같은 주기면 산과 들이 같은 얼룩을 쓰는 것이 눈에 보인다.
+            float broad = Mathf.PerlinNoise(wx * 0.032f + 41.7f, wz * 0.032f + 12.9f);
+            float mid = Mathf.PerlinNoise(wx * 0.075f + 8.2f, wz * 0.075f + 77.5f);
+            // **잔디와 반대로 전환을 넓힌다.** 잔디는 얼룩이 「이쪽 아니면 저쪽」이어야 색이 갈려 보였지만,
+            // 절벽에서 필요한 것은 갈림이 아니라 **두 무늬가 겹쳐 늘어난 줄을 끊는 것**이다. 좁게 잡았더니
+            // 자리마다 한 겹으로 떨어져 급경사 표본의 31%가 여전히 한 겹이었다(자가 잡았다).
+            return Mathf.Clamp01((Mathf.Max(broad, mid * 0.94f) - 0.36f) / 0.45f) * 0.90f;
+        }
 
         /// <summary>이 자리의 풀 중 **마른 풀이 차지하는 몫**(0~1). 굽는 쪽·재는 쪽이 같이 읽는다.</summary>
         public static float DryGrassAt(float wx, float wz)

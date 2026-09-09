@@ -37,6 +37,11 @@
 | Kenney **Modular Cave Kit** | **갱도 입구**·터널·동굴 벽 40점 | https://kenney.nl/assets/modular-cave-kit | 직접 zip `kenney.nl/media/pages/assets/modular-cave-kit/37ec3cb12d-1783667097/kenney_modular-cave-kit_1.0.zip` (**curl 가능**) | CC0(팩 페이지 명시) |
 | Quaternius **Fantasy Props MegaKit**(이미 승인·파일 대기) | 절구통·화덕·작업대·궤짝 등 200+ | https://quaternius.com/packs/fantasypropsmegakit.html | 사이트 직접 / itch (GitHub 없음) | CC0(팩 페이지 명시) |
 | Quaternius **Medieval Village MegaKit** | 마을 건물 모듈 300+ (A의 단품으로 부족할 때) | https://quaternius.com/packs/medievalvillage.html | 사이트/itch(무료판은 일부만) | CC0(팩 페이지 명시) |
+| **꽃·잔풀**(팩 미정) | 들꽃·키 큰 잡초 — 초원을 색이 아니라 **물건**으로도 가르는 조각 | 후보: Kenney Nature Kit 확장, Quaternius Ultimate Nature | 미조사 | 받기 전 확인 |
+
+**꽃·잔풀이 목록에 오른 이유**(검수 랩 ⑤ 2026-09-09): 초원 「한 톤」은 지형 도포 두 겹과 나무 tint로
+풀었지만, 검수가 예시로 든 **잔풀·들꽃 산포**는 못 했다 — 지금 킷(Kenney Nature)에 **꽃 모델이 없다.**
+없는 자산으로 가짜를 세우지 않는다는 규율대로 미결로 남겼다.
 
 **갱도 입구는 단품으로 못 찾았다** — poly.pizza에서 mine/cave/tunnel entrance를 훑었지만 쓸 만한 단품이 없었다(나온 것은 맨홀 뚜껑·사원 입구·포털 문 따위였다). 그래서 갱도 입구만은 B에 남는다.
 **절구통도 단품은 유료 픽밖에 없었다**(Poly by Google·MilkAndBanana의 mortar and pestle) — CC0 확인 못 함.

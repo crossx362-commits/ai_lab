@@ -152,6 +152,82 @@ namespace Ulon.Editor
                     Debug.Log("[Census] 나무 색 " + k + " × " + treeTone[k]);
             }
 
+            // **산과 해안을 센다**(검수 랩 ⑥). 증상은 「절벽 무늬가 세로로 늘어난다」와 「해안이
+            // 균일한 모래띠」다 — 둘 다 눈대중으로 고치면 엉뚱한 데를 만진다. 재는 것은 셋:
+            // ①경사면이 얼마나 가파른가 ②그 자리가 무슨 레이어를 몇 겹 쓰는가(산도 한 톤인가)
+            // ③해안 모래띠 폭이 방위마다 정말 같은가.
+            {
+                var terr2 = Terrain.activeTerrain;
+                if (terr2 != null && terr2.terrainData != null)
+                {
+                    var td = terr2.terrainData;
+                    for (int L = 0; L < td.terrainLayers.Length; L++)
+                        Debug.Log("[Census] 지형 레이어 " + L + " " + td.terrainLayers[L].name + " 타일 " +
+                                  td.terrainLayers[L].tileSize.x.ToString("0.0") + "m");
+
+                    int ar3 = td.alphamapResolution;
+                    var alpha3 = td.GetAlphamaps(0, 0, ar3, ar3);
+                    float half3 = WorldTerrain.Span * 0.5f;
+                    int steep = 0, steepOneTone = 0;
+                    float steepestSlope = 0f;
+                    for (float x = -140f; x <= 140f; x += 5f)
+                        for (float z = -140f; z <= 140f; z += 5f)
+                        {
+                            float h = WorldTerrain.HeightAt(x, z);
+                            if (h < WorldTerrain.LandBase + 6f)
+                                continue;                                   // 산비탈만 본다
+                            float dh = Mathf.Max(Mathf.Abs(WorldTerrain.HeightAt(x + 2f, z) - h),
+                                                 Mathf.Abs(WorldTerrain.HeightAt(x, z + 2f) - h));
+                            float slope = Mathf.Atan2(dh, 2f) * Mathf.Rad2Deg;
+                            if (slope < 30f)
+                                continue;                                   // 「절벽」이라 부를 만한 것만
+                            steep++;
+                            if (slope > steepestSlope)
+                                steepestSlope = slope;
+                            int ix = Mathf.Clamp(Mathf.RoundToInt((x + half3) / WorldTerrain.Span * (ar3 - 1)), 0, ar3 - 1);
+                            int iz = Mathf.Clamp(Mathf.RoundToInt((z + half3) / WorldTerrain.Span * (ar3 - 1)), 0, ar3 - 1);
+                            int tones = 0;
+                            for (int L = 0; L < td.alphamapLayers; L++)
+                                if (alpha3[iz, ix, L] > 0.12f)
+                                    tones++;
+                            if (tones <= 1)
+                                steepOneTone++;
+                        }
+                    Debug.Log("[Census] 산 경사면 — 30° 넘는 표본 " + steep + "곳 · 가장 가파른 " +
+                              steepestSlope.ToString("0") + "° · 그중 지표 한 겹뿐 " + steepOneTone + "곳(" +
+                              (steep == 0 ? 0f : steepOneTone * 100f / steep).ToString("0") + "%)");
+                }
+
+                // 해안 모래띠 — 중심에서 방위마다 바깥으로 훑어 물가를 찾고, 거기서 육지 쪽으로
+                // 모래가 몇 미터나 이어지는지 잰다. 폭이 어디나 같으면 「띠를 두른 것」으로 읽힌다.
+                float wsum = 0f, wmin = 999f, wmax = 0f;
+                int wn = 0;
+                for (float a = 0f; a < 360f; a += 15f)
+                {
+                    float ca = Mathf.Cos(a * Mathf.Deg2Rad), sa = Mathf.Sin(a * Mathf.Deg2Rad);
+                    float shore = -1f;
+                    for (float d = 40f; d < 150f; d += 0.5f)
+                        if (WorldTerrain.HeightAt(ca * d, sa * d) < WorldTerrain.SeaLevel)
+                        { shore = d; break; }
+                    if (shore < 0f)
+                        continue;
+                    float back = 0f;
+                    for (float d = shore; d > shore - 30f; d -= 0.5f)
+                    {
+                        float h = WorldTerrain.HeightAt(ca * d, sa * d);
+                        if (h > WorldTerrain.SeaLevel + 2.8f)
+                            break;                                          // 모래로 칠하는 띠의 끝
+                        back = shore - d;
+                    }
+                    wsum += back; wn++;
+                    wmin = Mathf.Min(wmin, back);
+                    wmax = Mathf.Max(wmax, back);
+                }
+                if (wn > 0)
+                    Debug.Log("[Census] 해안 모래띠 — 방위 " + wn + "곳 평균 " + (wsum / wn).ToString("0.0") +
+                              "m · 가장 좁은 " + wmin.ToString("0.0") + "m · 가장 넓은 " + wmax.ToString("0.0") + "m");
+            }
+
             var nodes = new List<Transform>();
             var boxes = new List<Bounds>();
             Collect(nodes, boxes);
