@@ -11,6 +11,14 @@ namespace Ulon.Editor
 {
     public static partial class SliceSelfCheck
     {
+        /// <summary>
+        /// **여기 남은 것은 순서에 뜻이 있는 뼈대다**(랩 ㉪ 4~6/N, 2026-09-09).
+        /// 씬 열기 → 빌드(`RunBuild`) → 몹 네트워크 배선(`RunNetWiring`) → 몹 카탈로그 검사 →
+        /// 주제별 규칙 셋(`RunCharacterRules`·`RunCombatCraftRules`·`RunLifeSkillRules`) → 자 배선(`RunGates`).
+        /// **더 안 가른다** — 남은 덩이는 지역 변수가 위아래로 넘나들어, 매개변수로 펴는 순간
+        /// **계산 시점이 바뀐다.** 넉 줄을 옮겼다가 27문장을 건너뛰어 화면이 10만 픽셀 달라진 사고가
+        /// 이 파일에서 났다. **안 떼는 것도 결과다** — 떼려거든 실행 순서를 문장 단위로 먼저 대조하라.
+        /// </summary>
         [MenuItem("Ulon/Run Slice Self-Check")]
         public static void Run()
         {
