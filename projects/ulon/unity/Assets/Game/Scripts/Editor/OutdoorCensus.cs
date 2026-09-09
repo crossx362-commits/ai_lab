@@ -196,6 +196,68 @@ namespace Ulon.Editor
                     Debug.Log("[Census] 산 경사면 — 30° 넘는 표본 " + steep + "곳 · 가장 가파른 " +
                               steepestSlope.ToString("0") + "° · 그중 지표 한 겹뿐 " + steepOneTone + "곳(" +
                               (steep == 0 ? 0f : steepOneTone * 100f / steep).ToString("0") + "%)");
+
+                    // **경사 분포(히스토그램)** — 검수 반려 2026-09-09: 「그 면이 정말 55° 이상인지부터
+                    // 재라. 수치 없이는 양쪽 다 추측이다.」 사냥터 뒤 산을 10° 칸으로 세고, 칸마다
+                    // **풀 계열 평균 가중치**를 같이 찍는다(도포가 어디서 걷혔는지 한 줄로 보인다).
+                    {
+                        Vector2 eye = VisualSliceBuilder.HuntViewEye;
+                        Vector2 tgt = VisualSliceBuilder.HuntViewTarget;
+                        Vector2 fwd = (tgt - eye).normalized;
+                        Vector2 side = new Vector2(-fwd.y, fwd.x);
+                        var n = new int[10];
+                        var g = new float[10];
+                        var mac = new int[10];
+                        var fineSum = new float[10];
+                        int total = 0;
+                        for (float f = 10f; f <= 140f; f += 1.5f)
+                            for (float sdist = -70f; sdist <= 70f; sdist += 1.5f)
+                            {
+                                float x = tgt.x + fwd.x * f + side.x * sdist;
+                                float z = tgt.y + fwd.y * f + side.y * sdist;
+                                if (Mathf.Abs(x) > 148f || Mathf.Abs(z) > 148f)
+                                    continue;
+                                float h = WorldTerrain.HeightAt(x, z);
+                                if (h < WorldTerrain.LandBase + 4f)
+                                    continue;       // 평지·물가는 이 물음의 대상이 아니다
+                                const float d4 = 1.5f;
+                                float hx4 = WorldTerrain.HeightAt(x + d4, z) - WorldTerrain.HeightAt(x - d4, z);
+                                float hz4 = WorldTerrain.HeightAt(x, z + d4) - WorldTerrain.HeightAt(x, z - d4);
+                                float slope4 = Mathf.Atan(Mathf.Sqrt(hx4 * hx4 + hz4 * hz4) / (2f * d4)) * Mathf.Rad2Deg;
+                                // **어느 자로 잰 경사인가**가 곧 무엇을 잰 것인가다. 굽는 쪽은 알파맵 간격
+                                // (0.587m)으로 재고, 눈은 산의 큰 형태를 본다. 잔주름이 심하면 둘이 갈린다.
+                                float dm = 8f;
+                                float hxm = WorldTerrain.HeightAt(x + dm, z) - WorldTerrain.HeightAt(x - dm, z);
+                                float hzm = WorldTerrain.HeightAt(x, z + dm) - WorldTerrain.HeightAt(x, z - dm);
+                                float macro = Mathf.Atan(Mathf.Sqrt(hxm * hxm + hzm * hzm) / (2f * dm)) * Mathf.Rad2Deg;
+                                const float dp = 0.587f;   // 알파맵 한 칸 = 굽는 쪽이 쓰는 자
+                                float hxp = WorldTerrain.HeightAt(x + dp, z) - WorldTerrain.HeightAt(x - dp, z);
+                                float hzp = WorldTerrain.HeightAt(x, z + dp) - WorldTerrain.HeightAt(x, z - dp);
+                                float fine = Mathf.Atan(Mathf.Sqrt(hxp * hxp + hzp * hzp) / (2f * dp)) * Mathf.Rad2Deg;
+                                mac[Mathf.Clamp((int)(macro / 10f), 0, 9)]++;
+                                fineSum[Mathf.Clamp((int)(macro / 10f), 0, 9)] += fine;
+                                int b = Mathf.Clamp((int)(slope4 / 10f), 0, 9);
+                                int ix4 = Mathf.Clamp(Mathf.RoundToInt((x + half3) / WorldTerrain.Span * (ar3 - 1)), 0, ar3 - 1);
+                                int iz4 = Mathf.Clamp(Mathf.RoundToInt((z + half3) / WorldTerrain.Span * (ar3 - 1)), 0, ar3 - 1);
+                                n[b]++;
+                                total++;
+                                g[b] += alpha3[iz4, ix4, WorldSplat.Grass] + alpha3[iz4, ix4, WorldSplat.DryGrass];
+                            }
+                        var sb = new System.Text.StringBuilder("[Census] 사냥터 뒤 산 경사 분포(표본 " + total + ") — ");
+                        for (int b = 0; b < 10; b++)
+                            if (n[b] > 0)
+                                sb.Append(b * 10).Append("~").Append(b * 10 + 10).Append("° ")
+                                  .Append(n[b]).Append("곳(").Append((n[b] * 100f / Mathf.Max(1, total)).ToString("0"))
+                                  .Append("%) 풀 ").Append((g[b] / n[b]).ToString("0.00")).Append(" · ");
+                        Debug.Log(sb.ToString());
+                        var sb2 = new System.Text.StringBuilder("[Census] 같은 표본, 8m 자로 잰 큰 경사 — ");
+                        for (int b = 0; b < 10; b++)
+                            if (mac[b] > 0)
+                                sb2.Append(b * 10).Append("~").Append(b * 10 + 10).Append("° ")
+                                   .Append(mac[b]).Append("곳(").Append((mac[b] * 100f / Mathf.Max(1, total)).ToString("0"))
+                                   .Append("%) 그 자리 0.587m 자로는 평균 ").Append((fineSum[b] / mac[b]).ToString("0")).Append("° · ");
+                        Debug.Log(sb2.ToString());
+                    }
                 }
 
                 // 해안 모래띠 — 중심에서 방위마다 바깥으로 훑어 물가를 찾고, 거기서 육지 쪽으로

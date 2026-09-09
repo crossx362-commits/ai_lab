@@ -176,7 +176,8 @@ namespace Ulon.Editor
             //     들어오는 **55°↑ 암벽**까지 「중턱」으로 세고 「여기에도 풀이 섞여야 한다」고 요구했다.
             //     그 요구가 곧 화면의 **초록 커튼**이었다: 수직 암벽에 풀이 흘러내렸다.
             //     제외 기준은 새로 정하지 않고 **도포 원장의 벽 규칙**(`WorldSplat.WallSlopeFrom`)을 그대로
-            //     읽는다 — 굽는 쪽이 풀을 걷기 시작하는 바로 그 각이다. 뺀 수는 매 판 찍는다(죽은 예외 금지).
+            //     읽는다 — 굽는 쪽이 풀을 걷기 시작하는 바로 그 각이고, **재는 자의 길이(8m)도 원장 것**이다.
+            //     뺀 수는 매 판 찍는다(죽은 예외 금지).
             int midG = 0, midR = 0, midN = 0, shoreN = 0, shoreSand = 0, midWall = 0;
             for (int gz = 0; gz < 120; gz++)
             {
@@ -197,10 +198,7 @@ namespace Ulon.Editor
                     float sd = maps[az, ax, Ulon.Shared.WorldSplat.Sand];
                     if (h > WorldTerrain.LandBase + 6f && h < WorldTerrain.LandBase + 18f)
                     {
-                        const float sd2 = 1.5f;
-                        float shx = WorldTerrain.HeightAt(wx + sd2, wz) - WorldTerrain.HeightAt(wx - sd2, wz);
-                        float shz = WorldTerrain.HeightAt(wx, wz + sd2) - WorldTerrain.HeightAt(wx, wz - sd2);
-                        if (Mathf.Sqrt(shx * shx + shz * shz) / (2f * sd2) >= Ulon.Shared.WorldSplat.WallSlopeFrom)
+                        if (Ulon.Shared.WorldSplat.MacroSlopeTan(wx, wz) >= Ulon.Shared.WorldSplat.WallSlopeFrom)
                         {
                             midWall++;
                             continue;   // 벽은 「암벽 풀」 자가 따로 잰다(거기서는 풀이 있으면 빨간불)

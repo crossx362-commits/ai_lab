@@ -40,24 +40,55 @@ namespace Ulon.Shared
         /// 앞쪽 절벽에 **초록·누런 띠가 커튼처럼 흘러내렸다**. 60m 수직 암벽에 풀은 자라지 않는다.
         ///
         /// 뿌리는 「산 중턱까지 풀이 올라간다」를 위해 걸어 둔 **바위 상한**이었다(고도 22m 아래에서
-        /// rock ≤ 0.42~0.87). 그 상한이 **경사를 안 봤다** — 중턱 비탈에도, 80° 암벽에도 똑같이 걸려
-        /// 풀을 남겼다. 그래서 상한 자체를 없애지 않고 **급경사에서만 풀어 준다**: 55°부터 풀리기
-        /// 시작해 70°면 상한이 사라진다(= 바위 그대로).
+        /// rock ≤ 0.42~0.87). 그 상한이 **경사를 안 봤다** — 중턱 비탈에도 80° 암벽에도 똑같이 걸려
+        /// 풀을 남겼다. 그래서 상한을 없애지 않고 **급경사에서만 풀어 준다**.
         ///
-        /// **45°부터 자르는 판은 실제로 돌려 보고 물렀다** — 중턱 풀이 0.66 → **0.20**으로 떨어져
-        /// 「산 중턱 도포가 한쪽으로 쏠렸다」 자가 울었다(하한 0.35). 이 산은 6~18m 띠의 상당 부분이
-        /// 45°를 넘는다. 벽에서 풀을 떼려다 **중턱을 회색 한 장으로 만들면 지난 반려로 되돌아간다** —
-        /// 두 자를 동시에 만족시키는 창이 55~70°다.
+        /// **어느 자로 잰 경사인가가 곧 무엇을 잰 것인가다**(검수 반려 → 재측정 2026-09-09).
+        /// 처음엔 알파맵 한 칸(0.587m)으로 쟀는데, 이 지형은 잔주름이 심해 그 자가 **큰 형태보다
+        /// 평균 15° 높게** 읽는다 — 사냥터 뒤 산 실측: 8m 자로 30~40°인 자리가 0.587m 자로는 46°,
+        /// 40~50°인 자리가 57°, 50~60°인 자리가 66°. 그래서 「55° 위는 벽」 규칙이 **둥근 흙산의
+        /// 45° 비탈까지** 맨바위로 만들었다(`03_hunt_mobs`가 베이지 한 장이 됐다 — 검수 반려).
+        /// 눈이 보는 것은 큰 형태이므로 **8m 자로 재고**, 문턱도 그 자에 맞춰 다시 유도한다:
+        /// 풀은 실제로 45°까지 붙으므로 **50°에서 풀리기 시작해 65°면 상한이 사라진다**.
         ///
-        /// 굽는 쪽과 재는 쪽이 **같은 이 함수**를 읽는다. slope는 tan(경사각).
+        /// 굽는 쪽과 재는 쪽이 **좌표를 넣고 같은 이 함수**를 부른다 — 자의 길이가 갈리면
+        /// 다시 같은 병이 난다.
         /// </summary>
-        public const float WallSlopeFrom = 1.43f;   // tan 55°
-        public const float WallSlopeTo = 2.75f;     // tan 70°
+        public const float WallMacroSpan = 8f;      // 큰 경사를 재는 자의 길이(m)
+        public const float WallMidSpan = 3f;        // 짧은 쪽 자 — 8m 자만으로는 벽 밑 평평한 단까지 벽이 된다
+        public const float WallSlopeFrom = 1.19f;   // tan 50°
+        public const float WallSlopeTo = 2.14f;     // tan 65°
 
-        /// <summary>이 경사에서 「중턱 풀」 상한을 얼마나 풀어 줄지(0 = 그대로, 1 = 상한 없음).</summary>
-        public static float WallRockAt(float slope)
+        /// <summary>
+        /// 이 자리의 **큰 경사**(tan) — 잔주름이 아니라 산의 형태를 읽는다.
+        ///
+        /// **자 하나로는 안 된다.** 짧은 자(0.587m)는 잔주름을 경사로 읽어 둥근 흙산까지 벽으로 만들고,
+        /// 긴 자(8m)만 쓰면 **벽 밑 평평한 단**까지 벽이 된다(중앙차분이 8m 밖의 절벽을 끌어온다 —
+        /// 실측으로 봤다: 큰 경사 60°↑ 자리의 8.8%에 풀 가중치가 1.00이었다). 그래서 **둘 다 가파른
+        /// 자리만** 벽이다 — 짧은 쪽과 긴 쪽 중 **작은 값**을 쓴다.
+        /// </summary>
+        public static float MacroSlopeTan(float wx, float wz)
         {
-            return Mathf.Clamp01((slope - WallSlopeFrom) / (WallSlopeTo - WallSlopeFrom));
+            return Mathf.Min(SlopeTanAt(wx, wz, WallMidSpan), SlopeTanAt(wx, wz, WallMacroSpan));
+        }
+
+        static float SlopeTanAt(float wx, float wz, float d)
+        {
+            float hx = WorldTerrain.HeightAt(wx + d, wz) - WorldTerrain.HeightAt(wx - d, wz);
+            float hz = WorldTerrain.HeightAt(wx, wz + d) - WorldTerrain.HeightAt(wx, wz - d);
+            return Mathf.Sqrt(hx * hx + hz * hz) / (2f * d);
+        }
+
+        /// <summary>tan 경사 하나로 판정만 — 반대쪽 한계가 그냥 부를 수 있게 떼어 둔다.</summary>
+        public static float WallRockFromTan(float macroTan)
+        {
+            return Mathf.Clamp01((macroTan - WallSlopeFrom) / (WallSlopeTo - WallSlopeFrom));
+        }
+
+        /// <summary>이 자리에서 「중턱 풀」 상한을 얼마나 풀어 줄지(0 = 그대로, 1 = 상한 없음).</summary>
+        public static float WallRockAt(float wx, float wz)
+        {
+            return WallRockFromTan(MacroSlopeTan(wx, wz));
         }
 
         /// <summary>이 자리의 바위 중 **그늘진 절벽 바위가 차지하는 몫**(0~1).</summary>

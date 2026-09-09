@@ -517,8 +517,11 @@ namespace Ulon.Editor
                     // 산 중턱까지 풀이 올라간다 — 상한을 얼룩으로 흔들어 풀·바위가 섞이게 한다(중턱 풀 0.19 재반려).
                     // **다만 이 상한은 경사를 봐야 한다**(검수 랩 ⑨): 안 보면 80° 암벽에도 풀을 남겨
                     // 초록 커튼이 흘러내린다. 급경사에서만 상한을 풀어 준다(원장: `WorldSplat.WallRockAt`).
+                    // **여기 `slope`(알파맵 한 칸 = 0.587m)를 넘기지 마라** — 이 지형은 잔주름이 심해
+                    // 그 자가 큰 형태보다 평균 15° 높게 읽고, 그래서 둥근 흙산까지 맨바위가 됐다(검수 반려).
+                    // 원장이 좌표를 받아 **8m 자로 다시 잰다**.
                     if (h < WorldTerrain.LandBase + 22f)
-                        rock = Mathf.Min(rock, Mathf.Lerp(0.42f + mottle * 0.45f, 1f, WorldSplat.WallRockAt(slope)));
+                        rock = Mathf.Min(rock, Mathf.Lerp(0.42f + mottle * 0.45f, 1f, WorldSplat.WallRockAt(wx, wz)));
 
                     // 물가 — 수면 언저리는 모래. 잔디가 물에 수직으로 잘리면 §8.2 위반이다.
                     // **폭이 어디나 같으면 「해안선」이 아니라 「띠를 두른 것」이다**(검수 랩 ⑥ —
