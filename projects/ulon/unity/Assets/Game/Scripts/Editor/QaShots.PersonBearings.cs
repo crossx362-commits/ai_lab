@@ -67,7 +67,7 @@ namespace Ulon.Editor
 
             var qv = Object.FindFirstObjectByType<Ulon.Client.QuarterViewCamera>(FindObjectsInactive.Include);
             float baseYaw = qv != null ? qv.Yaw : 45f;
-            float[] pitches = { 10f, 18f, 26f };
+            float[] pitches = { 10f, 18f, 26f, 35f, 45f };   // 고르는 쪽보다 넓게 — 「지금 쓰는 셋 밖에 답이 있나」를 본다
             var rows = new System.Collections.Generic.List<string>();
             int okSeen = 0, okAll = 0;
             for (int p = 0; p < pitches.Length; p++)
@@ -103,6 +103,7 @@ namespace Ulon.Editor
                     bool ghost = FadeBlocked(eye, target, go.transform);
                     float front = FrontDot(go.transform, target, pit, y, dist);
                     float lit = SunFacing(pit, y);
+                    float ghostShare = GhostShare(eye, Quaternion.Euler(pit, y, 0f), target, go.transform);
                     if (clear) okSeen++;
                     if (clear && !crowded && !ghost && front >= PersonFrontMin) okAll++;
                     rows.Add("요" + y.ToString("0") + "/내려" + pit.ToString("0") +
@@ -110,7 +111,8 @@ namespace Ulon.Editor
                              (clear ? "·머리몸통OK" : "·막힘") +
                              (crowded ? "·렌즈막힘" : "") +
                              (ghost ? "·유령" : "") +
-                             " 정면" + front.ToString("0.00") + " 볕" + lit.ToString("0.00"));
+                             " 정면" + front.ToString("0.00") + " 볕" + lit.ToString("0.00") +
+                             " 유령" + (ghostShare * 100f).ToString("0") + "%");
                 }
             // **사람이 어디를 보고 서 있나 · 해는 어디서 오나** — 정면 방위와 볕이 구조적으로 어긋나는지는
             // 이 둘의 각도 차이가 말한다(방위를 아무리 돌려도 안 되는 것은 여기서 갈린다).

@@ -209,7 +209,10 @@ namespace Ulon.Editor
                     camGo.transform.LookAt(shot.Target);
                     var faded = new System.Collections.Generic.List<Renderer>();
                     if (shot.PlayCamera)
+                    {
                         Ulon.Client.DungeonSightFade.Hide(shot.Eye, shot.Target, Ulon.Client.DungeonSightFade.DefaultRadius, faded, shot.Subject);
+                        RestoreBehind(shot, faded);
+                    }
                     // **무엇이 반투명해졌는지 이름으로 남긴다** — 화면에 유령이 보이면 그것이 벽 장식인지
                     // 피사체의 일부인지 로그로 갈린다(검수 의심 2026-09-07: 41 오른쪽 반투명 칼날).
                     for (int f = 0; f < faded.Count && f < 12; f++)
@@ -554,6 +557,7 @@ namespace Ulon.Editor
             float bestDist = -1f;
             float bestLit = -2f;
             bool bestEyeClear = false;                       // 지금 고른 방위가 렌즈 앞이 비었는가
+            float bestGhost = 1f;                            // 지금 고른 방위에서 유령이 화면을 덮는 비율
             var blockers = new System.Collections.Generic.List<string>();
             var perBearing = new System.Collections.Generic.List<string>();
             var acceptedBearings = new System.Collections.Generic.List<string>();   // 통과한 후보와 채택 이유
@@ -687,21 +691,31 @@ namespace Ulon.Editor
                     // 벽에 코를 박지 않은 쪽을 고른다 — 규칙을 끄는 것과 순위를 낮추는 것은 다르다.
                     bool eyeClear = !EyeCrowded(target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * tryDist,
                                                 target, go.transform);
+                    // **유령이 화면을 얼마나 덮나**를 고르는 데 쓴다(랩 ㉨ 반려 2026-09-09).
+                    // 은행원 판이 그래서 나빴다: 유령 0%인 방위(요360)가 있는데도 고르는 쪽은
+                    // **그 질문을 아예 안 물어서** 유령 35%짜리를 볕 0.1 차이로 골랐다.
+                    // 순서는 보임 → **유령** → 렌즈 → 볕 → 거리다. 화면 절반이 반투명한 것은
+                    // 볕 반 발짝보다 나쁘다 — 그림이 「렌더링 오류」로 읽히기 때문이다.
+                    float ghostShare = GhostShare(target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * tryDist,
+                                                  Quaternion.Euler(pit, y, 0f), target, go.transform);
+                    bool ghostTie = Mathf.Abs(ghostShare - bestGhost) <= 0.10f;
                     bool win = share > bestSeen + 0.02f
-                        || (tie && eyeClear && !bestEyeClear)
-                        || (tie && eyeClear == bestEyeClear && lit > bestLit + 0.05f)
-                        || (tie && eyeClear == bestEyeClear && Mathf.Abs(lit - bestLit) <= 0.05f && tryDist > bestDist);
+                        || (tie && ghostShare < bestGhost - 0.10f)
+                        || (tie && ghostTie && eyeClear && !bestEyeClear)
+                        || (tie && ghostTie && eyeClear == bestEyeClear && lit > bestLit + 0.05f)
+                        || (tie && ghostTie && eyeClear == bestEyeClear && Mathf.Abs(lit - bestLit) <= 0.05f && tryDist > bestDist);
                     // **통과한 후보도 남긴다** — 탈락만 적어 뒀더니 「왜 어두운 쪽이 이겼나」를 로그로
                     // 못 갈랐다(은행원: 볕 −0.97 방위가 −0.26을 이겼는데 이유가 안 보였다).
                     // 자가 고른 이유를 자기 입으로 말하게 한다.
                     if (byRenderer && acceptedBearings.Count < 40)
                         acceptedBearings.Add("요" + y.ToString("0") + "/내려" + pit.ToString("0") + " 보임" +
                                              (share * 100f).ToString("0") + "% " + tryDist.ToString("0.0") + "m 볕" +
-                                             lit.ToString("0.00") + (eyeClear ? "·렌즈빔" : "") + (win ? " ←채택" : ""));
+                                             lit.ToString("0.00") + " 유령" + (ghostShare * 100f).ToString("0") + "%" +
+                                             (eyeClear ? "·렌즈빔" : "") + (win ? " ←채택" : ""));
                     if (win)
                     {
                         bestSeen = share; bestYaw = y; bestPitch = pit; bestDist = tryDist; bestLit = lit;
-                        bestEyeClear = eyeClear;
+                        bestEyeClear = eyeClear; bestGhost = ghostShare;
                     }
                     continue;
                 }
@@ -897,6 +911,108 @@ namespace Ulon.Editor
                     return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// **대상 뒤에 선 것은 가림이 아니다** — 비치게 만든 것 중 대상보다 먼 것을 원래대로 돌린다
+        /// (랩 ㉨ 반려, 2026-09-09).
+        ///
+        /// 은행원 근접 샷의 오른쪽 절반이 유령 건물이었다. 이유를 세어 보니 비친 것은 **은행 자신**인데,
+        /// 은행은 카메라와 은행원 **사이**가 아니라 은행원 **뒤** 3.4m에 있다. `Hide`는 반경 2.2m 구를
+        /// 쓸어 보내므로 대상 근처의 큰 벽이 옆구리에 스치고, 그러면 **가리지도 않은 건물이 통째로
+        /// 반투명**이 된다. 「막았나」가 아니라 「스쳤나」를 센 것이다.
+        ///
+        /// 판정은 거리 하나로 한다: 눈에서 그 물건의 가장 가까운 점까지가 **대상보다 멀면** 그것은
+        /// 대상을 가릴 수 없다. 런타임 `DungeonSightFade`는 건드리지 않는다 — 던전 실내 샷 넷이
+        /// 그 규칙 위에 서 있으므로, 고치려면 그 넷을 전후로 같이 내야 한다(이 랩의 축이 아니다).
+        ///
+        /// **지금은 한 번도 안 걸린다**(실측 0건). 고르는 쪽이 이 조항을 같이 읽어(`GhostShare`)
+        /// 대상 뒤가 비치는 방위를 **애초에 안 고르기** 때문이다. 그래도 남긴다 — 남길 이유는
+        /// 「혹시 몰라서」가 아니라 **재는 쪽과 찍는 쪽이 같은 규칙을 읽어야 하기 때문**이다.
+        /// 방위 후보가 하나뿐인 사람이 생기면 그때 이 줄이 화면과 숫자를 맞춰 준다.
+        /// </summary>
+        static void RestoreBehind(Shot shot, System.Collections.Generic.List<Renderer> faded)
+        {
+            float toTarget = Vector3.Distance(shot.Eye, shot.Target);
+            var behind = new System.Collections.Generic.List<Renderer>();
+            for (int i = 0; i < faded.Count; i++)
+            {
+                if (faded[i] == null)
+                    continue;
+                if (Vector3.Distance(shot.Eye, faded[i].bounds.ClosestPoint(shot.Eye)) > toTarget + 0.1f)
+                    behind.Add(faded[i]);
+            }
+            if (behind.Count == 0)
+                return;
+            Ulon.Client.DungeonSightFade.Restore(behind);
+            for (int i = 0; i < behind.Count; i++)
+            {
+                faded.Remove(behind[i]);
+                Debug.Log("[Ulon] 유령 취소 " + shot.Name + " ← " + behind[i].transform.root.name + "/" + behind[i].name +
+                          "(대상보다 뒤에 있다)");
+            }
+        }
+
+        /// <summary>
+        /// **유령이 화면을 얼마나 덮나**(랩 ㉨ 반려, 2026-09-09) — 눈에서 화면 격자로 광선을 쏘아
+        /// **페이드될 것**(반투명이 될 벽·지붕)에 맞는 칸의 비율을 돌려준다.
+        ///
+        /// `FadeBlocked`는 **눈과 사람을 잇는 선 하나**만 본다. 은행원 판이 그래서 통과했다:
+        /// 사람 앞은 비었는데 **화면 오른쪽 절반이 통째로 유령 건물**이었다 — 렌더링 오류처럼 읽힌다.
+        /// 「막았나」와 「화면을 덮나」는 다른 질문이다.
+        ///
+        /// **이 자가 못 보는 것**: 바운드로 재므로 속이 빈 건물도 통째로 덮은 것으로 센다(과대 계상),
+        /// 거리를 안 보므로 40m 밖 유령도 한 칸으로 센다, 그리고 **얼마나 진하게 비치는지**는 모른다.
+        /// </summary>
+        static float GhostShare(Vector3 eye, Quaternion rot, Vector3 look, Transform subject)
+        {
+            // **화면을 칠하는 그 규칙을 그대로 부른다** — 첫 판은 「블로커 레이어에 맞는 광선」을 셌더니
+            // 다섯 자리가 다 82~99%로 나왔다(멀쩡한 46까지). 유령이 되는 것은 레이어가 아니라
+            // **`DungeonSightFade.Hide`가 고른 것**이다. 자가 화면과 다른 규칙을 읽으면 그 숫자는 세계가 아니다.
+            var ghosts = new System.Collections.Generic.List<Renderer>();
+            int layer = LayerMask.NameToLayer(Ulon.Client.DungeonSightFade.BlockerLayer);
+            if (layer < 0)
+                return 0f;
+            var dir = look - eye;
+            float len = dir.magnitude;
+            if (len < 0.01f)
+                return 0f;
+            var found = Physics.SphereCastAll(eye, Ulon.Client.DungeonSightFade.DefaultRadius, dir / len, len,
+                                              1 << layer, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < found.Length; i++)
+            {
+                var rend = found[i].collider != null ? found[i].collider.GetComponent<Renderer>() : null;
+                if (rend == null || !rend.enabled)
+                    continue;
+                if (rend.bounds.max.y < look.y - 0.2f)
+                    continue;                                  // 발밑 바닥은 화면을 안 가린다(Hide와 같은 조항)
+                if (subject != null && rend.transform.IsChildOf(subject))
+                    continue;
+                if (Vector3.Distance(eye, rend.bounds.ClosestPoint(eye)) > len + 0.1f)
+                    continue;                                  // 대상 뒤는 가림이 아니다(찍는 쪽과 같은 조항)
+                ghosts.Add(rend);
+            }
+            if (ghosts.Count == 0)
+                return 0f;
+            const int cols = 16, rows = 9;
+            float tanY = Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad), tanX = tanY * (W / (float)H);
+            var fwd = rot * Vector3.forward;
+            var right = rot * Vector3.right;
+            var up = rot * Vector3.up;
+            int hit = 0;
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                {
+                    float sx = (c + 0.5f) / cols * 2f - 1f, sy = (r + 0.5f) / rows * 2f - 1f;
+                    var ray = new Ray(eye, (fwd + right * (sx * tanX) + up * (sy * tanY)).normalized);
+                    for (int i = 0; i < ghosts.Count; i++)
+                        if (ghosts[i].bounds.IntersectRay(ray))
+                        {
+                            hit++;
+                            break;
+                        }
+                }
+            return hit / (float)(cols * rows);
         }
 
         /// <summary>
