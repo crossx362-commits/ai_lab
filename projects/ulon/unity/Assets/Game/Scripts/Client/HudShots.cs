@@ -17,6 +17,7 @@ namespace Ulon.Client
     public sealed class HudShots : MonoBehaviour
     {
         static string dir;
+        static bool stateNc;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -26,6 +27,7 @@ namespace Ulon.Client
             for (int i = 0; i < args.Length; i++)
             {
                 if (args[i] == "-hudshots") on = true;
+                if (args[i] == "-hudstatenc") stateNc = true;   // 상태 고정을 전부 끄는 반대쪽 한계 판
                 if (args[i] == "-shotdir" && i + 1 < args.Length) dir = args[i + 1];
             }
             if (!on)
@@ -41,6 +43,14 @@ namespace Ulon.Client
                 dir = Application.persistentDataPath;
             Directory.CreateDirectory(dir);
             Screen.SetResolution(1280, 720, false);
+            // **시계도 고정한다**(랩 ㉮). 계정을 고정해 같은 캐릭터로 시작해도, 프레임마다 흐른
+            // **실제 시간**이 판마다 다르면 마을 사람이 다른 자리에 서 있고 카메라가 다른 각도로
+            // 따라온다 — 그래서 첫 고정판에서도 여덟 장이 갈렸다. `captureFramerate`를 박으면
+            // `Time.deltaTime`이 1/30로 고정돼 **같은 프레임 수 = 같은 세계 시각**이 된다.
+            // 이 값은 이 프로세스에만 산다(찍고 나면 앱이 끝난다) — 저장되는 상태가 아니다.
+            // NC(`-hudstatenc`)에서는 **이것도 끈다** — 반만 끈 NC는 약한 빨간불이라 더 위험하다(원장).
+            if (!stateNc)
+                Time.captureFramerate = 30;
             for (int i = 0; i < 30; i++) yield return null;
 
             // ① 캐릭터 생성 화면 — 새 계정이 처음 보는 화면이다.
