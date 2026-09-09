@@ -83,6 +83,10 @@ namespace Ulon.Editor
             { "15_lake_river", E(Kind.Terrain) },
             { "16_mountain_ridge", E(Kind.Terrain) },
             { "63_pier_cutface", E(Kind.Terrain) },
+            // 강 근접도 **주인공이 지형**이라 실루엣 자로는 「못 잼」이다(자는 메시만 그린다).
+            // 그래도 원장에 적는다 — **적지 않으면 「원장 밖」으로 조용히 빠지고**, 그렇게 빠진
+            // 자리가 바로 죽은 장이었다(`15`가 그랬다: 「못 잼」과 「안 담김」은 자 앞에서 똑같이 조용하다).
+            { "64_river_bend", E(Kind.Terrain) },
         };
     }
 }

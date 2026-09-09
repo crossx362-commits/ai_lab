@@ -70,6 +70,114 @@ namespace Ulon.Editor
             return new Shot { Name = name, Eye = bestEye, Target = center };
         }
 
+
+        /// <summary>
+        /// **강 근접 샷의 자리도 강에서 유도한다**(검수 승인 ⓒ, 2026-09-10).
+        ///
+        /// 강을 무는 자가 하나도 없었고 **근접 샷도 하나도 없었다** — 같은 뿌리다: 조망에만 실려
+        /// 있으면 「강이 강으로 읽히나」를 눈이 판정할 자리가 없다. `15`와 같은 방식이되 묻는 것이 다르다.
+        /// 조망은 「둘 다 담겼나」였고 여기는 **「굽이가 굽이로 보이나」**다 — 곧은 도랑은 수로다.
+        /// 점수는 셋을 곱한다: 중심선이 보이는 비율 × **화면 가로 퍼짐** × **양안이 보이는 비율**.
+        ///
+        /// **양안이 결정적이다.** 첫 판은 중심선과 퍼짐만 봤는데 「7/7 · 퍼짐 0.84」짜리 자리를
+        /// 골라 놓고 화면은 **물만 가득**했다 — 카메라가 강을 **따라** 서서 물가가 프레임 밖이었고,
+        /// 그러면 강인지 바다인지 화면으로 가릴 수 없다. **물은 물가가 있어야 강이 된다.**
+        ///
+        /// 양안을 「보이나」로만 물은 둘째 판도 죽은 장이었다(「양안 7/7·7/7」인데 화면은 여전히
+        /// 물 천지). **보이는 것과 크게 보이는 것은 다르다** — 물가가 화면 구석에 1px로 걸려도
+        /// 「보임」이다. 그래서 넷째 인자로 **양안이 화면에서 벌어진 폭**을 곱한다: 그 값이 커야
+        /// 카메라가 강을 **가로질러 내려다보고** 서고, 그제야 강폭이 화면에서 읽힌다.
+        ///
+        /// 대상 구간은 **굽이 정점 언저리**다. 중심선이 `sin((x−RiverFromX)·0.06)`이므로 극값은
+        /// 위상 −π/2, 곧 x ≈ −106이다(원장에서 유도한다 — 상수로 박으면 원장이 바뀔 때 어긋난다).
+        /// </summary>
+        static Shot RiverBendShot(string name)
+        {
+            float sea = WorldTerrain.SeaLevel;
+            // 굽이 정점 — 위상 −π/2가 되는 x. 그 둘레 ±15m를 대상으로 잡는다.
+            float peakX = WorldTerrain.RiverFromX - (Mathf.PI * 0.5f) / 0.06f;
+            var targets = new System.Collections.Generic.List<Vector3>();
+            for (float x = peakX + 15f; x >= peakX - 15f; x -= 5f)
+            {
+                float cx = Mathf.Clamp(x, WorldTerrain.RiverToX, WorldTerrain.RiverFromX);
+                targets.Add(new Vector3(cx, sea,
+                    WorldTerrain.RiverZ + Mathf.Sin((cx - WorldTerrain.RiverFromX) * 0.06f) * 6f));
+            }
+            // 양안 — 중심선 각 점에서 좌우로 나가 물이 끝나는 자리.
+            var left = new System.Collections.Generic.List<Vector3>();
+            var right = new System.Collections.Generic.List<Vector3>();
+            foreach (var t in targets)
+                for (int side = -1; side <= 1; side += 2)
+                    for (float d = 1f; d <= 30f; d += 0.5f)
+                        if (WorldTerrain.HeightAt(t.x, t.z + side * d) >= sea)
+                        {
+                            var p = new Vector3(t.x, sea, t.z + side * d);
+                            if (side < 0) left.Add(p); else right.Add(p);
+                            break;
+                        }
+
+            var center = Vector3.zero;
+            foreach (var t in targets) center += t;
+            center /= targets.Count;
+
+            float bestScore = -1f;
+            Vector3 bestEye = center + new Vector3(0f, 12f, 30f);
+            string bestWhere = "(후보 없음)";
+            foreach (float yaw in new[] { 0f, 30f, 60f, 90f, 120f, 150f, 180f, 210f, 240f, 270f, 300f, 330f })
+            foreach (float dist in new[] { 12f, 18f, 25f, 35f })
+            foreach (float high in new[] { 10f, 16f, 24f, 32f })
+            {
+                var eye = center + new Vector3(Mathf.Sin(yaw * Mathf.Deg2Rad) * dist, high,
+                                               Mathf.Cos(yaw * Mathf.Deg2Rad) * dist);
+                int seen = 0;
+                float uMin = 1f, uMax = 0f;
+                foreach (var t in targets)
+                {
+                    if (!PointVisible(eye, center, t)) continue;
+                    seen++;
+                    float u = ScreenU(eye, center, t);
+                    if (u < uMin) uMin = u;
+                    if (u > uMax) uMax = u;
+                }
+                if (seen < 2) continue;
+                float spread = Mathf.Clamp01(uMax - uMin);
+                int lSeen = 0, rSeen = 0;
+                foreach (var p in left) if (PointVisible(eye, center, p)) lSeen++;
+                foreach (var p in right) if (PointVisible(eye, center, p)) rSeen++;
+                float banks = Mathf.Min(lSeen / Mathf.Max(1f, left.Count), rSeen / Mathf.Max(1f, right.Count));
+                // 양안이 화면에서 얼마나 벌어지나 — 「보임」이 아니라 「읽힘」을 재는 인자다.
+                float widthOnScreen = 0f;
+                int pairs = Mathf.Min(left.Count, right.Count);
+                for (int i = 0; i < pairs; i++)
+                    widthOnScreen += Mathf.Abs(ScreenU(eye, center, right[i]) - ScreenU(eye, center, left[i]));
+                widthOnScreen = pairs > 0 ? widthOnScreen / pairs : 0f;
+                float score = seen / (float)targets.Count * spread * banks * widthOnScreen;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestEye = eye;
+                    bestWhere = "요 " + yaw.ToString("0") + "° · 거리 " + dist.ToString("0") + "m · 높이 " +
+                                high.ToString("0") + "m → 중심선 " + seen + "/" + targets.Count +
+                                " · 가로 퍼짐 " + spread.ToString("0.00") + " · 양안 " + lSeen + "/" + left.Count +
+                                "·" + rSeen + "/" + right.Count + " · 화면 강폭 " + widthOnScreen.ToString("0.00");
+                }
+            }
+            Debug.Log("[샷] 강 굽이 자리 유도 — 정점 x=" + peakX.ToString("0") + " · " + bestWhere);
+            return new Shot { Name = name, Eye = bestEye, Target = center };
+        }
+
+        /// <summary>이 점이 화면 가로 어디에 찍히나(0 왼쪽 ~ 1 오른쪽) — 굽이가 퍼졌는지 보려고 쓴다.</summary>
+        static float ScreenU(Vector3 eye, Vector3 look, Vector3 p)
+        {
+            var fwd = (look - eye).normalized;
+            var v = p - eye;
+            float depth = Vector3.Dot(v, fwd);
+            if (depth < 0.5f) return 0.5f;
+            var right = Vector3.Cross(Vector3.up, fwd).normalized;
+            float tanX = Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad) * 16f / 9f;
+            return Mathf.Clamp01(0.5f + Vector3.Dot(v, right) / (depth * tanX) * 0.5f);
+        }
+
         /// <summary>화각(55°, 16:9) 안이고 지형에 안 막히는가 — 「프레임 안 ≠ 화면에 보임」.</summary>
         static bool PointVisible(Vector3 eye, Vector3 look, Vector3 p)
         {
