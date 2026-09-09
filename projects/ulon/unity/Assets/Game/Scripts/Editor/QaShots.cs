@@ -184,26 +184,39 @@ namespace Ulon.Editor
             // 화면에 찍힌다(안 하면 「불을 붙였는데 샷엔 없다」가 된다).
             int simmed = 0;
             var loops = Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            // **씨앗 고정은 이 실행에만 산다**(검수 조건 2026-09-09). 게임이 도는 세계까지 박으면
+            // 불·연기가 매번 같은 모양으로 피어 화면이 죽는다. 그래서 옛 값을 들고 있다가
+            // **찍고 나서 그 자리에서 돌려놓는다**(아래 `finally`) — 씬 파일로도 새지 않는다.
+            var seedUndo = new System.Collections.Generic.List<(ParticleSystem Ps, bool Auto, uint Seed)>();
+            bool seedNc = System.Environment.GetEnvironmentVariable("ULON_SEED_NC") == "1";
+            if (seedNc)
+                Debug.Log("[Ulon] ⚠ 씨앗 반대쪽 한계 판 — 파티클 씨앗을 고정하지 않고 찍는다(정상판 아님)");
             for (int i = 0; i < loops.Length; i++)
             {
-                // **씨앗은 전부 박는다**(랩 ㉬, 2026-09-09). 유니티 기본값은 `useAutoRandomSeed = true` —
-                // 판마다 새 씨앗이라 같은 코드·같은 씬으로 두 번 찍어도 VFX가 매번 다르다.
-                // 계속 나는 효과만 박았다가 **1회성 VFX(`24_action_vfx`, 최대 채널차 159)를 놓쳤다** —
-                // 시뮬레이션 대상과 씨앗 대상은 다르다.
-                loops[i].useAutoRandomSeed = false;
-                loops[i].randomSeed = StableSeed(loops[i].transform);
+                // 유니티 기본값은 `useAutoRandomSeed = true` — **아무도 무작위를 켠 적이 없는데 무작위다.**
+                // 판마다 새 씨앗이라 같은 코드·같은 씬으로 두 번 찍어도 VFX가 매번 달랐다.
+                // 계속 나는 효과만 박았다가 **1회성 VFX(`24`·`25`, 최대 채널차 170)를 놓쳤다** —
+                // **시뮬레이션 대상과 씨앗 대상은 다르다.**
+                if (!seedNc)
+                {
+                    seedUndo.Add((loops[i], loops[i].useAutoRandomSeed, loops[i].randomSeed));
+                    loops[i].useAutoRandomSeed = false;
+                    loops[i].randomSeed = StableSeed(loops[i].transform);
+                }
                 var m = loops[i].main;
                 if (!m.loop || !m.playOnAwake)
                     continue;
                 // **배치 렌더에서는 파티클이 돌지 않는다** — 화덕 불처럼 계속 나는 효과는 미리 시뮬레이션해야
                 // 화면에 찍힌다(안 하면 「불을 붙였는데 샷엔 없다」가 된다).
+                // **위상은 자리마다 다르게** 준다(씨앗은 고정, 시작 시각만 자리별 상수) — 안 그러면
+                // 마을의 모든 불이 같은 박자로 타올라 그림이 기계처럼 보인다.
                 loops[i].Clear(true);
-                loops[i].Simulate(1.2f, true, true);
+                loops[i].Simulate(1.2f + (StableSeed(loops[i].transform) % 97) * 0.01f, true, true);
                 simmed++;
             }
             // **분모를 같이 찍는다** — 「N개 했다」만 적으면 빠진 것이 조용히 남는다(포즈 7체가 그렇게 샜다).
-            Debug.Log("[Ulon] QA 파티클 — 씨앗 고정 " + loops.Length + "개 · 그중 계속 나는 효과 " + simmed +
-                      "개를 미리 시뮬레이션(나머지는 1회성이라 시뮬레이션 대상이 아니다)");
+            Debug.Log("[Ulon] QA 파티클 — 씨앗 고정 " + seedUndo.Count + "/" + loops.Length + "개 · 그중 계속 나는 효과 " +
+                      simmed + "개를 미리 시뮬레이션(나머지는 1회성이라 시뮬레이션 대상이 아니다)");
 
             int posed = SampleIdlePose(out int animTotal);
             Debug.Log("[Ulon] QA 포즈 샘플링 — Idle 적용 액터 " + posed + "/" + animTotal + "체" +
@@ -236,7 +249,7 @@ namespace Ulon.Editor
                     // **여기서 난 효과에도 씨앗을 박는다**(랩 ㉬) — 위의 고정 루프는 씬을 연 순간의
                     // 파티클만 봤고, 이 셋은 **샷 직전에 태어나서** 그 그물을 빠져나갔다.
                     // 그 탓에 `24`·`25` 두 장만 최대 채널차 130~170으로 계속 흔들렸다.
-                    if (vfx != null)
+                    if (vfx != null && !seedNc)   // NC는 **전부** 꺼야 NC다 — 반만 끄면 빨간불이 약하게 나온다
                         SeedParticles(vfx.transform);
                     // 「집 뒤에 서면 어떻게 보이나」는 **몸이 있어야** 보인다 — 좌표만 찍으면 빈 잔디다.
                     var player = shot.StandPlayer ? GameObject.Find("Player") : null;
@@ -262,6 +275,14 @@ namespace Ulon.Editor
                 Object.DestroyImmediate(camGo);
                 Object.DestroyImmediate(rt);
                 Object.DestroyImmediate(tex);
+                // **원복도 한 호흡에** — 예외로 빠져나가도 씨앗은 돌려놓는다.
+                for (int i = 0; i < seedUndo.Count; i++)
+                {
+                    if (seedUndo[i].Ps == null)
+                        continue;
+                    seedUndo[i].Ps.randomSeed = seedUndo[i].Seed;
+                    seedUndo[i].Ps.useAutoRandomSeed = seedUndo[i].Auto;
+                }
             }
             // **샷을 먼저 찍고 게이트는 나중에 돈다**(검수 지시 2026-09-07). 게이트가 먼저 돌면
             // 빨간불 때 옛 PNG가 남아 「이번 화면」으로 오독된다 — 실제로 한 번 판정을 흐릴 뻔했다.
