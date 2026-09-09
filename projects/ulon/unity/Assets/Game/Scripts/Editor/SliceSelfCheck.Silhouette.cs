@@ -32,6 +32,28 @@ namespace Ulon.Editor
         /// 눈 대신 자로 못박는다. 셈과 같은 함수(`EntranceCensus.MouthBlockShare`)를 쓴다.
         /// NC: 배너를 문구멍 쪽으로 옮기면 빨간불이어야 한다(끝나면 되돌린다).
         /// </summary>
+        /// <summary>
+        /// **같은 보스를 찍는 두 샷이 다른 그림인가**(검수 지시 2026-09-09).
+        /// 프레임을 넓히는 수리를 하고 나니 `17`과 `41`의 방위가 **2°** 차이로 붙어 21샷 중 두 장이
+        /// 같은 화면이 됐다. 「들어왔나」만 묻는 자는 이걸 못 본다 — 「다른가」를 따로 묻는다.
+        /// 하한은 상수가 아니라 **방위 후보 격자 한 칸**(`QaShots.BearingGridStep`)이다.
+        /// NC: 피하기를 끄면 옛 상태(붙은 방위)가 재현돼야 한다.
+        /// </summary>
+        static void AssertBossShotsDiffer()
+        {
+            float gap = QaShots.BossShotBearingGap(out string report);
+            if (gap < QaShots.BearingGridStep)
+                throw new InvalidOperationException("보스 두 샷이 같은 그림입니다 — " + report +
+                    " (하한 " + QaShots.BearingGridStep + "°). 같은 대상을 두 번 찍으면 한 장은 낭비다.");
+            Debug.Log("[Ulon] 보스 두 샷 다름 통과 — " + report);
+
+            float ncGap = QaShots.BossShotBearingGapWithoutAvoid(out string ncReport);
+            if (ncGap >= QaShots.BearingGridStep)
+                throw new InvalidOperationException("보스 두 샷 네거티브 컨트롤 실패 — 피하기를 꺼도 " +
+                    ncGap.ToString("0") + "° 벌어집니다(" + ncReport + "). 자가 무력합니다.");
+            Debug.Log("[Ulon] 보스 두 샷 네거티브 컨트롤 통과 — 피하기를 끄면 " + ncGap.ToString("0") + "°로 붙는다");
+        }
+
         static void AssertEntranceMouthClear()
         {
             var spots = new (string Tag, string Root, float X, float Z)[]

@@ -37,7 +37,15 @@ namespace Ulon.Editor
         /// 정수리와 어깨만 나와 **발과 바닥의 접점이 화면에 없다** — 판정 대상이 안 찍히는 샷은 판정이 아니다
         /// (첫 촬영본 39_boss1이 그랬다: 왕관만 보였다).
         /// </param>
-        static Shot FacilityCloseUp(string name, string objectName, Vector3? beyond, bool lowAngle)
+        static Shot FacilityCloseUp(string name, string objectName, Vector3? beyond, bool lowAngle) =>
+            FacilityCloseUp(name, objectName, beyond, lowAngle, float.NaN);
+
+        /// <param name="avoidYaw">
+        /// **이 방위 근처는 고르지 않는다** — 같은 대상을 찍는 다른 샷이 이미 쓰고 있는 방위다
+        /// (검수 지시 2026-09-09: `17`과 `41`이 2° 차이로 같은 그림이 됐다).
+        /// 피하는 폭은 상수가 아니라 **후보 격자**에서 온다: 방위 후보가 45° 간격이므로 한 칸이 하한이다.
+        /// </param>
+        static Shot FacilityCloseUp(string name, string objectName, Vector3? beyond, bool lowAngle, float avoidYaw)
         {
             // **캐시는 한 샷보다 오래 살면 안 된다** — NC가 세계에 판을 세웠다 치웠다 하는데
             // 캐시가 남아 있으면 자가 옛 세계를 잰다(실측: 은행원 NC가 「둘러쌌는데도 통과」로 울었다).
@@ -162,6 +170,8 @@ namespace Ulon.Editor
                     break;                                   // 엄격한 바퀴에서 찾았으면 풀지 않는다
                 float y = baseYaw + (kk % 8) * 45f;
                 float pit = pitches[kk / 8];
+                if (!float.IsNaN(avoidYaw) && Mathf.Abs(Mathf.DeltaAngle(y, avoidYaw)) < BearingGridStep)
+                    continue;                                   // 다른 샷이 쓰는 방위 — 같은 그림을 두 장 찍지 않는다
                 var eyeK = target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * dist;
                 // 중심선 하나만 쏘면 「앞집 옆을 스쳐 지나가」 0개로 읽힌다(첫 시도가 그랬다) —
                 // 시설 표면 표본에 쏴서 **몇 %가 실제로 이 시설로 먼저 닿는지**를 잰다(차폐 게이트와 같은 방식).
@@ -919,7 +929,9 @@ namespace Ulon.Editor
                 }
                 var shot = checks[i].Shot == "17_boss_closeup"
                     ? BossCloseUp(checks[i].Shot, Dungeon3.BossX, Dungeon3.BossZ)
-                    : FacilityCloseUp(checks[i].Shot, checks[i].Object, null, true);
+                    : checks[i].Shot == "41_boss3"
+                        ? BossShot41()
+                        : FacilityCloseUp(checks[i].Shot, checks[i].Object, null, true);
                 var rot = Quaternion.LookRotation((shot.Target - shot.Eye).normalized, Vector3.up);
                 var local = Quaternion.Inverse(rot) * (new Vector3(crown.center.x, crown.max.y, crown.center.z) - shot.Eye);
                 float tanY = Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad), tanX = tanY * (W / (float)H);
@@ -933,6 +945,46 @@ namespace Ulon.Editor
             }
             return ok;
         }
+
+        /// <summary>
+        /// **같은 대상을 찍는 두 샷이 같은 그림인가 — 방위 차를 잰다**(검수 지시 2026-09-09).
+        /// `17_boss_closeup`과 `41_boss3`은 같은 보스를 찍는다. 프레임을 넓히는 수리를 하고 나니
+        /// 둘의 방위가 거의 같아져 **21샷 중 두 장이 같은 화면**이 됐다 — 「들어왔나」만 묻는 자는
+        /// 이걸 못 본다. 그래서 「다른가」를 묻는 자를 따로 세운다.
+        /// </summary>
+        /// <summary>방위 후보 격자 한 칸 — 「다른 그림인가」의 하한도 여기서 온다(상수로 따로 정하지 않는다).</summary>
+        public const float BearingGridStep = 45f;
+
+        /// <summary>
+        /// `41_boss3`을 만드는 **한 자리** — 17이 쓰는 방위를 피한다.
+        /// 찍는 쪽·프레임 자·방위 자가 모두 이 함수를 부른다(같은 판정이 세 곳에 살면 어긋난다).
+        /// </summary>
+        static Shot BossShot41() =>
+            FacilityCloseUp("41_boss3", Dungeon3.BossObject, null, true,
+                            Yaw(BossCloseUp("17_boss_closeup", Dungeon3.BossX, Dungeon3.BossZ) is var s
+                                ? s.Target - s.Eye : Vector3.forward));
+
+        /// <summary>NC용 — **피하기를 끄고** 만든 41의 방위 차. 옛 상태(2°)가 재현돼야 자가 산 것이다.</summary>
+        public static float BossShotBearingGapWithoutAvoid(out string report)
+        {
+            var a = BossCloseUp("17_boss_closeup", Dungeon3.BossX, Dungeon3.BossZ);
+            var b = FacilityCloseUp("41_boss3", Dungeon3.BossObject, null, true, float.NaN);
+            float ya = Yaw(a.Target - a.Eye), yb = Yaw(b.Target - b.Eye);
+            report = "17 요 " + ya.ToString("0") + "° · 41(피하기 끔) 요 " + yb.ToString("0") + "°";
+            return Mathf.Abs(Mathf.DeltaAngle(ya, yb));
+        }
+
+        public static float BossShotBearingGap(out string report)
+        {
+            var a = BossCloseUp("17_boss_closeup", Dungeon3.BossX, Dungeon3.BossZ);
+            var b = BossShot41();
+            float ya = Yaw(a.Target - a.Eye), yb = Yaw(b.Target - b.Eye);
+            float gap = Mathf.Abs(Mathf.DeltaAngle(ya, yb));
+            report = "17 요 " + ya.ToString("0") + "° · 41 요 " + yb.ToString("0") + "° → 벌어짐 " + gap.ToString("0") + "°";
+            return gap;
+        }
+
+        static float Yaw(Vector3 v) => Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg;
 
         /// <summary>보스 근접 — 왕관·큰 무기를 확인하는 검수용 샷(검수 요청 2026-09-06).</summary>
         static Shot BossCloseUp(string name, float bx, float bz)

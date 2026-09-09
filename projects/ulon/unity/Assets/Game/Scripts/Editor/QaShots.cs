@@ -139,7 +139,7 @@ namespace Ulon.Editor
                 // 보스가 **바닥에 서 있는지** 눈으로 본다(검수 판정 2026-09-07 ① — 최대 1.10m 묻혀 있었다).
                 FacilityCloseUp("39_boss1", Dungeon1.BossObject, null, true),
                 FacilityCloseUp("40_boss2", Dungeon2.BossObject, null, true),
-                FacilityCloseUp("41_boss3", Dungeon3.BossObject, null, true),
+                BossShot41(),
                 // 조련 생물 근접 — 덤불이 아니라 짐승으로 읽히는지 본다(동물 팩 랩 완료 기준).
                 FacilityCloseUp("42_deer", TameCritter.Object, null, true),
                 FacilityCloseUp("43_boar", TameBoar.Object, null, true),

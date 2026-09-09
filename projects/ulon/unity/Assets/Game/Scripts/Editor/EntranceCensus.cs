@@ -59,6 +59,18 @@ namespace Ulon.Editor
         /// 문틀·포털·게이트가 아닌 것이 막으면 가림으로 센다. 막은 것의 이름을 같이 적는다 —
         /// 이름이 없으면 무엇을 옮겨야 하는지 알 수 없다(왕관 사건에서 값을 치른 교훈).
         /// </summary>
+        /// <summary>보스 두 샷의 방위 차를 찍기만 한다 — 판정 전에 「지금 얼마나 벌어져 있나」를 본다.</summary>
+        public static void RunBearing()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            float gap = QaShots.BossShotBearingGap(out string report);
+            Debug.Log("[샷] 보스 두 샷 방위 — " + report);
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
         public static void RunMouth()
         {
             const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";

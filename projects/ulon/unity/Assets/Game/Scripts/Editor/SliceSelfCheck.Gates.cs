@@ -150,6 +150,7 @@ namespace Ulon.Editor
             Gate(AssertBossSilhouette);
             Gate(AssertBossHeadgearFramed);
             Gate(AssertEntranceMouthClear);
+            Gate(AssertBossShotsDiffer);
             Gate(AssertBossTraits);
             Gate(AssertDungeonEntrance);
             Gate(AssertItemDataFile);
