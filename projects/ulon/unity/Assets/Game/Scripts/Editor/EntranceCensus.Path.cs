@@ -221,6 +221,45 @@ namespace Ulon.Editor
                       "\n  12m 안 소품: " + string.Join(" · ", parts));
         }
 
+        /// <summary>
+        /// **한 입구 앞에 선 남의 물건을 하나씩 센다** — 무리로만 세면 「일곱 개」까지만 알고
+        /// 그것이 화면에서 무엇을 하는지는 모른다(검수 관찰: `11` 입구 12m 안에 집터 소품 일곱).
+        /// 거리·크기와 함께 **QA 눈에서의 화면 픽셀**을 같이 찍는다 — 화면에 안 나오는 물건은
+        /// 배치 이야기이지 그림 이야기가 아니다.
+        /// </summary>
+        public static void RunEntranceNeighbors()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            Neighbors("11/D3", Dungeon3.RootObject, Dungeon3.EntranceX, Dungeon3.EntranceZ);
+            Neighbors("07/D1", Dungeon1.RootObject, Dungeon1.EntranceX, Dungeon1.EntranceZ);
+            Neighbors("09/D2", Dungeon2.RootObject, Dungeon2.EntranceX, Dungeon2.EntranceZ);
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static void Neighbors(string tag, string rootName, float ex, float ez)
+        {
+            ShotEye(ex, ez, out Vector3 eye, out Vector3 look);
+            var mine = GameObject.Find(rootName);
+            var lines = new List<string>();
+            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            {
+                var t = r.transform;
+                if (t.root.name == "Terrain" || t.name == "Ground") continue;
+                if (mine != null && t.IsChildOf(mine.transform)) continue;   // 이 던전의 제 물건은 남이 아니다
+                float d = new Vector2(t.position.x - ex, t.position.z - ez).magnitude;
+                if (d > 12f) continue;
+                var sil = Draw(t, eye, look);
+                lines.Add(t.root.name + "/" + t.name + " " + d.ToString("0.0") + "m 크기 " +
+                          r.bounds.size.ToString("0.0") + " 화면 " +
+                          (100f * sil.Pixels / (ScreenW * ScreenH)).ToString("0.0") + "%");
+            }
+            Debug.Log("[Ulon] 입구 이웃 " + tag + " — 12m 안 남의 물건 " + lines.Count + "개\n  " +
+                      string.Join("\n  ", lines));
+        }
+
         /// <summary>이 자리의 지표 높이 — 위에서 쏴서 가장 낮은 것(같은 규칙을 `ShotEye`도 쓴다).</summary>
         static float GroundAt(Vector3 above)
         {
