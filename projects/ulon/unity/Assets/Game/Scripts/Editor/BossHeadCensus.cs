@@ -26,6 +26,14 @@ namespace Ulon.Editor
     /// 즉 「뭉갬」은 덮임이 아니라 **투구가 얼굴을 비대칭으로 가리는 모양** 자체다(눈이 하나만 나온다).
     /// 코드는 되돌렸다 — **화면에 값을 안 주는 변경은 부채다.** 다음 사람은 이 길을 다시 가지 마라.
     ///
+    /// **②(투구를 머리에서 유도해 정렬)도 전제가 안 선다 — 셋을 재서 확인했다**(2026-09-09).
+    /// `RunHelmetFit`: 투구는 몸 정면과 **0°**, 좌우 중심차 **0.00m**, 앞뒤 0.06m·위 0.02m, 크기비 1.23이다
+    /// (BoneWarden 1.55·Knight 1.23). **어긋난 것이 없으니 정렬로 옮길 것이 없다.**
+    /// `RunCrownFit`: 왕관 밴드 12개 중 **얼굴 높이에 있는 것 0개**(전부 머리 꼭대기 위) — 왕관도 범인이 아니다.
+    /// `RunAngleProbe`: 원근을 없앤 직교 판에서도 **눈은 여전히 하나**다 — 3.4m/55°가 만든 것도 아니다.
+    /// 남는 후보는 하나뿐이다: **투구 메시의 얼굴 구멍이 좁고 한쪽으로 나 있다.** 그건 배치가 아니라
+    /// 모델이므로 자리·크기를 아무리 유도해도 안 바뀐다 — 고치려면 메시를 바꾸는 랩이어야 한다.
+    ///
     /// **이 자가 못 보는 것**: 메시 안쪽 모양은 안 본다 — 바운즈만 잰다. 두 렌더러가 겹쳐도
     /// 실제로 얼굴을 가리는지는 화면으로 봐야 하고, 반대로 안 겹쳐도 뭉개 보일 수 있다(모델 자체).
     /// </summary>
@@ -117,6 +125,118 @@ namespace Ulon.Editor
             Object.DestroyImmediate(camGo);
             Object.DestroyImmediate(rt);
             Object.DestroyImmediate(tex);
+        }
+
+        /// <summary>
+        /// **투구가 머리에 비뚤게 씌워졌나 — 세기만 한다**(②의 「먼저 센다」).
+        /// 얼굴 구멍이 정면을 안 보면 눈이 하나만 나온다. 그래서 액터의 정면과 투구의 정면이
+        /// 몇 도 어긋났는지, 중심이 어디로 밀렸는지, 크기가 머리에 견줘 몇 배인지를 적는다.
+        /// 셋 다 **그 액터의 머리를 재서** 나온 값이다 — 킷마다 상수를 두지 않는다.
+        /// </summary>
+        public static void RunHelmetFit()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            foreach (string name in new[] { Dungeon3.BossObject, Dungeon2.BossObject, Dungeon1.BossObject, "Knight" })
+            {
+                var go = GameObject.Find(name);
+                if (go == null) { Debug.Log("[Census] 투구 " + name + " — 못 찾음"); continue; }
+                HelmetFit(name, go.transform);
+            }
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static void HelmetFit(string name, Transform root)
+        {
+            Renderer head = null, helm = null;
+            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r.enabled || r is ParticleSystemRenderer) continue;
+                if (r.name.IndexOf("Head", System.StringComparison.OrdinalIgnoreCase) >= 0 && head == null) head = r;
+                if (r.name.IndexOf("Helmet", System.StringComparison.OrdinalIgnoreCase) >= 0 && helm == null) helm = r;
+            }
+            if (head == null && helm == null)
+            {
+                Debug.Log("[Census] 투구 " + name + " — 머리도 투구도 없다(**여기서 끝나면 죽은 예외다**)");
+                return;
+            }
+            string line = "[Census] 투구 " + name + " —";
+            if (head != null)
+                line += " 머리 " + head.name + " 크기 " + head.bounds.size.x.ToString("0.00") + "×" +
+                        head.bounds.size.y.ToString("0.00") + "m";
+            if (helm != null)
+            {
+                var hf = helm.transform.forward;
+                float yaw = Vector3.SignedAngle(new Vector3(root.forward.x, 0f, root.forward.z),
+                                                new Vector3(hf.x, 0f, hf.z), Vector3.up);
+                line += " · 투구 크기 " + helm.bounds.size.x.ToString("0.00") + "×" + helm.bounds.size.y.ToString("0.00") +
+                        "m · 몸 정면과 " + yaw.ToString("0") + "° 어긋남";
+                if (head != null)
+                {
+                    var d = helm.bounds.center - head.bounds.center;
+                    var local = root.InverseTransformVector(d);
+                    line += " · 중심차 앞뒤 " + local.z.ToString("0.00") + "m/좌우 " + local.x.ToString("0.00") +
+                            "m/위아래 " + local.y.ToString("0.00") + "m · 크기비 " +
+                            (helm.bounds.size.y / Mathf.Max(head.bounds.size.y, 0.001f)).ToString("0.00");
+                }
+            }
+            Debug.Log(line);
+        }
+
+        /// <summary>
+        /// **왕관 밴드가 얼굴을 가로지르나 — 세기만 한다**(②의 두 번째 셈, 2026-09-09).
+        /// 투구 셈(<see cref="RunHelmetFit"/>)에서 투구는 이미 머리에 맞아 있었다(0°·좌우 0.00m).
+        /// 그런데 일반 몹의 머리대 겹침이 3쌍인데 보스는 28~44쌍이다 — 늘어난 것은 전부 `CrownBand*`다.
+        /// 그래서 **밴드가 눈높이에 있는지**를 잰다: 머리 바운즈의 위 끝을 0으로 두고 밴드 중심이
+        /// 얼마나 아래인지, 그리고 얼굴 쪽(정면 z+)으로 얼마나 나왔는지.
+        /// 왕관은 보스 표식이라 걷지 않는다 — 잰 값은 **올릴지 말지**를 정하는 데만 쓴다.
+        /// </summary>
+        public static void RunCrownFit()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            foreach (string name in new[] { Dungeon3.BossObject, Dungeon2.BossObject, Dungeon1.BossObject })
+            {
+                var go = GameObject.Find(name);
+                if (go == null) { Debug.Log("[Census] 왕관 " + name + " — 못 찾음"); continue; }
+                CrownFit(name, go.transform);
+            }
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static void CrownFit(string name, Transform root)
+        {
+            Renderer head = null;
+            var bands = new System.Collections.Generic.List<Renderer>();
+            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r.enabled || r is ParticleSystemRenderer) continue;
+                if (r.name.IndexOf("Head", System.StringComparison.OrdinalIgnoreCase) >= 0 && head == null) head = r;
+                if (r.name.StartsWith("CrownBand", System.StringComparison.OrdinalIgnoreCase)) bands.Add(r);
+            }
+            if (head == null || bands.Count == 0)
+            {
+                Debug.Log("[Census] 왕관 " + name + " — 머리 " + (head == null ? "없음" : head.name) +
+                          " · 밴드 " + bands.Count + "개(**0이면 죽은 예외다**)");
+                return;
+            }
+            float top = head.bounds.max.y, bottom = head.bounds.min.y;
+            int atFace = 0;
+            string detail = "";
+            foreach (var b in bands)
+            {
+                float drop = top - b.bounds.center.y;                                  // 머리 꼭대기에서 얼마나 내려왔나
+                float fwd = root.InverseTransformVector(b.bounds.center - head.bounds.center).z;
+                bool face = b.bounds.center.y < top - (top - bottom) * 0.35f;          // 위 35% 아래면 눈높이 아래다
+                if (face) atFace++;
+                detail += " · " + b.name + " 내림 " + drop.ToString("0.00") + "m/앞 " + fwd.ToString("0.00") + "m" + (face ? "(얼굴)" : "");
+            }
+            Debug.Log("[Census] 왕관 " + name + " — 머리 " + head.name + " 높이 " + (top - bottom).ToString("0.00") +
+                      "m · 밴드 " + bands.Count + "개 중 **얼굴 높이 " + atFace + "개**" + detail);
         }
 
         static void One(string name, Transform root)
