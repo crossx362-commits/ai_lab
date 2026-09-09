@@ -707,18 +707,45 @@ namespace Ulon.Editor
         /// <summary>**후보를 나란히 굽기 위한 자리** — 0 이상이면 자갈 겹이 그 무늬로 구워진다(−1이면 원장).</summary>
         internal static int GravelPatternOverride = -1;
 
+        /// <summary>**수면 무늬를 갈아 굽기 위한 자리**(네거티브 컨트롤용) — 0 이상이면 그 무늬로 굽는다.</summary>
+        internal static int WaterPatternOverride = -1;
+
+
         /// <summary>
         /// pattern 0 = 잔풀 잡음, 1 = 굵은 층리(암석), 2 = 이랑(밭), 3 = 부엽토(숲), 4 = 돌포장(광장).
         /// 풀·바위·길이 같은 무늬면 세계가 두세 색으로만 읽힌다(검수) — **생성기를 나누는 것이 지역 구분이다**.
         /// </summary>
+        /// <summary>128 자 눈금 위의 흰 잡음(타일 경계에서 되돌아 이어진다).</summary>
+        static float Hash01(int x, int y)
+        {
+            x = ((x % 128) + 128) % 128;
+            y = ((y % 128) + 128) % 128;
+            int h = (x * 374761393) ^ (y * 668265263);
+            h = (h ^ (h >> 13)) * 1274126177;
+            return ((h ^ (h >> 16)) & 0xFFFF) / 65535f;
+        }
+
         static Material MakeNoiseMat(string name, Color a, Color b, int pattern)
+        {
+            return MakeNoiseMat(name, a, b, pattern, false);
+        }
+
+        /// <param name="smooth">
+        /// **멀리서 볼 면인가.** 참이면 밉맵을 굽고 삼선형·비등방으로 건넨다. 물처럼 한 판이
+        /// 수백 미터를 덮는 면은 밉맵이 없으면 카메라가 움직일 때 무늬가 지글거린다.
+        /// (2026-09-10 `14`·`15`의 격자는 **이것 때문이 아니었다** — 밉맵을 켜도 그대로였고,
+        /// 범인은 곧은 사인이 만든 무늬 자체였다. 그래도 먼 수면에 밉맵은 있어야 맞다.)
+        /// 땅 겹은 각진 맛이 제 성질이라 거짓으로 둔다.
+        /// </param>
+        static Material MakeNoiseMat(string name, Color a, Color b, int pattern, bool smooth)
         {
             Directory.CreateDirectory(Path.Combine(Application.dataPath, "Game/Art/Env"));
             string texPath = "Assets/Game/Art/Env/" + name + ".png";
             string matPath = "Assets/Game/Art/Env/" + name + ".mat";
             int R = Mathf.Max(64, NoiseRes);
-            var tex = new Texture2D(R, R, TextureFormat.RGB24, false);
-            tex.filterMode = FilterMode.Point;
+            var tex = new Texture2D(R, R, TextureFormat.RGB24, smooth);
+            tex.filterMode = smooth ? FilterMode.Trilinear : FilterMode.Point;
+            tex.anisoLevel = smooth ? 8 : 1;
             tex.wrapMode = TextureWrapMode.Repeat;
             var px32 = new Color32[R * R];
             for (int y = 0; y < R; y++)
@@ -772,47 +799,28 @@ namespace Ulon.Editor
                         int grit = (x * 61 + y * 149) & 31;
                         t = joint ? 0.02f : Mathf.Clamp01(0.30f + (stone / 255f) * 0.55f + (grit / 31f) * 0.15f);
                     }
-                    else if (pattern == 6)
+                    else if (pattern == 7)
                     {
-                        // **후보 ①②를 합친 판**(검수가 준 처방 셋 중 둘): 층리 항을 빼고, 해시 칸을
-                        // **모서리 사이 보간**으로 부드럽게 잇는다. 무늬 1과 같은 덩어리 크기를 쓰되
-                        // 칸 경계의 칼금이 사라지므로 「바둑판」이 아니라 「얼룩」이 되는지 본다.
-                        const int C = 6;
-                        float gx = fx / (float)C, gy = fy / (float)C;
-                        int x0i = Mathf.FloorToInt(gx), y0i = Mathf.FloorToInt(gy);
-                        float tx = gx - x0i, ty = gy - y0i;
-                        tx = tx * tx * (3f - 2f * tx); ty = ty * ty * (3f - 2f * ty);
-                        float h00 = (((x0i * 92837) ^ (y0i * 68927)) & 255) / 255f;
-                        float h10 = ((((x0i + 1) * 92837) ^ (y0i * 68927)) & 255) / 255f;
-                        float h01 = (((x0i * 92837) ^ ((y0i + 1) * 68927)) & 255) / 255f;
-                        float h11 = ((((x0i + 1) * 92837) ^ ((y0i + 1) * 68927)) & 255) / 255f;
-                        float hb = Mathf.Lerp(Mathf.Lerp(h00, h10, tx), Mathf.Lerp(h01, h11, tx), ty);
+                        // **물결 — 수면 제 무늬**(검수 판정 2026-09-10). 물이 **잔풀 잡음(0)**을 쓰고
+                        // 있었고, 그 안의 `x*y` 항이 큰 고리를 만들어 가까이서 **되풀이 도장**으로 읽혔다.
+                        //
+                        // 사인 파열을 겹치는 판을 세 번 지어 봤고 **셋 다 틀렸다** — 4겹·휜 4겹·3겹.
+                        // 교차하는 파열은 **반드시 십자 격자**를 만들고, 멀리서 바다가 옷감이 된다
+                        // (`14`·`15`). 겹을 줄여도, 좌표를 휘어도, 밉맵을 켜도 안 깨졌다.
+                        // **물은 파열이 아니라 잡음이다** — 원래 무늬가 먼 바다에서 멀쩡했던 이유도
+                        // 그것이 잡음이어서였다. 칸을 쓰는 값 잡음으로 갈아 봤지만 그것도 **짜임**이
+                        // 됐다(네 번째 실패). 판별 테스트로 수면을 단색으로 구워 범인이 무늬임은
+                        // 확인했다(`builds/qa/water/14_flatwater.png` — 격자가 사라진다).
+                        // 그래서 칸도 파열도 없이, **낟알을 대각선으로 문질러** 결만 만든다.
+                        float sm = 0f;
+                        for (int k = -3; k <= 3; k++) sm += Hash01(fx + k, fy + k);
+                        sm /= 7f;
                         int grit = (x * 61 + y * 149) & 63;
-                        t = hb * 0.72f + (grit / 63f) * 0.28f;
-                    }
-                    else if (pattern == 5)
-                    {
-                        // **자갈 — 층리를 뺀 후보**(둑 바둑판 랩 2026-09-10). 무늬 1은 산 암벽을 위한
-                        // 것이라 **사선 층리**가 들어 있는데, 셈이 화면의 바둑판 주기를 그 항으로
-                        // 지목했다(가로 자기상관이 8px에서 −0.32로 골이 진다 = 32cm ≈ 층리 간격).
-                        // 자갈은 **층리가 없다** — 크기가 제각각인 돌 알갱이 + 그 사이 그늘이다.
-                        // 칸을 어긋내고 칸마다 밝기를 따로 줘서 **줄이 서지 않게** 한다.
-                        int cs = 3;                                  // 칸 3fx = 타일 4.5m에서 돌 하나 ≈ 10cm
-                        int cx = fx / cs, cy = fy / cs;
-                        int jit = ((cx * 19349663) ^ (cy * 83492791)) & 3;   // 칸마다 반 칸씩 흔든다
-                        cx = (fx + jit) / cs;
-                        int peb = ((cx * 73856093) ^ (cy * 19349663) ^ ((cx * cy) * 8353)) & 255;
-                        int inx = (fx + jit) % cs, iny = fy % cs;
-                        bool crack = inx == 0 || iny == 0;           // 돌 사이 그늘
-                        int grit = (x * 61 + y * 149) & 63;
-                        t = crack ? 0.10f + (grit / 63f) * 0.10f
-                                  : Mathf.Clamp01(0.22f + (peb / 255f) * 0.62f + (grit / 63f) * 0.16f);
+                        t = Mathf.Clamp01(0.5f + (sm - 0.5f) * 2.2f + ((grit / 63f) - 0.5f) * 0.22f);
                     }
                     else
                     {
-                        // 잔풀 잡음에는 **구조가 없다** — 전부 낟알이다. 그래서 두 겹 모두 실제
-                        // 좌표로 둔다(해상도를 올리면 풀결이 그만큼 잘아진다). 구조 항을 가진
-                        // 무늬(1·2·3·4)만 `fx`,`fy`로 세계 크기를 지킨다.
+                        // 0 = 잔풀 잡음(기본)
                         int h = (x * 374761 + y * 668265 + x * y * 13) & 255;
                         int h2 = (x * 127 + y * 311) & 255;
                         t = (h / 255f) * 0.65f + (h2 / 255f) * 0.35f;
@@ -828,7 +836,11 @@ namespace Ulon.Editor
             var importer = AssetImporter.GetAtPath(texPath) as TextureImporter;
             if (importer != null)
             {
-                importer.filterMode = FilterMode.Point;
+                // **밉맵·비등방은 물일 때만 손댄다.** 한 번 `mipmapEnabled = smooth`로 싸잡아 썼다가
+                // 땅 겹 아홉 장의 밉맵을 **전부 꺼버렸다**(2026-09-10 — 먼 산이 자글거렸다).
+                // 남의 기본값을 내 조건으로 덮지 마라.
+                importer.filterMode = smooth ? FilterMode.Trilinear : FilterMode.Point;
+                if (smooth) { importer.mipmapEnabled = true; importer.anisoLevel = 8; }
                 importer.wrapMode = TextureWrapMode.Repeat;
                 importer.SaveAndReimport();
             }

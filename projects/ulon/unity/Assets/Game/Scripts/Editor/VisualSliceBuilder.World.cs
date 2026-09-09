@@ -645,9 +645,13 @@ namespace Ulon.Editor
         /// 바다·강·호수는 같은 수면 하나로 만든다 — 지형이 SeaLevel 아래로 파인 곳에서만 물이 보인다.
         /// 단색 파란 판은 §8.2 위반이라 노이즈 텍스처 재질을 쓴다(Default-Material 프리미티브 금지).
         /// </summary>
+        /// <summary>수면만 다시 만든다 — 후보를 나란히 굽는 셈이 지형 전체를 다시 굽지 않게.</summary>
+        public static void RebuildWater() { EnsureWater(); }
+
         static void EnsureWater()
         {
-            var mat = MakeNoiseMat("SeaWater", new Color(0.10f, 0.28f, 0.42f), new Color(0.18f, 0.44f, 0.58f));
+            var mat = MakeNoiseMat("SeaWater", new Color(0.10f, 0.28f, 0.42f), new Color(0.18f, 0.44f, 0.58f),
+                                    WaterPatternOverride >= 0 ? WaterPatternOverride : 7, true);
             if (mat != null)
             {
                 // **0.85는 정반사가 좁고 세서 흰 구멍이 뚫린다** — 호수를 원장 크기로 판 뒤
@@ -664,7 +668,9 @@ namespace Ulon.Editor
                 mat.SetFloat("_Glossiness", 0.25f);
                 mat.SetFloat("_Metallic", 0.1f);
                 if (mat.HasProperty("_MainTex"))
+                {
                     mat.mainTextureScale = new Vector2(24f, 24f);
+                }
                 EditorUtility.SetDirty(mat);
             }
             var go = GameObject.Find(WaterObject);
