@@ -118,10 +118,16 @@ namespace Ulon.Editor
         /// 2026-09-08 판정으로 「문 통로 밖」에 세운 자리이고, 2026-09-09 검수가 **화면이 우선한다며
         /// 다시 열어** 배너·기둥과 함께 고르는 루프에 넣었다.
         /// </summary>
+        /// <summary>등불을 문 바깥 옆으로 더 미는 양 — 배너를 기둥에 매달자 등불과 겹쳐서 연 축이다.</summary>
+        public const float LanternSide = 0f;
+
         public static Vector3 LanternPose(Vector3 pillar, float approachYaw, int side, float push)
+            => LanternPose(pillar, approachYaw, side, push, LanternSide);
+
+        public static Vector3 LanternPose(Vector3 pillar, float approachYaw, int side, float push, float extraSide)
         {
             var right = EntranceSide(approachYaw);
-            return pillar + right * (EntrancePillarHalf * side) + EntranceInward(approachYaw) * push;
+            return pillar + right * ((EntrancePillarHalf + extraSide) * side) + EntranceInward(approachYaw) * push;
         }
 
         /// <summary>배너를 기둥 바깥면에서 더 밀어내는 양(음수면 기둥 쪽으로 당긴다) — 함께 고른 값.</summary>
@@ -139,6 +145,89 @@ namespace Ulon.Editor
                        + EntranceApproach(approachYaw) * push + Vector3.up * 2.0f;
             bool nc = System.Environment.GetEnvironmentVariable("ULON_BANNER_NC") == "1";
             yaw = approachYaw + (nc ? 90f * side : BannerFace);
+        }
+
+        /// <summary>
+        /// **배너를 문설주에 매단다**(검수 판정 2026-09-09, 한 판 한도).
+        ///
+        /// 자리로는 못 풀렸다: 81칸을 재도 배너와 기둥이 화면에서 안 겹치거나(던전 3), 겹치면 등불과
+        /// 겹쳤다(던전 1). 원인은 배너가 **아무 데도 안 매달려 있었기 때문**이다 — 자유 좌표로 세우면
+        /// 카메라 방위에 따라 기둥에서 떨어져 보인다. 그래서 **기둥의 자식으로 붙이고 그 표면에서 유도**한다:
+        /// 반지름은 기둥 렌더러의 가로 반폭, 높이는 기둥 상단에서 배너 몸 높이만큼 내려온 자리,
+        /// 면은 **진입로 쪽 접평면**. 상수 없이 전부 기둥·배너의 실측에서 나온다.
+        ///
+        /// 실패하면(화면이 안 나오면) 배너를 **걷는다** — 입구 표식은 아치·어두운 포털·등불·돌길로 이미 선다.
+        /// </summary>
+        public static bool HangBannerOnPillar(GameObject banner, Transform pillar, float approachYaw)
+        {
+            if (banner == null || pillar == null) return false;
+            var pr = pillar.GetComponentInChildren<Renderer>();
+            var br = banner.GetComponentInChildren<Renderer>();
+            if (pr == null || br == null) return false;
+
+            var pb = pr.bounds;
+            var bb = br.bounds;
+            float radius = Mathf.Max(pb.size.x, pb.size.z) * 0.5f;   // 기둥 표면까지
+            float thickness = Mathf.Min(bb.size.x, bb.size.z) * 0.5f;
+            var face = EntranceApproach(approachYaw);                 // 오는 사람이 보는 면
+            // 매다는 높이: **기둥 상단에서 배너 몸 높이만큼 내려온다** — 위쪽 가로대가 기둥 꼭대기
+            // 가까이 붙어야 「걸려 있다」로 읽힌다(밑동에 붙이면 기대 놓은 판때기다).
+            float top = pb.max.y;
+            float hangY = top - bb.size.y * 0.5f - 0.2f;
+            var center = new Vector3(pb.center.x, hangY, pb.center.z) + face * (radius + thickness);
+            banner.transform.rotation = Quaternion.LookRotation(face, Vector3.up) * Quaternion.Euler(0f, BannerFace, 0f);
+            banner.transform.position = center;
+            // **원점이 아니라 몸을 맞춘다** — 배너는 원점이 장대 밑이라 원점을 붙이면 천이 딴 데 뜬다.
+            var after = banner.GetComponentInChildren<Renderer>();
+            if (after != null) banner.transform.position += center - after.bounds.center;
+            // **자식으로 붙이지는 않는다** — 붙여 봤더니 문틀을 다시 짓는 패스
+            // (`EnsureEntranceFramesQualified`)가 기둥을 헐 때 **배너까지 같이 사라졌다**(그 판의 자가
+            // 「배너 0개」라고 울었다). 부모는 입구 루트로 두고 **자리와 면만 기둥 표면에서 유도**한다 —
+            // 화면에서 「걸려 있다」를 만드는 것은 부모 관계가 아니라 **붙어 보이는 자리**다.
+            return true;
+        }
+
+        /// <summary>
+        /// **커밋된 씬의 배너도 문설주에 매단다**(멱등 패스). 입구를 짓는 순서상 배너를 놓을 때
+        /// 문틀이 아직 없을 수 있어서, 빌드 중 매달기는 실패할 수 있다 —
+        /// 그때 조용히 자유 자리로 남으면 화면은 옛 모습 그대로다. **패스로 수렴시킨다.**
+        /// </summary>
+        public static void EnsureNoEntranceBanner()
+        {
+            int removed = 0;
+            foreach (var root in new[] { Dungeon1.RootObject, Dungeon2.RootObject, Dungeon3.RootObject })
+            {
+                var go = GameObject.Find(root);
+                if (go == null) continue;
+                var pillars = new System.Collections.Generic.List<Transform>();
+                foreach (var tr in go.GetComponentsInChildren<Transform>(true))
+                    if (tr.name.StartsWith("EntrancePillar")) pillars.Add(tr);
+                var doomed = new System.Collections.Generic.List<GameObject>();
+                foreach (var tr in go.GetComponentsInChildren<Transform>(true))
+                {
+                    if (!tr.name.StartsWith("banner")) continue;
+                    foreach (var q in pillars)
+                        if ((tr.position - q.position).sqrMagnitude <= 4f * 4f) { doomed.Add(tr.gameObject); break; }
+                }
+                foreach (var d in doomed) { UnityEngine.Object.DestroyImmediate(d); removed++; }
+            }
+            if (removed > 0)
+                Debug.Log("[Ulon] 입구 배너를 걷었다 — " + removed + "개(매달기 실패의 결론, 아래 기록 참조)");
+        }
+
+        /// <summary>이 쪽(side)의 문설주를 찾는다 — 이름이 아니라 **자리**로 고른다(이름은 바뀐다).</summary>
+        static Transform FindEntrancePillar(Transform parent, Vector3 pos, Vector3 right, float doorHalf, int side)
+        {
+            var want = pos + right * (doorHalf * side);
+            Transform best = null;
+            float bestD = 2.0f * 2.0f;
+            foreach (var tr in parent.GetComponentsInChildren<Transform>(true))
+            {
+                if (!tr.name.StartsWith("EntrancePillar")) continue;
+                float d = (new Vector3(tr.position.x, 0f, tr.position.z) - new Vector3(want.x, 0f, want.z)).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = tr; }
+            }
+            return best;
         }
 
         public static void BuildDungeonEntrance(Transform parent, Vector3 pos, float approachYaw)
@@ -186,13 +275,8 @@ namespace Ulon.Editor
                 // 진입로 거리 다섯 값 × 면 넷 × 좌우 셋을 세 입구에서 전부 재 보니 이 조합만 셋 다 낮았다
                 // (`EntranceCensus.RunBannerProbe`). **고르는 루프에서 나온 값이므로 상수로 박지 말고
                 // 규칙으로 읽어라** — 「기둥 바깥 옆면에, 진입로 쪽으로 한 걸음, 면은 오는 사람 쪽」.
-                BannerPose(pillar, approachYaw, side, BannerPush, out Vector3 bannerPos, out float bannerYaw);
-                var bannerGo = Place(Banner, bannerPos, new Vector3(0f, bannerYaw, 0f));
-                if (bannerGo != null)
-                {
-                    bannerGo.transform.SetParent(parent, true);
-                    bannerGo.transform.localScale = bannerGo.transform.localScale * 1.8f;   // 얇은 판때기로 보이던 것을 키운다
-                }
+                // **배너는 걷었다**(검수 판정 2026-09-09 — 「한 판에 화면이 안 나오면 걷는다」).
+                // 아래 기록은 지우지 마라: 같은 실패를 다시 밟지 않기 위한 것이다.
                 var lightGo = new GameObject("DungeonEntranceLight");
                 lightGo.transform.SetParent(parent, true);
                 lightGo.transform.position = OnGround(LanternPose(pillar, approachYaw, side, LanternPush)) + Vector3.up * 2.2f;

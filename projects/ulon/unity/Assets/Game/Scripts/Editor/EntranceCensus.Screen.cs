@@ -17,6 +17,13 @@ namespace Ulon.Editor
         ///
         /// 눈은 QA 샷과 같다(`QaShots.Orbit`: 8m·20°·fov 55·16:9). 해상도는 320×180 —
         /// 비율 지표라 충분하고, 삼각형이 몇 픽셀뿐인 물건은 애초에 화면에서 안 읽힌다.
+        ///
+        /// **킷 안에서는 배너를 매달 수 없었다**(2026-09-09, 배너를 걷은 이유 — 다시 시도하기 전에 읽어라):
+        /// `banner-red`는 장대+가로대+천이 한 몸이고 **원점이 장대 밑**이라, 기둥 표면에 붙이면
+        /// 천이 기둥 옆으로 뻗어 나간다. 기둥 표면·상단에서 유도해 붙여 봤더니 던전 1에서 배너가
+        /// **문구멍을 15%** 가리고, 그러면서도 기둥과의 화면 겹침은 **0%**였다 — 즉 「기둥에 붙였는데
+        /// 화면에서는 여전히 안 붙어 보인다」. 자리를 81칸 재고, 매달아 보고, 둘 다 안 됐다.
+        /// 입구 표식은 아치·어두운 포털·등불·돌길로 이미 선다.
         /// </summary>
         public const int ScreenW = 320;
         public const int ScreenH = 180;
@@ -239,10 +246,11 @@ namespace Ulon.Editor
             var lanterns = NearPillars(FindChildren(root.transform, "lantern"), pillars);
             var portal = FindChild(root.transform, VisualSliceBuilder.EntrancePortalObject);
             var frame = FindChild(root.transform, VisualSliceBuilder.EntranceFrameObject);
-            if (banners.Count == 0 || portal == null || pillars.Count == 0)
+            // **배너가 없는 것은 정상이다**(2026-09-09 걷었다). 없으면 배너 지표는 0으로 두고
+            // 등불·문구멍만 읽는다 — 「없는 것을 못 쟀다」고 빨간불을 내면 그건 자가 아니라 고집이다.
+            if (portal == null || pillars.Count == 0)
             {
-                r.What = "(배너 " + banners.Count + " · 포털 " + (portal == null ? "없음" : "있음") +
-                         " · 기둥 " + pillars.Count + " — 셀 수 없다)";
+                r.What = "(포털 " + (portal == null ? "없음" : "있음") + " · 기둥 " + pillars.Count + " — 셀 수 없다)";
                 return false;
             }
             // **한 장씩 잰다 — 합치면 한 장만 걸려 있어도 통과한다**(2026-09-09 화면에서 걸렸다:
@@ -408,36 +416,23 @@ namespace Ulon.Editor
             foreach (var l in lanterns) home.Add((l, l.position, l.rotation));
 
             // **셋을 함께 고른다** — 배너만 움직이면 등불이 사이에 끼고, 등불만 움직이면 배너가 허공에 뜬다.
-            float[] pushes = { 0.4f, 0.8f, 1.2f };
-            float[] faces = { 180f };
-            float[] lamps = { 0.6f, 0f, -1.2f };
-            float[] laterals = { 0f, -0.8f, -1.17f };   // -1.17 = 기둥 중심(기둥 반폭만큼 당김)
+            float[] pushes = { 0f };                     // 배너는 매달려 있어 고정
+            float[] faces = { 0f };
+            float[] lamps = { 0.6f, 0f, -0.6f };         // 등불 앞뒤
+            float[] laterals = { 0f, 0.5f, 1.0f };       // 등불을 문 바깥 옆으로
             foreach (float push in pushes)
                 foreach (float face in faces)
                     foreach (float lamp in lamps)
                         foreach (float lat in laterals)
                         {
-                            // **기둥 배정은 「지금 어디 있나」가 아니라 빌더처럼 부호로 한다.**
-                            // 그 시점 위치로 가까운 기둥을 고르면, 앞 판이 옮겨 놓은 자리에 따라
-                            // 좌우가 뒤집혀 **프로브가 고른 칸과 빌드 결과가 어긋난다**(실제로 던전 2의
-                            // 등불 겹침이 7%로 예측됐는데 빌드에서는 20%였다).
-                            for (int bi = 0; bi < banners.Count; bi++)
-                            {
-                                var b = banners[bi];
-                                int sideSign = bi % 2 == 0 ? -1 : 1;
-                                var pil = center + VisualSliceBuilder.EntranceSide(approachYaw) *
-                                          (VisualSliceBuilder.EntranceDoorHalf * sideSign);
-                                VisualSliceBuilder.BannerPose(pil, approachYaw, sideSign, push, lat,
-                                                              out Vector3 bp, out float byaw);
-                                b.position = bp;
-                                b.rotation = Quaternion.Euler(0f, byaw - VisualSliceBuilder.BannerFace + face, 0f);
-                            }
+                            // **배너는 이제 기둥에 매달려 있으므로 건드리지 않는다**(검수 판정 2026-09-09).
+                            // 남은 자유도는 등불뿐이라 이 루프는 등불만 훑는다.
                             for (int li = 0; li < lanterns.Count; li++)
                             {
                                 int sideSign = li % 2 == 0 ? -1 : 1;
                                 var pil = center + VisualSliceBuilder.EntranceSide(approachYaw) *
                                           (VisualSliceBuilder.EntranceDoorHalf * sideSign);
-                                lanterns[li].position = VisualSliceBuilder.LanternPose(pil, approachYaw, sideSign, lamp);
+                                lanterns[li].position = VisualSliceBuilder.LanternPose(pil, approachYaw, sideSign, lamp, lat);
                             }
                             Physics.SyncTransforms();
                             if (!ReadEntrance(rootName, ex, ez, out Readout r)) continue;

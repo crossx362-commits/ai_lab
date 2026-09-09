@@ -81,6 +81,7 @@ namespace Ulon.Editor
             string report = "";
             foreach (var s in spots)
             {
+                // 배너를 걷었으므로 이 자가 보는 것은 **등불과 문구멍**이다(배너가 다시 생기면 같은 자가 문다).
                 if (!EntranceCensus.ReadEntrance(s.Root, s.X, s.Z, out EntranceCensus.Readout r))
                     throw new InvalidOperationException(s.Tag + " 입구를 화면에서 못 쟀습니다 — " + r.What +
                         ". **못 재는 자를 초록불로 남기지 않는다.**");
