@@ -384,7 +384,21 @@ namespace Ulon.Editor
             const string Pillar = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/pillar_decorated.obj";
             // 눕히는 조각·옆벽은 무늬 없는 민 기둥으로 — 장식은 **세운 것에만** 둔다.
             const string PlainPillar = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/pillar.obj";
-            var portalMat = MakeNoiseMat("DungeonPortal", new Color(0.03f, 0.03f, 0.05f), new Color(0.08f, 0.07f, 0.10f));
+            // **구멍은 물건이 아니라 어둠이다 — 빛을 받지 않는다**(검수 판정 2026-09-09).
+            // 눈을 진입로로 옮긴 뒤 문짝이 앞면을 보이게 되면서 입구 등불 둘을 정면으로 받아
+            // 화면에서 **어두운 갈색 나무 문짝**으로 읽혔다. 재서 갈랐다(`EntranceCensus.RunMouthDark`):
+            // 문구멍 밝기가 **발밑 지표의 43~50%**였다. 알베도는 이미 0.03(255 눈금으로 8)이라
+            // **더 내릴 자리가 없다** — 밝기를 만든 것은 알베도가 아니라 **조도**였다.
+            // 등불 자리와 조명은 안 건드린다(대칭이 이 샷의 힘이고, 조명은 스물한 샷을 흔든다).
+            // 그래서 이 재질만 **빛을 안 받게** 한다. 목표는 화면에서 정의한다: 발밑의 20% 이하.
+            var portalMat = MakeNoiseMat("DungeonPortal", new Color(0.02f, 0.02f, 0.03f), new Color(0.05f, 0.045f, 0.06f));
+            var unlit = Shader.Find("Unlit/Texture");
+            if (unlit != null)
+            {
+                portalMat.shader = unlit;
+                EditorUtility.SetDirty(portalMat);
+                AssetDatabase.SaveAssets();     // 재질은 에셋이다 — 저장까지가 수리다(두 번 밟았다)
+            }
             var frame = new GameObject(EntranceFrameObject);
             frame.transform.SetParent(parent, true);
             float gy = OnGround(pos).y;

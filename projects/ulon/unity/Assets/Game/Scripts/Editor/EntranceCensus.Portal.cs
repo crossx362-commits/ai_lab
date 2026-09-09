@@ -40,36 +40,48 @@ namespace Ulon.Editor
         /// </summary>
         public static float PortalNearBand => VisualSliceBuilder.EntrancePillarHalf;
 
+        /// <summary>
+        /// **문구멍 띠 하나** — 포털이 어디 가든 문틀이 정하는 그 자리다. 채움·샘을 재는 자와
+        /// 밝기를 재는 자가 **같은 띠**를 봐야 해서 떼어 뒀다(띠가 갈리면 두 숫자가 다른 곳을 말한다).
+        /// </summary>
+        public static bool MouthBand(string rootName, float ex, float ez, float yaw,
+                                     out Silhouette band, out Vector3 eye, out Vector3 look, out string why)
+        {
+            band = null; eye = look = Vector3.zero;
+            var root0 = GameObject.Find(rootName);
+            if (root0 == null) { why = "(던전 루트 없음: " + rootName + ")"; return false; }
+            ShotEye(ex, ez, out eye, out look);
+            var pillars0 = FindChildren(root0.transform, "EntrancePillar");
+            if (pillars0.Count < 2) { why = "(문설주가 " + pillars0.Count + "개 — 띠를 유도할 수 없다)"; return false; }
+            float top0 = float.MinValue;
+            for (int i = 0; i < pillars0.Count; i++)
+                foreach (var rend in pillars0[i].GetComponentsInChildren<Renderer>(true))
+                    if (rend.enabled)
+                        top0 = Mathf.Max(top0, rend.bounds.max.y);
+            if (top0 <= float.MinValue) { why = "(문설주에 켜진 렌더러가 없다)"; return false; }
+            float ground0 = GroundAt(new Vector3(ex, top0 + 50f, ez));
+            float rad0 = yaw * Mathf.Deg2Rad;
+            var inward0 = new Vector3(Mathf.Sin(rad0), 0f, Mathf.Cos(rad0));
+            var side0 = new Vector3(inward0.z, 0f, -inward0.x);
+            float half0 = VisualSliceBuilder.EntranceDoorHalf;
+            band = QuadSilhouette(
+                new Vector3(ex, ground0, ez) - side0 * half0,
+                new Vector3(ex, ground0, ez) + side0 * half0,
+                new Vector3(ex, top0, ez) + side0 * half0,
+                new Vector3(ex, top0, ez) - side0 * half0, eye, look);
+            why = "띠 " + band.Pixels + "px(문설주 " + pillars0.Count + "개에서 유도, 높이 " +
+                  (top0 - ground0).ToString("0.0") + "m)";
+            return band.Pixels > 0;
+        }
+
         public static bool ReadPortal(string rootName, float ex, float ez, float yaw, out PortalRead r)
         {
             r = new PortalRead();
             var root = GameObject.Find(rootName);
             if (root == null) { r.What = "(던전 루트 없음: " + rootName + ")"; return false; }
-            ShotEye(ex, ez, out Vector3 eye, out Vector3 look);
-
-            var pillars = FindChildren(root.transform, "EntrancePillar");
-            if (pillars.Count < 2) { r.What = "(문설주가 " + pillars.Count + "개 — 띠를 유도할 수 없다)"; return false; }
-            // 기둥 꼭대기 = 문구멍의 윗변(상인방은 그 위에 얹힌다). 지표는 문 자리에서 쏴서 읽는다.
-            float top = float.MinValue;
-            for (int i = 0; i < pillars.Count; i++)
-                foreach (var rend in pillars[i].GetComponentsInChildren<Renderer>(true))
-                    if (rend.enabled)
-                        top = Mathf.Max(top, rend.bounds.max.y);
-            if (top <= float.MinValue) { r.What = "(문설주에 켜진 렌더러가 없다)"; return false; }
-            float ground = GroundAt(new Vector3(ex, top + 50f, ez));
-
-            // 문이 선 방향 — 원장에서 온다(빌더 `EntranceSide`와 같은 정의).
-            float rad = yaw * Mathf.Deg2Rad;
-            var inward = new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad));
-            var side = new Vector3(inward.z, 0f, -inward.x);
-            float half = VisualSliceBuilder.EntranceDoorHalf;
-            var band = QuadSilhouette(
-                new Vector3(ex, ground, ez) - side * half,
-                new Vector3(ex, ground, ez) + side * half,
-                new Vector3(ex, top, ez) + side * half,
-                new Vector3(ex, top, ez) - side * half, eye, look);
+            if (!MouthBand(rootName, ex, ez, yaw, out Silhouette band, out Vector3 eye, out Vector3 look, out string why))
+            { r.What = why; return false; }
             r.BandPixels = band.Pixels;
-            if (band.Pixels == 0) { r.What = "(문구멍 띠가 화면 밖이다)"; return false; }
 
             var portal = FindChild(root.transform, VisualSliceBuilder.EntrancePortalObject);
             var portalSil = portal == null ? new Silhouette() : Draw(portal, eye, look);
@@ -89,8 +101,7 @@ namespace Ulon.Editor
             }
             r.Fill = fill / (float)band.Pixels;
             r.Leak = leak / (float)band.Pixels;
-            r.What = "띠 " + band.Pixels + "px(문설주 " + pillars.Count + "개에서 유도, 높이 " +
-                     (top - ground).ToString("0.0") + "m) · 포털 " + portalSil.Pixels + "px" +
+            r.What = why + " · 포털 " + portalSil.Pixels + "px" +
                      (portal == null ? " · 포털 없음" : " · 회전 " + portal.rotation.eulerAngles.y.ToString("0") + "°");
             return true;
         }

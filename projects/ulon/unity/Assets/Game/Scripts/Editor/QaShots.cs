@@ -296,6 +296,8 @@ namespace Ulon.Editor
             ContactSheet(dir, villagerShots, "50_villagers");
 
             // VFX는 카메라 렌더가 필요해 -nographics 셀프체크에서 잴 수 없다 — 여기서 화면으로 잰다.
+            // 문구멍 어둠도 렌더가 필요하다 — 같은 자리(검수 판정 2026-09-09).
+            SliceSelfCheck.AssertMouthDark();
             SliceSelfCheck.AssertActionVfxOnScreen();
             SliceSelfCheck.AssertActionVfxNegativeControl();
             // 검은 배경에서 보이는 것과 **실제 플레이 프레임**에서 읽히는 것은 다르다(검수 랩 D).
