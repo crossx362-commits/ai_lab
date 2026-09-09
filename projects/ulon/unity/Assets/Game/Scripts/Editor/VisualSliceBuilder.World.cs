@@ -470,7 +470,12 @@ namespace Ulon.Editor
             var rockLayer = EnsureTerrainLayer("MountainRock", new Color(0.30f, 0.27f, 0.23f), new Color(0.72f, 0.66f, 0.55f), 3.0f, 1);
             // 그늘진 절벽 — 같은 층리 무늬(pattern 1)에 **더 잘게·더 어둡게**. 두 겹이 서로 다른
             // 주기로 반복해야 늘어난 줄이 한 줄로 이어지지 않는다.
-            var cliffLayer = EnsureTerrainLayer("CliffDark", new Color(0.14f, 0.14f, 0.17f), new Color(0.34f, 0.33f, 0.37f), 1.8f, 1);
+            // **어두운 겹의 결이 밝은 겹의 절반이었다**(검수 랩 ㉢ 반려 — 앞 절벽이 점토처럼 매끈해졌다).
+            // 단독판으로 갈랐다: 밝은 겹만 칠하면 결 세기 9.71, 어두운 겹만 칠하면 4.71 —
+            // 섞는 과정이 아니라 **겹 자체**가 밋밋했다. 이유는 색 범위다: 밝은 바위는 진폭 0.42인데
+            // 이 겹은 0.20이라 **딱 절반**이었다(측정된 비율과 같다). 그래서 **톤은 그대로 두고
+            // 폭만 넓힌다** — 평균 0.24는 유지해야 어두운 덩이가 계속 어둡다(야외 색조 하한도 그대로).
+            var cliffLayer = EnsureTerrainLayer("CliffDark", new Color(0.05f, 0.05f, 0.08f), new Color(0.43f, 0.42f, 0.46f), 1.8f, 1);
             var sandLayer = EnsureTerrainLayer("ShoreSand", new Color(0.74f, 0.68f, 0.50f), new Color(0.85f, 0.80f, 0.62f), 8f);
             // §6.1 지역이 **지표로** 구분돼야 한다 — 바닥이 전부 같은 초록이면 소품만 얹힌 모양이다(검수 2026-09-06 관찰).
             var tilledLayer = EnsureTerrainLayer("FarmTilled", new Color(0.30f, 0.21f, 0.13f), new Color(0.47f, 0.34f, 0.21f), 3.5f, 2);

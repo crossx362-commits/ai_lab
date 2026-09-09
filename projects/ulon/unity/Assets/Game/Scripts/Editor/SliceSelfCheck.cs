@@ -1747,6 +1747,7 @@ namespace Ulon.Editor
             AssertTerrainProjection();   // 경사면에서 무늬가 세로로 늘어나는가(검수 랩 ⑧)
             AssertWallGrass();           // 수직 암벽에 풀이 흘러내리는가(검수 랩 ⑨)
             AssertCliffMaskFall();       // 얼룩이 낙하선으로 늘어나는가(검수 랩 ㉡ — 무늬는 삼면, 마스크는 평면이었다)
+            AssertCliffGrain();          // 암벽에 결이 남았는가(검수 랩 ㉢ — 톤은 갈렸는데 표면이 뭉개졌다)
             AssertWorldMaterials();
             AssertServerAuthorityWiring();
             AssertReachableFeatures();
