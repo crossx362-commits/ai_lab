@@ -25,8 +25,11 @@ namespace Ulon.Editor
         ///
         /// **되돌릴 조건**: 빌더를 안 돌리고 **씬만 여는 사람**이 생길 때. 그런 사람에게는 이 텍스처가
         /// 없는 지형이 넘어가므로, 그때는 히스토리에서 되살려 다시 추적한다.
-        /// (부작용 하나: 새로 구우면 .meta GUID가 새로 나서 `TerrainTriplanar.mat`의 참조가 갱신된다 —
-        /// 그 재질만 작게 변경으로 잡힌다. 8.4MB와 바꾼 값이다.)
+        ///
+        /// **`.asset`만 빼고 `.meta`는 추적한다**(검수 2026-09-09). GUID는 `.meta`에 살기 때문에 그것까지
+        /// 빼면 굽는 사람마다·판마다 `TerrainTriplanar.mat`의 참조 한 줄이 흔들린다 — 8.4MB 잡음을
+        /// **작은 충돌 자리**로 바꾼 것일 뿐이다(같은 저장소를 여럿이 쓴다). 확인했다: 세 `.asset`을
+        /// **지우고 다시 구워도** 유니티가 남은 `.meta`의 GUID를 그대로 물려 재질이 안 흔들린다.
         public const string TriplanarShader = "Ulon/TerrainTriplanar";
         const string CtrlPathFmt = "Assets/Game/Art/Env/TerrainCtrl{0}.asset";
         const string TerrainMatPath = "Assets/Game/Art/Env/TerrainTriplanar.mat";

@@ -144,5 +144,6 @@ projects/ulon/unity/mono_crash.*.json
 # 울온: 지형 도포 컨트롤 텍스처 — **생성물**이다(빌더가 매 빌드 알파맵에서 다시 굽는다).
 # 8.4MB가 도포가 바뀔 때마다 통째로 재커밋돼 추적에서 뺐다(검수 판정 2026-09-09).
 # 되돌릴 조건: **빌더를 안 돌리고 씬만 여는 사람이 생길 때**(그때는 히스토리에서 되살린다).
+# **`.meta`는 추적한다**(검수 2026-09-09): GUID가 거기 살기 때문에 그것까지 빼면 굽는 판마다
+# `TerrainTriplanar.mat`의 참조 한 줄이 흔들려 8.4MB 잡음이 작은 충돌 자리로 바뀔 뿐이다.
 projects/ulon/unity/Assets/Game/Art/Env/TerrainCtrl?.asset
-projects/ulon/unity/Assets/Game/Art/Env/TerrainCtrl?.asset.meta
