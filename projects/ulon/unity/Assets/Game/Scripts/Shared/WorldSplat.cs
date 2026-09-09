@@ -379,6 +379,16 @@ namespace Ulon.Shared
                     layer = Road;
                 }
             }
+
+            // **입구 앞 길은 맨 끝에서, 다른 겹을 덮는다** — 가장 구체적인 규칙이 이긴다.
+            // 세기 비교로 끼워 넣었더니 던전 2가 **0.00**이었다(실측): 그 앞은 농경지 지역(0.95)과
+            // 마을 길(1.00)이 지나가 0.88짜리 입구 길이 매번 졌다. 「문 앞」은 지역보다 좁은 이야기다.
+            float approach = EntrancePathAt(wx, wz);
+            if (approach > 0.25f)
+            {
+                weight = approach;
+                layer = Cobble;
+            }
             return layer;
         }
 
@@ -442,6 +452,56 @@ namespace Ulon.Shared
                     cover = Mathf.Max(cover, 0.55f + trample * 0.45f);
             }
             return cover;
+        }
+
+        /// <summary>
+        /// **던전 입구 앞 길**(검수 관찰 2026-09-09: 「`07`의 돌길이 풀밭 위에 얹힌 갈색 깔개로 읽힌다」).
+        ///
+        /// 옛 길은 킷 판때기(`ground_pathTile`) 넷을 1.6m 간격으로 깐 것이었다 — 타일이 2.10m라
+        /// **0.50m씩 겹쳐 6.9×2.1m 한 판**이 됐고, 밑면은 지표에 딱 붙어(±0.00m) 두께 0.11m짜리
+        /// **갈색 판**이 잔디 위에 놓였다. 이 킷의 땅 타일은 제 흙바닥을 통째로 들고 다니므로
+        /// 「길」이 아니라 「깔개」로 읽힐 수밖에 없다. **광장에서 이미 같은 답을 냈다**(킷 판때기 104칸을
+        /// 걷고 지형에 칠했다 — `PlazaCoverAt` 머리말). 같은 처방을 입구에도 쓴다.
+        ///
+        /// 모양: 입구에서 **진입로 쪽으로** 뻗는 띠. 세 가지가 「땅」과 「깔개」를 가른다 —
+        /// ①가장자리를 **노이즈로 흔든다**(지역 규칙과 같은 기법: 직선으로 끝나면 자로 그은 자국이다),
+        /// ②끝에서 **가늘어지며 사라진다**(자른 듯 끝나면 그것도 깔개다),
+        /// ③세기를 1.0까지 올리지 않는다(0.88) — 풀이 조금 비쳐야 「밟혀 드러난 땅」이 된다.
+        /// </summary>
+        public const float EntrancePathLength = 9.5f;   // 문 앞에서 진입로 쪽으로 뻗는 길이
+        // **폭은 문에서 유도한다**(첫 판 1.5+1.3은 화면에서 「길」이 아니라 **광장 바닥**이었다 —
+        // `11`이 프레임을 통째로 덮었다). 문 반폭 1.25m가 곧 사람이 지나는 폭이므로 온전한 반폭은
+        // 그보다 좁게 두고(1.15m), 옅어지는 폭을 더해 **문 너비 안팎**에서 끝나게 한다.
+        public const float EntrancePathHalf = 1.15f;    // 온전히 길인 반폭
+        public const float EntrancePathFade = 0.95f;    // 그 바깥으로 옅어지는 폭
+
+        public static float EntrancePathAt(float wx, float wz)
+        {
+            float best = 0f;
+            for (int i = 0; i < 3; i++)
+            {
+                float ex = i == 0 ? Dungeon1.EntranceX : i == 1 ? Dungeon2.EntranceX : Dungeon3.EntranceX;
+                float ez = i == 0 ? Dungeon1.EntranceZ : i == 1 ? Dungeon2.EntranceZ : Dungeon3.EntranceZ;
+                float yaw = i == 0 ? Dungeon1.EntranceYaw : i == 1 ? Dungeon2.EntranceYaw : Dungeon3.EntranceYaw;
+                // 진입로 방향 = 문이 보는 쪽의 반대(빌더 `EntranceApproach`와 같은 정의).
+                float rad = yaw * Mathf.Deg2Rad;
+                float ax = -Mathf.Sin(rad), az = -Mathf.Cos(rad);
+                float px = wx - ex, pz = wz - ez;
+                float along = px * ax + pz * az;                 // 문에서 진입로 쪽으로 얼마나 갔나
+                float side = Mathf.Abs(px * az - pz * ax);       // 길 중심선에서 옆으로 얼마나
+                if (along < -1.2f || along > EntrancePathLength + 2f)
+                    continue;
+                // 가장자리를 흔든다 — 폭이 자리마다 ±0.55m 달라진다(지역 경계와 같은 기법).
+                float wobble = (Mathf.PerlinNoise(wx * 0.22f + 7.3f * i, wz * 0.22f + 2.9f * i) - 0.5f) * 1.1f;
+                float t = 1f - Mathf.Clamp01((side + wobble - EntrancePathHalf) / EntrancePathFade);
+                // 끝에서 가늘어진다: 마지막 3.5m에서 0으로, 문 안쪽으로도 한 걸음만.
+                float tail = 1f - Mathf.Clamp01((along - (EntrancePathLength - 3.5f)) / 3.5f);
+                float head = Mathf.Clamp01((along + 1.2f) / 1.0f);
+                float v = t * tail * head * 0.88f;
+                if (v > best)
+                    best = v;
+            }
+            return best;
         }
 
         /// <summary>사각형 안이면 1, 가장자리 한 칸에서 0으로 — 돌포장이 칼로 자른 듯 끝나지 않게.</summary>

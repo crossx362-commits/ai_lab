@@ -11,6 +11,10 @@ namespace Ulon.Shared
         public const string BossObject = "BoneWarden";
         public const float EntranceX = -18.6f * WorldScale.Kit;
         public const float EntranceZ = -2.8f * WorldScale.Kit;
+        /// <summary>입구가 **어느 쪽을 보고 서 있나**(진입로 방위) — 문틀·등불·입구 앞 길이
+        /// 전부 이 값을 읽는다. 예전엔 빌더 호출부에만 숫자로 있어 지표를 칠하는 쪽이 방향을
+        /// 다시 짐작해야 했다(같은 값이 두 곳에 살면 어긋난다).</summary>
+        public const float EntranceYaw = 90.0f;
         public const float InteriorX = 68f;
         public const float InteriorZ = 68f;
         public const float ExitX = 65.4f;

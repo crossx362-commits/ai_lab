@@ -13,7 +13,6 @@ namespace Ulon.Editor
         /// </summary>
         const float EntranceRadius = 7f;
         const int EntranceLightMin = 2;
-        const int EntrancePathMin = 3;
 
         // 검수 2026-09-06 반려: 흰 Kenney 바위가 던전 1 문구멍을 정면에서 가렸고,
         // 옆벽이 기둥과 높이가 어긋나 계단처럼 보였다. 존재가 아니라 **위치·정렬**을 잰다.
@@ -79,12 +78,71 @@ namespace Ulon.Editor
             CheckEntranceFinish("던전 2", Dungeon2.EntranceX, Dungeon2.EntranceZ);
             CheckEntranceFinish("던전 3", Dungeon3.EntranceX, Dungeon3.EntranceZ);
 
+            AssertEntrancePathPaint();
+
             AssertEntranceFrameNegativeControl();
 
             if (GameObject.Find(Dungeon3.SignObject) == null)
                 throw new InvalidOperationException("던전 3 이정표가 없습니다: " + Dungeon3.SignObject + " (마을에서 찾을 단서가 없다)");
 
-            Debug.Log("[Ulon] 던전 입구 단서 통과 — 등불 " + EntranceLightMin + "개↑·깃발·진입로 타일 " + EntrancePathMin + "장↑·바위 " + EntranceRockClearRadius + "m 안 없음·옆벽 정렬 (던전 1·2·3) + 던전 3 이정표");
+            Debug.Log("[Ulon] 던전 입구 단서 통과 — 등불 " + EntranceLightMin + "개↑·깃발·문 앞 돌포장 " + EntrancePaintMin + "↑(옆 12m " + EntrancePaintOffMax + "↓)·바위 " + EntranceRockClearRadius + "m 안 없음·옆벽 정렬 (던전 1·2·3) + 던전 3 이정표");
+        }
+
+        /// <summary>
+        /// **입구 앞 길이 땅에 칠해져 있는가**(옛 「진입로 타일 3장」 게이트를 갈아 끼웠다, 2026-09-09).
+        ///
+        /// 옛 자는 **판때기 개수**를 셌다 — 그래서 잔디 위에 놓인 갈색 깔개 넷도 통과했다(검수 관찰).
+        /// 길을 지형 도포로 옮겼으니 자도 **칠해진 결과**(알파맵)를 읽는다. 규칙(`EntrancePathAt`)이
+        /// 아니라 구운 것을 보는 이유는 「저장됐다 ≠ 반영됐다」다 — 규칙을 고치고 굽지 않으면 화면은 그대로다.
+        ///
+        /// **NC는 옆에 둔다**: 문 앞 6m는 칠해져야 하고, 같은 거리에서 **옆으로 12m** 비킨 자리는
+        /// 칠해지면 안 된다. 이게 없으면 「온 세상을 돌포장으로 칠하면 통과」가 된다.
+        /// </summary>
+        const float EntrancePaintMin = 0.50f;      // 문 앞 표본의 돌포장 평균 하한
+        const float EntrancePaintOffMax = 0.15f;   // 옆으로 비킨 자리(NC)의 상한
+
+        static void AssertEntrancePathPaint()
+        {
+            var terrain = Terrain.activeTerrain;
+            if (terrain == null || terrain.terrainData == null)
+                throw new InvalidOperationException("지형이 없습니다 — 입구 앞 길 도포를 검사할 수 없습니다.");
+            var data = terrain.terrainData;
+            int ar = data.alphamapResolution;
+            var alpha = data.GetAlphamaps(0, 0, ar, ar);
+            var doors = new[]
+            {
+                ("던전 1", Dungeon1.EntranceX, Dungeon1.EntranceZ, Dungeon1.EntranceYaw),
+                ("던전 2", Dungeon2.EntranceX, Dungeon2.EntranceZ, Dungeon2.EntranceYaw),
+                ("던전 3", Dungeon3.EntranceX, Dungeon3.EntranceZ, Dungeon3.EntranceYaw),
+            };
+            for (int i = 0; i < doors.Length; i++)
+            {
+                float rad = doors[i].Item4 * Mathf.Deg2Rad;
+                float ax = -Mathf.Sin(rad), az = -Mathf.Cos(rad);   // 진입로 쪽(빌더·도포 규칙과 같은 정의)
+                float sx = az, sz = -ax;                            // 그 옆
+                float on = 0f, off = 0f;
+                int n = 0;
+                for (float s = 1f; s <= 6f; s += 1f)
+                    for (float t = -1f; t <= 1f; t += 1f)
+                    {
+                        float wx = doors[i].Item2 + ax * s + sx * t;
+                        float wz = doors[i].Item3 + az * s + sz * t;
+                        on += Sample(alpha, ar, wx, wz, WorldSplat.Cobble);
+                        off += Sample(alpha, ar, wx + sx * 12f, wz + sz * 12f, WorldSplat.Cobble);
+                        n++;
+                    }
+                on /= n; off /= n;
+                Debug.Log("[Ulon] 입구 앞 길 도포 " + doors[i].Item1 + " — 문 앞 " + on.ToString("0.00") +
+                          "(하한 " + EntrancePaintMin + ") · 옆 12m " + off.ToString("0.00") +
+                          "(상한 " + EntrancePaintOffMax + ")");
+                if (on < EntrancePaintMin)
+                    throw new InvalidOperationException(doors[i].Item1 + " 입구 앞 돌포장이 " + on.ToString("0.00") +
+                        "입니다 — 최소 " + EntrancePaintMin + ". 어디로 들어가는지 안 보입니다.");
+                if (off > EntrancePaintOffMax)
+                    throw new InvalidOperationException(doors[i].Item1 + " 입구에서 옆으로 12m 비킨 자리도 돌포장 " +
+                        off.ToString("0.00") + "입니다 — 상한 " + EntrancePaintOffMax +
+                        ". 길이 아니라 온 바닥이 칠해졌습니다(자가 아무것도 안 재는 상태).");
+            }
         }
 
         /// <summary>
@@ -245,7 +303,6 @@ namespace Ulon.Editor
             if (lights < EntranceLightMin)
                 throw new InvalidOperationException(label + " 입구 조명이 " + lights + "개입니다 — 최소 " + EntranceLightMin + "개(양옆 등불). 입구로 안 읽힙니다.");
 
-            int path = 0;
             bool banner = false;
             var rends = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < rends.Length; i++)
@@ -254,25 +311,9 @@ namespace Ulon.Editor
                 if (Vector2.Distance(new Vector2(p.x, p.z), pos) > EntranceRadius)
                     continue;
                 string n = AncestorNames(rends[i].transform);
-                if (n.IndexOf("path", StringComparison.OrdinalIgnoreCase) >= 0)
-                    path++;
                 if (n.IndexOf("banner", StringComparison.OrdinalIgnoreCase) >= 0)
                     banner = true;
             }
-            if (path < EntrancePathMin)
-            {
-                var sb = new System.Text.StringBuilder();
-                for (int i = 0; i < rends.Length; i++)
-                {
-                    var p2 = rends[i].transform.position;
-                    if (Vector2.Distance(new Vector2(p2.x, p2.z), pos) > EntranceRadius)
-                        continue;
-                    sb.Append(AncestorNames(rends[i].transform)).Append(" | ");
-                }
-                Debug.LogError("[Ulon] 입구 진단 " + label + ": " + sb);
-            }
-            if (path < EntrancePathMin)
-                throw new InvalidOperationException(label + " 입구 진입로 타일이 " + path + "장입니다 — 최소 " + EntrancePathMin + "장. 어디로 들어가는지 안 보입니다.");
             // **깃발은 더 이상 요구하지 않는다**(검수 판정 2026-09-09, 배너를 걷었다).
             // `banner-red`는 원점이 장대 밑이고 천이 옆으로 뻗는 **벽걸이** 소품이라, 자유 자리로 세우면
             // 화면에서 「공중에 뜬 천」이고, 기둥 표면에 붙이면 **문구멍을 15% 가리면서도 기둥과의

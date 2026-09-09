@@ -44,6 +44,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureDungeon2();
             VisualSliceBuilder.EnsureDungeon3();
             VisualSliceBuilder.EnsureNoEntranceBanner();   // 입구 배너는 걷었다(매달 수 없어서 — Entrance.cs 기록)
+            VisualSliceBuilder.EnsureNoEntrancePathTiles();  // 입구 돌길 판때기도 걷었다(길은 지형 도포)
             VisualSliceBuilder.EnsureFieldBoss();
             VisualSliceBuilder.EnsureFootOnGround();       // 지형이 올라가면 배치물도 따라 올린다(검수 A)
         }

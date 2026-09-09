@@ -215,6 +215,42 @@ namespace Ulon.Editor
                 Debug.Log("[Ulon] 입구 배너를 걷었다 — " + removed + "개(매달기 실패의 결론, 아래 기록 참조)");
         }
 
+        /// <summary>
+        /// **입구 앞 킷 판때기를 걷는다**(멱등) — 길은 이제 지형 도포가 그린다(`WorldSplat.EntrancePathAt`).
+        /// 커밋된 씬에는 옛 타일이 그대로 살아 있으므로, 다시 굽지 않아도 이 패스가 지운다.
+        /// </summary>
+        public static void EnsureNoEntrancePathTiles()
+        {
+            foreach (var d in new[]
+                     {
+                         (Dungeon1.RootObject, new Vector3(Dungeon1.EntranceX, 0f, Dungeon1.EntranceZ)),
+                         (Dungeon2.RootObject, new Vector3(Dungeon2.EntranceX, 0f, Dungeon2.EntranceZ)),
+                         (Dungeon3.RootObject, new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ)),
+                     })
+            {
+                var go = GameObject.Find(d.Item1);
+                if (go != null)
+                    EnsureNoEntrancePathTiles(go.transform, d.Item2);
+            }
+        }
+
+        static void EnsureNoEntrancePathTiles(Transform parent, Vector3 pos)
+        {
+            var doomed = new System.Collections.Generic.List<GameObject>();
+            foreach (var tr in parent.GetComponentsInChildren<Transform>(true))
+            {
+                if (!tr.name.StartsWith("ground_pathTile")) continue;
+                // 입구 앞 15m 안의 것만 걷는다 — 다른 데 깔린 같은 이름의 타일은 이 랩의 대상이 아니다.
+                var flat = new Vector3(tr.position.x - pos.x, 0f, tr.position.z - pos.z);
+                if (flat.sqrMagnitude <= 15f * 15f)
+                    doomed.Add(tr.gameObject);
+            }
+            foreach (var t in doomed)
+                UnityEngine.Object.DestroyImmediate(t);
+            if (doomed.Count > 0)
+                Debug.Log("[Ulon] 입구 돌길 판때기를 걷었다 — " + doomed.Count + "개(길은 지형 도포가 그린다)");
+        }
+
         /// <summary>이 쪽(side)의 문설주를 찾는다 — 이름이 아니라 **자리**로 고른다(이름은 바뀐다).</summary>
         static Transform FindEntrancePillar(Transform parent, Vector3 pos, Vector3 right, float doorHalf, int side)
         {
@@ -288,9 +324,12 @@ namespace Ulon.Editor
                 light.shadows = LightShadows.None;
             }
 
-            // 돌길은 **진입로 쪽**으로 깐다 — 사람이 걸어오는 자리다.
-            for (int i = 1; i <= 4; i++)
-                Decor(parent, PathTile, pos + EntranceApproach(approachYaw) * (1.6f * i), new Vector3(0f, approachYaw, 0f));
+            // **돌길 판때기는 걷었다**(검수 관찰 2026-09-09 — 「풀밭 위에 얹힌 갈색 깔개」).
+            // 킷 `ground_pathTile`은 2.10m라 1.6m 간격이면 0.50m씩 겹쳐 **6.9×2.1m 한 판**이 됐고,
+            // 이 킷의 땅 타일은 제 흙바닥을 통째로 들고 다녀 잔디 위에 놓인 갈색 판으로 읽혔다.
+            // 광장에서 이미 같은 답을 냈다(킷 판때기 104칸을 걷고 지형에 칠했다).
+            // 지금 길은 **지형 도포**가 그린다 — `WorldSplat.EntrancePathAt`(가장자리는 노이즈로 흔든다).
+            EnsureNoEntrancePathTiles(parent, pos);
 
             BuildEntranceFrame(parent, pos, approachYaw);
         }

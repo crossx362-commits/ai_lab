@@ -13,6 +13,10 @@ namespace Ulon.Shared
         // 하우징 부지·문게이트·마구간 등 랜드마크에서 전부 6f 이상 떨어져 있다.
         public const float EntranceX = -14.0f * WorldScale.Kit;
         public const float EntranceZ = -18.0f * WorldScale.Kit;
+        /// <summary>입구가 **어느 쪽을 보고 서 있나**(진입로 방위) — 문틀·등불·입구 앞 길이
+        /// 전부 이 값을 읽는다. 예전엔 빌더 호출부에만 숫자로 있어 지표를 칠하는 쪽이 방향을
+        /// 다시 짐작해야 했다(같은 값이 두 곳에 살면 어긋난다).</summary>
+        public const float EntranceYaw = 45.0f;
         // 던전1이 (+80,+80), 던전2가 (-80,+80)을 쓴다. 남은 사분면.
         public const float InteriorX = 68f;
         public const float InteriorZ = -68f;
