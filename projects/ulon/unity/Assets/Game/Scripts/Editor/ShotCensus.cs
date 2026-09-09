@@ -30,11 +30,12 @@ namespace Ulon.Editor
             for (int i = 0; i < shots.Length; i++)
             {
                 string name = QaShots.NameOf(shots[i]);
-                if (!ShotSubject.Table.TryGetValue(name, out string[] objects))
+                if (!ShotSubject.Table.TryGetValue(name, out ShotSubject.Entry e))
                 {
                     noSubject++;
                     continue;                       // 원장에 안 적힌 샷은 이번 대상이 아니다(검수가 고른 목록)
                 }
+                var objects = e.Objects;
                 if (objects.Length == 0)
                 {
                     unmeasurable++;
@@ -57,7 +58,8 @@ namespace Ulon.Editor
                                      " (원장이 낡았거나 이름이 바뀐 것이다)");
                 }
                 measured++;
-                Debug.Log("[장] " + name + " — 주인공 점유 " + (100f * px / total).ToString("0.0") + "% (" + px + "px)");
+                Debug.Log("[장] " + name + " — 주인공 점유 " + (100f * px / total).ToString("0.0") + "% (" + px +
+                          "px, 부류 " + e.Class + " 하한 " + (ShotSubject.MinShare(e.Class) * 100f).ToString("0") + "%)");
             }
             Debug.Log("[장] 요약 — 잰 샷 " + measured + " · 못 잼(지형) " + unmeasurable +
                       " · 주인공 못 찾음 " + missing + " · 원장 밖 " + noSubject);

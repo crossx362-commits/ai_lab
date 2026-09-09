@@ -24,7 +24,9 @@ namespace Ulon.Editor
             if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
                 UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
 
-            string[] want = { "07_d1_entrance", "09_d2_entrance", "11_d3_entrance", "02_village_wide", "18_meadow" };
+            // `06`도 표본이다(검수 관찰 2026-09-09 — 「그 화면 오른쪽 아래 잔디도 노랗게 타 있다」).
+            string[] want = { "07_d1_entrance", "09_d2_entrance", "11_d3_entrance",
+                              "06_field_boss", "02_village_wide", "18_meadow" };
             var shots = QaShots.BuildShots();
 
             var camGo = new GameObject("ExposureCam");
@@ -73,6 +75,7 @@ namespace Ulon.Editor
                 Object.DestroyImmediate(tex);
             }
             SweepEntranceLight();
+            BlameLights("06_field_boss");
             Debug.Log("[노출] 읽는 법 — 「250↑ 몫 / R·G 동시 250↑ 몫 / 평균 밝기」. 조건을 껐을 때 크게 내려간 것이 태우는 자다.");
             if (Application.isBatchMode)
                 UnityEditor.EditorApplication.Exit(0);
@@ -169,6 +172,60 @@ namespace Ulon.Editor
                 Object.DestroyImmediate(camGo); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
             }
         }
+
+        /// <summary>
+        /// **누가 태우는지 이름을 댄다** — 점광을 하나씩 꺼 보고 포화 몫이 가장 많이 내려간 순으로 적는다.
+        /// `06`은 입구 등불과 무관한데도 8.6%가 탔다(입구 점광만 끄면 그대로, 점광 전부 끄면 1.7).
+        /// 「어느 부류의 점광인가」를 모르면 처방이 또 짐작이 된다.
+        /// </summary>
+        static void BlameLights(string shotName)
+        {
+            var shots = QaShots.BuildShots();
+            int idx = -1;
+            for (int i = 0; i < shots.Length; i++)
+                if (QaShots.NameOf(shots[i]) == shotName) { idx = i; break; }
+            if (idx < 0) return;
+            QaShots.EyeOf(shots[idx], out Vector3 eye, out Vector3 look);
+
+            var camGo = new GameObject("ExposureBlameCam");
+            var cam = camGo.AddComponent<Camera>();
+            cam.fieldOfView = 55f; cam.nearClipPlane = 0.05f; cam.farClipPlane = 500f;
+            var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32);
+            var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
+            cam.targetTexture = rt;
+            camGo.transform.position = eye;
+            camGo.transform.LookAt(look);
+            try
+            {
+                float baseHot = Hot(Measure(cam, rt, tex));
+                var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+                var rows = new System.Collections.Generic.List<(string Name, float Drop, float Dist)>();
+                for (int i = 0; i < lights.Length; i++)
+                {
+                    if (lights[i] == null || lights[i].type == LightType.Directional) continue;
+                    bool was = lights[i].enabled;
+                    lights[i].enabled = false;
+                    float drop = baseHot - Hot(Measure(cam, rt, tex));
+                    lights[i].enabled = was;
+                    if (drop > 0.05f)
+                        rows.Add((lights[i].name, drop, Vector3.Distance(lights[i].transform.position, look)));
+                }
+                rows.Sort((a, b) => b.Drop.CompareTo(a.Drop));
+                string line = "[노출] " + shotName + " 태우는 점광(끄면 내려가는 몫) — 지금 " + baseHot.ToString("0.0") + "%";
+                for (int i = 0; i < rows.Count && i < 6; i++)
+                    line += " · " + rows[i].Name + " −" + rows[i].Drop.ToString("0.0") + "(" + rows[i].Dist.ToString("0") + "m)";
+                if (rows.Count == 0) line += " · 하나씩 꺼도 0.05% 넘게 내려가는 것이 없다(여럿이 함께 태운다)";
+                Debug.Log(line);
+            }
+            finally
+            {
+                cam.targetTexture = null; RenderTexture.active = null;
+                Object.DestroyImmediate(camGo); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
+            }
+        }
+
+        static float Hot(string measured) =>
+            float.Parse(measured.Split('/')[0], System.Globalization.CultureInfo.InvariantCulture);
 
         static string WithLights(Camera cam, RenderTexture rt, Texture2D tex, Light[] lights, System.Func<Light, bool> off)
         {
