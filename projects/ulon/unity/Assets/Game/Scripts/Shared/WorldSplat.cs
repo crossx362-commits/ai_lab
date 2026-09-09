@@ -107,6 +107,8 @@ namespace Ulon.Shared
         /// 이 자리의 지표 법선. 마스크를 섞는 데만 쓰므로 **잔주름이 아니라 면**을 읽어야 한다 —
         /// 2m 자다(0.587m 자는 잡음, 8m 자는 벽 밑 단까지 끌어온다는 것을 `MacroSlopeTan`에서 배웠다).
         /// </summary>
+        public static Vector3 SurfaceNormalAt(float wx, float wz) => SurfaceNormal(wx, wz);
+
         static Vector3 SurfaceNormal(float wx, float wz)
         {
             const float d = 2f;
@@ -137,7 +139,7 @@ namespace Ulon.Shared
             // 하나로 벽 무늬를 뽑으면 격자는 없어지지만, 법선이 자리마다 돌아 그 좌표가 함께 돌기
             // 때문에 무늬가 **낙하선을 따라 이어졌다** — 자도 그렇게 말했다(낙하선/등고선 비율
             // 1.63 → 1.22로 떨어짐 = 등고선 쪽으로 더 많이 변한다 = 세로줄). 화면도 같았다.
-            Vector3 bw = new Vector3(Mathf.Pow(Mathf.Abs(n.x), 4f), Mathf.Pow(Mathf.Abs(n.y), 4f), Mathf.Pow(Mathf.Abs(n.z), 4f));
+            Vector3 bw = new Vector3(Mathf.Pow(Mathf.Abs(n.x), PlaneSharp), Mathf.Pow(Mathf.Abs(n.y), 4f), Mathf.Pow(Mathf.Abs(n.z), PlaneSharp));
             float s = bw.x + bw.y + bw.z;
             bw /= Mathf.Max(s, 1e-4f);
             float top = Mathf.PerlinNoise(wx * f + ox, wz * f + oz);                    // 위에서 본 면
@@ -151,6 +153,13 @@ namespace Ulon.Shared
         /// 둥근 반점이 아니라 **층리**다 — 등방 덩이는 화면에서 곰팡이로 읽혔다(검수 랩 ㉥).
         /// </summary>
         const float LayerAniso = 4f;
+
+        /// <summary>
+        /// 삼면 투영에서 **두 평면이 함께 섞이는 폭**을 정하는 날카로움. 이 값이 낮으면 비스듬한 면에서
+        /// 동서 벽과 남북 벽의 무늬가 겹쳐 **격자**가 뜬다(검수 랩 ㉧ — 「눕히는 축을 만지면 그 자리가
+        /// 무늬가 된다」). 재는 쪽(`SliceSelfCheck.PlaneMix`)이 같은 값을 읽는다.
+        /// </summary>
+        public const float PlaneSharp = 16f;
 
         /// <summary>이 자리의 바위 중 **그늘진 절벽 바위가 차지하는 몫**(0~1).</summary>
         public static float DarkCliffAt(float wx, float wz)

@@ -1748,6 +1748,7 @@ namespace Ulon.Editor
             AssertWallGrass();           // 수직 암벽에 풀이 흘러내리는가(검수 랩 ⑨)
             AssertCliffMaskFall();       // 얼룩이 낙하선으로 늘어나는가(검수 랩 ㉡ — 무늬는 삼면, 마스크는 평면이었다)
             AssertCliffGrain();          // 암벽에 결이 남았는가(검수 랩 ㉢ — 톤은 갈렸는데 표면이 뭉개졌다)
+            AssertPlaneMix();            // 두 벽 평면이 겹쳐 격자를 그리는가(검수 랩 ㉧)
             AssertWorldMaterials();
             AssertServerAuthorityWiring();
             AssertReachableFeatures();
