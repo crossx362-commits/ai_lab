@@ -186,15 +186,24 @@ namespace Ulon.Editor
             var loops = Object.FindObjectsByType<ParticleSystem>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < loops.Length; i++)
             {
+                // **씨앗은 전부 박는다**(랩 ㉬, 2026-09-09). 유니티 기본값은 `useAutoRandomSeed = true` —
+                // 판마다 새 씨앗이라 같은 코드·같은 씬으로 두 번 찍어도 VFX가 매번 다르다.
+                // 계속 나는 효과만 박았다가 **1회성 VFX(`24_action_vfx`, 최대 채널차 159)를 놓쳤다** —
+                // 시뮬레이션 대상과 씨앗 대상은 다르다.
+                loops[i].useAutoRandomSeed = false;
+                loops[i].randomSeed = StableSeed(loops[i].transform);
                 var m = loops[i].main;
                 if (!m.loop || !m.playOnAwake)
                     continue;
+                // **배치 렌더에서는 파티클이 돌지 않는다** — 화덕 불처럼 계속 나는 효과는 미리 시뮬레이션해야
+                // 화면에 찍힌다(안 하면 「불을 붙였는데 샷엔 없다」가 된다).
+                loops[i].Clear(true);
                 loops[i].Simulate(1.2f, true, true);
                 simmed++;
             }
             // **분모를 같이 찍는다** — 「N개 했다」만 적으면 빠진 것이 조용히 남는다(포즈 7체가 그렇게 샜다).
-            Debug.Log("[Ulon] QA 파티클 시뮬레이션 — 계속 나는 효과 " + simmed + "/" + loops.Length +
-                      "개(나머지는 1회성이라 시뮬레이션 대상이 아니다)");
+            Debug.Log("[Ulon] QA 파티클 — 씨앗 고정 " + loops.Length + "개 · 그중 계속 나는 효과 " + simmed +
+                      "개를 미리 시뮬레이션(나머지는 1회성이라 시뮬레이션 대상이 아니다)");
 
             int posed = SampleIdlePose(out int animTotal);
             Debug.Log("[Ulon] QA 포즈 샘플링 — Idle 적용 액터 " + posed + "/" + animTotal + "체" +
@@ -224,6 +233,11 @@ namespace Ulon.Editor
                         if (faded[f] != null)
                             Debug.Log("[Ulon] 샷 페이드 " + shot.Name + " ← " + faded[f].transform.root.name + "/" + faded[f].name);
                     var vfx = shot.Vfx ? SliceSelfCheck.SpawnVfxTrio(shot.Target) : null;
+                    // **여기서 난 효과에도 씨앗을 박는다**(랩 ㉬) — 위의 고정 루프는 씬을 연 순간의
+                    // 파티클만 봤고, 이 셋은 **샷 직전에 태어나서** 그 그물을 빠져나갔다.
+                    // 그 탓에 `24`·`25` 두 장만 최대 채널차 130~170으로 계속 흔들렸다.
+                    if (vfx != null)
+                        SeedParticles(vfx.transform);
                     // 「집 뒤에 서면 어떻게 보이나」는 **몸이 있어야** 보인다 — 좌표만 찍으면 빈 잔디다.
                     var player = shot.StandPlayer ? GameObject.Find("Player") : null;
                     Vector3 savedPlayer = player != null ? player.transform.position : Vector3.zero;
@@ -280,6 +294,44 @@ namespace Ulon.Editor
         /// **판정 대상이 안 찍힌 샷은 판정이 아니다**(원장). 그래서 각자를 실제 자리에서 찍은
         /// 진짜 렌더를 타일로 붙인다. 아무도 옮기지 않고, 새로 그리지도 않는다.
         /// </summary>
+        /// <summary>
+        /// 이 가지 아래 파티클의 씨앗을 박고 처음부터 다시 돌린다(랩 ㉬).
+        /// 씨앗은 `randomSeed` 지정 뒤 **다시 재생해야** 먹는다 — 그냥 값만 넣으면 이미 돌던 난수가 이어진다.
+        /// </summary>
+        static void SeedParticles(Transform root)
+        {
+            var systems = root.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < systems.Length; i++)
+            {
+                systems[i].useAutoRandomSeed = false;
+                systems[i].randomSeed = StableSeed(systems[i].transform);
+                systems[i].Clear(true);
+                systems[i].Simulate(0.35f, true, true);
+            }
+        }
+
+        /// <summary>
+        /// **어느 기계에서 찍어도 같은 씨앗** — 계층 경로를 FNV-1a로 접는다.
+        /// `string.GetHashCode`를 쓰면 안 된다: 런타임에 따라 실행마다 값이 달라져
+        /// 「씨앗을 고정했다」는 말만 남고 화면은 여전히 흔들린다.
+        /// </summary>
+        static uint StableSeed(Transform t)
+        {
+            uint h = 2166136261u;
+            for (var cur = t; cur != null; cur = cur.parent)
+            {
+                string s = cur.name;
+                for (int i = 0; i < s.Length; i++)
+                {
+                    h ^= s[i];
+                    h *= 16777619u;
+                }
+                h ^= '/';
+                h *= 16777619u;
+            }
+            return h == 0u ? 1u : h;   // 0은 유니티가 「자동」으로 읽을 수 있는 값이라 피한다
+        }
+
         static void ContactSheet(string dir, System.Collections.Generic.List<string> names, string outName)
         {
             if (names.Count == 0)
