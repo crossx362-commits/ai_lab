@@ -12,7 +12,7 @@ namespace Ulon.Editor
     /// 서로 물려 있는지만 로그로 내놓는다. **아무것도 고치지 않고 아무것도 판정하지 않는다** —
     /// 게이트는 세고 난 뒤에 만든다(무엇을 재야 하는지 모르는 채 만든 자는 엉뚱한 것을 잰다).
     /// </summary>
-    public static class OutdoorCensus
+    public static partial class OutdoorCensus
     {
         [UnityEditor.MenuItem("Ulon/Count Outdoor Props")]
         public static void RunMenu() { Run(); }
