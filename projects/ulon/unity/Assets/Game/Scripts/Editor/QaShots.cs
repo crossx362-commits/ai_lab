@@ -27,7 +27,7 @@ namespace Ulon.Editor
         /// <summary>이번 실행에서 찍은 마을 사람 샷 이름 — 대조 시트가 이것만 모은다.</summary>
         static readonly System.Collections.Generic.List<string> villagerShots = new System.Collections.Generic.List<string>();
 
-        struct Shot
+        internal struct Shot
         {
             public string Name;
             public Vector3 Eye;      // 카메라 위치(월드)
@@ -59,130 +59,9 @@ namespace Ulon.Editor
 
             BearingNegativeControl("Forge");
 
-            var shots = new[]
-            {
-                Orbit("01_village_square", new Vector3(0f, 0f, 0f), 20f, 35f),
-                CompanionBlock("58_companion_block"),
-                PersonPlayCam("59_banker_playcam", "Banker"),
-                Orbit("02_village_wide", new Vector3(0f, 0f, 0f), 55f, 45f),
-                // 마을 쪽(남)에서 북쪽 사냥터를 본다 — 마을이 카메라 **뒤**라 프레임 밖이다
-                // (검수 완료 기준 랩 ⑦: 8체가 다 들어오고 마을이 화면에 없을 것).
-                // 눈 자리는 `VisualSliceBuilder.HuntViewEye` 원장 — 겹침 게이트가 **같은 눈**으로 잰다.
-                Free("03_hunt_mobs",
-                     new Vector3(VisualSliceBuilder.HuntViewEye.x,
-                                 GroundY(VisualSliceBuilder.HuntViewEye.x, VisualSliceBuilder.HuntViewEye.y) + VisualSliceBuilder.HuntViewEyeHeight,
-                                 VisualSliceBuilder.HuntViewEye.y),
-                     new Vector3(VisualSliceBuilder.HuntViewTarget.x,
-                                 GroundY(VisualSliceBuilder.HuntViewTarget.x, VisualSliceBuilder.HuntViewTarget.y) + VisualSliceBuilder.HuntViewTargetHeight,
-                                 VisualSliceBuilder.HuntViewTarget.y)),
-                // 잡몹이 나란히 선 눈높이 샷 — **키를 서로 비교해서 읽는** 화면(검수 완료 기준 랩 ⑥).
-                // 위에서 내려다보면 원근이 키 차이를 먹는다. 낮게·가까이서 본다.
-                // 마을 반대쪽(북)에서 눈높이로 — 궤도 샷은 지붕이 화면 절반을 먹었다.
-                Free("56_mob_lineup",
-                     new Vector3(2.8f, GroundY(2.8f, 45f) + 4.0f, 45f),
-                     new Vector3(2.8f, GroundY(2.8f, 33.5f) + 1.0f, 33.5f)),
-                Orbit("06_field_boss", new Vector3(22.6f, 0f, 8.4f), 10f, 25f),
-                EntranceOrbit("07_d1_entrance", Dungeon1.EntranceX, Dungeon1.EntranceZ, Dungeon1.EntranceYaw),
-                PlayCam("08_d1_interior_playcam", Dungeon1.InteriorX, Dungeon1.InteriorZ),
-                // 귀퉁이에 선 화면 — 카메라 눈이 벽 밖으로 나가는 최악 자리(검수 2026-09-06 B).
-                PlayCam("23_d1_corner_playcam", Dungeon1.InteriorX + 6f, Dungeon1.InteriorZ + 6f, Dungeon1.InteriorX, Dungeon1.InteriorZ),
-                Inside("08_d1_interior", Dungeon1.InteriorX, Dungeon1.InteriorZ, Dungeon1.BossX, Dungeon1.BossZ),
-                EntranceOrbit("09_d2_entrance", Dungeon2.EntranceX, Dungeon2.EntranceZ, Dungeon2.EntranceYaw),
-                PlayCam("10_d2_interior_playcam", Dungeon2.InteriorX, Dungeon2.InteriorZ),
-                Inside("10_d2_interior", Dungeon2.InteriorX, Dungeon2.InteriorZ, Dungeon2.BossX, Dungeon2.BossZ),
-                EntranceOrbit("11_d3_entrance", Dungeon3.EntranceX, Dungeon3.EntranceZ, Dungeon3.EntranceYaw),
-                // 문구멍 슬랩을 안쪽으로 물린 뒤 **비스듬한 방위에서 판의 앞면이 노출되는지** 본다
-                // (검수 조건 2026-09-08: 정면 한 장 = 11번, 45° 한 장 = 이것).
-                // 물려받은 자의 근거를 화면으로 확인한다(검수 2026-09-09): 허용 50%는 **던전 소품끼리**
-                // 유도한 값이다. 마을에서 가장 깊이 물린 쌍(`cart-high↔House` 36%)이 화면에서
-                // 「박혀 보이는가」를 눈으로 보고, 안 보이면 건물 쌍에도 유효하다고 근거를 적는다.
-                // 자동 방위(FacilityCloseUp)는 첫 판에 이웃 집 처마 **안쪽**을 골라 피사체가 안 보였다 —
-                // 판정 대상이 안 찍히는 샷은 판정이 아니다. 수레↔집 선의 **옆**에서 본다.
-                Free("61_cart_house", new Vector3(-17.4f, GroundY(-17.4f, 12.6f) + 2.2f, 12.6f),
-                     new Vector3(-12.6f, GroundY(-12.6f, 7.2f) + 0.8f, 7.2f)),
-                // 지붕 경증 둘(굴뚝이 지붕 앞으로 뜸 · 박공 주황 널판 돌출)을 재판정할 근접.
-                FacilityCloseUp("62_house_roof", "House"),
-                Angled("60_d3_entrance_45", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 7f, 18f, 90f),
-                PlayCam("12_d3_interior_playcam", Dungeon3.InteriorX, Dungeon3.InteriorZ),
-                Vfx(PlayCam("24_action_vfx", Dungeon3.InteriorX, Dungeon3.InteriorZ)),
-                Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
-                CutAway(Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ)),
-                // §8.1 멀리서도 읽히는 실루엣 — 산·바다 조망, 호수·강 조망.
-                BossCloseUp("17_boss_closeup", Dungeon3.BossX, Dungeon3.BossZ),
-                ActorCloseUp("22_mob_closeup", Dungeon3.MobObject),
-                Orbit("18_meadow", new Vector3(WorldRegions.Meadow.X, 0f, WorldRegions.Meadow.Z), 34f, 28f),
-                Orbit("19_forest", new Vector3(WorldRegions.Forest.X, 0f, WorldRegions.Forest.Z), 38f, 26f),
-                Orbit("20_mine", new Vector3(WorldRegions.Mine.X, 0f, WorldRegions.Mine.Z), 30f, 26f),
-                Orbit("21_testchamber", new Vector3(WorldRegions.TestChamber.X, 0f, WorldRegions.TestChamber.Z), 24f, 22f),
-                Free("14_world_vista", new Vector3(-165f, 95f, -165f), new Vector3(0f, WorldTerrain.LandBase, 0f)),
-                // **부두에서 건너편 절개면을 마주 본다**(검수 조건 2026-09-09 — 안식각·너덜 랩).
-                // 조망(15)에서는 그 면이 멀어 얼룩이 안 읽힌다. 자리는 지형 원장에서 유도한다:
-                // 부두는 호수 중심에서 마을 쪽으로 반경 92% 자리에 서서 안쪽으로 14m 뻗는다.
-                PierAcross("63_pier_cutface"),
-                Free("15_lake_river", new Vector3(WorldTerrain.LakeX + 46f, 40f, WorldTerrain.LakeZ + 46f), new Vector3(WorldTerrain.LakeX - 12f, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),
-                // 효과를 **야외 대낮**에서도 한 장(실내만 보면 어두운 배경 덕을 본다), 그리고
-                // 풍차(은행) 뒤에 선 자리 — 건물을 페이드 대상에 올린 뒤 화면이 어떻게 보이는지(검수 요구).
-                Vfx(Stand(PlayCamOutdoor("25_action_vfx_village", 0f, 0f))),
-                Stand(PlayCamOutdoor("26_behind_bank", -10f, 8f)),
-                // 던전 입구 앞 — 지표 높이인데 머리 위에 구조물이 있다. 줌이 실내로 튀지 않는지 눈으로 본다.
-                Stand(PlayCamAuto("27_entrance_zoom", Dungeon2.EntranceX, Dungeon2.EntranceZ)),
-                // 마을 시설 근접 — 「저게 대장간이구나」가 화면에서 읽히는지 눈으로 본다(검수 랩 ① 요구).
-                Stand(PlayCamOutdoor("28_facilities", -5.2f, 3.4f)),
-                Stand(PlayCamOutdoor("29_forge_carpenter", -6.8f, 5.2f)),
-                // 시설별 **진짜 근접** — 28·29는 플레이 거리라 시설이 수십 픽셀이었다(검수 반려).
-                // **미결**: 이 장은 지금 판정 불가다 — 대장간 몸통이 1.0×0.4×0.7m 무릎 높이 판매대라
-                // 화면에 「대장간」으로 읽힐 것이 없다(방위·거리 랩에서 카메라 쪽은 다 맞췄다).
-                // 근거와 조치는 `RoleLook.cs`의 Forge 항목에 적어 뒀다 — MegaKit(모루·화덕) 도착 시 최우선.
-                FacilityCloseUp("30_forge", "Forge"),
-                FacilityCloseUp("31_carpenter", "Carpenter"),
-                FacilityCloseUp("32_vendor", "Vendor"),
-                FacilityCloseUp("33_campfire", "Campfire"),
-                FacilityCloseUp("34_mortar", "Mortar"),
-                FacilityCloseUp("35_fishing", "FishingSpot",
-                    new Vector3(WorldTerrain.LakeX, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),   // 호수를 등지지 않게
-                FacilityCloseUp("36_stable", "Stable"),
-                FacilityCloseUp("37_banker", "Banker"),
-                FacilityCloseUp("38_healer", "Healer"),
-                // 보스가 **바닥에 서 있는지** 눈으로 본다(검수 판정 2026-09-07 ① — 최대 1.10m 묻혀 있었다).
-                FacilityCloseUp("39_boss1", Dungeon1.BossObject, null, true),
-                FacilityCloseUp("40_boss2", Dungeon2.BossObject, null, true),
-                BossShot41(),
-                // 조련 생물 근접 — 덤불이 아니라 짐승으로 읽히는지 본다(동물 팩 랩 완료 기준).
-                FacilityCloseUp("42_deer", TameCritter.Object, null, true),
-                FacilityCloseUp("43_boar", TameBoar.Object, null, true),
-                // 마구간 마당의 짐승 — 「빈 마당」 반려의 완료 근거(동물 랩).
-                FacilityCloseUp("44_stable_beast", VisualSliceBuilder.StableBeastObject, null, true),
-                // **볕 받는 면에서 본다.** 해는 `SunEuler`(50°, −30°)라 +x·−z 쪽 면이 볕이고 반대편은
-                // 통째로 그늘이다 — 옛 자리(60,30,60)는 그 그늘 면을 정면으로 봐서 산이 검은 실루엣
-                // 한 장이었다(before 샷). 세계를 밝히는 대신 **눈을 볕 쪽으로 옮긴다**: 조명을 만지면
-                // 온 세계 스물한 샷이 같이 바뀐다.
-                // 가까이 붙으면 **늘어난 무늬가 같이 커진다** — 첫 시도(120,34,−40)는 절벽이 화면을 채워
-                // 스미어가 더 적나라했다. 능선이 이어지는 모양을 보여줄 만큼 물러선다.
-                Free("16_mountain_ridge", new Vector3(158f, 72f, -86f), new Vector3(78f, WorldTerrain.LandBase + 24f, 26f)),
-            };
-
-            // **마을 사람 근접** — 5역할이 서로 다른 모습인지 눈으로 본다(검수 랩 ③사람 완료 기준).
-            // 대상은 이름 목록이 아니라 `VillagerLook.Villagers()` 전수다 — 역할이 늘면 샷도 늘어난다.
-            var shotList = new System.Collections.Generic.List<Shot>(shots);
-            var villagers = VillagerLook.Villagers();
-            villagerShots.Clear();
-            for (int i = 0; i < villagers.Count; i++)
-            {
-                string nm = (45 + i).ToString("00") + "_person_" + VillagerLook.HostOf(villagers[i]);
-                villagerShots.Add(nm);
-                shotList.Add(FacilityCloseUp(nm, villagers[i].name, null, true));
-            }
-            shotList.Add(PairCloseUp("51_player_companion", "Player", VisualSliceBuilder.CompanionObject));
-            // 도적 근접 — Mage 차림이던 이름-외형 어긋남을 고친 뒤(검수 승인) 화면으로 확인한다.
-            shotList.Add(FacilityCloseUp("52_bandit", "Bandit", null, true));
-            shotList.Add(FacilityCloseUp("53_rogue", "Rogue", null, true));   // 자객 단독
-            // 검수 완료 기준 — **도적과 자객을 한 화면에**. 도적을 Rogue 모델로 옮겼으니
-            // 「겹침이 Rogue 쪽으로 옮겨간 것 아니냐」를 눈으로 확인할 수 있어야 한다.
-            shotList.Add(PairCloseUp("54_bandit_rogue", "Bandit", "Rogue"));
-            // 아마밭 — 「밭으로 읽히는가」는 근접 한 장으로 판정한다(검수 완료 기준, 랩 ⑤).
-            // 한 포기에 붙으면 「밭」이 화면에 안 담긴다 — **뙈기 전체**가 들어오는 거리·각도로 찍는다.
-            shotList.Add(Orbit("55_flaxfield", new Vector3(WorldSplat.FlaxX, 0f, WorldSplat.FlaxZ), 13f, 32f));
-            shots = shotList.ToArray();
+            // **샷 목록은 한 곳에서 만든다**(2026-09-09). 「죽은 장」 자가 같은 목록을 읽어야
+            // 재는 쪽과 찍는 쪽이 같은 화면을 본다 — 목록을 두 벌 두면 자가 다른 세계를 잰다.
+            var shots = BuildShots();
 
             // **런타임 포즈로 찍는다.** 에디터에서 그냥 찍으면 모든 액터가 바인드 포즈(T포즈)라
             // 「칼이 얼굴 높이를 가로지른다」 같은 인상이 실제 플레이와 다르다(검수 2026-09-06 질의).
@@ -812,5 +691,144 @@ namespace Ulon.Editor
                 return 0f;
             return terrain.SampleHeight(new Vector3(x, 0f, z)) + terrain.transform.position.y;
         }
+
+        /// <summary>샷의 이름 — 재는 쪽이 원장을 찾을 열쇠다.</summary>
+        internal static string NameOf(Shot s) => s.Name;
+
+        /// <summary>
+        /// 샷의 눈과 보는 곳. **플레이 카메라 샷은 근사다** — 실제 촬영은 차폐 페이드·줌이 더 붙는다.
+        /// 「주인공이 프레임에 담겼나」를 재는 데는 눈과 방향이면 되지만, 그 한계는 적어 둔다.
+        /// </summary>
+        internal static void EyeOf(Shot s, out Vector3 eye, out Vector3 look) { eye = s.Eye; look = s.Target; }
+
+        /// <summary>QA 샷 목록 — 찍는 쪽과 재는 쪽(`ShotCensus`)이 **같은 목록**을 읽는다.</summary>
+        internal static Shot[] BuildShots()
+        {
+            var shots = new[]
+            {
+                Orbit("01_village_square", new Vector3(0f, 0f, 0f), 20f, 35f),
+                CompanionBlock("58_companion_block"),
+                PersonPlayCam("59_banker_playcam", "Banker"),
+                Orbit("02_village_wide", new Vector3(0f, 0f, 0f), 55f, 45f),
+                // 마을 쪽(남)에서 북쪽 사냥터를 본다 — 마을이 카메라 **뒤**라 프레임 밖이다
+                // (검수 완료 기준 랩 ⑦: 8체가 다 들어오고 마을이 화면에 없을 것).
+                // 눈 자리는 `VisualSliceBuilder.HuntViewEye` 원장 — 겹침 게이트가 **같은 눈**으로 잰다.
+                Free("03_hunt_mobs",
+                     new Vector3(VisualSliceBuilder.HuntViewEye.x,
+                                 GroundY(VisualSliceBuilder.HuntViewEye.x, VisualSliceBuilder.HuntViewEye.y) + VisualSliceBuilder.HuntViewEyeHeight,
+                                 VisualSliceBuilder.HuntViewEye.y),
+                     new Vector3(VisualSliceBuilder.HuntViewTarget.x,
+                                 GroundY(VisualSliceBuilder.HuntViewTarget.x, VisualSliceBuilder.HuntViewTarget.y) + VisualSliceBuilder.HuntViewTargetHeight,
+                                 VisualSliceBuilder.HuntViewTarget.y)),
+                // 잡몹이 나란히 선 눈높이 샷 — **키를 서로 비교해서 읽는** 화면(검수 완료 기준 랩 ⑥).
+                // 위에서 내려다보면 원근이 키 차이를 먹는다. 낮게·가까이서 본다.
+                // 마을 반대쪽(북)에서 눈높이로 — 궤도 샷은 지붕이 화면 절반을 먹었다.
+                Free("56_mob_lineup",
+                     new Vector3(2.8f, GroundY(2.8f, 45f) + 4.0f, 45f),
+                     new Vector3(2.8f, GroundY(2.8f, 33.5f) + 1.0f, 33.5f)),
+                Orbit("06_field_boss", new Vector3(22.6f, 0f, 8.4f), 10f, 25f),
+                EntranceOrbit("07_d1_entrance", Dungeon1.EntranceX, Dungeon1.EntranceZ, Dungeon1.EntranceYaw),
+                PlayCam("08_d1_interior_playcam", Dungeon1.InteriorX, Dungeon1.InteriorZ),
+                // 귀퉁이에 선 화면 — 카메라 눈이 벽 밖으로 나가는 최악 자리(검수 2026-09-06 B).
+                PlayCam("23_d1_corner_playcam", Dungeon1.InteriorX + 6f, Dungeon1.InteriorZ + 6f, Dungeon1.InteriorX, Dungeon1.InteriorZ),
+                Inside("08_d1_interior", Dungeon1.InteriorX, Dungeon1.InteriorZ, Dungeon1.BossX, Dungeon1.BossZ),
+                EntranceOrbit("09_d2_entrance", Dungeon2.EntranceX, Dungeon2.EntranceZ, Dungeon2.EntranceYaw),
+                PlayCam("10_d2_interior_playcam", Dungeon2.InteriorX, Dungeon2.InteriorZ),
+                Inside("10_d2_interior", Dungeon2.InteriorX, Dungeon2.InteriorZ, Dungeon2.BossX, Dungeon2.BossZ),
+                EntranceOrbit("11_d3_entrance", Dungeon3.EntranceX, Dungeon3.EntranceZ, Dungeon3.EntranceYaw),
+                // 문구멍 슬랩을 안쪽으로 물린 뒤 **비스듬한 방위에서 판의 앞면이 노출되는지** 본다
+                // (검수 조건 2026-09-08: 정면 한 장 = 11번, 45° 한 장 = 이것).
+                // 물려받은 자의 근거를 화면으로 확인한다(검수 2026-09-09): 허용 50%는 **던전 소품끼리**
+                // 유도한 값이다. 마을에서 가장 깊이 물린 쌍(`cart-high↔House` 36%)이 화면에서
+                // 「박혀 보이는가」를 눈으로 보고, 안 보이면 건물 쌍에도 유효하다고 근거를 적는다.
+                // 자동 방위(FacilityCloseUp)는 첫 판에 이웃 집 처마 **안쪽**을 골라 피사체가 안 보였다 —
+                // 판정 대상이 안 찍히는 샷은 판정이 아니다. 수레↔집 선의 **옆**에서 본다.
+                Free("61_cart_house", new Vector3(-17.4f, GroundY(-17.4f, 12.6f) + 2.2f, 12.6f),
+                     new Vector3(-12.6f, GroundY(-12.6f, 7.2f) + 0.8f, 7.2f)),
+                // 지붕 경증 둘(굴뚝이 지붕 앞으로 뜸 · 박공 주황 널판 돌출)을 재판정할 근접.
+                FacilityCloseUp("62_house_roof", "House"),
+                Angled("60_d3_entrance_45", new Vector3(Dungeon3.EntranceX, 0f, Dungeon3.EntranceZ), 7f, 18f, 90f),
+                PlayCam("12_d3_interior_playcam", Dungeon3.InteriorX, Dungeon3.InteriorZ),
+                Vfx(PlayCam("24_action_vfx", Dungeon3.InteriorX, Dungeon3.InteriorZ)),
+                Inside("12_d3_interior", Dungeon3.InteriorX, Dungeon3.InteriorZ, Dungeon3.BossX, Dungeon3.BossZ),
+                CutAway(Roof("13_d1_room_cutaway", Dungeon1.InteriorX, Dungeon1.InteriorZ)),
+                // §8.1 멀리서도 읽히는 실루엣 — 산·바다 조망, 호수·강 조망.
+                BossCloseUp("17_boss_closeup", Dungeon3.BossX, Dungeon3.BossZ),
+                ActorCloseUp("22_mob_closeup", Dungeon3.MobObject),
+                Orbit("18_meadow", new Vector3(WorldRegions.Meadow.X, 0f, WorldRegions.Meadow.Z), 34f, 28f),
+                Orbit("19_forest", new Vector3(WorldRegions.Forest.X, 0f, WorldRegions.Forest.Z), 38f, 26f),
+                Orbit("20_mine", new Vector3(WorldRegions.Mine.X, 0f, WorldRegions.Mine.Z), 30f, 26f),
+                Orbit("21_testchamber", new Vector3(WorldRegions.TestChamber.X, 0f, WorldRegions.TestChamber.Z), 24f, 22f),
+                Free("14_world_vista", new Vector3(-165f, 95f, -165f), new Vector3(0f, WorldTerrain.LandBase, 0f)),
+                // **부두에서 건너편 절개면을 마주 본다**(검수 조건 2026-09-09 — 안식각·너덜 랩).
+                // 조망(15)에서는 그 면이 멀어 얼룩이 안 읽힌다. 자리는 지형 원장에서 유도한다:
+                // 부두는 호수 중심에서 마을 쪽으로 반경 92% 자리에 서서 안쪽으로 14m 뻗는다.
+                PierAcross("63_pier_cutface"),
+                Free("15_lake_river", new Vector3(WorldTerrain.LakeX + 46f, 40f, WorldTerrain.LakeZ + 46f), new Vector3(WorldTerrain.LakeX - 12f, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),
+                // 효과를 **야외 대낮**에서도 한 장(실내만 보면 어두운 배경 덕을 본다), 그리고
+                // 풍차(은행) 뒤에 선 자리 — 건물을 페이드 대상에 올린 뒤 화면이 어떻게 보이는지(검수 요구).
+                Vfx(Stand(PlayCamOutdoor("25_action_vfx_village", 0f, 0f))),
+                Stand(PlayCamOutdoor("26_behind_bank", -10f, 8f)),
+                // 던전 입구 앞 — 지표 높이인데 머리 위에 구조물이 있다. 줌이 실내로 튀지 않는지 눈으로 본다.
+                Stand(PlayCamAuto("27_entrance_zoom", Dungeon2.EntranceX, Dungeon2.EntranceZ)),
+                // 마을 시설 근접 — 「저게 대장간이구나」가 화면에서 읽히는지 눈으로 본다(검수 랩 ① 요구).
+                Stand(PlayCamOutdoor("28_facilities", -5.2f, 3.4f)),
+                Stand(PlayCamOutdoor("29_forge_carpenter", -6.8f, 5.2f)),
+                // 시설별 **진짜 근접** — 28·29는 플레이 거리라 시설이 수십 픽셀이었다(검수 반려).
+                // **미결**: 이 장은 지금 판정 불가다 — 대장간 몸통이 1.0×0.4×0.7m 무릎 높이 판매대라
+                // 화면에 「대장간」으로 읽힐 것이 없다(방위·거리 랩에서 카메라 쪽은 다 맞췄다).
+                // 근거와 조치는 `RoleLook.cs`의 Forge 항목에 적어 뒀다 — MegaKit(모루·화덕) 도착 시 최우선.
+                FacilityCloseUp("30_forge", "Forge"),
+                FacilityCloseUp("31_carpenter", "Carpenter"),
+                FacilityCloseUp("32_vendor", "Vendor"),
+                FacilityCloseUp("33_campfire", "Campfire"),
+                FacilityCloseUp("34_mortar", "Mortar"),
+                FacilityCloseUp("35_fishing", "FishingSpot",
+                    new Vector3(WorldTerrain.LakeX, WorldTerrain.SeaLevel, WorldTerrain.LakeZ)),   // 호수를 등지지 않게
+                FacilityCloseUp("36_stable", "Stable"),
+                FacilityCloseUp("37_banker", "Banker"),
+                FacilityCloseUp("38_healer", "Healer"),
+                // 보스가 **바닥에 서 있는지** 눈으로 본다(검수 판정 2026-09-07 ① — 최대 1.10m 묻혀 있었다).
+                FacilityCloseUp("39_boss1", Dungeon1.BossObject, null, true),
+                FacilityCloseUp("40_boss2", Dungeon2.BossObject, null, true),
+                BossShot41(),
+                // 조련 생물 근접 — 덤불이 아니라 짐승으로 읽히는지 본다(동물 팩 랩 완료 기준).
+                FacilityCloseUp("42_deer", TameCritter.Object, null, true),
+                FacilityCloseUp("43_boar", TameBoar.Object, null, true),
+                // 마구간 마당의 짐승 — 「빈 마당」 반려의 완료 근거(동물 랩).
+                FacilityCloseUp("44_stable_beast", VisualSliceBuilder.StableBeastObject, null, true),
+                // **볕 받는 면에서 본다.** 해는 `SunEuler`(50°, −30°)라 +x·−z 쪽 면이 볕이고 반대편은
+                // 통째로 그늘이다 — 옛 자리(60,30,60)는 그 그늘 면을 정면으로 봐서 산이 검은 실루엣
+                // 한 장이었다(before 샷). 세계를 밝히는 대신 **눈을 볕 쪽으로 옮긴다**: 조명을 만지면
+                // 온 세계 스물한 샷이 같이 바뀐다.
+                // 가까이 붙으면 **늘어난 무늬가 같이 커진다** — 첫 시도(120,34,−40)는 절벽이 화면을 채워
+                // 스미어가 더 적나라했다. 능선이 이어지는 모양을 보여줄 만큼 물러선다.
+                Free("16_mountain_ridge", new Vector3(158f, 72f, -86f), new Vector3(78f, WorldTerrain.LandBase + 24f, 26f)),
+            };
+
+            // **마을 사람 근접** — 5역할이 서로 다른 모습인지 눈으로 본다(검수 랩 ③사람 완료 기준).
+            // 대상은 이름 목록이 아니라 `VillagerLook.Villagers()` 전수다 — 역할이 늘면 샷도 늘어난다.
+            var shotList = new System.Collections.Generic.List<Shot>(shots);
+            var villagers = VillagerLook.Villagers();
+            villagerShots.Clear();
+            for (int i = 0; i < villagers.Count; i++)
+            {
+                string nm = (45 + i).ToString("00") + "_person_" + VillagerLook.HostOf(villagers[i]);
+                villagerShots.Add(nm);
+                shotList.Add(FacilityCloseUp(nm, villagers[i].name, null, true));
+            }
+            shotList.Add(PairCloseUp("51_player_companion", "Player", VisualSliceBuilder.CompanionObject));
+            // 도적 근접 — Mage 차림이던 이름-외형 어긋남을 고친 뒤(검수 승인) 화면으로 확인한다.
+            shotList.Add(FacilityCloseUp("52_bandit", "Bandit", null, true));
+            shotList.Add(FacilityCloseUp("53_rogue", "Rogue", null, true));   // 자객 단독
+            // 검수 완료 기준 — **도적과 자객을 한 화면에**. 도적을 Rogue 모델로 옮겼으니
+            // 「겹침이 Rogue 쪽으로 옮겨간 것 아니냐」를 눈으로 확인할 수 있어야 한다.
+            shotList.Add(PairCloseUp("54_bandit_rogue", "Bandit", "Rogue"));
+            // 아마밭 — 「밭으로 읽히는가」는 근접 한 장으로 판정한다(검수 완료 기준, 랩 ⑤).
+            // 한 포기에 붙으면 「밭」이 화면에 안 담긴다 — **뙈기 전체**가 들어오는 거리·각도로 찍는다.
+            shotList.Add(Orbit("55_flaxfield", new Vector3(WorldSplat.FlaxX, 0f, WorldSplat.FlaxZ), 13f, 32f));
+            return shotList.ToArray();
+        }
+
     }
 }
