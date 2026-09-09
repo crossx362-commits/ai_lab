@@ -649,7 +649,13 @@ namespace Ulon.Editor
             var mat = MakeNoiseMat("SeaWater", new Color(0.10f, 0.28f, 0.42f), new Color(0.18f, 0.44f, 0.58f));
             if (mat != null)
             {
-                mat.SetFloat("_Glossiness", 0.85f);
+                // **0.85는 정반사가 좁고 세서 흰 구멍이 뚫린다** — 호수를 원장 크기로 판 뒤
+                // `15`의 흰 포화(RGB 모두 250↑)가 0.32 → 1.60%로 다섯 배가 됐고 화면에서
+                // 물에 구멍이 난 것처럼 보였다. 후보를 나란히 재서 갈랐다(`ExposureCensus.RunWaterGlare`):
+                // 매끄러움 0이면 0.00%, 금속기 0은 1.68%(무관), 태양을 끄면 0.00% — **정반사 하나다.**
+                // 스윕 0.85→1.59 · 0.70→2.62(넓어지며 더 나빠진다) · **0.55→0.02** · 0.40 아래는 0.
+                // 0.55를 고른 것은 **반짝임을 죽이지 않으면서** 흰 덩어리만 걷는 값이라서다.
+                mat.SetFloat("_Glossiness", 0.55f);
                 mat.SetFloat("_Metallic", 0.1f);
                 if (mat.HasProperty("_MainTex"))
                     mat.mainTextureScale = new Vector2(24f, 24f);

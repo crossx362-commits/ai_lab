@@ -14,7 +14,7 @@ namespace Ulon.Editor
     ///
     /// 대조군으로 야외 광각(`02`·`18`)을 같은 조건으로 함께 잰다. 「입구만 그런가」를 이 자가 스스로 갈라야 한다.
     /// </summary>
-    public static class ExposureCensus
+    public static partial class ExposureCensus
     {
         const int W = 640, H = 360;
 
