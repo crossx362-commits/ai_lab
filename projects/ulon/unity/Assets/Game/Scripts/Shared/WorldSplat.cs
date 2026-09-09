@@ -259,6 +259,24 @@ namespace Ulon.Shared
             return Mathf.Clamp01((b + fine * 0.30f - 0.52f) / 0.13f) * 0.90f;
         }
 
+        /// <summary>
+        /// **길은 던전 문 뒤 언덕을 넘지 않는다**(2026-09-09, 문 뒤 언덕 랩 화면).
+        ///
+        /// 스포크 길은 좌표만 보고 그어진다 — 지형이 솟으면 그 위를 그대로 탄다. 언덕을 올리자
+        /// `07`·`09`·`11` 위쪽에 돌길 띠가 **정상까지** 뻗어 「산꼭대기로 가는 길」이 됐다
+        /// (셈: D2 언덕 반경 안에 길 칸 170개). 사람이 낸 길은 언덕을 넘지 않고 돌아간다.
+        ///
+        /// 경사로 자르지 않고 **언덕 높이로** 자른다: 셈이 말하길 언덕 경사는 최급 26°라
+        /// 경사 임계로는 안 걸린다 — 걸리는 것은 「여기가 문 뒤 언덕인가」다. 문 앞·문턱은
+        /// `MoundRise`가 0이라 입구 앞길·광장은 그대로다.
+        /// </summary>
+        public const float RoadMoundCut = 2.0f;    // 언덕이 이만큼 솟으면 길은 사라진다
+
+        public static float RoadMoundFade(float wx, float wz)
+        {
+            return 1f - Mathf.Clamp01(EntranceGeom.MoundRise(wx, wz) / RoadMoundCut);
+        }
+
         public const float RoadHalfWidth = 2.4f;   // 길 중심에서 이 폭까지는 온전히 길
         public const float RoadFade = 1.8f;        // 그 바깥으로 이 폭만큼 흙이 옅어진다
 
@@ -369,10 +387,11 @@ namespace Ulon.Shared
             }
 
             var routes = Routes;
+            float mound = RoadMoundFade(wx, wz);
             for (int i = 0; i < routes.Length; i++)
             {
                 float d = DistToSegment(wx, wz, routes[i].x, routes[i].y, routes[i].z, routes[i].w);
-                float t = 1f - Mathf.Clamp01((d - RoadHalfWidth) / RoadFade);
+                float t = (1f - Mathf.Clamp01((d - RoadHalfWidth) / RoadFade)) * mound;
                 if (t > weight)
                 {
                     weight = t;
@@ -511,9 +530,11 @@ namespace Ulon.Shared
                 float ex = i == 0 ? Dungeon1.EntranceX : i == 1 ? Dungeon2.EntranceX : Dungeon3.EntranceX;
                 float ez = i == 0 ? Dungeon1.EntranceZ : i == 1 ? Dungeon2.EntranceZ : Dungeon3.EntranceZ;
                 float yaw = i == 0 ? Dungeon1.EntranceYaw : i == 1 ? Dungeon2.EntranceYaw : Dungeon3.EntranceYaw;
-                // 진입로 방향 = 문이 보는 쪽의 반대(빌더 `EntranceApproach`와 같은 정의).
-                float rad = yaw * Mathf.Deg2Rad;
-                float ax = -Mathf.Sin(rad), az = -Mathf.Cos(rad);
+                // 진입로 방향 = **오는 사람이 서는 쪽**. 옛 정의(`-Heading(yaw)`)는 이름만 「반대쪽」이라
+                // 세 입구 모두 **문 뒤로** 길을 그렸다(문 뒤 언덕을 올리자 정상까지 뻗은 띠로 드러났다,
+                // `07`·`09`·`11` 상단). 앞은 이름이 아니라 좌표가 정한다 — 원장 `EntranceGeom.Front`를 읽는다.
+                var approachDir = EntranceGeom.Front(ex, ez, yaw);
+                float ax = approachDir.x, az = approachDir.y;
                 float px = wx - ex, pz = wz - ez;
                 float along = px * ax + pz * az;                 // 문에서 진입로 쪽으로 얼마나 갔나
                 float side = Mathf.Abs(px * az - pz * ax);       // 길 중심선에서 옆으로 얼마나

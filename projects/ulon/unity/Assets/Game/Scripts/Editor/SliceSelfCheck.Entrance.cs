@@ -117,8 +117,10 @@ namespace Ulon.Editor
             };
             for (int i = 0; i < doors.Length; i++)
             {
-                float rad = doors[i].Item4 * Mathf.Deg2Rad;
-                float ax = -Mathf.Sin(rad), az = -Mathf.Cos(rad);   // 진입로 쪽(빌더·도포 규칙과 같은 정의)
+                // 진입로 쪽은 **원장 하나**에서 온다(`EntranceGeom.Front`) — 옛 `-Heading(yaw)` 정의는
+                // 이름만 「반대쪽」이라 세 입구 모두 문 뒤를 가리켰다(2026-09-09, 언덕 위 길 띠로 드러남).
+                var approachDir = Ulon.Shared.EntranceGeom.Front(doors[i].Item2, doors[i].Item3, doors[i].Item4);
+                float ax = approachDir.x, az = approachDir.y;
                 float sx = az, sz = -ax;                            // 그 옆
                 float on = 0f, off = 0f;
                 int n = 0;

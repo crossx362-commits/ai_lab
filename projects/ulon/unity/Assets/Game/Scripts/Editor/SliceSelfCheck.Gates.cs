@@ -136,6 +136,7 @@ namespace Ulon.Editor
             Gate(AssertWallGrass);           // 수직 암벽에 풀이 흘러내리는가(검수 랩 ⑨)
             Gate(AssertCliffMaskFall);       // 얼룩이 낙하선으로 늘어나는가(검수 랩 ㉡ — 무늬는 삼면, 마스크는 평면이었다)
             Gate(AssertCliffGrain);          // 암벽에 결이 남았는가(검수 랩 ㉢ — 톤은 갈렸는데 표면이 뭉개졌다)
+            Gate(AssertRoadOffMound);        // 길은 문 뒤 언덕을 넘지 않는다(산꼭대기로 가는 길 금지)
             Gate(AssertMoundBehind);         // 문 뒤에 산이 있나(시선으로 — 문구멍은 뚫리고 문 위는 막힌다)
             Gate(AssertShoreBand);           // 물가에 걸어 다닐 만한 띠가 있는가(폭은 높이가 아니라 수평 거리)
             Gate(AssertPlaneMix);            // 두 벽 평면이 겹쳐 격자를 그리는가(검수 랩 ㉧)
