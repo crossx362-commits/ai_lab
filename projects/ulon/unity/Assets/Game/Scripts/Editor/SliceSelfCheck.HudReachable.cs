@@ -42,10 +42,7 @@ namespace Ulon.Editor
 
         static void AssertHudControlsOnScreen()
         {
-            string hudPath = Path.Combine(Application.dataPath, "Game/Scripts/Client/SliceHud.cs");
-            if (!File.Exists(hudPath))
-                throw new InvalidOperationException("SliceHud.cs를 찾을 수 없습니다.");
-            string[] lines = File.ReadAllLines(hudPath);
+            string[] lines = HudSourceLines();
 
             var methodCalls = HudMethodCalls(lines);
             var labels = HudLabelHandlers(lines);
@@ -263,8 +260,7 @@ namespace Ulon.Editor
         static void AssertHudControlsNegativeControl()
         {
             var drawn = HudDrawnControls();
-            string hudPath = Path.Combine(Application.dataPath, "Game/Scripts/Client/SliceHud.cs");
-            string[] lines = File.ReadAllLines(hudPath);
+            string[] lines = HudSourceLines();
 
             // ① 기록에서 「수리」를 빼 본다 — 버튼이 화면에서 사라진 상태와 같다.
             var doctored = new HashSet<string>(drawn);

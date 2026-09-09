@@ -130,10 +130,18 @@ namespace Ulon.Editor
         {
             RequireSfxCall("Client/LocalAvatar.cs", "ActionSfx.Kind.Hit");
             RequireSfxCall("Client/LocalAvatar.cs", "ActionSfx.Kind.Craft");
-            RequireSfxCall("Client/SliceHud.cs", "ActionSfx.Kind.Heal");
-            RequireSfxCall("Client/SliceHud.cs", "ActionSfx.Kind.Craft");
+            // HUD는 파일 넷으로 갈렸다 — **화면 전체**를 보고 배선을 찾는다(`HudSourceText`).
+            RequireHudSfxCall("ActionSfx.Kind.Heal");
+            RequireHudSfxCall("ActionSfx.Kind.Craft");
             if (UnityEngine.Object.FindAnyObjectByType<AudioListener>() == null)
                 throw new InvalidOperationException("씬에 AudioListener가 없습니다 — SFX를 울려도 아무도 못 듣습니다.");
+        }
+
+        static void RequireHudSfxCall(string kind)
+        {
+            if (HudSourceText().IndexOf("ActionSfx.Play(" + kind, StringComparison.Ordinal) < 0)
+                throw new InvalidOperationException("HUD에 " + kind + " 소리 배선이 없습니다 — " +
+                    "효과가 있어도 행동이 울리지 않으면 없는 것이다.");
         }
 
         static void RequireSfxCall(string relPath, string kind)

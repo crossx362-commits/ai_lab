@@ -143,8 +143,7 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("§6.1 테스트 공간 조명이 " + lights + "개입니다 — 최소 " + TestChamberLightMin + "개.");
 
             // 가는 길: GM 패널이 실제로 워프를 부르는가. 서버 구현만 있으면 도달 불가 기능과 같은 함정이다.
-            string hud = System.IO.Path.Combine(Application.dataPath, "Game/Scripts/Client/SliceHud.cs");
-            if (!System.IO.File.Exists(hud) || System.IO.File.ReadAllText(hud).IndexOf("GmWarpTest", StringComparison.Ordinal) < 0)
+            if (HudSourceText().IndexOf("GmWarpTest", StringComparison.Ordinal) < 0)
                 throw new InvalidOperationException("GM 패널에 테스트 공간 워프 버튼이 없습니다 — 마당은 있는데 들어갈 길이 없습니다(§6.1).");
 
             Debug.Log("[Ulon] §6.1 테스트 공간 통과 — 소품 " + props + "개·표적 " + targets + "개·점광 " + lights + "개·GM 워프 배선");

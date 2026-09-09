@@ -75,10 +75,7 @@ namespace Ulon.Editor
             }
 
             // 화면에서 읽히는가 — HUD가 그 값을 실제로 부르는지 본다. 서버에만 있으면 없는 기능이다.
-            string hud = Path.Combine(Application.dataPath, "Game/Scripts/Client/SliceHud.cs");
-            if (!File.Exists(hud))
-                throw new InvalidOperationException("SliceHud.cs가 없습니다 — 화면 도달을 검사할 수 없습니다.");
-            string src = File.ReadAllText(hud);
+            string src = HudSourceText();
             string[] need = { "ToolUses(", "CountFollowers(", "RepairAt(" };
             string[] why =
             {

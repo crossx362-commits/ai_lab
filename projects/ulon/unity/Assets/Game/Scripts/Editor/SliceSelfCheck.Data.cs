@@ -68,8 +68,7 @@ namespace Ulon.Editor
 
             // 「파일만 고치면 된다」가 실행 중에도 참이려면 **다시 읽을 길**이 있어야 한다.
             // 로더는 한 번 읽고 캐시하므로 배선이 없으면 껐다 켜야 반영된다 — 그건 12.2가 약속한 것과 다르다.
-            string hudPath = System.IO.Path.Combine(Application.dataPath, "Game/Scripts/Client/SliceHud.cs");
-            if (!System.IO.File.Exists(hudPath) || System.IO.File.ReadAllText(hudPath).IndexOf("GmReloadLedgers", StringComparison.Ordinal) < 0)
+            if (HudSourceText().IndexOf("GmReloadLedgers", StringComparison.Ordinal) < 0)
                 throw new InvalidOperationException("GM 패널에 「원장 다시 읽기」 배선이 없습니다 — 파일을 고쳐도 실행 중에는 캐시가 그대로입니다(12.2).");
 
             Debug.Log("[Ulon] 아이템 수치 원장 " + ItemData.Count + "종 — " + ItemData.LoadedFrom + " (GM 원장 다시 읽기 배선)");
