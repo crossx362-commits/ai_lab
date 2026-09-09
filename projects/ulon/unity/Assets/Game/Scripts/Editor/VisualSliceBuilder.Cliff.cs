@@ -18,11 +18,13 @@ namespace Ulon.Editor
         /// 급경사 지점을 고르고 최소 간격을 둔다. 무작위 산포는 하필 필요한 면을 비운다.
         /// </summary>
         public const float CliffRockSlopeMin = 32f;   // 이보다 가파른 자리에만 — 완만한 데 놓으면 그냥 들바위다
-        public const float CliffRockGap = 11f;        // 바위끼리 최소 간격(m)
+        // 11m 간격·60개로는 60m 암벽에서 **화면 면적의 2%도 못 덮었다** — 줄은 그대로였다.
+        // 줄을 정말 끊으려면 턱이 이어져 보일 만큼 촘촘해야 한다(검수·대장 판정 2026-09-09).
+        public const float CliffRockGap = 6.5f;       // 바위끼리 최소 간격(m)
         // **상한이 낮으면 훑는 순서대로 한쪽 면만 채워진다.** 34개로 끊었더니 격자를 서쪽(x=−136)부터
         // 훑는 순서 그대로 동북 사면만 바위가 서고 **가장 크게 보이는 앞쪽 절벽이 비었다**(샷으로 확인).
         // 자리를 고르는 자에 「먼저 찾은 것이 이긴다」가 들어 있으면 상한은 곧 편향이다.
-        public const int CliffRockMax = 90;
+        public const int CliffRockMax = 220;
 
         /// <summary>절벽 바위가 설 자리 — 굽는 쪽·재는 쪽이 **같은 함수**를 읽는다.</summary>
         public static List<Vector3> CliffRockSpots()
@@ -87,15 +89,18 @@ namespace Ulon.Editor
                 // 절벽 크기에 맞추되 **너무 키우지 않는다** — 2.2~4.0배로 세웠더니 암벽에 박힌 바위가
                 // 아니라 「붙여 놓은 흰 상자」로 보였다(샷). 실루엣을 끊는 데 필요한 것은 크기가 아니라
                 // 가로로 얹힌 모양과 **개수**다.
-                go.transform.localScale = go.transform.localScale * WorldRegions.Rand(i, 82, 1.3f, 2.3f);
+                // **가로로 눕히는 것도 걷었다**: 옆으로 2.4~4.2배 늘이고 높이를 눌렀더니 암반 턱이 아니라
+                // **절벽에서 튀어나온 판때기 선반**이 됐다(샷). 균일 배율로 돌아가고 크기는 더 줄인다 —
+                // 이 킷 바위로 60m 암벽의 세로줄을 끊는 것은 **자산의 성질상 안 된다**는 것이 결론이다.
+                go.transform.localScale = go.transform.localScale * WorldRegions.Rand(i, 82, 1.1f, 1.9f);
                 PaintCliffRock(go);
                 BedInSlope(go, i);
                 placed++;
 
                 // 그 아래 너덜 — 큰 덩어리 하나만 놓으면 「붙여 놓은 것」이고, 부스러기가 있어야
                 // 「무너져 쌓인 자리」로 읽힌다. 경사 아래쪽(중심에서 먼 쪽)으로 흘린다.
-                // 너덜은 큰 덩어리 셋에 하나꼴로 — 전부에 딸리면 산 전체가 자갈밭이 된다.
-                if (i % 3 != 0)
+                // 너덜은 큰 덩어리 넷에 하나꼴로 — 촘촘해진 만큼 부스러기까지 다 붙이면 자갈밭이 된다.
+                if (i % 4 != 0)
                     continue;
                 var outward = new Vector2(p.x, p.z).normalized;
                 for (int k = 0; k < 3; k++)

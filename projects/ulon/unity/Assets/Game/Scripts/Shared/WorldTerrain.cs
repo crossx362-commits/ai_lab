@@ -96,6 +96,9 @@ namespace Ulon.Shared
                 float bumps = Mathf.PerlinNoise(wx * 0.13f, wz * 0.13f + 55f) * 0.35f;
                 // 균일한 톱니 링은 담장으로 읽힌다(§8.1) — 저주파 마스크로 산괴와 고개를 만든다.
                 h = LandBase + t * MountainHeight * Massif(wx, wz) * (0.55f + ridge * 0.65f + bumps);
+                // **계단(터레이스)은 시도했다가 걷었다**(검수 랩 ⑦, 2026-09-09). 높이를 6m마다 절반
+                // 양자화해 수평 턱을 넣어 봤지만 **세로줄은 그대로였고** 능선만 뾰족한 첨탑이 됐다 —
+                // 양자화가 오히려 면을 더 수직으로 세웠다. 다시 넣지 마라(샷: 그 판의 16_mountain_ridge).
             }
             else if (m <= CoastEnd)
             {
