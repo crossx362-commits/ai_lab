@@ -81,7 +81,10 @@ Prefabs,Scenes,Scripts,UI}`). **곧 들어올 팩도 `_ThirdParty/Quaternius/` �
 - 착수 직전 `git fetch origin qa-claude && git show origin/qa-claude:docs/SESSION_HANDOFF.md`의
   **「■ 지금 여는 랩」**만 읽는다. 크로스세션 메시지는 늦게 닿을 수 있고, 이 파일이 최신 판정이다.
 - **전후 사본**: git에 넣지 않는다. 루프 워크트리 `projects/ulon/builds/qa/`의 `_before.png`를
-  검수가 직접 읽는다(현재 63장).
+  검수가 직접 읽는다. **랩마다 대표 샷의 `_before.png`를 반드시 남길 것** — 다음 랩이 덮으면
+  그 판의 「전」은 영영 없다(비추적 폴더라 git에서 못 꺼낸다).
+- **완료 보고는 스크린샷으로**(오너 상시 지시 2026-09-10, 대장 경로): 검수가 랩을 수용해 대장에
+  올릴 때 **전/후 PNG 절대경로**(랩당 대표 1~3장)를 반드시 붙인다. 경로 없는 수용 보고는 미완 취급.
 - 보고 끝에 **구조 한 줄**(폴더 규칙 위반·잔재·비대, 없으면 「없음」).
 - 안 여는 파일(리팩터 금지 — **한 줄 수리는 허용**): `AttackResolve.cs` 1,472 ·
   `VisualSliceBuilder.Npc.cs` 1,266 · `NetAvatar.cs` 1,264.
