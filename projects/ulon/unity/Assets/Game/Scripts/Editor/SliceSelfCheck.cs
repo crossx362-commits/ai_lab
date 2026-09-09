@@ -348,8 +348,9 @@ namespace Ulon.Editor
             VisualSliceBuilder.KeepPeopleOffWalls();      // 가게 사람은 벽에서 두 걸음(검수 2026-09-09)
             VisualSliceBuilder.SpreadTreeTones();         // 나무는 한 색이 아니다(검수 랩 ⑤)
             AssertTreeTones();
-            VisualSliceBuilder.ScatterCliffRocks();       // 절벽 세로줄은 물건으로 끊는다(검수 랩 ⑦)
-            AssertCliffRocks();
+            // **절벽 바위는 걷었다**(검수 판정 2026-09-09, 랩 ⑦). 세로 늘어남 위에 창백한 상자가
+            // 얹혔을 뿐 줄은 안 끊겼다 — 조망에 생긴 곁가지 이득 때문에 실패한 시도를 남기지 않는다.
+            // 남은 수단은 투영을 바꾸는 것(지형 triplanar)이고, 그쪽으로 승인이 났다.
             // **자도 저장 앞에서 잰다.** 저장 뒤에 쟀더니 사람이 원자리로 돌아간 값을 봤다 —
             // QA 샷이 보는 것은 **저장된 씬**이므로, 자는 저장되는 그 상태를 재야 한다.
             AssertPeopleOffWallsNegativeControl();
