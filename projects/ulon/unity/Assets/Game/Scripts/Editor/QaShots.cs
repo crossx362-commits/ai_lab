@@ -19,7 +19,7 @@ namespace Ulon.Editor
     /// 것**이고, 게임은 나빠지고 숫자만 좋아진다. 막히면 **카메라를 껍데기 안으로** 넣고,
     /// 그래도 안 되면 그 사실을 이름과 함께 **보고**한다.
     /// </summary>
-    public static class QaShots
+    public static partial class QaShots
     {
         const int W = 1280;
         const int H = 720;
@@ -556,6 +556,7 @@ namespace Ulon.Editor
             bool bestEyeClear = false;                       // 지금 고른 방위가 렌즈 앞이 비었는가
             var blockers = new System.Collections.Generic.List<string>();
             var perBearing = new System.Collections.Generic.List<string>();
+            var acceptedBearings = new System.Collections.Generic.List<string>();   // 통과한 후보와 채택 이유
             int frontRejected = 0;
             // 마을은 시설이 2~3m 간격으로 붙어 있어 게임 각도에서는 앞집 지붕이 시설을 통째로 덮는다
             // (첫 촬영본 35_fishing이 그랬다). 방위 8 × 내려보는 각 3을 다 재고 제일 잘 보이는 조합을 쓴다.
@@ -686,10 +687,18 @@ namespace Ulon.Editor
                     // 벽에 코를 박지 않은 쪽을 고른다 — 규칙을 끄는 것과 순위를 낮추는 것은 다르다.
                     bool eyeClear = !EyeCrowded(target - Quaternion.Euler(pit, y, 0f) * Vector3.forward * tryDist,
                                                 target, go.transform);
-                    if (share > bestSeen + 0.02f
+                    bool win = share > bestSeen + 0.02f
                         || (tie && eyeClear && !bestEyeClear)
                         || (tie && eyeClear == bestEyeClear && lit > bestLit + 0.05f)
-                        || (tie && eyeClear == bestEyeClear && Mathf.Abs(lit - bestLit) <= 0.05f && tryDist > bestDist))
+                        || (tie && eyeClear == bestEyeClear && Mathf.Abs(lit - bestLit) <= 0.05f && tryDist > bestDist);
+                    // **통과한 후보도 남긴다** — 탈락만 적어 뒀더니 「왜 어두운 쪽이 이겼나」를 로그로
+                    // 못 갈랐다(은행원: 볕 −0.97 방위가 −0.26을 이겼는데 이유가 안 보였다).
+                    // 자가 고른 이유를 자기 입으로 말하게 한다.
+                    if (byRenderer && acceptedBearings.Count < 40)
+                        acceptedBearings.Add("요" + y.ToString("0") + "/내려" + pit.ToString("0") + " 보임" +
+                                             (share * 100f).ToString("0") + "% " + tryDist.ToString("0.0") + "m 볕" +
+                                             lit.ToString("0.00") + (eyeClear ? "·렌즈빔" : "") + (win ? " ←채택" : ""));
+                    if (win)
                     {
                         bestSeen = share; bestYaw = y; bestPitch = pit; bestDist = tryDist; bestLit = lit;
                         bestEyeClear = eyeClear;
@@ -710,7 +719,7 @@ namespace Ulon.Editor
             {
                 PersonShotClear[name] = bestSeen >= 0f;
                 Debug.Log("[Ulon] 사람 샷 결론 " + name + "(" + go.name + ") — bestSeen " + bestSeen.ToString("0.00") +
-                          " · clear " + (bestSeen >= 0f));
+                          " · clear " + (bestSeen >= 0f) + "\n  통과 후보: " + string.Join(" / ", acceptedBearings));
                 if (bestSeen < 0f)
                 {
                     // 진단 — **얼마나 더 들어가면 보이는가**를 같이 잰다(하한 1.9m는 판정용이고,

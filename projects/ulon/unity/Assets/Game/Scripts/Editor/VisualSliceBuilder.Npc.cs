@@ -480,6 +480,17 @@ namespace Ulon.Editor
                 if (IsCapeName(t.name))
                     t.gameObject.SetActive(false);
             npc.transform.SetParent(go.transform, true);
+            // **사람은 자기 시설을 등지고 손님 쪽을 본다**(랩 ㉨, 2026-09-09).
+            // 지금까지 넷 다 회전이 기본값 0°(정북)이었다 — 규칙이 있어서 북을 본 것이 아니라
+            // **아무도 방향을 정한 적이 없어서** 그랬다(실측: 은행원·상인·치유사·마구간지기 전부 0°,
+            // 시설 자신이 사람인 훈련사만 180°). 얼굴이 다 같은 쪽을 보는 마을은 세계가 빈 것이다.
+            // 방향은 **세계의 자료에서 유도한다**: `offset`은 이미 「시설에서 손님 쪽으로 나온 자리」다.
+            // 그 방향이 곧 얼굴 방향이다 — 카메라도 해도 이 식에 안 들어간다(샷에 세계를 맞추면 안 된다).
+            var face = new Vector3(offset.x, 0f, offset.z);
+            if (face.sqrMagnitude < 0.0001f)
+                face = new Vector3(-baseAt.x, 0f, -baseAt.z);      // 자리가 시설 한복판이면 마을 광장을 본다
+            if (face.sqrMagnitude > 0.0001f)
+                npc.transform.rotation = Quaternion.LookRotation(face.normalized, Vector3.up);
             return true;
         }
 
