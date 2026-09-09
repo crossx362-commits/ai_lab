@@ -264,7 +264,9 @@ namespace Ulon.Editor
                     {
                         camGo.transform.position = cams[c].Eye;
                         camGo.transform.LookAt(cams[c].Look);
-                        line += " · " + cams[c].Name + " " + Measure(cam, rt, tex);
+                        // **번짐도 같이 잰다**(검수 관찰: 「오라가 발밑 땅과 그림자까지 초록으로 물들인다」).
+                        // 포화만 보면 「덜 타지만 여전히 초록」인 판을 통과시킨다 — 다른 병이다.
+                        line += " · " + cams[c].Name + " " + Measure(cam, rt, tex) + " 초록 " + GreenCast(tex) + "%";
                     }
                     Debug.Log(line);
                 }
@@ -275,6 +277,16 @@ namespace Ulon.Editor
                 cam.targetTexture = null; RenderTexture.active = null;
                 Object.DestroyImmediate(camGo); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
             }
+        }
+
+        /// <summary>초록으로 물든 몫 — G가 R·B보다 뚜렷이(30↑) 큰 픽셀의 비율(%).</summary>
+        static string GreenCast(Texture2D tex)
+        {
+            var px = tex.GetPixels32();
+            int green = 0;
+            for (int i = 0; i < px.Length; i++)
+                if (px[i].g - px[i].r >= 30 && px[i].g - px[i].b >= 30) green++;
+            return (100f * green / px.Length).ToString("0.0");
         }
 
         static float Hot(string measured) =>
