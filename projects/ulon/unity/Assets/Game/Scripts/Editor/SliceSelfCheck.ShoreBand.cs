@@ -26,21 +26,31 @@ namespace Ulon.Editor
         {
             float sea = ShoreBandWorst(0f, 0f, false, false, out int seaN);
             float lake = ShoreBandWorst(WorldTerrain.LakeX, WorldTerrain.LakeZ, true, false, out int lakeN);
-            if (seaN < 8 || lakeN < 8)
-                throw new InvalidOperationException("물가를 찾은 방위가 바다 " + seaN + "곳 · 호수 " + lakeN +
-                                                    "곳뿐입니다 — 이 자는 아무것도 재지 않았습니다.");
+            // **강도 같은 자로 본다**(검수 승인, 2026-09-10). 규칙은 하나도 안 늘렸다 — 폭을 재는
+            // `ShoreWidth`는 그대로 쓰고 **물가 지점을 뽑는 곳만** 원에서 중심선으로 바꾼다.
+            // 호수·바다에는 자가 여럿인데 강에는 하나도 없었다: 그 공백이 이 확장의 이유다.
+            float river = RiverBandWorst(false, out int riverN);
+            if (seaN < 8 || lakeN < 8 || riverN < 4)
+                throw new InvalidOperationException("물가를 찾은 자리가 바다 " + seaN + "곳 · 호수 " + lakeN +
+                                                    "곳 · 강 " + riverN + "곳뿐입니다 — 이 자는 아무것도 재지 않았습니다.");
             Debug.Log("[Ulon] 물가 띠 — 바다 " + seaN + "방위 최소 " + sea.ToString("0.0") + "m · 호수 " + lakeN +
-                      "방위 최소 " + lake.ToString("0.0") + "m (하한 " + ShoreBandMin.ToString("0.0") + "m)");
+                      "방위 최소 " + lake.ToString("0.0") + "m · 강 " + riverN + "곳 최소 " + river.ToString("0.0") +
+                      "m (하한 " + ShoreBandMin.ToString("0.0") + "m)");
 
             // **반대쪽 한계**: 옛 높이 규칙으로 재면 빨간불이어야 한다. 아니면 이 자는 폭을 안 재는 것이다.
             float oldSea = ShoreBandWorst(0f, 0f, false, true, out _);
+            float oldRiver = RiverBandWorst(true, out _);
             if (oldSea >= ShoreBandMin)
                 throw new InvalidOperationException("반대쪽 한계 실패 — 옛 높이 규칙(" + oldSea.ToString("0.0") +
                                                     "m)도 이 자를 통과합니다. 그러면 폭을 재는 자가 아닙니다.");
+            if (oldRiver >= ShoreBandMin)
+                throw new InvalidOperationException("반대쪽 한계 실패(강) — 옛 높이 규칙(" + oldRiver.ToString("0.0") +
+                                                    "m)도 통과합니다. 강 쪽은 폭을 안 재고 있습니다.");
 
-            if (sea < ShoreBandMin || lake < ShoreBandMin)
+            if (sea < ShoreBandMin || lake < ShoreBandMin || river < ShoreBandMin)
                 throw new InvalidOperationException("물가 띠가 바다 " + sea.ToString("0.0") + "m · 호수 " +
-                                                   lake.ToString("0.0") + "m입니다(하한 " + ShoreBandMin.ToString("0.0") +
+                                                   lake.ToString("0.0") + "m · 강 " + river.ToString("0.0") +
+                                                   "m입니다(하한 " + ShoreBandMin.ToString("0.0") +
                                                    "m) — 잔디가 물에 수직으로 잘려 보입니다.");
         }
 
@@ -58,6 +68,36 @@ namespace Ulon.Editor
                 float lx = centerIsWater ? dx : -dx, lz = centerIsWater ? dz : -dz;
                 found++;
                 worst = Mathf.Min(worst, ShoreWidth(wx, wz, lx, lz, oldRule));
+            }
+            return found > 0 ? worst : 0f;
+        }
+
+        /// <summary>
+        /// 강 물가 띠 중 **가장 좁은 것** — 대상만 다르고 자는 바다·호수와 같다(`ShoreWidth`).
+        /// 중심선을 따라가며 양옆으로 물이 끝나는 자리를 찾고, 거기서 뭍 쪽으로 띠를 잰다.
+        /// **호수 구간과 하구는 뺀다** — 그 자리의 물은 강이 아니라 남의 물이고, 섞으면
+        /// 호수·바다의 띠를 강의 성적으로 착각한다(폭 셈에서 값을 치른 교훈).
+        /// </summary>
+        static float RiverBandWorst(bool oldRule, out int found)
+        {
+            found = 0;
+            float worst = 99f;
+            float sea = WorldTerrain.SeaLevel;
+            for (float x = WorldTerrain.RiverFromX; x >= WorldTerrain.RiverToX; x -= 5f)
+            {
+                float cz = WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+                if (new Vector2(x, cz).magnitude > WorldTerrain.CoastEnd - 12f) continue;
+                if (new Vector2(x - WorldTerrain.LakeX, cz - WorldTerrain.LakeZ).magnitude
+                    < WorldTerrain.LakeRadius + 2f) continue;
+                if (WorldTerrain.HeightAt(x, cz) >= sea) continue;
+                for (int side = -1; side <= 1; side += 2)
+                    for (float d = 0.5f; d <= 30f; d += 0.25f)
+                        if (WorldTerrain.HeightAt(x, cz + side * d) >= sea)
+                        {
+                            found++;
+                            worst = Mathf.Min(worst, ShoreWidth(x, cz + side * d, 0f, side, oldRule));
+                            break;
+                        }
             }
             return found > 0 ? worst : 0f;
         }
