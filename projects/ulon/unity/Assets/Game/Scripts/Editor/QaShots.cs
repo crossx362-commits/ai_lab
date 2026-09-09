@@ -694,6 +694,19 @@ namespace Ulon.Editor
             return terrain.SampleHeight(new Vector3(x, 0f, z)) + terrain.transform.position.y;
         }
 
+        /// <summary>
+        /// 피사체의 **등 뒤** 한 지점 — 「이것이 피사체 너머에 오게」 세우면 카메라가 피사체 **앞**에 선다.
+        /// 배경과 정면은 같은 축이라, 배경을 고르는 것은 곧 어느 쪽에서 볼지를 고르는 것이다.
+        /// 못 찾으면 원점을 돌려준다(프레이밍이 옛 규칙으로 물러설 뿐 터지지 않는다).
+        /// </summary>
+        static Vector3? BehindSubject(string objectName, float far)
+        {
+            var go = GameObject.Find(objectName);
+            if (go == null) return null;
+            var back = -go.transform.forward;
+            return go.transform.position + new Vector3(back.x, 0f, back.z).normalized * far;
+        }
+
         /// <summary>샷의 이름 — 재는 쪽이 원장을 찾을 열쇠다.</summary>
         internal static string NameOf(Shot s) => s.Name;
 
@@ -732,7 +745,14 @@ namespace Ulon.Editor
                 // 이 장은 주인공이 **0.1%(51px)**인 채 오래 찍혀 왔다 — 화면 절반이 빈 흙바닥이었다.
                 // 자리를 보스로 옮겨도 10m 궤도로는 0.8%다(몸이 얇아 거리를 좁혀야 담긴다). 그래서
                 // **크기에서 거리를 유도하는** 근접 프레이밍을 쓴다 — 39·40 보스 샷과 같은 규칙이다.
-                FacilityCloseUp("06_field_boss", FieldBoss.Object, null, true),
+                // **배경은 보스의 등 뒤**(검수 관찰 2026-09-09: 「필드 보스인데 배경이 마을 집·시설」).
+                // 세어 보니 **자리는 문제가 아니었다** — 보스는 마을 중심에서 50.6m, 지역 밖이고 원장과
+                // 어긋남 0.00m다(`OutdoorCensus.RunFieldBossPlace`). 방위에 따라 배경의 마을 몫이
+                // **0.5%~8.5%**로 갈리는 것이 전부다. 그래서 이름도 자리도 아니라 **프레이밍**을 고친다.
+                // 다만 「마을 반대쪽을 배경으로」는 틀린 처방이었다 — 카메라가 마을 쪽에 서면서
+                // **보스가 등을 보였다**(보스는 +z를 보고 마을은 −110°다). 정면과 배경은 같은 축이므로
+                // **보스의 등 뒤를 배경으로** 준다: 그러면 카메라가 보스 앞에 서고 마을은 프레임 가장자리로 밀린다.
+                FacilityCloseUp("06_field_boss", FieldBoss.Object, BehindSubject(FieldBoss.Object, 30f), true),
                 EntranceOrbit("07_d1_entrance", Dungeon1.EntranceX, Dungeon1.EntranceZ, Dungeon1.EntranceYaw),
                 PlayCam("08_d1_interior_playcam", Dungeon1.InteriorX, Dungeon1.InteriorZ),
                 // 귀퉁이에 선 화면 — 카메라 눈이 벽 밖으로 나가는 최악 자리(검수 2026-09-06 B).
