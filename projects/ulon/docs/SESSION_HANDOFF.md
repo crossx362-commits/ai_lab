@@ -8,7 +8,7 @@
 (`git add -A` 금지, 경로 명시) → 검수 보고(끝에 「구조 한 줄」) → 이 파일 갱신.
 안건 판정은 대장, 보고는 검수. 오너 직행은 셋(다운로드·되돌릴 수 없는 삭제·돈).
 
-## 지금까지 (tip `1998062a`)
+## 지금까지 (tip `af3e3aa5`)
 지하감 ⓐ **문 뒤 언덕** 랩을 대장 조건 넷 그대로 닫았다. 원장 `Shared/EntranceGeom.cs`(세 입구·앞
 방향·언덕 상수·`MoundRise`·NC용 `MoundDisabled`), 게이트 `Editor/SliceSelfCheck.MoundBehind.cs`
 (문구멍 시선은 뚫림·문 위 3m 시선은 뒤 30m 안에서 막힘, NC는 「언덕이 앞당긴 거리 ≥3m」),
@@ -30,6 +30,11 @@
 
 화면 인상 둘을 더 재서 기각했다(`1998062a`): 사냥터 바닥 얼룩(대비는 광산·밭보다 높다),
 울타리-건물 관통(겹친 쌍 0, 판별 테스트 0.16m).
+
+`13_d1_room_cutaway`도 고쳤다(`af3e3aa5`): 이름만 절단면이고 화면은 지표 잔디였다 —
+찍는 동안 지형·뚜껑을 걷는다(`CutAway` 플래그 + `AssertCutAwayShotsUncover`).
+**구조 축 미결이던 `VisualSliceBuilder.cs` 6,737줄 분할은 이미 끝나 있다** — 지금 최대는
+`VisualSliceBuilder.Npc.cs` 1,266줄이고 저장소 최대는 `Shared/AttackResolve.cs` 1,472줄(손대지 말 것).
 
 ## 다음 착수
 큐가 비었다. 야외·실내 샷을 돌며 새 안건을 세울 것. **인상은 가설이다** — 이번 세션에 화면에서
