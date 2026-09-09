@@ -50,6 +50,69 @@ namespace Ulon.Editor
             }
         }
 
+        /// <summary>
+        /// **원근이 만든 것인가, 모델이 그런 것인가** — 같은 보스를 두 화각으로 찍어 나란히 둔다.
+        /// 근접 샷은 3.4m·55°다. 머리가 1.1m나 되니 이 거리에서는 **앞면이 크게 부푼다** —
+        /// 그게 「뭉갬」의 원인이면 **먼 거리·좁은 화각**에서는 사라진다(같은 크기로 담기게 맞춘다).
+        /// 세계는 하나도 안 건드린다: 카메라만 만들고 찍은 뒤 지운다. 산출물은 임시 폴더로 나가고
+        /// `builds/qa`를 더럽히지 않는다(검수 샷과 섞이면 그게 판정을 흐린다).
+        /// </summary>
+        public static void RunAngleProbe()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            string dir = System.Environment.GetEnvironmentVariable("ULON_PROBE_DIR");
+            if (string.IsNullOrEmpty(dir))
+                dir = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "../../builds/check"));
+            System.IO.Directory.CreateDirectory(dir);
+            var boss = GameObject.Find(Dungeon3.BossObject);
+            if (boss == null || !GroundFit.WorldBounds(boss.transform, out Bounds b))
+            {
+                Debug.Log("[Census] 화각 시험 — 보스를 못 찾았다");
+                if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(1);
+                return;
+            }
+            var target = new Vector3(b.center.x, b.max.y - b.size.y * 0.18f, b.center.z);
+            var toCenter = new Vector3(Dungeon3.InteriorX - b.center.x, 0f, Dungeon3.InteriorZ - b.center.z).normalized;
+            // 같은 크기로 담기게: 화각을 좁힌 만큼 거리를 늘린다(tan 비율).
+            Frame(dir, "probe_boss_55", target, toCenter, 3.4f, 55f, false, 0f);
+            // **물러설 수 없다** — 10m 뒤로 빼자 벽 속이었다(던전 방이 그만큼 작다).
+            // 판정 대상이 안 찍히는 샷은 판정이 아니므로, 물러서는 대신 **원근을 없앤다**:
+            // 같은 자리에서 직교 투영으로 한 장. 원근이 부풀린 것이면 이 장에서 사라진다.
+            float half = 3.4f * Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad);
+            Frame(dir, "probe_boss_ortho", target, toCenter, 3.4f, 55f, true, half);
+            Debug.Log("[Census] 화각 시험 — 3.4m/55°(원근)와 같은 자리 직교 투영 두 장을 " + dir + "에 남겼다");
+            if (Application.isBatchMode)
+                UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static void Frame(string dir, string name, Vector3 target, Vector3 toCenter, float dist, float fov, bool ortho, float orthoSize)
+        {
+            var camGo = new GameObject("BossProbeCamera");
+            var cam = camGo.AddComponent<Camera>();
+            cam.fieldOfView = fov;
+            cam.orthographic = ortho;
+            if (ortho) cam.orthographicSize = orthoSize;
+            cam.nearClipPlane = 0.05f;
+            cam.farClipPlane = 500f;
+            camGo.transform.position = target + toCenter * dist + new Vector3(0f, dist * 0.20f, 0f);
+            camGo.transform.LookAt(target);
+            var rt = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32);
+            var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
+            cam.targetTexture = rt;
+            cam.Render();
+            RenderTexture.active = rt;
+            tex.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
+            tex.Apply();
+            RenderTexture.active = null;
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(dir, name + ".png"), tex.EncodeToPNG());
+            cam.targetTexture = null;
+            Object.DestroyImmediate(camGo);
+            Object.DestroyImmediate(rt);
+            Object.DestroyImmediate(tex);
+        }
+
         static void One(string name, Transform root)
         {
             if (!GroundFit.WorldBounds(root, out Bounds all))
