@@ -21,9 +21,8 @@ namespace Ulon.Editor
         /// 멀면 몇 픽셀짜리 실개천이어도 점은 센다. 실제로 `15`는 가림을 본 뒤에도 10점인데
         /// 그 화면에서 눈에 들어오는 물은 호수·바다다. **화면 판정은 여전히 눈이 한다.**
         ///
-        /// **실측(2026-09-10)**: ①끊김 0 ②젖은 폭 평균 22.2m(최소 15.5·최대 36.5, 원장 반폭 6m이니
-        /// 12m가 설계값이다 — 하구 쪽 35m는 바다와 합쳐진 것) ③**강 3.8m · 호수 5.4m · 바다 4.6m**
-        /// (셋 다 모래가 있다) ④조망 다섯에 들고 근접 샷이 하나도 없다.
+        /// **실측(2026-09-10, 호수 봉합 뒤)**: ①끊김 0 ②젖은 폭은 아래 로그가 찍는다(**호수 구간과
+        /// 하구는 뺀다** — 남의 물이다) ③모래 띠 강·호수·바다 나란히 ④조망 다섯에 들고 근접 샷이 없다.
         ///
         /// **③은 첫 판에 「강변 모래 0%」라고 틀리게 보고했다 — 세계가 아니라 자가 틀렸다.**
         /// 물가 모래는 지역 도포(`CoverAt`)가 아니라 **다른 채널**(`ShoreSandAt`·`ShoreScreeAt`)인데
@@ -38,7 +37,7 @@ namespace Ulon.Editor
                 UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
 
             float sea = WorldTerrain.SeaLevel;
-            int samples = 0, dryGaps = 0;
+            int samples = 0, dryGaps = 0, mouthSkipped = 0;
             float wMin = 999f, wMax = 0f, wSum = 0f;
             float prevCz = float.NaN, bendSum = 0f;
             string widths = "";
@@ -49,6 +48,16 @@ namespace Ulon.Editor
                 prevCz = cz;
 
                 // ② 젖은 폭 — 중심선 양옆으로 훑어 수면 아래 구간의 길이.
+                // **양 끝을 뺀다**: 해안 언저리는 강이 아니라 **바다**고(35m), 강이 시작하는
+                // `RiverFromX`는 아직 **호수 안**이라 호수 폭을 잰다(x=−80에서 36.5m가 나왔다).
+                // 남의 물을 섞으면 평균이 강을 과장한다 — 봉합 전후를 같은 자로 비교하려면 더욱 그렇다.
+                if (new Vector2(x, cz).magnitude > WorldTerrain.CoastEnd - 12f ||
+                    new Vector2(x - WorldTerrain.LakeX, cz - WorldTerrain.LakeZ).magnitude
+                        < WorldTerrain.LakeRadius + 2f)
+                {
+                    mouthSkipped++;
+                    continue;
+                }
                 float wet = 0f;
                 for (float dz = -WorldTerrain.RiverHalfWidth * 3f; dz <= WorldTerrain.RiverHalfWidth * 3f; dz += 0.5f)
                     if (WorldTerrain.HeightAt(x, cz + dz) < sea) wet += 0.5f;
@@ -59,7 +68,11 @@ namespace Ulon.Editor
                 if (wet > wMax) wMax = wet;
                 if (samples % 3 == 1) widths += " " + x.ToString("0") + ":" + wet.ToString("0.0");
             }
-            Debug.Log("[강] ① 이어짐 — 표본 " + samples + "개 중 물 없는 자리 " + dryGaps + "개");
+            Debug.Log("[강] ① 이어짐 — 표본 " + samples + "개 중 물 없는 자리 " + dryGaps +
+                      "개 · 호수·하구라 뺀 표본 " + mouthSkipped + "곳");
+            // 「뺀 수를 찍고 0이면 죽은 예외로 실패」 — 예외가 조용히 죽으면 자가 딴 세계를 잰다.
+            if (mouthSkipped == 0)
+                throw new System.InvalidOperationException("호수·하구로 뺀 표본이 0곳입니다 — 예외가 죽었습니다.");
             Debug.Log("[강] ② 폭 — 평균 " + (wSum / Mathf.Max(1, samples)).ToString("0.0") + "m · 최소 " +
                       wMin.ToString("0.0") + " · 최대 " + wMax.ToString("0.0") + "m (원장 반폭 " +
                       WorldTerrain.RiverHalfWidth + "m) · 굽이 총 " + bendSum.ToString("0.0") + "m ·" + widths);
