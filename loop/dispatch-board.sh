@@ -16,6 +16,8 @@
 set -u
 export PATH="$HOME/.local/bin:$HOME/.grok/bin:${APPDATA:-/nonexistent}/npm:$PATH"
 export PYTHONUTF8=1
+# 클로드 세션 안에서 띄워졌어도 자식 claude -p가 「중첩 세션」으로 거부되지 않게
+unset CLAUDECODE CLAUDE_CODE_ENTRYPOINT
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 1
 BOARD="$ROOT/loop/BOARD.md"
@@ -80,6 +82,10 @@ run_one() {
     printf 'ok %s\n' "$(now)" >"$OUT/$who.status"
     log "done $who"
   else
+    # 실패 사유를 남긴다 — CLI는 인증 만료·한도 초과를 stdout에 찍기도 한다(클로드).
+    if [ -s "$OUT/$who.md.tmp" ]; then
+      { echo "--- stdout ---"; tail -c 1500 "$OUT/$who.md.tmp"; } >>"$OUT/$who.err"
+    fi
     printf '%s 실패\n' "$who" >"$OUT/$who.md"
     printf 'fail rc=%s %s\n' "$st" "$(now)" >"$OUT/$who.status"
     rm -f "$OUT/$who.md.tmp"

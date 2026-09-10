@@ -46,13 +46,13 @@
 
 
 ## 결정
-- [2026-09-10 14:20] 예: 울론 검수 브랜치(qa-claude, 177커밋) master 병합 — 오너 지시 「울온 병합」, 커밋 91b5df43
+- [2026-09-10 13:44] 예: 울론 검수 브랜치(qa-claude, 177커밋) master 병합 — 오너 지시 「울온 병합」, 커밋 91b5df43
 
 
 ## 실행
-- [x] [2026-09-10 14:20] Claude: qa-claude → master 병합 (DEV_INBOX 충돌 양쪽 보존)
-- [x] [2026-09-10 14:30] Claude: grok CLI 설치 (@xai-official/grok 1.0.25, `grok -p`/`--prompt-file`)
-- [ ] [2026-09-10 14:30] 오너: `grok` 로그인 — 자격증명 입력이라 AI가 대신 못 함. 터미널에서 `grok` 한 번 실행해 브라우저 로그인. 전까지 Grok 의견 칸은 「실패」로 뜬다
+- [x] [2026-09-10 13:44] Claude: qa-claude → master 병합 (DEV_INBOX 충돌 양쪽 보존)
+- [x] [2026-09-10 13:40] Claude: grok CLI 설치 (@xai-official/grok 1.0.25, `grok -p`/`--prompt-file`)
+- [ ] [2026-09-10 13:51] 오너: `grok` 로그인 — 자격증명 입력이라 AI가 대신 못 함. 터미널에서 `grok` 한 번 실행해 브라우저 로그인. 전까지 Grok 의견 칸은 「실패」로 뜬다
 
 
 ## 질문

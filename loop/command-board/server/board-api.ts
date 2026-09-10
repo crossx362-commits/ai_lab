@@ -73,7 +73,9 @@ function join(head: string[], sections: Section[]) {
   const out = [...head];
   while (out.length && out[out.length - 1] === "") out.pop();
   for (const s of sections) {
-    out.push("", "## " + s.name, ...s.lines);
+    const lines = [...s.lines];
+    while (lines.length && lines[lines.length - 1] === "") lines.pop();
+    out.push("", "## " + s.name, ...lines);
   }
   return out.join("\n").replace(/\n+$/, "") + "\n";
 }
@@ -130,7 +132,8 @@ function parseCommand(text: string) {
 }
 
 function opinionFiles() {
-  if (!fs.existsSync(OPINIONS)) return [] as { who: string; text: string; status: Card["status"]; mtime: number }[];
+  if (!fs.existsSync(OPINIONS))
+    return [] as { who: string; text: string; status: Card["status"]; err: string; mtime: number }[];
   return fs
     .readdirSync(OPINIONS)
     .filter((f) => f.endsWith(".md") && !f.startsWith("_"))
@@ -142,8 +145,21 @@ function opinionFiles() {
       const raw = fs.existsSync(sp) ? fs.readFileSync(sp, "utf8").trim().split(/\s+/)[0] : "";
       const status: Card["status"] =
         raw === "running" || raw === "ok" || raw === "fail" ? raw : text === who + " 실패" ? "fail" : "none";
-      return { who, text, status, mtime: fs.statSync(p).mtimeMs };
+      const ep = path.join(OPINIONS, who + ".err");
+      const err = status === "fail" && fs.existsSync(ep) ? failureReason(fs.readFileSync(ep, "utf8")) : "";
+      return { who, text, status, err, mtime: fs.statSync(p).mtimeMs };
     });
+}
+
+/** err 파일에서 사람이 읽을 한 줄 — 인증·한도·미설치가 대부분이다. */
+function failureReason(err: string) {
+  const lines = err
+    .replace(/\x1b\[[0-9;]*m/g, "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const hit = lines.find((l) => /not signed in|usage limit|quota|authenticate|expired|login|없음|not found|Error/i.test(l));
+  return (hit || lines[lines.length - 1] || "").slice(0, 220);
 }
 
 function buildCards(md: string): { cards: Card[]; command?: ReturnType<typeof parseCommand> } {
@@ -187,7 +203,7 @@ function buildCards(md: string): { cards: Card[]; command?: ReturnType<typeof pa
       col: "의견",
       who: f.who,
       title,
-      body: failed ? "CLI 실패 — loop/opinions/" + f.who + ".err 참조" : lines.slice(1).join("\n"),
+      body: failed ? (f.err || "CLI 실패") + "\n(loop/opinions/" + f.who + ".err)" : lines.slice(1).join("\n"),
       projectId: current?.projectId || undefined,
       verdict: verdicts.get(f.who + "|" + title),
       status: f.status,
@@ -288,25 +304,26 @@ function startDispatch() {
   if (child) return { started: false, note: "이미 수집 중" };
   if (!fs.existsSync(DISPATCH)) return { started: false, note: "loop/dispatch-board.sh 없음" };
   fs.mkdirSync(OPINIONS, { recursive: true });
-  const log = fs.openSync(path.join(OPINIONS, "_dispatch.log"), "a");
+  const log = fs.createWriteStream(path.join(OPINIONS, "_dispatch.log"), { flags: "a" });
   childSince = stamp();
-  child = spawn(bashExe(), [DISPATCH], {
+  const env: NodeJS.ProcessEnv = { ...process.env, DISPATCH_ONCE: "1", DISPATCH_FORCE: "1", PYTHONUTF8: "1" };
+  delete env.CLAUDECODE; // 클로드 세션에서 띄운 dev 서버라도 자식 claude -p가 중첩 거부되지 않게
+  delete env.CLAUDE_CODE_ENTRYPOINT;
+  const proc = spawn(bashExe(), [DISPATCH], {
     cwd: ROOT,
-    env: { ...process.env, DISPATCH_ONCE: "1", DISPATCH_FORCE: "1", PYTHONUTF8: "1" },
-    stdio: ["ignore", log, log],
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   });
-  child.on("exit", () => {
+  child = proc;
+  proc.stdout?.pipe(log, { end: false });
+  proc.stderr?.pipe(log, { end: false });
+  const done = () => {
     child = null;
-    try {
-      fs.closeSync(log);
-    } catch {
-      /* 이미 닫힘 */
-    }
-  });
-  child.on("error", () => {
-    child = null;
-  });
+    log.end();
+  };
+  proc.on("exit", done);
+  proc.on("error", done);
   return { started: true, note: "" };
 }
 
