@@ -72,6 +72,14 @@ namespace Ulon.Shared
         // 옛 규칙은 이 둑을 반경 **안쪽** 60%에 두어 물이 원장 21m가 아니라 12m에서 끝났다.
         // 판정 방향은 「자를 실물에 맞추지 말고 `carve`를 원장에 맞춘다」이므로 둑을 밖으로 옮긴다.
         public const float ShoreRamp = 8f;
+
+        /// <summary>후보 시험용 얕은 전이 띠(평소 꺼짐). 켜면 물 높이 ±<see cref="ShoreBandM"/>가 눌린다.</summary>
+        public static bool ShoreBandOn = false;
+        public const float ShoreBandM = 0.8f;
+
+        /// <summary>둑이 물 위로 처음 서는 높이(m). 0.05는 **물 높이 바로 위 평지**라 물가 선이
+        /// 잔잡음으로 정해진다 — 후보 시험용으로 올려 본다(평소 0.05).</summary>
+        public static float ShoreLip = 0.05f;
         // 호수 출구의 반폭 — 여기서 강이 시작한다. 출구 폭(6m)은 호수 지름(42m)의 1/7이라
         // 화면에서 「트인 후미」가 아니라 **목**으로 읽힌다. 하류로 가며 `RiverHalfWidth`로 넓어진다.
         public const float OutletHalfWidth = 3f;
@@ -145,6 +153,13 @@ namespace Ulon.Shared
             // **밭 자리는 고른다** — 농경지 뙈기가 앉을 사각형을 그 중심 높이로 끌어당긴다(`FarmPlots`).
             // 지역 안에 고저차 2.5m짜리 평지가 넷 나오지 않아서다(실측 5.3m) — 사람은 밭을 낼 때 땅을 고른다.
             h = FarmPlots.Flatten(wx, wz, h, WorldRegions.Meadow);
+            // 후보 시험용 — 물 높이 ±`ShoreBandM` 구간을 물 쪽으로 눌러 **얕은 전이 띠**를 만든다.
+            // 평소에는 꺼져 있다(`OutdoorCensus.RunShoreCandidates`가 켰다 되돌린다).
+            if (ShoreBandOn)
+            {
+                float d = h - SeaLevel;
+                if (Mathf.Abs(d) < ShoreBandM) h = SeaLevel + d * 0.25f;
+            }
             return Mathf.Clamp(h, 0f, MaxHeight);
         }
 
@@ -209,7 +224,7 @@ namespace Ulon.Shared
             }
             // 물가 밖 둑 — 수면 언저리에서 뭍 높이로 서서히. 여기서 모래 띠가 난다.
             float u = Mathf.SmoothStep(0f, 1f, (d - LakeRadius) / ShoreRamp);
-            return Mathf.Min(h, Mathf.Lerp(SeaLevel + 0.05f, h, u));
+            return Mathf.Min(h, Mathf.Lerp(SeaLevel + ShoreLip, h, u));
         }
 
         /// <summary>
@@ -305,7 +320,7 @@ namespace Ulon.Shared
                 return Mathf.Min(h, SeaLevel - Mathf.Lerp(0.25f, 1.4f, t));
             }
             float u = Mathf.SmoothStep(0f, 1f, (d - half) / ramp);
-            return Mathf.Min(h, Mathf.Lerp(SeaLevel + 0.05f, h, u));
+            return Mathf.Min(h, Mathf.Lerp(SeaLevel + ShoreLip, h, u));
         }
     }
 }

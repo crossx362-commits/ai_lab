@@ -52,18 +52,28 @@ namespace Ulon.Editor
             splat = td.size.x / td.alphamapResolution;      // 도포 칸(높이 셀과 눈금이 다르다)
             ox = t.transform.position.x;
             oz = t.transform.position.z;
+            GridTerrain = t;
             Debug.Log("[물가톱니] 지형 — 크기 " + td.size.x + "m · 높이 " + td.heightmapResolution +
                       "(셀 " + cell.ToString("0.000") + "m) · 도포 " + td.alphamapResolution +
                       "(칸 " + splat.ToString("0.000") + "m) · 원점 (" + ox + ", " + oz + ")");
         }
 
-        /// <summary>세계 한 점이 눈금 <paramref name="g"/>의 격자선에서 얼마나 떨어졌나(칸 단위, 0~0.5).
-        /// 두 축 중 가까운 쪽을 쓴다 — 격자 계단의 모서리는 한 축만 격자선 위여도 된다.
-        /// **아무 상관 없는 점들의 중앙값은 0.146**이다(두 균등분포의 최솟값) — 그게 이 자의 0점이다.</summary>
-        /// <summary>경계의 **뭍 쪽 픽셀**을 세계에 내린다 — 지형에 실제로 닿는 자리를 쓰고,
-        /// 못 닿으면 수면 평면으로 물러난다(먼 물가는 물 높이에서 만난다).</summary>
+        static Terrain GridTerrain;
+
+        /// <summary>그 자리의 **물가 경사**(도). 노치가 완만한 데 나는지 가파른 데 나는지를 가른다 —
+        /// 처방(전이 띠를 얕게 vs 둑을 가파르게)이 정반대로 갈리는 자리다.</summary>
+        static float Steep(Vector3 p)
+        {
+            var td = GridTerrain.terrainData;
+            var o = GridTerrain.transform.position;
+            return td.GetSteepness(Mathf.Clamp01((p.x - o.x) / td.size.x),
+                                   Mathf.Clamp01((p.z - o.z) / td.size.z));
+        }
+
         static int LandHits, PlaneFallbacks;   // 지형에 실제로 닿았나 — 0이면 이 자는 또 눈이 먼 것이다
 
+        /// <summary>경계의 **뭍 쪽 픽셀**을 세계에 내린다 — 지형에 실제로 닿는 자리를 쓰고,
+        /// 못 닿으면 수면 평면으로 물러난다(먼 물가는 물 높이에서 만난다).</summary>
         static bool HitLand(Camera cam, int px, int py, float planeY, out Vector3 hit)
         {
             var ray = cam.ScreenPointToRay(new Vector3(px + 0.5f, py + 0.5f, 0f));
@@ -73,6 +83,9 @@ namespace Ulon.Editor
             return HitPlane(cam, px, py, planeY, out hit);
         }
 
+        /// <summary>세계 한 점이 눈금 <paramref name="g"/>의 격자선에서 얼마나 떨어졌나(칸 단위, 0~0.5).
+        /// 두 축 중 가까운 쪽을 쓴다 — 격자 계단의 모서리는 한 축만 격자선 위여도 된다.
+        /// **아무 상관 없는 점들의 중앙값은 0.146**이다(두 균등분포의 최솟값) — 그게 이 자의 0점이다.</summary>
         static float GridOff(Vector3 p, float g, float ox, float oz)
         {
             float fx = Mathf.Repeat(p.x - ox, g) / g;
@@ -87,6 +100,45 @@ namespace Ulon.Editor
                 UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
             foreach (var sh in new[] { "64_river_bend", "63_pier_cutface", "15_lake_river" })
                 MeasureShoreEdge(sh);
+        }
+
+        /// <summary>
+        /// **판별 테스트 — 톱니가 셀을 따라가는가**(검수 지시 ⓑ, 2026-09-10).
+        ///
+        /// 격자 대조는 「노치가 격자선에 안 붙는다」고 말했지만 **그건 자가 한 말**이다.
+        /// 굽는 쪽을 실제로 바꿔 세계에게 다시 묻는다: 하이트맵을 **절반(257)**으로 구우면
+        /// 셀이 0.586 → 1.172m로 두 배가 된다. **메시가 범인이면 톱니 크기도 두 배**여야 한다.
+        /// 개수만 보지 말고 **크기가 셀에 비례하는지**를 본다(검수 조건).
+        ///
+        /// 절반 판은 **되돌리는 것까지가 이 단계**다 — `finally`에서 원장값으로 다시 굽는다.
+        /// </summary>
+        public static void RunShoreEdgeHalfRes()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            Debug.Log("[물가톱니] ── 원장 해상도(513) ──");
+            foreach (var sh in new[] { "64_river_bend", "63_pier_cutface", "15_lake_river" })
+                MeasureShoreEdge(sh);
+
+            int keep = VisualSliceBuilder.HeightResOverride;
+            try
+            {
+                VisualSliceBuilder.HeightResOverride = 257;      // 셀 0.586 → 1.172m
+                VisualSliceBuilder.EnsureVillageTerrain();
+                UnityEditor.AssetDatabase.SaveAssets();
+                Debug.Log("[물가톱니] ── 절반 해상도(257) ──");
+                foreach (var sh in new[] { "64_river_bend", "63_pier_cutface", "15_lake_river" })
+                    MeasureShoreEdge(sh);
+            }
+            finally
+            {
+                VisualSliceBuilder.HeightResOverride = keep;
+                VisualSliceBuilder.EnsureVillageTerrain();       // 되돌리기
+                UnityEditor.AssetDatabase.SaveAssets();
+                Debug.Log("[물가톱니] 원장 해상도로 되돌렸다.");
+            }
         }
 
         static void MeasureShoreEdge(string shotName)
@@ -179,11 +231,13 @@ namespace Ulon.Editor
             var control = new List<float>();
             var pooledS = new List<float>();
             var controlS = new List<float>();
+            var pooledSlope = new List<float>();
+            var controlSlope = new List<float>();
             LandHits = 0; PlaneFallbacks = 0;
-            string dFar = Teeth(cam, far, W, waterY, false, pooled, control, pooledS, controlS, 0, 1);
-            string dNear = Teeth(cam, near, W, waterY, false, pooled, control, pooledS, controlS, 0, -1);
-            string dLeft = Teeth(cam, left, H, waterY, true, pooled, control, pooledS, controlS, -1, 0);
-            string dRight = Teeth(cam, right, H, waterY, true, pooled, control, pooledS, controlS, 1, 0);
+            string dFar = Teeth(cam, far, W, waterY, false, pooled, control, pooledS, controlS, pooledSlope, controlSlope, 0, 1);
+            string dNear = Teeth(cam, near, W, waterY, false, pooled, control, pooledS, controlS, pooledSlope, controlSlope, 0, -1);
+            string dLeft = Teeth(cam, left, H, waterY, true, pooled, control, pooledS, controlS, pooledSlope, controlSlope, -1, 0);
+            string dRight = Teeth(cam, right, H, waterY, true, pooled, control, pooledS, controlS, pooledSlope, controlSlope, 1, 0);
             cam.targetTexture = null; Object.DestroyImmediate(rt); Object.DestroyImmediate(go);
 
             pooled.Sort(); control.Sort(); pooledS.Sort(); controlS.Sort();
@@ -192,6 +246,10 @@ namespace Ulon.Editor
                   "**(물가 전체 " + control[control.Count / 2].ToString("0.000") + " · 무관하면 0.146) · " +
                   "도포 격자 어긋남 **" + pooledS[pooledS.Count / 2].ToString("0.000") +
                   "**(물가 전체 " + controlS[controlS.Count / 2].ToString("0.000") + ")";
+            pooledSlope.Sort(); controlSlope.Sort();
+            if (pooledSlope.Count > 0)
+                verdict += "\n  물가 경사 — 노치 자리 **" + pooledSlope[pooledSlope.Count / 2].ToString("0.0") +
+                           "°** · 물가 전체 **" + controlSlope[controlSlope.Count / 2].ToString("0.0") + "°**";
             verdict += "\n  자리 잡기 — 지형에 닿음 " + LandHits + "점 · 수면 평면으로 물러남 " + PlaneFallbacks + "점";
 
             Debug.Log("[물가톱니] " + shotName + " — 물 " + (wet * 100f / (W * H)).ToString("0.0") + "%\n" +
@@ -222,6 +280,7 @@ namespace Ulon.Editor
         static string Teeth(Camera cam, int[] line, int N, float planeY, bool isRow,
                             List<float> pooled, List<float> control,
                             List<float> pooledS, List<float> controlS,
+                            List<float> pooledSlope, List<float> controlSlope,
                             int landDx, int landDy)
         {
             // 가장 긴 이어진 토막을 고른다 — 끊긴 데를 이으면 없는 톱니가 생긴다.
@@ -253,7 +312,7 @@ namespace Ulon.Editor
                     off = GridOff(hit, cell, ox, oz);
                     offS = GridOff(hit, splat, ox, oz);
                     // **자의 네거티브 컨트롤** — 물가 전체가 우연히 격자 근처면 자가 헛돈다.
-                    control.Add(off); controlS.Add(offS);
+                    control.Add(off); controlS.Add(offS); controlSlope.Add(Steep(hit));
                 }
 
                 float slope = (line[bs + i + 8] - line[bs + i - 8]) / 16f;   // 이웃 기울기
@@ -263,7 +322,7 @@ namespace Ulon.Editor
                 jumps.Add(dev);
                 if (lastNotch >= 0) spacing.Add(i - lastNotch);
                 lastNotch = i;
-                if (hasHit) { offs.Add(off); pooled.Add(off); pooledS.Add(offS); }
+                if (hasHit) { offs.Add(off); pooled.Add(off); pooledS.Add(offS); pooledSlope.Add(Steep(hit)); }
             }
 
             int ci = bs + bl / 2;

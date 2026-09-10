@@ -707,6 +707,12 @@ namespace Ulon.Editor
         /// <summary>**후보를 나란히 굽기 위한 자리** — 0 이상이면 자갈 겹이 그 무늬로 구워진다(−1이면 원장).</summary>
         internal static int GravelPatternOverride = -1;
 
+        /// <summary>판별 테스트용 하이트맵 해상도(−1이면 원장값 513). 굽는 쪽을 실제로 바꾼다.</summary>
+        internal static int HeightResOverride = -1;
+
+        /// <summary>후보 시험용 수면 투명도(−1이면 원장대로 불투명).</summary>
+        internal static float WaterAlphaOverride = -1f;
+
         /// <summary>**수면 무늬를 갈아 굽기 위한 자리**(네거티브 컨트롤용) — 0 이상이면 그 무늬로 굽는다.</summary>
         internal static int WaterPatternOverride = -1;
 

@@ -496,7 +496,9 @@ namespace Ulon.Editor
             // 타일링도 12가 아닌 9로 어긋내 두 겹이 같은 자리에서 같은 격자로 반복되지 않게 한다.
             var dryLayer = EnsureTerrainLayer("MeadowDry", new Color(0.46f, 0.45f, 0.24f), new Color(0.70f, 0.66f, 0.38f), 9f);
 
-            int res = 513;
+            // 판별 테스트용 — 하이트맵을 절반으로 구워 화면의 톱니가 셀을 따라가는지 본다
+            // (`OutdoorCensus.RunShoreEdgeHalfRes`). 평소에는 원장값 513이다.
+            int res = HeightResOverride > 0 ? HeightResOverride : 513;
             data.heightmapResolution = res;
             data.size = new Vector3(WorldTerrain.Span, WorldTerrain.MaxHeight, WorldTerrain.Span);
             data.terrainLayers = new[] { layer, rockLayer, sandLayer, tilledLayer, soilLayer, gravelLayer, roadLayer, cobbleLayer, dryLayer, cliffLayer };
@@ -667,6 +669,34 @@ namespace Ulon.Editor
                 // **0은 답이 아니다** — 비 0.97로 더 좋아 보이지만 반짝임이 죽어 물이 판때기가 된다.
                 mat.SetFloat("_Glossiness", 0.25f);
                 mat.SetFloat("_Metallic", 0.1f);
+                // 후보 시험용 — 수면을 반투명으로 만들어 물가의 딱딱한 경계를 무르게 한다.
+                // −1이면 원장대로 불투명(`OutdoorCensus.RunShoreCandidates`).
+                if (WaterAlphaOverride >= 0f)
+                {
+                    mat.SetFloat("_Mode", 2f);
+                    mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    mat.SetInt("_ZWrite", 0);
+                    mat.DisableKeyword("_ALPHATEST_ON");
+                    mat.EnableKeyword("_ALPHABLEND_ON");
+                    mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    mat.renderQueue = 3000;
+                    var c0 = mat.color; c0.a = WaterAlphaOverride; mat.color = c0;
+                }
+                else
+                {
+                    // **끄는 길을 같이 적지 않으면 되돌아오지 않는다** — 첫 판에 후보 A가 재질을
+                    // 반투명인 채로 남겼고 `finally`가 그걸 못 되돌렸다(자산 diff로 잡았다).
+                    mat.SetFloat("_Mode", 0f);
+                    mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                    mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+                    mat.SetInt("_ZWrite", 1);
+                    mat.DisableKeyword("_ALPHATEST_ON");
+                    mat.DisableKeyword("_ALPHABLEND_ON");
+                    mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                    mat.renderQueue = -1;
+                    var c0 = mat.color; c0.a = 1f; mat.color = c0;
+                }
                 if (mat.HasProperty("_MainTex"))
                 {
                     mat.mainTextureScale = new Vector2(24f, 24f);
