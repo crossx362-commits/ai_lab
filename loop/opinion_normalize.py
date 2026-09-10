@@ -41,11 +41,18 @@ def normalize(post: str, raw: str) -> str:
         try:
             outer = json.loads(raw)
             inner = outer.get("text", "") if isinstance(outer, dict) else ""
-            try:
-                obj = json.loads(inner)
-                text = (obj.get("title", "").strip() + "\n" + obj.get("body", "").strip()).strip()
-            except Exception:
-                text = inner
+            text = inner
+            # 모델이 {"title","body"} JSON(코드펜스 포함)으로 답한 경우 — 그대로 제목이 되면 안 된다
+            stripped = re.sub(r"^\s*```(?:json)?\s*|\s*```\s*$", "", inner.strip())
+            if stripped.startswith("{"):
+                try:
+                    obj = json.loads(stripped)
+                    text = (str(obj.get("title", "")).strip() + "\n" + str(obj.get("body", "")).strip()).strip()
+                except Exception:
+                    m = re.search(r'"title"\s*:\s*"((?:[^"\\]|\\.)*)"', stripped)
+                    b = re.search(r'"body"\s*:\s*"((?:[^"\\]|\\.)*)"', stripped)
+                    if m:
+                        text = (m.group(1) + "\n" + (b.group(1) if b else "")).replace("\\n", "\n").strip()
         except Exception:
             text = raw
     elif post.startswith("file:"):
