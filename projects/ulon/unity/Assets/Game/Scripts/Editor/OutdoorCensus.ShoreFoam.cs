@@ -119,7 +119,6 @@ namespace Ulon.Editor
             VisualSliceBuilder.RebuildWater();
             var mat = FindWaterMaterial();
             if (mat == null) { Debug.LogError("[물가거품] 수면 재질을 못 찾았습니다."); return; }
-            float f0 = mat.HasProperty("_FoamDepth") ? mat.GetFloat("_FoamDepth") : -1f;
             float f1 = mat.HasProperty("_FoamDepthSteep") ? mat.GetFloat("_FoamDepthSteep") : -1f;
             float dm = mat.HasProperty("_DepthMax") ? mat.GetFloat("_DepthMax") : -1f;
 
@@ -129,9 +128,8 @@ namespace Ulon.Editor
                 Debug.Log("[물가거품] " + shot + " — 대비 " + v.ToString("0.0") + " · " + det);
             }
 
-            if (f0 >= 0f)
+            if (f1 >= 0f)
             {
-                mat.SetFloat("_FoamDepth", 0f);
                 mat.SetFloat("_FoamDepthSteep", 0f);
                 foreach (string shot in new[] { "64_river_bend", "63_pier_cutface" })
                 {
@@ -144,7 +142,6 @@ namespace Ulon.Editor
                     float v = ShoreFoamStats(shot, out _, out string det);
                     Debug.Log("[물가거품] NC 거품·깊이색 둘 다 끔 " + shot + " — 대비 " + v.ToString("0.0") + " · " + det);
                 }
-                mat.SetFloat("_FoamDepth", f0);
                 mat.SetFloat("_FoamDepthSteep", f1);
                 mat.SetFloat("_DepthMax", dm);
             }

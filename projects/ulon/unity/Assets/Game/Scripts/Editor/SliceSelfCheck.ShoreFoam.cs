@@ -70,13 +70,11 @@ namespace Ulon.Editor
 
             // NC 둘 — **끄는 길을 실제로 밟아** 자가 우는지 본다(되돌리기는 `finally`가 짝으로 진다).
             var mat = FindWaterMat();
-            if (mat == null || !mat.HasProperty("_FoamDepth"))
+            if (mat == null || !mat.HasProperty("_FoamDepthSteep"))
                 throw new InvalidOperationException("수면 재질에 거품 속성이 없습니다 — NC를 못 겁니다.");
-            float f0 = mat.GetFloat("_FoamDepth"), f1 = mat.GetFloat("_FoamDepthSteep"),
-                  dm = mat.GetFloat("_DepthMax");
+            float f1 = mat.GetFloat("_FoamDepthSteep"), dm = mat.GetFloat("_DepthMax");
             try
             {
-                mat.SetFloat("_FoamDepth", 0f);
                 mat.SetFloat("_FoamDepthSteep", 0f);
                 OutdoorCensus.ShoreFoamStats("64_river_bend", out float ncWhite, out _);
                 if (ncWhite >= ShoreFoamMin)
@@ -91,7 +89,6 @@ namespace Ulon.Editor
                 // **상한 쪽 NC** — 띠를 1.5단계처럼 벌리면(문턱 1.2m·덮음 1.0) 자가 울어야 한다.
                 // 상한을 넣고도 그 판이 통과하면 이 자는 흰 도넛을 또 놓친다.
                 float a0 = mat.HasProperty("_FoamMaxAlpha") ? mat.GetFloat("_FoamMaxAlpha") : -1f;
-                mat.SetFloat("_FoamDepth", f0);
                 mat.SetFloat("_FoamDepthSteep", 1.2f);
                 if (a0 >= 0f) mat.SetFloat("_FoamMaxAlpha", 1.0f);
                 OutdoorCensus.ShoreFoamStats("15_lake_river", out float ncWide, out _);
@@ -106,7 +103,6 @@ namespace Ulon.Editor
             }
             finally
             {
-                mat.SetFloat("_FoamDepth", f0);
                 mat.SetFloat("_FoamDepthSteep", f1);
                 mat.SetFloat("_DepthMax", dm);
             }

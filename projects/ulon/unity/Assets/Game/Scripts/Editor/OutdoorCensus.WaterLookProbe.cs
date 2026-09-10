@@ -33,6 +33,22 @@ namespace Ulon.Editor
                 }
             }
 
+            // **실루엣 페이드의 네거티브 컨트롤**(1.7단계, 검수 조건 — 새 자를 만들지 않고 화면으로
+            // 판정하되 NC 한 판은 남긴다). `_FoamMinBandPx = 0`이면 죽임이 꺼진다 — 그 판에서
+            // `64` 좌안의 **1~2px 순백 선이 다시 나타나야** 이 처방이 실제로 그것을 지운 것이다.
+            var wm = FindWaterMaterial();
+            if (wm != null && wm.HasProperty("_FoamMinBandPx"))
+            {
+                float keepPx = wm.GetFloat("_FoamMinBandPx");
+                try
+                {
+                    wm.SetFloat("_FoamMinBandPx", 0f);
+                    ShotTo("64_river_bend", System.IO.Path.Combine(dir, "64_river_bend_nc_thinkill.png"));
+                    Debug.Log("[물눈] NC — 얇은 띠 죽임을 끈 판을 64_river_bend_nc_thinkill.png에 남겼다");
+                }
+                finally { wm.SetFloat("_FoamMinBandPx", keepPx); }
+            }
+
             if (Application.isBatchMode)
                 UnityEditor.EditorApplication.Exit(0);
         }

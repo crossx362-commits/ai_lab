@@ -73,6 +73,7 @@ Material:
     - _FoamEdgeSoft: 0.38
     - _FoamJitter: 0.4
     - _FoamMaxAlpha: 0.75
+    - _FoamMinBandPx: 0
     - _FoamNoiseScale: 0.6
     - _FoamWidthM: 4
     - _GlossMapScale: 1
