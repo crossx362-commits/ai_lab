@@ -32,31 +32,31 @@ export function Welcome() {
       aria-labelledby="welcome-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 p-4"
     >
-      <div className="w-full max-w-xl rounded-2xl border border-border bg-raised p-6 shadow-none">
-        <h2 id="welcome-title" className="font-display text-2xl font-semibold tracking-tight">
-          여기는 지휘 보드예요
+      <div className="w-full max-w-xl rounded-[var(--radius-xl)] border-2 border-border bg-raised p-6 shadow-[var(--shadow-sticker-lg)]">
+        <h2 id="welcome-title" className="font-display text-3xl">
+          🎪 여기는 지휘 보드예요
         </h2>
         <p className="mt-1 text-sm text-muted">당신은 대장. 말하고, 도장만 찍으면 돼요. 심부름은 로봇 몫.</p>
         <ol className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <li className="rounded-xl bg-elevated p-4">
+          <li className="rounded-[var(--radius-lg)] bg-sky-soft p-4">
             <div className="text-3xl" aria-hidden>
               📣
             </div>
-            <p className="mt-2 text-sm font-semibold">1. 한 줄 시키기</p>
+            <p className="mt-2 font-display text-base">1. 한 줄 시키기</p>
             <p className="mt-1 text-xs text-muted">맨 위 칸에 적고 「시키기!」</p>
           </li>
-          <li className="rounded-xl bg-elevated p-4">
+          <li className="rounded-[var(--radius-lg)] bg-lav-soft p-4">
             <div className="text-3xl" aria-hidden>
               🦊🐘🐬🐻
             </div>
-            <p className="mt-2 text-sm font-semibold">2. 로봇 넷이 생각</p>
+            <p className="mt-2 font-display text-base">2. 로봇 넷이 생각</p>
             <p className="mt-1 text-xs text-muted">몇 분 뒤 생각이 카드로 와요</p>
           </li>
-          <li className="rounded-xl bg-elevated p-4">
+          <li className="rounded-[var(--radius-lg)] bg-mint-soft p-4">
             <div className="text-3xl" aria-hidden>
               ✅
             </div>
-            <p className="mt-2 text-sm font-semibold">3. 도장 쾅</p>
+            <p className="mt-2 font-display text-base">3. 도장 쾅</p>
             <p className="mt-1 text-xs text-muted">「좋아, 해!」는 두 번, 「아니야」는 한 번</p>
           </li>
         </ol>

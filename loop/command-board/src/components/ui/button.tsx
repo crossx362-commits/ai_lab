@@ -4,25 +4,26 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
 /**
- * 버튼 계층(2026-09-10 조사 합성): primary=액센트 채움(화면당 하나) · secondary=표면+헤어라인 · ghost=투명
- * · adopt/reject=연한 의미색 배경+진한 글자(채택 확정 단계에서만 primary 채움으로 승격). pill 금지, 높이 32–36.
+ * 놀이터 단추(2026-09-10 「다섯 살도 쓸 만큼」): 알약 모양, 둥근 글씨(Do Hyeon), 아래 그림자가 있다가 누르면 내려앉는다.
+ * default=하늘색(시키기) · secondary=흰 스티커 · ghost=투명 · adopt=민트(좋아, 해!) · reject=산호(아니야).
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition-[background-color,border-color,opacity,transform] duration-[var(--motion-quick)] ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40 active:scale-[0.985]",
+  "btn-push inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 font-display transition-[background-color,border-color,opacity,transform,box-shadow] duration-[var(--motion-quick)] ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:opacity-90",
-        secondary: "border border-border-strong bg-raised text-foreground hover:bg-elevated",
-        ghost: "text-muted hover:bg-elevated hover:text-foreground",
-        adopt: "border border-adopt-line/40 bg-adopt text-adopt-fg hover:border-adopt-line",
-        reject: "border border-reject-line/40 bg-reject text-reject-fg hover:border-reject-line",
+        default: "border-sky bg-sky text-primary-foreground [--btn-shadow:#1f7ad1] hover:brightness-105",
+        secondary: "border-border bg-raised text-foreground hover:border-border-strong",
+        ghost: "border-transparent text-muted shadow-none hover:bg-elevated hover:text-foreground",
+        adopt: "border-mint bg-mint text-on-bright [--btn-shadow:#1fa66b] hover:brightness-105",
+        reject: "border-coral-soft bg-coral-soft text-reject-fg [--btn-shadow:#f2b4b4] hover:border-coral",
       },
       size: {
-        default: "h-9 px-3.5 text-sm",
-        sm: "h-8 px-3 text-[13px]",
-        lg: "h-10 px-4 text-sm",
-        touch: "h-9 min-w-9 px-3 text-sm",
+        default: "h-10 px-4 text-[15px]",
+        xs: "h-8 px-3 text-[13px]",
+        sm: "h-9 px-3.5 text-sm",
+        lg: "h-12 px-6 text-lg",
+        touch: "h-11 min-w-11 px-4 text-base",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

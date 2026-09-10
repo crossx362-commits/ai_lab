@@ -30,7 +30,7 @@ export function StatusLine() {
     return () => window.clearInterval(t);
   }, []);
 
-  if (!ready) return <p className="text-xs text-subtle">공책 읽는 중…</p>;
+  if (!ready) return <p className="text-[13px] text-subtle"><span className="wobble" aria-hidden>📖</span> 공책 읽는 중…</p>;
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       {error ? (
@@ -41,9 +41,9 @@ export function StatusLine() {
           </button>
         </div>
       ) : null}
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
         <span className={cn("badge", online ? "badge-adopt" : "badge-reject")}>
-          {online ? SAY.connected : SAY.offline}
+          {online ? "📗 " + SAY.connected : "📕 " + SAY.offline}
         </span>
         {online ? <span className="font-mono text-subtle">{head}</span> : null}
         {online ? <span className="text-subtle">{ago(fetchedAt)}에 봤어요</span> : null}

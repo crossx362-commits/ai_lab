@@ -28,7 +28,7 @@ export function CommandComposer() {
 
   return (
     <form
-      className="flex min-w-0 items-center gap-2 rounded-lg border border-border-strong bg-raised p-1 focus-within:border-primary"
+      className="flex min-w-0 items-center gap-2 rounded-full border-2 border-border-strong bg-raised p-1.5 pl-3 shadow-[var(--shadow-sticker-lg)] transition-colors duration-[var(--motion-quick)] focus-within:border-sky"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -41,16 +41,16 @@ export function CommandComposer() {
         id="command-input"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={(node?.name ?? "ai_lab") + " — " + SAY.placeholder}
-        className="h-9 min-w-0 flex-1 bg-transparent px-2.5 text-sm text-foreground outline-none placeholder:text-subtle"
+        placeholder={(node && node.id !== "lab" ? "ai_lab › " + node.name : "ai_lab 전체") + " — " + SAY.placeholder}
+        className="h-11 min-w-0 flex-1 bg-transparent px-2 text-base text-foreground outline-none placeholder:text-subtle"
       />
-      <Button type="button" variant="secondary" size="touch" onClick={share} disabled={!cards.some((c) => c.col === "명령")}>
+      <Button type="button" variant="secondary" size="touch" onClick={share} disabled={!cards.some((c) => c.col === "명령")} className="hidden sm:inline-flex">
         <Copy className="size-4" />
         {copied ? SAY.shared : SAY.share}
       </Button>
-      <Button type="submit" size="touch" disabled={!value.trim()}>
+      <Button type="submit" size="touch" disabled={!value.trim()} className="px-5">
         {SAY.send}
-        <ArrowUp className="size-4" />
+        <ArrowUp className="size-5" strokeWidth={2.5} />
       </Button>
     </form>
   );

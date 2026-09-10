@@ -25,11 +25,11 @@ export function DecideButtons({ id, yesNo, compact }: { id: string; yesNo?: bool
   const rejectLabel = yesNo ? SAY.no : SAY.reject;
 
   return (
-    <div className={compact ? "flex shrink-0 gap-1" : "mt-3 grid grid-cols-2 gap-2"} role="group" aria-label="판정">
+    <div className={compact ? "flex shrink-0 gap-1.5" : "mt-3 grid grid-cols-2 gap-2"} role="group" aria-label="판정">
       <Button
         type="button"
         variant={arm ? "default" : "adopt"}
-        size="sm"
+        size={compact ? "xs" : "sm"}
         disabled={busy}
         aria-pressed={arm}
         onClick={() => {
@@ -41,10 +41,10 @@ export function DecideButtons({ id, yesNo, compact }: { id: string; yesNo?: bool
           }
         }}
       >
-        {arm ? SAY.adoptConfirm : adoptLabel}
+        {arm ? "🙌 " + SAY.adoptConfirm : "👍 " + adoptLabel}
       </Button>
-      <Button type="button" variant="reject" size="sm" disabled={busy} onClick={() => send("반려")}>
-        {rejectLabel}
+      <Button type="button" variant="reject" size={compact ? "xs" : "sm"} disabled={busy} onClick={() => send("반려")}>
+        {"👎 " + rejectLabel}
       </Button>
     </div>
   );

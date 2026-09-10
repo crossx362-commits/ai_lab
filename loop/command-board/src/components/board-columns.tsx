@@ -4,15 +4,14 @@ import { BoardCard } from "@/components/board-card";
 import { cn } from "@/lib/cn";
 import { COL } from "@/lib/words";
 
-
-/** 열마다 다른 색 띠 — 어느 칸인지 색으로도, 글자로도 */
-const TINT: Record<ColumnId, string> = {
-  명령: "bg-primary",
-  의견: "bg-primary",
-  결정대기: "bg-warn-line",
-  결정: "bg-adopt-line",
-  실행: "bg-lav-line",
-  질문: "bg-reject-line",
+/** 칸마다 제 색 — 어느 칸인지 색으로도, 그림으로도, 글자로도 */
+const TINT: Record<ColumnId, { panel: string; head: string }> = {
+  명령: { panel: "bg-sky-soft", head: "bg-sky text-white" },
+  의견: { panel: "bg-lav-soft", head: "bg-lav text-white" },
+  결정대기: { panel: "bg-lemon-soft", head: "bg-lemon text-on-bright" },
+  결정: { panel: "bg-mint-soft", head: "bg-mint text-on-bright" },
+  실행: { panel: "bg-lav-soft", head: "bg-lav text-white" },
+  질문: { panel: "bg-coral-soft", head: "bg-coral text-white" },
 };
 
 const VISIBLE = COLUMNS.filter((c) => c !== "의견");
@@ -21,35 +20,31 @@ export function BoardColumns() {
   const cards = useBoardStore((s) => s.cards);
 
   return (
-    <div className="scroll-quiet flex h-full min-h-0 min-w-0 flex-1 gap-2 overflow-x-auto overflow-y-hidden p-2">
+    <div className="scroll-quiet flex h-full min-h-0 min-w-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden p-3">
       {VISIBLE.map((col) => {
         const list = cards.filter((c) => c.col === col);
+        const tint = TINT[col];
         return (
           <section
             key={col}
             className={cn(
-              "flex h-full min-h-0 w-[248px] shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-elevated xl:w-auto xl:min-w-0 xl:flex-1",
-              col === "질문" && list.length > 0 && "border-reject/50",
+              "flex h-full min-h-0 w-[264px] shrink-0 flex-col overflow-hidden rounded-[var(--radius-xl)] border-2 border-border xl:w-auto xl:min-w-0 xl:flex-1",
+              tint.panel,
             )}
           >
-            <div aria-hidden className={cn("h-1 w-full shrink-0", TINT[col])} />
-            <header className="flex h-9 shrink-0 items-center justify-between px-3">
-              <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground" title={COL[col].hint}>
-                <span aria-hidden>{COL[col].glyph}</span>
+            <header className={cn("flex h-11 shrink-0 items-center justify-between px-3", tint.head)} title={COL[col].hint}>
+              <h2 className="flex items-center gap-2 font-display text-[17px]">
+                <span aria-hidden className="text-xl leading-none">
+                  {COL[col].glyph}
+                </span>
                 {COL[col].label}
               </h2>
-              <span className="rounded-sm bg-raised px-1.5 py-0.5 font-mono text-[11px] text-subtle">
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white/85 px-2 font-mono text-xs font-semibold text-on-bright">
                 {list.length}
               </span>
             </header>
-            <div className="scroll-quiet flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
-              {list.length === 0 ? (
-                <p className="empty flex-1">
-                  {COL[col].empty}
-                </p>
-              ) : (
-                list.map((card) => <BoardCard key={card.id} card={card} />)
-              )}
+            <div className="scroll-quiet flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-2.5">
+              {list.length === 0 ? <p className="empty flex-1">{COL[col].empty}</p> : list.map((card) => <BoardCard key={card.id} card={card} />)}
             </div>
           </section>
         );

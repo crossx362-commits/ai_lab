@@ -41,12 +41,13 @@ export function ProjectPanel() {
   const byId = new Map(rows.map((r) => [r.id, r]));
 
   return (
-    <section className="shrink-0 border-b border-border bg-elevated px-3 py-3" aria-labelledby="projects-heading">
-      <div className="mb-2 flex items-center gap-3">
-        <h2 id="projects-heading" className="text-sm font-semibold tracking-tight">
+    <section className="shrink-0 border-b-2 border-border bg-sky-soft/50 px-3 py-3" aria-labelledby="projects-heading">
+      <div className="mb-2.5 flex items-center gap-3">
+        <h2 id="projects-heading" className="flex items-center gap-2 font-display text-[17px]">
+          <span aria-hidden className="text-xl leading-none">🧸</span>
           {SAY.projects}
         </h2>
-        <span className="text-xs text-subtle">🟢 진행이면 로봇이 일해요. 나머지는 새 일을 안 시작해요. 정하는 건 대장뿐.</span>
+        <span className="text-[13px] text-subtle">🏠 ai_lab이 제일 큰 집, 나머지는 그 안의 방. 🟢 진행이면 로봇이 일해요. 정하는 건 대장뿐.</span>
         {!rows.length ? <span className="text-xs text-subtle">git 기록 읽는 중…</span> : null}
       </div>
       <div className="scroll-quiet grid max-h-[46dvh] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
@@ -59,8 +60,9 @@ export function ProjectPanel() {
             <article
               key={p.id}
               className={cn(
-                "flex flex-col gap-2 rounded-lg border border-border bg-raised p-3",
-                active === p.id && "border-primary",
+                "sticker flex flex-col gap-2 p-3",
+                p.id === "lab" && "border-ink bg-elevated sm:col-span-2 xl:col-span-3",
+                active === p.id && "border-sky",
                 st?.state === "접음" && "opacity-60",
               )}
             >
@@ -68,12 +70,12 @@ export function ProjectPanel() {
                 <button
                   type="button"
                   onClick={() => setProject(p.id)}
-                  className="truncate text-sm font-semibold text-foreground hover:underline"
+                  className="truncate font-display text-base text-foreground hover:underline"
                   title="이 프로젝트를 명령 대상으로"
                 >
-                  {p.name}
+                  {p.id === "lab" ? "🏠 " + p.name : "└ " + p.name}
                 </button>
-                <span className="badge badge-mute">{PHASE_KO[phase]}</span>
+                <span className="badge badge-mute">{p.id === "lab" ? "제일 큰 집 · 전체" : PHASE_KO[phase]}</span>
                 {st ? <span className={cn("badge", STATE_STYLE[st.state].badge)}>{STATE[st.state].emoji} {st.state}</span> : <span className="badge badge-mute">아직 안 정함</span>}
               </div>
               <p className="min-w-0 truncate text-xs text-muted" title={git?.message || ""}>
@@ -95,8 +97,8 @@ export function ProjectPanel() {
                       title={STATE[s].say}
                       onClick={() => void setState(p.id, s)}
                       className={cn(
-                        "h-7 rounded-md border text-xs font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
-                        on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-elevated text-muted hover:border-border-strong hover:text-foreground",
+                        "h-8 rounded-full border-2 text-xs font-semibold transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
+                        on ? "border-sky bg-sky text-primary-foreground" : "border-border bg-elevated text-muted hover:border-sky hover:text-foreground",
                         (busy || on) && "cursor-default",
                       )}
                     >

@@ -29,9 +29,9 @@ function Branch({ node, depth }: { node: LabNode; depth: number }) {
           type="button"
           onClick={() => setProject(node.id)}
           className={cn(
-            "min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
+            "min-w-0 flex-1 truncate rounded-full px-2.5 py-1.5 text-left text-sm transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
             active === node.id
-              ? "bg-primary text-primary-foreground"
+              ? "bg-sky text-primary-foreground"
               : "text-muted hover:bg-raised hover:text-foreground",
           )}
         >
@@ -45,8 +45,8 @@ function Branch({ node, depth }: { node: LabNode; depth: number }) {
 
 export function LabTree() {
   return (
-    <aside className="hidden min-h-0 w-48 shrink-0 flex-col overflow-hidden border-r border-border bg-elevated xl:flex">
-      <p className="shrink-0 px-4 py-3 text-xs font-semibold tracking-[0.04em] text-muted">저장소</p>
+    <aside className="hidden min-h-0 w-48 shrink-0 flex-col overflow-hidden border-r-2 border-border bg-elevated xl:flex">
+      <p className="shrink-0 px-4 py-3 font-display text-[15px] text-muted">📁 폴더들</p>
       <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         <Branch node={LAB_TREE} depth={0} />
       </div>

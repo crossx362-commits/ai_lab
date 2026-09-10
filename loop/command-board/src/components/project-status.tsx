@@ -33,7 +33,7 @@ export function ProjectStatusCard() {
   const phase = statusOf(id).phase;
 
   return (
-    <section className="flex h-9 shrink-0 items-center gap-3 overflow-hidden border-b border-border px-3">
+    <section className="flex h-10 shrink-0 items-center gap-3 overflow-hidden border-b-2 border-border bg-elevated px-3">
       <span
         className={cn(
           "badge",
@@ -45,8 +45,9 @@ export function ProjectStatusCard() {
       >
         {PHASE_KO[phase]}
       </span>
+      <span className="shrink-0 font-display text-sm text-subtle">📍 지금</span>
       <p className="min-w-0 truncate text-sm text-foreground">{st.now}</p>
-      <p className="hidden min-w-0 truncate text-sm text-muted lg:block">다음 {st.next}</p>
+      <p className="hidden min-w-0 truncate text-sm text-muted lg:block">➡️ 다음 {st.next}</p>
       <span className="ml-auto hidden shrink-0 font-mono text-xs text-subtle sm:block">{st.updated}</span>
       <button
         type="button"
