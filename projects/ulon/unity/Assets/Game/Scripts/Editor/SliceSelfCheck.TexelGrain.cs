@@ -21,6 +21,7 @@ namespace Ulon.Editor
         /// 렌더가 필요하므로 `-nographics` 셀프체크가 아니라 **`QaShots.Run` 끝**에서 돈다.
         /// NC는 **텍스처를 실제로 128로 다시 구워** 물리는지 본다(자의 나눗셈만 뒤집으면 굽는
         /// 경로가 끊겨도 초록불이다 — NC는 결함을 만든 조건을 전부 되돌려야 한다).
+        /// 그 굽기는 둑 NC와 **한 판으로 묶여** `SliceSelfCheck.OutdoorGrainNc`에서 돈다.
         /// </summary>
         const float TexelPxMax = 1.0f;
         const float VistaContrastMin = 2.0f;
@@ -44,25 +45,6 @@ namespace Ulon.Editor
                     "까지 뭉개졌습니다(하한 " + VistaContrastMin.ToString("0.0") +
                     ") — 근접을 고치다 원경을 잃으면 수리가 아니라 맞바꿈입니다.");
 
-            int keep = VisualSliceBuilder.NoiseRes;
-            float ncMedian;
-            try
-            {
-                VisualSliceBuilder.NoiseRes = 128;
-                VisualSliceBuilder.EnsureVillageTerrain();
-                UnityEditor.AssetDatabase.SaveAssets();
-                ncMedian = OutdoorCensus.MeasureGrain("64_river_bend").Median;
-            }
-            finally
-            {
-                VisualSliceBuilder.NoiseRes = keep;
-                VisualSliceBuilder.EnsureVillageTerrain();
-                UnityEditor.AssetDatabase.SaveAssets();
-            }
-            if (ncMedian <= TexelPxMax)
-                throw new InvalidOperationException("텍셀 네거티브 컨트롤 실패 — 옛 128px로 다시 구웠는데도 " +
-                    ncMedian.ToString("0.00") + "px로 통과합니다. 자가 무력합니다.");
-            Debug.Log("[Ulon] 텍셀 네거티브 컨트롤 통과 — 옛 128px에서 " + ncMedian.ToString("0.00") + "px로 걸린다");
         }
     }
 }

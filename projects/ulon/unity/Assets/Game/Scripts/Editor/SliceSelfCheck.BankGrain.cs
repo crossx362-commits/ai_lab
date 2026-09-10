@@ -18,6 +18,7 @@ namespace Ulon.Editor
         /// 상한 **0.45**는 그 사이다. NC는 **옛 무늬로 실제로 다시 구워** 확인한다.
         ///
         /// 렌더가 필요하므로 `QaShots.Run` 끝에서 돈다.
+        /// NC 굽기는 텍셀 NC와 **한 판으로 묶여** `SliceSelfCheck.OutdoorGrainNc`에서 돈다.
         /// </summary>
         const float BankLumpMax = 0.45f;
 
@@ -31,25 +32,6 @@ namespace Ulon.Editor
                     "입니다(상한 " + BankLumpMax.ToString("0.00") +
                     ") — 바닥이 낟알이 아니라 덩어리(바둑판)로 읽힙니다. 자갈 겹 무늬를 보십시오.");
 
-            int keep = VisualSliceBuilder.GravelPatternOverride;
-            float nc;
-            try
-            {
-                VisualSliceBuilder.GravelPatternOverride = 1;   // 옛 무늬(산 암벽 층리)
-                VisualSliceBuilder.EnsureVillageTerrain();
-                UnityEditor.AssetDatabase.SaveAssets();
-                nc = OutdoorCensus.BankLumpiness();
-            }
-            finally
-            {
-                VisualSliceBuilder.GravelPatternOverride = keep;
-                VisualSliceBuilder.EnsureVillageTerrain();
-                UnityEditor.AssetDatabase.SaveAssets();
-            }
-            if (nc <= BankLumpMax)
-                throw new InvalidOperationException("둑 잔결 네거티브 컨트롤 실패 — 옛 무늬로 다시 구웠는데도 " +
-                    nc.ToString("0.00") + "로 통과합니다. 자가 무력합니다.");
-            Debug.Log("[Ulon] 둑 잔결 네거티브 컨트롤 통과 — 옛 무늬에서 " + nc.ToString("0.00") + "로 걸린다");
         }
     }
 }

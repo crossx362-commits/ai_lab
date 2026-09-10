@@ -215,6 +215,7 @@ namespace Ulon.Editor
             SliceSelfCheck.AssertTexelNotBlocky();
             // 둑이 낟알이 아니라 덩어리로 읽히지 않는가 — 텍셀 자가 통과해도 남는 축이다.
             SliceSelfCheck.AssertBankNotBlocky();
+            SliceSelfCheck.AssertOutdoorGrainNegatives();   // 위 둘의 NC를 한 판에 묶어 굽는다
             SliceSelfCheck.AssertWaterNotStamped();
             SliceSelfCheck.AssertActionVfxOnScreen();
             SliceSelfCheck.AssertActionVfxNegativeControl();
