@@ -323,7 +323,8 @@ function dispatchState() {
 }
 
 function startDispatch() {
-  if (child) return { started: false, note: "이미 수집 중" };
+  // 메모리의 child만 보면 서버 재시작 뒤 밖에서 도는 수집을 못 본다 — 상태 파일까지 같이 본다
+  if (dispatchState().running) return { started: false, note: "이미 수집 중" };
   if (!fs.existsSync(DISPATCH)) return { started: false, note: "loop/dispatch-board.sh 없음" };
   fs.mkdirSync(OPINIONS, { recursive: true });
   childSince = stamp();
@@ -437,6 +438,10 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       if (text.length > 2000) return send(res, 400, { ok: false, error: "명령은 2000자 이내" });
       const projectId = oneLine(String(body.projectId || "lab"));
       const gitPath = oneLine(String(body.git || ""));
+      // 수집 중 새 명령을 받으면 진행 중 의견이 보관함으로 잘리고 새 수집은 건너뛰게 된다(Grok 의견 2026-09-10) — 끝날 때까지 거절
+      if (dispatchState().running) {
+        return send(res, 409, { ok: false, error: "의견 수집 중 — 끝난 뒤(수 분) 다시 내리세요" });
+      }
       const md = readBoard();
       const { head, sections } = split(md);
       const cmd = section(sections, SEC.cmd, SEC.op);
