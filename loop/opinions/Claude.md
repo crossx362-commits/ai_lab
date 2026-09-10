@@ -1,5 +1,4 @@
-의견 커밋 이중 writer로 git 경합·유실 위험
-loop/dispatch-board.sh의 `commit_opinions`와 loop/command-board/server/board-api.ts의 `commitBoard`가 둘 다 loop/opinions를 add·commit·push한다 — 같은 저장소 두 writer라, detached로 도는 dispatch의 수집-종료 커밋과 오너가 누른 `/api/decide` 커밋이 겹치면 git index.lock 경합이 난다. `/api/command`만 `dispatchState().running`이면 409로 막지만 `/api/decide`엔 그 가드가 없다.
-게다가 서버가 dispatch를 `DISPATCH_ONCE=1`로 띄우므로 `commit_opinions` 푸시가 실패해도 재시도할 다음 사이클이 없어, 다음 오너 조작 전까지 의견이 로컬에만 남는다(다른 기계에서 근거 유실).
-제안: 커밋 경로를 서버 `commitBoard` 한 곳으로 모으고 dispatch는 파일만 남기게 분리(공용 함수 재사용), 최소한 `/api/decide`에도 수집 중 거절 가드 추가.
-위험: 수집-커밋 순서를 잘못 바꾸면 수집 완료 전에 커밋돼 빈 의견이 확정될 수 있으니 「수집 종료 후 커밋」 순서 보존이 필수다.
+지휘 보드 검토 — 수집 중복·중단 불가
+`loop/dispatch-board.sh`의 `cycle()`은 STOP과 `_last-signature`만 보고 `_dispatch.status`를 안 본다 — 상시 루프가 떠 있는 상태에서 보드가 `/api/command`로 `DISPATCH_ONCE=1 DISPATCH_FORCE=1`을 또 띄우면 두 수집이 같은 `loop/opinions/<AI>.md`·`.raw`에 겹쳐 쓴다. `cycle()` 첫머리에 `_dispatch.status`가 running이면 건너뛰기(또는 `loop/opinions/.lock` flock)를 넣어 한 번에 하나만 돌게 할 것.
+멈춤 수단이 파일 `touch loop/STOP` 하나뿐이라, 수집이 고착되면 `command-board`의 `/api/command`가 409로 새 명령을 7~12분 막고 오너가 손으로 파일을 만들어야 한다 — 보드 금지 절(오너에게 일 시키지 말 것)과 정면으로 어긋난다. `server/board-api.ts`에 `POST /api/dispatch/stop`(STOP 생성 → child kill → STOP 제거 → `_dispatch.status`를 idle로)과 화면 버튼을 붙일 것.
+위험: 중단 API가 `loop/STOP`을 지우는 걸 실패하면 이후 수집이 조용히 전부 멈춘다 — 정리는 `finally`에서 하고 보드 상단에 STOP 존재 여부를 표시할 것.
