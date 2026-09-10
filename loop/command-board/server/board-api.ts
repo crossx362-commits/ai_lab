@@ -158,8 +158,17 @@ function failureReason(err: string) {
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
-  const hit = lines.find((l) => /not signed in|usage limit|quota|authenticate|expired|login|없음|not found|Error/i.test(l));
-  return (hit || lines[lines.length - 1] || "").slice(0, 220);
+  // 우선순위: 인증·한도(사람이 풀어야 함) → 미설치 → 그 밖의 Error → 마지막 줄
+  const tiers = [
+    /not signed in|usage limit|quota|authenticate|expired|log ?in|rate limit/i,
+    /없음|not found|command not found/i,
+    /error/i,
+  ];
+  for (const re of tiers) {
+    const hit = lines.find((l) => re.test(l));
+    if (hit) return hit.slice(0, 220);
+  }
+  return (lines[lines.length - 1] || "").slice(0, 220);
 }
 
 function buildCards(md: string): { cards: Card[]; command?: ReturnType<typeof parseCommand> } {
@@ -296,8 +305,10 @@ function dispatchState() {
   let file = "";
   if (fs.existsSync(sp)) file = fs.readFileSync(sp, "utf8").trim();
   const [state, ...rest] = file.split(/\s+/);
-  const external = state === "running";
-  return { running: Boolean(child) || external, since: child ? childSince : rest.join(" ") };
+  // 밖에서 돌린 dispatch가 죽어 상태 파일만 running으로 남는 경우(제미니 지적) — CLI 타임아웃(7분)+여유를 넘기면 고착으로 본다
+  const STALE_MS = 12 * 60_000;
+  const fresh = state === "running" && Date.now() - fs.statSync(sp).mtimeMs < STALE_MS;
+  return { running: Boolean(child) || fresh, since: child ? childSince : rest.join(" ") };
 }
 
 function startDispatch() {
