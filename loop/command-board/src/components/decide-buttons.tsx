@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useBoardStore } from "@/lib/board-store";
 import type { Verdict } from "@/lib/board-types";
+import { SAY } from "@/lib/words";
 
 /**
  * 채택/반려(또는 예/아니오) 버튼 한 벌.
@@ -20,8 +21,8 @@ export function DecideButtons({ id, yesNo, compact }: { id: string; yesNo?: bool
   }, [arm]);
 
   const send = (v: Verdict) => void decide(id, v);
-  const adoptLabel = yesNo ? "예" : "채택";
-  const rejectLabel = yesNo ? "아니오" : "반려";
+  const adoptLabel = yesNo ? SAY.yes : SAY.adopt;
+  const rejectLabel = yesNo ? SAY.no : SAY.reject;
 
   return (
     <div className={compact ? "flex shrink-0 gap-1" : "mt-3 grid grid-cols-2 gap-2"} role="group" aria-label="판정">
@@ -40,7 +41,7 @@ export function DecideButtons({ id, yesNo, compact }: { id: string; yesNo?: bool
           }
         }}
       >
-        {arm ? adoptLabel + " 확정?" : adoptLabel}
+        {arm ? SAY.adoptConfirm : adoptLabel}
       </Button>
       <Button type="button" variant="reject" size="sm" disabled={busy} onClick={() => send("반려")}>
         {rejectLabel}

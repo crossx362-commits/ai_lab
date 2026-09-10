@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useBoardStore } from "@/lib/board-store";
 import { findLab } from "@/lib/lab-tree";
 import { copyBriefing } from "@/lib/board-share";
+import { SAY } from "@/lib/words";
 
 export function CommandComposer() {
   const [value, setValue] = useState("");
@@ -40,15 +41,15 @@ export function CommandComposer() {
         id="command-input"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={(node?.name ?? "ai_lab") + " — 오늘 뭐 시킬까요? 한 줄이면 돼요"}
+        placeholder={(node?.name ?? "ai_lab") + " — " + SAY.placeholder}
         className="h-9 min-w-0 flex-1 bg-transparent px-2.5 text-sm text-foreground outline-none placeholder:text-subtle"
       />
       <Button type="button" variant="secondary" size="touch" onClick={share} disabled={!cards.some((c) => c.col === "명령")}>
         <Copy className="size-4" />
-        {copied ? "복사됨" : "전원 공유"}
+        {copied ? SAY.shared : SAY.share}
       </Button>
       <Button type="submit" size="touch" disabled={!value.trim()}>
-        내리기
+        {SAY.send}
         <ArrowUp className="size-4" />
       </Button>
     </form>

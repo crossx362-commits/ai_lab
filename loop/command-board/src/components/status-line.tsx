@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useBoardStore } from "@/lib/board-store";
 import { cn } from "@/lib/cn";
+import { SAY } from "@/lib/words";
 
 const CLI = ["claude", "codex", "gemini", "grok"] as const;
 
@@ -29,29 +30,30 @@ export function StatusLine() {
     return () => window.clearInterval(t);
   }, []);
 
-  if (!ready) return <p className="text-xs text-subtle">보드 읽는 중…</p>;
+  if (!ready) return <p className="text-xs text-subtle">공책 읽는 중…</p>;
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       {error ? (
         <div role="alert" className="banner banner-danger">
           <span className="min-w-0 flex-1 truncate">{error}</span>
           <button type="button" className="btn-quiet" onClick={() => void refresh()}>
-            재시도
+            다시 해보기
           </button>
         </div>
       ) : null}
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <span className={cn("badge", online ? "badge-adopt" : "badge-reject")}>
-          {online ? "BOARD.md 연결" : "서버 없음 — npm run dev"}
+          {online ? SAY.connected : SAY.offline}
         </span>
         {online ? <span className="font-mono text-subtle">{head}</span> : null}
-        {online ? <span className="text-subtle">갱신 {ago(fetchedAt)}</span> : null}
+        {online ? <span className="text-subtle">{ago(fetchedAt)}에 봤어요</span> : null}
         {online ? (
-          <span className="flex items-center gap-2 font-mono">
+          <span className="flex items-center gap-2 font-mono" title="로봇 열쇠 — 줄이 그어지면 로그인이 풀린 것">
+            <span aria-hidden>🔑</span>
             {CLI.map((b) => (
               <span key={b} className={cn(tools[b] ? "text-muted" : "text-reject-fg line-through")}>
                 {b}
-                {b === "grok" && tools.grok && !tools.grokLogin ? " (로그인 전)" : ""}
+                {b === "grok" && tools.grok && !tools.grokLogin ? " (열쇠 없음)" : ""}
               </span>
             ))}
           </span>

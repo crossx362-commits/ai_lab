@@ -8,6 +8,8 @@ import { ProjectStatusCard } from "@/components/project-status";
 import { OpinionLane } from "@/components/opinion-lane";
 import { ProjectPanel } from "@/components/project-panel";
 import { StatusLine } from "@/components/status-line";
+import { Welcome } from "@/components/welcome";
+import { SAY } from "@/lib/words";
 import { useBoardStore } from "@/lib/board-store";
 import { findLab } from "@/lib/lab-tree";
 import { cn } from "@/lib/cn";
@@ -38,13 +40,13 @@ function Home() {
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <div className="hidden gap-3 text-xs text-muted sm:flex" aria-label="요약">
               <span>
-                도장 기다림 <strong className={cn("text-foreground", waiting > 0 && "text-warn-fg")}>{waiting}</strong>
+                {SAY.waitingStamp} <strong className={cn("text-foreground", waiting > 0 && "text-warn-fg")}>{waiting}</strong>
               </span>
               <span>
-                질문 <strong className={cn("text-foreground", questions > 0 && "text-reject-fg")}>{questions}</strong>
+                {SAY.questions} <strong className={cn("text-foreground", questions > 0 && "text-reject-fg")}>{questions}</strong>
               </span>
               <span>
-                로봇 일하는 중 <strong className="text-foreground">{running}</strong>
+                {SAY.working} <strong className="text-foreground">{running}</strong>
               </span>
             </div>
             <button
@@ -53,10 +55,10 @@ function Home() {
               aria-expanded={panel}
               className={cn("btn-quiet", panel && "border-primary text-primary")}
             >
-              프로젝트 현황
+              {SAY.projects}
             </button>
             <a href="/eli5.html" target="_blank" rel="noreferrer" className="btn-quiet inline-flex items-center">
-              이게 뭐예요?
+              {SAY.manual}
             </a>
           </div>
         </div>
@@ -70,6 +72,7 @@ function Home() {
           <ProjectRail />
         </div>
       </header>
+      <Welcome />
       <ProjectPanel />
       <ProjectStatusCard />
       <OpinionLane />

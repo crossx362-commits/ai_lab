@@ -4,6 +4,7 @@ import { LAB_PROJECTS } from "@/lib/lab-projects";
 import { PHASE_KO, statusOf } from "@/lib/lab-status";
 import { PROJECT_STATES, type ProjectState } from "@/lib/board-api";
 import { cn } from "@/lib/cn";
+import { SAY, STATE } from "@/lib/words";
 
 /** 오너가 정하는 상태 — 색은 의미색 토큰만 쓴다(진행=액센트, 보류=노랑, 완료=초록, 접음=회색) */
 const STATE_STYLE: Record<ProjectState, { badge: string; hint: string }> = {
@@ -43,9 +44,9 @@ export function ProjectPanel() {
     <section className="shrink-0 border-b border-border bg-elevated px-3 py-3" aria-labelledby="projects-heading">
       <div className="mb-2 flex items-center gap-3">
         <h2 id="projects-heading" className="text-sm font-semibold tracking-tight">
-          프로젝트 현황
+          {SAY.projects}
         </h2>
-        <span className="text-xs text-subtle">진행 = 로봇이 일함 · 보류/완료/접음 = 새 일 안 시작. 상태는 오너만 바꿔요.</span>
+        <span className="text-xs text-subtle">🟢 진행이면 로봇이 일해요. 나머지는 새 일을 안 시작해요. 정하는 건 대장뿐.</span>
         {!rows.length ? <span className="text-xs text-subtle">git 기록 읽는 중…</span> : null}
       </div>
       <div className="scroll-quiet grid max-h-[46dvh] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
@@ -73,14 +74,14 @@ export function ProjectPanel() {
                   {p.name}
                 </button>
                 <span className="badge badge-mute">{PHASE_KO[phase]}</span>
-                {st ? <span className={cn("badge", STATE_STYLE[st.state].badge)}>{st.state}</span> : <span className="badge badge-mute">미정</span>}
+                {st ? <span className={cn("badge", STATE_STYLE[st.state].badge)}>{STATE[st.state].emoji} {st.state}</span> : <span className="badge badge-mute">아직 안 정함</span>}
               </div>
               <p className="min-w-0 truncate text-xs text-muted" title={git?.message || ""}>
                 {git ? git.message || "(커밋 메시지 없음)" : "…"}
               </p>
               <div className="flex items-center gap-3 text-[11px] text-subtle">
-                <span>마지막 {git ? since(git.date) : "…"}</span>
-                <span className={cn("font-mono", hot && "text-foreground")}>이번 주 {git ? git.week : "…"}커밋</span>
+                <span>마지막으로 만진 날 {git ? since(git.date) : "…"}</span>
+                <span className={cn("font-mono", hot && "text-foreground")}>이번 주 {git ? git.week : "…"}번 고침</span>
                 {git?.sha ? <span className="font-mono">{git.sha}</span> : null}
               </div>
               <div className="grid grid-cols-4 gap-1" role="group" aria-label={p.name + " 상태"}>
@@ -91,7 +92,7 @@ export function ProjectPanel() {
                       key={s}
                       type="button"
                       disabled={busy || on}
-                      title={STATE_STYLE[s].hint}
+                      title={STATE[s].say}
                       onClick={() => void setState(p.id, s)}
                       className={cn(
                         "h-7 rounded-md border text-xs font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
@@ -99,7 +100,7 @@ export function ProjectPanel() {
                         (busy || on) && "cursor-default",
                       )}
                     >
-                      {s}
+                      <span aria-hidden>{STATE[s].emoji}</span> {s}
                     </button>
                   );
                 })}

@@ -31,11 +31,11 @@
   --color-lav-line: #9b7bff;
   --color-skeleton: #ececec;
 
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
 
   --font-sans: "IBM Plex Sans KR", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", ui-sans-serif, system-ui, sans-serif;
   --font-display: "IBM Plex Sans KR", "Pretendard", ui-sans-serif, system-ui, sans-serif;
@@ -122,7 +122,7 @@
 
   body {
     font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: 15px;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "calt", "kern", "liga";
     line-height: 1.45;
@@ -157,9 +157,9 @@
     display: inline-flex;
     align-items: center;
     flex-shrink: 0;
-    height: 18px;
-    padding: 0 6px;
-    border-radius: var(--radius-xs);
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 999px;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.01em;

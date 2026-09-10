@@ -1,5 +1,6 @@
 import { useBoardStore } from "@/lib/board-store";
-import { OPINION_ROSTER, AI_ROLE, type AiName } from "@/lib/ai-roster";
+import { OPINION_ROSTER } from "@/lib/ai-roster";
+import { COL, ROBOT, SAY } from "@/lib/words";
 import { DecideButtons } from "@/components/decide-buttons";
 import type { BoardCard as Card } from "@/lib/board-types";
 import { cn } from "@/lib/cn";
@@ -17,7 +18,7 @@ function OpinionCard({ card }: { card: Card }) {
   const running = card.status === "running";
   const failed = card.status === "fail";
   const open = !card.verdict && !running && !failed;
-  const role = AI_ROLE[card.who as AiName];
+  const robot = ROBOT[card.who as keyof typeof ROBOT];
 
   return (
     <article
@@ -32,15 +33,15 @@ function OpinionCard({ card }: { card: Card }) {
       <div className="flex items-center gap-2 text-xs">
         <span
           aria-hidden
-          className={cn("inline-flex size-5 items-center justify-center rounded-full text-[11px] font-bold", AVATAR[card.who] || "bg-elevated text-muted")}
+          className={cn("inline-flex size-6 items-center justify-center rounded-full text-sm", AVATAR[card.who] || "bg-elevated text-muted")}
         >
-          {card.who.slice(0, 1)}
+          {robot?.emoji || card.who.slice(0, 1)}
         </span>
         <span className="font-semibold text-foreground">{card.who}</span>
-        {role ? <span className="text-subtle">{role}</span> : null}
+        {robot ? <span className="text-subtle">{robot.role}</span> : null}
         <span className="ml-auto">
-          {running ? <span className="text-subtle">생각 중… 🍵</span> : null}
-          {failed ? <span className="badge badge-reject">실패</span> : null}
+          {running ? <span className="text-subtle">{SAY.thinking}</span> : null}
+          {failed ? <span className="badge badge-reject">{SAY.failed}</span> : null}
           {card.verdict ? (
             <span className={cn("badge", card.verdict === "채택" ? "badge-adopt" : "badge-reject")}>{card.verdict}</span>
           ) : null}
@@ -86,25 +87,26 @@ export function OpinionLane() {
   return (
     <section className="shrink-0 border-b border-border bg-elevated px-3 py-2" aria-labelledby="opinion-heading">
       <div className="mb-1.5 flex items-center gap-3">
-        <h2 id="opinion-heading" className="text-sm font-semibold tracking-tight">
-          의견
+        <h2 id="opinion-heading" className="flex items-center gap-1.5 text-sm font-semibold tracking-tight" title={COL.의견.hint}>
+          <span aria-hidden>{COL.의견.glyph}</span>
+          {COL.의견.label}
         </h2>
         <span className="font-mono text-xs tabular-nums text-muted">
-          {open.length ? open.length + " 판정 대기" : "판정 대기 없음"}
+          {open.length ? open.length + "개 도장 기다려요" : "도장 기다리는 생각 없음"}
         </span>
-        {running ? <span className="text-xs text-subtle">로봇들 생각 중…</span> : null}
+        {running ? <span className="text-xs text-subtle">로봇들 {SAY.thinking}</span> : null}
         <button
           type="button"
           onClick={() => void gather()}
           disabled={busy || running || !hasCommand}
           className="btn-quiet ml-auto"
         >
-          {running ? "수집 중…" : "의견 다시 받기"}
+          {running ? SAY.gathering : SAY.gather}
         </button>
       </div>
       {glance.length === 0 ? (
         <p className="empty">
-          {hasCommand ? (running ? "로봇들이 생각 중… 🍵 (몇 분)" : "의견 없음 — 「의견 다시 받기」") : "명령을 내리면 로봇 넷이 각자 생각해서 와요"}
+          {hasCommand ? (running ? "로봇들이 생각 중… 🍵 (몇 분 걸려요)" : "생각이 없네요 — 「다시 생각해 봐!」") : COL.의견.empty}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">

@@ -54,7 +54,7 @@ export function ProjectStatusCard() {
         disabled={busy}
         className="btn-quiet shrink-0"
       >
-        {busy ? "읽는 중" : "문서 갱신"}
+        {busy ? "읽는 중" : "다시 읽기"}
       </button>
     </section>
   );

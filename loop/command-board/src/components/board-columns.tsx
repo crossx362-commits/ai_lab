@@ -2,15 +2,8 @@ import { COLUMNS, type ColumnId } from "@/lib/board-types";
 import { useBoardStore } from "@/lib/board-store";
 import { BoardCard } from "@/components/board-card";
 import { cn } from "@/lib/cn";
+import { COL } from "@/lib/words";
 
-const HINTS: Record<ColumnId, string> = {
-  명령: "아직 없어요 — 위에 한 줄 적으면 시작!",
-  의견: "채택 / 반려",
-  결정대기: "도장 기다리는 게 없어요 🎉",
-  결정: "여기엔 찍은 도장만 모여요",
-  실행: "로봇 할 일이 없어요 — 편하네요",
-  질문: "비어 있음 = 다들 잘 알아들었어요",
-};
 
 /** 열마다 다른 색 띠 — 어느 칸인지 색으로도, 글자로도 */
 const TINT: Record<ColumnId, string> = {
@@ -41,7 +34,10 @@ export function BoardColumns() {
           >
             <div aria-hidden className={cn("h-1 w-full shrink-0", TINT[col])} />
             <header className="flex h-9 shrink-0 items-center justify-between px-3">
-              <h2 className="text-xs font-semibold tracking-[0.04em] text-muted">{col}</h2>
+              <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground" title={COL[col].hint}>
+                <span aria-hidden>{COL[col].glyph}</span>
+                {COL[col].label}
+              </h2>
               <span className="rounded-sm bg-raised px-1.5 py-0.5 font-mono text-[11px] text-subtle">
                 {list.length}
               </span>
@@ -49,7 +45,7 @@ export function BoardColumns() {
             <div className="scroll-quiet flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
               {list.length === 0 ? (
                 <p className="empty flex-1">
-                  {HINTS[col]}
+                  {COL[col].empty}
                 </p>
               ) : (
                 list.map((card) => <BoardCard key={card.id} card={card} />)
