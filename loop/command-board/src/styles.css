@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #f3f0e8;
+  --color-elevated: #fffcf7;
+  --color-raised: #ffffff;
+  --color-card: #fffcf7;
+  --color-foreground: #1f1c18;
+  --color-muted: #5c574f;
+  --color-subtle: #8a847b;
+  --color-border: color-mix(in oklab, #1f1c18 12%, transparent);
+  --color-border-strong: color-mix(in oklab, #1f1c18 22%, transparent);
+  --color-primary: #1f1c18;
+  --color-primary-foreground: #fffcf7;
+  --color-ring: #3d3933;
+  --color-adopt: #dcefe4;
+  --color-adopt-fg: #114530;
+  --color-reject: #f6e1dc;
+  --color-reject-fg: #6e2a22;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --font-sans: "Noto Sans KR", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Noto Serif KR", "IBM Plex Serif", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html,
+  body,
+  #app {
+    height: 100%;
+    max-height: 100dvh;
+    overflow: hidden;
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    line-height: 1.45;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .scroll-quiet {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--color-foreground) 22%, transparent) transparent;
+  }
+}
