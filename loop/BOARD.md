@@ -2,9 +2,10 @@
 
 공유 원본. GPT · 제미니 · Claude · Grok · Grok Build 전부 이 파일을 읽고 일한다.
 
-- GitHub: `loop/BOARD.md` (crossx362-commits/ai_lab · master)
-- Drive: 폴더 `지휘보드`
-- 재와 별 전용 `loop/board.html` 은 덮지 않는다
+## 방송
+오너가 명령을 내리면 **전원 필독**이다.
+이 파일의 `사용문` 칸을 읽지 않은 AI는 일하면 안 된다.
+API로 각 AI를 호출하지 않는다. 이 파일이 공용 눈이다.
 
 ## 연결 규칙
 1. 먼저 이 파일과 해당 프로젝트 README·STATUS를 읽는다
@@ -23,15 +24,6 @@
 | Claude | 채택 후 실행 |
 | Grok Build | 채택 후 병렬 실행 |
 
-## 프로젝트 현황
-| 프로젝트 | 상태 | 갱신 |
-|---|---|---|
-| petnna | 라이브 v1.3.0 | 2026-06-11 |
-| ai-team | 운영 | 2026-07-09 |
-| ashes-to-stars | 루프 다음=파티 | 2026-08-20 |
-| ulon | 검수 HUD | 2026-09-08 |
-| GeoGuard | Windows 방화벽 | 문서 |
-
 ## 명령
 -
 
@@ -42,7 +34,7 @@
 -
 
 ## 실행
-- [x] 공유 BOARD.md 추가
+- [x] 명령 = 전원 필독
 
 ## 질문
 -
