@@ -8,6 +8,18 @@ namespace Ulon.Client
     {
         // **버튼이 서버로 보내는 것**(랩 ㉭) — 단추 하나가 어느 명령을 어떤 인자로 쏘는지만 담는다.
         // 담는 것: `NetAvatar`로 나가는 요청 래퍼. 안 담는 것: 그 단추를 어디에 그리는지(패널·상시 화면).
+        /// <summary>이 단추를 누른 몸. 전역 <c>OfflineWorld.Player</c>가 아니라 그 아바타의 WorldBody.</summary>
+        static WorldBody Me(NetAvatar net)
+        {
+            if (net != null)
+            {
+                var body = net.GetComponent<WorldBody>();
+                if (body != null)
+                    return body;
+            }
+            return OfflineWorld.Instance != null ? OfflineWorld.Instance.Player : null;
+        }
+
         static void Offer(NetAvatar net, WorldBody me, string template)
         {
             if (net != null && net.IsClientInitialized)
@@ -21,7 +33,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcCast((int)spell);
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryCast(OfflineWorld.Instance.Player, spell, OfflineWorld.Instance.Player.Selected);
+                OfflineWorld.Instance.TryCast(Me(net), spell, Me(net).Selected);
         }
 
         static void Mark(NetAvatar net)
@@ -29,7 +41,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcMark();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryMark(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryMark(Me(net));
         }
 
         static void Recall(NetAvatar net)
@@ -37,7 +49,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcRecall();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryRecall(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryRecall(Me(net));
         }
 
         static void Meditate(NetAvatar net)
@@ -45,7 +57,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcMeditate();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryMeditate(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryMeditate(Me(net));
         }
 
         static void Evaluate(NetAvatar net)
@@ -53,7 +65,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcEvaluate();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryEvaluate(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
+                OfflineWorld.Instance.TryEvaluate(Me(net), Me(net).Selected);
         }
 
         static void Track(NetAvatar net)
@@ -63,10 +75,11 @@ namespace Ulon.Client
             else if (OfflineWorld.Instance != null)
             {
                 var world = OfflineWorld.Instance;
-                if (world.Player != null && world.Player.Selected != null)
-                    world.TryTrack(world.Player, world.Player.Selected);
+                var me = Me(net);
+                if (me != null && me.Selected != null)
+                    world.TryTrack(me, me.Selected);
                 else
-                    world.TryTrackCorpse(world.Player, OfflineWorld.FindCorpse(world.Player != null ? world.Player.CharacterId : ""));
+                    world.TryTrackCorpse(me, OfflineWorld.FindCorpse(me != null ? me.CharacterId : ""));
             }
         }
 
@@ -75,7 +88,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcLore();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryLore(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
+                OfflineWorld.Instance.TryLore(Me(net), Me(net).Selected);
         }
 
         static void Vet(NetAvatar net)
@@ -83,7 +96,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcVet();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryVet(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
+                OfflineWorld.Instance.TryVet(Me(net), Me(net).Selected);
         }
 
         static void Inscribe(NetAvatar net)
@@ -91,7 +104,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcInscribe();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryInscribe(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryInscribe(Me(net));
         }
 
         static void PoisonWeapon(NetAvatar net)
@@ -99,7 +112,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcPoisonWeapon();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryPoisonWeapon(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryPoisonWeapon(Me(net));
         }
 
         static void UseScroll(NetAvatar net)
@@ -107,7 +120,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcUseScroll();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryUseScroll(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
+                OfflineWorld.Instance.TryUseScroll(Me(net), Me(net).Selected);
         }
 
         static void PlayLute(NetAvatar net)
@@ -115,7 +128,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcPlay();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryPlay(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryPlay(Me(net));
         }
 
         static void Peace(NetAvatar net)
@@ -123,7 +136,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcPeace();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryPeace(OfflineWorld.Instance.Player, OfflineWorld.Instance.Player.Selected);
+                OfflineWorld.Instance.TryPeace(Me(net), Me(net).Selected);
         }
 
         static void Provoke(NetAvatar net)
@@ -131,7 +144,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcProvoke();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryProvokeStep(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryProvokeStep(Me(net));
         }
 
         static void Hide(NetAvatar net)
@@ -139,7 +152,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcHide();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryHide(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryHide(Me(net));
         }
 
         static void Stealth(NetAvatar net)
@@ -147,7 +160,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcStealth();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryStealth(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryStealth(Me(net));
         }
 
 
@@ -156,7 +169,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcCamp();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryCamp(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryCamp(Me(net));
         }
 
         static void DetectHidden(NetAvatar net)
@@ -164,7 +177,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcDetectHidden();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryDetectHidden(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryDetectHidden(Me(net));
         }
 
         static void Steal(NetAvatar net)
@@ -172,7 +185,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcSteal();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TrySteal(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TrySteal(Me(net));
         }
 
         static void ResurrectBandage(NetAvatar net)
@@ -181,8 +194,8 @@ namespace Ulon.Client
                 net.RpcResurrectBandage();
             else if (OfflineWorld.Instance != null)
             {
-                var me = OfflineWorld.Instance.Player;
-                WorldBody tgt = OfflineWorld.Instance.Player.Selected;
+                var me = Me(net);
+                WorldBody tgt = Me(net).Selected;
                 if (tgt == null || !tgt.Ghost || !tgt.IsAvatar || tgt == me)
                     tgt = OfflineWorld.NearestGhostAvatar(me);
                 OfflineWorld.Instance.TryResurrectBandage(me, tgt);
@@ -198,7 +211,7 @@ namespace Ulon.Client
             }
             if (OfflineWorld.Instance == null)
                 return;
-            OfflineWorld.Instance.TryAcceptOrder(OfflineWorld.Instance.Player);
+            OfflineWorld.Instance.TryAcceptOrder(Me(net));
         }
 
         static void TurnInCraftOrder(NetAvatar net)
@@ -210,7 +223,7 @@ namespace Ulon.Client
             }
             if (OfflineWorld.Instance == null)
                 return;
-            OfflineWorld.Instance.TryTurnInOrder(OfflineWorld.Instance.Player);
+            OfflineWorld.Instance.TryTurnInOrder(Me(net));
         }
 
         static void CurePoison(NetAvatar net)
@@ -219,8 +232,8 @@ namespace Ulon.Client
                 net.RpcCurePoison();
             else if (OfflineWorld.Instance != null)
             {
-                var me = OfflineWorld.Instance.Player;
-                WorldBody tgt = OfflineWorld.Instance.Player.Selected;
+                var me = Me(net);
+                WorldBody tgt = Me(net).Selected;
                 if (tgt == null || tgt.IsEnemy || !tgt.Alive || tgt.Ghost)
                     tgt = me;
                 OfflineWorld.Instance.TryCurePoison(me, tgt);
@@ -232,7 +245,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var me = OfflineWorld.Instance.Player;
+            var me = Me(net);
             if (me == null)
                 return;
             WorldBody pet = null;
@@ -246,7 +259,7 @@ namespace Ulon.Client
                     break;
                 }
             }
-            WorldBody enemy = OfflineWorld.Instance.Player.Selected;
+            WorldBody enemy = Me(net).Selected;
             if (enemy == null || !enemy.IsEnemy || !enemy.Alive || enemy.IsAvatar)
             {
                 enemy = null;
@@ -277,7 +290,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var me = OfflineWorld.Instance.Player;
+            var me = Me(net);
             if (me == null)
                 return;
             if (net != null && net.IsClientInitialized)
@@ -292,7 +305,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var me = OfflineWorld.Instance.Player;
+            var me = Me(net);
             if (me == null)
                 return;
             WorldBody pet = null;
@@ -323,7 +336,7 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            var me = OfflineWorld.Instance.Player;
+            var me = Me(net);
             if (me == null)
                 return;
             WorldBody pet = null;
@@ -375,7 +388,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcEquip(id);
             else
-                OfflineWorld.Instance.TryEquip(OfflineWorld.Instance.Player, id);
+                OfflineWorld.Instance.TryEquip(Me(net), id);
         }
 
         static void PouchInItem(NetAvatar net, string id)
@@ -385,7 +398,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcMoveToPouch(id);
             else
-                OfflineWorld.Instance.TryMoveToPouch(OfflineWorld.Instance.Player, id, "");
+                OfflineWorld.Instance.TryMoveToPouch(Me(net), id, "");
         }
 
         static void PouchOutItem(NetAvatar net, string id)
@@ -395,20 +408,20 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcTakeFromPouch(id);
             else
-                OfflineWorld.Instance.TryTakeFromPouch(OfflineWorld.Instance.Player, id, "");
+                OfflineWorld.Instance.TryTakeFromPouch(Me(net), id, "");
         }
 
         static void Equip(NetAvatar net)
         {
             if (OfflineWorld.Instance == null)
                 return;
-            string id = EquipCandidate(OfflineWorld.Instance.Player);
+            string id = EquipCandidate(Me(net));
             if (string.IsNullOrEmpty(id))
                 return;
             if (net != null && net.IsClientInitialized)
                 net.RpcEquip(id);
             else
-                OfflineWorld.Instance.TryEquip(OfflineWorld.Instance.Player, id);
+                OfflineWorld.Instance.TryEquip(Me(net), id);
         }
 
         static void Unequip(NetAvatar net)
@@ -416,7 +429,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcUnequip();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryUnequip(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryUnequip(Me(net));
         }
 
         /// <summary>주머니에 넣을/에서 꺼낼 물건 — 주머니 자신은 넣을 수 없다(중첩 깊이 1).</summary>
@@ -444,26 +457,26 @@ namespace Ulon.Client
         {
             if (OfflineWorld.Instance == null)
                 return;
-            string id = PouchCandidate(OfflineWorld.Instance.Player, false);
+            string id = PouchCandidate(Me(net), false);
             if (string.IsNullOrEmpty(id))
                 return;
             if (net != null && net.IsClientInitialized)
                 net.RpcMoveToPouch(id);
             else
-                OfflineWorld.Instance.TryMoveToPouch(OfflineWorld.Instance.Player, id, "");
+                OfflineWorld.Instance.TryMoveToPouch(Me(net), id, "");
         }
 
         static void PouchOut(NetAvatar net)
         {
             if (OfflineWorld.Instance == null)
                 return;
-            string id = PouchCandidate(OfflineWorld.Instance.Player, true);
+            string id = PouchCandidate(Me(net), true);
             if (string.IsNullOrEmpty(id))
                 return;
             if (net != null && net.IsClientInitialized)
                 net.RpcTakeFromPouch(id);
             else
-                OfflineWorld.Instance.TryTakeFromPouch(OfflineWorld.Instance.Player, id, "");
+                OfflineWorld.Instance.TryTakeFromPouch(Me(net), id, "");
         }
 
         static void Pick(NetAvatar net, LockedCrate crate)
@@ -473,7 +486,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcPick(crate.gameObject.name);
             else
-                OfflineWorld.Instance.TryPick(OfflineWorld.Instance.Player, crate);
+                OfflineWorld.Instance.TryPick(Me(net), crate);
         }
 
         static void Drink(NetAvatar net)
@@ -481,7 +494,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcDrink();
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryDrink(OfflineWorld.Instance.Player);
+                OfflineWorld.Instance.TryDrink(Me(net));
         }
 
         static void Bandage(NetAvatar net)
@@ -490,8 +503,8 @@ namespace Ulon.Client
                 net.RpcHeal();
             else if (OfflineWorld.Instance != null)
             {
-                var me = OfflineWorld.Instance.Player;
-                WorldBody tgt = OfflineWorld.Instance.Player.Selected;
+                var me = Me(net);
+                WorldBody tgt = Me(net).Selected;
                 if (tgt != null && tgt.Ghost && tgt.IsAvatar && tgt != me)
                 {
                     OfflineWorld.Instance.TryResurrectBandage(me, tgt);
@@ -513,7 +526,7 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcTrain((int)skill);
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryTrain(OfflineWorld.Instance.Player, skill);
+                OfflineWorld.Instance.TryTrain(Me(net), skill);
         }
 
         /// <summary>도구가 얼마나 남았는지 — 곡괭이·도끼·낚싯대의 남은 사용 횟수(§18.8 Tool Uses).</summary>
@@ -545,7 +558,7 @@ namespace Ulon.Client
                 net.RpcRepair(station.gameObject.name);
                 return;
             }
-            OfflineWorld.Instance.TryRepair(OfflineWorld.Instance.Player, station);
+            OfflineWorld.Instance.TryRepair(Me(net), station);
         }
 
         static void CraftAt(NetAvatar net, CraftStation station, string recipeId)
@@ -557,7 +570,7 @@ namespace Ulon.Client
                 net.RpcCraft(station.gameObject.name, recipeId);
                 return;
             }
-            var made = OfflineWorld.Instance.TryCraft(OfflineWorld.Instance.Player, station, recipeId);
+            var made = OfflineWorld.Instance.TryCraft(Me(net), station, recipeId);
             if (made.Applied)
             {
                 ActionVfx.Play(ActionVfx.Kind.Craft, station.transform.position + Vector3.up * 1.1f);
@@ -576,9 +589,9 @@ namespace Ulon.Client
             if (OfflineWorld.Instance == null)
                 return;
             if (buy)
-                OfflineWorld.Instance.TryBuy(OfflineWorld.Instance.Player, template);
+                OfflineWorld.Instance.TryBuy(Me(net), template);
             else
-                OfflineWorld.Instance.TrySell(OfflineWorld.Instance.Player, template);
+                OfflineWorld.Instance.TrySell(Me(net), template);
         }
     }
 }

@@ -288,25 +288,40 @@ namespace Ulon.Server
             TickPoison(Time.time);
             TickCast(Time.time);
             TickPets();
-            if (Player == null || Player.Ghost)
-                return;
-            Player.SetMana(Player.Mana + Time.deltaTime);
+            // 마나·경비는 **아바타마다**. 전역 Player만 돌리면 호스트 몸만 회복되고
+            // 같은 프로세스의 다른 아바타는 영영 0이다(㉯).
+            var avatars = Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
+            for (int i = 0; i < avatars.Length; i++)
+            {
+                var body = avatars[i];
+                if (body == null || !body.IsAvatar || body.Ghost)
+                    continue;
+                body.SetMana(body.Mana + Time.deltaTime);
+            }
         }
 
         public void TickGuard(float now)
         {
-            if (Player == null || Player.Ghost)
-                return;
-            if (Player.Notoriety == NotorietyId.Criminal && now >= Player.CriminalUntil)
-                Player.Notoriety = NotorietyId.Innocent;
-            if (Player.Notoriety == NotorietyId.Innocent)
-                return;
-            if (!GuardZone.Contains(Player.transform.position.x, Player.transform.position.z))
-                return;
-            if (now < nextGuardAt)
-                return;
-            nextGuardAt = now + 1.6f;
-            GuardStrike(Player);
+            var avatars = Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
+            bool struck = false;
+            for (int i = 0; i < avatars.Length; i++)
+            {
+                var body = avatars[i];
+                if (body == null || !body.IsAvatar || body.Ghost)
+                    continue;
+                if (body.Notoriety == NotorietyId.Criminal && now >= body.CriminalUntil)
+                    body.Notoriety = NotorietyId.Innocent;
+                if (body.Notoriety == NotorietyId.Innocent)
+                    continue;
+                if (!GuardZone.Contains(body.transform.position.x, body.transform.position.z))
+                    continue;
+                if (now < nextGuardAt)
+                    continue;
+                struck = true;
+                GuardStrike(body);
+            }
+            if (struck)
+                nextGuardAt = now + 1.6f;
         }
 
         public void FlagCriminal(WorldBody body)

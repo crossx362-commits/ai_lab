@@ -65,6 +65,18 @@ namespace Ulon.Client
             RpcBind(PersistDriver.AccountKey());
         }
 
+        /// <summary>이 클라가 소유한 몸. 전역 Player가 아니라 IsOwner 아바타.</summary>
+        static WorldBody LocalOwnedBody()
+        {
+            var avatars = Object.FindObjectsByType<NetAvatar>(FindObjectsSortMode.None);
+            for (int i = 0; i < avatars.Length; i++)
+            {
+                if (avatars[i] != null && avatars[i].IsOwner)
+                    return avatars[i].GetComponent<WorldBody>();
+            }
+            return OfflineWorld.Instance != null ? OfflineWorld.Instance.Player : null;
+        }
+
         void Update()
         {
             var body = GetComponent<WorldBody>();
@@ -990,7 +1002,7 @@ namespace Ulon.Client
             // 이 RPC는 **초대한 사람의 아바타**에서 방송되므로 `ObjectId`는 그 사람의 것이다 —
             // 그래서 초대받은 쪽에서 `pendingId == ObjectId`가 영영 성립하지 않았고,
             // **수락 버튼이 아무에게도 안 그려졌다**(파티가 대장 1명에서 멈춰 있던 이유).
-            var mineBody = OfflineWorld.Instance != null ? OfflineWorld.Instance.Player : null;
+            var mineBody = LocalOwnedBody();
             var mineNob = mineBody != null ? mineBody.GetComponent<NetworkObject>() : null;
             PartyView.PendingMe = pendingId != 0 && mineNob != null && pendingId == mineNob.ObjectId;
             PartyView.Leader = leader;
@@ -1112,7 +1124,7 @@ namespace Ulon.Client
             GuildView.Open = open;
             // 파티와 **같은 결함**이었다 — 이 RPC도 초대한 사람의 아바타에서 방송되므로
             // `ObjectId`는 그 사람 것이다. 받는 쪽에서 성립하지 않아 수락 버튼이 안 그려졌다.
-            var mineGuildBody = OfflineWorld.Instance != null ? OfflineWorld.Instance.Player : null;
+            var mineGuildBody = LocalOwnedBody();
             var mineGuildNob = mineGuildBody != null ? mineGuildBody.GetComponent<NetworkObject>() : null;
             GuildView.PendingMe = pendingId != 0 && mineGuildNob != null && pendingId == mineGuildNob.ObjectId;
             GuildView.GuildId = guildId ?? "";

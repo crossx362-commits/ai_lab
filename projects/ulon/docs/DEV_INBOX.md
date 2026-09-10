@@ -125,7 +125,7 @@ SliceHud). **B는 네 것이다 — 나는 안 건드린다.** 시체 내용물(
 | B Last* → IHintSink/TargetRpc | Grok | 닫힘 `5f661ae6` |
 | 시체 열람 (③ 연 사람만) | Grok | `5f661ae6` |
 | ④ OutdoorTone·Village·DungeonPlace + 에디터 게이트 | 루프 | 진행 |
-| `OfflineWorld.Player` 전역 (검수 ㉯) | **미배정** — 착수 전 여기 한 줄 | 대기 |
+| `OfflineWorld.Player` 전역 (검수 ㉯) | Grok | **진행** 2026-09-11 — 착수 한 줄 위 「Grok 2026-09-11」 |
 | 에셋 팩(MegaKit) 도입 | 루프 | 오너 파일 대기 |
 | 위치 권위(_clientAuthoritative) | 보류 | 외부 알파 전 |
 
@@ -203,3 +203,8 @@ SliceHud). **B는 네 것이다 — 나는 안 건드린다.** 시체 내용물(
 - 유니티 배치는 프로젝트 경로당 하나: 클로드는 `ai_lab-loop/projects/ulon/unity`, Grok은 `ai_lab/projects/ulon/unity`. 서로의 경로에 배치를 붙이지 않는다.
 - 두 루프 다 「지금 여는 랩」을 **각자 것만** 읽는다: 클로드=SESSION_HANDOFF, Grok=이 표의 큐(검수가 이 표를 갱신).
 - git: 랩 시작 `pull --rebase origin master`, 끝에 자기 경로만 add+commit+push. `git add -A` 금지.
+
+## Grok 2026-09-11 — ① 착수 (물 1.7과 파일·트리 분리)
+
+클로드=`ai_lab-loop` 물 1.7. Grok은 그 트리·셰이더·Unity 배치를 **안 붙인다.**
+① `OfflineWorld.Player` 전역 → 몸 단위, 트리 `/Users/junholee/ai_lab`.
