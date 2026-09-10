@@ -12,6 +12,8 @@ loop/grok_usage.cache.json
 loop/claude_usage.cache.json
 loop/codex_usage.cache.json
 loop/logs/
+loop/opinions/
+loop/.board-dispatch-last
 .claude/
 .mcp.json
 agent-reach/

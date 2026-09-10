@@ -3,12 +3,12 @@
 # API 과금 아님. 창에 다시 치지 않음.
 #
 #   bash loop/dispatch-board.sh
+#   DISPATCH_ONCE=1 bash loop/dispatch-board.sh   # 한 바퀴
 #   touch loop/STOP   # 멈춤
 #
 # 실행은 하지 않는다. 채택 전이다.
 
-set -uo pipefail
-cd "$(dirname "$0")/.."
+export PATH="$HOME/.local/bin:$HOME/.grok/bin:$PATH"
 ROOT="$PWD"
 STOP="$ROOT/loop/STOP"
 OUT="$ROOT/loop/opinions"
@@ -22,9 +22,17 @@ PROMPT='loop/BOARD.md 를 읽어라.
 run_one() {
   local who="$1" bin="$2"
   shift 2
-  command -v "$bin" >/dev/null 2>&1 || return 0
+  command -v "$bin" >/dev/null 2>&1 || { echo "[dispatch] skip $who"; return 0; }
   echo "[dispatch] $who"
-  if printf '%s\n' "$PROMPT" | "$@" >"$OUT/$who.md.tmp" 2>"$OUT/$who.err"; then
+  set +e
+  if [ "$bin" = "codex" ]; then
+    printf '%s\n' "$PROMPT" | "$@" >"$OUT/$who.md.tmp" 2>"$OUT/$who.err"
+  else
+    "$@" >"$OUT/$who.md.tmp" 2>"$OUT/$who.err"
+  fi
+  local st=$?
+  set +e
+  if [ "$st" -eq 0 ] && [ -s "$OUT/$who.md.tmp" ]; then
     mv "$OUT/$who.md.tmp" "$OUT/$who.md"
   else
     echo "$who 실패" >"$OUT/$who.md"
@@ -32,22 +40,33 @@ run_one() {
   fi
 }
 
-while true; do
-  [ -f "$STOP" ] && echo stop && exit 0
+cycle() {
+  [ -f "$STOP" ] && echo stop && return 2
   git pull --ff-only >/dev/null 2>&1 || true
   sig=$(git log -1 --format=%H -- loop/BOARD.md 2>/dev/null || echo none)
   if [ -f "$LAST" ] && [ "$(cat "$LAST")" = "$sig" ]; then
-    sleep 15
-    continue
+    echo "[dispatch] 변화 없음"
+    return 1
   fi
   echo "$sig" >"$LAST"
-  grep -q '## 명령' loop/BOARD.md || { sleep 15; continue; }
+  grep -q '## 명령' loop/BOARD.md || return 1
 
-  run_one Claude claude claude -p --permission-mode plan &
+  run_one Claude claude claude -p --permission-mode plan "$PROMPT" &
   run_one GPT codex codex exec --ephemeral --sandbox read-only &
-  run_one 제미니 gemini gemini -p &
-  run_one Grok grok grok --no-interactive &
+  run_one 제미니 gemini gemini -p "$PROMPT" &
+  run_one Grok grok grok -p "$PROMPT" &
   wait
   echo "[dispatch] 의견 끝 $sig"
+  return 0
+}
+
+if [ "${DISPATCH_ONCE:-}" = "1" ]; then
+  cycle
+  exit $?
+fi
+
+while true; do
+  cycle || true
+  [ -f "$STOP" ] && echo stop && exit 0
   sleep 15
 done
