@@ -40,6 +40,7 @@
 - [2026-09-10 20:58] 반려: Claude — 의견 커밋 이중 writer로 git 경합·유실 위험
 - [2026-09-10 20:58] 반려: Grok — 새 명령이 채택 근거 원문을 git에서 지움
 - [2026-09-10 21:00] 채택: GPT — 의견 식별자에 명령·본문 버전 연결
+- [2026-09-10 21:00] 채택: Claude — 지휘 보드 검토 — 수집 중복·중단 불가
 
 ## 결정대기
 - 자산 5개 다운로드 승인 (모루·대장간·마구간·목공소 단품 4 + Kenney 동굴 키트) — 전부 CC0, 승인 시 막힌 화면 5개 풀림 → 예 [2026-09-10 20:58]
@@ -52,6 +53,7 @@
 - [2026-09-10 20:58] 예: 자산 5개 다운로드 승인 (모루·대장간·마구간·목공소 단품 4 + Kenney 동굴 키트) — 전부 CC0, 승인 시 막힌 화면 5개 풀림
 - [2026-09-10 20:58] 예: autodev·herdr 작업 폴더 16개 삭제 — 프로세스는 이미 껐고 쓸 것 하나만 루프에 넘김, 나머지 중복
 - [2026-09-10 21:00] 채택: 의견 식별자에 명령·본문 버전 연결 (GPT)
+- [2026-09-10 21:00] 채택: 지휘 보드 검토 — 수집 중복·중단 불가 (Claude)
 
 ## 실행
 - [x] [2026-09-10 13:44] Claude: qa-claude → master 병합 (DEV_INBOX 충돌 양쪽 보존)
@@ -60,6 +62,7 @@
 - [x] [2026-09-10 14:00] 오너: `claude auth login` 완료(claude.ai 구독) — Claude 의견 칸 정상화
 - [x] [2026-09-10 14:15] Claude: 보드 전체 개선(오너 지시) — 빌드 골격·BOARD.md 연동·실 CLI 의견·수집 프로세스 분리·질문 예/아니오·의견 원문 커밋·CSRF 가드·Grok 제목 오염 정규화 (Claude·Grok 의견 4건 반영)
 - [ ] [2026-09-10 21:00] Grok Build: 의견 식별자에 명령·본문 버전 연결 — loop/command-board/server/board-api.ts는 의견 ID·판정을 작성자와 제목만으로 연결하므로, 명령 ID와 본문 해시까지 포함하도록 개선할 것. / loop/dispatch-board.sh에서 결과에 해당 명령 ID를 기록하고, loop/BOARD.md 판정 형식에도 같은 식별자를 보존할 것. / 위험: 같은 제목으로 본문이 바뀌면 이전 채택이 새 의견에 붙거나, 오래된 화면의 클릭이 다른 본문을 승인할 수 있음.
+- [ ] [2026-09-10 21:00] Claude: 지휘 보드 검토 — 수집 중복·중단 불가 — `loop/dispatch-board.sh`의 `cycle()`은 STOP과 `_last-signature`만 보고 `_dispatch.status`를 안 본다 — 상시 루프가 떠 있는 상태에서 보드가 `/api/command`로 `DISPATCH_ONCE=1 DISPATCH_FORCE=1`을 또 띄우면 두 수집이 같은 `loop/opinions/<AI>.md`·`.raw`에 겹쳐 쓴다. `cycle()` 첫머리에 `_dispatch.status`가 running이면 건너뛰기(또는 `loop/opinions/.lock` flock)를 넣어 한 번에 하나만 돌게 할 것. / 멈춤 수단이 파일 `touch loop/STOP` 하나뿐이라, 수집이 고착되면 `command-board`의 `/api/command`가
 
 ## 질문
 -
