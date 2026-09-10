@@ -34,14 +34,16 @@ function Home() {
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
-      <header className="shrink-0 border-b-2 border-border bg-elevated px-3 py-2.5">
-        <div className="flex items-center gap-3">
-          <h1 className="flex shrink-0 items-center gap-2 font-display text-2xl">
-            <span aria-hidden className="text-[26px] leading-none">🎪</span>
+      <header className="shrink-0 border-b-2 border-border bg-elevated px-3 py-2">
+        <div className="flex h-9 items-center gap-3">
+          <h1 className="flex shrink-0 items-center gap-2 font-display text-[22px]" title={node?.git ? "ai_lab/" + node.git : "ai_lab (전체)"}>
+            <span aria-hidden className="text-2xl leading-none">🎪</span>
             지휘 보드
           </h1>
-          <p className="hidden min-w-0 truncate font-mono text-xs text-subtle xl:block">{node?.git ? "ai_lab/" + node.git : "ai_lab (전체)"}</p>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <StatusLine />
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <div className="hidden gap-1.5 sm:flex" aria-label="요약">
               <span className={cn("badge", waiting > 0 ? "badge-warn" : "badge-mute")}>
                 🤔 {SAY.waitingStamp} <strong>{waiting}</strong>
@@ -57,30 +59,29 @@ function Home() {
               type="button"
               onClick={togglePanel}
               aria-expanded={panel}
-              className={cn("btn-quiet", panel && "border-sky bg-sky-soft")}
+              className={cn("btn-quiet h-8 px-3 text-[13px]", panel && "border-sky bg-sky-soft")}
             >
               🧸 {SAY.projects}
             </button>
-            <a href="/eli5.html" target="_blank" rel="noreferrer" className="btn-quiet">
+            <a href="/eli5.html" target="_blank" rel="noreferrer" className="btn-quiet h-8 px-3 text-[13px]">
               📖 {SAY.manual}
             </a>
           </div>
         </div>
         <div className="mt-1.5">
-          <StatusLine />
-        </div>
-        <div className="mt-2">
           <CommandComposer />
         </div>
-        <div className="mt-2">
+        <div className="mt-1.5 flex min-w-0 items-center gap-3">
           <ProjectRail />
+          <ProjectStatusCard />
         </div>
       </header>
       <Welcome />
       <ProjectPanel />
-      <StampInbox />
-      <OpinionLane />
-      <ProjectStatusCard />
+      <div className="flex shrink-0 flex-col xl:max-h-[34dvh] xl:flex-row xl:border-b-2 xl:border-border">
+        <StampInbox />
+        <OpinionLane />
+      </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <LabTree />
         <BoardColumns />

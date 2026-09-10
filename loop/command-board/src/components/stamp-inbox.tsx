@@ -24,7 +24,7 @@ export function StampInbox() {
 
   if (list.length === 0) {
     return (
-      <p className="shrink-0 border-b-2 border-border bg-elevated px-3 py-1.5 text-[13px] text-subtle">
+      <p className="shrink-0 border-b-2 border-border bg-elevated px-3 py-1.5 text-[13px] text-subtle xl:w-[56%] xl:border-b-0 xl:border-r-2">
         🎉 도장 기다리는 게 없어요 — 편하네요
       </p>
     );
@@ -33,9 +33,9 @@ export function StampInbox() {
   return (
     <section
       aria-labelledby="inbox-heading"
-      className="shrink-0 border-b-2 border-lemon bg-lemon-soft px-3 py-2"
+      className="flex min-h-0 shrink-0 flex-col border-b-2 border-lemon bg-lemon-soft px-3 py-1.5 xl:w-[56%] xl:shrink xl:border-b-0 xl:border-r-2"
     >
-      <div className="mb-1.5 flex items-center gap-2">
+      <div className="mb-1 flex items-center gap-2">
         <h2 id="inbox-heading" className="flex items-center gap-2 font-display text-[17px]">
           <span aria-hidden className="text-xl leading-none">
             🤔
@@ -47,13 +47,13 @@ export function StampInbox() {
         </h2>
         <span className="text-[13px] text-muted">대장이 찍어야 로봇이 움직여요</span>
       </div>
-      <ul className="scroll-quiet flex max-h-[26dvh] flex-col gap-1.5 overflow-y-auto pr-1">
+      <ul className="scroll-quiet flex max-h-[22dvh] min-h-0 flex-col gap-1 overflow-y-auto pr-1 xl:max-h-none xl:flex-1">
         {list.map((c) => {
           const yesNo = c.col !== "의견";
           const robot = ROBOT[c.who as keyof typeof ROBOT];
           const kind = KIND[c.col];
           return (
-            <li key={c.id} className="sticker flex items-center gap-2.5 px-3 py-1.5 hover:transform-none">
+            <li key={c.id} className="sticker flex items-center gap-2.5 px-3 py-1 hover:transform-none">
               <span className={cn("badge", kind.cls)}>{kind.tag}</span>
               <span className="shrink-0 text-[13px] text-subtle">
                 {robot ? robot.emoji + " " : ""}

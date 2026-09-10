@@ -33,10 +33,10 @@ export function ProjectStatusCard() {
   const phase = statusOf(id).phase;
 
   return (
-    <section className="flex h-10 shrink-0 items-center gap-3 overflow-hidden border-b-2 border-border bg-elevated px-3">
+    <div className="ml-auto hidden min-w-0 shrink items-center gap-2 overflow-hidden lg:flex">
       <span
         className={cn(
-          "badge",
+          "badge hidden md:inline-flex",
           phase === "live" && "badge-adopt",
           phase === "loop" && "badge-primary",
           phase === "review" && "badge-warn",
@@ -46,17 +46,12 @@ export function ProjectStatusCard() {
         {PHASE_KO[phase]}
       </span>
       <span className="shrink-0 font-display text-sm text-subtle">📍 지금</span>
-      <p className="min-w-0 truncate text-sm text-foreground">{st.now}</p>
-      <p className="hidden min-w-0 truncate text-sm text-muted lg:block">➡️ 다음 {st.next}</p>
-      <span className="ml-auto hidden shrink-0 font-mono text-xs text-subtle sm:block">{st.updated}</span>
-      <button
-        type="button"
-        onClick={refresh}
-        disabled={busy}
-        className="btn-quiet shrink-0"
-      >
+      <p className="min-w-0 truncate text-[13px] text-foreground" title={st.now + (st.next ? "\n다음: " + st.next : "")}>
+        {st.now}
+      </p>
+      <button type="button" onClick={refresh} disabled={busy} className="btn-quiet h-7 shrink-0 px-2.5 text-[13px]" title={"마지막 갱신 " + st.updated}>
         {busy ? "읽는 중" : "다시 읽기"}
       </button>
-    </section>
+    </div>
   );
 }

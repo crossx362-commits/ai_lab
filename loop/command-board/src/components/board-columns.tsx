@@ -14,7 +14,8 @@ const TINT: Record<ColumnId, { panel: string; head: string }> = {
   질문: { panel: "bg-coral-soft", head: "bg-coral text-white" },
 };
 
-const VISIBLE = COLUMNS.filter((c) => c !== "의견");
+/** 로봇 생각과 도장 기다림은 위쪽(로봇 생각 칸·받은편지함)에 있으니 아래 칸에서는 뺀다 */
+const VISIBLE = COLUMNS.filter((c) => c !== "의견" && c !== "결정대기");
 
 export function BoardColumns() {
   const cards = useBoardStore((s) => s.cards);

@@ -14,7 +14,7 @@ export function ProjectRail() {
   const homeOn = active === HOME || !items.some((p) => p?.id === active);
 
   return (
-    <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
+    <div className="scroll-quiet flex min-w-0 shrink items-center gap-2 overflow-x-auto">
       <button
         type="button"
         onClick={() => setProject(HOME)}

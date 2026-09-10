@@ -32,23 +32,23 @@ export function StatusLine() {
 
   if (!ready) return <p className="text-[13px] text-subtle"><span className="wobble" aria-hidden>📖</span> 공책 읽는 중…</p>;
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
+    <div className="flex min-w-0 items-center gap-2">
       {error ? (
-        <div role="alert" className="banner banner-danger">
+        <div role="alert" className="banner banner-danger min-w-0 flex-1 py-1">
           <span className="min-w-0 flex-1 truncate">{error}</span>
-          <button type="button" className="btn-quiet" onClick={() => void refresh()}>
+          <button type="button" className="btn-quiet h-7 px-3 text-[13px]" onClick={() => void refresh()}>
             다시 해보기
           </button>
         </div>
       ) : null}
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+      <div className="flex min-w-0 items-center gap-x-2.5 overflow-hidden whitespace-nowrap text-[13px]">
         <span className={cn("badge", online ? "badge-adopt" : "badge-reject")}>
           {online ? "📗 " + SAY.connected : "📕 " + SAY.offline}
         </span>
-        {online ? <span className="font-mono text-subtle">{head}</span> : null}
-        {online ? <span className="text-subtle">{ago(fetchedAt)}에 봤어요</span> : null}
+        {online ? <span className="hidden font-mono text-subtle lg:inline">{head}</span> : null}
+        {online ? <span className="hidden text-subtle md:inline">{ago(fetchedAt)}에 봤어요</span> : null}
         {online ? (
-          <span className="flex items-center gap-2 font-mono" title="로봇 열쇠 — 줄이 그어지면 로그인이 풀린 것">
+          <span className="hidden items-center gap-2 font-mono lg:flex" title="로봇 열쇠 — 줄이 그어지면 로그인이 풀린 것">
             <span aria-hidden>🔑</span>
             {CLI.map((b) => (
               <span key={b} className={cn(tools[b] ? "text-muted" : "text-reject-fg line-through")}>
@@ -59,7 +59,7 @@ export function StatusLine() {
           </span>
         ) : null}
         {notice && !error ? (
-          <span className="text-muted" role="status">
+          <span className="truncate text-muted" role="status">
             {notice}
           </span>
         ) : null}

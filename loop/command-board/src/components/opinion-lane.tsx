@@ -106,7 +106,7 @@ export function OpinionLane() {
   };
 
   return (
-    <section className="shrink-0 border-b-2 border-border bg-lav-soft/60 px-3 py-2" aria-labelledby="opinion-heading">
+    <section className="flex min-h-0 shrink-0 flex-col border-b-2 border-border bg-lav-soft/60 px-3 py-2 xl:min-w-0 xl:flex-1 xl:shrink xl:border-b-0" aria-labelledby="opinion-heading">
       <div className="mb-1.5 flex items-center gap-3">
         <h2 id="opinion-heading" className="flex items-center gap-1.5 font-display text-[15px]" title={COL.의견.hint}>
           <span aria-hidden className="text-lg leading-none">{COL.의견.glyph}</span>
@@ -143,10 +143,12 @@ export function OpinionLane() {
           {hasCommand ? (running ? "로봇들이 생각 중… 🍵 (몇 분 걸려요)" : "생각이 없네요 — 「다시 생각해 봐!」") : COL.의견.empty}
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {glance.map((card) => (
-            <OpinionCard key={card.id} card={card} />
-          ))}
+        <div className="scroll-quiet min-h-0 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
+            {glance.map((card) => (
+              <OpinionCard key={card.id} card={card} />
+            ))}
+          </div>
         </div>
       )}
     </section>
