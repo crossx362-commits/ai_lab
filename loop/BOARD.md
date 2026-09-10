@@ -43,6 +43,7 @@
 - [2026-09-10 21:00] 채택: GPT — 의견 식별자에 명령·본문 버전 연결
 - [2026-09-10 21:00] 채택: Claude — 지휘 보드 검토 — 수집 중복·중단 불가
 - [2026-09-10 21:05] 채택: Grok — BOARD.md 무잠금 덮어쓰기로 실행줄 유실
+- [2026-09-10 21:07] 채택: Claude — 울온 루프 러너 부재 — loop.sh는 재와별 전용
 
 ## 결정대기
 - 자산 5개 다운로드 승인 (모루·대장간·마구간·목공소 단품 4 + Kenney 동굴 키트) — 전부 CC0, 승인 시 막힌 화면 5개 풀림 → 예 [2026-09-10 20:58]
@@ -57,6 +58,7 @@
 - [2026-09-10 21:00] 채택: 의견 식별자에 명령·본문 버전 연결 (GPT)
 - [2026-09-10 21:00] 채택: 지휘 보드 검토 — 수집 중복·중단 불가 (Claude)
 - [2026-09-10 21:05] 채택: BOARD.md 무잠금 덮어쓰기로 실행줄 유실 (Grok)
+- [2026-09-10 21:07] 채택: 울온 루프 러너 부재 — loop.sh는 재와별 전용 (Claude)
 
 ## 실행
 - [x] [2026-09-10 13:44] Claude: qa-claude → master 병합 (DEV_INBOX 충돌 양쪽 보존)
@@ -67,6 +69,7 @@
 - [ ] [2026-09-10 21:00] Grok Build: 의견 식별자에 명령·본문 버전 연결 — loop/command-board/server/board-api.ts는 의견 ID·판정을 작성자와 제목만으로 연결하므로, 명령 ID와 본문 해시까지 포함하도록 개선할 것. / loop/dispatch-board.sh에서 결과에 해당 명령 ID를 기록하고, loop/BOARD.md 판정 형식에도 같은 식별자를 보존할 것. / 위험: 같은 제목으로 본문이 바뀌면 이전 채택이 새 의견에 붙거나, 오래된 화면의 클릭이 다른 본문을 승인할 수 있음.
 - [ ] [2026-09-10 21:00] Claude: 지휘 보드 검토 — 수집 중복·중단 불가 — `loop/dispatch-board.sh`의 `cycle()`은 STOP과 `_last-signature`만 보고 `_dispatch.status`를 안 본다 — 상시 루프가 떠 있는 상태에서 보드가 `/api/command`로 `DISPATCH_ONCE=1 DISPATCH_FORCE=1`을 또 띄우면 두 수집이 같은 `loop/opinions/<AI>.md`·`.raw`에 겹쳐 쓴다. `cycle()` 첫머리에 `_dispatch.status`가 running이면 건너뛰기(또는 `loop/opinions/.lock` flock)를 넣어 한 번에 하나만 돌게 할 것. / 멈춤 수단이 파일 `touch loop/STOP` 하나뿐이라, 수집이 고착되면 `command-board`의 `/api/command`가
 - [ ] [2026-09-10 21:05] Grok Build: BOARD.md 무잠금 덮어쓰기로 실행줄 유실 — loop/command-board/server/board-api.ts의 /api/command·/api/decide·/api/project-state는 loop/BOARD.md를 통째로 읽어 잠금 없이 writeFileSync하고, 실행 완료 API가 없어 담당도 같은 파일의 [ ]를 직접 [x]로 고친다. flock으로 읽기-쓰기-커밋을 직렬화하고 POST /api/run-done만 체크를 뒤집게 할 것. / 위험: 채택 커밋과 완료 체크가 겹치면 한쪽 줄이 HEAD에서 사라져 같은 일을 다시 연다.
+- [ ] [2026-09-10 21:07] Claude: 울온 루프 러너 부재 — loop.sh는 재와별 전용 — `loop/loop.sh`는 상태 파일이 `docs/STATUS.md`·`docs/feedback/INBOX.md`·`projects/ashes-to-stars/CLAUDE.md`로 하드코딩돼 있고 `projects/ulon/tools/`엔 러너가 없다 — 울온 루프는 지금까지 클로드 세션이 `projects/ulon/docs/SESSION_HANDOFF.md`의 「■ 지금 여는 랩」을 읽고 도는 방식이었다(현재 랩: NC 굽기 4→2회 병합). / 착수하려면 loop.sh의 세 상태 경로를 `LOOP_PROJECT`(기본 ashes)로 인자화해 울온은 `projects/ulon/docs/{SESSION_HANDOFF,DEV_INBOX,GAME_DESIGN}.md`를 읽게 하고, 매 이터레이션 끝에 `too
 
 ## 질문
 -
