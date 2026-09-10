@@ -122,11 +122,11 @@ export const PROJECT_STATUS: Record<string, ProjectStatus> = {
     phase: "loop",
     label: "보드",
     updated: "2026-09-10",
-    now: "board.html=재와별. command-board.html=지휘. BOARD.md=AI 원본.",
+    now: "board.html=재와별. command-board/=지휘 화면. BOARD.md=AI 원본.",
     next: "재와별 HTML을 덮지 말 것.",
     docs: [
       { title: "BOARD.md", git: "loop/BOARD.md" },
-      { title: "지휘 화면", git: "loop/command-board.html" },
+      { title: "지휘 화면", git: "loop/command-board/README.md" },
     ],
   },
 };

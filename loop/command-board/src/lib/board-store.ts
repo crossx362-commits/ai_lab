@@ -1,131 +1,137 @@
 import { create } from "zustand";
-import { SAMPLE_CARDS, type BoardCard, type ColumnId, type Verdict } from "./board-types";
+import type { BoardCard, Verdict } from "./board-types";
+import { fetchBoard, postJson, type WriteResult } from "./board-api";
 import { findLab } from "./lab-tree";
-import { draftOpinions } from "./ai-roster";
-import { assignsWorkToOwner } from "./owner-rules";
 
-const STORAGE_KEY = "command-board-v6";
-
-function uid(prefix: string) {
-  return prefix + Math.random().toString(36).slice(2, 9);
-}
+const PROJECT_KEY = "command-board:project";
+const POLL_MS = 5000;
 
 type BoardState = {
   ready: boolean;
+  online: boolean;
+  busy: boolean;
+  error: string;
+  notice: string;
+  head: string;
+  dispatchRunning: boolean;
+  tools: Record<string, boolean>;
   cards: BoardCard[];
   activeProjectId: string;
   hydrate: () => void;
-  persist: () => void;
+  refresh: () => Promise<void>;
   setProject: (id: string) => void;
-  addCommand: (text: string) => void;
-  gatherOpinions: () => void;
-  decide: (id: string, verdict: Verdict) => void;
-  move: (id: string, col: ColumnId) => void;
+  addCommand: (text: string) => Promise<void>;
+  gatherOpinions: () => Promise<void>;
+  decide: (id: string, verdict: Verdict) => Promise<void>;
 };
 
-type Saved = { cards?: BoardCard[]; activeProjectId?: string };
+let timer: number | undefined;
 
-function load(): { cards: BoardCard[]; activeProjectId: string } {
-  const fallback = { cards: SAMPLE_CARDS, activeProjectId: "petnna" };
-  if (typeof window === "undefined") return fallback;
+function savedProject() {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw) as Saved;
-    return {
-      cards: Array.isArray(parsed.cards) && parsed.cards.length ? parsed.cards : SAMPLE_CARDS,
-      activeProjectId: parsed.activeProjectId || "petnna",
-    };
+    return window.localStorage.getItem(PROJECT_KEY) || "lab";
   } catch {
-    return fallback;
+    return "lab";
   }
+}
+
+function writeNote(r: WriteResult) {
+  if (r.note) return r.note;
+  return r.pushed ? "저장·푸시됨 " + (r.sha || "") : "저장됨(푸시 안 됨) " + (r.sha || "");
 }
 
 export const useBoardStore = create<BoardState>((set, get) => ({
   ready: false,
-  cards: SAMPLE_CARDS,
-  activeProjectId: "petnna",
-  hydrate: () => set({ ...load(), ready: true }),
-  persist: () => {
+  online: false,
+  busy: false,
+  error: "",
+  notice: "",
+  head: "",
+  dispatchRunning: false,
+  tools: {},
+  cards: [],
+  activeProjectId: "lab",
+
+  hydrate: () => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ cards: get().cards, activeProjectId: get().activeProjectId }),
-    );
+    set({ activeProjectId: savedProject() });
+    void get().refresh();
+    if (timer === undefined) {
+      timer = window.setInterval(() => void get().refresh(), POLL_MS);
+    }
   },
+
+  refresh: async () => {
+    try {
+      const snap = await fetchBoard();
+      set({
+        ready: true,
+        online: true,
+        error: "",
+        head: snap.head,
+        cards: snap.cards,
+        dispatchRunning: snap.dispatch.running,
+        tools: snap.tools,
+      });
+    } catch (e) {
+      set({ ready: true, online: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  },
+
   setProject: (id) => {
     set({ activeProjectId: id });
-    get().persist();
-  },
-  addCommand: (text) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    const node = findLab(get().activeProjectId);
-    const firstLine = trimmed.split("\n")[0]?.slice(0, 48) || "명령";
-    const loc = node ? node.win + (node.git ? "\ngit:" + node.git : "") : "";
-    const card: BoardCard = {
-      id: uid("cmd"),
-      col: "명령",
-      who: "나",
-      projectId: get().activeProjectId,
-      title: firstLine,
-      body: (loc ? loc + "\n" : "") + trimmed,
-    };
-    set({ cards: [card, ...get().cards] });
-    get().persist();
-    get().gatherOpinions();
-  },
-  gatherOpinions: () => {
-    const cmd = get().cards.find((c) => c.col === "명령");
-    if (!cmd) return;
-    const projectId = cmd.projectId || get().activeProjectId;
-    const existing = new Set(
-      get()
-        .cards.filter((c) => c.col === "의견" && c.from === cmd.id)
-        .map((c) => c.who),
-    );
-    const fresh = draftOpinions(projectId, cmd.title)
-      .filter((d) => !existing.has(d.who))
-      .map((d) => ({ ...d, id: uid("op"), from: cmd.id }));
-    if (!fresh.length) return;
-    set({ cards: [...fresh, ...get().cards] });
-    get().persist();
-  },
-  decide: (id, verdict) => {
-    const cards = get().cards;
-    const source = cards.find((c) => c.id === id);
-    if (!source || source.verdict) return;
-    const next: BoardCard[] = cards.map((c) => (c.id === id ? { ...c, verdict } : c));
-    if (verdict === "채택") {
-      next.unshift({
-        id: uid("dec"),
-        col: "결정",
-        who: "나",
-        projectId: source.projectId || get().activeProjectId,
-        title: "채택: " + source.title,
-        body: (source.who ? source.who + " 의견\n" : "") + (source.body || ""),
-        from: id,
-      });
-      next.unshift({
-        id: uid("run"),
-        col: "실행",
-        who: source.who === "Claude" ? "Claude" : "Grok Build",
-        projectId: source.projectId || get().activeProjectId,
-        title: "실행: " + source.title,
-        body: "채택됨. 해당 git 경로만.",
-        from: id,
-      });
+    try {
+      window.localStorage.setItem(PROJECT_KEY, id);
+    } catch {
+      /* 저장 못 해도 동작에는 지장 없음 */
     }
-    set({ cards: next });
-    get().persist();
   },
-  move: (id, col) => {
-    const card = get().cards.find((c) => c.id === id);
-    const dest =
-      col === "질문" && card && assignsWorkToOwner(card.title + "\n" + card.body) ? "결정대기" : col;
-    set({
-      cards: get().cards.map((c) => (c.id === id ? { ...c, col: dest } : c)),
-    });
-    get().persist();
+
+  addCommand: async (text) => {
+    const trimmed = text.trim();
+    if (!trimmed || get().busy) return;
+    const node = findLab(get().activeProjectId);
+    set({ busy: true, error: "", notice: "" });
+    try {
+      const r = await postJson<WriteResult>("/api/command", {
+        text: trimmed,
+        projectId: get().activeProjectId,
+        git: node?.git || "",
+      });
+      set({ notice: "명령 " + writeNote(r) + " · 의견 수집 시작" });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      set({ busy: false });
+      await get().refresh();
+    }
+  },
+
+  gatherOpinions: async () => {
+    if (get().busy) return;
+    set({ busy: true, error: "", notice: "" });
+    try {
+      const r = await postJson<{ ok: true; started: boolean; note: string }>("/api/dispatch", {});
+      set({ notice: r.started ? "의견 수집 시작 — CLI 4종 병렬, 수 분 걸림" : r.note });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      set({ busy: false });
+      await get().refresh();
+    }
+  },
+
+  decide: async (id, verdict) => {
+    if (get().busy) return;
+    set({ busy: true, error: "", notice: "" });
+    try {
+      const r = await postJson<WriteResult>("/api/decide", { id, verdict });
+      set({ notice: verdict + " " + writeNote(r) });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      set({ busy: false });
+      await get().refresh();
+    }
   },
 }));

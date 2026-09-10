@@ -4,19 +4,18 @@ import { BoardCard } from "@/components/board-card";
 import { cn } from "@/lib/cn";
 
 const HINTS: Record<ColumnId, string> = {
-  명령: "여기",
+  명령: "위 칸에서 내리기",
   의견: "채택 / 반려",
-  결정대기: "예 / 아니오",
+  결정대기: "예 / 아니오만",
   결정: "채택된 것만",
-  실행: "진행",
-  질문: "비움",
+  실행: "AI가 진행",
+  질문: "비어 있어야 정상",
 };
 
 const VISIBLE = COLUMNS.filter((c) => c !== "의견");
 
 export function BoardColumns() {
   const cards = useBoardStore((s) => s.cards);
-  const move = useBoardStore((s) => s.move);
 
   return (
     <div className="grid h-full min-h-0 min-w-0 flex-1 grid-cols-5 grid-rows-1 gap-2 overflow-hidden p-2">
@@ -29,12 +28,6 @@ export function BoardColumns() {
               "flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-elevated",
               col === "질문" && list.length > 0 && "border-reject/50",
             )}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const id = e.dataTransfer.getData("text/plain");
-              if (id) move(id, col);
-            }}
           >
             <header className="flex h-9 shrink-0 items-center justify-between px-3">
               <h2 className="text-sm font-medium tracking-tight text-foreground">{col}</h2>

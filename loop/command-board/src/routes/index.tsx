@@ -8,16 +8,47 @@ import { ProjectStatusCard } from "@/components/project-status";
 import { OpinionLane } from "@/components/opinion-lane";
 import { useBoardStore } from "@/lib/board-store";
 import { findLab } from "@/lib/lab-tree";
+import { cn } from "@/lib/cn";
 
 export const Route = createFileRoute("/")({ component: Home });
+
+const CLI = ["claude", "codex", "gemini", "grok"] as const;
+
+function StatusLine() {
+  const online = useBoardStore((s) => s.online);
+  const ready = useBoardStore((s) => s.ready);
+  const head = useBoardStore((s) => s.head);
+  const error = useBoardStore((s) => s.error);
+  const notice = useBoardStore((s) => s.notice);
+  const tools = useBoardStore((s) => s.tools);
+
+  if (!ready) return <p className="text-xs text-subtle">보드 읽는 중…</p>;
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      <span className={cn("rounded-full px-2 py-0.5", online ? "bg-adopt text-adopt-fg" : "bg-reject text-reject-fg")}>
+        {online ? "BOARD.md 연결 · " + head : "서버 없음 — npm run dev"}
+      </span>
+      {online
+        ? CLI.map((b) => (
+            <span key={b} className={cn("font-mono", tools[b] ? "text-muted" : "text-reject-fg line-through")}>
+              {b}
+              {b === "grok" && tools.grok && !tools.grokLogin ? " (로그인 전)" : ""}
+            </span>
+          ))
+        : null}
+      {error ? <span className="text-reject-fg">{error}</span> : null}
+      {notice && !error ? <span className="text-muted">{notice}</span> : null}
+    </div>
+  );
+}
 
 function Home() {
   const hydrate = useBoardStore((s) => s.hydrate);
   const cards = useBoardStore((s) => s.cards);
   const activeProjectId = useBoardStore((s) => s.activeProjectId);
-  const waiting = cards.filter((c) => c.col === "결정대기").length;
+  const waiting = cards.filter((c) => c.col === "결정대기" && !c.verdict).length;
   const questions = cards.filter((c) => c.col === "질문").length;
-  const running = cards.filter((c) => c.col === "실행").length;
+  const running = cards.filter((c) => c.col === "실행" && !c.done).length;
   const node = findLab(activeProjectId);
 
   useEffect(() => {
@@ -43,6 +74,9 @@ function Home() {
               실행 <strong className="text-foreground">{running}</strong>
             </span>
           </div>
+        </div>
+        <div className="mt-1.5">
+          <StatusLine />
         </div>
         <div className="mt-2">
           <CommandComposer />
