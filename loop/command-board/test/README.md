@@ -2,6 +2,8 @@
 
 실 `loop/BOARD.md`·원격을 건드리지 않고, 임시 저장소 + 가짜 원격 + 가짜 디스패치(CLI 한도 안 태움)로 API 전부를 실제 호출한다.
 
+`setup.sh`는 실 BOARD.md를 복사한 뒤 **미답 결정대기 카드 한 줄을 픽스처로 심는다** — 그날 미답 카드가 0건이면 「결정대기 카드 있음」과 「커밋 수 증가(판정 하나가 빠진다)」가 코드가 아니라 **데이터 때문에** 실패하기 때문이다(하네스는 실데이터에 기대지 않는다).
+
 ```bash
 bash test/setup.sh                                   # test/.tmp/tmprepo 생성(원격은 test/.tmp/remote.git)
 BOARD_ROOT=$PWD/test/.tmp/tmprepo npx vite --port 5178 --strictPort --host 127.0.0.1 &

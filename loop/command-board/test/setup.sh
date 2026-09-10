@@ -9,6 +9,22 @@ rm -rf "$T" "$R"
 git init -q --bare "$R"
 mkdir -p "$T/loop/opinions" "$T/projects/petnna"
 cp "$REPO/loop/BOARD.md" "$T/loop/BOARD.md"
+# **미답 결정대기 카드를 픽스처로 심는다**(오너 지시 2026-09-10). 실 BOARD.md를 그대로 쓰면
+# 그날 미답 카드가 0건일 때 「결정대기 카드 있음」과 「커밋 수 증가(≥7, 판정 하나가 빠진다)」가
+# 코드가 아니라 **데이터 때문에** 실패한다. 하네스는 실데이터에 기대면 안 된다.
+awk '
+  /^## 결정대기[[:space:]]*$/ { print; inpend = 1; blanks = 0; next }
+  inpend && /^[[:space:]]*$/ { blanks++; next }
+  inpend && /^## / {
+    print "- 하네스 픽스처 — 미답 결정대기 카드(실데이터와 무관)";
+    for (i = 0; i < blanks; i++) print "";
+    inpend = 0; print; next
+  }
+  inpend { for (i = 0; i < blanks; i++) print ""; blanks = 0; print; next }
+  { print }
+  END { if (inpend) print "- 하네스 픽스처 — 미답 결정대기 카드(실데이터와 무관)" }
+' "$T/loop/BOARD.md" > "$T/loop/BOARD.md.tmp" && mv "$T/loop/BOARD.md.tmp" "$T/loop/BOARD.md"
+grep -q '^- 하네스 픽스처 — 미답 결정대기 카드' "$T/loop/BOARD.md" || { echo "픽스처 심기 실패 — 실 BOARD.md에 '## 결정대기' 절이 없다" >&2; exit 1; }
 cp "$REPO/loop/opinion_normalize.py" "$T/loop/"
 printf 'loop/opinions/*\n!loop/opinions/*.md\nloop/opinions/_*\nloop/opinions/archive/\n' > "$T/.gitignore"
 echo "# petnna" > "$T/projects/petnna/README.md"
