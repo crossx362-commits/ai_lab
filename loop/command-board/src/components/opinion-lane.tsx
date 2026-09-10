@@ -4,6 +4,14 @@ import { DecideButtons } from "@/components/decide-buttons";
 import type { BoardCard as Card } from "@/lib/board-types";
 import { cn } from "@/lib/cn";
 
+/** AI마다 고정 색 — 누가 말했는지 색으로도 보이게(글자 이름은 항상 같이) */
+const AVATAR: Record<string, string> = {
+  Grok: "bg-primary text-primary-foreground",
+  GPT: "bg-adopt-line text-white",
+  제미니: "bg-lav-line text-white",
+  Claude: "bg-warn-line text-foreground",
+};
+
 /** 의견 한 장 — 근거(본문)를 버튼보다 먼저 보여준다. 채택은 두 번 눌러 확정. */
 function OpinionCard({ card }: { card: Card }) {
   const running = card.status === "running";
@@ -22,10 +30,16 @@ function OpinionCard({ card }: { card: Card }) {
       )}
     >
       <div className="flex items-center gap-2 text-xs">
+        <span
+          aria-hidden
+          className={cn("inline-flex size-5 items-center justify-center rounded-full text-[11px] font-bold", AVATAR[card.who] || "bg-elevated text-muted")}
+        >
+          {card.who.slice(0, 1)}
+        </span>
         <span className="font-semibold text-foreground">{card.who}</span>
         {role ? <span className="text-subtle">{role}</span> : null}
         <span className="ml-auto">
-          {running ? <span className="text-subtle">응답 대기…</span> : null}
+          {running ? <span className="text-subtle">생각 중… 🍵</span> : null}
           {failed ? <span className="badge badge-reject">실패</span> : null}
           {card.verdict ? (
             <span className={cn("badge", card.verdict === "채택" ? "badge-adopt" : "badge-reject")}>{card.verdict}</span>
@@ -78,7 +92,7 @@ export function OpinionLane() {
         <span className="font-mono text-xs tabular-nums text-muted">
           {open.length ? open.length + " 판정 대기" : "판정 대기 없음"}
         </span>
-        {running ? <span className="text-xs text-subtle">CLI 응답 수집 중</span> : null}
+        {running ? <span className="text-xs text-subtle">로봇들 생각 중…</span> : null}
         <button
           type="button"
           onClick={() => void gather()}
@@ -90,7 +104,7 @@ export function OpinionLane() {
       </div>
       {glance.length === 0 ? (
         <p className="empty">
-          {hasCommand ? (running ? "CLI 응답을 기다리는 중" : "의견 없음 — 「의견 다시 받기」") : "명령을 내리면 CLI 4종이 의견을 낸다"}
+          {hasCommand ? (running ? "로봇들이 생각 중… 🍵 (몇 분)" : "의견 없음 — 「의견 다시 받기」") : "명령을 내리면 로봇 넷이 각자 생각해서 와요"}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">

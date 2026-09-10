@@ -1,6 +1,15 @@
 import { create } from "zustand";
 import type { BoardCard, Verdict } from "./board-types";
-import { fetchBoard, postJson, type WriteResult } from "./board-api";
+import {
+  fetchBoard,
+  fetchProjectGit,
+  postJson,
+  type ProjectGitRow,
+  type ProjectState,
+  type ProjectStateRow,
+  type WriteResult,
+} from "./board-api";
+import { LAB_PROJECTS } from "./lab-projects";
 import { findLab } from "./lab-tree";
 
 const PROJECT_KEY = "command-board:project";
@@ -18,7 +27,13 @@ type BoardState = {
   tools: Record<string, boolean>;
   cards: BoardCard[];
   activeProjectId: string;
+  projectStates: Record<string, ProjectStateRow>;
+  projectGit: ProjectGitRow[];
+  projectPanel: boolean;
   hydrate: () => void;
+  toggleProjectPanel: () => void;
+  loadProjectGit: () => Promise<void>;
+  setProjectState: (id: string, state: ProjectState, note?: string) => Promise<void>;
   refresh: () => Promise<void>;
   setProject: (id: string) => void;
   addCommand: (text: string) => Promise<void>;
@@ -53,6 +68,38 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   tools: {},
   cards: [],
   activeProjectId: "lab",
+  projectStates: {},
+  projectGit: [],
+  projectPanel: false,
+
+  toggleProjectPanel: () => {
+    const open = !get().projectPanel;
+    set({ projectPanel: open });
+    if (open) void get().loadProjectGit();
+  },
+
+  loadProjectGit: async () => {
+    try {
+      const rows = await fetchProjectGit(LAB_PROJECTS.map((p) => ({ id: p.id, git: p.git })));
+      set({ projectGit: rows });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e) });
+    }
+  },
+
+  setProjectState: async (id, state, note = "") => {
+    if (get().busy) return;
+    set({ busy: true, error: "", notice: "" });
+    try {
+      const r = await postJson<WriteResult>("/api/project-state", { id, state, note });
+      set({ notice: id + " → " + state + " · " + writeNote(r) });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : String(e) });
+    } finally {
+      set({ busy: false });
+      await get().refresh();
+    }
+  },
 
   hydrate: () => {
     if (typeof window === "undefined") return;
@@ -73,6 +120,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         head: snap.head,
         fetchedAt: Date.now(),
         cards: snap.cards,
+        projectStates: snap.projects || {},
         dispatchRunning: snap.dispatch.running,
         tools: snap.tools,
       });

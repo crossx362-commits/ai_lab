@@ -4,12 +4,22 @@ import { BoardCard } from "@/components/board-card";
 import { cn } from "@/lib/cn";
 
 const HINTS: Record<ColumnId, string> = {
-  명령: "위 칸에서 내리기",
+  명령: "아직 없어요 — 위에 한 줄 적으면 시작!",
   의견: "채택 / 반려",
-  결정대기: "예 / 아니오만",
-  결정: "채택된 것만",
-  실행: "AI가 진행",
-  질문: "비어 있어야 정상",
+  결정대기: "도장 기다리는 게 없어요 🎉",
+  결정: "여기엔 찍은 도장만 모여요",
+  실행: "로봇 할 일이 없어요 — 편하네요",
+  질문: "비어 있음 = 다들 잘 알아들었어요",
+};
+
+/** 열마다 다른 색 띠 — 어느 칸인지 색으로도, 글자로도 */
+const TINT: Record<ColumnId, string> = {
+  명령: "bg-primary",
+  의견: "bg-primary",
+  결정대기: "bg-warn-line",
+  결정: "bg-adopt-line",
+  실행: "bg-lav-line",
+  질문: "bg-reject-line",
 };
 
 const VISIBLE = COLUMNS.filter((c) => c !== "의견");
@@ -29,6 +39,7 @@ export function BoardColumns() {
               col === "질문" && list.length > 0 && "border-reject/50",
             )}
           >
+            <div aria-hidden className={cn("h-1 w-full shrink-0", TINT[col])} />
             <header className="flex h-9 shrink-0 items-center justify-between px-3">
               <h2 className="text-xs font-semibold tracking-[0.04em] text-muted">{col}</h2>
               <span className="rounded-sm bg-raised px-1.5 py-0.5 font-mono text-[11px] text-subtle">

@@ -34,7 +34,7 @@ export function BoardCard({ card, compact }: { card: Card; compact?: boolean }) 
           {card.at ? " · " + card.at : ""}
         </span>
         {live ? <span className="badge badge-primary">전원</span> : null}
-        {running ? <span className="text-subtle">응답 대기…</span> : null}
+        {running ? <span className="text-subtle">생각 중… 🍵</span> : null}
         {failed ? <span className="badge badge-reject">실패</span> : null}
         {card.done ? <span className="badge badge-mute">완료</span> : null}
         {verdictLabel ? (

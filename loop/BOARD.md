@@ -22,6 +22,7 @@
 4. 메인은 자율 루프. 막히면 조사
 5. 시크릿·배포·삭제·master force·harness 수정은 멈춤
 6. Windows 펫나 데몬 금지
+7. 「프로젝트」 절의 상태가 보류·완료·접음이면 그 프로젝트에 새 일을 시작하지 않는다(진행 중인 것은 마무리만). 상태는 오너만 바꾼다
 
 
 ## 형식
@@ -30,7 +31,11 @@
 - 의견: 파일 `loop/opinions/<AI>.md`(1줄 제목 + 본문). 판정은 「의견·초안」에 `[시각] 채택|반려: AI — 제목`
 - 결정대기: 오너 예/아니오만. 답은 줄 끝 `→ 예 [시각]` / `→ 아니오 [시각]`
 - 실행: `[ ]`/`[x]` 체크박스 + `[시각] 담당: 제목`
+- 프로젝트: `<id>: 진행|보류|완료|접음 [시각] — 메모` (id는 보드 트리의 폴더 id: petnna·ai-team·ashes·ulon·homepage·bboggl·picker·chinaguard·geoguard·docs·loop·lab)
 
+
+## 프로젝트
+-
 
 ## 명령
 - [2026-09-10 13:51] (loop · loop) 지휘 보드(loop/command-board, loop/dispatch-board.sh, loop/BOARD.md)를 검토해 남은 결함과 개선점을 의견으로 내라

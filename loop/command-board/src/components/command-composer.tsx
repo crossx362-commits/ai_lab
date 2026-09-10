@@ -40,7 +40,7 @@ export function CommandComposer() {
         id="command-input"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={(node?.name ?? "ai_lab") + " — 전원에게 시킬 일"}
+        placeholder={(node?.name ?? "ai_lab") + " — 오늘 뭐 시킬까요? 한 줄이면 돼요"}
         className="h-9 min-w-0 flex-1 bg-transparent px-2.5 text-sm text-foreground outline-none placeholder:text-subtle"
       />
       <Button type="button" variant="secondary" size="touch" onClick={share} disabled={!cards.some((c) => c.col === "명령")}>

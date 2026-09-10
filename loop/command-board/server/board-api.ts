@@ -32,7 +32,23 @@ const SEC = {
   decided: "결정",
   run: "실행",
   q: "질문",
+  projects: "프로젝트",
 } as const;
+
+/** 오너가 정하는 프로젝트 상태. 진행이 아닌 곳엔 AI가 새 일을 시작하지 않는다(BOARD.md 연결 규칙 7). */
+const PROJECT_STATES = ["진행", "보류", "완료", "접음"] as const;
+type ProjectState = (typeof PROJECT_STATES)[number];
+const PROJECT_RE = /^([A-Za-z0-9_.-]+):\s*(진행|보류|완료|접음)\s*\[([^\]]*)\](?:\s*—\s*(.*))?$/;
+
+function parseProjects(md: string) {
+  const { sections } = split(md);
+  const out: Record<string, { state: ProjectState; at: string; note: string }> = {};
+  for (const t of items(sections.find((s) => s.name === SEC.projects))) {
+    const m = PROJECT_RE.exec(t);
+    if (m) out[m[1]] = { state: m[2] as ProjectState, at: m[3], note: (m[4] || "").trim() };
+  }
+  return out;
+}
 
 type Card = {
   id: string;
@@ -284,7 +300,10 @@ async function commitBoard(message: string) {
   let c = { ok: false, out: "", err: "" };
   for (let i = 0; i < 4; i++) {
     await git(["add", "-A", "--", "loop/BOARD.md", "loop/opinions"]);
-    c = await git(["commit", "-F", msgFile, "--", "loop/BOARD.md", "loop/opinions"]);
+    // 의견 파일이 하나도 없으면 'loop/opinions' pathspec이 아무것도 안 잡아 commit이 실패한다 — 있을 때만 넣는다
+    const staged = (await git(["diff", "--cached", "--name-only", "--", "loop/opinions"])).out.trim();
+    const paths = ["loop/BOARD.md", ...(staged ? ["loop/opinions"] : [])];
+    c = await git(["commit", "-F", msgFile, "--", ...paths]);
     if (c.ok || !/index\.lock|Unable to create/.test(c.err)) break;
     await new Promise((r) => setTimeout(r, 800));
   }
@@ -453,9 +472,56 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         command,
         cards,
         roster: ROSTER,
+        projects: parseProjects(md),
         dispatch: dispatchState(),
         tools: await toolStatus(),
       });
+    }
+
+    if (route === "/api/project-state" && req.method === "POST") {
+      const body = await readJson(req);
+      const id = oneLine(String(body.id || ""));
+      const state = String(body.state || "") as ProjectState;
+      const note = oneLine(String(body.note || "")).slice(0, 200);
+      if (!/^[A-Za-z0-9_.-]{1,40}$/.test(id)) return send(res, 400, { ok: false, error: "프로젝트 id가 이상함" });
+      if (!PROJECT_STATES.includes(state)) return send(res, 400, { ok: false, error: "상태는 진행·보류·완료·접음 중 하나" });
+      const md = readBoard();
+      const { head, sections } = split(md);
+      const sec = section(sections, SEC.projects, SEC.cmd);
+      const ts = stamp();
+      const line = `${id}: ${state} [${ts}]${note ? " — " + note : ""}`;
+      const rest = items(sec).filter((t) => !t.startsWith(id + ":"));
+      setItems(sec, [...rest, line].sort());
+      fs.writeFileSync(BOARD, join(head, sections), "utf8");
+      const c = await commitBoard(`board: 프로젝트 ${id} → ${state}`);
+      return send(res, 200, { ok: true, ...c });
+    }
+
+    if (route === "/api/projects" && req.method === "GET") {
+      // ?paths=id:git경로,id:git경로 — 로컬 git으로 마지막 커밋·이번 주 커밋 수(진행 현황은 지어내지 않고 기록에서)
+      const spec = (url.searchParams.get("paths") || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => {
+          const i = s.indexOf(":");
+          return { id: i < 0 ? s : s.slice(0, i), rel: i < 0 ? "" : s.slice(i + 1).replace(/\\/g, "/").replace(/^\/+|\/+$/g, "") };
+        })
+        .slice(0, 40);
+      const rows = [];
+      for (const { id, rel } of spec) {
+        if (!path.resolve(ROOT, rel).startsWith(ROOT)) continue;
+        const args = ["log", "-1", "--format=%h%x1f%cI%x1f%s"];
+        const cnt = ["rev-list", "--count", "HEAD", "--since=7.days"];
+        if (rel) {
+          args.push("--", rel);
+          cnt.push("--", rel);
+        }
+        const [r, w] = await Promise.all([git(args), git(cnt)]);
+        const [sha = "", date = "", message = ""] = r.out.trim().split("\x1f");
+        rows.push({ id, path: rel, sha, date: date.slice(0, 10), message, week: Number(w.out.trim()) || 0 });
+      }
+      return send(res, 200, { ok: true, rows });
     }
 
     if (route === "/api/command" && req.method === "POST") {
