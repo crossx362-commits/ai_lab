@@ -656,6 +656,44 @@ namespace Ulon.Editor
                                     WaterPatternOverride >= 0 ? WaterPatternOverride : 9, true);
             if (mat != null)
             {
+                // **물은 이제 제 셰이더를 쓴다**(오너 지시 2026-09-11, 검수 확정 기준 그림 Roystan A·B).
+                // `MakeNoiseMat`은 어느 재질이든 Standard로 되돌리므로 **여기서 갈아 끼운다**.
+                // 잡음 텍스처는 `_MainTex`에 그대로 남는다 — 텍스처를 재는 자 둘(되풀이 봉우리·
+                // 방향 쏠림)이 잴 것을 잃지 않게 하려는 것이고, 셰이더도 그 잡음을 물빛 얼룩과
+                // 거품 경계에 쓴다. 셰이더를 못 찾으면(임포트 실패) Standard로 남겨 **조용히
+                // 틀리지 않게** 경고를 남긴다.
+                var wshader = Shader.Find("Ulon/StylizedWater");
+                if (wshader != null) mat.shader = wshader;
+                else Debug.LogWarning("[물] Ulon/StylizedWater를 못 찾아 Standard로 남깁니다.");
+                if (wshader != null)
+                {
+                    // 값은 **여기가 원장이다** — 셰이더의 기본값은 재질이 처음 만들어질 때만 쓰이고,
+                    // 그 뒤로는 `.mat`에 굳는다. 기본값만 고치면 화면은 안 바뀐다.
+                    //
+                    // 첫 판을 눈으로 보고 고른 값이다(`builds/qa/water/*_look.png`):
+                    // ①깊이 4m는 **너무 멀었다** — 강도 바다도 그 깊이에 못 미쳐 물 전체가
+                    //   우윳빛 옥색으로 떴고, 바다에서는 지형이 끝나는 150m 선이 **곧은 띠**로
+                    //   드러났다(지형 끝 너머는 「무한히 깊다」로 읽혀 색이 뚝 끊긴다).
+                    //   2.2m로 당기면 앞바다는 이미 깊은 색으로 포화해 그 이음매가 사라진다.
+                    // ②얕은 물빛에서 흰기를 덜었다 — 흰기는 거품의 몫이다.
+                    // ③얕은 곳 불투명도 0.45는 모래가 비쳐 「젖은 모래」로 읽혔다 → 0.55.
+                    mat.SetColor("_ShallowColor", new Color(0.32f, 0.68f, 0.74f, 1f));
+                    mat.SetColor("_DeepColor", new Color(0.07f, 0.24f, 0.40f, 1f));
+                    mat.SetFloat("_DepthMax", 2.2f);
+                    mat.SetFloat("_ShallowAlpha", 0.55f);
+                    // **깊은 물은 완전 불투명이다** — 0.95로 두니 뒤가 5% 비쳐서
+                    // 조망(`14`)에 **지형 300m 사각형이 바다 위에 그대로 떴다**(안쪽은 물밑 모래가,
+                    // 바깥은 하늘이 비쳐 밝기가 갈렸다). 깊은 물에서 바닥이 비칠 이유가 없다.
+                    mat.SetFloat("_DeepAlpha", 1.0f);
+                    // 거품 문턱 — **완경사는 얕게, 수직면은 깊게**(머리말의 그 축).
+                    // 같은 문턱이라도 완경사에서는 띠가 수 미터로 퍼지고 벽에서는 한 줄로 죽는다.
+                    mat.SetColor("_FoamColor", new Color(0.94f, 0.97f, 0.98f, 1f));
+                    mat.SetFloat("_FoamDepth", 0.22f);
+                    mat.SetFloat("_FoamDepthSteep", 0.90f);
+                    mat.SetFloat("_FoamNoiseScale", 0.6f);
+                    mat.SetFloat("_FoamCutoff", 0.55f);
+                    mat.SetFloat("_TintStrength", 0.18f);
+                }
                 // **0.85는 정반사가 좁고 세서 흰 구멍이 뚫린다** — 호수를 원장 크기로 판 뒤
                 // `15`의 흰 포화(RGB 모두 250↑)가 0.32 → 1.60%로 다섯 배가 됐고 화면에서
                 // 물에 구멍이 난 것처럼 보였다. 후보를 나란히 재서 갈랐다(`ExposureCensus.RunWaterGlare`):
@@ -671,6 +709,10 @@ namespace Ulon.Editor
                 mat.SetFloat("_Metallic", 0.1f);
                 // 후보 시험용 — 수면을 반투명으로 만들어 물가의 딱딱한 경계를 무르게 한다.
                 // −1이면 원장대로 불투명(`OutdoorCensus.RunShoreCandidates`).
+                // 새 셰이더에서 이 갈래가 실제로 정하는 것은 **`_Color.a` 하나**다(투명 자체는
+                // 이제 상시이고, 불투명도는 깊이에서 나온다). Standard 전용 속성(`_Mode`·블렌드)
+                // 지정은 새 셰이더에 그 속성이 없어 무시되지만, **끄는 길을 지우지는 않는다** —
+                // 되돌리기는 조건이 아니라 짝이고, Standard로 폴백한 판에서 다시 필요해진다.
                 if (WaterAlphaOverride >= 0f)
                 {
                     mat.SetFloat("_Mode", 2f);
@@ -712,6 +754,10 @@ namespace Ulon.Editor
                 if (c != null)
                     UnityEngine.Object.DestroyImmediate(c);
             }
+            // 깊이 버퍼 요구는 **물이 들고 다닌다** — 카메라는 게임·QA 샷·셈 세 갈래에서 따로
+            // 만들어져 한 군데만 빠뜨려도 물이 「어디서나 깊은 색」으로 조용히 틀린다.
+            if (go.GetComponent<Ulon.Client.WaterDepthCamera>() == null)
+                go.AddComponent<Ulon.Client.WaterDepthCamera>();
             go.transform.position = new Vector3(0f, WorldTerrain.SeaLevel, 0f);
             // 지형보다 훨씬 넓게 — 수면 끝이 화면에 보이면 "판때기"로 읽힌다.
             go.transform.localScale = new Vector3(WorldTerrain.Span * 0.3f, 1f, WorldTerrain.Span * 0.3f);

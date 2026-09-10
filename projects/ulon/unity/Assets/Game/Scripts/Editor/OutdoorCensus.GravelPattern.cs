@@ -71,7 +71,17 @@ namespace Ulon.Editor
             cam.targetTexture = rt;
             camGo.transform.position = eye;
             camGo.transform.LookAt(look);
-            cam.Render();
+            // **물을 끄고 잰다**(2026-09-11, 물 재작업 1단계). 이 자의 상자는 화면 고정 사각형이라
+            // **강물이 그 안에 들어 있다** — 판별로 갈랐다(`RunBankWaterProbe`): 같은 판에서
+            // 물 켬 0.52 · 물 끔 0.16. 물이 매끈해지자 이 자가 **둑과 무관하게** 물린 것이다.
+            // 자를 느슨하게 하지 않고 **대상을 제 뜻으로 좁힌다**: 둑 무늬는 뭍의 성질이고,
+            // 물이 덮은 픽셀은 둑이 아니다(물은 제 자들이 따로 본다).
+            var waterGo = GameObject.Find(VisualSliceBuilder.WaterObject);
+            var waterRend = waterGo != null ? waterGo.GetComponent<Renderer>() : null;
+            bool waterWas = waterRend != null && waterRend.enabled;
+            if (waterRend != null) waterRend.enabled = false;
+            try { cam.Render(); }
+            finally { if (waterRend != null) waterRend.enabled = waterWas; }
             RenderTexture.active = rt;
             var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
             tex.ReadPixels(new Rect(0, 0, W, H), 0, 0);

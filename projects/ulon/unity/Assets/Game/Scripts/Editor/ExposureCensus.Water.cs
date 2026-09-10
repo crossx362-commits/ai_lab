@@ -136,7 +136,10 @@ namespace Ulon.Editor
         }
 
         /// <summary>
-        /// 게이트가 쓰는 값 — 15 화면에서 **호수 수면 ÷ 바다 수면 밝기 비**. `gloss`가 NaN이 아니면
+        /// (**게이트에서는 물러났다** — 2026-09-11 물 재작업 뒤로 게이트는 같은 깊이 구간끼리 재는
+        /// `LakeSeaLumaRatioByDepth`를 쓴다. 이 자는 「호수 전체 대 바다 전체」라 깊이별 물빛을
+        /// 결함으로 읽는다. 옛 눈금이 필요한 대조용으로만 남긴다.)
+        /// 15 화면에서 **호수 수면 ÷ 바다 수면 밝기 비**. `gloss`가 NaN이 아니면
         /// 그 매끄러움으로 재고 되돌린다(NC용). 셈과 **같은 렌더·같은 분류**를 쓴다.
         /// </summary>
         public static float LakeSeaLumaRatio(float gloss)
