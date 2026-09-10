@@ -1,4 +1,3 @@
-새 명령이 채택 근거 원문을 git에서 지움
-loop/command-board/server/board-api.ts의 archiveOpinions가 의견 md를 .gitignore된 loop/opinions/archive/로 옮긴 뒤 commitBoard가 그 삭제를 커밋하고, 채택 분기는 제목만 loop/BOARD.md 실행 줄에 넣는다.
-채택 때 card.body(경로·방법·위험)를 실행 줄에 붙인 뒤에만 보관하거나, archive/를 git 추적하라.
-위험: 다음 명령이 떨어지는 순간 직전 채택의 수정 경로가 HEAD에서 사라져 실행 담당이 다른 파일을 고친다.
+BOARD.md 무잠금 덮어쓰기로 실행줄 유실
+loop/command-board/server/board-api.ts의 /api/command·/api/decide·/api/project-state는 loop/BOARD.md를 통째로 읽어 잠금 없이 writeFileSync하고, 실행 완료 API가 없어 담당도 같은 파일의 [ ]를 직접 [x]로 고친다. flock으로 읽기-쓰기-커밋을 직렬화하고 POST /api/run-done만 체크를 뒤집게 할 것.
+위험: 채택 커밋과 완료 체크가 겹치면 한쪽 줄이 HEAD에서 사라져 같은 일을 다시 연다.
