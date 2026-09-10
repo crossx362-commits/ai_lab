@@ -1,1 +1,4 @@
-{ "title": "지휘 보드 검토 착수", "body": "loop/BOARD.md와 연결 규칙을 먼저 읽고, command-board·dispatch-board.sh의 남은 결함을 의견만 낸다." }{ "title": "연결 규칙대로 README·STATUS 확인", "body": "BOARD.md를 읽었고, command-board와 dispatch-board.sh를 대조해 남은 결함을 찾는다." }{ "title": "보드 소스·기존 의견 대조", "body": "command-board 서버·화면과 기존 opinions를 읽어 실제 결함을 확인한다." }{ "title": "gitignore·프론트·기존 의견 확인", "body": "문서와 코드 불일치, 동시 git, 서명 선기록을 파일로 대조한다." }{"title":"채택이 의견 본문을 실행에서 버린다","body":"loop/command-board/server/board-api.ts 의견 채택 분기가 실행 줄에 card.title만 넣는다 — 본문(git 경로·방법·위험)을 같은 줄에 붙이거나 결정 칸에 옮겨라.\nloop/BOARD.md 형식 「실행: 담당: 제목」도 본문을 받게 바꿔, 다음 명령의 archiveOpinions 이후에도 실행 줄만으로 재현되게 하라.\n위험: 실행 담당이 제목만 보고 다른 경로를 고친다."}
+새 명령이 채택 근거 원문을 git에서 지움
+loop/command-board/server/board-api.ts의 archiveOpinions가 의견 md를 .gitignore된 loop/opinions/archive/로 옮긴 뒤 commitBoard가 그 삭제를 커밋하고, 채택 분기는 제목만 loop/BOARD.md 실행 줄에 넣는다.
+채택 때 card.body(경로·방법·위험)를 실행 줄에 붙인 뒤에만 보관하거나, archive/를 git 추적하라.
+위험: 다음 명령이 떨어지는 순간 직전 채택의 수정 경로가 HEAD에서 사라져 실행 담당이 다른 파일을 고친다.
