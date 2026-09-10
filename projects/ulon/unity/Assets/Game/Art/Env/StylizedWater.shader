@@ -33,8 +33,9 @@ Shader "Ulon/StylizedWater"
         _DeepAlpha ("깊은 곳 불투명도", Range(0,1)) = 1.0
         _FoamColor ("거품 색", Color) = (1,1,1,1)
         _FoamWidthM ("거품 띠 가로폭(m)", Float) = 2.0
-        _FoamDepth ("거품 문턱 하한(m)", Float) = 0.05
-        _FoamDepthSteep ("거품 문턱 상한(m)", Float) = 0.60
+        _FoamDepth ("거품 문턱 하한(m)", Float) = 0.0
+        _FoamDepthSteep ("거품 문턱 상한(m)", Float) = 0.30
+        _FoamMaxAlpha ("거품 최대 덮음", Range(0,1)) = 0.75
         _FoamNoiseScale ("거품 잡음 타일(1/m)", Float) = 0.6
         _FoamJitter ("거품 가장자리 흐트러짐", Range(0,1)) = 0.40
         _FoamEdgeSoft ("거품 가장자리 부드러움", Range(0.01,1)) = 0.22
@@ -70,6 +71,7 @@ Shader "Ulon/StylizedWater"
         fixed4 _Color, _ShallowColor, _DeepColor, _FoamColor;
         float _DepthMax, _ShallowAlpha, _DeepAlpha;
         float _FoamDepth, _FoamDepthSteep, _FoamWidthM, _FoamNoiseScale, _FoamJitter, _FoamEdgeSoft, _TintStrength;
+        float _FoamMaxAlpha;
         float _RippleScale, _RippleSpeed, _RippleTint, _RippleCrest, _RippleCrestStrength;
         half _Glossiness, _Metallic;
 
@@ -116,10 +118,54 @@ Shader "Ulon/StylizedWater"
             // **하한은 아주 낮아야 한다**: 0.18m로 뒀더니 호수처럼 **완만한 바닥에서 그 하한이
             // 가로로 몇 미터**가 되어 호수 절반이 흰 웅덩이가 됐다. 하한은 「완전 평지에서 0이
             // 되지 않게」만 하는 값이지 폭을 정하는 값이 아니다.
-            float3 normalWS = mul((float3x3)unity_CameraToWorld, normalVS);
+            //
+            // **1.6단계에서 두 곳을 더 고쳤다**(검수 반려):
+            // ⓐ **하한을 없앴다**(0.05 → 0). 하한이 있으면 **벽에도 띠가 생긴다** — `64` 우안
+            //   절개면이 거의 수직인데도 0.05m짜리 띠가 남아 **계단 윤곽을 흰 선으로 그렸다**.
+            //   물가 톱니의 정답은 「윤곽을 따라가되 가늘게」가 아니라 **「그 자리엔 거품이 없다」**다.
+            // ⓑ **45°가 넘으면 폭을 0으로 끈다**(`tan45 = 1`). 벽에 부딪히는 물은 얕은 자리가
+            //   아예 없다 — 거기 거품을 그리면 그건 파도가 아니라 **경계선을 칠한 것**이다.
+            // 그리고 상한을 0.60 → 0.30으로 내렸다. **상한이 곧 띠의 굵기**인데(아래 참조)
+            // 셈이 그 이유를 못박았다(`RunFoamExtent`): `15` 호수의 **가장 깊은 흰 픽셀 0.57m**로
+            // 상한에 딱 붙어 있었고, 그 자리의 **원장 기울기는 평균 8°**였다. 8°면 가로폭 눈금이
+            // 내는 문턱은 0.28m인데 화면은 0.57m까지 하였다 = **화면 법선이 실제보다 가파르게
+            // 튄다**(물밑 잔잡음). 그래서 가로폭 눈금은 벽 쪽에서만 물고, 완경사에서는 늘
+            // 상한이 지배한다. 호수 흰 몫 18.9%(흰 도넛)의 정체가 이것이다.
+            // ⓒ **법선을 고르게 편다**(1.6단계 셋째 수리). 한 픽셀짜리 법선은 물밑 잔잡음 때문에
+            //   실제 8° 바닥에서도 **20~40°로 튄다** — 이걸 그대로 쓰면 상한이 늘 지배하고(옛 판의
+            //   흰 도넛), 45° 차단을 넣자 이번엔 **튄 픽셀마다 거품이 꺼져** 띠가 통째로 사라졌다
+            //   (호수 흰 몫 18.9% → 1.2%). 같은 잡음이 양쪽으로 다 나쁘게 작동한 것이다.
+            //   그래서 **주변 네 점을 같이 읽어 평균 낸다** — 몇 px 넓이의 기울기는 바닥의 성질이고,
+            //   한 픽셀의 기울기는 잡음의 성질이다.
+            float2 suv = IN.screenPos.xy / max(1e-5, IN.screenPos.w);
+            float2 sofs = 2.0 / _ScreenParams.xy;
+            float3 nAcc = normalVS;
+            [unroll] for (int s = 0; s < 4; s++)
+            {
+                float2 o2 = float2(s == 0 ? sofs.x : (s == 1 ? -sofs.x : 0.0),
+                                   s == 2 ? sofs.y : (s == 3 ? -sofs.y : 0.0));
+                float dTmp; float3 nTmp;
+                DecodeDepthNormal(tex2D(_CameraDepthNormalsTexture, suv + o2), dTmp, nTmp);
+                nAcc += nTmp;
+            }
+            // **뷰 공간은 −z가 앞이다.** `DecodeDepthNormal`이 내는 법선을 그대로
+            // `unity_CameraToWorld`에 넣으면 z 부호가 뒤집혀 **평평한 바닥도 벽으로 읽힌다** —
+            // 1.5단계의 「화면 법선이 실제보다 가파르게 튄다」가 잡음이 아니라 이 부호였다
+            // (그 판에서는 상한이 늘 물려 티가 안 났고, 1.6에서 45° 차단을 넣자 **거품이 통째로
+            // 사라져** 드러났다. 폭 0과 2가 픽셀까지 같은 것이 증거였다).
+            float3 nv = normalize(nAcc);
+            nv.z = -nv.z;
+            float3 normalWS = normalize(mul((float3x3)unity_CameraToWorld, nv));
             float ny = max(0.05, abs(normalWS.y));
             float tanS = sqrt(saturate(1.0 - ny * ny)) / ny;
-            float foamMax = clamp(_FoamWidthM * tanS, _FoamDepth, _FoamDepthSteep);
+            float steepCut = 1.0 - smoothstep(0.85, 1.0, tanS);   // 40°부터 줄어 45°에서 0
+            // ⓓ **벽은 법선보다 「한 픽셀에 깊이가 얼마나 변하나」로 잡는 게 확실하다.**
+            //   법선 차단만으로는 `64` 우안 절개면의 흰 계단선이 남았다(그 판을 찍어 봤다) —
+            //   깎인 면의 법선이 45°를 넘나들어 픽셀마다 살아났다 껐다 한다. 깊이의 화면 기울기는
+            //   그런 애매함이 없다: 벽이면 옆 픽셀과 깊이가 크게 벌어진다.
+            float wallCut = 1.0 - smoothstep(0.06, 0.20, fwidth(diff));
+            float cut = steepCut * wallCut;
+            float foamMax = min(_FoamWidthM * tanS * cut, _FoamDepthSteep * cut);
 
             float t = saturate(diff / max(0.01, _DepthMax));
             fixed4 water = lerp(_ShallowColor, _DeepColor, t);
@@ -156,10 +202,14 @@ Shader "Ulon/StylizedWater"
             // `foam`이 0인 **열린 바다까지 거품**이 됐다(`15`의 바다가 흰 반짝이로 덮인 판).
             // 빼면 물가 바깥은 반드시 0이고, 띠는 **안쪽으로만** 우글거린다.
             float foamMask = smoothstep(0.0, _FoamEdgeSoft, foam - fnoise * _FoamJitter);
+            // **거품 안에서도 물색이 비쳐야 한다**(검수 판정 1.6단계). 마스크를 1까지 올리면
+            // 띠가 **순백 한 겹**이 되어 과노출로 읽힌다(`64` 좌안). 덮음에 상한을 둔다 —
+            // 물빛 위에 거품을 **얹는** 것이지 물을 흰색으로 **갈아치우는** 것이 아니다.
+            float foamCover = foamMask * _FoamMaxAlpha;
 
-            o.Albedo = lerp(water.rgb + crest, _FoamColor.rgb, foamMask) * _Color.rgb;
-            o.Metallic = _Metallic * (1.0 - foamMask);
-            o.Smoothness = _Glossiness * (1.0 - foamMask);
+            o.Albedo = lerp(water.rgb + crest, _FoamColor.rgb, foamCover) * _Color.rgb;
+            o.Metallic = _Metallic * (1.0 - foamCover);
+            o.Smoothness = _Glossiness * (1.0 - foamCover);
             o.Alpha = max(lerp(_ShallowAlpha, _DeepAlpha, t), foamMask) * _Color.a;
         }
         ENDCG

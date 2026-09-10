@@ -24,8 +24,16 @@ namespace Ulon.Editor
         ///
         /// 렌더가 필요하므로 **`QaShots.Run` 끝**에서 돈다.
         /// </summary>
-        const float ShoreFadeMin = 25.0f;     // 실측 63.5·83.8 대 NC 7.3
-        const float ShoreFoamMin = 0.02f;     // 실측 18.6%·39.8% 대 NC 0.5%
+        ///
+        /// **1.6단계 — 흰 몫에 상한이 붙었다**(검수 반려 2026-09-11). 하한만 있던 이 자는
+        /// **반대쪽 실패를 통과시켰다**: 1.5단계의 `15`가 39.8%로 초록불이었는데 화면은
+        /// **흰 도넛**(물이 아니라 눈 덮인 웅덩이)이었다. 하한만 있는 자는 「없어졌다」만 잡고
+        /// 「너무 많다」는 못 잡는다 — 구간으로 물린다.
+        /// 1.6 실측: `64` **3.2%** · `15` **4.2%**(대비 46.7·53.1). NC 둘 다 문다 —
+        /// 거품을 끄면 0.5%(하한 아래), 띠를 1.5단계처럼 벌리면 상한 위로 나간다.
+        const float ShoreFadeMin = 25.0f;     // 실측 46.7·53.1 대 NC 7.3
+        const float ShoreFoamMin = 0.02f;     // 실측 3.2%·4.2% 대 NC(거품 끔) 0.5%
+        const float ShoreFoamMax = 0.15f;     // 실측 3.2%·4.2% 대 NC(띠 벌림) 1.5단계의 18.6%·39.8%
 
         public static void AssertShoreFoam()
         {
@@ -54,6 +62,10 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("샷 " + shot + "의 물가 흰 몫이 " +
                         (white * 100f).ToString("0.0") + "%뿐입니다(하한 " + (ShoreFoamMin * 100f).ToString("0.0") +
                         "%) — 물가 거품이 화면에서 사라졌습니다.");
+                if (white > ShoreFoamMax)
+                    throw new InvalidOperationException("샷 " + shot + "의 물가 흰 몫이 " +
+                        (white * 100f).ToString("0.0") + "%입니다(상한 " + (ShoreFoamMax * 100f).ToString("0.0") +
+                        "%) — 띠가 아니라 **흰 웅덩이**입니다. 물이 물로 안 읽힙니다.");
             }
 
             // NC 둘 — **끄는 길을 실제로 밟아** 자가 우는지 본다(되돌리기는 `finally`가 짝으로 진다).
@@ -75,8 +87,22 @@ namespace Ulon.Editor
                 if (ncFade >= ShoreFadeMin)
                     throw new InvalidOperationException("물가 깊이 페이드 네거티브 컨트롤 실패 — 깊이 색까지 " +
                         "껐는데도 " + ncFade.ToString("0.0") + "로 통과합니다. 자가 무력합니다.");
+                mat.SetFloat("_DepthMax", dm);
+                // **상한 쪽 NC** — 띠를 1.5단계처럼 벌리면(문턱 1.2m·덮음 1.0) 자가 울어야 한다.
+                // 상한을 넣고도 그 판이 통과하면 이 자는 흰 도넛을 또 놓친다.
+                float a0 = mat.HasProperty("_FoamMaxAlpha") ? mat.GetFloat("_FoamMaxAlpha") : -1f;
+                mat.SetFloat("_FoamDepth", f0);
+                mat.SetFloat("_FoamDepthSteep", 1.2f);
+                if (a0 >= 0f) mat.SetFloat("_FoamMaxAlpha", 1.0f);
+                OutdoorCensus.ShoreFoamStats("15_lake_river", out float ncWide, out _);
+                if (a0 >= 0f) mat.SetFloat("_FoamMaxAlpha", a0);
+                if (ncWide <= ShoreFoamMax)
+                    throw new InvalidOperationException("물가 거품 상한 네거티브 컨트롤 실패 — 띠를 " +
+                        "벌렸는데도 흰 몫이 " + (ncWide * 100f).ToString("0.0") + "%로 상한 안에 있습니다. " +
+                        "상한이 무력합니다.");
                 Debug.Log("[Ulon] 물가 네거티브 컨트롤 통과 — 거품 끄면 흰 몫 " +
-                          (ncWhite * 100f).ToString("0.0") + "% · 깊이 색까지 끄면 페이드 " + ncFade.ToString("0.0"));
+                          (ncWhite * 100f).ToString("0.0") + "% · 깊이 색까지 끄면 페이드 " + ncFade.ToString("0.0") +
+                          " · 띠를 벌리면 흰 몫 " + (ncWide * 100f).ToString("0.0") + "%");
             }
             finally
             {

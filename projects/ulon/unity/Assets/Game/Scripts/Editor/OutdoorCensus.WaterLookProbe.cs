@@ -22,7 +22,16 @@ namespace Ulon.Editor
             string dir = System.IO.Path.Combine(Application.dataPath, "../../builds/qa/water");
             System.IO.Directory.CreateDirectory(dir);
             foreach (string shot in new[] { "14_world_vista", "15_lake_river", "63_pier_cutface", "64_river_bend" })
+            {
                 ShotTo(shot, System.IO.Path.Combine(dir, shot + "_look.png"));
+                // 눈으로 볼 판과 **같은 판의 수**를 같이 찍는다 — 그림과 숫자가 다른 렌더에서
+                // 나오면 둘을 맞대 볼 수 없다(1.6단계에서 그 함정을 한 번 밟았다).
+                if (shot != "14_world_vista")
+                {
+                    FoamAreaShares(shot, out _, out _, out _, out string det);
+                    Debug.Log("[물눈] " + shot + " 거품 면적 — " + det);
+                }
+            }
 
             if (Application.isBatchMode)
                 UnityEditor.EditorApplication.Exit(0);
