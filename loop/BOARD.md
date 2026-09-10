@@ -34,6 +34,7 @@
 -
 
 ## 명령
+- [2026-09-10 21:06] (ulon · projects/ulon) 울온 자율개발루프 시작해
 - [2026-09-10 13:51] (loop · loop) 지휘 보드(loop/command-board, loop/dispatch-board.sh, loop/BOARD.md)를 검토해 남은 결함과 개선점을 의견으로 내라
 
 ## 의견·초안
