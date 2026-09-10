@@ -8,6 +8,8 @@ namespace Ulon.Editor
         /// **판별 테스트 — 먼 바다의 격자가 수면 무늬에서 오는가.**
         /// 무늬를 셋(사인 4겹·사인 3겹·늘인 잡음)이나 갈아 봤는데 `14_world_vista`의 십자 격자가
         /// 매번 그대로였다. 「내가 고치는 그것이 화면의 그것이 맞나」를 먼저 확인한다.
+        /// 2026-09-10 근접(`64`)에서 물이 **사선 체크(직조 천)**로 읽힌다는 판정이 와서 같은 자를
+        /// 근접 둘(`64`·`63`)에도 돌린다 — 체크가 남으면 강바닥·지형이고, 사라지면 수면 무늬다.
         /// 수면 겹만 **단색**으로 구워 같은 자리를 찍는다 — 격자가 그대로면 범인은 무늬가 아니다.
         /// </summary>
         public static void RunWaterFlatProbe()
@@ -24,7 +26,8 @@ namespace Ulon.Editor
                 VisualSliceBuilder.FlatLayerForCensus = "SeaWater";
                 VisualSliceBuilder.RebuildWater();
                 UnityEditor.AssetDatabase.SaveAssets();
-                ShotTo("14_world_vista", System.IO.Path.Combine(outDir, "14_flatwater.png"));
+                foreach (var sh in new[] { "14_world_vista", "64_river_bend", "63_pier_cutface" })
+                    ShotTo(sh, System.IO.Path.Combine(outDir, sh + "_flatwater.png"));
             }
             finally
             {

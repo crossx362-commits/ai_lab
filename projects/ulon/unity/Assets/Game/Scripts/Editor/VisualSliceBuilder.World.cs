@@ -651,7 +651,7 @@ namespace Ulon.Editor
         static void EnsureWater()
         {
             var mat = MakeNoiseMat("SeaWater", new Color(0.10f, 0.28f, 0.42f), new Color(0.18f, 0.44f, 0.58f),
-                                    WaterPatternOverride >= 0 ? WaterPatternOverride : 7, true);
+                                    WaterPatternOverride >= 0 ? WaterPatternOverride : 9, true);
             if (mat != null)
             {
                 // **0.85는 정반사가 좁고 세서 흰 구멍이 뚫린다** — 호수를 원장 크기로 판 뒤
