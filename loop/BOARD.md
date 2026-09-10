@@ -44,6 +44,7 @@
 - [2026-09-10 21:00] 채택: Claude — 지휘 보드 검토 — 수집 중복·중단 불가
 - [2026-09-10 21:05] 채택: Grok — BOARD.md 무잠금 덮어쓰기로 실행줄 유실
 - [2026-09-10 21:07] 채택: Claude — 울온 루프 러너 부재 — loop.sh는 재와별 전용
+- [2026-09-10 21:07] 채택: GPT — 울온 루프의 프로젝트 연결부터 분리
 
 ## 결정대기
 - 자산 5개 다운로드 승인 (모루·대장간·마구간·목공소 단품 4 + Kenney 동굴 키트) — 전부 CC0, 승인 시 막힌 화면 5개 풀림 → 예 [2026-09-10 20:58]
@@ -59,6 +60,7 @@
 - [2026-09-10 21:00] 채택: 지휘 보드 검토 — 수집 중복·중단 불가 (Claude)
 - [2026-09-10 21:05] 채택: BOARD.md 무잠금 덮어쓰기로 실행줄 유실 (Grok)
 - [2026-09-10 21:07] 채택: 울온 루프 러너 부재 — loop.sh는 재와별 전용 (Claude)
+- [2026-09-10 21:07] 채택: 울온 루프의 프로젝트 연결부터 분리 (GPT)
 
 ## 실행
 - [x] [2026-09-10 13:44] Claude: qa-claude → master 병합 (DEV_INBOX 충돌 양쪽 보존)
@@ -70,6 +72,7 @@
 - [ ] [2026-09-10 21:00] Claude: 지휘 보드 검토 — 수집 중복·중단 불가 — `loop/dispatch-board.sh`의 `cycle()`은 STOP과 `_last-signature`만 보고 `_dispatch.status`를 안 본다 — 상시 루프가 떠 있는 상태에서 보드가 `/api/command`로 `DISPATCH_ONCE=1 DISPATCH_FORCE=1`을 또 띄우면 두 수집이 같은 `loop/opinions/<AI>.md`·`.raw`에 겹쳐 쓴다. `cycle()` 첫머리에 `_dispatch.status`가 running이면 건너뛰기(또는 `loop/opinions/.lock` flock)를 넣어 한 번에 하나만 돌게 할 것. / 멈춤 수단이 파일 `touch loop/STOP` 하나뿐이라, 수집이 고착되면 `command-board`의 `/api/command`가
 - [ ] [2026-09-10 21:05] Grok Build: BOARD.md 무잠금 덮어쓰기로 실행줄 유실 — loop/command-board/server/board-api.ts의 /api/command·/api/decide·/api/project-state는 loop/BOARD.md를 통째로 읽어 잠금 없이 writeFileSync하고, 실행 완료 API가 없어 담당도 같은 파일의 [ ]를 직접 [x]로 고친다. flock으로 읽기-쓰기-커밋을 직렬화하고 POST /api/run-done만 체크를 뒤집게 할 것. / 위험: 채택 커밋과 완료 체크가 겹치면 한쪽 줄이 HEAD에서 사라져 같은 일을 다시 연다.
 - [ ] [2026-09-10 21:07] Claude: 울온 루프 러너 부재 — loop.sh는 재와별 전용 — `loop/loop.sh`는 상태 파일이 `docs/STATUS.md`·`docs/feedback/INBOX.md`·`projects/ashes-to-stars/CLAUDE.md`로 하드코딩돼 있고 `projects/ulon/tools/`엔 러너가 없다 — 울온 루프는 지금까지 클로드 세션이 `projects/ulon/docs/SESSION_HANDOFF.md`의 「■ 지금 여는 랩」을 읽고 도는 방식이었다(현재 랩: NC 굽기 4→2회 병합). / 착수하려면 loop.sh의 세 상태 경로를 `LOOP_PROJECT`(기본 ashes)로 인자화해 울온은 `projects/ulon/docs/{SESSION_HANDOFF,DEV_INBOX,GAME_DESIGN}.md`를 읽게 하고, 매 이터레이션 끝에 `too
+- [ ] [2026-09-10 21:07] Grok Build: 울온 루프의 프로젝트 연결부터 분리 — 채택 후 실행 담당은 `loop/loop.sh`의 재와 별 고정 프롬프트·상태 경로를 울온용으로 분리하고 `projects/ulon/docs/SESSION_HANDOFF.md`에 연결할 것. / `projects/ulon/unity`에서 한 항목씩 개발·검증하고, 반복 로그와 검증 산출물로 실제 진행을 판정할 것. / 위험: 현재 루프를 그대로 기동하면 `docs/STATUS.md`의 재와 별 작업을 수행할 수 있음.
 
 ## 질문
 -
