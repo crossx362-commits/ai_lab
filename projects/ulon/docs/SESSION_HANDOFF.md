@@ -247,6 +247,12 @@ NC는 수면만 실제로 다시 굽는다(몇 초). 수면 색차·포화 자�
 텍스처 전부를 조용히 바꿔 놓았다(`git diff`의 png 무더기로 잡음). **지운 코드는 기억이 아니라
 `git show`에서 되살려라.**
 
+NC 굽기도 4→2회로 묶었다(`6a4c5be3`). 텍셀 NC(`NoiseRes=128`)와 둑 NC(`GravelPatternOverride=1`)는
+서로 다른 겹을 건드리므로 **한 판에 같이 걸린다**(`SliceSelfCheck.OutdoorGrainNc`). 검수 조건
+「각자 제 이유로 빨간불」은 실측으로 확인했다 — 묶은 판 **텍셀 1.79px · 둑 0.65**, 홑 조건이
+1.79px · 0.65~0.67이라 소수점까지 같은 자리다. **자별 통과 줄을 따로 찍는다.**
+값싼 NC로 바꾸지 않았다(둘 다 여전히 지형을 실제로 다시 굽는다). 이번 판 `qa_shots` 16분.
+
 ## 다음 착수
 `63` 부두·원거리 절개면을 보는 자가 없다 — 「무엇을 잴지」부터, 셈만(검수 지시: 착수 금지가
 풀린 뒤에만). 착수 직전 `git fetch origin qa-claude && git show origin/qa-claude:docs/SESSION_HANDOFF.md`의
