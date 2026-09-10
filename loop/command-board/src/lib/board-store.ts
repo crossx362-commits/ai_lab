@@ -21,6 +21,8 @@ type BoardState = {
   busy: boolean;
   error: string;
   notice: string;
+  /** 마지막 「좋아, 해!」 성공 시각 — 색종이 트리거 */
+  celebrate: number;
   head: string;
   fetchedAt: number;
   dispatchRunning: boolean;
@@ -62,6 +64,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   busy: false,
   error: "",
   notice: "",
+  celebrate: 0,
   head: "",
   fetchedAt: 0,
   dispatchRunning: false,
@@ -177,7 +180,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set({ busy: true, error: "", notice: "" });
     try {
       const r = await postJson<WriteResult>("/api/decide", { id, verdict });
-      set({ notice: verdict + " " + writeNote(r) });
+      set({ notice: verdict + " " + writeNote(r), celebrate: verdict === "채택" ? Date.now() : get().celebrate });
     } catch (e) {
       set({ error: e instanceof Error ? e.message : String(e) });
     } finally {

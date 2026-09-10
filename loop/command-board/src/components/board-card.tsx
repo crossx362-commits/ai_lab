@@ -13,6 +13,7 @@ export function BoardCard({ card, compact }: { card: Card; compact?: boolean }) 
   const showBtns = (card.col === "의견" || yesNo) && !card.verdict && !running && !failed;
   const node = findLab(card.projectId || "");
   const live = card.col === "명령" && latestCmd?.id === card.id;
+  const stuck = card.col === "질문" && !card.verdict;
   const verdictLabel = card.verdict
     ? yesNo
       ? card.verdict === "채택"
@@ -30,6 +31,7 @@ export function BoardCard({ card, compact }: { card: Card; compact?: boolean }) 
         "sticker shrink-0 p-3",
         compact && "p-2.5",
         live && "border-sky",
+        stuck && "border-coral",
         card.verdict === "채택" && "border-mint",
         card.verdict === "반려" && "opacity-45",
         failed && "border-dashed opacity-70",
@@ -50,7 +52,10 @@ export function BoardCard({ card, compact }: { card: Card; compact?: boolean }) 
           <span className={cn("badge", card.verdict === "채택" ? "badge-adopt" : "badge-reject")}>{verdictLabel}</span>
         ) : null}
       </div>
-      <h3 className="mt-1.5 text-[15px] font-semibold leading-snug text-foreground">{card.title}</h3>
+      <h3 className="mt-1.5 text-[15px] font-semibold leading-snug text-foreground">
+        {stuck ? <span aria-hidden>⚠️ </span> : null}
+        {card.title}
+      </h3>
       {running ? (
         <div className="mt-2 space-y-1.5" aria-hidden>
           <div className="skeleton h-3 w-11/12" />

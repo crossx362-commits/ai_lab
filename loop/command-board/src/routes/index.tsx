@@ -10,6 +10,7 @@ import { ProjectPanel } from "@/components/project-panel";
 import { StatusLine } from "@/components/status-line";
 import { StampInbox, pendingStamps } from "@/components/stamp-inbox";
 import { Welcome } from "@/components/welcome";
+import { Confetti } from "@/components/confetti";
 import { SAY } from "@/lib/words";
 import { useBoardStore } from "@/lib/board-store";
 import { findLab } from "@/lib/lab-tree";
@@ -77,6 +78,7 @@ function Home() {
         </div>
       </header>
       <Welcome />
+      <Confetti />
       <ProjectPanel />
       <div className="flex shrink-0 flex-col xl:max-h-[34dvh] xl:flex-row xl:border-b-2 xl:border-border">
         <StampInbox />

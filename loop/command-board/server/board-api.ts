@@ -252,13 +252,17 @@ function buildCards(md: string): { cards: Card[]; command?: ReturnType<typeof pa
     cards.push({ id: idOf(SEC.decided, t), col: "결정", who: "나", title: t, body: "" });
   }
   for (const t of items(get(SEC.run))) {
-    const m = /^\[([ xX])\] (.*)$/.exec(t);
+    // 형식: [ ]|[x] [ts] 담당: 제목 — 근거 (ts·담당·근거는 선택). 제목 안의 " — "는 첫 번째에서 근거로 갈린다.
+    const m = /^\[([ xX])\] (?:\[([^\]]+)\] )?(?:([^:—\]]{1,30}): )?(.*)$/.exec(t);
+    const rest = m ? m[4] : t;
+    const dash = rest.indexOf(" — ");
     cards.push({
       id: idOf(SEC.run, t),
       col: "실행",
-      who: "보드",
-      title: m ? m[2] : t,
-      body: "",
+      who: m?.[3]?.trim() || "보드",
+      title: dash >= 0 ? rest.slice(0, dash) : rest,
+      body: dash >= 0 ? rest.slice(dash + 3) : "",
+      at: m?.[2] || "",
       done: m ? m[1] !== " " : false,
     });
   }
