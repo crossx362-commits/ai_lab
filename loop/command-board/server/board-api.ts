@@ -16,7 +16,8 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(HERE, "..", "..", "..");
+/** 저장소 루트. BOARD_ROOT로 바꿔 임시 저장소에서 쓰기 경로를 시험할 수 있다(실 BOARD.md를 건드리지 않고). */
+const ROOT = process.env.BOARD_ROOT ? path.resolve(process.env.BOARD_ROOT) : path.resolve(HERE, "..", "..", "..");
 const BOARD = path.join(ROOT, "loop", "BOARD.md");
 const OPINIONS = path.join(ROOT, "loop", "opinions");
 const DISPATCH = path.join(ROOT, "loop", "dispatch-board.sh");
@@ -279,8 +280,14 @@ async function commitBoard(message: string) {
   fs.writeFileSync(msgFile, message + "\n", "utf8");
   // 판정과 근거가 같이 이동해야 한다(Claude 의견 2026-09-10): 현재 의견 원문 4개(*.md)도 함께 커밋.
   // archive/·상태·err 파일은 .gitignore로 제외돼 저장소가 불지 않는다.
-  await git(["add", "-A", "--", "loop/BOARD.md", "loop/opinions"]);
-  const c = await git(["commit", "-F", msgFile, "--", "loop/BOARD.md", "loop/opinions"]);
+  // dispatch 스크립트도 loop/opinions를 커밋한다(이중 writer, Claude 의견) — index.lock 경합이면 잠깐 쉬고 재시도
+  let c = { ok: false, out: "", err: "" };
+  for (let i = 0; i < 4; i++) {
+    await git(["add", "-A", "--", "loop/BOARD.md", "loop/opinions"]);
+    c = await git(["commit", "-F", msgFile, "--", "loop/BOARD.md", "loop/opinions"]);
+    if (c.ok || !/index\.lock|Unable to create/.test(c.err)) break;
+    await new Promise((r) => setTimeout(r, 800));
+  }
   if (!c.ok && !/nothing to commit|nothing added/.test(c.out + c.err)) {
     return { sha: "", pushed: false, note: "커밋 실패: " + (c.err || c.out).trim().slice(-300) };
   }
@@ -495,7 +502,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
           setItems(dec, [...items(dec), `[${ts}] 채택: ${card.title} (${card.who})`]);
           const runSec = section(sections, SEC.run, SEC.q);
           const executor = card.who === "Claude" ? "Claude" : "Grok Build";
-          setItems(runSec, [...items(runSec), `[ ] [${ts}] ${executor}: ${card.title}`]);
+          // 근거(경로·방법·위험)를 실행 줄에 붙인다 — 다음 명령이 오면 의견 원문은 보관함으로 가서 HEAD에서 사라진다(Grok 의견)
+          const why = oneLine(card.body).slice(0, 400);
+          setItems(runSec, [...items(runSec), `[ ] [${ts}] ${executor}: ${card.title}${why ? " — " + why : ""}`]);
         }
         summary = `${verdict} — ${card.who}: ${card.title}`;
       } else if (card.col === "결정대기" || card.col === "질문") {

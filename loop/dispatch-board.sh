@@ -139,11 +139,22 @@ cycle() {
 # 의견 원문(*.md)을 커밋·푸시 — 판정(BOARD.md)만 다른 기계로 가고 근거가 안 가는 일을 막는다(Claude 의견 2026-09-10).
 # add와 commit은 한 호흡, 경로는 loop/opinions로 한정. 실패해도 수집 결과는 로컬에 남는다.
 commit_opinions() {
-  local sig="$1"
-  git add -A -- loop/opinions >/dev/null 2>&1 || return 0
+  local sig="$1" i
+  # 보드 서버(commitBoard)와 같은 경로를 커밋하는 이중 writer — index.lock 경합이면 잠깐 쉬고 재시도(Claude 의견)
+  for i in 1 2 3 4; do
+    if git add -A -- loop/opinions >/dev/null 2>&1; then break; fi
+    sleep 1
+  done
   if git diff --cached --quiet -- loop/opinions; then return 0; fi
-  git commit -q -m "board: 의견 수집 ${sig:0:8} — $(ls "$OUT"/*.md 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/\.md$//' | tr '\n' ' ')" -- loop/opinions \
-    && { git push -q origin master >/dev/null 2>&1 || log "의견 커밋됨, 푸시 실패(다음 푸시 때 같이 감)"; }
+  for i in 1 2 3 4; do
+    if git commit -q -m "board: 의견 수집 ${sig:0:8} — $(ls "$OUT"/*.md 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/\.md$//' | tr '\n' ' ')" -- loop/opinions >/dev/null 2>&1; then
+      git push -q origin master >/dev/null 2>&1 || log "의견 커밋됨, 푸시 실패(다음 푸시 때 같이 감)"
+      return 0
+    fi
+    [ -f .git/index.lock ] || break
+    sleep 1
+  done
+  log "의견 커밋 실패(다른 커밋과 경합) — 다음 사이클에 같이 감"
 }
 
 if [ "${DISPATCH_ONCE:-}" = "1" ]; then
