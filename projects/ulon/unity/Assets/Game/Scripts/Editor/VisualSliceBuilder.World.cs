@@ -688,10 +688,23 @@ namespace Ulon.Editor
                     // 거품 문턱 — **완경사는 얕게, 수직면은 깊게**(머리말의 그 축).
                     // 같은 문턱이라도 완경사에서는 띠가 수 미터로 퍼지고 벽에서는 한 줄로 죽는다.
                     mat.SetColor("_FoamColor", new Color(0.94f, 0.97f, 0.98f, 1f));
-                    mat.SetFloat("_FoamDepth", 0.22f);
-                    mat.SetFloat("_FoamDepthSteep", 0.90f);
+                    // **1.5단계 — 거품을 다시 지었다**(검수 부분 수용 2026-09-11).
+                    // 첫 판의 거품은 **몇 px 흰 실선**이라 `64`의 물↔뭍 계단을 덮은 게 아니라
+                    // **선으로 따라 그렸고**, 바다 해안(44° 경사)에는 아예 안 났다.
+                    // 이제 폭은 **가로 미터**로 정하고 깊이 문턱은 바닥 기울기에서 유도한다
+                    // (셰이더 `foamMax = clamp(_FoamWidthM * tan, 하한, 상한)`).
+                    mat.SetFloat("_FoamWidthM", 2.0f);
+                    mat.SetFloat("_FoamDepth", 0.05f);        // 하한 — 평지에서 0으로 죽지 않게(폭을 정하는 값이 아니다)
+                    mat.SetFloat("_FoamDepthSteep", 0.60f);   // 상한 — 바닥 잔잡음이 기울기를 튀게 하므로 이것이 사실상 띠 굵기
                     mat.SetFloat("_FoamNoiseScale", 0.6f);
-                    mat.SetFloat("_FoamCutoff", 0.55f);
+                    mat.SetFloat("_FoamJitter", 0.40f);       // 가장자리에 **더한다**(곱하면 폭이 흔들린다)
+                    mat.SetFloat("_FoamEdgeSoft", 0.22f);
+                    // 잔물결 두 겹 — 물이 단색 판때기로 남지 않게(검수 관찰 3).
+                    mat.SetFloat("_RippleScale", 0.35f);
+                    mat.SetFloat("_RippleSpeed", 0.06f);
+                    mat.SetFloat("_RippleTint", 0.18f);
+                    mat.SetFloat("_RippleCrest", 0.72f);
+                    mat.SetFloat("_RippleCrestStrength", 0.05f);
                     mat.SetFloat("_TintStrength", 0.18f);
                 }
                 // **0.85는 정반사가 좁고 세서 흰 구멍이 뚫린다** — 호수를 원장 크기로 판 뒤

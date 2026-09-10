@@ -68,9 +68,12 @@ Material:
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
     - _FoamCutoff: 0.55
-    - _FoamDepth: 0.22
-    - _FoamDepthSteep: 0.9
+    - _FoamDepth: 0.05
+    - _FoamDepthSteep: 0.6
+    - _FoamEdgeSoft: 0.22
+    - _FoamJitter: 0.4
     - _FoamNoiseScale: 0.6
+    - _FoamWidthM: 2
     - _GlossMapScale: 1
     - _Glossiness: 0.25
     - _GlossyReflections: 1
@@ -78,6 +81,11 @@ Material:
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
+    - _RippleCrest: 0.72
+    - _RippleCrestStrength: 0.05
+    - _RippleScale: 0.35
+    - _RippleSpeed: 0.06
+    - _RippleTint: 0.18
     - _ShallowAlpha: 0.55
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
