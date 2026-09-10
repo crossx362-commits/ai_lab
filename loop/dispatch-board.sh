@@ -12,8 +12,9 @@
 #
 # 프롬프트는 argv가 아니라 파일/stdin으로 넘긴다 — Windows npm 셔임은 argv의 개행 뒤를 잘라
 # 첫 줄만 CLI에 넘긴다(2026-07-10 사고). 그록은 --prompt-file, 나머지는 stdin.
-# 의견 파일은 「최종 답」만 담는다 — 그록은 --json-schema 구조화 출력, 코덱스는 -o(마지막 메시지)로
-# 받는다. stdout을 통째로 옮기면 조사 중 멘트가 제목이 된다(2026-09-10 Grok 자신이 지적).
+# 의견 파일은 「최종 답」만 담는다 — 그록은 --output-format json의 text(최종 메시지)에서 서술문을 잘라내고,
+# 코덱스는 -o(마지막 메시지)로 받는다. stdout을 통째로 옮기면 조사 중 멘트가 제목이 된다(2026-09-10 Grok 지적).
+# --json-schema 강제는 그록이 조사 없이 즉답해 빈 의견이 됐다(4차 검증) → 쓰지 않는다.
 
 set -u
 export PATH="$HOME/.local/bin:$HOME/.grok/bin:${APPDATA:-/nonexistent}/npm:$PATH"
@@ -28,7 +29,6 @@ OUT="$ROOT/loop/opinions"
 LAST="$OUT/_last-signature"
 PROMPT_FILE="$OUT/_prompt.txt"
 LIMIT="${DISPATCH_TIMEOUT:-420}"   # CLI 하나당 최대 초
-SCHEMA='{"type":"object","properties":{"title":{"type":"string","description":"40자 이내 제목"},"body":{"type":"string","description":"3줄 이내 본문"}},"required":["title","body"]}'
 mkdir -p "$OUT"
 # 보드 서버가 detached로 띄울 때 로그를 직접 파일에 쓴다(서버가 죽어도 수집·로그가 이어진다)
 if [ -n "${DISPATCH_LOG:-}" ]; then exec >>"$DISPATCH_LOG" 2>&1; fi
@@ -67,42 +67,9 @@ with_limit() {
   if command -v timeout >/dev/null 2>&1; then timeout -k 15 "$LIMIT" "$@"; else "$@"; fi
 }
 
-# 원시 출력 → 「1줄 제목 + 본문」. post: text | grok-json | file:<경로>
+# 원시 출력 → 「1줄 제목 + 본문」(loop/opinion_normalize.py). post: text | grok-json | file:<경로>
 normalize() {
-  local post="$1" raw="$2" dest="$3"
-  "$PY" - "$post" "$raw" "$dest" <<'PYEOF'
-import io, json, re, sys
-post, raw, dest = sys.argv[1], sys.argv[2], sys.argv[3]
-def read(p):
-    try: return io.open(p, encoding="utf-8", errors="replace").read()
-    except FileNotFoundError: return ""
-text = ""
-if post == "grok-json":
-    try:
-        outer = json.loads(read(raw))
-        inner = outer.get("text", "") if isinstance(outer, dict) else ""
-        try:
-            obj = json.loads(inner)
-            text = (obj.get("title", "").strip() + "\n" + obj.get("body", "").strip()).strip()
-        except Exception:
-            text = inner
-    except Exception:
-        text = read(raw)
-elif post.startswith("file:"):
-    text = read(post[5:]) or read(raw)
-else:
-    text = read(raw)
-text = re.sub(r"\x1b\[[0-9;]*m", "", text)
-lines = [l.rstrip() for l in text.splitlines()]
-lines = [l for l in lines if l.strip()]
-if lines:
-    lines[0] = re.sub(r"^\s*(#+\s*|\*\*|제목\s*[:：]\s*)", "", lines[0]).strip().strip("*").strip()
-    if len(lines) > 1 and re.match(r"^\s*(본문\s*[:：])", lines[1]):
-        lines[1] = re.sub(r"^\s*본문\s*[:：]\s*", "", lines[1])
-out = "\n".join(lines).strip()
-io.open(dest, "w", encoding="utf-8", newline="\n").write(out + ("\n" if out else ""))
-sys.exit(0 if out else 3)
-PYEOF
+  "$PY" "$ROOT/loop/opinion_normalize.py" "$1" "$2" "$3"
 }
 
 # run_one <표시이름> <실행파일> <입력방식: stdin|file> <후처리: text|grok-json|file:경로> <명령...>
@@ -160,7 +127,7 @@ cycle() {
   run_one Claude claude stdin text claude -p --permission-mode plan --output-format text &
   run_one GPT    codex  stdin "file:$OUT/GPT.last" codex exec --sandbox read-only -o "$OUT/GPT.last" - &
   run_one 제미니 gemini stdin text gemini &
-  run_one Grok   grok   file  grok-json grok --prompt-file "$PROMPT_FILE" --output-format json --json-schema "$SCHEMA" &
+  run_one Grok   grok   file  grok-json grok --prompt-file "$PROMPT_FILE" --output-format json &
   wait
   rm -f "$OUT/GPT.last"
   printf 'idle %s\n' "$(now)" >"$OUT/_dispatch.status"

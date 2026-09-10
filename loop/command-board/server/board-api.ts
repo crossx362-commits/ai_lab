@@ -411,9 +411,29 @@ function readJson(req: IncomingMessage) {
   });
 }
 
+/**
+ * 쓰기 요청은 이 화면(같은 호스트)에서 온 JSON만 받는다 — 오너가 연 임의 웹페이지가 text/plain fetch로
+ * 명령을 주입해 커밋·푸시·bash 실행을 일으키는 CSRF 차단(Claude 의견 2026-09-10).
+ */
+function sameOriginJson(req: IncomingMessage) {
+  const ct = String(req.headers["content-type"] || "");
+  if (!/^application\/json\b/i.test(ct)) return "Content-Type은 application/json이어야 함";
+  const host = String(req.headers.host || "");
+  const origin = String(req.headers.origin || "");
+  if (origin && new URL(origin).host !== host) return "다른 출처의 요청은 거절";
+  if (!/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(host)) return "로컬 호스트에서만 허용";
+  const fetchSite = String(req.headers["sec-fetch-site"] || "");
+  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") return "교차 사이트 요청은 거절";
+  return "";
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url || "/", "http://x");
   const route = url.pathname.replace(/\/+$/, "");
+  if (req.method === "POST") {
+    const why = sameOriginJson(req);
+    if (why) return send(res, 403, { ok: false, error: why });
+  }
   try {
     if (route === "/api/board" && req.method === "GET") {
       const md = readBoard();

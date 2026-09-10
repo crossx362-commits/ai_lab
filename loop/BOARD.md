@@ -54,6 +54,7 @@
 - [x] [2026-09-10 13:40] Claude: grok CLI 설치 (@xai-official/grok 1.0.25, `grok -p`/`--prompt-file`)
 - [x] [2026-09-10 13:56] 오너: `grok` 로그인 완료 — `grok --prompt-file` 헤드리스 호출 성공 확인
 - [x] [2026-09-10 14:00] 오너: `claude auth login` 완료(claude.ai 구독) — Claude 의견 칸 정상화
+- [x] [2026-09-10 14:15] Claude: 보드 전체 개선(오너 지시) — 빌드 골격·BOARD.md 연동·실 CLI 의견·수집 프로세스 분리·질문 예/아니오·의견 원문 커밋·CSRF 가드·Grok 제목 오염 정규화 (Claude·Grok 의견 4건 반영)
 
 
 ## 질문
