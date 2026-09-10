@@ -32,6 +32,12 @@ cd loop/command-board && npm install && npm run dev     # http://127.0.0.1:5177
 | `POST /api/decide` | 의견 채택/반려, 결정대기·질문 예/아니오 → 기록 → 커밋·푸시 |
 | `POST /api/dispatch` | 현재 명령으로 의견 수집 한 바퀴 (서버와 분리된 프로세스) |
 | `GET /api/status?path=` | 로컬 git 최신 커밋 (프로젝트 상태 줄) |
+| `GET /api/projects?paths=` | 모든 프로젝트의 마지막 커밋·이번 주 커밋 수 (프로젝트 현황 패널) |
+| `POST /api/project-state` | 오너가 프로젝트 상태(진행·보류·완료·접음)를 정함 → BOARD.md 「프로젝트」 절 → 커밋·푸시 |
+
+## 처음이면
+
+헤더 「이게 뭐예요?」(`public/eli5.html`)가 큰 그림과 짧은 문장으로 보드 전부를 설명한다. 「프로젝트 현황」은 모든 프로젝트의 git 진행과 오너 상태 버튼.
 
 ## 원칙
 
