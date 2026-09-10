@@ -13,6 +13,7 @@ type BoardState = {
   error: string;
   notice: string;
   head: string;
+  fetchedAt: number;
   dispatchRunning: boolean;
   tools: Record<string, boolean>;
   cards: BoardCard[];
@@ -47,6 +48,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   error: "",
   notice: "",
   head: "",
+  fetchedAt: 0,
   dispatchRunning: false,
   tools: {},
   cards: [],
@@ -69,6 +71,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         online: true,
         error: "",
         head: snap.head,
+        fetchedAt: Date.now(),
         cards: snap.cards,
         dispatchRunning: snap.dispatch.running,
         tools: snap.tools,

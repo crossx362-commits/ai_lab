@@ -27,7 +27,7 @@ export function CommandComposer() {
 
   return (
     <form
-      className="flex min-w-0 items-center gap-2 rounded-xl border border-border bg-elevated p-1.5"
+      className="flex min-w-0 items-center gap-2 rounded-lg border border-border-strong bg-raised p-1 focus-within:border-primary"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -41,7 +41,7 @@ export function CommandComposer() {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={(node?.name ?? "ai_lab") + " — 전원에게 시킬 일"}
-        className="h-11 min-w-0 flex-1 bg-transparent px-3 text-base text-foreground outline-none placeholder:text-subtle"
+        className="h-9 min-w-0 flex-1 bg-transparent px-2.5 text-sm text-foreground outline-none placeholder:text-subtle"
       />
       <Button type="button" variant="secondary" size="touch" onClick={share} disabled={!cards.some((c) => c.col === "명령")}>
         <Copy className="size-4" />

@@ -18,26 +18,26 @@ export function BoardColumns() {
   const cards = useBoardStore((s) => s.cards);
 
   return (
-    <div className="grid h-full min-h-0 min-w-0 flex-1 grid-cols-5 grid-rows-1 gap-2 overflow-hidden p-2">
+    <div className="scroll-quiet flex h-full min-h-0 min-w-0 flex-1 gap-2 overflow-x-auto overflow-y-hidden p-2">
       {VISIBLE.map((col) => {
         const list = cards.filter((c) => c.col === col);
         return (
           <section
             key={col}
             className={cn(
-              "flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-elevated",
+              "flex h-full min-h-0 w-[248px] shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-elevated xl:w-auto xl:min-w-0 xl:flex-1",
               col === "질문" && list.length > 0 && "border-reject/50",
             )}
           >
             <header className="flex h-9 shrink-0 items-center justify-between px-3">
-              <h2 className="text-sm font-medium tracking-tight text-foreground">{col}</h2>
-              <span className="rounded-full bg-raised px-2 py-0.5 font-mono text-xs tabular-nums text-muted">
+              <h2 className="text-xs font-semibold tracking-[0.04em] text-muted">{col}</h2>
+              <span className="rounded-sm bg-raised px-1.5 py-0.5 font-mono text-[11px] text-subtle">
                 {list.length}
               </span>
             </header>
             <div className="scroll-quiet flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
               {list.length === 0 ? (
-                <p className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border px-2 text-center text-xs text-subtle">
+                <p className="empty flex-1">
                   {HINTS[col]}
                 </p>
               ) : (

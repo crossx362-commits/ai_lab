@@ -36,11 +36,11 @@ export function ProjectStatusCard() {
     <section className="flex h-9 shrink-0 items-center gap-3 overflow-hidden border-b border-border px-3">
       <span
         className={cn(
-          "shrink-0 rounded-full px-2.5 py-1 text-xs",
-          phase === "live" && "bg-adopt text-adopt-fg",
-          phase === "loop" && "bg-primary text-primary-foreground",
-          phase === "review" && "bg-raised text-foreground",
-          (phase === "idle" || phase === "docs") && "bg-raised text-muted",
+          "badge",
+          phase === "live" && "badge-adopt",
+          phase === "loop" && "badge-primary",
+          phase === "review" && "badge-warn",
+          (phase === "idle" || phase === "docs") && "badge-mute",
         )}
       >
         {PHASE_KO[phase]}
@@ -52,7 +52,7 @@ export function ProjectStatusCard() {
         type="button"
         onClick={refresh}
         disabled={busy}
-        className="h-7 shrink-0 rounded-full border border-border bg-raised px-3 text-xs text-foreground disabled:opacity-50"
+        className="btn-quiet shrink-0"
       >
         {busy ? "읽는 중" : "문서 갱신"}
       </button>

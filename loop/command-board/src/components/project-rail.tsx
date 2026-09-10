@@ -22,10 +22,10 @@ export function ProjectRail() {
             type="button"
             onClick={() => setProject(p.id)}
             className={cn(
-              "h-8 shrink-0 rounded-full border px-3 text-xs transition-opacity duration-[var(--motion-quick)] ease-[var(--ease-out)]",
+              "h-7 shrink-0 rounded-md border px-2.5 text-xs font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
               on
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-raised text-muted hover:text-foreground",
+                : "border-border bg-raised text-muted hover:border-border-strong hover:text-foreground",
             )}
           >
             {p.name}

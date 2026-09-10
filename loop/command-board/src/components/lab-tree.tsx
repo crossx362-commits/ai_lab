@@ -46,7 +46,7 @@ function Branch({ node, depth }: { node: LabNode; depth: number }) {
 export function LabTree() {
   return (
     <aside className="hidden min-h-0 w-48 shrink-0 flex-col overflow-hidden border-r border-border bg-elevated xl:flex">
-      <p className="shrink-0 px-4 py-3 text-xs tracking-wide text-subtle">저장소</p>
+      <p className="shrink-0 px-4 py-3 text-xs font-semibold tracking-[0.04em] text-muted">저장소</p>
       <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         <Branch node={LAB_TREE} depth={0} />
       </div>
