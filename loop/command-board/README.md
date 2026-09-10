@@ -23,6 +23,18 @@ cd loop/command-board && npm install && npm run dev     # http://127.0.0.1:5177
 앱 미리보기 이름: `command-board`. 상시 의견 수집 루프가 필요하면 `npm run dispatch`
 (BOARD.md 「명령」이 바뀔 때만 한 바퀴, `touch loop/STOP`으로 멈춤).
 
+## 맥에서 이어가기 (2026-09-10 인수인계)
+
+```bash
+git pull --rebase
+cd loop/command-board && npm install && npm run dev      # http://127.0.0.1:5177
+```
+
+- 로봇 열쇠는 기계마다 따로다: 맥에서 `claude auth login`, `grok login`(npm i -g @xai-official/grok) 한 번씩. 헤더 열쇠 줄에 줄이 그어진 CLI가 아직 로그인 안 된 것.
+- 이 화면은 Windows·맥 공용(bash는 /opt/homebrew/bin/bash → /bin/bash 순으로 찾음). `.claude/launch.json`은 git 밖이라 맥에선 그냥 `npm run dev`.
+- **지금 상태**: 도장 기다림 5건(울론 자산 다운로드 승인 3건 + Grok·Claude 생각 2건), 프로젝트 상태는 전부 「아직 안 정함」, 실 명령은 「지휘 보드 검토」 1건. 원격 master와 동기 상태.
+- 서버 코드를 고치면 `test/README.md`대로 임시 저장소 하네스(52항목)를 돌린다.
+
 ## API (dev 서버 내장, `server/board-api.ts`)
 
 | 경로 | 하는 일 |
