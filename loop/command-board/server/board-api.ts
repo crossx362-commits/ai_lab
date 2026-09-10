@@ -277,8 +277,10 @@ const git = (args: string[]) => run("git", args);
 async function commitBoard(message: string) {
   const msgFile = path.join(os.tmpdir(), "command-board-msg.txt");
   fs.writeFileSync(msgFile, message + "\n", "utf8");
-  await git(["add", "--", "loop/BOARD.md"]);
-  const c = await git(["commit", "-F", msgFile, "--", "loop/BOARD.md"]);
+  // 판정과 근거가 같이 이동해야 한다(Claude 의견 2026-09-10): 현재 의견 원문 4개(*.md)도 함께 커밋.
+  // archive/·상태·err 파일은 .gitignore로 제외돼 저장소가 불지 않는다.
+  await git(["add", "-A", "--", "loop/BOARD.md", "loop/opinions"]);
+  const c = await git(["commit", "-F", msgFile, "--", "loop/BOARD.md", "loop/opinions"]);
   if (!c.ok && !/nothing to commit|nothing added/.test(c.out + c.err)) {
     return { sha: "", pushed: false, note: "커밋 실패: " + (c.err || c.out).trim().slice(-300) };
   }

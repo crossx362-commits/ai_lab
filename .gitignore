@@ -12,7 +12,11 @@ loop/grok_usage.cache.json
 loop/claude_usage.cache.json
 loop/codex_usage.cache.json
 loop/logs/
-loop/opinions/
+# 지휘 보드 의견: 현재 원문(*.md)만 추적 — 판정(BOARD.md)과 근거가 같이 이동해야 한다. 보관함·상태·err는 로컬
+loop/opinions/*
+!loop/opinions/*.md
+loop/opinions/_*
+loop/opinions/archive/
 loop/.board-dispatch-last
 .claude/
 .mcp.json
