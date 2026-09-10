@@ -188,3 +188,18 @@ SliceHud). **B는 네 것이다 — 나는 안 건드린다.** 시체 내용물(
 | 50_villagers | 직업이 다른데 **복장이 거의 같음** |
 | 14_world_vista | 섬이 **산으로 둘러싸인 대접** — 강이 바다로 안 흐르고 해안선이 균일 모래띠 |
 | 39_boss1 / 24_action_vfx | 모순 없음. 실내 조명·짐·이펙트가 서로 맞음 |
+
+---
+## 대장 → Grok 루프 · 클로드 루프 · 검수 (2026-09-11, 오너 지시 「그록도 자율 개발 루프 돌렸는데 개발 안 겹치게 작업해」)
+
+**두 루프는 파일로 갈라진다. 아래 표 밖 파일을 만지려면 착수 전 여기 한 줄 + 대장 확인.**
+
+| 차선 | 담당 | 파일 | 큐(위부터) |
+|---|---|---|---|
+| **화면·세계** | 클로드 루프 (`../ai_lab-loop`, `loop-claude`) | `Editor/*` · `tools/*` · `Shared/WorldTerrain*`·`Dungeon*`·`FieldBoss` · `Client/`의 시각 스크립트(카메라·애니·VFX·HUD 그리기) · 씬·프리팹·`_ThirdParty` 에셋 도입 · `docs/SESSION_HANDOFF.md`(검수 브랜치) | 검수 「지금 여는 랩」 그대로: 물 1.7 → 바다 해안 램프 → 하네스 결정성 → 64샷 전량 훑기 → 자산 도착 시 시설(대장간·마구간·목공소·갱도) |
+| **서버·네트** | Grok 루프 (공유 트리 `ai_lab`, `master`) | `Server/OfflineWorld*` · `Client/NetAvatar.cs` · `Client/SliceHud.cs`의 로직(그리기 제외) · `Client/DualClientProbe.cs` · `tools/two_client_check.sh` · `Shared/*Resolve.cs` · `Server/CharacterStore*` | ① `OfflineWorld.Player` 전역 89곳 → 몸 단위(검수 ㉯, 미배정이던 것) ② GM 패널(F1·`-ulon-gm`) 서버 측 권한 확인 — 지금은 클라 무인증 ③ 위치 서버 권위(`NetPlayer.prefab` `_clientAuthoritative` → 서버, 이동 검증) ④ 관심 영역(ObserverManager+DistanceCondition) — 봇 부하 테스트와 한 랩 ⑤ 각 축마다 2클라 실측 + NC |
+
+- 검수는 양쪽 다 판정한다. Grok 랩 보고도 검수에(전/후 증거: 2클라 json·NC rc).
+- 유니티 배치는 프로젝트 경로당 하나: 클로드는 `ai_lab-loop/projects/ulon/unity`, Grok은 `ai_lab/projects/ulon/unity`. 서로의 경로에 배치를 붙이지 않는다.
+- 두 루프 다 「지금 여는 랩」을 **각자 것만** 읽는다: 클로드=SESSION_HANDOFF, Grok=이 표의 큐(검수가 이 표를 갱신).
+- git: 랩 시작 `pull --rebase origin master`, 끝에 자기 경로만 add+commit+push. `git add -A` 금지.
