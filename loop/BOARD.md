@@ -31,7 +31,7 @@
 - 프로젝트: `<id>: 진행|보류|완료|접음 [시각] — 메모` (id는 보드 트리의 폴더 id: petnna·ai-team·ashes·ulon·homepage·bboggl·picker·chinaguard·geoguard·docs·loop·lab)
 
 ## 프로젝트
--
+- ai-team: 접음 [2026-09-10 21:16]
 
 ## 명령
 - [2026-09-10 21:06] (ulon · projects/ulon) 울온 자율개발루프 시작해
