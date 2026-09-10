@@ -1,4 +1,3 @@
-울온 루프 러너 부재 — loop.sh는 재와별 전용
-`loop/loop.sh`는 상태 파일이 `docs/STATUS.md`·`docs/feedback/INBOX.md`·`projects/ashes-to-stars/CLAUDE.md`로 하드코딩돼 있고 `projects/ulon/tools/`엔 러너가 없다 — 울온 루프는 지금까지 클로드 세션이 `projects/ulon/docs/SESSION_HANDOFF.md`의 「■ 지금 여는 랩」을 읽고 도는 방식이었다(현재 랩: NC 굽기 4→2회 병합).
-착수하려면 loop.sh의 세 상태 경로를 `LOOP_PROJECT`(기본 ashes)로 인자화해 울온은 `projects/ulon/docs/{SESSION_HANDOFF,DEV_INBOX,GAME_DESIGN}.md`를 읽게 하고, 매 이터레이션 끝에 `tools/slice_selfcheck.sh`+`tools/qa_shots.sh` EXIT=0을 게이트로 걸어야 한다(추측 아님, 두 파일 실재 확인).
-위험: 지금 loop.sh를 그대로 켜면 명령은 ulon인데 루프가 재와 별 STATUS.md를 갱신하며 다른 프로젝트를 개발한다 — 게다가 BOARD.md 「프로젝트」 절이 비어 있어 규칙 7의 ulon 상태 판정 근거도 없다.
+울온 루프엔 다음 랩을 채울 사람이 없다
+`projects/ulon/docs/SESSION_HANDOFF.md`의 「■ 지금 여는 랩」은 검수 세션이 손으로 쓰는 칸이라, 루프가 1.7단계를 닫으면 그 아래 「2. 대기 — 착수 금지」만 남아 큐가 고갈된다. `loop/loop.sh`를 울온에 붙일 때 상태 3종을 `projects/ulon/docs/{SESSION_HANDOFF,DEV_INBOX,GAME_DESIGN}.md`로 인자화하는 것(이미 채택)에 더해, **랩 종료 시 루프가 직접 「지금 여는 랩」을 대기 목록 맨 위 항목(하네스 결정성 → 바다 해안 램프 → 64샷 전량 훑기)으로 승격시키고 완료 로그를 지우는 단계**를 이터레이션 말미에 넣어야 한다. 대기 목록이 비면 새 일을 지어내지 말고 `touch loop/STOP` 후 보드 「질문」에 한 줄만 남기는 것이 안전판이다.
+승격을 자동화하면 검수가 아직 판정하지 않은 랩을 루프가 「수용」으로 간주해 다음으로 넘어갈 수 있다 — 승격 조건에 직전 랩의 `qa_diff` 산출물과 `_before.png` 존재를 강제로 걸어야 빈 통과를 막는다.
