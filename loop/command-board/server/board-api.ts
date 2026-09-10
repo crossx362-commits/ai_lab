@@ -21,7 +21,8 @@ const BOARD = path.join(ROOT, "loop", "BOARD.md");
 const OPINIONS = path.join(ROOT, "loop", "opinions");
 const DISPATCH = path.join(ROOT, "loop", "dispatch-board.sh");
 const BRANCH = "master";
-const ROSTER = ["Grok", "GPT", "제미니", "Claude", "Grok Build"];
+/** 의견 파일을 내는 CLI 4종의 표시 순서. "Grok Build"는 실행 담당이라 의견 칸엔 없다. */
+const ROSTER = ["Grok", "GPT", "제미니", "Claude"];
 
 const SEC = {
   cmd: "명령",
@@ -245,7 +246,15 @@ function buildCards(md: string): { cards: Card[]; command?: ReturnType<typeof pa
     });
   }
   for (const t of items(get(SEC.q))) {
-    cards.push({ id: idOf(SEC.q, t), col: "질문", who: "AI", title: t, body: "" });
+    const m = ANSWER_RE.exec(t);
+    cards.push({
+      id: idOf(SEC.q, t),
+      col: "질문",
+      who: "AI",
+      title: m ? m[1] : t,
+      body: m ? "답: " + m[2] + " (" + m[3] + ")" : "예 / 아니오",
+      verdict: m ? (m[2] === "예" ? "채택" : "반려") : undefined,
+    });
   }
   return { cards, command: current };
 }
@@ -315,34 +324,46 @@ function startDispatch() {
   if (child) return { started: false, note: "이미 수집 중" };
   if (!fs.existsSync(DISPATCH)) return { started: false, note: "loop/dispatch-board.sh 없음" };
   fs.mkdirSync(OPINIONS, { recursive: true });
-  const log = fs.createWriteStream(path.join(OPINIONS, "_dispatch.log"), { flags: "a" });
   childSince = stamp();
-  const env: NodeJS.ProcessEnv = { ...process.env, DISPATCH_ONCE: "1", DISPATCH_FORCE: "1", PYTHONUTF8: "1" };
+  // DISPATCH_LOG: 스크립트가 스스로 로그 파일에 쓴다. detached+unref로 dev 서버가 재시작·종료돼도
+  // 수집이 끊기지 않는다(2026-09-10: 서버 코드 수정 → Vite 재시작 → 진행 중이던 수집이 죽은 사고).
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    DISPATCH_ONCE: "1",
+    DISPATCH_FORCE: "1",
+    DISPATCH_LOG: path.join(OPINIONS, "_dispatch.log"),
+    PYTHONUTF8: "1",
+  };
   delete env.CLAUDECODE; // 클로드 세션에서 띄운 dev 서버라도 자식 claude -p가 중첩 거부되지 않게
   delete env.CLAUDE_CODE_ENTRYPOINT;
   const proc = spawn(bashExe(), [DISPATCH], {
     cwd: ROOT,
     env,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: "ignore",
+    detached: true,
     windowsHide: true,
   });
+  proc.unref();
   child = proc;
-  proc.stdout?.pipe(log, { end: false });
-  proc.stderr?.pipe(log, { end: false });
   const done = () => {
     child = null;
-    log.end();
   };
   proc.on("exit", done);
   proc.on("error", done);
   return { started: true, note: "" };
 }
 
-function clearOpinions() {
+/** 새 명령이 오면 이전 의견은 지우지 않고 archive/<시각>/ 로 옮긴다 — 판정 기록(BOARD.md)의 근거가 남아야 한다. */
+function archiveOpinions() {
   if (!fs.existsSync(OPINIONS)) return;
-  for (const f of fs.readdirSync(OPINIONS)) {
-    if (f.startsWith("_")) continue;
-    if (/\.(md|err|status|tmp)$/.test(f)) fs.rmSync(path.join(OPINIONS, f), { force: true });
+  const files = fs.readdirSync(OPINIONS).filter((f) => !f.startsWith("_") && /\.(md|err|status|tmp)$/.test(f));
+  if (!files.length) return;
+  const dir = path.join(OPINIONS, "archive", stamp().replace(/[: ]/g, "-"));
+  fs.mkdirSync(dir, { recursive: true });
+  for (const f of files) {
+    const src = path.join(OPINIONS, f);
+    if (f.endsWith(".tmp")) fs.rmSync(src, { force: true });
+    else fs.renameSync(src, path.join(dir, f));
   }
 }
 
@@ -420,7 +441,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       const line = `[${stamp()}] (${projectId}${gitPath ? " · " + gitPath : ""}) ${text}`;
       setItems(cmd, [line, ...items(cmd)]);
       fs.writeFileSync(BOARD, join(head, sections), "utf8");
-      clearOpinions();
+      archiveOpinions();
       const c = await commitBoard(`board: 명령 — ${text.slice(0, 60)}`);
       const d = startDispatch();
       return send(res, 200, { ok: true, ...c, dispatch: d });
@@ -450,17 +471,17 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
           setItems(runSec, [...items(runSec), `[ ] [${ts}] ${executor}: ${card.title}`]);
         }
         summary = `${verdict} — ${card.who}: ${card.title}`;
-      } else if (card.col === "결정대기") {
-        const pend = section(sections, SEC.pending, SEC.decided);
+      } else if (card.col === "결정대기" || card.col === "질문") {
+        // 질문 칸도 예/아니오만 받는다(BOARD.md 금지 절). 답은 줄 끝에 남기고, 예면 「결정」에도 적는다.
+        const secName = card.col === "질문" ? SEC.q : SEC.pending;
+        const target = section(sections, secName, card.col === "질문" ? undefined : SEC.decided);
         const answer = verdict === "채택" ? "예" : "아니오";
         setItems(
-          pend,
-          items(pend).map((t) => (idOf(SEC.pending, t) === id ? `${t} → ${answer} [${ts}]` : t)),
+          target,
+          items(target).map((t) => (idOf(secName, t) === id ? `${t} → ${answer} [${ts}]` : t)),
         );
-        if (verdict === "채택") {
-          const dec = section(sections, SEC.decided, SEC.run);
-          setItems(dec, [...items(dec), `[${ts}] 예: ${card.title}`]);
-        }
+        const dec = section(sections, SEC.decided, SEC.run);
+        setItems(dec, [...items(dec), `[${ts}] ${answer}: ${card.title}`]);
         summary = `${answer} — ${card.title}`;
       } else {
         return send(res, 400, { ok: false, error: "이 칸은 판정 대상이 아님" });
@@ -475,6 +496,26 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       const { command } = buildCards(md);
       if (!command) return send(res, 400, { ok: false, error: "명령이 없음 — 먼저 명령을 내리세요" });
       return send(res, 200, { ok: true, ...startDispatch() });
+    }
+
+    if (route === "/api/status" && req.method === "GET") {
+      // 로컬 git으로 경로별 최신 커밋 — GitHub API 한도(시간당 60회)·오프라인에 안 걸린다
+      const rel = (url.searchParams.get("path") || "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+      const abs = path.resolve(ROOT, rel);
+      if (!abs.startsWith(ROOT)) return send(res, 400, { ok: false, error: "저장소 밖 경로" });
+      const args = ["log", "-1", "--format=%h%x1f%cI%x1f%s"];
+      if (rel) args.push("--", rel);
+      const r = await git(args);
+      const [sha = "", date = "", message = ""] = r.out.trim().split("\x1f");
+      let headText = "";
+      const file = (url.searchParams.get("file") || "").replace(/\\/g, "/");
+      if (file && /\.md$/i.test(file)) {
+        const fabs = path.resolve(ROOT, file);
+        if (fabs.startsWith(ROOT) && fs.existsSync(fabs)) {
+          headText = fs.readFileSync(fabs, "utf8").split(/\r?\n/).slice(0, 24).join("\n");
+        }
+      }
+      return send(res, 200, { ok: r.ok && Boolean(sha), sha, date: date.slice(0, 10), message, head: headText, path: rel });
     }
 
     if (route === "/api/dispatch/log" && req.method === "GET") {

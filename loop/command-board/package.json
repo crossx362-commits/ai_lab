@@ -8,7 +8,8 @@
     "dev": "vite --port 5177 --strictPort",
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 5177",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "dispatch": "bash ../dispatch-board.sh"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",

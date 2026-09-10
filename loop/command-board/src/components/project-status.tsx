@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
 import { useBoardStore } from "@/lib/board-store";
 import { PHASE_KO, statusOf } from "@/lib/lab-status";
-import { LIVE_FALLBACK, fetchLive, mergeStatus, type LivePatch } from "@/lib/lab-live";
+import { fetchLive, mergeStatus, type LivePatch } from "@/lib/lab-live";
 import { cn } from "@/lib/cn";
 
 export function ProjectStatusCard() {
   const id = useBoardStore((s) => s.activeProjectId);
-  const [live, setLive] = useState<LivePatch | undefined>(LIVE_FALLBACK[id]);
+  const [live, setLive] = useState<LivePatch | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let on = true;
-    setLive(LIVE_FALLBACK[id]);
+    setLive(undefined);
     fetchLive(id).then((row) => {
       if (on) setLive(row);
     });

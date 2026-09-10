@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useBoardStore } from "@/lib/board-store";
-import { AI_ROSTER } from "@/lib/ai-roster";
+import { OPINION_ROSTER } from "@/lib/ai-roster";
 import type { BoardCard as Card } from "@/lib/board-types";
 import { cn } from "@/lib/cn";
 
@@ -51,9 +51,9 @@ export function OpinionLane() {
   const hasCommand = cards.some((c) => c.col === "명령");
   const list = cards.filter((c) => c.col === "의견");
   const open = list.filter((c) => !c.verdict);
-  const ordered = AI_ROSTER.map((name) => list.find((c) => c.who === name)).filter((c): c is Card => Boolean(c));
-  const extra = list.filter((c) => !AI_ROSTER.includes(c.who as (typeof AI_ROSTER)[number]));
-  const glance = ordered.concat(extra).slice(0, 5);
+  const ordered = OPINION_ROSTER.map((name) => list.find((c) => c.who === name)).filter((c): c is Card => Boolean(c));
+  const extra = list.filter((c) => !OPINION_ROSTER.includes(c.who as (typeof OPINION_ROSTER)[number]));
+  const glance = ordered.concat(extra);
 
   return (
     <section className="shrink-0 border-b border-border bg-elevated px-3 py-1.5">
@@ -75,7 +75,7 @@ export function OpinionLane() {
           {hasCommand ? (running ? "CLI 응답을 기다리는 중" : "의견 없음 — 「의견 다시 받기」") : "명령을 내리면 CLI 4종이 의견을 낸다"}
         </p>
       ) : (
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-4 gap-1.5">
           {glance.map((card) => (
             <GlanceCard key={card.id} card={card} />
           ))}

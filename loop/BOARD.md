@@ -53,6 +53,7 @@
 - [x] [2026-09-10 13:44] Claude: qa-claude → master 병합 (DEV_INBOX 충돌 양쪽 보존)
 - [x] [2026-09-10 13:40] Claude: grok CLI 설치 (@xai-official/grok 1.0.25, `grok -p`/`--prompt-file`)
 - [x] [2026-09-10 13:56] 오너: `grok` 로그인 완료 — `grok --prompt-file` 헤드리스 호출 성공 확인
+- [x] [2026-09-10 14:00] 오너: `claude auth login` 완료(claude.ai 구독) — Claude 의견 칸 정상화
 
 
 ## 질문

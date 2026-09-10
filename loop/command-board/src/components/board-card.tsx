@@ -10,8 +10,8 @@ export function BoardCard({ card, compact }: { card: Card; compact?: boolean }) 
   const latestCmd = useBoardStore((s) => s.cards.find((c) => c.col === "명령"));
   const running = card.status === "running";
   const failed = card.status === "fail";
-  const showBtns = (card.col === "의견" || card.col === "결정대기") && !card.verdict && !running && !failed;
-  const yesNo = card.col === "결정대기";
+  const yesNo = card.col === "결정대기" || card.col === "질문";
+  const showBtns = (card.col === "의견" || yesNo) && !card.verdict && !running && !failed;
   const node = findLab(card.projectId || "");
   const live = card.col === "명령" && latestCmd?.id === card.id;
 
