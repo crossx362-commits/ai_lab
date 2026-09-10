@@ -45,6 +45,7 @@
 - [2026-09-10 21:05] 채택: Grok — BOARD.md 무잠금 덮어쓰기로 실행줄 유실
 - [2026-09-10 21:07] 채택: Claude — 울온 루프 러너 부재 — loop.sh는 재와별 전용
 - [2026-09-10 21:07] 채택: GPT — 울온 루프의 프로젝트 연결부터 분리
+- [2026-09-10 21:10] 채택: Grok — 두 번째 루프 금지 — 이미 qa_shots 중
 
 ## 결정대기
 - 자산 5개 다운로드 승인 (모루·대장간·마구간·목공소 단품 4 + Kenney 동굴 키트) — 전부 CC0, 승인 시 막힌 화면 5개 풀림 → 예 [2026-09-10 20:58]
@@ -61,6 +62,7 @@
 - [2026-09-10 21:05] 채택: BOARD.md 무잠금 덮어쓰기로 실행줄 유실 (Grok)
 - [2026-09-10 21:07] 채택: 울온 루프 러너 부재 — loop.sh는 재와별 전용 (Claude)
 - [2026-09-10 21:07] 채택: 울온 루프의 프로젝트 연결부터 분리 (GPT)
+- [2026-09-10 21:10] 채택: 두 번째 루프 금지 — 이미 qa_shots 중 (Grok)
 
 ## 실행
 - [x] [2026-09-10 13:44] Claude: qa-claude → master 병합 (DEV_INBOX 충돌 양쪽 보존)
@@ -73,6 +75,7 @@
 - [ ] [2026-09-10 21:05] Grok Build: BOARD.md 무잠금 덮어쓰기로 실행줄 유실 — loop/command-board/server/board-api.ts의 /api/command·/api/decide·/api/project-state는 loop/BOARD.md를 통째로 읽어 잠금 없이 writeFileSync하고, 실행 완료 API가 없어 담당도 같은 파일의 [ ]를 직접 [x]로 고친다. flock으로 읽기-쓰기-커밋을 직렬화하고 POST /api/run-done만 체크를 뒤집게 할 것. / 위험: 채택 커밋과 완료 체크가 겹치면 한쪽 줄이 HEAD에서 사라져 같은 일을 다시 연다.
 - [ ] [2026-09-10 21:07] Claude: 울온 루프 러너 부재 — loop.sh는 재와별 전용 — `loop/loop.sh`는 상태 파일이 `docs/STATUS.md`·`docs/feedback/INBOX.md`·`projects/ashes-to-stars/CLAUDE.md`로 하드코딩돼 있고 `projects/ulon/tools/`엔 러너가 없다 — 울온 루프는 지금까지 클로드 세션이 `projects/ulon/docs/SESSION_HANDOFF.md`의 「■ 지금 여는 랩」을 읽고 도는 방식이었다(현재 랩: NC 굽기 4→2회 병합). / 착수하려면 loop.sh의 세 상태 경로를 `LOOP_PROJECT`(기본 ashes)로 인자화해 울온은 `projects/ulon/docs/{SESSION_HANDOFF,DEV_INBOX,GAME_DESIGN}.md`를 읽게 하고, 매 이터레이션 끝에 `too
 - [ ] [2026-09-10 21:07] Grok Build: 울온 루프의 프로젝트 연결부터 분리 — 채택 후 실행 담당은 `loop/loop.sh`의 재와 별 고정 프롬프트·상태 경로를 울온용으로 분리하고 `projects/ulon/docs/SESSION_HANDOFF.md`에 연결할 것. / `projects/ulon/unity`에서 한 항목씩 개발·검증하고, 반복 로그와 검증 산출물로 실제 진행을 판정할 것. / 위험: 현재 루프를 그대로 기동하면 `docs/STATUS.md`의 재와 별 작업을 수행할 수 있음.
+- [ ] [2026-09-10 21:10] Grok Build: 두 번째 루프 금지 — 이미 qa_shots 중 — `loop/loop.sh`를 울온용으로 켜지 말고, 이미 점유된 워크트리 `../ai_lab-loop`(브랜치 loop-claude)에서 `docs/SESSION_HANDOFF.md` 「지금 여는 랩」(NC 굽기 4→2)을 이어서 닫아라. / 그 트리는 지금 `projects/ulon/tools/slice_selfcheck.sh` 두 판 뒤 `projects/ulon/tools/qa_shots.sh`가 Unity 배치로 돌아가는 중이다. / 위험: 재와별용 `loop/loop.sh`나 공유 트리 `projects/ulon/unity`에 배치를 하나 더 붙이면 진행 중 샷이 락 충돌로 죽는다.
 
 ## 질문
 -
