@@ -22,7 +22,8 @@ import time
 from pathlib import Path
 
 from . import (agents, config, db, gitwt, loganalyze, logs, memory, planner,
-               proc, recover, review, router, safety, unityrun)
+               proc, providers, recover, review, router, safety, unityrun)
+from . import handoff
 
 
 def _p(msg: str = "") -> None:
@@ -150,6 +151,33 @@ def cmd_run(args) -> int:
     return rc
 
 
+def _usable(cfg, pstat, *, prefer: list[str], pinned: bool = False,
+            exclude: tuple[str, ...] = ()) -> list[str]:
+    """지금 실제로 일을 맡길 수 있는 에이전트 목록.
+
+    두 가지를 같이 본다. ①Provider 상태(인증·한도) ②**빌드 가능 여부** —
+    AUTODEV_NO_CLOUD 같은 자물쇠에 걸리는 것을 후보에 남기면 루프 한가운데서 터진다.
+    `pinned`(--agent로 사람이 지정)면 **대체하지 않는다** — 지정을 몰래 바꾸면 안 된다.
+    """
+    pool = list(prefer)
+    if not pinned:
+        # 사다리가 전부 막혔을 때를 대비한 대체 후보. 단 **역할이 다른 자리는 끌어오지 않는다** —
+        # 리뷰어를 구현자로 쓰면 자기 작업을 자기가 승인하게 되고, 분해 담당도 마찬가지다.
+        roles = {cfg.reviewer, cfg.planner}
+        pool += [n for n in cfg.raw.get("agents", {})
+                 if n not in pool and n not in roles and providers.CODING in providers.caps_of(cfg, n)]
+    cands = providers.pick(cfg, pstat, capability=providers.CODING,
+                           prefer=pool, exclude=exclude)
+    out = []
+    for a in cands:
+        try:
+            agents.build(cfg.agent(a))
+        except (KeyError, config.ConfigError):
+            continue      # 자물쇠·설정 문제로 못 부르는 것은 "쓸 수 있는 것"이 아니다
+        out.append(a)
+    return out
+
+
 def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
                  max_attempts: int | None = None, plan_id: int | None = None,
                  plan_key: str | None = None, done_criteria: str = "") -> int:
@@ -165,6 +193,45 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         _p(f"사다리 설정 오류: {e}")
         return 2
     _p(f"[사다리] {' → '.join(ladder)}" + (f" (조사: {cfg.research_agent})" if cfg.research_agent else ""))
+
+    # Provider 독립성: 설치돼 있다고 쓸 수 있는 것이 아니다. 실제 인증·한도 상태를 보고
+    # **쓸 수 있는 것만** 사다리에 남긴다. 하나가 막혀도 여기서 걸러질 뿐 전체가 죽지 않는다.
+    pstat = providers.probe_all(cfg)
+    ladder_ok = _usable(cfg, pstat, prefer=ladder, pinned=bool(agent))
+    for a in ladder:
+        s = pstat.get(a)
+        if a not in ladder_ok:
+            why = s.line() if s else "설정에 없음"
+            if s and s.usable:
+                why = f"{s.state} — CODING 능력 없음"
+            _p(f"  [제외] {why}")
+    if ladder_ok != ladder:
+        _p(f"  [사용 가능] {' → '.join(ladder_ok) or '없음'}")
+    ladder = ladder_ok
+
+    if not ladder:
+        # 모든 Provider가 막혔다. **억지로 로컬에 떠넘기지 않는다** — 로컬이 할 수 있는 일이면
+        # 로컬로 가고, 아니면 상태를 보존한다. 오케스트레이터는 여기서 죽지 않는다.
+        conn = db.connect()
+        local_ok = [n for n in _usable(cfg, pstat,
+                                       prefer=[m for m in cfg.raw.get("agents", {}) if providers.is_local(cfg, m)])
+                    if providers.is_local(cfg, n)]
+        reason = ("클라우드 Provider가 전부 사용 불가"
+                  if providers.cloud_all_down(cfg, pstat) else "사다리의 Provider를 쓸 수 없다")
+        if local_ok:
+            _p(f"[로컬 모드] {reason} — 로컬 {local_ok[0]}로 진행한다")
+            ladder = local_ok
+        else:
+            tid = db.create_task(conn, args_goal, t.name, ladder_ok[0] if ladder_ok else "-", None,
+                                 plan_id=plan_id, plan_key=plan_key, done_criteria=done_criteria,
+                                 status="BLOCKED_CLOUD_REQUIRED", verdict="UNKNOWN",
+                                 reason=f"{reason} · 로컬 모델로는 감당할 수 없는 작업 — 보존",
+                                 ended_at=db.now())
+            _p(f"[보류] {reason}")
+            _p(f"  로컬 모델은 이 작업(CODING)을 감당하지 못한다 — 억지로 시키지 않는다.")
+            _p(f"  task {tid}을 BLOCKED_CLOUD_REQUIRED로 보존했다. Provider가 살아나면:")
+            _p(f"    ./autodev providers --refresh && ./autodev resume-blocked")
+            return 3
 
     if safety.stop_requested():
         _p(f"STOP 상태다 — 새 작업을 시작하지 않는다 ({safety.STOP_FILE})\n  해제: autodev resume")
@@ -228,6 +295,10 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
 
     failure = None
     history: list[dict] = []   # 라우터가 보는 실패 이력
+    last_agent = None          # 직전 담당(바뀌면 인수인계를 붙인다)
+    handoff_why = ""           # 왜 담당이 바뀌는가 (승격인지, Provider 장애인지)
+    last_unity = ""            # 마지막 Unity 판정 요약 — 승계 문서에 넣는다
+    cloud_blocked = False      # Provider가 전부 막혀 보존해야 하는가
     final_verdict = "UNKNOWN"
     final_reason = "시도를 시작하지 못했다"
     commit_hash = None
@@ -255,13 +326,26 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         db.update_task(conn, task_id, attempts=n, agent=agent_name, model=agent.model_name())
         recover.beat(conn, task_id)
 
+        # 담당이 바뀌면 **인수인계**를 붙인다. 승계는 재시작이 아니다 —
+        # worktree에 남아 있는 앞 담당의 작업 위에서 이어가게 한다.
+        ho = None
+        if last_agent and last_agent != agent_name:
+            ho = handoff.build(
+                conn, task_id=task_id, goal=args_goal, done_criteria=done_criteria,
+                worktree=wt, base_commit=base, prev_agent=last_agent,
+                why=handoff_why or "라우터가 등급을 올렸다",
+                unity_summary=last_unity, errors=(failure or {}).get("errors", ""),
+            )
+            _p(f"  인수인계: {last_agent} → {agent_name} ({handoff_why or '승격'})")
         prompt = agent.build_prompt(
             goal=args_goal,
             worktree=wt,
             allowed=t.allowed_write_globs,
             unity_version=t.unity_version,
             failure=failure,
+            handoff=ho,
         )
+        last_agent = agent_name
         logs.write(Path(f"{prefix}.prompt.txt"), prompt)
 
         _p(f"  {agent_name} 호출 중 (timeout {agent_cfg.timeout_sec}s)…")
@@ -281,6 +365,30 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             stopped = True
             final_verdict, final_reason = "UNKNOWN", "STOP 요청으로 중단(에이전트 실행 중)"
             _p(f"  → STOP: {final_reason}")
+            break
+
+        # 0-a) Provider 장애인가? 「이 목표가 어렵다」가 아니라 「이 업체가 지금 안 된다」이면
+        #      상태를 기록하고 **다른 Provider로 승계**한다. 시도는 차감하지 않는다.
+        hit = providers.classify_failure((ar.output or "") + " " + (ar.reason or ""))
+        if hit and not ar.ok:
+            state, cool = hit
+            providers.mark(agent_name, state, f"시도 {n}에서 감지: {(ar.reason or '')[:80]}", cool)
+            db.update_attempt(conn, attempt_id, status="UNKNOWN", agent_exit=ar.exit_code,
+                              reason=f"Provider 장애({state})", ended_at=db.now())
+            db.update_task(conn, task_id, attempts=n - 1)   # Provider 장애는 시도 미차감
+            _p(f"  → Provider 장애: {agent_name} = {state} (시도 미차감)")
+            fresh = providers.probe_all(cfg)
+            nxt = _usable(cfg, fresh, prefer=[a for a in ladder if a != agent_name],
+                          exclude=(agent_name,))
+            if nxt:
+                ladder = nxt
+                handoff_why = f"{agent_name} {state}"
+                _p(f"  승계 대상: {' → '.join(ladder)}")
+                continue
+            final_verdict = "UNKNOWN"
+            final_reason = f"{agent_name} {state} · 대체할 Provider가 없다"
+            cloud_blocked = True
+            _p(f"  → 보류: {final_reason}")
             break
 
         # 0) 인프라 실패는 "이 목표가 어렵다"가 아니다 — 시도를 태우지 말고 즉시 세운다.
@@ -356,6 +464,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
                                     task_id=task_id, attempt_id=attempt_id,
                                     unity_slots=slots)
         _p(f"  Unity: {ur.verdict} — {ur.reason} ({ur.duration_s:.1f}s)")
+        last_unity = f"컴파일 {ur.verdict}: {ur.reason}"
         for e in ur.errors[:8]:
             _p(f"    {e}")
 
@@ -457,6 +566,10 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         status = "REVIEW" if review_unknown else "DONE"
     elif final_verdict == "REJECTED":
         status = "REVIEW"      # 사람이 봐야 한다. 자동 DONE 아님.
+    elif cloud_blocked:
+        # Provider가 전부 막혀서 못 한 것이지, 코드가 틀린 것이 아니다. 구분해서 보존한다 —
+        # 나중에 Provider가 살아나면 이 상태만 골라 재개할 수 있다.
+        status = "BLOCKED_CLOUD_REQUIRED"
     else:
         status = "BLOCKED"
     db.update_task(conn, task_id, status=status, verdict=final_verdict,
@@ -667,6 +780,58 @@ def cmd_mem(args) -> int:
     return 0 if a.state == "GREEN" else (1 if a.state == "YELLOW" else 2)
 
 
+def cmd_providers(args) -> int:
+    """Provider 상태판. **설치 여부가 아니라 실제 인증·한도 상태**를 본다."""
+    cfg = config.load()
+    st = providers.probe_all(cfg, force=args.refresh)
+    _p("Provider 상태 (설치 ≠ 사용 가능)")
+    for name, s in st.items():
+        mark = "✓" if s.usable else "✗"
+        _p(f"  {mark} {s.line()}")
+        _p(f"      능력: {', '.join(providers.caps_of(cfg, name)) or '(없음)'}")
+    usable = [n for n, s in st.items() if s.usable]
+    _p(f"  → 지금 쓸 수 있는 Provider: {', '.join(usable) or '없음'}")
+    if providers.cloud_all_down(cfg, st):
+        _p("  ! 클라우드가 전부 막혔다 — 로컬 모드로 내려간다(할 수 없는 일은 BLOCKED_CLOUD_REQUIRED로 보존)")
+    return 0 if usable else 1
+
+
+BLOCKED_CLOUD = "BLOCKED_CLOUD_REQUIRED"
+
+
+def cmd_resume_blocked(args) -> int:
+    """Provider가 없어서 보존해둔 Task를 다시 연다. **Provider가 살아났을 때만** 연다 —
+    상태를 지우는 것이 목적이 아니라, 하던 일을 이어가는 것이 목적이다."""
+    cfg = config.load()
+    conn = db.connect()
+    st = providers.probe_all(cfg, force=args.refresh)
+    usable = providers.pick(cfg, st, capability=providers.CODING, prefer=cfg.ladder)
+    rows = [r for r in db.list_tasks(conn, 10 ** 6) if r["status"] == BLOCKED_CLOUD]
+    if not rows:
+        _p("보존된 Task 없음")
+        return 0
+    _p(f"보존된 Task {len(rows)}건 · 지금 쓸 수 있는 Provider: {', '.join(usable) or '없음'}")
+    for r in rows:
+        _p(f"  task {r['id']} — {r['goal'][:70]}")
+    if not usable:
+        _p("  아직 열 수 없다 — Provider가 살아나면 다시 불러라 (./autodev providers --refresh)")
+        return 1
+    if not args.run:
+        _p("  열려면 --run")
+        return 0
+    rc = 0
+    for r in rows:
+        _p(f"\n=== task {r['id']} 재개 ===")
+        t = cfg.target(r["target"])
+        out = execute_goal(cfg, t, goal=r["goal"], done_criteria=r["done_criteria"] or "",
+                           plan_id=r["plan_id"], plan_key=r["plan_key"])
+        if out == 0:
+            db.update_task(conn, r["id"], status="ARCHIVED",
+                           reason=f"[재개됨] {r['reason'] or BLOCKED_CLOUD}")
+        rc = rc or out
+    return rc
+
+
 def cmd_recover(args) -> int:
     """죽은 판을 회수한다 — **INTERRUPTED로 세울 뿐 완료로 만들지 않는다**(§14).
     worktree·브랜치는 남긴다. 죽은 자리가 증거다."""
@@ -796,6 +961,15 @@ def build_parser() -> argparse.ArgumentParser:
     mm = sub.add_parser("mem", help="메모리 상태(압박·스왑·프로세스)")
     mm.add_argument("--relieve", action="store_true", help="로컬 모델을 내려 압박을 던다")
     mm.set_defaults(func=cmd_mem)
+
+    pv = sub.add_parser("providers", help="Provider 실제 사용 가능 상태(인증·한도 포함)")
+    pv.add_argument("--refresh", action="store_true", help="캐시를 무시하고 다시 검사")
+    pv.set_defaults(func=cmd_providers)
+
+    rb = sub.add_parser("resume-blocked", help="Provider 부재로 보존된 Task 재개")
+    rb.add_argument("--run", action="store_true", help="목록만 보지 말고 실제로 재개")
+    rb.add_argument("--refresh", action="store_true", help="Provider를 다시 검사")
+    rb.set_defaults(func=cmd_resume_blocked)
 
     rc = sub.add_parser("recover", help="죽은 판(주인 없는 RUNNING)을 INTERRUPTED로 회수")
     rc.add_argument("--dry-run", action="store_true")

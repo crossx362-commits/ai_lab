@@ -45,7 +45,14 @@
         "model_reasoning_effort=\"low\""
       ],
       "sandbox_mode": "workspace-write",
-      "timeout_sec": 900
+      "timeout_sec": 900,
+      "capabilities": [
+        "CODING",
+        "DEBUGGING",
+        "PLANNING",
+        "REVIEW",
+        "LOW_COST"
+      ]
     },
     "astra": {
       "type": "codex",
@@ -55,20 +62,49 @@
         "model_reasoning_effort=\"high\""
       ],
       "sandbox_mode": "workspace-write",
-      "timeout_sec": 1800
+      "timeout_sec": 1800,
+      "capabilities": [
+        "CODING",
+        "DEBUGGING",
+        "PLANNING",
+        "REVIEW",
+        "LONG_CONTEXT"
+      ]
     },
     "claude": {
       "type": "claude",
       "bin": "claude",
       "model": null,
       "permission_mode": "acceptEdits",
-      "timeout_sec": 1800
+      "timeout_sec": 1800,
+      "capabilities": [
+        "CODING",
+        "DEBUGGING",
+        "REVIEW",
+        "PLANNING",
+        "LONG_CONTEXT"
+      ]
     },
     "grok": {
       "type": "grok",
       "bin": "grok",
       "model": null,
-      "timeout_sec": 600
+      "timeout_sec": 600,
+      "capabilities": [
+        "RESEARCH",
+        "CODING"
+      ]
+    },
+    "ollama": {
+      "type": "ollama",
+      "bin": "ollama",
+      "model": "gemma4:12b",
+      "timeout_sec": 300,
+      "capabilities": [
+        "LOCAL",
+        "LOW_COST",
+        "RESEARCH"
+      ]
     }
   },
   "planner": "astra",

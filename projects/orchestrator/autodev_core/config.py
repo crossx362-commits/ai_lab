@@ -42,6 +42,8 @@ class AgentConfig:
     args: list[str]
     extra_config: list[str]
     permission_mode: str
+    capabilities: list[str]      # 이름이 아니라 능력으로 배정한다(providers.py)
+    enabled: bool
 
 
 @dataclass
@@ -99,6 +101,8 @@ class Config:
             args=list(a.get("args", [])),
             extra_config=list(a.get("extra_config", [])),
             permission_mode=a.get("permission_mode", "acceptEdits"),
+            capabilities=list(a.get("capabilities", [])),
+            enabled=bool(a.get("enabled", True)),
         )
 
 

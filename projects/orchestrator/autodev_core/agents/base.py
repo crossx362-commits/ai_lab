@@ -82,10 +82,13 @@ class CliAgent:
     def model_name(self) -> str | None:
         return self.cfg.model
 
-    def build_prompt(self, *, goal, worktree, allowed, unity_version, failure=None) -> str:
-        feedback = ""
+    def build_prompt(self, *, goal, worktree, allowed, unity_version, failure=None,
+                     handoff=None) -> str:
+        # 인수인계(다른 Provider에서 넘어온 경우)가 먼저다 — "이미 절반 돼 있다"를 모르면
+        # 새 담당이 처음부터 다시 만든다.
+        feedback = handoff or ""
         if failure:
-            feedback = FEEDBACK_TEMPLATE.format(
+            feedback += FEEDBACK_TEMPLATE.format(
                 n=failure.get("n"),
                 verdict=failure.get("verdict"),
                 reason=failure.get("reason"),

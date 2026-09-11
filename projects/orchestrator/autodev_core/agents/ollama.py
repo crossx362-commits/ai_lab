@@ -37,6 +37,16 @@ def available(timeout: int = 3) -> bool:
         return False
 
 
+def list_models(timeout: int = 5) -> list[str]:
+    """설치된 모델 목록. 서버가 살아있는 것과 **쓸 모델이 있는 것**은 다르다."""
+    try:
+        with urllib.request.urlopen(HOST + "/api/tags", timeout=timeout) as r:
+            data = json.loads(r.read().decode("utf-8", "replace"))
+        return [m.get("name", "") for m in data.get("models", [])]
+    except Exception:
+        return []
+
+
 def loaded_models(timeout: int = 3) -> list[str]:
     try:
         with urllib.request.urlopen(HOST + "/api/ps", timeout=timeout) as r:

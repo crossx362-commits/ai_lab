@@ -14,6 +14,15 @@ export AUTODEV_NO_CLOUD=1
 PASS=0
 FAIL=0
 TASKS=()
+T0=$(date +%s)
+LAST=$T0
+
+# 케이스마다 걸린 시간을 찍는다. 20분짜리 침묵은 "도는 중"과 "멎음"을 구분할 수 없다.
+lap() {
+  local now; now=$(date +%s)
+  printf '        (%ds, 누적 %ds)\n' "$((now-LAST))" "$((now-T0))"
+  LAST=$now
+}
 
 mkcfg() {  # mkcfg <파일> <셸명령> [timeout]
   python3 - "$1" "$2" "${3:-60}" <<'PY'
@@ -47,6 +56,7 @@ check() {  # check <이름> <기대verdict> <기대문구> <로그파일>
     echo "  WARN  $name — task 번호를 못 읽어 정리하지 못했다"
     FAIL=$((FAIL+1))
   fi
+  lap
 }
 
 run_case() {  # run_case <이름> <셸명령> <기대verdict> <기대문구> [timeout]
@@ -318,10 +328,121 @@ if grep -q "^RECOVER_OK" /tmp/nc_recover.log; then
   echo "  PASS  crash_recover — 죽은 판만 INTERRUPTED(DONE 경로 없음), PID 재사용도 잡음"; PASS=$((PASS+1))
 else echo "  FAIL  crash_recover (로그: /tmp/nc_recover.log)"; FAIL=$((FAIL+1)); fi
 
+# 11) Provider 독립성 — 「설치됐다」를 「쓸 수 있다」로 읽지 않는지, 장애를 코드 실패와
+#     섞지 않는지, 능력으로 고르는지. 가짜 CLI를 만들어 실제로 물어본다.
+FAKEBIN=$(mktemp -d)
+cat > "$FAKEBIN/codex" <<'SH'
+#!/bin/sh
+echo "Not logged in. Run 'codex login' to authenticate."
+exit 1
+SH
+chmod +x "$FAKEBIN/codex"
+PATH="$FAKEBIN:$PATH" python3 - <<'PY' > /tmp/nc_providers.log 2>&1
+import pathlib, sys, time
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from autodev_core import config, providers as P
+cfg = config.load(pathlib.Path("config.json"))
+bad = []
+
+# ① 설치돼 있어도 로그아웃이면 AVAILABLE이 아니다 (PATH에 가짜 codex를 심어둠)
+s = P.probe("codex", cfg.agent("codex"))
+if s.state != P.AUTH_REQUIRED: bad.append(f"로그아웃 CLI를 {s.state}로 봄")
+if s.usable: bad.append("AUTH_REQUIRED인데 쓸 수 있다고 봄")
+
+# ② CLI 자체가 없으면 UNAVAILABLE
+class Fake:
+    type, bin, model, enabled = "codex", "definitely_not_here_xyz", None, True
+    capabilities = ["CODING"]
+if P.probe("ghost", Fake()).state != P.UNAVAILABLE: bad.append("없는 CLI를 UNAVAILABLE로 안 봄")
+
+# ③ 실패 분류 — 장애 종류마다 처방이 다르다
+for text, want in [
+    ("Error: 429 rate limit exceeded", P.RATE_LIMITED),
+    ("HTTP 401 Unauthorized", P.AUTH_REQUIRED),
+    ("insufficient credit — please check billing", P.LIMITED),
+]:
+    got = P.classify_failure(text)
+    if not got or got[0] != want: bad.append(f"{want}를 {got}로 분류")
+# **가장 중요한 음성 대조**: 코드 오류를 Provider 장애로 오인하면 영원히 승계만 돈다
+for text in ["Assets/Game/Scripts/X.cs(3,9): error CS1525: Invalid expression",
+             "Test failed: Expected 1 but was 2"]:
+    if P.classify_failure(text) is not None: bad.append(f"코드 오류를 Provider 장애로 오인: {text[:30]}")
+
+# ④ 능력으로 고른다 — 이름이 아니라
+st = {n: P.Status(n, P.AVAILABLE, caps=P.caps_of(cfg, n)) for n in cfg.raw["agents"]}
+coding = P.pick(cfg, st, capability=P.CODING, prefer=cfg.ladder)
+if "ollama" in coding: bad.append("CODING 능력이 없는 ollama가 뽑힘")
+if coding[:1] != ["codex"]: bad.append(f"선호 순서 무시: {coding}")
+if "ollama" not in P.pick(cfg, st, capability=P.LOCAL): bad.append("LOCAL 능력으로 ollama를 못 찾음")
+
+# ⑤ 상태가 나쁘면 빠진다(냉각 중 포함)
+st["codex"] = P.Status("codex", P.RATE_LIMITED, cooldown_until=time.time() + 600,
+                       caps=P.caps_of(cfg, "codex"))
+if "codex" in P.pick(cfg, st, capability=P.CODING, prefer=cfg.ladder):
+    bad.append("RATE_LIMITED인데 뽑힘")
+
+# ⑥ 클라우드 전부 불가 판정
+down = {n: P.Status(n, P.AUTH_REQUIRED, caps=P.caps_of(cfg, n)) for n in cfg.raw["agents"]}
+down["ollama"] = P.Status("ollama", P.AVAILABLE, caps=P.caps_of(cfg, "ollama"))
+if not P.cloud_all_down(cfg, down): bad.append("클라우드 전멸을 못 알아봄")
+if P.cloud_all_down(cfg, st): bad.append("한 곳이라도 살아있는데 전멸이라고 함")
+print("PROV_OK" if not bad else "PROV_BAD " + " / ".join(bad))
+PY
+rm -rf "$FAKEBIN"
+if grep -q "^PROV_OK" /tmp/nc_providers.log; then
+  echo "  PASS  providers — 설치≠사용가능·장애 분류(코드 오류와 구분)·능력 기반 배정"; PASS=$((PASS+1))
+else echo "  FAIL  providers (로그: /tmp/nc_providers.log)"; FAIL=$((FAIL+1)); fi
+
+# 11a) 전부 막혔을 때 — 억지로 돌리지 말고 **보존**해야 한다(BLOCKED_CLOUD_REQUIRED).
+mkcfg state/nc_blocked.json "exit 0"
+AUTODEV_DISABLE_NC=1 AUTODEV_CONFIG="$HERE/state/nc_blocked.json" \
+  ./autodev run "[NC] cloud_blocked" --agent nc >/tmp/nc_blocked.log 2>&1
+BRC=$?
+if grep -q "BLOCKED_CLOUD_REQUIRED로 보존" /tmp/nc_blocked.log && [[ $BRC -eq 3 ]]; then
+  echo "  PASS  cloud_blocked — 억지로 안 돌리고 보존(rc=3)"; PASS=$((PASS+1))
+else echo "  FAIL  cloud_blocked — rc=$BRC (로그: /tmp/nc_blocked.log)"; FAIL=$((FAIL+1)); fi
+for id in $(grep -oE "task [0-9]+을" /tmp/nc_blocked.log | grep -oE "[0-9]+"); do
+  ./autodev archive --task "$id" >/dev/null 2>&1
+done
+
+# 11b) 승계 — 앞 Provider가 한도를 맞으면 **시도를 태우지 않고** 다음 Provider가 이어받는다.
+#      이어받을 때 인수인계 문서가 실제로 프롬프트에 들어가는지까지 본다.
+python3 - <<'PY'
+import json, pathlib
+cfg = json.loads(pathlib.Path("config.json").read_text())
+cfg["ladder"] = ["nc_p1", "nc_p2"]
+cfg["reviewer"] = None
+cfg["research_agent"] = None
+cfg["agents"]["nc_p1"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "capabilities": ["CODING"],
+    "args": ["-c", "printf 'namespace SandboxGame { public static class NcHand { public const int V = 1; } }\\n' > Assets/Game/Scripts/NcHand.cs; "
+                   "echo 'Error: 429 rate limit exceeded for this organization'; exit 1"]}
+cfg["agents"]["nc_p2"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "capabilities": ["CODING"],
+    "args": ["-c", "printf 'namespace SandboxGame { public static class NcHand2 { public const int V = 2; } }\\n' > Assets/Game/Scripts/NcHand2.cs"]}
+pathlib.Path("state/nc_handoff.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
+PY
+AUTODEV_CONFIG="$HERE/state/nc_handoff.json" ./autodev run "[NC] handoff" >/tmp/nc_handoff.log 2>&1
+check handoff PASS "Provider 장애: nc_p1 = RATE_LIMITED" /tmp/nc_handoff.log
+HO_TASK=$(grep -E "^  task " /tmp/nc_handoff.log | head -1 | sed 's/.*: *//')
+HO_PROMPT="logs/task$(printf '%04d' "${HO_TASK:-0}")-a2.prompt.txt"
+if grep -q "인수인계: nc_p1 → nc_p2" /tmp/nc_handoff.log \
+   && grep -q "시도 2/3" /tmp/nc_handoff.log \
+   && [[ -f "$HO_PROMPT" ]] && grep -q "앞 담당의 작업이 이미 들어 있다" "$HO_PROMPT" \
+   && grep -q "NcHand.cs" "$HO_PROMPT"; then
+  echo "  PASS  handoff_context — 승계 프롬프트에 앞 담당의 diff·파일이 실려 감"; PASS=$((PASS+1))
+else echo "  FAIL  handoff_context (프롬프트: $HO_PROMPT)"; FAIL=$((FAIL+1)); fi
+# nc_* Provider 기록은 지운다(실제 Provider 캐시는 남긴다)
+python3 - <<'PY'
+import json, pathlib
+p = pathlib.Path("state/providers.json")
+if p.is_file():
+    d = json.loads(p.read_text())
+    p.write_text(json.dumps({k: v for k, v in d.items() if not k.startswith("nc")}, ensure_ascii=False, indent=2))
+PY
+
 echo
-echo "=== 결과: PASS=$PASS FAIL=$FAIL ==="
+echo "=== 결과: PASS=$PASS FAIL=$FAIL · 소요 $(( $(date +%s) - T0 ))초 ==="
 if [[ ${#TASKS[@]} -gt 0 ]]; then
-  echo "정리 중: task ${TASKS[*]}"
+  echo "정리 중: task ${TASKS[*]} (worktree 삭제라 수십 초 걸릴 수 있다)"
   for t in "${TASKS[@]}"; do ./autodev clean --task "$t" --delete-branch >/dev/null 2>&1; done
 fi
 rm -f state/nc_*.json
