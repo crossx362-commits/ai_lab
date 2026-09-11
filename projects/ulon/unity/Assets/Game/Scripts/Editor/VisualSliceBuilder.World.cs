@@ -816,6 +816,11 @@ namespace Ulon.Editor
             var rend = go.GetComponent<Renderer>();
             if (rend != null && mat != null)
                 rend.sharedMaterial = mat;
+            // **`receiveShadows = false`는 여기에 넣지 마라**(2026-09-11에 넣어 봤다가 걷었다).
+            // 두 가지를 배웠다: ①그것은 **씬 오브젝트의 속성**이라 `Bootstrap.unity`를 커밋하지 않는
+            // 이 저장소에서는 남의 기계에 전달되지 않는다(`qa_shots`에서 **아무 변화도 없었다**).
+            // ②애초에 먹지도 않았다 — 얼룩은 물이 받는 그림자가 아니라 **지형의 셀프 섀도**가
+            // 얕은 물 아래로 비치는 것이다(라이트 그림자를 전부 끄면 사라지지만 물만 끄면 안 사라진다).
         }
 
         static TerrainLayer EnsureTerrainLayer(string name, Color a, Color b, float tile)

@@ -307,6 +307,40 @@ namespace Ulon.Editor
 
         /// <summary>이번 판이 무슨 조건이었는지 — 뜨는 PNG 이름에 붙는다.</summary>
         static string ProbeTag = "base";
+        /// <summary>판별 전용 — 0 이상이면 ⓒ의 카메라 far가 그 값이 된다.</summary>
+        static float FarOverride = -1f;
+
+        /// <summary>
+        /// **깊이 눈금 축** — 물을 끄면 톱니가 **완전히 사라진다**(`w_off` 판). 그러니 톱니는 뭍이
+        /// 아니라 **물이 그린다**. 물은 얕은 색을 `_CameraDepthNormalsTexture`의 깊이로 정하는데,
+        /// 그 깊이는 **far 기준 선형 16비트**다(far 500m면 한 눈금 7.6mm). 물가가 완경사면 그 한 눈금이
+        /// 지면에서 수십 cm로 퍼지고, 시선이 지면과 얕은 각을 이루면 화면에서 더 넓어진다.
+        /// far만 줄여(정밀도를 올려) 톱니가 따라 줄면 **범인은 깊이 눈금**이다.
+        /// </summary>
+        public static void RunShoreStepFar()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+            try
+            {
+                foreach (float far in new[] { 500f, 200f, 120f })
+                {
+                    FarOverride = far;
+                    ProbeTag = "f_far" + far.ToString("0");
+                    Debug.Log("[물가결] ── far " + far.ToString("0") + "m (깊이 한 눈금 " +
+                              (far / 65536f * 1000f).ToString("0.00") + "mm) ──");
+                    ScreenEdge(c, ac, "15_lake_river");
+                    ScreenEdge(c, ac, "65_sea_close");
+                }
+            }
+            finally { FarOverride = -1f; }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
 
         /// <summary>
         /// **격자가 기각된 뒤의 두 축**(2026-09-11). 셀을 1/2·2배로 굽어도 ⓒ가 안 변했으니
@@ -380,7 +414,11 @@ namespace Ulon.Editor
 
             var camGo = new GameObject("ShoreStepCam");
             var cam = camGo.AddComponent<Camera>();
-            cam.fieldOfView = 55f; cam.nearClipPlane = 0.05f; cam.farClipPlane = 500f;
+            cam.fieldOfView = 55f; cam.nearClipPlane = 0.05f;
+            // **far는 판별 축이다** — 빌트인 `_CameraDepthNormalsTexture`의 깊이는 far 기준 **선형
+            // 16비트**라 far를 줄이면 정밀도가 그만큼 올라간다. 물이 그 깊이로 얕은 색을 정하므로,
+            // far를 줄여 톱니가 줄면 범인은 **깊이 눈금**이다(기본은 샷과 같은 500m).
+            cam.farClipPlane = FarOverride > 0f ? FarOverride : 500f;
             var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32);
             var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
             cam.targetTexture = rt;
