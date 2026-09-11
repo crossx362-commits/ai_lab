@@ -33,7 +33,11 @@ namespace Ulon.Editor
         /// 거품을 끄면 0.5%(하한 아래), 띠를 1.5단계처럼 벌리면 상한 위로 나간다.
         const float ShoreFadeMin = 25.0f;     // 실측 46.7·53.1 대 NC 7.3
         const float ShoreFoamMin = 0.02f;     // 실측 3.2%·4.2% 대 NC(거품 끔) 0.5%
-        const float ShoreFoamMax = 0.15f;     // 실측 3.2%·4.2% 대 NC(띠 벌림) 1.5단계의 18.6%·39.8%
+        // 1.7b에서 **상한을 0.15 → 0.10으로 조였다**(느슨하게가 아니라 조인 것이다).
+        // 이음선 깨기가 거품의 흰 몫을 절반 가까이 낮추니 **상한 쪽 NC도 같이 낮아져** 띠를 벌린
+        // 판이 13.4%로 옛 상한 15% 안에 들어왔다 — 그 판에서 자는 흰 도넛을 다시 못 잡는다.
+        // 실측 2.2%·3.1% 대 NC 13.4%라 3배 여유를 두고 10%로 내린다.
+        const float ShoreFoamMax = 0.10f;     // 실측 2.2%·3.1% 대 NC(띠 벌림) 13.4%
 
         public static void AssertShoreFoam()
         {
@@ -44,9 +48,13 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("수면에 깊이 요구 부품(WaterDepthCamera)이 없습니다 — " +
                     "깊이 텍스처가 안 구워져 물이 어디서나 깊은 색으로 그려집니다.");
 
+            // **급경사 물가는 흰 몫의 대상이 아니다**(1.7b, 검수 지시 「하한을 낮추지 말고 표본을 갈라라」).
+            // 갈라낸 표본 수를 합산해 두고, 어느 샷에서도 0이면 **죽은 예외**로 실패시킨다.
+            int totalExcluded = 0;
             foreach (string shot in new[] { "64_river_bend", "15_lake_river" })
             {
-                float fade = OutdoorCensus.ShoreFoamStats(shot, out float white, out string det);
+                float fade = OutdoorCensus.ShoreFoamStats(shot, out float white, out int excluded, out string det);
+                totalExcluded += excluded;
                 if (fade < 0f)
                     throw new InvalidOperationException("물가 " + shot + " — " + det +
                         ". **못 재는 자를 초록불로 남기지 않는다.**");
@@ -67,6 +75,9 @@ namespace Ulon.Editor
                         (white * 100f).ToString("0.0") + "%입니다(상한 " + (ShoreFoamMax * 100f).ToString("0.0") +
                         "%) — 띠가 아니라 **흰 웅덩이**입니다. 물이 물로 안 읽힙니다.");
             }
+            if (totalExcluded == 0)
+                throw new InvalidOperationException("급경사 물가 예외가 **한 픽셀도 안 걸렸습니다** — " +
+                    "아무것도 안 거르는 예외는 자를 무르게 만들 뿐입니다. 표본 가르기가 죽었습니다.");
 
             // NC 둘 — **끄는 길을 실제로 밟아** 자가 우는지 본다(되돌리기는 `finally`가 짝으로 진다).
             var mat = FindWaterMat();

@@ -34,19 +34,25 @@ namespace Ulon.Editor
             }
 
             // **실루엣 페이드의 네거티브 컨트롤**(1.7단계, 검수 조건 — 새 자를 만들지 않고 화면으로
-            // 판정하되 NC 한 판은 남긴다). `_FoamMinBandPx = 0`이면 죽임이 꺼진다 — 그 판에서
+            // 판정하되 NC 한 판은 남긴다). `_FoamBreak = 0`이면 죽임이 꺼진다 — 그 판에서
             // `64` 좌안의 **1~2px 순백 선이 다시 나타나야** 이 처방이 실제로 그것을 지운 것이다.
             var wm = FindWaterMaterial();
-            if (wm != null && wm.HasProperty("_FoamMinBandPx"))
+            if (wm != null && wm.HasProperty("_FoamBreak"))
             {
-                float keepPx = wm.GetFloat("_FoamMinBandPx");
+                float keepBand = wm.GetFloat("_FoamBreak");
                 try
                 {
-                    wm.SetFloat("_FoamMinBandPx", 0f);
-                    ShotTo("64_river_bend", System.IO.Path.Combine(dir, "64_river_bend_nc_thinkill.png"));
-                    Debug.Log("[물눈] NC — 얇은 띠 죽임을 끈 판을 64_river_bend_nc_thinkill.png에 남겼다");
+                    wm.SetFloat("_FoamBreak", 0f);
+                    // `15`도 같이 찍는다 — NC 판이 곧 이 랩의 **「전」**이다(죽임이 꺼진 상태가
+                    // 1.7이 커밋한 화면이다). 호수 띠가 그대로 살아 있는지 나란히 본다.
+                    foreach (string nc in new[] { "64_river_bend", "15_lake_river" })
+                    {
+                        ShotTo(nc, System.IO.Path.Combine(dir, nc + "_nc_thinkill.png"));
+                        FoamAreaShares(nc, out _, out _, out _, out string ncDet);
+                        Debug.Log("[물눈] NC 죽임끔 " + nc + " 거품 면적 — " + ncDet);
+                    }
                 }
-                finally { wm.SetFloat("_FoamMinBandPx", keepPx); }
+                finally { wm.SetFloat("_FoamBreak", keepBand); }
             }
 
             if (Application.isBatchMode)

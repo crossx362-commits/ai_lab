@@ -35,7 +35,8 @@ Shader "Ulon/StylizedWater"
         _FoamWidthM ("거품 띠 가로폭(m)", Float) = 2.0
         _FoamDepthSteep ("거품 문턱 상한(m)", Float) = 0.30
         _FoamMaxAlpha ("거품 최대 덮음", Range(0,1)) = 0.75
-        _FoamMinBandPx ("거품 띠 가시 하한(px)", Float) = 0.0
+        _FoamBreak ("거품 이음선 깨기", Range(0,1)) = 0.0
+        _FoamBreakScale ("거품 깨기 타일(1/m)", Float) = 2.5
         _FoamNoiseScale ("거품 잡음 타일(1/m)", Float) = 0.6
         _FoamJitter ("거품 가장자리 흐트러짐", Range(0,1)) = 0.40
         _FoamEdgeSoft ("거품 가장자리 부드러움", Range(0.01,1)) = 0.22
@@ -71,7 +72,7 @@ Shader "Ulon/StylizedWater"
         fixed4 _Color, _ShallowColor, _DeepColor, _FoamColor;
         float _DepthMax, _ShallowAlpha, _DeepAlpha;
         float _FoamDepthSteep, _FoamWidthM, _FoamNoiseScale, _FoamJitter, _FoamEdgeSoft, _TintStrength;
-        float _FoamMaxAlpha, _FoamMinBandPx;
+        float _FoamMaxAlpha, _FoamBreak, _FoamBreakScale;
         float _RippleScale, _RippleSpeed, _RippleTint, _RippleCrest, _RippleCrestStrength;
         half _Glossiness, _Metallic;
 
@@ -205,20 +206,18 @@ Shader "Ulon/StylizedWater"
             // **거품 안에서도 물색이 비쳐야 한다**(검수 판정 1.6단계). 마스크를 1까지 올리면
             // 띠가 **순백 한 겹**이 되어 과노출로 읽힌다(`64` 좌안). 덮음에 상한을 둔다 —
             // 물빛 위에 거품을 **얹는** 것이지 물을 흰색으로 **갈아치우는** 것이 아니다.
-            // **물가 실루엣의 1~2px 순백 선**(1.7단계, 검수 판정). 거품값은 수심 0에서 언제나 1
-            // 이라 메시가 끝나는 픽셀이 **순백 고원**이 된다. 폭으로 알파를 깎는 길은 세 번
-            // 빗나갔다 — ①`fwidth(diff)`는 완경사에서 「안 좁다」 ②`1/fwidth(foam)`은 고원에서
-            // 기울기 0 ③가로폭×px/m×|시선.y|는 이 자리에서 ~7px라 하한 6에 안 걸린다.
-            // 원인은 띠 폭이 아니라 **수심 0 고원 자체**다. 수심 0에서 화면 2px는 완전히 끄고
-            // 4px에서 되돌리면 그 고원이 선이 되기 전에 사라진다. 원거리(`15`)에서 같은 3px는
-            // 수 미터라 호수 띠를 삼키므로 월드 상한(10~20cm)을 둔다.
-            // (`_FoamMinBandPx = 0`이면 이 죽임을 끈다 — NC 경로.)
-            float mPerPx = max(1e-4, fwidth(diff));
-            float goneM = min(2.0 * mPerPx, 0.10);
-            float fullM = min(4.0 * mPerPx, 0.20);
-            float outer = _FoamMinBandPx <= 0.0
-                        ? 1.0
-                        : smoothstep(goneM, max(fullM, goneM + 1e-4), diff);
+            // **물가 순백 선 — 원인은 폭이 아니라 「고르게 이어짐」이다**(1.7b).
+            // 폭을 죽이는 길을 네 번 갔다(①`fwidth(diff)` ②`1/fwidth(foam)` ③가로폭×px/m
+            // ④월드 가로폭 `foamMax/tanS`). 넷째 판을 찍고 **셈이 가설을 부쉈다**:
+            //   문제의 `64` 좌안 선 = 흰 픽셀 **세로런 중앙값 3px**
+            //   검수가 받은 `15` 호수 띠 = **1px**
+            // **나쁜 쪽이 더 두껍다.** 좁아서 나쁜 게 아니라 **끊기지 않고 이어져** 계단 노치를
+            // 그대로 그리기 때문에 나쁘다. 그래서 폭이 아니라 **이어짐**을 끊는다 — 거품 덮음에
+            // 잔칸 잡음을 곱해 얼룩지게 만들면 같은 자리가 「선」이 아니라 「거품 무리」로 읽힌다.
+            // 값이 0이면 이 깨기가 꺼진다(NC 경로 — 그 판에서 선이 되살아나야 한다).
+            float2 buv = IN.worldPos.xz * _FoamBreakScale;
+            float bnoise = VNoise(buv) * 0.6 + VNoise(buv * 3.1) * 0.4;
+            float outer = lerp(1.0 - _FoamBreak, 1.0, bnoise);
             float foamCover = foamMask * _FoamMaxAlpha * outer;
 
             o.Albedo = lerp(water.rgb + crest, _FoamColor.rgb, foamCover) * _Color.rgb;

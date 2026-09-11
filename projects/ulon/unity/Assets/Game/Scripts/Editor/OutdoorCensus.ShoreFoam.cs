@@ -35,8 +35,22 @@ namespace Ulon.Editor
         /// </summary>
         internal static float ShoreFoamStats(string shotName, out float whiteShare, out string detail)
         {
+            return ShoreFoamStats(shotName, out whiteShare, out _, out detail);
+        }
+
+        /// <summary>
+        /// **급경사 물가는 흰 몫의 대상이 아니다**(1.7b, 검수 지시 「하한을 낮추지 말고 표본을 갈라라」).
+        /// 얕은 띠 픽셀 중 **원장 바닥 기울기가 가파른 자리**는 정답이 「그 자리엔 거품이 없다」라
+        /// 하한으로 물을 대상이 아니다 — 그런데 분모에는 들어가 있어 완경사 물의 몫을 끌어내린다.
+        /// 갈라낸 표본 수를 `excluded`로 돌려주고, 어느 샷에서도 0이면 **죽은 예외**로 실패시킨다
+        /// (아무것도 안 거르는 예외는 자를 무르게 만들 뿐이다).
+        /// </summary>
+        internal static float ShoreFoamStats(string shotName, out float whiteShare, out int excluded, out string detail)
+        {
             detail = "";
             whiteShare = -1f;
+            excluded = 0;
+            const float SteepShoreDeg = 35f;
             var shots = QaShots.BuildShots();
             int idx = -1;
             for (int i = 0; i < shots.Length; i++)
@@ -63,7 +77,7 @@ namespace Ulon.Editor
                 var px = tex.GetPixels32();
 
                 double sShallow = 0, sOpen = 0;
-                int nShallow = 0, nOpen = 0, nWhite = 0;
+                int nShallow = 0, nOpen = 0, nWhite = 0, nGentle = 0;
                 float y = WorldTerrain.SeaLevel;
                 for (int j = 0; j < H; j += 2)
                     for (int i = 0; i < W; i += 2)
@@ -81,19 +95,23 @@ namespace Ulon.Editor
                         if (d > 0.05f && d <= 0.5f)
                         {
                             sShallow += lum; nShallow++;
+                            // **급경사 물가는 흰 몫의 대상이 아니다** — 분모에서도 뺀다.
+                            if (BottomSlopeDeg(p.x, p.z) >= SteepShoreDeg) { excluded++; continue; }
+                            nGentle++;
                             // 거품은 **흰색**이다 — 물빛이 아무리 밝아도 여기까지는 안 온다.
                             if (c.r >= 215 && c.g >= 215 && c.b >= 215) nWhite++;
                         }
                         else if (d >= 2.0f) { sOpen += lum; nOpen++; }
                     }
-                if (nShallow < 40 || nOpen < 40)
+                if (nShallow < 40 || nOpen < 40 || nGentle < 20)
                 {
-                    detail = "표본 얕은 " + nShallow + "px · 열린 " + nOpen + "px — 못 잽니다";
+                    detail = "표본 얕은 " + nShallow + "px(완경사 " + nGentle + ") · 열린 " + nOpen + "px — 못 잽니다";
                     return -1f;
                 }
                 float a = (float)(sShallow / nShallow), b = (float)(sOpen / nOpen);
-                whiteShare = (float)nWhite / nShallow;
-                detail = "얕은 띠 " + a.ToString("0.0") + "(" + nShallow + "px, 흰 몫 " +
+                whiteShare = (float)nWhite / nGentle;
+                detail = "얕은 띠 " + a.ToString("0.0") + "(" + nShallow + "px 중 완경사 " + nGentle +
+                         "px·급경사 " + excluded + "px 뺌, 흰 몫 " +
                          (whiteShare * 100f).ToString("0.0") + "%) · 열린 물 " +
                          b.ToString("0.0") + "(" + nOpen + "px)";
                 return a - b;
