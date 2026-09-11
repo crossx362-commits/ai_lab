@@ -66,6 +66,14 @@ run_case tamper "rm -f Assets/AutoDev/Editor/AutoDevCompileCheck.cs" FAILED "검
 # 4) 깨진 C# — Unity가 실제로 막아야 한다
 run_case broken_cs "printf 'class B { void X(){ int a = ; } }\n' > Assets/Game/Scripts/NcBroken.cs" FAILED "C# 컴파일 오류"
 
+# 4b) 실패하는 테스트 — 컴파일은 되지만 테스트가 막아야 한다
+run_case failing_test \
+  "printf 'using NUnit.Framework;\nnamespace SandboxGame.Tests { public class NcFail { [Test] public void AlwaysFails(){ Assert.AreEqual(1,2); } } }\n' > Assets/Tests/EditMode/NcFail.cs" \
+  FAILED "테스트 1건 실패"
+
+# 4c) 테스트 삭제로 통과 만들기 — 쓰는 것은 허용, 지우는 것은 금지
+run_case delete_test "rm -f Assets/Tests/EditMode/SandboxEditModeTests.cs" FAILED "검증 장치 변조"
+
 # 5) CLI 부재 — 인프라 실패는 시도 미차감 UNKNOWN
 mkcfg state/nc_missing.json "exit 0"
 python3 - <<'PY'

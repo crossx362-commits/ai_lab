@@ -27,6 +27,8 @@ class Target:
     unity_timeout_sec: int
     allowed_write_globs: list[str]
     protected_globs: list[str]
+    test_platforms: list[str]
+    test_guard_globs: list[str]
 
 
 @dataclass
@@ -72,6 +74,8 @@ class Config:
             unity_timeout_sec=int(t.get("unity_timeout_sec", 1800)),
             allowed_write_globs=list(t.get("allowed_write_globs", ["**"])),
             protected_globs=list(t.get("protected_globs", [])),
+            test_platforms=list(t.get("test_platforms", [])),
+            test_guard_globs=list(t.get("test_guard_globs", [])),
         )
 
     def agent(self, name: str) -> AgentConfig:

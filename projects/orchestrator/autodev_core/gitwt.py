@@ -38,6 +38,7 @@ def git(repo: Path, *args: str, check: bool = True) -> str:
 @dataclass
 class Changes:
     files: list[str] = field(default_factory=list)
+    deleted: list[str] = field(default_factory=list)
     insertions: int = 0
     deletions: int = 0
     diff: str = ""
@@ -139,8 +140,12 @@ def collect_changes(wt: Path, base: str) -> Changes:
             a, b = parts[0], parts[1]
             ins += int(a) if a.isdigit() else 0
             dele += int(b) if b.isdigit() else 0
+    deleted = [
+        ln for ln in git(wt, "diff", "--cached", "--diff-filter=D", "--name-only", merge_base).splitlines()
+        if ln.strip()
+    ]
     diff = git(wt, "diff", "--cached", merge_base)
-    return Changes(files=names, insertions=ins, deletions=dele, diff=diff)
+    return Changes(files=names, deleted=deleted, insertions=ins, deletions=dele, diff=diff)
 
 
 def restore_tracked(wt: Path, ref: str = "HEAD") -> None:

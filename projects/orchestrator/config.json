@@ -10,6 +10,8 @@
       "unity_version": "6000.3.14f1",
       "allowed_write_globs": ["Assets/**"],
       "protected_globs": ["Assets/AutoDev/**"],
+      "test_platforms": ["EditMode", "PlayMode"],
+      "test_guard_globs": ["Assets/Tests/**"],
       "unity_timeout_sec": 1800
     }
   },

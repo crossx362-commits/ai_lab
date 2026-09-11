@@ -85,7 +85,21 @@ def cmd_verify(args) -> int:
         _p("  errors  :")
         for e in r.errors[:15]:
             _p(f"    {e}")
-    return 0 if r.verdict == "PASS" else (1 if r.verdict == "FAILED" else 2)
+    if not args.tests or r.verdict != "PASS":
+        return 0 if r.verdict == "PASS" else (1 if r.verdict == "FAILED" else 2)
+
+    worst = "PASS"
+    for plat in t.test_platforms:
+        tr = unityrun.run_tests(t, project, plat, log_prefix=prefix, conn=conn, unity_slots=cfg.unity_slots)
+        _p(f"  {tr.summary}  ({tr.duration_s:.1f}s) — {tr.reason}")
+        for f in tr.failures[:10]:
+            _p(f"    {f}")
+        if tr.verdict == "FAILED":
+            worst = "FAILED"
+        elif tr.verdict == "UNKNOWN" and worst != "FAILED":
+            worst = "UNKNOWN"
+    _p(f"  종합    : {worst}")
+    return 0 if worst == "PASS" else (1 if worst == "FAILED" else 2)
 
 
 # --------------------------------------------------------------------------
@@ -216,7 +230,9 @@ def cmd_run(args) -> int:
             continue
 
         # 2) 검증 장치를 건드렸는가 — 게이트를 지워 PASS를 만드는 길을 코드로 막는다.
+        #    테스트는 **쓰는 것은 허용, 지우는 것은 금지**다(§2-16). 그래서 삭제만 따로 본다.
         tampered = gitwt.touches_protected(ch.files, t.protected_globs)
+        tampered += [f"(삭제) {f}" for f in gitwt.touches_protected(ch.deleted, t.test_guard_globs)]
         if tampered:
             reason = f"검증 장치 변조 시도: {', '.join(tampered[:5])}"
             db.update_attempt(conn, attempt_id, status="FAILED", agent_exit=ar.exit_code,
@@ -250,15 +266,36 @@ def cmd_run(args) -> int:
         for e in ur.errors[:8]:
             _p(f"    {e}")
 
+        # 5) 컴파일이 통과했으면 테스트까지 본다. 컴파일은 "돌아간다"이지 "맞다"가 아니다.
+        verdict, reason, errtext = ur.verdict, ur.reason, ur.error_summary
+        if ur.verdict == "PASS" and t.test_platforms:
+            for plat in t.test_platforms:
+                tr = unityrun.run_tests(t, wt, plat, log_prefix=prefix, conn=conn,
+                                        task_id=task_id, attempt_id=attempt_id,
+                                        unity_slots=cfg.unity_slots)
+                _p(f"  {tr.summary} ({tr.duration_s:.1f}s) — {tr.reason}")
+                for f in tr.failures[:6]:
+                    _p(f"    {f}")
+                if tr.verdict != "PASS":
+                    verdict = tr.verdict
+                    reason = f"{plat} {tr.reason}"
+                    errtext = "\n".join(tr.failures[:20]) or tr.reason
+                    break
+
         db.update_attempt(conn, attempt_id,
-                          status=ur.verdict, agent_exit=ar.exit_code,
+                          status=verdict, agent_exit=ar.exit_code,
                           changed_files=len(ch.files), changed_lines=ch.lines,
-                          compile_verdict=ur.verdict, reason=ur.reason,
-                          error_summary=ur.error_summary, ended_at=db.now())
+                          compile_verdict=f"compile={ur.verdict}/final={verdict}", reason=reason,
+                          error_summary=errtext, ended_at=db.now())
         db.update_task(conn, task_id, attempts=n)
+        ur = unityrun.UnityResult(verdict, reason, ur.exit_code, ur.errors, ur.log_path, ur.report, ur.duration_s)
+        if errtext:
+            ur.errors = errtext.splitlines()
 
         if ur.verdict == "PASS":
-            commit_hash = gitwt.commit(wt, f"autodev(task-{task_id:04d}): {args.goal}\n\n시도 {n}회, Unity 컴파일 PASS")
+            gate = "컴파일 + " + "·".join(t.test_platforms) if t.test_platforms else "컴파일"
+            commit_hash = gitwt.commit(
+                wt, f"autodev(task-{task_id:04d}): {args.goal}\n\n시도 {n}회, Unity {gate} PASS")
             final_verdict, final_reason = "PASS", ur.reason
             break
 
@@ -399,8 +436,9 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--max-attempts", type=int, default=None)
     r.set_defaults(func=cmd_run)
 
-    v = sub.add_parser("verify", help="Unity 컴파일 판정만 실행")
+    v = sub.add_parser("verify", help="Unity 컴파일 판정 (+ --tests 로 테스트까지)")
     v.add_argument("--project", default=None)
+    v.add_argument("--tests", action="store_true", help="컴파일 후 테스트도 실행")
     v.set_defaults(func=cmd_verify)
 
     s = sub.add_parser("status", help="Task 상태")

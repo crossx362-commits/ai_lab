@@ -65,9 +65,20 @@
 | 에이전트 타임아웃 | 미차감 UNKNOWN | 그대로 |
 | STOP 중 루프 | 즉시 STOPPED | 1차 **안 멈춤** → 수리 후 그대로 |
 | 병렬 2건 | 서로 격리 | 각 worktree에 자기 파일만 |
+| EditMode/PlayMode 테스트 | PASS | 각 1/1 통과 (결과 XML 파싱) |
+| 실패하는 테스트 | FAILED | 그대로 (실패 메시지 추출) |
+| 테스트 삭제 | FAILED | 그대로 (쓰기 허용·삭제 금지) |
+| 테스트 0건 실행 | UNKNOWN | 코드상 처리(미발동) |
 | Unity 슬롯 1 | 직렬화 | 겹침 -1.63s (DB 시각) |
 
-## 아직 없는 것 (PHASE 2 이후)
+## 완료 판정의 층 (현재)
 
-EditMode/PlayMode 테스트(Unity Test Framework 미설치), Claude/Grok/Ollama 어댑터, 승격 라우팅,
-Planner 작업 분해, Memory Manager, 크래시 복구, Windows Worker, GUI.
+```
+변경 있음 → 검증장치 무변조 → 범위 내 → COMPILE → EDITMODE → PLAYMODE → 커밋
+```
+어느 층에서든 걸리면 그 이유가 다음 시도의 프롬프트로 들어간다. 층을 건너뛰는 길은 없다.
+
+## 아직 없는 것 (PHASE 4 이후)
+
+Claude/Grok/Ollama 어댑터, 승격 라우팅, Planner 작업 분해, Memory Manager,
+크래시 복구(RUNNING으로 남은 task 회수), Windows Worker, GUI.

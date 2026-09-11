@@ -45,6 +45,118 @@ class UnityResult:
         return "\n".join(self.errors[:40])
 
 
+@dataclass
+class TestResult:
+    verdict: str  # PASS / FAILED / UNKNOWN
+    platform: str
+    reason: str
+    total: int = 0
+    passed: int = 0
+    failed: int = 0
+    skipped: int = 0
+    failures: list[str] = field(default_factory=list)
+    xml_path: Path | None = None
+    duration_s: float = 0.0
+
+    @property
+    def summary(self) -> str:
+        return f"{self.platform}: {self.verdict} (총 {self.total}, 통과 {self.passed}, 실패 {self.failed}, 건너뜀 {self.skipped})"
+
+
+def _parse_results(xml_path: Path) -> tuple[int, int, int, int, list[str]]:
+    """NUnit3 결과 XML을 읽는다. 읽지 못하면 예외를 올린다 — 0건을 통과로 둔갑시키지 않기 위해."""
+    import xml.etree.ElementTree as ET
+
+    root = ET.parse(str(xml_path)).getroot()
+    total = int(root.get("total", 0))
+    passed = int(root.get("passed", 0))
+    failed = int(root.get("failed", 0))
+    skipped = int(root.get("skipped", 0))
+    failures = []
+    for case in root.iter("test-case"):
+        if case.get("result") in ("Failed", "Error"):
+            msg = ""
+            f = case.find("failure/message")
+            if f is not None and f.text:
+                msg = " ".join(f.text.split())[:300]
+            failures.append(f"{case.get('fullname')} :: {msg}")
+    return total, passed, failed, skipped, failures
+
+
+def run_tests(
+    target: Target,
+    project_path: Path,
+    platform: str,
+    *,
+    log_prefix: Path,
+    conn=None,
+    task_id=None,
+    attempt_id=None,
+    unity_slots: int = safety.DEFAULT_UNITY_SLOTS,
+) -> TestResult:
+    """EditMode / PlayMode 테스트를 배치로 돌리고 결과 XML로 판정한다.
+
+    "종료코드 0 = 통과"로 두지 않는다. **결과 XML이 있고, 총 개수가 0이 아니고, 실패가 0**이어야
+    PASS다. 테스트가 한 건도 안 돌았는데 초록불이 켜지는 것이 가장 위험한 형태의 거짓 통과다.
+    """
+    xml_path = Path(f"{log_prefix}.{platform.lower()}.xml")
+    unity_log = Path(f"{log_prefix}.{platform.lower()}.unity.log")
+    unity_log.parent.mkdir(parents=True, exist_ok=True)
+    if xml_path.exists():
+        xml_path.unlink()  # 지난 판의 결과를 이번 판으로 착각하지 않게
+
+    cmd = [
+        str(target.unity_editor),
+        "-batchmode",
+        "-nographics",
+        "-runTests",
+        "-projectPath", str(project_path),
+        "-testPlatform", platform,
+        "-testResults", str(xml_path),
+        "-logFile", str(unity_log),
+    ]
+
+    with safety.unity_slot(slots=unity_slots, timeout=target.unity_timeout_sec):
+        r = proc.run(
+            cmd, cwd=project_path, timeout=target.unity_timeout_sec,
+            log_prefix=Path(f"{log_prefix}.{platform.lower()}"),
+            conn=conn, task_id=task_id, attempt_id=attempt_id, kind="unity-test",
+        )
+
+    log_text = unity_log.read_text(encoding="utf-8", errors="replace") if unity_log.is_file() else ""
+    combined = log_text + "\n" + (r.stdout or "") + "\n" + (r.stderr or "")
+
+    if r.status == "SPAWN_FAILED":
+        return TestResult("UNKNOWN", platform, f"Unity 실행 실패: {r.stderr[:200]}", duration_s=r.duration_s)
+    if r.status == "TIMEOUT":
+        return TestResult("UNKNOWN", platform, f"테스트 타임아웃({target.unity_timeout_sec}s)", duration_s=r.duration_s)
+
+    cs_errors = [ln.strip() for ln in _CS_ERROR.findall(combined)]
+    if cs_errors:
+        return TestResult("FAILED", platform, f"컴파일 오류로 테스트를 돌리지 못했다 ({len(cs_errors)}건)",
+                          failures=cs_errors[:20], xml_path=xml_path, duration_s=r.duration_s)
+
+    if not xml_path.is_file():
+        return TestResult("UNKNOWN", platform, "결과 XML이 없다 — 테스트가 실제로 돌았는지 알 수 없다",
+                          xml_path=None, duration_s=r.duration_s)
+    try:
+        total, passed, failed, skipped, failures = _parse_results(xml_path)
+    except Exception as e:
+        return TestResult("UNKNOWN", platform, f"결과 XML을 읽지 못했다: {e}",
+                          xml_path=xml_path, duration_s=r.duration_s)
+
+    if total == 0:
+        return TestResult("UNKNOWN", platform, "테스트가 0건 실행됐다 — 통과로 보지 않는다",
+                          total=0, xml_path=xml_path, duration_s=r.duration_s)
+    if failed > 0:
+        return TestResult("FAILED", platform, f"테스트 {failed}건 실패",
+                          total=total, passed=passed, failed=failed, skipped=skipped,
+                          failures=failures, xml_path=xml_path, duration_s=r.duration_s)
+    return TestResult("PASS", platform, f"테스트 {passed}/{total} 통과",
+                      total=total, passed=passed, failed=failed, skipped=skipped,
+                      xml_path=xml_path, duration_s=r.duration_s)
+
+
 def compile_check(
     target: Target,
     project_path: Path,
