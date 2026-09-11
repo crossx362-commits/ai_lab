@@ -171,11 +171,18 @@ def assess(snap: Snapshot) -> Assessment:
         # 못 쟀으면 초록이라고 하지 않는다 — 모르는 것은 모른다고 표시하고 한 단계 조심한다.
         raise_to("YELLOW", "여유 비율을 재지 못했다")
 
+    # 스왑 **사용률만으로는 RED를 만들지 않는다.** macOS의 스왑 사용량은 "지금 부족하다"가
+    # 아니라 "예전에 한 번이라도 밀려났다"의 누적이라, 회수되지 않은 채 오래 남는다.
+    # 2026-09-11 실측: 여유 71% · 증가 0MB/분인데 스왑 91%라는 이유로 RED가 떠서
+    # 매 작업이 300초씩 기다리다 실패했다(NC 스위트 전멸). 오탐이었다.
+    # 지금 밀려나는 중인지는 **증가 속도**가 말해준다 — 높은 비율 + 증가 중일 때만 RED다.
     if snap.swap_total_mb:
-        if snap.swap_ratio >= SWAP_RATIO_RED:
-            raise_to("RED", f"스왑 {snap.swap_ratio * 100:.0f}% 사용")
+        growing = (snap.swap_rate_mb_min or 0.0) >= SWAP_RATE_YELLOW
+        if snap.swap_ratio >= SWAP_RATIO_RED and growing:
+            raise_to("RED", f"스왑 {snap.swap_ratio * 100:.0f}%인데 계속 늘고 있다")
         elif snap.swap_ratio >= SWAP_RATIO_YELLOW:
-            raise_to("YELLOW", f"스왑 {snap.swap_ratio * 100:.0f}% 사용")
+            raise_to("YELLOW", f"스왑 {snap.swap_ratio * 100:.0f}% 사용"
+                               + ("(정체)" if not growing else ""))
 
     if snap.swap_rate_mb_min is not None:
         if snap.swap_rate_mb_min >= SWAP_RATE_RED:

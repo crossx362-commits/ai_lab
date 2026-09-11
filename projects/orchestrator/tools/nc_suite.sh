@@ -224,13 +224,16 @@ cases = [
     ("free_yellow",  snap(free=20.0),                "YELLOW"),
     ("free_red",     snap(free=5.0),                 "RED"),
     ("swap_yellow",  snap(used=4000.0),              "YELLOW"),
-    ("swap_red",     snap(used=6000.0),              "RED"),
+    # 스왑이 꽉 차 있어도 **늘고 있지 않으면** RED가 아니다 — macOS 스왑은 과거 누적이라
+    # 회수되지 않고 남는다. 여유 71%·증가 0인데 RED를 찍어 매 작업이 300초씩 기다린 적이 있다.
+    ("swap_full_idle", snap(used=6000.0, rate=0.0),  "YELLOW"),
+    ("swap_full_growing", snap(used=6000.0, rate=300.0), "RED"),
     ("rate_yellow",  snap(rate=80.0),                "YELLOW"),
     ("rate_red",     snap(rate=300.0),               "RED"),
     # 못 쟀을 때 초록이라고 하면 안 된다 — 모르는 것은 모른다고 한다.
     ("unmeasured",   snap(free=None),                "YELLOW"),
     # 최악이 이긴다: 여유는 넉넉해도 스왑이 터졌으면 RED
-    ("worst_wins",   snap(free=80.0, used=6000.0),   "RED"),
+    ("worst_wins",   snap(free=5.0, used=6000.0),    "RED"),
 ]
 bad = 0
 for name, s, want in cases:
@@ -244,7 +247,7 @@ if M.effective_unity_slots("RED", 2) != 1: print("MISMATCH slots RED"); bad += 1
 print("MEMORY_OK" if bad == 0 else f"MEMORY_BAD {bad}")
 PY
 if grep -q "^MEMORY_OK" /tmp/nc_memory.log; then
-  echo "  PASS  memory_rules — 9판정+슬롯 전부 일치(못 잰 값은 GREEN 아님)"; PASS=$((PASS+1))
+  echo "  PASS  memory_rules — 10판정+슬롯 전부 일치(못 잰 값은 GREEN 아님, 스왑 정체는 RED 아님)"; PASS=$((PASS+1))
 else echo "  FAIL  memory_rules (로그: /tmp/nc_memory.log)"; FAIL=$((FAIL+1)); fi
 
 # 9) 남의 Unity — 이름이 Unity라도 **다른 프로젝트**면 고르지 않는다.
@@ -356,6 +359,12 @@ class Fake:
 if P.probe("ghost", Fake()).state != P.UNAVAILABLE: bad.append("없는 CLI를 UNAVAILABLE로 안 봄")
 
 # ③ 실패 분류 — 장애 종류마다 처방이 다르다
+# 해제 시각을 말해주면 그때까지 쉰다 — 기본 냉각으로 15분마다 두드리지 않는다
+got = P.classify_failure("usage limit ... try again at 11:41 PM")
+if not got or not (60 < got[1] <= 24*3600): bad.append(f"해제 시각 파싱 실패: {got}")
+if P.classify_failure("rate limit, try again in 5 minutes")[1] != 300: bad.append("in 5 minutes 파싱 실패")
+if P.classify_failure("429 too many requests")[1] != P.RATE_COOLDOWN: bad.append("시각 없을 때 기본값 아님")
+
 for text, want in [
     ("Error: 429 rate limit exceeded", P.RATE_LIMITED),
     ("HTTP 401 Unauthorized", P.AUTH_REQUIRED),

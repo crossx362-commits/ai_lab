@@ -135,6 +135,35 @@ _BILLING = re.compile(r"(insufficient (credit|quota|funds)|billing|subscription 
                       r"payment required|402|구독)", re.I)
 
 
+# 한도 오류는 대개 **언제 풀리는지**를 같이 말해준다("try again at 11:41 PM", "in 5 minutes").
+# 그것을 읽지 않으면 기본 냉각(15분)이 끝날 때마다 헛되이 같은 Provider를 부른다 —
+# 실제로 2시간 반 남은 한도를 15분마다 두드릴 뻔했다(2026-09-11).
+_RETRY_AT = re.compile(r"try again at\s+(\d{1,2}):(\d{2})\s*(AM|PM)?", re.I)
+_RETRY_IN = re.compile(r"try again in\s+(\d+)\s*(second|minute|hour)", re.I)
+
+
+def _cooldown_from(text: str, default: float) -> float:
+    m = _RETRY_IN.search(text or "")
+    if m:
+        n, unit = int(m.group(1)), m.group(2).lower()
+        return n * {"second": 1, "minute": 60, "hour": 3600}[unit]
+    m = _RETRY_AT.search(text or "")
+    if m:
+        import datetime
+        h, mi, ap = int(m.group(1)), int(m.group(2)), (m.group(3) or "").upper()
+        if ap == "PM" and h != 12:
+            h += 12
+        elif ap == "AM" and h == 12:
+            h = 0
+        now = datetime.datetime.now()
+        tgt = now.replace(hour=h % 24, minute=mi, second=0, microsecond=0)
+        if tgt <= now:                      # 자정을 넘긴 시각이면 내일이다
+            tgt += datetime.timedelta(days=1)
+        secs = (tgt - now).total_seconds()
+        return secs if 0 < secs <= 24 * 3600 else default
+    return default
+
+
 def classify_failure(text: str) -> tuple[str, float] | None:
     """에이전트 출력에서 Provider 쪽 장애를 읽어낸다. (상태, 냉각초) 또는 None.
 
@@ -143,7 +172,8 @@ def classify_failure(text: str) -> tuple[str, float] | None:
     """
     t = text or ""
     if _RATE.search(t):
-        return RATE_LIMITED, RATE_COOLDOWN
+        # 해제 시각을 말해줬으면 그때까지 쉰다. 모르면 기본값.
+        return RATE_LIMITED, _cooldown_from(t, RATE_COOLDOWN)
     if _AUTH_ERR.search(t):
         return AUTH_REQUIRED, 0.0
     if _BILLING.search(t):

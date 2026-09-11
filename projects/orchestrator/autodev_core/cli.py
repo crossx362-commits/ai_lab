@@ -812,6 +812,44 @@ def cmd_mem(args) -> int:
     return 0 if a.state == "GREEN" else (1 if a.state == "YELLOW" else 2)
 
 
+def cmd_review(args) -> int:
+    """끝난 Task의 **리뷰만** 다시 돌린다.
+
+    게이트(컴파일·테스트)는 이미 통과했는데 리뷰어가 한도·장애로 못 돌아 REVIEW에 멈춘 판이
+    생긴다(실전 계획 7 T3). 그때 코드를 처음부터 다시 시키는 것은 낭비다 — 판정만 다시 받는다.
+    **여기서도 DONE은 리뷰 승인에서만 나온다.**
+    """
+    cfg = config.load()
+    conn = db.connect()
+    t = db.get_task(conn, args.task)
+    if not t:
+        _p(f"task {args.task} 없음"); return 2
+    if t["verdict"] != "PASS":
+        _p(f"task {args.task}는 게이트를 통과하지 않았다(verdict={t['verdict']}) — 리뷰 대상이 아니다")
+        return 2
+    wt = Path(t["worktree"]) if t["worktree"] else None
+    if not wt or not wt.is_dir():
+        _p(f"worktree가 없다: {t['worktree']} — diff를 만들 수 없다"); return 2
+    tgt = cfg.target(t["target"])
+    diff = gitwt.collect_changes(wt, t["base_commit"]).diff
+    prefix = config.LOG_DIR / f"task{t['id']:04d}-rereview-{_ts()}"
+    rv = run_reviewer(cfg, conn, task_id=t["id"], attempt_id=0, prefix=prefix,
+                      goal=t["goal"], done_criteria=t["done_criteria"] or "",
+                      gates="컴파일 + " + "·".join(tgt.test_platforms),
+                      diff=diff, implementer=t["agent"])
+    _p(f"  리뷰: {rv.verdict} — {rv.reason}")
+    for rr in rv.reasons[:6]:
+        _p(f"    {rr}")
+    db.update_task(conn, t["id"], review=f"{rv.verdict}: {rv.reason}")
+    if rv.verdict == "APPROVE":
+        db.update_task(conn, t["id"], status="DONE",
+                       reason=f"{t['reason']} · 재리뷰 승인({rv.reason[:60]})")
+        _p(f"  → task {t['id']} DONE (재리뷰 승인)")
+        return 0
+    _p(f"  → task {t['id']}는 REVIEW에 남는다 ({rv.verdict})")
+    return 1
+
+
 def cmd_providers(args) -> int:
     """Provider 상태판. **설치 여부가 아니라 실제 인증·한도 상태**를 본다."""
     cfg = config.load()
@@ -993,6 +1031,10 @@ def build_parser() -> argparse.ArgumentParser:
     mm = sub.add_parser("mem", help="메모리 상태(압박·스왑·프로세스)")
     mm.add_argument("--relieve", action="store_true", help="로컬 모델을 내려 압박을 던다")
     mm.set_defaults(func=cmd_mem)
+
+    rv = sub.add_parser("review", help="끝난 Task의 리뷰만 다시 돌린다(게이트 통과분)")
+    rv.add_argument("--task", type=int, required=True)
+    rv.set_defaults(func=cmd_review)
 
     pv = sub.add_parser("providers", help="Provider 실제 사용 가능 상태(인증·한도 포함)")
     pv.add_argument("--refresh", action="store_true", help="캐시를 무시하고 다시 검사")
