@@ -70,5 +70,7 @@
       "model": null,
       "timeout_sec": 600
     }
-  }
+  },
+  "planner": "astra",
+  "reviewer": "astra"
 }

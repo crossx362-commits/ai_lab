@@ -75,13 +75,11 @@
 | Grok 어댑터 실호출 | PASS + 커밋 | PASS, 380.3s, 2파일 +92줄 |
 | Ollama 요약 | 긴 로그 압축 후 언로드 | 5.6k자 → 18.2초, 적재 0 |
 | 시험판이 유료 모델 호출 | 구조적 차단 | 1차 **뚫림(226초 과금)** → 자물쇠 추가 |
-
-## 완료 판정의 층 (현재)
-
-```
-변경 있음 → 검증장치 무변조 → 범위 내 → COMPILE → EDITMODE → PLAYMODE → 커밋
-```
-어느 층에서든 걸리면 그 이유가 다음 시도의 프롬프트로 들어간다. 층을 건너뛰는 길은 없다.
+| 리뷰 반려 | DONE 아님 | REJECTED·status=REVIEW, 3회 재시도 후 커밋만 |
+| 리뷰 결과 파일 없음 | 승인 아님 | UNKNOWN → status=REVIEW (1차 **DONE 오판** → 수리) |
+| 계획 파일 없음 / 순환 의존 | 분해 실패 | 그대로 |
+| 계획 실행(2 Task) | 의존성 순서로 전부 DONE | 그대로 |
+| 실제 Astra 분해 | Task 여러 개 + 완료조건 | 6개, 131.8초, 의존성 사슬 |
 
 ## 에이전트 등급 (사다리)
 
@@ -96,8 +94,26 @@ codex(낮은 추론) → claude → astra(높은 추론)
 `AUTODEV_NO_CLOUD=1`이면 script 외의 에이전트를 **빌드조차 거부**한다 — 시험용 판이 유료 모델을
 부르는 사고를 코드로 막는다.
 
-## 아직 없는 것 (PHASE 6 이후)
+## 완료 판정의 층 (현재)
 
-Planner 작업 분해·Astra 최종 리뷰, Memory Manager, 크래시 복구(RUNNING으로 남은 task 회수),
+```
+변경 있음 → 검증장치 무변조 → 범위 내 → COMPILE → EDITMODE → PLAYMODE → 최종 리뷰 → 커밋
+```
+마지막 층(리뷰)은 "돌아간다"와 "목표를 했다"를 가른다. 반려면 커밋은 하되 **DONE이 아니라 REVIEW**다.
+리뷰 결과 파일이 없으면 승인이 아니라 판정 불가 — 역시 DONE이 아니다.
+
+## 분해와 실행
+
+```bash
+./autodev plan "큰 목표"        # Astra가 Task로 나눈다(코드는 안 건드림)
+./autodev plans --plan 7        # 확인
+./autodev run-plan --plan 7     # 의존성 순서로 실행
+```
+분해와 리뷰 모두 **응답을 stdout에서 긁지 않고 파일(plan.json·review.json)로 받는다** —
+"모델이 뭔가 말했다"와 "결과물이 생겼다"를 구분하기 위해서다. 파일이 없으면 UNKNOWN이다.
+
+## 아직 없는 것 (PHASE 7 이후)
+
+Memory Manager, 크래시 복구(RUNNING으로 남은 task 회수),
 Windows Worker, GUI. Unity가 라이선스 핸드셰이크에서 멈추면 지금은 타임아웃(600초)까지 기다린다 —
 진행 없음 감지는 아직 없다.

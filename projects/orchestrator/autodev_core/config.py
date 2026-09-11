@@ -52,6 +52,8 @@ class Config:
     unity_slots: int
     ladder: list[str]
     research_agent: str | None
+    planner: str
+    reviewer: str | None
     log_summarizer: dict
 
     def target(self, name: str | None = None) -> Target:
@@ -120,6 +122,8 @@ def load(path: Path | None = None) -> Config:
         unity_slots=int(raw.get("unity_slots", 2)),
         ladder=list(raw.get("ladder", ["codex"])),
         research_agent=raw.get("research_agent"),
+        planner=raw.get("planner", "astra"),
+        reviewer=raw.get("reviewer"),
         log_summarizer=dict(raw.get("log_summarizer", {})),
     )
 

@@ -21,6 +21,7 @@ import json, pathlib, sys
 out, script, timeout = sys.argv[1], sys.argv[2], int(sys.argv[3])
 cfg = json.loads(pathlib.Path("config.json").read_text())
 cfg["agents"]["nc"] = {"type": "script", "bin": "/bin/sh", "args": ["-c", script], "timeout_sec": timeout}
+cfg["reviewer"] = None   # 기본 시험판은 리뷰를 끈다(리뷰는 아래 전용 판에서 script 리뷰어로 시험한다)
 pathlib.Path(out).write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
 PY
 }
@@ -96,6 +97,7 @@ python3 - <<'PY'
 import json, pathlib
 cfg = json.loads(pathlib.Path("config.json").read_text())
 cfg["ladder"] = ["nc_low", "nc_high"]
+cfg["reviewer"] = None
 cfg["research_agent"] = None
 cfg["agents"]["nc_low"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "args": ["-c",
     "printf 'namespace SandboxGame { public static class NcLadder { public const int V = ; } }\\n' > Assets/Game/Scripts/NcLadder.cs"]}
@@ -105,6 +107,75 @@ pathlib.Path("state/nc_ladder.json").write_text(json.dumps(cfg, ensure_ascii=Fal
 PY
 AUTODEV_CONFIG="$HERE/state/nc_ladder.json" ./autodev run "[NC] ladder" >/tmp/nc_ladder.log 2>&1
 check ladder PASS "담당: nc_high" /tmp/nc_ladder.log
+
+# 4e) 최종 리뷰 — 게이트를 다 통과해도 리뷰가 반려하면 DONE이 아니다.
+python3 - <<'PY'
+import json, pathlib
+cfg = json.loads(pathlib.Path("config.json").read_text())
+cfg["ladder"] = ["nc_impl"]
+cfg["research_agent"] = None
+cfg["reviewer"] = "nc_reviewer"
+cfg["agents"]["nc_impl"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "args": ["-c",
+    "printf 'namespace SandboxGame { public static class NcReview { public const int V = 3; } }\\n' > Assets/Game/Scripts/NcReview.cs"]}
+cfg["agents"]["nc_reviewer"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "args": ["-c",
+    "printf '{\"verdict\":\"reject\",\"reasons\":[\"목표를 상수 하나로 때웠다\"],\"severity\":\"high\"}' > review.json"]}
+pathlib.Path("state/nc_review.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
+# 리뷰가 파일을 안 만든 경우 = 승인이 아니라 판정 불가
+cfg2 = json.loads(json.dumps(cfg))
+cfg2["agents"]["nc_reviewer"]["args"] = ["-c", "exit 0"]
+pathlib.Path("state/nc_review_silent.json").write_text(json.dumps(cfg2, ensure_ascii=False, indent=2))
+PY
+AUTODEV_CONFIG="$HERE/state/nc_review.json" ./autodev run "[NC] review_reject" >/tmp/nc_review_reject.log 2>&1
+check review_reject REJECTED "리뷰 반려" /tmp/nc_review_reject.log
+AUTODEV_CONFIG="$HERE/state/nc_review_silent.json" ./autodev run "[NC] review_silent" >/tmp/nc_review_silent.log 2>&1
+check review_silent PASS "리뷰가 돌았는지 알 수 없다" /tmp/nc_review_silent.log
+# 게이트는 통과했지만 리뷰를 확인 못 했으므로 DONE이면 안 된다
+if grep -qE "^  status   : REVIEW" /tmp/nc_review_silent.log; then
+  echo "  PASS  review_silent_status — DONE으로 올리지 않음"; PASS=$((PASS+1))
+else echo "  FAIL  review_silent_status — 리뷰 미확인인데 DONE"; FAIL=$((FAIL+1)); fi
+
+# 4f) 분해 — 계획 파일이 없거나 순환 의존이면 실패로 세운다
+python3 - <<'PY'
+import json, pathlib
+base = json.loads(pathlib.Path("config.json").read_text())
+def w(name, script):
+    c = json.loads(json.dumps(base))
+    c["planner"] = "nc_planner"
+    c["reviewer"] = None
+    c["research_agent"] = None
+    c["ladder"] = ["nc_impl"]
+    c["agents"]["nc_impl"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "args": ["-c",
+        "N=$(ls Assets/Game/Scripts/NcPlan*.cs 2>/dev/null | wc -l | tr -d ' '); "
+        "printf 'namespace SandboxGame { public static class NcPlan%s { public const int V = 1; } }\\n' \"$N\" > Assets/Game/Scripts/NcPlan$N.cs"]}
+    c["agents"]["nc_planner"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "args": ["-c", script]}
+    pathlib.Path(f"state/nc_{name}.json").write_text(json.dumps(c, ensure_ascii=False, indent=2))
+w("plan_none", "exit 0")
+w("plan_cycle", """printf '{"tasks":[{"key":"A","goal":"a","depends_on":["B"]},{"key":"B","goal":"b","depends_on":["A"]}]}' > plan.json""")
+w("plan_ok", """printf '{"tasks":[{"key":"T1","goal":"첫 번째","done_criteria":"컴파일","depends_on":[],"risk":"low"},{"key":"T2","goal":"두 번째","done_criteria":"컴파일","depends_on":["T1"],"risk":"low"}]}' > plan.json""")
+PY
+for c in plan_none plan_cycle; do
+  AUTODEV_CONFIG="$HERE/state/nc_$c.json" ./autodev plan "[NC] $c" >/tmp/nc_$c.log 2>&1
+done
+if grep -q "계획 파일이 만들어지지 않았다" /tmp/nc_plan_none.log; then
+  echo "  PASS  plan_none — 계획 없음을 잡음"; PASS=$((PASS+1))
+else echo "  FAIL  plan_none (로그: /tmp/nc_plan_none.log)"; FAIL=$((FAIL+1)); fi
+if grep -q "순환 의존" /tmp/nc_plan_cycle.log; then
+  echo "  PASS  plan_cycle — 순환 의존을 잡음"; PASS=$((PASS+1))
+else echo "  FAIL  plan_cycle (로그: /tmp/nc_plan_cycle.log)"; FAIL=$((FAIL+1)); fi
+AUTODEV_CONFIG="$HERE/state/nc_plan_ok.json" ./autodev plan "[NC] plan_ok" >/tmp/nc_plan_ok.log 2>&1
+if grep -q "T2 .*←.*T1\|T2" /tmp/nc_plan_ok.log && grep -q "계획 .* (2개, 의존성 순)" /tmp/nc_plan_ok.log; then
+  echo "  PASS  plan_ok — 2개로 분해·의존성 정렬"; PASS=$((PASS+1))
+else echo "  FAIL  plan_ok (로그: /tmp/nc_plan_ok.log)"; FAIL=$((FAIL+1)); fi
+
+# 4g) 계획 실행 — 의존성 순서대로 두 Task가 실제로 돌아야 한다
+PLAN_ID=$(grep -oE "run-plan --plan [0-9]+" /tmp/nc_plan_ok.log | head -1 | grep -oE "[0-9]+")
+if [[ -n "$PLAN_ID" ]]; then
+  AUTODEV_CONFIG="$HERE/state/nc_plan_ok.json" ./autodev run-plan --plan "$PLAN_ID" >/tmp/nc_run_plan.log 2>&1
+  for id in $(grep -E "^  task " /tmp/nc_run_plan.log | sed 's/.*: *//'); do TASKS+=("$id"); done
+  if [[ $(grep -cE "^  status   : DONE" /tmp/nc_run_plan.log) -eq 2 ]]; then
+    echo "  PASS  run_plan — 2개 Task 모두 DONE"; PASS=$((PASS+1))
+  else echo "  FAIL  run_plan (로그: /tmp/nc_run_plan.log)"; FAIL=$((FAIL+1)); fi
+else echo "  FAIL  run_plan — 계획 번호를 못 읽음"; FAIL=$((FAIL+1)); fi
 
 # 5) CLI 부재 — 인프라 실패는 시도 미차감 UNKNOWN
 mkcfg state/nc_missing.json "exit 0"

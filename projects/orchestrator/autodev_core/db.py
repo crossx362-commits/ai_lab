@@ -34,6 +34,16 @@ CREATE TABLE IF NOT EXISTS tasks (
   ended_at      REAL
 );
 
+CREATE TABLE IF NOT EXISTS plans (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  goal        TEXT NOT NULL,
+  agent       TEXT,
+  status      TEXT NOT NULL,           -- DRAFT/READY/RUNNING/DONE/BLOCKED
+  dir         TEXT,
+  note        TEXT,
+  created_at  REAL NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS attempts (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   task_id         INTEGER NOT NULL,
@@ -83,6 +93,25 @@ CREATE TABLE IF NOT EXISTS usage (
 """
 
 
+# 이미 만들어진 DB에 나중에 붙는 열. 지우고 다시 만들지 않는다 — 기록이 상태다.
+MIGRATIONS = [
+    ("tasks", "plan_id", "INTEGER"),
+    ("tasks", "plan_key", "TEXT"),
+    ("tasks", "depends_on", "TEXT"),
+    ("tasks", "done_criteria", "TEXT"),
+    ("tasks", "risk", "TEXT"),
+    ("tasks", "review", "TEXT"),
+]
+
+
+def _migrate(conn) -> None:
+    for table, col, decl in MIGRATIONS:
+        cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if col not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+    conn.commit()
+
+
 def connect(path: Path | None = None) -> sqlite3.Connection:
     p = path or DB_PATH
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -90,6 +119,7 @@ def connect(path: Path | None = None) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
 
 
@@ -100,13 +130,48 @@ def now() -> float:
 # --- tasks ---------------------------------------------------------------
 
 
-def create_task(conn, goal: str, target: str, agent: str, model: str | None) -> int:
+def create_task(conn, goal: str, target: str, agent: str, model: str | None, **extra) -> int:
+    cols = ["goal", "target", "status", "agent", "model", "created_at"]
+    vals = [goal, target, extra.pop("status", "READY"), agent, model, now()]
+    for k, v in extra.items():
+        cols.append(k)
+        vals.append(v)
+    ph = ",".join("?" * len(cols))
+    cur = conn.execute(f"INSERT INTO tasks({','.join(cols)}) VALUES({ph})", vals)
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+# --- plans ---------------------------------------------------------------
+
+
+def create_plan(conn, goal: str, agent: str, dir_: str) -> int:
     cur = conn.execute(
-        "INSERT INTO tasks(goal,target,status,agent,model,created_at) VALUES(?,?,?,?,?,?)",
-        (goal, target, "READY", agent, model, now()),
+        "INSERT INTO plans(goal,agent,status,dir,created_at) VALUES(?,?,?,?,?)",
+        (goal, agent, "DRAFT", dir_, now()),
     )
     conn.commit()
     return int(cur.lastrowid)
+
+
+def update_plan(conn, plan_id: int, **fields) -> None:
+    if not fields:
+        return
+    cols = ",".join(f"{k}=?" for k in fields)
+    conn.execute(f"UPDATE plans SET {cols} WHERE id=?", (*fields.values(), plan_id))
+    conn.commit()
+
+
+def get_plan(conn, plan_id: int):
+    return conn.execute("SELECT * FROM plans WHERE id=?", (plan_id,)).fetchone()
+
+
+def list_plans(conn, limit: int = 20):
+    return conn.execute("SELECT * FROM plans ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+
+
+def plan_tasks(conn, plan_id: int):
+    return conn.execute("SELECT * FROM tasks WHERE plan_id=? ORDER BY id", (plan_id,)).fetchall()
 
 
 def update_task(conn, task_id: int, **fields) -> None:

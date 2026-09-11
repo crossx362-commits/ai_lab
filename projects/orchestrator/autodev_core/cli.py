@@ -1,12 +1,16 @@
-"""autodev CLI — PHASE 1.
+"""autodev CLI.
 
 명령:
-  doctor                환경 점검(있는 것/없는 것을 사실대로)
-  run "<목표>"          worktree 격리 → Codex → 변경 확인 → Unity 컴파일 → 최대 3회 → 커밋
-  verify [--project P]  Unity 컴파일 판정만 단독 실행 (네거티브 컨트롤용)
-  status [--task N]     Task/시도 이력
-  stop                  실행 중으로 기록된 프로세스 그룹 정리
-  clean --task N        worktree/브랜치 제거
+  doctor                 환경 점검(있는 것/없는 것을 사실대로)
+  run "<목표>"           worktree 격리 → 에이전트 → 변경 확인 → Unity → 리뷰 → 커밋
+  plan "<목표>"          목표를 Task로 분해(실행 안 함)
+  run-plan --plan N      계획을 의존성 순서로 실행
+  plans [--plan N]       계획 목록·진행
+  verify [--tests]       Unity 판정만 단독 실행(네거티브 컨트롤용)
+  status [--task N]      Task/시도 이력
+  stop / resume          STOP 플래그 + 프로세스 그룹 정리 / 해제
+  archive --task N...    기록은 남기고 화면에서 내림
+  gc / clean --task N    잔재 점검 / worktree·브랜치 제거
 """
 
 from __future__ import annotations
@@ -17,7 +21,8 @@ import sys
 import time
 from pathlib import Path
 
-from . import agents, config, db, gitwt, loganalyze, logs, proc, router, safety, unityrun
+from . import (agents, config, db, gitwt, loganalyze, logs, planner, proc,
+               review, router, safety, unityrun)
 
 
 def _p(msg: str = "") -> None:
@@ -107,11 +112,52 @@ def cmd_verify(args) -> int:
 # --------------------------------------------------------------------------
 
 
+def run_side_agent(cfg, conn, *, agent_name: str, prompt: str, workdir: Path,
+                   log_prefix: Path, task_id=None, attempt_id=None):
+    """파일을 만들어 내는 보조 호출(분해·리뷰). worktree가 아니라 **별도 작업 폴더**에서 돈다 —
+    그래야 보조가 만든 파일이 개발 diff에 섞이지 않는다."""
+    workdir.mkdir(parents=True, exist_ok=True)
+    agent = agents.build(cfg.agent(agent_name))
+    logs.write(Path(f"{log_prefix}.prompt.txt"), prompt)
+    ar = agent.run(prompt, worktree=workdir, log_prefix=log_prefix,
+                   conn=conn, task_id=task_id, attempt_id=attempt_id)
+    db.record_usage(conn, task_id=task_id, attempt_id=attempt_id, agent=agent_name,
+                    model=agent.model_name(), ok=ar.ok, duration_s=ar.duration_s,
+                    prompt_chars=len(prompt), output_chars=len(ar.output or ""))
+    return ar
+
+
+def run_reviewer(cfg, conn, *, task_id, attempt_id, prefix: Path, goal: str,
+                 done_criteria: str, gates: str, diff: str):
+    workdir = config.STATE_DIR / "reviews" / f"task{task_id:04d}-a{attempt_id}"
+    rpath = workdir / review.REVIEW_FILE
+    if rpath.exists():
+        rpath.unlink()
+    prompt = review.build_prompt(goal=goal, done_criteria=done_criteria, gates=gates,
+                                 diff=diff, review_path=rpath)
+    ar = run_side_agent(cfg, conn, agent_name=cfg.reviewer, prompt=prompt, workdir=workdir,
+                        log_prefix=Path(f"{prefix}.review"), task_id=task_id, attempt_id=attempt_id)
+    if ar.status in ("SPAWN_FAILED", "TIMEOUT"):
+        return review.Review("UNKNOWN", f"리뷰를 돌리지 못했다: {ar.reason}")
+    return review.parse(rpath)
+
+
 def cmd_run(args) -> int:
     cfg = config.load()
     t = cfg.target(args.target)
-    # 사다리: --agent를 주면 그 하나로 고정, 안 주면 라우터가 시도마다 등급을 고른다.
-    ladder = [args.agent] if args.agent else cfg.ladder
+    rc = execute_goal(cfg, t, goal=args.goal, agent=args.agent,
+                      max_attempts=args.max_attempts)
+    return rc
+
+
+def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
+                 max_attempts: int | None = None, plan_id: int | None = None,
+                 plan_key: str | None = None, done_criteria: str = "") -> int:
+    """목표 하나를 끝까지 몬다. run과 run-plan이 **같은 본체**를 쓴다 —
+    게이트가 두 벌이 되면 한쪽만 강화되고 다른 쪽이 구멍이 된다."""
+    args_goal = goal
+    # 사다리: agent를 주면 그 하나로 고정, 안 주면 라우터가 시도마다 등급을 고른다.
+    ladder = [agent] if agent else cfg.ladder
     try:
         for a in ladder:
             agents.build(cfg.agent(a))  # 설정이 실제로 만들어지는지 먼저 확인
@@ -139,9 +185,10 @@ def cmd_run(args) -> int:
         _p(f"대상 저장소가 더럽다: {t.repo}\n  — 사용자의 미커밋 변경을 보호하기 위해 중단한다.")
         return 2
 
-    max_attempts = args.max_attempts or cfg.max_attempts
+    max_attempts = max_attempts or cfg.max_attempts
     conn = db.connect()
-    task_id = db.create_task(conn, args.goal, t.name, ladder[0], None)
+    task_id = db.create_task(conn, args_goal, t.name, ladder[0], None,
+                             plan_id=plan_id, plan_key=plan_key, done_criteria=done_criteria)
     base = gitwt.head(t.repo)
 
     _p(f"[task {task_id}] target={t.name} base={base[:8]} max_attempts={max_attempts}")
@@ -174,7 +221,7 @@ def cmd_run(args) -> int:
 
         # 이번 시도의 등급을 고른다. 왜 그 등급인지를 함께 남긴다 — 사유 없는 승격은
         # 나중에 규칙을 고칠 수도, 비용을 따질 수도 없다.
-        decision = router.decide(goal=args.goal, ladder=ladder, attempt=n,
+        decision = router.decide(goal=args_goal, ladder=ladder, attempt=n,
                                  failures=history, research_agent=cfg.research_agent)
         agent_name = decision.agent
         agent_cfg = cfg.agent(agent_name)
@@ -185,7 +232,7 @@ def cmd_run(args) -> int:
         db.update_task(conn, task_id, attempts=n, agent=agent_name, model=agent.model_name())
 
         prompt = agent.build_prompt(
-            goal=args.goal,
+            goal=args_goal,
             worktree=wt,
             allowed=t.allowed_write_globs,
             unity_version=t.unity_version,
@@ -299,6 +346,28 @@ def cmd_run(args) -> int:
                     errtext = "\n".join(tr.failures[:20]) or tr.reason
                     break
 
+        # 6) 게이트를 다 지났으면 한 등급 위가 diff를 다시 본다 — "돌아간다"와 "목표를 했다"는 다르다.
+        review_note = ""
+        review_unknown = False
+        if verdict == "PASS" and cfg.reviewer:
+            rv = run_reviewer(cfg, conn, task_id=task_id, attempt_id=attempt_id, prefix=prefix,
+                              goal=args_goal, done_criteria=done_criteria,
+                              gates="컴파일 + " + "·".join(t.test_platforms), diff=ch.diff)
+            _p(f"  리뷰({cfg.reviewer}): {rv.verdict} — {rv.reason}")
+            for rr in rv.reasons[:5]:
+                _p(f"    {rr}")
+            db.update_task(conn, task_id, review=f"{rv.verdict}: {rv.reason}")
+            if rv.verdict == "REJECT":
+                verdict, reason = "REJECTED", rv.reason
+                errtext = "\n".join(rv.reasons) or rv.reason
+            elif rv.verdict == "UNKNOWN":
+                # 리뷰가 돌았는지 모르는 상태는 승인도 실패도 아니다. 게이트는 통과했으니
+                # 커밋은 하되 **DONE으로 올리지 않는다** — "확인 못 한 것은 완료가 아니다".
+                review_note = "\n\n리뷰: 판정 불가(사람 검토 필요)"
+                review_unknown = True
+            else:
+                review_note = "\n\n리뷰: 승인"
+
         db.update_attempt(conn, attempt_id,
                           status=verdict, agent_exit=ar.exit_code,
                           changed_files=len(ch.files), changed_lines=ch.lines,
@@ -312,7 +381,7 @@ def cmd_run(args) -> int:
         if ur.verdict == "PASS":
             gate = "컴파일 + " + "·".join(t.test_platforms) if t.test_platforms else "컴파일"
             commit_hash = gitwt.commit(
-                wt, f"autodev(task-{task_id:04d}): {args.goal}\n\n시도 {n}회, Unity {gate} PASS")
+                wt, f"autodev(task-{task_id:04d}): {args_goal}\n\n시도 {n}회, Unity {gate} PASS{review_note}")
             final_verdict, final_reason = "PASS", ur.reason
             break
 
@@ -320,6 +389,18 @@ def cmd_run(args) -> int:
             # 검증 자체가 성립 안 한 상태에서 AI를 더 태우지 않는다.
             final_verdict, final_reason = "UNKNOWN", ur.reason
             break
+
+        if ur.verdict == "REJECTED":
+            # 리뷰 반려는 "돌아가지만 목표를 안 했다"는 뜻이다. 남은 시도가 있으면 사유를 들고
+            # 다시 시킨다. 없으면 커밋해서 사람이 볼 수 있게 두되 DONE으로 올리지 않는다.
+            failure = {"n": n, "verdict": "REJECTED", "reason": ur.reason,
+                       "errors": ur.error_summary or ur.reason}
+            history.append(failure)
+            final_verdict, final_reason = "REJECTED", ur.reason
+            if n >= max_attempts:
+                commit_hash = gitwt.commit(
+                    wt, f"autodev(task-{task_id:04d}) [리뷰 반려]: {args_goal}\n\n{ur.reason}")
+            continue
 
         # 다음 시도에는 로그를 던지는 대신 **분석한 것**을 준다 — 오류가 가리키는 자리를 펼쳐서.
         analysis = loganalyze.analyze(ur.errors, wt)
@@ -340,8 +421,12 @@ def cmd_run(args) -> int:
     # DONE은 오직 Unity PASS에서만 나온다. 나머지는 사람이 보라고 BLOCKED로 세운다(§9).
     if stopped:
         status = "STOPPED"
+    elif final_verdict == "PASS":
+        status = "REVIEW" if review_unknown else "DONE"
+    elif final_verdict == "REJECTED":
+        status = "REVIEW"      # 사람이 봐야 한다. 자동 DONE 아님.
     else:
-        status = "DONE" if final_verdict == "PASS" else "BLOCKED"
+        status = "BLOCKED"
     db.update_task(conn, task_id, status=status, verdict=final_verdict,
                    reason=final_reason, commit_hash=commit_hash, ended_at=db.now())
 
@@ -430,6 +515,112 @@ def cmd_clean(args) -> int:
     return 0
 
 
+def cmd_plan(args) -> int:
+    """목표를 Task로 분해만 한다. 실행은 run-plan이 따로 한다 — 분해가 틀렸을 때
+    이미 코드가 고쳐져 있으면 되돌리는 비용이 크다."""
+    cfg = config.load()
+    t = cfg.target(args.target)
+    conn = db.connect()
+    agent_name = args.agent or cfg.planner
+    workdir = config.STATE_DIR / "plans" / f"plan-{_ts()}"
+    ppath = workdir / planner.PLAN_FILE
+
+    plan_id = db.create_plan(conn, args.goal, agent_name, str(workdir))
+    _p(f"[plan {plan_id}] 분해 담당: {agent_name}")
+    prompt = planner.build_prompt(goal=args.goal, project=t.unity_project,
+                                  unity_version=t.unity_version, plan_path=ppath)
+    ar = run_side_agent(cfg, conn, agent_name=agent_name, prompt=prompt, workdir=workdir,
+                        log_prefix=config.LOG_DIR / f"plan{plan_id:04d}")
+    _p(f"  {agent_name}: exit={ar.exit_code} status={ar.status} ({ar.duration_s:.1f}s)")
+
+    if ar.status in ("SPAWN_FAILED", "TIMEOUT"):
+        db.update_plan(conn, plan_id, status="BLOCKED", note=f"인프라 실패: {ar.reason}")
+        _p(f"  → UNKNOWN: {ar.reason}")
+        return 2
+
+    p = planner.parse(ppath)
+    if not p.ok:
+        db.update_plan(conn, plan_id, status="BLOCKED", note=p.reason)
+        _p(f"  → 분해 실패: {p.reason}")
+        return 1
+
+    ordered = planner.order(p.tasks)
+    for pt in ordered:
+        db.create_task(conn, pt.goal, t.name, cfg.ladder[0], None, status="BACKLOG",
+                       plan_id=plan_id, plan_key=pt.key, depends_on=",".join(pt.depends_on),
+                       done_criteria=pt.done_criteria, risk=pt.risk)
+    db.update_plan(conn, plan_id, status="READY", note=p.reason)
+
+    _p(f"\n=== 계획 {plan_id} ({len(ordered)}개, 의존성 순) ===")
+    for pt in ordered:
+        dep = f" ← {','.join(pt.depends_on)}" if pt.depends_on else ""
+        _p(f"  {pt.key:4s} [{pt.risk:6s}]{dep}  {pt.goal}")
+        if pt.done_criteria:
+            _p(f"        완료조건: {pt.done_criteria}")
+    _p(f"\n실행: autodev run-plan --plan {plan_id}")
+    return 0
+
+
+def cmd_run_plan(args) -> int:
+    cfg = config.load()
+    t = cfg.target(args.target)
+    conn = db.connect()
+    plan = db.get_plan(conn, args.plan)
+    if not plan:
+        _p(f"계획 {args.plan} 없음")
+        return 2
+
+    tasks = [r for r in db.plan_tasks(conn, args.plan) if r["status"] == "BACKLOG"]
+    if not tasks:
+        _p("실행할 Task가 없다(이미 끝났거나 비었다)")
+        return 0
+
+    db.update_plan(conn, args.plan, status="RUNNING")
+    done_keys = {r["plan_key"] for r in db.plan_tasks(conn, args.plan) if r["status"] == "DONE"}
+    rc_all = 0
+    for row in tasks:
+        if safety.stop_requested():
+            _p("STOP 상태 — 남은 Task를 시작하지 않는다")
+            db.update_plan(conn, args.plan, status="BLOCKED", note="STOP")
+            return 2
+        deps = [d for d in (row["depends_on"] or "").split(",") if d]
+        missing = [d for d in deps if d not in done_keys]
+        if missing:
+            # 선행이 끝나지 않았는데 밀어붙이지 않는다 — 반쪽 위에 쌓으면 원인을 못 가린다.
+            _p(f"\n[{row['plan_key']}] 건너뜀 — 선행 미완료: {', '.join(missing)}")
+            db.update_task(conn, row["id"], status="BLOCKED", reason=f"선행 미완료: {','.join(missing)}")
+            rc_all = 1
+            continue
+        _p(f"\n========== [{row['plan_key']}] {row['goal']} ==========")
+        # BACKLOG 자리표시 task는 지우고, 실제 실행은 본체가 자기 task를 만들어 돈다.
+        db.update_task(conn, row["id"], status="ARCHIVED", reason="[계획 자리표시]")
+        rc = execute_goal(cfg, t, goal=row["goal"], max_attempts=args.max_attempts,
+                          plan_id=args.plan, plan_key=row["plan_key"],
+                          done_criteria=row["done_criteria"] or "")
+        if rc == 0:
+            done_keys.add(row["plan_key"])
+        else:
+            rc_all = rc
+            if not args.keep_going:
+                _p(f"\n[{row['plan_key']}]에서 멈춘다 (계속하려면 --keep-going)")
+                db.update_plan(conn, args.plan, status="BLOCKED", note=f"{row['plan_key']}에서 멈춤")
+                return rc
+    db.update_plan(conn, args.plan, status="DONE" if rc_all == 0 else "BLOCKED")
+    return rc_all
+
+
+def cmd_plans(args) -> int:
+    conn = db.connect()
+    for p in db.list_plans(conn, args.limit):
+        tasks = db.plan_tasks(conn, p["id"])
+        done = sum(1 for r in tasks if r["status"] == "DONE")
+        _p(f"  #{p['id']} {p['status']:8s} {done}/{len(tasks)} 완료  {p['goal'][:60]}")
+        if args.plan and p["id"] == args.plan:
+            for r in tasks:
+                _p(f"     {r['plan_key'] or '-':4s} {r['status']:9s} {str(r['verdict'] or '-'):8s} {r['goal'][:60]}")
+    return 0
+
+
 def cmd_archive(args) -> int:
     """기록은 남기고 화면에서만 내린다 — 시험용으로 돌린 판이 보드의 '막힘'을 채우지 않게."""
     conn = db.connect()
@@ -499,6 +690,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     rs = sub.add_parser("resume", help="STOP 해제")
     rs.set_defaults(func=cmd_resume)
+
+    pl = sub.add_parser("plan", help="목표를 Task로 분해(실행 안 함)")
+    pl.add_argument("goal")
+    pl.add_argument("--agent", default=None, help="분해 담당(기본 config.planner)")
+    pl.set_defaults(func=cmd_plan)
+
+    rp = sub.add_parser("run-plan", help="계획을 의존성 순서로 실행")
+    rp.add_argument("--plan", type=int, required=True)
+    rp.add_argument("--max-attempts", type=int, default=None)
+    rp.add_argument("--keep-going", action="store_true", help="실패해도 남은 Task를 계속")
+    rp.set_defaults(func=cmd_run_plan)
+
+    ps = sub.add_parser("plans", help="계획 목록")
+    ps.add_argument("--plan", type=int, default=None)
+    ps.add_argument("--limit", type=int, default=10)
+    ps.set_defaults(func=cmd_plans)
 
     ar = sub.add_parser("archive", help="task를 보관 처리(기록 유지, 화면에서 내림)")
     ar.add_argument("--task", type=int, nargs="+", required=True)
