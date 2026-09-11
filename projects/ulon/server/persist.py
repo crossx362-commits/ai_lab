@@ -52,13 +52,13 @@ DATABASE_URL = pick_url()
 POSTGRES = DATABASE_URL.startswith("postgres")
 
 
-def connect():
+def connect(*, transaction=False):
     if POSTGRES:
         import psycopg2
         from psycopg2.extras import RealDictCursor
 
         conn = psycopg2.connect(DATABASE_URL)
-        conn.autocommit = True
+        conn.autocommit = not transaction
         conn.cursor_factory = RealDictCursor
         return conn
     conn = sqlite3.connect(DB_PATH)
@@ -380,7 +380,7 @@ def put_character(body: dict) -> dict:
     corpse_y = float(body.get("corpseY", body.get("CorpseY", 0)))
     corpse_z = float(body.get("corpseZ", body.get("CorpseZ", 0)))
 
-    conn = connect()
+    conn = connect(transaction=True)
     try:
         cur = conn.cursor()
         cur.execute(
@@ -466,8 +466,10 @@ def put_character(body: dict) -> dict:
                         _pack_maker(it) if isinstance(it, dict) else "",
                     ),
                 )
-        if not POSTGRES:
-            conn.commit()
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
     return get_character(account) or {}
@@ -509,7 +511,7 @@ def put_house(plot_id: str, body: dict) -> dict:
     account = str(body.get("accountId") or body.get("AccountId") or "")
     public_flag = int(body.get("publicFlag", body.get("PublicFlag", 0)))
     items = body.get("items") or body.get("Items") or []
-    conn = connect()
+    conn = connect(transaction=True)
     try:
         cur = conn.cursor()
         cur.execute(
@@ -538,8 +540,10 @@ def put_house(plot_id: str, body: dict) -> dict:
                     _pack_maker(it),
                 ),
             )
-        if not POSTGRES:
-            conn.commit()
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
     return get_house(plot_id)
@@ -575,7 +579,7 @@ def put_stable(character_id: str, body: dict) -> dict:
     pet_id = str(body.get("petId") or body.get("PetId") or "")
     slots = int(body.get("controlSlots", body.get("ControlSlots", 1)) or 1)
     display = str(body.get("displayName") or body.get("DisplayName") or "")
-    conn = connect()
+    conn = connect(transaction=True)
     try:
         cur = conn.cursor()
         cur.execute(
@@ -591,8 +595,10 @@ def put_stable(character_id: str, body: dict) -> dict:
             ),
             (character_id, pet_id, slots, display),
         )
-        if not POSTGRES:
-            conn.commit()
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
     return get_stable(character_id)
@@ -611,6 +617,18 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        if self.path == "/ready":
+            try:
+                conn = connect()
+                try:
+                    cur = conn.cursor()
+                    cur.execute("SELECT 1 FROM characters LIMIT 1")
+                finally:
+                    conn.close()
+            except Exception:
+                traceback.print_exc()
+                self._send(503, {"ok": False, "message": "database unavailable"})
+                return
         if self.path in ("/health", "/ready"):
             self._send(
                 200,

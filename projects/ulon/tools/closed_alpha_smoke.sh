@@ -10,8 +10,8 @@ touch "$ROOT/data/frozen.txt"
 "$ROOT/server/start_postgres.sh"
 "$ROOT/server/start_persist.sh"
 
-READY="$(curl -sf http://127.0.0.1:8777/ready || curl -sf http://127.0.0.1:8777/health || true)"
-if [[ -z "$READY" ]]; then
+READY="$(curl --max-time 5 -sf http://127.0.0.1:8777/ready || true)"
+if ! python3 -c 'import json,sys; body=json.loads(sys.argv[1]); sys.exit(0 if isinstance(body,dict) and body.get("ok") is True else 1)' "$READY" 2>/dev/null; then
   echo "[ulon] persist /ready 실패" >&2
   exit 2
 fi
@@ -37,10 +37,7 @@ HAS_CLIENT=0
 python3 - "$OUT" "$READY" "$BAK" "$LAN" "$GAME" "$HAS_CLIENT" <<'PY'
 import json, sys
 out, ready, bak, lan, game, client = sys.argv[1:7]
-try:
-    body = json.loads(ready)
-except Exception:
-    body = {"raw": ready, "ok": True}
+body = json.loads(ready)
 status = {
     "ok": True,
     "persist": body,
