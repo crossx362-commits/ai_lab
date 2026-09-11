@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,6 +25,7 @@ class AgentResult:
     duration_s: float
     reason: str = ""
     stderr: str = ""          # Provider 장애(한도·인증)는 대개 **여기로** 온다
+    tokens: int | None = None  # CLI가 보고한 실제 토큰. 보고 안 하면 None(어림값을 넣지 않는다)
 
     @property
     def all_output(self) -> str:
@@ -31,6 +33,41 @@ class AgentResult:
         codex는 "usage limit" 오류를 stderr로만 냈고, 시스템은 그것을 코드 실패로 오판해
         시도 3번을 태우고 BLOCKED로 세웠다(2026-09-11, 계획 7 T4)."""
         return (self.output or "") + "\n" + (self.stderr or "") + "\n" + (self.reason or "")
+
+
+# CLI가 스스로 보고한 사용량만 읽는다. 형식이 바뀌면 조용히 None이 되고, 그때는
+# "보고 없음"이라고 말한다 — 옛 형식으로 읽은 값을 지금 값인 척하는 것보다 낫다.
+_TOKENS = re.compile(r"tokens?\s+used[^\d]{0,20}([\d,]+)", re.I)
+
+
+def parse_tokens(text: str) -> int | None:
+    m = _TOKENS.search(text or "")
+    if not m:
+        return None
+    try:
+        n = int(m.group(1).replace(",", ""))
+    except ValueError:
+        return None
+    return n if n > 0 else None
+
+
+# --- 컨텍스트 상한(§10) -------------------------------------------------
+# 프롬프트는 조용히 커진다. 유니티 오류 로그 한 번이면 수십만 자가 되고, 그때 CLI는
+# "너무 길다"고 죽거나 **앞부분을 스스로 잘라먹는다** — 어느 쪽이든 목표 문구가 사라진다.
+# 그래서 우리가 먼저, **어디를 얼마나 잘랐는지 프롬프트 안에 적으면서** 자른다.
+# 조용히 자르면 AI는 자기가 전부 봤다고 믿는다. 그게 이 규칙의 이유다.
+PROMPT_MAX_DEFAULT = 48000
+
+
+def clamp(text: str, limit: int, label: str) -> str:
+    """머리와 꼬리를 남기고 가운데를 접는다. 오류는 끝에, 맥락은 앞에 있기 때문이다."""
+    if limit <= 0 or len(text) <= limit:
+        return text
+    keep = max(200, (limit - 120) // 2)
+    cut = len(text) - keep * 2
+    return (text[:keep]
+            + f"\n\n…[{label}: 총 {len(text):,}자 중 가운데 {cut:,}자 생략 — 전문은 logs/에 있다]…\n\n"
+            + text[-keep:])
 
 
 PROMPT_TEMPLATE = """\
@@ -91,21 +128,33 @@ class CliAgent:
         return self.cfg.model
 
     def build_prompt(self, *, goal, worktree, allowed, unity_version, failure=None,
-                     handoff=None) -> str:
+                     handoff=None, max_chars: int = 0) -> str:
+        cap = max_chars or PROMPT_MAX_DEFAULT
         # 인수인계(다른 Provider에서 넘어온 경우)가 먼저다 — "이미 절반 돼 있다"를 모르면
         # 새 담당이 처음부터 다시 만든다.
-        feedback = handoff or ""
+        # 지시문(목표·완료 조건·규칙)은 **절대 자르지 않는다.** 자를 곳은 피드백뿐이다 —
+        # 목표가 잘리면 AI가 요구사항을 축소하는데, 그건 §6 위반이고 여기서 만들면 안 된다.
+        feedback = clamp(handoff or "", int(cap * 0.35), "인수인계")
         if failure:
             feedback += FEEDBACK_TEMPLATE.format(
                 n=failure.get("n"),
                 verdict=failure.get("verdict"),
                 reason=failure.get("reason"),
-                errors=failure.get("errors") or "(오류를 추출하지 못했다)",
+                errors=clamp(failure.get("errors") or "(오류를 추출하지 못했다)",
+                             int(cap * 0.45), "오류 로그"),
             )
-        return PROMPT_TEMPLATE.format(
+        p = PROMPT_TEMPLATE.format(
             goal=goal, worktree=worktree, allowed=", ".join(allowed),
             unity_version=unity_version, feedback=feedback,
         )
+        if len(p) > cap:          # 그래도 넘치면 피드백만 더 접는다(지시문은 손대지 않는다)
+            room = cap - (len(p) - len(feedback))
+            feedback = clamp(feedback, max(400, room), "피드백 전체")
+            p = PROMPT_TEMPLATE.format(
+                goal=goal, worktree=worktree, allowed=", ".join(allowed),
+                unity_version=unity_version, feedback=feedback,
+            )
+        return p
 
     def env(self) -> dict:
         e = dict(os.environ)
@@ -134,4 +183,5 @@ class CliAgent:
             output=r.stdout, stdout_path=r.stdout_path, duration_s=r.duration_s,
             reason="" if r.exit_code == 0 else f"{label} 종료코드 {r.exit_code}",
             stderr=r.stderr,
+            tokens=parse_tokens((r.stdout or "") + "\n" + (r.stderr or "")),
         )

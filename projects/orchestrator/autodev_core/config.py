@@ -58,6 +58,7 @@ class Config:
     planner: str
     reviewer: str | None
     log_summarizer: dict
+    prompt_max_chars: int
 
     def target(self, name: str | None = None) -> Target:
         name = name or self.default_target
@@ -132,6 +133,7 @@ def load(path: Path | None = None) -> Config:
         planner=raw.get("planner", "astra"),
         reviewer=raw.get("reviewer"),
         log_summarizer=dict(raw.get("log_summarizer", {})),
+        prompt_max_chars=int(raw.get("prompt_max_chars", 48000)),
     )
 
 

@@ -124,7 +124,8 @@ def run_side_agent(cfg, conn, *, agent_name: str, prompt: str, workdir: Path,
                    conn=conn, task_id=task_id, attempt_id=attempt_id)
     db.record_usage(conn, task_id=task_id, attempt_id=attempt_id, agent=agent_name,
                     model=agent.model_name(), ok=ar.ok, duration_s=ar.duration_s,
-                    prompt_chars=len(prompt), output_chars=len(ar.output or ""))
+                    prompt_chars=len(prompt), output_chars=len(ar.output or ""),
+                    tokens=ar.tokens)
     return ar
 
 
@@ -375,9 +376,12 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             unity_version=t.unity_version,
             failure=failure,
             handoff=ho,
+            max_chars=cfg.prompt_max_chars,
         )
         last_agent = agent_name
         logs.write(Path(f"{prefix}.prompt.txt"), prompt)
+        if "자 생략" in prompt:      # 잘랐으면 조용히 넘기지 않는다 — 화면에도 남긴다
+            _p(f"  프롬프트 {len(prompt):,}자 (상한 {cfg.prompt_max_chars:,} — 피드백 일부 접음)")
 
         _p(f"  {agent_name} 호출 중 (timeout {agent_cfg.timeout_sec}s)…")
         ar = agent.run(prompt, worktree=wt, log_prefix=prefix,
@@ -385,7 +389,10 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         _p(f"  {agent_name}: exit={ar.exit_code} status={ar.status} ({ar.duration_s:.1f}s) log={ar.stdout_path.name}")
         db.record_usage(conn, task_id=task_id, attempt_id=attempt_id, agent=agent_name,
                         model=agent.model_name(), ok=ar.ok, duration_s=ar.duration_s,
-                        prompt_chars=len(prompt), output_chars=len(ar.output or ""))
+                        prompt_chars=len(prompt), output_chars=len(ar.output or ""),
+                        tokens=ar.tokens)
+        if ar.tokens:
+            _p(f"  토큰 {ar.tokens:,} (CLI 보고)")
 
         # STOP이 걸린 뒤에 에이전트가 죽어 돌아온 것을 "실패"로 기록하지 않는다 —
         # 중단은 실패가 아니다. 여기서 상태를 STOPPED로 남기고 빠진다.

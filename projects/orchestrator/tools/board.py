@@ -219,7 +219,8 @@ def gather() -> dict:
 
     # 사용량도 진짜 작업 기준으로 센다 — 시험판 호출까지 섞으면 비용 감각이 망가진다.
     usage = rows(
-        "SELECT u.agent agent, COUNT(*) n, SUM(u.ok) ok, SUM(u.duration_s) secs"
+        "SELECT u.agent agent, COUNT(*) n, SUM(u.ok) ok, SUM(u.duration_s) secs,"
+        " SUM(u.tokens) toks, SUM(CASE WHEN u.tokens_src='measured' THEN 1 ELSE 0 END) tn"
         " FROM usage u JOIN tasks t ON t.id=u.task_id"
         " WHERE t.status<>'ARCHIVED' AND t.goal NOT LIKE '[NC]%' AND t.goal NOT LIKE '[병렬]%'"
         "   AND (t.plan_id IS NULL OR t.plan_id NOT IN"
@@ -378,7 +379,10 @@ async function load(){
         + Object.entries(d.mem.procs).map(([k,v])=>`${E(k)} ${v}MB`).join(' · ') + '</div>' : '');
   document.getElementById('usage').innerHTML=memHtml+(d.usage.length?'<table>'+d.usage.map(u=>
     `<tr><td>${E(u.agent)}</td><td class=mute>${u.n}회</td><td class=ok>성공 ${u.ok||0}</td>
-     <td class=mute>${Math.round(u.secs||0)}초</td></tr>`).join('')+'</table>':'');
+     <td class=mute>${Math.round(u.secs||0)}초</td>
+     <td class=mute title="CLI가 스스로 보고한 값만 센다 — 어림수는 넣지 않는다">${
+       u.tn ? (u.toks||0).toLocaleString()+'토큰'+(u.tn<u.n?` (${u.tn}/${u.n}회만 보고)`:'')
+            : '토큰 보고 없음'}</td></tr>`).join('')+'</table>':'');
 }
 const VC2={PASS:'ok',FAILED:'bad',UNKNOWN:'warn',REJECTED:'bad',APPROVE:'ok'};
 async function detail(id){

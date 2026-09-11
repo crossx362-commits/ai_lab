@@ -11,6 +11,13 @@ cd "$HERE"
 # (한 번 그런 사고가 났다 — 사다리가 무시돼 codex가 226초 돌았다. 규칙이 아니라 자물쇠로 막는다.)
 export AUTODEV_NO_CLOUD=1
 
+# STOP 플래그가 켜져 있으면 `autodev run`은 전부 거부된다 — 그건 맞는 동작이다.
+# 여기서 우회하면 오너의 스톱을 시험 스크립트가 조용히 무력화하는 꼴이라 하지 않는다.
+# 대신 34개 FAIL로 헷갈리게 두지 않고, 이유를 말하고 멈춘다(2026-09-11 실제로 헷갈렸다).
+if [ -e "$HERE/state/STOP" ]; then
+  echo "STOP 상태다 — 실행 시험을 돌릴 수 없다. 해제는 사람이: ./autodev resume"
+  exit 2
+fi
 PASS=0
 FAIL=0
 TASKS=()
@@ -555,6 +562,85 @@ PYCLEAN
 if grep -q "^WAIT_OK" /tmp/nc_wait.log; then
   echo "  PASS  provider_wait — 풀릴 것은 기다리고 안 풀릴 것·한도 밖은 세운다(냉각은 재검사로 안 덮임)"; PASS=$((PASS+1))
 else echo "  FAIL  provider_wait (로그: /tmp/nc_wait.log)"; FAIL=$((FAIL+1)); fi
+lap
+
+# 14) 토큰 기록 — **어림수를 실측인 척하지 않는다**(§21).
+#     codex만 스스로 보고한다(stderr). 보고하지 않는 CLI의 칸은 비어 있어야 하고,
+#     화면에도 "보고 없음"이라고 적혀야 한다. 문자 수로 추정한 값을 같은 칸에 넣으면
+#     비용 감각이 조용히 망가진다 — 틀린 숫자가 없는 것보다 나쁘다.
+python3 - <<'PYTOK' > /tmp/nc_tok.log 2>&1
+import sys, pathlib, tempfile, sqlite3
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from autodev_core import db
+from autodev_core.agents.base import parse_tokens
+from autodev_core.config import AgentConfig
+from autodev_core.agents.script import ScriptAgent
+bad = []
+
+# ① 실제 codex 형식(stderr, 천단위 쉼표)을 읽는다
+def mk(name, sh):
+    return ScriptAgent(AgentConfig(name=name, type="script", bin="/bin/sh", model=None,
+        sandbox_mode="", timeout_sec=30, args=["-c", sh], extra_config=[],
+        permission_mode="", capabilities=["CODING"], enabled=True))
+d = pathlib.Path(tempfile.mkdtemp())
+a = mk("nc_tok", "printf 'tokens used\\n30,845\\n' >&2")
+r = a.run("x", worktree=d, log_prefix=d / "t")
+if r.tokens != 30845: bad.append(f"stderr 보고를 못 읽음({r.tokens})")
+
+# ② 아무 말 없는 CLI는 **None** — 지어내지 않는다
+b = mk("nc_tok2", "echo '긴 출력만 잔뜩 내놓는다. 토큰 이야기는 안 한다.'")
+r2 = b.run("x", worktree=d, log_prefix=d / "u")
+if r2.tokens is not None: bad.append(f"보고 없는데 숫자를 만듦({r2.tokens})")
+
+# ③ 형식이 깨지면 조용히 None(옛 형식으로 읽은 값을 지금 값인 척하지 않는다)
+if parse_tokens("tokens used: many") is not None: bad.append("숫자 아닌 것을 숫자로 봄")
+if parse_tokens("0 tokens used") is not None: bad.append("0을 실측으로 기록")
+
+# ④ DB에 들어갈 때 출처가 갈린다
+c = db.connect(pathlib.Path(tempfile.mkdtemp()) / "t.sqlite3")
+db.record_usage(c, task_id=1, attempt_id=1, agent="a", model=None, ok=True,
+                duration_s=1.0, prompt_chars=10, output_chars=10, tokens=30845)
+db.record_usage(c, task_id=1, attempt_id=2, agent="b", model=None, ok=True,
+                duration_s=1.0, prompt_chars=99999, output_chars=99999, tokens=None)
+got = [(r["tokens"], r["tokens_src"]) for r in c.execute("SELECT tokens,tokens_src FROM usage ORDER BY id")]
+if got != [(30845, "measured"), (None, "none")]: bad.append(f"출처 구분 실패: {got}")
+print("TOK_OK" if not bad else "TOK_BAD " + " / ".join(bad))
+PYTOK
+if grep -q "^TOK_OK" /tmp/nc_tok.log; then
+  echo "  PASS  token_usage — 보고한 것만 실측으로 기록(없으면 빈칸, 지어내지 않음)"; PASS=$((PASS+1))
+else echo "  FAIL  token_usage (로그: /tmp/nc_tok.log)"; FAIL=$((FAIL+1)); fi
+lap
+
+# 15) 컨텍스트 상한 — 프롬프트가 커져서 **목표 문구가 사라지는** 것을 막는다.
+#     조용히 자르면 AI는 전부 봤다고 믿는다. 자른 사실이 프롬프트 안에 적혀 있어야 한다.
+python3 - <<'PYCTX' > /tmp/nc_ctx.log 2>&1
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from autodev_core.agents.base import CliAgent, clamp
+from autodev_core.config import AgentConfig
+bad = []
+a = CliAgent(AgentConfig(name="x", type="script", bin="/bin/sh", model=None, sandbox_mode="",
+    timeout_sec=1, args=[], extra_config=[], permission_mode="", capabilities=[], enabled=True))
+big = a.build_prompt(goal="목표문구_고유표식", worktree="/w", allowed=["Assets/Game/**"],
+    unity_version="6000.3.14f1", handoff="H" * 200000,
+    failure={"n": 1, "verdict": "FAILED", "reason": "r", "errors": "E" * 500000},
+    max_chars=20000)
+if len(big) > 20000: bad.append(f"상한을 넘김({len(big)})")
+if "목표문구_고유표식" not in big: bad.append("목표가 잘려나감(§6 요구사항 축소를 우리가 만듦)")
+if "Assets/Game/**" not in big: bad.append("쓰기 허용 범위가 잘려나감")
+if "자 생략" not in big: bad.append("**조용히** 잘랐다 — 자른 사실을 안 적음")
+if "E" * 100 not in big: bad.append("오류 꼬리를 통째로 버림(진짜 실패 원인은 끝에 있다)")
+# 오탐: 짧은 프롬프트는 건드리지 않는다
+sm = a.build_prompt(goal="g", worktree="/w", allowed=["a"], unity_version="6000")
+if "자 생략" in sm: bad.append("짧은 것까지 잘랐다")
+# clamp 자체: 머리와 꼬리가 남는다
+c = clamp("A" * 5000 + "Z" * 5000, 2000, "시험")
+if not c.startswith("A") or not c.endswith("Z"): bad.append("머리·꼬리를 못 지킴")
+print("CTX_OK" if not bad else "CTX_BAD " + " / ".join(bad))
+PYCTX
+if grep -q "^CTX_OK" /tmp/nc_ctx.log; then
+  echo "  PASS  context_cap — 상한 안에서 자르되 목표·규칙은 남기고 자른 사실을 적는다"; PASS=$((PASS+1))
+else echo "  FAIL  context_cap (로그: /tmp/nc_ctx.log)"; FAIL=$((FAIL+1)); fi
 lap
 
 echo

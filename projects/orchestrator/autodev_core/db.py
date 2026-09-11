@@ -103,6 +103,8 @@ MIGRATIONS = [
     ("tasks", "review", "TEXT"),
     ("tasks", "owner_pid", "INTEGER"),    # 이 task를 모는 오케스트레이터 프로세스
     ("tasks", "heartbeat", "REAL"),       # 마지막 생존 흔적(크래시 회수 판정용)
+    ("usage", "tokens", "INTEGER"),       # CLI가 보고한 실제 토큰 수(없으면 NULL)
+    ("usage", "tokens_src", "TEXT"),      # measured / none — **추정을 실측인 척하지 않는다**
 ]
 
 
@@ -258,10 +260,15 @@ def running_processes(conn):
 # --- usage ---------------------------------------------------------------
 
 
-def record_usage(conn, *, task_id, attempt_id, agent, model, ok, duration_s, prompt_chars, output_chars):
+def record_usage(conn, *, task_id, attempt_id, agent, model, ok, duration_s, prompt_chars,
+                 output_chars, tokens=None):
+    """토큰은 **CLI가 실제로 보고한 값만** 넣는다. 문자 수로 어림한 값을 같은 칸에 섞으면
+    비용 감각이 망가진다 — 모르면 NULL이고, 화면에서 '보고 없음'이라고 말한다(§21)."""
     conn.execute(
-        "INSERT INTO usage(task_id,attempt_id,agent,model,ok,duration_s,prompt_chars,output_chars,created_at)"
-        " VALUES(?,?,?,?,?,?,?,?,?)",
-        (task_id, attempt_id, agent, model, 1 if ok else 0, duration_s, prompt_chars, output_chars, now()),
+        "INSERT INTO usage(task_id,attempt_id,agent,model,ok,duration_s,prompt_chars,output_chars,"
+        "tokens,tokens_src,created_at)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        (task_id, attempt_id, agent, model, 1 if ok else 0, duration_s, prompt_chars, output_chars,
+         tokens, "measured" if tokens else "none", now()),
     )
     conn.commit()
