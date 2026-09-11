@@ -23,6 +23,14 @@ class AgentResult:
     stdout_path: Path
     duration_s: float
     reason: str = ""
+    stderr: str = ""          # Provider 장애(한도·인증)는 대개 **여기로** 온다
+
+    @property
+    def all_output(self) -> str:
+        """판정에 쓸 전체 출력. stdout만 보다가 실전에서 뚫렸다 —
+        codex는 "usage limit" 오류를 stderr로만 냈고, 시스템은 그것을 코드 실패로 오판해
+        시도 3번을 태우고 BLOCKED로 세웠다(2026-09-11, 계획 7 T4)."""
+        return (self.output or "") + "\n" + (self.stderr or "") + "\n" + (self.reason or "")
 
 
 PROMPT_TEMPLATE = """\
@@ -117,12 +125,13 @@ class CliAgent:
         label = self.cfg.name
         if r.status == "SPAWN_FAILED":
             return AgentResult(False, None, r.status, "", r.stdout_path, r.duration_s,
-                               reason=f"{label} 실행 불가: {r.stderr[:200]}")
+                               reason=f"{label} 실행 불가: {r.stderr[:200]}", stderr=r.stderr)
         if r.status == "TIMEOUT":
             return AgentResult(False, r.exit_code, r.status, r.stdout, r.stdout_path, r.duration_s,
-                               reason=f"{label} 타임아웃({self.cfg.timeout_sec}s)")
+                               reason=f"{label} 타임아웃({self.cfg.timeout_sec}s)", stderr=r.stderr)
         return AgentResult(
             ok=(r.exit_code == 0), exit_code=r.exit_code, status=r.status,
             output=r.stdout, stdout_path=r.stdout_path, duration_s=r.duration_s,
             reason="" if r.exit_code == 0 else f"{label} 종료코드 {r.exit_code}",
+            stderr=r.stderr,
         )

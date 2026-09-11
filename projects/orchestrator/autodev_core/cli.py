@@ -369,7 +369,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
 
         # 0-a) Provider 장애인가? 「이 목표가 어렵다」가 아니라 「이 업체가 지금 안 된다」이면
         #      상태를 기록하고 **다른 Provider로 승계**한다. 시도는 차감하지 않는다.
-        hit = providers.classify_failure((ar.output or "") + " " + (ar.reason or ""))
+        hit = providers.classify_failure(ar.all_output)
         if hit and not ar.ok:
             state, cool = hit
             providers.mark(agent_name, state, f"시도 {n}에서 감지: {(ar.reason or '')[:80]}", cool)

@@ -88,7 +88,9 @@
 | 실제 잔재 회수 | RUNNING 2건 회수 | task 15·56 → INTERRUPTED (worktree 보존) |
 | Provider 인증 실검사 | 로그아웃 CLI는 AVAILABLE 아님 | AUTH_REQUIRED (가짜 CLI로 확인) |
 | 장애 분류 | 한도/인증/과금 구분, 코드 오류는 제외 | 그대로 (CS 오류를 장애로 안 봄) |
-| Provider 승계 | 시도 미차감 + 인수인계 | nc_p1 429 → nc_p2 PASS, 프롬프트에 앞 diff 실림 |
+| Provider 승계 | 시도 미차감 + 인수인계 | nc_p1 한도 → nc_p2 PASS, 프롬프트에 앞 diff 실림 |
+| 한도 오류가 stderr로만 올 때 | 장애로 감지 | 1차 **뚫림**(실전 계획 7 T4) → 수리 후 감지 |
+| 실제 계획 6개 실행(유료) | 게이트가 실제로 가름 | T1·T2 DONE, T3 REVIEW(3회 반려), T4 한도로 중단 |
 | 전 Provider 불가 | 억지로 안 돌리고 보존 | BLOCKED_CLOUD_REQUIRED, rc=3, 재개 가능 |
 
 ## 에이전트 등급 (사다리)

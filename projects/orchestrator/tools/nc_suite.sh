@@ -415,13 +415,15 @@ cfg["reviewer"] = None
 cfg["research_agent"] = None
 cfg["agents"]["nc_p1"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "capabilities": ["CODING"],
     "args": ["-c", "printf 'namespace SandboxGame { public static class NcHand { public const int V = 1; } }\\n' > Assets/Game/Scripts/NcHand.cs; "
-                   "echo 'Error: 429 rate limit exceeded for this organization'; exit 1"]}
+                   # 실전 재현: codex는 한도 오류를 **stderr로만** 냈다(2026-09-11 계획 7 T4).
+                   # stdout만 보던 판정이 그것을 코드 실패로 오판해 시도 3번을 태웠다.
+                   "echo \"ERROR: You've hit your usage limit.\" >&2; exit 1"]}
 cfg["agents"]["nc_p2"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "capabilities": ["CODING"],
     "args": ["-c", "printf 'namespace SandboxGame { public static class NcHand2 { public const int V = 2; } }\\n' > Assets/Game/Scripts/NcHand2.cs"]}
 pathlib.Path("state/nc_handoff.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
 PY
 AUTODEV_CONFIG="$HERE/state/nc_handoff.json" ./autodev run "[NC] handoff" >/tmp/nc_handoff.log 2>&1
-check handoff PASS "Provider 장애: nc_p1 = RATE_LIMITED" /tmp/nc_handoff.log
+check handoff PASS "Provider 장애: nc_p1 = RATE_LIMITED" /tmp/nc_handoff.log  # stderr로만 온 한도 오류
 HO_TASK=$(grep -E "^  task " /tmp/nc_handoff.log | head -1 | sed 's/.*: *//')
 HO_PROMPT="logs/task$(printf '%04d' "${HO_TASK:-0}")-a2.prompt.txt"
 if grep -q "인수인계: nc_p1 → nc_p2" /tmp/nc_handoff.log \
