@@ -305,6 +305,65 @@ namespace Ulon.Editor
             if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
         }
 
+        /// <summary>
+        /// **「바꿔 끼우기」 전에 「보이게」**(검수 1순위 2026-09-11). 셋을 한 판에 잰다:
+        ///   ⓘ **배선** — 렌더에 쓰는 카메라의 near/far·`depthTextureMode`를 **찍는다**.
+        ///     far 500→120이 무변화였다면 **바꾼 카메라가 그 깊이를 굽는 카메라가 아닐** 수 있다.
+        ///     「바꿨는데 안 변한다」는 배선을 의심하라는 신호다 — 이 랩에서 이미 한 번 맞았다.
+        ///   ⓙ **깊이 그림** — 물이 읽는 `diff`를 회색으로 그대로 그린다. 톱니와 `65`의 직선 단이
+        ///     **그 그림에 이미 있으면** 범인은 깊이 **원본**, 없으면 그 값을 **쓰는 식**이다.
+        ///   ⓚ **거리 규칙** — 먼 거리 잔물결 끄기의 거리를 크게/작게 바꿔 직선 단이 **따라 움직이는지**.
+        /// </summary>
+        public static void RunWaterDepthDebug()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var water = GameObject.Find(VisualSliceBuilder.WaterObject);
+            Debug.Log("[물가결] ⓘ 배선 — 수면 오브젝트 " + (water != null ? water.name : "없음") +
+                      " · 깊이 요구 부품 " + (water != null && water.GetComponent<Ulon.Client.WaterDepthCamera>() != null) +
+                      " · 씬 카메라 " + Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).Length + "대");
+            WireLog = true;
+
+            var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+
+            var mat = FindWaterMatForProbe();
+            if (mat == null) { Debug.LogError("[물가결] 물 재질을 못 찾음"); return; }
+            float kDbg = mat.GetFloat("_DebugDepth");
+            float kStart = mat.GetFloat("_RippleFadeStart"), kLen = mat.GetFloat("_RippleFadeLen");
+            try
+            {
+                ProbeTag = "j_depth";
+                mat.SetFloat("_DebugDepth", 4f);
+                ScreenEdge(c, ac, "15_lake_river");
+                ScreenEdge(c, ac, "65_sea_close");
+                mat.SetFloat("_DebugDepth", 0f);
+
+                foreach (var pair in new[] { new Vector2(30f, 70f), new Vector2(8f, 12f), new Vector2(200f, 400f) })
+                {
+                    mat.SetFloat("_RippleFadeStart", pair.x);
+                    mat.SetFloat("_RippleFadeLen", pair.y);
+                    ProbeTag = "k_rip" + pair.x.ToString("0") + "_" + pair.y.ToString("0");
+                    Debug.Log("[물가결] ⓚ 잔물결 끄기 " + pair.x.ToString("0") + "m부터 " +
+                              pair.y.ToString("0") + "m에 걸쳐 ──");
+                    ScreenEdge(c, ac, "65_sea_close");
+                }
+            }
+            finally
+            {
+                mat.SetFloat("_DebugDepth", kDbg);
+                mat.SetFloat("_RippleFadeStart", kStart);
+                mat.SetFloat("_RippleFadeLen", kLen);
+                WireLog = false;
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static bool WireLog = false;
+
         /// <summary>이번 판이 무슨 조건이었는지 — 뜨는 PNG 이름에 붙는다.</summary>
         static string ProbeTag = "base";
         /// <summary>판별 전용 — 0 이상이면 ⓒ의 카메라 far가 그 값이 된다.</summary>
@@ -425,6 +484,10 @@ namespace Ulon.Editor
             camGo.transform.position = eye;
             camGo.transform.LookAt(look);
             cam.Render();
+            if (WireLog)
+                Debug.Log("[물가결] ⓘ 렌더 카메라 — near " + cam.nearClipPlane.ToString("0.00") +
+                          " · far " + cam.farClipPlane.ToString("0") + " · depthTextureMode " +
+                          cam.depthTextureMode + " · 해상도 " + W + "x" + H);
             RenderTexture.active = rt;
             tex.ReadPixels(new Rect(0, 0, W, H), 0, 0);
             tex.Apply();

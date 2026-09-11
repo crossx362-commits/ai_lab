@@ -34,6 +34,10 @@ Shader "Ulon/StylizedWater"
         _FoamColor ("거품 색", Color) = (1,1,1,1)
         _FoamWidthM ("거품 띠 가로폭(m)", Float) = 2.0
         _FoamTanFloor ("거품 폭이 기울기를 믿는 하한(tan)", Float) = 0.0
+        _FoamLit ("거품이 빛(과 그림자)을 받는 몫", Range(0,1)) = 1.0
+        _RippleFadeStart ("잔물결이 줄기 시작하는 거리(m)", Float) = 30.0
+        _RippleFadeLen ("잔물결이 다 꺼지기까지(m)", Float) = 70.0
+        _DebugDepth ("판별 — 물이 읽는 깊이를 그대로 그린다(m)", Float) = 0.0
         _FoamDepthSteep ("거품 문턱 상한(m)", Float) = 0.30
         _FoamMaxAlpha ("거품 최대 덮음", Range(0,1)) = 0.75
         _FoamBreak ("거품 이음선 깨기", Range(0,1)) = 0.0
@@ -74,7 +78,7 @@ Shader "Ulon/StylizedWater"
 
         fixed4 _Color, _ShallowColor, _DeepColor, _FoamColor;
         float _DepthMax, _ShallowAlpha, _DeepAlpha;
-        float _FoamTanFloor;
+        float _FoamTanFloor, _FoamLit, _RippleFadeStart, _RippleFadeLen, _DebugDepth;
         float _FoamDepthSteep, _FoamWidthM, _FoamNoiseScale, _FoamJitter, _FoamEdgeSoft, _TintStrength;
         float _FoamMaxAlpha, _FoamBreak, _FoamBreakScale, _FoamWobbleM, _FoamWobbleScale;
         float _RippleScale, _RippleSpeed, _RippleTint, _RippleCrest, _RippleCrestStrength;
@@ -199,7 +203,9 @@ Shader "Ulon/StylizedWater"
             // **멀어지면 끈다.** 절차 잡음은 밉맵이 없어 먼 거리에서 픽셀마다 튄다 — 첫 판에서
             // `15`의 바다가 **흰 반짝이로 뒤덮였다**(3m 무늬가 200m 밖에서 한 픽셀 아래로 들어간
             // 것이다). 가까운 데서만 물결을 주고 먼 바다는 매끈한 색으로 둔다.
-            float rippleFade = saturate(1.0 - (IN.screenPos.w - 30.0) / 70.0);
+            // **거리 상수는 판별 축이다**(검수 2026-09-11): `65`의 직선 단이 이 거리를 따라
+            // 움직이는지 보려면 값을 밖에서 바꿀 수 있어야 한다. 기본값은 1.5단계 그대로(30·70).
+            float rippleFade = saturate(1.0 - (IN.screenPos.w - _RippleFadeStart) / max(0.01, _RippleFadeLen));
             water.rgb *= 1.0 + (rip - 0.5) * _RippleTint * rippleFade;
             // 마루만 희게 — 잔물결이 「밝기 얼룩」이 아니라 **물결**로 읽히려면 끝이 서야 한다.
             float crest = smoothstep(_RippleCrest, _RippleCrest + 0.12, rip) * _RippleCrestStrength * rippleFade;
@@ -250,6 +256,33 @@ Shader "Ulon/StylizedWater"
             o.Metallic = _Metallic * (1.0 - foamCover);
             o.Smoothness = _Glossiness * (1.0 - foamCover);
             o.Alpha = max(lerp(_ShallowAlpha, _DeepAlpha, t), foamMask * outer) * _Color.a;
+
+            // **물거품은 그림자를 덜 받는다**(근접 샷 `65_sea_close`의 회색 얼룩, 2026-09-11).
+            // 얼룩의 정체는 확정돼 있다: **지형의 셀프 섀도**가 얕은 물 아래로 비쳐 흰 거품 위에
+            // 재처럼 얹힌다(라이트 그림자를 전부 끄면 사라지고, 물의 `receiveShadows`로는 안 된다 —
+            // 그림자는 물이 아니라 **바닥**이 받는다). 그러니 고칠 자리는 「물 아래로 비치는 그림자를
+            // 물색이 얼마나 받는가」다. 물거품은 공기를 머금은 **산란체**라 그늘 속에서도 하얗다 —
+            // 덮인 몫만큼 알베도에서 덜고 **자체 발광**으로 옮긴다. 물 본체는 그대로 빛을 받는다.
+            // `_FoamLit = 1`이면 이 처방이 꺼진다(NC 경로 — 그 판에서 얼룩이 돌아와야 한다).
+            // **아직 원장(`EnsureWater`)에 걸지 않았다** — 이 안건이 대기로 내려가 화면 검증(NC 한 판 +
+            // `qa_shots`)을 못 했기 때문이다. 재개하는 사람이 `mat.SetFloat("_FoamLit", 0.2f)` 한 줄로
+            // 켜고 그 검증부터 하면 된다. 기본값 1.0에서 이 블록은 화면을 바꾸지 않는다.
+            float unlit = foamCover * (1.0 - _FoamLit);
+            o.Albedo *= 1.0 - unlit;
+            o.Emission += _FoamColor.rgb * _Color.rgb * unlit;
+
+            // **판별 — 물이 읽는 깊이를 그대로 그린다**(검수 1순위 2026-09-11).
+            // 「바꿔 끼우기」 전에 **보이게** 한다: 톱니와 직선 단이 **깊이 그림에 이미 있으면**
+            // 범인은 깊이 원본이고, 없으면 그 값을 **쓰는 식**이다. 0이면 완전히 꺼진다.
+            if (_DebugDepth > 0.0)
+            {
+                float g = saturate(diff / _DebugDepth);
+                o.Albedo = 0;
+                o.Emission = float3(g, g, g);
+                o.Alpha = 1;
+                o.Metallic = 0;
+                o.Smoothness = 0;
+            }
         }
         ENDCG
     }
