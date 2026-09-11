@@ -1,0 +1,22 @@
+{
+  "default_target": "sandbox",
+  "max_attempts": 3,
+  "unity_editor_template": "/Applications/Unity/Hub/Editor/{version}/Unity.app/Contents/MacOS/Unity",
+  "targets": {
+    "sandbox": {
+      "repo": "sandbox",
+      "unity_project": "sandbox",
+      "unity_version": "6000.3.14f1",
+      "allowed_write_globs": ["Assets/**"],
+      "unity_timeout_sec": 1800
+    }
+  },
+  "agents": {
+    "codex": {
+      "bin": "codex",
+      "model": null,
+      "sandbox_mode": "workspace-write",
+      "timeout_sec": 900
+    }
+  }
+}
