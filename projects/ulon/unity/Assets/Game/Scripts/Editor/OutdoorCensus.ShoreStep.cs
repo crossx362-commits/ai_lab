@@ -99,6 +99,7 @@ namespace Ulon.Editor
                     var td = Object.FindFirstObjectByType<Terrain>().terrainData;
                     float c = td.size.x / (td.heightmapResolution - 1);
                     float ac = td.size.x / td.alphamapResolution;
+                    ProbeTag = "r_h" + td.heightmapResolution;
                     Debug.Log("[물가결] ── 하이트맵 " + td.heightmapResolution + "² · 셀 " +
                               c.ToString("0.000") + "m ──");
                     ScreenEdge(c, ac, "64_river_bend");
@@ -190,6 +191,117 @@ namespace Ulon.Editor
                 UnityEditor.AssetDatabase.SaveAssets();
                 Debug.Log("[물가결] 원장 하한으로 되돌렸다.");
             }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **그림자 축** — 격자(높이·도포) 둘 다 눈으로도 셈으로도 기각된 뒤 남은 후보.
+        /// 물 셰이더는 `alpha:fade fullforwardshadows`라 **반투명인 채로 그림자를 받는다**.
+        /// 빌트인 RP는 그런 표면의 그림자를 **디더**로 섞고(물 안쪽에 보이는 2px 체크무늬가 그것),
+        /// 그림자 맵의 계단이 얕은 물의 알파에 그대로 실리면 **물가가 톱니**가 된다.
+        /// 그림자만 끄고 같은 자리를 렌더해 눈과 셈으로 가른다.
+        /// </summary>
+        public static void RunShoreStepShadow()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+
+            ProbeTag = "s_on";
+            Debug.Log("[물가결] ── 그림자 그대로 ──");
+            ScreenEdge(c, ac, "15_lake_river");
+            ScreenEdge(c, ac, "64_river_bend");
+
+            var lights = Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
+            var keep = new LightShadows[lights.Length];
+            for (int i = 0; i < lights.Length; i++) { keep[i] = lights[i].shadows; lights[i].shadows = LightShadows.None; }
+            try
+            {
+                ProbeTag = "s_off";
+                Debug.Log("[물가결] ── 그림자 끔(라이트 " + lights.Length + "개) ──");
+                ScreenEdge(c, ac, "15_lake_river");
+                ScreenEdge(c, ac, "64_river_bend");
+            }
+            finally
+            {
+                for (int i = 0; i < lights.Length; i++) lights[i].shadows = keep[i];
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **지형 렌더 LOD 축** — 이것이 앞선 「해상도 기각」을 설명할 수 있다.
+        /// `terrainData.heightmapResolution`은 **데이터**의 눈금이고, 화면에 실제로 그려지는
+        /// **삼각형의 크기**는 `Terrain.heightmapPixelError`가 정한다. 데이터를 1025로 굽어도
+        /// LOD가 성기면 메시는 그대로다 — 톱니 크기가 해상도와 무관하게 고정이던 이유가 여기일 수 있다.
+        /// 물은 `ZWrite Off` 반투명이라 물가 선은 **지형 삼각형의 실루엣**이 그린다.
+        /// </summary>
+        public static void RunShoreStepLod()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var terrain = Object.FindFirstObjectByType<Terrain>();
+            var td = terrain.terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+            Debug.Log("[물가결] 현재 LOD — heightmapPixelError " + terrain.heightmapPixelError.ToString("0.00") +
+                      " · basemapDistance " + terrain.basemapDistance.ToString("0"));
+
+            float keep = terrain.heightmapPixelError;
+            try
+            {
+                foreach (float err in new[] { keep, 1f })
+                {
+                    terrain.heightmapPixelError = err;
+                    ProbeTag = "l_err" + err.ToString("0.0");
+                    Debug.Log("[물가결] ── 지형 LOD 오차 " + err.ToString("0.00") + "px ──");
+                    ScreenEdge(c, ac, "15_lake_river");
+                    ScreenEdge(c, ac, "64_river_bend");
+                }
+            }
+            finally { terrain.heightmapPixelError = keep; }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **베이스맵 축** — 유니티 지형은 `basemapDistance`보다 먼 곳을 **미리 합성한 저해상 텍스처**
+        /// (`baseMapResolution`)로 그린다. 조망 샷의 물가가 그 거리 밖이면 도포 경계는 **알파맵이 아니라
+        /// 베이스맵**이 그린다 — 알파맵 해상도를 1024로 올려도 화면이 안 변하던 것이 이것으로 설명된다.
+        /// 거리를 멀리 밀어(항상 상세) 같은 자리를 렌더해 가른다.
+        /// </summary>
+        public static void RunShoreStepBasemap()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var terrain = Object.FindFirstObjectByType<Terrain>();
+            var td = terrain.terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+            Debug.Log("[물가결] 베이스맵 — baseMapResolution " + td.baseMapResolution + "² · 칸 " +
+                      (td.size.x / td.baseMapResolution).ToString("0.000") + "m · basemapDistance " +
+                      terrain.basemapDistance.ToString("0"));
+
+            float keep = terrain.basemapDistance;
+            try
+            {
+                foreach (float d in new[] { keep, 2000f })
+                {
+                    terrain.basemapDistance = d;
+                    ProbeTag = "b_dist" + d.ToString("0");
+                    Debug.Log("[물가결] ── 베이스맵 거리 " + d.ToString("0") + "m ──");
+                    ScreenEdge(c, ac, "15_lake_river");
+                    ScreenEdge(c, ac, "64_river_bend");
+                }
+            }
+            finally { terrain.basemapDistance = keep; }
             if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
         }
 
