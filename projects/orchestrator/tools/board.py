@@ -35,7 +35,8 @@ HOST = os.getenv("BOARD_HOST", "127.0.0.1")
 PORT = int(os.getenv("BOARD_PORT", "8767"))
 
 VERDICT_COLOR = {"PASS": "ok", "FAILED": "bad", "UNKNOWN": "warn", None: "mute"}
-STATUS_COLOR = {"DONE": "ok", "RUNNING": "run", "BLOCKED": "bad", "STOPPED": "warn"}
+STATUS_COLOR = {"DONE": "ok", "RUNNING": "run", "BLOCKED": "bad",
+                "STOPPED": "warn", "REVIEW": "warn", "INTERRUPTED": "warn"}
 
 
 def rows(q, args=()):
@@ -130,7 +131,7 @@ def gather() -> dict:
     tasks = [t for t in rows("SELECT * FROM tasks ORDER BY id DESC LIMIT 120")
              if not is_hidden(t)][:14]
     running = [t for t in tasks if t["status"] == "RUNNING"]
-    blocked = [t for t in tasks if t["status"] in ("BLOCKED", "STOPPED")]
+    blocked = [t for t in tasks if t["status"] in ("BLOCKED", "STOPPED", "INTERRUPTED", "REVIEW")]
     live = rows("SELECT * FROM processes WHERE status='RUNNING' ORDER BY started_at DESC LIMIT 6")
 
     cur = None
@@ -239,7 +240,7 @@ ul{margin:0;padding-left:16px}li{margin:2px 0}
 </div>
 <script>
 const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SC={DONE:'ok',RUNNING:'run',BLOCKED:'bad',STOPPED:'warn'};
+const SC={DONE:'ok',RUNNING:'run',BLOCKED:'bad',STOPPED:'warn',REVIEW:'warn',INTERRUPTED:'warn'};
 const VC={PASS:'ok',FAILED:'bad',UNKNOWN:'warn'};
 async function load(){
   const d=await (await fetch('/api')).json();

@@ -29,7 +29,7 @@
 - PHASE 5 Multi Agent(Claude·Grok·Ollama 라우팅): 완료 [2026-09-11]
 - PHASE 6 Astra Supervisor(작업 분해·승격·최종 리뷰): 완료 [2026-09-11]
 - PHASE 7 Memory Manager: 완료 [2026-09-11]
-- PHASE 8 Crash Recovery: 대기
+- PHASE 8 Crash Recovery: 완료 [2026-09-11]
 - PHASE 9 Windows Worker: 대기
 - PHASE 10 GUI: 대기
 
@@ -44,8 +44,9 @@
 - [x] [2026-09-11] PHASE 5 — Claude/Grok/Ollama 어댑터와 승격 라우팅
 - [x] [2026-09-11] PHASE 6 — Astra Supervisor(작업 분해·최종 리뷰)
 - [x] [2026-09-11] PHASE 7 — Memory Manager(압박·스왑 추세 판정, Unity 슬롯 축소, `unity-kill` 범위 한정)
-- [ ] [2026-09-11] PHASE 8 — Crash Recovery(RUNNING으로 남은 task 회수)
+- [x] [2026-09-11] PHASE 8 — Crash Recovery(주인 없는 RUNNING을 INTERRUPTED로 회수, DONE 경로 없음)
+- [ ] [2026-09-11] PHASE 9 — Windows Worker(선택)
 
 ## 막힘
 - Unity 라이선스 핸드셰이크에서 멈추면 진행 없음을 감지하지 못한다 — 타임아웃까지 기다린다.
-- RUNNING으로 남은 task를 회수하는 경로가 없다 — PHASE 8에서 처리(지금은 `clean`으로 수동).
+- (닫힘) RUNNING으로 남은 task 회수 — `autodev recover`. 실제 잔재 2건(task 15·56)을 회수했다.

@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 from . import (agents, config, db, gitwt, loganalyze, logs, memory, planner,
-               proc, review, router, safety, unityrun)
+               proc, recover, review, router, safety, unityrun)
 
 
 def _p(msg: str = "") -> None:
@@ -205,6 +205,10 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
 
     max_attempts = max_attempts or cfg.max_attempts
     conn = db.connect()
+    # 지난 판이 죽어서 RUNNING으로 남아 있으면 먼저 세운다(§14). 회수는 완료가 아니다 —
+    # INTERRUPTED로 세워 사람이 보게 하고, worktree는 증거로 남긴다.
+    for r in recover.recover(conn):
+        _p(f"[회수] task {r['id']} 주인 없음 → {recover.INTERRUPTED} (worktree 보존)")
     task_id = db.create_task(conn, args_goal, t.name, ladder[0], None,
                              plan_id=plan_id, plan_key=plan_key, done_criteria=done_criteria)
     base = gitwt.head(t.repo)
@@ -218,6 +222,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         _p(f"worktree 생성 실패: {e}")
         return 2
     db.update_task(conn, task_id, status="RUNNING", branch=branch, worktree=str(wt), base_commit=base)
+    recover.claim(conn, task_id)   # 이 판의 주인이 누구인지 남긴다 — 죽으면 이것으로 회수한다
     _p(f"[task {task_id}] worktree={wt}")
     _p(f"[task {task_id}] branch={branch}")
 
@@ -248,6 +253,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
 
         attempt_id = db.create_attempt(conn, task_id, n, agent_name, agent.model_name())
         db.update_task(conn, task_id, attempts=n, agent=agent_name, model=agent.model_name())
+        recover.beat(conn, task_id)
 
         prompt = agent.build_prompt(
             goal=args_goal,
@@ -340,6 +346,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             continue
 
         # 4) Unity 판정
+        recover.beat(conn, task_id)
         mnow = memory.assess(memory.sample())
         slots = memory.effective_unity_slots(mnow.state, cfg.unity_slots)
         if slots != cfg.unity_slots:
@@ -660,6 +667,27 @@ def cmd_mem(args) -> int:
     return 0 if a.state == "GREEN" else (1 if a.state == "YELLOW" else 2)
 
 
+def cmd_recover(args) -> int:
+    """죽은 판을 회수한다 — **INTERRUPTED로 세울 뿐 완료로 만들지 않는다**(§14).
+    worktree·브랜치는 남긴다. 죽은 자리가 증거다."""
+    conn = db.connect()
+    rows = recover.recover(conn, dry_run=args.dry_run, stale_sec=args.stale)
+    if not rows:
+        _p("회수할 task 없음 (RUNNING인 것은 전부 주인이 살아 있다)")
+        return 0
+    for r in rows:
+        head = "발견" if args.dry_run else f"회수 → {recover.INTERRUPTED}"
+        _p(f"  task {r['id']} {head} — 시도 {r['attempts']}회, 주인 pid {r['owner_pid'] or '미기록'}")
+        _p(f"    목표: {r['goal'][:70]}")
+        if r["worktree"]:
+            _p(f"    worktree(보존): {r['worktree']}")
+        for n in r["notes"]:
+            _p(f"    {n}")
+    if args.dry_run:
+        _p("  (--dry-run: 아무것도 바꾸지 않았다)")
+    return 0
+
+
 def cmd_unity_kill(args) -> int:
     """멎은 배치 Unity를 세운다 — **대상 프로젝트 경로를 인자로 가진 것만**.
     이 기계에는 다른 세션의 Unity가 같이 돈다. 전역 패턴 kill은 쓰지 않는다(2026-09-11 사고)."""
@@ -768,6 +796,12 @@ def build_parser() -> argparse.ArgumentParser:
     mm = sub.add_parser("mem", help="메모리 상태(압박·스왑·프로세스)")
     mm.add_argument("--relieve", action="store_true", help="로컬 모델을 내려 압박을 던다")
     mm.set_defaults(func=cmd_mem)
+
+    rc = sub.add_parser("recover", help="죽은 판(주인 없는 RUNNING)을 INTERRUPTED로 회수")
+    rc.add_argument("--dry-run", action="store_true")
+    rc.add_argument("--stale", type=float, default=recover.STALE_SEC,
+                    help="주인 PID가 없는 옛 판을 고아로 볼 무응답 초(기본 900)")
+    rc.set_defaults(func=cmd_recover)
 
     uk = sub.add_parser("unity-kill", help="**이 target의** 멎은 Unity만 골라 세운다")
     uk.add_argument("--target", default=None)

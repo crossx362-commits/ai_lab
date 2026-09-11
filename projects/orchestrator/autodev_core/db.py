@@ -101,6 +101,8 @@ MIGRATIONS = [
     ("tasks", "done_criteria", "TEXT"),
     ("tasks", "risk", "TEXT"),
     ("tasks", "review", "TEXT"),
+    ("tasks", "owner_pid", "INTEGER"),    # 이 task를 모는 오케스트레이터 프로세스
+    ("tasks", "heartbeat", "REAL"),       # 마지막 생존 흔적(크래시 회수 판정용)
 ]
 
 

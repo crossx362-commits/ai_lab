@@ -1,6 +1,6 @@
 # AutoDev Orchestrator — Unity 자율개발 오케스트레이터
 
-기존 AutoDev와 무관한 신규 프로젝트다. **PHASE 7(Memory Manager)까지 구현·검증 완료.**
+기존 AutoDev와 무관한 신규 프로젝트다. **PHASE 8(Crash Recovery)까지 구현·검증 완료.**
 
 ## 원칙 (코드로 강제되는 것만 적는다)
 
@@ -21,6 +21,7 @@
 ./autodev verify                       # Unity 컴파일 판정만
 ./autodev status [--task N]            # 상태
 ./autodev stop                         # 실행 중 프로세스 그룹 정리
+./autodev recover                      # 죽은 판 회수(완료로 만들지 않는다)
 ./autodev clean --task N [--delete-branch]
 ```
 
@@ -45,7 +46,7 @@
 ## 네거티브 컨트롤 스위트
 
 ```bash
-./tools/nc_suite.sh     # 20개 시험, 모델 호출 없음(무비용)
+./tools/nc_suite.sh     # 21개 시험, 모델 호출 없음(무비용)
 ```
 
 게이트가 **빨간불을 낼 줄 아는지**를 매번 확인한다. 통과만 보는 검증은 검증이 아니다.
@@ -83,6 +84,8 @@
 | 메모리 판정 9종(합성 입력) | 최악이 이김·못 잰 값은 YELLOW | 그대로 (압박을 만들지 않고 시험) |
 | 메모리 실측 | 상태 + 슬롯 축소 | 여유 68%·스왑 74% → YELLOW, 슬롯 1 |
 | 남의 프로젝트 Unity | 대상에서 제외 | 제외, 내 것만 선별 (양쪽 다 확인) |
+| 크래시 회수 5종 | 죽은 판만 INTERRUPTED | 그대로, DONE 경로 없음 (PID 재사용도 잡음) |
+| 실제 잔재 회수 | RUNNING 2건 회수 | task 15·56 → INTERRUPTED (worktree 보존) |
 
 ## 에이전트 등급 (사다리)
 
@@ -132,8 +135,23 @@ RAM 퍼센트 하나로 판단하지 않는다. ①시스템 여유 ②스왑 �
 `pkill -f Unity`는 남의 10분짜리 검증을 죽인다(2026-09-11에 실제로 그럴 뻔했다). 그래서 선별을
 코드(`safety.unity_procs`)에 넣고 NC로 양쪽(내 것은 고름 / 남의 것은 제외)을 시험한다.
 
-## 아직 없는 것 (PHASE 8 이후)
+## 크래시 복구
 
-크래시 복구(RUNNING으로 남은 task 회수), Windows Worker, GUI.
+```bash
+./autodev recover --dry-run   # 주인 없는 RUNNING task 찾기
+./autodev recover             # INTERRUPTED로 회수 (run/run-plan 시작 시 자동으로도 돈다)
+```
+
+프로그램이 죽어도 상태는 SQLite에 남는다. 회수는 **모르는 것을 모른다고 세우는 일**이다 —
+`INTERRUPTED` + `verdict=UNKNOWN`으로 세울 뿐, **재시작이 완료를 만드는 경로는 코드에 없다.**
+컴파일까지 PASS하고 커밋 직전에 죽은 판도 DONE이 아니다. worktree와 브랜치는 지우지 않는다(증거).
+
+살아있음 판정은 PID만 보지 않는다. PID는 재사용되므로 **명령줄에 `autodev_core.cli`가 있는지까지**
+확인한다 — 그 방향으로 틀리면 task가 영원히 RUNNING에 갇힌다. 잔존 자식 프로세스는
+**DB에 기록된 프로세스 그룹만** 정리한다(패턴 kill 없음).
+
+## 아직 없는 것 (PHASE 9 이후)
+
+Windows Worker, GUI.
 Unity가 라이선스 핸드셰이크에서 멈추면 지금은 타임아웃(600초)까지 기다린다 —
 진행 없음 감지는 아직 없다.

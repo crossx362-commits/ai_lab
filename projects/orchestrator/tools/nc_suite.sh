@@ -265,6 +265,59 @@ if grep -q "^SCOPE_OK" /tmp/nc_unity_scope.log; then
   echo "  PASS  unity_scope — 내 것만 고르고 남의 프로젝트는 제외"; PASS=$((PASS+1))
 else echo "  FAIL  unity_scope (로그: /tmp/nc_unity_scope.log)"; FAIL=$((FAIL+1)); fi
 
+# 10) 크래시 회수 — 죽은 판은 세워야 하고, **재시작이 완료를 만들면 안 된다**(§14).
+#     진짜로 kill -9 하지 않고도 시험할 수 있게 별도 DB에 상태만 심는다.
+MARK_PID=""
+python3 -c "import time; time.sleep(25)" autodev_core.cli >/dev/null 2>&1 &   # 주인이 살아 있는 판
+MARK_PID=$!
+python3 -c "import time; time.sleep(25)" >/dev/null 2>&1 &                     # 같은 PID 자리의 '남'
+IMPOSTOR=$!
+DEAD_PID=$( (python3 -c "import os; print(os.getpid())") )                     # 이미 끝난 프로세스
+sleep 1
+python3 - "$MARK_PID" "$IMPOSTOR" "$DEAD_PID" <<'PY' > /tmp/nc_recover.log 2>&1
+import pathlib, sys, time
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from autodev_core import db, recover
+mark, impostor, dead = (int(x) for x in sys.argv[1:4])
+p = pathlib.Path("state/nc_recover.sqlite3")
+p.unlink(missing_ok=True)
+conn = db.connect(p)
+
+def mk(**kw):
+    return db.create_task(conn, kw.pop("goal"), "sandbox", "nc", None, status="RUNNING", **kw)
+
+t_dead = mk(goal="[NC] 주인이 죽은 판", owner_pid=dead, heartbeat=time.time())
+t_live = mk(goal="[NC] 주인이 살아있는 판", owner_pid=mark, heartbeat=time.time())
+t_reuse = mk(goal="[NC] PID 재사용", owner_pid=impostor, heartbeat=time.time())
+# 컴파일까지 통과하고 커밋 직전에 죽은 판 — 여기가 제일 위험한 자리다.
+t_pass = mk(goal="[NC] PASS 직후 크래시", owner_pid=dead, verdict="PASS", heartbeat=time.time())
+# 주인 PID 기록이 없는 옛 판: 최근이면 건드리지 않는다(도는 중일 수 있다)
+t_fresh = mk(goal="[NC] 옛 판이지만 최근", heartbeat=time.time())
+
+got = {r["id"] for r in recover.recover(conn)}
+bad = []
+if t_dead not in got: bad.append("죽은 주인을 회수 못 함")
+if t_live in got: bad.append("살아있는 주인을 고아로 오판")
+if t_reuse not in got: bad.append("PID 재사용(남의 프로세스)을 살아있다고 오판")
+if t_pass not in got: bad.append("PASS 표시된 크래시 판을 회수 못 함")
+if t_fresh in got: bad.append("주인 미기록 최근 판을 성급히 회수")
+for tid in (t_dead, t_pass):
+    r = db.get_task(conn, tid)
+    if r["status"] != "INTERRUPTED": bad.append(f"task {tid} status={r['status']}")
+    if r["verdict"] == "PASS": bad.append(f"task {tid} 회수했는데 verdict가 아직 PASS")
+if db.get_task(conn, t_live)["status"] != "RUNNING": bad.append("살아있는 판의 상태를 건드림")
+# 어떤 경우에도 DONE은 나오지 않는다
+if any(db.get_task(conn, i)["status"] == "DONE" for i in (t_dead, t_live, t_reuse, t_pass, t_fresh)):
+    bad.append("회수가 DONE을 만들었다")
+print("RECOVER_OK" if not bad else "RECOVER_BAD " + " / ".join(bad))
+PY
+kill "$MARK_PID" "$IMPOSTOR" 2>/dev/null
+wait "$MARK_PID" "$IMPOSTOR" 2>/dev/null
+rm -f state/nc_recover.sqlite3*
+if grep -q "^RECOVER_OK" /tmp/nc_recover.log; then
+  echo "  PASS  crash_recover — 죽은 판만 INTERRUPTED(DONE 경로 없음), PID 재사용도 잡음"; PASS=$((PASS+1))
+else echo "  FAIL  crash_recover (로그: /tmp/nc_recover.log)"; FAIL=$((FAIL+1)); fi
+
 echo
 echo "=== 결과: PASS=$PASS FAIL=$FAIL ==="
 if [[ ${#TASKS[@]} -gt 0 ]]; then
