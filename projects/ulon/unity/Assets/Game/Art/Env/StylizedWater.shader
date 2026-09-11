@@ -37,6 +37,8 @@ Shader "Ulon/StylizedWater"
         _FoamMaxAlpha ("거품 최대 덮음", Range(0,1)) = 0.75
         _FoamBreak ("거품 이음선 깨기", Range(0,1)) = 0.0
         _FoamBreakScale ("거품 깨기 타일(1/m)", Float) = 2.5
+        _FoamWobbleM ("거품 물가 밀고당김(m)", Float) = 0.0
+        _FoamWobbleScale ("밀고당김 타일(1/m)", Float) = 0.8
         _FoamNoiseScale ("거품 잡음 타일(1/m)", Float) = 0.6
         _FoamJitter ("거품 가장자리 흐트러짐", Range(0,1)) = 0.40
         _FoamEdgeSoft ("거품 가장자리 부드러움", Range(0.01,1)) = 0.22
@@ -72,7 +74,7 @@ Shader "Ulon/StylizedWater"
         fixed4 _Color, _ShallowColor, _DeepColor, _FoamColor;
         float _DepthMax, _ShallowAlpha, _DeepAlpha;
         float _FoamDepthSteep, _FoamWidthM, _FoamNoiseScale, _FoamJitter, _FoamEdgeSoft, _TintStrength;
-        float _FoamMaxAlpha, _FoamBreak, _FoamBreakScale;
+        float _FoamMaxAlpha, _FoamBreak, _FoamBreakScale, _FoamWobbleM, _FoamWobbleScale;
         float _RippleScale, _RippleSpeed, _RippleTint, _RippleCrest, _RippleCrestStrength;
         half _Glossiness, _Metallic;
 
@@ -193,7 +195,21 @@ Shader "Ulon/StylizedWater"
             float crest = smoothstep(_RippleCrest, _RippleCrest + 0.12, rip) * _RippleCrestStrength * rippleFade;
 
             // 거품 — 얕을수록 짙다. 문턱은 위에서 바닥 기울기로 유도한 값이다.
-            float foam = 1.0 - saturate(diff / max(0.01, foamMax));
+            // **거품이 시작되는 자리를 밀고 당긴다**(1.7c, 검수 판정 ⓑ). 1.7b는 흰 **양**을
+            // 깎아 줄을 지우려 했는데, 자가 그것을 「거품이 사라졌다」로 잡았다(하한 2%) —
+            // **자와 처방이 정면으로 부딪히면 대개 처방이 엉뚱한 축을 깎고 있다.** 양은 그대로
+            // 두고 **문턱의 위치**만 월드 잡음으로 ±수십 cm 흔들면 흰 몫은 거의 유지된 채
+            // 물가가 계단 노치를 따라가지 않는다. 잡음은 반드시 **월드 좌표** 기준이다 —
+            // UV·화면 좌표로 하면 카메라가 움직일 때 무늬가 물 위를 헤엄친다.
+            // (`_FoamWobbleM = 0`이면 밀고당김이 꺼진다 — NC 경로.)
+            // **문턱이 0인 자리는 밀고 당길 것도 없다.** 그냥 더하면 `foamMax = 0`인 곳
+            // (45°↑ 벽 · 거품 끔 NC)에서도 음수 잡음이 `diff`를 0 아래로 밀어 **거품이 생긴다** —
+            // 첫 판에서 거품 끔 NC가 0.4% → 1.5%로 무뎌진 것이 그것이다(자를 무르게 만드는 구멍은
+            // 화면이 좋아져도 메워야 한다). 밀고당김을 띠 폭에 비례시키면 원리상 닫힌다.
+            float wnoise = VNoise(IN.worldPos.xz * _FoamWobbleScale);
+            float wobScale = saturate(foamMax / max(1e-4, _FoamDepthSteep));
+            float wob = (wnoise - 0.5) * 2.0 * _FoamWobbleM * wobScale;
+            float foam = 1.0 - saturate((diff + wob) / max(0.01, foamMax));
             // **잡음은 문턱에 곱하지 않는다**(검수 판정): 곱하면 띠의 **폭 자체**가 잡음만큼
             // 커졌다 작아져 호수가 흰 웅덩이가 된다. 가장자리에 **더한다** — 그러면 폭은
             // 그대로고 경계만 우글거린다. 안쪽(foam이 1에 가까운 곳)은 그대로 하얗다.
