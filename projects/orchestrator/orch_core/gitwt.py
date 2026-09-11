@@ -73,8 +73,8 @@ def is_clean(repo: Path) -> bool:
 
 
 def create_worktree(repo: Path, task_id: int) -> tuple[Path, str]:
-    branch = f"autodev/task-{task_id:04d}"
-    wt = repo / ".autodev" / "worktrees" / f"task_{task_id:04d}"
+    branch = f"orch/task-{task_id:04d}"
+    wt = repo / ".orch" / "worktrees" / f"task_{task_id:04d}"
     wt.parent.mkdir(parents=True, exist_ok=True)
     if wt.exists():
         raise GitError(f"worktree 자리가 이미 있음: {wt}")
@@ -118,7 +118,7 @@ def gc(repo: Path, keep_paths: set[str]) -> list[str]:
             continue
         if path in keep_paths:
             continue
-        if "/.autodev/worktrees/" not in path:
+        if "/.orch/worktrees/" not in path:
             continue  # 우리가 만든 것만 손댄다
         notes.append(f"DB에 없는 잔재 worktree: {path}")
     return notes

@@ -1,6 +1,6 @@
 # 오케스트레이터 보드
 
-공유 원본. 이 파일과 `state/autodev.sqlite3`가 보드 화면의 전부다.
+공유 원본. 이 파일과 `state/orch.sqlite3`가 보드 화면의 전부다.
 화면: `python3 tools/board.py` → http://127.0.0.1:8767
 
 ## 금지
@@ -55,11 +55,11 @@
 - (닫힘) T3 — 재리뷰 **승인**, DONE. 반려가 아니라 리뷰 미실행이었다.
 - (옛 기록) **계획 7 재개는 23:41 이후**(codex·astra 한도, 시스템이 그 시각까지 냉각 표시함).
   지금 돌리면 claude가 구현은 하지만 **리뷰어가 전부 막혀** 전부 REVIEW로 쌓이고 재리뷰를
-  또 돌려야 한다(비용 이중). 재개: `./autodev run-plan --plan 7 --keep-going`.
-- T3(task 223, 브랜치 autodev/task-0223)은 **반려가 아니라 리뷰 미실행**이다 —
+  또 돌려야 한다(비용 이중). 재개: `./orch run-plan --plan 7 --keep-going`.
+- T3(task 223, 브랜치 orch/task-0223)은 **반려가 아니라 리뷰 미실행**이다 —
   컴파일 PASS·EditMode 1/1·PlayMode 8/8을 통과했고 astra 리뷰가 한도로 못 돌았다.
-  23:41 이후 `./autodev review --task 223` 한 번이면 판정이 난다(코드 재작업 불필요).
+  23:41 이후 `./orch review --task 223` 한 번이면 판정이 난다(코드 재작업 불필요).
 - 스왑이 찬 상태(RED)에서는 시작 전 최대 300초 대기가 걸린다 — 멎은 게 아니라 규칙이다.
   NC 한 판이 그것 때문에 197초였다(스위트가 케이스별 소요를 찍는다).
 
-- (닫힘) RUNNING으로 남은 task 회수 — `autodev recover`. 실제 잔재 2건(task 15·56)을 회수했다.
+- (닫힘) RUNNING으로 남은 task 회수 — `orch recover`. 실제 잔재 2건(task 15·56)을 회수했다.

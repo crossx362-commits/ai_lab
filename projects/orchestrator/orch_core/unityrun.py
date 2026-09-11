@@ -14,9 +14,9 @@ from pathlib import Path
 from . import proc, safety
 from .config import Target
 
-OK_MARKER = "AUTODEV_COMPILE_OK"
-FAIL_MARKER = "AUTODEV_COMPILE_FAIL"
-EXECUTE_METHOD = "AutoDev.EditorTools.AutoDevCompileCheck.Run"
+OK_MARKER = "ORCH_COMPILE_OK"
+FAIL_MARKER = "ORCH_COMPILE_FAIL"
+EXECUTE_METHOD = "Orch.EditorTools.OrchCompileCheck.Run"
 
 _CS_ERROR = re.compile(r"^.*?\berror CS\d+\b.*$", re.M)
 _LOCKED = re.compile(r"Multiple Unity instances cannot open the same project", re.I)
@@ -186,7 +186,7 @@ def compile_check(
         str(project_path),
         "-executeMethod",
         EXECUTE_METHOD,
-        "-autodevReport",
+        "-orchReport",
         str(report_path),
         "-logFile",
         str(unity_log),

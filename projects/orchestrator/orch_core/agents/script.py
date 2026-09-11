@@ -27,5 +27,5 @@ class ScriptAgent(CliAgent):
 
     def env(self) -> dict:
         e = super().env()
-        e["AUTODEV_WORKTREE"] = "worktree"
+        e["ORCH_WORKTREE"] = "worktree"
         return e

@@ -9,7 +9,7 @@
 2. 칸·제목은 짧은 한국어. 내부 코드 이름을 그대로 올리지 않는다.
 3. 오너에게 일을 시키지 않는다 — 화면이 하는 일은 보여주기·명령 받기·세우기뿐이다.
 
-읽는 것: state/autodev.sqlite3 · BOARD.md · state/STOP · logs/
+읽는 것: state/orch.sqlite3 · BOARD.md · state/STOP · logs/
 쓰는 것: BOARD.md(명령 추가) · state/STOP(세우기/풀기). **그 밖에는 아무것도 건드리지 않는다.**
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
-DB = ROOT / "state" / "autodev.sqlite3"
+DB = ROOT / "state" / "orch.sqlite3"
 BOARD = ROOT / "BOARD.md"
 LOGDIR = ROOT / "logs"
 STOP = ROOT / "state" / "STOP"
@@ -126,7 +126,7 @@ def mem_state() -> dict:
         return _MEM_CACHE["val"]
     sys.path.insert(0, str(ROOT))
     try:
-        from autodev_core import memory
+        from orch_core import memory
         snap = memory.sample(record=False)
         a = memory.assess(snap)
         val = {"state": a.state, "line": snap.line(), "reasons": a.reasons,
@@ -370,8 +370,8 @@ async function load(){
         `<tr><td class=n>${p.usable?'<span class=ok>✓</span>':'<span class=bad>✗</span>'} ${E(p.name)}</td>
          <td class="n ${PC[p.state]||'mute'}">${E(p.state)}</td>
          <td class="n mute">${p.cool_min?p.cool_min+'분 후':E(p.checked)}</td></tr>`).join('')+'</table>'
-      + '<div class=mute style="margin-top:6px;font-size:11px">마지막 검사 기준 · 갱신: autodev providers --refresh</div>'
-    : '<div class=mute>아직 검사한 적 없다 — autodev providers</div>';
+      + '<div class=mute style="margin-top:6px;font-size:11px">마지막 검사 기준 · 갱신: orch providers --refresh</div>'
+    : '<div class=mute>아직 검사한 적 없다 — orch providers</div>';
 
   const mc={GREEN:'ok',YELLOW:'warn',RED:'bad'}[d.mem.state]||'mute';
   const memHtml=`<div><span class="pill ${mc}">${E(d.mem.state)}</span> <span class=mute>${E(d.mem.line)}</span></div>`

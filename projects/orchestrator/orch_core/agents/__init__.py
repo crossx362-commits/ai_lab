@@ -27,6 +27,6 @@ def build(cfg):
     # 게이트를 시험하는 판이 실제 유료 모델을 부르는 사고를 구조적으로 막는다
     # (2026-09-11: --agent 기본값 탓에 사다리가 무시돼 codex가 226초 돌았다).
     # 문서 규칙이 아니라 코드로 막아야 재발하지 않는다.
-    if os.getenv("AUTODEV_NO_CLOUD") and cls is not ScriptAgent:
-        raise KeyError(f"AUTODEV_NO_CLOUD 상태에서 '{cfg.name}'(type={cfg.type})는 부를 수 없다 — script만 허용")
+    if os.getenv("ORCH_NO_CLOUD") and cls is not ScriptAgent:
+        raise KeyError(f"ORCH_NO_CLOUD 상태에서 '{cfg.name}'(type={cfg.type})는 부를 수 없다 — script만 허용")
     return cls(cfg)

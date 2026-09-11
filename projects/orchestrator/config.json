@@ -24,7 +24,7 @@
         "Assets/**"
       ],
       "protected_globs": [
-        "Assets/AutoDev/**"
+        "Assets/Orch/**"
       ],
       "test_platforms": [
         "EditMode",

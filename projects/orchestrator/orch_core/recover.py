@@ -17,7 +17,7 @@ import time
 from . import db
 
 # 내 소유 프로세스의 표식. 다른 프로그램이 같은 PID를 물려받아도 이것까지 같지는 않다.
-OWNER_MARK = "autodev_core.cli"
+OWNER_MARK = "orch_core.cli"
 STALE_SEC = 900.0          # 심장박동이 이만큼 끊기면 의심 대상(죽음 판정은 PID로 한다)
 INTERRUPTED = "INTERRUPTED"
 

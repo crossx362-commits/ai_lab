@@ -1,0 +1,6 @@
+#!/bin/bash
+# orch — Unity 자율개발 오케스트레이터 진입점
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+cd "$HERE"
+exec /opt/homebrew/bin/python3 -m orch_core.cli "$@"

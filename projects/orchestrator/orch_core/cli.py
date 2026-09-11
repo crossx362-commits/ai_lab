@@ -1,4 +1,4 @@
-"""autodev CLI.
+"""orch CLI.
 
 명령:
   doctor                 환경 점검(있는 것/없는 것을 사실대로)
@@ -188,7 +188,7 @@ def _usable(cfg, pstat, *, prefer: list[str], capability: str = providers.CODING
     **구현자·리뷰어가 같은 함수를 쓴다.** 같은 판단이 두 곳에 따로 살면 한쪽만 고쳐진다 —
     실제로 그렇게 재발했다(리뷰어 승계가 자물쇠에 걸려 터짐, 2026-09-11).
 
-    셋을 같이 본다. ①Provider 상태(인증·한도) ②**빌드 가능 여부**(AUTODEV_NO_CLOUD 같은
+    셋을 같이 본다. ①Provider 상태(인증·한도) ②**빌드 가능 여부**(ORCH_NO_CLOUD 같은
     자물쇠에 걸리는 것을 후보에 남기면 루프 한가운데서 터진다) ③역할 충돌.
     `pinned`(--agent로 사람이 지정)면 **대체하지 않는다** — 지정을 몰래 바꾸면 안 된다.
     """
@@ -262,11 +262,11 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             _p(f"[보류] {reason}")
             _p(f"  로컬 모델은 이 작업(CODING)을 감당하지 못한다 — 억지로 시키지 않는다.")
             _p(f"  task {tid}을 BLOCKED_CLOUD_REQUIRED로 보존했다. Provider가 살아나면:")
-            _p(f"    ./autodev providers --refresh && ./autodev resume-blocked")
+            _p(f"    ./orch providers --refresh && ./orch resume-blocked")
             return 3
 
     if safety.stop_requested():
-        _p(f"STOP 상태다 — 새 작업을 시작하지 않는다 ({safety.STOP_FILE})\n  해제: autodev resume")
+        _p(f"STOP 상태다 — 새 작업을 시작하지 않는다 ({safety.STOP_FILE})\n  해제: orch resume")
         return 2
 
     # 메모리도 시작 전에 본다. RED면 잠시 기다리되 무한정은 아니다 —
@@ -473,7 +473,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             _p(f"  → FAILED: {reason} (Unity는 돌리지 않는다)")
             gitwt.restore_tracked(wt)
             failure = {"n": n, "verdict": "TAMPER", "reason": reason,
-                       "errors": "검증 장치(Assets/AutoDev)는 수정 대상이 아니다. 되돌렸다."}
+                       "errors": "검증 장치(Assets/Orch)는 수정 대상이 아니다. 되돌렸다."}
             history.append(failure)
             final_verdict, final_reason = "FAILED", reason
             continue
@@ -558,7 +558,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         if ur.verdict == "PASS":
             gate = "컴파일 + " + "·".join(t.test_platforms) if t.test_platforms else "컴파일"
             commit_hash = gitwt.commit(
-                wt, f"autodev(task-{task_id:04d}): {args_goal}\n\n시도 {n}회, Unity {gate} PASS{review_note}")
+                wt, f"orch(task-{task_id:04d}): {args_goal}\n\n시도 {n}회, Unity {gate} PASS{review_note}")
             final_verdict, final_reason = "PASS", ur.reason
             break
 
@@ -576,7 +576,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             final_verdict, final_reason = "REJECTED", ur.reason
             if n >= max_attempts:
                 commit_hash = gitwt.commit(
-                    wt, f"autodev(task-{task_id:04d}) [리뷰 반려]: {args_goal}\n\n{ur.reason}")
+                    wt, f"orch(task-{task_id:04d}) [리뷰 반려]: {args_goal}\n\n{ur.reason}")
             continue
 
         # 다음 시도에는 로그를 던지는 대신 **분석한 것**을 준다 — 오류가 가리키는 자리를 펼쳐서.
@@ -671,7 +671,7 @@ def cmd_stop(args) -> int:
         _p("  실행 중으로 기록된 프로세스 없음")
     for n in notes:
         _p(f"  {n}")
-    _p("재개하려면: autodev resume")
+    _p("재개하려면: orch resume")
     return 0
 
 
@@ -741,7 +741,7 @@ def cmd_plan(args) -> int:
         _p(f"  {pt.key:4s} [{pt.risk:6s}]{dep}  {pt.goal}")
         if pt.done_criteria:
             _p(f"        완료조건: {pt.done_criteria}")
-    _p(f"\n실행: autodev run-plan --plan {plan_id}")
+    _p(f"\n실행: orch run-plan --plan {plan_id}")
     return 0
 
 
@@ -968,7 +968,7 @@ def cmd_resume_blocked(args) -> int:
     for r in rows:
         _p(f"  task {r['id']} — {r['goal'][:70]}")
     if not usable:
-        _p("  아직 열 수 없다 — Provider가 살아나면 다시 불러라 (./autodev providers --refresh)")
+        _p("  아직 열 수 없다 — Provider가 살아나면 다시 불러라 (./orch providers --refresh)")
         return 1
     if not args.run:
         _p("  열려면 --run")
@@ -1057,14 +1057,14 @@ def cmd_gc(args) -> int:
              if r["worktree"] and Path(r["worktree"]).is_dir() and r["status"] in ("DONE", "BLOCKED")]
     if stale:
         _p(f"  끝난 task의 worktree {len(stale)}개가 남아 있다 (증거 보존용). "
-           f"지우려면: autodev clean --task <N> [--delete-branch]")
+           f"지우려면: orch clean --task <N> [--delete-branch]")
         for r in stale[:10]:
             _p(f"    task {r['id']} {r['status']:8s} {r['worktree']}")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="autodev", description="Unity 자율개발 오케스트레이터 (PHASE 1)")
+    ap = argparse.ArgumentParser(prog="orch", description="Unity 자율개발 오케스트레이터 (PHASE 1)")
     ap.add_argument("--target", default=None, help="대상 프로젝트 이름 (config.json)")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -1170,7 +1170,7 @@ def main(argv=None) -> int:
         _p(f"설정 오류: {e}")
         return 2
     except KeyboardInterrupt:
-        _p("\n중단됨 — `autodev stop`으로 남은 프로세스를 정리하라.")
+        _p("\n중단됨 — `orch stop`으로 남은 프로세스를 정리하라.")
         return 130
 
 

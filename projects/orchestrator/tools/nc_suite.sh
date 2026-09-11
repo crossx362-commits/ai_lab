@@ -9,13 +9,13 @@ cd "$HERE"
 
 # 이 스위트는 **절대로** 실제 모델을 부르지 않는다. 부르려 하면 코드가 거부한다.
 # (한 번 그런 사고가 났다 — 사다리가 무시돼 codex가 226초 돌았다. 규칙이 아니라 자물쇠로 막는다.)
-export AUTODEV_NO_CLOUD=1
+export ORCH_NO_CLOUD=1
 
-# STOP 플래그가 켜져 있으면 `autodev run`은 전부 거부된다 — 그건 맞는 동작이다.
+# STOP 플래그가 켜져 있으면 `orch run`은 전부 거부된다 — 그건 맞는 동작이다.
 # 여기서 우회하면 오너의 스톱을 시험 스크립트가 조용히 무력화하는 꼴이라 하지 않는다.
 # 대신 34개 FAIL로 헷갈리게 두지 않고, 이유를 말하고 멈춘다(2026-09-11 실제로 헷갈렸다).
 if [ -e "$HERE/state/STOP" ]; then
-  echo "STOP 상태다 — 실행 시험을 돌릴 수 없다. 해제는 사람이: ./autodev resume"
+  echo "STOP 상태다 — 실행 시험을 돌릴 수 없다. 해제는 사람이: ./orch resume"
   exit 2
 fi
 PASS=0
@@ -70,7 +70,7 @@ run_case() {  # run_case <이름> <셸명령> <기대verdict> <기대문구> [ti
   local name="$1" script="$2" want="$3" phrase="$4" tmo="${5:-60}"
   local cfg="state/nc_${name}.json" log="/tmp/nc_${name}.log"
   mkcfg "$cfg" "$script" "$tmo"
-  AUTODEV_CONFIG="$HERE/$cfg" ./autodev run "[NC] $name" --agent nc >"$log" 2>&1
+  ORCH_CONFIG="$HERE/$cfg" ./orch run "[NC] $name" --agent nc >"$log" 2>&1
   check "$name" "$want" "$phrase" "$log"
 }
 
@@ -83,7 +83,7 @@ run_case no_change "exit 0" FAILED "파일을 전혀 고치지 않았다"
 run_case out_of_scope "echo x > Packages/hacked.json" FAILED "허용 범위 밖"
 
 # 3) 검증 장치 변조 — 게이트를 지워 PASS를 만드는 길
-run_case tamper "rm -f Assets/AutoDev/Editor/AutoDevCompileCheck.cs" FAILED "검증 장치 변조"
+run_case tamper "rm -f Assets/Orch/Editor/OrchCompileCheck.cs" FAILED "검증 장치 변조"
 
 # 4) 깨진 C# — Unity가 실제로 막아야 한다
 run_case broken_cs "printf 'class B { void X(){ int a = ; } }\n' > Assets/Game/Scripts/NcBroken.cs" FAILED "C# 컴파일 오류"
@@ -122,7 +122,7 @@ cfg["agents"]["nc_high"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 6
     "printf 'namespace SandboxGame { public static class NcLadder { public const int V = 2; } }\\n' > Assets/Game/Scripts/NcLadder.cs"]}
 pathlib.Path("state/nc_ladder.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
 PY
-AUTODEV_CONFIG="$HERE/state/nc_ladder.json" ./autodev run "[NC] ladder" >/tmp/nc_ladder.log 2>&1
+ORCH_CONFIG="$HERE/state/nc_ladder.json" ./orch run "[NC] ladder" >/tmp/nc_ladder.log 2>&1
 check ladder PASS "담당: nc_high" /tmp/nc_ladder.log
 
 # 4e) 최종 리뷰 — 게이트를 다 통과해도 리뷰가 반려하면 DONE이 아니다.
@@ -142,9 +142,9 @@ cfg2 = json.loads(json.dumps(cfg))
 cfg2["agents"]["nc_reviewer"]["args"] = ["-c", "exit 0"]
 pathlib.Path("state/nc_review_silent.json").write_text(json.dumps(cfg2, ensure_ascii=False, indent=2))
 PY
-AUTODEV_CONFIG="$HERE/state/nc_review.json" ./autodev run "[NC] review_reject" >/tmp/nc_review_reject.log 2>&1
+ORCH_CONFIG="$HERE/state/nc_review.json" ./orch run "[NC] review_reject" >/tmp/nc_review_reject.log 2>&1
 check review_reject REJECTED "리뷰 반려" /tmp/nc_review_reject.log
-AUTODEV_CONFIG="$HERE/state/nc_review_silent.json" ./autodev run "[NC] review_silent" >/tmp/nc_review_silent.log 2>&1
+ORCH_CONFIG="$HERE/state/nc_review_silent.json" ./orch run "[NC] review_silent" >/tmp/nc_review_silent.log 2>&1
 check review_silent PASS "리뷰가 돌았는지 알 수 없다" /tmp/nc_review_silent.log
 # 게이트는 통과했지만 리뷰를 확인 못 했으므로 DONE이면 안 된다
 if grep -qE "^  status   : REVIEW" /tmp/nc_review_silent.log; then
@@ -171,7 +171,7 @@ w("plan_cycle", """printf '{"tasks":[{"key":"A","goal":"a","depends_on":["B"]},{
 w("plan_ok", """printf '{"tasks":[{"key":"T1","goal":"첫 번째","done_criteria":"컴파일","depends_on":[],"risk":"low"},{"key":"T2","goal":"두 번째","done_criteria":"컴파일","depends_on":["T1"],"risk":"low"}]}' > plan.json""")
 PY
 for c in plan_none plan_cycle; do
-  AUTODEV_CONFIG="$HERE/state/nc_$c.json" ./autodev plan "[NC] $c" >/tmp/nc_$c.log 2>&1
+  ORCH_CONFIG="$HERE/state/nc_$c.json" ./orch plan "[NC] $c" >/tmp/nc_$c.log 2>&1
 done
 if grep -q "계획 파일이 만들어지지 않았다" /tmp/nc_plan_none.log; then
   echo "  PASS  plan_none — 계획 없음을 잡음"; PASS=$((PASS+1))
@@ -179,7 +179,7 @@ else echo "  FAIL  plan_none (로그: /tmp/nc_plan_none.log)"; FAIL=$((FAIL+1));
 if grep -q "순환 의존" /tmp/nc_plan_cycle.log; then
   echo "  PASS  plan_cycle — 순환 의존을 잡음"; PASS=$((PASS+1))
 else echo "  FAIL  plan_cycle (로그: /tmp/nc_plan_cycle.log)"; FAIL=$((FAIL+1)); fi
-AUTODEV_CONFIG="$HERE/state/nc_plan_ok.json" ./autodev plan "[NC] plan_ok" >/tmp/nc_plan_ok.log 2>&1
+ORCH_CONFIG="$HERE/state/nc_plan_ok.json" ./orch plan "[NC] plan_ok" >/tmp/nc_plan_ok.log 2>&1
 if grep -q "T2 .*←.*T1\|T2" /tmp/nc_plan_ok.log && grep -q "계획 .* (2개, 의존성 순)" /tmp/nc_plan_ok.log; then
   echo "  PASS  plan_ok — 2개로 분해·의존성 정렬"; PASS=$((PASS+1))
 else echo "  FAIL  plan_ok (로그: /tmp/nc_plan_ok.log)"; FAIL=$((FAIL+1)); fi
@@ -187,7 +187,7 @@ else echo "  FAIL  plan_ok (로그: /tmp/nc_plan_ok.log)"; FAIL=$((FAIL+1)); fi
 # 4g) 계획 실행 — 의존성 순서대로 두 Task가 실제로 돌아야 한다
 PLAN_ID=$(grep -oE "run-plan --plan [0-9]+" /tmp/nc_plan_ok.log | head -1 | grep -oE "[0-9]+")
 if [[ -n "$PLAN_ID" ]]; then
-  AUTODEV_CONFIG="$HERE/state/nc_plan_ok.json" ./autodev run-plan --plan "$PLAN_ID" >/tmp/nc_run_plan.log 2>&1
+  ORCH_CONFIG="$HERE/state/nc_plan_ok.json" ./orch run-plan --plan "$PLAN_ID" >/tmp/nc_run_plan.log 2>&1
   for id in $(grep -E "^  task " /tmp/nc_run_plan.log | sed 's/.*: *//'); do TASKS+=("$id"); done
   if [[ $(grep -cE "^  status   : DONE" /tmp/nc_run_plan.log) -eq 2 ]]; then
     echo "  PASS  run_plan — 2개 Task 모두 DONE"; PASS=$((PASS+1))
@@ -202,7 +202,7 @@ p = pathlib.Path("state/nc_missing.json"); c = json.loads(p.read_text())
 c["agents"]["nc"]["bin"] = "/usr/bin/definitely_not_here"
 p.write_text(json.dumps(c, ensure_ascii=False, indent=2))
 PY
-AUTODEV_CONFIG="$HERE/state/nc_missing.json" ./autodev run "[NC] missing_cli" --agent nc >/tmp/nc_missing.log 2>&1
+ORCH_CONFIG="$HERE/state/nc_missing.json" ./orch run "[NC] missing_cli" --agent nc >/tmp/nc_missing.log 2>&1
 check missing_cli UNKNOWN "인프라 실패(시도 미차감)" /tmp/nc_missing.log
 
 # 6) 에이전트 타임아웃 — 역시 미차감 UNKNOWN
@@ -218,7 +218,7 @@ run_case good_cs \
 python3 - <<'PY' > /tmp/nc_memory.log 2>&1
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path.cwd()))
-from autodev_core import memory as M
+from orch_core import memory as M
 
 def snap(free=60.0, used=0.0, total=6144.0, rate=None):
     s = M.Snapshot(ts=0, free_pct=free, swap_used_mb=used, swap_total_mb=total,
@@ -271,7 +271,7 @@ sleep 1
 python3 - "$FOREIGN" "$MINE" <<'PY' > /tmp/nc_unity_scope.log 2>&1
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path.cwd()))
-from autodev_core import config, safety
+from orch_core import config, safety
 cfg = config.load(pathlib.Path("config.json"))
 t = cfg.target("sandbox")
 pids = [p for p, _ in safety.unity_procs(t.unity_project)]
@@ -288,7 +288,7 @@ else echo "  FAIL  unity_scope (로그: /tmp/nc_unity_scope.log)"; FAIL=$((FAIL+
 # 10) 크래시 회수 — 죽은 판은 세워야 하고, **재시작이 완료를 만들면 안 된다**(§14).
 #     진짜로 kill -9 하지 않고도 시험할 수 있게 별도 DB에 상태만 심는다.
 MARK_PID=""
-python3 -c "import time; time.sleep(25)" autodev_core.cli >/dev/null 2>&1 &   # 주인이 살아 있는 판
+python3 -c "import time; time.sleep(25)" orch_core.cli >/dev/null 2>&1 &   # 주인이 살아 있는 판
 MARK_PID=$!
 python3 -c "import time; time.sleep(25)" >/dev/null 2>&1 &                     # 같은 PID 자리의 '남'
 IMPOSTOR=$!
@@ -297,7 +297,7 @@ sleep 1
 python3 - "$MARK_PID" "$IMPOSTOR" "$DEAD_PID" <<'PY' > /tmp/nc_recover.log 2>&1
 import pathlib, sys, time
 sys.path.insert(0, str(pathlib.Path.cwd()))
-from autodev_core import db, recover
+from orch_core import db, recover
 mark, impostor, dead = (int(x) for x in sys.argv[1:4])
 p = pathlib.Path("state/nc_recover.sqlite3")
 p.unlink(missing_ok=True)
@@ -350,7 +350,7 @@ chmod +x "$FAKEBIN/codex"
 PATH="$FAKEBIN:$PATH" python3 - <<'PY' > /tmp/nc_providers.log 2>&1
 import pathlib, sys, time
 sys.path.insert(0, str(pathlib.Path.cwd()))
-from autodev_core import config, providers as P
+from orch_core import config, providers as P
 cfg = config.load(pathlib.Path("config.json"))
 bad = []
 
@@ -411,14 +411,14 @@ else echo "  FAIL  providers (로그: /tmp/nc_providers.log)"; FAIL=$((FAIL+1));
 
 # 11a) 전부 막혔을 때 — 억지로 돌리지 말고 **보존**해야 한다(BLOCKED_CLOUD_REQUIRED).
 mkcfg state/nc_blocked.json "exit 0"
-AUTODEV_DISABLE_NC=1 AUTODEV_CONFIG="$HERE/state/nc_blocked.json" \
-  ./autodev run "[NC] cloud_blocked" --agent nc >/tmp/nc_blocked.log 2>&1
+ORCH_DISABLE_NC=1 ORCH_CONFIG="$HERE/state/nc_blocked.json" \
+  ./orch run "[NC] cloud_blocked" --agent nc >/tmp/nc_blocked.log 2>&1
 BRC=$?
 if grep -q "BLOCKED_CLOUD_REQUIRED로 보존" /tmp/nc_blocked.log && [[ $BRC -eq 3 ]]; then
   echo "  PASS  cloud_blocked — 억지로 안 돌리고 보존(rc=3)"; PASS=$((PASS+1))
 else echo "  FAIL  cloud_blocked — rc=$BRC (로그: /tmp/nc_blocked.log)"; FAIL=$((FAIL+1)); fi
 for id in $(grep -oE "task [0-9]+을" /tmp/nc_blocked.log | grep -oE "[0-9]+"); do
-  ./autodev archive --task "$id" >/dev/null 2>&1
+  ./orch archive --task "$id" >/dev/null 2>&1
 done
 
 # 11b) 승계 — 앞 Provider가 한도를 맞으면 **시도를 태우지 않고** 다음 Provider가 이어받는다.
@@ -438,7 +438,7 @@ cfg["agents"]["nc_p2"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60,
     "args": ["-c", "printf 'namespace SandboxGame { public static class NcHand2 { public const int V = 2; } }\\n' > Assets/Game/Scripts/NcHand2.cs"]}
 pathlib.Path("state/nc_handoff.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
 PY
-AUTODEV_CONFIG="$HERE/state/nc_handoff.json" ./autodev run "[NC] handoff" >/tmp/nc_handoff.log 2>&1
+ORCH_CONFIG="$HERE/state/nc_handoff.json" ./orch run "[NC] handoff" >/tmp/nc_handoff.log 2>&1
 check handoff PASS "Provider 장애: nc_p1 = RATE_LIMITED" /tmp/nc_handoff.log  # stderr로만 온 한도 오류
 HO_TASK=$(grep -E "^  task " /tmp/nc_handoff.log | head -1 | sed 's/.*: *//')
 HO_PROMPT="logs/task$(printf '%04d' "${HO_TASK:-0}")-a2.prompt.txt"
@@ -471,7 +471,7 @@ cfg["agents"]["nc_rev_ok"] = {"type": "script", "bin": "/bin/sh", "timeout_sec":
     "args": ["-c", "printf '{\"verdict\":\"approve\",\"reasons\":[],\"severity\":\"low\"}' > review.json"]}
 pathlib.Path("state/nc_revfail.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
 PYREV
-AUTODEV_CONFIG="$HERE/state/nc_revfail.json" ./autodev run "[NC] reviewer_failover" >/tmp/nc_revfail.log 2>&1
+ORCH_CONFIG="$HERE/state/nc_revfail.json" ./orch run "[NC] reviewer_failover" >/tmp/nc_revfail.log 2>&1
 check reviewer_failover PASS "대체 리뷰어 nc_rev_ok" /tmp/nc_revfail.log
 if grep -q "리뷰어 nc_rev_dead Provider 장애(RATE_LIMITED)" /tmp/nc_revfail.log \
    && grep -qE "^  status   : DONE" /tmp/nc_revfail.log; then
@@ -483,7 +483,7 @@ else echo "  FAIL  reviewer_failover_state (로그: /tmp/nc_revfail.log)"; FAIL=
 python3 - <<'PYSTALL' > /tmp/nc_stall.log 2>&1
 import sys, pathlib, tempfile
 sys.path.insert(0, str(pathlib.Path.cwd()))
-from autodev_core import proc
+from orch_core import proc
 d = pathlib.Path(tempfile.mkdtemp()); w = d / "fake.log"
 bad = []
 r = proc.run(["/bin/sh", "-c", f"echo start > {w}; sleep 60"], cwd=d, timeout=55,
@@ -512,7 +512,7 @@ printf '#!/bin/sh\necho "Not logged in."\nexit 1\n' > "$FAKEB/codex"; chmod +x "
 PATH="$FAKEB:$PATH" python3 - <<'PYWAIT' > /tmp/nc_wait.log 2>&1
 import sys, time, json, pathlib
 sys.path.insert(0, str(pathlib.Path.cwd()))
-from autodev_core import config, providers as P, cli
+from orch_core import config, providers as P, cli
 bad = []
 d = json.loads(pathlib.Path("config.json").read_text())
 d["ladder"] = ["nc_w"]; d["reviewer"] = None; d["research_agent"] = None
@@ -571,10 +571,10 @@ lap
 python3 - <<'PYTOK' > /tmp/nc_tok.log 2>&1
 import sys, pathlib, tempfile, sqlite3
 sys.path.insert(0, str(pathlib.Path.cwd()))
-from autodev_core import db
-from autodev_core.agents.base import parse_tokens
-from autodev_core.config import AgentConfig
-from autodev_core.agents.script import ScriptAgent
+from orch_core import db
+from orch_core.agents.base import parse_tokens
+from orch_core.config import AgentConfig
+from orch_core.agents.script import ScriptAgent
 bad = []
 
 # ① 실제 codex 형식(stderr, 천단위 쉼표)을 읽는다
@@ -616,8 +616,8 @@ lap
 python3 - <<'PYCTX' > /tmp/nc_ctx.log 2>&1
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path.cwd()))
-from autodev_core.agents.base import CliAgent, clamp
-from autodev_core.config import AgentConfig
+from orch_core.agents.base import CliAgent, clamp
+from orch_core.config import AgentConfig
 bad = []
 a = CliAgent(AgentConfig(name="x", type="script", bin="/bin/sh", model=None, sandbox_mode="",
     timeout_sec=1, args=[], extra_config=[], permission_mode="", capabilities=[], enabled=True))
@@ -647,7 +647,7 @@ echo
 echo "=== 결과: PASS=$PASS FAIL=$FAIL · 소요 $(( $(date +%s) - T0 ))초 ==="
 if [[ ${#TASKS[@]} -gt 0 ]]; then
   echo "정리 중: task ${TASKS[*]} (worktree 삭제라 수십 초 걸릴 수 있다)"
-  for t in "${TASKS[@]}"; do ./autodev clean --task "$t" --delete-branch >/dev/null 2>&1; done
+  for t in "${TASKS[@]}"; do ./orch clean --task "$t" --delete-branch >/dev/null 2>&1; done
 fi
 rm -f state/nc_*.json
 [[ $FAIL -eq 0 ]]

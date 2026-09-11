@@ -8,24 +8,24 @@
 - **PHASE 0~8 + Provider 독립성 + PHASE 10(보드 GUI) 완료.**
 - **PHASE 9 Windows Worker는 의도적으로 안 만들었다** — 이 기계에서 검증할 방법이 없다.
   "검증 못 하는 것은 만들지 않는다"가 이 프로젝트의 전제다.
-- 무비용 시험: `./tools/nc_suite.sh` (31종, 모델 호출 0 · `AUTODEV_NO_CLOUD=1`로 잠금).
+- 무비용 시험: `./tools/nc_suite.sh` (31종, 모델 호출 0 · `ORCH_NO_CLOUD=1`로 잠금).
   **새 게이트를 만들면 먼저 빨간불을 보여라.** 초록만 본 게이트는 게이트가 아니다.
 
 ## ■ 계획 7은 **오너 지시로 스톱** — 재개 지시 전 착수 금지
 
 - `state/STOP` 플래그가 켜져 있다. 어떤 실행도 이것부터 만난다.
-- T1·T2·T3 = DONE. **T4(task 314)는 시도 2 도중 정지**, 브랜치 `autodev/task-0314`에 작업 남아 있음.
+- T1·T2·T3 = DONE. **T4(task 314)는 시도 2 도중 정지**, 브랜치 `orch/task-0314`에 작업 남아 있음.
   T5·T6 미착수. master에 병합된 것 없음.
 - 재개는 **돈이 드는 실행**이다 → 오너 승인 먼저. 승인 뒤 순서:
   ```bash
-  ./autodev resume
-  ./autodev requeue --plan 7
-  ./autodev run-plan --plan 7 --keep-going --wait-for-provider 3600
+  ./orch resume
+  ./orch requeue --plan 7
+  ./orch run-plan --plan 7 --keep-going --wait-for-provider 3600
   ```
 
 ## 이 기계를 쓸 때 주의
 
-- **다른 세션(울온)이 같은 맥에서 유니티를 돌린다.** 유니티를 죽여야 하면 `./autodev unity-kill`만
+- **다른 세션(울온)이 같은 맥에서 유니티를 돌린다.** 유니티를 죽여야 하면 `./orch unity-kill`만
   써라 — 이 명령은 **대상 프로젝트 경로를 인자로 가진 프로세스만** 고른다. `pkill Unity`는 금지.
 - 메모리 게이트는 **스왑 사용률만으로 RED를 만들지 않는다**(오탐 전력 있음, `memory.py` 주석 참조).
 

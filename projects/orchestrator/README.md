@@ -1,6 +1,6 @@
-# AutoDev Orchestrator — Unity 자율개발 오케스트레이터
+# Orch — Unity 자율개발 오케스트레이터
 
-기존 AutoDev와 무관한 신규 프로젝트다. **PHASE 10(GUI)까지 구현·검증 완료** (PHASE 9 Windows Worker는 이 기계에서 검증할 수 없어 보류).
+옛 AutoDev(금지·삭제됨)와 코드·이름 모두 무관한 신규 프로젝트다(CLI `./orch`, 패키지 `orch_core`). **PHASE 10(GUI)까지 구현·검증 완료** (PHASE 9 Windows Worker는 이 기계에서 검증할 수 없어 보류).
 
 ## 원칙 (코드로 강제되는 것만 적는다)
 
@@ -16,31 +16,31 @@
 ## 사용
 
 ```bash
-./autodev doctor                       # 환경 점검
-./autodev run "<개발 목표>"            # 자율 실행 (worktree→Codex→검증→커밋)
-./autodev verify                       # Unity 컴파일 판정만
-./autodev status [--task N]            # 상태
-./autodev stop                         # 실행 중 프로세스 그룹 정리
-./autodev recover                      # 죽은 판 회수(완료로 만들지 않는다)
-./autodev clean --task N [--delete-branch]
+./orch doctor                       # 환경 점검
+./orch run "<개발 목표>"            # 자율 실행 (worktree→Codex→검증→커밋)
+./orch verify                       # Unity 컴파일 판정만
+./orch status [--task N]            # 상태
+./orch stop                         # 실행 중 프로세스 그룹 정리
+./orch recover                      # 죽은 판 회수(완료로 만들지 않는다)
+./orch clean --task N [--delete-branch]
 ```
 
-`AUTODEV_CONFIG=<파일>`로 설정을 갈아끼울 수 있다 — 게이트 자체를 시험하는 네거티브 컨트롤용.
+`ORCH_CONFIG=<파일>`로 설정을 갈아끼울 수 있다 — 게이트 자체를 시험하는 네거티브 컨트롤용.
 
 ## 구조
 
 | 파일 | 역할 |
 |---|---|
-| `autodev_core/config.py` | 설정·대상 해석. 경로가 실제와 다르면 여기서 먼저 실패 |
-| `autodev_core/db.py` | SQLite 상태 저장소(tasks/attempts/processes/usage) |
-| `autodev_core/proc.py` | 프로세스 **그룹** 관리(타임아웃 시 그룹째 종료), STOP |
-| `autodev_core/gitwt.py` | worktree 격리·변경 수집(merge-base 기준)·범위 위반 검출 |
-| `autodev_core/unityrun.py` | Unity 배치 실행 + PASS/FAILED/UNKNOWN 판정 |
-| `autodev_core/agents/codex.py` | Codex 어댑터(프롬프트는 **stdin**, 승인 요구 금지 명시) |
-| `autodev_core/cli.py` | 오케스트레이션 루프 |
+| `orch_core/config.py` | 설정·대상 해석. 경로가 실제와 다르면 여기서 먼저 실패 |
+| `orch_core/db.py` | SQLite 상태 저장소(tasks/attempts/processes/usage) |
+| `orch_core/proc.py` | 프로세스 **그룹** 관리(타임아웃 시 그룹째 종료), STOP |
+| `orch_core/gitwt.py` | worktree 격리·변경 수집(merge-base 기준)·범위 위반 검출 |
+| `orch_core/unityrun.py` | Unity 배치 실행 + PASS/FAILED/UNKNOWN 판정 |
+| `orch_core/agents/codex.py` | Codex 어댑터(프롬프트는 **stdin**, 승인 요구 금지 명시) |
+| `orch_core/cli.py` | 오케스트레이션 루프 |
 | `sandbox/` | 검증용 소형 Unity 프로젝트(**자체 git 저장소**, ai_lab에서는 무시) |
 
-`sandbox/Assets/AutoDev/Editor/AutoDevCompileCheck.cs`가 판정 마커를 낸다. 대상 프로젝트를
+`sandbox/Assets/Orch/Editor/OrchCompileCheck.cs`가 판정 마커를 낸다. 대상 프로젝트를
 바꾸려면 이 파일을 그 프로젝트에 넣고 `config.json`에 target을 추가한다.
 
 ## 네거티브 컨트롤 스위트
@@ -109,7 +109,7 @@ codex(낮은 추론) → claude → astra(높은 추론)
 (`router.py`) **한 시도에 한 칸만** 오른다 — 두 칸을 뛰면 중간 등급이 풀 수 있었는지 알 수 없다.
 `grok`은 개발 사다리가 아니라 **조사**용, `ollama(gemma4:12b)`는 **로그 압축 보조**다(파일을 고치지 않는다).
 
-`AUTODEV_NO_CLOUD=1`이면 script 외의 에이전트를 **빌드조차 거부**한다 — 시험용 판이 유료 모델을
+`ORCH_NO_CLOUD=1`이면 script 외의 에이전트를 **빌드조차 거부**한다 — 시험용 판이 유료 모델을
 부르는 사고를 코드로 막는다.
 
 ## 완료 판정의 층 (현재)
@@ -123,9 +123,9 @@ codex(낮은 추론) → claude → astra(높은 추론)
 ## 분해와 실행
 
 ```bash
-./autodev plan "큰 목표"        # Astra가 Task로 나눈다(코드는 안 건드림)
-./autodev plans --plan 7        # 확인
-./autodev run-plan --plan 7     # 의존성 순서로 실행
+./orch plan "큰 목표"        # Astra가 Task로 나눈다(코드는 안 건드림)
+./orch plans --plan 7        # 확인
+./orch run-plan --plan 7     # 의존성 순서로 실행
 ```
 분해와 리뷰 모두 **응답을 stdout에서 긁지 않고 파일(plan.json·review.json)로 받는다** —
 "모델이 뭔가 말했다"와 "결과물이 생겼다"를 구분하기 위해서다. 파일이 없으면 UNKNOWN이다.
@@ -133,10 +133,10 @@ codex(낮은 추론) → claude → astra(높은 추론)
 ## 메모리 (16GB 기계에서 오래 돌리기)
 
 ```bash
-./autodev mem              # 여유·스왑·추세·프로세스 (rc: 0=GREEN 1=YELLOW 2=RED)
-./autodev mem --relieve    # 로컬 모델만 내린다
-./autodev unity-kill       # **이 target 경로를 가진** Unity만 (기본은 목록만, --yes로 종료)
-./autodev review --task N  # 게이트 통과분의 리뷰만 다시 (리뷰어가 죽어 REVIEW에 멈춘 판)
+./orch mem              # 여유·스왑·추세·프로세스 (rc: 0=GREEN 1=YELLOW 2=RED)
+./orch mem --relieve    # 로컬 모델만 내린다
+./orch unity-kill       # **이 target 경로를 가진** Unity만 (기본은 목록만, --yes로 종료)
+./orch review --task N  # 게이트 통과분의 리뷰만 다시 (리뷰어가 죽어 REVIEW에 멈춘 판)
 ```
 
 RAM 퍼센트 하나로 판단하지 않는다. ①시스템 여유 ②스왑 사용률 ③**스왑 증가 속도(MB/분)** 셋 중
@@ -153,8 +153,8 @@ RAM 퍼센트 하나로 판단하지 않는다. ①시스템 여유 ②스왑 �
 ## Provider 독립성
 
 ```bash
-./autodev providers [--refresh]     # 실제 인증·한도 상태 (설치 여부가 아니다)
-./autodev resume-blocked [--run]    # Provider가 없어 보존해둔 Task 재개
+./orch providers [--refresh]     # 실제 인증·한도 상태 (설치 여부가 아니다)
+./orch resume-blocked [--run]    # Provider가 없어 보존해둔 Task 재개
 ```
 
 특정 업체를 필수 의존성으로 두지 않는다. 시작할 때 `codex login status` · `claude auth status` ·
@@ -181,8 +181,8 @@ diff·변경 파일·Unity 판정·오류·지난 시도·남은 일을 인수�
 600초까지 기다린 적이 있어 넣었다. 로그가 아직 없거나 자라는 중이면 **절대 건드리지 않는다**.
 
 ```bash
-./autodev run-plan --plan 7 --keep-going --wait-for-provider 3600
-./autodev requeue --plan 7      # 한도로 죽은 Task를 다시 큐에 (DONE은 그대로)
+./orch run-plan --plan 7 --keep-going --wait-for-provider 3600
+./orch requeue --plan 7      # 한도로 죽은 Task를 다시 큐에 (DONE은 그대로)
 ```
 `--wait-for-provider`는 한도에 걸리면 **해제 시각까지 자고 이어서** 한다 — 사람이 밤새
 붙어 있을 이유가 없다. 단 무한정은 아니다: 냉각이 대기 한도를 넘거나, **인증 만료처럼
@@ -191,15 +191,15 @@ diff·변경 파일·Unity 판정·오류·지난 시도·남은 일을 인수�
 ## 크래시 복구
 
 ```bash
-./autodev recover --dry-run   # 주인 없는 RUNNING task 찾기
-./autodev recover             # INTERRUPTED로 회수 (run/run-plan 시작 시 자동으로도 돈다)
+./orch recover --dry-run   # 주인 없는 RUNNING task 찾기
+./orch recover             # INTERRUPTED로 회수 (run/run-plan 시작 시 자동으로도 돈다)
 ```
 
 프로그램이 죽어도 상태는 SQLite에 남는다. 회수는 **모르는 것을 모른다고 세우는 일**이다 —
 `INTERRUPTED` + `verdict=UNKNOWN`으로 세울 뿐, **재시작이 완료를 만드는 경로는 코드에 없다.**
 컴파일까지 PASS하고 커밋 직전에 죽은 판도 DONE이 아니다. worktree와 브랜치는 지우지 않는다(증거).
 
-살아있음 판정은 PID만 보지 않는다. PID는 재사용되므로 **명령줄에 `autodev_core.cli`가 있는지까지**
+살아있음 판정은 PID만 보지 않는다. PID는 재사용되므로 **명령줄에 `orch_core.cli`가 있는지까지**
 확인한다 — 그 방향으로 틀리면 task가 영원히 RUNNING에 갇힌다. 잔존 자식 프로세스는
 **DB에 기록된 프로세스 그룹만** 정리한다(패턴 kill 없음).
 

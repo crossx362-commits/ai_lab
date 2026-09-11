@@ -210,8 +210,8 @@ def probe(name: str, agent_cfg, *, ollama_model: str | None = None) -> Status:
         return Status(name=name, state=state, detail=detail, checked_at=now,
                       cooldown_until=(now + cooldown) if cooldown else 0.0, caps=caps)
 
-    if os.getenv(f"AUTODEV_DISABLE_{name.upper()}"):
-        return st(DISABLED, "AUTODEV_DISABLE_* 환경변수로 꺼둠")
+    if os.getenv(f"ORCH_DISABLE_{name.upper()}"):
+        return st(DISABLED, "ORCH_DISABLE_* 환경변수로 꺼둠")
     if getattr(agent_cfg, "enabled", True) is False:
         return st(DISABLED, "config에서 꺼둠")
 
@@ -254,7 +254,7 @@ def probe_all(cfg, *, force: bool = False, names: list[str] | None = None) -> di
         # 환경·설정으로 꺼둔 것과 시험용 script는 **캐시에 남기지 않는다**.
         # 이것들은 「지금 이 실행의 사정」이지 Provider의 상태가 아니다 —
         # 캐시에 남기면 다음 실행이 남의 환경변수 결정을 물려받는다(실제로 그렇게 새어 나갔다).
-        if os.getenv(f"AUTODEV_DISABLE_{name.upper()}") or acfg.enabled is False:
+        if os.getenv(f"ORCH_DISABLE_{name.upper()}") or acfg.enabled is False:
             out[name] = probe(name, acfg)
             store.pop(name, None)
             continue

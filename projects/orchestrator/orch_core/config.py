@@ -111,11 +111,11 @@ class Config:
 
 
 def load(path: Path | None = None) -> Config:
-    # AUTODEV_CONFIG로 설정을 갈아끼울 수 있게 둔다 — 게이트 자체를 시험하는 판(네거티브 컨트롤)에 쓴다.
+    # ORCH_CONFIG로 설정을 갈아끼울 수 있게 둔다 — 게이트 자체를 시험하는 판(네거티브 컨트롤)에 쓴다.
     if path is not None:
         p = path
-    elif os.getenv("AUTODEV_CONFIG"):
-        p = Path(os.environ["AUTODEV_CONFIG"]).expanduser().resolve()
+    elif os.getenv("ORCH_CONFIG"):
+        p = Path(os.environ["ORCH_CONFIG"]).expanduser().resolve()
     else:
         p = CONFIG_PATH
     if not p.is_file():

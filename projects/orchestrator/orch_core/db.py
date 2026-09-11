@@ -13,7 +13,7 @@ from pathlib import Path
 
 from .config import STATE_DIR
 
-DB_PATH = STATE_DIR / "autodev.sqlite3"
+DB_PATH = STATE_DIR / "orch.sqlite3"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS tasks (
