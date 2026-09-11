@@ -129,18 +129,47 @@ def run_side_agent(cfg, conn, *, agent_name: str, prompt: str, workdir: Path,
 
 
 def run_reviewer(cfg, conn, *, task_id, attempt_id, prefix: Path, goal: str,
-                 done_criteria: str, gates: str, diff: str):
-    workdir = config.STATE_DIR / "reviews" / f"task{task_id:04d}-a{attempt_id}"
-    rpath = workdir / review.REVIEW_FILE
-    if rpath.exists():
-        rpath.unlink()
-    prompt = review.build_prompt(goal=goal, done_criteria=done_criteria, gates=gates,
-                                 diff=diff, review_path=rpath)
-    ar = run_side_agent(cfg, conn, agent_name=cfg.reviewer, prompt=prompt, workdir=workdir,
-                        log_prefix=Path(f"{prefix}.review"), task_id=task_id, attempt_id=attempt_id)
-    if ar.status in ("SPAWN_FAILED", "TIMEOUT"):
-        return review.Review("UNKNOWN", f"리뷰를 돌리지 못했다: {ar.reason}")
-    return review.parse(rpath)
+                 done_criteria: str, gates: str, diff: str, implementer: str | None = None):
+    """최종 리뷰. **리뷰어의 Provider 장애를 「판정 불가」로 뭉개지 않는다.**
+
+    2026-09-11 실전(계획 7 T3): astra 리뷰가 codex 한도에 걸려 파일을 못 만들었는데,
+    시스템은 그것을 그냥 UNKNOWN으로 적었다 — "리뷰가 반려했다"와 "리뷰어가 죽었다"가
+    같은 글자로 보였다. 둘은 처방이 다르다: 후자는 **다른 리뷰어로 승계**할 수 있다.
+    """
+    pstat = providers.probe_all(cfg)
+    # 구현한 자가 자기 작업을 승인하는 일은 없다.
+    # 후보는 「지정 리뷰어 먼저, 그다음 REVIEW 능력을 가진 나머지」. 명단을 리뷰어 하나로
+    # 만들어두면 그가 죽었을 때 승계할 곳이 없다(방금 그렇게 실패했다).
+    cands = _usable(cfg, pstat, capability=providers.REVIEW,
+                    prefer=[cfg.reviewer] if cfg.reviewer else [],
+                    exclude=(implementer,) if implementer else ())
+    if not cands:
+        return review.Review("UNKNOWN", "쓸 수 있는 리뷰어가 없다(Provider 상태 확인)")
+    last = None
+    for name in cands:
+        workdir = config.STATE_DIR / "reviews" / f"task{task_id:04d}-a{attempt_id}-{name}"
+        rpath = workdir / review.REVIEW_FILE
+        if rpath.exists():
+            rpath.unlink()
+        prompt = review.build_prompt(goal=goal, done_criteria=done_criteria, gates=gates,
+                                     diff=diff, review_path=rpath)
+        ar = run_side_agent(cfg, conn, agent_name=name, prompt=prompt, workdir=workdir,
+                            log_prefix=Path(f"{prefix}.review-{name}"),
+                            task_id=task_id, attempt_id=attempt_id)
+        hit = providers.classify_failure(ar.all_output)
+        if hit and not rpath.is_file():
+            providers.mark(name, hit[0], f"리뷰 중 감지: {(ar.reason or '')[:60]}", hit[1])
+            _p(f"  리뷰어 {name} Provider 장애({hit[0]}) — 다른 리뷰어를 찾는다")
+            last = review.Review("UNKNOWN", f"리뷰어 {name}가 {hit[0]}라 판정하지 못했다")
+            continue
+        if ar.status in ("SPAWN_FAILED", "TIMEOUT"):
+            last = review.Review("UNKNOWN", f"리뷰를 돌리지 못했다: {ar.reason}")
+            continue
+        r = review.parse(rpath)
+        if name != (cfg.reviewer or name):
+            r.reason = f"[대체 리뷰어 {name}] {r.reason}"
+        return r
+    return last or review.Review("UNKNOWN", "리뷰를 돌리지 못했다")
 
 
 def cmd_run(args) -> int:
@@ -151,23 +180,25 @@ def cmd_run(args) -> int:
     return rc
 
 
-def _usable(cfg, pstat, *, prefer: list[str], pinned: bool = False,
-            exclude: tuple[str, ...] = ()) -> list[str]:
-    """지금 실제로 일을 맡길 수 있는 에이전트 목록.
+def _usable(cfg, pstat, *, prefer: list[str], capability: str = providers.CODING,
+            pinned: bool = False, exclude: tuple[str, ...] = ()) -> list[str]:
+    """지금 실제로 그 능력의 일을 맡길 수 있는 에이전트 목록.
 
-    두 가지를 같이 본다. ①Provider 상태(인증·한도) ②**빌드 가능 여부** —
-    AUTODEV_NO_CLOUD 같은 자물쇠에 걸리는 것을 후보에 남기면 루프 한가운데서 터진다.
+    **구현자·리뷰어가 같은 함수를 쓴다.** 같은 판단이 두 곳에 따로 살면 한쪽만 고쳐진다 —
+    실제로 그렇게 재발했다(리뷰어 승계가 자물쇠에 걸려 터짐, 2026-09-11).
+
+    셋을 같이 본다. ①Provider 상태(인증·한도) ②**빌드 가능 여부**(AUTODEV_NO_CLOUD 같은
+    자물쇠에 걸리는 것을 후보에 남기면 루프 한가운데서 터진다) ③역할 충돌.
     `pinned`(--agent로 사람이 지정)면 **대체하지 않는다** — 지정을 몰래 바꾸면 안 된다.
     """
     pool = list(prefer)
     if not pinned:
-        # 사다리가 전부 막혔을 때를 대비한 대체 후보. 단 **역할이 다른 자리는 끌어오지 않는다** —
+        # 대체 후보. 단 구현 자리에는 **역할이 다른 자리를 끌어오지 않는다** —
         # 리뷰어를 구현자로 쓰면 자기 작업을 자기가 승인하게 되고, 분해 담당도 마찬가지다.
-        roles = {cfg.reviewer, cfg.planner}
+        roles = {cfg.reviewer, cfg.planner} if capability == providers.CODING else set()
         pool += [n for n in cfg.raw.get("agents", {})
-                 if n not in pool and n not in roles and providers.CODING in providers.caps_of(cfg, n)]
-    cands = providers.pick(cfg, pstat, capability=providers.CODING,
-                           prefer=pool, exclude=exclude)
+                 if n not in pool and n not in roles and capability in providers.caps_of(cfg, n)]
+    cands = providers.pick(cfg, pstat, capability=capability, prefer=pool, exclude=exclude)
     out = []
     for a in cands:
         try:
@@ -490,7 +521,8 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         if verdict == "PASS" and cfg.reviewer:
             rv = run_reviewer(cfg, conn, task_id=task_id, attempt_id=attempt_id, prefix=prefix,
                               goal=args_goal, done_criteria=done_criteria,
-                              gates="컴파일 + " + "·".join(t.test_platforms), diff=ch.diff)
+                              gates="컴파일 + " + "·".join(t.test_platforms), diff=ch.diff,
+                              implementer=agent_name)
             _p(f"  리뷰({cfg.reviewer}): {rv.verdict} — {rv.reason}")
             for rr in rv.reasons[:5]:
                 _p(f"    {rr}")

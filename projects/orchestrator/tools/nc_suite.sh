@@ -441,6 +441,27 @@ if p.is_file():
     p.write_text(json.dumps({k: v for k, v in d.items() if not k.startswith("nc")}, ensure_ascii=False, indent=2))
 PY
 
+# 11c) 리뷰어가 죽으면 — 「리뷰가 반려했다」와 「리뷰어가 못 돌았다」는 다른 일이다.
+#      실전(계획 7 T3)에서 리뷰어가 한도에 걸렸는데 그냥 UNKNOWN으로 적혔다. 이제 승계한다.
+python3 - <<'PYREV'
+import json, pathlib
+cfg = json.loads(pathlib.Path("config.json").read_text())
+cfg["ladder"] = ["nc_impl"]; cfg["research_agent"] = None; cfg["reviewer"] = "nc_rev_dead"
+cfg["agents"]["nc_impl"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "capabilities": ["CODING"],
+    "args": ["-c", "printf 'namespace SandboxGame { public static class NcRevX { public const int V = 9; } }\\n' > Assets/Game/Scripts/NcRevX.cs"]}
+cfg["agents"]["nc_rev_dead"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "capabilities": ["REVIEW"],
+    "args": ["-c", "echo \"ERROR: You've hit your usage limit.\" >&2; exit 1"]}
+cfg["agents"]["nc_rev_ok"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "capabilities": ["REVIEW"],
+    "args": ["-c", "printf '{\"verdict\":\"approve\",\"reasons\":[],\"severity\":\"low\"}' > review.json"]}
+pathlib.Path("state/nc_revfail.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
+PYREV
+AUTODEV_CONFIG="$HERE/state/nc_revfail.json" ./autodev run "[NC] reviewer_failover" >/tmp/nc_revfail.log 2>&1
+check reviewer_failover PASS "대체 리뷰어 nc_rev_ok" /tmp/nc_revfail.log
+if grep -q "리뷰어 nc_rev_dead Provider 장애(RATE_LIMITED)" /tmp/nc_revfail.log \
+   && grep -qE "^  status   : DONE" /tmp/nc_revfail.log; then
+  echo "  PASS  reviewer_failover_state — 장애를 판정불가로 뭉개지 않고 승계"; PASS=$((PASS+1))
+else echo "  FAIL  reviewer_failover_state (로그: /tmp/nc_revfail.log)"; FAIL=$((FAIL+1)); fi
+
 echo
 echo "=== 결과: PASS=$PASS FAIL=$FAIL · 소요 $(( $(date +%s) - T0 ))초 ==="
 if [[ ${#TASKS[@]} -gt 0 ]]; then
