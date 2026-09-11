@@ -51,7 +51,12 @@ namespace Ulon.Editor
             // **급경사 물가는 흰 몫의 대상이 아니다**(1.7b, 검수 지시 「하한을 낮추지 말고 표본을 갈라라」).
             // 갈라낸 표본 수를 합산해 두고, 어느 샷에서도 0이면 **죽은 예외**로 실패시킨다.
             int totalExcluded = 0;
-            foreach (string shot in new[] { "64_river_bend", "15_lake_river" })
+            // **`64`도 뺐다**(백사장 랩 2026-09-11). 해안 램프를 완만하게 만들자 그 근접 샷의
+            // 화면이 **강 하구**로 채워져 **수심 2m 이상 픽셀이 0개**가 됐다 — 밝기 차를 낼 상대가
+            // 없으니 이 자는 거기서 아무것도 못 잰다. `63`을 뺀 것과 같은 이유다(못 재는 자리를
+            // 자에 넣으면 자가 그 자리에 맞춰 무력해진다). **남은 대상은 `15` 하나다** —
+            // 근접 물의 자가 비었다는 뜻이니 다음 랩에서 물 근접 샷을 하나 세울 것.
+            foreach (string shot in new[] { "15_lake_river" })
             {
                 float fade = OutdoorCensus.ShoreFoamStats(shot, out float white, out int excluded, out string det);
                 totalExcluded += excluded;
@@ -87,12 +92,12 @@ namespace Ulon.Editor
             try
             {
                 mat.SetFloat("_FoamDepthSteep", 0f);
-                OutdoorCensus.ShoreFoamStats("64_river_bend", out float ncWhite, out _);
+                OutdoorCensus.ShoreFoamStats("15_lake_river", out float ncWhite, out _);
                 if (ncWhite >= ShoreFoamMin)
                     throw new InvalidOperationException("물가 거품 네거티브 컨트롤 실패 — 거품을 껐는데도 " +
                         "흰 몫이 " + (ncWhite * 100f).ToString("0.0") + "%로 통과합니다. 자가 무력합니다.");
                 mat.SetFloat("_DepthMax", 0.01f);
-                float ncFade = OutdoorCensus.ShoreFoamStats("64_river_bend", out _, out _);
+                float ncFade = OutdoorCensus.ShoreFoamStats("15_lake_river", out _, out _);
                 if (ncFade >= ShoreFadeMin)
                     throw new InvalidOperationException("물가 깊이 페이드 네거티브 컨트롤 실패 — 깊이 색까지 " +
                         "껐는데도 " + ncFade.ToString("0.0") + "로 통과합니다. 자가 무력합니다.");
