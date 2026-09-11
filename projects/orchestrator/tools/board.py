@@ -23,12 +23,13 @@ import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 DB = ROOT / "state" / "orch.sqlite3"
 BOARD = ROOT / "BOARD.md"
 LOGDIR = ROOT / "logs"
+REPORTS = ROOT / "docs" / "reports"     # 완료 보고(마크다운 + 스크린샷). 보드에서 읽는다.
 STOP = ROOT / "state" / "STOP"
 LOGS = ROOT / "logs"
 
@@ -198,6 +199,46 @@ def task_detail(task_id: int) -> dict:
     return {"task": t, "attempts": at, "procs": pr, "log": log_tail(task_id)}
 
 
+def report_list() -> list[dict]:
+    """docs/reports/*.md — 최신이 위. 제목은 첫 줄 '# '에서 읽는다."""
+    if not REPORTS.is_dir():
+        return []
+    out = []
+    for f in sorted(REPORTS.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            first = f.read_text(encoding="utf-8").splitlines()[0]
+        except (OSError, IndexError):
+            first = f.name
+        out.append({"name": f.name, "title": first.lstrip("# ").strip() or f.name,
+                    "when": ago(f.stat().st_mtime)})
+    return out
+
+
+def doing_of(proc) -> str:
+    """살아 있는 프로세스 한 줄을 「누가 무엇을」로 옮긴다. 리뷰는 로그 이름에 review-<이름>이 박혀 있다."""
+    kind = proc["kind"]
+    sp = str(proc["stdout_path"] or "")
+    if ".review-" in sp:
+        who = sp.split(".review-", 1)[1].split(".", 1)[0]
+        return f"{who} 리뷰 중"
+    if kind == "agent":
+        try:
+            cmd = json.loads(proc["cmd"])
+            who = pathlib_name(cmd[0]) if isinstance(cmd, list) and cmd else "?"
+        except (json.JSONDecodeError, TypeError):
+            who = "?"
+        return f"{who} 구현 중"
+    if kind == "unity":
+        return "Unity 컴파일 중"
+    if kind == "unity-test":
+        return "Unity 테스트 중"
+    return f"{kind} 실행 중"
+
+
+def pathlib_name(p: str) -> str:
+    return str(p).rsplit("/", 1)[-1]
+
+
 def gather() -> dict:
     ncp = nc_plan_ids()
     tasks = [t for t in rows("SELECT * FROM tasks ORDER BY id DESC LIMIT 120")
@@ -210,10 +251,13 @@ def gather() -> dict:
     if running:
         t = running[0]
         at = rows("SELECT * FROM attempts WHERE task_id=? ORDER BY n DESC LIMIT 1", (t["id"],))
+        mine = [p for p in live if p["task_id"] == t["id"]]
         cur = {
             "id": t["id"], "goal": t["goal"], "branch": t["branch"] or "-",
             "attempt": at[0]["n"] if at else 0,
             "step": (at[0]["status"] if at else "-"),
+            "who": (at[0]["agent"] if at else t["agent"]) or "-",
+            "doing": [f"{doing_of(p)} ({ago(p['started_at'])})" for p in mine] or ["대기 — 떠 있는 프로세스 없음"],
             "since": ago(t["created_at"]),
         }
 
@@ -251,6 +295,7 @@ def gather() -> dict:
         "stuck": board_section("막힘")[:3],
         "mem": mem_state(),
         "providers": provider_state(),
+        "reports": report_list(),
         "now": datetime.now().strftime("%H:%M:%S"),
     }
 
@@ -284,6 +329,9 @@ h1{font-size:15px;margin:0;font-weight:600}
 #ov.on{display:flex;justify-content:center}
 #ovbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;
        width:min(880px,100%);max-height:100%;overflow:auto}
+#ovbox img{max-width:100%;border:1px solid var(--line);border-radius:8px;margin:6px 0}
+#ovbox h1{font-size:18px;margin:4px 0 8px}#ovbox h2.md{margin-top:14px}#ovbox h3{font-size:13px;margin:10px 0 4px}
+#ovbox p{margin:6px 0;line-height:1.5}#ovbox table.md td,#ovbox table.md th{padding:3px 8px;border-bottom:1px solid var(--line);font-size:12px}
 pre{background:#0c0e13;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
     margin:6px 0 0;overflow:auto;font-size:11px;line-height:1.45;max-height:240px}
 tr.click{cursor:pointer}tr.click:hover td{background:#1c212b}
@@ -312,6 +360,7 @@ ul{margin:0;padding-left:16px}li{margin:2px 0}
   <span id=state class=pill>…</span>
   <span id=disk class="pill mute">…</span>
   <span style=flex:1></span>
+  <button onclick="reports()" id=btn-rep>보고</button>
   <button onclick="act('stop')" class=danger>세우기</button>
   <button onclick="act('resume')">풀기</button>
   <span id=clock class=mute></span>
@@ -343,7 +392,9 @@ async function load(){
 
   document.getElementById('now').innerHTML = d.current
     ? `<div class=big>#${d.current.id} ${E(d.current.goal).slice(0,70)}</div>
-       <div class=mute>시도 ${d.current.attempt} · ${E(d.current.step)} · ${E(d.current.branch)} · ${E(d.current.since)}</div>`
+       <div style="margin:6px 0"><span class="pill run">${E(d.current.who)}</span> 담당 · 시도 ${d.current.attempt}</div>
+       <ul>${d.current.doing.map(x=>`<li>${E(x)}</li>`).join('')}</ul>
+       <div class=mute style="margin-top:6px">${E(d.current.branch)} · ${E(d.current.since)}</div>`
     : (d.live.length? `<div class=mute>프로세스 ${d.live.length}개 실행 중</div>`
                     : '<div class=mute>진행 중인 작업 없음</div>');
 
@@ -353,7 +404,7 @@ async function load(){
 
   document.getElementById('tasks').innerHTML='<table>'+d.tasks.map(t=>
     `<tr class=click onclick="detail(${t.id})"><td class=n>#${t.id}</td><td class="n ${SC[t.status]||'mute'}">${E(t.status)}</td>
-     <td class="n ${VC[t.verdict]||'mute'}">${E(t.verdict||'-')}</td><td class="n mute">${t.attempts}회</td>
+     <td class="n ${VC[t.verdict]||'mute'}">${E(t.verdict||'-')}</td><td class="n mute">${E(t.agent||'-')}</td><td class="n mute">${t.attempts}회</td>
      <td class=g title="${E(t.goal)}">${E(t.goal)}</td></tr>`).join('')+'</table>';
 
   document.getElementById('phases').innerHTML='<ul>'+d.phases.map(p=>{
@@ -373,6 +424,7 @@ async function load(){
       + '<div class=mute style="margin-top:6px;font-size:11px">마지막 검사 기준 · 갱신: orch providers --refresh</div>'
     : '<div class=mute>아직 검사한 적 없다 — orch providers</div>';
 
+  REPORTS=d.reports||[]; document.getElementById('btn-rep').textContent='보고'+(REPORTS.length?` ${REPORTS.length}`:'');
   const mc={GREEN:'ok',YELLOW:'warn',RED:'bad'}[d.mem.state]||'mute';
   const memHtml=`<div><span class="pill ${mc}">${E(d.mem.state)}</span> <span class=mute>${E(d.mem.line)}</span></div>`
     + (Object.keys(d.mem.procs).length? `<div class=mute style="margin:4px 0 8px">`
@@ -418,6 +470,47 @@ async function detail(id){
        <pre>${E(d.log.slice(1).join('\\n'))}</pre>`:'<div class=mute>로그 없음</div>'}`;
 }
 function closeOv(){ document.getElementById('ov').classList.remove('on'); }
+let REPORTS=[];
+async function reports(){
+  const b=document.getElementById('ovbox'); document.getElementById('ov').classList.add('on');
+  b.innerHTML=`<div style="display:flex;gap:10px;align-items:center"><div class=big>완료 보고</div>
+    <span style=flex:1></span><button onclick=closeOv()>닫기</button></div>`
+    +(REPORTS.length?'<table>'+REPORTS.map(r=>`<tr class=click onclick="report('${E(r.name)}')">
+       <td>${E(r.title)}</td><td class="n mute">${E(r.when)}</td></tr>`).join('')+'</table>'
+      :'<div class=mute>아직 보고가 없다 — docs/reports/*.md</div>');
+}
+// 아주 작은 마크다운: 제목·글머리·번호·굵게·코드·표·그림. 그 이상은 원문 그대로 보인다.
+function md(src){
+  const inl=t=>E(t).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\\*\\*([^*]+)\\*\\*/g,'<b>$1</b>')
+     .replace(/!\\[([^\\]]*)\\]\\(([^)]+)\\)/g,(m,a,u)=>`<img alt="${a}" src="${u.startsWith('http')?u:'/reports/'+u.split('/').pop()}">`);
+  const out=[]; const L=src.split('\\n'); let i=0, list=null;
+  const flush=()=>{ if(list){ out.push(`</${list}>`); list=null; } };
+  while(i<L.length){ const l=L[i];
+    if(l.startsWith('```')){ flush(); const buf=[]; i++; while(i<L.length&&!L[i].startsWith('```')) buf.push(L[i++]); i++;
+      out.push(`<pre>${E(buf.join('\\n'))}</pre>`); continue; }
+    if(l.startsWith('|')){ flush(); const rows=[]; while(i<L.length&&L[i].startsWith('|')) rows.push(L[i++]);
+      out.push('<table class=md>'+rows.filter(r=>!/^\\|\\s*-/.test(r)).map((r,k)=>'<tr>'+r.split('|').slice(1,-1)
+        .map(c=>`<${k?'td':'th'}>${inl(c.trim())}</${k?'td':'th'}>`).join('')+'</tr>').join('')+'</table>'); continue; }
+    let m;
+    if((m=l.match(/^(#{1,3}) (.*)/))){ flush(); const h=m[1].length; out.push(`<h${h} class=md>${inl(m[2])}</h${h}>`); }
+    else if((m=l.match(/^\\s*[-*] (.*)/))){ if(list!=='ul'){ flush(); out.push('<ul>'); list='ul'; } out.push(`<li>${inl(m[1])}</li>`); }
+    else if((m=l.match(/^\\s*\\d+\\. (.*)/))){ if(list!=='ol'){ flush(); out.push('<ol>'); list='ol'; } out.push(`<li>${inl(m[1])}</li>`); }
+    else if(l.trim()==='') flush();
+    else { flush(); out.push(`<p>${inl(l)}</p>`); }
+    i++; }
+  flush(); return out.join('\\n');
+}
+async function report(name){
+  const b=document.getElementById('ovbox'); document.getElementById('ov').classList.add('on');
+  b.innerHTML='<div class=mute>읽는 중…</div>';
+  const t=await (await fetch('/reports/'+encodeURIComponent(name))).text();
+  b.innerHTML=`<div style="display:flex;gap:10px;align-items:center"><span class=mute>${E(name)}</span>
+    <span style=flex:1></span><button onclick="reports()">목록</button><button onclick=closeOv()>닫기</button></div>`+md(t);
+  b.scrollTop=0;
+}
+// 주소로 바로 열기: ?task=338 · ?report=파일.md (스크린샷·공유용)
+window.addEventListener('load',()=>{ const q=new URLSearchParams(location.search);
+  if(q.get('task')) detail(+q.get('task')); else if(q.get('report')) setTimeout(()=>report(q.get('report')),300); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape')closeOv(); });
 async function act(a){ await fetch('/'+a,{method:'POST'}); load(); }
 async function send(e){ e.preventDefault(); const i=document.getElementById('cmd');
@@ -449,6 +542,15 @@ class Handler(BaseHTTPRequestHandler):
                        "application/json; charset=utf-8")
         elif path == "/api":
             self._send(200, json.dumps(gather(), ensure_ascii=False), "application/json; charset=utf-8")
+        elif path.startswith("/reports/"):
+            name = unquote(path[len("/reports/"):])
+            f = (REPORTS / name)
+            if ("/" in name or ".." in name or not f.is_file()
+                    or f.suffix not in (".md", ".png", ".jpg", ".txt")):
+                self._send(404, "없음"); return
+            ctype = {".md": "text/markdown; charset=utf-8", ".txt": "text/plain; charset=utf-8",
+                     ".png": "image/png", ".jpg": "image/jpeg"}[f.suffix]
+            self._send(200, f.read_bytes(), ctype)
         else:
             self._send(404, "없음")
 
