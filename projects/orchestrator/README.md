@@ -46,7 +46,7 @@
 ## 네거티브 컨트롤 스위트
 
 ```bash
-./tools/nc_suite.sh     # 31개 시험, 모델 호출 없음(무비용) · 약 6분, 케이스별 소요 시간 표시
+./tools/nc_suite.sh     # 39개 시험, 모델 호출 없음(무비용) · 약 7분, 케이스별 소요 시간 표시
 ```
 
 게이트가 **빨간불을 낼 줄 아는지**를 매번 확인한다. 통과만 보는 검증은 검증이 아니다.
@@ -225,6 +225,20 @@ codex만 보고하고(stderr `tokens used` / `30,845`), claude·grok은 보고�
 접는다. 목표·완료 조건·쓰기 허용 범위는 절대 자르지 않는다 — 자르면 우리가 요구사항 축소를
 만드는 꼴이다. 자른 사실은 프롬프트 안에 「총 N자 중 M자 생략」으로 적는다 — 조용히 자르면 AI는
 자기가 전부 봤다고 믿는다(NC `context_cap`).
+
+## Blender 축 (오너 지시 2026-09-11 「코덱스는 블렌더 사용해서 개발」)
+
+target에 `"kind": "blender"`를 주면 판정 축이 Unity에서 Blender 배치로 바뀐다. 원칙은 같다 —
+AI가 "만들었다"고 말한 것은 만든 것이 아니다. 저장소의 검증 장치 `orch_check.py`(protected)가
+**팩토리 빈 씬**에서 `build.py`의 `build()`를 돌려 실제 메시가 생겼는지 재고, `tests/test_*.py`의
+`test_*`를 전부 부른 뒤 stdout에 `ORCH_BLENDER_OK/FAIL` 마커를 찍는다. 마커가 없으면 UNKNOWN.
+구현자는 이름이 아니라 **`BLENDER` 능력**으로 고른다(codex·astra에 배정, grok·ollama는 후보에서 빠진다).
+게이트 8종(NC): 정상 빌드 PASS · 빈 변경 · 깨진 스크립트 · 빈 씬 · 검증 장치 변조 · 테스트 삭제 ·
+실패 테스트 · 능력 배정. 시험 저장소 `blender_sandbox/`(Blender 5.2 LTS, 판정 약 1.2초).
+
+```bash
+./orch run "나무 상자 3개를 바닥에 놓아라" --target blender_sandbox
+```
 
 ## 아직 없는 것
 

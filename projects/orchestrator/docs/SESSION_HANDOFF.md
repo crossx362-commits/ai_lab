@@ -8,7 +8,7 @@
 - **PHASE 0~8 + Provider 독립성 + PHASE 10(보드 GUI) 완료.**
 - **PHASE 9 Windows Worker는 의도적으로 안 만들었다** — 이 기계에서 검증할 방법이 없다.
   "검증 못 하는 것은 만들지 않는다"가 이 프로젝트의 전제다.
-- 무비용 시험: `./tools/nc_suite.sh` (31종, 모델 호출 0 · `ORCH_NO_CLOUD=1`로 잠금).
+- 무비용 시험: `./tools/nc_suite.sh` (39종, 모델 호출 0 · `ORCH_NO_CLOUD=1`로 잠금).
   **새 게이트를 만들면 먼저 빨간불을 보여라.** 초록만 본 게이트는 게이트가 아니다.
 
 ## ■ 계획 7은 **오너 지시로 스톱** — 재개 지시 전 착수 금지
@@ -28,6 +28,13 @@
 - **다른 세션(울온)이 같은 맥에서 유니티를 돌린다.** 유니티를 죽여야 하면 `./orch unity-kill`만
   써라 — 이 명령은 **대상 프로젝트 경로를 인자로 가진 프로세스만** 고른다. `pkill Unity`는 금지.
 - 메모리 게이트는 **스왑 사용률만으로 RED를 만들지 않는다**(오탐 전력 있음, `memory.py` 주석 참조).
+
+## Blender 축 (2026-09-11 오너 지시 「코덱스는 블렌더 사용해서 개발」)
+- `config.json` target `blender_sandbox`(`kind: blender`), 게이트 `orch_core/blenderrun.py`, 검증 장치는
+  저장소 안 `orch_check.py`(protected). 구현자는 `BLENDER` 능력으로 고른다(codex·astra).
+- NC 8종은 `tools/nc_suite.sh` 끝부분. 단독 실행은 `run_case_b` 줄만 떼서 돌리면 된다.
+- 실제 Blender 개발 target(울온 자산 등)을 붙이려면 그 저장소에 `build.py`·`orch_check.py`·`tests/`를
+  같은 규약으로 두고 target 항목을 추가한다 — 검증 장치 없는 target은 config 로드에서 거부된다.
 
 ## 다음에 할 일
 

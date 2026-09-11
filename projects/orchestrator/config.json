@@ -35,6 +35,23 @@
       ],
       "unity_timeout_sec": 600,
       "unity_stall_sec": 180
+    },
+    "blender_sandbox": {
+      "kind": "blender",
+      "repo": "blender_sandbox",
+      "blender_check": "orch_check.py",
+      "allowed_write_globs": [
+        "build.py",
+        "tests/**",
+        "assets/**"
+      ],
+      "protected_globs": [
+        "orch_check.py"
+      ],
+      "test_guard_globs": [
+        "tests/**"
+      ],
+      "blender_timeout_sec": 300
     }
   },
   "agents": {
@@ -52,7 +69,8 @@
         "DEBUGGING",
         "PLANNING",
         "REVIEW",
-        "LOW_COST"
+        "LOW_COST",
+        "BLENDER"
       ]
     },
     "astra": {
@@ -69,7 +87,8 @@
         "DEBUGGING",
         "PLANNING",
         "REVIEW",
-        "LONG_CONTEXT"
+        "LONG_CONTEXT",
+        "BLENDER"
       ]
     },
     "claude": {
@@ -109,5 +128,6 @@
     }
   },
   "planner": "astra",
-  "reviewer": "astra"
+  "reviewer": "astra",
+  "blender_bin": "/Applications/Blender.app/Contents/MacOS/Blender"
 }

@@ -87,11 +87,10 @@ PROMPT_TEMPLATE = """\
 {goal}
 
 [반드시 지킬 것]
-- Unity {unity_version} 프로젝트다. C# 코드가 컴파일되어야 하고 테스트가 통과해야 한다.
+{target_rules}
 - 기존 테스트나 검증 코드를 **삭제·약화시켜 통과시키지 마라**. 지우면 그 자리에서 실패 처리된다.
 - 목표를 임의로 축소하지 마라.
 - git commit / git push / 브랜치 조작은 하지 마라. 커밋은 오케스트레이터가 한다.
-- Assets/Orch/ 아래(검증 장치)는 수정하지 마라.
 {feedback}
 끝나면 무엇을 바꿨는지 3줄 이내로 요약하라.
 """
@@ -128,7 +127,10 @@ class CliAgent:
         return self.cfg.model
 
     def build_prompt(self, *, goal, worktree, allowed, unity_version, failure=None,
-                     handoff=None, max_chars: int = 0) -> str:
+                     handoff=None, max_chars: int = 0, target_rules: str = "") -> str:
+        target_rules = target_rules or (
+            f"- Unity {unity_version} 프로젝트다. C# 코드가 컴파일되어야 하고 테스트가 통과해야 한다.\n"
+            f"- Assets/Orch/ 아래(검증 장치)는 수정하지 마라.")
         cap = max_chars or PROMPT_MAX_DEFAULT
         # 인수인계(다른 Provider에서 넘어온 경우)가 먼저다 — "이미 절반 돼 있다"를 모르면
         # 새 담당이 처음부터 다시 만든다.
@@ -145,14 +147,14 @@ class CliAgent:
             )
         p = PROMPT_TEMPLATE.format(
             goal=goal, worktree=worktree, allowed=", ".join(allowed),
-            unity_version=unity_version, feedback=feedback,
+            unity_version=unity_version, feedback=feedback, target_rules=target_rules,
         )
         if len(p) > cap:          # 그래도 넘치면 피드백만 더 접는다(지시문은 손대지 않는다)
             room = cap - (len(p) - len(feedback))
             feedback = clamp(feedback, max(400, room), "피드백 전체")
             p = PROMPT_TEMPLATE.format(
                 goal=goal, worktree=worktree, allowed=", ".join(allowed),
-                unity_version=unity_version, feedback=feedback,
+                unity_version=unity_version, feedback=feedback, target_rules=target_rules,
             )
         return p
 

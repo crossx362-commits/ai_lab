@@ -21,7 +21,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import (agents, config, db, gitwt, loganalyze, logs, memory, planner,
+from . import (agents, blenderrun, config, db, gitwt, loganalyze, logs, memory, planner,
                proc, providers, recover, review, router, safety, unityrun)
 from . import handoff
 
@@ -181,6 +181,13 @@ def cmd_run(args) -> int:
     return rc
 
 
+def gate_label(t) -> str:
+    """판정 축 이름 — 커밋 메시지·리뷰 프롬프트·화면이 같은 말을 쓴다."""
+    if t.kind == "blender":
+        return "Blender 검증(빈 씬 빌드 + tests/)"
+    return "컴파일 + " + "·".join(t.test_platforms) if t.test_platforms else "컴파일"
+
+
 def _usable(cfg, pstat, *, prefer: list[str], capability: str = providers.CODING,
             pinned: bool = False, exclude: tuple[str, ...] = ()) -> list[str]:
     """지금 실제로 그 능력의 일을 맡길 수 있는 에이전트 목록.
@@ -229,7 +236,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
     # Provider 독립성: 설치돼 있다고 쓸 수 있는 것이 아니다. 실제 인증·한도 상태를 보고
     # **쓸 수 있는 것만** 사다리에 남긴다. 하나가 막혀도 여기서 걸러질 뿐 전체가 죽지 않는다.
     pstat = providers.probe_all(cfg)
-    ladder_ok = _usable(cfg, pstat, prefer=ladder, pinned=bool(agent))
+    ladder_ok = _usable(cfg, pstat, prefer=ladder, pinned=bool(agent), capability=t.capability)
     for a in ladder:
         s = pstat.get(a)
         if a not in ladder_ok:
@@ -377,6 +384,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             failure=failure,
             handoff=ho,
             max_chars=cfg.prompt_max_chars,
+            target_rules=t.prompt_rules,
         )
         last_agent = agent_name
         logs.write(Path(f"{prefix}.prompt.txt"), prompt)
@@ -417,7 +425,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             _p(f"  → Provider 장애: {agent_name} = {state} (시도 미차감)")
             fresh = providers.probe_all(cfg)
             nxt = _usable(cfg, fresh, prefer=[a for a in ladder if a != agent_name],
-                          exclude=(agent_name,))
+                          exclude=(agent_name,), capability=t.capability)
             if nxt:
                 ladder = nxt
                 handoff_why = f"{agent_name} {state}"
@@ -497,18 +505,25 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         slots = memory.effective_unity_slots(mnow.state, cfg.unity_slots)
         if slots != cfg.unity_slots:
             _p(f"  메모리 {mnow.state} — Unity 동시 실행을 {slots}개로 줄인다")
-        _p(f"  Unity 컴파일 판정 중 (timeout {t.unity_timeout_sec}s)…")
-        ur = unityrun.compile_check(t, wt, log_prefix=prefix, conn=conn,
-                                    task_id=task_id, attempt_id=attempt_id,
-                                    unity_slots=slots)
-        _p(f"  Unity: {ur.verdict} — {ur.reason} ({ur.duration_s:.1f}s)")
-        last_unity = f"컴파일 {ur.verdict}: {ur.reason}"
+        if t.kind == "blender":
+            _p(f"  Blender 판정 중 (timeout {t.blender_timeout_sec}s)…")
+            ur = blenderrun.check(t, wt, log_prefix=prefix, conn=conn,
+                                  task_id=task_id, attempt_id=attempt_id)
+            _p(f"  Blender: {ur.verdict} — {ur.reason} ({ur.duration_s:.1f}s)")
+        else:
+            _p(f"  Unity 컴파일 판정 중 (timeout {t.unity_timeout_sec}s)…")
+            ur = unityrun.compile_check(t, wt, log_prefix=prefix, conn=conn,
+                                        task_id=task_id, attempt_id=attempt_id,
+                                        unity_slots=slots)
+            _p(f"  Unity: {ur.verdict} — {ur.reason} ({ur.duration_s:.1f}s)")
+        last_unity = f"{gate_label(t)} {ur.verdict}: {ur.reason}"
         for e in ur.errors[:8]:
             _p(f"    {e}")
 
         # 5) 컴파일이 통과했으면 테스트까지 본다. 컴파일은 "돌아간다"이지 "맞다"가 아니다.
+        #    (Blender 축은 검증 장치가 빌드와 테스트를 한 번에 잰다.)
         verdict, reason, errtext = ur.verdict, ur.reason, ur.error_summary
-        if ur.verdict == "PASS" and t.test_platforms:
+        if ur.verdict == "PASS" and t.kind != "blender" and t.test_platforms:
             for plat in t.test_platforms:
                 tr = unityrun.run_tests(t, wt, plat, log_prefix=prefix, conn=conn,
                                         task_id=task_id, attempt_id=attempt_id,
@@ -528,7 +543,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         if verdict == "PASS" and cfg.reviewer:
             rv = run_reviewer(cfg, conn, task_id=task_id, attempt_id=attempt_id, prefix=prefix,
                               goal=args_goal, done_criteria=done_criteria,
-                              gates="컴파일 + " + "·".join(t.test_platforms), diff=ch.diff,
+                              gates=gate_label(t), diff=ch.diff,
                               implementer=agent_name)
             _p(f"  리뷰({cfg.reviewer}): {rv.verdict} — {rv.reason}")
             for rr in rv.reasons[:5]:
@@ -556,9 +571,9 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             ur.errors = errtext.splitlines()
 
         if ur.verdict == "PASS":
-            gate = "컴파일 + " + "·".join(t.test_platforms) if t.test_platforms else "컴파일"
+            gate = gate_label(t)
             commit_hash = gitwt.commit(
-                wt, f"orch(task-{task_id:04d}): {args_goal}\n\n시도 {n}회, Unity {gate} PASS{review_note}")
+                wt, f"orch(task-{task_id:04d}): {args_goal}\n\n시도 {n}회, {gate} PASS{review_note}")
             final_verdict, final_reason = "PASS", ur.reason
             break
 
@@ -712,7 +727,7 @@ def cmd_plan(args) -> int:
     plan_id = db.create_plan(conn, args.goal, agent_name, str(workdir))
     _p(f"[plan {plan_id}] 분해 담당: {agent_name}")
     prompt = planner.build_prompt(goal=args.goal, project=t.unity_project,
-                                  unity_version=t.unity_version, plan_path=ppath)
+                                  unity_version=t.engine_label, plan_path=ppath)
     ar = run_side_agent(cfg, conn, agent_name=agent_name, prompt=prompt, workdir=workdir,
                         log_prefix=config.LOG_DIR / f"plan{plan_id:04d}")
     _p(f"  {agent_name}: exit={ar.exit_code} status={ar.status} ({ar.duration_s:.1f}s)")
@@ -919,7 +934,7 @@ def cmd_review(args) -> int:
     prefix = config.LOG_DIR / f"task{t['id']:04d}-rereview-{_ts()}"
     rv = run_reviewer(cfg, conn, task_id=t["id"], attempt_id=0, prefix=prefix,
                       goal=t["goal"], done_criteria=t["done_criteria"] or "",
-                      gates="컴파일 + " + "·".join(tgt.test_platforms),
+                      gates=gate_label(tgt),
                       diff=diff, implementer=t["agent"])
     _p(f"  리뷰: {rv.verdict} — {rv.reason}")
     for rr in rv.reasons[:6]:

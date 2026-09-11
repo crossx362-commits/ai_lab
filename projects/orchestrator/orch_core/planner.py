@@ -19,7 +19,7 @@ PROMPT = """\
 
 [대상 프로젝트]
 {project}
-Unity {unity_version}. 아래 목표를 구현 가능한 작은 Task로 나눈다.
+{unity_version}. 아래 목표를 구현 가능한 작은 Task로 나눈다.
 
 [목표]
 {goal}

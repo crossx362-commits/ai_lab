@@ -293,6 +293,7 @@ def gather() -> dict:
         "waiting": board_section("결정대기")[:4],
         "phases": board_section("단계"),
         "stuck": board_section("막힘")[:3],
+        "execlog": board_section("실행")[:8],   # 대장의 진행 보고 — 최신이 위
         "mem": mem_state(),
         "providers": provider_state(),
         "reports": report_list(),
@@ -319,11 +320,11 @@ h1{font-size:15px;margin:0;font-weight:600}
 .grid{display:grid;gap:10px;padding:10px 16px;
       grid-template-columns:minmax(240px,1fr) minmax(320px,1.6fr) minmax(240px,1.1fr);
       grid-template-rows:auto minmax(0,1fr) auto;flex:1;min-height:0;
-      grid-template-areas:"now tasks phases" "stuck tasks prov" "cmd tasks usage"}
+      grid-template-areas:"now tasks phases" "stuck tasks prov" "cmd exec usage"}
 @media (max-width:900px){body{height:auto;overflow:auto}.grid{flex:none;grid-template-columns:1fr;
-      grid-template-areas:"now" "tasks" "stuck" "prov" "phases" "cmd" "usage"}}
+      grid-template-areas:"now" "tasks" "exec" "stuck" "prov" "phases" "cmd" "usage"}}
 #c-now{grid-area:now}#c-tasks{grid-area:tasks}#c-phases{grid-area:phases}
-#c-stuck{grid-area:stuck}#c-cmd{grid-area:cmd}#c-usage{grid-area:usage}#c-prov{grid-area:prov}
+#c-stuck{grid-area:stuck}#c-cmd{grid-area:cmd}#c-exec{grid-area:exec}#c-usage{grid-area:usage}#c-prov{grid-area:prov}
 /* 상세는 한 화면 철칙을 깨지 않도록 덮어서 띄운다 — 목록이 밀려나면 전체가 안 보인다. */
 #ov{position:fixed;inset:0;background:rgba(8,10,14,.82);display:none;z-index:9;padding:28px}
 #ov.on{display:flex;justify-content:center}
@@ -373,6 +374,7 @@ ul{margin:0;padding-left:16px}li{margin:2px 0}
   <div class=card id=c-cmd><h2>명령</h2><div id=cmds>…</div>
     <form onsubmit="return send(event)"><input id=cmd placeholder="명령을 적는다"><button>남기기</button></form>
   </div>
+  <div class=card id=c-exec><h2>실행 · 보고</h2><div id=execlog>…</div></div>
   <div class=card id=c-prov><h2>Provider</h2><div id=prov>…</div></div>
   <div class=card id=c-usage><h2>사용량 · 메모리</h2><div id=usage>…</div></div>
 </div>
@@ -411,6 +413,9 @@ async function load(){
     const done=p.includes('완료'), wait=p.includes('대기');
     return `<li class="${done?'ok':(wait?'mute':'run')}">${E(p)}</li>`;}).join('')+'</ul>';
 
+  document.getElementById('execlog').innerHTML=d.execlog.length?
+    '<ul>'+d.execlog.map(x=>{const done=x.startsWith('[x]'), hold=x.startsWith('[-]');
+      return `<li class="${done?'ok':(hold?'mute':'run')}">${E(x.replace(/^\\[.\\] /,''))}</li>`;}).join('')+'</ul>':'<div class=mute>없음</div>';
   document.getElementById('cmds').innerHTML=d.commands.length?
     '<ul>'+d.commands.map(c=>`<li>${E(c)}</li>`).join('')+'</ul>':'<div class=mute>없음</div>';
 

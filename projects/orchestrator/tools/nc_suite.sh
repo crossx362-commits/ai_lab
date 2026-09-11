@@ -643,6 +643,52 @@ if grep -q "^CTX_OK" /tmp/nc_ctx.log; then
 else echo "  FAIL  context_cap (로그: /tmp/nc_ctx.log)"; FAIL=$((FAIL+1)); fi
 lap
 
+# 16) Blender 축 — 「코덱스는 블렌더 사용해서 개발」(오너 2026-09-11). Unity 축과 같은 게이트를
+#     Blender 저장소에도 세운다: 빈 변경·깨진 스크립트·빈 씬·검증 장치 변조·테스트 삭제·실패 테스트.
+#     초록 하나(정상 빌드)로 게이트가 살아 있음을 같이 보인다.
+mkcfg_b() {  # mkcfg_b <파일> <셸명령> [timeout] — target을 blender_sandbox로
+  mkcfg "$1" "$2" "${3:-60}"
+  python3 - "$1" <<'PY2'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+d["default_target"] = "blender_sandbox"
+d["agents"]["nc"]["capabilities"] = ["BLENDER"]
+p.write_text(json.dumps(d, ensure_ascii=False, indent=2))
+PY2
+}
+run_case_b() {  # run_case_b <이름> <셸명령> <기대verdict> <기대문구>
+  local name="$1" script="$2" want="$3" phrase="$4"
+  local cfg="state/nc_${name}.json" log="/tmp/nc_${name}.log"
+  mkcfg_b "$cfg" "$script"
+  ORCH_CONFIG="$HERE/$cfg" ./orch run "[NC] $name" --agent nc >"$log" 2>&1
+  check "$name" "$want" "$phrase" "$log"
+}
+run_case_b blender_ok "printf 'import bpy\ndef build():\n    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0,0,0.5))\n    bpy.context.active_object.name = \"Crate\"\n    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(2,0,0.3))\n' > build.py" PASS "Blender 검증 통과"
+run_case_b blender_no_change "exit 0" FAILED "파일을 전혀 고치지 않았다"
+run_case_b blender_broken "printf 'def build(:\n  pass\n' > build.py" FAILED "Blender 검증 실패"
+run_case_b blender_empty "printf 'def build():\n    pass\n' > build.py" FAILED "메시 오브젝트가 하나도 없다"
+run_case_b blender_tamper "printf 'print(\"ORCH_BLENDER_OK\")\n' > orch_check.py" FAILED "검증 장치 변조"
+run_case_b blender_delete_test "rm -f tests/test_basic.py; printf 'import bpy\ndef build():\n    bpy.ops.mesh.primitive_cube_add()\n' > build.py" FAILED "검증 장치 변조"
+run_case_b blender_failing_test "printf 'def test_nc_fails():\n    assert 1 == 2, \"일부러\"\n' > tests/test_nc.py" FAILED "Blender 테스트 1건 실패"
+# 능력 배정: BLENDER 능력이 없는 에이전트는 Blender target에 배정되지 않는다
+python3 - <<'PYCAP' > /tmp/nc_blender_cap.log 2>&1
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from orch_core import config, providers as P
+cfg = config.load()
+t = cfg.target("blender_sandbox")
+st = {n: P.Status(n, P.AVAILABLE, "", 0, 0) for n in cfg.raw["agents"]}
+picked = P.pick(cfg, st, capability=t.capability, prefer=["grok", "ollama", "codex"])
+bad = []
+if not picked or picked[0] != "codex": bad.append(f"BLENDER 능력 없는 것을 골랐다: {picked}")
+if "grok" in picked or "ollama" in picked: bad.append("능력 없는 에이전트가 후보에 남았다")
+print("CAP_OK" if not bad else "CAP_BAD " + " / ".join(bad))
+PYCAP
+if grep -q "^CAP_OK" /tmp/nc_blender_cap.log; then
+  echo "  PASS  blender_capability — Blender target은 BLENDER 능력 가진 것(codex)만 맡는다"; PASS=$((PASS+1))
+else echo "  FAIL  blender_capability (로그: /tmp/nc_blender_cap.log)"; FAIL=$((FAIL+1)); fi
+lap
+
 echo
 echo "=== 결과: PASS=$PASS FAIL=$FAIL · 소요 $(( $(date +%s) - T0 ))초 ==="
 if [[ ${#TASKS[@]} -gt 0 ]]; then
