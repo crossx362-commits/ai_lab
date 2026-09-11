@@ -50,8 +50,12 @@
 - [ ] [2026-09-11] PHASE 9 — Windows Worker(선택)
 
 ## 막힘
-- 계획 7은 T4에서 **codex 사용량 한도**로 멈춰 있다(11:41 PM 이후 해제). 재개: `./autodev run-plan --plan 7 --keep-going`.
-- T3은 3회 반려로 REVIEW — 사람이 봐야 한다(브랜치 autodev/task-0223).
+- **계획 7 재개는 23:41 이후**(codex·astra 한도, 시스템이 그 시각까지 냉각 표시함).
+  지금 돌리면 claude가 구현은 하지만 **리뷰어가 전부 막혀** 전부 REVIEW로 쌓이고 재리뷰를
+  또 돌려야 한다(비용 이중). 재개: `./autodev run-plan --plan 7 --keep-going`.
+- T3(task 223, 브랜치 autodev/task-0223)은 **반려가 아니라 리뷰 미실행**이다 —
+  컴파일 PASS·EditMode 1/1·PlayMode 8/8을 통과했고 astra 리뷰가 한도로 못 돌았다.
+  23:41 이후 `./autodev review --task 223` 한 번이면 판정이 난다(코드 재작업 불필요).
 - 스왑이 찬 상태(RED)에서는 시작 전 최대 300초 대기가 걸린다 — 멎은 게 아니라 규칙이다.
   NC 한 판이 그것 때문에 197초였다(스위트가 케이스별 소요를 찍는다).
 - Unity 라이선스 핸드셰이크에서 멈추면 진행 없음을 감지하지 못한다 — 타임아웃까지 기다린다.
