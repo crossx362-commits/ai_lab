@@ -66,6 +66,15 @@ run_case tamper "rm -f Assets/AutoDev/Editor/AutoDevCompileCheck.cs" FAILED "검
 # 4) 깨진 C# — Unity가 실제로 막아야 한다
 run_case broken_cs "printf 'class B { void X(){ int a = ; } }\n' > Assets/Game/Scripts/NcBroken.cs" FAILED "C# 컴파일 오류"
 
+# 4a) 수리 루프 — 시도 1은 깨뜨리고 시도 2에 고치는 결정적 에이전트.
+#     "실패 → 분석 → 재시도 → 통과"가 실제로 성사되는지를 모델 없이 증명한다.
+rm -f /tmp/nc_repair_count
+run_case repair_loop \
+  "C=/tmp/nc_repair_count; N=\$(cat \$C 2>/dev/null || echo 0); N=\$((N+1)); echo \$N > \$C; \
+   if [ \$N -ge 2 ]; then printf 'namespace SandboxGame { public static class NcRepair { public const int V = 1; } }\n' > Assets/Game/Scripts/NcRepair.cs; \
+   else printf 'namespace SandboxGame { public static class NcRepair { public const int V = ; } }\n' > Assets/Game/Scripts/NcRepair.cs; fi" \
+  PASS "시도 2/3"
+
 # 4b) 실패하는 테스트 — 컴파일은 되지만 테스트가 막아야 한다
 run_case failing_test \
   "printf 'using NUnit.Framework;\nnamespace SandboxGame.Tests { public class NcFail { [Test] public void AlwaysFails(){ Assert.AreEqual(1,2); } } }\n' > Assets/Tests/EditMode/NcFail.cs" \

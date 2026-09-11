@@ -17,7 +17,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import agents, config, db, gitwt, logs, proc, safety, unityrun
+from . import agents, config, db, gitwt, loganalyze, logs, proc, safety, unityrun
 
 
 def _p(msg: str = "") -> None:
@@ -304,8 +304,12 @@ def cmd_run(args) -> int:
             final_verdict, final_reason = "UNKNOWN", ur.reason
             break
 
+        # 다음 시도에는 로그를 던지는 대신 **분석한 것**을 준다 — 오류가 가리키는 자리를 펼쳐서.
+        analysis = loganalyze.analyze(ur.errors, wt)
+        if analysis.findings:
+            _p(f"  분석: 관련 파일 {len(analysis.files)}개 — {', '.join(analysis.files[:4]) or '(미상)'}")
         failure = {"n": n, "verdict": ur.verdict, "reason": ur.reason,
-                   "errors": ur.error_summary or "(CS 오류를 추출하지 못했다)"}
+                   "errors": analysis.render() or ur.error_summary or "(오류를 추출하지 못했다)"}
         final_verdict, final_reason = "FAILED", ur.reason
 
     # 결과 확정
@@ -402,6 +406,23 @@ def cmd_clean(args) -> int:
     return 0
 
 
+def cmd_archive(args) -> int:
+    """기록은 남기고 화면에서만 내린다 — 시험용으로 돌린 판이 보드의 '막힘'을 채우지 않게."""
+    conn = db.connect()
+    for tid in args.task:
+        t = db.get_task(conn, tid)
+        if not t:
+            _p(f"task {tid} 없음")
+            continue
+        if t["status"] == "RUNNING":
+            _p(f"task {tid}은 RUNNING이다 — 먼저 세우고 정리하라")
+            continue
+        db.update_task(conn, tid, status="ARCHIVED",
+                       reason=f"[보관] {t['reason'] or t['status']}")
+        _p(f"task {tid} 보관 ({t['status']} → ARCHIVED)")
+    return 0
+
+
 def cmd_gc(args) -> int:
     cfg = config.load()
     t = cfg.target(args.target)
@@ -452,6 +473,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     rs = sub.add_parser("resume", help="STOP 해제")
     rs.set_defaults(func=cmd_resume)
+
+    ar = sub.add_parser("archive", help="task를 보관 처리(기록 유지, 화면에서 내림)")
+    ar.add_argument("--task", type=int, nargs="+", required=True)
+    ar.set_defaults(func=cmd_archive)
 
     g = sub.add_parser("gc", help="잔재 worktree 점검·prune")
     g.set_defaults(func=cmd_gc)
