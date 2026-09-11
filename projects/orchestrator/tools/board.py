@@ -28,6 +28,7 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent.parent
 DB = ROOT / "state" / "autodev.sqlite3"
 BOARD = ROOT / "BOARD.md"
+LOGDIR = ROOT / "logs"
 STOP = ROOT / "state" / "STOP"
 LOGS = ROOT / "logs"
 
@@ -101,8 +102,17 @@ def is_noise(goal: str) -> bool:
     return g.startswith("[NC]") or g.startswith("[병렬]")
 
 
-def is_hidden(row) -> bool:
-    return is_noise(row["goal"]) or row["status"] == "ARCHIVED"
+def nc_plan_ids() -> set:
+    """시험판 계획의 번호. **그 계획이 낳은 하위 Task는 목표 문구에 [NC]가 없다** —
+    목표만 보고 걸렀더니 "첫 번째"·"두 번째" 같은 시험 부스러기가 목록과 사용량에 새어 나왔다."""
+    return {r["id"] for r in rows("SELECT id, goal FROM plans") if is_noise(r["goal"])}
+
+
+def is_hidden(row, nc_plans: set | None = None) -> bool:
+    if is_noise(row["goal"]) or row["status"] == "ARCHIVED":
+        return True
+    keys = row.keys() if hasattr(row, "keys") else row
+    return "plan_id" in keys and row["plan_id"] in (nc_plans if nc_plans is not None else nc_plan_ids())
 
 
 _MEM_CACHE = {"ts": 0.0, "val": None}
@@ -127,9 +137,71 @@ def mem_state() -> dict:
     return val
 
 
+def provider_state() -> list[dict]:
+    """저장된 Provider 상태를 **읽기만** 한다.
+
+    보드가 직접 인증을 물으면(3초마다) CLI를 두드려 기계를 더 느리게 만든다.
+    그래서 여기서는 마지막 검사 결과만 보여주고 **언제 잰 것인지**를 같이 적는다 —
+    오래된 값을 지금 값인 척하지 않는 것이 이 보드의 규칙이다.
+    """
+    f = ROOT / "state" / "providers.json"
+    if not f.is_file():
+        return []
+    try:
+        d = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    out = []
+    now = time.time()
+    for name, r in d.items():
+        if name.startswith("nc"):    # 시험용 — 작업 목록의 [NC]와 같은 원칙으로 숨긴다
+            continue
+        cool = r.get("cooldown_until", 0) or 0
+        out.append({
+            "name": name,
+            "state": r.get("state", "?"),
+            "detail": (r.get("detail") or "")[:60],
+            "checked": ago(r.get("checked_at", 0)),
+            "cool_min": int((cool - now) / 60) if cool > now else 0,
+            "usable": r.get("state") in ("AVAILABLE", "LIMITED") and cool <= now,
+        })
+    return out
+
+
+def log_tail(task_id: int, n: int = 14) -> list[str]:
+    """그 Task의 가장 최근 로그 꼬리. 무엇을 하는 중인지 화면에서 바로 보이게."""
+    # stdout만 보면 안 된다 — 한도·인증 오류는 stderr에만 있었다(2026-09-11 실전).
+    cands = sorted([*LOGDIR.glob(f"task{task_id:04d}-*.stdout.log"),
+                    *LOGDIR.glob(f"task{task_id:04d}-*.stderr.log")],
+                   key=lambda p: p.stat().st_mtime, reverse=True)
+    for f in cands:
+        try:
+            lines = [ln for ln in f.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()]
+        except OSError:
+            continue
+        if lines:
+            return [f.name] + lines[-n:]
+    return []
+
+
+def task_detail(task_id: int) -> dict:
+    t = rows("SELECT * FROM tasks WHERE id=?", (task_id,))
+    if not t:
+        return {"error": f"task {task_id} 없음"}
+    t = dict(t[0])
+    at = [dict(a) for a in rows("SELECT * FROM attempts WHERE task_id=? ORDER BY n", (task_id,))]
+    pr = [dict(p) for p in rows(
+        "SELECT kind,status,exit_code,started_at,ended_at FROM processes WHERE task_id=?"
+        " ORDER BY id DESC LIMIT 8", (task_id,))]
+    for p in pr:
+        p["took"] = round((p["ended_at"] or time.time()) - p["started_at"], 1)
+    return {"task": t, "attempts": at, "procs": pr, "log": log_tail(task_id)}
+
+
 def gather() -> dict:
+    ncp = nc_plan_ids()
     tasks = [t for t in rows("SELECT * FROM tasks ORDER BY id DESC LIMIT 120")
-             if not is_hidden(t)][:14]
+             if not is_hidden(t, ncp)][:14]
     running = [t for t in tasks if t["status"] == "RUNNING"]
     blocked = [t for t in tasks if t["status"] in ("BLOCKED", "STOPPED", "INTERRUPTED", "REVIEW")]
     live = rows("SELECT * FROM processes WHERE status='RUNNING' ORDER BY started_at DESC LIMIT 6")
@@ -150,10 +222,12 @@ def gather() -> dict:
         "SELECT u.agent agent, COUNT(*) n, SUM(u.ok) ok, SUM(u.duration_s) secs"
         " FROM usage u JOIN tasks t ON t.id=u.task_id"
         " WHERE t.status<>'ARCHIVED' AND t.goal NOT LIKE '[NC]%' AND t.goal NOT LIKE '[병렬]%'"
+        "   AND (t.plan_id IS NULL OR t.plan_id NOT IN"
+        "        (SELECT id FROM plans WHERE goal LIKE '[NC]%' OR goal LIKE '[병렬]%'))"
         " GROUP BY u.agent"
     )
-    counted = rows("SELECT status, goal FROM tasks")
-    real = [t for t in counted if not is_hidden(t)]
+    counted = rows("SELECT status, goal, plan_id FROM tasks")
+    real = [t for t in counted if not is_hidden(t, ncp)]
     done = [t for t in real if t["status"] == "DONE"]
 
     import shutil
@@ -175,6 +249,7 @@ def gather() -> dict:
         "phases": board_section("단계"),
         "stuck": board_section("막힘")[:3],
         "mem": mem_state(),
+        "providers": provider_state(),
         "now": datetime.now().strftime("%H:%M:%S"),
     }
 
@@ -186,19 +261,31 @@ PAGE = """<!doctype html><html lang=ko><meta charset=utf-8>
 :root{--bg:#0f1115;--card:#171a21;--line:#252a34;--fg:#e6e9ef;--mute:#8b93a3;
       --ok:#3fb950;--bad:#f85149;--warn:#d29922;--run:#58a6ff}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+/* 한 화면 철칙을 헤더 높이 추정(calc(100vh - 46px))에 걸어두면, 글꼴·패딩이 조금만 바뀌어도
+   몇 px씩 넘쳐 스크롤이 생긴다(실측 7px 초과). 숫자를 고치지 말고 가정을 없앤다 —
+   body를 세로 flex로 두고 격자가 남은 높이를 먹게 한다. */
+body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+     height:100vh;display:flex;flex-direction:column;overflow:hidden}
 header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
 h1{font-size:15px;margin:0;font-weight:600}
 /* 한 화면 철칙: 화면 높이를 다 쓰되 스크롤은 만들지 않는다.
    넓은 화면에서 아래 절반이 비던 것을 고쳤다 — 남는 높이는 '최근 작업'이 먹는다. */
 .grid{display:grid;gap:10px;padding:10px 16px;
       grid-template-columns:minmax(240px,1fr) minmax(320px,1.6fr) minmax(240px,1.1fr);
-      grid-template-rows:auto minmax(0,1fr) auto;height:calc(100vh - 46px);
-      grid-template-areas:"now tasks phases" "stuck tasks phases" "cmd tasks usage"}
-@media (max-width:900px){.grid{height:auto;grid-template-columns:1fr;
-      grid-template-areas:"now" "tasks" "stuck" "phases" "cmd" "usage"}}
+      grid-template-rows:auto minmax(0,1fr) auto;flex:1;min-height:0;
+      grid-template-areas:"now tasks phases" "stuck tasks prov" "cmd tasks usage"}
+@media (max-width:900px){body{height:auto;overflow:auto}.grid{flex:none;grid-template-columns:1fr;
+      grid-template-areas:"now" "tasks" "stuck" "prov" "phases" "cmd" "usage"}}
 #c-now{grid-area:now}#c-tasks{grid-area:tasks}#c-phases{grid-area:phases}
-#c-stuck{grid-area:stuck}#c-cmd{grid-area:cmd}#c-usage{grid-area:usage}
+#c-stuck{grid-area:stuck}#c-cmd{grid-area:cmd}#c-usage{grid-area:usage}#c-prov{grid-area:prov}
+/* 상세는 한 화면 철칙을 깨지 않도록 덮어서 띄운다 — 목록이 밀려나면 전체가 안 보인다. */
+#ov{position:fixed;inset:0;background:rgba(8,10,14,.82);display:none;z-index:9;padding:28px}
+#ov.on{display:flex;justify-content:center}
+#ovbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;
+       width:min(880px,100%);max-height:100%;overflow:auto}
+pre{background:#0c0e13;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+    margin:6px 0 0;overflow:auto;font-size:11px;line-height:1.45;max-height:240px}
+tr.click{cursor:pointer}tr.click:hover td{background:#1c212b}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;
       min-width:0;min-height:0;display:flex;flex-direction:column}
 .card>div,.card>ul{overflow:auto;min-height:0}
@@ -236,8 +323,10 @@ ul{margin:0;padding-left:16px}li{margin:2px 0}
   <div class=card id=c-cmd><h2>명령</h2><div id=cmds>…</div>
     <form onsubmit="return send(event)"><input id=cmd placeholder="명령을 적는다"><button>남기기</button></form>
   </div>
+  <div class=card id=c-prov><h2>Provider</h2><div id=prov>…</div></div>
   <div class=card id=c-usage><h2>사용량 · 메모리</h2><div id=usage>…</div></div>
 </div>
+<div id=ov onclick="if(event.target.id==='ov')closeOv()"><div id=ovbox>…</div></div>
 <script>
 const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const SC={DONE:'ok',RUNNING:'run',BLOCKED:'bad',STOPPED:'warn',REVIEW:'warn',INTERRUPTED:'warn'};
@@ -262,7 +351,7 @@ async function load(){
   document.getElementById('stuck').innerHTML = stuck.length?`<ul>${stuck.slice(0,6).join('')}</ul>`:'<div class=mute>없음</div>';
 
   document.getElementById('tasks').innerHTML='<table>'+d.tasks.map(t=>
-    `<tr><td class=n>#${t.id}</td><td class="n ${SC[t.status]||'mute'}">${E(t.status)}</td>
+    `<tr class=click onclick="detail(${t.id})"><td class=n>#${t.id}</td><td class="n ${SC[t.status]||'mute'}">${E(t.status)}</td>
      <td class="n ${VC[t.verdict]||'mute'}">${E(t.verdict||'-')}</td><td class="n mute">${t.attempts}회</td>
      <td class=g title="${E(t.goal)}">${E(t.goal)}</td></tr>`).join('')+'</table>';
 
@@ -273,6 +362,16 @@ async function load(){
   document.getElementById('cmds').innerHTML=d.commands.length?
     '<ul>'+d.commands.map(c=>`<li>${E(c)}</li>`).join('')+'</ul>':'<div class=mute>없음</div>';
 
+  const PC={AVAILABLE:'ok',LIMITED:'warn',RATE_LIMITED:'warn',AUTH_REQUIRED:'bad',
+            UNAVAILABLE:'bad',ERROR:'bad',DISABLED:'mute'};
+  document.getElementById('prov').innerHTML = d.providers.length
+    ? '<table>'+d.providers.map(p=>
+        `<tr><td class=n>${p.usable?'<span class=ok>✓</span>':'<span class=bad>✗</span>'} ${E(p.name)}</td>
+         <td class="n ${PC[p.state]||'mute'}">${E(p.state)}</td>
+         <td class="n mute">${p.cool_min?p.cool_min+'분 후':E(p.checked)}</td></tr>`).join('')+'</table>'
+      + '<div class=mute style="margin-top:6px;font-size:11px">마지막 검사 기준 · 갱신: autodev providers --refresh</div>'
+    : '<div class=mute>아직 검사한 적 없다 — autodev providers</div>';
+
   const mc={GREEN:'ok',YELLOW:'warn',RED:'bad'}[d.mem.state]||'mute';
   const memHtml=`<div><span class="pill ${mc}">${E(d.mem.state)}</span> <span class=mute>${E(d.mem.line)}</span></div>`
     + (Object.keys(d.mem.procs).length? `<div class=mute style="margin:4px 0 8px">`
@@ -281,11 +380,46 @@ async function load(){
     `<tr><td>${E(u.agent)}</td><td class=mute>${u.n}회</td><td class=ok>성공 ${u.ok||0}</td>
      <td class=mute>${Math.round(u.secs||0)}초</td></tr>`).join('')+'</table>':'');
 }
+const VC2={PASS:'ok',FAILED:'bad',UNKNOWN:'warn',REJECTED:'bad',APPROVE:'ok'};
+async function detail(id){
+  const b=document.getElementById('ovbox');
+  b.innerHTML='<div class=mute>읽는 중…</div>';
+  document.getElementById('ov').classList.add('on');
+  const d=await (await fetch('/api/task/'+id)).json();
+  if(d.error){ b.innerHTML=`<div class=bad>${E(d.error)}</div>`; return; }
+  const t=d.task;
+  const att=d.attempts.map(a=>
+    `<tr><td class=n>시도 ${a.n}</td><td class=n>${E(a.agent||'-')}</td>
+     <td class="n ${VC2[a.status]||'mute'}">${E(a.status)}</td>
+     <td class=n mute>${a.changed_files??'-'}파일</td>
+     <td class=g title="${E(a.reason||'')}">${E(a.reason||'')}</td></tr>`).join('');
+  const prc=d.procs.map(p=>
+    `<tr><td class=n>${E(p.kind)}</td><td class="n ${p.status==='EXITED'?'mute':'warn'}">${E(p.status)}</td>
+     <td class=n mute>exit ${p.exit_code??'-'}</td><td class=n mute>${p.took}초</td></tr>`).join('');
+  b.innerHTML=`
+    <div style="display:flex;gap:10px;align-items:center">
+      <div class=big>#${t.id} ${E(t.goal)}</div><span style=flex:1></span>
+      <button onclick=closeOv()>닫기</button></div>
+    <div class=mute style="margin:6px 0">
+      <span class="pill ${SC[t.status]||'mute'}">${E(t.status)}</span>
+      <span class="pill ${VC2[t.verdict]||'mute'}">${E(t.verdict||'-')}</span>
+      ${E(t.branch||'-')} · ${E((t.commit_hash||'').slice(0,10)||'커밋 없음')} · 시도 ${t.attempts}회</div>
+    ${t.done_criteria?`<div class=mute style="margin:6px 0"><b>완료 조건</b> ${E(t.done_criteria)}</div>`:''}
+    ${t.reason?`<div style="margin:6px 0"><b>판정</b> ${E(t.reason)}</div>`:''}
+    ${t.review?`<div style="margin:6px 0"><b>리뷰</b> ${E(t.review)}</div>`:''}
+    <h2 style="margin-top:12px">시도</h2><table>${att||'<tr><td class=mute>없음</td></tr>'}</table>
+    <h2 style="margin-top:12px">프로세스</h2><table>${prc||'<tr><td class=mute>없음</td></tr>'}</table>
+    <h2 style="margin-top:12px">로그 꼬리</h2>
+    ${d.log.length?`<div class=mute style=font-size:11px>${E(d.log[0])}</div>
+       <pre>${E(d.log.slice(1).join('\\n'))}</pre>`:'<div class=mute>로그 없음</div>'}`;
+}
+function closeOv(){ document.getElementById('ov').classList.remove('on'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')closeOv(); });
 async function act(a){ await fetch('/'+a,{method:'POST'}); load(); }
 async function send(e){ e.preventDefault(); const i=document.getElementById('cmd');
   if(!i.value.trim())return false;
   await fetch('/command',{method:'POST',body:i.value}); i.value=''; load(); return false; }
-load(); setInterval(load,3000);
+load(); setInterval(()=>{ if(!document.getElementById('ov').classList.contains('on')) load(); },3000);
 </script></html>"""
 
 
@@ -302,6 +436,13 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/":
             self._send(200, PAGE)
+        elif path.startswith("/api/task/"):
+            try:
+                tid = int(path.rsplit("/", 1)[-1])
+            except ValueError:
+                self._send(404, "없음"); return
+            self._send(200, json.dumps(task_detail(tid), ensure_ascii=False, default=str),
+                       "application/json; charset=utf-8")
         elif path == "/api":
             self._send(200, json.dumps(gather(), ensure_ascii=False), "application/json; charset=utf-8")
         else:

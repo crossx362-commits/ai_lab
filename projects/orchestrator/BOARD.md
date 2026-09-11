@@ -31,8 +31,8 @@
 - PHASE 7 Memory Manager: 완료 [2026-09-11]
 - PHASE 8 Crash Recovery: 완료 [2026-09-11]
 - Provider 독립성(인증 실검사·능력 배정·승계·로컬 보존): 완료 [2026-09-11]
-- PHASE 9 Windows Worker: 대기
-- PHASE 10 GUI: 대기
+- PHASE 9 Windows Worker: **보류(이 기계에서 검증 불가 — 없는 것을 완료라 하지 않는다)**
+- PHASE 10 GUI: 완료 [2026-09-11] — 보드에 Provider 상태·작업 상세·로그 꼬리
 
 ## 명령
 - [2026-09-11 19:20] 지휘보드 참고해서 오케스트레이터 보드를 만들어라
@@ -47,7 +47,8 @@
 - [x] [2026-09-11] PHASE 7 — Memory Manager(압박·스왑 추세 판정, Unity 슬롯 축소, `unity-kill` 범위 한정)
 - [x] [2026-09-11] PHASE 8 — Crash Recovery(주인 없는 RUNNING을 INTERRUPTED로 회수, DONE 경로 없음)
 - [x] [2026-09-11] Provider 독립성 — 오너 지시(특정 업체를 필수 의존성으로 두지 않는다)
-- [ ] [2026-09-11] PHASE 9 — Windows Worker(선택)
+- [x] [2026-09-11] PHASE 10 GUI — Provider 카드·작업 상세(시도·리뷰·프로세스·로그)
+- [-] [2026-09-11] PHASE 9 Windows Worker — 보류(맥에서 검증 불가, 저장소 규칙)
 
 ## 막힘
 - **계획 7 재개는 23:41 이후**(codex·astra 한도, 시스템이 그 시각까지 냉각 표시함).
