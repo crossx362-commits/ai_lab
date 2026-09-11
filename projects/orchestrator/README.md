@@ -70,6 +70,11 @@
 | 테스트 삭제 | FAILED | 그대로 (쓰기 허용·삭제 금지) |
 | 테스트 0건 실행 | UNKNOWN | 코드상 처리(미발동) |
 | Unity 슬롯 1 | 직렬화 | 겹침 -1.63s (DB 시각) |
+| 사다리 승격 | 1등급 2회 실패 → 2등급 PASS | 그대로 (모델 없이 실증) |
+| Claude 어댑터 실호출 | PASS + 커밋 | PASS, 31.3s, 2파일 +68줄 |
+| Grok 어댑터 실호출 | PASS + 커밋 | PASS, 380.3s, 2파일 +92줄 |
+| Ollama 요약 | 긴 로그 압축 후 언로드 | 5.6k자 → 18.2초, 적재 0 |
+| 시험판이 유료 모델 호출 | 구조적 차단 | 1차 **뚫림(226초 과금)** → 자물쇠 추가 |
 
 ## 완료 판정의 층 (현재)
 
@@ -78,7 +83,21 @@
 ```
 어느 층에서든 걸리면 그 이유가 다음 시도의 프롬프트로 들어간다. 층을 건너뛰는 길은 없다.
 
-## 아직 없는 것 (PHASE 4 이후)
+## 에이전트 등급 (사다리)
 
-Claude/Grok/Ollama 어댑터, 승격 라우팅, Planner 작업 분해, Memory Manager,
-크래시 복구(RUNNING으로 남은 task 회수), Windows Worker, GUI.
+```
+codex(낮은 추론) → claude → astra(높은 추론)
+```
+이 기계의 codex 기본 모델이 이미 `gpt-6-astra`라, Codex와 Astra는 **모델명이 아니라 추론 강도**로
+가른다(`extra_config: model_reasoning_effort`). 등급은 시도마다 라우터가 점수로 정하고
+(`router.py`) **한 시도에 한 칸만** 오른다 — 두 칸을 뛰면 중간 등급이 풀 수 있었는지 알 수 없다.
+`grok`은 개발 사다리가 아니라 **조사**용, `ollama(gemma4:12b)`는 **로그 압축 보조**다(파일을 고치지 않는다).
+
+`AUTODEV_NO_CLOUD=1`이면 script 외의 에이전트를 **빌드조차 거부**한다 — 시험용 판이 유료 모델을
+부르는 사고를 코드로 막는다.
+
+## 아직 없는 것 (PHASE 6 이후)
+
+Planner 작업 분해·Astra 최종 리뷰, Memory Manager, 크래시 복구(RUNNING으로 남은 task 회수),
+Windows Worker, GUI. Unity가 라이선스 핸드셰이크에서 멈추면 지금은 타임아웃(600초)까지 기다린다 —
+진행 없음 감지는 아직 없다.

@@ -17,7 +17,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import agents, config, db, gitwt, loganalyze, logs, proc, safety, unityrun
+from . import agents, config, db, gitwt, loganalyze, logs, proc, router, safety, unityrun
 
 
 def _p(msg: str = "") -> None:
@@ -110,12 +110,15 @@ def cmd_verify(args) -> int:
 def cmd_run(args) -> int:
     cfg = config.load()
     t = cfg.target(args.target)
-    agent_cfg = cfg.agent(args.agent)
+    # 사다리: --agent를 주면 그 하나로 고정, 안 주면 라우터가 시도마다 등급을 고른다.
+    ladder = [args.agent] if args.agent else cfg.ladder
     try:
-        agent = agents.build(agent_cfg)
-    except KeyError as e:
-        _p(str(e))
+        for a in ladder:
+            agents.build(cfg.agent(a))  # 설정이 실제로 만들어지는지 먼저 확인
+    except (KeyError, config.ConfigError) as e:
+        _p(f"사다리 설정 오류: {e}")
         return 2
+    _p(f"[사다리] {' → '.join(ladder)}" + (f" (조사: {cfg.research_agent})" if cfg.research_agent else ""))
 
     if safety.stop_requested():
         _p(f"STOP 상태다 — 새 작업을 시작하지 않는다 ({safety.STOP_FILE})\n  해제: autodev resume")
@@ -138,10 +141,10 @@ def cmd_run(args) -> int:
 
     max_attempts = args.max_attempts or cfg.max_attempts
     conn = db.connect()
-    task_id = db.create_task(conn, args.goal, t.name, args.agent, agent.model_name())
+    task_id = db.create_task(conn, args.goal, t.name, ladder[0], None)
     base = gitwt.head(t.repo)
 
-    _p(f"[task {task_id}] target={t.name} base={base[:8]} agent={args.agent} max_attempts={max_attempts}")
+    _p(f"[task {task_id}] target={t.name} base={base[:8]} max_attempts={max_attempts}")
 
     try:
         wt, branch = gitwt.create_worktree(t.repo, task_id)
@@ -154,6 +157,7 @@ def cmd_run(args) -> int:
     _p(f"[task {task_id}] branch={branch}")
 
     failure = None
+    history: list[dict] = []   # 라우터가 보는 실패 이력
     final_verdict = "UNKNOWN"
     final_reason = "시도를 시작하지 못했다"
     commit_hash = None
@@ -165,10 +169,20 @@ def cmd_run(args) -> int:
             final_verdict, final_reason = "UNKNOWN", "STOP 요청으로 중단(시도 시작 전)"
             _p(f"\n  → STOP: {final_reason}")
             break
-        attempt_id = db.create_attempt(conn, task_id, n, args.agent, agent.model_name())
-        db.update_task(conn, task_id, attempts=n)
         prefix = config.LOG_DIR / f"task{task_id:04d}-a{n}"
         _p(f"\n--- 시도 {n}/{max_attempts} ---")
+
+        # 이번 시도의 등급을 고른다. 왜 그 등급인지를 함께 남긴다 — 사유 없는 승격은
+        # 나중에 규칙을 고칠 수도, 비용을 따질 수도 없다.
+        decision = router.decide(goal=args.goal, ladder=ladder, attempt=n,
+                                 failures=history, research_agent=cfg.research_agent)
+        agent_name = decision.agent
+        agent_cfg = cfg.agent(agent_name)
+        agent = agents.build(agent_cfg)
+        _p(f"  담당: {agent_name} — {decision.reason}")
+
+        attempt_id = db.create_attempt(conn, task_id, n, agent_name, agent.model_name())
+        db.update_task(conn, task_id, attempts=n, agent=agent_name, model=agent.model_name())
 
         prompt = agent.build_prompt(
             goal=args.goal,
@@ -179,11 +193,11 @@ def cmd_run(args) -> int:
         )
         logs.write(Path(f"{prefix}.prompt.txt"), prompt)
 
-        _p(f"  {args.agent} 호출 중 (timeout {agent_cfg.timeout_sec}s)…")
+        _p(f"  {agent_name} 호출 중 (timeout {agent_cfg.timeout_sec}s)…")
         ar = agent.run(prompt, worktree=wt, log_prefix=prefix,
                        conn=conn, task_id=task_id, attempt_id=attempt_id)
-        _p(f"  {args.agent}: exit={ar.exit_code} status={ar.status} ({ar.duration_s:.1f}s) log={ar.stdout_path.name}")
-        db.record_usage(conn, task_id=task_id, attempt_id=attempt_id, agent=args.agent,
+        _p(f"  {agent_name}: exit={ar.exit_code} status={ar.status} ({ar.duration_s:.1f}s) log={ar.stdout_path.name}")
+        db.record_usage(conn, task_id=task_id, attempt_id=attempt_id, agent=agent_name,
                         model=agent.model_name(), ok=ar.ok, duration_s=ar.duration_s,
                         prompt_chars=len(prompt), output_chars=len(ar.output or ""))
 
@@ -226,6 +240,7 @@ def cmd_run(args) -> int:
             _p(f"  → FAILED: {reason} (Unity는 돌리지 않는다)")
             failure = {"n": n, "verdict": "NO_CHANGE", "reason": reason,
                        "errors": "파일이 하나도 바뀌지 않았다. 실제로 편집하라."}
+            history.append(failure)
             final_verdict, final_reason = "FAILED", reason
             continue
 
@@ -242,6 +257,7 @@ def cmd_run(args) -> int:
             gitwt.restore_tracked(wt)
             failure = {"n": n, "verdict": "TAMPER", "reason": reason,
                        "errors": "검증 장치(Assets/AutoDev)는 수정 대상이 아니다. 되돌렸다."}
+            history.append(failure)
             final_verdict, final_reason = "FAILED", reason
             continue
 
@@ -254,6 +270,7 @@ def cmd_run(args) -> int:
                               compile_verdict="NOT_RUN", reason=reason, ended_at=db.now())
             _p(f"  → FAILED: {reason}")
             failure = {"n": n, "verdict": "SCOPE", "reason": reason, "errors": "\n".join(bad[:20])}
+            history.append(failure)
             final_verdict, final_reason = "FAILED", reason
             continue
 
@@ -308,8 +325,15 @@ def cmd_run(args) -> int:
         analysis = loganalyze.analyze(ur.errors, wt)
         if analysis.findings:
             _p(f"  분석: 관련 파일 {len(analysis.files)}개 — {', '.join(analysis.files[:4]) or '(미상)'}")
+        rendered = analysis.render()
+        # 오류가 너무 많으면 로컬 모델이 줄인다. 실패하면 원문 그대로 간다(요약 실패 ≠ 오류 없음).
+        digest = loganalyze.maybe_summarize(rendered, cfg.log_summarizer)
+        if digest:
+            _p("  로컬 요약 사용(gemma) — 원문은 로그에 남는다")
+            rendered = f"[로컬 요약]\n{digest}\n\n[원문 일부]\n{rendered[:4000]}"
         failure = {"n": n, "verdict": ur.verdict, "reason": ur.reason,
-                   "errors": analysis.render() or ur.error_summary or "(오류를 추출하지 못했다)"}
+                   "errors": rendered or ur.error_summary or "(오류를 추출하지 못했다)"}
+        history.append(failure)
         final_verdict, final_reason = "FAILED", ur.reason
 
     # 결과 확정
@@ -453,7 +477,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     r = sub.add_parser("run", help="목표 하나를 자율 실행")
     r.add_argument("goal")
-    r.add_argument("--agent", default="codex")
+    # 기본값을 두면 사다리가 조용히 무시된다 — 그 탓에 시험판이 실제 유료 모델을 부른 적이 있다.
+    # 비워 두고, 지정이 없으면 config.json의 ladder를 쓴다.
+    r.add_argument("--agent", default=None, help="한 등급으로 고정(미지정 시 ladder 사용)")
     r.add_argument("--max-attempts", type=int, default=None)
     r.set_defaults(func=cmd_run)
 

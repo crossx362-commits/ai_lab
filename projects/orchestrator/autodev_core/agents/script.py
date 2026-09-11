@@ -12,52 +12,20 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from .. import proc
-from ..config import AgentConfig
-from .codex import AgentResult, PROMPT_TEMPLATE, FEEDBACK_TEMPLATE
+from .base import CliAgent
 
 
-class ScriptAgent:
+class ScriptAgent(CliAgent):
     name = "script"
+    stdin_prompt = True
 
-    def __init__(self, cfg: AgentConfig):
-        self.cfg = cfg
+    def argv(self, worktree: Path) -> list[str]:
+        return [self.cfg.bin, *self.cfg.args]
 
     def model_name(self) -> str | None:
         return self.cfg.model or "script"
 
-    def build_prompt(self, *, goal, worktree, allowed, unity_version, failure=None) -> str:
-        feedback = ""
-        if failure:
-            feedback = FEEDBACK_TEMPLATE.format(
-                n=failure.get("n"),
-                verdict=failure.get("verdict"),
-                reason=failure.get("reason"),
-                errors=failure.get("errors") or "(없음)",
-            )
-        return PROMPT_TEMPLATE.format(
-            goal=goal, worktree=worktree, allowed=", ".join(allowed),
-            unity_version=unity_version, feedback=feedback,
-        )
-
-    def run(self, prompt, *, worktree: Path, log_prefix: Path, conn=None, task_id=None, attempt_id=None):
-        cmd = [self.cfg.bin, *self.cfg.args]
-        env = dict(os.environ)
-        env["AUTODEV_WORKTREE"] = str(worktree)
-        env["AUTODEV_ATTEMPT"] = str(attempt_id or 0)
-        r = proc.run(
-            cmd, cwd=worktree, timeout=self.cfg.timeout_sec, stdin_text=prompt,
-            log_prefix=log_prefix, conn=conn, task_id=task_id, attempt_id=attempt_id,
-            kind="agent", env=env,
-        )
-        if r.status == "SPAWN_FAILED":
-            return AgentResult(False, None, r.status, "", r.stdout_path, r.duration_s,
-                               reason=f"script 실행 불가: {r.stderr[:200]}")
-        if r.status == "TIMEOUT":
-            return AgentResult(False, r.exit_code, r.status, r.stdout, r.stdout_path, r.duration_s,
-                               reason=f"script 타임아웃({self.cfg.timeout_sec}s)")
-        return AgentResult(
-            ok=(r.exit_code == 0), exit_code=r.exit_code, status=r.status,
-            output=r.stdout, stdout_path=r.stdout_path, duration_s=r.duration_s,
-            reason="" if r.exit_code == 0 else f"script 종료코드 {r.exit_code}",
-        )
+    def env(self) -> dict:
+        e = super().env()
+        e["AUTODEV_WORKTREE"] = "worktree"
+        return e

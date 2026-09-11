@@ -78,6 +78,33 @@ def _excerpt(root: Path, rel: str, line: int, span: int = 8) -> str:
     return "\n".join(out)
 
 
+SUMMARY_INSTRUCTION = (
+    "다음은 Unity 빌드/테스트 로그다. 핵심 오류의 원인만 한국어로 5줄 이내로 요약하라. "
+    "추측하지 말고 로그에 적힌 사실만 쓴다. 해결책은 쓰지 마라."
+)
+
+
+def maybe_summarize(text: str, cfg: dict) -> str | None:
+    """긴 로그를 로컬 모델로 줄인다. 실패하면 None — **빈 요약을 요약으로 내밀지 않는다**.
+
+    로컬이 없거나 느리면 그냥 안 쓴다. 클라우드에 넘길 Context를 줄이려는 보조일 뿐,
+    이것 때문에 판정이 흔들려서는 안 된다.
+    """
+    if not cfg.get("enabled") or not text:
+        return None
+    if len(text) < int(cfg.get("min_chars", 4000)):
+        return None
+    from .agents import ollama
+
+    if not ollama.available():
+        return None
+    model = cfg.get("model", "gemma4:12b")
+    out = ollama.summarize(text, model, instruction=SUMMARY_INSTRUCTION)
+    if cfg.get("unload_after"):
+        ollama.unload(model)
+    return out
+
+
 def analyze(messages: list[str], worktree: Path) -> Analysis:
     """컴파일 오류·테스트 실패 문자열 목록을 분석한다."""
     a = Analysis()

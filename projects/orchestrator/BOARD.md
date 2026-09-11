@@ -26,7 +26,7 @@
 - PHASE 2 Git Worktree 격리: 완료 [2026-09-11]
 - PHASE 3 Unity Runner(컴파일·EditMode·PlayMode): 완료 [2026-09-11]
 - PHASE 4 자동 수정 루프: 완료 [2026-09-11]
-- PHASE 5 Multi Agent(Claude·Grok·Ollama 라우팅): 대기
+- PHASE 5 Multi Agent(Claude·Grok·Ollama 라우팅): 완료 [2026-09-11]
 - PHASE 6 Astra Supervisor(작업 분해·승격·최종 리뷰): 대기
 - PHASE 7 Memory Manager: 대기
 - PHASE 8 Crash Recovery: 대기
@@ -41,7 +41,9 @@
 
 ## 실행
 - [x] [2026-09-11] PHASE 1~4 + 네거티브 컨트롤 스위트 10종
-- [ ] [2026-09-11] PHASE 5 — Claude/Grok/Ollama 어댑터와 승격 라우팅
+- [x] [2026-09-11] PHASE 5 — Claude/Grok/Ollama 어댑터와 승격 라우팅
+- [ ] [2026-09-11] PHASE 6 — Astra Supervisor(작업 분해·최종 리뷰)
 
 ## 막힘
+- Unity 라이선스 핸드셰이크에서 멈추면 진행 없음을 감지하지 못한다 — 타임아웃까지 기다린다.
 - RUNNING으로 남은 task를 회수하는 경로가 없다 — PHASE 8에서 처리(지금은 `clean`으로 수동).

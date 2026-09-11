@@ -7,6 +7,10 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
 cd "$HERE"
 
+# 이 스위트는 **절대로** 실제 모델을 부르지 않는다. 부르려 하면 코드가 거부한다.
+# (한 번 그런 사고가 났다 — 사다리가 무시돼 codex가 226초 돌았다. 규칙이 아니라 자물쇠로 막는다.)
+export AUTODEV_NO_CLOUD=1
+
 PASS=0
 FAIL=0
 TASKS=()
@@ -82,6 +86,25 @@ run_case failing_test \
 
 # 4c) 테스트 삭제로 통과 만들기 — 쓰는 것은 허용, 지우는 것은 금지
 run_case delete_test "rm -f Assets/Tests/EditMode/SandboxEditModeTests.cs" FAILED "검증 장치 변조"
+
+# 4d) 승격 — 1등급이 못 고치면 2등급으로 올라가고, 올라간 등급이 고친다.
+#     사다리가 실제로 동작하는지를 모델 없이 본다(두 칸이 서로 다른 결과를 내도록 심는다).
+cat > state/nc_ladder.json <<'JSON'
+{}
+JSON
+python3 - <<'PY'
+import json, pathlib
+cfg = json.loads(pathlib.Path("config.json").read_text())
+cfg["ladder"] = ["nc_low", "nc_high"]
+cfg["research_agent"] = None
+cfg["agents"]["nc_low"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "args": ["-c",
+    "printf 'namespace SandboxGame { public static class NcLadder { public const int V = ; } }\\n' > Assets/Game/Scripts/NcLadder.cs"]}
+cfg["agents"]["nc_high"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "args": ["-c",
+    "printf 'namespace SandboxGame { public static class NcLadder { public const int V = 2; } }\\n' > Assets/Game/Scripts/NcLadder.cs"]}
+pathlib.Path("state/nc_ladder.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
+PY
+AUTODEV_CONFIG="$HERE/state/nc_ladder.json" ./autodev run "[NC] ladder" >/tmp/nc_ladder.log 2>&1
+check ladder PASS "담당: nc_high" /tmp/nc_ladder.log
 
 # 5) CLI 부재 — 인프라 실패는 시도 미차감 UNKNOWN
 mkcfg state/nc_missing.json "exit 0"

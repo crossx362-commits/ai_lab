@@ -40,6 +40,8 @@ class AgentConfig:
     sandbox_mode: str
     timeout_sec: int
     args: list[str]
+    extra_config: list[str]
+    permission_mode: str
 
 
 @dataclass
@@ -48,6 +50,9 @@ class Config:
     default_target: str
     max_attempts: int
     unity_slots: int
+    ladder: list[str]
+    research_agent: str | None
+    log_summarizer: dict
 
     def target(self, name: str | None = None) -> Target:
         name = name or self.default_target
@@ -90,6 +95,8 @@ class Config:
             sandbox_mode=a.get("sandbox_mode", "workspace-write"),
             timeout_sec=int(a.get("timeout_sec", 900)),
             args=list(a.get("args", [])),
+            extra_config=list(a.get("extra_config", [])),
+            permission_mode=a.get("permission_mode", "acceptEdits"),
         )
 
 
@@ -111,6 +118,9 @@ def load(path: Path | None = None) -> Config:
         default_target=raw.get("default_target", "sandbox"),
         max_attempts=int(raw.get("max_attempts", 3)),
         unity_slots=int(raw.get("unity_slots", 2)),
+        ladder=list(raw.get("ladder", ["codex"])),
+        research_agent=raw.get("research_agent"),
+        log_summarizer=dict(raw.get("log_summarizer", {})),
     )
 
 
