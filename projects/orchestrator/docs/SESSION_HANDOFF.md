@@ -8,7 +8,7 @@
 - **PHASE 0~8 + Provider 독립성 + PHASE 10(보드 GUI) 완료.**
 - **PHASE 9 Windows Worker는 의도적으로 안 만들었다** — 이 기계에서 검증할 방법이 없다.
   "검증 못 하는 것은 만들지 않는다"가 이 프로젝트의 전제다.
-- 무비용 시험: `./tools/nc_suite.sh` (39종, 모델 호출 0 · `ORCH_NO_CLOUD=1`로 잠금).
+- 무비용 시험: `./tools/nc_suite.sh` (44종, 모델 호출 0 · `ORCH_NO_CLOUD=1`로 잠금).
   **새 게이트를 만들면 먼저 빨간불을 보여라.** 초록만 본 게이트는 게이트가 아니다.
 
 ## ■ 계획 7은 **오너 지시로 스톱** — 재개 지시 전 착수 금지
@@ -35,6 +35,14 @@
 - NC 8종은 `tools/nc_suite.sh` 끝부분. 단독 실행은 `run_case_b` 줄만 떼서 돌리면 된다.
 - 실제 Blender 개발 target(울온 자산 등)을 붙이려면 그 저장소에 `build.py`·`orch_check.py`·`tests/`를
   같은 규약으로 두고 target 항목을 추가한다 — 검증 장치 없는 target은 config 로드에서 거부된다.
+
+## 울온 연결 (2026-09-11, 오너 보드 명령 「울온 개발해」)
+- target `ulon`(Unity, subdir `projects/ulon`, SliceSelfCheck 게이트, 공유 Library)·`ulon_props`(Blender).
+  worktree는 `/Users/junholee/ai_lab/.orch/worktrees/`, 브랜치는 ai_lab 저장소의 `orch/task-NNNN`.
+- **Codex 명령 소비자**(`orch_core/board_commands.py`, launchd `com.ailab.orchestrator.commands`)는
+  오너의 Codex 세션이 만든 것이다 — 보드 폼으로 접수된 명령을 codex가 `orch_core.cli`로 처리한다.
+  건드리지 마라. 보드(:8767)도 launchd `com.ailab.orchestrator.board`가 띄운다.
+- 울온 개발 계획(`./orch plan --target ulon`)은 유료 — 오너 「울온 개발해」가 그 승인이다.
 
 ## 다음에 할 일
 

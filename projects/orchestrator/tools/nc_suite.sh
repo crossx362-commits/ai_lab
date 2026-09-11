@@ -689,6 +689,81 @@ if grep -q "^CAP_OK" /tmp/nc_blender_cap.log; then
 else echo "  FAIL  blender_capability (로그: /tmp/nc_blender_cap.log)"; FAIL=$((FAIL+1)); fi
 lap
 
+# 17) 모노레포 하위 폴더 target(subdir) + 프로젝트 자기 검사 게이트(execute_method).
+#     울온을 붙이려면 둘 다 필요하다: ai_lab 저장소는 다른 세션이 늘 무언가 고치고 있고(전체 clean 불가),
+#     울온의 자는 NUnit이 아니라 SliceSelfCheck.Run 의 종료코드다.
+python3 - <<'PYMONO' > /tmp/nc_mono_setup.log 2>&1
+import json, pathlib, subprocess, shutil, tempfile
+root = pathlib.Path("state/nc_mono"); shutil.rmtree(root, ignore_errors=True); root.mkdir(parents=True)
+sub = root / "apps" / "props"; (sub / "tests").mkdir(parents=True)
+shutil.copy("blender_sandbox/orch_check.py", sub / "orch_check.py")
+(sub / "build.py").write_text("import bpy\ndef build():\n    bpy.ops.mesh.primitive_cube_add()\n    bpy.context.active_object.name='Crate'\n")
+(sub / "tests" / "test_a.py").write_text("import bpy\ndef test_crate():\n    assert bpy.data.objects.get('Crate')\n")
+(root / "other.txt").write_text("남의 프로젝트 파일\n")
+(root / "apps" / "other_app.txt").write_text("옆 앱\n")
+g = lambda *a: subprocess.run(["git", "-C", str(root), *a], check=True, capture_output=True)
+g("init", "-q", "-b", "main"); g("add", "-A"); g("-c", "user.email=nc@x", "-c", "user.name=nc", "commit", "-qm", "init")
+(root / "other.txt").write_text("남의 프로젝트가 지금 고치는 중\n")   # subdir 밖은 더러워도 막지 않는다
+d = json.loads(pathlib.Path("config.json").read_text())
+d["default_target"] = "nc_mono"; d["reviewer"] = None
+d["targets"]["nc_mono"] = {"kind": "blender", "repo": "state/nc_mono", "subdir": "apps/props",
+    "blender_check": "orch_check.py", "allowed_write_globs": ["build.py", "tests/**"],
+    "protected_globs": ["orch_check.py"], "test_guard_globs": ["tests/**"]}
+d["agents"]["nc"] = {"type": "script", "bin": "/bin/sh", "timeout_sec": 60, "capabilities": ["BLENDER"],
+    "args": ["-c", "printf 'import bpy\\ndef build():\\n    bpy.ops.mesh.primitive_cube_add()\\n    bpy.context.active_object.name=\"Crate\"\\n    bpy.ops.mesh.primitive_cone_add(location=(3,0,0))\\n' > build.py; echo 새어나감 > ../other_app.txt"]}
+pathlib.Path("state/nc_mono.json").write_text(json.dumps(d, ensure_ascii=False, indent=2))
+print("SETUP_OK")
+PYMONO
+ORCH_CONFIG="$HERE/state/nc_mono.json" ./orch run "[NC] mono_subdir" --agent nc >/tmp/nc_mono.log 2>&1
+check mono_subdir FAILED "허용 범위 밖" /tmp/nc_mono.log    # ../other_app.txt 로 새어나간 것을 잡아야 한다
+python3 - <<'PYMONO2' > /tmp/nc_mono2.log 2>&1
+import json, pathlib
+d = json.loads(pathlib.Path("state/nc_mono.json").read_text())
+d["agents"]["nc"]["args"][-1] = "printf 'import bpy\\ndef build():\\n    bpy.ops.mesh.primitive_cube_add()\\n    bpy.context.active_object.name=\"Crate\"\\n' > build.py"
+pathlib.Path("state/nc_mono.json").write_text(json.dumps(d, ensure_ascii=False, indent=2))
+PYMONO2
+ORCH_CONFIG="$HERE/state/nc_mono.json" ./orch run "[NC] mono_subdir_ok" --agent nc >/tmp/nc_mono_ok.log 2>&1
+check mono_subdir_ok PASS "Blender 검증 통과" /tmp/nc_mono_ok.log
+# 커밋이 subdir 밖을 건드리지 않았고, subdir 밖의 더러운 파일이 실행을 막지 않았다
+python3 - <<'PYMONO3' > /tmp/nc_mono3.log 2>&1
+import subprocess, pathlib, re
+root = pathlib.Path("state/nc_mono")
+log = pathlib.Path("/tmp/nc_mono_ok.log").read_text()
+m = re.search(r"branch=(orch/task-\d+)", log)
+bad = []
+if not m: bad.append("브랜치를 못 읽음")
+else:
+    files = subprocess.run(["git", "-C", str(root), "diff", "--name-only", "main", m.group(1)], capture_output=True, text=True).stdout.split()
+    if not files: bad.append("커밋에 파일이 없다")
+    if any(not f.startswith("apps/props/") for f in files): bad.append(f"subdir 밖 파일이 커밋됨: {files}")
+    if (root / "other.txt").read_text().strip() != "남의 프로젝트가 지금 고치는 중": bad.append("남의 미커밋 변경을 건드렸다")
+print("MONO_OK" if not bad else "MONO_BAD " + " / ".join(bad))
+PYMONO3
+if grep -q "^MONO_OK" /tmp/nc_mono3.log; then
+  echo "  PASS  mono_subdir_scope — 커밋은 subdir 안만, 밖의 미커밋 변경은 막지도 건드리지도 않음"; PASS=$((PASS+1))
+else echo "  FAIL  mono_subdir_scope (로그: /tmp/nc_mono3.log)"; FAIL=$((FAIL+1)); fi
+rm -rf state/nc_mono state/nc_mono.json
+lap
+
+# 18) 프로젝트 자기 검사 게이트 — 종료코드 1이면 빨간불, 0이면 초록(샌드박스 OrchGateProbe)
+mkcfg_g() {  # mkcfg_g <파일> <셸명령>
+  mkcfg "$1" "$2" 120
+  python3 - "$1" <<'PY3'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+d["targets"]["sandbox"]["gates"] = [{"name": "GateProbe", "execute_method": "Orch.EditorTools.OrchGateProbe.Run", "timeout_sec": 600}]
+d["targets"]["sandbox"]["test_platforms"] = []
+p.write_text(json.dumps(d, ensure_ascii=False, indent=2))
+PY3
+}
+mkcfg_g state/nc_gate_fail.json "printf 'namespace SandboxGame { public static class NcGate { public const int V = 1; } }\n' > Assets/Game/Scripts/NcGate.cs; echo fail > Assets/Game/nc_gate_fail.txt"
+ORCH_CONFIG="$HERE/state/nc_gate_fail.json" ./orch run "[NC] gate_probe_fail" --agent nc >/tmp/nc_gate_fail.log 2>&1
+check gate_probe_fail FAILED "게이트 GateProbe 실패" /tmp/nc_gate_fail.log
+mkcfg_g state/nc_gate_ok.json "printf 'namespace SandboxGame { public static class NcGate2 { public const int V = 2; } }\n' > Assets/Game/Scripts/NcGate2.cs"
+ORCH_CONFIG="$HERE/state/nc_gate_ok.json" ./orch run "[NC] gate_probe_ok" --agent nc >/tmp/nc_gate_ok.log 2>&1
+check gate_probe_ok PASS "게이트 GateProbe 통과" /tmp/nc_gate_ok.log
+lap
+
 echo
 echo "=== 결과: PASS=$PASS FAIL=$FAIL · 소요 $(( $(date +%s) - T0 ))초 ==="
 if [[ ${#TASKS[@]} -gt 0 ]]; then

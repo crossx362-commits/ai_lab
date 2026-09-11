@@ -46,7 +46,7 @@
 ## 네거티브 컨트롤 스위트
 
 ```bash
-./tools/nc_suite.sh     # 39개 시험, 모델 호출 없음(무비용) · 약 7분, 케이스별 소요 시간 표시
+./tools/nc_suite.sh     # 44개 시험, 모델 호출 없음(무비용) · 약 9분, 케이스별 소요 시간 표시
 ```
 
 게이트가 **빨간불을 낼 줄 아는지**를 매번 확인한다. 통과만 보는 검증은 검증이 아니다.
@@ -208,7 +208,7 @@ diff·변경 파일·Unity 판정·오류·지난 시도·남은 일을 인수�
 ```bash
 python3 tools/board.py      # http://127.0.0.1:8767
 ```
-읽기 전용이 원칙이다 — 보드가 쓰는 것은 `BOARD.md`의 명령 줄과 STOP 플래그뿐이다.
+보드는 명령을 `state/board_commands.sqlite3`에 접수하고 STOP 플래그를 제어한다. 별도 명령 소비자가 접수된 명령을 순서대로 실행한다.
 한 화면에 **진행·막힘·단계·Provider 상태·사용량·메모리**가 들어가고, 작업 줄을 누르면
 **시도 이력·리뷰 사유·프로세스·로그 꼬리**가 덮어서 뜬다(목록을 밀어내지 않는다).
 Provider 카드는 저장된 마지막 검사 결과만 보여주고 **언제 잰 것인지**를 같이 적는다 —
@@ -240,8 +240,47 @@ AI가 "만들었다"고 말한 것은 만든 것이 아니다. 저장소의 검�
 ./orch run "나무 상자 3개를 바닥에 놓아라" --target blender_sandbox
 ```
 
+## 실제 프로젝트 붙이기 — 울온 (모노레포 하위 폴더)
+
+울온은 `ai_lab` 모노레포 안(`projects/ulon`)이라 저장소 전체를 판마다 풀 수 없고, 다른 세션이 늘
+무언가 고치고 있어 전체가 깨끗한 순간도 없다. 그래서 target에 `subdir`를 주면:
+- worktree는 **sparse checkout**으로 그 폴더만 내려받고, AI의 작업 폴더는 `worktree/subdir`다.
+- clean 검사·변경 집계·커밋은 **그 폴더 기준**이다. 폴더 밖으로 새어나간 쓰기(`../옆앱/파일`)는
+  범위 밖 수정으로 잡힌다(NC `mono_subdir`, 처음엔 안 보여서 PASS가 났다 — 수리함).
+- Unity는 `library_cache`로 target별 공유 Library를 쓴다(첫 캐시는 본 체크아웃 Library를 seed로 복사).
+  판마다 750MB를 재임포트하지 않기 위해서다. 동시 실행은 슬롯이 막는다.
+- 프로젝트 자기 검사는 `gates`에 `execute_method`로 건다 — 울온의 자는 NUnit이 아니라
+  `Ulon.Editor.SliceSelfCheck.Run`의 **종료코드**다(NC `gate_probe_fail/ok`).
+
+| target | kind | 폴더 | 게이트 |
+|---|---|---|---|
+| `ulon` | unity | `projects/ulon` | 컴파일 + SliceSelfCheck(exit 0) · 보호: `Assets/Orch`, `SliceSelfCheck*.cs`, `tools/` |
+| `ulon_props` | blender | `projects/ulon/art/blender` | 빈 씬 빌드 + `tests/`(§6.1 크기 자) — WANTLIST의 절구통·모루·화덕 |
+
+```bash
+./orch run "절구통을 §6.1 크기로 만든다" --target ulon_props
+./orch plan "…" --target ulon && ./orch run-plan --plan N --keep-going
+```
+
 ## 아직 없는 것
 
 Windows Worker(PHASE 9) — 이 기계에 Windows가 없어 **검증할 수 없어서 만들지 않았다**.
 검증 못 하는 코드를 넣는 것은 이 프로젝트의 첫 번째 원칙과 정면으로 어긋난다.
 (진행 없음 감지는 `unity_stall_sec`로 들어갔다 — 「멎음 감지」 절.)
+
+
+### 보드 명령 자동 실행 (2026-09-11)
+
+보드의 **실행 요청**으로 접수하면 명령 번호가 발급된다. 명령 담당 Codex가 기존 프로젝트 상태를 확인하고 처리한다. 게임/Blender 개발은 기존 오케스트레이터 실행 경로를 사용하도록 지시한다. 명령 번호를 누르면 결과와 담당자가 제출한 검증 근거가 열린다.
+
+- 접수 상태는 SQLite에 보존되며 같은 접수 식별자의 재요청은 중복 생성하지 않는다.
+- 명령 담당은 한 번에 하나씩 처리한다. `BOARD.md`의 과거 명령은 자동으로 재실행하지 않는다.
+- 세우기는 새 명령 실행을 보류하고 현재 명령 프로세스 그룹을 종료한다. 풀기는 대기 명령을 다시 소비한다. 중단된 명령은 부작용 중복 방지를 위해 자동 재시도하지 않는다.
+- `처리 보고`는 실행기 성공 종료와 담당자 검증 근거가 있는 상태다. 독립적인 검증 완료 판정과는 구별한다. 실패·막힘·결과 누락은 각각 표시한다.
+- 서비스가 끊겨도 접수는 보존되고 화면에 연결 확인 필요가 표시된다. 로그인 상태의 맥에서 launchd가 서비스를 유지한다.
+
+설치 또는 등록 확인: `python3 tools/install_board_services.py`
+
+서비스: `com.ailab.orchestrator.board`, `com.ailab.orchestrator.commands`.
+실행 로그: `logs/command-<번호>.stdout.log`, `.stderr.log`, `.result.json`.
+회귀 검증: `python3 -m unittest discover -s tests -p test_board_commands.py`.

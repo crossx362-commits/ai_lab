@@ -57,7 +57,7 @@ def cmd_doctor(args) -> int:
         _p(f"    git repo?     {gitwt.is_repo(t.repo)}")
         if gitwt.is_repo(t.repo):
             _p(f"    branch/HEAD   {gitwt.current_branch(t.repo)} / {gitwt.head(t.repo)[:8]}")
-            _p(f"    clean?        {gitwt.is_clean(t.repo)}")
+            _p(f"    clean?        {gitwt.is_clean(t.repo, t.subdir)}" + (f" (subdir {t.subdir})" if t.subdir else ""))
         else:
             ok = False
     except config.ConfigError as e:
@@ -185,7 +185,8 @@ def gate_label(t) -> str:
     """판정 축 이름 — 커밋 메시지·리뷰 프롬프트·화면이 같은 말을 쓴다."""
     if t.kind == "blender":
         return "Blender 검증(빈 씬 빌드 + tests/)"
-    return "컴파일 + " + "·".join(t.test_platforms) if t.test_platforms else "컴파일"
+    parts = ["컴파일"] + list(t.test_platforms) + [g.get("name") or g["execute_method"].rsplit(".", 1)[-1] for g in t.gates]
+    return " + ".join(parts)
 
 
 def _usable(cfg, pstat, *, prefer: list[str], capability: str = providers.CODING,
@@ -305,8 +306,9 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
     if not gitwt.is_repo(t.repo):
         _p(f"git 저장소가 아니다: {t.repo}")
         return 2
-    if not gitwt.is_clean(t.repo):
-        _p(f"대상 저장소가 더럽다: {t.repo}\n  — 사용자의 미커밋 변경을 보호하기 위해 중단한다.")
+    if not gitwt.is_clean(t.repo, t.subdir):
+        where = f"{t.repo}/{t.subdir}" if t.subdir else str(t.repo)
+        _p(f"대상 폴더가 더럽다: {where}\n  — 사용자의 미커밋 변경을 보호하기 위해 중단한다.")
         return 2
 
     max_attempts = max_attempts or cfg.max_attempts
@@ -322,14 +324,21 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
     _p(f"[task {task_id}] target={t.name} base={base[:8]} max_attempts={max_attempts}")
 
     try:
-        wt, branch = gitwt.create_worktree(t.repo, task_id)
+        wt, branch = gitwt.create_worktree(t.repo, task_id, subdir=t.subdir)
     except gitwt.GitError as e:
         db.update_task(conn, task_id, status="FAILED", reason=str(e), ended_at=db.now())
         _p(f"worktree 생성 실패: {e}")
         return 2
     db.update_task(conn, task_id, status="RUNNING", branch=branch, worktree=str(wt), base_commit=base)
     recover.claim(conn, task_id)   # 이 판의 주인이 누구인지 남긴다 — 죽으면 이것으로 회수한다
-    _p(f"[task {task_id}] worktree={wt}")
+    # 모노레포면 AI의 작업 폴더는 worktree/subdir 이고, Unity 프로젝트 자리도 그 안이다.
+    wd = t.workdir(wt)
+    uproj = t.unity_dir(wt) if t.kind == "unity" else wd
+    if t.kind == "unity":
+        note = unityrun.prepare_library(t, uproj)
+        if note:
+            _p(f"[task {task_id}] {note}")
+    _p(f"[task {task_id}] worktree={wt}" + (f" (작업 폴더 {t.subdir})" if t.subdir else ""))
     _p(f"[task {task_id}] branch={branch}")
 
     failure = None
@@ -371,14 +380,14 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         if last_agent and last_agent != agent_name:
             ho = handoff.build(
                 conn, task_id=task_id, goal=args_goal, done_criteria=done_criteria,
-                worktree=wt, base_commit=base, prev_agent=last_agent,
+                worktree=wd, base_commit=base, prev_agent=last_agent,
                 why=handoff_why or "라우터가 등급을 올렸다",
                 unity_summary=last_unity, errors=(failure or {}).get("errors", ""),
             )
             _p(f"  인수인계: {last_agent} → {agent_name} ({handoff_why or '승격'})")
         prompt = agent.build_prompt(
             goal=args_goal,
-            worktree=wt,
+            worktree=wd,
             allowed=t.allowed_write_globs,
             unity_version=t.unity_version,
             failure=failure,
@@ -392,7 +401,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             _p(f"  프롬프트 {len(prompt):,}자 (상한 {cfg.prompt_max_chars:,} — 피드백 일부 접음)")
 
         _p(f"  {agent_name} 호출 중 (timeout {agent_cfg.timeout_sec}s)…")
-        ar = agent.run(prompt, worktree=wt, log_prefix=prefix,
+        ar = agent.run(prompt, worktree=wd, log_prefix=prefix,
                        conn=conn, task_id=task_id, attempt_id=attempt_id)
         _p(f"  {agent_name}: exit={ar.exit_code} status={ar.status} ({ar.duration_s:.1f}s) log={ar.stdout_path.name}")
         db.record_usage(conn, task_id=task_id, attempt_id=attempt_id, agent=agent_name,
@@ -450,7 +459,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
 
         # 1) 실제로 파일이 바뀌었는가 — "완료했다"는 말은 여기서 반증된다.
         try:
-            ch = gitwt.collect_changes(wt, base)
+            ch = gitwt.collect_changes(wd, base)
         except gitwt.GitError as e:
             db.update_attempt(conn, attempt_id, status="UNKNOWN", reason=f"git 실패: {e}", ended_at=db.now())
             final_verdict, final_reason = "UNKNOWN", f"git 상태를 읽지 못했다: {e}"
@@ -479,7 +488,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
                               changed_files=len(ch.files), changed_lines=ch.lines,
                               compile_verdict="NOT_RUN", reason=reason, ended_at=db.now())
             _p(f"  → FAILED: {reason} (Unity는 돌리지 않는다)")
-            gitwt.restore_tracked(wt)
+            gitwt.restore_tracked(wd)
             failure = {"n": n, "verdict": "TAMPER", "reason": reason,
                        "errors": "검증 장치(Assets/Orch)는 수정 대상이 아니다. 되돌렸다."}
             history.append(failure)
@@ -507,12 +516,12 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             _p(f"  메모리 {mnow.state} — Unity 동시 실행을 {slots}개로 줄인다")
         if t.kind == "blender":
             _p(f"  Blender 판정 중 (timeout {t.blender_timeout_sec}s)…")
-            ur = blenderrun.check(t, wt, log_prefix=prefix, conn=conn,
+            ur = blenderrun.check(t, wd, log_prefix=prefix, conn=conn,
                                   task_id=task_id, attempt_id=attempt_id)
             _p(f"  Blender: {ur.verdict} — {ur.reason} ({ur.duration_s:.1f}s)")
         else:
             _p(f"  Unity 컴파일 판정 중 (timeout {t.unity_timeout_sec}s)…")
-            ur = unityrun.compile_check(t, wt, log_prefix=prefix, conn=conn,
+            ur = unityrun.compile_check(t, uproj, log_prefix=prefix, conn=conn,
                                         task_id=task_id, attempt_id=attempt_id,
                                         unity_slots=slots)
             _p(f"  Unity: {ur.verdict} — {ur.reason} ({ur.duration_s:.1f}s)")
@@ -525,7 +534,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         verdict, reason, errtext = ur.verdict, ur.reason, ur.error_summary
         if ur.verdict == "PASS" and t.kind != "blender" and t.test_platforms:
             for plat in t.test_platforms:
-                tr = unityrun.run_tests(t, wt, plat, log_prefix=prefix, conn=conn,
+                tr = unityrun.run_tests(t, uproj, plat, log_prefix=prefix, conn=conn,
                                         task_id=task_id, attempt_id=attempt_id,
                                         unity_slots=slots)
                 _p(f"  {tr.summary} ({tr.duration_s:.1f}s) — {tr.reason}")
@@ -535,6 +544,19 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
                     verdict = tr.verdict
                     reason = f"{plat} {tr.reason}"
                     errtext = "\n".join(tr.failures[:20]) or tr.reason
+                    break
+        # 5b) 프로젝트 자기 검사(예: 울온 SliceSelfCheck) — 종료코드가 판정이다.
+        if verdict == "PASS" and t.kind != "blender" and t.gates:
+            for g in t.gates:
+                gr = unityrun.run_method_gate(t, uproj, g, log_prefix=prefix, conn=conn,
+                                              task_id=task_id, attempt_id=attempt_id, unity_slots=slots)
+                _p(f"  {gr.summary} ({gr.duration_s:.1f}s) — {gr.reason}")
+                for f in gr.failures[:6]:
+                    _p(f"    {f}")
+                if gr.verdict != "PASS":
+                    verdict = gr.verdict
+                    reason = gr.reason
+                    errtext = "\n".join(gr.failures[:20]) or gr.reason
                     break
 
         # 6) 게이트를 다 지났으면 한 등급 위가 diff를 다시 본다 — "돌아간다"와 "목표를 했다"는 다르다.
@@ -573,7 +595,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         if ur.verdict == "PASS":
             gate = gate_label(t)
             commit_hash = gitwt.commit(
-                wt, f"orch(task-{task_id:04d}): {args_goal}\n\n시도 {n}회, {gate} PASS{review_note}")
+                wd, f"orch(task-{task_id:04d}): {args_goal}\n\n시도 {n}회, {gate} PASS{review_note}")
             final_verdict, final_reason = "PASS", ur.reason
             break
 
@@ -591,7 +613,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             final_verdict, final_reason = "REJECTED", ur.reason
             if n >= max_attempts:
                 commit_hash = gitwt.commit(
-                    wt, f"orch(task-{task_id:04d}) [리뷰 반려]: {args_goal}\n\n{ur.reason}")
+                wd, f"orch(task-{task_id:04d}) [리뷰 반려]: {args_goal}\n\n{ur.reason}")
             continue
 
         # 다음 시도에는 로그를 던지는 대신 **분석한 것**을 준다 — 오류가 가리키는 자리를 펼쳐서.
@@ -930,7 +952,7 @@ def cmd_review(args) -> int:
     if not wt or not wt.is_dir():
         _p(f"worktree가 없다: {t['worktree']} — diff를 만들 수 없다"); return 2
     tgt = cfg.target(t["target"])
-    diff = gitwt.collect_changes(wt, t["base_commit"]).diff
+    diff = gitwt.collect_changes(tgt.workdir(wt), t["base_commit"]).diff
     prefix = config.LOG_DIR / f"task{t['id']:04d}-rereview-{_ts()}"
     rv = run_reviewer(cfg, conn, task_id=t["id"], attempt_id=0, prefix=prefix,
                       goal=t["goal"], done_criteria=t["done_criteria"] or "",

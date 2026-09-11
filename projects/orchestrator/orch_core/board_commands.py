@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import fcntl
+from contextlib import contextmanager
 import json
 import os
 import sqlite3
@@ -32,10 +33,15 @@ class Queue:
                     detail TEXT);
             ''')
 
+    @contextmanager
     def connect(self):
         c = sqlite3.connect(self.path, timeout=15)
         c.row_factory = sqlite3.Row
-        return c
+        try:
+            with c:
+                yield c
+        finally:
+            c.close()
 
     def submit(self, command, request_id):
         command = command.strip()
@@ -115,7 +121,7 @@ def prompt_for(row):
     return f'''너는 오케스트레이터 보드의 명령 담당 Codex다. 비대화형 실행이다.
 오너가 보드에 직접 접수한 아래 명령 한 건을 실제 처리하고 검증 근거를 보고하라.
 작업 전 /Users/junholee/ai_lab/AGENTS.md 및 DIRECTIVES.md와 관련 프로젝트 지침을 따른다.
-현재 작업 디렉터리는 {ROOT}이다. 기존 변경과 다른 실행 중 작업을 보존하라.
+현재 작업 디렉터리는 {ROOT}이다. BOARD.md의 기존 오너 지시는 맥락으로 확인하되 과거 명령을 다시 실행하지 마라. 기존 변경과 다른 실행 중 작업을 보존하라.
 게임/Blender 구현은 config.json의 적합한 target과 기존 orch_core.cli plan/run-plan/run을 사용하라.
 진행 중 작업을 중복 생성하지 말고, 일반 운영/조회/보드 개선 명령은 해당 범위에서 직접 처리한다.
 작업 대상이 결정 불가능하면 임의 프로젝트에 적용하지 말고 BLOCKED와 필요한 정보를 보고하라.
@@ -138,33 +144,41 @@ def execute(q, row, lock_fd):
     schema.write_text(json.dumps(SCHEMA), encoding='utf-8')
     report_path.unlink(missing_ok=True)
     cmd = agent.argv(ROOT)
-    cmd[-1:-1] = ['--output-schema', str(schema), '--output-last-message', str(report_path)]
+    cmd[-1:-1] = ['-c', 'sandbox_workspace_write.network_access=true', '--output-schema', str(schema), '--output-last-message', str(report_path)]
     with Path(str(prefix) + '.stdout.log').open('w') as out, Path(str(prefix) + '.stderr.log').open('w') as err:
         p = subprocess.Popen(cmd, cwd=ROOT, stdin=subprocess.PIPE, stdout=out, stderr=err,
                              text=True, encoding='utf-8', env=agent.env(), start_new_session=True,
                              pass_fds=(lock_fd,))
-        with q.connect() as c:
-            c.execute('UPDATE commands SET pid=? WHERE id=?', (p.pid, row['id']))
-        deadline = time.monotonic() + agent.cfg.timeout_sec
-        first = True
-        while True:
-            q.beat(f"명령 #{row['id']} 처리 중")
-            if (STATE / 'STOP').exists() or time.monotonic() >= deadline:
+        try:
+            with q.connect() as c:
+                c.execute('UPDATE commands SET pid=? WHERE id=?', (p.pid, row['id']))
+            deadline = time.monotonic() + agent.cfg.timeout_sec
+            first = True
+            while True:
+                q.beat(f"명령 #{row['id']} 처리 중")
+                if (STATE / 'STOP').exists() or time.monotonic() >= deadline:
+                    proc._kill_group(p.pid)
+                    p.wait(timeout=10)
+                    q.finish(row['id'], 'INTERRUPTED', '세우기 요청 또는 실행 시간 초과 — 자동 재실행 안 함')
+                    return
+                try:
+                    p.communicate(input=prompt_for(row) if first else None, timeout=2)
+                    break
+                except subprocess.TimeoutExpired:
+                    first = False
+            try:
+                report = json.loads(report_path.read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                report = None
+            status, summary = assess_report(report, p.returncode)
+            q.finish(row['id'], status, summary, report)
+        finally:
+            if p.stdin and not p.stdin.closed:
+                p.stdin.close()
+            if p.poll() is None:
                 proc._kill_group(p.pid)
                 p.wait(timeout=10)
-                q.finish(row['id'], 'INTERRUPTED', '세우기 요청 또는 실행 시간 초과 — 자동 재실행 안 함')
-                return
-            try:
-                p.communicate(input=prompt_for(row) if first else None, timeout=2)
-                break
-            except subprocess.TimeoutExpired:
-                first = False
-        try:
-            report = json.loads(report_path.read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            report = None
-        status, summary = assess_report(report, p.returncode)
-        q.finish(row['id'], status, summary, report)
+
 
 
 def main():

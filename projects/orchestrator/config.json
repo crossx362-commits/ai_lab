@@ -52,6 +52,56 @@
         "tests/**"
       ],
       "blender_timeout_sec": 300
+    },
+    "ulon": {
+      "repo": "../..",
+      "subdir": "projects/ulon",
+      "unity_project": "../../projects/ulon/unity",
+      "unity_version": "6000.3.14f1",
+      "allowed_write_globs": [
+        "unity/Assets/Game/**",
+        "unity/Assets/StreamingAssets/**",
+        "docs/**"
+      ],
+      "protected_globs": [
+        "unity/Assets/Orch/**",
+        "unity/Assets/Game/Scripts/Editor/SliceSelfCheck*.cs",
+        "tools/**"
+      ],
+      "test_platforms": [],
+      "test_guard_globs": [
+        "unity/Assets/Game/Scripts/Editor/SliceSelfCheck*.cs",
+        "unity/Assets/Tests/**"
+      ],
+      "gates": [
+        {
+          "name": "SliceSelfCheck",
+          "execute_method": "Ulon.Editor.SliceSelfCheck.Run",
+          "timeout_sec": 1800
+        }
+      ],
+      "library_cache": true,
+      "library_seed": "../../projects/ulon/unity/Library",
+      "unity_timeout_sec": 1800,
+      "unity_stall_sec": 300
+    },
+    "ulon_props": {
+      "kind": "blender",
+      "repo": "../..",
+      "subdir": "projects/ulon/art/blender",
+      "blender_check": "orch_check.py",
+      "allowed_write_globs": [
+        "build.py",
+        "tests/**",
+        "assets/**"
+      ],
+      "protected_globs": [
+        "orch_check.py"
+      ],
+      "test_guard_globs": [
+        "tests/**"
+      ],
+      "blender_timeout_sec": 300
     }
   },
   "agents": {

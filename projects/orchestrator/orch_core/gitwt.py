@@ -68,17 +68,30 @@ def current_branch(repo: Path) -> str:
     return git(repo, "rev-parse", "--abbrev-ref", "HEAD").strip()
 
 
-def is_clean(repo: Path) -> bool:
-    return git(repo, "status", "--porcelain").strip() == ""
+def is_clean(repo: Path, subdir: str | None = None) -> bool:
+    """더러운지 본다. subdir을 주면 **그 폴더만** 본다 — 모노레포(ai_lab)는 다른 세션이 늘 무언가
+    고치고 있어 전체가 깨끗한 순간이 없다. 보호할 것은 우리가 건드릴 폴더의 미커밋 변경이다."""
+    args = ["status", "--porcelain"] + (["--", subdir] if subdir else [])
+    return git(repo, *args).strip() == ""
 
 
-def create_worktree(repo: Path, task_id: int) -> tuple[Path, str]:
+def create_worktree(repo: Path, task_id: int, subdir: str | None = None) -> tuple[Path, str]:
+    """작업용 worktree. subdir이 있으면 **sparse checkout으로 그 폴더만** 내려받는다 —
+    모노레포 전체를 판마다 풀면 느리고, 남의 프로젝트가 작업 디렉터리에 같이 보이면
+    AI가 거기까지 손을 댄다."""
     branch = f"orch/task-{task_id:04d}"
     wt = repo / ".orch" / "worktrees" / f"task_{task_id:04d}"
     wt.parent.mkdir(parents=True, exist_ok=True)
     if wt.exists():
         raise GitError(f"worktree 자리가 이미 있음: {wt}")
-    git(repo, "worktree", "add", "-b", branch, str(wt), "HEAD")
+    if subdir:
+        git(repo, "worktree", "add", "--no-checkout", "-b", branch, str(wt), "HEAD")
+        git(wt, "sparse-checkout", "set", subdir)
+        git(wt, "checkout")
+        if not (wt / subdir).is_dir():
+            raise GitError(f"sparse checkout 뒤에 {subdir} 가 없다 — 추적된 파일이 없는 폴더인가")
+    else:
+        git(repo, "worktree", "add", "-b", branch, str(wt), "HEAD")
     return wt, branch
 
 
@@ -125,14 +138,18 @@ def gc(repo: Path, keep_paths: set[str]) -> list[str]:
 
 
 def collect_changes(wt: Path, base: str) -> Changes:
-    """추적/미추적 모두 센다 — 새 파일만 만들고 커밋 안 한 경우를 '변경 없음'으로 오판하지 않기 위해."""
+    """추적/미추적 모두 센다 — 새 파일만 만들고 커밋 안 한 경우를 '변경 없음'으로 오판하지 않기 위해.
+
+    `wt`는 **작업 디렉터리**다(모노레포면 worktree/subdir). 이 폴더 밑만 재고 경로는 이 폴더 상대로
+    돌려준다(`--relative`) — allowed/protected 글롭이 target 폴더 기준으로 쓰이기 때문이다."""
     # 미추적 파일도 diff에 포함시키려면 일단 인덱스에 올린다(커밋은 별도).
-    git(wt, "add", "-A")
+    git(wt, "add", "-A", "--", ".")
     merge_base = git(wt, "merge-base", base, "HEAD").strip() if base else "HEAD"
     names = [
-        ln for ln in git(wt, "diff", "--cached", "--name-only", merge_base).splitlines() if ln.strip()
+        ln for ln in git(wt, "diff", "--cached", "--relative", "--name-only", merge_base, "--", ".").splitlines()
+        if ln.strip()
     ]
-    numstat = git(wt, "diff", "--cached", "--numstat", merge_base)
+    numstat = git(wt, "diff", "--cached", "--relative", "--numstat", merge_base, "--", ".")
     ins = dele = 0
     for ln in numstat.splitlines():
         parts = ln.split("\t")
@@ -141,10 +158,21 @@ def collect_changes(wt: Path, base: str) -> Changes:
             ins += int(a) if a.isdigit() else 0
             dele += int(b) if b.isdigit() else 0
     deleted = [
-        ln for ln in git(wt, "diff", "--cached", "--diff-filter=D", "--name-only", merge_base).splitlines()
+        ln for ln in git(wt, "diff", "--cached", "--relative", "--diff-filter=D", "--name-only",
+                         merge_base, "--", ".").splitlines()
         if ln.strip()
     ]
-    diff = git(wt, "diff", "--cached", merge_base)
+    diff = git(wt, "diff", "--cached", "--relative", merge_base, "--", ".")
+    # 작업 폴더 **밖**으로 새어나간 변경(모노레포에서 `../옆앱/파일`)도 센다 — NC(2026-09-11)에서
+    # 밖에 쓴 것이 보이지 않아 PASS가 났다. 스테이지하지 않고 status로만 본다(커밋에 섞이면 안 된다).
+    prefix = git(wt, "rev-parse", "--show-prefix").strip()
+    if prefix:
+        import os
+        for ln in git(wt, "status", "--porcelain", "--untracked-files=all", "--", ":/").splitlines():
+            path = ln[3:].strip()
+            if path.startswith(prefix) or not path:
+                continue
+            names.append(os.path.relpath(path, prefix))   # "../other_app.txt" 꼴 — 글롭에 안 맞아 범위 밖으로 잡힌다
     return Changes(files=names, deleted=deleted, insertions=ins, deletions=dele, diff=diff)
 
 
@@ -158,8 +186,8 @@ def restore_tracked(wt: Path, ref: str = "HEAD") -> None:
 
 
 def commit(wt: Path, message: str) -> str | None:
-    git(wt, "add", "-A")
-    if not git(wt, "diff", "--cached", "--name-only").strip():
+    git(wt, "add", "-A", "--", ".")
+    if not git(wt, "diff", "--cached", "--name-only", "--", ".").strip():
         return None
     git(wt, "commit", "-m", message)
     return head(wt)

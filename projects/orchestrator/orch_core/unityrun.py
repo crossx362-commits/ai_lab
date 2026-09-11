@@ -255,3 +255,94 @@ def compile_check(
         return UnityResult("FAILED", f"Unity 비정상 종료(코드 {r.exit_code}) — CS 오류는 못 찾음", r.exit_code, errors, unity_log, report, r.duration_s)
     # 종료코드 0인데 마커가 없다 = 판정이 실제로 돌았는지 모른다. PASS로 올리지 않는다.
     return UnityResult("UNKNOWN", "종료코드 0이지만 판정 마커가 없다 — 검증됐다고 볼 수 없음", r.exit_code, errors, unity_log, report, r.duration_s)
+
+
+# ---------------------------------------------------------------------------
+# 추가 게이트: 프로젝트가 가진 자기 검사(예: 울온 SliceSelfCheck.Run)를 배치로 돌려 종료코드로 판정
+# ---------------------------------------------------------------------------
+
+def run_method_gate(target: Target, project_path: Path, gate: dict, *, log_prefix: Path, conn=None,
+                    task_id=None, attempt_id=None, unity_slots: int = safety.DEFAULT_UNITY_SLOTS) -> TestResult:
+    """`-executeMethod <gate.execute_method>` 를 돌리고 **종료코드**로 판정한다.
+
+    프로젝트의 자기 검사는 NUnit이 아니라 Exit(1)로 실패를 말하는 경우가 많다(울온).
+    0이면 PASS, 아니면 FAILED(로그의 실패 줄을 근거로), 돌았는지 모르면 UNKNOWN.
+    """
+    name = gate.get("name") or gate["execute_method"].rsplit(".", 1)[-1]
+    tag = "gate-" + "".join(c if c.isalnum() else "_" for c in name.lower())
+    unity_log = Path(f"{log_prefix}.{tag}.unity.log")
+    unity_log.parent.mkdir(parents=True, exist_ok=True)
+    timeout = int(gate.get("timeout_sec") or target.unity_timeout_sec)
+    cmd = [str(target.unity_editor), "-batchmode", "-nographics", "-quit",
+           "-projectPath", str(project_path), "-executeMethod", gate["execute_method"],
+           "-logFile", str(unity_log)]
+    with safety.unity_slot(slots=unity_slots, timeout=timeout):
+        r = proc.run(cmd, cwd=project_path, timeout=timeout, log_prefix=Path(f"{log_prefix}.{tag}"),
+                     conn=conn, task_id=task_id, attempt_id=attempt_id, kind="unity-gate",
+                     watch_file=unity_log, stall_sec=target.unity_stall_sec)
+    log_text = unity_log.read_text(encoding="utf-8", errors="replace") if unity_log.is_file() else ""
+    combined = log_text + "\n" + (r.stdout or "") + "\n" + (r.stderr or "")
+    if r.status == "SPAWN_FAILED":
+        return TestResult("UNKNOWN", name, f"Unity 실행 실패: {(r.stderr or '')[:200]}", duration_s=r.duration_s)
+    if r.status == "STALLED":
+        return TestResult("UNKNOWN", name, f"Unity가 {target.unity_stall_sec}s 동안 로그를 안 썼다 — 멎음", duration_s=r.duration_s)
+    if r.status == "TIMEOUT":
+        return TestResult("UNKNOWN", name, f"게이트 타임아웃({timeout}s)", duration_s=r.duration_s)
+    cs_errors = [ln.strip() for ln in _CS_ERROR.findall(combined)]
+    if cs_errors:
+        return TestResult("FAILED", name, f"컴파일 오류로 게이트를 돌리지 못했다 ({len(cs_errors)}건)",
+                          failures=cs_errors[:20], duration_s=r.duration_s)
+    if not log_text:
+        return TestResult("UNKNOWN", name, "Unity 로그가 없다 — 게이트가 돌았는지 알 수 없다", duration_s=r.duration_s)
+    fail_lines = [ln.strip() for ln in log_text.splitlines()
+                  if re.search(gate.get("fail_regex") or r"(FAIL|실패|✗|Exception|Error)", ln)
+                  and "Licensing" not in ln][-20:]
+    if r.exit_code == 0:
+        return TestResult("PASS", name, f"게이트 {name} 통과(exit 0)", total=1, passed=1, duration_s=r.duration_s)
+    return TestResult("FAILED", name, f"게이트 {name} 실패(exit {r.exit_code})", total=1, failed=1,
+                      failures=fail_lines or [f"exit {r.exit_code} — 로그 {unity_log.name}"], duration_s=r.duration_s)
+
+
+def prepare_library(target: Target, project_path: Path) -> str:
+    """worktree의 Unity 프로젝트에 target별 공유 Library를 심는다.
+
+    큰 프로젝트(울온 750MB)는 판마다 새로 임포트하면 몇 분씩 든다. Library는 Unity가 다시 만드는
+    캐시라 공유해도 되고(변경된 자산만 재임포트), 동시 실행은 슬롯이 막는다. 첫 캐시는 본 체크아웃의
+    Library를 복사해 심는다(seed). 반환값은 화면에 찍을 한 줄.
+    """
+    from . import config as _cfg
+    import pathlib, shutil, subprocess
+    if not target.library_cache:
+        return ""
+    cache = _cfg.STATE_DIR / "library" / target.name
+    lib = project_path / "Library"
+    if lib.is_symlink() or lib.exists():
+        return f"Library 이미 있음: {lib}"
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    note = "공유 Library 캐시 연결"
+    if not cache.exists():
+        if target.library_seed and (target.library_seed).is_dir():
+            subprocess.run(["rsync", "-a", "--exclude", "Bee/", "--exclude", "*.lock",
+                            str(target.library_seed) + "/", str(cache) + "/"], check=False)
+            note = f"공유 Library 캐시를 seed에서 복사({target.library_seed})"
+        else:
+            cache.mkdir(parents=True, exist_ok=True)
+            note = "공유 Library 캐시 새로 만듦(첫 임포트는 오래 걸린다)"
+    lib.symlink_to(cache, target_is_directory=True)
+    # 심볼릭 링크는 git에 "파일"로 보여서 `unity/Library/` 같은 폴더 무시 규칙에 안 걸린다 —
+    # 첫 실측(2026-09-11 task 357)에서 이 링크가 "허용 범위 밖 파일 수정"으로 잡혀 판이 죽었다.
+    # 이 worktree 전용 exclude에 적어 두어 변경 집계에서 뺀다(저장소 .gitignore는 건드리지 않는다).
+    try:
+        toplevel = pathlib.Path(subprocess.run(["git", "-C", str(project_path), "rev-parse", "--show-toplevel"],
+                                               capture_output=True, text=True, check=True).stdout.strip())
+        excl = pathlib.Path(subprocess.run(["git", "-C", str(project_path), "rev-parse", "--git-path", "info/exclude"],
+                                           capture_output=True, text=True, check=True).stdout.strip())
+        if not excl.is_absolute():
+            excl = toplevel / excl
+        excl.parent.mkdir(parents=True, exist_ok=True)
+        rel = lib.relative_to(toplevel)
+        with excl.open("a", encoding="utf-8") as f:
+            f.write(f"/{rel.as_posix()}\n")
+    except (subprocess.CalledProcessError, ValueError, OSError) as e:
+        note += f" (exclude 등록 실패: {e})"
+    return note

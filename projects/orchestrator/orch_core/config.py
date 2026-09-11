@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent  # projects/orchestrator
@@ -31,9 +31,22 @@ class Target:
     test_platforms: list[str]
     test_guard_globs: list[str]
     kind: str = "unity"                  # unity | blender — 판정 축이 갈린다
+    subdir: str | None = None            # 모노레포 안의 프로젝트 폴더(sparse worktree). 없으면 repo 전체
+    gates: list[dict] = field(default_factory=list)   # 추가 게이트: {"name","execute_method","timeout_sec"}
+    library_cache: bool = False          # Unity Library를 target별 캐시로 공유(판마다 재임포트 방지)
+    library_seed: Path | None = None     # 첫 캐시를 여기서 복사(본 체크아웃의 Library)
     blender_bin: Path | None = None
     blender_check: str = "orch_check.py"  # 저장소 안의 검증 장치(protected_globs로 보호할 것)
     blender_timeout_sec: int = 300
+
+    def workdir(self, wt: Path) -> Path:
+        """worktree 안의 실제 작업 폴더. 모노레포면 subdir, 아니면 worktree 자체."""
+        return wt / self.subdir if self.subdir else wt
+
+    def unity_dir(self, wt: Path) -> Path:
+        """worktree 안의 Unity 프로젝트 자리(unity_project가 repo 밑 어디였는지를 그대로 옮긴다)."""
+        rel = self.unity_project.relative_to(self.repo)
+        return wt / rel
 
     @property
     def capability(self) -> str:
@@ -96,10 +109,12 @@ class Config:
             # Blender 축: 유니티 필드는 비워 두고 검증 장치·실행 파일이 실제로 있는지만 본다.
             bbin = Path(t.get("blender_bin") or self.raw.get("blender_bin", ""))
             check = t.get("blender_check", "orch_check.py")
+            subdir = t.get("subdir")
+            base_dir = repo / subdir if subdir else repo
             if not bbin.is_file():
                 raise ConfigError(f"Blender 실행 파일 없음: {bbin}")
-            if not (repo / check).is_file():
-                raise ConfigError(f"Blender 검증 장치 없음: {repo / check}")
+            if not (base_dir / check).is_file():
+                raise ConfigError(f"Blender 검증 장치 없음: {base_dir / check}")
             return Target(
                 name=name, repo=repo, unity_project=repo, unity_version="", unity_editor=bbin,
                 unity_timeout_sec=int(t.get("blender_timeout_sec", 300)), unity_stall_sec=0,
@@ -107,7 +122,7 @@ class Config:
                 protected_globs=list(t.get("protected_globs", [check])),
                 test_platforms=[], test_guard_globs=list(t.get("test_guard_globs", ["tests/**"])),
                 kind="blender", blender_bin=bbin, blender_check=check,
-                blender_timeout_sec=int(t.get("blender_timeout_sec", 300)),
+                blender_timeout_sec=int(t.get("blender_timeout_sec", 300)), subdir=subdir,
             )
         unity_project = (ROOT / t["unity_project"]).resolve()
         editor = Path(
@@ -130,6 +145,10 @@ class Config:
             protected_globs=list(t.get("protected_globs", [])),
             test_platforms=list(t.get("test_platforms", [])),
             test_guard_globs=list(t.get("test_guard_globs", [])),
+            subdir=t.get("subdir"),
+            gates=list(t.get("gates", [])),
+            library_cache=bool(t.get("library_cache", False)),
+            library_seed=(ROOT / t["library_seed"]).resolve() if t.get("library_seed") else None,
         )
 
     def agent(self, name: str) -> AgentConfig:
