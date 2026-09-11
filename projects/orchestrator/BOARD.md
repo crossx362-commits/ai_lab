@@ -28,7 +28,7 @@
 - PHASE 4 자동 수정 루프: 완료 [2026-09-11]
 - PHASE 5 Multi Agent(Claude·Grok·Ollama 라우팅): 완료 [2026-09-11]
 - PHASE 6 Astra Supervisor(작업 분해·승격·최종 리뷰): 완료 [2026-09-11]
-- PHASE 7 Memory Manager: 대기
+- PHASE 7 Memory Manager: 완료 [2026-09-11]
 - PHASE 8 Crash Recovery: 대기
 - PHASE 9 Windows Worker: 대기
 - PHASE 10 GUI: 대기
@@ -43,7 +43,8 @@
 - [x] [2026-09-11] PHASE 1~4 + 네거티브 컨트롤 스위트 10종
 - [x] [2026-09-11] PHASE 5 — Claude/Grok/Ollama 어댑터와 승격 라우팅
 - [x] [2026-09-11] PHASE 6 — Astra Supervisor(작업 분해·최종 리뷰)
-- [ ] [2026-09-11] PHASE 7 — Memory Manager(메모리 압박·Ollama 적재 관리)
+- [x] [2026-09-11] PHASE 7 — Memory Manager(압박·스왑 추세 판정, Unity 슬롯 축소, `unity-kill` 범위 한정)
+- [ ] [2026-09-11] PHASE 8 — Crash Recovery(RUNNING으로 남은 task 회수)
 
 ## 막힘
 - Unity 라이선스 핸드셰이크에서 멈추면 진행 없음을 감지하지 못한다 — 타임아웃까지 기다린다.

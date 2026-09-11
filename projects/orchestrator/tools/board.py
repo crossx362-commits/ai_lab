@@ -104,6 +104,28 @@ def is_hidden(row) -> bool:
     return is_noise(row["goal"]) or row["status"] == "ARCHIVED"
 
 
+_MEM_CACHE = {"ts": 0.0, "val": None}
+
+
+def mem_state() -> dict:
+    """메모리는 재는 데 1초쯤 걸린다 — 3초마다 새로 재면 보드가 기계를 더 느리게 만든다.
+    10초 캐시로 둔다(보드가 문제의 일부가 되면 안 된다)."""
+    import sys
+    if time.time() - _MEM_CACHE["ts"] < 10 and _MEM_CACHE["val"]:
+        return _MEM_CACHE["val"]
+    sys.path.insert(0, str(ROOT))
+    try:
+        from autodev_core import memory
+        snap = memory.sample(record=False)
+        a = memory.assess(snap)
+        val = {"state": a.state, "line": snap.line(), "reasons": a.reasons,
+               "procs": {k: round(v) for k, v in sorted(snap.procs.items(), key=lambda x: -x[1])}}
+    except Exception as e:
+        val = {"state": "UNKNOWN", "line": f"메모리를 재지 못했다: {e}", "reasons": [], "procs": {}}
+    _MEM_CACHE.update(ts=time.time(), val=val)
+    return val
+
+
 def gather() -> dict:
     tasks = [t for t in rows("SELECT * FROM tasks ORDER BY id DESC LIMIT 120")
              if not is_hidden(t)][:14]
@@ -151,6 +173,7 @@ def gather() -> dict:
         "waiting": board_section("결정대기")[:4],
         "phases": board_section("단계"),
         "stuck": board_section("막힘")[:3],
+        "mem": mem_state(),
         "now": datetime.now().strftime("%H:%M:%S"),
     }
 
@@ -212,7 +235,7 @@ ul{margin:0;padding-left:16px}li{margin:2px 0}
   <div class=card id=c-cmd><h2>명령</h2><div id=cmds>…</div>
     <form onsubmit="return send(event)"><input id=cmd placeholder="명령을 적는다"><button>남기기</button></form>
   </div>
-  <div class=card id=c-usage><h2>사용량</h2><div id=usage>…</div></div>
+  <div class=card id=c-usage><h2>사용량 · 메모리</h2><div id=usage>…</div></div>
 </div>
 <script>
 const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -249,9 +272,13 @@ async function load(){
   document.getElementById('cmds').innerHTML=d.commands.length?
     '<ul>'+d.commands.map(c=>`<li>${E(c)}</li>`).join('')+'</ul>':'<div class=mute>없음</div>';
 
-  document.getElementById('usage').innerHTML=d.usage.length?'<table>'+d.usage.map(u=>
+  const mc={GREEN:'ok',YELLOW:'warn',RED:'bad'}[d.mem.state]||'mute';
+  const memHtml=`<div><span class="pill ${mc}">${E(d.mem.state)}</span> <span class=mute>${E(d.mem.line)}</span></div>`
+    + (Object.keys(d.mem.procs).length? `<div class=mute style="margin:4px 0 8px">`
+        + Object.entries(d.mem.procs).map(([k,v])=>`${E(k)} ${v}MB`).join(' · ') + '</div>' : '');
+  document.getElementById('usage').innerHTML=memHtml+(d.usage.length?'<table>'+d.usage.map(u=>
     `<tr><td>${E(u.agent)}</td><td class=mute>${u.n}회</td><td class=ok>성공 ${u.ok||0}</td>
-     <td class=mute>${Math.round(u.secs||0)}초</td></tr>`).join('')+'</table>':'<div class=mute>없음</div>';
+     <td class=mute>${Math.round(u.secs||0)}초</td></tr>`).join('')+'</table>':'');
 }
 async function act(a){ await fetch('/'+a,{method:'POST'}); load(); }
 async function send(e){ e.preventDefault(); const i=document.getElementById('cmd');

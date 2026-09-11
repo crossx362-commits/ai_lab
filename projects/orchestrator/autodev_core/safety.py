@@ -49,6 +49,47 @@ def clear_stop() -> bool:
     return False
 
 
+# --- 남의 Unity를 죽이지 않기 -------------------------------------------
+# 2026-09-11 사고: 배치 Unity가 라이선스 핸드셰이크에서 멎었을 때 내가 손으로
+# `pkill -f Unity.app/Contents/MacOS/Unity`를 쳤다. 그 순간 이 기계에서 돌던 Unity는
+# **다른 세션(Ulon 개발루프)의 것**이었다 — 남의 10분짜리 검증을 날릴 뻔했다.
+# 규칙으로 적어두는 것으로는 재발한다. 대상 선별을 코드에 넣고, 도구는 이것만 쓴다.
+def unity_procs(project: Path) -> list[tuple[int, str]]:
+    """**이 target의 Unity 프로젝트 경로를 인자로 가진** Unity 프로세스만 고른다."""
+    import subprocess
+    needle = str(Path(project).resolve())
+    try:
+        out = subprocess.run(["ps", "-Ao", "pid,command"], capture_output=True,
+                             text=True, timeout=15).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    found = []
+    for ln in out.splitlines()[1:]:
+        parts = ln.strip().split(None, 1)
+        if len(parts) != 2 or not parts[0].isdigit():
+            continue
+        pid, cmd = int(parts[0]), parts[1]
+        if "Unity.app/Contents/MacOS/Unity" not in cmd:
+            continue
+        if needle not in cmd:          # 남의 프로젝트 → 손대지 않는다
+            continue
+        found.append((pid, cmd))
+    return found
+
+
+def kill_unity(project: Path, force: bool = False) -> list[str]:
+    """`unity_procs`가 고른 것만 죽인다. 전역 패턴 kill은 이 코드베이스에 존재하지 않는다."""
+    import signal
+    notes = []
+    for pid, cmd in unity_procs(project):
+        try:
+            os.kill(pid, signal.SIGKILL if force else signal.SIGTERM)
+            notes.append(f"pid {pid} 종료({'KILL' if force else 'TERM'}): {cmd[:90]}")
+        except OSError as e:
+            notes.append(f"pid {pid} 종료 실패: {e}")
+    return notes
+
+
 def free_gb(path: Path) -> float:
     usage = shutil.disk_usage(str(path))
     return usage.free / (1024 ** 3)

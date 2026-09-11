@@ -21,8 +21,8 @@ import sys
 import time
 from pathlib import Path
 
-from . import (agents, config, db, gitwt, loganalyze, logs, planner, proc,
-               review, router, safety, unityrun)
+from . import (agents, config, db, gitwt, loganalyze, logs, memory, planner,
+               proc, review, router, safety, unityrun)
 
 
 def _p(msg: str = "") -> None:
@@ -169,6 +169,24 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
     if safety.stop_requested():
         _p(f"STOP 상태다 — 새 작업을 시작하지 않는다 ({safety.STOP_FILE})\n  해제: autodev resume")
         return 2
+
+    # 메모리도 시작 전에 본다. RED면 잠시 기다리되 무한정은 아니다 —
+    # 스왑이 차는 채로 Unity를 띄우면 기계 전체가 느려지고 판정 시간도 못 믿게 된다.
+    msnap = memory.sample()
+    mstate = memory.assess(msnap)
+    _p(f"[메모리] {msnap.line()} → {mstate.summary()}")
+    if mstate.state == "RED":
+        _p("  메모리 RED — 여유가 생길 때까지 기다린다(최대 300초)")
+        state, msnap, notes = memory.wait_for_room()
+        for nt in notes:
+            _p(f"  {nt}")
+        if state == "RED":
+            _p("  중단: 메모리 압박이 풀리지 않았다 — 지금 시작하지 않는다")
+            return 2
+        mstate = memory.Assessment(state, ["대기 후 회복"])
+    elif mstate.state == "YELLOW":
+        for nt in memory.relieve("YELLOW", cfg.log_summarizer.get("model")):
+            _p(f"  {nt}")
 
     # 디스크는 시작 전에 막는다 — worktree 중간에 터지면 Unity Library가 반쯤 남는다.
     try:
@@ -322,10 +340,14 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             continue
 
         # 4) Unity 판정
+        mnow = memory.assess(memory.sample())
+        slots = memory.effective_unity_slots(mnow.state, cfg.unity_slots)
+        if slots != cfg.unity_slots:
+            _p(f"  메모리 {mnow.state} — Unity 동시 실행을 {slots}개로 줄인다")
         _p(f"  Unity 컴파일 판정 중 (timeout {t.unity_timeout_sec}s)…")
         ur = unityrun.compile_check(t, wt, log_prefix=prefix, conn=conn,
                                     task_id=task_id, attempt_id=attempt_id,
-                                    unity_slots=cfg.unity_slots)
+                                    unity_slots=slots)
         _p(f"  Unity: {ur.verdict} — {ur.reason} ({ur.duration_s:.1f}s)")
         for e in ur.errors[:8]:
             _p(f"    {e}")
@@ -336,7 +358,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             for plat in t.test_platforms:
                 tr = unityrun.run_tests(t, wt, plat, log_prefix=prefix, conn=conn,
                                         task_id=task_id, attempt_id=attempt_id,
-                                        unity_slots=cfg.unity_slots)
+                                        unity_slots=slots)
                 _p(f"  {tr.summary} ({tr.duration_s:.1f}s) — {tr.reason}")
                 for f in tr.failures[:6]:
                     _p(f"    {f}")
@@ -408,7 +430,10 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             _p(f"  분석: 관련 파일 {len(analysis.files)}개 — {', '.join(analysis.files[:4]) or '(미상)'}")
         rendered = analysis.render()
         # 오류가 너무 많으면 로컬 모델이 줄인다. 실패하면 원문 그대로 간다(요약 실패 ≠ 오류 없음).
-        digest = loganalyze.maybe_summarize(rendered, cfg.log_summarizer)
+        digest = (loganalyze.maybe_summarize(rendered, cfg.log_summarizer)
+                  if mnow.state == "GREEN" else None)
+        if mnow.state != "GREEN" and cfg.log_summarizer.get("enabled"):
+            _p(f"  메모리 {mnow.state} — 로컬 요약 건너뜀(큰 모델을 올리지 않는다)")
         if digest:
             _p("  로컬 요약 사용(gemma) — 원문은 로그에 남는다")
             rendered = f"[로컬 요약]\n{digest}\n\n[원문 일부]\n{rendered[:4000]}"
@@ -621,6 +646,39 @@ def cmd_plans(args) -> int:
     return 0
 
 
+def cmd_mem(args) -> int:
+    snap = memory.sample()
+    a = memory.assess(snap)
+    _p(f"  {snap.line()}")
+    _p(f"  상태: {a.summary()}")
+    if snap.procs:
+        _p("  프로세스: " + ", ".join(f"{k} {v:.0f}MB" for k, v in sorted(snap.procs.items(), key=lambda x: -x[1])))
+    _p(f"  Unity 동시 실행 허용: {memory.effective_unity_slots(a.state, config.load().unity_slots)}개")
+    if args.relieve:
+        for nt in memory.relieve(a.state if a.state != "GREEN" else "YELLOW"):
+            _p(f"  {nt}")
+    return 0 if a.state == "GREEN" else (1 if a.state == "YELLOW" else 2)
+
+
+def cmd_unity_kill(args) -> int:
+    """멎은 배치 Unity를 세운다 — **대상 프로젝트 경로를 인자로 가진 것만**.
+    이 기계에는 다른 세션의 Unity가 같이 돈다. 전역 패턴 kill은 쓰지 않는다(2026-09-11 사고)."""
+    cfg = config.load()
+    t = cfg.target(args.target)
+    procs = safety.unity_procs(t.unity_project)
+    if not procs:
+        _p(f"[{t.name}] 이 프로젝트의 Unity 프로세스 없음 (다른 프로젝트 것은 건드리지 않는다)")
+        return 0
+    for pid, cmd in procs:
+        _p(f"  pid {pid}  {cmd[:110]}")
+    if not args.yes:
+        _p(f"위 {len(procs)}개를 세우려면 --yes를 붙여라")
+        return 1
+    for n in safety.kill_unity(t.unity_project, force=args.force):
+        _p(f"  {n}")
+    return 0
+
+
 def cmd_archive(args) -> int:
     """기록은 남기고 화면에서만 내린다 — 시험용으로 돌린 판이 보드의 '막힘'을 채우지 않게."""
     conn = db.connect()
@@ -706,6 +764,16 @@ def build_parser() -> argparse.ArgumentParser:
     ps.add_argument("--plan", type=int, default=None)
     ps.add_argument("--limit", type=int, default=10)
     ps.set_defaults(func=cmd_plans)
+
+    mm = sub.add_parser("mem", help="메모리 상태(압박·스왑·프로세스)")
+    mm.add_argument("--relieve", action="store_true", help="로컬 모델을 내려 압박을 던다")
+    mm.set_defaults(func=cmd_mem)
+
+    uk = sub.add_parser("unity-kill", help="**이 target의** 멎은 Unity만 골라 세운다")
+    uk.add_argument("--target", default=None)
+    uk.add_argument("--force", action="store_true", help="SIGTERM 대신 SIGKILL")
+    uk.add_argument("--yes", action="store_true", help="확인 없이 종료")
+    uk.set_defaults(func=cmd_unity_kill)
 
     ar = sub.add_parser("archive", help="task를 보관 처리(기록 유지, 화면에서 내림)")
     ar.add_argument("--task", type=int, nargs="+", required=True)

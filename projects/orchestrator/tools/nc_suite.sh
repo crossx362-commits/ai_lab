@@ -196,6 +196,75 @@ run_case good_cs \
   "printf 'namespace SandboxGame { public static class NcOk { public const int V = 1; } }\n' > Assets/Game/Scripts/NcOk.cs" \
   PASS "컴파일 OK 마커"
 
+# 8) 메모리 규칙 — 판정은 순수 함수라 **진짜 압박을 만들지 않고** 시험할 수 있다.
+#    (실제로 스왑을 채워 시험하면 그 시험이 기계를 죽인다. 그래서 입력만 넣는다.)
+python3 - <<'PY' > /tmp/nc_memory.log 2>&1
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from autodev_core import memory as M
+
+def snap(free=60.0, used=0.0, total=6144.0, rate=None):
+    s = M.Snapshot(ts=0, free_pct=free, swap_used_mb=used, swap_total_mb=total,
+                   compressed_mb=0, wired_mb=0)
+    s.swap_rate_mb_min = rate
+    return s
+
+cases = [
+    ("green",        snap(),                         "GREEN"),
+    ("free_yellow",  snap(free=20.0),                "YELLOW"),
+    ("free_red",     snap(free=5.0),                 "RED"),
+    ("swap_yellow",  snap(used=4000.0),              "YELLOW"),
+    ("swap_red",     snap(used=6000.0),              "RED"),
+    ("rate_yellow",  snap(rate=80.0),                "YELLOW"),
+    ("rate_red",     snap(rate=300.0),               "RED"),
+    # 못 쟀을 때 초록이라고 하면 안 된다 — 모르는 것은 모른다고 한다.
+    ("unmeasured",   snap(free=None),                "YELLOW"),
+    # 최악이 이긴다: 여유는 넉넉해도 스왑이 터졌으면 RED
+    ("worst_wins",   snap(free=80.0, used=6000.0),   "RED"),
+]
+bad = 0
+for name, s, want in cases:
+    got = M.assess(s).state
+    if got != want:
+        print(f"MISMATCH {name}: {got} != {want}"); bad += 1
+# 슬롯 축소도 같은 규칙에서 나와야 한다
+if M.effective_unity_slots("GREEN", 2) != 2: print("MISMATCH slots GREEN"); bad += 1
+if M.effective_unity_slots("YELLOW", 2) != 1: print("MISMATCH slots YELLOW"); bad += 1
+if M.effective_unity_slots("RED", 2) != 1: print("MISMATCH slots RED"); bad += 1
+print("MEMORY_OK" if bad == 0 else f"MEMORY_BAD {bad}")
+PY
+if grep -q "^MEMORY_OK" /tmp/nc_memory.log; then
+  echo "  PASS  memory_rules — 9판정+슬롯 전부 일치(못 잰 값은 GREEN 아님)"; PASS=$((PASS+1))
+else echo "  FAIL  memory_rules (로그: /tmp/nc_memory.log)"; FAIL=$((FAIL+1)); fi
+
+# 9) 남의 Unity — 이름이 Unity라도 **다른 프로젝트**면 고르지 않는다.
+#    (2026-09-11: 전역 pkill로 다른 세션의 Unity를 죽일 뻔했다. 선별을 코드로 시험한다.)
+UNITY_BIN="/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS/Unity"
+SANDBOX_UP="$HERE/sandbox/unity"
+python3 -c "import time; time.sleep(25)" "$UNITY_BIN" -projectPath /Users/junholee/ai_lab-loop/projects/ulon/unity >/dev/null 2>&1 &
+FOREIGN=$!
+# 짝이 되는 포지티브: **내 프로젝트** 경로를 가진 것은 반드시 골라야 한다.
+# (한쪽만 보면 "아무것도 안 고르는 선별기"도 통과한다.)
+python3 -c "import time; time.sleep(25)" "$UNITY_BIN" -projectPath "$SANDBOX_UP" >/dev/null 2>&1 &
+MINE=$!
+sleep 1
+python3 - "$FOREIGN" "$MINE" <<'PY' > /tmp/nc_unity_scope.log 2>&1
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from autodev_core import config, safety
+cfg = config.load(pathlib.Path("config.json"))
+t = cfg.target("sandbox")
+pids = [p for p, _ in safety.unity_procs(t.unity_project)]
+foreign, mine = int(sys.argv[1]), int(sys.argv[2])
+ok = foreign not in pids and mine in pids
+print("SCOPE_OK" if ok else f"SCOPE_BAD foreign={foreign in pids} mine={mine in pids} {pids}")
+PY
+kill "$FOREIGN" "$MINE" 2>/dev/null
+wait "$FOREIGN" "$MINE" 2>/dev/null
+if grep -q "^SCOPE_OK" /tmp/nc_unity_scope.log; then
+  echo "  PASS  unity_scope — 내 것만 고르고 남의 프로젝트는 제외"; PASS=$((PASS+1))
+else echo "  FAIL  unity_scope (로그: /tmp/nc_unity_scope.log)"; FAIL=$((FAIL+1)); fi
+
 echo
 echo "=== 결과: PASS=$PASS FAIL=$FAIL ==="
 if [[ ${#TASKS[@]} -gt 0 ]]; then
