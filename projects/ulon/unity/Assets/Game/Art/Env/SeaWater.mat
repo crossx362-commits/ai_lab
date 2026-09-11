@@ -76,6 +76,7 @@ Material:
     - _FoamJitter: 0.4
     - _FoamMaxAlpha: 0.75
     - _FoamNoiseScale: 0.6
+    - _FoamTanFloor: 0.06
     - _FoamWidthM: 4
     - _FoamWobbleM: 0.45
     - _FoamWobbleScale: 0.45

@@ -140,7 +140,7 @@ namespace Ulon.Editor
             float f1 = mat.HasProperty("_FoamDepthSteep") ? mat.GetFloat("_FoamDepthSteep") : -1f;
             float dm = mat.HasProperty("_DepthMax") ? mat.GetFloat("_DepthMax") : -1f;
 
-            foreach (string shot in new[] { "64_river_bend", "63_pier_cutface", "15_lake_river", "14_world_vista" })
+            foreach (string shot in new[] { "64_river_bend", "63_pier_cutface", "15_lake_river", "14_world_vista", "65_sea_close" })
             {
                 float v = ShoreFoamStats(shot, out _, out string det);
                 Debug.Log("[물가거품] " + shot + " — 대비 " + v.ToString("0.0") + " · " + det);

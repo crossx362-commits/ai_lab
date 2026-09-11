@@ -33,6 +33,7 @@ Shader "Ulon/StylizedWater"
         _DeepAlpha ("깊은 곳 불투명도", Range(0,1)) = 1.0
         _FoamColor ("거품 색", Color) = (1,1,1,1)
         _FoamWidthM ("거품 띠 가로폭(m)", Float) = 2.0
+        _FoamTanFloor ("거품 폭이 기울기를 믿는 하한(tan)", Float) = 0.0
         _FoamDepthSteep ("거품 문턱 상한(m)", Float) = 0.30
         _FoamMaxAlpha ("거품 최대 덮음", Range(0,1)) = 0.75
         _FoamBreak ("거품 이음선 깨기", Range(0,1)) = 0.0
@@ -73,6 +74,7 @@ Shader "Ulon/StylizedWater"
 
         fixed4 _Color, _ShallowColor, _DeepColor, _FoamColor;
         float _DepthMax, _ShallowAlpha, _DeepAlpha;
+        float _FoamTanFloor;
         float _FoamDepthSteep, _FoamWidthM, _FoamNoiseScale, _FoamJitter, _FoamEdgeSoft, _TintStrength;
         float _FoamMaxAlpha, _FoamBreak, _FoamBreakScale, _FoamWobbleM, _FoamWobbleScale;
         float _RippleScale, _RippleSpeed, _RippleTint, _RippleCrest, _RippleCrestStrength;
@@ -168,7 +170,15 @@ Shader "Ulon/StylizedWater"
             //   그런 애매함이 없다: 벽이면 옆 픽셀과 깊이가 크게 벌어진다.
             float wallCut = 1.0 - smoothstep(0.06, 0.20, fwidth(diff));
             float cut = steepCut * wallCut;
-            float foamMax = min(_FoamWidthM * tanS * cut, _FoamDepthSteep * cut);
+            // **바닥이 완만하면 기울기 항이 답하지 않는다**(물가 톱니 판별 2026-09-11).
+            // `tanS`는 깊이-법선 텍스처에서 픽셀마다 복호한 값이라 **면마다 튄다**. 백사장
+            // (tan 0.056)에서는 `_FoamWidthM * tanS` = 0.22로 깊이 문턱(0.30)보다 작아 **튀는 쪽이
+            // 이긴다** — 거품 띠의 바깥선이 칸마다 들쭉날쭉해지고, 그게 화면에서 **물가 톱니**로 읽힌다
+            // (거품을 끄면 경계가 매끈해지는 것이 그 증거다). 기울기가 이 하한 아래면 깊이 규칙이
+            // 답하게 둔다 — 규칙을 없애는 것이 아니라 **못 재는 구간을 제 자에게 넘기는 것**이다.
+            // 하한은 취향이 아니라 `_FoamDepthSteep / _FoamWidthM`에서 나온다(둘이 맞물리는 점).
+            float tanF = max(tanS, _FoamTanFloor);
+            float foamMax = min(_FoamWidthM * tanF * cut, _FoamDepthSteep * cut);
 
             float t = saturate(diff / max(0.01, _DepthMax));
             fixed4 water = lerp(_ShallowColor, _DeepColor, t);

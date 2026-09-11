@@ -514,6 +514,10 @@ namespace Ulon.Editor
                 }
             }
             data.SetHeights(0, 0, heights);
+            // **도포 해상도는 원장이 정한다.** 여기서 설정하지 않던 동안 값은 유니티 기본값(512)이었고,
+            // 그건 「정해 둔 값」이 아니라 **우연**이었다 — 판별로 한 번 1024를 구우면 되돌릴 곳이 없어
+            // 그대로 남았다(2026-09-11에 실제로 그렇게 오염됐다). 굽는 값은 굽는 쪽이 매번 쓴다.
+            data.alphamapResolution = AlphaResOverride > 0 ? AlphaResOverride : AlphaRes;
             int ar = data.alphamapResolution;
             var alpha = new float[ar, ar, WorldSplat.LayerCount];
             for (int z = 0; z < ar; z++)
@@ -719,6 +723,12 @@ namespace Ulon.Editor
                     // **굽이**로 읽힌다(0 = NC, 그 판에서 줄이 되살아나야 한다).
                     mat.SetFloat("_FoamWobbleM", 0.45f);
                     mat.SetFloat("_FoamWobbleScale", 0.45f);
+                    // **완만한 바닥에서는 기울기를 안 믿는다**(물가 톱니, 2026-09-11). 백사장 경사는
+                    // tan 0.056이고 깊이-법선에서 복호한 `tanS`는 면마다 그 언저리로 튄다 —
+                    // 거품 폭이 그 튐을 그대로 받아 바깥선이 톱니가 된다. 하한을 **0.06**으로 둔다:
+                    // 백사장에서 폭은 지금과 같고(0.24m < 깊이 문턱 0.30m) **흔들림만 멎는다**.
+                    // 더 높이면 띠가 넓어져 흰 몫 상한(10%)을 건드린다 — 그건 다른 안건이다.
+                    mat.SetFloat("_FoamTanFloor", 0.06f);
                     // 상한 0.30 — **강이 정한 값**이다. 0.45로 보니 `15`의 강이 통째로 흰 리본이
                     // 됐다(강은 한가운데가 1.4m, 물가가 0.25m라 상한이 채널을 다 덮는다).
                     // 호수는 더 넓은 띠를 원하고 강은 더 좁은 띠를 원하는데 **손잡이가 하나**다 —

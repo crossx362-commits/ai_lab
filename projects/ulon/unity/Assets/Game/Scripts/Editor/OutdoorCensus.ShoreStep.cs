@@ -75,20 +75,197 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// **축을 하나씩 실제로 재굽는다**(검수 지시 2026-09-11). 「가로 해상도를 바꿔도 노치가
+        /// 그대로였다」는 앞선 판별은 **다른 자**(`MeasureShoreEdge`)로 잰 것이라 그 자가 못 보는
+        /// 것을 못 봤을 수 있다. 여기서는 같은 자(ⓒ 화면 경계)를 **해상도만 바꿔 가며** 댄다.
+        ///
+        /// 읽는 법: 평평한 구간 길이가 **셀 px에 비례**하면 범인은 격자(메시 면)다. 셀을 절반·두 배로
+        /// 해도 안 변하면 격자가 아니라 **높이값 자체의 계단**(양자화·스냅)이다.
+        /// </summary>
+        public static void RunShoreStepRes()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            int keep = VisualSliceBuilder.HeightResOverride;
+            try
+            {
+                foreach (int res in new[] { 513, 257, 1025 })
+                {
+                    VisualSliceBuilder.HeightResOverride = res;
+                    VisualSliceBuilder.EnsureVillageTerrain();
+                    UnityEditor.AssetDatabase.SaveAssets();
+                    var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+                    float c = td.size.x / (td.heightmapResolution - 1);
+                    float ac = td.size.x / td.alphamapResolution;
+                    Debug.Log("[물가결] ── 하이트맵 " + td.heightmapResolution + "² · 셀 " +
+                              c.ToString("0.000") + "m ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                }
+            }
+            finally
+            {
+                VisualSliceBuilder.HeightResOverride = keep;
+                VisualSliceBuilder.EnsureVillageTerrain();
+                UnityEditor.AssetDatabase.SaveAssets();
+                Debug.Log("[물가결] 원장 해상도로 되돌렸다.");
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **도포(알파맵) 격자 축** — 높이 격자를 1/2·2배로 굽어도 ⓒ가 안 변했고, 톱니의 **월드 크기**는
+        /// 0.6m 언저리로 고정이었다(렌더를 2배로 하면 px만 배가). 0.6m짜리 격자가 하나 더 있다:
+        /// **도포 셀 0.586m**(알파맵 512²). 얕은 물은 반투명이라 **바닥 도포가 비쳐** 물 색을 정하므로
+        /// 물↔뭍 경계가 도포 격자를 탈 수 있다. 여기서 도포만 256·1024로 굽어 가른다.
+        /// </summary>
+        public static void RunShoreStepAlpha()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            int keep = VisualSliceBuilder.AlphaResOverride;
+            try
+            {
+                foreach (int res in new[] { 512, 256, 1024 })
+                {
+                    VisualSliceBuilder.AlphaResOverride = res;
+                    VisualSliceBuilder.EnsureVillageTerrain();
+                    UnityEditor.AssetDatabase.SaveAssets();
+                    var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+                    float c = td.size.x / (td.heightmapResolution - 1);
+                    float ac = td.size.x / td.alphamapResolution;
+                    ProbeTag = "h_alpha" + td.alphamapResolution;
+                    Debug.Log("[물가결] ── 알파맵 " + td.alphamapResolution + "² · 도포 셀 " +
+                              ac.ToString("0.000") + "m ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                }
+            }
+            finally
+            {
+                VisualSliceBuilder.AlphaResOverride = keep;
+                VisualSliceBuilder.EnsureVillageTerrain();
+                UnityEditor.AssetDatabase.SaveAssets();
+                Debug.Log("[물가결] 원장 도포 해상도로 되돌렸다.");
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **경사 하한 축** — 도포 격자가 톱니를 정한다는 것까지는 갈렸다(도포 셀 2배 → 톱니 1.7배,
+        /// 높이 셀은 4배를 오가도 불변). 그러면 **도포 규칙 중 무엇이 칸마다 튀느냐**가 다음 물음이다.
+        /// 후보는 `ShoreSandRaw`의 「걸어온 거리」 — 백사장 경사(0.056)가 하한(0.05)에 거의 붙어 있어
+        /// 나누기가 잡음을 증폭한다. 하한만 바꿔 가며 굽고 ⓒ를 잰다.
+        /// </summary>
+        public static void RunShoreStepBank()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            try
+            {
+                foreach (float floor in new[] { 0.05f, 0.14f, 0.30f })
+                {
+                    WorldSplat.BankTanFloorOverride = floor;
+                    VisualSliceBuilder.EnsureVillageTerrain();
+                    UnityEditor.AssetDatabase.SaveAssets();
+                    var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+                    float c = td.size.x / (td.heightmapResolution - 1);
+                    float ac = td.size.x / td.alphamapResolution;
+                    ProbeTag = "i_bank" + floor.ToString("0.00");
+                    Debug.Log("[물가결] ── 경사 하한 tan " + floor.ToString("0.00") + " ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                }
+            }
+            finally
+            {
+                WorldSplat.BankTanFloorOverride = -1f;
+                VisualSliceBuilder.EnsureVillageTerrain();
+                UnityEditor.AssetDatabase.SaveAssets();
+                Debug.Log("[물가결] 원장 하한으로 되돌렸다.");
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>이번 판이 무슨 조건이었는지 — 뜨는 PNG 이름에 붙는다.</summary>
+        static string ProbeTag = "base";
+
+        /// <summary>
+        /// **격자가 기각된 뒤의 두 축**(2026-09-11). 셀을 1/2·2배로 굽어도 ⓒ가 안 변했으니
+        /// 톱니는 **지형 격자가 아니다**. 남은 후보를 하나씩 끈다:
+        ///   ⓕ **렌더 해상도** — 2배로 렌더해 톱니 px가 **배가되면 세계에 붙은 것**, 그대로면
+        ///      **화면에 붙은 것**(디더·후처리·셰이더의 화면 좌표 잡음)이다.
+        ///   ⓖ **거품 잡음** — 1.7b·1.7c에서 내가 물가에 넣은 월드 잡음(`_FoamBreak`·`_FoamWobbleM`)을
+        ///      끄고 잰다. 내가 만든 것이면 여기서 톱니가 준다. **처방을 짜기 전에 내 것부터 의심한다.**
+        /// </summary>
+        public static void RunShoreStepAxes()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+
+            ProbeTag = "f_res2x";
+            Debug.Log("[물가결] ── ⓕ 렌더 2배(2560×1440) ──");
+            ScreenEdge(c, ac, "64_river_bend", 2560, 1440);
+            ScreenEdge(c, ac, "15_lake_river", 2560, 1440);
+
+            Material water = null;
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                var m = r.sharedMaterial;
+                if (m != null && m.shader != null && m.shader.name.Contains("StylizedWater")) { water = m; break; }
+            }
+            if (water == null) { Debug.LogWarning("[물가결] 물 머티리얼을 못 찾음 — ⓖ 건너뜀"); }
+            else
+            {
+                float kBreak = water.GetFloat("_FoamBreak"), kWob = water.GetFloat("_FoamWobbleM");
+                float kMax = water.GetFloat("_FoamMaxAlpha");
+                try
+                {
+                    water.SetFloat("_FoamBreak", 0f); water.SetFloat("_FoamWobbleM", 0f);
+                    ProbeTag = "g1_nonoise";
+                    Debug.Log("[물가결] ── ⓖ1 물가 잡음 끔(_FoamBreak=0 · _FoamWobbleM=0) ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                    water.SetFloat("_FoamMaxAlpha", 0f);
+                    ProbeTag = "g2_nofoam";
+                    Debug.Log("[물가결] ── ⓖ2 거품 자체 끔(_FoamMaxAlpha=0) ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                }
+                finally
+                {
+                    water.SetFloat("_FoamBreak", kBreak); water.SetFloat("_FoamWobbleM", kWob);
+                    water.SetFloat("_FoamMaxAlpha", kMax);
+                }
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
         /// ⓒ **화면에서 직접** — `64_river_bend`를 렌더해 열마다 물↔뭍 경계를 찾고, 그 경계 y가
         /// **가로로 몇 픽셀이나 같은 값에 머무는지** 잰다. 계단 하나가 화면에서 몇 px인지가 답이다.
         /// 셀 크기를 그 거리에서의 화면 픽셀로 환산해 나란히 찍는다 — 둘이 맞으면 범인은 격자다.
         /// </summary>
-        static void ScreenEdge(float cell, float alphaCell)
+        static void ScreenEdge(float cell, float alphaCell, string shot = "64_river_bend", int W = 1280, int H = 720)
         {
             var shots = QaShots.BuildShots();
             int idx = -1;
             for (int i = 0; i < shots.Length; i++)
-                if (QaShots.NameOf(shots[i]) == "64_river_bend") { idx = i; break; }
-            if (idx < 0) { Debug.LogWarning("[물가결] 64_river_bend를 못 찾음"); return; }
+                if (QaShots.NameOf(shots[i]) == shot) { idx = i; break; }
+            if (idx < 0) { Debug.LogWarning("[물가결] " + shot + "를 못 찾음"); return; }
             QaShots.EyeOf(shots[idx], out Vector3 eye, out Vector3 look);
 
-            const int W = 1280, H = 720;
             var camGo = new GameObject("ShoreStepCam");
             var cam = camGo.AddComponent<Camera>();
             cam.fieldOfView = 55f; cam.nearClipPlane = 0.05f; cam.farClipPlane = 500f;
@@ -103,6 +280,12 @@ namespace Ulon.Editor
             tex.Apply();
             RenderTexture.active = null;
             var px = tex.GetPixels32();
+            // **눈으로도 본다** — 셈만 보면 자가 못 보는 것을 나도 못 본다(비추적 폴더).
+            string probeDir = System.IO.Path.GetFullPath(
+                System.IO.Path.Combine(Application.dataPath, "../../builds/qa/probe"));
+            System.IO.Directory.CreateDirectory(probeDir);
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(probeDir,
+                shot + "_" + W + "_" + ProbeTag + ".png"), tex.EncodeToPNG());
 
             // 열마다 아래에서 위로 훑어 **물이 끝나는 첫 자리**(경계). 물은 파랑이 우세한 픽셀이다.
             var edge = new int[W];
@@ -154,12 +337,12 @@ namespace Ulon.Editor
             if (run > 1) { runs++; sum += run; if (run > longest) longest = run; }
             float dist = (look - eye).magnitude;
             float mPerPx = 2f * dist * Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad) * 16f / 9f / W;
-            Debug.Log("[물가결] ⓒ 화면 경계 — 표본 " + valid + "열 · 평평한 구간 " + runs + "개 · 평균 " +
+            Debug.Log("[물가결] ⓒ " + shot + " 화면 경계 — 표본 " + valid + "열 · 평평한 구간 " + runs + "개 · 평균 " +
                       (runs > 0 ? (sum / (float)runs).ToString("0.0") : "—") + "px · 가장 긴 것 " + longest +
                       "px · 이 거리(" + dist.ToString("0") + "m)에서 높이 셀은 " + (cell / mPerPx).ToString("0") +
                       "px · 도포 셀은 " + (alphaCell / mPerPx).ToString("0") + "px");
 
-            Debug.Log("[물가결] ⓓ 모래↔잔디 경계 — 표본 " + sValid + "열 · 평평한 구간 " + sRuns +
+            Debug.Log("[물가결] ⓓ " + shot + " 모래↔잔디 경계 — 표본 " + sValid + "열 · 평평한 구간 " + sRuns +
                       "개 · 평균 " + (sRuns > 0 ? (sSum / (float)sRuns).ToString("0.0") : "—") +
                       "px · 가장 긴 것 " + sLongest + "px");
 

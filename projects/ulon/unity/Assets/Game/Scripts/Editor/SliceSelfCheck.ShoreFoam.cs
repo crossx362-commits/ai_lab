@@ -38,6 +38,9 @@ namespace Ulon.Editor
         // 판이 13.4%로 옛 상한 15% 안에 들어왔다 — 그 판에서 자는 흰 도넛을 다시 못 잡는다.
         // 실측 2.2%·3.1% 대 NC 13.4%라 3배 여유를 두고 10%로 내린다.
         const float ShoreFoamMax = 0.10f;     // 실측 2.2%·3.1% 대 NC(띠 벌림) 13.4%
+        // **근접 샷의 페이드 하한** — 조망의 25와 다른 값인 이유는 위 `foreach` 주석에 있다.
+        // 실측 `65_sea_close` 22.9 대 NC(깊이 색 끔) 7.2 — 그 사이에 둔다.
+        const float ShoreFadeNearMin = 15.0f;
 
         public static void AssertShoreFoam()
         {
@@ -56,7 +59,13 @@ namespace Ulon.Editor
             // 없으니 이 자는 거기서 아무것도 못 잰다. `63`을 뺀 것과 같은 이유다(못 재는 자리를
             // 자에 넣으면 자가 그 자리에 맞춰 무력해진다). **남은 대상은 `15` 하나다** —
             // 근접 물의 자가 비었다는 뜻이니 다음 랩에서 물 근접 샷을 하나 세울 것.
-            foreach (string shot in new[] { "15_lake_river" })
+            // **빚을 갚았다**(2026-09-11): 근접 물 샷 `65_sea_close`를 세워 대상을 둘로 만든다.
+            // 다만 **페이드 하한은 조망에만 건다.** 깊이 페이드는 시선이 물을 길게 통과할 때 커지는
+            // 값이라 근접 부감에서는 물리적으로 작다(실측 `15` 59.3 대 `65` 22.9) — 같은 하한을
+            // 들이대면 자가 「근접이라서」 우는 것을 「물빛이 사라져서」로 읽는다. 근접에는
+            // **방향만** 묻는다: 얕은 띠가 열린 물보다 밝아야 한다(부호가 뒤집히면 깊이 색이 죽은 것).
+            // 거품 흰 몫 구간(2~10%)은 **둘 다** 같은 자로 문다 — 그게 이 자의 본업이다.
+            foreach (var (shot, farView) in new[] { ("15_lake_river", true), ("65_sea_close", false) })
             {
                 float fade = OutdoorCensus.ShoreFoamStats(shot, out float white, out int excluded, out string det);
                 totalExcluded += excluded;
@@ -67,9 +76,10 @@ namespace Ulon.Editor
                           "(하한 " + ShoreFadeMin.ToString("0.0") + ") · 거품 흰 몫 " +
                           (white * 100f).ToString("0.0") + "%(하한 " + (ShoreFoamMin * 100f).ToString("0.0") +
                           "%) · " + det);
-                if (fade < ShoreFadeMin)
+                float fadeFloor = farView ? ShoreFadeMin : ShoreFadeNearMin;
+                if (fade < fadeFloor)
                     throw new InvalidOperationException("샷 " + shot + "의 물가가 열린 물보다 " +
-                        fade.ToString("0.0") + "밖에 안 밝습니다(하한 " + ShoreFadeMin.ToString("0.0") +
+                        fade.ToString("0.0") + "밖에 안 밝습니다(하한 " + fadeFloor.ToString("0.0") +
                         ") — 깊이에 따른 물빛이 화면에서 사라졌습니다.");
                 if (white < ShoreFoamMin)
                     throw new InvalidOperationException("샷 " + shot + "의 물가 흰 몫이 " +
