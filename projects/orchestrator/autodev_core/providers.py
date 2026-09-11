@@ -258,13 +258,21 @@ def probe_all(cfg, *, force: bool = False, names: list[str] | None = None) -> di
             out[name] = probe(name, acfg)
             store.pop(name, None)
             continue
-        if acfg.type == "script":
-            out[name] = probe(name, acfg)
-            continue
         row = store.get(name)
         fresh = row and (time.time() - row.get("checked_at", 0)) < TTL_SEC
         cooling = row and row.get("cooldown_until", 0) > time.time()
-        if row and (fresh or cooling) and not force:
+        # **냉각 중이면 force로도 덮지 않는다.** 한도는 인증 검사로 알 수 없다 —
+        # 실측: 한도에 걸린 codex도 `login status`는 "Logged in"이라고 답한다. 다시 물으면
+        # 초록으로 되살아나 또 한도에 부딪힌다. 냉각은 시간이 풀어주는 것이지 질문이 아니다.
+        if cooling:
+            out[name] = Status(name=name, state=row["state"], detail=row.get("detail", ""),
+                               checked_at=row.get("checked_at", 0),
+                               cooldown_until=row["cooldown_until"], caps=row.get("caps", []))
+            continue
+        if acfg.type == "script":
+            out[name] = probe(name, acfg)
+            continue
+        if row and fresh and not force:
             out[name] = Status(name=name, state=row["state"], detail=row.get("detail", ""),
                                checked_at=row.get("checked_at", 0),
                                cooldown_until=row.get("cooldown_until", 0),

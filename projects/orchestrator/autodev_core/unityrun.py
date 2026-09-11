@@ -121,6 +121,7 @@ def run_tests(
             cmd, cwd=project_path, timeout=target.unity_timeout_sec,
             log_prefix=Path(f"{log_prefix}.{platform.lower()}"),
             conn=conn, task_id=task_id, attempt_id=attempt_id, kind="unity-test",
+            watch_file=unity_log, stall_sec=target.unity_stall_sec,
         )
 
     log_text = unity_log.read_text(encoding="utf-8", errors="replace") if unity_log.is_file() else ""
@@ -128,6 +129,10 @@ def run_tests(
 
     if r.status == "SPAWN_FAILED":
         return TestResult("UNKNOWN", platform, f"Unity 실행 실패: {r.stderr[:200]}", duration_s=r.duration_s)
+    if r.status == "STALLED":
+        return TestResult("UNKNOWN", platform,
+                          f"Unity가 {target.unity_stall_sec}s 동안 로그를 한 줄도 쓰지 않았다 — 멎은 것으로 보고 세웠다",
+                          duration_s=r.duration_s)
     if r.status == "TIMEOUT":
         return TestResult("UNKNOWN", platform, f"테스트 타임아웃({target.unity_timeout_sec}s)", duration_s=r.duration_s)
 
@@ -198,6 +203,8 @@ def compile_check(
             task_id=task_id,
             attempt_id=attempt_id,
             kind="unity",
+            watch_file=unity_log,
+            stall_sec=target.unity_stall_sec,
         )
 
     log_text = unity_log.read_text(encoding="utf-8", errors="replace") if unity_log.is_file() else ""
@@ -221,6 +228,11 @@ def compile_check(
 
     if r.status == "SPAWN_FAILED":
         return UnityResult("UNKNOWN", f"Unity 실행 실패: {r.stderr[:200]}", None, errors, unity_log, report, r.duration_s)
+    if r.status == "STALLED":
+        return UnityResult("UNKNOWN",
+                           f"Unity가 {target.unity_stall_sec}s 동안 로그를 한 줄도 쓰지 않았다 — 멎은 것으로 보고 세웠다"
+                           f"(타임아웃 {target.unity_timeout_sec}s를 다 태우지 않는다)",
+                           r.exit_code, errors, unity_log, report, r.duration_s)
     if r.status == "TIMEOUT":
         return UnityResult("UNKNOWN", f"Unity 타임아웃({target.unity_timeout_sec}s) — 그룹 종료함", r.exit_code, errors, unity_log, report, r.duration_s)
     has_ok = OK_MARKER in combined

@@ -471,6 +471,92 @@ if grep -q "리뷰어 nc_rev_dead Provider 장애(RATE_LIMITED)" /tmp/nc_revfail
   echo "  PASS  reviewer_failover_state — 장애를 판정불가로 뭉개지 않고 승계"; PASS=$((PASS+1))
 else echo "  FAIL  reviewer_failover_state (로그: /tmp/nc_revfail.log)"; FAIL=$((FAIL+1)); fi
 
+# 12) 진행 없음 감지 — 「오래 걸린다」와 「멎었다」는 다르다.
+#     라이선스 핸드셰이크에서 멎은 Unity를 10분 내내 기다린 적이 있다(2026-09-11).
+python3 - <<'PYSTALL' > /tmp/nc_stall.log 2>&1
+import sys, pathlib, tempfile
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from autodev_core import proc
+d = pathlib.Path(tempfile.mkdtemp()); w = d / "fake.log"
+bad = []
+r = proc.run(["/bin/sh", "-c", f"echo start > {w}; sleep 60"], cwd=d, timeout=55,
+             log_prefix=d / "a", watch_file=w, stall_sec=5)
+if r.status != "STALLED": bad.append(f"멎은 것을 {r.status}로 봄")
+if r.duration_s > 30: bad.append(f"타임아웃을 다 태움({r.duration_s:.0f}s)")
+# 오탐 방지: 로그가 자라는 동안은 절대 죽이지 않는다
+r2 = proc.run(["/bin/sh", "-c", f"for i in 1 2 3 4 5 6; do echo $i >> {w}; sleep 1; done"],
+              cwd=d, timeout=30, log_prefix=d / "b", watch_file=w, stall_sec=3)
+if r2.status != "EXITED": bad.append(f"일하는 것을 {r2.status}로 죽임")
+# 로그가 아직 안 생겼다고 성급히 죽이지 않는다
+r3 = proc.run(["/bin/sh", "-c", "sleep 4"], cwd=d, timeout=30,
+              log_prefix=d / "c", watch_file=d / "never.log", stall_sec=2)
+if r3.status != "EXITED": bad.append(f"로그 없는 것을 {r3.status}로 죽임")
+print("STALL_OK" if not bad else "STALL_BAD " + " / ".join(bad))
+PYSTALL
+if grep -q "^STALL_OK" /tmp/nc_stall.log; then
+  echo "  PASS  stall_watch — 멎은 것만 조기 종료(일하는 것·로그 없는 것은 그대로)"; PASS=$((PASS+1))
+else echo "  FAIL  stall_watch (로그: /tmp/nc_stall.log)"; FAIL=$((FAIL+1)); fi
+lap
+
+# 13) Provider 대기 — 한도는 시간이 풀어주지만 **인증 만료는 영원히 안 풀린다**.
+#     둘을 구분하지 못하면 사람 없는 밤에 무한정 기다리거나, 곧 풀릴 것을 포기한다.
+FAKEB=$(mktemp -d)
+printf '#!/bin/sh\necho "Not logged in."\nexit 1\n' > "$FAKEB/codex"; chmod +x "$FAKEB/codex"
+PATH="$FAKEB:$PATH" python3 - <<'PYWAIT' > /tmp/nc_wait.log 2>&1
+import sys, time, json, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from autodev_core import config, providers as P, cli
+bad = []
+d = json.loads(pathlib.Path("config.json").read_text())
+d["ladder"] = ["nc_w"]; d["reviewer"] = None; d["research_agent"] = None
+d["agents"]["nc_w"] = {"type": "script", "bin": "/bin/sh", "args": ["-c", "exit 0"],
+                       "timeout_sec": 60, "capabilities": ["CODING"]}
+p = pathlib.Path("state/nc_wait.json"); p.write_text(json.dumps(d, ensure_ascii=False, indent=2))
+cfg = config.load(p)
+
+# ① 곧 풀릴 냉각이면 기다렸다가 깨어난다
+P.mark("nc_w", P.RATE_LIMITED, "시험", 8)
+if not cli.wait_for_provider(cfg, max_wait=180): bad.append("곧 풀릴 냉각을 기다리지 않음")
+
+# ② 냉각이 대기 한도보다 길면 기다리지 않는다(무한 대기 금지, §18)
+P.mark("nc_w", P.RATE_LIMITED, "시험", 3600)
+t0 = time.time()
+if cli.wait_for_provider(cfg, max_wait=30): bad.append("한도를 넘겨서까지 기다림")
+if time.time() - t0 > 20: bad.append("세울 것을 오래 붙잡음")
+
+# ③ 인증 만료는 시간이 풀어주지 않는다 — 기다리지 않고 세운다(로그아웃한 가짜 codex)
+# 후보를 codex 하나로 좁힌다 — 다른 CODING 에이전트가 살아 있으면 "기다릴 이유 없음"이
+# **정답**이라, 그대로 두면 이 시험이 아무것도 확인하지 못한다(한 번 그렇게 헛통과했다).
+d2 = json.loads(json.dumps(d)); d2["ladder"] = ["codex"]
+d2["agents"] = {"codex": dict(d2["agents"]["codex"], capabilities=["CODING"])}
+p2 = pathlib.Path("state/nc_wait2.json"); p2.write_text(json.dumps(d2, ensure_ascii=False, indent=2))
+cfg2 = config.load(p2)
+P.mark("nc_w", P.AUTH_REQUIRED, "로그아웃", 0)
+t0 = time.time()
+if cli.wait_for_provider(cfg2, max_wait=120): bad.append("인증 만료인데 쓸 수 있다고 판단")
+if time.time() - t0 > 60: bad.append("안 풀릴 것을 오래 기다림")
+
+# ④ **냉각은 재검사로 덮이지 않는다** — 한도에 걸린 CLI도 login status는 "Logged in"이라
+#    답한다(실측). force 재검사가 냉각을 지우면 곧바로 또 한도에 부딪힌다.
+P.mark("codex", P.RATE_LIMITED, "시험", 1800)
+st = P.probe_all(cfg2, force=True)
+if st["codex"].usable: bad.append("force 재검사가 냉각을 덮었다")
+P.mark("codex", P.AVAILABLE, "정리", 0)
+print("WAIT_OK" if not bad else "WAIT_BAD " + " / ".join(bad))
+PYWAIT
+rm -rf "$FAKEB" state/nc_wait.json state/nc_wait2.json
+python3 - <<'PYCLEAN'
+import json, pathlib
+p = pathlib.Path("state/providers.json")
+if p.is_file():
+    d = json.loads(p.read_text())
+    p.write_text(json.dumps({k: v for k, v in d.items() if not k.startswith("nc")}, ensure_ascii=False, indent=2))
+PYCLEAN
+if grep -q "^WAIT_OK" /tmp/nc_wait.log; then
+  echo "  PASS  provider_wait — 풀릴 것은 기다리고 안 풀릴 것·한도 밖은 세운다(냉각은 재검사로 안 덮임)"; PASS=$((PASS+1))
+else echo "  FAIL  provider_wait (로그: /tmp/nc_wait.log)"; FAIL=$((FAIL+1)); fi
+lap
+
 echo
 echo "=== 결과: PASS=$PASS FAIL=$FAIL · 소요 $(( $(date +%s) - T0 ))초 ==="
 if [[ ${#TASKS[@]} -gt 0 ]]; then

@@ -738,6 +738,33 @@ def cmd_plan(args) -> int:
     return 0
 
 
+def wait_for_provider(cfg, *, capability=None, max_wait: int = 0, poll: int = 300) -> bool:
+    """쓸 수 있는 Provider가 생길 때까지 기다린다. 한도는 시간이 풀어주는 문제다 —
+    사람이 붙어 있다가 다시 시작해야 할 이유가 없다(2026-09-11 계획 7이 그렇게 멈춰 있었다).
+
+    **무한정 기다리지는 않는다**(§18 무한 재시도 금지). 남은 냉각 시간을 보고 잔다.
+    """
+    capability = capability or providers.CODING
+    deadline = time.time() + max_wait if max_wait else None
+    while True:
+        st = providers.probe_all(cfg, force=True)
+        ok = _usable(cfg, st, prefer=cfg.ladder, capability=capability)
+        if ok:
+            return True
+        cools = [s.cooldown_until - time.time() for s in st.values()
+                 if s.cooldown_until > time.time()]
+        if not cools:
+            _p("  기다려도 풀릴 Provider가 없다(냉각 중인 곳이 없음) — 기다리지 않는다")
+            return False
+        nap = max(60, min(min(cools) + 5, poll))
+        if deadline and time.time() + nap > deadline:
+            _p(f"  대기 한도({max_wait}s)를 넘는다 — 여기서 세운다")
+            return False
+        _p(f"  Provider 대기 중… 가장 빠른 해제까지 {min(cools) / 60:.0f}분 "
+           f"({time.strftime('%H:%M:%S')})")
+        time.sleep(nap)
+
+
 def cmd_run_plan(args) -> int:
     cfg = config.load()
     t = cfg.target(args.target)
@@ -769,6 +796,13 @@ def cmd_run_plan(args) -> int:
             rc_all = 1
             continue
         _p(f"\n========== [{row['plan_key']}] {row['goal']} ==========")
+        if args.wait_for_provider:
+            st = providers.probe_all(cfg)
+            if not _usable(cfg, st, prefer=cfg.ladder):
+                _p("  쓸 수 있는 Provider가 없다 — 풀릴 때까지 기다린다")
+                if not wait_for_provider(cfg, max_wait=args.wait_for_provider):
+                    db.update_plan(conn, args.plan, status="BLOCKED", note="Provider 대기 실패")
+                    return 3
         # BACKLOG 자리표시 task는 지우고, 실제 실행은 본체가 자기 task를 만들어 돈다.
         db.update_task(conn, row["id"], status="ARCHIVED", reason="[계획 자리표시]")
         rc = execute_goal(cfg, t, goal=row["goal"], max_attempts=args.max_attempts,
@@ -778,12 +812,55 @@ def cmd_run_plan(args) -> int:
             done_keys.add(row["plan_key"])
         else:
             rc_all = rc
+            # Provider가 없어 보존된 것이면 실패가 아니라 **기다림**이다.
+            if rc == 3 and args.wait_for_provider:
+                _p("  Provider 부재로 보존됨 — 풀릴 때까지 기다렸다가 이 Task를 다시 연다")
+                if wait_for_provider(cfg, max_wait=args.wait_for_provider):
+                    rc = execute_goal(cfg, t, goal=row["goal"], max_attempts=args.max_attempts,
+                                      plan_id=args.plan, plan_key=row["plan_key"],
+                                      done_criteria=row["done_criteria"] or "")
+                    if rc == 0:
+                        done_keys.add(row["plan_key"])
+                        rc_all = 0 if rc_all == 3 else rc_all
+                        continue
             if not args.keep_going:
                 _p(f"\n[{row['plan_key']}]에서 멈춘다 (계속하려면 --keep-going)")
                 db.update_plan(conn, args.plan, status="BLOCKED", note=f"{row['plan_key']}에서 멈춤")
                 return rc
     db.update_plan(conn, args.plan, status="DONE" if rc_all == 0 else "BLOCKED")
     return rc_all
+
+
+def cmd_requeue(args) -> int:
+    """계획에서 끝나지 않은 Task를 다시 큐에 올린다.
+
+    한도·장애로 죽은 Task는 자리표시가 이미 치워져 있어 `run-plan`이 다시 집지 못한다.
+    사람이 DB를 손으로 고치게 두지 않는다 — **되돌리는 것도 기록되는 절차**여야 한다.
+    끝난 것(DONE)은 건드리지 않는다.
+    """
+    conn = db.connect()
+    plan = db.get_plan(conn, args.plan)
+    if not plan:
+        _p(f"계획 {args.plan} 없음"); return 2
+    rows_ = db.plan_tasks(conn, args.plan)
+    done_keys = {r["plan_key"] for r in rows_ if r["status"] == "DONE"}
+    back, archived = [], []
+    for r in rows_:
+        if r["plan_key"] in done_keys or r["status"] in ("BACKLOG", "RUNNING"):
+            continue
+        if r["reason"] == "[계획 자리표시]":       # 치워둔 자리표시 → 다시 세운다
+            db.update_task(conn, r["id"], status="BACKLOG", reason=None, verdict=None, ended_at=None)
+            back.append(f"{r['plan_key']}(#{r['id']})")
+        elif r["status"] in ("BLOCKED", "INTERRUPTED", "STOPPED", "BLOCKED_CLOUD_REQUIRED"):
+            db.update_task(conn, r["id"], status="ARCHIVED",
+                           reason=f"[재큐] {r['reason'] or r['status']}")
+            archived.append(f"#{r['id']}")
+    _p(f"계획 {args.plan}: 다시 큐 {', '.join(back) or '없음'}")
+    if archived:
+        _p(f"  실패했던 실행 기록 보관: {', '.join(archived)} (worktree는 남는다)")
+    if not back:
+        _p("  되돌릴 자리표시가 없다 — 이미 전부 끝났거나 진행 중이다")
+    return 0
 
 
 def cmd_plans(args) -> int:
@@ -1021,7 +1098,13 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--plan", type=int, required=True)
     rp.add_argument("--max-attempts", type=int, default=None)
     rp.add_argument("--keep-going", action="store_true", help="실패해도 남은 Task를 계속")
+    rp.add_argument("--wait-for-provider", type=int, default=0, metavar="초",
+                    help="Provider가 한도·인증으로 막히면 풀릴 때까지 기다린다(최대 이 시간, 0=대기 안 함)")
     rp.set_defaults(func=cmd_run_plan)
+
+    rq = sub.add_parser("requeue", help="계획에서 끝나지 않은 Task를 다시 큐에 올린다")
+    rq.add_argument("--plan", type=int, required=True)
+    rq.set_defaults(func=cmd_requeue)
 
     ps = sub.add_parser("plans", help="계획 목록")
     ps.add_argument("--plan", type=int, default=None)

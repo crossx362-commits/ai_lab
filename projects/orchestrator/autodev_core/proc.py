@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import signal
+import threading
 import subprocess
 import time
 from dataclasses import dataclass
@@ -20,7 +21,7 @@ from . import db, logs
 class RunResult:
     cmd: list[str]
     exit_code: int | None
-    status: str  # EXITED / TIMEOUT / KILLED / SPAWN_FAILED
+    status: str  # EXITED / TIMEOUT / STALLED / KILLED / SPAWN_FAILED
     stdout: str
     stderr: str
     stdout_path: Path
@@ -62,8 +63,15 @@ def run(
     attempt_id=None,
     kind: str = "proc",
     env: dict | None = None,
+    watch_file: Path | None = None,
+    stall_sec: int = 0,
 ) -> RunResult:
-    """프로세스를 독립 프로세스 그룹으로 띄우고, 타임아웃이면 그룹째 종료한다."""
+    """프로세스를 독립 프로세스 그룹으로 띄우고, 타임아웃이면 그룹째 종료한다.
+
+    `watch_file`+`stall_sec`을 주면 **진행 없음**도 잡는다. 타임아웃만 보면
+    "돌고 있다"와 "멎었다"를 구분할 수 없어, 라이선스 핸드셰이크에서 멎은 Unity를
+    10분 내내 기다린 적이 있다(2026-09-11). 로그가 자라지 않으면 그것이 멎은 것이다.
+    """
     stdout_path = Path(f"{log_prefix}.stdout.log")
     stderr_path = Path(f"{log_prefix}.stderr.log")
     stdout_path.parent.mkdir(parents=True, exist_ok=True)
@@ -108,15 +116,54 @@ def run(
         db.update_process(conn, proc_row, pid=p.pid, pgid=pgid)
 
     status = "EXITED"
-    try:
-        out, err = p.communicate(input=stdin_text, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        status = "TIMEOUT"
-        _kill_group(pgid)
+    out = err = ""
+    if not (watch_file and stall_sec > 0):
         try:
-            out, err = p.communicate(timeout=10)
-        except Exception:
-            out, err = "", ""
+            out, err = p.communicate(input=stdin_text, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            status = "TIMEOUT"
+            _kill_group(pgid)
+            try:
+                out, err = p.communicate(timeout=10)
+            except Exception:
+                out, err = "", ""
+    else:
+        # 파이프 읽기는 스레드에 맡기고, 여기서는 **로그가 자라는지**를 본다.
+        box: dict = {}
+
+        def _pump():
+            try:
+                box["out"], box["err"] = p.communicate(input=stdin_text)
+            except Exception as e:                # 읽기가 터져도 감시는 계속돼야 한다
+                box["out"], box["err"] = "", str(e)
+
+        th = threading.Thread(target=_pump, daemon=True)
+        th.start()
+        deadline = started + timeout
+        last_size, last_change = -1, time.time()
+        while th.is_alive():
+            th.join(2.0)
+            now = time.time()
+            if not th.is_alive():
+                break
+            if now > deadline:
+                status = "TIMEOUT"
+                _kill_group(pgid)
+                th.join(10)
+                break
+            try:
+                size = watch_file.stat().st_size
+            except OSError:
+                continue                          # 아직 로그가 안 생겼다 — 멎은 것과 다르다
+            if size != last_size:
+                last_size, last_change = size, now
+            elif last_size > 0 and now - last_change > stall_sec:
+                # 로그가 stall_sec 동안 한 글자도 안 늘었다. 남은 타임아웃을 태우지 않는다.
+                status = "STALLED"
+                _kill_group(pgid)
+                th.join(10)
+                break
+        out, err = box.get("out", ""), box.get("err", "")
     duration = time.time() - started
 
     logs.write(stdout_path, out or "")

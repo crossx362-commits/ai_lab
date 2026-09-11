@@ -25,6 +25,7 @@ class Target:
     unity_version: str
     unity_editor: Path
     unity_timeout_sec: int
+    unity_stall_sec: int
     allowed_write_globs: list[str]
     protected_globs: list[str]
     test_platforms: list[str]
@@ -81,6 +82,8 @@ class Config:
             unity_version=t["unity_version"],
             unity_editor=editor,
             unity_timeout_sec=int(t.get("unity_timeout_sec", 1800)),
+            # 로그가 이만큼 안 자라면 멎은 것으로 본다(타임아웃을 다 태우지 않는다).
+            unity_stall_sec=int(t.get("unity_stall_sec", 180)),
             allowed_write_globs=list(t.get("allowed_write_globs", ["**"])),
             protected_globs=list(t.get("protected_globs", [])),
             test_platforms=list(t.get("test_platforms", [])),
