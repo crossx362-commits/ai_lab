@@ -487,6 +487,16 @@ namespace Ulon.Editor
             if (run > 1) { runs++; sum += run; if (run > longest) longest = run; }
             float dist = (look - eye).magnitude;
             float mPerPx = 2f * dist * Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad) * 16f / 9f / W;
+            // **투영을 풀어 다시 잰다**(검수 1순위 2026-09-11, 내가 스스로 의심한 축).
+            // 위 `mPerPx`는 **화면에 수직인 평면**을 가정한 환산이라, 지면을 **비스듬히 내려다보는**
+            // 샷에서는 크게 틀린다. 물가에서 화면 1px가 지면에서 몇 m인지는 **레이를 실제로 쏴서**
+            // 수면 평면(y = SeaLevel)과 만나게 하고 옆 픽셀과의 거리를 재야 나온다.
+            // 이 환산이 틀렸다면 「톱니 0.6m 고정」이라는 전제와 격자 기각이 같이 흔들린다.
+            float groundM = GroundMetersPerPixel(cam, edge, W, H);
+            Debug.Log("[물가결] ⓧ " + shot + " 투영 환산 — 화면 평면 가정 " + mPerPx.ToString("0.000") +
+                      " m/px 대 **물가 지면 실측 " + groundM.ToString("0.000") + " m/px**(" +
+                      (groundM / Mathf.Max(1e-6f, mPerPx)).ToString("0.0") + "배) · 그러면 평평한 구간 " +
+                      longest + "px는 지면에서 **" + (longest * groundM).ToString("0.00") + "m**");
             Debug.Log("[물가결] ⓒ " + shot + " 화면 경계 — 표본 " + valid + "열 · 평평한 구간 " + runs + "개 · 평균 " +
                       (runs > 0 ? (sum / (float)runs).ToString("0.0") : "—") + "px · 가장 긴 것 " + longest +
                       "px · 이 거리(" + dist.ToString("0") + "m)에서 높이 셀은 " + (cell / mPerPx).ToString("0") +
@@ -498,6 +508,38 @@ namespace Ulon.Editor
 
             cam.targetTexture = null; RenderTexture.active = null;
             Object.DestroyImmediate(camGo); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
+        }
+
+        /// <summary>
+        /// 물가 경계 픽셀들에서 **화면 1px가 지면에서 몇 m인가** — 레이를 수면 평면에 맞혀 잰다.
+        /// 경계가 잡힌 열들의 중앙값을 쓴다(한 열이 하늘을 보면 값이 미친다).
+        /// </summary>
+        static float GroundMetersPerPixel(Camera cam, int[] edge, int W, int H)
+        {
+            var vals = new System.Collections.Generic.List<float>();
+            float sea = WorldTerrain.SeaLevel;
+            for (int i = 1; i < W - 1; i++)
+            {
+                if (edge[i] < 0) continue;
+                if (!HitSea(cam, i, edge[i], W, H, sea, out Vector3 a)) continue;
+                if (!HitSea(cam, i + 1, edge[i], W, H, sea, out Vector3 b)) continue;
+                float d = (b - a).magnitude;
+                if (d > 0f && d < 50f) vals.Add(d);
+            }
+            if (vals.Count == 0) return 0f;
+            vals.Sort();
+            return vals[vals.Count / 2];
+        }
+
+        static bool HitSea(Camera cam, int px, int py, int W, int H, float sea, out Vector3 p)
+        {
+            p = Vector3.zero;
+            var ray = cam.ViewportPointToRay(new Vector3(px / (float)W, py / (float)H, 0f));
+            if (ray.direction.y >= -1e-5f) return false;
+            float t = (sea - ray.origin.y) / ray.direction.y;
+            if (t <= 0f || t > 2000f) return false;
+            p = ray.origin + ray.direction * t;
+            return true;
         }
 
         /// <summary>이 x에서 강 남쪽 물가의 z — 중심선에서 +z로 나가며 물이 끝나는 자리.</summary>
