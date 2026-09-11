@@ -46,7 +46,7 @@
 ## 네거티브 컨트롤 스위트
 
 ```bash
-./tools/nc_suite.sh     # 21개 시험, 모델 호출 없음(무비용)
+./tools/nc_suite.sh     # 25개 시험, 모델 호출 없음(무비용) · 약 6분, 케이스별 소요 시간 표시
 ```
 
 게이트가 **빨간불을 낼 줄 아는지**를 매번 확인한다. 통과만 보는 검증은 검증이 아니다.
@@ -86,6 +86,10 @@
 | 남의 프로젝트 Unity | 대상에서 제외 | 제외, 내 것만 선별 (양쪽 다 확인) |
 | 크래시 회수 5종 | 죽은 판만 INTERRUPTED | 그대로, DONE 경로 없음 (PID 재사용도 잡음) |
 | 실제 잔재 회수 | RUNNING 2건 회수 | task 15·56 → INTERRUPTED (worktree 보존) |
+| Provider 인증 실검사 | 로그아웃 CLI는 AVAILABLE 아님 | AUTH_REQUIRED (가짜 CLI로 확인) |
+| 장애 분류 | 한도/인증/과금 구분, 코드 오류는 제외 | 그대로 (CS 오류를 장애로 안 봄) |
+| Provider 승계 | 시도 미차감 + 인수인계 | nc_p1 429 → nc_p2 PASS, 프롬프트에 앞 diff 실림 |
+| 전 Provider 불가 | 억지로 안 돌리고 보존 | BLOCKED_CLOUD_REQUIRED, rc=3, 재개 가능 |
 
 ## 에이전트 등급 (사다리)
 
@@ -134,6 +138,27 @@ RAM 퍼센트 하나로 판단하지 않는다. ①시스템 여유 ②스왑 �
 `unity-kill`이 따로 있는 이유: 이 기계에는 **다른 세션의 Unity**가 같이 돈다. 전역
 `pkill -f Unity`는 남의 10분짜리 검증을 죽인다(2026-09-11에 실제로 그럴 뻔했다). 그래서 선별을
 코드(`safety.unity_procs`)에 넣고 NC로 양쪽(내 것은 고름 / 남의 것은 제외)을 시험한다.
+
+## Provider 독립성
+
+```bash
+./autodev providers [--refresh]     # 실제 인증·한도 상태 (설치 여부가 아니다)
+./autodev resume-blocked [--run]    # Provider가 없어 보존해둔 Task 재개
+```
+
+특정 업체를 필수 의존성으로 두지 않는다. 시작할 때 `codex login status` · `claude auth status` ·
+`grok models` · ollama `/api/tags`로 **실제로 물어본다** — `which`로 찾았다고 AVAILABLE이 아니다.
+상태는 일곱(AVAILABLE/UNAVAILABLE/AUTH_REQUIRED/LIMITED/RATE_LIMITED/ERROR/DISABLED)이고,
+확인하지 못하면 LIMITED다(초록으로 세지 않는다).
+
+배정은 **이름이 아니라 능력**(CODING·PLANNING·REVIEW·RESEARCH·LONG_CONTEXT·LOCAL·LOW_COST)으로 한다.
+실행 중 429·인증 만료·과금 문제를 만나면 **코드 실패와 구분해서** 기록하고(시도 미차감) 다음
+Provider로 승계한다. 승계는 재시작이 아니다 — worktree를 그대로 두고 목표·완료조건·지금까지의
+diff·변경 파일·Unity 판정·오류·지난 시도·남은 일을 인수인계 문서로 넘긴다(`handoff.py`).
+
+전부 막히면 로컬 모드로 내려가되, **로컬이 감당 못 하는 일은 억지로 시키지 않고**
+`BLOCKED_CLOUD_REQUIRED`로 보존한다. Provider가 살아나면 `resume-blocked --run`으로 이어서 한다.
+대체 후보에서 reviewer·planner는 뺀다 — 리뷰어가 구현자가 되면 자기 작업을 자기가 승인하게 된다.
 
 ## 크래시 복구
 

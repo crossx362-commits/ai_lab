@@ -30,6 +30,7 @@
 - PHASE 6 Astra Supervisor(작업 분해·승격·최종 리뷰): 완료 [2026-09-11]
 - PHASE 7 Memory Manager: 완료 [2026-09-11]
 - PHASE 8 Crash Recovery: 완료 [2026-09-11]
+- Provider 독립성(인증 실검사·능력 배정·승계·로컬 보존): 완료 [2026-09-11]
 - PHASE 9 Windows Worker: 대기
 - PHASE 10 GUI: 대기
 
@@ -45,8 +46,11 @@
 - [x] [2026-09-11] PHASE 6 — Astra Supervisor(작업 분해·최종 리뷰)
 - [x] [2026-09-11] PHASE 7 — Memory Manager(압박·스왑 추세 판정, Unity 슬롯 축소, `unity-kill` 범위 한정)
 - [x] [2026-09-11] PHASE 8 — Crash Recovery(주인 없는 RUNNING을 INTERRUPTED로 회수, DONE 경로 없음)
+- [x] [2026-09-11] Provider 독립성 — 오너 지시(특정 업체를 필수 의존성으로 두지 않는다)
 - [ ] [2026-09-11] PHASE 9 — Windows Worker(선택)
 
 ## 막힘
+- 스왑이 찬 상태(RED)에서는 시작 전 최대 300초 대기가 걸린다 — 멎은 게 아니라 규칙이다.
+  NC 한 판이 그것 때문에 197초였다(스위트가 케이스별 소요를 찍는다).
 - Unity 라이선스 핸드셰이크에서 멈추면 진행 없음을 감지하지 못한다 — 타임아웃까지 기다린다.
 - (닫힘) RUNNING으로 남은 task 회수 — `autodev recover`. 실제 잔재 2건(task 15·56)을 회수했다.
