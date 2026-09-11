@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import proc
+from . import proc, safety
 from .config import Target
 
 OK_MARKER = "AUTODEV_COMPILE_OK"
@@ -53,6 +53,7 @@ def compile_check(
     conn=None,
     task_id=None,
     attempt_id=None,
+    unity_slots: int = safety.DEFAULT_UNITY_SLOTS,
 ) -> UnityResult:
     """배치 모드로 Unity를 열어 컴파일 여부를 판정한다."""
     unity_log = Path(f"{log_prefix}.unity.log")
@@ -74,16 +75,18 @@ def compile_check(
         str(unity_log),
     ]
 
-    r = proc.run(
-        cmd,
-        cwd=project_path,
-        timeout=target.unity_timeout_sec,
-        log_prefix=Path(f"{log_prefix}.unity"),
-        conn=conn,
-        task_id=task_id,
-        attempt_id=attempt_id,
-        kind="unity",
-    )
+    # 16GB 기계에서 Unity를 동시에 여럿 띄우면 스왑으로 전부 느려진다 — 슬롯으로 제한한다.
+    with safety.unity_slot(slots=unity_slots, timeout=target.unity_timeout_sec):
+        r = proc.run(
+            cmd,
+            cwd=project_path,
+            timeout=target.unity_timeout_sec,
+            log_prefix=Path(f"{log_prefix}.unity"),
+            conn=conn,
+            task_id=task_id,
+            attempt_id=attempt_id,
+            kind="unity",
+        )
 
     log_text = unity_log.read_text(encoding="utf-8", errors="replace") if unity_log.is_file() else ""
     combined = log_text + "\n" + (r.stdout or "") + "\n" + (r.stderr or "")

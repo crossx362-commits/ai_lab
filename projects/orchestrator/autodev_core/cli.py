@@ -17,8 +17,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import config, db, gitwt, logs, proc, unityrun
-from .agents import REGISTRY
+from . import agents, config, db, gitwt, logs, proc, safety, unityrun
 
 
 def _p(msg: str = "") -> None:
@@ -77,7 +76,7 @@ def cmd_verify(args) -> int:
     prefix = config.LOG_DIR / f"verify-{_ts()}"
     _p(f"Unity 컴파일 판정: {project}")
     conn = db.connect()
-    r = unityrun.compile_check(t, project, log_prefix=prefix, conn=conn)
+    r = unityrun.compile_check(t, project, log_prefix=prefix, conn=conn, unity_slots=cfg.unity_slots)
     _p(f"  verdict : {r.verdict}")
     _p(f"  reason  : {r.reason}")
     _p(f"  exit    : {r.exit_code}   ({r.duration_s:.1f}s)")
@@ -98,11 +97,23 @@ def cmd_run(args) -> int:
     cfg = config.load()
     t = cfg.target(args.target)
     agent_cfg = cfg.agent(args.agent)
-    agent_cls = REGISTRY.get(args.agent)
-    if agent_cls is None:
-        _p(f"미지원 agent: {args.agent}")
+    try:
+        agent = agents.build(agent_cfg)
+    except KeyError as e:
+        _p(str(e))
         return 2
-    agent = agent_cls(agent_cfg)
+
+    if safety.stop_requested():
+        _p(f"STOP 상태다 — 새 작업을 시작하지 않는다 ({safety.STOP_FILE})\n  해제: autodev resume")
+        return 2
+
+    # 디스크는 시작 전에 막는다 — worktree 중간에 터지면 Unity Library가 반쯤 남는다.
+    try:
+        free = safety.ensure_disk(t.repo)
+        _p(f"[디스크] 여유 {free:.1f}GB")
+    except safety.SafetyError as e:
+        _p(f"중단: {e}")
+        return 2
 
     if not gitwt.is_repo(t.repo):
         _p(f"git 저장소가 아니다: {t.repo}")
@@ -133,7 +144,13 @@ def cmd_run(args) -> int:
     final_reason = "시도를 시작하지 못했다"
     commit_hash = None
 
+    stopped = False
     for n in range(1, max_attempts + 1):
+        if safety.stop_requested():
+            stopped = True
+            final_verdict, final_reason = "UNKNOWN", "STOP 요청으로 중단(시도 시작 전)"
+            _p(f"\n  → STOP: {final_reason}")
+            break
         attempt_id = db.create_attempt(conn, task_id, n, args.agent, agent.model_name())
         db.update_task(conn, task_id, attempts=n)
         prefix = config.LOG_DIR / f"task{task_id:04d}-a{n}"
@@ -155,6 +172,17 @@ def cmd_run(args) -> int:
         db.record_usage(conn, task_id=task_id, attempt_id=attempt_id, agent=args.agent,
                         model=agent.model_name(), ok=ar.ok, duration_s=ar.duration_s,
                         prompt_chars=len(prompt), output_chars=len(ar.output or ""))
+
+        # STOP이 걸린 뒤에 에이전트가 죽어 돌아온 것을 "실패"로 기록하지 않는다 —
+        # 중단은 실패가 아니다. 여기서 상태를 STOPPED로 남기고 빠진다.
+        if safety.stop_requested():
+            db.update_attempt(conn, attempt_id, status="STOPPED", agent_exit=ar.exit_code,
+                              reason="STOP 요청으로 중단", ended_at=db.now())
+            db.update_task(conn, task_id, attempts=n - 1)
+            stopped = True
+            final_verdict, final_reason = "UNKNOWN", "STOP 요청으로 중단(에이전트 실행 중)"
+            _p(f"  → STOP: {final_reason}")
+            break
 
         # 0) 인프라 실패는 "이 목표가 어렵다"가 아니다 — 시도를 태우지 말고 즉시 세운다.
         #    (CLI 부재·타임아웃을 "3회 실패"로 오판해 멀쩡한 과제를 보류시킨 전례가 있다.)
@@ -187,7 +215,21 @@ def cmd_run(args) -> int:
             final_verdict, final_reason = "FAILED", reason
             continue
 
-        # 2) 허용 범위 밖을 건드렸는가
+        # 2) 검증 장치를 건드렸는가 — 게이트를 지워 PASS를 만드는 길을 코드로 막는다.
+        tampered = gitwt.touches_protected(ch.files, t.protected_globs)
+        if tampered:
+            reason = f"검증 장치 변조 시도: {', '.join(tampered[:5])}"
+            db.update_attempt(conn, attempt_id, status="FAILED", agent_exit=ar.exit_code,
+                              changed_files=len(ch.files), changed_lines=ch.lines,
+                              compile_verdict="NOT_RUN", reason=reason, ended_at=db.now())
+            _p(f"  → FAILED: {reason} (Unity는 돌리지 않는다)")
+            gitwt.restore_tracked(wt)
+            failure = {"n": n, "verdict": "TAMPER", "reason": reason,
+                       "errors": "검증 장치(Assets/AutoDev)는 수정 대상이 아니다. 되돌렸다."}
+            final_verdict, final_reason = "FAILED", reason
+            continue
+
+        # 3) 허용 범위 밖을 건드렸는가
         bad = gitwt.violates_write_scope(ch.files, t.allowed_write_globs)
         if bad:
             reason = f"허용 범위 밖 파일 수정: {', '.join(bad[:5])}"
@@ -199,10 +241,11 @@ def cmd_run(args) -> int:
             final_verdict, final_reason = "FAILED", reason
             continue
 
-        # 3) Unity 판정
+        # 4) Unity 판정
         _p(f"  Unity 컴파일 판정 중 (timeout {t.unity_timeout_sec}s)…")
         ur = unityrun.compile_check(t, wt, log_prefix=prefix, conn=conn,
-                                    task_id=task_id, attempt_id=attempt_id)
+                                    task_id=task_id, attempt_id=attempt_id,
+                                    unity_slots=cfg.unity_slots)
         _p(f"  Unity: {ur.verdict} — {ur.reason} ({ur.duration_s:.1f}s)")
         for e in ur.errors[:8]:
             _p(f"    {e}")
@@ -230,7 +273,10 @@ def cmd_run(args) -> int:
 
     # 결과 확정
     # DONE은 오직 Unity PASS에서만 나온다. 나머지는 사람이 보라고 BLOCKED로 세운다(§9).
-    status = "DONE" if final_verdict == "PASS" else "BLOCKED"
+    if stopped:
+        status = "STOPPED"
+    else:
+        status = "DONE" if final_verdict == "PASS" else "BLOCKED"
     db.update_task(conn, task_id, status=status, verdict=final_verdict,
                    reason=final_reason, commit_hash=commit_hash, ended_at=db.now())
 
@@ -281,12 +327,25 @@ def cmd_status(args) -> int:
 
 
 def cmd_stop(args) -> int:
+    # 순서가 중요하다: **플래그부터** 세운다. 프로세스를 먼저 죽이면 그 사이에 루프가
+    # 다음 시도를 시작해버린다(실제로 그렇게 한 번 안 멈췄다).
+    safety.request_stop(args.reason or "")
+    _p(f"STOP 플래그: {safety.STOP_FILE}")
     conn = db.connect()
     notes = proc.stop_all(conn)
     if not notes:
-        _p("실행 중으로 기록된 프로세스 없음")
+        _p("  실행 중으로 기록된 프로세스 없음")
     for n in notes:
         _p(f"  {n}")
+    _p("재개하려면: autodev resume")
+    return 0
+
+
+def cmd_resume(args) -> int:
+    if safety.clear_stop():
+        _p("STOP 해제됨")
+    else:
+        _p("STOP 상태가 아니었다")
     return 0
 
 
@@ -303,6 +362,26 @@ def cmd_clean(args) -> int:
         _p(f"worktree 제거: {t['worktree']}")
         if args.delete_branch:
             _p(f"브랜치 삭제: {t['branch']}")
+    return 0
+
+
+def cmd_gc(args) -> int:
+    cfg = config.load()
+    t = cfg.target(args.target)
+    conn = db.connect()
+    # DB가 아는 worktree는 전부 "잔재 아님"이다 — 끝난 것은 아래에서 따로 보고한다.
+    # (둘을 섞어 같은 경로를 두 가지로 말한 적이 있다.)
+    keep = {r["worktree"] for r in db.list_tasks(conn, 10**6) if r["worktree"]}
+    _p(f"[디스크] 여유 {safety.free_gb(t.repo):.1f}GB")
+    for n in gitwt.gc(t.repo, keep):
+        _p(f"  {n}")
+    stale = [r for r in db.list_tasks(conn, 10**6)
+             if r["worktree"] and Path(r["worktree"]).is_dir() and r["status"] in ("DONE", "BLOCKED")]
+    if stale:
+        _p(f"  끝난 task의 worktree {len(stale)}개가 남아 있다 (증거 보존용). "
+           f"지우려면: autodev clean --task <N> [--delete-branch]")
+        for r in stale[:10]:
+            _p(f"    task {r['id']} {r['status']:8s} {r['worktree']}")
     return 0
 
 
@@ -329,8 +408,15 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--limit", type=int, default=20)
     s.set_defaults(func=cmd_status)
 
-    st = sub.add_parser("stop", help="실행 중 프로세스 그룹 정리")
+    st = sub.add_parser("stop", help="STOP 플래그 + 실행 중 프로세스 그룹 정리")
+    st.add_argument("--reason", default="")
     st.set_defaults(func=cmd_stop)
+
+    rs = sub.add_parser("resume", help="STOP 해제")
+    rs.set_defaults(func=cmd_resume)
+
+    g = sub.add_parser("gc", help="잔재 worktree 점검·prune")
+    g.set_defaults(func=cmd_gc)
 
     c = sub.add_parser("clean", help="worktree 정리")
     c.add_argument("--task", type=int, required=True)

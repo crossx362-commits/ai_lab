@@ -1,6 +1,7 @@
 {
   "default_target": "sandbox",
   "max_attempts": 3,
+  "unity_slots": 2,
   "unity_editor_template": "/Applications/Unity/Hub/Editor/{version}/Unity.app/Contents/MacOS/Unity",
   "targets": {
     "sandbox": {
@@ -8,11 +9,13 @@
       "unity_project": "sandbox",
       "unity_version": "6000.3.14f1",
       "allowed_write_globs": ["Assets/**"],
+      "protected_globs": ["Assets/AutoDev/**"],
       "unity_timeout_sec": 1800
     }
   },
   "agents": {
     "codex": {
+      "type": "codex",
       "bin": "codex",
       "model": null,
       "sandbox_mode": "workspace-write",

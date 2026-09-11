@@ -26,15 +26,18 @@ class Target:
     unity_editor: Path
     unity_timeout_sec: int
     allowed_write_globs: list[str]
+    protected_globs: list[str]
 
 
 @dataclass
 class AgentConfig:
     name: str
+    type: str
     bin: str
     model: str | None
     sandbox_mode: str
     timeout_sec: int
+    args: list[str]
 
 
 @dataclass
@@ -42,6 +45,7 @@ class Config:
     raw: dict
     default_target: str
     max_attempts: int
+    unity_slots: int
 
     def target(self, name: str | None = None) -> Target:
         name = name or self.default_target
@@ -67,6 +71,7 @@ class Config:
             unity_editor=editor,
             unity_timeout_sec=int(t.get("unity_timeout_sec", 1800)),
             allowed_write_globs=list(t.get("allowed_write_globs", ["**"])),
+            protected_globs=list(t.get("protected_globs", [])),
         )
 
     def agent(self, name: str) -> AgentConfig:
@@ -75,10 +80,12 @@ class Config:
             raise ConfigError(f"알 수 없는 agent: {name}")
         return AgentConfig(
             name=name,
+            type=a.get("type", name),
             bin=a.get("bin", name),
             model=a.get("model"),
             sandbox_mode=a.get("sandbox_mode", "workspace-write"),
             timeout_sec=int(a.get("timeout_sec", 900)),
+            args=list(a.get("args", [])),
         )
 
 
@@ -99,6 +106,7 @@ def load(path: Path | None = None) -> Config:
         raw=raw,
         default_target=raw.get("default_target", "sandbox"),
         max_attempts=int(raw.get("max_attempts", 3)),
+        unity_slots=int(raw.get("unity_slots", 2)),
     )
 
 

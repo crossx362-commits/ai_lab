@@ -87,6 +87,42 @@ def remove_worktree(repo: Path, wt: Path, branch: str | None = None) -> None:
         git(repo, "branch", "-D", branch, check=False)
 
 
+def list_worktrees(repo: Path) -> list[dict]:
+    out, cur = [], {}
+    for ln in git(repo, "worktree", "list", "--porcelain").splitlines():
+        if not ln.strip():
+            if cur:
+                out.append(cur)
+                cur = {}
+            continue
+        k, _, v = ln.partition(" ")
+        cur[k] = v
+    if cur:
+        out.append(cur)
+    return out
+
+
+def gc(repo: Path, keep_paths: set[str]) -> list[str]:
+    """등록만 남은 worktree와 DB가 모르는 잔재를 정리한다.
+
+    잔재 worktree는 디스크만 먹는 게 아니다 — 다음 판이 그걸 자기 것으로 오인하면
+    "누가 고쳤는지" 자체가 흐려진다.
+    """
+    notes = []
+    git(repo, "worktree", "prune")
+    notes.append("git worktree prune 실행")
+    for wt in list_worktrees(repo):
+        path = wt.get("worktree")
+        if not path or path == str(repo):
+            continue
+        if path in keep_paths:
+            continue
+        if "/.autodev/worktrees/" not in path:
+            continue  # 우리가 만든 것만 손댄다
+        notes.append(f"DB에 없는 잔재 worktree: {path}")
+    return notes
+
+
 def collect_changes(wt: Path, base: str) -> Changes:
     """추적/미추적 모두 센다 — 새 파일만 만들고 커밋 안 한 경우를 '변경 없음'으로 오판하지 않기 위해."""
     # 미추적 파일도 diff에 포함시키려면 일단 인덱스에 올린다(커밋은 별도).
@@ -107,9 +143,13 @@ def collect_changes(wt: Path, base: str) -> Changes:
     return Changes(files=names, insertions=ins, deletions=dele, diff=diff)
 
 
-def reset_worktree_to_base(wt: Path, base: str) -> None:
-    """실패한 시도를 되돌린다. reset 금지 규칙을 우회하지 않도록 checkout으로만 되돌린다."""
-    git(wt, "checkout", "--", ".", check=False)
+def restore_tracked(wt: Path, ref: str = "HEAD") -> None:
+    """추적 파일을 ref 상태로 되돌린다(스테이지·작업본 모두).
+
+    `reset`은 이 모듈에서 금지돼 있으므로 `restore`만 쓴다. 새로 생긴 미추적 파일은 남긴다 —
+    지우는 것은 되돌릴 수 없고, 여기서 필요한 건 "변조된 게이트 복구"뿐이다.
+    """
+    git(wt, "restore", "--source", ref, "--staged", "--worktree", "--", ".", check=False)
 
 
 def commit(wt: Path, message: str) -> str | None:
@@ -118,6 +158,17 @@ def commit(wt: Path, message: str) -> str | None:
         return None
     git(wt, "commit", "-m", message)
     return head(wt)
+
+
+def touches_protected(files: list[str], protected_globs: list[str]) -> list[str]:
+    """검증 장치를 건드린 파일 목록.
+
+    AI가 테스트·게이트를 지워서 PASS를 만드는 것을 금지한다(§2-16). 프롬프트로 부탁하는 것과
+    코드로 막는 것은 다르다 — 부탁은 언젠가 무시된다.
+    """
+    import fnmatch
+
+    return [f for f in files if any(fnmatch.fnmatch(f, g) for g in protected_globs)]
 
 
 def violates_write_scope(files: list[str], allowed_globs: list[str]) -> list[str]:
