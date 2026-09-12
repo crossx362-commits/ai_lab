@@ -264,6 +264,8 @@ namespace Ulon.Editor
             Gate(AssertHouseRoofPiecesDontOverlap);
             Gate(AssertHouseRoofNotStretchedNegativeControl);
             Gate(AssertHouseRoofNotStretched);
+            Gate(AssertSceneKindFoldersNegativeControl);
+            Gate(AssertSceneKindFolders);
             Gate(AssertHuntSpotsApartNegativeControl);           // 간격 자는 `AssertHuntGround` 안에서 잰다
             Gate(AssertDoorFitsPersonNegativeControl);           // 배율을 뺀 집은 빨간불이어야 한다(랩 B)
             Gate(AssertDoorFitsPerson);                          // 문이 사람보다 큰가 — 킷 배율의 근거

@@ -49,6 +49,7 @@ namespace Ulon.Editor
             ScatterPlain(new[] { Tuft, Bush, BushL, RockW });
             ScatterHuntCover(RockW, BushL);
             BuildTestChamber(WorldRegions.TestChamber, Fence, Poles, Cart, RockW);
+            EnsureSceneKindFolders();
         }
 
         /// <summary>
@@ -513,7 +514,7 @@ namespace Ulon.Editor
             var go = Place(path, pos, Quaternion.Euler(0f, euler.y, 0f));
             if (go == null)
                 return;
-            go.transform.SetParent(parent, true);
+            ParentUnderKind(parent, go.transform);
         }
 
         /// <summary>

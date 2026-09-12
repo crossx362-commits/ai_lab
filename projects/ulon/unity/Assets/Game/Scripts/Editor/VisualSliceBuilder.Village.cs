@@ -118,6 +118,7 @@ namespace Ulon.Editor
             FramePlayCamera();
             ApplyVillageMaterials();
             AssertVillageVisuals();
+            EnsureSceneKindFolders();
         }
 
         static void ApplyVillageDecor(Transform parent, string Fence, string Gate, string Hedge, string Lantern,

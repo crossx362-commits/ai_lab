@@ -44,7 +44,7 @@ namespace Ulon.Editor
             };
         }
 
-        /// <summary>한 구역의 소품 노드 — 실내는 `DungeonFurn*` 직계 자식, 야외는 렌더러를 가진 직계 자식.</summary>
+        /// <summary>한 구역의 소품 노드 — 실내는 `DungeonFurn*` 직계 자식, 야외는 렌더러를 가진 직계(또는 `Kind*` 한 겹 아래) 자식.</summary>
         public static List<Transform> Props(Zone zone, out GameObject root)
         {
             root = GameObject.Find(zone.Root);
@@ -59,6 +59,19 @@ namespace Ulon.Editor
                     continue;
                 if (zone.Indoor && !child.name.StartsWith("DungeonFurn", StringComparison.Ordinal))
                     continue;
+                if (!zone.Indoor && VisualSliceBuilder.IsKindFolder(child.name))
+                {
+                    for (int g = 0; g < child.childCount; g++)
+                    {
+                        var leaf = child.GetChild(g);
+                        if (!leaf.gameObject.activeInHierarchy)
+                            continue;
+                        if (leaf.GetComponentInChildren<Renderer>(false) == null)
+                            continue;
+                        list.Add(leaf);
+                    }
+                    continue;
+                }
                 if (child.GetComponentInChildren<Renderer>(false) == null)
                     continue;
                 list.Add(child);
