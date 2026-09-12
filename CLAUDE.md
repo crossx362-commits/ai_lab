@@ -430,3 +430,6 @@ if hasattr(sys.stdout, "reconfigure"):
 - **Telegram bot**: `TELEGRAM_BOT_README.md`
 - **Petnna setup**: `projects/petnna/README.md`
 - **DESIGN.md 참고 자료(2026-07-06)**: `references/awesome-design-md/design-md/<사이트>/DESIGN.md` — 73개 실사이트 디자인 시스템(색상·타이포·컴포넌트) 추출본. 적용 대상 미정(petnna/bboggl/대시보드 후보) — 사용 시 해당 프로젝트 루트에 원하는 `DESIGN.md`를 복사해 붙여넣고 AI에게 "이 디자인처럼 만들어줘" 요청.
+
+<!-- codex-loop-mode-guardrail-2026-09-12 -->
+- 2026-09-12: 오너가 요구한 그록 방식 자율개발을 예약 작업으로 잘못 대체함. 이 요청은 상주 부모 프로세스가 새 CLI 세션을 연속 실행하는 방식이다. `projects/ulon/loop/codex_loop.py`로 구현하고 기존 Codex 예약은 PAUSED. 회귀 검사는 `projects/ulon/tools/test_codex_loop.py`(중복 잠금·STOP·새 세션·실패 제한·타임아웃). 예약으로 다시 대체하지 않는다.

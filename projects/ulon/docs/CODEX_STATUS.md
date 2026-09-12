@@ -24,9 +24,12 @@
 - 최종 Unity 검사: `output/ulon-codex/map-green.log`, `CODEX_WORLD_MAP_PASS: 9 behavior checks`, exit 0.
 - 독립 코드 리뷰 후 작은 창 범례 폭·지도 경계 표식 문제 수정, 재검토에서 추가 결함 없음.
 - 기존 Blender 가로등: `projects/ulon/art/storybook/`. Blender 검증만 완료, Unity 미반영.
-- Codex 자동 작업 `codex-ui` ACTIVE, 10분 간격, 현재 대화 연결 확인.
-  저장 위치 `/Users/junholee/.codex/automations/codex-ui/automation.toml`.
-  등록은 확인했지만 예약된 첫 후속 실행은 아직 관찰하지 않았다.
+- 실행 방식 수정: 예약 `codex-ui` PAUSED. 그록 방식의 독립 `loop/codex_loop.py` 프로세스 사용.
+- 실제 시작: 2026-09-12 16:57 KST, supervisor PID 45326/PGID 45326, 첫 CLI PID 45328, Codex #2.
+- `output/ulon-codex/loop_0002.jsonl`에서 turn.started와 지침 파일 읽기 도구 실행 확인.
+- 종료→45초 대기→새 세션. 한 바퀴 90분, 연속 세션 실패 3회 정지. STOP 파일은 `loop/CODEX_STOP`.
+- 프로세스 검사 6개 PASS: 새 세션 반복, 시작 전/바퀴 후 정지, 중복 잠금, 3회 실패, 타임아웃.
+- PID와 로그는 실행 증거이며 개발 작업 완료 증거가 아니다.
 - 공유 보드 API에서 owner=codex 카드 5개 확인, Grok #16 커밋 이후에도 유지됨.
 - 전체 하네스 exit 1: 기존 데몬 중지·백업 지연과 새 아트 미분류 경고. 하네스나 운영 데몬은 수정하지 않았다.
 
