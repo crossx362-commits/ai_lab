@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T14:30:00+09:00",
+  "updated_at": "2026-09-12T14:50:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -42,11 +42,11 @@
       "title": "행동할 때 타격·시전 체감 (VFX/SFX/모션)",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": null,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "INBOX 「돌아다니기만 되고 행동 느낌이 없다」. 다음 바퀴 우선. 에디터 플레이로 확인 가능.",
+      "status": "완료",
+      "assigned_loop": 8,
+      "completed_loop": 8,
+      "commit": "3b81de7b",
+      "rationale": "씬에 템플릿 없어 Play가 무음. Ensure+시전 방송. 플레이 샷에 타격 불티.",
       "fail_streak": 0
     },
     {
