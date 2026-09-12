@@ -136,5 +136,82 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("잰 뒤 지붕 조각 수가 달라졌습니다 — 계측이 세계를 바꿨습니다.");
             Debug.Log("[Ulon] 민가 지붕 겹침 양방향 NC 통과 — 조각을 포개면 FAIL · 지우면 다시 통과");
         }
+
+        /// <summary>
+        /// 지붕 조각을 폭만 늘리면 용마루가 낮아져 판때기가 된다(INBOX 2026-09-12 18:20).
+        /// 스케일 x는 킷 배율만 허용한다.
+        /// </summary>
+        static void AssertHouseRoofNotStretched()
+        {
+            string reason = HouseRoofStretchReason(true);
+            if (!string.IsNullOrEmpty(reason))
+                throw new InvalidOperationException(reason);
+        }
+
+        static string HouseRoofStretchReason(bool log)
+        {
+            float kit = VisualSliceBuilder.KitScale;
+            int houses = 0, pieces = 0;
+            var offenders = new List<string>();
+            foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (t.name != "House" && t.name != Ulon.Shared.HousingPlot.HouseObject)
+                    continue;
+                houses++;
+                foreach (Transform c in t)
+                {
+                    if (!c.name.StartsWith("roof", StringComparison.Ordinal))
+                        continue;
+                    pieces++;
+                    if (c.localScale.x > kit * 1.2f)
+                        offenders.Add(t.position.ToString("F1") + " " + c.name + " scale.x=" +
+                                      c.localScale.x.ToString("0.00") + " (kit " + kit.ToString("0.00") + ")");
+                }
+            }
+            if (houses == 0)
+                return "민가를 한 채도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).";
+            if (pieces == 0)
+                return "지붕 조각을 하나도 못 쟀습니다 — 잰 것이 없습니다(0이면 실패).";
+            if (log)
+                Debug.Log("[Ulon] 민가 지붕 늘리기 — " + houses + "채 · 조각 " + pieces +
+                          "개 · 늘린 조각 " + offenders.Count);
+            if (offenders.Count > 0)
+                return "지붕을 폭만 늘린 민가 " + offenders.Count + "장: " + string.Join(", ", offenders) +
+                       " — Kenney 외사면을 폭만 키우면 화면에서 납작한 판이 됩니다. 서쪽+동쪽 두 장으로 용마루를 만듭니다.";
+            return "";
+        }
+
+        static void AssertHouseRoofNotStretchedNegativeControl()
+        {
+            Transform sample = null;
+            foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (t.name != "House")
+                    continue;
+                foreach (Transform c in t)
+                    if (c.name.StartsWith("roof", StringComparison.Ordinal))
+                    { sample = c; break; }
+                if (sample != null)
+                    break;
+            }
+            if (sample == null)
+                throw new InvalidOperationException("지붕 조각이 없습니다 — 잰 것이 없습니다(0이면 실패).");
+            string before = HouseRoofStretchReason(true);
+            if (!string.IsNullOrEmpty(before))
+                throw new InvalidOperationException("지붕 늘리기 NC 실패 — 손대기 전부터 빨간불입니다: " + before);
+            Vector3 old = sample.localScale;
+            bool red;
+            try
+            {
+                sample.localScale = new Vector3(old.x * 2f, old.y, old.z);
+                red = !string.IsNullOrEmpty(HouseRoofStretchReason(false));
+            }
+            finally { sample.localScale = old; }
+            if (!red)
+                throw new InvalidOperationException("지붕 늘리기 NC 실패 — scale.x를 두 배로 했는데 통과했습니다. 빈 통과입니다.");
+            if (!string.IsNullOrEmpty(HouseRoofStretchReason(false)))
+                throw new InvalidOperationException("지붕 늘리기 NC 실패 — 되돌렸는데 빨간불이 남았습니다(계측이 세계를 바꿨습니다).");
+            Debug.Log("[Ulon] 민가 지붕 늘리기 양방향 NC 통과 — 폭만 키우면 FAIL · 되돌리면 통과");
+        }
     }
 }

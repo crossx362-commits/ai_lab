@@ -588,25 +588,41 @@ namespace Ulon.Editor
         /// 민가 지붕 한 채를 놓는 **단 하나의 규칙** — 새로 짓는 집(`PlaceHouse`)과 이미 지어진 집을
         /// 고치는 패스(`EnsureHouseRoofs`)가 같은 함수를 부른다(자가 둘이면 언젠가 갈린다).
         ///
-        /// 박공(gable-end)은 **용마루가 끝나는 칸**을 지붕 조각 대신 채우는 마감재다 — 지붕 칸과 같은
-        /// 방향으로 놓는다. 2026-09-09까지는 용마루 한가운데(x=1.0)에 90°/270°로 돌려 세워 지붕을
-        /// 가로지르는 판때기가 됐다(실측: 박공 1.13×1.16×1.12가 z 0.0~1.1·1.05~2.15를 덮어 네 지붕
-        /// 조각과 겹침 → `48_person_Healer`의 「한 장짜리 판」).
+        /// Kenney Fantasy Town `roof`는 **1칸 외사면**(높은 쪽이 로컬 +X)이다. 폭만 ×2로 늘리면
+        /// 용마루 높이는 그대로라 화면에서 납작한 판이 된다(INBOX 2026-09-12 18:20, 샷
+        /// `loop7_play_minimap`·`loop14_context_house`). 2칸 폭은 서쪽 yaw 0 + 동쪽 yaw 180으로
+        /// 마주 놓아 **용마루 하나**를 만든다. 스케일은 `Place`가 준 KitScale만 — 축을 따로 늘리지 않는다.
+        ///
+        /// 남/북 끝은 `roof-left`/`roof-right`가 박공 마감이다(Blender 실측: left 닫힌 면 +Y, right −Y.
+        /// Unity에서 Y→Z이므로 남=right, 북=left. 동쪽 yaw 180은 Z가 뒤집혀 짝이 바뀐다).
         /// </summary>
         static void PlaceHouseRoof(Transform hp, string roof, string gable, float roofY, int depth, int width = 2)
         {
-            // 조각 하나가 **제 용마루를 가진 1칸짜리 지붕**이다(실측: 앞에서 보면 삼각형이 선다).
-            // 그래서 x로 둘을 나란히 놓으면 용마루가 둘이 되어 지붕이 **M자**로 읽히고 그 골에 벽·굴뚝이
-            // 드러난다(검수 지적 2026-09-09). 한 채는 **용마루 하나**여야 하므로, 폭 방향으로는 조각을
-            // 나누지 않고 **한 장을 집 폭만큼 늘려** 덮고, 깊이(z) 방향으로만 칸을 잇는다.
+            const string Town = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/";
+            // 2칸 폭은 낮은 외사면 left/right만. roof-high는 1칸 통지붕·높은 외사면이라 서+동으로
+            // 놓으면 M자이거나 한쪽이 빈다(샷 loop26_house_shape3). 2층은 벽 높이로만 구분한다.
+            string mid = Town + "roof.fbx";
+            string left = Town + "roof-left.fbx";
+            string right = Town + "roof-right.fbx";
+            if (width < 2)
+            {
+                for (int z = 0; z < depth; z++)
+                {
+                    bool end = z == 0 || z == depth - 1;
+                    DecorLocal(hp, end ? gable : roof, new Vector3(0.5f, roofY, z + 0.5f), Vector3.zero);
+                }
+                return;
+            }
             for (int z = 0; z < depth; z++)
             {
-                bool end = z == 0 || z == depth - 1;
-                string piece = end ? gable : roof;
-                float yaw = z == depth - 1 && depth > 1 ? 180f : 0f;   // 뒤쪽 마감은 반대로 돌려 닫는다
-                var go = DecorLocal(hp, piece, new Vector3(width * 0.5f, roofY, z + 0.5f), new Vector3(0f, yaw, 0f));
-                if (go != null)
-                    go.transform.localScale = new Vector3(width, 1f, 1f) * KitScale;   // 킷 배율 위에 폭만 늘린다
+                bool south = z == 0;
+                bool north = z == depth - 1 && depth > 1;
+                string west = south ? right : (north ? left : mid);
+                string east = south ? left : (north ? right : mid);
+                // Unity에서 외사면의 높은 쪽은 로컬 −X(Blender +X와 반대). 서쪽 yaw 180·동쪽 yaw 0이어야
+                // 높은 쪽이 가운데로 모여 용마루가 된다. 반대면 골(V자)이 된다(샷 loop26_house_final).
+                DecorLocal(hp, west, new Vector3(0.5f, roofY, z + 0.5f), new Vector3(0f, 180f, 0f));
+                DecorLocal(hp, east, new Vector3(width - 0.5f, roofY, z + 0.5f), Vector3.zero);
             }
         }
 
@@ -648,13 +664,22 @@ namespace Ulon.Editor
                 if (pieces.Count == 0)
                     continue;
                 int depth = Mathf.Max(2, Mathf.RoundToInt(maxZ + 0.5f));
-                // **증상이 아니라 목표 상태로 잰다**(검수 조건 2026-09-09 — 곱하지 말고 맞춰라):
-                // 성한 지붕은 깊이 칸마다 **한 장씩**, 용마루가 집 한가운데(x=폭/2)를 지나고, 그 한 장이
-                // 집 폭만큼 늘어나 있다. 증상 목록으로 재면 고친 뒤의 모양이 또 증상으로 걸린다.
-                bool ok = pieces.Count == depth;
+                // 성한 지붕: 깊이×폭 칸마다 한 장, 서쪽 x=0.5·동쪽 x=1.5 모듈, 스케일은 KitScale만
+                // (폭만 늘린 옛 판때기는 여기서 걸려 다시 얹힌다).
+                bool ok = pieces.Count == depth * Width;
                 for (int i = 0; ok && i < pieces.Count; i++)
-                    ok = Mathf.Abs(pieces[i].localPosition.x - Width * 0.5f * KitScale) < 0.05f
-                         && Mathf.Abs(pieces[i].localScale.x - Width * KitScale) < 0.05f;
+                {
+                    float mx = pieces[i].localPosition.x / KitScale;
+                    float yaw = pieces[i].localEulerAngles.y;
+                    bool west = Mathf.Abs(mx - 0.5f) < 0.15f;
+                    bool east = Mathf.Abs(mx - (Width - 0.5f)) < 0.15f;
+                    bool yawOk = (west && Mathf.Abs(Mathf.DeltaAngle(yaw, 180f)) < 8f)
+                                 || (east && Mathf.Abs(Mathf.DeltaAngle(yaw, 0f)) < 8f);
+                    // 2칸 폭에서 gable-end·roof-high는 통지붕/엇갈림 — left/right 외사면만 통과.
+                    bool pieceOk = pieces[i].name.IndexOf("gable-end", StringComparison.Ordinal) < 0
+                                   && pieces[i].name.IndexOf("roof-high", StringComparison.Ordinal) < 0;
+                    ok = yawOk && pieceOk && Mathf.Abs(pieces[i].localScale.x - KitScale) < 0.15f;
+                }
                 if (ok)
                     continue;
                 for (int i = 0; i < pieces.Count; i++)

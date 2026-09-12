@@ -70,6 +70,8 @@ namespace Ulon.Editor
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/roof-gable-end.fbx",
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/roof-high-gable-end.fbx",
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/roof-high.fbx",
+                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/roof-left.fbx",
+                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/roof-right.fbx",
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/roof.fbx",
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stairs-wood.fbx",
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall-bench.fbx",
