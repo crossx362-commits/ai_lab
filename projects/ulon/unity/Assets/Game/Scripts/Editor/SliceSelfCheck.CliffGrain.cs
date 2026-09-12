@@ -75,8 +75,8 @@ namespace Ulon.Editor
 
             samples = 0;
             float sum = 0f;
-            for (float x = -145f; x <= 145f; x += 2.5f)
-                for (float z = -145f; z <= 145f; z += 2.5f)
+            for (float x = -WorldTerrain.InlandLimit; x <= WorldTerrain.InlandLimit; x += 2.5f)
+                for (float z = -WorldTerrain.InlandLimit; z <= WorldTerrain.InlandLimit; z += 2.5f)
                 {
                     if (WorldSplat.MacroSlopeTan(x, z) < 1.0f)      // 큰 경사 45° 아래는 벽이 아니다
                         continue;

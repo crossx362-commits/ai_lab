@@ -60,8 +60,8 @@ namespace Ulon.Editor
         {
             samples = 0;
             int mixed = 0;
-            for (float x = -145f; x <= 145f; x += 2.5f)
-                for (float z = -145f; z <= 145f; z += 2.5f)
+            for (float x = -WorldTerrain.InlandLimit; x <= WorldTerrain.InlandLimit; x += 2.5f)
+                for (float z = -WorldTerrain.InlandLimit; z <= WorldTerrain.InlandLimit; z += 2.5f)
                 {
                     if (WorldSplat.MacroSlopeTan(x, z) < 1.0f)      // 45° 아래는 위에서 본 면이 그린다
                         continue;

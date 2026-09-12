@@ -92,7 +92,7 @@ namespace Ulon.Editor
             float sea = WorldTerrain.SeaLevel;
             for (float x = WorldTerrain.RiverFromX; x >= WorldTerrain.RiverToX; x -= 5f)
             {
-                float cz = WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+                float cz = WorldTerrain.RiverCenterZ(x);
                 if (new Vector2(x, cz).magnitude > WorldTerrain.CoastEnd - 12f) continue;
                 if (new Vector2(x - WorldTerrain.LakeX, cz - WorldTerrain.LakeZ).magnitude
                     < WorldTerrain.LakeRadius + 2f) continue;
@@ -115,7 +115,7 @@ namespace Ulon.Editor
             bool centerWet = WorldTerrain.HeightAt(cx, cz) < WorldTerrain.SeaLevel;
             if (centerWet != centerIsWater)
                 return false;
-            for (float d = 0f; d < 160f; d += 0.25f)
+            for (float d = 0f; d < WorldTerrain.Half; d += 0.25f)
             {
                 float x = cx + dx * d, z = cz + dz * d;
                 if ((WorldTerrain.HeightAt(x, z) < WorldTerrain.SeaLevel) != centerWet)

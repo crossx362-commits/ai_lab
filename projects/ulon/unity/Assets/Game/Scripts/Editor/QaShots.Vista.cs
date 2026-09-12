@@ -29,7 +29,7 @@ namespace Ulon.Editor
         {
             float sea = WorldTerrain.SeaLevel;
             float wx = WorldTerrain.BeachEndM;                  // 못 찾으면 백사장 발치
-            for (float r = 100f; r <= 200f; r += 0.25f)
+            for (float r = WorldTerrain.MountainEnd; r <= WorldTerrain.Half; r += 0.25f)
                 if (WorldTerrain.HeightAt(r, 0f) < sea) { wx = r; break; }
             Debug.Log("[샷] " + name + " — 바다 물가 x=" + wx.ToString("0.0") +
                       " · 22m 앞 수심 " + (sea - WorldTerrain.HeightAt(wx + 22f, 0f)).ToString("0.00") + "m");
@@ -50,8 +50,7 @@ namespace Ulon.Editor
                     WorldTerrain.LakeZ + Mathf.Sin(a * Mathf.Deg2Rad) * WorldTerrain.LakeRadius * 0.5f));
             int lakeCount = targets.Count;
             for (float x = WorldTerrain.RiverFromX; x >= WorldTerrain.RiverToX; x -= 10f)   // 강 중심선
-                targets.Add(new Vector3(x, sea,
-                    WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f));
+                targets.Add(new Vector3(x, sea, WorldTerrain.RiverCenterZ(x)));
 
             // 대상 무리의 중심을 본다 — 호수와 강은 한 줄로 늘어서 있으므로 그 줄의 가운데다.
             var center = Vector3.zero;
@@ -59,11 +58,12 @@ namespace Ulon.Editor
             center /= targets.Count;
 
             float bestScore = -1f;
-            Vector3 bestEye = new Vector3(WorldTerrain.LakeX + 46f, sea + 30f, WorldTerrain.LakeZ + 46f);
+            float s = WorldTerrain.LandScale;
+            Vector3 bestEye = new Vector3(WorldTerrain.LakeX + 46f * s, sea + 30f * s, WorldTerrain.LakeZ + 46f * s);
             string bestWhere = "(후보 없음)";
             foreach (float yaw in new[] { 0f, 30f, 60f, 90f, 120f, 150f, 180f, 210f, 240f, 270f, 300f, 330f })
-            foreach (float dist in new[] { 60f, 80f, 100f, 130f })
-            foreach (float high in new[] { 30f, 45f, 60f, 80f, 100f })
+            foreach (float dist in new[] { 60f * s, 80f * s, 100f * s, 130f * s })
+            foreach (float high in new[] { 30f * s, 45f * s, 60f * s, 80f * s, 100f * s })
             {
                 var eye = center + new Vector3(Mathf.Sin(yaw * Mathf.Deg2Rad) * dist, high,
                                                Mathf.Cos(yaw * Mathf.Deg2Rad) * dist);
@@ -115,20 +115,20 @@ namespace Ulon.Editor
         ///      이 샷의 질문이 「굽이가 굽이로 보이나」인데 **묻는 인자가 하나도 없었다**(곧은 자락도 만점).
         ///   ③ **하늘이 프레임에 들 것** — 근접이라도 물만 가득하면 규모를 못 읽는다.
         ///
-        /// 대상 구간은 **굽이 정점 언저리**다. 중심선이 `sin((x−RiverFromX)·0.06)`이므로 극값은
-        /// 위상 −π/2, 곧 x ≈ −106이다(원장에서 유도한다 — 상수로 박으면 원장이 바뀔 때 어긋난다).
+        /// 대상 구간은 **굽이 정점 언저리**다. 중심선은 `WorldTerrain.RiverCenterZ`이므로 극값은
+        /// 위상 −π/2에서 유도한다 — 상수로 박으면 원장이 바뀔 때 어긋난다.
         /// </summary>
         static Shot RiverBendShot(string name)
         {
             float sea = WorldTerrain.SeaLevel;
             // 굽이 정점 — 위상 −π/2가 되는 x. 그 둘레 ±15m를 대상으로 잡는다.
-            float peakX = WorldTerrain.RiverFromX - (Mathf.PI * 0.5f) / 0.06f;
+            float peakX = WorldTerrain.RiverFromX - (Mathf.PI * 0.5f) / WorldTerrain.RiverBendFreq;
+            float win = 15f * WorldTerrain.LandScale;
             var targets = new System.Collections.Generic.List<Vector3>();
-            for (float x = peakX + 15f; x >= peakX - 15f; x -= 5f)
+            for (float x = peakX + win; x >= peakX - win; x -= 5f)
             {
                 float cx = Mathf.Clamp(x, WorldTerrain.RiverToX, WorldTerrain.RiverFromX);
-                targets.Add(new Vector3(cx, sea,
-                    WorldTerrain.RiverZ + Mathf.Sin((cx - WorldTerrain.RiverFromX) * 0.06f) * 6f));
+                targets.Add(new Vector3(cx, sea, WorldTerrain.RiverCenterZ(cx)));
             }
             // 양안 — 중심선 각 점에서 좌우로 나가 물이 끝나는 자리.
             var left = new System.Collections.Generic.List<Vector3>();

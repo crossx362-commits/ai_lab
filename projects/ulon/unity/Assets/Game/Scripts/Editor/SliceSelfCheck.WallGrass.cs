@@ -35,8 +35,8 @@ namespace Ulon.Editor
             float tanLimit = Mathf.Tan(WallSlopeDeg * Mathf.Deg2Rad);
             int wall = 0, grassy = 0;
             float worstUnflagged = 0f, worst = 0f;
-            for (float x = -145f; x <= 145f; x += 2.5f)
-                for (float z = -145f; z <= 145f; z += 2.5f)
+            for (float x = -WorldTerrain.InlandLimit; x <= WorldTerrain.InlandLimit; x += 2.5f)
+                for (float z = -WorldTerrain.InlandLimit; z <= WorldTerrain.InlandLimit; z += 2.5f)
                 {
                     if (WorldSplat.MacroSlopeTan(x, z) < tanLimit)
                         continue;

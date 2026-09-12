@@ -72,7 +72,7 @@ namespace Ulon.Editor
                 Debug.Log("[호수] ③ 호수 중심 " + ScreenAt(eye, look, new Vector3(WorldTerrain.LakeX, sea, WorldTerrain.LakeZ)));
                 for (float x = WorldTerrain.RiverFromX; x >= WorldTerrain.RiverToX; x -= 20f)
                 {
-                    float cz = WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+                    float cz = WorldTerrain.RiverCenterZ(x);
                     Debug.Log("[호수] ③ 강 x=" + x.ToString("0") + " " + ScreenAt(eye, look, new Vector3(x, sea, cz)));
                 }
             }
@@ -165,7 +165,8 @@ namespace Ulon.Editor
         public static Reading Measure()
         {
             float sea = WorldTerrain.SeaLevel;
-            const float step = 2f, half = 160f;
+            const float step = 2f;
+            float half = WorldTerrain.Half;
             int n = Mathf.RoundToInt(half * 2f / step) + 1;
             var water = new bool[n, n];
             for (int i = 0; i < n; i++)

@@ -40,8 +40,8 @@ namespace Ulon.Editor
             // ① 두 겹이 덩이로 갈렸나.
             int steep = 0, lightChunk = 0, darkChunk = 0, blur = 0;
             float steepest = 0f;
-            for (float x = -145f; x <= 145f; x += 2.5f)
-                for (float z = -145f; z <= 145f; z += 2.5f)
+            for (float x = -WorldTerrain.InlandLimit; x <= WorldTerrain.InlandLimit; x += 2.5f)
+                for (float z = -WorldTerrain.InlandLimit; z <= WorldTerrain.InlandLimit; z += 2.5f)
                 {
                     float h = WorldTerrain.HeightAt(x, z);
                     if (h < WorldTerrain.LandBase + 6f)
@@ -81,7 +81,7 @@ namespace Ulon.Editor
             {
                 float ca = Mathf.Cos(a * Mathf.Deg2Rad), sa = Mathf.Sin(a * Mathf.Deg2Rad);
                 float shore = -1f;
-                for (float d = 40f; d < 150f; d += 0.5f)
+                for (float d = 40f; d < WorldTerrain.Half; d += 0.5f)
                     if (WorldTerrain.HeightAt(ca * d, sa * d) < WorldTerrain.SeaLevel)
                     { shore = d; break; }
                 if (shore < 0f)

@@ -57,8 +57,8 @@ namespace Ulon.Editor
         {
             samples = 0;
             float fallSum = 0f, contourSum = 0f;
-            for (float x = -145f; x <= 145f; x += 2.5f)
-                for (float z = -145f; z <= 145f; z += 2.5f)
+            for (float x = -WorldTerrain.InlandLimit; x <= WorldTerrain.InlandLimit; x += 2.5f)
+                for (float z = -WorldTerrain.InlandLimit; z <= WorldTerrain.InlandLimit; z += 2.5f)
                 {
                     float tan = WorldSplat.MacroSlopeTan(x, z);
                     if (tan < 1.0f)          // 큰 경사 45° 아래는 늘어남이 눈에 안 띈다

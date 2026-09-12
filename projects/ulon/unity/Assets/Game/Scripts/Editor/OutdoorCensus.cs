@@ -263,8 +263,8 @@ namespace Ulon.Editor
                         {
                             var hi = new Dictionary<int, int>();
                             var where = new Dictionary<int, Vector2>();
-                            for (float x = -145f; x <= 145f; x += 2f)
-                                for (float z = -145f; z <= 145f; z += 2f)
+                            for (float x = -WorldTerrain.InlandLimit; x <= WorldTerrain.InlandLimit; x += 2f)
+                                for (float z = -WorldTerrain.InlandLimit; z <= WorldTerrain.InlandLimit; z += 2f)
                                 {
                                     float h5 = WorldTerrain.HeightAt(x, z);
                                     if (h5 < WorldTerrain.LandBase + 16f)
@@ -301,7 +301,7 @@ namespace Ulon.Editor
                 {
                     float ca = Mathf.Cos(a * Mathf.Deg2Rad), sa = Mathf.Sin(a * Mathf.Deg2Rad);
                     float shore = -1f;
-                    for (float d = 40f; d < 150f; d += 0.5f)
+                    for (float d = 40f; d < WorldTerrain.Half; d += 0.5f)
                         if (WorldTerrain.HeightAt(ca * d, sa * d) < WorldTerrain.SeaLevel)
                         { shore = d; break; }
                     if (shore < 0f)

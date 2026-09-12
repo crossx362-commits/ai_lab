@@ -41,8 +41,8 @@ namespace Ulon.Editor
             var real = new List<float>();
             var planar = new List<float>();
             float steepest = 0f;
-            for (float x = -145f; x <= 145f; x += 2.5f)
-                for (float z = -145f; z <= 145f; z += 2.5f)
+            for (float x = -WorldTerrain.InlandLimit; x <= WorldTerrain.InlandLimit; x += 2.5f)
+                for (float z = -WorldTerrain.InlandLimit; z <= WorldTerrain.InlandLimit; z += 2.5f)
                 {
                     Vector3 n = TerrainNormal(x, z);
                     float slope = Mathf.Acos(Mathf.Clamp01(n.y)) * Mathf.Rad2Deg;

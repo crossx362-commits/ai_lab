@@ -79,7 +79,7 @@ Material:
     m_Floats:
     - _PlanarOnly: 0
     - _TriSharp: 4
-    - _WorldSpan: 300
+    - _WorldSpan: 600
     m_Colors:
     - _Tiles0: {r: 12, g: 3, b: 8, a: 3.5}
     - _Tiles1: {r: 6, g: 4.5, b: 5, a: 2}

@@ -49,7 +49,7 @@ namespace Ulon.Editor
             var baked = new System.Collections.Generic.List<float>();
             for (float x = WorldTerrain.LakeX - WorldTerrain.LakeRadius - 5f; x >= -125f; x -= 0.1f)
             {
-                float cz = WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+                float cz = WorldTerrain.RiverCenterZ(x);
                 ledger.Add(EdgeZ(x, cz, sea, false, terrain));
                 baked.Add(EdgeZ(x, cz, sea, true, terrain));
             }

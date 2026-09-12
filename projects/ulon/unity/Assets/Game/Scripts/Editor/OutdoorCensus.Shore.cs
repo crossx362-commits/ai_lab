@@ -71,7 +71,7 @@ namespace Ulon.Editor
             bool centerWet = WorldTerrain.HeightAt(cx, cz) < WorldTerrain.SeaLevel;
             if (centerWet != centerIsWater)
                 return false;
-            for (float d = 0f; d < 160f; d += 0.25f)
+            for (float d = 0f; d < WorldTerrain.Half; d += 0.25f)
             {
                 float x = cx + dx * d, z = cz + dz * d;
                 bool wet = WorldTerrain.HeightAt(x, z) < WorldTerrain.SeaLevel;

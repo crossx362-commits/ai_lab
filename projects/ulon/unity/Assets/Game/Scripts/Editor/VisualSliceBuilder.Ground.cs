@@ -712,7 +712,7 @@ namespace Ulon.Editor
         /// <summary>**후보를 나란히 굽기 위한 자리** — 0 이상이면 자갈 겹이 그 무늬로 구워진다(−1이면 원장).</summary>
         internal static int GravelPatternOverride = -1;
 
-        /// <summary>판별 테스트용 하이트맵 해상도(−1이면 원장값 513). 굽는 쪽을 실제로 바꾼다.</summary>
+        /// <summary>판별 테스트용 하이트맵 해상도(−1이면 원장 HeightmapResolution). 굽는 쪽을 실제로 바꾼다.</summary>
         internal static int HeightResOverride = -1;
 
         /// <summary>
@@ -723,12 +723,10 @@ namespace Ulon.Editor
         internal static int AlphaResOverride = -1;
 
         /// <summary>
-        /// **도포(알파맵) 해상도 원장값** — 셀 300/512 = 0.586m로 높이 셀과 같은 눈금이다.
-        /// 512를 1024로 올려 봤지만 물가 톱니는 9px→8px로 거의 그대로였다(2026-09-11 판별) —
-        /// 즉 해상도는 **톱니의 상한**만 주고(256으로 내리면 15px로 커진다) 바닥은 다른 데 있다.
-        /// 값어치는 화질이 아니라 **값이 명시된다는 것**이다.
+        /// **도포(알파맵) 해상도 원장값** — 셀은 하이트맵과 같은 눈금(300m÷512).
+        /// 섬 배율과 같이 움직여 셀 크기를 유지한다.
         /// </summary>
-        internal const int AlphaRes = 512;
+        internal const int AlphaRes = WorldTerrain.AlphamapResolution;
 
         /// <summary>후보 시험용 수면 투명도(−1이면 원장대로 불투명).</summary>
         internal static float WaterAlphaOverride = -1f;

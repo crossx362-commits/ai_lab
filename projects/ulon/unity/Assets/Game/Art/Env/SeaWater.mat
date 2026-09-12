@@ -63,6 +63,7 @@ Material:
     m_Floats:
     - _BumpScale: 1
     - _Cutoff: 0.5
+    - _DebugDepth: 0
     - _DeepAlpha: 1
     - _DepthMax: 2.2
     - _DetailNormalMapScale: 1
@@ -74,6 +75,7 @@ Material:
     - _FoamDepthSteep: 0.3
     - _FoamEdgeSoft: 0.38
     - _FoamJitter: 0.4
+    - _FoamLit: 1
     - _FoamMaxAlpha: 0.75
     - _FoamNoiseScale: 0.6
     - _FoamTanFloor: 0.06
@@ -89,6 +91,8 @@ Material:
     - _Parallax: 0.02
     - _RippleCrest: 0.72
     - _RippleCrestStrength: 0.05
+    - _RippleFadeLen: 70
+    - _RippleFadeStart: 30
     - _RippleScale: 0.35
     - _RippleSpeed: 0.06
     - _RippleTint: 0.18

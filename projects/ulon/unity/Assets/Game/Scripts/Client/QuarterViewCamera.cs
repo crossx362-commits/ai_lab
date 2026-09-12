@@ -73,8 +73,9 @@ namespace Ulon.Client
             if (GetComponent<DungeonSightFade>() == null)
                 gameObject.AddComponent<DungeonSightFade>();
             cam.clearFlags = CameraClearFlags.Skybox;
-            if (cam.farClipPlane < 90f)
-                cam.farClipPlane = 90f;
+            float farMin = Ulon.Shared.WorldTerrain.Half;
+            if (cam.farClipPlane < farMin)
+                cam.farClipPlane = farMin;
         }
 
         void LateUpdate()

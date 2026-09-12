@@ -43,7 +43,7 @@ namespace Ulon.Editor
             string widths = "";
             for (float x = WorldTerrain.RiverFromX; x >= WorldTerrain.RiverToX; x -= 5f)
             {
-                float cz = WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+                float cz = WorldTerrain.RiverCenterZ(x);
                 if (!float.IsNaN(prevCz)) bendSum += Mathf.Abs(cz - prevCz);
                 prevCz = cz;
 
@@ -90,7 +90,7 @@ namespace Ulon.Editor
                 int inFrame = 0;
                 for (float x = WorldTerrain.RiverFromX; x >= WorldTerrain.RiverToX; x -= 5f)
                 {
-                    float cz = WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+                    float cz = WorldTerrain.RiverCenterZ(x);
                     var pt = new Vector3(x, sea, cz);
                     if (!InFrame(eye, look, pt)) continue;
                     // **프레임 안 ≠ 화면에 보임** — 첫 판에 가림을 안 봐서 `15`가 「13점」이었는데
@@ -169,7 +169,7 @@ namespace Ulon.Editor
             for (float a = 0f; a < 360f; a += 15f)
             {
                 float dx = Mathf.Cos(a * Mathf.Deg2Rad), dz = Mathf.Sin(a * Mathf.Deg2Rad);
-                for (float d = 60f; d <= 150f; d += 0.5f)
+                for (float d = 60f; d <= WorldTerrain.Half; d += 0.5f)
                     if (WorldTerrain.HeightAt(dx * d, dz * d) < sea)
                     {
                         pts.Add((new Vector2(dx * d, dz * d), new Vector2(dx * (d - 1f), dz * (d - 1f))));
@@ -186,7 +186,7 @@ namespace Ulon.Editor
             var pts = new System.Collections.Generic.List<(Vector2, Vector2)>();
             for (float x = WorldTerrain.RiverFromX; x >= WorldTerrain.RiverToX; x -= 5f)
             {
-                float cz = WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+                float cz = WorldTerrain.RiverCenterZ(x);
                 if (WorldTerrain.HeightAt(x, cz) >= sea) continue;      // 마른 자리엔 물가가 없다
                 for (int side = -1; side <= 1; side += 2)
                     for (float d = 0.5f; d <= 40f; d += 0.5f)

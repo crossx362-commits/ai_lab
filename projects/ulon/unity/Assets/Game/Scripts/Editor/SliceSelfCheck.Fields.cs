@@ -24,6 +24,9 @@ namespace Ulon.Editor
             Vector3 size = t.terrainData.size;
             if (Math.Abs(size.x - WorldTerrain.Span) > 0.1f || Math.Abs(size.z - WorldTerrain.Span) > 0.1f)
                 throw new InvalidOperationException("맵 크기가 " + size.x + "x" + size.z + "입니다 — 원장(WorldTerrain.Span) " + WorldTerrain.Span + "와 다릅니다.");
+            if (t.terrainData.heightmapResolution != WorldTerrain.HeightmapResolution)
+                throw new InvalidOperationException("하이트맵 " + t.terrainData.heightmapResolution +
+                    "²입니다 — 원장 " + WorldTerrain.HeightmapResolution + "²(셀 크기 유지).");
         }
 
         static void AssertEastFieldSlice()

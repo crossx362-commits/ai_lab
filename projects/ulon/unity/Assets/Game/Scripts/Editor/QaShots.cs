@@ -795,7 +795,7 @@ namespace Ulon.Editor
                 Orbit("19_forest", new Vector3(WorldRegions.Forest.X, 0f, WorldRegions.Forest.Z), 38f, 26f),
                 Orbit("20_mine", new Vector3(WorldRegions.Mine.X, 0f, WorldRegions.Mine.Z), 30f, 26f),
                 Orbit("21_testchamber", new Vector3(WorldRegions.TestChamber.X, 0f, WorldRegions.TestChamber.Z), 24f, 22f),
-                Free("14_world_vista", new Vector3(-165f, 95f, -165f), new Vector3(0f, WorldTerrain.LandBase, 0f)),
+                Free("14_world_vista", new Vector3(-165f * WorldTerrain.LandScale, 95f * WorldTerrain.LandScale, -165f * WorldTerrain.LandScale), new Vector3(0f, WorldTerrain.LandBase, 0f)),
                 // **부두에서 건너편 절개면을 마주 본다**(검수 조건 2026-09-09 — 안식각·너덜 랩).
                 // 조망(15)에서는 그 면이 멀어 얼룩이 안 읽힌다. 자리는 지형 원장에서 유도한다:
                 // 부두는 호수 중심에서 마을 쪽으로 반경 92% 자리에 서서 안쪽으로 14m 뻗는다.
@@ -843,7 +843,9 @@ namespace Ulon.Editor
                 // 온 세계 스물한 샷이 같이 바뀐다.
                 // 가까이 붙으면 **늘어난 무늬가 같이 커진다** — 첫 시도(120,34,−40)는 절벽이 화면을 채워
                 // 스미어가 더 적나라했다. 능선이 이어지는 모양을 보여줄 만큼 물러선다.
-                Free("16_mountain_ridge", new Vector3(158f, 72f, -86f), new Vector3(78f, WorldTerrain.LandBase + 24f, 26f)),
+                Free("16_mountain_ridge",
+                    new Vector3(78f * WorldTerrain.LandScale + 80f, 72f, 26f * WorldTerrain.LandScale - 112f),
+                    new Vector3(78f * WorldTerrain.LandScale, WorldTerrain.LandBase + 24f, 26f * WorldTerrain.LandScale)),
             };
 
             // **마을 사람 근접** — 5역할이 서로 다른 모습인지 눈으로 본다(검수 랩 ③사람 완료 기준).

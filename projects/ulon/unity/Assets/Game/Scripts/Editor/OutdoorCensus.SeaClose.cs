@@ -21,7 +21,7 @@ namespace Ulon.Editor
         {
             float sea = WorldTerrain.SeaLevel;
             // 물가를 가로지르는 선 셋 — 바다(+x 방위) · 호수 좌하 · 강 남안.
-            Probe("바다", 1f, 0f, FindWaterline(1f, 0f, 100f, 200f));
+            Probe("바다", 1f, 0f, FindWaterline(1f, 0f, WorldTerrain.MountainStart, WorldTerrain.Half));
             Probe("호수", -1f, -1f, FindLakeLine());
             Probe("강", 0f, 1f, FindRiverLine());
             if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
@@ -52,7 +52,7 @@ namespace Ulon.Editor
         {
             float sea = WorldTerrain.SeaLevel;
             float x = WorldTerrain.RiverFromX - 30f;
-            float cz = WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+            float cz = WorldTerrain.RiverCenterZ(x);
             for (float d = 0.5f; d <= 30f; d += 0.05f)
                 if (WorldTerrain.HeightAt(x, cz + d) >= sea) return new Vector2(x, cz + d);
             return new Vector2(x, cz);

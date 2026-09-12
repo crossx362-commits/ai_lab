@@ -104,7 +104,7 @@ namespace Ulon.Editor
             if (terrain.SampleHeight(new Vector3(WorldTerrain.LakeX, 0f, WorldTerrain.LakeZ)) + origin.y >= WorldTerrain.SeaLevel)
                 throw new InvalidOperationException("호수 중심(" + WorldTerrain.LakeX + ", " + WorldTerrain.LakeZ + ")이 수면 위입니다 — 호수가 파이지 않았습니다.");
             float riverMidX = (WorldTerrain.RiverFromX + WorldTerrain.RiverToX) * 0.5f;
-            float riverMidZ = WorldTerrain.RiverZ + Mathf.Sin((riverMidX - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+            float riverMidZ = WorldTerrain.RiverCenterZ(riverMidX);
             if (terrain.SampleHeight(new Vector3(riverMidX, 0f, riverMidZ)) + origin.y >= WorldTerrain.SeaLevel)
                 throw new InvalidOperationException("강 중앙(" + riverMidX.ToString("0") + ", " + riverMidZ.ToString("0") + ")이 수면 위입니다 — 물길이 이어지지 않았습니다.");
 

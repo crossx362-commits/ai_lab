@@ -590,10 +590,13 @@ namespace Ulon.Shared
         /// 물가에서 이만큼을 넘으면 무슨 경사든 모래가 끝난다.
         /// </summary>
         public const float ShoreHorizCap = 9f;
-        /// <summary>물가를 따라 도는 저주파 — 너른 백사장과 바위가 물까지 내려온 구간을 가른다(랩 ⑥).</summary>
+        /// <summary>물가를 따라 도는 저주파 — 너른 백사장과 바위가 물까지 내려온 구간을 가른다(랩 ⑥).
+        /// 주기는 섬 배율을 탄다 — 좌표만 키우고 주파수를 그대로 두면 같은 강이 다른 노이즈 구간에
+        /// 떨어져 물가 띠 NC가 조용히 초록이 된다(loop#4 실측, 옛 높이 규칙 2.3m).</summary>
         public static float ShoreBeachAt(float wx, float wz)
         {
-            return Mathf.PerlinNoise(wx * 0.012f + 29.3f, wz * 0.012f + 64.1f);
+            float s = WorldTerrain.LandScale;
+            return Mathf.PerlinNoise(wx * 0.012f / s + 29.3f, wz * 0.012f / s + 64.1f);
         }
 
         /// <summary>

@@ -9,7 +9,20 @@ namespace Ulon.Shared
     /// </summary>
     public static class WorldTerrain
     {
-        public const float Span = 300f;          // 지형 한 변
+        /// <summary>
+        /// 섬 수평 배율(INBOX 2026-09-12 「전체 맵 너무 작아」). 한 변 300→600.
+        /// 마을 킷·지역 좌표·사람 키는 타지 않는다 — #2에서 같이 키웠더니 밭·길·언덕 자가 한꺼번에 깨졌다.
+        /// </summary>
+        public const int LandScaleInt = 2;
+        public const float LandScale = LandScaleInt;
+        public const float Span = 300f * LandScale;          // 지형 한 변
+        public const float Half = Span * 0.5f;
+        /// <summary>하이트맵 표본 수. 셀 = 300/512 m 를 유지하려고 배율만 곱한다(513→1025).</summary>
+        public const int HeightmapResolution = 512 * LandScaleInt + 1;
+        /// <summary>알파맵 해상도. 셀을 하이트맵과 같은 눈금(300/512 m)으로 둔다(512→1024).</summary>
+        public const int AlphamapResolution = 512 * LandScaleInt;
+        /// <summary>산·해안 전수 표본의 바깥 한계(옛 145 = 반변−5).</summary>
+        public const float InlandLimit = Half - 5f;
         public const float MaxHeight = 60f;      // Terrain size.y
         public const float SeaLevel = 3.0f;      // 물 표면 높이(바다·강·호수 공용)
         // 평지 기준 높이. 던전 방이 지면 -DungeonDepth에 파이므로 수면(3.0)보다 그만큼 더 위에 있어야 한다 —
@@ -43,12 +56,13 @@ namespace Ulon.Shared
         }
 
         // 체비셰프 거리(정사각 링) 기준 띠. 마을·필드·던전(±68, 방+뚜껑 반경 ~14)은 전부 평지 띠 안이다.
-        public const float FlatMax = 88f;        // 여기까지 평지
-        public const float MountainStart = 92f;  // 산 시작
-        public const float MountainPeak = 105f;  // 능선
-        public const float MountainEnd = 118f;   // 산 끝
-        public const float CoastEnd = 146f;      // 해안 프로필 끝 — 여기부터 바다 바닥
-        public const float MountainHeight = 30f; // 능선 평균 높이(위에 능선 노이즈)
+        // 띠만 LandScale을 탄다 — 지역 좌표는 그대로라 마을 옆 평지가 넓어진다.
+        public const float FlatMax = 88f * LandScale;        // 여기까지 평지
+        public const float MountainStart = 92f * LandScale;  // 산 시작
+        public const float MountainPeak = 105f * LandScale;  // 능선
+        public const float MountainEnd = 118f * LandScale;   // 산 끝
+        public const float CoastEnd = 146f * LandScale;      // 해안 프로필 끝 — 여기부터 바다 바닥
+        public const float MountainHeight = 30f; // 능선 평균 높이(위에 능선 노이즈) — 높이는 미터 그대로
         public const float SeaFloor = 0.4f;
 
         // **백사장**(대장 판정 ⓐ 2026-09-11 「44°로 꺼지는 해안은 상식 모순 — 실제 백사장은 1~5°」).
@@ -61,34 +75,43 @@ namespace Ulon.Shared
         //   ② **백사장** `BeachTopM`→`BeachEndM`   : **선형**으로 완만하게(약 5°) — 물가가 이 안에 있다
         //   ③ 앞바다 `BeachEndM`→`CoastEnd`        : 바다 바닥까지 마저 내려간다
         // 목표는 최댓값이 아니라 **구간**이다(검수 조건) — 너무 완만하면 섬이 접시가 된다.
-        public const float BeachTopM = 126f;               // 백사장 머리(뭍 쪽)
-        public const float BeachEndM = 140f;               // 백사장 발치(물 쪽)
+        public const float BeachTopM = 126f * LandScale;   // 백사장 머리(뭍 쪽)
+        public const float BeachEndM = 140f * LandScale;   // 백사장 발치(물 쪽)
         public const float BeachTopH = SeaLevel + 0.30f;   // 머리는 수면보다 이만큼 높다
         public const float BeachEndH = SeaLevel - 0.55f;   // 발치는 이만큼 잠긴다
         /// <summary>네거티브 컨트롤 — 켜면 옛 해안(118→128 직하)으로 되돌아간다. 게이트가 이 판에서 울어야 한다.</summary>
         public static bool BeachDisabled = false;
 
-        // 호수 — 마을(반경 48)·던전(±68 모서리) 밖 서쪽 평지.
-        public const float LakeX = -70f;
-        public const float LakeZ = 10f;
-        public const float LakeRadius = 21f;
-        public const float LakeDepth = 1.8f;     // 물 아래 깊이
+        // 호수 — 마을(반경 48)·던전(±68 모서리) 밖 서쪽 평지. 섬과 같이 밀어 산·바다와 비율을 지킨다.
+        public const float LakeX = -70f * LandScale;
+        public const float LakeZ = 10f * LandScale;
+        public const float LakeRadius = 21f * LandScale;
+        public const float LakeDepth = 1.8f;     // 물 아래 깊이(사람 키 기준 — 배율 없음)
 
         // 강 — 호수에서 서쪽 바다까지. 산 띠를 협곡으로 통과한다.
-        public const float RiverZ = 10f;
+        public const float RiverZ = 10f * LandScale;
         // 폭 9m짜리 물길은 **조망에서 실 한 줄**이라 「강이 없다」로 읽혔다(검수 랩 ⑥, 14_world_vista).
-        // 섬 한 변이 300m다 — 물길이 지형의 일부로 읽히려면 그 축척에 맞아야 한다.
-        // 8m(폭 16m)로 넓혔더니 이번엔 **호수가 바다로 트인 후미**가 됐다 — 담수호가 아니게 된다.
-        // 조망에서 보이되 호수와 바다 사이에 **목**이 남을 만큼만: 호수 지름 42m의 1/3 아래.
-        public const float RiverHalfWidth = 6.0f;
-        public const float RiverFromX = -80f;
-        public const float RiverToX = -140f;
+        // 섬 한 변이 커지면 물길도 그 축척에 맞춘다. 호수 지름의 1/3 아래를 지킨다.
+        // 8m(폭 16m, 300m 섬)로 넓혔더니 **호수가 바다로 트인 후미**가 됐다 — 비율만 배로 옮긴다.
+        public const float RiverHalfWidth = 6.0f * LandScale;
+        /// <summary>강 둑의 수평 폭(m). 채널이 넓어져도 비탈은 사람 키 기준 — 배율 타면 물가 띠 NC가 죽는다.</summary>
+        public const float RiverBankRamp = 7.2f;
+        public const float RiverFromX = -80f * LandScale;
+        public const float RiverToX = -140f * LandScale;
+        public const float RiverBendFreq = 0.06f / LandScale;  // 강 길이가 배율만큼 늘어도 굽이 개수는 같다
+        public const float RiverBendAmp = 6f * LandScale;
+
+        /// <summary>강 중심선 Z — 굽는 쪽과 자가 같은 식을 쓴다. 복제본을 두지 마라.</summary>
+        public static float RiverCenterZ(float wx)
+        {
+            return RiverZ + Mathf.Sin((wx - RiverFromX) * RiverBendFreq) * RiverBendAmp;
+        }
 
         // **호수는 닫힌 물이고 출구는 하나뿐이다**(대장 판정 2026-09-10: 「호수가 만이 됐다」).
         // 물가에서 뭍으로 올라가는 완만한 둑의 수평 폭 — 물 반경 **바깥**에 둔다.
         // 옛 규칙은 이 둑을 반경 **안쪽** 60%에 두어 물이 원장 21m가 아니라 12m에서 끝났다.
         // 판정 방향은 「자를 실물에 맞추지 말고 `carve`를 원장에 맞춘다」이므로 둑을 밖으로 옮긴다.
-        public const float ShoreRamp = 8f;
+        public const float ShoreRamp = 8f;   // 사람 비탈(m). 섬 배율을 태우면 둑이 완만해져 물가 띠 NC가 죽는다.
 
         /// <summary>후보 시험용 얕은 전이 띠(평소 꺼짐). 켜면 물 높이 ±<see cref="ShoreBandM"/>가 눌린다.</summary>
         public static bool ShoreBandOn = false;
@@ -99,9 +122,9 @@ namespace Ulon.Shared
         public static float ShoreLip = 0.05f;
         // 호수 출구의 반폭 — 여기서 강이 시작한다. 출구 폭(6m)은 호수 지름(42m)의 1/7이라
         // 화면에서 「트인 후미」가 아니라 **목**으로 읽힌다. 하류로 가며 `RiverHalfWidth`로 넓어진다.
-        public const float OutletHalfWidth = 3f;
+        public const float OutletHalfWidth = 3f * LandScale;
         // 출구에서 온전한 강폭이 되기까지의 거리.
-        public const float OutletRunway = 20f;
+        public const float OutletRunway = 20f * LandScale;
 
         /// <summary>NC 전용 — 켜면 출구를 막는다(강이 호수에서 끊겨야 자가 운다). 굽는 쪽은 끄고 쓴다.</summary>
         public static bool OutletDisabled = false;
@@ -113,7 +136,7 @@ namespace Ulon.Shared
         {
             // 정사각 링 그대로 쓰면 화면에서 "네모난 담장"으로 읽힌다(조망 샷 실측).
             // 거리 자체를 노이즈로 흔들어 해안선·산자락을 들쭉날쭉하게 만든다.
-            float wobble = (Mathf.PerlinNoise(wx * 0.009f + 5.5f, wz * 0.009f + 71f) - 0.5f) * 52f;
+            float wobble = (Mathf.PerlinNoise(wx * 0.009f / LandScale + 5.5f, wz * 0.009f / LandScale + 71f) - 0.5f) * (52f * LandScale);
             float m = Mathf.Max(Mathf.Abs(wx), Mathf.Abs(wz)) + wobble;
             float h;
 
@@ -210,7 +233,7 @@ namespace Ulon.Shared
             // **산이 사방을 고르게 두르면 섬이 「대접」으로 읽힌다**(검수 랩 ⑥, 14_world_vista).
             // 마스크 주기를 늘리고(133m → 180m) 대비를 키워 **높은 산괴와 낮은 고개**를 크게 가른다 —
             // 산을 없애는 것이 아니라 **한쪽을 낮춰** 바다가 안쪽으로 들여다보이게 하는 것이다.
-            float n = Mathf.PerlinNoise(wx * 0.0055f + 41.7f, wz * 0.0055f + 3.3f);
+            float n = Mathf.PerlinNoise(wx * 0.0055f / LandScale + 41.7f, wz * 0.0055f / LandScale + 3.3f);
             return Mathf.Lerp(0.08f, 1.7f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.40f, 0.74f, n)));
         }
 
@@ -331,7 +354,7 @@ namespace Ulon.Shared
             if (wx > RiverFromX || wx < RiverToX)
                 return h;
             // 살짝 굽은 물길 — 직선 수로는 화면에서 인공물로 읽힌다.
-            float centerZ = RiverZ + Mathf.Sin((wx - RiverFromX) * 0.06f) * 6f;
+            float centerZ = RiverCenterZ(wx);
             float d = Mathf.Abs(wz - centerZ);
             if (LakeSealDisabled)
             {
@@ -352,7 +375,7 @@ namespace Ulon.Shared
                 if (wx <= outlet && wx > outlet - 12f)
                     return h;
             }
-            float ramp = half * 1.2f;
+            float ramp = RiverBankRamp;
             if (d > half + ramp)
                 return h;
             if (d <= half)

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Ulon.Shared;
 using UnityEngine;
 
 namespace Ulon.Editor
@@ -118,17 +119,18 @@ namespace Ulon.Editor
             if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
                 UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
 
-            Debug.Log("[물가톱니] ── 원장 해상도(513) ──");
+            Debug.Log("[물가톱니] ── 원장 해상도(" + WorldTerrain.HeightmapResolution + ") ──");
             foreach (var sh in new[] { "64_river_bend", "63_pier_cutface", "15_lake_river" })
                 MeasureShoreEdge(sh);
 
             int keep = VisualSliceBuilder.HeightResOverride;
             try
             {
-                VisualSliceBuilder.HeightResOverride = 257;      // 셀 0.586 → 1.172m
+                int halfRes = (WorldTerrain.HeightmapResolution - 1) / 2 + 1;
+                VisualSliceBuilder.HeightResOverride = halfRes;      // 셀 두 배
                 VisualSliceBuilder.EnsureVillageTerrain();
                 UnityEditor.AssetDatabase.SaveAssets();
-                Debug.Log("[물가톱니] ── 절반 해상도(257) ──");
+                Debug.Log("[물가톱니] ── 절반 해상도(" + halfRes + ") ──");
                 foreach (var sh in new[] { "64_river_bend", "63_pier_cutface", "15_lake_river" })
                     MeasureShoreEdge(sh);
             }

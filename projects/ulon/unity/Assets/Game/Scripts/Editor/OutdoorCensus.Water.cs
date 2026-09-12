@@ -37,7 +37,7 @@ namespace Ulon.Editor
             int wet = 0, dry = 0;
             for (float x = WorldTerrain.RiverFromX + 1f; x >= WorldTerrain.RiverToX - 1f; x -= 0.5f)
             {
-                float cz = WorldTerrain.RiverZ + Mathf.Sin((x - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+                float cz = WorldTerrain.RiverCenterZ(x);
                 float h = WorldTerrain.HeightAt(x, cz);
                 if (h < sea)
                 {
@@ -75,7 +75,7 @@ namespace Ulon.Editor
             for (int i = 1; i <= 6; i++)
             {
                 float sx = x + dir * i * 4f;
-                float cz = WorldTerrain.RiverZ + Mathf.Sin((sx - WorldTerrain.RiverFromX) * 0.06f) * 6f;
+                float cz = WorldTerrain.RiverCenterZ(sx);
                 float h = WorldTerrain.HeightAt(sx, cz);
                 sb.Append("x " + sx.ToString("0") + " → " + h.ToString("0.00") + "m" + (h < sea ? "(물)" : "") + "  ");
             }

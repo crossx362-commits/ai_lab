@@ -497,8 +497,8 @@ namespace Ulon.Editor
             var dryLayer = EnsureTerrainLayer("MeadowDry", new Color(0.46f, 0.45f, 0.24f), new Color(0.70f, 0.66f, 0.38f), 9f);
 
             // 판별 테스트용 — 하이트맵을 절반으로 구워 화면의 톱니가 셀을 따라가는지 본다
-            // (`OutdoorCensus.RunShoreEdgeHalfRes`). 평소에는 원장값 513이다.
-            int res = HeightResOverride > 0 ? HeightResOverride : 513;
+            // (`OutdoorCensus.RunShoreEdgeHalfRes`). 평소에는 원장 HeightmapResolution.
+            int res = HeightResOverride > 0 ? HeightResOverride : WorldTerrain.HeightmapResolution;
             data.heightmapResolution = res;
             data.size = new Vector3(WorldTerrain.Span, WorldTerrain.MaxHeight, WorldTerrain.Span);
             data.terrainLayers = new[] { layer, rockLayer, sandLayer, tilledLayer, soilLayer, gravelLayer, roadLayer, cobbleLayer, dryLayer, cliffLayer };
@@ -633,7 +633,7 @@ namespace Ulon.Editor
             terrain.terrainData = data;
             go.transform.position = new Vector3(-half, 0f, -half);
             terrain.heightmapPixelError = 5f;
-            terrain.basemapDistance = 160f;
+            terrain.basemapDistance = WorldTerrain.Half;
             terrain.shadowCastingMode = ShadowCastingMode.On;
             var col = go.GetComponent<TerrainCollider>();
             if (col != null)

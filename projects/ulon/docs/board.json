@@ -1,17 +1,41 @@
 {
-  "updated_at": "2026-09-12T13:20:00+09:00",
+  "updated_at": "2026-09-12T14:20:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
-      "title": "섬 한 변 300→600m (LandScale 2, 하이트맵 셀 유지)",
+      "title": "섬 한 변 300→600m + 월드맵 (LandScale 2)",
       "difficulty": "상",
       "model": "grok-4.6",
-      "status": "실패",
-      "assigned_loop": 3,
+      "status": "검증 중",
+      "assigned_loop": 5,
       "completed_loop": null,
       "commit": "",
-      "rationale": "INBOX 「전체 맵 너무 작아」. #2 턴 한도, #3은 STATUS 훅 설치로 중단. 미커밋 코드 원복.",
+      "rationale": "INBOX 맵 작음·월드맵. #4는 강 물가 띠 NC 2.3m로 실패. 노이즈 주기를 LandScale에 맞춤.",
       "fail_streak": 1
+    },
+    {
+      "id": "uo-half-span",
+      "title": "원작 울온 지도 절반(약 3072m) — 하이트맵 상한 넘는 확대",
+      "difficulty": "상",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "INBOX 「울온 전체지도 절반」. map0 6144×4096타일(Stratics). Unity Terrain 하이트맵 최대 4097이라 LandScale 10은 불가.",
+      "fail_streak": 0
+    },
+    {
+      "id": "action-feel",
+      "title": "행동할 때 타격·시전 체감 (VFX/SFX/모션)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "INBOX 「돌아다니기만 되고 행동 느낌이 없다」. 클라 재빌드 후 플레이로 확인.",
+      "fail_streak": 0
     },
     {
       "id": "loop0-survey",
