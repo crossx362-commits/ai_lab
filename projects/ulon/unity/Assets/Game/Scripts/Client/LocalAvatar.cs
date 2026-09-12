@@ -43,6 +43,12 @@ namespace Ulon.Client
         {
             if (SliceHud.ContextConsumesClick())
                 return;
+            if (SliceHud.TargetConsumesClick())
+            {
+                if (down)
+                    SliceHud.TryConfirmPointer();
+                return;
+            }
             Camera cam = Camera.main;
             if (cam == null)
                 return;

@@ -30,6 +30,8 @@ namespace Ulon.Client
 
         static void Cast(NetAvatar net, SpellId spell)
         {
+            if (EnterTarget(TargetKind.Spell, (int)spell))
+                return;
             if (net != null && net.IsClientInitialized)
                 net.RpcCast((int)spell);
             else if (OfflineWorld.Instance != null)
@@ -73,6 +75,8 @@ namespace Ulon.Client
 
         static void Evaluate(NetAvatar net)
         {
+            if (EnterTarget(TargetKind.Interact, (int)TargetInteract.Evaluate))
+                return;
             if (net != null && net.IsClientInitialized)
                 net.RpcEvaluate();
             else if (OfflineWorld.Instance != null)
@@ -96,6 +100,8 @@ namespace Ulon.Client
 
         static void Lore(NetAvatar net)
         {
+            if (EnterTarget(TargetKind.Interact, (int)TargetInteract.Lore))
+                return;
             if (net != null && net.IsClientInitialized)
                 net.RpcLore();
             else if (OfflineWorld.Instance != null)
@@ -104,6 +110,8 @@ namespace Ulon.Client
 
         static void Vet(NetAvatar net)
         {
+            if (EnterTarget(TargetKind.Interact, (int)TargetInteract.Vet))
+                return;
             if (net != null && net.IsClientInitialized)
                 net.RpcVet();
             else if (OfflineWorld.Instance != null)
@@ -128,6 +136,8 @@ namespace Ulon.Client
 
         static void UseScroll(NetAvatar net)
         {
+            if (EnterTarget(TargetKind.Interact, (int)TargetInteract.Scroll))
+                return;
             if (net != null && net.IsClientInitialized)
                 net.RpcUseScroll();
             else if (OfflineWorld.Instance != null)
@@ -144,6 +154,8 @@ namespace Ulon.Client
 
         static void Peace(NetAvatar net)
         {
+            if (EnterTarget(TargetKind.Interact, (int)TargetInteract.Peace))
+                return;
             if (net != null && net.IsClientInitialized)
                 net.RpcPeace();
             else if (OfflineWorld.Instance != null)
@@ -520,6 +532,20 @@ namespace Ulon.Client
                 OfflineWorld.Instance.TryPick(Me(net), crate);
         }
 
+        static void Gather(NetAvatar net)
+        {
+            if (EnterTarget(TargetKind.Gather))
+                return;
+            var hud = FindAnyObjectByType<SliceHud>();
+            var node = hud != null ? hud.tgtNode : null;
+            if (node == null || OfflineWorld.Instance == null)
+                return;
+            if (net != null && net.IsClientInitialized)
+                net.RpcGather(node.gameObject.name);
+            else
+                OfflineWorld.Instance.TryGather(Me(net), node);
+        }
+
         static void Drink(NetAvatar net)
         {
             if (net != null && net.IsClientInitialized)
@@ -530,6 +556,8 @@ namespace Ulon.Client
 
         static void Bandage(NetAvatar net)
         {
+            if (EnterTarget(TargetKind.Heal))
+                return;
             if (net != null && net.IsClientInitialized)
                 net.RpcHeal();
             else if (OfflineWorld.Instance != null)

@@ -68,6 +68,7 @@ namespace Ulon.Client
                 if (Btn("붕대 부활")) ResurrectBandage(net);
                 return;
             }
+            if (Btn("채집")) Gather(net);
             Row3(("추적", () => Track(net)), ("연주", () => PlayLute(net)), (SkillNames.KoreanOf(SkillId.Peacemaking), () => Peace(net)));
             Row3((SkillNames.KoreanOf(SkillId.Provocation), () => Provoke(net)), (SkillNames.KoreanOf(SkillId.Hiding), () => Hide(net)), (SkillNames.KoreanOf(SkillId.Stealth), () => Stealth(net)));
             Row3((SkillNames.KoreanOf(SkillId.DetectHidden), () => DetectHidden(net)), (SkillNames.KoreanOf(SkillId.Camping), () => Camp(net)), (SkillNames.KoreanOf(SkillId.Stealing), () => Steal(net)));
