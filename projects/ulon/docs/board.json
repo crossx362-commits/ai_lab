@@ -7,10 +7,10 @@
       "difficulty": "상",
       "model": "grok-4.6",
       "status": "실패",
-      "assigned_loop": 2,
+      "assigned_loop": 3,
       "completed_loop": null,
       "commit": "",
-      "rationale": "INBOX 「전체 맵 너무 작아」. loop#2가 착수했으나 셀프체크 실패 후 MAX_TURNS=80에 걸림. 미커밋 변경은 원복함.",
+      "rationale": "INBOX 「전체 맵 너무 작아」. #2 턴 한도, #3은 STATUS 훅 설치로 중단. 미커밋 코드 원복.",
       "fail_streak": 1
     },
     {

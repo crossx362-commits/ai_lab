@@ -339,6 +339,22 @@ while true; do
   H_RESULT="$RESULT" H_ELAPSED="$ELAPSED" H_MODEL="$MODEL" H_LOG="$WHEEL_LOG" \
   append_history
 
+  # 에이전트가 못 남겨도 STATUS 헤더·바퀴 기록은 항상 갱신한다.
+  if ! "$PYTHON_BIN" "$ROOT/loop/update_status.py" \
+      --root "$ROOT" \
+      --loop "$LOOP_NO" \
+      --result "$RESULT" \
+      --started "$STARTED" \
+      --ended "$ENDED" \
+      --elapsed "$ELAPSED" \
+      --model "$MODEL" \
+      --reason "$FAIL_REASON" \
+      --log "$WHEEL_LOG" \
+      --rc "$RC"
+  then
+    echo "STATUS.md 자동 갱신 실패" | tee -a "$DAY_LOG" "$WHEEL_LOG"
+  fi
+
   if [ "$CONSEC" -ge "$MAX_CONSEC_FAIL" ]; then
     STATUS_NOW="stopped_fail"
     FAIL_REASON="${FAIL_REASON} / 연속 실패 ${CONSEC}회 (한도 ${MAX_CONSEC_FAIL}). 루프 정지."

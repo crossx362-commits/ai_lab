@@ -53,13 +53,14 @@ Unity 에디터는 **`projects/ulon/unity`** 만 연다. 재와별(`projects/ash
 | `loop/env.sh` | 모델·타임아웃·빌드/실행 명령 |
 | `loop/env.local.sh` | 비밀값 (git 제외) |
 | `loop/PROMPT.md` | 한 바퀴 지시서 |
+| `loop/update_status.py` | 매 바퀴 종료 시 STATUS.md 헤더·바퀴 기록 자동 갱신 |
 | `loop/board_server.py` | 현황 보드 `http://127.0.0.1:8787` |
 | `loop/board.html` | 보드 화면 (상태줄→INBOX→칸반→STATUS→타임라인→커밋→에셋→라이브 로그) |
 | `assets/3d/scripts/validate.py` | Blender 헤드리스 메시 검사 |
 | `loop/launchd/*.plist` | launchd 등록용 (복사본) |
 | `docs/feedback/INBOX.md` | 사람 지시함 |
 | `docs/board.json` | 칸반 데이터 |
-| `docs/STATUS.md` | 현황 (0번째 바퀴에서 작성) |
+| `docs/STATUS.md` | 현황. 헤더는 매 바퀴 스크립트가 찍고, 시스템 표는 세션이 본문을 씀 |
 | `docs/ASSETS.md` | 에셋 목록 (0번째 바퀴에서 작성) |
 | `logs/` | 날짜별 로그, `loop_state.json` |
 
