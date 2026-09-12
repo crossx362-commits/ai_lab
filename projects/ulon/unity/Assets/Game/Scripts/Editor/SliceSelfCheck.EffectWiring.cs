@@ -185,6 +185,59 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// 시전 성공이 화면·귀에 닿는가. 타격은 RpcPlayEffect가 있는데 시전만 빠져 있으면
+        /// 「돌아다니기만 되고 주문은 아무 느낌이 없다」(INBOX).
+        /// </summary>
+        public static void AssertCastBroadcastsEffect()
+        {
+            string path = Path.Combine(Application.dataPath, "Game/Scripts/Client/NetAvatar.cs");
+            var lines = File.ReadAllLines(path);
+            if (!RpcMethodContains(lines, "RpcCast", "RpcPlayEffect("))
+                throw new InvalidOperationException("NetAvatar.RpcCast가 RpcPlayEffect를 부르지 않습니다 — 시전해도 불티가 안 납니다.");
+            Debug.Log("[Ulon] 시전 효과 배선 — RpcCast가 관측자 효과를 방송한다");
+        }
+
+        public static void AssertCastBroadcastsEffectNegativeControl()
+        {
+            string[] fake =
+            {
+                "        public void RpcCast(int spellId)",
+                "        {",
+                "            SaveNow();",
+                "        }",
+                "        [ServerRpc]",
+                "        public void RpcMark()",
+            };
+            if (RpcMethodContains(fake, "RpcCast", "RpcPlayEffect("))
+                throw new InvalidOperationException("시전 효과 네거티브 컨트롤 실패 — 효과 호출이 없는 소스를 통과시켰습니다.");
+        }
+
+        static bool RpcMethodContains(string[] lines, string method, string needle)
+        {
+            int start = -1;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (lines[i].Contains("void " + method + "("))
+                {
+                    start = i;
+                    break;
+                }
+            }
+            if (start < 0)
+                return false;
+            for (int i = start; i < lines.Length; i++)
+            {
+                if (i > start && (lines[i].TrimStart().StartsWith("[ServerRpc", StringComparison.Ordinal)
+                    || lines[i].TrimStart().StartsWith("[ObserversRpc", StringComparison.Ordinal)
+                    || lines[i].TrimStart().StartsWith("[TargetRpc", StringComparison.Ordinal)))
+                    return false;
+                if (lines[i].Contains(needle))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// 네거티브 컨트롤 — **결함이 든 소스를 같은 분석기에 먹여** 두 종류를 다 잡는지 본다.
         /// 실제 파일을 망가뜨리지 않으므로 실행 순서에 상관없이 안전하다.
         /// </summary>

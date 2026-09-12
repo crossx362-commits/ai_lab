@@ -518,7 +518,12 @@ namespace Ulon.Client
                 return;
             var result = OfflineWorld.Instance.TryCast(GetComponent<WorldBody>(), (SpellId)spellId, SelectedTarget());
             if (result.Applied)
+            {
+                var tgt = SelectedTarget();
+                Vector3 at = (tgt != null ? tgt.transform.position : transform.position) + Vector3.up * 1.0f;
+                RpcPlayEffect((int)ActionVfx.KindForSpell((SpellId)spellId), at);
                 SaveNow();
+            }
         }
 
         [ServerRpc]
@@ -1202,9 +1207,7 @@ namespace Ulon.Client
         {
             var k = (ActionVfx.Kind)kind;
             // 두 열거형이 같은 순서라는 가정에 기대지 않는다 — 순서가 갈리면 소리만 엉뚱해진다.
-            var s = k == ActionVfx.Kind.Heal ? ActionSfx.Kind.Heal
-                  : k == ActionVfx.Kind.Craft ? ActionSfx.Kind.Craft
-                  : ActionSfx.Kind.Hit;
+            var s = ActionVfx.SfxFor(k);
             ActionVfx.Play(k, at);
             ActionSfx.Play(s, at);
         }

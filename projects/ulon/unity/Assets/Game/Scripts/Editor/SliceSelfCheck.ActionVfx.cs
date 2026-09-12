@@ -75,6 +75,36 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// 씬에 템플릿이 없어도 <see cref="ActionVfx.Ensure"/>가 세운다 —
+        /// 셀프체크가 씬을 저장하지 않으면 플레이에서 불티가 0이던 구멍.
+        /// </summary>
+        public static void AssertActionVfxEnsureRestores()
+        {
+            var old = GameObject.Find(ActionVfx.RootObject);
+            if (old != null)
+                UnityEngine.Object.DestroyImmediate(old);
+            ActionVfx.Ensure();
+            var kinds = new[] { ActionVfx.Kind.Hit, ActionVfx.Kind.Heal, ActionVfx.Kind.Craft };
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                if (ActionVfx.Template(kinds[i]) == null)
+                    throw new Exception("ActionVfx.Ensure 뒤에도 템플릿이 없습니다: " + ActionVfx.ObjectFor(kinds[i]));
+            }
+            ActionVfxBuilder.EnsureActionVfx();
+            Debug.Log("[Ulon] VFX Ensure — 씬이 비어도 3종이 다시 선다");
+        }
+
+        public static void AssertActionVfxEnsureRestoresNegativeControl()
+        {
+            var old = GameObject.Find(ActionVfx.RootObject);
+            if (old != null)
+                UnityEngine.Object.DestroyImmediate(old);
+            if (ActionVfx.Template(ActionVfx.Kind.Hit) != null)
+                throw new Exception("VFX Ensure 네거티브 컨트롤 실패 — 루트를 지웠는데 템플릿이 남아 있습니다.");
+            ActionVfxBuilder.EnsureActionVfx();
+        }
+
+        /// <summary>
         /// QA 샷용 — 3종을 나란히 한 번 재생시켜 **같은 화면에서** 색·형태 차이를 눈으로 볼 수 있게 한다.
         /// 반환한 루트는 렌더 직후 호출자가 지운다(다른 샷에 남지 않게).
         /// </summary>

@@ -33,7 +33,18 @@ namespace Ulon.Client
             if (net != null && net.IsClientInitialized)
                 net.RpcCast((int)spell);
             else if (OfflineWorld.Instance != null)
-                OfflineWorld.Instance.TryCast(Me(net), spell, Me(net).Selected);
+            {
+                var me = Me(net);
+                var result = OfflineWorld.Instance.TryCast(me, spell, me != null ? me.Selected : null);
+                if (result.Applied && me != null)
+                {
+                    var tgt = me.Selected != null ? me.Selected : me;
+                    Vector3 at = tgt.transform.position + Vector3.up * 1.0f;
+                    var k = ActionVfx.KindForSpell(spell);
+                    ActionVfx.Play(k, at);
+                    ActionSfx.Play(ActionVfx.SfxFor(k), at);
+                }
+            }
         }
 
         static void Mark(NetAvatar net)

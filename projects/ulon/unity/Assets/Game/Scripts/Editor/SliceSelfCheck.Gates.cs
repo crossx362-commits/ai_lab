@@ -69,6 +69,10 @@ namespace Ulon.Editor
             Gate(AssertPropScaleNegativeControl);
             Gate(AssertActionSfxDistinct);
             Gate(AssertActionSfxNegativeControl);
+            Gate(AssertActionVfxEnsureRestores);
+            Gate(AssertActionVfxEnsureRestoresNegativeControl);
+            Gate(AssertCastBroadcastsEffect);
+            Gate(AssertCastBroadcastsEffectNegativeControl);
             Gate(AssertTerrainClassNegativeControl);   // 차폐 게이트들이 「지표」를 무엇으로 아는지 먼저 증명한다
             Gate(AssertPlayerNotOccluded);
             Gate(AssertPlayerNotOccludedNegativeControl);
