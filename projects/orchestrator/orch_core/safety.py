@@ -29,7 +29,10 @@ class SafetyError(RuntimeError):
 # STOP은 "프로세스를 죽였다"가 아니다. 죽여도 루프가 다음 시도를 시작하면 멈춘 게 아니다
 # (2026-09-11 실측: 그룹은 죽었는데 시도 2가 곧바로 떴다). 그래서 **파일 플래그를 먼저 세우고**
 # 루프가 매 단계에서 그것을 확인한다. 플래그가 상태고, 프로세스 종료는 그 뒤의 정리다.
-STOP_FILE = STATE_DIR / "STOP"
+# NC가 이 파일을 켜면 **돌고 있던 자율 운전까지 멈춘다**(2026-09-12 실측: nc_suite의 autopilot_stop이
+# 진짜 계획 #59를 세웠다). 시험판은 ORCH_STOP_FILE로 제 것을 쓰게 한다.
+STOP_FILE = Path(os.environ["ORCH_STOP_FILE"]).expanduser() if os.getenv("ORCH_STOP_FILE") \
+    else STATE_DIR / "STOP"
 
 
 def request_stop(reason: str = "") -> Path:

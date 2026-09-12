@@ -308,3 +308,48 @@ def violates_write_scope(files: list[str], allowed_globs: list[str]) -> list[str
         if not any(fnmatch.fnmatch(f, g) or fnmatch.fnmatch(f, g.rstrip("*") + "*") for g in allowed_globs):
             bad.append(f)
     return bad
+
+
+def integrate(repo: Path, branch: str, commit: str, subdir: str | None = None) -> tuple[bool, str]:
+    """계획 통합 브랜치에 task 커밋 하나를 올린다 — 병렬로 끝난 판들이 **한 줄로** 쌓이게.
+
+    · 통합 브랜치 끝이 그 커밋의 부모면 ref만 옮긴다(빨리감기).
+    · 아니면(같은 물결의 다른 판이 먼저 올라갔다) 전용 worktree에서 cherry-pick으로 얹는다.
+      충돌하면 **추측해서 합치지 않는다** — 되돌리고 실패를 돌려준다. 그 Task는 새 끝 위에서 다시 한다.
+    merge는 이 프로그램에서 금지다(FORBIDDEN). 여기서도 쓰지 않는다.
+    통합 worktree는 **항상 분리된 HEAD**로 둔다 — 브랜치를 물고 있으면 `branch -f`가 거부된다
+    (2026-09-12 NC parallel에서 실측: 물결 2가 통째로 죽었다).
+    """
+    tip = rev(repo, branch)
+    parent = git(repo, "rev-parse", f"{commit}^").strip()
+    if parent == tip:
+        git(repo, "update-ref", f"refs/heads/{branch}", commit, tip)
+        return True, f"빨리감기 {tip[:8]} → {commit[:8]}"
+    wt = repo / ".orch" / "integrate"
+    try:
+        if not wt.exists():
+            if subdir:
+                git(repo, "worktree", "add", "--no-checkout", "--detach", str(wt), tip)
+                git(wt, "sparse-checkout", "set", subdir)
+                git(wt, "checkout")
+            else:
+                git(repo, "worktree", "add", "--detach", str(wt), tip)
+        git(wt, "cherry-pick", "--quit", check=False)   # 지난 판이 남긴 중간 상태를 먼저 치운다
+        git(wt, "checkout", "--detach", "-f", tip)
+        r = subprocess.run(["git", "-C", str(wt), "cherry-pick", commit],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
+        out = (r.stdout or "") + (r.stderr or "")
+        if r.returncode == 0:
+            new = rev(wt, "HEAD")
+            git(repo, "update-ref", f"refs/heads/{branch}", new, tip)
+            return True, f"cherry-pick {commit[:8]} → {new[:8]}"
+        if "empty" in out:
+            # 다른 판이 같은 내용을 이미 올렸다. 빈 커밋을 만들지 않는다 — 실패도 아니다.
+            git(wt, "cherry-pick", "--quit", check=False)
+            return True, f"이미 같은 내용이 올라가 있다({commit[:8]}) — 건너뜀"
+        conflicted = git(wt, "diff", "--name-only", "--diff-filter=U", check=False).strip()
+        git(wt, "cherry-pick", "--abort", check=False)
+        git(wt, "cherry-pick", "--quit", check=False)
+        return False, f"통합 충돌 — 새 끝 위에서 다시 해야 한다: {conflicted[:200] or out.strip()[:120]}"
+    except GitError as e:
+        return False, f"통합 실패: {e}"

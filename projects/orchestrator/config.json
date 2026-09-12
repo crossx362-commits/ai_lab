@@ -8,6 +8,23 @@
     "astra"
   ],
   "research_agent": null,
+  "parallel_tasks": 2,
+  "model_tiers": {
+    "codex": [
+      { "max_difficulty": 1, "model": "gpt-5.6-luna", "effort": "low" },
+      { "max_difficulty": 2, "model": "gpt-5.6-terra", "effort": "low" },
+      { "max_difficulty": 3, "model": "gpt-5.6-sol", "effort": "medium" },
+      { "max_difficulty": 4, "model": "gpt-5.6-sol", "effort": "high" },
+      { "max_difficulty": 5, "model": "gpt-6-astra", "effort": "high" }
+    ],
+    "claude": [
+      { "max_difficulty": 1, "model": "haiku" },
+      { "max_difficulty": 2, "model": "sonnet" },
+      { "max_difficulty": 3, "model": "sonnet" },
+      { "max_difficulty": 4, "model": "opus" },
+      { "max_difficulty": 5, "model": "fable" }
+    ]
+  },
   "autopilot": {
     "target": "ulon",
     "goal": "울온(projects/ulon)의 docs/DEVELOPMENT_PLAN.md와 docs/GAME_DESIGN.md를 읽고, 아직 코드로 성립하지 않은 가장 높은 우선순위 항목 하나를 골라 구현 가능한 Task로 나눠라. 기존 코드와 미커밋 작업을 보존하고, 각 Task는 SliceSelfCheck 게이트로 검증 가능해야 한다.",

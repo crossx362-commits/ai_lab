@@ -290,6 +290,7 @@ def gather() -> dict:
         for aname, acfg in configured.items():
             policy = raw_config.get('model_policy', {}).get(acfg.get('type'), {})
             acfg['policy'] = policy
+            acfg['tiers'] = (raw_config.get('model_tiers') or {}).get(acfg.get('type')) or []
             acfg['base_model'] = acfg.get('model')
             eff = ''
             for x in acfg.get('extra_config') or []:
@@ -308,14 +309,15 @@ def gather() -> dict:
     # 지금 도는 시도와 가장 최근 시도의 모델·단계 — 기록이 아니라 **이번 호출에 넘어간 값**이다.
     kinds = {}
     for r in rows("SELECT task_id,n,agent,model,status FROM attempts ORDER BY id DESC LIMIT 40"):
-        kind = ''
+        kind, why = '', ''
         f = config.LOG_DIR / f"task{r['task_id']:04d}-a{r['n']}.model.txt"
         try:
-            kind = f.read_text(encoding='utf-8').split('—')[-1].strip()
+            tail = f.read_text(encoding='utf-8').split('—')[-1].strip()
+            kind, _, why = (x.strip() for x in tail.partition('·'))
         except OSError:
             pass
         kinds.setdefault(r['agent'], []).append(
-            {'model': r['model'], 'kind': kind, 'running': r['status'] == 'RUNNING',
+            {'model': r['model'], 'kind': kind, 'why': why, 'running': r['status'] == 'RUNNING',
              'task_id': r['task_id'], 'n': r['n']})
     for aname, acfg in configured.items():
         hist = kinds.get(aname) or []
@@ -362,15 +364,16 @@ def gather() -> dict:
             history = [{"n": r["n"], "agent": r["agent"], "status": r["status"], "model": r["model"],
                         "reason": (r["reason"] or r["compile_verdict"] or "")[:80]}
                        for r in rows("SELECT * FROM attempts WHERE task_id=? ORDER BY n", (t["id"],))]
-            kind_txt = ""
+            kind_txt, why_txt = "", ""
             if a:
                 try:
-                    kind_txt = (config.LOG_DIR / f"task{t['id']:04d}-a{a['n']}.model.txt") \
+                    tail = (config.LOG_DIR / f"task{t['id']:04d}-a{a['n']}.model.txt") \
                         .read_text(encoding="utf-8").split("—")[-1].strip()
+                    kind_txt, _, why_txt = (x.strip() for x in tail.partition("·"))
                 except OSError:
-                    kind_txt = ""
+                    pass
             pipeline.append({
-                "model": (a.get("model") if a else None), "kind": kind_txt,
+                "model": (a.get("model") if a else None), "kind": kind_txt, "why_model": why_txt,
                 "id": t["id"], "goal": t["goal"], "target": t["target"], "branch": t["branch"] or "-",
                 "attempt": a.get("n") or t["attempts"] or 0, "max_attempts": max_attempts,
                 "steps": [{"name": n, "who": w} for n, w in steps], "cur": cur_i, "who": who,
@@ -420,6 +423,7 @@ def gather() -> dict:
         card['effort'] = src.get('effort', '')
         card['base_model'] = src.get('base_model')
         card['policy'] = src.get('policy') or {}
+        card['tiers'] = src.get('tiers') or []
         card['now'] = src.get('now')
         card['last'] = src.get('last')
     overall = board_metrics.progress(real)
@@ -634,6 +638,7 @@ function renderNow(d){
       <h3>작업 #${p.id} · ${E(p.goal)}</h3>
       <div class=steps>${p.steps.map((s,i)=>`<div class="step ${i<p.cur?'done':(i===p.cur?'cur':'')}"><div class=dot></div><div class=nm>${E(s.name)}</div><div class=wh>${E(dn(d,s.who))}</div></div>`).join('')}</div>
       <div class=nextline>지금 <b>${E(dn(d,p.who))}</b>${p.model?` <span class=mute>(${E(p.model)}${(d.ai_cards.find(c=>c.name===p.who)||{}).effort?' · 난이도 '+E(EFF((d.ai_cards.find(c=>c.name===p.who)||{}).effort)):''}${p.kind?' · '+E(KIND(p.kind)):''})</span>`:''}가 <b>${E(p.steps[p.cur].name)}</b> (${E(p.since)} 시작) → 다음 <b>${E(p.next)}</b>${p.next_who!=='-'?' · '+E(dn(d,p.next_who)):''}</div>
+      ${p.why_model?`<div class=tries><span class=mute>모델 선택: ${E(p.why_model)}</span></div>`:''}
       <div class=tries>시도 ${p.attempt}/${p.max_attempts} ${p.history.map(x=>`<span class="${VC[x.status]||'mute'}">${x.n}회 ${E(dn(d,x.agent))}${x.model?' · '+E(x.model):''} ${E(x.status)}${x.reason?' — '+E(x.reason):''}</span>`).join('')}</div>
       <div class=meta>${E(p.target)} · ${E(p.branch)}</div></div>`;
   }
@@ -712,12 +717,14 @@ function KIND(k){return {coding:'구현',debugging:'디버깅',planning:'설계'
 function EFF(e){return {low:'낮음',medium:'보통',high:'높음'}[e]||e;}
 function modelLine(a){
   const eff=a.effort?` · 난이도 ${E(EFF(a.effort))}`:'';
-  if(a.now) return `<b>${E(a.now.model)}</b>${eff} · ${E(KIND(a.now.kind))} 중 (작업 #${a.now.task_id} ${a.now.n}회)`;
-  const pol=a.policy&&Object.keys(a.policy).length
+  if(a.now) return `<b>${E(a.now.model)}</b> · ${E(KIND(a.now.kind))} 중 (작업 #${a.now.task_id} ${a.now.n}회)`
+                 + (a.now.why?`<br><span class=mute>${E(a.now.why)}</span>`:'');
+  const tiers=(a.tiers||[]).map(t=>`${t.max_difficulty}급 ${E(t.model)}${t.effort?'('+E(EFF(t.effort))+')':''}`).join(' · ');
+  const pol=tiers||(a.policy&&Object.keys(a.policy).length
     ? Object.entries(a.policy).map(([k,m])=>`${E(KIND(k))} ${E(m)}`).join(' · ')
-    : E(a.base_model||'모델 자동');
-  const last=a.last?` · 직전 ${E(a.last.model)}(${E(KIND(a.last.kind))})`:'';
-  return `${pol}${eff}${last}`;
+    : E(a.base_model||'모델 자동'));
+  const last=a.last?`<br><span class=mute>직전 ${E(a.last.model)}${a.last.why?' · '+E(a.last.why):''}</span>`:'';
+  return `<span class=mute>난이도별</span> ${pol}${last}`;
 }
 function quotaTime(ts){return new Date(ts*1000).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' KST';}
 function quotaWindow(bucket,w){

@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import subprocess
 import argparse
+import threading
+from concurrent.futures import ThreadPoolExecutor
 import shutil
 import sys
 import time
@@ -27,8 +29,19 @@ from . import (agents, blenderrun, config, db, gitwt, loganalyze, logs, memory, 
 from . import handoff, model_policy
 
 
+_TAG = threading.local()
+_PRINT_LOCK = threading.Lock()
+_INTEGRATE_LOCK = threading.Lock()
+
+
 def _p(msg: str = "") -> None:
-    print(msg, flush=True)
+    """병렬로 여러 판이 돌 때 **누가 한 말인지** 앞에 붙인다. 안 붙이면 로그가 섞여
+    어느 Task가 실패했는지 사람이 못 읽는다."""
+    tag = getattr(_TAG, "tag", "")
+    if tag:
+        msg = "\n".join(f"{tag} {ln}" if ln else ln for ln in str(msg).split("\n"))
+    with _PRINT_LOCK:
+        print(msg, flush=True)
 
 
 def _ts() -> str:
@@ -115,14 +128,18 @@ def cmd_verify(args) -> int:
 
 
 def run_side_agent(cfg, conn, *, agent_name: str, prompt: str, workdir: Path,
-                   log_prefix: Path, task_id=None, attempt_id=None, task_kind="coding"):
+                   log_prefix: Path, task_id=None, attempt_id=None, task_kind="coding",
+                   goal_for_model: str | None = None, risk: str = "", failures: int = 0):
     """파일을 만들어 내는 보조 호출(분해·리뷰). worktree가 아니라 **별도 작업 폴더**에서 돈다 —
     그래야 보조가 만든 파일이 개발 diff에 섞이지 않는다."""
     workdir.mkdir(parents=True, exist_ok=True)
-    selected = model_policy.select(cfg, agent_name, task_kind)
+    # 보조 호출(분해·리뷰)도 난이도로 고른다. 다만 바닥이 있다 — 분해가 틀리면 그 아래 전부가 틀린다.
+    selected, why_model = model_policy.choose(
+        cfg, agent_name, goal=goal_for_model or "", done_criteria="", risk=risk,
+        failures=failures, kind=task_kind, floor=4 if task_kind == "planning" else 3)
     agent = agents.build(selected)
-    _p(f"  모델 선택: {agent_name} / {selected.model} — {task_kind}")
-    logs.write(Path(f"{log_prefix}.model.txt"), f"{agent_name} / {selected.model} — {task_kind}")
+    _p(f"  모델 선택: {agent_name} / {why_model}")
+    logs.write(Path(f"{log_prefix}.model.txt"), f"{agent_name} / {selected.model} — {task_kind} · {why_model}")
     logs.write(Path(f"{log_prefix}.prompt.txt"), prompt)
     ar = agent.run(prompt, worktree=workdir, log_prefix=log_prefix,
                    conn=conn, task_id=task_id, attempt_id=attempt_id)
@@ -134,7 +151,8 @@ def run_side_agent(cfg, conn, *, agent_name: str, prompt: str, workdir: Path,
 
 
 def run_reviewer(cfg, conn, *, task_id, attempt_id, prefix: Path, goal: str,
-                 done_criteria: str, gates: str, diff: str, implementer: str | None = None):
+                 done_criteria: str, gates: str, diff: str, implementer: str | None = None,
+                 risk: str = "", failures: int = 0):
     """최종 리뷰. **리뷰어의 Provider 장애를 「판정 불가」로 뭉개지 않는다.**
 
     2026-09-11 실전(계획 7 T3): astra 리뷰가 codex 한도에 걸려 파일을 못 만들었는데,
@@ -160,7 +178,8 @@ def run_reviewer(cfg, conn, *, task_id, attempt_id, prefix: Path, goal: str,
                                      diff=diff, review_path=rpath)
         ar = run_side_agent(cfg, conn, agent_name=name, prompt=prompt, workdir=workdir,
                             log_prefix=Path(f"{prefix}.review-{name}"),
-                            task_id=task_id, attempt_id=attempt_id, task_kind="review")
+                            task_id=task_id, attempt_id=attempt_id, task_kind="review",
+                            goal_for_model=goal, risk=risk, failures=failures)
         hit = providers.classify_failure(ar.all_output)
         if hit and not ar.ok:
             providers.mark(name, hit[0], f"리뷰 중 감지: {(ar.reason or '')[:60]}", hit[1])
@@ -228,7 +247,7 @@ def _usable(cfg, pstat, *, prefer: list[str], capability: str = providers.CODING
 def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
                  max_attempts: int | None = None, plan_id: int | None = None,
                  plan_key: str | None = None, done_criteria: str = "",
-                 base_ref: str | None = None) -> int:
+                 base_ref: str | None = None, risk: str = "", deps: int = 0) -> int:
     """목표 하나를 끝까지 몬다. run과 run-plan이 **같은 본체**를 쓴다 —
     게이트가 두 벌이 되면 한쪽만 강화되고 다른 쪽이 구멍이 된다."""
     args_goal = goal
@@ -390,10 +409,14 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
                                  failures=history, research_agent=cfg.research_agent)
         agent_name = decision.agent
         kind = model_policy.task_kind(args_goal, failures=bool(history))
-        agent_cfg = model_policy.select(cfg, agent_name, kind)
+        # 단계 이름이 아니라 **과제의 난이도**로 모델·추론 강도를 고른다(오너 지시 2026-09-12).
+        agent_cfg, why_model = model_policy.choose(
+            cfg, agent_name, goal=args_goal, done_criteria=done_criteria, risk=risk,
+            failures=len(history), deps=deps, kind=kind)
         agent = agents.build(agent_cfg)
-        logs.write(Path(f"{prefix}.model.txt"), f"{agent_name} / {agent_cfg.model} — {kind}")
-        _p(f"  모델 선택: {agent_cfg.model} — {kind}")
+        logs.write(Path(f"{prefix}.model.txt"),
+                   f"{agent_name} / {agent_cfg.model} — {kind} · {why_model}")
+        _p(f"  모델 선택: {why_model}")
         _p(f"  담당: {agent_name} — {decision.reason}")
 
         attempt_id = db.create_attempt(conn, task_id, n, agent_name, agent.model_name())
@@ -610,7 +633,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             rv = run_reviewer(cfg, conn, task_id=task_id, attempt_id=attempt_id, prefix=prefix,
                               goal=args_goal, done_criteria=done_criteria,
                               gates=gate_label(t), diff=ch.diff,
-                              implementer=agent_name)
+                              implementer=agent_name, risk=risk, failures=len(history))
             _p(f"  리뷰({cfg.reviewer}): {rv.verdict} — {rv.reason}")
             for rr in rv.reasons[:5]:
                 _p(f"    {rr}")
@@ -642,8 +665,15 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
                 wd, f"orch(task-{task_id:04d}): {args_goal}\n\n시도 {n}회, {gate} PASS{review_note}")
             if plan_id and commit_hash and not review_unknown:
                 # 통합 브랜치 전진 — 다음 Task가 이 위에서 출발한다.
-                gitwt.set_branch(t.repo, plan_branch_name(plan_id), commit_hash)
-                _p(f"  통합 브랜치 {plan_branch_name(plan_id)} → {commit_hash[:8]}")
+                # 병렬로 끝난 판이 동시에 올라오면 한 번에 하나씩(자물쇠), 충돌은 합치지 않고 되돌린다.
+                with _INTEGRATE_LOCK:
+                    ok, note = gitwt.integrate(t.repo, plan_branch_name(plan_id),
+                                               commit_hash, subdir=t.subdir)
+                _p(f"  통합 브랜치 {plan_branch_name(plan_id)}: {note}")
+                if not ok:
+                    db.update_task(conn, task_id, status="BLOCKED", verdict="UNKNOWN",
+                                   reason=f"통합 충돌 — 다시 해야 한다: {note}")
+                    return 1
             final_verdict, final_reason = "PASS", ur.reason
             break
 
@@ -814,7 +844,7 @@ def cmd_plan(args) -> int:
         db.update_plan(conn, plan_id, agent=agent_name)
         ar = run_side_agent(cfg, conn, agent_name=agent_name, prompt=prompt, workdir=workdir,
                             log_prefix=config.LOG_DIR / f"plan{plan_id:04d}-{agent_name}",
-                            task_kind="planning")
+                            task_kind="planning", goal_for_model=args.goal)
         _p(f"  {agent_name}: exit={ar.exit_code} status={ar.status} ({ar.duration_s:.1f}s)")
         if ar.ok:
             break
@@ -914,57 +944,103 @@ def cmd_run_plan(args) -> int:
         return 0
 
     db.update_plan(conn, args.plan, status="RUNNING")
-    done_keys = {r["plan_key"] for r in db.plan_tasks(conn, args.plan) if r["status"] == "DONE"}
+    parallel = max(1, int(getattr(args, "parallel", 0) or cfg.raw.get("parallel_tasks", 1)))
+    rc_all = _run_plan_waves(cfg, t, conn, plan_id=args.plan, pb=pb, parallel=parallel, args=args)
+    if rc_all == 2:      # STOP
+        db.update_plan(conn, args.plan, status="BLOCKED", note="STOP")
+        return 2
+    db.update_plan(conn, args.plan, status="DONE" if rc_all == 0 else "BLOCKED")
+    return rc_all
+
+
+
+def _ready_rows(conn, plan_id: int, done_keys: set) -> tuple[list, list]:
+    """지금 시작해도 되는 Task와, 선행을 기다리는 Task를 갈라 준다."""
+    ready, waiting = [], []
+    for r in db.plan_tasks(conn, plan_id):
+        if r["status"] != "BACKLOG":
+            continue
+        deps = [d for d in (r["depends_on"] or "").split(",") if d]
+        (ready if all(d in done_keys for d in deps) else waiting).append(r)
+    return ready, waiting
+
+
+def _run_one(cfg, t, row, *, plan_id, pb, args, tag: str) -> int:
+    _TAG.tag = tag
+    try:
+        conn = db.connect()
+        deps = [d for d in (row["depends_on"] or "").split(",") if d]
+        _p(f"\n========== [{row['plan_key']}] {row['goal']} ==========")
+        # BACKLOG 자리표시 task는 지우고, 실제 실행은 본체가 자기 task를 만들어 돈다.
+        db.update_task(conn, row["id"], status="ARCHIVED", reason="[계획 자리표시]")
+        return execute_goal(cfg, t, goal=row["goal"], max_attempts=args.max_attempts,
+                            plan_id=plan_id, plan_key=row["plan_key"],
+                            done_criteria=row["done_criteria"] or "", base_ref=pb,
+                            risk=row["risk"] or "", deps=len(deps))
+    finally:
+        _TAG.tag = ""
+
+
+def _run_plan_waves(cfg, t, conn, *, plan_id: int, pb: str, parallel: int, args) -> int:
+    """**순서대로 일하기도 하고 병렬로도 일한다**(오너 지시 2026-09-12).
+
+    의존성이 있는 것은 줄을 세우고, 서로 독립인 것은 같은 물결(wave)에서 동시에 돌린다.
+    같은 물결의 판들은 **같은 끝(통합 브랜치 tip)에서 출발**하고, 끝나는 순서대로 한 번에
+    하나씩 통합된다(빨리감기 또는 cherry-pick). 충돌하면 합치지 않고 되돌려 다시 시킨다.
+    Unity는 파일 락(unity_slots)이 동시 실행 수를 따로 막는다 — 16GB 기계가 스왑으로 죽지 않게.
+    """
+    done_keys = {r["plan_key"] for r in db.plan_tasks(conn, plan_id) if r["status"] == "DONE"}
     rc_all = 0
-    for row in tasks:
+    wave_n = 0
+    while True:
         if safety.stop_requested():
             _p("STOP 상태 — 남은 Task를 시작하지 않는다")
-            db.update_plan(conn, args.plan, status="BLOCKED", note="STOP")
             return 2
-        deps = [d for d in (row["depends_on"] or "").split(",") if d]
-        missing = [d for d in deps if d not in done_keys]
-        if missing:
-            # 선행이 끝나지 않았는데 밀어붙이지 않는다 — 반쪽 위에 쌓으면 원인을 못 가린다.
-            _p(f"\n[{row['plan_key']}] 건너뜀 — 선행 미완료: {', '.join(missing)}")
-            db.update_task(conn, row["id"], status="BLOCKED", reason=f"선행 미완료: {','.join(missing)}")
-            rc_all = 1
-            continue
-        _p(f"\n========== [{row['plan_key']}] {row['goal']} ==========")
+        ready, waiting = _ready_rows(conn, plan_id, done_keys)
+        if not ready:
+            if waiting:
+                keys = ", ".join(f"{r['plan_key']}←{r['depends_on']}" for r in waiting)
+                _p(f"\n선행을 기다리는 Task: {keys} (다음 주기에 다시 본다)")
+                rc_all = rc_all or 1
+            break
         if args.wait_for_provider:
             st = providers.probe_all(cfg)
             if not _usable(cfg, st, prefer=cfg.ladder):
                 _p("  쓸 수 있는 Provider가 없다 — 풀릴 때까지 기다린다")
                 if not wait_for_provider(cfg, max_wait=args.wait_for_provider):
-                    db.update_plan(conn, args.plan, status="BLOCKED", note="Provider 대기 실패")
+                    db.update_plan(conn, plan_id, status="BLOCKED", note="Provider 대기 실패")
                     return 3
-        # BACKLOG 자리표시 task는 지우고, 실제 실행은 본체가 자기 task를 만들어 돈다.
-        db.update_task(conn, row["id"], status="ARCHIVED", reason="[계획 자리표시]")
-        rc = execute_goal(cfg, t, goal=row["goal"], max_attempts=args.max_attempts,
-                          plan_id=args.plan, plan_key=row["plan_key"],
-                          done_criteria=row["done_criteria"] or "", base_ref=pb)
-        if rc == 0:
-            done_keys.add(row["plan_key"])
+        wave_n += 1
+        wave = ready[:parallel]
+        if len(wave) > 1:
+            _p(f"\n=== 물결 {wave_n}: {len(wave)}개 동시 실행 "
+               f"({', '.join(r['plan_key'] for r in wave)}) — 서로 독립이라 줄 세우지 않는다 ===")
+        elif parallel > 1:
+            _p(f"\n=== 물결 {wave_n}: {wave[0]['plan_key']} 하나뿐(나머지는 선행 대기) ===")
+        results = {}
+        if len(wave) == 1:
+            results[wave[0]["plan_key"]] = _run_one(cfg, t, wave[0], plan_id=plan_id, pb=pb,
+                                                    args=args, tag="")
         else:
-            rc_all = rc
-            # Provider가 없어 보존된 것이면 실패가 아니라 **기다림**이다.
-            if rc == 3 and args.wait_for_provider:
-                _p("  Provider 부재로 보존됨 — 풀릴 때까지 기다렸다가 이 Task를 다시 연다")
-                if wait_for_provider(cfg, max_wait=args.wait_for_provider):
-                    rc = execute_goal(cfg, t, goal=row["goal"], max_attempts=args.max_attempts,
-                                      plan_id=args.plan, plan_key=row["plan_key"],
-                                      done_criteria=row["done_criteria"] or "", base_ref=pb)
-                    if rc == 0:
-                        done_keys.add(row["plan_key"])
-                        rc_all = 0 if rc_all == 3 else rc_all
-                        continue
-            if not args.keep_going:
-                _p(f"\n[{row['plan_key']}]에서 멈춘다 (계속하려면 --keep-going)")
-                db.update_plan(conn, args.plan, status="BLOCKED", note=f"{row['plan_key']}에서 멈춤")
-                return rc
-    db.update_plan(conn, args.plan, status="DONE" if rc_all == 0 else "BLOCKED")
+            with ThreadPoolExecutor(max_workers=len(wave)) as pool:
+                futs = {pool.submit(_run_one, cfg, t, r, plan_id=plan_id, pb=pb, args=args,
+                                    tag=f"[{r['plan_key']}]"): r for r in wave}
+                for fut, r in futs.items():
+                    try:
+                        results[r["plan_key"]] = fut.result()
+                    except Exception as e:  # noqa: BLE001 — 한 판이 터져도 나머지 결과는 남긴다
+                        _p(f"[{r['plan_key']}] 실행 중 예외: {type(e).__name__}: {e}")
+                        results[r["plan_key"]] = 1
+        for key, rc in results.items():
+            if rc == 0:
+                done_keys.add(key)
+            else:
+                rc_all = rc
+                if not args.keep_going:
+                    _p(f"\n[{key}]에서 멈춘다 (계속하려면 --keep-going)")
+                    db.update_plan(conn, plan_id, status="BLOCKED", note=f"{key}에서 멈춤")
+                    return rc
     return rc_all
-
-
 
 # ─────────────────────────── 자율 운전 (오너 지시 2026-09-12 「내가 멈출 때만 일 멈춰야지」)
 
@@ -1053,7 +1129,8 @@ def cmd_autopilot(args) -> int:
         before = _plan_done_count(conn, plan_id)
         _p(f"\n[autopilot] 주기 {cycle}: 계획 #{plan_id} 실행 (완료 {before}개)")
         rc = cmd_run_plan(_NS(target=t.name, plan=plan_id, max_attempts=args.max_attempts,
-                              keep_going=True, wait_for_provider=args.wait_for_provider))
+                              keep_going=True, wait_for_provider=args.wait_for_provider,
+                              parallel=args.parallel))
         after = _plan_done_count(conn, plan_id)
         if after > before:
             fails = 0
@@ -1166,7 +1243,7 @@ def cmd_review(args) -> int:
     rv = run_reviewer(cfg, conn, task_id=t["id"], attempt_id=0, prefix=prefix,
                       goal=t["goal"], done_criteria=t["done_criteria"] or "",
                       gates=gate_label(tgt),
-                      diff=diff, implementer=t["agent"])
+                      diff=diff, implementer=t["agent"], risk=t["risk"] or "")
     _p(f"  리뷰: {rv.verdict} — {rv.reason}")
     for rr in rv.reasons[:6]:
         _p(f"    {rr}")
@@ -1351,6 +1428,8 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--plan", type=int, required=True)
     rp.add_argument("--max-attempts", type=int, default=None)
     rp.add_argument("--keep-going", action="store_true", help="실패해도 남은 Task를 계속")
+    rp.add_argument("--parallel", type=int, default=0, metavar="개",
+                    help="서로 독립인 Task를 몇 개까지 동시에(기본 config.parallel_tasks)")
     rp.add_argument("--wait-for-provider", type=int, default=0, metavar="초",
                     help="Provider가 한도·인증으로 막히면 풀릴 때까지 기다린다(최대 이 시간, 0=대기 안 함)")
     rp.set_defaults(func=cmd_run_plan)
@@ -1360,6 +1439,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap_.add_argument("--interval", type=int, default=None, metavar="초", help="주기 간 대기(기본 config.autopilot.interval_sec)")
     ap_.add_argument("--max-attempts", type=int, default=None)
     ap_.add_argument("--max-cycles", type=int, default=0, help="시험용 주기 상한(0=무한)")
+    ap_.add_argument("--parallel", type=int, default=0, metavar="개",
+                     help="독립 Task 동시 실행 수(기본 config.parallel_tasks)")
     ap_.add_argument("--once", action="store_true", help="한 주기만 돌고 끝낸다")
     ap_.add_argument("--wait-for-provider", type=int, default=3600, metavar="초",
                      help="Provider가 막히면 풀릴 때까지 기다린다(기본 1시간, 0=대기 안 함)")

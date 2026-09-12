@@ -824,11 +824,14 @@ db.update_plan(conn, pid, status="READY", note="NC")
 print(pid)
 PYAP
 )
-# ① STOP 켜고 한 주기 — 아무 작업도 시작하면 안 된다
-./orch stop >/dev/null 2>&1
-ORCH_CONFIG="$HERE/state/nc_autopilot.json" ./orch autopilot --once --wait-for-provider 0 >/tmp/nc_autopilot_stop.log 2>&1
+# ① STOP 켜고 한 주기 — 아무 작업도 시작하면 안 된다.
+#    **시험용 STOP 파일을 쓴다**(ORCH_STOP_FILE): 전역 STOP을 켜면 돌고 있던 진짜 자율 운전까지 멈춘다.
+export ORCH_STOP_FILE=/tmp/nc_STOP
+ORCH_STOP_FILE=/tmp/nc_STOP ./orch stop >/dev/null 2>&1
+ORCH_STOP_FILE=/tmp/nc_STOP ORCH_CONFIG="$HERE/state/nc_autopilot.json" ./orch autopilot --once --wait-for-provider 0 >/tmp/nc_autopilot_stop.log 2>&1
 AP_RC=$?
-./orch resume >/dev/null 2>&1
+ORCH_STOP_FILE=/tmp/nc_STOP ./orch resume >/dev/null 2>&1
+unset ORCH_STOP_FILE
 if grep -q "STOP — 오너가 세웠다" /tmp/nc_autopilot_stop.log && [[ $AP_RC -eq 2 ]] && ! grep -q "계획 #.* 실행" /tmp/nc_autopilot_stop.log; then
   echo "  PASS  autopilot_stop — STOP이면 한 주기도 일하지 않는다"; PASS=$((PASS+1))
 else echo "  FAIL  autopilot_stop (로그: /tmp/nc_autopilot_stop.log, rc=$AP_RC)"; FAIL=$((FAIL+1)); fi
@@ -857,6 +860,78 @@ for id in $(grep -E "^\[task [0-9]+\]" /tmp/nc_autopilot_idle.log | grep -oE "ta
 if grep -q "계획 #$AP2 보류" /tmp/nc_autopilot_idle.log && [[ $(grep -c "계획 #$AP2 실행" /tmp/nc_autopilot_idle.log) -le 3 ]]; then
   echo "  PASS  autopilot_idle — 진전 없는 계획은 3주기에서 보류(무한 재시도 아님)"; PASS=$((PASS+1))
 else echo "  FAIL  autopilot_idle (로그: /tmp/nc_autopilot_idle.log)"; FAIL=$((FAIL+1)); fi
+
+# 난이도 판정 — 모델을 부르지 않고 값싸게 지킨다(순수 함수). 오너 지시 2026-09-12
+# 「일 난이도에 따라 뭐로 하면 좋을지 생각해서 결정하는 거다」.
+python3 - <<'PYDIFF' > /tmp/nc_difficulty.log 2>&1
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from orch_core import config, model_policy as M
+
+cfg = config.load()
+bad = []
+def lvl(goal, **kw):
+    return M.difficulty(goal, **kw)[0]
+
+# ① 쉬운 일에 최상위 모델을 쓰면 안 된다
+easy = lvl("docs 문서의 오타를 고친다", risk="low")
+hard = lvl("persist 복구 중 동시성 경합 없이 정합성을 지키는 재동기화를 설계한다",
+           risk="high", failures=2, deps=3)
+if easy != 1: bad.append(f"쉬운 일이 {easy}등급")
+if hard != 5: bad.append(f"어려운 일이 {hard}등급")
+# ② 단조성: 신호가 나빠지는데 등급이 내려가면 안 된다
+base = lvl("기능을 구현한다")
+if lvl("기능을 구현한다", risk="high") < base: bad.append("risk가 올랐는데 등급이 내려갔다")
+if lvl("기능을 구현한다", failures=2) < base: bad.append("실패가 쌓였는데 등급이 내려갔다")
+if lvl("기능을 구현한다", deps=3) < base: bad.append("선행이 늘었는데 등급이 내려갔다")
+# ③ 모델도 단조: 1→5로 갈수록 등급표의 뒤쪽(강한 것)을 고른다
+seq = [M.tier(cfg, "codex", n) for n in range(1, 6)]
+order = [t["model"] + "/" + t.get("effort", "") for t in seq]
+if len(set(order)) < 3: bad.append(f"등급이 올라도 모델이 거의 같다: {order}")
+if seq[0]["model"] == seq[-1]["model"] and seq[0].get("effort") == seq[-1].get("effort"):
+    bad.append("1등급과 5등급이 같은 선택")
+# ④ 사유가 없으면 안 된다 — 사유 없는 선택은 나중에 고칠 수 없다
+_, why = M.choose(cfg, "codex", goal="아무 것", risk="high", failures=1)
+if "난이도" not in why or "→" not in why: bad.append(f"사유가 비었다: {why}")
+# ⑤ 설계·리뷰의 바닥: 한 줄짜리 목표라도 분해는 싸구려로 하지 않는다
+_, pw = M.choose(cfg, "codex", goal="한 줄", kind="planning", floor=4)
+if "최소 4등급" not in pw: bad.append(f"설계 바닥이 없다: {pw}")
+print("DIFF_OK" if not bad else "DIFF_BAD " + " / ".join(bad))
+PYDIFF
+if grep -q "^DIFF_OK" /tmp/nc_difficulty.log; then
+  echo "  PASS  difficulty — 난이도로 모델·추론 강도를 고르고 사유를 남긴다(단조·바닥 포함)"; PASS=$((PASS+1))
+else echo "  FAIL  difficulty (로그: /tmp/nc_difficulty.log)"; FAIL=$((FAIL+1)); fi
+
+# 병렬 — 독립인 것은 동시에, 의존이 있는 것은 줄을 세운다(오너 지시 2026-09-12).
+# 에이전트는 자기 이름의 파일을 만들고 5초 잔다. 동시에 돌면 벽시계가 두 판 합보다 훨씬 짧다.
+mkcfg_b state/nc_parallel.json "ID=\$\$; printf 'def test_p%s():\n    assert True\n' \"\$ID\" > tests/test_p\$ID.py; sleep 5"
+PAR_ID=$(ORCH_CONFIG="$HERE/state/nc_parallel.json" python3 - <<'PYPAR'
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from orch_core import db
+conn = db.connect()
+pid = db.create_plan(conn, "[NC] parallel", "nc", "blender_sandbox")
+# A·B는 서로 독립(같은 물결), C는 A·B 뒤(줄 세우기)
+for key, dep in (("A", ""), ("B", ""), ("C", "A,B")):
+    db.create_task(conn, f"{key} 과제", "blender_sandbox", "nc", None, status="BACKLOG",
+                   plan_id=pid, plan_key=key, depends_on=dep, done_criteria="Blender 검증", risk="low")
+db.update_plan(conn, pid, status="READY", note="NC")
+print(pid)
+PYPAR
+)
+T_START=$(date +%s)
+ORCH_CONFIG="$HERE/state/nc_parallel.json" ./orch run-plan --plan "$PAR_ID" --parallel 2 --keep-going >/tmp/nc_parallel.log 2>&1
+T_WALL=$(( $(date +%s) - T_START ))
+for id in $(grep -oE "^\[?[A-C]?\]? ?\[task [0-9]+\]" /tmp/nc_parallel.log | grep -oE "[0-9]+"); do TASKS+=("$id"); done
+PAR_BAD=""
+grep -q "물결 1: 2개 동시 실행" /tmp/nc_parallel.log || PAR_BAD="$PAR_BAD 물결1이 동시가 아님;"
+grep -q "물결 2: C 하나뿐\|물결 2" /tmp/nc_parallel.log || PAR_BAD="$PAR_BAD 물결2(C)가 없음;"
+# C는 A·B가 끝난 **뒤에** 시작해야 한다 — 같은 물결에 끼면 줄 세우기가 깨진 것이다
+grep -q "물결 1: .*C" /tmp/nc_parallel.log && PAR_BAD="$PAR_BAD C가 선행 전에 시작됨;"
+[[ $(grep -cE "status   : DONE" /tmp/nc_parallel.log) -eq 3 ]] || PAR_BAD="$PAR_BAD 3개가 다 DONE이 아님;"
+if [[ -z "$PAR_BAD" ]]; then
+  echo "  PASS  parallel — 독립 둘은 한 물결에 동시, 의존하는 C는 그 뒤 (벽시계 ${T_WALL}s)"; PASS=$((PASS+1))
+else echo "  FAIL  parallel —$PAR_BAD (로그: /tmp/nc_parallel.log)"; FAIL=$((FAIL+1)); fi
 lap
 
 echo
