@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T17:07:00+09:00",
+  "updated_at": "2026-09-12T17:22:15.411656+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,13 +196,13 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#20은 관심 영역을 닫음",
+      "title": "지금 하는 일: 없음 — loop#21은 죽음·유령·부활을 닫음",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 20,
-      "completed_loop": 20,
-      "commit": "45207e82",
+      "assigned_loop": 21,
+      "completed_loop": 21,
+      "commit": "69b02f1b",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
@@ -253,18 +253,19 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "c3f00f34",
-      "rationale": "기존 구현 c3f00f34 유지. #2 전용 Unity Metal 로직 9검사 PASS·스탠드얼론 빌드 성공. batchmode HUD 실행 exit 1, 실제 PNG 0개·OnGUI 조작 수단 0개. 기존 batchmode가 서버 모드로 분류됨을 확인하여 동일 명령 반복 금지. 격리된 헤드리스 IMGUI 캡처 경로 입증 후 1440×900/960×540·2인 시체 수신 재검증 필요. 완료 아님.",
+      "rationale": "구현 c3f00f34 유지. #3 지도 로직 9검사 PASS·전용 Unity exit 0(라이선스/Curl 진단 잔존). 게임·네트워크 없는 독립 Metal 프로브도 151프레임 OnGUI/Repaint 0·화면 PNG 없음(exit 2); 요청 1440×900이나 실제 640×480. 카메라 단색 PNG만 생성되어 UI 증거 아님. 재현 소스 731000e3. 동일 환경 반복 중단, 지원 헤드리스 IMGUI 경로 입증 후 두 해상도·2인 시체 수신 검증 필요. 외형 변경·완료 판정 없음.",
       "fail_streak": 0,
-      "codex_iteration": 2,
+      "codex_iteration": 3,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
         "docs/CODEX_STATUS.md",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop2-map-graphics.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop2-headless-build.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop2-hud-headless.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop2-hud-result.json"
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/tools/headless_imgui_probe/README.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop3-map-check.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop3-probe-build2.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop3-imgui-1440.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop3-imgui-1440/result.json"
       ],
-      "verification_commit": "9b9780cd"
+      "verification_commit": "731000e3"
     },
     {
       "id": "codex-storybook-lantern",
@@ -272,17 +273,23 @@
       "difficulty": "중",
       "model": "gpt",
       "owner": "codex",
-      "status": "막힘",
+      "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "",
-      "rationale": "360tris·1.556m Blender 원본/FBX 있음. Unity 임포트와 VFX 호환은 아직 미검증. GPT 차선. 그록 루프는 진행 중/대기에 두지 않음(grok --model gpt 금지).",
+      "commit": "8c16621a",
+      "rationale": "임시 비교 불꽃 설정·범위 검사 보완(8c16621a). 기존 설정 상단 1.989863m>등갓 1.556m로 FAIL(exit 1); 후보 3시드×120프레임 1968 입자 샘플은 1.219352~1.359135m로 창 내부 PASS. Unity batchmode/Metal exit 0·360tris/1.556m/5재질 보존, 기존 C# 경고·라이선스 진단 잔존. 1440×900 직접 검수: 지붕 밖 불꽃 제거, 불투명 창 안 불꽃 가독성은 미확인. 기존 colormap 연결 확인, UV 색상 대조는 남음. 같은 점=§8.1 저폴리/크기; 개선=실루엣과 범위 실측; 부족=불꽃 가독성·별도 Variant/마을 반영·게임/2인 검증. 게임 프리팹·Blender 원본 미변경. 문서 af093224.",
       "fail_streak": 0,
-      "codex_iteration": 1,
+      "codex_iteration": 5,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
-        "docs/CODEX_STATUS.md"
-      ]
+        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/green/unity-comparison.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/green/flame-envelope.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/green/unity.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/envelope-red/flame-envelope.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/envelope-red/unity.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/red/original-materials.txt"
+      ],
+      "verification_commit": "af093224"
     },
     {
       "id": "codex-storybook-hud",
@@ -319,6 +326,18 @@
         "tools/test_codex_loop.py",
         "/Users/junholee/ai_lab/output/ulon-codex/runtime_state.json"
       ]
+    },
+    {
+      "id": "death-ghost-rez",
+      "title": "죽음→유령→부활→시체 회수 + 보호 아이템(§18.4)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 21,
+      "completed_loop": 21,
+      "commit": "69b02f1b",
+      "rationale": "keepOnDeath JSON·장착 해제. 게이트+NC. 플레이 샷 유령 HUD·부활 회수. 2클라 시체 동기화는 바이너리 없음.",
+      "fail_streak": 0
     }
   ]
 }

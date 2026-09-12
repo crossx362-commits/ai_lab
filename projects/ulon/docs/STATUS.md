@@ -1,18 +1,17 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#19** (성공) · 2026-09-12T16:57:08+0900
-원작 대비: 권한 있는 쪽만 GM 명령을 쓰는 점은 같고, 거절 사유·NC는 낫고, 상담원 명령 풀셋과 전용 서버 2클라 실측은 부족합니다. 핵심(무인증 지급 차단)은 통과, 원작 운영툴 합격은 아닙니다.
+마지막 바퀴: **#20** (성공) · 2026-09-12T17:07:56+0900
+커밋 `45207e82`, `24d593b5`. 다음은 에디터를 닫은 뒤 클라 재빌드와 `two_client_check`입니다.
 
-- 모델 `grok-4.6` · 경과 651s · 세션 rc `0`
-- HEAD `99e5e31e [loop#19] gm-auth 검증 결과 STATUS·보드 반영` · 브랜치 `master`
-- INBOX 미처리 **0**건
+- 모델 `grok-4.6` · 경과 600s · 세션 rc `0`
+- HEAD `24d593b5 [loop#20] interest-mgmt 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- INBOX 미처리 **1**건
 - 이 바퀴 커밋:
-- `99e5e31e [loop#19] gm-auth 검증 결과 STATUS·보드 반영`
-- `aea2e089 [loop#19] GM 패널 서버 권한 확인`
-- `33c5a72f [codex] 헤드리스 실행과 보드 결과 전용 보고 반영`
-- `bbffa594 [codex#1] 공유 보드 자율개발 지시서와 실행 근거 기록`
-- `4680fdcf fix(ulon/loop): grok 세션에 gpt 모델명을 넣지 않는다`
+- `24d593b5 [loop#20] interest-mgmt 검증 결과 STATUS·보드 반영`
+- `45207e82 [loop#20] FishNet 관심 영역 18m DistanceCondition`
+- `5b20c4b3 [codex] 동화풍에 워크래프트풍 실루엣과 색 대비 혼합`
+- `cad9b82e [codex] 예약 대신 그록 방식 헤드리스 연속 개발 루프 실행`
 
 ## 바퀴 기록
 
@@ -37,6 +36,7 @@
 | #17 | 실패 | 2026-09-12T16:44:40+0900 | gpt | 1s |
 | #18 | 실패 | 2026-09-12T16:45:29+0900 | gpt | 1s |
 | #19 | 성공 | 2026-09-12T16:57:08+0900 | grok-4.6 | 651s |
+| #20 | 성공 | 2026-09-12T17:07:56+0900 | grok-4.6 | 600s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -70,7 +70,7 @@
 | 월드(마을1·필드·광산·던전3·테스트) | 부분 | loop#7 플레이: Terrain 600×600m, hres=1025. 미니맵·세계지도(M) 표시, 라벨 600m. 원작 절반(~3072m)은 아님 |
 | 몬스터 | 부분 | loop#11: 원장 **20종**(사냥 8+추가 6+보스 4+조련 2). 샷 `unity/Captures/loop11_cutthroat_seer.png`·`loop11_skelmage_squire.png`·`loop11_bonekin_runt.png`. 사냥터 8종·게이트 유지. 비인간형 원형(늑대·거미)은 메시 없어 KayKit 색·크기 변형으로 채움. 배치 셀프체크는 에디터 점유라 미실행 |
 | 마법·시약·명상·시전 중단 | 부분 | `RpcCast`가 성공 시 `RpcPlayEffect` 방송(소스 게이트). HUD 시전 버튼은 이번 플레이에서 안 누름 |
-| 죽음→유령→부활→시체 회수 | 부분 | 루팅 우선창 커밋 `8a7ad1b5`/`dcba16e8`. 플레이 미실행 |
+| 죽음→유령→부활→시체 회수 | 동작함 | loop#21: 플레이 HP0·HUD 「유령」·퀵바 치유사 안내(`unity/Captures/loop21_ghost.png`). 치유사 부활 후 시체에서 wood·iron_sword 회수, 문장(keepOnDeath)은 몸에 남음. 샷 `loop21_rez_loot.png` HP59 유령 해제. 게이트 `AssertDeathKeep`+NC. 마법 부활·지도 시체 표시는 Codex. 원작 합격 아님 |
 | 무게·과적·STR 요구 | 부분 | 코드. 중첩 컨테이너는 주머니 1단 |
 | Fame/Karma·가드존·범죄 | 부분 | 코드. Open PvP 플레이 미실행 |
 | 파티·길드·길드전·결투 | 부분 | HUD 패널 코드. 플레이 미실행 |
@@ -110,19 +110,20 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `interest-mgmt`: 기획 §7.3. 원장 `StreamingAssets/Data/interest.json` `sync_range_m=18`(ServUO `GetUpdateRange` 기본 18타일, https://github.com/ServUO/ServUO/blob/master/Server/Map.cs). `InterestSetup`이 서버 기동 전 `ObserverManager`에 `DistanceCondition`을 넣음. `DualClientProbe`는 스폰에서 몹을 기다리지 않고 사냥터로 붙음. 커밋 `45207e82`. 게이트 `AssertInterest`+NC (`NcOpen`이면 19m가 보여 빨간불). 호스트 플레이: 광장 몹 vis 0/21, 사냥터 옆 Skeleton 1.2m vis·Acolyte 18.1m 숨김. 샷 `unity/Captures/loop20_interest_hunt_near.png`·`loop20_interest_plaza_far.png`. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유라 못 돌림. 콘솔 URP `depth surface memoryless` 경고 2줄은 물 깊이 카메라 잔재로 이번 코드가 아님.
-- 원작 대비: 같은 점 — 멀리 있는 몹은 클라에 안 보인다(18타일). 나은 점 — JSON 원장·NC·호스트 vis. 부족한 점 — 기획서에 미터값이 없고, 플레이어↔플레이어 2클라 실측이 없다. 핵심(거리 밖 동기화 제외)은 호스트에서 통과, 원작 합격은 아님.
+- `death-ghost-rez`: 기획 §18.4 보호 예외. `items.json` 보스 문장 넷 `keepOnDeath`. 사망 시 일반 아이템만 시체, 보호 아이템은 가방, 장착 해제. 유령 공격 `ghost` 거절. 게이트 `AssertDeathKeep`+NC (`NcDropProtected`면 문장이 시체로 가 빨간불). 에디터 플레이: ghost=True HP0, 시체 wood+iron_sword, 가방 warden_crest. 치유사 부활 후 사거리 안 룻 성공. 샷 `unity/Captures/loop21_ghost.png`·`loop21_rez_loot.png`. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유. 콘솔 URP depth memoryless 경고 2줄은 이번 코드 아님.
+- INBOX 16:59 아트 방향은 CODEX_PROMPT.md 반영 확인. 그록은 그래픽 카드 안 염.
+- 원작 대비: 같은 점 — 죽으면 유령, 가방은 시체, 치유사 부활, 시체 회수. 나은 점 — 보호 태그가 JSON 원장·NC. 부족한 점 — 유령 외형 구분 없음(GPT), 지도 시체 표시는 Codex, 골드 필드가 시체로 안 감, 마법 부활 미플레이. 핵심(유령·시체·부활·회수)은 통과, 원작 합격은 아님.
 
 ## 지금 하는 것
 
-없음. loop#20 카드 `interest-mgmt` 닫음.
+없음. loop#21 카드 `death-ghost-rez` 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
 1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
-2. `tools/two_client_check.sh` — 관심 영역(멀리서 안 보임·가까이서 보임)과 GM 무인증 거절 재실측
+2. `tools/two_client_check.sh` — 관심 영역·GM 무인증·시체 동기화 재실측
 3. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선 (`uo-half-span`, `codex-*`)
-4. 그래픽·UI 폴리시·물가 셰이더·Kenney 커서 스킨은 GPT/Codex 차선 (그록 안 함)
+4. 그래픽·UI 폴리시·물가 셰이더·Kenney 커서 스킨·유령 외형은 GPT/Codex 차선 (그록 안 함)
 
 ## 막힌 것 (사람 결정)
 
