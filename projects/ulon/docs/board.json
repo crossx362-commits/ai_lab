@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T14:50:00+09:00",
+  "updated_at": "2026-09-12T15:20:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -18,11 +18,11 @@
       "title": "씬 배치를 FBX 직접 붙이지 말고 프리팹+이펙트",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": null,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "INBOX 14:09. Prefabs.cs가 일부 있음. VisualSliceBuilder 분할 금지. 에디터에서 확인.",
+      "status": "완료",
+      "assigned_loop": 9,
+      "completed_loop": 9,
+      "commit": "bb30c594",
+      "rationale": "INBOX 14:09. LanternLit·횃불·분수 파티클. RAW 게이트+NC. 샷에 주황 불티.",
       "fail_streak": 0
     },
     {

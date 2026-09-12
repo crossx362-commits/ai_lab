@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#7** (성공) · 2026-09-12T14:29:57+0900
-**다음.** INBOX의 행동 체감(타격/시전 VFX·SFX) → 프리팹+이펙트.
+마지막 바퀴: **#8** (성공) · 2026-09-12T14:42:14+0900
+**커밋.** `3b81de7b` 구현, `8d1106fe` STATUS. 다음 카드는 `scene-prefab-vfx`(FBX 대신 프리팹+이펙트).
 
-- 모델 `grok-4.6` · 경과 308s · 세션 rc `0`
-- HEAD `991ba58d [loop#7] 보드에 map-land-scale 검증 커밋 해시` · 브랜치 `master`
-- INBOX 미처리 **3**건
+- 모델 `grok-4.6` · 경과 690s · 세션 rc `0`
+- HEAD `8d1106fe [loop#8] 행동 체감 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- INBOX 미처리 **2**건
 - 이 바퀴 커밋:
-- `991ba58d [loop#7] 보드에 map-land-scale 검증 커밋 해시`
-- `fbe1f41b [loop#7] 600m 섬·월드맵 에디터 플레이 검증`
+- `8d1106fe [loop#8] 행동 체감 검증 결과 STATUS·보드 반영`
+- `3b81de7b [loop#8] 타격·시전 때 VFX가 플레이에서 실제로 나오게`
 
 ## 바퀴 기록
 
@@ -22,6 +22,7 @@
 | #5 | 성공 | 2026-09-12T14:19:23+0900 | grok-4.6 | 777s |
 | #6 | 성공 | 2026-09-12T14:24:02+0900 | grok-4.6 | 231s |
 | #7 | 성공 | 2026-09-12T14:29:57+0900 | grok-4.6 | 308s |
+| #8 | 성공 | 2026-09-12T14:42:14+0900 | grok-4.6 | 690s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -66,7 +67,7 @@
 | 관심 영역(Interest Management) | 없음 | 기획 §7.3. 코드 없음 |
 | LOD·거리 비활성 | 없음 | 기획 §8.1 |
 | UI 팩(Paperdoll 그림·DnD·우클릭) | 없음 | HUD는 IMGUI 기본 버튼. Kenney UI 팩 미반입 |
-| VFX | 동작함 | loop#8 에디터 플레이: 씬에 템플릿 없음 → `ActionVfx.Ensure`가 세움. Hit 재생 `Played` 0→5. 근접 샷 `unity/Captures/loop8_hit_close.png`에 주황 불티 |
+| VFX | 동작함 | loop#8 타격 불티 + loop#9 등불·횃불·분수 루프 파티클. 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티. 분수 물줄기는 약함 |
 | SFX | 동작함 | 같은 플레이에서 `ActionSfx.Played` 0→3. 공간 음원 3D. 귀로 들은 것은 MCP라 미확인(카운트만) |
 | GM 도구 | 부분 | GM 패널 코드. 실행 없음 |
 | 백업/복구 | 부분 | 백업 버튼·`data/backups/`. 화면 복구 경로 없음. E2E 미실행 |
@@ -95,21 +96,19 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `action-feel`: 원인은 씬에 `ActionVfx` 루트가 없고(`Bootstrap.unity`에 0), `Play`가 템플릿 없으면 조용히 return. 시전(`RpcCast`)은 효과 방송이 없었다.
-- 런타임 `ActionVfx.Ensure` + 시전 성공 시 `RpcPlayEffect`. 게이트 `AssertActionVfxEnsureRestores`·`AssertCastBroadcastsEffect`(+NC).
-- 에디터 플레이: 아바타 1, 템플릿 존재, Hit 재생. 근접 샷에 스켈레톤 주황 불티. `python3 tools/test_alpha_readiness.py` OK.
-- 원작 대비: 같은 점 — 타격 순간에 결과가 화면에 남음. 나은 점 — 3D 파티클. 부족한 점 — UO 전투 저널 문장 없음, 이번 세션은 FishNet 클라 미기동이라 스윙 모션·HP 감소는 못 봄. 핵심(행동하면 보임)은 이 카드 범위에서 통과.
+- `scene-prefab-vfx`: `Place()`는 모델을 Env 프리팹으로만 놓는다. 등불은 `LanternLit`(불꽃), 횃불·분수는 메시 프리팹에 루프 파티클. 화덕은 불 없는 등불 메시+`CampfireFlame`(RAW 뿌리 유지 — 바꾸면 불을 잃음).
+- 게이트 `AssertNoRawEnvRoots`·`AssertEnvPropVfx`(+NC). `test_alpha_readiness.py` OK. 에디터 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티.
+- 원작 대비: 같은 점 — 마을 등불·횃불이 타고 분수 자리가 있다. 나은 점 — 3D 파티클(Kenney CC0). 부족한 점 — 분수 물줄기가 약하고, 등불 메시가 흰 장대로 읽힘. 핵심(FBX 직접 붙이지 않고 프리팹+이펙트)은 이 카드 범위에서 통과. 구현 `bb30c594`.
 
 ## 지금 하는 것
 
-없음. loop#8 카드 `action-feel` 닫음.
+없음. loop#9 카드 `scene-prefab-vfx` 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
-1. INBOX 「FBX 말고 프리팹+이펙트」 — `scene-prefab-vfx`. `VisualSliceBuilder` 분할 금지
-2. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
-3. 원작 지도 절반(~3072m): 청크 또는 셀 확대. 사람 선택 (`uo-half-span`)
-4. `tools/two_client_check.sh`
+1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
+2. 원작 지도 절반(~3072m): 청크 또는 셀 확대. 사람 선택 (`uo-half-span`)
+3. `tools/two_client_check.sh`
 
 ## 막힌 것 (사람 결정)
 
