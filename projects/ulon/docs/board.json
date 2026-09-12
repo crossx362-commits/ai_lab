@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T18:20:00+09:00",
+  "updated_at": "2026-09-12T18:45:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,14 +196,26 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#25는 persist DB 백업/복구를 검증 중으로 둠",
+      "title": "지금 하는 일: 없음 — loop#26은 민가 지붕 외사면을 검증 중으로 둠",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 25,
-      "completed_loop": 25,
-      "commit": "c94d64fd",
+      "assigned_loop": 26,
+      "completed_loop": 26,
+      "commit": "ec8319f2",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
+      "fail_streak": 0
+    },
+    {
+      "id": "village-house-roof",
+      "title": "민가 지붕 폭 늘리기 제거 — 서·동 외사면 용마루",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "검증 중",
+      "assigned_loop": 26,
+      "completed_loop": null,
+      "commit": "ec8319f2",
+      "rationale": "INBOX 18:20 집 모양. Kenney 외사면을 폭만 ×2 하면 납작 판. 플레이 샷 ridge. 배치 셀프체크·모서리 벽은 남음.",
       "fail_streak": 0
     },
     {

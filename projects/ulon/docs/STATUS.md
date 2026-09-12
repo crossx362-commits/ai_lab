@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#24** (성공) · 2026-09-12T18:09:16+0900
-- 에디터 PID 85035가 잠금이라 클라 빌드·`two_client_check`는 못 했습니다. 2클라 거래 창 동기화는 미실행이라 원작 합격은 아닙니다.
+마지막 바퀴: **#25** (성공) · 2026-09-12T18:19:40+0900
+다음: 클라 재빌드, 2클라, 스테이징에서 복원 후 재접속. 그래픽은 GPT/Codex 차선입니다.
 
-- 모델 `grok-4.6` · 경과 932s · 세션 rc `0`
-- HEAD `ffd0962d [loop#24] secure-trade-gold 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 577s · 세션 rc `0`
+- HEAD `f1d95f46 [loop#25] persist-backup-restore 검증 결과 STATUS·보드 반영` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `ffd0962d [loop#24] secure-trade-gold 검증 결과 STATUS·보드 반영`
-- `f5650001 [loop#24] 안전 거래 골드·중복 지급 방지`
+- `f1d95f46 [loop#25] persist-backup-restore 검증 결과 STATUS·보드 반영`
+- `c94d64fd [loop#25] persist DB·집·마구간 백업/복구`
 
 ## 바퀴 기록
 
@@ -39,6 +39,7 @@
 | #22 | 성공 | 2026-09-12T17:35:01+0900 | grok-4.6 | 670s |
 | #23 | 성공 | 2026-09-12T17:52:56+0900 | grok-4.6 | 1027s |
 | #24 | 성공 | 2026-09-12T18:09:16+0900 | grok-4.6 | 932s |
+| #25 | 성공 | 2026-09-12T18:19:40+0900 | grok-4.6 | 577s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -105,27 +106,29 @@
 - **클라이언트 바이너리 없음.** 이 트리 `builds/client/`에 `UlonClient.app`이 없다. 실행·2클라 검사를 이번 바퀴에서 못 함.
 - **persist/postgres는 이번 살아 있음.** loop#10에서 persist.py 반영 후 `start_persist.sh`로 재기동, pid 2822, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
-- **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080, `unity@43694413dbe9b6f3`)는 이번 바퀴에서 인스턴스 없음(Start Session 필요). Grok stdio MCP도 세션 없음.
+- **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080, `unity@43694413dbe9b6f3`)는 이번 살아 있음 — `EnsureHouseRoofs`·플레이 샷에 씀. 배치 검사는 에디터를 닫은 뒤에.
 - **이번 플레이 FishNet 클라 미기동.** `playmode_transition`이 길게 남음. `NetAvatar.IsClientInitialized=false`라 공격 RPC는 skip. VFX는 로컬 `Play`로 확인.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 반대로 **UlonClient.app은 그 워크트리에만** 있다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- `persist-backup-restore`: 기획 §14.2 DB 백업/복구. persist `export_snapshot`/`restore_snapshot` + POST `/backup` `/restore`. 집·마구간 포함. `OpLog.Backup`이 `persist.json`을 폴더에 복사. GM 패널 「복구」→`RpcGmRestore`. 게이트 `AssertPersistBackup`+NC. SQLite·PG 격리 스키마 왕복/롤백/없는 파일 404. 운영 persist 재기동 후 POST `/backup` 실측(복원은 운영에 안 넣음). `test_alpha_readiness.py` OK. Unity MCP 세션 없음·에디터 점유라 셀프체크·HUD 샷 없음.
-- 원작 대비: 같은 점 — 캐릭터·집·마구간을 한 스냅샷으로 남기고 실패 시 롤백. 나은 점 — 빠진 테이블·중복 PK NC가 산다. 부족한 점 — 운영 복원·재시작 후 월드 재로드·HUD 샷 미실행. 원작 합격 아님.
+- `village-house-roof`: INBOX 「집 모양」. Kenney `roof`는 1칸 외사면인데 폭만 ×2로 늘려 납작한 판이었다(샷 loop7·loop14). `PlaceHouseRoof`가 서쪽 yaw 180 + 동쪽 yaw 0으로 마주 놓아 용마루 하나. 스케일은 KitScale만. 2층도 left/right(벽 높이로만 구분). 게이트 `AssertHouseRoofNotStretched`+NC. `EnsureHouseRoofs`가 씬 7채 28장 수렴. 호스트 플레이 샷 `unity/Captures/loop26_house_ridge.png`. 콘솔은 Metal memoryless 깊이 경고 2줄뿐. 배치 셀프체크는 에디터 점유라 미실행.
+- 원작 대비: 같은 점 — 월드에 보이는 집. 나은 점 — 킷 외사면으로 박공 지붕이 읽힌다. 부족한 점 — `wall-corner` 없음(옆이 뚫려 보임), 굴뚝·차양 자리는 옛 좌표, 셀프체크 배치 미실행. 원작 합격 아님.
 
 ## 지금 하는 것
 
-없음. loop#25 카드 `persist-backup-restore`는 검증 중(운영 복원·화면 미실행).
+없음. loop#26 카드 `village-house-roof`는 검증 중(배치 셀프체크·모서리 벽).
 
 ## 다음 할 것 (우선순위 → board.json)
 
-1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
-2. `tools/two_client_check.sh` — 관심 영역·GM 무인증·시체 동기화 재실측
-3. persist 복구: Unity 게이트 플레이 + 운영이 아닌 스테이징에서 복원 후 재접속
-4. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선 (`uo-half-span`, `codex-*`)
-5. 그래픽·UI 폴리시·물가 셰이더·Kenney 커서 스킨·유령 외형은 GPT/Codex 차선 (그록 안 함)
+1. INBOX 18:37 씬 오브젝트 종류별 정리 (에디터와 겹침 — 점유 중이면 문서만)
+2. 민가 `wall-corner`로 모서리 막기 (집 모양 남은 구멍)
+3. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
+4. `tools/two_client_check.sh` — 관심 영역·GM 무인증·시체 동기화 재실측
+5. persist 복구: Unity 게이트 플레이 + 스테이징 복원 후 재접속
+6. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선
+7. 그래픽·UI 폴리시·물가 셰이더는 GPT/Codex 차선 (그록 안 함)
 
 ## 막힌 것 (사람 결정)
 
