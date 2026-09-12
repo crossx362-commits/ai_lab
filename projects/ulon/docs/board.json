@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T14:20:00+09:00",
+  "updated_at": "2026-09-12T14:25:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -10,8 +10,20 @@
       "assigned_loop": 5,
       "completed_loop": null,
       "commit": "946a381b",
-      "rationale": "INBOX 맵 작음·월드맵. #4는 강 물가 띠 NC 2.3m로 실패. 노이즈 주기를 LandScale에 맞춤.",
+      "rationale": "INBOX 맵 작음·월드맵. #6도 에디터 점유(PID 85035)+MCP 세션 없음이라 셀프체크·클라 화면 못 함.",
       "fail_streak": 1
+    },
+    {
+      "id": "scene-prefab-vfx",
+      "title": "씬 배치를 FBX 직접 붙이지 말고 프리팹+이펙트",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "INBOX 14:09. Prefabs.cs가 일부 있음. VisualSliceBuilder 분할 금지. 에디터에서 확인.",
+      "fail_streak": 0
     },
     {
       "id": "uo-half-span",
@@ -54,11 +66,11 @@
       "title": "운영 PostgreSQL+persist 기동 후 /ready 200 실측",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": 1,
-      "completed_loop": null,
+      "status": "완료",
+      "assigned_loop": 6,
+      "completed_loop": 6,
       "commit": "",
-      "rationale": "기동 스크립트는 있으나 이번 pid 사망·5432 미청취. P0. Unity 불필요. loop#2는 INBOX(맵 크기) 우선.",
+      "rationale": "P0. Unity 불필요. #6 실측: pg_isready, characters 17행, /ready 200 driver=postgres, smoke ok=true.",
       "fail_streak": 0
     },
     {
