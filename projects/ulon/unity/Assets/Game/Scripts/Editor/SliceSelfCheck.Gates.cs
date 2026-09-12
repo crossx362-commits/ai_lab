@@ -292,6 +292,8 @@ namespace Ulon.Editor
             Gate(AssertSceneKindFolders);
             Gate(AssertSceneRootActorFacilityKindsNegativeControl);
             Gate(AssertSceneRootActorFacilityKinds);
+            Gate(AssertOriginKeepNegativeControl);
+            Gate(AssertOriginKeep);
             Gate(AssertBuildingsFadeSelfRootNegativeControl);
             Gate(AssertHuntSpotsApartNegativeControl);           // 간격 자는 `AssertHuntGround` 안에서 잰다
             Gate(AssertDoorFitsPersonNegativeControl);           // 배율을 뺀 집은 빨간불이어야 한다(랩 B)

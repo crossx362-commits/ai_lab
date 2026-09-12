@@ -247,6 +247,7 @@ namespace Ulon.Editor
                 var folder = SceneKindFolder(kind);
                 if (folder == null || go.transform == folder || go.transform.parent == folder)
                     continue;
+                // 월드 좌표 유지. 원점에 겹친 가로등·아치·벤치·덤불은 여기서 지우지 않는다(사람 결정).
                 go.transform.SetParent(folder, true);
                 moved++;
             }
