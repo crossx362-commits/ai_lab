@@ -41,6 +41,8 @@ namespace Ulon.Client
 
         void HandlePointer(bool down)
         {
+            if (SliceHud.ContextConsumesClick())
+                return;
             Camera cam = Camera.main;
             if (cam == null)
                 return;

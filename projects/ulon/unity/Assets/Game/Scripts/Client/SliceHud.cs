@@ -31,6 +31,8 @@ namespace Ulon.Client
                 gmOpen = !gmOpen;
             if (Input.GetKeyDown(KeyCode.M) && !PersistDriver.Creating)
                 mapOpen = !mapOpen;
+            if (Input.GetMouseButtonDown(1) && !PersistDriver.Creating)
+                OpenWorldContextFromInput();
             if (PersistDriver.Creating || lookApplied)
                 return;
             var world = OfflineWorld.Instance;
@@ -114,6 +116,7 @@ namespace Ulon.Client
             DrawTabs(world, me);
             DrawPanel(world, me, net);
             DrawWorldMap(world, me);
+            DrawContextMenu(me, net);
         }
 
         /// <summary>이 프레임에 **실제로 그린 버튼의 라벨** — 「코드가 부른다」와 「화면에 수단이 있다」는 다르다.
