@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-13T00:01:53+0900",
+  "updated_at": "2026-09-13T00:15:00+0900",
   "cards": [
     {
       "id": "map-land-scale",
@@ -462,27 +462,25 @@
       "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "a4cb4e2e",
-      "rationale": "#76 a4cb4e2e: 실제 전용 Bootstrap Edit 배경+SliceHud.OnGUI 통합 어댑터, 종이/목재 스크롤 트랙·청록 손잡이 적용. Metal 1440×900/1024×768 지도·장비/가방 공존/경계·필수영역/16조작 그리기 검사 PASS, PNG5장 직접 검토. 스크롤 red1→green0, 지도 누락 음성대조 exit1→정상 reviewed exit0, IMGUI제거 Repaint0/배경26629표본 변화0, 지도 회귀 exit0. 기존 CS/라이선스 진단 잔존. 긴 슬롯 이름 일부 잘림(전체 선택 안내 제공), 실제 Play·OS/서버 입력·2인·원본 배포 미검증.",
+      "commit": "fab7b3cf",
+      "rationale": "#87 fab7b3cf: 가방/은행 고정높이 슬롯의 긴 이름을 실제 폰트 높이로 줄여 접두부·줄임표 표시, 전체 선택 안내/입력 보존. red exit1→green/final Metal 통합 HUD 두해상도 exit0, 이름12·합성슬롯6단계·지도/16조작 그리기·배경26629표본 변화0, PNG3장 직접검토. 상태19/스킨13 회귀 exit0. 기존 CS/환경경고 잔존. Play·전체 컨테이너/서버/OS 입력·2인·원본배포 미검증.",
       "fail_streak": 0,
       "owner": "codex",
       "resume_token": "owner-resume-gfx-ui-integration-20260912",
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
-      "resume_condition": "RunIntegratedHud의 실제 배경 경로 확보. 긴 슬롯 이름의 시작/줄임표 표시 개선, 이후 Play 어댑터와 실제 아이템의 스크롤·슬롯 입력/서버 전달 검증. 기존 프로브 반복·원본 통합 대기로 차단하지 않는다.",
+      "resume_condition": "긴 슬롯 접두부/줄임표 구현 및 통합 Edit 화면 검증 확보. #86 단일 SlotCell 합성 입력을 native 이벤트/전용 Play 전체 스크롤 영역 입력으로 확장해 실제 아이템 선택·은행/주머니 왕복·장착/해제·서버 전달 검증. 장비칸 긴 이름 별도 확인. 같은 scroll Ignore/기존 프로브 반복 금지.",
       "evidence": [
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/hud-1440x900.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/hud-1024x768.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/selected.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/drag-corner.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/negative-no-imgui.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/scroll-red.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/scroll-green.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/missing-map.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/map-regression.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/review.json"
+        "/Users/junholee/ai_lab/output/ulon-codex/loop87-integrated/red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop87-integrated/green.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop87-integrated/final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop87-integrated/regression.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop87-integrated/green/hud-1024x768.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop87-integrated/green/selected.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop87-integrated/final/hud-1440x900.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop87-integrated/final/bootstrap-control.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop87-integrated/review.json"
       ],
-      "codex_iteration": 76
+      "codex_iteration": 87
     },
     {
       "id": "codex-worldmap-guide",
@@ -592,10 +590,10 @@
       "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "92b4bda8",
-      "rationale": "#75 92b4bda8: 실제 SliceHud.OnGUI 헤드리스 연결, 가방 세로 스크롤·미니맵/퀵바 겹침·3열/이름 줄바꿈 수리. Metal 두 해상도 한글/배치·하단 안내·이름표 픽셀/IMGUI 제거 PASS, exit0. 숨긴 셀 드롭 실제 fixture 이동 FAIL→viewport 경계 적용 후 외부 불변/동일 내부 이동 PASS. 합성 MouseUp·기존 상태19/스킨10·지도 회귀 PASS. 기존 경고 잔존. Play/OS 슬롯입력·서버 DnD·장착/2인·원본 배포 미검증.",
+      "commit": "c7875c9c",
+      "rationale": "#86 c7875c9c: 실제 슬롯 버튼의 MouseDown/MouseUp 소비로 드래그 시작·해제가 빠지는 문제 수리. 원본 시작/해제 보완 제거 음성대조 각FAIL→합성 슬롯6단계·클릭1/4px·20px/해제·수량불변 PASS, Metal두해상도·기존상태19/스킨13 PASS/exit0. 기본·선택PNG 검토. 스크롤 입력은 어댑터Ignore 미해결; Play/은행·주머니왕복/장착/OS/2인·원본배포 미검증. 기존경고잔존.",
       "fail_streak": 0,
-      "codex_iteration": 75,
+      "codex_iteration": 86,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
         "docs/CODEX_STATUS.md",
@@ -638,11 +636,22 @@
         "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/map-regression.log",
         "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/orientation-negative.json",
         "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/release-visual-equivalence.json",
-        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_75.md"
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_75.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/baseline-red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/mouseup-red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/verified.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/verified/hud-1440x900.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/visual.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/visual/hud-1024x768.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/visual/selected.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/regression.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/static.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop86-hud/scroll2.log",
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_86.md"
       ],
-      "resume_token": "hud-render-scroll-75",
-      "resume_condition": "전용 Play/실제 아이템 fixture에서 스크롤 후 슬롯 클릭·드래그 시작→은행/주머니 이동·장착/해제·입력 전달 검사. 현재 Editor 합성 셀/상태 결과를 OS/게임/2인 합격으로 사용하지 않는다. 원본 통합 대기로 독립 검증을 미루지 않는다.",
-      "verification_commit": "92b4bda8",
+      "resume_token": "hud-slot-button-86",
+      "resume_condition": "native 이벤트 디스패치 또는 전용 Play 어댑터에서 스크롤 내부 type/좌표부터 확인하고 실제 슬롯 선택→은행/주머니 왕복·장착/해제 검사. loop86 scroll/scroll2의 Repaint 내부 이벤트 치환은 슬롯 도달 전 Ignore; 같은 조건 반복 금지. 최종 단일 슬롯 합성6단계를 OS/Play/스크롤/네트워크 PASS로 사용하지 않는다.",
+      "verification_commit": "c7875c9c",
       "environment_verification_commit": "15675b18"
     },
     {
@@ -892,6 +901,18 @@
       "completed_loop": 53,
       "commit": "016b1ccd",
       "rationale": "§4.2 홀드 떼면 정지. ClickHold.StopOnRelease 2프레임+. 짧은 클릭은 목적지 유지. 게이트+NC 에디터 OK. 샷 loop53_click_hold_walk·stop. 커서거리 달리기 수치는 기획서 없음.",
+      "fail_streak": 0
+    },
+    {
+      "id": "auto-54-타깃-RPG-전투-서버-판정",
+      "title": "타깃 RPG 전투(서버 판정)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 54,
+      "completed_loop": 54,
+      "commit": "b9200efc",
+      "rationale": "§18.3 방패 막기. ParryChance 방패술*0.3. 게이트+NC 에디터 OK. 샷 loop54_parry_block 400HP 막음·loop54_parry_open 400→388. Bushido/무기막기 없음.",
       "fail_streak": 0
     }
   ]
