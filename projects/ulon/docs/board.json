@@ -202,7 +202,7 @@
       "status": "완료",
       "assigned_loop": 28,
       "completed_loop": 28,
-      "commit": "",
+      "commit": "f8ecfeb1",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
@@ -412,7 +412,7 @@
       "status": "검증 중",
       "assigned_loop": 28,
       "completed_loop": null,
-      "commit": "",
+      "commit": "f8ecfeb1",
       "rationale": "창 벽은 유지하고 L자만 얹음. 샷 loop28_house_corners. 배치 셀프체크는 에디터 점유.",
       "fail_streak": 0
     },
