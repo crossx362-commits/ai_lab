@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T16:20:00+09:00",
+  "updated_at": "2026-09-12T16:35:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -113,12 +113,12 @@
       "id": "water-shore-jag",
       "title": "물가 톱니 — 깊이 버퍼 계단 (핸드오프 미닫힘)",
       "difficulty": "상",
-      "model": "grok-4.6",
-      "status": "대기",
+      "model": "gpt",
+      "status": "막힘",
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "",
-      "rationale": "셰이더·깊이 텍스처. 검수가 판정한 2·3단계는 손대지 않음. VisualSliceBuilder 분할 금지.",
+      "rationale": "셰이더·깊이 텍스처. 2026-09-12 오너: 그래픽·UI는 GPT 차선. 그록 루프 손대지 않음.",
       "fail_streak": 0
     },
     {
@@ -191,6 +191,30 @@
       "completed_loop": null,
       "commit": "",
       "rationale": "코드 없음. 20~50 동접 전제. P3. 핵심 루프 재검증 이후.",
+      "fail_streak": 0
+    },
+    {
+      "id": "ui-target-cursor",
+      "title": "대상 지정 커서 (마법·치유·채집·상호작용)",
+      "difficulty": "중",
+      "model": "gpt",
+      "status": "막힘",
+      "assigned_loop": 16,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "오너 2026-09-12: 그래픽·UI는 GPT. #16이 열었으면 닫고 이어가지 말 것.",
+      "fail_streak": 0
+    },
+    {
+      "id": "gpt-gfx-ui",
+      "title": "그래픽·UI 개선은 GPT 차선",
+      "difficulty": "상",
+      "model": "gpt",
+      "status": "막힘",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "오너 2026-09-12 16:38. 그록 루프는 셰이더·HUD 외형·아이콘·VFX 폴리시를 새로 열지 않음.",
       "fail_streak": 0
     }
   ]

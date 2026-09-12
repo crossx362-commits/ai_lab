@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#14** (성공) · 2026-09-12T16:06:34+0900
-**INBOX.** 그록/그록봇 공존은 참고로 닫음(이 트리는 `projects/ulon`만). 보고서 페이지·병렬 작업은 다음 바퀴. 한 작업 규칙과 병렬 지시는 충돌이라 INBOX를 우선하되, 이번엔 이미 진행 중이던 메뉴를 닫고 다음은 겹치지 않는 카드를 나란히 엽니다.
+마지막 바퀴: **#15** (성공) · 2026-09-12T16:27:03+0900
+커밋: `b1e7ab40` 구현, `8fb446ae` 검증·STATUS. 배치 셀프체크·클라 빌드는 에디터(PID 85035) 점유라 못 돌렸습니다. 다음은 에디터를 닫은 뒤 `UlonClient.app` 재빌드입니다.
 
-- 모델 `grok-4.6` · 경과 980s · 세션 rc `0`
-- HEAD `79441fa1 [loop#14] ui-context-menu 검증 결과 STATUS·보드 반영` · 브랜치 `master`
-- INBOX 미처리 **2**건
+- 모델 `grok-4.6` · 경과 1181s · 세션 rc `0`
+- HEAD `8fb446ae [loop#15] board-report-page 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `79441fa1 [loop#14] ui-context-menu 검증 결과 STATUS·보드 반영`
-- `2b62026a [loop#14] 우클릭 컨텍스트 메뉴 (훈련·펫 명령·집 보안)`
+- `8fb446ae [loop#15] board-report-page 검증 결과 STATUS·보드 반영`
+- `b1e7ab40 [loop#15] 보드에 샷 위주 보고서 페이지`
 
 ## 바퀴 기록
 
@@ -29,6 +29,7 @@
 | #12 | 성공 | 2026-09-12T15:37:01+0900 | grok-4.6 | 666s |
 | #13 | 성공 | 2026-09-12T15:49:27+0900 | grok-4.6 | 699s |
 | #14 | 성공 | 2026-09-12T16:06:34+0900 | grok-4.6 | 980s |
+| #15 | 성공 | 2026-09-12T16:27:03+0900 | grok-4.6 | 1181s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -107,16 +108,19 @@
 
 ## 지금 하는 것
 
-없음. loop#15 카드 `board-report-page` 닫음.
+loop#16 `ui-target-cursor` — 기획 §18.13 대상 지정 커서(마법·치유·채집·상호작용). 에디터 PID 85035 점유라 배치는 안 돌리고 MCP 플레이로 검증.
 
 ## 다음 할 것 (우선순위 → board.json)
 
 1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
 2. `tools/two_client_check.sh`
-3. 원작 지도 절반(~3072m) 사람 선택 (`uo-half-span`)
-4. 에디터가 닫히면 겹치지 않는 카드 병렬 (INBOX 16:04). 지금 대기 카드는 전부 Unity.
+3. FishNet 관심 영역 (`interest-mgmt`)
+4. 원작 지도 절반(~3072m) 사람 선택 (`uo-half-span`)
+5. 그래픽·UI 폴리시·물가 셰이더·대상 커서는 GPT 차선 (그록 안 함)
 
 ## 막힌 것 (사람 결정)
+
+- **그래픽·UI 개선 = GPT 차선 (2026-09-12 16:38):** 셰이더·머티리얼·HUD 외형·아이콘·페이퍼돌 그림·커서 스킨·VFX 폴리시는 그록 루프가 새로 열지 않음. 서버·저장·2클라·관심영역·클라 빌드는 계속. `water-shore-jag`·이후 UI 폴리시는 GPT.
 
 - **에셋 다운로드:** `ASSET_WANTLIST.md`의 모루·대장간 건물·마구간 건물·목공소·갱도 입구·Quaternius MegaKit. 받기는 오너 직행. 조사만 되어 있음.
 - **Quaternius Universal Base / Modular Outfits:** 기획 1차 필수인데 `_ThirdParty/Quaternius/`는 빈 폴더. 반입 여부 사람 결정.
