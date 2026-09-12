@@ -61,6 +61,14 @@
 - **2026-09-12 10:43 보드 명령 #7(「울온 자율 개발을 실제 재개하라」)을 Codex 명령 소비자가 처리 중** — 이 세션이 따로
   `./orch plan --target ulon`을 띄우면 이중 실행이다. 보드 「지금」·`./orch status`로 먼저 확인하고 겹치지 마라.
 
+## 자율 운전 (2026-09-12, 오너 지시 「내가 멈출 때만 일 멈춰야지」)
+- `./orch autopilot --target ulon` — launchd `com.ailab.orchestrator.autopilot`(plist 원본은 `tools/`).
+  로그 `logs/autopilot.log`. **멈추는 유일한 조건은 오너 STOP**(`./orch stop`·보드 「세우기」).
+- 주기: 죽은 판 회수 → 남은 계획 실행(`run-plan --keep-going`) → 없으면 `config.autopilot.goal`로 새 계획.
+  진전 0이면 requeue 후 재시도, 3주기 연속 0이면 그 계획만 `[자동 보류]`로 두고 새 계획으로 넘어간다.
+- 이 세션이 `./orch run`/`run-plan`을 손으로 또 돌리면 **이중 실행**이다. 먼저 `./orch status`·보드 「지금」 확인.
+- 끄려면: `launchctl bootout gui/501/com.ailab.orchestrator.autopilot`.
+
 ## 다음에 할 일
 
 - 모델 정책(2026-09-12 오너 지시): 구현 Codex 계열은 `gpt-5.6-sol`, 설계·리뷰 Claude는 `opus`.
