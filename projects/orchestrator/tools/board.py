@@ -285,10 +285,17 @@ def gather() -> dict:
     try:
         raw_config = json.loads((ROOT/'config.json').read_text(encoding='utf-8'))
         configured = raw_config.get('agents',{})
-        for acfg in configured.values():
+        # 「무슨 모델이 무슨 난이도로 일하는지」를 그대로 적는다(오너 지시 2026-09-12).
+        # 덩어리로 "작업별 자동: a/b/c/d"라고 적으면 지금 무엇이 도는지 알 수 없다.
+        for aname, acfg in configured.items():
             policy = raw_config.get('model_policy', {}).get(acfg.get('type'), {})
-            if policy:
-                acfg['model'] = '작업별 자동: ' + ' / '.join(dict.fromkeys(policy.values()))
+            acfg['policy'] = policy
+            acfg['base_model'] = acfg.get('model')
+            eff = ''
+            for x in acfg.get('extra_config') or []:
+                if 'model_reasoning_effort' in str(x):
+                    eff = str(x).split('=', 1)[1].strip().strip('"')
+            acfg['effort'] = eff
     except (OSError,ValueError):
         configured = {}
     for name, acfg in configured.items():
@@ -298,6 +305,23 @@ def gather() -> dict:
         cached = json.loads((ROOT/'state/providers.json').read_text(encoding='utf-8'))
     except (OSError,ValueError):
         cached = {}
+    # 지금 도는 시도와 가장 최근 시도의 모델·단계 — 기록이 아니라 **이번 호출에 넘어간 값**이다.
+    kinds = {}
+    for r in rows("SELECT task_id,n,agent,model,status FROM attempts ORDER BY id DESC LIMIT 40"):
+        kind = ''
+        f = config.LOG_DIR / f"task{r['task_id']:04d}-a{r['n']}.model.txt"
+        try:
+            kind = f.read_text(encoding='utf-8').split('—')[-1].strip()
+        except OSError:
+            pass
+        kinds.setdefault(r['agent'], []).append(
+            {'model': r['model'], 'kind': kind, 'running': r['status'] == 'RUNNING',
+             'task_id': r['task_id'], 'n': r['n']})
+    for aname, acfg in configured.items():
+        hist = kinds.get(aname) or []
+        run = next((h for h in hist if h['running']), None)
+        acfg['now'] = run
+        acfg['last'] = hist[0] if hist else None
     ai_cards = board_metrics.ai_state(configured,cached,activities)
     if any(a['enabled'] and not a['fresh'] for a in ai_cards) and time.time()-_PROVIDER_REFRESH_AT>60:
         refresh_providers()
@@ -335,10 +359,18 @@ def gather() -> dict:
                 cur_i = 2 if a.get("status") == "RUNNING" else 0
                 who = a.get("agent") or t["agent"] or "-"
                 since = ago(a["started_at"]) if a else ago(t["created_at"]); confirmed = False
-            history = [{"n": r["n"], "agent": r["agent"], "status": r["status"],
+            history = [{"n": r["n"], "agent": r["agent"], "status": r["status"], "model": r["model"],
                         "reason": (r["reason"] or r["compile_verdict"] or "")[:80]}
                        for r in rows("SELECT * FROM attempts WHERE task_id=? ORDER BY n", (t["id"],))]
+            kind_txt = ""
+            if a:
+                try:
+                    kind_txt = (config.LOG_DIR / f"task{t['id']:04d}-a{a['n']}.model.txt") \
+                        .read_text(encoding="utf-8").split("—")[-1].strip()
+                except OSError:
+                    kind_txt = ""
             pipeline.append({
+                "model": (a.get("model") if a else None), "kind": kind_txt,
                 "id": t["id"], "goal": t["goal"], "target": t["target"], "branch": t["branch"] or "-",
                 "attempt": a.get("n") or t["attempts"] or 0, "max_attempts": max_attempts,
                 "steps": [{"name": n, "who": w} for n, w in steps], "cur": cur_i, "who": who,
@@ -383,6 +415,13 @@ def gather() -> dict:
     except Exception as exc:  # noqa: BLE001 — 파이프라인 계산이 죽어도 보드는 떠야 한다
         flow = [{"task_id": None, "stage": f"파이프라인 계산 실패: {type(exc).__name__}: {exc}", "who": "-", "ok": False,
                  "status": "ERROR", "when": "", "secs": 0}]
+    for card in ai_cards:
+        src = configured.get(card['name'], {})
+        card['effort'] = src.get('effort', '')
+        card['base_model'] = src.get('base_model')
+        card['policy'] = src.get('policy') or {}
+        card['now'] = src.get('now')
+        card['last'] = src.get('last')
     overall = board_metrics.progress(real)
     targets = [{'target':name, **board_metrics.progress([t for t in real if t['target']==name])}
                for name in sorted({t['target'] for t in real})]
@@ -594,8 +633,8 @@ function renderNow(d){
     h+=`<div class=pipe><span class="pill ${p.confirmed?'run':'warn'}">${p.confirmed?'<span class=live-dot></span>':''}${E(dn(d,p.who))} · ${E(p.steps[p.cur].name)}${p.confirmed?'':' (프로세스 없음 · 기록으로 짐작)'}</span>
       <h3>작업 #${p.id} · ${E(p.goal)}</h3>
       <div class=steps>${p.steps.map((s,i)=>`<div class="step ${i<p.cur?'done':(i===p.cur?'cur':'')}"><div class=dot></div><div class=nm>${E(s.name)}</div><div class=wh>${E(dn(d,s.who))}</div></div>`).join('')}</div>
-      <div class=nextline>지금 <b>${E(dn(d,p.who))}</b>가 <b>${E(p.steps[p.cur].name)}</b> (${E(p.since)} 시작) → 다음 <b>${E(p.next)}</b>${p.next_who!=='-'?' · '+E(dn(d,p.next_who)):''}</div>
-      <div class=tries>시도 ${p.attempt}/${p.max_attempts} ${p.history.map(x=>`<span class="${VC[x.status]||'mute'}">${x.n}회 ${E(dn(d,x.agent))} ${E(x.status)}${x.reason?' — '+E(x.reason):''}</span>`).join('')}</div>
+      <div class=nextline>지금 <b>${E(dn(d,p.who))}</b>${p.model?` <span class=mute>(${E(p.model)}${(d.ai_cards.find(c=>c.name===p.who)||{}).effort?' · 난이도 '+E(EFF((d.ai_cards.find(c=>c.name===p.who)||{}).effort)):''}${p.kind?' · '+E(KIND(p.kind)):''})</span>`:''}가 <b>${E(p.steps[p.cur].name)}</b> (${E(p.since)} 시작) → 다음 <b>${E(p.next)}</b>${p.next_who!=='-'?' · '+E(dn(d,p.next_who)):''}</div>
+      <div class=tries>시도 ${p.attempt}/${p.max_attempts} ${p.history.map(x=>`<span class="${VC[x.status]||'mute'}">${x.n}회 ${E(dn(d,x.agent))}${x.model?' · '+E(x.model):''} ${E(x.status)}${x.reason?' — '+E(x.reason):''}</span>`).join('')}</div>
       <div class=meta>${E(p.target)} · ${E(p.branch)}</div></div>`;
   }
   for(const a of d.activities.filter(a=>!a.task_id)){
@@ -651,7 +690,7 @@ async function load(){
   document.getElementById('prov').innerHTML=d.ai_cards.map(a=>`<div class="ai-card ${a.jobs.length?'busy':''}">
     <div class=ai-head><span class=ai-avatar>${E(a.display_name.slice(0,2))}</span><span class=ai-name>${E(a.display_name)}</span><span class="power ${cp[a.power]}">${a.power==='UNKNOWN'?'확인 필요':a.power}</span></div>
     <div class=ai-work><span class="${a.jobs.length?'run':'mute'}">${E(a.activity)}</span>${a.jobs.slice(0,2).map(j=>`<span>${E(j)}</span>`).join('')}</div>
-    <div class=ai-meta>${E(a.model||'모델 자동')} · ${E(a.reason)}${a.age_sec===null?'':` · ${a.age_sec<60?'방금':Math.floor(a.age_sec/60)+'분 전'} 확인`}</div><div class=ai-quota>${E(quotaLine(a))}</div></div>`).join('')||'<div class=warn>AI 설정을 읽지 못했습니다.</div>';
+    <div class=ai-meta>${modelLine(a)} · ${E(a.reason)}${a.age_sec===null?'':` · ${a.age_sec<60?'방금':Math.floor(a.age_sec/60)+'분 전'} 확인`}</div><div class=ai-quota>${E(quotaLine(a))}</div></div>`).join('')||'<div class=warn>AI 설정을 읽지 못했습니다.</div>';
   document.getElementById('refresh-ai').disabled=d.providers_refreshing;
   document.getElementById('refresh-ai').textContent=d.providers_refreshing?'확인 중…':'상태 확인';
   document.getElementById('connection-status').textContent=d.providers_error||'ON: 사용 가능 · OFF: 사용 불가 · 작업 중: 파란색';
@@ -668,6 +707,17 @@ async function load(){
      <td class=mute title="CLI가 스스로 보고한 값만 센다 — 어림수는 넣지 않는다">${
        u.tn ? (u.toks||0).toLocaleString()+'토큰'+(u.tn<u.n?` (${u.tn}/${u.n}회만 보고)`:'')
             : '토큰 보고 없음'}</td></tr>`).join('')+'</table>':'');
+}
+function KIND(k){return {coding:'구현',debugging:'디버깅',planning:'설계',review:'리뷰',testing:'테스트',documentation:'문서'}[k]||k||'';}
+function EFF(e){return {low:'낮음',medium:'보통',high:'높음'}[e]||e;}
+function modelLine(a){
+  const eff=a.effort?` · 난이도 ${E(EFF(a.effort))}`:'';
+  if(a.now) return `<b>${E(a.now.model)}</b>${eff} · ${E(KIND(a.now.kind))} 중 (작업 #${a.now.task_id} ${a.now.n}회)`;
+  const pol=a.policy&&Object.keys(a.policy).length
+    ? Object.entries(a.policy).map(([k,m])=>`${E(KIND(k))} ${E(m)}`).join(' · ')
+    : E(a.base_model||'모델 자동');
+  const last=a.last?` · 직전 ${E(a.last.model)}(${E(KIND(a.last.kind))})`:'';
+  return `${pol}${eff}${last}`;
 }
 function quotaTime(ts){return new Date(ts*1000).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' KST';}
 function quotaWindow(bucket,w){
