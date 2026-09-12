@@ -40,6 +40,8 @@ namespace Ulon.Client
                 else
                     OpenWorldContextFromInput();
             }
+            if (!PersistDriver.Creating && !PersistDriver.Frozen && GUIUtility.keyboardControl == 0)
+                TickQuickbarHotkeys();
             if (PersistDriver.Creating || lookApplied)
                 return;
             var world = OfflineWorld.Instance;
@@ -290,25 +292,71 @@ namespace Ulon.Client
                 Area(QuickRect, () => GUILayout.Label("유령 — 치유사에게 가거나 붕대 부활(행동 패널)"));
                 return;
             }
-            var book = world.BookOf(me);
+            var slots = new QuickbarSlot[QuickbarSlots.MaxDrawn];
+            int n = QuickbarSlots.Fill(world.BookOf(me), slots);
             Area(QuickRect, () =>
             {
                 GUILayout.BeginHorizontal();
-                if (Btn("붕대")) Bandage(net);
-                if (Btn("물약")) Drink(net);
-                if (Btn(SkillNames.KoreanOf(SkillId.Meditation))) Meditate(net);
-                for (int i = 0; i < QuickSpells.Length; i++)
-                    if (book.Knows(QuickSpells[i]) && Btn(SpellNames.KoreanOf(QuickSpells[i])))
-                        Cast(net, QuickSpells[i]);
+                for (int i = 0; i < n; i++)
+                    if (Btn(QuickbarSlots.Label(i, slots[i].Name)))
+                        FireQuickbar(slots[i], net);
                 GUILayout.EndHorizontal();
             });
         }
 
-        static readonly SpellId[] QuickSpells =
+        void TickQuickbarHotkeys()
         {
-            SpellId.Ember, SpellId.Mend, SpellId.Bolt, SpellId.Cleanse, SpellId.Ward,
-            SpellId.Bind, SpellId.Weaken, SpellId.Spark, SpellId.Restore, SpellId.Blink, SpellId.Bless,
-        };
+            var world = OfflineWorld.Instance;
+            if (world == null || world.Player == null || world.Player.Ghost)
+                return;
+            var slots = new QuickbarSlot[QuickbarSlots.MaxDrawn];
+            int n = QuickbarSlots.Fill(world.BookOf(world.Player), slots);
+            var net = world.Player.GetComponent<NetAvatar>();
+            int limit = n < QuickbarSlots.MaxKeys ? n : QuickbarSlots.MaxKeys;
+            for (int i = 0; i < limit; i++)
+            {
+                if (!Input.GetKeyDown(QuickbarSlots.KeyOf(i)))
+                    continue;
+                FireQuickbar(slots[i], net);
+                return;
+            }
+        }
+
+        /// <summary>MCP·게이트가 키 없이 같은 경로를 탄다. 화면 버튼과 단축키가 갈리면 안 된다.</summary>
+        public string FireQuickbarAt(int index)
+        {
+            var world = OfflineWorld.Instance;
+            if (world == null || world.Player == null)
+                return "no_player";
+            if (world.Player.Ghost)
+                return "ghost";
+            var slots = new QuickbarSlot[QuickbarSlots.MaxDrawn];
+            int n = QuickbarSlots.Fill(world.BookOf(world.Player), slots);
+            if (index < 0 || index >= n)
+                return "empty";
+            var net = world.Player.GetComponent<NetAvatar>();
+            FireQuickbar(slots[index], net);
+            return QuickbarSlots.Label(index, slots[index].Name);
+        }
+
+        static void FireQuickbar(QuickbarSlot slot, NetAvatar net)
+        {
+            switch (slot.Kind)
+            {
+                case QuickbarKind.Bandage:
+                    Bandage(net);
+                    break;
+                case QuickbarKind.Potion:
+                    Drink(net);
+                    break;
+                case QuickbarKind.Meditate:
+                    Meditate(net);
+                    break;
+                case QuickbarKind.Spell:
+                    Cast(net, slot.Spell);
+                    break;
+            }
+        }
 
         // ── 상시: 탭 ──────────────────────────────────────────────────────────────────
         void DrawTabs(OfflineWorld world, WorldBody me)

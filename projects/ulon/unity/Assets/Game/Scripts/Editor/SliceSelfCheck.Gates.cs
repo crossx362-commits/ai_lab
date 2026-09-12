@@ -182,6 +182,8 @@ namespace Ulon.Editor
             Gate(AssertContextMenu);
             Gate(AssertTargetCursorNegativeControl);
             Gate(AssertTargetCursor);
+            Gate(AssertQuickbarHotkeysNegativeControl);
+            Gate(AssertQuickbarHotkeys);
             Gate(AssertGmAuthNegativeControl);
             Gate(AssertGmAuth);
             Gate(AssertInterestNegativeControl);
