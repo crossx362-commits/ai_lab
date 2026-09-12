@@ -1,0 +1,6 @@
+{
+  "shield_mul": 0.3,
+  "min": 0,
+  "max": 1,
+  "source": "GAME_DESIGN §18.3 방패 막기 판정. Classic 방패 공식 방패술*0.3 https://uo.stratics.com/content/skills/parrying.shtml . 무기만 막기·Bushido·DEX 보정은 기획서에 없어 비복제."
+}

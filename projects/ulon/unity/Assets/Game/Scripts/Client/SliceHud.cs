@@ -241,10 +241,20 @@ namespace Ulon.Client
                 SkillId wpn = bag != null ? ItemCatalog.CombatSkillOf(ItemCatalog.CombatWeaponOf(bag.Items)) : SkillId.Swordsmanship;
                 float atkSkill = world.PlayerSkills.Get(wpn);
                 float defSkill = world.Selected != null ? HitChance.DefendSkill(world.SkillsOf(world.Selected)) : 0f;
+                float parryPct = 0f;
+                bool targetShield = false;
+                if (world.Selected != null)
+                {
+                    var tbag = world.Selected.GetComponent<InventoryBag>();
+                    targetShield = tbag != null && ItemCatalog.HasShield(tbag.Items);
+                    if (targetShield)
+                        parryPct = ParryChance.Percent(world.SkillsOf(world.Selected).Get(SkillId.Parrying));
+                }
                 GUILayout.Label("STR " + st.Str + "  DEX " + st.Dex + "  INT " + st.Int +
                                 "  G " + me.Gold + "  무게 " + w.ToString("0") + "/" + cap +
                                 "  휘두름 " + AttackSpeed.Seconds(st, me.Stamina).ToString("0.00") + "s" +
                                 "  명중 " + (HitChance.Percent(atkSkill, defSkill) * 100f).ToString("0") + "%" +
+                                (targetShield ? "  막기 " + (parryPct * 100f).ToString("0") + "%" : "") +
                                 (!string.IsNullOrEmpty(world.LastCombatMessage) ? "  " + world.LastCombatMessage : "") +
                                 (bag != null && bag.Overweight(st.Str) ? " 과적·달림불가" : "") +
                                 (!RunStamina.CanRun(me.Stamina) ? " 기진·달림불가" : "") +

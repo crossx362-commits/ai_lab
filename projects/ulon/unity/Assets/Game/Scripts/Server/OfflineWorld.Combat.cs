@@ -108,6 +108,19 @@ namespace Ulon.Server
             LastCombatMessage = "";
             if (!string.IsNullOrEmpty(weapon) && atkBag != null && ItemCatalog.MaxUsesOf(weapon) > 0)
                 atkBag.WearTool(weapon);
+            var defBag = target.GetComponent<InventoryBag>();
+            bool shield = defBag != null && ItemCatalog.HasShield(defBag.Items);
+            if (shield && ParryChance.Blocks(true, SkillsOf(target), StatsOf(target), 20f, ParryChance.NextRoll()))
+            {
+                defBag.WearTool(ItemCatalog.WoodenShield);
+                result.Hit = false;
+                result.Damage = 0;
+                result.FailReason = "parry";
+                LastCombatMessage = Tell(attacker, "막음");
+                if (attacker.IsAvatar && target.IsEnemy && weaponSkill != SkillId.Archery && weaponSkill != SkillId.Fencing)
+                    TryEnemyStrike(target, attacker);
+                return result;
+            }
             int dmg = result.Damage;
             if (dmg > 0 && attacker.IsWeakened(Time.time))
                 dmg = dmg / 2;
