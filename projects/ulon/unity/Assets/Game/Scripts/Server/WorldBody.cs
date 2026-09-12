@@ -175,6 +175,22 @@ namespace Ulon.Server
             TickMana(ManaRegen.PerSecond(skills, stats, heavy), dt);
         }
 
+        /// <summary>STR 기반 자연 회복. 유령·시체는 안 찬다(§18.2·§18.4).</summary>
+        public void TickHp(float perSecond, float dt)
+        {
+            if (Ghost || Hp <= 0f || dt <= 0f)
+                return;
+            SetHp(Mathf.Min(MaxHp, Hp + perSecond * dt));
+        }
+
+        /// <summary>스탯을 읽어 회복 비율을 정한다.</summary>
+        public void TickHp(float dt)
+        {
+            var world = OfflineWorld.Instance;
+            StatSet stats = world != null ? world.StatsOf(this) : null;
+            TickHp(HpRegen.PerSecond(stats), dt);
+        }
+
         public void ResetHp() => SetHp(MaxHp);
 
         /// <summary>보스 시체 우선권 — 때린 사람 계정. 시체로 복사한다.</summary>

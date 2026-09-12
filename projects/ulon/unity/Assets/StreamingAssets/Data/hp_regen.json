@@ -1,0 +1,5 @@
+{
+  "base_per_s": 1,
+  "str_div": 50,
+  "source": "GAME_DESIGN §18.2 STR에서 최대 HP. HP/Mana/Stamina는 UO 수치 비복제 단순 공식. 자연 회복은 원작에 있음(https://www.uoguide.com/Hit_point). 공식은 프로젝트 값: base + STR/50. 유령·Hp0은 안 참. 붕대/물약/주문 치유는 별 경로."
+}
