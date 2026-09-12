@@ -80,6 +80,8 @@ cd /Users/junholee/ai_lab/projects/ulon
 MAX_LOOPS=2 SLEEP_BETWEEN=5 ./loop/loop.sh
 ```
 
+2026-09-12 수동 시험: `#0/#1` 현황 파악 커밋됨. `#2`는 INBOX 맵 확대에 착수했으나 턴 한도로 실패(코드 원복). 로그인 자동 실행은 아직 켜지 말 것.
+
 로그인 자동 실행 (확인 끝난 뒤):
 
 ```bash

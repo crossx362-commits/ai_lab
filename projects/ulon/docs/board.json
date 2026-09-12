@@ -1,6 +1,18 @@
 {
-  "updated_at": "2026-09-12T13:02:28+09:00",
+  "updated_at": "2026-09-12T13:20:00+09:00",
   "cards": [
+    {
+      "id": "map-land-scale",
+      "title": "섬 한 변 300→600m (LandScale 2, 하이트맵 셀 유지)",
+      "difficulty": "상",
+      "model": "grok-4.6",
+      "status": "실패",
+      "assigned_loop": 2,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "INBOX 「전체 맵 너무 작아」. loop#2가 착수했으나 셀프체크 실패 후 MAX_TURNS=80에 걸림. 미커밋 변경은 원복함.",
+      "fail_streak": 1
+    },
     {
       "id": "loop0-survey",
       "title": "0번째 바퀴 현황 파악 (STATUS·ASSETS·보드)",
@@ -22,7 +34,7 @@
       "assigned_loop": 1,
       "completed_loop": null,
       "commit": "",
-      "rationale": "기동 스크립트는 있으나 이번 pid 사망·5432 미청취. P0. Unity 불필요.",
+      "rationale": "기동 스크립트는 있으나 이번 pid 사망·5432 미청취. P0. Unity 불필요. loop#2는 INBOX(맵 크기) 우선.",
       "fail_streak": 0
     },
     {

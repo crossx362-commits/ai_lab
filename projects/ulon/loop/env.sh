@@ -9,7 +9,7 @@ EFFORT_MID=medium
 EFFORT_HIGH=medium
 
 # 루프 (환경변수가 있으면 그걸 쓴다 — 수동 두 바퀴: MAX_LOOPS=2 ./loop/loop.sh)
-MAX_TURNS="${MAX_TURNS:-80}"                    # 한 바퀴 최대 턴 수 (PROMPT에 명시, 하드 제한은 타임아웃)
+MAX_TURNS="${MAX_TURNS:-160}"                   # 한 바퀴 최대 턴 수 (loop#2가 80에서 끊김)
 SLEEP_BETWEEN="${SLEEP_BETWEEN:-45}"            # 바퀴 사이 대기(초)
 MAX_LOOPS="${MAX_LOOPS:-0}"                     # 최대 바퀴 수 (0이면 무제한)
 LOOP_TIMEOUT_MIN="${LOOP_TIMEOUT_MIN:-90}"      # 바퀴 타임아웃(분)
