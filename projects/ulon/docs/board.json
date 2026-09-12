@@ -9,7 +9,7 @@
       "status": "검증 중",
       "assigned_loop": 5,
       "completed_loop": null,
-      "commit": "",
+      "commit": "946a381b",
       "rationale": "INBOX 맵 작음·월드맵. #4는 강 물가 띠 NC 2.3m로 실패. 노이즈 주기를 LandScale에 맞춤.",
       "fail_streak": 1
     },
