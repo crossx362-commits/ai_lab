@@ -22,6 +22,8 @@ namespace Ulon.Shared
         public int uses;
         public int strReq;
         public bool container;
+        /// <summary>장비 칸 id. 비면 착용 대상 아님. 원장은 items.json `slot`.</summary>
+        public string slot;
     }
 
     public static class ItemData

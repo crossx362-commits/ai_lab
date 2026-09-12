@@ -17,6 +17,7 @@ namespace Ulon.Client
             if (bagPick >= count)
                 bagPick = -1;
 
+            DrawPaperdoll(me, net);
             GUILayout.Label("가방" + (count > 0 ? "  " + count + "칸" : ""));
             bagScroll = GUILayout.BeginScrollView(bagScroll, GUILayout.Height(Mathf.Min(200f, 26f * Mathf.Max(1, count) + 8f)));
             if (count == 0)
