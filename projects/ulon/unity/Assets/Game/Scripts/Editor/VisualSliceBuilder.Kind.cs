@@ -105,7 +105,10 @@ namespace Ulon.Editor
             return IsKindFolder(p.name) || IsZoneContainer(p.name);
         }
 
-        /// <summary>씬 루트에 흩어진 배우·시설만 종류로 묶는다. 구역 통·지형·카메라는 그대로 둔다.</summary>
+        /// <summary>
+        /// 씬 루트에 흩어진 배우·시설·나무·수레·가로등만 종류로 묶는다.
+        /// 구역 통·지형·카메라·Directional Light는 그대로 둔다. Misc는 루트에서 안 묶는다.
+        /// </summary>
         public static string SceneRootKind(Transform t)
         {
             if (t == null)
@@ -117,6 +120,9 @@ namespace Ulon.Editor
                 return n == HousingPlot.HouseObject || n == "House" ? "House" : "Facility";
             if (t.GetComponent<CharacterController>() != null || t.GetComponent<WorldBody>() != null)
                 return "Actor";
+            string prop = KindOf(n);
+            if (prop == "Tree" || prop == "Cart" || prop == "Light")
+                return prop;
             return "";
         }
 
@@ -213,7 +219,7 @@ namespace Ulon.Editor
             return moved;
         }
 
-        /// <summary>씬 루트 배우·시설을 KindActor/KindFacility/KindHouse 아래로. 월드 좌표 유지.</summary>
+        /// <summary>씬 루트 배우·시설·나무·수레·가로등을 Kind* 아래로. 월드 좌표 유지.</summary>
         public static int EnsureSceneRootActorFacilityKinds()
         {
             int moved = 0;

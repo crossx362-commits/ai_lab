@@ -143,41 +143,46 @@ namespace Ulon.Editor
                     loose.Add(go.name);
             }
             if (folders == 0 && housed == 0 && loose.Count == 0)
-                return "씬 루트 배우·시설 종류 폴더를 하나도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).";
+                return "씬 루트 종류 폴더를 하나도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).";
             if (loose.Count > 0)
             {
                 int n = Math.Min(loose.Count, 8);
-                return "씬 루트에 종류 폴더 밖 배우·시설 " + loose.Count + "개: " +
+                return "씬 루트에 종류 폴더 밖 배우·시설·소품 " + loose.Count + "개: " +
                        string.Join(", ", loose.GetRange(0, n).ToArray());
             }
             if (log)
-                Debug.Log("[Ulon] 씬 루트 종류 폴더 — 폴더 " + folders + " · 묶인 배우·시설 " + housed);
+                Debug.Log("[Ulon] 씬 루트 종류 폴더 — 폴더 " + folders + " · 묶인 것 " + housed);
             return "";
         }
 
-        static void AssertSceneRootActorFacilityKindsNegativeControl()
+        static Transform SceneRootKindLeaf(params string[] kinds)
         {
-            var folder = GameObject.Find(VisualSliceBuilder.KindFolderName("Facility"));
-            Transform leaf = null;
-            if (folder != null)
+            for (int k = 0; k < kinds.Length; k++)
             {
+                var folder = GameObject.Find(VisualSliceBuilder.KindFolderName(kinds[k]));
+                if (folder == null)
+                    continue;
                 for (int i = 0; i < folder.transform.childCount; i++)
                 {
                     var c = folder.transform.GetChild(i);
                     if (!string.IsNullOrEmpty(VisualSliceBuilder.SceneRootKind(c)))
-                    {
-                        leaf = c;
-                        break;
-                    }
+                        return c;
                 }
             }
+            return null;
+        }
+
+        static void AssertSceneRootActorFacilityKindsNegativeControl()
+        {
+            Transform leaf = SceneRootKindLeaf("Tree", "Light", "Cart", "Facility");
             if (leaf == null)
             {
-                var forge = GameObject.Find("Forge");
-                leaf = forge != null ? forge.transform : null;
+                var named = GameObject.Find("Tree") ?? GameObject.Find("LanternLit") ??
+                            GameObject.Find("Cart") ?? GameObject.Find("Forge");
+                leaf = named != null ? named.transform : null;
             }
             if (leaf == null)
-                throw new InvalidOperationException("씬 루트 종류 폴더 NC — 시설을 못 찾았습니다(0이면 실패).");
+                throw new InvalidOperationException("씬 루트 종류 폴더 NC — 나무·가로등·수레·시설을 못 찾았습니다(0이면 실패).");
             var home = leaf.parent;
             string before = SceneRootKindReason(true);
             if (!string.IsNullOrEmpty(before))
