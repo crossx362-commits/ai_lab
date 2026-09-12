@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 import os
 import sqlite3
 import sys
@@ -426,6 +427,26 @@ def gather() -> dict:
         card['tiers'] = src.get('tiers') or []
         card['now'] = src.get('now')
         card['last'] = src.get('last')
+    # 지금 도는 계획의 Task를 한 줄 칩으로 — 어디까지 왔고 무엇이 남았는지가 한눈에 보이게.
+    plan_chips = {}
+    live_plan = next((t["plan_id"] for t in running if t["plan_id"]),
+                     next((t["plan_id"] for t in real if t["plan_id"] and t["status"] == "BACKLOG"), None))
+    if live_plan:
+        seen = {}
+        for r in sorted([t for t in all_tasks if t["plan_id"] == live_plan], key=lambda x: x["id"]):
+            key = r["plan_key"] or f"#{r['id']}"
+            st = r["status"]
+            if st == "ARCHIVED" and r["reason"] == "[계획 자리표시]":
+                continue                      # 자리표시는 상태가 아니다
+            prev = seen.get(key)
+            if prev and prev["state"] == "DONE":
+                continue
+            seen[key] = {"key": key, "state": st, "goal": r["goal"],
+                         "verdict": r["verdict"] or ""}
+        def _key_order(item):
+            m = re.match(r"[A-Za-z]*(\d+)", item["key"] or "")
+            return (int(m.group(1)) if m else 999, item["key"])
+        plan_chips = {"plan_id": live_plan, "items": sorted(seen.values(), key=_key_order)}
     overall = board_metrics.progress(real)
     targets = [{'target':name, **board_metrics.progress([t for t in real if t['target']==name])}
                for name in sorted({t['target'] for t in real})]
@@ -465,7 +486,7 @@ def gather() -> dict:
         "stopped": STOP.exists(),
         "free_gb": free,
         "current": cur,
-        "pipeline": pipeline, "upnext": upnext, "flow": flow,
+        "pipeline": pipeline, "upnext": upnext, "flow": flow, "plan_chips": plan_chips,
         "tasks": [dict(t) for t in tasks],
         "blocked": [dict(t) for t in blocked],
         "live": [dict(p) for p in live],
@@ -514,7 +535,7 @@ h1{font-size:15px;margin:0;font-weight:600}
       grid-template-rows:auto minmax(0,1fr) auto;flex:1;min-height:0;
       grid-template-areas:"now tasks phases" "stuck tasks prov" "cmd exec usage"}
 @media (max-width:900px){body{height:auto;overflow:auto}.grid{flex:none;grid-template-columns:1fr;
-      grid-template-areas:"now" "tasks" "exec" "stuck" "prov" "phases" "cmd" "usage"}}
+      grid-template-areas:"now" "queue" "tasks" "flow" "exec" "stuck" "prov" "phases" "cmd" "usage"}}
 #c-now{grid-area:now}#c-tasks{grid-area:tasks}#c-phases{grid-area:phases}
 #c-stuck{grid-area:stuck}#c-cmd{grid-area:cmd}#c-exec{grid-area:exec}#c-usage{grid-area:usage}#c-prov{grid-area:prov}
 /* 상세는 한 화면 철칙을 깨지 않도록 덮어서 띄운다 — 목록이 밀려나면 전체가 안 보인다. */
@@ -555,10 +576,16 @@ header{min-height:64px;flex-wrap:wrap;gap:10px;padding:12px 20px;background:#0d1
 .brand small{display:block;color:var(--mute);font-size:10px;letter-spacing:1.2px;margin-top:2px}
 h1{font-size:17px;letter-spacing:-.4px}
 #disk{border:0}#clock{font-size:11px}
-.grid{padding:14px 20px 20px;gap:12px;grid-template-columns:minmax(0,1.1fr) minmax(0,1.45fr) minmax(270px,1fr);
- grid-template-rows:170px minmax(190px,1fr) 220px;grid-template-areas:"progress progress prov" "now tasks prov" "cmd exec usage"}
+.grid{padding:14px 20px 20px;gap:12px;grid-template-columns:minmax(0,1.5fr) minmax(0,1.15fr) minmax(280px,.95fr);
+ grid-template-rows:144px minmax(250px,1.2fr) minmax(120px,.6fr) 190px;
+ grid-template-areas:"progress progress prov" "now tasks prov" "queue tasks usage" "cmd exec flow"}
 #c-progress{grid-area:progress;background:linear-gradient(120deg,#182c43,#111c2b);border-color:#334d6a}
 #c-phases,#c-stuck{display:none}
+#c-now{grid-area:now}#c-queue{grid-area:queue}#c-flow{grid-area:flow}#c-tasks{grid-area:tasks}
+/* 병렬로 두 판이 돌면 나란히 — 세로로 쌓으면 아래쪽 판이 화면 밖으로 밀린다 */
+#now{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));align-items:start;overflow:auto;min-height:0}
+#c-now{min-height:0}#queue,#flow,#tasks,#execlog{overflow:auto;min-height:0}
+#now>.mute,#now>.upnext{grid-column:1/-1}
 .card{border-radius:14px;padding:14px 16px;box-shadow:0 7px 24px #0002}
 .card h2{letter-spacing:.03em;font-size:12px;margin-bottom:10px}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
@@ -576,8 +603,41 @@ h1{font-size:17px;letter-spacing:-.4px}
 .ai-head{display:flex;align-items:center;gap:8px}.ai-avatar{display:grid;place-items:center;width:29px;height:29px;border-radius:9px;background:#23354b;color:#c8e3ff;font-weight:700;font-size:12px}
 .ai-name{font-size:14px;font-weight:650;flex:1}.power{font-weight:700;font-size:11px;display:flex;align-items:center;gap:5px}.power:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.power.on{color:var(--ok)}.power.off{color:#9aa4b5}.power.unknown{color:#e2b46d}
 .ai-work{font-size:11px;margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}.ai-meta{font-size:10px;color:var(--mute);margin-top:5px}.busy .ai-avatar{background:#275c86}.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--run);box-shadow:0 0 10px #73b5ff80;margin-right:6px}
-.pipe{border-bottom:1px solid var(--line);padding:8px 0 12px}.pipe:last-child{border-bottom:0}.pipe h3{font-size:13px;margin:4px 0 8px;font-weight:550}.pipe .meta{font-size:11px;color:var(--mute);margin-top:6px}
-.steps{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:4px 0}.step{display:flex;flex-direction:column;align-items:center;min-width:64px;flex:1;position:relative;font-size:10px;color:var(--mute);text-align:center}.step:not(:last-child):after{content:"";position:absolute;top:7px;left:50%;width:100%;height:2px;background:var(--line);z-index:0}.step.done:not(:last-child):after{background:var(--ok)}.step .dot{width:14px;height:14px;border-radius:50%;background:var(--line);border:2px solid var(--line);z-index:1;box-sizing:border-box}.step.done .dot{background:var(--ok);border-color:var(--ok)}.step.cur .dot{background:var(--run,#4ea1ff);border-color:var(--run,#4ea1ff);box-shadow:0 0 0 4px rgba(78,161,255,.25);animation:pulse 1.4s infinite}.step.cur{color:var(--fg,#e6ebf2);font-weight:650}.step .nm{margin-top:5px;white-space:nowrap}.step .wh{font-size:9px;opacity:.8}
+.pipe{border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:#101824}
+.pipe.live{border-color:#3f74a8;background:#132539}
+.pipe-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pipe-id{font-size:10px;color:var(--mute);white-space:nowrap}
+.pipe h3{font-size:12.5px;margin:6px 0 8px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.chip{display:inline-block;border:1px solid #3a5270;border-radius:6px;padding:1px 5px;font-size:10px;color:#b7d6f5;white-space:nowrap}
+.why{font-size:10px;color:var(--mute);margin-top:6px;line-height:1.4}
+.try{display:inline-block;border:1px solid currentColor;border-radius:5px;padding:0 4px;margin-right:4px}
+.planbar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:-2px 0 10px}
+.plan-label{font-size:10px;color:var(--mute);margin-right:2px}
+.pchip{font-size:10px;font-weight:700;border-radius:6px;padding:2px 7px;border:1px solid transparent}
+.pchip.done{background:#16402c;color:#7ee2ad;border-color:#265f42}
+.pchip.run{background:#123c5e;color:#8fcaff;border-color:#2f6f9f;animation:pulse 1.6s infinite}
+.pchip.wait{background:#1a2433;color:#8fa0b5;border-color:#2b3a4d}
+.pchip.bad{background:#4a2027;color:#ff9f9f;border-color:#733742}
+.exlist{list-style:none;margin:0;padding:0;font-size:11.5px}
+.exlist li{padding:6px 0;border-bottom:1px dashed var(--line);line-height:1.5;cursor:pointer;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.exlist li.open{-webkit-line-clamp:unset;display:block}
+.exlist li:last-child{border-bottom:0}
+#prov{overflow:auto}
+.ai-meta{line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#c-prov{min-height:0}#prov{min-height:0;flex:1}
+.qlist{list-style:none;margin:0;padding:0;font-size:11.5px;counter-reset:q}
+.qlist li{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line)}
+.qlist li:last-child{border-bottom:0}.qlist .qkey{font-weight:700;color:#9fc7ee}
+.qlist .qgoal{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qlist .qmeta{font-size:10px;color:var(--mute);white-space:nowrap}
+.qlist li.wait{opacity:.62}
+.flist{list-style:none;margin:0;padding:0;font-size:11px}
+.flist li{display:grid;grid-template-columns:58px 44px minmax(0,1fr) 42px;gap:6px;align-items:baseline;padding:3px 0;border-bottom:1px dashed var(--line)}
+.flist li:last-child{border-bottom:0}.flist .t,.flist .s{color:var(--mute)}.flist .r{font-weight:700}
+.flist .w{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.flist .s{text-align:right}
+.pipe-old{border-bottom:1px solid var(--line);padding:8px 0 12px}.pipe:last-child{border-bottom:0}.pipe h3{font-size:13px;margin:4px 0 8px;font-weight:550}.pipe .meta{font-size:11px;color:var(--mute);margin-top:6px}
+.steps{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:2px 0 4px}.step{display:flex;flex-direction:column;align-items:center;min-width:64px;flex:1;position:relative;font-size:10px;color:var(--mute);text-align:center}.step:not(:last-child):after{content:"";position:absolute;top:7px;left:50%;width:100%;height:2px;background:var(--line);z-index:0}.step.done:not(:last-child):after{background:var(--ok)}.step .dot{width:14px;height:14px;border-radius:50%;background:var(--line);border:2px solid var(--line);z-index:1;box-sizing:border-box}.step.done .dot{background:var(--ok);border-color:var(--ok)}.step.cur .dot{background:var(--run,#4ea1ff);border-color:var(--run,#4ea1ff);box-shadow:0 0 0 4px rgba(78,161,255,.25);animation:pulse 1.4s infinite}.step.cur{color:var(--fg,#e6ebf2);font-weight:650}.step .nm{margin-top:5px;white-space:nowrap}.step .wh{font-size:9px;opacity:.8}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(78,161,255,.45)}70%{box-shadow:0 0 0 7px rgba(78,161,255,0)}100%{box-shadow:0 0 0 0 rgba(78,161,255,0)}}
 .nextline{font-size:12px;margin-top:8px}.nextline b{color:var(--run,#4ea1ff)}.tries{font-size:10px;color:var(--mute);margin-top:4px}.tries span{margin-right:8px}
 .upnext{margin-top:10px}.upnext h4,.flow h4{font-size:11px;color:var(--mute);margin:10px 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}.upnext ol{margin:0;padding-left:18px;font-size:12px}.upnext li{margin:3px 0}.upnext .wait{color:var(--mute)}.flow ul{list-style:none;margin:0;padding:0;font-size:11px}.flow li{display:flex;gap:8px;padding:2px 0;border-bottom:1px dashed var(--line)}.flow li .t{color:var(--mute);min-width:56px}.flow li .r{min-width:36px;font-weight:600}
@@ -592,9 +652,9 @@ textarea:focus{outline:2px solid #73b5ff;outline-offset:1px}form{margin:8px 0;al
 #connection-status{font-size:10px}.connection-error{color:#ffbc86!important}
 #usage table{font-size:10px}#execlog{font-size:11px}#ovbox{background:#111c2b;border-color:#39516e;overflow-wrap:anywhere}
 .quota-row{margin:4px 0 10px}.quota-label{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.quota-label strong{font-size:25px;font-variant-numeric:tabular-nums;line-height:1.2}.quota-row .track{margin:6px 0;height:6px}.quota-reset,.quota-meta{font-size:10px;color:var(--mute)}.quota-summary{font-size:11px;margin-bottom:4px}.quota-actions{display:flex;gap:8px;align-items:center;margin-top:6px}.quota-actions button{padding:2px 6px;font-size:10px}.quota-bucket{border-bottom:1px solid var(--line);padding:10px 0}.quota-bucket h3{margin:0 0 6px!important}.ai-quota{font-size:10px;color:var(--mute);margin-top:5px}
-@media(max-width:1050px) and (min-width:901px){.grid{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) 260px}.target-list{display:none}.counts{gap:14px}.progress-content{gap:16px}.ring{width:96px;height:96px}}
-@media(max-width:900px){header{position:relative;padding:12px;gap:8px}#disk,#clock{display:none}header button{padding:5px 8px}.brand{flex:1}.grid{padding:10px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto;grid-template-areas:"progress" "cmd" "now" "prov" "tasks" "exec" "usage";gap:10px}.card{min-height:100px}.progress-content{min-height:132px;gap:16px}.ring{width:98px;height:98px}.target-list{display:none}.counts{gap:18px}.ai-card{padding:12px}#c-cmd{min-height:198px}#prov{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}#ov{padding:12px}.ai-name{font-size:12px}.ai-head{gap:6px}.ai-avatar{width:23px;height:23px;font-size:10px}.power{font-size:10px}}
-@media(max-height:790px) and (min-width:901px){.grid{grid-template-rows:145px minmax(120px,1fr) 180px}.card{padding:10px 13px}.ring{width:95px;height:95px}.ai-card{padding:7px 10px}.ai-meta{margin-top:3px}.card h2{margin-bottom:6px}.target-list{max-height:90px}textarea{min-height:45px}.ai-work{margin-top:3px}}
+@media(max-width:1050px) and (min-width:901px){.grid{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 250px}.target-list{display:none}.counts{gap:14px}.progress-content{gap:16px}.ring{width:96px;height:96px}}
+@media(max-width:900px){header{position:relative;padding:12px;gap:8px}#disk,#clock{display:none}header button{padding:5px 8px}.brand{flex:1}.grid{padding:10px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto;grid-template-areas:"progress" "cmd" "now" "queue" "prov" "tasks" "flow" "exec" "usage";gap:10px}.card{min-height:100px}.progress-content{min-height:132px;gap:16px}.ring{width:98px;height:98px}.target-list{display:none}.counts{gap:18px}.ai-card{padding:12px}#c-cmd{min-height:198px}#prov{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}#ov{padding:12px}.ai-name{font-size:12px}.ai-head{gap:6px}.ai-avatar{width:23px;height:23px;font-size:10px}.power{font-size:10px}}
+@media(max-height:790px) and (min-width:901px){.grid{grid-template-rows:132px minmax(180px,1.2fr) minmax(120px,.8fr) 175px}.card{padding:10px 13px}.ring{width:95px;height:95px}.ai-card{padding:7px 10px}.ai-meta{margin-top:3px}.card h2{margin-bottom:6px}.target-list{max-height:90px}textarea{min-height:45px}.ai-work{margin-top:3px}}
 
 </style>
 <header>
@@ -611,8 +671,10 @@ textarea:focus{outline:2px solid #73b5ff;outline-offset:1px}form{margin:8px 0;al
 </header>
 <div class=grid>
   <div class=card id=c-progress><div id=progress class=progress-content>진행률 확인 중…</div></div>
-  <div class=card id=c-now><h2>지금 · 다음 (누가 무엇을, 다음은 무엇)</h2><div id=now>…</div></div>
+  <div class=card id=c-now><h2>지금 · 다음 (누가 무엇을, 다음은 무엇)</h2><div id=plan-chips></div><div id=now>…</div></div>
   <div class=card id=c-tasks><h2>최근 작업</h2><div id=tasks>…</div></div>
+  <div class=card id=c-queue><div class=card-head><h2>이어서 할 일</h2><span id=queue-count class=mute></span></div><div id=queue>…</div></div>
+  <div class=card id=c-flow><h2>최근 흐름</h2><div id=flow>…</div></div>
   <div class=card id=c-phases><h2>단계</h2><div id=phases>…</div></div>
   <div class=card id=c-stuck><h2>막힘</h2><div id=stuck>…</div></div>
   <div class=card id=c-cmd><div class=card-head><h2>보드에 명령하기</h2><button onclick="commandHistory()">명령 이력</button></div>
@@ -634,22 +696,43 @@ function dn(d,name){return (d.ai_cards.find(c=>c.name===name)||{}).display_name|
 function renderNow(d){
   let h='';
   for(const p of d.pipeline){
-    h+=`<div class=pipe><span class="pill ${p.confirmed?'run':'warn'}">${p.confirmed?'<span class=live-dot></span>':''}${E(dn(d,p.who))} · ${E(p.steps[p.cur].name)}${p.confirmed?'':' (프로세스 없음 · 기록으로 짐작)'}</span>
-      <h3>작업 #${p.id} · ${E(p.goal)}</h3>
-      <div class=steps>${p.steps.map((s,i)=>`<div class="step ${i<p.cur?'done':(i===p.cur?'cur':'')}"><div class=dot></div><div class=nm>${E(s.name)}</div><div class=wh>${E(dn(d,s.who))}</div></div>`).join('')}</div>
-      <div class=nextline>지금 <b>${E(dn(d,p.who))}</b>${p.model?` <span class=mute>(${E(p.model)}${(d.ai_cards.find(c=>c.name===p.who)||{}).effort?' · 난이도 '+E(EFF((d.ai_cards.find(c=>c.name===p.who)||{}).effort)):''}${p.kind?' · '+E(KIND(p.kind)):''})</span>`:''}가 <b>${E(p.steps[p.cur].name)}</b> (${E(p.since)} 시작) → 다음 <b>${E(p.next)}</b>${p.next_who!=='-'?' · '+E(dn(d,p.next_who)):''}</div>
-      ${p.why_model?`<div class=tries><span class=mute>모델 선택: ${E(p.why_model)}</span></div>`:''}
-      <div class=tries>시도 ${p.attempt}/${p.max_attempts} ${p.history.map(x=>`<span class="${VC[x.status]||'mute'}">${x.n}회 ${E(dn(d,x.agent))}${x.model?' · '+E(x.model):''} ${E(x.status)}${x.reason?' — '+E(x.reason):''}</span>`).join('')}</div>
-      <div class=meta>${E(p.target)} · ${E(p.branch)}</div></div>`;
+    const card=d.ai_cards.find(c=>c.name===p.who)||{};
+    h+=`<div class="pipe${p.confirmed?' live':''}"><div class=pipe-top><span class="pill ${p.confirmed?'run':'warn'}">${p.confirmed?'<span class=live-dot></span>':''}${E(dn(d,p.who))} · ${E(p.steps[p.cur].name)}</span>
+      <span class=pipe-id>#${p.id} · ${E(p.target)}</span></div>
+      <h3 title="${E(p.goal)}">${E(p.goal)}</h3>
+      <div class=steps>${p.steps.map((s,i)=>`<div class="step ${i<p.cur?'done':(i===p.cur?'cur':'')}" title="${E(s.name)} · ${E(dn(d,s.who))}"><div class=dot></div><div class=nm>${E(s.name)}</div></div>`).join('')}</div>
+      <div class=nextline>지금 <b>${E(dn(d,p.who))}</b>${p.model?` <span class=chip>${E(p.model)}${card.effort?' · '+E(EFF(card.effort)):''}</span>`:''} · <b>${E(p.steps[p.cur].name)}</b> <span class=mute>(${E(p.since)} 시작)</span><br>다음 <b>${E(p.next)}</b>${p.next_who!=='-'?' <span class=mute>· '+E(dn(d,p.next_who))+'</span>':''}${p.confirmed?'':' <span class=warn>· 실행 프로세스 없음(기록으로 짐작)</span>'}</div>
+      <div class=tries title="${E(p.why_model||'')}"><span class=mute>시도 ${p.attempt}/${p.max_attempts}</span> ${p.history.map(x=>`<span class="try ${VC[x.status]||'mute'}" title="${E(x.reason||'')}">${x.n}회 ${E(x.model||dn(d,x.agent))} ${E(x.status)}</span>`).join('')}</div></div>`;
   }
   for(const a of d.activities.filter(a=>!a.task_id)){
-    h+=`<div class=activity><span class="pill run"><span class=live-dot></span>${E(dn(d,a.ai))} · ${E(a.stage)}</span><h3>${E(a.label)} · ${E(a.goal)}</h3><small>${E(a.since)} 시작 · 명령을 읽고 orch plan/run으로 옮기는 중 → 다음: 작업(task)이 이 칸에 파이프라인으로 뜬다</small></div>`;
+    h+=`<div class="pipe live"><div class=pipe-top><span class="pill run"><span class=live-dot></span>${E(dn(d,a.ai))} · ${E(a.stage)}</span><span class=pipe-id>${E(a.label)}</span></div>
+      <h3 title="${E(a.goal)}">${E(a.goal)}</h3><div class=nextline><span class=mute>${E(a.since)} 시작 · 명령을 읽어 계획으로 옮기는 중 → 다음: 작업이 이 칸에 파이프라인으로 뜬다</span></div></div>`;
   }
-  if(!h) h=d.current?`<div class=activity><h3>작업 #${d.current.id} · ${E(d.current.goal)}</h3><p class=warn>실행 프로세스 확인 대기</p></div>`:'<div class=mute>지금 실행 중인 작업이 없습니다.</div>';
-  if(d.upnext.length) h+=`<div class=upnext><h4>이어서 할 일 (순서대로)</h4><ol>${d.upnext.map(u=>`<li class="${u.ready?'':'wait'}">${u.key?E(u.key)+' · ':''}${E(u.goal).slice(0,70)} <span class=mute>· ${E(dn(d,u.agent))}${u.deps.length?' · '+(u.ready?'선행 완료':'선행 대기: '+E(u.deps.join(',')))+'':''}</span></li>`).join('')}</ol></div>`;
-  if(d.flow.length) h+=`<div class=flow><h4>최근 흐름</h4><ul>${d.flow.map(f=>`<li><span class=t>${E(f.when)}</span><span class="r ${f.ok?'ok':(f.status==='EXITED'?'bad':'warn')}">${f.ok?'PASS':E(f.status==='EXITED'?'FAIL':f.status)}</span><span>${f.task_id?'#'+f.task_id+' ':''}${E(dn(d,f.who))} ${E(f.stage)}${f.secs?' · '+f.secs+'s':''}</span></li>`).join('')}</ul></div>`;
+  if(!h) h=d.current?`<div class=pipe><h3>작업 #${d.current.id} · ${E(d.current.goal)}</h3><p class=warn>실행 프로세스 확인 대기</p></div>`:'<div class=mute>지금 실행 중인 작업이 없습니다. 자율 운전이 다음 주기에 새 일을 집습니다.</div>';
   return h;
 }
+const CHIP_STATE={DONE:'done',RUNNING:'run',BACKLOG:'wait',BLOCKED:'bad',FAILED:'bad',
+  INTERRUPTED:'bad',STOPPED:'bad',ARCHIVED:'wait',REVIEW:'run',TESTING:'run'};
+function renderPlanChips(d){
+  const pc=d.plan_chips;
+  if(!pc||!pc.items||!pc.items.length) return '';
+  const done=pc.items.filter(i=>i.state==='DONE').length;
+  return `<div class=planbar><span class=plan-label>계획 #${pc.plan_id} · ${done}/${pc.items.length}</span>`
+    +pc.items.map(i=>`<span class="pchip ${CHIP_STATE[i.state]||'wait'}" title="${E(i.goal)}">${E(i.key)}</span>`).join('')+`</div>`;
+}
+function renderQueue(d){
+  document.getElementById('queue-count').textContent=d.upnext.length?`${d.upnext.length}건`:'';
+  if(!d.upnext.length) return '<div class=mute>대기 중인 일이 없습니다.</div>';
+  return `<ol class=qlist>${d.upnext.map(u=>`<li class="${u.ready?'ready':'wait'}"><span class=qkey>${E(u.key||'-')}</span><span class=qgoal title="${E(u.goal)}">${E(u.goal)}</span><span class=qmeta>${u.ready?'바로 가능':'선행 '+E(u.deps.join(','))}</span></li>`).join('')}</ol>`;
+}
+function renderFlow(d){
+  if(!d.flow.length) return '<div class=mute>기록 없음</div>';
+  return `<ul class=flist>${d.flow.map(f=>`<li><span class=t>${E(f.when)}</span><span class="r ${f.ok?'ok':(f.status==='EXITED'?'bad':'warn')}">${f.ok?'PASS':E(f.status==='EXITED'?'FAIL':f.status)}</span><span class=w>${f.task_id?'#'+f.task_id+' ':''}${E(dn(d,f.who))} ${E(f.stage)}</span><span class=s>${f.secs?f.secs+'s':''}</span></li>`).join('')}</ul>`;
+}
+document.addEventListener('click', ev => {
+  const li = ev.target.closest('.exitem');
+  if (li) li.classList.toggle('open');
+});
 async function load(){
   const response=await fetch('/api'); if(!response.ok)throw new Error('보드 응답 '+response.status);
   const d=await response.json();
@@ -668,6 +751,9 @@ async function load(){
       <div class=counts><div class=count><strong class=ok>${pr.done}</strong><span>완료</span></div><div class=count><strong class=run>${pr.running}</strong><span>진행 기록</span></div><div class=count><strong>${pr.waiting}</strong><span>대기</span></div><div class=count><strong class=warn>${pr.blocked}</strong><span>막힘·중단</span></div></div></div>
     <div class=target-list>${d.target_progress.map(t=>`<div class=target-row><div class=target-label><span>${E(t.target)}</span><span>${t.percent??'—'}% · ${t.done}/${t.total}</span></div><div class=track><span style="width:${t.percent??0}%"></span></div></div>`).join('')}</div>`;
   document.getElementById('now').innerHTML=renderNow(d);
+  document.getElementById('plan-chips').innerHTML=renderPlanChips(d);
+  document.getElementById('queue').innerHTML=renderQueue(d);
+  document.getElementById('flow').innerHTML=renderFlow(d);
 
   const stuck=[...d.blocked.map(t=>`<li><span class="${SC[t.status]||'mute'}">#${t.id}</span> ${E(t.reason||t.goal).slice(0,60)}</li>`),
                ...d.stuck.map(s=>`<li class=mute>${E(s).slice(0,70)}</li>`)];
@@ -682,9 +768,13 @@ async function load(){
     const done=p.includes('완료'), wait=p.includes('대기');
     return `<li class="${done?'ok':(wait?'mute':'run')}">${E(p)}</li>`;}).join('')+'</ul>';
 
-  document.getElementById('execlog').innerHTML=d.execlog.length?
-    '<ul>'+d.execlog.map(x=>{const done=x.startsWith('[x]'), hold=x.startsWith('[-]');
-      return `<li class="${done?'ok':(hold?'mute':'run')}">${E(x.replace(/^\\[.\\] /,''))}</li>`;}).join('')+'</ul>':'<div class=mute>없음</div>';
+  document.getElementById('execlog').innerHTML=d.execlog.length
+    ? '<ul class=exlist>'+d.execlog.map(x=>{
+        const t=String(x).replace(/[*]{2}/g,'').replace(/\u0060/g,'')
+          .replace(/^\s*[-*]\s*/,'').replace(/^\[[ xX]\]\s*/,'');
+        return '<li class=exitem title="누르면 펼쳐집니다">'+E(t)+'</li>';
+      }).join('')+'</ul>'
+    : '<div class=mute>기록 없음</div>';
   const cq=d.command_queue;
   if(!document.getElementById('ov').classList.contains('on'))window.commandItems=cq.items; window.commandLabels=cq.labels;
   const pending=cq.counts.QUEUED||0;
