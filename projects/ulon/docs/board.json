@@ -1,17 +1,17 @@
 {
-  "updated_at": "2026-09-12T14:25:00+09:00",
+  "updated_at": "2026-09-12T14:28:36+09:00",
   "cards": [
     {
       "id": "map-land-scale",
       "title": "섬 한 변 300→600m + 월드맵 (LandScale 2)",
       "difficulty": "상",
       "model": "grok-4.6",
-      "status": "검증 중",
+      "status": "완료",
       "assigned_loop": 5,
-      "completed_loop": null,
+      "completed_loop": 7,
       "commit": "946a381b",
-      "rationale": "INBOX 맵 작음·월드맵. #6도 에디터 점유(PID 85035)+MCP 세션 없음이라 셀프체크·클라 화면 못 함.",
-      "fail_streak": 1
+      "rationale": "INBOX 맵 작음·월드맵. #7 HTTP MCP 플레이: Terrain 600m, 월드맵 베이크 통과, HUD 600m 라벨 확인.",
+      "fail_streak": 0
     },
     {
       "id": "scene-prefab-vfx",
@@ -46,7 +46,7 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "",
-      "rationale": "INBOX 「돌아다니기만 되고 행동 느낌이 없다」. 클라 재빌드 후 플레이로 확인.",
+      "rationale": "INBOX 「돌아다니기만 되고 행동 느낌이 없다」. 다음 바퀴 우선. 에디터 플레이로 확인 가능.",
       "fail_streak": 0
     },
     {
