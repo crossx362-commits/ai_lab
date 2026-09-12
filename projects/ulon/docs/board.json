@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T15:48:00+09:00",
+  "updated_at": "2026-09-12T16:10:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -155,6 +155,30 @@
       "completed_loop": 11,
       "commit": "dfca3eb2",
       "rationale": "기존 KayKit 파생·색/장비 변형. 새 유료 팩 금지. Barbarian 사용 금지. 사냥터 8종은 유지. 구현 dfca3eb2. 샷 3장·플레이 콘솔 0.",
+      "fail_streak": 0
+    },
+    {
+      "id": "ui-context-menu",
+      "title": "우클릭 Context Menu (훈련·펫 명령·집 보안)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 14,
+      "completed_loop": 14,
+      "commit": "2b62026a",
+      "rationale": "기획 §18.13. 샷 4장·게이트+NC·HUD 도달. 물리 우클릭은 MCP OpenWorldContext. Kenney UI 없음.",
+      "fail_streak": 0
+    },
+    {
+      "id": "board-report-page",
+      "title": "보드에 보고서 페이지(샷 위주)",
+      "difficulty": "하",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "INBOX 15:50. loop/board.html. Unity 잠금과 안 겹침. 눈으로 본 PNG만.",
       "fail_streak": 0
     },
     {
