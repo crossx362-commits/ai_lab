@@ -99,3 +99,8 @@ no_progress로 기록하고 동일 카드 재호출을 유예한다. 새 검증�
 
 공유 원본 `projects/ulon/tools/offscreen_imgui/`는 root 소유의 새 검증 도구다. 이 디렉터리만 전용 트리로 가져와 적용해도 된다(타 에이전트 변경 복사 금지와 무관). README의 최종 증거 `output/ulon-codex/offscreen-verified3/`를 따른다. Unity 6000.3.14f1 Metal batchmode에서 창 Show/Focus 없이 실제 Screen1440×900/1024×768·OnGUI/Repaint·글자/모서리 픽셀·두 음성 대조 PASS/exit0를 확보했다.
 기존 「지원 경로 미확보」·ScreenCapture PNG만 허용하는 조건은 이 근거로 해소했다. 이제 실제 SliceHud의 그리기 코드를 같은 OnGUI 문맥에 연결하거나 Play 어댑터로 연결하여 지도/HUD의 한글·배치·클리핑·입력을 검증한다. 진단 프로브만 다시 돌리고 막힘 처리하지 않는다. 내부 API가 이 Unity 버전에 실제 동작한다는 근거이며, 공용 지원 API나 실제 게임/OS입력/2인 PASS는 아니다. 합성 입력과 실제 OS 입력을 구별하되 헤드리스 테스트 구현 자체를 승인 대기로 막지 않는다. 새 도구의 camera.targetTexture, s_RenderingView, GL.LoadPixelMatrix, Editor 프레임 폰트 준비를 함께 보존한다.
+
+### 물가 단차 수리 인계 (7df3288a)
+
+root 소유 `codex/ulon-water-depth` 커밋7df3288a가 물가30cm 단차/수심 오차를 수정했다. `water-shore-jag` 선택 시 README와 전용 트리 diff를 확인하고, 이 커밋의 StylizedWater.shader/WaterDepthCamera.cs/WorldTerrain.cs 및 WaterDepthShoreCheck/WaterShoreContinuityCheck·tools/water_depth_probe만 기존 Codex 차선 변경을 보존하며 포팅한다. 이는 root 소유 변경의 명시적 인계이며 다른 에이전트/원본 미커밋 파일 복사나 자동 병합 허용이 아니다. 물가 수정 트리의 Library/구운 Terrain은 복사하지 않는다.
+소스 포팅 뒤 전용 지형 재생성 및 README 검증을 실행한다. 기존 봉합/모래띠 전체 회귀는 baseline과fixed 모두 동일 실패(출구11.8m>8m, 강 음성대조2.3m>=2m); 기준 완화 금지. 강 근경 큰 단차 수정과 바다 근경 잔여 수심 경계/원거리 미관을 구분하고 후속 구현한다. 이 재현 가능한 작업을 깊이 버퍼 원인불명이나 원본 통합 대기로 차단하지 않는다. 원본 배포/2인 미검증을 유지한다.
