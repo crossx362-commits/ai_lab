@@ -1,0 +1,13 @@
+{
+  "min_secondary": 30,
+  "source": "GAME_DESIGN.md §3.2 확장 조합 예시. min_secondary=30은 같은 절 「30 미만은 별도 숙련 칭호 없음」. 대표 스킬 숙련 접두사는 유지하고 직업명만 바꾼다.",
+  "combos": [
+    {"primary": "Swordsmanship", "secondary": "Magery", "job": "마검사"},
+    {"primary": "Magery", "secondary": "Swordsmanship", "job": "마검사"},
+    {"primary": "Archery", "secondary": "Tracking", "job": "레인저"},
+    {"primary": "Healing", "secondary": "Magery", "job": "성직자"},
+    {"primary": "Mining", "secondary": "Blacksmithing", "job": "광물 장인"},
+    {"primary": "Blacksmithing", "secondary": "Mining", "job": "무기 장인"},
+    {"primary": "AnimalTaming", "secondary": "AnimalLore", "job": "야수조련사"}
+  ]
+}

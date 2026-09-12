@@ -115,7 +115,7 @@ namespace Ulon.Shared
             float v = skills.Get(id);
             if (v <= 0.0001f)
                 return "";
-            string job = JobOf(id);
+            string job = SkillJobCombos.JobOf(id, skills);
             string rank = RankOf(v);
             return rank.Length == 0 ? job : rank + " " + job;
         }

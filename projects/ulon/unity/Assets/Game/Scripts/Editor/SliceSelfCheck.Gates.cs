@@ -220,6 +220,8 @@ namespace Ulon.Editor
             Gate(AssertMarkRecall);
             Gate(AssertOpenPvpSlice);
             Gate(AssertSkillTitleSlice);
+            Gate(AssertJobComboTitlesNegativeControl);
+            Gate(AssertJobComboTitles); // §3.2 복합 직업명
             Gate(AssertReputationTitle);
             Gate(AssertKeywordSpeech);
             Gate(AssertEastFieldSlice);
