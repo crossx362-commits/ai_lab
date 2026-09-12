@@ -172,7 +172,7 @@
     },
     "grok": {
       "type": "grok",
-      "enabled": false,
+      "enabled": true,
       "bin": "grok",
       "model": null,
       "timeout_sec": 600,

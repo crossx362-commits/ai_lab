@@ -50,6 +50,7 @@
 - [2026-09-11 인수 점검] 요구사항 전체 미완성 — 실패 CLI/리뷰 누락 성공 오판 수정, GPT 중심 기본 설정 반영, 회귀 50종·Blender 실검증 PASS. 재개·선행 코드 전달·상태 동시성은 미해결. 「보고」의 인수 요구사항 점검 참조.
 - [x] [2026-09-12 10:45] 울온 Unity target(`ulon`) 연결 **PASS**(task 368, 모델 비용 0) — sparse worktree + 공유 Library + 컴파일 + SliceSelfCheck(93s) 통과, 커밋은 프로브 2파일뿐. 막혔던 셋을 수리: ①worktree에 `server/.venv` 없어 게이트 즉사 → `link_paths` 링크 ②게이트가 씬·지형 6~8파일 재저장 → 부산물 자동 되돌림 ③Postgres 안 떠 있으면 시도 3회 소진 → `preflight`(pg_isready) 전제 확인으로 AI 호출 전 BLOCKED. 상세는 「보고」 울온 연결 보고.
 - [x] [2026-09-12 10:30] 계획 안 코드 전달(Codex 감사 P1) 수리 — 통합 브랜치 `orch/plan-NNNN`을 Task PASS마다 전진, 다음 Task는 그 위에서 출발. NC `plan_inherit`·`preflight` 추가(46종).
+- [x] [2026-09-12 10:52] 오너 질문 「그록·올라마 왜 OFF」 — Ollama는 재부팅 뒤 앱이 안 떠 있어서(켬, 5종 전부 ON 확인), Grok은 Codex 인수 세션이 `enabled:false`로 꺼 둔 것(다시 켬 — 끄는 게 맞으면 한 줄 되돌림). 잔여 한도는 Codex 계정만 CLI로 읽힌다(주간 83%). Claude·Grok은 CLI가 한도를 안 내놓아 「미확인」이 정직한 표시 — Claude는 로그인 토큰으로 읽는 길이 있으나 오너 허락 필요.
 - [x] [2026-09-12 10:35] 재부팅으로 죽어 있던 Postgres 16 기동(울온 persist 서버 전제, launchd 아님 — 재부팅마다 손으로).
 - [x] [2026-09-11 23:28] 울온 Blender target(`ulon_props`) 연결 — 실제 모노레포 sparse worktree에서 PASS(task 356: 절구통+모루 자리표시, 0.9초)
 - [x] [2026-09-11 23:20] 모노레포 하위 폴더 target(subdir) + 프로젝트 자기 검사 게이트(execute_method) — NC 5종 PASS(밖으로 새는 쓰기를 잡는 구멍 하나 발견·수리)
