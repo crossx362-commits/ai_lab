@@ -5,10 +5,9 @@
   "unity_editor_template": "/Applications/Unity/Hub/Editor/{version}/Unity.app/Contents/MacOS/Unity",
   "ladder": [
     "codex",
-    "claude",
     "astra"
   ],
-  "research_agent": "grok",
+  "research_agent": null,
   "log_summarizer": {
     "enabled": true,
     "model": "gemma4:12b",
@@ -108,7 +107,7 @@
     "codex": {
       "type": "codex",
       "bin": "codex",
-      "model": null,
+      "model": "gpt-5.6-sol",
       "extra_config": [
         "model_reasoning_effort=\"low\""
       ],
@@ -126,7 +125,7 @@
     "astra": {
       "type": "codex",
       "bin": "codex",
-      "model": null,
+      "model": "gpt-5.6-sol",
       "extra_config": [
         "model_reasoning_effort=\"high\""
       ],
@@ -143,8 +142,9 @@
     },
     "claude": {
       "type": "claude",
+      "enabled": true,
       "bin": "claude",
-      "model": null,
+      "model": "opus",
       "permission_mode": "acceptEdits",
       "timeout_sec": 1800,
       "capabilities": [
@@ -157,6 +157,7 @@
     },
     "grok": {
       "type": "grok",
+      "enabled": false,
       "bin": "grok",
       "model": null,
       "timeout_sec": 600,
@@ -177,7 +178,7 @@
       ]
     }
   },
-  "planner": "astra",
-  "reviewer": "astra",
+  "planner": "claude",
+  "reviewer": "claude",
   "blender_bin": "/Applications/Blender.app/Contents/MacOS/Blender"
 }

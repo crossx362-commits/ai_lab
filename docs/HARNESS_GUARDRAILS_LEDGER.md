@@ -105,3 +105,10 @@
 
 - **울온 저장 실패의 부분 커밋·허위 준비 상태(2026-09-11)** — PostgreSQL autocommit으로 캐릭터/집 저장 도중 실패해도 앞 쿼리가 남았다. 저장 요청 단위 commit/rollback으로 수정하고 SQLite·실제 PostgreSQL에서 중복 키 실패 뒤 전체 스냅샷 보존을 검증했다. /ready는 DB 조회 실패 시 503, 준비 스크립트는 /health로 성공 대체 금지. 회귀: projects/ulon/tools/test_persist_atomicity.py, test_alpha_readiness.py.
 - **폴더 하나만 재는 자는 그 폴더 밖을 못 본다 — 모노레포 하위 폴더 target에서 밖으로 새는 쓰기(2026-09-11, 오케스트레이터 울온 연결)** — 울온을 붙이려고 subdir sparse worktree를 만들고 변경 집계·커밋을 「그 폴더 기준(`-- .`)」으로 좁혔다. 그러자 NC에서 에이전트가 `../옆앱/파일`을 써도 **PASS**가 났다 — 집계가 폴더 안만 보니 밖으로 샌 것이 존재하지 않는 것처럼 보였다. 수리: 폴더 안은 스테이지해서 재고, **밖은 `git status --untracked-files=all -- :/`로 스테이지 없이 훑어** `../` 상대경로로 목록에 넣는다(글롭에 안 맞아 범위 밖으로 잡히고, 커밋에는 섞이지 않는다). 곁가지: **심볼릭 링크는 git에 파일이라 `unity/Library/`(폴더 규칙)에 안 걸린다** — 공유 Library 링크가 「허용 범위 밖 파일 수정」으로 잡혀 판이 죽었다. worktree 전용 `info/exclude`에 적어 뺀다(저장소 .gitignore는 건드리지 않는다). **규칙: 범위를 좁혀 재는 자를 만들면 「좁힌 경계 밖에 무엇이 생기는가」를 NC로 먼저 흔들어라 — 안 보이는 것은 통과한다.**
+
+
+### 2026-09-11 — 보드의 Node 래퍼 AI 식별
+
+- 2026-09-11: 보드가 Node 래퍼(`node .../codex`)로 실행된 Codex를 대기로 오표시했다. `board_metrics.matches_process`에서 PID·시작시각·실행 파일과 래퍼 진입점을 함께 대조한다. 회귀: `projects/orchestrator/tests/test_board_metrics.py` (래퍼 인식·다른 Node 프로그램 배제).
+
+- 2026-09-11: 오케스트레이터 인수 점검에서 실패 종료한 구현/계획/리뷰 CLI가 남긴 파일을 성공으로 인정하고 REVIEW 작업을 상위 계획 DONE으로 올리는 경로를 재현했다. 비정상 종료·비객체 JSON을 실패/UNKNOWN으로 처리하고 DONE만 성공 반환하도록 수리. 임시 Git/DB와 실제 로컬 CLI 회귀 6종: `projects/orchestrator/tests/test_execution_contract.py`. 재개 시 새 worktree 생성·선행 코드 미전달·Provider 캐시 갱신 유실은 별도 미해결로 인수 보고서에 기록.

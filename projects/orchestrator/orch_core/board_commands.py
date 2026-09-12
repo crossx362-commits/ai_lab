@@ -57,8 +57,10 @@ class Queue:
             return c.execute('INSERT INTO commands(request_id,command,created) VALUES(?,?,?)',
                              (request_id, command, time.time())).lastrowid
 
-    def recent(self):
+    def recent(self, before=None):
         with self.connect() as c:
+            if before is not None:
+                return [dict(r) for r in c.execute('SELECT * FROM commands WHERE id<? ORDER BY id DESC LIMIT 30', (before,))]
             return [dict(r) for r in c.execute('SELECT * FROM commands ORDER BY id DESC LIMIT 30')]
 
     def claim(self):
@@ -88,9 +90,11 @@ class Queue:
     def snapshot(self):
         with self.connect() as c:
             r = c.execute('SELECT * FROM worker WHERE id=1').fetchone()
+            active = [dict(x) for x in c.execute("SELECT * FROM commands WHERE status='RUNNING'")]
+            counts = {x['status']:x['n'] for x in c.execute('SELECT status,COUNT(*) n FROM commands GROUP BY status')}
         w = dict(r) if r else {}
         w['online'] = bool(w and time.time() - w['heartbeat'] < 20)
-        return {'items': self.recent(), 'worker': w, 'labels': LABELS}
+        return {'items': self.recent(), 'active': active, 'counts': counts, 'worker': w, 'labels': LABELS}
 
 
 def assess_report(report, exit_code):

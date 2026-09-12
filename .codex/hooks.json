@@ -1,18 +1,5 @@
 {
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"/Users/junholee/ai_lab/projects/ashes-to-stars/art/qc_hook.py\"",
-            "timeout": 150,
-            "statusMessage": "생성물 검수 중..."
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [

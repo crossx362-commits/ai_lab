@@ -158,13 +158,16 @@ def run_reviewer(cfg, conn, *, task_id, attempt_id, prefix: Path, goal: str,
                             log_prefix=Path(f"{prefix}.review-{name}"),
                             task_id=task_id, attempt_id=attempt_id)
         hit = providers.classify_failure(ar.all_output)
-        if hit and not rpath.is_file():
+        if hit and not ar.ok:
             providers.mark(name, hit[0], f"리뷰 중 감지: {(ar.reason or '')[:60]}", hit[1])
             _p(f"  리뷰어 {name} Provider 장애({hit[0]}) — 다른 리뷰어를 찾는다")
             last = review.Review("UNKNOWN", f"리뷰어 {name}가 {hit[0]}라 판정하지 못했다")
             continue
         if ar.status in ("SPAWN_FAILED", "TIMEOUT"):
             last = review.Review("UNKNOWN", f"리뷰를 돌리지 못했다: {ar.reason}")
+            continue
+        if not ar.ok:
+            last = review.Review("UNKNOWN", f"리뷰 실행 실패: {ar.reason or ar.exit_code} — 결과 파일은 승인 근거로 쓰지 않는다")
             continue
         r = review.parse(rpath)
         if name != (cfg.reviewer or name):
@@ -457,6 +460,19 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             _p(f"  → UNKNOWN: {final_reason}")
             break
 
+        if not ar.ok:
+            # 중간에 쓴 파일이 있어도 실패한 실행은 완료가 아니다. 파일은 재시도용으로 보존한다.
+            reason = ar.reason or f"에이전트 종료코드 {ar.exit_code}"
+            db.update_attempt(conn, attempt_id, status="FAILED", agent_exit=ar.exit_code,
+                              compile_verdict="NOT_RUN", reason=reason,
+                              error_summary=ar.all_output[-8000:], ended_at=db.now())
+            failure = {"n": n, "verdict": "AGENT_FAILED", "reason": reason,
+                       "errors": ar.all_output[-8000:]}
+            history.append(failure)
+            final_verdict, final_reason = "FAILED", reason
+            _p(f"  → FAILED: {reason} (변경 파일 보존, 검증 성공으로 대체하지 않는다)")
+            continue
+
         # 1) 실제로 파일이 바뀌었는가 — "완료했다"는 말은 여기서 반증된다.
         try:
             ch = gitwt.collect_changes(wd, base)
@@ -665,7 +681,7 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         for ln in diff.splitlines()[:30]:
             _p(f"  {ln}")
     _p(f"  logs     : {config.LOG_DIR}")
-    return 0 if final_verdict == "PASS" else 1
+    return 0 if status == "DONE" else (3 if status == "BLOCKED_CLOUD_REQUIRED" else 1)
 
 
 # --------------------------------------------------------------------------
@@ -742,11 +758,20 @@ def cmd_plan(args) -> int:
     cfg = config.load()
     t = cfg.target(args.target)
     conn = db.connect()
-    agent_name = args.agent or cfg.planner
+    preferred = args.agent or cfg.planner
+    pstat = providers.probe_all(cfg)
+    candidates = _usable(cfg, pstat, prefer=[preferred], pinned=bool(args.agent),
+                         capability=providers.PLANNING)
+    agent_name = candidates[0] if candidates else preferred
     workdir = config.STATE_DIR / "plans" / f"plan-{_ts()}"
     ppath = workdir / planner.PLAN_FILE
 
     plan_id = db.create_plan(conn, args.goal, agent_name, str(workdir))
+    if not candidates:
+        db.update_plan(conn, plan_id, status="BLOCKED",
+                       note=f"쓸 수 있는 설계 Provider가 없다(우선 {preferred})")
+        _p(f"[plan {plan_id}] 분해 보류: 쓸 수 있는 설계 Provider가 없다")
+        return 3
     _p(f"[plan {plan_id}] 분해 담당: {agent_name}")
     prompt = planner.build_prompt(goal=args.goal, project=t.unity_project,
                                   unity_version=t.engine_label, plan_path=ppath)
@@ -758,6 +783,13 @@ def cmd_plan(args) -> int:
         db.update_plan(conn, plan_id, status="BLOCKED", note=f"인프라 실패: {ar.reason}")
         _p(f"  → UNKNOWN: {ar.reason}")
         return 2
+    if not ar.ok:
+        hit = providers.classify_failure(ar.all_output)
+        if hit:
+            providers.mark(agent_name, hit[0], "계획 생성 중 Provider 장애", hit[1])
+        db.update_plan(conn, plan_id, status="BLOCKED", note=f"계획 실행 실패: {ar.reason or ar.exit_code}")
+        _p("  → 분해 실패: 실행이 실패하여 결과 파일을 작업으로 등록하지 않는다")
+        return 3 if hit else 1
 
     p = planner.parse(ppath)
     if not p.ok:

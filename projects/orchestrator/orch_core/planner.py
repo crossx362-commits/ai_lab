@@ -98,8 +98,11 @@ def parse(plan_path: Path) -> Plan:
         return Plan(False, f"계획 파일이 만들어지지 않았다: {plan_path.name}")
     try:
         data = json.loads(plan_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
+    except (ValueError, OSError) as e:
         return Plan(False, f"계획 파일이 JSON이 아니다: {e}", raw_path=plan_path)
+
+    if not isinstance(data, dict):
+        return Plan(False, "계획 결과는 JSON 객체여야 한다", raw_path=plan_path)
 
     raw = data.get("tasks")
     if not isinstance(raw, list) or not raw:
@@ -109,6 +112,8 @@ def parse(plan_path: Path) -> Plan:
     for i, item in enumerate(raw, 1):
         if not isinstance(item, dict) or not item.get("goal"):
             return Plan(False, f"{i}번째 task에 goal이 없다", raw_path=plan_path)
+        if not isinstance(item.get("depends_on") or [], list) or not isinstance(item.get("expected_files") or [], list):
+            return Plan(False, f"{i}번째 task의 depends_on/expected_files는 배열이어야 한다", raw_path=plan_path)
         tasks.append(PlanTask(
             key=str(item.get("key") or f"T{i}"),
             goal=str(item["goal"]).strip(),

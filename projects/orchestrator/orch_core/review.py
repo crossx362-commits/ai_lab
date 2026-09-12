@@ -74,8 +74,11 @@ def parse(review_path: Path) -> Review:
         return Review("UNKNOWN", "리뷰 결과 파일이 없다 — 리뷰가 돌았는지 알 수 없다")
     try:
         data = json.loads(review_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
+    except (ValueError, OSError) as e:
         return Review("UNKNOWN", f"리뷰 결과가 JSON이 아니다: {e}", raw_path=review_path)
+
+    if not isinstance(data, dict) or not isinstance(data.get("reasons") or [], list):
+        return Review("UNKNOWN", "리뷰 결과는 JSON 객체이며 reasons는 배열이어야 한다", raw_path=review_path)
 
     v = str(data.get("verdict", "")).strip().lower()
     reasons = [str(r) for r in (data.get("reasons") or [])]
