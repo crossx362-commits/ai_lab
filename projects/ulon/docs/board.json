@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T22:16:00+09:00",
+  "updated_at": "2026-09-12T22:24:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -33,8 +33,8 @@
       "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "ce826ed9",
-      "rationale": "#77 ce826ed9(선행57d74b03): 확장 육지에 완만한 만/곶 외형 구현. 초기 접합부 수역을 실제 화면/실패 검사로 발견→기존 육지를 깎지 않는 외측 변형으로 수리. 전용 Unity Metal final.log exit0: 60경계·중앙충돌3481·길1656·해안충돌725 PASS, 추가육지8m 표본 약0.563km². 최종1440×900 PNG4장 검토, 접합부 구멍 없음. 중앙 연결·단조로운 표면/직각길/소품·지도/서버·실제게임/2인 미완료. 기존 CS/라이선스 진단 잔존; 검증 중.",
+      "commit": "2ea59bf1",
+      "rationale": "#78 0a186926/2ea59bf1: 중앙 지형 보존·180m 목조 해상 잔교(3144삼각형) 구현. 전용 Metal visual-fixed.log exit0: 상판1765·접점2247·난간36/누락NC·중앙충돌3481·길1656·해안725 PASS. 동쪽 공면 줄무늬 수리 후 근경3장 확인. ACCESS_FAIL 서쪽 기존 산비탈179.46%>65%로 전체 연결 미합격. 중앙 우회 접근로·저장/지도/서버·게임/2인·최종아트 남음; 검증 중.",
       "fail_streak": 0,
       "owner": "codex",
       "resume_token": "owner-unblock-world-2055",
@@ -56,11 +56,22 @@
         "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/final/coast-south.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/final/route-corner.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/review.json",
-        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_COAST_77.md"
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_COAST_77.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/build-red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/green.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/clearance-green.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/reviewed.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/visual-fixed.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/review.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/visual-fixed/crossing-overview.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/visual-fixed/crossing-west.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/visual-fixed/crossing-east.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/visual-fixed/layout-top.png",
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_CROSSING_78.md"
       ],
-      "codex_iteration": 77,
-      "verification_commit": "ce826ed9",
-      "resume_condition": "중앙 섬 보존 해상 연결/육상 접근로 및 기존 에셋 지역 표식을 전용 트리에서 독립 구현. 해안 최신 기준 ce826ed9와 loop77-world/final.log·final PNG 사용. 이후 저장/재생성·지도/서버/스폰/관심영역 원장·실제 보행/2인 검사. 원본 병합/다른 IMGUI 대기로 차단하지 않는다."
+      "codex_iteration": 78,
+      "verification_commit": "2ea59bf1",
+      "resume_condition": "2ea59bf1/loop78-world/visual-fixed.log·PNG 기준. 중앙 높이를 보존하는 산비탈 우회 접근로를 독립 구현하여 ACCESS_FAIL(179.46%>65%) 해소. 동일 경사 재검사만 반복 금지. 이후 저장/재생성·지역 표식·지도/서버/스폰/관심영역·실제보행/2인 검사. 원본 통합 대기는 독립 구현을 막지 않는다."
     },
     {
       "id": "action-feel",
@@ -103,11 +114,11 @@
       "title": "이 트리에서 UlonClient.app 재빌드",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": null,
+      "status": "검증 중",
+      "assigned_loop": 46,
       "completed_loop": null,
       "commit": "",
-      "rationale": "실행·2클라 검사의 전제. 스크립트 있음. 에디터 점유 시 완료 금지.",
+      "rationale": "에디터 점유라 배치는 안 돌림. HTTP MCP로 DedicatedServer.BuildClient. 바이너리 360M·서버 7770·클라 ds-a 접속. 샷은 OS 캡처 거부. 2클라는 다음 카드.",
       "fail_streak": 0
     },
     {

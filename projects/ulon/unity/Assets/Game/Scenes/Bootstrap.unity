@@ -4598,6 +4598,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 36
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -7534,6 +7535,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 42
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -25663,6 +25665,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 180
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -26744,6 +26747,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 50
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -36369,6 +36373,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 50
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -43855,6 +43860,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 45
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -46293,6 +46299,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 60
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -48086,6 +48093,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 120
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -54345,6 +54353,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 38
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -58157,6 +58166,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 210
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -59969,6 +59979,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 26
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -65105,6 +65116,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 20
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -73555,6 +73567,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 60
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -79839,6 +79852,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 70
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -85425,6 +85439,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 50
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -102320,6 +102335,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 22
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -112014,6 +112030,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 24
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -113026,6 +113043,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 50
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -123766,6 +123784,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 50
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -135898,6 +135917,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 28
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -136866,7 +136886,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6cf277ed67fc640e69ef20119cd06627, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Ulon.Client::Ulon.Client.ClickMotor
-  speed: 4.2
   arrive: 0.15
   gravity: -20
 --- !u!114 &1629687768
@@ -136890,6 +136909,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 50
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -142882,6 +142902,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 45
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -147564,6 +147585,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 50
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -156213,6 +156235,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 40
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -159702,6 +159725,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 48
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -166809,6 +166833,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 50
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -173356,6 +173381,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 30
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -173862,6 +173888,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 16
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -177921,6 +177948,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 150
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
@@ -180032,6 +180060,7 @@ MonoBehaviour:
   Appearance: 0
   MaxHp: 30
   MaxMana: 35
+  MaxStamina: 35
   Ghost: 0
   Fame: 0
   Karma: 0
