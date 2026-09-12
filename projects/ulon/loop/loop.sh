@@ -159,12 +159,17 @@ if board.exists():
     except Exception:
         data = {}
     cards = data.get("cards") or []
+    by_diff = {"하": low, "중": mid, "상": high}
+    skip_owners = {"gpt", "codex", "openai"}
     for want in ("진행 중", "대기"):
         for c in cards:
             if c.get("status") != want:
                 continue
+            raw = (c.get("model") or "").strip()
+            if raw.lower() in skip_owners or (raw and not raw.startswith("grok")):
+                continue
             d = c.get("difficulty") or "중"
-            m = (c.get("model") or "").strip() or {"하": low, "중": mid, "상": high}.get(d, mid)
+            m = raw if raw.startswith("grok") else by_diff.get(d, mid)
             print(m)
             print(effort.get(d, em))
             raise SystemExit
