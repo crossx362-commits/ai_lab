@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#25** (성공) · 2026-09-12T18:19:40+0900
-다음: 클라 재빌드, 2클라, 스테이징에서 복원 후 재접속. 그래픽은 GPT/Codex 차선입니다.
+마지막 바퀴: **#26** (성공) · 2026-09-12T18:47:38+0900
+다음 INBOX(18:37, 씬 오브젝트 종류별 정리)는 이 바퀴에서 안 열었습니다.
 
-- 모델 `grok-4.6` · 경과 577s · 세션 rc `0`
-- HEAD `f1d95f46 [loop#25] persist-backup-restore 검증 결과 STATUS·보드 반영` · 브랜치 `master`
-- INBOX 미처리 **0**건
+- 모델 `grok-4.6` · 경과 1630s · 세션 rc `0`
+- HEAD `e49e97b9 [loop#26] persist-backup-restore 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- INBOX 미처리 **2**건
 - 이 바퀴 커밋:
-- `f1d95f46 [loop#25] persist-backup-restore 검증 결과 STATUS·보드 반영`
-- `c94d64fd [loop#25] persist DB·집·마구간 백업/복구`
+- `e49e97b9 [loop#26] persist-backup-restore 검증 결과 STATUS·보드 반영`
+- `ec8319f2 [loop#26] 민가 지붕 폭 늘리기 제거 — 서·동 외사면 용마루`
 
 ## 바퀴 기록
 
@@ -40,6 +40,7 @@
 | #23 | 성공 | 2026-09-12T17:52:56+0900 | grok-4.6 | 1027s |
 | #24 | 성공 | 2026-09-12T18:09:16+0900 | grok-4.6 | 932s |
 | #25 | 성공 | 2026-09-12T18:19:40+0900 | grok-4.6 | 577s |
+| #26 | 성공 | 2026-09-12T18:47:38+0900 | grok-4.6 | 1630s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -113,22 +114,23 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `village-house-roof`: INBOX 「집 모양」. Kenney `roof`는 1칸 외사면인데 폭만 ×2로 늘려 납작한 판이었다(샷 loop7·loop14). `PlaceHouseRoof`가 서쪽 yaw 180 + 동쪽 yaw 0으로 마주 놓아 용마루 하나. 스케일은 KitScale만. 2층도 left/right(벽 높이로만 구분). 게이트 `AssertHouseRoofNotStretched`+NC. `EnsureHouseRoofs`가 씬 7채 28장 수렴. 호스트 플레이 샷 `unity/Captures/loop26_house_ridge.png`. 콘솔은 Metal memoryless 깊이 경고 2줄뿐. 배치 셀프체크는 에디터 점유라 미실행.
-- 원작 대비: 같은 점 — 월드에 보이는 집. 나은 점 — 킷 외사면으로 박공 지붕이 읽힌다. 부족한 점 — `wall-corner` 없음(옆이 뚫려 보임), 굴뚝·차양 자리는 옛 좌표, 셀프체크 배치 미실행. 원작 합격 아님.
+- `scene-kind-folders`: INBOX 18:37. 구역 루트(`VillageDecor`·`Region_*`·필드·산포) 이름은 게이트가 찾으니 유지. 직계 소품 1041개를 `KindFence`/`KindTree` 등으로 묶음. VillageDecor 183→폴더 9(Fence 125·House 6·Light 8 등). 게이트 `AssertSceneKindFolders`+NC(루트로 올리면 FAIL). PropScope 마을 183(묶기 전과 같음). 멱등 2회 0. 호스트 플레이 샷 `unity/Captures/loop27_kind_folders.png` — 집·울타리·좌판 자리 유지. 콘솔 Metal memoryless 깊이 경고 2줄. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크는 에디터 점유라 미실행. 씬 루트 배우·시설 76개는 `EnsureBuildingsFadeable`가 루트만 봐서 안 옮김.
+- 원작 대비: 같은 점 — 화면에 보이는 마을·소품. 나은 점 — 계층에서 종류가 읽힌다. 부족한 점 — 씬 루트는 아직 종류 섞임, 배치 셀프체크 미실행. 원작 합격 아님(계층 정리는 원작 규격이 아님).
 
 ## 지금 하는 것
 
-없음. loop#26 카드 `village-house-roof`는 검증 중(배치 셀프체크·모서리 벽).
+없음. loop#27 카드 `scene-kind-folders`는 검증 중(배치 셀프체크·씬 루트 배우).
 
 ## 다음 할 것 (우선순위 → board.json)
 
-1. INBOX 18:37 씬 오브젝트 종류별 정리 (에디터와 겹침 — 점유 중이면 문서만)
+1. INBOX 18:47 막힌 부분 처리 (사람 결정 항목은 그대로, 풀 수 있는 것만)
 2. 민가 `wall-corner`로 모서리 막기 (집 모양 남은 구멍)
 3. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
 4. `tools/two_client_check.sh` — 관심 영역·GM 무인증·시체 동기화 재실측
 5. persist 복구: Unity 게이트 플레이 + 스테이징 복원 후 재접속
 6. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선
 7. 그래픽·UI 폴리시·물가 셰이더는 GPT/Codex 차선 (그록 안 함)
+8. 씬 루트 배우·시설 종류 묶음은 페이드 자가 루트를 보도록 고친 뒤
 
 ## 막힌 것 (사람 결정)
 

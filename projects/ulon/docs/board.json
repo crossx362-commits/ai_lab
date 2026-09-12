@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T18:45:00+09:00",
+  "updated_at": "2026-09-12T19:00:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,13 +196,13 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#26은 민가 지붕 외사면을 검증 중으로 둠",
+      "title": "지금 하는 일: 없음 — loop#27은 씬 종류 폴더를 검증 중으로 둠",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 26,
-      "completed_loop": 26,
-      "commit": "ec8319f2",
+      "assigned_loop": 27,
+      "completed_loop": 27,
+      "commit": "34c25fcd",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
@@ -325,18 +325,22 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "bbd587ef",
-      "rationale": "아트 bbd587ef 보존. #17 c8718e8a: 전용 Unity Metal batchmode 2회 exit0/C#오류0. Spray 로컬y=-5.000670, 지표y=10. 입자20개 모두 지표보다1.43~3.52m 아래·시선20개 TerrainCollider 충돌. 실제 지하 설치 확인, ON/OFF 변화0픽셀. 1440×900 마을 직접 검수(Edit mode). §4.2/8.1 시점·크기 유지, 가림 좌표 특정 개선. EffectLocalPos/CombinedBounds의 최초·재설치 호출 재현 후 수리 필요. 설치 코드 원인 확정 전. 투명 정렬/Play/접속/조작/2인/성능 미검증; 기존 경고·라이선스 진단 잔존.",
+      "rationale": "#31 소유권 확인: 원본 Village/Regions 빌더가 다시 미커밋 수정 중이며 Kind 빌더·KindFolders 검사가 신규 미추적 상태다. 종류별 정리 작업과 겹치므로 원본/전용 복사·병합·장면 수정 없이 보존. 전용 저장 복사본 검증 8fc5a200 유지. 실제 Bootstrap 적용은 원본 정리 작업 종료 후 소유권·diff 대조 및 별도 통합 차선에서 재개. 이번 Unity 컴파일·화면·게임·2인 검사와 신규 커밋 없음; 완료 아님.",
       "fail_streak": 0,
-      "codex_iteration": 17,
+      "codex_iteration": 31,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
         "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/spray-on.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/spray-off.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/terrain-placement.txt",
         "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/pixel-analysis.json",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/unity-final.log"
+        "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/unity-final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop22-inventory/inventory.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop22-inventory/inventory.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop27-ownership/ownership.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop31-ownership/ownership.json"
       ],
-      "verification_commit": "c8718e8a"
+      "verification_commit": "8fc5a200"
     },
     {
       "id": "codex-storybook-hud",
@@ -396,6 +400,18 @@
       "completed_loop": 23,
       "commit": "5433fab3",
       "rationale": "시체+기여자/파티 창. 게이트+NC·던전4. 헥사크 플레이 가방 후지급 샷.",
+      "fail_streak": 0
+    },
+    {
+      "id": "scene-kind-folders",
+      "title": "씬 구역 소품을 Kind* 종류 폴더로 묶음",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "검증 중",
+      "assigned_loop": 27,
+      "completed_loop": null,
+      "commit": "34c25fcd",
+      "rationale": "INBOX 18:37. 구역 루트 이름은 유지. 직계를 KindFence 등으로. 게이트+NC. 씬 루트 배우/시설은 페이드가 루트 가정이라 안 옮김.",
       "fail_streak": 0
     }
   ]
