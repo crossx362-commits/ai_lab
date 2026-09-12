@@ -1,22 +1,20 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#50** (성공) · 2026-09-12T23:13:36+0900
-커밋 `d29d0267`, STATUS `54e14deb`. 보드 카드는 **막힘**. 지울지·옮길지는 사람 결정입니다.
+마지막 바퀴: **#51** (성공) · 2026-09-12T23:26:26+0900
+- 배치 셀프체크·2클라는 에디터 점유라 안 돌렸습니다. 원작 합격은 아닙니다(복합 직업명은 기획 확장).
 
-- 모델 `grok-4.6` · 경과 563s · 세션 rc `0`
-- HEAD `54e14deb [loop#50] 원점 중복 삭제 금지 STATUS` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 722s · 세션 rc `0`
+- HEAD `5da205d4 [loop#51] 숙련 칭호 STATUS` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `54e14deb [loop#50] 원점 중복 삭제 금지 STATUS`
-- `d29d0267 [loop#50] 원점 중복 소품 삭제 금지 게이트`
-- `828a50a6 fix(ulon/loop): '사람 결정' 항목은 다음 할 것에서 집지 않는다`
+- `5da205d4 [loop#51] 숙련 칭호 STATUS`
+- `8718a744 [loop#51] 숙련 칭호 원장·검프·페이퍼돌`
 
 ## 바퀴 기록
 
 | 바퀴 | 결과 | 시각 | 모델 | 경과 |
 |---|---|---|---|---|
-| #19 | 성공 | 2026-09-12T16:57:08+0900 | grok-4.6 | 651s |
 | #20 | 성공 | 2026-09-12T17:07:56+0900 | grok-4.6 | 600s |
 | #21 | 성공 | 2026-09-12T17:23:03+0900 | grok-4.6 | 859s |
 | #22 | 성공 | 2026-09-12T17:35:01+0900 | grok-4.6 | 670s |
@@ -46,6 +44,7 @@
 | #48 | 성공 | 2026-09-12T22:50:52+0900 | grok-4.6 | 626s |
 | #49 | 성공 | 2026-09-12T23:03:25+0900 | grok-4.6 | 706s |
 | #50 | 성공 | 2026-09-12T23:13:36+0900 | grok-4.6 | 563s |
+| #51 | 성공 | 2026-09-12T23:26:26+0900 | grok-4.6 | 722s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -66,7 +65,7 @@
 | 카메라 고정 3/4 쿼터뷰 | 동작함 | loop#7: 에디터 플레이 샷 `unity/Captures/loop7_play_minimap.png` — 고정 3/4, 줌만. 회전 없음 |
 | 스킬 100/총합 700·↑↓Lock | 동작함 | loop#36: HUD가 `TryCycleSkillLock`/`RpcCycleSkillLock`. 플레이 샷 `unity/Captures/loop36_skill_gump.png`(합계 1.0/700·능력 90/225·검술 ↓)·`loop36_skill_lock.png`(검술 x·STR ↓). 게이트 `AssertSkillLockAuth`+NC 에디터 OK. 오프라인 Fire 검술 ↑→↓→x. 호스트 켠 뒤 Try 채광 Down→Locked. 2클라 서명 왕복은 미실행. 원작 검프 아님 |
 | 숙련 칭호 | 동작함 | loop#51: 구간 원장 `skill_titles.json`(30/40/50/60/70/80/90/100). 검프 `GumpLine`·페이퍼돌 `TitleOf`(최고 스킬). 플레이 샷 `unity/Captures/loop51_skill_gump.png`(달인 검술 80·초심자 치유 30·그랜드마스터 마법 100·채광 29.9 무칭호·상태 「그랜드마스터 마검사」)·`loop51_paperdoll.png`(인형 「달인 검사」)·`loop51_swordsman.png`(상태 「달인 검사」). 게이트 `AssertSkillTitleRanks`+NC 에디터 OK. 배치 셀프체크·2클라 미실행. 원작 합격 아님(복합 직업명 유지) |
-| STR/DEX/INT·Stat Lock | 부분 | loop#36 잠금. loop#40: `MaxStamina=10+DEX`. loop#42: HP 자연 회복. loop#43: 휘두름 간격이 현재 스태미나(`AttackSpeed`, max(0.5, 1.8−ST/50)). 기본 DEX25 만땅 1.10s. 샷 `unity/Captures/loop43_swing_empty.png`(ST 1·휘두름 1.77s)·`loop43_swing_full.png`(ST 35·1.10s)·`loop43_swing_hit.png`(DEX 80·0.50s). 게이트 `AssertAttackSpeed`+NC 에디터 OK. 0.7s 뒤 DEX25=cooldown·DEX80=적용. 2클라 미실행. 원작 합격 아님 |
+| STR/DEX/INT·Stat Lock | 동작함 | loop#52: 주 잠금이면 부 스탯(`SecondaryOf`·`TryGainFromSkill`). 플레이 STR x 39 유지·DEX 25→26·검술 0.1→0.2·ST 26/36. 샷 `unity/Captures/loop52_skill_gump.png`(STR 39 x·DEX 26↑·능력 91/225·검술 0.2)·`loop52_str_locked.png`·`loop52_dex_gain.png`. 게이트 `AssertStatSecondaryGain`+NC 에디터 OK. 배치 셀프체크·2클라 미실행. 원작 합격 아님(75/25 없음, 마법저항/조련 Primary는 기존 코드) |
 | 클릭 이동 | 부분 | loop#37 걷기 2.5/달리기 5.0. loop#40: 스태미나 0이면 달리기 불가(`RunStamina.CanRun`). 플레이 ST 35/35 → Tick 1s 소모 4→0·SetRunning false·걷기 PlanarSpeed 2.50. 샷 `unity/Captures/loop40_stamina_full.png`·`loop40_stamina_zero.png`(ST 기진). 게이트 `AssertRunStamina`+NC 에디터 OK. 호스트/2클라 미실행 |
 | 타깃 RPG 전투(서버 판정) | 부분 | loop#45: 명중은 무기 스킬(`HitChance`, (atk+20)/((def+20)*2)). 오프라인 플레이 굴림 0.99 빗나감 스켈레톤 30→30·HUD 「명중 51% 빗나감」. 굴림 0 명중 30→18. 샷 `unity/Captures/loop45_miss.png`·`loop45_hit.png`. 게이트 `AssertHitChance`+NC 에디터 OK. 2클라 미실행. HCI/DCI·레슬링·원작 하한 2% 없음 |
 | 스킬/마법 퀵바 | 동작함 | loop#35: 원장 `QuickbarSlots` 1–9. 플레이 샷 `unity/Captures/loop35_quickbar.png`(1 붕대·2 물약·3 명상·4 불씨·5 봉합). `FireQuickbarAt(0)` 후 샷 `loop35_hotkey_bandage.png`(「치유 대상을 지정하세요」). 게이트+NC 에디터 OK. 물리 Alpha1 키는 MCP라 미실행. 커스텀 할당 없음. 원작 합격 아님 |
@@ -113,18 +112,18 @@
 - **persist/postgres는 이번 살아 있음.** pid 84115, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
 - **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크는 불가. HTTP MCP로 종류 묶음·페이드 NC·플레이 확인. 배치 검사는 에디터를 닫은 뒤에.
-- **이번 플레이.** 에디터 플레이: 콘솔 error/warning 0(깊이 버퍼 memoryless 무시 로그만). 숙련 칭호 검프·페이퍼돌 확인. 샷 `unity/Captures/loop51_skill_gump.png`·`loop51_paperdoll.png`·`loop51_swordsman.png`. 2클라 미실행.
+- **이번 플레이.** 에디터 플레이: 콘솔 error/warning 0(깊이 버퍼 memoryless 무시 로그만). STR 잠금 후 검술 상승 시 DEX만 +1. 샷 `unity/Captures/loop52_skill_gump.png`·`loop52_str_locked.png`·`loop52_dex_gain.png`. 2클라 미실행.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 이 트리에도 loop#46로 `UlonClient.app`을 다시 넣었다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- 숙련 칭호 §3.2 구간을 `skill_titles.json`으로 두고 스킬 검프에 접두사, 페이퍼돌에 최고 스킬 `TitleOf`를 표시. 게이트 `AssertSkillTitleRanks`+NC 에디터 OK. 플레이 콘솔 error/warning 0. 샷 `unity/Captures/loop51_skill_gump.png`·`loop51_paperdoll.png`·`loop51_swordsman.png`. 배치 셀프체크는 에디터 점유라 생략. `test_alpha_readiness` 7/7. 구현 `8718a744`.
-- 원작 대비: 같은 점 — 30 미만 무칭호, 30~100 단계, 대표는 최고 스킬 하나. 나은 점 — 검프에서 스킬마다 구간이 보임. 부족한 점 — 복합 직업명(마검사)은 원작에 없고 기획 §3.2 확장. 2클라 남의 칭호는 미실행.
+- 기획 §18.2 부 스탯: 스킬이 오를 때 주가 잠기면 부가 오른다. `StatSet.SecondaryOf`+`TryGainFromSkill`. 게이트 `AssertStatSecondaryGain`+NC 에디터 OK. 플레이 STR x 39 유지·DEX 25→26·ST 최대 36. 샷 `unity/Captures/loop52_skill_gump.png`. 배치 셀프체크는 에디터 점유라 생략. `test_alpha_readiness` 7/7. 구현 `3616829b`.
+- 원작 대비: 같은 점 — 주/부 짝, 주 잠금이면 부가 오름, 둘 다 잠기면 안 오름. 나은 점 — 스킬 상승마다 부가 바로 보여 잠금이 체감됨. 부족한 점 — 원작 Publish 45의 75/25·1/20은 기획서에 없어 안 넣음. 마법저항/조련 Primary는 이 트리 기존 값(uo.com과 다름).
 
 ## 지금 하는 것
 
-없음. loop#51 카드는 숙련 칭호까지 닫음.
+없음. loop#52 카드는 부 스탯 성장까지 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
@@ -150,6 +149,8 @@
 - **HP 자연 회복 수치:** 기획 §18.2는 STR→최대 HP·단순 공식만. 자연 회복 숫자는 없어 `hp_regen.json` 프로젝트 값(1 + STR/50). 원작 기본은 약 10초에 1(+아이템 HPR). 기획서 보강 필요.
 - **휘두름 간격 수치:** 기획 §18.2는 DEX=공격 속도 보정만. 무기 속도·SSI·틱은 없어 `attack_speed.json` 프로젝트 값(max(0.5, 1.8−스태미나/50), 기본 만땅=옛 1.1s). 원작 하한은 1.25s. 기획서 보강 필요.
 - **명중 공식 수치:** 기획 §18.3은 「명중은 무기 스킬」만. 숫자는 없어 Stratics 공식 `(atk+20)/((def+20)*2)` (`hit_chance.json`). HCI/DCI·레슬링 대체·하한 2%는 기획서에 없어 안 넣음. 기획서 보강 필요.
+- **부 스탯 확률:** 원작 uo.com(Publish 45)은 주 75%/부 25%·스킬 상승 시 1/20. 기획 §18.2는 「Primary/Secondary에 Stat Gain 시도」만. 이번엔 주가 안 오를 때만 부. 75/25는 「기획서 보강 필요」.
+- **주 스탯 표 충돌:** 기존 `PrimaryOf`를 안 바꿈. 마법저항은 코드 INT / uo.com STR·DEX, 조련은 코드 DEX / uo.com STR·INT. 부는 표의 나머지. 출처 https://uo.com/wiki/ultima-online-wiki/player/stats/skills-stats-and-attributes/
 - **ai_lab-loop 워크트리:** 앞선 작업이 아니라 뒤처짐. 그곳 빌드만 쓰지 말고 이 트리에서 다시 빌드할 것. 병합 금지.
 - **물 2·3단계(프레넬·정점 흔들림), 강 곡류:** 핸드오프상 검수 판정 뒤.
 - **에디터 점유:** PID 85035가 잠금. 배치 셀프체크는 불가. 클라 빌드는 loop#46에서 HTTP MCP로 완료. 배치 검사는 에디터를 닫은 뒤에.
