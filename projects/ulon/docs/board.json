@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T22:40:00+0900",
+  "updated_at": "2026-09-12T22:49:38+0900",
   "cards": [
     {
       "id": "map-land-scale",
@@ -33,8 +33,8 @@
       "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "983dceb4",
-      "rationale": "#79 983dceb4: 중앙 지형 보존400m 목조 우회/잔교 측면 접속 구현(7704삼각형). 전용 Metal final.log exit0: 중앙→확장7530표본 최대경사30%≤65%, 폭/난간338·코너4·누락/문막기NC 및 기존지형3481/길1656 PASS. 실제PNG3뷰 검토·계단형 음영 수리. 기존 직행179.46%는 그대로; 저장/재생성·Bootstrap·지도/서버·게임/2인·최종아트 남음. 검증 중.",
+      "commit": "6875770c",
+      "rationale": "#80 6875770c: Terrain36·Mesh192 독립 저장기와 알파맵 유실/이웃 재로딩 수리. 새 Unity 프로세스 fresh.log 및 재생성 regen.log exit0: 전 데이터1048서명 동일·144방향/충돌/덮어쓰기NC PASS. 저장장면 PNG3뷰 검토. Bootstrap 적용·지도/서버·Play/2인·최종아트 미완료. 검증 중.",
       "fail_streak": 0,
       "owner": "codex",
       "resume_token": "owner-unblock-world-2055",
@@ -79,11 +79,27 @@
         "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/final/approach-overview.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/final/approach-entry.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/final/approach-gate.png",
-        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_APPROACH_79.md"
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_APPROACH_79.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/diagnostic.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/alpha-probe.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/fixed.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/fresh.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/regen.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/regeneration.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/review.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/render/approach-entry.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/render/approach-gate.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/render/layout-quarter.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/fixtures/locations.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/static.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop80-world/harness-after.log",
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_PERSISTENCE_80.md"
       ],
-      "codex_iteration": 79,
-      "verification_commit": "983dceb4",
-      "resume_condition": "983dceb4 및 loop79-world/final.log·final/approach-*.png 기준. 새 우회는 중앙원점→(120,40)→(120,-90)→(300,-90)→잔교→초원 충돌PASS. 기존 직행179.46% 재검사 반복 금지. 다음은 procedural Mesh/Terrain 자산 저장·재로딩/재생성 검증; Bootstrap 기존 콘텐츠/가로등 보존을 대조한 전용 적용, 지도/서버/스폰/관심영역·실제보행/2인 후속. 높은 교각/단조로운 아트/지역 표식 미완료. 원본 통합 대기는 독립 구현을 막지 않는다."
+      "codex_iteration": 80,
+      "verification_commit": "ed15f5ee",
+      "resume_condition": "6875770c/ed15f5ee 및 loop80-world/fresh.log·regen.log·regeneration.json 기준. WorldExpansionPersistence.Save는 새 생성 Terrain만 새 revision에 저장; 알파맵 복원·WorldExpansionNeighbors 필수. fixtures/Assets/__CodexWorld80Final과 .meta를 전용 Assets에 복원해 Verify 가능(Library 복사 금지). 다음은 전용 Bootstrap 기존 콘텐츠/가로등 inventory·diff 보존 한정 적용 도구 구현. 이후 지도/서버/스폰/관심영역·Play 실제보행/2인·교각/표식 아트. 임시 저장 PASS는 Bootstrap 배포 아님; 기존 직행179% 반복/원본 통합 대기 금지."
     },
     {
       "id": "action-feel",
@@ -741,6 +757,18 @@
       "completed_loop": 47,
       "commit": "241d9a4b",
       "rationale": "페이드는 자가 루트 좌표. KindActor 19·KindFacility 9. 게이트+NC·플레이 샷. 구현 241d9a4b. 배치 셀프체크는 에디터 점유.",
+      "fail_streak": 0
+    },
+    {
+      "id": "auto-48-씬-루트에-남은-나무-수레-가로등-소품-종류",
+      "title": "씬 루트에 남은 나무·수레·가로등 소품 종류 묶음",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 48,
+      "completed_loop": 48,
+      "commit": "dfd19b0a",
+      "rationale": "KindTree 2·KindCart 1·KindLight 4. 게이트+NC·플레이 샷. 구현 dfd19b0a. 배치 셀프체크는 에디터 점유.",
       "fail_streak": 0
     }
   ]
