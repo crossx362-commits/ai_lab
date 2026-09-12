@@ -18,11 +18,12 @@ namespace Ulon.Client
         /// 클라가 보낸 목적지. 서버 모터가 걷는다. 섬 밖은 버린다(§7.2).
         /// </summary>
         [ServerRpc]
-        public void RpcRequestMove(Vector3 dest, bool stop)
+        public void RpcRequestMove(Vector3 dest, bool stop, bool running)
         {
             var motor = GetComponent<ClickMotor>();
             if (motor == null)
                 return;
+            motor.ApplyServerRunning(running);
             if (stop)
             {
                 motor.ApplyServerStop();

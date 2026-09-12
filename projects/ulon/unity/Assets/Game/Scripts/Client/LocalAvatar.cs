@@ -23,6 +23,7 @@ namespace Ulon.Client
         {
             if (PersistDriver.Creating || PersistDriver.Frozen)
                 return;
+            motor.SetRunning(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
             if (Input.GetMouseButton(0))
                 HandlePointer(Input.GetMouseButtonDown(0));
             if (Input.GetKeyDown(KeyCode.F))

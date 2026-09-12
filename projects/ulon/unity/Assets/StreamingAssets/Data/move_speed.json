@@ -1,0 +1,8 @@
+{
+  "walk_step_s": 0.40,
+  "run_step_s": 0.20,
+  "mount_walk_step_s": 0.20,
+  "mount_run_step_s": 0.10,
+  "tile_meters": 1,
+  "source": "GAME_DESIGN §7.2.1. Classic 2D tile times: http://wikiwiki.jp/uoemu/Tips9 (walk 400ms / run 200ms / mount walk 200ms / mount run 100ms). Aux https://github.com/xrip/uo-client"
+}

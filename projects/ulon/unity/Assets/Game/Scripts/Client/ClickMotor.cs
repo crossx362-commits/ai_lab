@@ -1,12 +1,12 @@
 using UnityEngine;
 using Ulon.Server;
+using Ulon.Shared;
 
 namespace Ulon.Client
 {
     [RequireComponent(typeof(CharacterController))]
     public sealed class ClickMotor : MonoBehaviour
     {
-        [SerializeField] float speed = 4.2f;
         [SerializeField] float arrive = 0.15f;
         [SerializeField] float gravity = -20f;
 
@@ -16,10 +16,12 @@ namespace Ulon.Client
         float vertical;
 
         public bool Moving => hasDestination;
+        public bool Running { get; private set; }
         public float PlanarSpeed { get; private set; }
 
         Vector3 lastSentDest;
         bool lastSentStop = true;
+        bool lastSentRun;
         const float SendEps = 0.5f;
 
         void Awake()
@@ -50,6 +52,18 @@ namespace Ulon.Client
 
         public void ApplyServerStop() => hasDestination = false;
 
+        public void ApplyServerRunning(bool run) => Running = run;
+
+        /// <summary>소유 클라 입력. 모터가 꺼져 있어도 RPC는 나간다.</summary>
+        public void SetRunning(bool run)
+        {
+            if (Running == run)
+                return;
+            Running = run;
+            if (hasDestination)
+                TrySendMove(false);
+        }
+
         void TrySendMove(bool stop)
         {
             var net = GetComponent<NetAvatar>();
@@ -60,14 +74,16 @@ namespace Ulon.Client
                 if (lastSentStop)
                     return;
                 lastSentStop = true;
-                net.RpcRequestMove(transform.position, true);
+                net.RpcRequestMove(transform.position, true, Running);
                 return;
             }
-            if (!lastSentStop && (destination - lastSentDest).sqrMagnitude < SendEps * SendEps)
+            if (!lastSentStop && lastSentRun == Running &&
+                (destination - lastSentDest).sqrMagnitude < SendEps * SendEps)
                 return;
             lastSentStop = false;
+            lastSentRun = Running;
             lastSentDest = destination;
-            net.RpcRequestMove(destination, false);
+            net.RpcRequestMove(destination, false, Running);
         }
 
         void Update()
@@ -77,6 +93,7 @@ namespace Ulon.Client
                 PlanarSpeed = 0f;
                 return;
             }
+            float speed = MoveSpeed.MetersPerSecond(Running);
             Vector3 planar = Vector3.zero;
             if (hasDestination)
             {
