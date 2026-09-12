@@ -1,21 +1,21 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#51** (성공) · 2026-09-12T23:26:26+0900
-- 배치 셀프체크·2클라는 에디터 점유라 안 돌렸습니다. 원작 합격은 아닙니다(복합 직업명은 기획 확장).
+마지막 바퀴: **#52** (성공) · 2026-09-12T23:46:37+0900
+커밋 `3616829b`, STATUS `fc43c6e6`. 원작 합격은 아닙니다. 75%/25%·1/20은 기획서에 없어 안 넣었고, 마법저항/조련 Primary는 이 트리 기존 값이라 uo.com과 다릅니다.
 
-- 모델 `grok-4.6` · 경과 722s · 세션 rc `0`
-- HEAD `5da205d4 [loop#51] 숙련 칭호 STATUS` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 1164s · 세션 rc `0`
+- HEAD `fc43c6e6 [loop#52] 부 스탯 성장 STATUS` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `5da205d4 [loop#51] 숙련 칭호 STATUS`
-- `8718a744 [loop#51] 숙련 칭호 원장·검프·페이퍼돌`
+- `fc43c6e6 [loop#52] 부 스탯 성장 STATUS`
+- `3616829b [loop#52] 주 잠금 시 부 스탯 성장`
+- `0097c9bb [codex] 개발 루프 카드 독점 선택 수리 반영`
 
 ## 바퀴 기록
 
 | 바퀴 | 결과 | 시각 | 모델 | 경과 |
 |---|---|---|---|---|
-| #20 | 성공 | 2026-09-12T17:07:56+0900 | grok-4.6 | 600s |
 | #21 | 성공 | 2026-09-12T17:23:03+0900 | grok-4.6 | 859s |
 | #22 | 성공 | 2026-09-12T17:35:01+0900 | grok-4.6 | 670s |
 | #23 | 성공 | 2026-09-12T17:52:56+0900 | grok-4.6 | 1027s |
@@ -45,6 +45,7 @@
 | #49 | 성공 | 2026-09-12T23:03:25+0900 | grok-4.6 | 706s |
 | #50 | 성공 | 2026-09-12T23:13:36+0900 | grok-4.6 | 563s |
 | #51 | 성공 | 2026-09-12T23:26:26+0900 | grok-4.6 | 722s |
+| #52 | 성공 | 2026-09-12T23:46:37+0900 | grok-4.6 | 1164s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -66,7 +67,7 @@
 | 스킬 100/총합 700·↑↓Lock | 동작함 | loop#36: HUD가 `TryCycleSkillLock`/`RpcCycleSkillLock`. 플레이 샷 `unity/Captures/loop36_skill_gump.png`(합계 1.0/700·능력 90/225·검술 ↓)·`loop36_skill_lock.png`(검술 x·STR ↓). 게이트 `AssertSkillLockAuth`+NC 에디터 OK. 오프라인 Fire 검술 ↑→↓→x. 호스트 켠 뒤 Try 채광 Down→Locked. 2클라 서명 왕복은 미실행. 원작 검프 아님 |
 | 숙련 칭호 | 동작함 | loop#51: 구간 원장 `skill_titles.json`(30/40/50/60/70/80/90/100). 검프 `GumpLine`·페이퍼돌 `TitleOf`(최고 스킬). 플레이 샷 `unity/Captures/loop51_skill_gump.png`(달인 검술 80·초심자 치유 30·그랜드마스터 마법 100·채광 29.9 무칭호·상태 「그랜드마스터 마검사」)·`loop51_paperdoll.png`(인형 「달인 검사」)·`loop51_swordsman.png`(상태 「달인 검사」). 게이트 `AssertSkillTitleRanks`+NC 에디터 OK. 배치 셀프체크·2클라 미실행. 원작 합격 아님(복합 직업명 유지) |
 | STR/DEX/INT·Stat Lock | 동작함 | loop#52: 주 잠금이면 부 스탯(`SecondaryOf`·`TryGainFromSkill`). 플레이 STR x 39 유지·DEX 25→26·검술 0.1→0.2·ST 26/36. 샷 `unity/Captures/loop52_skill_gump.png`(STR 39 x·DEX 26↑·능력 91/225·검술 0.2)·`loop52_str_locked.png`·`loop52_dex_gain.png`. 게이트 `AssertStatSecondaryGain`+NC 에디터 OK. 배치 셀프체크·2클라 미실행. 원작 합격 아님(75/25 없음, 마법저항/조련 Primary는 기존 코드) |
-| 클릭 이동 | 부분 | loop#37 걷기 2.5/달리기 5.0. loop#40: 스태미나 0이면 달리기 불가(`RunStamina.CanRun`). 플레이 ST 35/35 → Tick 1s 소모 4→0·SetRunning false·걷기 PlanarSpeed 2.50. 샷 `unity/Captures/loop40_stamina_full.png`·`loop40_stamina_zero.png`(ST 기진). 게이트 `AssertRunStamina`+NC 에디터 OK. 호스트/2클라 미실행 |
+| 클릭 이동 | 동작함 | loop#53: 홀드를 떼면 멈춘다(`ClickHold.StopOnRelease`, 2프레임+). 짧은 클릭(1프레임)은 목적지 유지. 플레이 홀드 해제 x=-6.140 1s 유지 speed 0·짧은 클릭은 계속 2.50. 샷 `unity/Captures/loop53_click_hold_walk.png`·`loop53_click_hold_stop.png`. 게이트 `AssertClickHold`+NC 에디터 OK. 배치 셀프체크·2클라 미실행. 원작 합격 아님(커서 거리=달리기 수치 없음) |
 | 타깃 RPG 전투(서버 판정) | 부분 | loop#45: 명중은 무기 스킬(`HitChance`, (atk+20)/((def+20)*2)). 오프라인 플레이 굴림 0.99 빗나감 스켈레톤 30→30·HUD 「명중 51% 빗나감」. 굴림 0 명중 30→18. 샷 `unity/Captures/loop45_miss.png`·`loop45_hit.png`. 게이트 `AssertHitChance`+NC 에디터 OK. 2클라 미실행. HCI/DCI·레슬링·원작 하한 2% 없음 |
 | 스킬/마법 퀵바 | 동작함 | loop#35: 원장 `QuickbarSlots` 1–9. 플레이 샷 `unity/Captures/loop35_quickbar.png`(1 붕대·2 물약·3 명상·4 불씨·5 봉합). `FireQuickbarAt(0)` 후 샷 `loop35_hotkey_bandage.png`(「치유 대상을 지정하세요」). 게이트+NC 에디터 OK. 물리 Alpha1 키는 MCP라 미실행. 커스텀 할당 없음. 원작 합격 아님 |
 | 장비·인벤·내구도·수리 | 부분 | 코드·게이트. 플레이 미실행 |
@@ -112,18 +113,18 @@
 - **persist/postgres는 이번 살아 있음.** pid 84115, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
 - **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크는 불가. HTTP MCP로 종류 묶음·페이드 NC·플레이 확인. 배치 검사는 에디터를 닫은 뒤에.
-- **이번 플레이.** 에디터 플레이: 콘솔 error/warning 0(깊이 버퍼 memoryless 무시 로그만). STR 잠금 후 검술 상승 시 DEX만 +1. 샷 `unity/Captures/loop52_skill_gump.png`·`loop52_str_locked.png`·`loop52_dex_gain.png`. 2클라 미실행.
+- **이번 플레이.** 에디터 플레이: 콘솔 error/warning 0(깊이 버퍼 memoryless 무시 로그만). 클릭 목적지 걷기 2.50 → 홀드 해제 후 위치 고정 speed 0. 짧은 클릭은 목적지 유지. 샷 `unity/Captures/loop53_click_hold_walk.png`·`loop53_click_hold_stop.png`. 2클라 미실행.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 이 트리에도 loop#46로 `UlonClient.app`을 다시 넣었다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- 기획 §18.2 부 스탯: 스킬이 오를 때 주가 잠기면 부가 오른다. `StatSet.SecondaryOf`+`TryGainFromSkill`. 게이트 `AssertStatSecondaryGain`+NC 에디터 OK. 플레이 STR x 39 유지·DEX 25→26·ST 최대 36. 샷 `unity/Captures/loop52_skill_gump.png`. 배치 셀프체크는 에디터 점유라 생략. `test_alpha_readiness` 7/7. 구현 `3616829b`.
-- 원작 대비: 같은 점 — 주/부 짝, 주 잠금이면 부가 오름, 둘 다 잠기면 안 오름. 나은 점 — 스킬 상승마다 부가 바로 보여 잠금이 체감됨. 부족한 점 — 원작 Publish 45의 75/25·1/20은 기획서에 없어 안 넣음. 마법저항/조련 Primary는 이 트리 기존 값(uo.com과 다름).
+- 기획 §4.2 클릭/홀드: 버튼을 떼면 멈춘다. `ClickHold.StopOnRelease`+`ClickMotor.Stop`. 한 프레임 클릭은 목적지까지 걷는다. 게이트 `AssertClickHold`+NC 에디터 OK. 플레이 홀드 해제 후 x 고정·speed 0, 짧은 클릭은 PlanarSpeed 2.50 유지. 샷 `unity/Captures/loop53_click_hold_walk.png`·`loop53_click_hold_stop.png`. 배치 셀프체크는 에디터 점유라 생략. `test_alpha_readiness` 7/7. 구현 `016b1ccd`.
+- 원작 대비: 같은 점 — 홀드를 떼면 멈춤, 클릭하면 그 지점으로 감. 나은 점 — 짧은 클릭은 손을 떼도 목적지까지 가서 PC 클릭 이동이 됨. 부족한 점 — 원작의 커서 거리=걷기/달리기는 기획서에 문턱 수치가 없어 안 넣음(Shift 달리기 유지).
 
 ## 지금 하는 것
 
-없음. loop#52 카드는 부 스탯 성장까지 닫음.
+없음. loop#53 카드는 홀드 해제 정지까지 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
@@ -143,6 +144,7 @@
 - **Noto Sans KR:** 반입함 (`Resources/Fonts/NotoSansKR-Regular.ttf`, SIL OFL). HUD `EnsureUiFont`. 에디터 임포트·화면 확인은 다음.
 - **Kenney UI Pack:** Grey 버튼/패널 42장 반입. HUD 스킨 적용은 GPT UI 차선.
 - **이동 속도:** 기획 §7.2.1 적용함(loop#37). 기마 10.0 m/s는 원장만 — 탑승 플레이가 없어 모터에 안 묶음. Always Run 옵션 UI는 GPT HUD 차선.
+- **커서 거리 달리기:** 원작은 커서와 캐릭터 거리가 멀면 달린다(uoguide Moving, uo.com Movement and Travel). 걷기 2.5/달리기 5.0은 기획에 있으나 전환 문턱(타일·픽셀)은 없어 안 넣음. Shift 달리기 유지. 「기획서 보강 필요」.
 - **과적 걷기 감속:** 원작 UO는 과적 시 걷기도 느려진다(uoguide Weight). 기획서에 배율이 없어 이번엔 달리기 금지와 걷기 2.5 m/s만. 감속·이동불가 문턱은 「기획서 보강 필요」.
 - **달리기 스태미나 수치:** Max=10+DEX는 기획 §18.2 「단순 공식」. 소모 4/s·회복 2/s는 기획서에 없어 프로젝트 값(`run_stamina.json`). 원작 피격 스태미나 감소는 안 넣음.
 - **마나 자연 회복 수치:** 기획 §18.6은 Meditation이 회복을 담당·중갑 패널티만. 공식 숫자는 없어 `mana_regen.json` 프로젝트 값(1 + 명상/100 + INT/50, 중갑×0.5). 원작 명상 틱 공식은 안 넣음.
