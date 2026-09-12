@@ -31,8 +31,16 @@ namespace Ulon.Editor
             prefabRoot.name = "NetPlayer";
             if (prefabRoot.GetComponent<NetworkObject>() == null)
                 prefabRoot.AddComponent<NetworkObject>();
-            if (prefabRoot.GetComponent<NetworkTransform>() == null)
-                prefabRoot.AddComponent<NetworkTransform>();
+            var nt = prefabRoot.GetComponent<NetworkTransform>() ??
+                     prefabRoot.AddComponent<NetworkTransform>();
+            var ntSo = new SerializedObject(nt);
+            var clientAuth = ntSo.FindProperty("_clientAuthoritative");
+            if (clientAuth != null)
+                clientAuth.boolValue = false;
+            var sendOwner = ntSo.FindProperty("_sendToOwner");
+            if (sendOwner != null)
+                sendOwner.boolValue = true;
+            ntSo.ApplyModifiedPropertiesWithoutUndo();
             if (prefabRoot.GetComponent<NetAvatar>() == null)
                 prefabRoot.AddComponent<NetAvatar>();
             var body = prefabRoot.GetComponent<WorldBody>();

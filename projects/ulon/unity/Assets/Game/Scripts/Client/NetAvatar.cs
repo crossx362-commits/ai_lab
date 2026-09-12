@@ -51,7 +51,7 @@ namespace Ulon.Client
             var motor = GetComponent<ClickMotor>();
             var avatar = GetComponent<LocalAvatar>();
             if (motor != null)
-                motor.enabled = mine;
+                motor.enabled = IsServerInitialized;
             if (avatar != null)
                 avatar.enabled = mine;
 

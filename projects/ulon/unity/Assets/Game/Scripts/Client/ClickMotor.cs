@@ -18,6 +18,10 @@ namespace Ulon.Client
         public bool Moving => hasDestination;
         public float PlanarSpeed { get; private set; }
 
+        Vector3 lastSentDest;
+        bool lastSentStop = true;
+        const float SendEps = 0.5f;
+
         void Awake()
         {
             controller = GetComponent<CharacterController>();
@@ -26,12 +30,45 @@ namespace Ulon.Client
 
         public void SetDestination(Vector3 world)
         {
+            ApplyServerDestination(world);
+            TrySendMove(false);
+        }
+
+        public void Stop()
+        {
+            ApplyServerStop();
+            TrySendMove(true);
+        }
+
+        /// <summary>서버 모터가 목적지를 받는다. RPC를 다시 보내지 않는다.</summary>
+        public void ApplyServerDestination(Vector3 world)
+        {
             destination = world;
             destination.y = transform.position.y;
             hasDestination = true;
         }
 
-        public void Stop() => hasDestination = false;
+        public void ApplyServerStop() => hasDestination = false;
+
+        void TrySendMove(bool stop)
+        {
+            var net = GetComponent<NetAvatar>();
+            if (net == null || !net.IsClientInitialized || net.IsServerInitialized)
+                return;
+            if (stop)
+            {
+                if (lastSentStop)
+                    return;
+                lastSentStop = true;
+                net.RpcRequestMove(transform.position, true);
+                return;
+            }
+            if (!lastSentStop && (destination - lastSentDest).sqrMagnitude < SendEps * SendEps)
+                return;
+            lastSentStop = false;
+            lastSentDest = destination;
+            net.RpcRequestMove(destination, false);
+        }
 
         void Update()
         {
