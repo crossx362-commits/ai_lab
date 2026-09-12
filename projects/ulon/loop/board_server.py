@@ -20,6 +20,9 @@ INBOX = DOCS / "feedback" / "INBOX.md"
 BOARD = DOCS / "board.json"
 STATUS = DOCS / "STATUS.md"
 ASSETS = DOCS / "ASSETS.md"
+COVERAGE = DOCS / "DESIGN_COVERAGE.md"
+DEV_PLAN = DOCS / "DEVELOPMENT_PLAN.md"
+GAME_DESIGN = DOCS / "GAME_DESIGN.md"
 STOP = LOOP / "STOP"
 LOG_DIR = ROOT / "logs"
 STATE = LOG_DIR / "loop_state.json"
@@ -110,6 +113,191 @@ def parse_systems(md: str) -> dict:
     return {"rows": rows, "counts": counts, "score": score, "total": n}
 
 
+COV_MARK = {"①": ("구현", 100), "②": ("일부", 40), "③": ("없음", 0)}
+P_HINTS = [
+    (["persist-ready"], ("postgresql", "/ready", "저장 서비스", "persist")),
+    (["persist-latest-wins"], ("json", "폴백", "최신 저장")),
+    (["client-rebuild", "two-client-core"], ("13.1", "두 플레이어", "2인", "전용 서버", "외부 서버")),
+    (["interest-mgmt"], ("관심 영역", "lod", "부하", "20~50")),
+    (["ui-paperdoll"], ("paperdoll", "퀵바", "sfx", "vfx", "컨테이너 ux")),
+]
+ROADMAP_MATCH = [
+    ("부트스트랩", "1."),
+    ("Vertical Slice", "2."),
+    ("온라인", "5."),
+    ("스킬/아이템", "8."),
+    ("채집/제작", "3."),
+    ("경제/마을", "3."),
+    ("월드/몬스터", "4."),
+    ("콘텐츠/UX", "6."),
+    ("안정화", "9."),
+    ("Closed Alpha", "9."),
+]
+
+
+def _md_cells(line: str) -> list[str]:
+    return [c.strip() for c in line.split("|")[1:-1]]
+
+
+def parse_coverage(md: str) -> dict:
+    chapters = []
+    cur = None
+    for line in md.splitlines():
+        hm = re.match(r"^## (.+)$", line)
+        if hm:
+            if cur:
+                chapters.append(cur)
+            cur = {"title": hm.group(1).strip(), "items": []}
+            continue
+        if not cur or not line.startswith("|"):
+            continue
+        cells = _md_cells(line)
+        if len(cells) < 2:
+            continue
+        if cells[0] in {"조항", "영역"} or cells[1] in {"판정"} or set(cells[1]) <= set("-: "):
+            continue
+        mark = next((k for k in COV_MARK if k in cells[1]), None)
+        if not mark:
+            continue
+        note = cells[2] if len(cells) > 2 else ""
+        deferred = "구멍이 아님" in note or "보류" in cells[0]
+        label, score = COV_MARK[mark]
+        cur["items"].append(
+            {
+                "name": cells[0],
+                "mark": mark,
+                "label": "보류" if deferred else label,
+                "score": 0 if deferred else score,
+                "deferred": deferred,
+                "note": note,
+            }
+        )
+    if cur:
+        chapters.append(cur)
+    counted = []
+    for ch in chapters:
+        live = [i for i in ch["items"] if not i["deferred"]]
+        n = len(live)
+        ch["score"] = round(sum(i["score"] for i in live) / n) if n else 0
+        ch["n"] = n
+        ch["full"] = sum(1 for i in live if i["mark"] == "①")
+        ch["part"] = sum(1 for i in live if i["mark"] == "②")
+        ch["none"] = sum(1 for i in live if i["mark"] == "③")
+        counted.extend(live)
+    n = len(counted)
+    marks = Counter(i["mark"] for i in counted)
+    score = round(sum(i["score"] for i in counted) / n) if n else 0
+    return {
+        "source": "docs/DESIGN_COVERAGE.md",
+        "note": "① 화면에서 쓸 수 있음 · ② 일부 · ③ 없음. 2026-09-11 문서 판정(실행 재검증과 다를 수 있음).",
+        "chapters": chapters,
+        "score": score,
+        "total": n,
+        "full": marks.get("①", 0),
+        "part": marks.get("②", 0),
+        "none": marks.get("③", 0),
+        "holes": [i for i in counted if i["mark"] == "③"],
+        "partials": [i for i in counted if i["mark"] == "②"],
+    }
+
+
+def _chapter_score(chapters: list, prefix: str) -> int | None:
+    hits = [c for c in chapters if c["title"].startswith(prefix)]
+    if not hits:
+        return None
+    return hits[0]["score"]
+
+
+def parse_roadmap(md: str, chapters: list) -> dict:
+    rows = []
+    in_sec = False
+    for line in (md or "").splitlines():
+        if line.startswith("## 13.3"):
+            in_sec = True
+            continue
+        if in_sec and line.startswith("## "):
+            break
+        if not in_sec or not line.startswith("|"):
+            continue
+        cells = _md_cells(line)
+        if len(cells) < 3 or cells[0] in {"기간"} or set(cells[0]) <= set("-: ~"):
+            continue
+        title = cells[1]
+        prefix = next((p for key, p in ROADMAP_MATCH if key in title), None)
+        pct = _chapter_score(chapters, prefix) if prefix else 0
+        rows.append(
+            {
+                "when": cells[0],
+                "title": title,
+                "gate": cells[2],
+                "pct": pct or 0,
+                "state": "완료" if (pct or 0) >= 80 else ("진행" if (pct or 0) >= 40 else "남음"),
+            }
+        )
+    n = len(rows) or 1
+    done = sum(1 for r in rows if r["state"] == "완료")
+    current = next((i for i, r in enumerate(rows) if r["state"] != "완료"), len(rows) - 1 if rows else 0)
+    return {
+        "source": "docs/GAME_DESIGN.md §13.3",
+        "rows": rows,
+        "pct": round(sum(r["pct"] for r in rows) / n),
+        "done": done,
+        "total": len(rows),
+        "current": current,
+    }
+
+
+def _p_cards(title: str, cards: list) -> list:
+    blob = title.lower()
+    ids = []
+    for idlist, keys in P_HINTS:
+        if any(k in blob for k in keys):
+            ids.extend(idlist)
+    return [c for c in cards if c.get("id") in ids]
+
+
+def parse_priority_plan(md: str, cards: list) -> list:
+    items = []
+    in_sec = False
+    for line in (md or "").splitlines():
+        if "이어서 진행할 순서" in line:
+            in_sec = True
+            continue
+        if in_sec and line.startswith("## "):
+            break
+        if not in_sec or not line.startswith("|"):
+            continue
+        cells = _md_cells(line)
+        if len(cells) < 3 or not re.match(r"^P[0-4]$", cells[0]):
+            continue
+        linked = _p_cards(cells[1], cards)
+        if linked:
+            statuses = [c.get("status") for c in linked]
+            if "완료" in statuses and all(s == "완료" for s in statuses):
+                st, pct = "완료", 100
+            elif any(s in {"진행 중", "검증 중"} for s in statuses):
+                st, pct = "진행 중", max(int(c.get("progress") or 0) for c in linked)
+            elif any(s == "실패" for s in statuses):
+                st, pct = "실패", max(int(c.get("progress") or 0) for c in linked)
+            elif any(s == "막힘" for s in statuses):
+                st, pct = "막힘", 0
+            else:
+                st, pct = "대기", 0
+        else:
+            st, pct = "대기", 0
+        items.append(
+            {
+                "pri": cells[0],
+                "title": cells[1],
+                "evidence": cells[2],
+                "status": st,
+                "pct": pct,
+                "cards": [c.get("id") for c in linked],
+            }
+        )
+    return items
+
+
 def wheel_progress(state: dict, timeout_min: int, sleep_between: int) -> dict:
     st = state.get("display_status") or state.get("status") or ""
     timeout_sec = max(1, timeout_min * 60)
@@ -190,12 +378,21 @@ def build_viz(state: dict, cards: list, status_md: str, inbox: list, history: li
     inbox_done = sum(1 for x in inbox if x.get("done"))
     consec = int(state.get("consec_fail") or 0)
     active = [c for c in enriched if c.get("status") in {"진행 중", "검증 중"}]
+    cov_md = COVERAGE.read_text(encoding="utf-8") if COVERAGE.exists() else ""
+    plan_md = DEV_PLAN.read_text(encoding="utf-8") if DEV_PLAN.exists() else ""
+    game_md = GAME_DESIGN.read_text(encoding="utf-8") if GAME_DESIGN.exists() else ""
+    coverage = parse_coverage(cov_md)
+    roadmap = parse_roadmap(game_md, coverage.get("chapters") or [])
+    priorities = parse_priority_plan(plan_md, enriched)
     return {
         "wheel": wheel,
         "board_pct": board_pct,
         "today_pct": today_pct,
         "hist_pct": hist_pct,
         "systems": systems,
+        "coverage": coverage,
+        "roadmap": roadmap,
+        "priorities": priorities,
         "by_status": {k: by_status.get(k, 0) for k in ["대기", "진행 중", "검증 중", "완료", "실패", "막힘"]},
         "by_diff": {k: by_diff.get(k, 0) for k in ["하", "중", "상"]},
         "cards": enriched,

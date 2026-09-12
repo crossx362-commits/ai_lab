@@ -58,6 +58,14 @@ h2 { margin:0 0 10px; font-size:13px; color:var(--accent); letter-spacing:.04em;
 .legend { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; font-size:12px; color:var(--muted); }
 .legend b { color:var(--ink); }
 
+.roadmap { display:grid; grid-template-columns:repeat(5,minmax(140px,1fr)); gap:8px; }
+@media (max-width:900px){ .roadmap { grid-template-columns:repeat(2,1fr);} }
+.mcell { background:#151515; border:1px solid var(--line); border-radius:10px; padding:10px; }
+.mcell.cur { border-color:var(--accent); box-shadow:0 0 0 1px #5a4a20 inset; }
+.mcell.done { border-color:#2d6a40; }
+.mcell .when { font-size:11px; color:var(--muted); }
+.pri { display:grid; grid-template-columns:52px 1fr 64px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid #242424; }
+.pri .tag { font-weight:800; color:var(--accent); }
 .now-card { background:#151515; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:8px; }
 .now-card .pct { font-size:28px; font-weight:800; color:var(--accent); }
 .grid2 { display:grid; grid-template-columns:1.3fr .7fr; gap:14px; }
@@ -120,6 +128,24 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
   <div id="activeWork"></div>
   <div class="pmeta" id="wheelMeta"></div>
   <div class="pbar" id="wheelBar"><i style="width:0%"></i></div>
+</section>
+
+<section class="box" id="coverageBox">
+  <h2>기획서 대비 구현</h2>
+  <p class="muted" id="covNote"></p>
+  <div class="stack" id="covStack"></div>
+  <div class="legend" id="covLegend"></div>
+  <div id="covChapters"></div>
+  <h3 class="muted">없는 것 · 일부만 있는 것</h3>
+  <div id="covHoles"></div>
+</section>
+
+<section class="box" id="planBox">
+  <h2>전체 진행 계획</h2>
+  <p class="muted">원장 `GAME_DESIGN.md` §13.3 9개월 + 지금 실행 순서 `DEVELOPMENT_PLAN.md` P0~P4</p>
+  <div class="roadmap" id="roadmap"></div>
+  <h3 class="muted" style="margin-top:14px">지금 할 일 (P0가 먼저)</h3>
+  <div id="priorities"></div>
 </section>
 
 <section class="box" id="inboxBox">
@@ -335,13 +361,15 @@ function render() {
   if (btnGo) btnGo.onclick = async () => { await fetch("/api/stop", {method:"DELETE"}); refresh(); };
 
   const sys = v.systems || {score:0};
+  const cov = v.coverage || {score:0,total:0,full:0};
+  const road = v.roadmap || {pct:0,done:0,total:0};
   const wheel = v.wheel || {pct:0,label:"—"};
   const activePct = (v.active && v.active[0] && v.active[0].progress) || (st==="running" ? wheel.pct : 0);
   const consec = v.consec || {n:0,max:3,pct:0};
   document.getElementById("rings").innerHTML = [
+    [cov.score||0, "#7ee0a3", `${cov.score||0}%`, `기획서 ${cov.full||0}/${cov.total||0}항 구현`],
     [activePct, st==="running" ? "#5aa8e0" : "#e2b657", (v.active&&v.active[0]) ? `${v.active[0].progress}%` : `${activePct}%`, "지금 작업"],
-    [wheel.pct, "#e2b657", `${wheel.pct}%`, wheel.label || "이 바퀴"],
-    [sys.score||0, "#3dba6e", `${sys.score||0}%`, `시스템 ${sys.total||0}항`],
+    [road.pct||0, "#5aa8e0", `${road.pct||0}%`, `9개월 계획 ${road.done||0}/${road.total||0}`],
     [v.today_pct||0, (today.fail? "#e05645":"#3dba6e"), `${v.today_pct||0}%`, `오늘 성공 ${today.success||0}/${today.loops||0}`],
   ].map(([p,col,big,sub]) => `<div class="ringbox">${ring(p,col)}<div><b>${esc(big)}</b><span>${esc(sub)}</span></div></div>`).join("");
 
@@ -353,6 +381,8 @@ function render() {
   document.getElementById("alerts").innerHTML = alerts.join(" · ") || `<span class="muted">경고 없음</span>`;
 
   renderActive();
+  renderCoverage();
+  renderPlan();
   renderInbox();
   fillModels();
   renderPipe();
@@ -393,6 +423,45 @@ function renderActive() {
   bar.innerHTML = `<i style="width:${wheel.pct||0}%"></i>`;
   document.getElementById("wheelMeta").innerHTML =
     `<span>${esc(wheel.label||"이 바퀴")} ${wheel.pct||0}%</span><span>경과 ${fmtSec(wheel.elapsed_sec)} / 한도 ${fmtSec(wheel.limit_sec)} · 남음 ${fmtSec(wheel.remain_sec)}</span>`;
+}
+function renderCoverage() {
+  const cov = viz().coverage || {chapters:[], holes:[], partials:[], full:0, part:0, none:0, total:0, score:0};
+  document.getElementById("covNote").textContent = cov.note || "";
+  const parts = [
+    {label:"① 구현", n:cov.full||0, color:"#3dba6e"},
+    {label:"② 일부", n:cov.part||0, color:"#e0a020"},
+    {label:"③ 없음", n:cov.none||0, color:"#e05645"},
+  ];
+  document.getElementById("covStack").innerHTML = stack(parts);
+  document.getElementById("covLegend").innerHTML = parts.map(p => `<span>${p.label} <b>${p.n}</b></span>`).join(" · ") + ` · 가중 ${cov.score||0}%  (구현 100 · 일부 40 · 없음 0)`;
+  document.getElementById("covChapters").innerHTML = (cov.chapters||[]).filter(ch => ch.n).map(ch => `
+    <div class="sysrow">
+      <div>${esc(ch.title)} <span class="muted">${ch.full||0}구현 · ${ch.part||0}일부 · ${ch.none||0}없음</span></div>
+      <div>${ch.score||0}%</div>
+      <div class="pbar ${ch.score>=80?"ok": ch.score<=20?"bad":"warn"}"><i style="width:${ch.score||0}%"></i></div>
+    </div>`).join("") || "<p class='empty'>DESIGN_COVERAGE.md 없음</p>";
+  const holes = (cov.holes||[]).map(i => `<li>③ ${esc(i.name)}</li>`).join("");
+  const partsL = (cov.partials||[]).slice(0,12).map(i => `<li>② ${esc(i.name)}</li>`).join("");
+  document.getElementById("covHoles").innerHTML = `<ul>${holes || "<li class='muted'>③ 없음</li>"}</ul><ul>${partsL || "<li class='muted'>② 없음</li>"}</ul>`;
+}
+function renderPlan() {
+  const road = viz().roadmap || {rows:[], current:0};
+  const pris = viz().priorities || [];
+  document.getElementById("roadmap").innerHTML = (road.rows||[]).map((r,i) => `
+    <div class="mcell ${i===road.current?"cur": (r.state==="완료"?"done":"")}">
+      <div class="when">${esc(r.when)} · ${esc(r.state)}</div>
+      <b>${esc(r.title)}</b>
+      <div class="pbar ${r.pct>=80?"ok": r.pct<=20?"bad":"warn"}" style="margin-top:8px"><i style="width:${r.pct}%"></i></div>
+      <div class="pmeta"><span>${r.pct}%</span></div>
+    </div>`).join("") || "<p class='empty'>§13.3 일정 없음</p>";
+  document.getElementById("priorities").innerHTML = pris.length ? pris.map(p => `
+    <div class="pri">
+      <div class="tag">${esc(p.pri)}</div>
+      <div><b>${esc(p.title)}</b><div class="muted">${esc(p.status)} · ${esc(p.evidence)}</div>
+        <div class="pbar" style="margin-top:6px"><i style="width:${p.pct||0}%"></i></div>
+      </div>
+      <div>${p.pct||0}%</div>
+    </div>`).join("") : "<p class='empty'>DEVELOPMENT_PLAN.md P0~P4 없음</p>";
 }
 function renderPipe() {
   const v = viz();
