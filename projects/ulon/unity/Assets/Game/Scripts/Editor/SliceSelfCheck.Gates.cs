@@ -264,6 +264,8 @@ namespace Ulon.Editor
             Gate(AssertHouseRoofPiecesDontOverlap);
             Gate(AssertHouseRoofNotStretchedNegativeControl);
             Gate(AssertHouseRoofNotStretched);
+            Gate(AssertHouseCornersNegativeControl);
+            Gate(AssertHouseCorners);
             Gate(AssertSceneKindFoldersNegativeControl);
             Gate(AssertSceneKindFolders);
             Gate(AssertHuntSpotsApartNegativeControl);           // 간격 자는 `AssertHuntGround` 안에서 잰다

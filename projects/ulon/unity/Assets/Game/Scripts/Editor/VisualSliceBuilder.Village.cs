@@ -101,7 +101,8 @@ namespace Ulon.Editor
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/rock-wide.fbx",
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/poles.fbx",
                 "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/watermill.fbx",
-                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-arch.fbx"
+                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-arch.fbx",
+                "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-corner.fbx"
             };
             for (int i = 0; i < extra.Length; i++)
             {

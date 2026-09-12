@@ -28,6 +28,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureEntranceClearance();
             VisualSliceBuilder.EnsureWorldRegions();
             VisualSliceBuilder.EnsureHouseRoofs();   // 커밋된 씬의 민가 지붕도 규칙으로 수렴시킨다(판때기 수리)
+            VisualSliceBuilder.EnsureHouseCorners(); // 모서리 구멍은 wall-corner L자
             VisualSliceBuilder.EnsureFishSpot();
             VisualSliceBuilder.EnsureNoRolelessWatermill();  // 역할 원장에 없는 장식 물레방아는 지운다(검수 판정)
             VisualSliceBuilder.EnsureCampfire();

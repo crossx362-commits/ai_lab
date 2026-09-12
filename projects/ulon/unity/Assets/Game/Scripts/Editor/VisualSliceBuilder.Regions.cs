@@ -574,6 +574,7 @@ namespace Ulon.Editor
                     DecorLocal(hp, wall, new Vector3(x + 0.5f, y, depth - 0.5f), new Vector3(0f, 270f, 0f));
                 }
             }
+            PlaceHouseCorners(hp, width, depth, floors);
             float roofY = floors;
             PlaceHouseRoof(hp, roof, gable, roofY, depth);
             DecorLocal(hp, chimney, new Vector3(1.65f, roofY, depth - 0.55f), Vector3.zero);
@@ -583,6 +584,50 @@ namespace Ulon.Editor
             if (tall)
                 DecorLocal(hp, Banner, new Vector3(1f, floors + 0.35f, 0.15f), new Vector3(0f, 180f, 0f));
             SnapRootToGround(root);
+        }
+
+        const string WallCorner = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-corner.fbx";
+
+        static void PlaceHouseWalls(Transform hp, int width, int depth, int floors, string wall, string door)
+        {
+            for (int floor = 0; floor < floors; floor++)
+            {
+                float y = floor;
+                for (int z = 0; z < depth; z++)
+                {
+                    DecorLocal(hp, wall, new Vector3(0.5f, y, z + 0.5f), Vector3.zero);
+                    DecorLocal(hp, wall, new Vector3(width - 0.5f, y, z + 0.5f), new Vector3(0f, 180f, 0f));
+                }
+                for (int x = 0; x < width; x++)
+                {
+                    string south = floor == 0 && x == 1 ? door : wall;
+                    DecorLocal(hp, south, new Vector3(x + 0.5f, y, 0.5f), new Vector3(0f, 90f, 0f));
+                    DecorLocal(hp, wall, new Vector3(x + 0.5f, y, depth - 0.5f), new Vector3(0f, 270f, 0f));
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// 직선 벽 **위에** 모서리 L자를 얹는다. 벽을 L자로 바꾸면 2×2 집은 창이 전부 사라지고
+        /// 2층이 탑처럼 읽힌다(샷 `loop28_house_corners`). Kenney 직선 벽은 −X 한 면(0.1m)이라
+        /// 바깥 직각만 비므로 L자만 추가한다. Unity 실측: yaw 90=SW, 180=SE, 270=NE, 0=NW.
+        /// 1층 남쪽 x=1(문) 칸의 L자는 문을 덮으므로 건너뛴다.
+        /// </summary>
+        static void PlaceHouseCorners(Transform hp, int width, int depth, int floors)
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(WallCorner) == null)
+                ConfigureProp(WallCorner);
+            for (int floor = 0; floor < floors; floor++)
+            {
+                float y = floor;
+                bool ground = floor == 0;
+                DecorLocal(hp, WallCorner, new Vector3(0.5f, y, 0.5f), new Vector3(0f, 90f, 0f));
+                if (!(ground && width == 2))
+                    DecorLocal(hp, WallCorner, new Vector3(width - 0.5f, y, 0.5f), new Vector3(0f, 180f, 0f));
+                DecorLocal(hp, WallCorner, new Vector3(width - 0.5f, y, depth - 0.5f), new Vector3(0f, 270f, 0f));
+                DecorLocal(hp, WallCorner, new Vector3(0.5f, y, depth - 0.5f), Vector3.zero);
+            }
         }
 
         /// <summary>
@@ -692,6 +737,66 @@ namespace Ulon.Editor
             if (houses == 0)
                 throw new InvalidOperationException("민가를 한 채도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
             Debug.Log("[Ulon] 민가 지붕 — " + houses + "채 중 " + fixedHouses + "채를 용마루 한 줄로 다시 얹음(고칠 것이 없으면 0채)");
+        }
+
+        /// <summary>
+        /// 커밋된 민가의 모서리를 `wall-corner` 규칙으로 수렴시킨다(멱등). 지붕 패스와 같이
+        /// 마을을 통째로 다시 드레싱하지 않고 벽만 갈아 끼운다.
+        /// </summary>
+        public static void EnsureHouseCorners()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(WallCorner) == null)
+                ConfigureProp(WallCorner);
+            var found = new List<Transform>();
+            foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (t.name == "House" || t.name == Ulon.Shared.HousingPlot.HouseObject)
+                    found.Add(t);
+            const string Glass = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-window-glass.fbx";
+            const string Shutters = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-window-shutters.fbx";
+            const string WoodWall = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-wood-window-glass.fbx";
+            const string Door = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-door.fbx";
+            const string WoodDoor = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-wood-door.fbx";
+            int houses = found.Count, fixedHouses = 0;
+            for (int hi = 0; hi < found.Count; hi++)
+            {
+                var t = found[hi];
+                int corners = 0, straight = 0, depth = 2, floors = 1;
+                bool wood = false, shutters = false, hasWall = false;
+                var wallKids = new List<Transform>();
+                foreach (Transform c in t)
+                {
+                    if (!c.name.StartsWith("wall", StringComparison.Ordinal))
+                        continue;
+                    hasWall = true;
+                    wallKids.Add(c);
+                    floors = Mathf.Max(floors, Mathf.RoundToInt(c.localPosition.y / KitScale) + 1);
+                    depth = Mathf.Max(depth, Mathf.RoundToInt(c.localPosition.z / KitScale + 0.5f));
+                    if (c.name.IndexOf("wall-corner", StringComparison.Ordinal) >= 0)
+                        corners++;
+                    else
+                        straight++;
+                    if (c.name.IndexOf("wall-wood", StringComparison.Ordinal) >= 0)
+                        wood = true;
+                    if (c.name.IndexOf("shutters", StringComparison.Ordinal) >= 0)
+                        shutters = true;
+                }
+                if (!hasWall)
+                    continue;
+                int expectCorners = floors * 4 - 1;
+                int expectStraight = floors * 8;
+                if (corners == expectCorners && straight >= expectStraight)
+                    continue;
+                for (int i = 0; i < wallKids.Count; i++)
+                    UnityEngine.Object.DestroyImmediate(wallKids[i].gameObject);
+                string wall = wood ? WoodWall : (shutters ? Shutters : Glass);
+                string door = wood ? WoodDoor : Door;
+                PlaceHouseWalls(t, 2, depth, floors, wall, door);
+                PlaceHouseCorners(t, 2, depth, floors);
+                fixedHouses++;
+            }
+            if (houses == 0)
+                throw new InvalidOperationException("민가를 한 채도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).");
+            Debug.Log("[Ulon] 민가 모서리 — " + houses + "채 중 " + fixedHouses + "채에 wall-corner 를 얹음(창 벽은 유지)");
         }
 
         static void ReplaceNamedWithModel(string name, string fbx, System.Action<GameObject> setup)

@@ -112,7 +112,8 @@ namespace Ulon.Editor
             const string Chimney = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/chimney.fbx";
             const string Gable = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/roof-gable-end.fbx";
             const string Gate = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/fence-gate.fbx";
-            string[] models = { Fence, Gate, Poles, Bench, Wall, Door, Roof, Chimney, Gable };
+            const string Corner = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/wall-corner.fbx";
+            string[] models = { Fence, Gate, Poles, Bench, Wall, Door, Roof, Chimney, Gable, Corner };
             for (int i = 0; i < models.Length; i++)
             {
                 if (AssetDatabase.LoadAssetAtPath<GameObject>(models[i]) == null)
@@ -171,6 +172,7 @@ namespace Ulon.Editor
                 DecorLocal(hp, south, new Vector3(x + 0.5f, 0f, 0.5f), new Vector3(0f, 90f, 0f));
                 DecorLocal(hp, Wall, new Vector3(x + 0.5f, 0f, depth - 0.5f), new Vector3(0f, 270f, 0f));
             }
+            PlaceHouseCorners(hp, width, depth, 1);
             PlaceHouseRoof(hp, Roof, Gable, 1f, depth, width);   // 지붕 규칙은 한 자리 — 민가와 같은 함수
             DecorLocal(hp, Chimney, new Vector3(1.65f, 1f, depth - 0.55f), Vector3.zero);
             SnapRootToGround(house);

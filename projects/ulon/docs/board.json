@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T19:00:00+09:00",
+  "updated_at": "2026-09-12T19:10:45.705559+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,13 +196,13 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#27은 씬 종류 폴더를 검증 중으로 둠",
+      "title": "지금 하는 일: 없음 — loop#28은 민가 모서리를 검증 중으로 둠",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 27,
-      "completed_loop": 27,
-      "commit": "34c25fcd",
+      "assigned_loop": 28,
+      "completed_loop": 28,
+      "commit": "",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
@@ -325,9 +325,9 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "bbd587ef",
-      "rationale": "#31 소유권 확인: 원본 Village/Regions 빌더가 다시 미커밋 수정 중이며 Kind 빌더·KindFolders 검사가 신규 미추적 상태다. 종류별 정리 작업과 겹치므로 원본/전용 복사·병합·장면 수정 없이 보존. 전용 저장 복사본 검증 8fc5a200 유지. 실제 Bootstrap 적용은 원본 정리 작업 종료 후 소유권·diff 대조 및 별도 통합 차선에서 재개. 이번 Unity 컴파일·화면·게임·2인 검사와 신규 커밋 없음; 완료 아님.",
+      "rationale": "#40 원본 Village/Regions/Facilities 빌더와 Build/Gates 검사에 새 미커밋 변경, HouseCorner 검사 신규 파일 확인. #35 이후 소유권 충돌이 다시 생겨 실제 장면 적용 보류. 다른 차선 변경·프로세스 제어 없음. 기존 저장 복사본 검증 8fc5a200 유지, Unity·화면·게임·2인 신규 검증 없음. 원본 작업 종료 및 종류 폴더·지붕 보존 별도 통합 차선에서 재개. 완료 아님.",
       "fail_streak": 0,
-      "codex_iteration": 31,
+      "codex_iteration": 40,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
         "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/spray-on.png",
@@ -338,7 +338,9 @@
         "/Users/junholee/ai_lab/output/ulon-codex/loop22-inventory/inventory.json",
         "/Users/junholee/ai_lab/output/ulon-codex/loop22-inventory/inventory.md",
         "/Users/junholee/ai_lab/output/ulon-codex/loop27-ownership/ownership.json",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop31-ownership/ownership.json"
+        "/Users/junholee/ai_lab/output/ulon-codex/loop31-ownership/ownership.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop35-ownership/ownership.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop40-ownership/ownership.json"
       ],
       "verification_commit": "8fc5a200"
     },
@@ -400,6 +402,18 @@
       "completed_loop": 23,
       "commit": "5433fab3",
       "rationale": "시체+기여자/파티 창. 게이트+NC·던전4. 헥사크 플레이 가방 후지급 샷.",
+      "fail_streak": 0
+    },
+    {
+      "id": "village-house-corner",
+      "title": "민가 wall-corner로 모서리 막기",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "검증 중",
+      "assigned_loop": 28,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "창 벽은 유지하고 L자만 얹음. 샷 loop28_house_corners. 배치 셀프체크는 에디터 점유.",
       "fail_streak": 0
     },
     {
