@@ -1,5 +1,5 @@
 {
-    "updated_at": "2026-09-12T20:28:03+09:00",
+    "updated_at": "2026-09-12T20:40:00+09:00",
     "cards": [
         {
             "id": "map-land-scale",
@@ -196,14 +196,26 @@
         },
         {
             "id": "now",
-            "title": "지금 하는 일: 없음 — loop#36는 skill-stat-lock 를 닫음",
+            "title": "지금 하는 일: 없음 — loop#37는 move-speed-rhythm 를 닫음",
             "difficulty": "하",
             "model": "grok-4.6",
             "status": "완료",
-            "assigned_loop": 36,
-            "completed_loop": 36,
-            "commit": "343d9484",
+            "assigned_loop": 37,
+            "completed_loop": 37,
+            "commit": "dc50b5b6",
             "rationale": "다음 바퀴가 이 카드를 고친다.",
+            "fail_streak": 0
+        },
+        {
+            "id": "move-speed-rhythm",
+            "title": "이동 리듬 걷기 2.5/달리기 5.0 m/s (기획 §7.2.1)",
+            "difficulty": "중",
+            "model": "grok-4.6",
+            "status": "완료",
+            "assigned_loop": 37,
+            "completed_loop": 37,
+            "commit": "dc50b5b6",
+            "rationale": "JSON 원장·ClickMotor·Rpc running. 게이트+NC. 샷 walk PlanarSpeed 2.50·run ≈4.93 m/s. 2클라 없음.",
             "fail_streak": 0
         },
         {
@@ -368,13 +380,13 @@
             "difficulty": "중",
             "model": "gpt",
             "owner": "codex",
-            "status": "검증 중",
+            "status": "막힘",
             "assigned_loop": null,
             "completed_loop": null,
             "commit": "fe7c7fd5",
-            "rationale": "#70 fe7c7fd5: 앱 일시정지 시 기존 드래그 취소. 수정 전 pause 상태 FAIL(exit1), 수정 후 상태19·스킨10 PASS·전용 Unity 컴파일 exit0. 기존 Editor 경고·라이선스/Curl 잔존. 실제 OS 입력·프레임·화면·DnD·게임·2인 미검증, 완료 아님.",
+            "rationale": "#71 037fe3f2: 현재 HUD 상태19·스킨10 PASS, 전용 Unity batchmode/nographics exit0. 라이선스/Curl 잔존. 코드/에셋 변경 없는 검증 전용, 개발 진척 아님. 실제 화면·입력·DnD·게임·2인 근거 미확보로 막힘; 동일 프로브 반복 금지.",
             "fail_streak": 0,
-            "codex_iteration": 70,
+            "codex_iteration": 71,
             "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
             "evidence": [
                 "docs/CODEX_STATUS.md",
@@ -399,10 +411,13 @@
                 "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_69.md",
                 "/Users/junholee/ai_lab/output/ulon-codex/loop70-hud/pause-red.log",
                 "/Users/junholee/ai_lab/output/ulon-codex/loop70-hud/unity.log",
-                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_70.md"
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_70.md",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop71-hud/unity.log",
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_71.md"
             ],
             "resume_token": "owner-fix-1938",
-            "resume_condition": "승인 헤드리스 OnGUI/Repaint>0·ScreenCapture PNG·요청 해상도 입증 후 1440×900/작은 해상도에서 긴 한글/태그 이름·화면 네 모서리·패널 밖 드래그·드롭 성공/취소 확인. 기존 장착/해제·은행 선택/찾기·하단 도달 검증 유지. 동일 환경 IMGUI 프로브 반복 금지. 원본 통합 별도. #68 포커스 이탈/복귀 후 이름표·오래된 드롭 부재 확인 추가. #69 가방 닫기/각 탭 전환/복귀 후 이름표와 오래된 드롭 부재 및 실제 프레임 취소 확인. #70 앱 일시정지/복귀 후 오래된 이름표·드롭 부재 실제 입력 확인."
+            "resume_condition": "승인 헤드리스 OnGUI/Repaint>0·ScreenCapture PNG·요청 해상도 입증 후 1440×900/작은 해상도에서 긴 한글/태그 이름·화면 네 모서리·패널 밖 드래그·드롭 성공/취소 확인. 기존 장착/해제·은행 선택/찾기·하단 도달 검증 유지. 동일 환경 IMGUI 프로브 반복 금지. 원본 통합 별도. #68 포커스 이탈/복귀 후 이름표·오래된 드롭 부재 확인 추가. #69 가방 닫기/각 탭 전환/복귀 후 이름표와 오래된 드롭 부재 및 실제 프레임 취소 확인. #70 앱 일시정지/복귀 후 오래된 이름표·드롭 부재 실제 입력 확인. #71 동일 상태 검사만 반복 금지. 지원 헤드리스 화면/입력 경로 입증 또는 독립 구현 요구/확인 가능한 결함 발생 후 resume_token 변경.",
+            "verification_commit": "037fe3f2"
         },
         {
             "id": "codex-headless-loop",
