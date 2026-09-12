@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T21:51:59+09:00",
+  "updated_at": "2026-09-12T22:12:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -33,8 +33,8 @@
       "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "44f0813e",
-      "rationale": "#72 44f0813e: 기존 섬/20m 해저 띠 보존, 동·북동 확장 육지와 1100m·폭8m 연결 길 및 기존 4레이어 구현. 전용 Unity 컴파일 exit0·60경계·기존충돌3481·통행1656·보존함수1681 PASS, 추가 육지 8m 표본 약0.492km². Metal 1440×900 렌더3장 검토: 확장 내부 연결 확인, 단순 해안/길·소품 부재로 아트 미합격. 실제 Bootstrap600m 유지; 중앙 해상 연결·콘텐츠·지도/서버·게임/2인 미완료. 기존 CS 경고·라이선스 진단 잔존.",
+      "commit": "ce826ed9",
+      "rationale": "#77 ce826ed9(선행57d74b03): 확장 육지에 완만한 만/곶 외형 구현. 초기 접합부 수역을 실제 화면/실패 검사로 발견→기존 육지를 깎지 않는 외측 변형으로 수리. 전용 Unity Metal final.log exit0: 60경계·중앙충돌3481·길1656·해안충돌725 PASS, 추가육지8m 표본 약0.563km². 최종1440×900 PNG4장 검토, 접합부 구멍 없음. 중앙 연결·단조로운 표면/직각길/소품·지도/서버·실제게임/2인 미완료. 기존 CS/라이선스 진단 잔존; 검증 중.",
       "fail_streak": 0,
       "owner": "codex",
       "resume_token": "owner-unblock-world-2055",
@@ -47,11 +47,20 @@
         "/Users/junholee/ai_lab/output/ulon-codex/loop72-world/layout-top.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop72-world/layout-quarter.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop72-world/route-corner.png",
-        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_EXPANSION_72.md"
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_EXPANSION_72.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/inlet-red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/final/layout-top.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/final/layout-quarter.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/final/coast-south.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/final/route-corner.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop77-world/review.json",
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_COAST_77.md"
       ],
-      "codex_iteration": 72,
-      "verification_commit": "06ff8ea8",
-      "resume_condition": "중앙 섬 지형을 보존하는 해상 연결/접근로와 자연스러운 해안·지역 표식을 전용 트리에서 독립 구현. 이후 저장/재생성·지도/서버/스폰/관심영역 공통 확장 원장 및 실제 보행·2인 검사. 원본 병합·다른 IMGUI 대기는 독립 구현 차단 사유 아님."
+      "codex_iteration": 77,
+      "verification_commit": "ce826ed9",
+      "resume_condition": "중앙 섬 보존 해상 연결/육상 접근로 및 기존 에셋 지역 표식을 전용 트리에서 독립 구현. 해안 최신 기준 ce826ed9와 loop77-world/final.log·final PNG 사용. 이후 저장/재생성·지도/서버/스폰/관심영역 원장·실제 보행/2인 검사. 원본 병합/다른 IMGUI 대기로 차단하지 않는다."
     },
     {
       "id": "action-feel",
@@ -221,14 +230,14 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#43는 attack-speed 를 닫음",
+      "title": "지금 하는 일: hit-chance — 무기 스킬 명중",
       "difficulty": "중",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 43,
-      "completed_loop": 43,
-      "commit": "89a26074",
-      "rationale": "다음 바퀴가 이 카드를 고친다.",
+      "assigned_loop": 44,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "표시용 더미. 그록 지금 하는 일은 now_display/assignment로 표시.",
       "fail_streak": 0
     },
     {
@@ -356,21 +365,30 @@
       "title": "그래픽·UI 통합 개선 — 동화풍 화면·패널 가독성",
       "difficulty": "상",
       "model": "gpt",
-      "status": "대기",
+      "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "",
-      "rationale": "기존 막힘은 GPT 담당 구분으로 기술적 차단이 아니었음. 지도 #73·Blender 가로등 #74 전용 적용과 실제 HUD #75 검사 경로 확보. 오너 지시로 통합 개선 재개. 전체 게임/2인/원본 배포 완료 아님.",
+      "commit": "a4cb4e2e",
+      "rationale": "#76 a4cb4e2e: 실제 전용 Bootstrap Edit 배경+SliceHud.OnGUI 통합 어댑터, 종이/목재 스크롤 트랙·청록 손잡이 적용. Metal 1440×900/1024×768 지도·장비/가방 공존/경계·필수영역/16조작 그리기 검사 PASS, PNG5장 직접 검토. 스크롤 red1→green0, 지도 누락 음성대조 exit1→정상 reviewed exit0, IMGUI제거 Repaint0/배경26629표본 변화0, 지도 회귀 exit0. 기존 CS/라이선스 진단 잔존. 긴 슬롯 이름 일부 잘림(전체 선택 안내 제공), 실제 Play·OS/서버 입력·2인·원본 배포 미검증.",
       "fail_streak": 0,
       "owner": "codex",
       "resume_token": "owner-resume-gfx-ui-integration-20260912",
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
-      "resume_condition": "현재 HUD 바퀴 종료 뒤 그 산출물부터 확인. 실제 Bootstrap 배경 위 HUD·가방·장비·지도 공존을 두 해상도로 렌더하고 가독성/겹침/클리핑 문제를 실제 코드로 수정. 저폴리 동화풍+WoW 일부 방향 유지. 기존 진단 프로브 반복이나 담당 구분으로 막힘 처리 금지. 원본/다른 세션 제어 및 자동 병합 없이 전용 트리에서 구현·검증.",
+      "resume_condition": "RunIntegratedHud의 실제 배경 경로 확보. 긴 슬롯 이름의 시작/줄임표 표시 개선, 이후 Play 어댑터와 실제 아이템의 스크롤·슬롯 입력/서버 전달 검증. 기존 프로브 반복·원본 통합 대기로 차단하지 않는다.",
       "evidence": [
-        "output/ulon-codex/loop_0075.jsonl",
-        "output/ulon-codex/loop73-map/final.log",
-        "output/ulon-codex/loop74-lantern/play-final.log"
-      ]
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/hud-1440x900.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/hud-1024x768.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/selected.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/drag-corner.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/reviewed/negative-no-imgui.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/scroll-red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/scroll-green.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/missing-map.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/map-regression.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop76-integrated/review.json"
+      ],
+      "codex_iteration": 76
     },
     {
       "id": "codex-worldmap-guide",
@@ -676,6 +694,18 @@
       "completed_loop": 43,
       "commit": "89a26074",
       "rationale": "AttackSpeed·게이트+NC. 샷 휘두름 1.77/1.10/0.50s. DEX25 0.7s=cooldown·DEX80 적용. 2클라 없음.",
+      "fail_streak": 0
+    },
+    {
+      "id": "hit-chance",
+      "title": "명중은 무기 스킬 — 빗나감 (§18.3)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "검증 중",
+      "assigned_loop": 45,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "난이도 중: AttackResolve 명중 공식+JSON. 게이트+NC 에디터 OK. 플레이 샷 대기.",
       "fail_streak": 0
     }
   ]

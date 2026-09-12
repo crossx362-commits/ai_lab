@@ -139,6 +139,7 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("애니 상태가 비어 있음");
 
             Warp(player, skeleton.transform.position + new Vector3(-1.2f, 0f, 0f));
+            HitChance.ForcedRoll = 0f;
             var atk = world.TryAttack(player, skeleton);
             if (!atk.Applied)
                 throw new InvalidOperationException("공격 실패: " + atk.FailReason);

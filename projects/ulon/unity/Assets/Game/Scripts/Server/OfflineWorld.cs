@@ -98,6 +98,7 @@ namespace Ulon.Server
         public string LastVetRezMessage { get; private set; } = "";
         public string LastInscribeMessage { get; private set; } = "";
         public string LastPoisonMessage { get; private set; } = "";
+        public string LastCombatMessage { get; private set; } = "";
         public string LastCraftOrderMessage { get; private set; } = "";
         public string LastTameMessage { get; private set; } = "";
         public string LastStableMessage { get; private set; } = "";

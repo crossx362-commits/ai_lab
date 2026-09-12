@@ -80,7 +80,9 @@ namespace Ulon.Server
                 Skills = SkillsOf(attacker),
                 Stats = StatsOf(attacker),
                 WeaponSkill = weaponSkill,
-                Exceptional = atkBag != null && ItemCatalog.IsExceptional(atkBag.Items, weapon)
+                Exceptional = atkBag != null && ItemCatalog.IsExceptional(atkBag.Items, weapon),
+                DefenderSkill = HitChance.DefendSkill(SkillsOf(target)),
+                HitRoll = HitChance.NextRoll()
             };
             AttackResult result = AttackResolve.Resolve(req);
             if (!result.Applied)
@@ -91,6 +93,14 @@ namespace Ulon.Server
                 attacker.RecalcFromStr(StatsOf(attacker).Str);
 
             nextAttackAt[id] = Time.time + AttackSpeed.Seconds(StatsOf(attacker), attacker.Stamina);
+            if (!result.Hit)
+            {
+                LastCombatMessage = Tell(attacker, "빗나감");
+                if (attacker.IsAvatar && target.IsEnemy && weaponSkill != SkillId.Archery && weaponSkill != SkillId.Fencing)
+                    TryEnemyStrike(target, attacker);
+                return result;
+            }
+            LastCombatMessage = "";
             if (!string.IsNullOrEmpty(weapon) && atkBag != null && ItemCatalog.MaxUsesOf(weapon) > 0)
                 atkBag.WearTool(weapon);
             int dmg = result.Damage;

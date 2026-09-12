@@ -13,6 +13,8 @@ namespace Ulon.Shared
         public float Difficulty = 20f;
         public int Damage = 8;
         public bool Exceptional;
+        public float DefenderSkill;
+        public float HitRoll;
     }
 
     public struct AttackResult
@@ -43,6 +45,18 @@ namespace Ulon.Shared
                 SkillGain.TryRaise(req.Skills, SkillId.Tactics, req.Difficulty, out _, out _, req.Stats);
             if (req.WeaponSkill != SkillId.Anatomy)
                 SkillGain.TryRaise(req.Skills, SkillId.Anatomy, req.Difficulty, out _, out _, req.Stats);
+            if (!HitChance.Hits(req.Skills.Get(req.WeaponSkill), req.DefenderSkill, req.HitRoll))
+            {
+                return new AttackResult
+                {
+                    Applied = true,
+                    Hit = false,
+                    Damage = 0,
+                    SkillBefore = before,
+                    SkillAfter = after,
+                    FailReason = "miss"
+                };
+            }
             int damage = req.Damage;
             if (req.Stats != null)
             {

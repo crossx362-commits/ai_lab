@@ -238,9 +238,13 @@ namespace Ulon.Client
                 Bar("ST" + (RunStamina.CanRun(me.Stamina) ? "" : " 기진"), me.Stamina, me.MaxStamina);
                 float w = bag != null ? bag.TotalWeight() : 0f;
                 int cap = ItemCatalog.CarryCap(st.Str);
+                SkillId wpn = bag != null ? ItemCatalog.CombatSkillOf(ItemCatalog.CombatWeaponOf(bag.Items)) : SkillId.Swordsmanship;
+                float atkSkill = world.PlayerSkills.Get(wpn);
+                float defSkill = world.Selected != null ? HitChance.DefendSkill(world.SkillsOf(world.Selected)) : 0f;
                 GUILayout.Label("STR " + st.Str + "  DEX " + st.Dex + "  INT " + st.Int +
                                 "  G " + me.Gold + "  무게 " + w.ToString("0") + "/" + cap +
                                 "  휘두름 " + AttackSpeed.Seconds(st, me.Stamina).ToString("0.00") + "s" +
+                                "  명중 " + (HitChance.Percent(atkSkill, defSkill) * 100f).ToString("0") + "%" +
                                 (bag != null && bag.Overweight(st.Str) ? " 과적·달림불가" : "") +
                                 (!RunStamina.CanRun(me.Stamina) ? " 기진·달림불가" : "") +
                                 (me.IsCasting(Time.time) ? " 시전 중" : ""));
@@ -304,6 +308,7 @@ namespace Ulon.Client
             if (!string.IsNullOrEmpty(world.LastEvalMessage)) s += world.LastEvalMessage + " ";
             if (!string.IsNullOrEmpty(world.LastTravelMessage)) s += world.LastTravelMessage + " ";
             if (!string.IsNullOrEmpty(world.LastHealRezMessage)) s += world.LastHealRezMessage + " ";
+            if (!string.IsNullOrEmpty(world.LastCombatMessage)) s += world.LastCombatMessage + " ";
             if (!string.IsNullOrEmpty(world.LastSpeechMessage)) s += world.LastSpeechMessage;
             return s.Trim();
         }
