@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T22:24:00+09:00",
+  "updated_at": "2026-09-12T22:25:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -114,11 +114,11 @@
       "title": "이 트리에서 UlonClient.app 재빌드",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "검증 중",
+      "status": "완료",
       "assigned_loop": 46,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "에디터 점유라 배치는 안 돌림. HTTP MCP로 DedicatedServer.BuildClient. 바이너리 360M·서버 7770·클라 ds-a 접속. 샷은 OS 캡처 거부. 2클라는 다음 카드.",
+      "completed_loop": 46,
+      "commit": "9bb11f57",
+      "rationale": "HTTP MCP BuildClient. 앱 360M. 전용서버 UDP 7770 + GUI 클라 ds-a 접속. 로그 예외 0. OS 샷 거부. 2클라는 two-client-core.",
       "fail_streak": 0
     },
     {

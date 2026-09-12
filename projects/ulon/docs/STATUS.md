@@ -1,21 +1,21 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#43** (성공) · 2026-09-12T21:52:16+0900
-커밋: `89a26074` 구현, `8482172b` STATUS. Codex/GPT 카드는 상태를 바꾸지 않았습니다.
+마지막 바퀴: **#45** (성공) · 2026-09-12T22:16:13+0900
+커밋: `d060eb4f` 구현, `69e63567` STATUS. Codex/GPT 카드는 상태를 바꾸지 않았습니다.
 
-- 모델 `grok-4.6` · 경과 665s · 세션 rc `0`
-- HEAD `8482172b [loop#43] 휘두름 간격 플레이 샷과 STATUS` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 717s · 세션 rc `0`
+- HEAD `69e63567 [loop#45] 명중 플레이 샷과 STATUS` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `8482172b [loop#43] 휘두름 간격 플레이 샷과 STATUS`
-- `89a26074 [loop#43] DEX·스태미나 휘두름 간격`
+- `69e63567 [loop#45] 명중 플레이 샷과 STATUS`
+- `d060eb4f [loop#45] 무기 스킬 명중·빗나감`
+- `6ed90e3d fix(ulon/loop): 바퀴 시작 때 카드를 집어 보드에 제목을 바로 찍는다`
 
 ## 바퀴 기록
 
 | 바퀴 | 결과 | 시각 | 모델 | 경과 |
 |---|---|---|---|---|
-| #13 | 성공 | 2026-09-12T15:49:27+0900 | grok-4.6 | 699s |
 | #14 | 성공 | 2026-09-12T16:06:34+0900 | grok-4.6 | 980s |
 | #15 | 성공 | 2026-09-12T16:27:03+0900 | grok-4.6 | 1181s |
 | #16 | 성공 | 2026-09-12T16:43:52+0900 | grok-4.6 | 961s |
@@ -45,6 +45,7 @@
 | #41 | 성공 | 2026-09-12T21:31:03+0900 | grok-4.6 | 658s |
 | #42 | 성공 | 2026-09-12T21:40:24+0900 | grok-4.6 | 514s |
 | #43 | 성공 | 2026-09-12T21:52:16+0900 | grok-4.6 | 665s |
+| #45 | 성공 | 2026-09-12T22:16:13+0900 | grok-4.6 | 717s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -84,9 +85,9 @@
 | 파티·길드·길드전·결투 | 부분 | HUD 패널 코드. 플레이 미실행 |
 | 조련·마구간·Follower | 부분 | Phase 2가 앞섬. 플레이 미실행 |
 | Moongate·Mark/Recall | 부분 | 코드. 플레이 미실행 |
-| FishNet 호스트/클라 | 부분 | loop#22: 호스트 StartHost 후 NetPlayer Clone owner/srv/cli, NT 서버 권위. 전용 서버 빌드·외부 접속·2클라 **미확인** |
-| PostgreSQL 영구 저장 | 동작함 | loop#6 /ready 200. loop#10: persist `saved_at` 왕복(운영 PG PUT/GET `loop10-latest-wins`). CharacterStore.Load가 JSON이 더 최신이면 골드99·iron_sword·검술40을 고르고 persist에 밀어 넣음. NC: 2000년 JSON(wood)은 못 덮음. 에디터 execute_code `OK gold=99 inv=iron_sword skill=40 savedAt=2099-01-01T00:00:00Z`. SQLite `test_persist_atomicity` 6/6. 클라 재접속 왕복은 **미실행**(UDP 7770 닫힘·클라 바이너리 없음) |
-| 관심 영역(Interest Management) | 부분 | loop#20: `interest.json` 18m + FishNet `ObserverManager`/`DistanceCondition`. 호스트 플레이: 광장에서 몹 렌더러 0/21, 사냥터 옆에서 Skeleton 1.2m vis. 샷 `unity/Captures/loop20_interest_hunt_near.png`·`loop20_interest_plaza_far.png`. 게이트 `AssertInterest`+NC. 2클라 서로 보임은 바이너리 없어 **미실행**. 기획서에 미터값 없음 → 원작 합격 아님 |
+| FishNet 호스트/클라 | 부분 | loop#46: 이 트리 `UlonClient.app` 재빌드(360M). 전용 서버 `-ulon-server` UDP 7770 기동, GUI 클라 `-ulon-client -ulon-host 127.0.0.1 -ulon-account ds-a` 접속(`Remote connection started for Id 0`). 클라/서버 로그 Exception·Error 0. 화면 샷은 OS 캡처 거부. 2클라 `two_client_check`는 다음 |
+| PostgreSQL 영구 저장 | 동작함 | loop#6 /ready 200. loop#10: persist `saved_at` 왕복(운영 PG PUT/GET `loop10-latest-wins`). CharacterStore.Load가 JSON이 더 최신이면 골드99·iron_sword·검술40을 고르고 persist에 밀어 넣음. NC: 2000년 JSON(wood)은 못 덮음. 에디터 execute_code `OK gold=99 inv=iron_sword skill=40 savedAt=2099-01-01T00:00:00Z`. SQLite `test_persist_atomicity` 6/6. 클라 재접속 왕복은 **미실행**(loop#46에서 7770을 잠깐 열고 끔) |
+| 관심 영역(Interest Management) | 부분 | loop#20: `interest.json` 18m + FishNet `ObserverManager`/`DistanceCondition`. 호스트 플레이: 광장에서 몹 렌더러 0/21, 사냥터 옆에서 Skeleton 1.2m vis. 샷 `unity/Captures/loop20_interest_hunt_near.png`·`loop20_interest_plaza_far.png`. 게이트 `AssertInterest`+NC. 2클라 서로 보임은 **미실행**. 기획서에 미터값 없음 → 원작 합격 아님 |
 | LOD·거리 비활성 | 없음 | 기획 §8.1 |
 | UI 팩(Paperdoll 그림·DnD·우클릭) | 부분 | loop#14 우클릭 + loop#16 대상 지정 모드. 샷 `unity/Captures/loop16_target_heal_mark.png`(노란 십자·안내)·`loop16_target_spell.png`·`loop16_target_gather.png`·`loop16_target_interact.png`·`loop16_target_action_gather.png`(행동 탭 「채집」). 게이트 `AssertTargetCursor`+NC. Kenney 커서 스킨·외형 렌더·한글 폰트는 **없음** |
 | VFX | 동작함 | loop#8 타격 불티 + loop#9 등불·횃불·분수 루프 파티클. 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티. 분수 물줄기는 약함 |
@@ -108,32 +109,31 @@
 
 ## 발견한 문제
 
-- **클라이언트 바이너리 없음.** 이 트리 `builds/client/`에 `UlonClient.app`이 없다. 실행·2클라 검사를 이번 바퀴에서 못 함.
+- **클라이언트 바이너리 있음 (loop#46).** `builds/client/UlonClient.app` 360M, Mach-O x86_64+arm64, 시각 2026-09-12 22:19. 전용 서버·1클라 접속 확인. 2클라는 아직.
 - **persist/postgres는 이번 살아 있음.** pid 84115, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
-- **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080)는 이번 살아 있음 — 호스트 플레이 샷에 씀. 배치 검사는 에디터를 닫은 뒤에.
-- **이번 플레이.** 에디터 플레이 오프라인(서버 OFF). 굴림 0.99 빗나감 HP 30 유지·HUD 빗나감. 굴림 0 명중 30→18. 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 호스트·2클라 바이너리 없음.
+- **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크는 불가. HTTP MCP(127.0.0.1:8080)로 클라 빌드함. 배치 검사는 에디터를 닫은 뒤에.
+- **이번 플레이.** 빌드 클라: 전용 서버 기동 + GUI 클라 ds-a 접속. 로그 예외 0. 화면 샷은 `screencapture`가 디스플레이를 못 만듦. 2클라 미실행.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
-- **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 반대로 **UlonClient.app은 그 워크트리에만** 있다. 병합·리베이스·그 트리 수정은 하지 않음.
+- **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 이 트리에도 loop#46로 `UlonClient.app`을 다시 넣었다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- `hit-chance`: 기획 §18.3 명중은 무기 스킬. 항상 맞던 TryAttack에 `(atk+20)/((def+20)*2)` 빗나감. JSON `hit_chance.json`. 전술은 방어에 안 넣음. HUD 명중%·빗나감. 게이트+NC. 샷 loop45_miss·hit. 구현 `d060eb4f`. 출처 https://uo.stratics.com/content/arms-armor/combat.php
-- 원작 대비: 같은 점 — 같은 스킬이면 약 50%, 무기 스킬이 낮으면 빗나간다. 나은 점 — 공식이 JSON 원장. 부족한 점 — HCI/DCI·레슬링 대체·원작 하한 2% 없음, 2클라 없음.
+- `client-rebuild`: 에디터 점유 중이라 `rebuild_client.sh` 배치는 안 돌림. HTTP MCP `Ulon.Editor.DedicatedServer.BuildClient` 17.8s 성공. `builds/client/UlonClient.app` 360M. persist `/ready` 200. 전용 서버 UDP 7770 + GUI 클라 ds-a 접속(`Remote connection started for Id 0`). 클라/서버 로그 Exception·Error·Warning 0. `test_alpha_readiness` 7/7. 배치 셀프체크는 에디터 점유라 생략. 구현 `9bb11f57`.
+- 원작 대비: 같은 점 — 스탠드얼론 클라가 서버에 붙어 스폰 자리를 씀. 나은 점 — 이 트리에서 다시 빌드해 워크트리 옛 바이너리를 안 씀. 부족한 점 — 화면 샷 없음, 2클라 동기화는 다음 카드.
 
 ## 지금 하는 것
 
-없음. loop#45 카드 `hit-chance`는 샷·게이트까지 닫음.
+없음. loop#46 카드 `client-rebuild`는 빌드·1클라 접속까지 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
-1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
-2. `tools/two_client_check.sh` — 관심 영역·GM 무인증·시체 동기화 재실측
-3. 운영 persist 복원(전량 덮음)은 사람 확인 뒤
-4. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선
-5. 그래픽·UI 폴리시·물가 셰이더는 GPT/Codex 차선 (그록 안 함)
-6. 씬 루트 배우·시설 종류 묶음은 페이드 자가 루트를 보도록 고친 뒤
-7. 문 칸 모서리 기둥은 사람/다음 바퀴 — 문을 가리지 않는 조각이 필요
+1. `tools/two_client_check.sh` — 관심 영역·GM 무인증·시체 동기화 재실측
+2. 운영 persist 복원(전량 덮음)은 사람 확인 뒤
+3. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선
+4. 그래픽·UI 폴리시·물가 셰이더는 GPT/Codex 차선 (그록 안 함)
+5. 씬 루트 배우·시설 종류 묶음은 페이드 자가 루트를 보도록 고친 뒤
+6. 문 칸 모서리 기둥은 사람/다음 바퀴 — 문을 가리지 않는 조각이 필요
 
 ## 막힌 것 (사람 결정)
 
@@ -153,10 +153,10 @@
 - **명중 공식 수치:** 기획 §18.3은 「명중은 무기 스킬」만. 숫자는 없어 Stratics 공식 `(atk+20)/((def+20)*2)` (`hit_chance.json`). HCI/DCI·레슬링 대체·하한 2%는 기획서에 없어 안 넣음. 기획서 보강 필요.
 - **ai_lab-loop 워크트리:** 앞선 작업이 아니라 뒤처짐. 그곳 빌드만 쓰지 말고 이 트리에서 다시 빌드할 것. 병합 금지.
 - **물 2·3단계(프레넬·정점 흔들림), 강 곡류:** 핸드오프상 검수 판정 뒤.
-- **에디터 점유:** PID 85035가 잠금. 배치 빌드/셀프체크는 불가. HTTP MCP로는 플레이 가능(loop#7 사용). 배치 검사는 에디터를 닫은 뒤에.
+- **에디터 점유:** PID 85035가 잠금. 배치 셀프체크는 불가. 클라 빌드는 loop#46에서 HTTP MCP로 완료. 배치 검사는 에디터를 닫은 뒤에.
 - **관심 영역:** 기획 §7.3을 18타일=18m로 보강함. 구현 `InterestRange.FallbackMeters = 18`과 일치. 원작 합격은 2클라 실측 후.
 - **원작 울온 절반 크기:** map0 6144×4096 타일(Stratics, 1타일≈1m → 절반 ≈3072m). 출처 https://community.stratics.com/threads/land-in-uo.221830/ . Unity Terrain 하이트맵 최대 4097. 지금 셀(300/512 m)이면 LandScale 최대 8(2400m). 3072m는 청크·더 큰 셀 중 사람 선택이 필요.
 - **INBOX vs 기획 §6.1:** 기획은 「작은 하나의 살아 있는 월드」. 오너 INBOX(절반 크기)를 우선하되, 한 지형으로 3072m는 엔진 상한과 충돌.
-- **INBOX 16:04 병렬 vs PROMPT 한 작업:** INBOX 우선. #15는 Unity와 안 겹치는 보고서만. 남은 대기 카드(클라 빌드·2클라·물가·관심영역·절반맵)는 전부 에디터/클라라 에디터 점유 중엔 나란히 못 연다.
+- **INBOX 16:04 병렬 vs PROMPT 한 작업:** INBOX 우선. #15는 Unity와 안 겹치는 보고서만. 클라 빌드는 #46에서 닫음. 남은 2클라는 바이너리로 돌릴 수 있음. 물가·절반맵은 Codex.
 - **그록/그록봇 공존:** 이 트리는 `projects/ulon`만. `ai_lab-loop`(loop-claude) 병합·수정 없음.
 - **운영 persist 전량 복원:** POST `/restore` 는 테이블 DELETE 후 삽입. 사람 확인 전 운영에 안 돌림. 스테이징(임시 스키마)만 이번 확인.
