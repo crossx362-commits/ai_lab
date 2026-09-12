@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T19:10:45.705559+09:00",
+  "updated_at": "2026-09-12T19:35:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,13 +196,13 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#28은 민가 모서리를 검증 중으로 둠",
+      "title": "지금 하는 일: 없음 — loop#29는 복합 직업명을 검증 중으로 둠",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 28,
-      "completed_loop": 28,
-      "commit": "f8ecfeb1",
+      "assigned_loop": 29,
+      "completed_loop": 29,
+      "commit": "414cd8a5",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
@@ -325,9 +325,9 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "bbd587ef",
-      "rationale": "#40 원본 Village/Regions/Facilities 빌더와 Build/Gates 검사에 새 미커밋 변경, HouseCorner 검사 신규 파일 확인. #35 이후 소유권 충돌이 다시 생겨 실제 장면 적용 보류. 다른 차선 변경·프로세스 제어 없음. 기존 저장 복사본 검증 8fc5a200 유지, Unity·화면·게임·2인 신규 검증 없음. 원본 작업 종료 및 종류 폴더·지붕 보존 별도 통합 차선에서 재개. 완료 아님.",
+      "rationale": "#46 주택 모서리 f8ecfeb1·결과 c2ee97fa 커밋으로 #40 미커밋 충돌 해소. Bootstrap·빌더·검사 9개 대상 현재 clean이나 전용 트리와 차이 유지. 다른 차선 변경 통합 금지로 원본 복사·병합 없이 보류. 별도 통합 차선에서 종류 폴더·지붕·wall-corner 보존 후 실제 가로등 적용 재개. 기존 검증 8fc5a200 유지; 이번 Unity·화면·게임·2인 검증 및 신규 코드·커밋 없음. 완료 아님.",
       "fail_streak": 0,
-      "codex_iteration": 40,
+      "codex_iteration": 46,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
         "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/spray-on.png",
@@ -340,7 +340,8 @@
         "/Users/junholee/ai_lab/output/ulon-codex/loop27-ownership/ownership.json",
         "/Users/junholee/ai_lab/output/ulon-codex/loop31-ownership/ownership.json",
         "/Users/junholee/ai_lab/output/ulon-codex/loop35-ownership/ownership.json",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop40-ownership/ownership.json"
+        "/Users/junholee/ai_lab/output/ulon-codex/loop40-ownership/ownership.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop46-ownership/ownership.json"
       ],
       "verification_commit": "8fc5a200"
     },
@@ -414,6 +415,18 @@
       "completed_loop": null,
       "commit": "f8ecfeb1",
       "rationale": "창 벽은 유지하고 L자만 얹음. 샷 loop28_house_corners. 배치 셀프체크는 에디터 점유.",
+      "fail_streak": 0
+    },
+    {
+      "id": "job-combo-titles",
+      "title": "복합 직업명 — 검술+마법=마검사 등 (기획 §3.2)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "검증 중",
+      "assigned_loop": 29,
+      "completed_loop": null,
+      "commit": "414cd8a5",
+      "rationale": "JSON 7행·게이트+NC. HUD 샷 마검사·레인저. 배치 셀프체크는 에디터 점유.",
       "fail_streak": 0
     },
     {

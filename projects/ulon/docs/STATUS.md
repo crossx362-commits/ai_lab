@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#27** (성공) · 2026-09-12T19:01:17+0900
-커밋: `34c25fcd`, `fed677fc`. 카드 `scene-kind-folders`는 **검증 중**입니다.
+마지막 바퀴: **#28** (성공) · 2026-09-12T19:18:58+0900
+에셋 수령·절반 맵·관심영역 미터·폰트·Quaternius는 그대로 막힘입니다.
 
-- 모델 `grok-4.6` · 경과 771s · 세션 rc `0`
-- HEAD `fed677fc [loop#27] 씬 종류 폴더 검증 결과 STATUS·보드 반영` · 브랜치 `master`
-- INBOX 미처리 **1**건
+- 모델 `grok-4.6` · 경과 1014s · 세션 rc `0`
+- HEAD `c2ee97fa [loop#28] 민가 모서리 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `fed677fc [loop#27] 씬 종류 폴더 검증 결과 STATUS·보드 반영`
-- `34c25fcd [loop#27] 씬 구역 소품을 Kind* 종류 폴더로 묶음`
+- `c2ee97fa [loop#28] 민가 모서리 검증 결과 STATUS·보드 반영`
+- `f8ecfeb1 [loop#28] 민가 모서리를 Kenney wall-corner L자로 막음`
 
 ## 바퀴 기록
 
@@ -42,6 +42,7 @@
 | #25 | 성공 | 2026-09-12T18:19:40+0900 | grok-4.6 | 577s |
 | #26 | 성공 | 2026-09-12T18:47:38+0900 | grok-4.6 | 1630s |
 | #27 | 성공 | 2026-09-12T19:01:17+0900 | grok-4.6 | 771s |
+| #28 | 성공 | 2026-09-12T19:18:58+0900 | grok-4.6 | 1014s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -61,7 +62,7 @@
 |---|---|---|
 | 카메라 고정 3/4 쿼터뷰 | 동작함 | loop#7: 에디터 플레이 샷 `unity/Captures/loop7_play_minimap.png` — 고정 3/4, 줌만. 회전 없음 |
 | 스킬 100/총합 700·↑↓Lock | 부분 | HUD·서버 코드. 플레이 미실행 |
-| 숙련 칭호 | 부분 | `TitleOf`. 복합 직업명(마검사 등)은 **없음** |
+| 숙련 칭호 | 부분 | loop#29: `job_combos.json` 7행 + `SkillJobCombos`. 호스트 플레이 HUD 「달인 마검사」·「전문가 레인저」. 샷 `unity/Captures/loop29_mageknight.png`·`loop29_ranger.png`. 게이트 `AssertJobComboTitles`+NC. 보조 하한 30은 §3.2 초심자 선. 배치 셀프체크 미실행. 원작 합격 아님(원작 칭호는 최고 스킬 하나) |
 | STR/DEX/INT·Stat Lock | 부분 | 코드. 플레이 미실행 |
 | 클릭 이동 | 부분 | loop#22: 호스트 NT `_clientAuthoritative=0`. 목적지 RPC·섬 밖 거절. 광장 −1.2→+6.8m 보행. 샷 `unity/Captures/loop22_move_before.png`·`loop22_move_after.png`. 게이트 `AssertMoveAuthority`+NC. WASD 원격 클라는 모터 꺼짐(기획 보류). 2클라 미실행 |
 | 타깃 RPG 전투(서버 판정) | 부분 | loop#8: 스켈레톤에서 타격 VFX 재생 확인. FishNet 클라 미기동이라 `RpcRequestAttack`은 skip·HP 30 유지. 서버 판정 자체는 이번 미실행 |
@@ -115,13 +116,13 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `village-house-corner`: INBOX 18:47의 풀 수 있는 구멍. Kenney `wall-corner`(L자, 실측 −X/+Z, yaw 90/180/270/0 = SW/SE/NE/NW). 직선 창 벽은 유지하고 모서리에만 L자를 얹음 — 벽을 L자로 바꾸면 2×2 2층이 창 없는 탑이 됨(샷 초안). `EnsureHouseCorners` 멱등. 게이트 `AssertHouseCorners`+NC(끄면 FAIL). 집 7채 · L자 29 · 직선 벽 72. 호스트 플레이 샷 `unity/Captures/loop28_house_corners.png`·`loop28_house_corner_close.png`. 콘솔 Metal memoryless 깊이 경고 2줄. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크는 에디터 점유라 미실행. 문 칸(1층 남쪽 x=1) L자는 문을 덮어 건너뜀.
-- 원작 대비: 같은 점 — 마을 집이 네 모서리가 막힌 상자. 나은 점 — 모듈 킷 모서리 조각. 부족한 점 — 문 칸 바깥 직각은 아직 직선+문, 배치 셀프체크 미실행. 원작 합격 아님(모듈 조립은 원작 규격이 아님).
-- INBOX 18:47 사람 결정(에셋 수령·절반맵·관심영역 미터·폰트·Quaternius)은 그대로 막힘.
+- `job-combo-titles`: 기획 §3.2 복합 직업명. 원장 `StreamingAssets/Data/job_combos.json` 7행(마검사·레인저·성직자·광물 장인·무기 장인·야수조련사). 보조 하한 30은 같은 절 초심자 선(출처 없는 새 수치 없음). `SkillTitles.Of`가 `SkillJobCombos.JobOf`를 씀. 게이트 `AssertJobComboTitles`+NC(`NcDisable`이면 「달인 검사」). 에디터 리플렉션 게이트 OK. 호스트 플레이 HUD 샷 `unity/Captures/loop29_mageknight.png`(나 달인 마검사)·`loop29_ranger.png`(나 전문가 레인저). 콘솔: 지면 리프트 로그 2·Metal memoryless 2·종료 저장 건너뜀 1. 에러 없음. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크는 에디터 점유라 미실행. 2클라 미실행.
+- 원작 대비: 같은 점 — 최고 스킬 숙련 접두사(달인/전문가)는 그대로. 나은 점 — 기획서 조합명이 HUD에 보임. 부족한 점 — 원작 UO 칭호는 조합이 없고, 배치 셀프체크·2클라 없음. 원작 합격 아님.
+- INBOX 미처리 0. 사람 결정(에셋 수령·절반맵·관심영역 미터·폰트·Quaternius)은 그대로 막힘.
 
 ## 지금 하는 것
 
-없음. loop#28 카드 `village-house-corner`는 검증 중(배치 셀프체크).
+없음. loop#29 카드 `job-combo-titles`는 검증 중(배치 셀프체크).
 
 ## 다음 할 것 (우선순위 → board.json)
 
