@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#21** (성공) · 2026-09-12T17:23:03+0900
-커밋 `69b02f1b`, `bc972e93`. 클라 바이너리·2클라는 에디터 점유라 다음입니다.
+마지막 바퀴: **#22** (성공) · 2026-09-12T17:35:01+0900
+커밋 `5d92229d`, `af5c7f85`. 에디터 PID 85035가 아직 잠그고 있어 클라 빌드·`two_client_check`는 다음입니다.
 
-- 모델 `grok-4.6` · 경과 859s · 세션 rc `0`
-- HEAD `bc972e93 [loop#21] death-ghost-rez 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 670s · 세션 rc `0`
+- HEAD `af5c7f85 [loop#22] move-server-auth 검증 결과 STATUS·보드 반영` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `bc972e93 [loop#21] death-ghost-rez 검증 결과 STATUS·보드 반영`
-- `69b02f1b [loop#21] 사망 시 보호 아이템 유지·장착 해제`
+- `af5c7f85 [loop#22] move-server-auth 검증 결과 STATUS·보드 반영`
+- `5d92229d [loop#22] 위치 서버 권위 — NT 클라권위 해제·이동 검증`
 
 ## 바퀴 기록
 
@@ -36,6 +36,7 @@
 | #19 | 성공 | 2026-09-12T16:57:08+0900 | grok-4.6 | 651s |
 | #20 | 성공 | 2026-09-12T17:07:56+0900 | grok-4.6 | 600s |
 | #21 | 성공 | 2026-09-12T17:23:03+0900 | grok-4.6 | 859s |
+| #22 | 성공 | 2026-09-12T17:35:01+0900 | grok-4.6 | 670s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -69,7 +70,7 @@
 | 월드(마을1·필드·광산·던전3·테스트) | 부분 | loop#7 플레이: Terrain 600×600m, hres=1025. 미니맵·세계지도(M) 표시, 라벨 600m. 원작 절반(~3072m)은 아님 |
 | 몬스터 | 부분 | loop#11: 원장 **20종**(사냥 8+추가 6+보스 4+조련 2). 샷 `unity/Captures/loop11_cutthroat_seer.png`·`loop11_skelmage_squire.png`·`loop11_bonekin_runt.png`. 사냥터 8종·게이트 유지. 비인간형 원형(늑대·거미)은 메시 없어 KayKit 색·크기 변형으로 채움. 배치 셀프체크는 에디터 점유라 미실행 |
 | 마법·시약·명상·시전 중단 | 부분 | `RpcCast`가 성공 시 `RpcPlayEffect` 방송(소스 게이트). HUD 시전 버튼은 이번 플레이에서 안 누름 |
-| 죽음→유령→부활→시체 회수 | 동작함 | loop#21: 플레이 HP0·HUD 「유령」·퀵바 치유사 안내(`unity/Captures/loop21_ghost.png`). 치유사 부활 후 시체에서 wood·iron_sword 회수, 문장(keepOnDeath)은 몸에 남음. 샷 `loop21_rez_loot.png` HP59 유령 해제. 게이트 `AssertDeathKeep`+NC. 마법 부활·지도 시체 표시는 Codex. 원작 합격 아님 |
+| 죽음→유령→부활→시체 회수 | 동작함 | loop#21 플레이어 시체 유지. loop#23: 보스 드랍은 시체·기여자/파티 창(§18.11). 호스트 플레이 헥사크 처치 때 가방에 봉인 없음·시체 items=1 vis, 룻 후 가방 「헥사크의 봉인」. 샷 `unity/Captures/loop23_hexarch_corpse.png`·`loop23_hexarch_loot_bag.png`. 게이트 `AssertBossLoot`+NC·던전 4보스 계약. 독/펫 기여자·2클라는 미실행. 원작 합격 아님 |
 | 무게·과적·STR 요구 | 부분 | 코드. 중첩 컨테이너는 주머니 1단 |
 | Fame/Karma·가드존·범죄 | 부분 | 코드. Open PvP 플레이 미실행 |
 | 파티·길드·길드전·결투 | 부분 | HUD 패널 코드. 플레이 미실행 |
@@ -109,12 +110,12 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `move-server-auth`: 기획 §7.2 위치는 서버. `NetPlayer` NetworkTransform `_clientAuthoritative: 0`·`_sendToOwner: 1`. 원격 클라 모터 끄고 목적지만 `RpcRequestMove`. `MoveAuthority`가 섬 밖·NaN 거절(먼 클릭은 걸어가므로 거리 상한 없음). 게이트 `AssertMoveAuthority`+NC. 호스트 플레이: 광장 (−1.20,10.08,1.20)→(6.76,10.08,1.20), 섬 밖 RPC는 좌표 유지. 샷 `unity/Captures/loop22_move_before.png`·`loop22_move_after.png`. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유. 콘솔 URP depth memoryless 2줄은 이번 코드 아님.
-- 원작 대비: 같은 점 — 클릭하면 그곳으로 걷고, 위치는 서버가 정함. 나은 점 — 섬 밖·NaN 거절을 NC로 고정. 부족한 점 — 2클라에서 남의 아바타가 움직이는지 미실행, 이동 속도 기획서 없음, 원격 WASD 없음(기획 보류). 핵심(서버가 위치를 소유)은 호스트에서 통과, 원작 합격은 아님.
+- `boss-loot-rights`: 기획 §18.11 보스/정예 시체는 기여자·파티 우선권 후 공개. 처치자 가방 즉시 지급 제거. `TrySpawnBossCorpse`·`ContributorIds`. 게이트 `AssertBossLoot`+NC, 던전 1~3·필드 보스 계약 `TakeBossDropFromCorpse`. 플레이: 헥사크 처치 직후 `bagSeal=False` 시체 `hex_seal` vis, 룻 후 가방 「헥사크의 봉인」. 샷 `unity/Captures/loop23_hexarch_corpse.png`·`loop23_hexarch_loot_bag.png`. `test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유. 콘솔 URP depth memoryless 2줄은 이번 코드 아님. 독 틱·펫 공격 기여자는 이번 범위 밖.
+- 원작 대비: 같은 점 — 보스 룻이 시체에 있고 창 중 때린 사람/파티만. 나은 점 — NC로 창을 끄면 낮선 룻이 통과해 자가 산다. 부족한 점 — 창 길이 기획서 없음(원작 ≈2분 따름), 2클라 시체 동기화 미실행, 잡몹은 즉시 드랍 유지. 원작 합격 아님.
 
 ## 지금 하는 것
 
-없음. loop#22 카드 `move-server-auth` 닫음.
+없음. loop#23 카드 `boss-loot-rights` 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 

@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T17:50:00+09:00",
+  "updated_at": "2026-09-12T17:52:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,13 +196,13 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 보스 시체 기여자 우선권 (§18.11)",
+      "title": "지금 하는 일: 없음 — loop#23은 보스 시체 기여자 우선권을 닫음",
       "difficulty": "하",
       "model": "grok-4.6",
-      "status": "진행 중",
+      "status": "완료",
       "assigned_loop": 23,
-      "completed_loop": null,
-      "commit": "",
+      "completed_loop": 23,
+      "commit": "5433fab3",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
@@ -288,23 +288,26 @@
       "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "f8f9722a",
-      "rationale": "고정 대상 같은 Play 프레임 입자 ON/OFF 대조 추가(b78aaaf8). 모델 있을 때 3회 모두 차이0픽셀, 모델 숨기면21/22/21픽셀: 모델 가림 확인, 특정 창/프레임 책임은 미분리. Metal1440×900 직접 검수·입자 자연갱신 exit0·정적326소스 PASS. §8.1 크기/쿼터뷰 보존, 불꽃 화면 기여 진단 개선. 검색 인덱스 예외·라이선스 진단 잔존. 외형 수리/접속/조작/2인/IMGUI/재질 비용 미검증. 다음은 창/프레임 분리 후 Variant 수리, 완료 아님.",
+      "commit": "bbd587ef",
+      "rationale": "창 submesh만 숨기면19픽셀로 가림 원인 특정. 별도 Variant 창 재질 Standard Fade로 수리(bbd587ef), 원본 Blender/FBX 보존. 같은 Play Tick 불꽃 ON/OFF 회귀: 수리전0/0/0 FAIL→수리후18/19/17 PASS. Metal1440×900 직접 검수·임포트/Play exit0,360tris·1.556m·5재질·정적326소스 PASS. §8.1 크기/쿼터뷰 유지, 가까운 화면 내부 불꽃 식별 개선. 거리18 동적 가독성/투명 정렬·비용/접속·조작·2인·IMGUI 미검증, 게임 배치 미저장. 검색 인덱스 예외/라이선스 진단 잔존: 동일 조건 반복 중단, 다음 렌더 전 전용 인덱스 원인 분리 필요. 기록5163b1a3.",
       "fail_streak": 0,
-      "codex_iteration": 9,
+      "codex_iteration": 10,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
-        "/Users/junholee/ai_lab/output/ulon-codex/loop9-lantern/play.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop9-lantern/town.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop9-lantern/pixel-comparison.json",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop9-lantern/play-0.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop9-lantern/play-0-no-flame.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop9-lantern/play-0-no-model.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop9-lantern/play-0-no-model-no-flame.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop9-lantern/unity.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop9-lantern/static-check.log"
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/isolation/submeshes.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/isolation/pixel-comparison.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/isolation/flame-visibility.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/flame-visibility.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/play-0.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/play-0-no-flame.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/play.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/unity.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/import/unity-comparison.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/import/result.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/import/flame-envelope.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/static-check.log"
       ],
-      "verification_commit": "b78aaaf8"
+      "verification_commit": "bbd587ef"
     },
     {
       "id": "codex-storybook-hud",
@@ -359,11 +362,11 @@
       "title": "보스/정예 시체 기여자 우선권 (§18.11)",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "검증 중",
+      "status": "완료",
       "assigned_loop": 23,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "가방 즉시 지급을 시체+기여자/파티 창으로. 게이트+NC 통과. 플레이 샷 남음.",
+      "completed_loop": 23,
+      "commit": "5433fab3",
+      "rationale": "시체+기여자/파티 창. 게이트+NC·던전4. 헥사크 플레이 가방 후지급 샷.",
       "fail_streak": 0
     }
   ]
