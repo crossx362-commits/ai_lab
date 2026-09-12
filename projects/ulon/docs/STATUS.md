@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#10** (성공) · 2026-09-12T15:10:38+0900
-**다음:** 에디터 닫은 뒤 `UlonClient.app` 재빌드, 그다음 2클라. 지도 절반(~3072m)은 청크/셀 확대 중 사람 선택.
+마지막 바퀴: **#11** (성공) · 2026-09-12T15:25:06+0900
+커밋: `dfca3eb2` 구현, `ec9ec77c` STATUS·보드. INBOX 600m+월드맵 항목은 #7에서 닫힌 것으로 처리했고, 절반 크기(`uo-half-span`)는 사람 선택 대기로 남겼습니다.
 
-- 모델 `grok-4.6` · 경과 626s · 세션 rc `0`
-- HEAD `fb2fd1cd [loop#10] persist-latest-wins 검증 결과 STATUS·보드 반영` · 브랜치 `master`
-- INBOX 미처리 **1**건
+- 모델 `grok-4.6` · 경과 819s · 세션 rc `0`
+- HEAD `ec9ec77c [loop#11] mob-catalog-20 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `fb2fd1cd [loop#10] persist-latest-wins 검증 결과 STATUS·보드 반영`
-- `c75d9273 [loop#10] DB 중단 중 JSON 폴백이 복구 후 persist보다 최신이면 이긴다`
+- `ec9ec77c [loop#11] mob-catalog-20 검증 결과 STATUS·보드 반영`
+- `dfca3eb2 [loop#11] 몬스터 원장 14→20종 KayKit 색·크기 변형`
 
 ## 바퀴 기록
 
@@ -25,6 +25,7 @@
 | #8 | 성공 | 2026-09-12T14:42:14+0900 | grok-4.6 | 690s |
 | #9 | 성공 | 2026-09-12T14:59:24+0900 | grok-4.6 | 982s |
 | #10 | 성공 | 2026-09-12T15:10:38+0900 | grok-4.6 | 626s |
+| #11 | 성공 | 2026-09-12T15:25:06+0900 | grok-4.6 | 819s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -68,7 +69,7 @@
 | PostgreSQL 영구 저장 | 동작함 | loop#6 /ready 200. loop#10: persist `saved_at` 왕복(운영 PG PUT/GET `loop10-latest-wins`). CharacterStore.Load가 JSON이 더 최신이면 골드99·iron_sword·검술40을 고르고 persist에 밀어 넣음. NC: 2000년 JSON(wood)은 못 덮음. 에디터 execute_code `OK gold=99 inv=iron_sword skill=40 savedAt=2099-01-01T00:00:00Z`. SQLite `test_persist_atomicity` 6/6. 클라 재접속 왕복은 **미실행**(UDP 7770 닫힘·클라 바이너리 없음) |
 | 관심 영역(Interest Management) | 없음 | 기획 §7.3. 코드 없음 |
 | LOD·거리 비활성 | 없음 | 기획 §8.1 |
-| UI 팩(Paperdoll 그림·DnD·우클릭) | 없음 | HUD는 IMGUI 기본 버튼. Kenney UI 팩 미반입 |
+| UI 팩(Paperdoll 그림·DnD·우클릭) | 부분 | loop#12: 가방 패널 위 장비 인형 10칸. 샷 `unity/Captures/loop12_paperdoll.png` 오른손·철검, `loop12_paperdoll_empty.png` 해제 후 빈 칸. 아이콘·외형 렌더·컨테이너 DnD·우클릭은 **없음**. Kenney UI 팩 미반입 |
 | VFX | 동작함 | loop#8 타격 불티 + loop#9 등불·횃불·분수 루프 파티클. 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티. 분수 물줄기는 약함 |
 | SFX | 동작함 | 같은 플레이에서 `ActionSfx.Played` 0→3. 공간 음원 3D. 귀로 들은 것은 MCP라 미확인(카운트만) |
 | GM 도구 | 부분 | GM 패널 코드. 실행 없음 |
@@ -98,18 +99,19 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `mob-catalog-20`: `mobs.json` 14→20종. 사냥터 8종은 그대로. 추가 6종(해골주술사·종자·칼잡이·은둔사제·갱도해골·잔당)은 KayKit 색·키 변형, 가드존 밖 세 무리. HTTP MCP 스폰·SceneId·플레이 콘솔 에러 0. 배치 셀프체크는 에디터 점유라 못 돌림(게이트·NC 코드는 넣음).
-- 원작 대비: 같은 점 — 종 수·지역 배치. 나은 점 — 저폴리 3D로 색이 바로 갈린다. 부족한 점 — 늑대/거미/슬라임 원형 메시 없음, 사냥 라인은 여전히 8종. 카드 범위(원장 20종)는 통과, 시스템 원작 합격은 아님.
+- `ui-paperdoll` 칸 그림: `EquipSlots` 원장 + 가방 패널 10칸. 철검 장착 시 오른손에만 이름. 클릭 해제는 `TryUnequip`. 게이트 `AssertPaperdollSlots`+NC(`NcHideMapping`). 에디터 플레이 샷 2장. 배치 셀프체크·클라 빌드는 에디터 점유라 못 돌림.
+- 원작 대비: 같은 점 — 인형 주변에 투구·손·갑옷·신발 칸. 나은 점 — 3D 월드가 뒤에 보임. 부족한 점 — 칸 아이콘·인형 외형·한 번에 여러 장비·DnD 없음. 카드(칸 그림)는 통과, UI 시스템 원작 합격은 아님.
 
 ## 지금 하는 것
 
-없음. loop#11 카드 `mob-catalog-20` 닫음.
+없음. loop#12 카드 `ui-paperdoll`(칸만) 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
 1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
-2. 원작 지도 절반(~3072m): 청크 또는 셀 확대. 사람 선택 (`uo-half-span`)
-3. `tools/two_client_check.sh`
+2. 컨테이너 드래그 앤 드롭 (`ui-container-dnd`)
+3. 원작 지도 절반(~3072m) 사람 선택 (`uo-half-span`)
+4. `tools/two_client_check.sh`
 
 ## 막힌 것 (사람 결정)
 
