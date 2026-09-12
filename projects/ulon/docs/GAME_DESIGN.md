@@ -184,9 +184,23 @@ v1.1  |  기준일 2026-08-31  |  UO Classic 핵심 시스템 보완판
 | 클라이언트가 보내는 것: “이동하려 한다 / 공격하려 한다 / 제작하려 한다”서버가 결정하는 것: 위치 / 명중 / 데미지 / 스킬 상승 / 드랍 / 골드 / 제작 결과 / 거래 결과 |
 | --- |
 
+## 7.2.1 이동 리듬 (Classic 2D 클라이언트)
+1타일 = 1m. 아래는 타일당 소요 시간의 이론 한계(지연 없는 클라). 구현은 이 값을 따른다.
+
+| 상태 | 타일당 | m/s |
+| --- | --- | --- |
+| 도보 걷기 | 400ms | 2.5 |
+| 도보 달리기 | 200ms | 5.0 |
+| 기마 걷기 | 200ms | 5.0 |
+| 기마 달리기 | 100ms | 10.0 |
+
+출처: UO 에뮬레이터 위키 Tips9 http://wikiwiki.jp/uoemu/Tips9 . 보조: https://github.com/xrip/uo-client (walk 400ms / run 200ms).
+
 ## 7.3 관심 영역(Interest Management)
 - 플레이어에게 월드 전체의 모든 객체를 보내지 않습니다.
-- 주변 일정 거리의 플레이어, 몬스터, 아이템, NPC만 동기화합니다.
+- 동기화 반경은 **18타일**(이 프로젝트에서 1타일 = 1m → **18m**). Classic UO / ServUO 기본 `UpdateRange`가 18타일이다.
+- 출처: ServUO `Mobile` 기본 갱신 거리 18 — https://github.com/ServUO/ServUO (검색 `UpdateRange`). 구현은 `InterestRange.FallbackMeters = 18`.
+- 주변 이 거리의 플레이어, 몬스터, 아이템, NPC만 동기화합니다.
 - 20~50명 동접 단계에서는 한 월드 서버 + PostgreSQL로 시작하고, 성능이 실제로 부족할 때 지역 서버 분할을 검토합니다.
 ## 7.4 DB 핵심 테이블
 | 테이블 | 핵심 필드 |
@@ -655,6 +669,7 @@ Third-Party Asset Register에는 모델뿐 아니라 UI, 소리, VFX, 폰트, �
 | Animal Taming / follower slots | https://uo.com/wiki/ultima-online-wiki/skills/animal-taming/ |
 | Veterinary / pet resurrection | https://uo.com/wiki/ultima-online-wiki/skills/veterinary/ |
 | Character Creation / 3 Starting Skills / Starting Stats | https://uo.com/getting-started/ |
+| Classic 2D 클라이언트 이동 리듬(타일당 ms) | http://wikiwiki.jp/uoemu/Tips9 (도보 걷기 400ms / 달리기 200ms / 기마 걷기 200ms / 기마 달리기 100ms). 보조: https://github.com/xrip/uo-client (walk 400ms / run 200ms) |
 ## 18.19 Character Creation, NPC Training, Town Services
 UO의 시작은 “직업 선택”이 아니라 초기 능력치와 몇 개의 시작 스킬을 고르는 방식입니다. 본 프로젝트도 이 철학을 유지하되, 초반 이탈을 줄이기 위해 현대적으로 단순화합니다.
 - 캐릭터 생성에서 외형과 함께 STR/DEX/INT 초기 배분, 시작 스킬 3개를 선택합니다. 이것은 클래스 선택이 아니라 초기 숙련 방향 설정입니다.

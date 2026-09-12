@@ -1,8 +1,7 @@
 # 없는 물건 — 자산 조달 목록 (조사만, 2026-09-09)
 
 대장 지시(검수 전달 2026-09-09): 랩마다 하나씩 튀어나오던 「없는 물건」을 **한 번에 묶는다**.
-**지금은 조사만이다 — 받지 않는다.** 다운로드는 오너 직행 사안이고, 실행하는 세션이 오너에게
-직접 확인한다. 라이선스는 **CC0/상용 가능만**, 반입 시 `docs/ASSET_REGISTER.md`에 LICENSE·SOURCE_URL·
+오너 2026-09-12 「막힌거 해결해」: CC0 직링크(Kenney Modular Cave Kit, Kenney UI Pack)와 기획서 지정 Noto Sans KR(SIL OFL)은 **반입함**. Quaternius MegaKit·poly.pizza 단품·Kenney Retro Fantasy는 직링크가 없어 아직 미반입. 라이선스는 **CC0/상용 가능만**, 반입 시 `docs/ASSET_REGISTER.md`에 LICENSE·SOURCE_URL·
 다운로드일·승인일을 기록해야 하며 **기록 없는 파일은 씬 반입 금지**(§11).
 
 ## 없는 물건 (랩에서 실제로 막힌 것)

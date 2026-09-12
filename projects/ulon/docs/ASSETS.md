@@ -36,8 +36,9 @@
 |---|---|---|
 | `unity/Assets/_ThirdParty/Quaternius/` | 3D 예정 | **빈 폴더.** 기획 §9·레지스터의 Universal Base / Modular Outfits Fantasy Standard 미반입 |
 | Kenney Retro Fantasy Kit | 3D | `ASSET_REGISTER.md` 행만, 파일 없음 |
-| Noto Sans KR | UI 폰트 | 기획서·레지스터에 SIL OFL 1.1. **`.ttf/.otf` 없음.** HUD는 IMGUI 기본 |
-| Kenney UI Pack / Fantasy UI Borders / Input Prompts | UI | 기획 §18.15만. `Game/UI/` 비어 있음 |
+| Noto Sans KR | UI 폰트 | `Assets/Game/Resources/Fonts/NotoSansKR-Regular.ttf` SIL OFL 1.1. SliceHud Resources.Load |
+| Kenney UI Pack (Grey Default 일부) | UI | `_ThirdParty/Kenney/UiPack/RAW/PNG` 42장. HUD 스킨 적용은 GPT 차선 |
+| Kenney Modular Cave Kit (일부) | 3D | `_ThirdParty/Kenney/ModularCave` gate/corridor. 씬 배치는 다음 |
 | Kenney Interface Sounds / Impact Sounds | 사운드 | 미반입 |
 | Quaternius Fantasy Props MegaKit 등 | 3D | `ASSET_WANTLIST.md` 조사만. **다운로드는 오너 직행** |
 

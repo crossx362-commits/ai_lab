@@ -1,0 +1,7 @@
+pack: Kenney Modular Cave Kit 1.0
+license: CC0
+url: https://kenney.nl/assets/modular-cave-kit
+zip: https://kenney.nl/media/pages/assets/modular-cave-kit/37ec3cb12d-1783667097/kenney_modular-cave-kit_1.0.zip
+downloaded: 2026-09-12
+subset: gate, gate-rock, gate-overhang, corridor, corridor-end, stairs, colormap.png
+approved: 오너 지시 「막힌거 해결해」 2026-09-12 — CC0 zip 직링크

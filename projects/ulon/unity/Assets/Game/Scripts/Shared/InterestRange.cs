@@ -5,7 +5,7 @@ namespace Ulon.Shared
     /// <summary>
     /// 기획 §7.3 관심 영역 거리 원장. 수치는 코드가 아니라 interest.json.
     /// 원작 클라 기본 갱신 범위는 18타일(ServUO GetUpdateRange). 이 프로젝트 1타일≈1m.
-    /// 기획서에 미터값이 없어 원작 기준 합격은 보강 전까지 주지 않는다.
+    /// 기획 §7.3 (2026-09-12 보강): 18타일 = 18m. 원작 합격 수치 확정.
     /// </summary>
     public static class InterestRange
     {

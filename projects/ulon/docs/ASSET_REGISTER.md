@@ -15,8 +15,10 @@
 | Kenney Nature Kit | 필드 소품 | CC0 | 공식 zip 일부 | 2026-08-31 | grass, plant_bush, rock_largeA, rock_smallA(던전 잔해) | https://kenney.nl/assets/nature-kit |
 | OpenGameArt Deer (low poly, rigged) | 조련 대상 「야생하트」·마구간 짐승 | CC0 | 전체 | 2026-09-07 | RAW: Deer.obj + Deer.mtl(배포 zip의 「Other formats」). 나머지 blend·3ds 미도입. 자격 원장 `Editor/SliceSelfCheck.CreatureArt.cs` (오너 승인 2026-09-07) | https://opengameart.org/content/deer-low-poly-rigged |
 | OpenGameArt Boar | 조련 대상 「멧돼지」 | CC0 | 전체 | 2026-09-07 | RAW: boar_0.blend(배포 원본) + Boar.fbx(로컬 Blender 5.2로 변환한 것, 변환 명령은 README_IMPORT.txt). 자격 원장 `Editor/SliceSelfCheck.CreatureArt.cs` (오너 승인 2026-09-07) | https://opengameart.org/content/boar |
+| Kenney Modular Cave Kit 1.0 | 갱도 입구·동굴 복도 | CC0 | 공식 zip 일부 | 2026-09-12 | RAW/Models: gate, gate-rock, gate-overhang, corridor, corridor-end, stairs + colormap.png. 나머지 미도입 (오너 「막힌거 해결해」 2026-09-12) | https://kenney.nl/assets/modular-cave-kit |
+| Kenney UI Pack 2.0 | HUD 버튼/패널 스프라이트 | CC0 | 공식 zip 일부 | 2026-09-12 | PNG/Grey/Default button/panel/window/slider/check 42장 + Kenney Future TTF. 나머지 색/스프라이트 미도입 (오너 「막힌거 해결해」 2026-09-12) | https://kenney.nl/assets/ui-pack |
 | Kenney Retro Fantasy Kit | 소품 | CC0 |  |  |  |  |
-| Noto Sans KR | 한글 UI | SIL OFL 1.1 |  |  |  |  |
+| Noto Sans KR | 한글 UI | SIL OFL 1.1 | Google Fonts OFL 전체 | 2026-09-12 | `Assets/Game/Resources/Fonts/NotoSansKR-Regular.ttf` + `OFL.txt`. SliceHud가 Resources.Load (오너 「막힌거 해결해」 2026-09-12) | https://github.com/google/fonts/tree/main/ofl/notosanskr |
 | 지형 텍스처 4종(KenneyGrass·MountainRock·ShoreSand·SeaWater) | 지형 도포·수면 | 자체 제작 | VisualSliceBuilder.MakeNoiseMat이 128px 노이즈로 생성 | 2026-09-06 | Assets/Game/Art/Env/*.png | 코드 생성(외부 원본 없음) |
 
 모델뿐 아니라 UI, 소리, VFX, 폰트, 음악도 한 줄씩 추가한다.

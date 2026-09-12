@@ -1,0 +1,7 @@
+pack: Kenney UI Pack 2.0
+license: CC0
+url: https://kenney.nl/assets/ui-pack
+zip: https://kenney.nl/media/pages/assets/ui-pack/f651646eab-1718203990/kenney_ui-pack.zip
+downloaded: 2026-09-12
+subset: PNG/Grey/Default button/panel/window/slider/check + Kenney Future TTF
+approved: 오너 지시 「막힌거 해결해」 2026-09-12 — CC0 zip 직링크

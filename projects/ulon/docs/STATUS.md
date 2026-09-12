@@ -1,20 +1,20 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#34** (성공) · 2026-09-12T20:00:10+0900
-원작 합격은 아닙니다. 집 행 0, 운영 전량 복원, 클라 재접속 화면은 남아 있습니다. 다음 그록 작업은 에디터가 풀리면 `UlonClient.app` 재빌드와 2클라 검사입니다.
+마지막 바퀴: **#35** (성공) · 2026-09-12T20:12:59+0900
+**커밋** `043383c5`, `5ee0b1a9` (로컬만). INBOX 신규 없음. 다음 그록 작업은 에디터가 풀리면 `UlonClient.app` 재빌드와 2클라 검사입니다.
 
-- 모델 `grok-4.6` · 경과 593s · 세션 rc `0`
-- HEAD `8acc75b6 [loop#34] persist 백업/복구 HUD 샷과 스테이징 복원` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 722s · 세션 rc `0`
+- HEAD `5ee0b1a9 [loop#35] 퀵바 단축키 플레이 샷과 STATUS` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `8acc75b6 [loop#34] persist 백업/복구 HUD 샷과 스테이징 복원`
+- `5ee0b1a9 [loop#35] 퀵바 단축키 플레이 샷과 STATUS`
+- `043383c5 [loop#35] 퀵바 1–9 단축키 (기획 §4.2)`
 
 ## 바퀴 기록
 
 | 바퀴 | 결과 | 시각 | 모델 | 경과 |
 |---|---|---|---|---|
-| #4 | 성공 | 2026-09-12T14:05:38+0900 | grok-4.6 | 705s |
 | #5 | 성공 | 2026-09-12T14:19:23+0900 | grok-4.6 | 777s |
 | #6 | 성공 | 2026-09-12T14:24:02+0900 | grok-4.6 | 231s |
 | #7 | 성공 | 2026-09-12T14:29:57+0900 | grok-4.6 | 308s |
@@ -44,6 +44,7 @@
 | #31 | 실패 | 2026-09-12T19:48:27+0900 | gpt | 1s |
 | #32 | 실패 | 2026-09-12T19:49:15+0900 | gpt | 1s |
 | #34 | 성공 | 2026-09-12T20:00:10+0900 | grok-4.6 | 593s |
+| #35 | 성공 | 2026-09-12T20:12:59+0900 | grok-4.6 | 722s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -139,15 +140,15 @@
 - **그래픽·UI 개선 = GPT 차선 (2026-09-12 16:38):** 셰이더·머티리얼·HUD 외형·아이콘·페이퍼돌 그림·커서 스킨·VFX 폴리시는 그록 루프가 새로 열지 않음. 서버·저장·2클라·관심영역·클라 빌드는 계속. `water-shore-jag`·이후 UI 폴리시는 GPT.
 - **INBOX vs PROMPT 그래픽 막힘 (2026-09-12 19:41):** PROMPT는 진행 중 그래픽 카드를 막힘으로 넘기라고 함. INBOX는 그록 제외용 막힘을 대기로 되돌리고 담당 카드 상태를 그록이 바꾸지 말 것. HUD만 대기 복구. 이후 그록은 owner=codex/model=gpt 카드를 필터로만 건너뛴다.
 
-- **에셋 다운로드:** `ASSET_WANTLIST.md`의 모루·대장간 건물·마구간 건물·목공소·갱도 입구·Quaternius MegaKit. 받기는 오너 직행. 조사만 되어 있음.
-- **Quaternius Universal Base / Modular Outfits:** 기획 1차 필수인데 `_ThirdParty/Quaternius/`는 빈 폴더. 반입 여부 사람 결정.
-- **Noto Sans KR:** 기획서 SIL OFL 1.1로 적혀 있으나 폰트 파일 없음. IMGUI 기본 글꼴 사용 중.
-- **Kenney Retro Fantasy Kit / Kenney UI Pack:** 레지스터·기획에만 있고 파일 없음.
-- **이동 속도 등 체감 수치:** 기획서 없음 → 「기획서 보강 필요」. 출처 없는 수치로 구현하지 않음.
+- **에셋 다운로드 (일부 해제 2026-09-12):** Kenney Modular Cave Kit(갱도 게이트) · Kenney UI Pack Grey · Noto Sans KR 반입. 남은 것: 모루·대장간/마구간/목공소 건물(Quaternius poly.pizza, 직링크 없음) · Quaternius MegaKit · Kenney Retro Fantasy.
+- **Quaternius Universal Base / Modular Outfits:** `_ThirdParty/Quaternius/` 빈 폴더. 사이트/itch 직링크 없음 — 사람 다운로드.
+- **Noto Sans KR:** 반입함 (`Resources/Fonts/NotoSansKR-Regular.ttf`, SIL OFL). HUD `EnsureUiFont`. 에디터 임포트·화면 확인은 다음.
+- **Kenney UI Pack:** Grey 버튼/패널 42장 반입. HUD 스킨 적용은 GPT UI 차선.
+- **이동 속도:** 기획 §7.2.1 보강. 도보 걷기 400ms/타일(2.5m/s), 달리기 200ms(5.0m/s). 출처 wikiwiki.jp/uoemu/Tips9. 코드 적용은 다음 바퀴.
 - **ai_lab-loop 워크트리:** 앞선 작업이 아니라 뒤처짐. 그곳 빌드만 쓰지 말고 이 트리에서 다시 빌드할 것. 병합 금지.
 - **물 2·3단계(프레넬·정점 흔들림), 강 곡류:** 핸드오프상 검수 판정 뒤.
 - **에디터 점유:** PID 85035가 잠금. 배치 빌드/셀프체크는 불가. HTTP MCP로는 플레이 가능(loop#7 사용). 배치 검사는 에디터를 닫은 뒤에.
-- **관심 영역 미터값 기획서 보강 필요:** §7.3은 「주변 일정 거리」만. 구현은 ServUO 기본 18타일. 기획서가 18(또는 다른 값)을 확정하기 전 원작 합격 없음.
+- **관심 영역:** 기획 §7.3을 18타일=18m로 보강함. 구현 `InterestRange.FallbackMeters = 18`과 일치. 원작 합격은 2클라 실측 후.
 - **원작 울온 절반 크기:** map0 6144×4096 타일(Stratics, 1타일≈1m → 절반 ≈3072m). 출처 https://community.stratics.com/threads/land-in-uo.221830/ . Unity Terrain 하이트맵 최대 4097. 지금 셀(300/512 m)이면 LandScale 최대 8(2400m). 3072m는 청크·더 큰 셀 중 사람 선택이 필요.
 - **INBOX vs 기획 §6.1:** 기획은 「작은 하나의 살아 있는 월드」. 오너 INBOX(절반 크기)를 우선하되, 한 지형으로 3072m는 엔진 상한과 충돌.
 - **INBOX 16:04 병렬 vs PROMPT 한 작업:** INBOX 우선. #15는 Unity와 안 겹치는 보고서만. 남은 대기 카드(클라 빌드·2클라·물가·관심영역·절반맵)는 전부 에디터/클라라 에디터 점유 중엔 나란히 못 연다.

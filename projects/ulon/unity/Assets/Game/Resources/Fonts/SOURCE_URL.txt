@@ -1,0 +1,8 @@
+pack: Noto Sans KR (variable TTF, named Regular in-tree)
+license: SIL Open Font License 1.1
+url: https://github.com/google/fonts/tree/main/ofl/notosanskr
+files:
+  NotoSansKR-Regular.ttf = https://github.com/google/fonts/raw/main/ofl/notosanskr/NotoSansKR%5Bwght%5D.ttf
+  OFL.txt = https://github.com/google/fonts/raw/main/ofl/notosanskr/OFL.txt
+downloaded: 2026-09-12
+approved: 오너 지시 「막힌거 해결해」 2026-09-12 — 기획서 SIL OFL 1.1 지정 폰트
