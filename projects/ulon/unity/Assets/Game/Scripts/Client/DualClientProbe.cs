@@ -52,6 +52,16 @@ namespace Ulon.Client
             while (Time.realtimeSinceStartup < deadline)
             {
                 mine = FindOwned();
+                // 관심 영역 18m: 스폰~사냥터는 ~72m라 스폰에서 Skeleton이 안 붙는다.
+                // 몹을 기다리기 전에 사냥터 무리 옆으로 가서 관찰자로 들어가게 한다.
+                if (mine != null && CountAvatars() >= 2 && FindSceneMob() == null)
+                {
+                    Vector2 hunt = HuntRoster.World(0);
+                    var nearHunt = new Vector3(hunt.x + 1.2f, WorldTerrain.LandBase, hunt.y);
+                    WarpNextTo(mine.transform, nearHunt);
+                    mine.RpcSetPos(nearHunt);
+                    yield return new WaitForSeconds(0.4f);
+                }
                 mob = FindSceneMob();
                 if (mine != null && mob != null && CountAvatars() >= 2)
                     break;

@@ -69,6 +69,7 @@ namespace Ulon.Editor
                 nmGo.AddComponent<Tugboat>();
             if (nmGo.GetComponent<AutoStartNetwork>() == null)
                 nmGo.AddComponent<AutoStartNetwork>();
+            InterestSetup.Apply(nm);
             var spawner = nmGo.GetComponent<PlayerSpawner>() ?? nmGo.AddComponent<PlayerSpawner>();
             spawner.SetPlayerPrefab(prefabNob);
             EditorUtility.SetDirty(spawner);

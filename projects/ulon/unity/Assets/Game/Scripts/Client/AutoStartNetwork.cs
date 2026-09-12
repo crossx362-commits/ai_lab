@@ -18,6 +18,8 @@ namespace Ulon.Client
         {
             if (GetComponent<DualClientProbe>() == null)
                 gameObject.AddComponent<DualClientProbe>();
+            manager = GetComponent<NetworkManager>();
+            InterestSetup.Apply(manager);
         }
 
         void Start()
@@ -26,6 +28,7 @@ namespace Ulon.Client
             if (manager == null)
                 return;
 
+            InterestSetup.Apply(manager);
             EnsureSpawns();
             bool dedicated = IsDedicated();
             bool asClient = Cli.Has("-ulon-client");

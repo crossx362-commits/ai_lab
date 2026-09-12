@@ -1,0 +1,5 @@
+{
+  "sync_range_m": 18,
+  "hide_hysteresis": 0.1,
+  "source": "ServUO Map.GetObjectsInRange / Item.GetUpdateRange default 18 tiles (https://github.com/ServUO/ServUO/blob/master/Server/Map.cs). This project 1 tile ≈ 1 m. GAME_DESIGN §7.3 has no meter value — 기획서 보강 필요."
+}

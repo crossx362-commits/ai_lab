@@ -51,6 +51,7 @@ namespace Ulon.Client
             if (manager == null)
                 return;
             AutoStartNetwork.ApplyListen(manager, true);
+            InterestSetup.Apply(manager);
             if (!manager.IsServerStarted)
                 manager.ServerManager.StartConnection();
             if (!manager.IsClientStarted)
@@ -63,6 +64,7 @@ namespace Ulon.Client
             if (manager == null)
                 return;
             AutoStartNetwork.ApplyListen(manager, false);
+            InterestSetup.Apply(manager);
             if (!manager.IsClientStarted)
                 manager.ClientManager.StartConnection();
         }
