@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T15:36:00+09:00",
+  "updated_at": "2026-09-12T15:48:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -138,11 +138,11 @@
       "title": "가방·은행 컨테이너 드래그 앤 드롭 (기획 §18.13)",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": null,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "loop#12에서 인형 칸만 닫음. 지금 가방은 버튼식. Kenney UI 팩은 사람 결정.",
+      "status": "완료",
+      "assigned_loop": 13,
+      "completed_loop": 13,
+      "commit": "d92c7844",
+      "rationale": "에디터 점유라 클라 빌드 불가. IMGUI 칸+서버 한 칸 입출금. 샷 2장·게이트+NC. Kenney UI 팩은 사람 결정.",
       "fail_streak": 0
     },
     {
