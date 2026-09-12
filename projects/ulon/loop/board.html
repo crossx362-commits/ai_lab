@@ -392,12 +392,13 @@ function renderReports() {
       const src = "/api/file?path=" + encodeURIComponent(s.path);
       return `<div class="report-shot">
         <img src="${src}" alt="${esc(s.name)}" data-full="${src}">
-        <div class="cap"><b>${esc(s.name)}</b><br>${esc(s.caption||"")}</div>
+        <div class="cap"><b>${esc(s.name)}</b></div>
       </div>`;
     }).join("");
     return `<div class="report-group">
       <h2>바퀴 #${esc(g.loop)} · ${esc(g.title||g.system||"")}</h2>
       <p class="muted">${esc(g.system||"")}${g.card_id ? " · " + esc(g.card_id) : ""}</p>
+      <p class="muted">${esc(g.note||"")}</p>
       <div class="report-shots">${shots || "<p class='empty'>샷 없음</p>"}</div>
     </div>`;
   }).join("");

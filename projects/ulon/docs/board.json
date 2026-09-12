@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T16:25:00+09:00",
+  "updated_at": "2026-09-12T16:20:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -174,11 +174,11 @@
       "title": "보드에 보고서 페이지(샷 위주)",
       "difficulty": "하",
       "model": "grok-4.6",
-      "status": "검증 중",
+      "status": "완료",
       "assigned_loop": 15,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "INBOX 15:50. loop/board.html. Unity 잠금과 안 겹침. 눈으로 본 PNG만.",
+      "completed_loop": 15,
+      "commit": "b1e7ab40",
+      "rationale": "INBOX 15:50. #report 샷 17장·NC 403/400·테스트 3/3. 배치 셀프체크는 에디터 점유.",
       "fail_streak": 0
     },
     {
