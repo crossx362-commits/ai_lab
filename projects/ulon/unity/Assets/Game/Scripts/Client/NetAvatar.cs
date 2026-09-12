@@ -749,6 +749,26 @@ namespace Ulon.Client
         }
 
         [ServerRpc]
+        public void RpcDepositOne(string instanceId)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryDepositOne(GetComponent<WorldBody>(), instanceId);
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
+        public void RpcWithdrawOne(string instanceId)
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            var result = OfflineWorld.Instance.TryWithdrawOne(GetComponent<WorldBody>(), instanceId);
+            if (result.Applied)
+                SaveNow();
+        }
+
+        [ServerRpc]
         public void RpcSpeech(string text)
         {
             if (OfflineWorld.Instance == null)

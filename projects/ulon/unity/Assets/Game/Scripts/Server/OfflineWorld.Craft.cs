@@ -40,6 +40,75 @@ namespace Ulon.Server
             return new AttackResult { Applied = true, Hit = true };
         }
 
+        public AttackResult TryDepositOne(WorldBody body, string instanceId)
+        {
+            if (body == null)
+                return new AttackResult { FailReason = "no_body" };
+            if (body.Ghost)
+                return new AttackResult { FailReason = "ghost" };
+            if (Ulon.Shared.ContainerMove.NcDenyAll)
+                return new AttackResult { FailReason = "nc" };
+            if (string.IsNullOrEmpty(instanceId))
+                return new AttackResult { FailReason = "no_item" };
+            if (!BankInRange(body))
+                return new AttackResult { FailReason = "range" };
+            var bag = Bag(body);
+            var moved = new List<ItemRecord>();
+            if (!bag.TryTakeGroup(instanceId, moved))
+                return new AttackResult { FailReason = "no_item" };
+            var vault = Vault(body);
+            for (int i = 0; i < moved.Count; i++)
+                vault.Add(moved[i]);
+            return new AttackResult { Applied = true, Hit = true };
+        }
+
+        public AttackResult TryWithdrawOne(WorldBody body, string instanceId)
+        {
+            if (body == null)
+                return new AttackResult { FailReason = "no_body" };
+            if (body.Ghost)
+                return new AttackResult { FailReason = "ghost" };
+            if (Ulon.Shared.ContainerMove.NcDenyAll)
+                return new AttackResult { FailReason = "nc" };
+            if (string.IsNullOrEmpty(instanceId))
+                return new AttackResult { FailReason = "no_item" };
+            if (!BankInRange(body))
+                return new AttackResult { FailReason = "range" };
+            var vault = Vault(body);
+            var moved = new List<ItemRecord>();
+            if (!vault.TryTakeGroup(instanceId, moved))
+                return new AttackResult { FailReason = "no_item" };
+            var bag = Bag(body);
+            float extra = 0f;
+            for (int i = 0; i < moved.Count; i++)
+                extra += ItemCatalog.WeightOf(moved[i].TemplateId) * (moved[i].Amount < 1 ? 1 : moved[i].Amount);
+            if (!bag.CanCarryWeight(StatsOf(body).Str, extra))
+            {
+                for (int i = 0; i < moved.Count; i++)
+                    vault.Add(moved[i]);
+                return new AttackResult { FailReason = "overweight" };
+            }
+            for (int i = 0; i < moved.Count; i++)
+                bag.Add(moved[i]);
+            return new AttackResult { Applied = true, Hit = true };
+        }
+
+        static bool BankInRange(WorldBody body)
+        {
+            if (body == null)
+                return false;
+            var banks = Object.FindObjectsByType<BankStation>(FindObjectsSortMode.None);
+            for (int i = 0; i < banks.Length; i++)
+            {
+                var st = banks[i];
+                if (st == null)
+                    continue;
+                if (WithinReach(body.transform.position, st.transform, st.InteractRange))
+                    return true;
+            }
+            return false;
+        }
+
         public AttackResult DepositAll(WorldBody body)
         {
             if (body == null)

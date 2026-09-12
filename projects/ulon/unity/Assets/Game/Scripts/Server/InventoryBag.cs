@@ -274,6 +274,41 @@ namespace Ulon.Server
             return n;
         }
 
+        /// <summary>
+        /// 한 개체와, 주머니면 그 안의 물건까지 뺀다. 은행 한 칸 이동이 주머니만 가져가고
+        /// 내용물을 가방에 남기지 않게 한다.
+        /// </summary>
+        public bool TryTakeGroup(string instanceId, List<ItemRecord> moved)
+        {
+            if (string.IsNullOrEmpty(instanceId) || moved == null)
+                return false;
+            if (EconomyAuthority.Refuse("가방에서 빼기 " + instanceId))
+                return false;
+            int idx = -1;
+            for (int i = 0; i < Items.Count; i++)
+            {
+                if (Items[i].InstanceId != instanceId)
+                    continue;
+                idx = i;
+                break;
+            }
+            if (idx < 0)
+                return false;
+            var root = Items[idx];
+            Items.RemoveAt(idx);
+            moved.Add(root);
+            if (!ItemCatalog.IsContainer(root.TemplateId) || string.IsNullOrEmpty(root.InstanceId))
+                return true;
+            for (int i = Items.Count - 1; i >= 0; i--)
+            {
+                if ((Items[i].ParentContainerId ?? "") != root.InstanceId)
+                    continue;
+                moved.Add(Items[i]);
+                Items.RemoveAt(i);
+            }
+            return true;
+        }
+
         public ItemRecord[] ToArray() => Items.ToArray();
 
         /// <summary>
@@ -337,6 +372,36 @@ namespace Ulon.Server
             if (string.IsNullOrEmpty(rec.InstanceId))
                 rec.InstanceId = Guid.NewGuid().ToString("N");
             Items.Add(rec);
+        }
+
+        /// <summary>한 개체와 주머니 내용물. 가방 쪽과 같은 묶음 규칙.</summary>
+        public bool TryTakeGroup(string instanceId, System.Collections.Generic.List<ItemRecord> moved)
+        {
+            if (string.IsNullOrEmpty(instanceId) || moved == null)
+                return false;
+            int idx = -1;
+            for (int i = 0; i < Items.Count; i++)
+            {
+                if (Items[i].InstanceId != instanceId)
+                    continue;
+                idx = i;
+                break;
+            }
+            if (idx < 0)
+                return false;
+            var root = Items[idx];
+            Items.RemoveAt(idx);
+            moved.Add(root);
+            if (!ItemCatalog.IsContainer(root.TemplateId) || string.IsNullOrEmpty(root.InstanceId))
+                return true;
+            for (int i = Items.Count - 1; i >= 0; i--)
+            {
+                if ((Items[i].ParentContainerId ?? "") != root.InstanceId)
+                    continue;
+                moved.Add(Items[i]);
+                Items.RemoveAt(i);
+            }
+            return true;
         }
 
         public ItemRecord[] ToArray() => Items.ToArray();

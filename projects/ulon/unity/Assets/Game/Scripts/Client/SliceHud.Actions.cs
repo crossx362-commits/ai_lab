@@ -422,6 +422,26 @@ namespace Ulon.Client
                 OfflineWorld.Instance.TryTakeFromPouch(Me(net), id, "");
         }
 
+        static void DepositOneItem(NetAvatar net, string instanceId)
+        {
+            if (string.IsNullOrEmpty(instanceId) || OfflineWorld.Instance == null)
+                return;
+            if (net != null && net.IsClientInitialized)
+                net.RpcDepositOne(instanceId);
+            else
+                OfflineWorld.Instance.TryDepositOne(Me(net), instanceId);
+        }
+
+        static void WithdrawOneItem(NetAvatar net, string instanceId)
+        {
+            if (string.IsNullOrEmpty(instanceId) || OfflineWorld.Instance == null)
+                return;
+            if (net != null && net.IsClientInitialized)
+                net.RpcWithdrawOne(instanceId);
+            else
+                OfflineWorld.Instance.TryWithdrawOne(Me(net), instanceId);
+        }
+
         static void Equip(NetAvatar net)
         {
             if (OfflineWorld.Instance == null)

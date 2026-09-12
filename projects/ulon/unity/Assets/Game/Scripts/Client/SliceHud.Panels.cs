@@ -16,51 +16,35 @@ namespace Ulon.Client
             int count = bag != null ? bag.Items.Count : 0;
             if (bagPick >= count)
                 bagPick = -1;
+            int bankCount = vault != null ? vault.Items.Count : 0;
+            if (bankPick >= bankCount)
+                bankPick = -1;
 
+            if (Event.current.type == EventType.Layout)
+                dropCells.Clear();
             DrawPaperdoll(me, net);
-            GUILayout.Label("가방" + (count > 0 ? "  " + count + "칸" : ""));
-            bagScroll = GUILayout.BeginScrollView(bagScroll, GUILayout.Height(Mathf.Min(200f, 26f * Mathf.Max(1, count) + 8f)));
-            if (count == 0)
-                GUILayout.Label("비었습니다");
-            else
-                for (int i = 0; i < count; i++)
-                {
-                    var it = bag.Items[i];
-                    // 같은 도구가 두 줄인 이유 — **개체마다 내구가 따로**라 겹쳐 쌓이지 않는다.
-                    // 화면에 번호를 붙여 「왜 두 개지?」가 되지 않게 한다(검수 2026-09-07).
-                    int dup = 0, seen = 0;
-                    for (int j = 0; j < count; j++)
-                        if (bag.Items[j].TemplateId == it.TemplateId) { dup++; if (j <= i) seen++; }
-                    // 고른 항목이 화면에 보여야 한다 — 버튼이 「무엇에」 작용하는지 모르면 도달 불가와 같다(검수).
-                    string line = (bagPick == i ? "▸ " : "   ") + ItemCatalog.DisplayNameOf(it.TemplateId) +
-                                  (dup > 1 ? " (" + seen + "/" + dup + ")" : "") +
-                                  (it.Amount > 1 ? " x" + it.Amount : "") +
-                                  (it.Uses > 0 ? "  내구 " + it.Uses : "") +
-                                  (it.Exceptional ? "  걸작" : "") +
-                                  (!string.IsNullOrEmpty(it.MakerId) ? "  제작 " + it.MakerId : "");
-                    if (Btn(line, ItemStyle(bagPick == i)))
-                        bagPick = bagPick == i ? -1 : i;
-                }
-            GUILayout.EndScrollView();
-
-            GUILayout.Label(vault != null && vault.Items.Count > 0 ? "은행" : "은행 비움");
-            if (vault != null)
-                for (int i = 0; i < vault.Items.Count; i++)
-                    GUILayout.Label("   " + ItemCatalog.DisplayNameOf(vault.Items[i].TemplateId) +
-                                    (vault.Items[i].Amount > 1 ? " x" + vault.Items[i].Amount : ""));
+            DrawBagGrid(bag);
+            DrawBankGrid(vault);
+            DrawDragGhost();
+            FinishDragIfNeeded(me, net);
             if (me.Ghost)
                 return;
 
             string picked = bagPick >= 0 && bagPick < count ? bag.Items[bagPick].TemplateId : "";
-            GUILayout.Label(picked == "" ? "고른 것 없음 — 항목을 눌러 고르세요"
+            string pickedInst = bagPick >= 0 && bagPick < count ? bag.Items[bagPick].InstanceId : "";
+            string banked = bankPick >= 0 && bankPick < bankCount ? vault.Items[bankPick].InstanceId : "";
+            GUILayout.Label(picked == "" ? "고른 것 없음 — 칸을 누르거나 끌어다 놓으세요"
                                          : "고른 것: " + ItemCatalog.DisplayNameOf(picked));
-            // 선택이 없으면 버튼은 **비활성**이다(누를 수는 있으나 아무 일도 안 하는 버튼을 두지 않는다).
             GUI.enabled = picked != "";
             GUILayout.BeginHorizontal();
             if (Btn("착용")) EquipItem(net, picked);
             if (Btn("주머니↓")) PouchInItem(net, picked);
             if (Btn("주머니↑")) PouchOutItem(net, picked);
+            if (Btn("맡기기")) DepositOneItem(net, pickedInst);
             GUILayout.EndHorizontal();
+            GUI.enabled = true;
+            GUI.enabled = banked != "";
+            if (Btn("찾기")) WithdrawOneItem(net, banked);
             GUI.enabled = true;
             if (Btn("장비 해제")) Unequip(net);
         }
