@@ -7,7 +7,8 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from collections import Counter
+from datetime import datetime, timezone, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -34,18 +35,177 @@ INBOX_LINE = re.compile(
 )
 
 
-def load_env_port() -> int:
-    port = 8787
+def _env_int(key: str, default: int) -> int:
     if ENV.exists():
         for line in ENV.read_text(encoding="utf-8").splitlines():
             s = line.strip()
-            if s.startswith("BOARD_PORT="):
+            if s.startswith(key + "="):
                 raw = s.split("=", 1)[1].split("#", 1)[0].strip().strip("'\"")
+                raw = re.sub(r"^\$\{[A-Z0-9_]+:-(\d+)\}$", r"\1", raw)
                 try:
-                    port = int(raw)
+                    return int(raw)
                 except ValueError:
                     pass
-    return int(os.environ.get("BOARD_PORT", port))
+    try:
+        return int(os.environ.get(key, default))
+    except ValueError:
+        return default
+
+
+def load_env_port() -> int:
+    return int(os.environ.get("BOARD_PORT", _env_int("BOARD_PORT", 8787)))
+
+
+SYS_SCORE = {
+    "원작 기준 합격": 100,
+    "동작함": 75,
+    "부분": 40,
+    "미확인": 15,
+    "없음": 0,
+}
+SYS_ORDER = ["원작 기준 합격", "동작함", "부분", "미확인", "없음"]
+
+
+def parse_ts(s: str):
+    if not s:
+        return None
+    raw = s.strip()
+    if re.search(r"[+-]\d{4}$", raw):
+        raw = raw[:-2] + ":" + raw[-2:]
+    try:
+        return datetime.fromisoformat(raw)
+    except Exception:
+        return None
+
+
+def parse_systems(md: str) -> dict:
+    rows = []
+    in_table = False
+    for line in md.splitlines():
+        if line.startswith("#") and "시스템 상태" in line:
+            in_table = True
+            continue
+        if not in_table:
+            continue
+        if line.startswith("## ") and "시스템 상태" not in line:
+            break
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.split("|")[1:-1]]
+        if len(cells) < 2 or cells[0] in {"시스템", "---"} or set(cells[1]) <= set("-: "):
+            continue
+        st = cells[1]
+        rows.append(
+            {
+                "name": cells[0],
+                "status": st,
+                "note": cells[2] if len(cells) > 2 else "",
+                "score": SYS_SCORE.get(st, 0),
+            }
+        )
+    counts = {k: 0 for k in SYS_ORDER}
+    counts.update(Counter(r["status"] for r in rows if r["status"] in counts))
+    n = len(rows)
+    score = round(sum(r["score"] for r in rows) / n) if n else 0
+    return {"rows": rows, "counts": counts, "score": score, "total": n}
+
+
+def wheel_progress(state: dict, timeout_min: int, sleep_between: int) -> dict:
+    st = state.get("display_status") or state.get("status") or ""
+    timeout_sec = max(1, timeout_min * 60)
+    started = parse_ts(str(state.get("started_at") or ""))
+    now = datetime.now(timezone.utc).astimezone()
+    elapsed = 0
+    if started:
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=timezone(timedelta(hours=9)))
+        elapsed = max(0, int((now - started).total_seconds()))
+    if st == "running":
+        pct = min(99, round(100 * elapsed / timeout_sec))
+        return {
+            "label": "이 바퀴 시간",
+            "pct": pct,
+            "elapsed_sec": elapsed,
+            "limit_sec": timeout_sec,
+            "remain_sec": max(0, timeout_sec - elapsed),
+        }
+    if st == "waiting":
+        wait = int(state.get("wait_remaining_sec") or 0)
+        sleep = max(1, sleep_between)
+        return {
+            "label": "다음 바퀴까지",
+            "pct": min(100, round(100 * (sleep - wait) / sleep)),
+            "elapsed_sec": sleep - wait,
+            "limit_sec": sleep,
+            "remain_sec": wait,
+        }
+    return {"label": "루프 정지", "pct": 0, "elapsed_sec": 0, "limit_sec": timeout_sec, "remain_sec": 0}
+
+
+def card_progress(card: dict, state: dict, wheel: dict) -> int:
+    st = card.get("status") or "대기"
+    if st == "완료":
+        return 100
+    if st == "검증 중":
+        return 85
+    if st in {"실패", "막힘", "대기"}:
+        return 0
+    if st == "진행 중":
+        fail = int(card.get("fail_streak") or 0)
+        assigned = card.get("assigned_loop")
+        cur = state.get("loop")
+        run = (state.get("display_status") or state.get("status")) == "running"
+        if run and assigned == cur:
+            return min(90, max(12, 12 + int(0.78 * (wheel.get("pct") or 0))))
+        if fail:
+            return min(70, 20 + fail * 20)
+        return 25
+    return 0
+
+
+def build_viz(state: dict, cards: list, status_md: str, inbox: list, history: list, commits: list) -> dict:
+    timeout_min = _env_int("LOOP_TIMEOUT_MIN", 90)
+    sleep_between = _env_int("SLEEP_BETWEEN", 45)
+    max_fail = _env_int("MAX_CONSEC_FAIL", 3)
+    max_turns = _env_int("MAX_TURNS", 160)
+    wheel = wheel_progress(state, timeout_min, sleep_between)
+    enriched = []
+    for c in cards:
+        pct = card_progress(c, state, wheel)
+        enriched.append({**c, "progress": pct})
+    n = len(enriched) or 1
+    board_pct = round(sum(c["progress"] for c in enriched) / n)
+    by_status = Counter(c.get("status") or "대기" for c in cards)
+    by_diff = Counter(c.get("difficulty") or "중" for c in cards)
+    systems = parse_systems(status_md)
+    today = state.get("today") or {}
+    loops = int(today.get("loops") or 0)
+    success = int(today.get("success") or 0)
+    fail = int(today.get("fail") or 0)
+    today_pct = round(100 * success / loops) if loops else 0
+    hist = history[-20:]
+    ok = sum(1 for r in hist if r.get("result") == "success")
+    hist_pct = round(100 * ok / len(hist)) if hist else 0
+    inbox_open = sum(1 for x in inbox if not x.get("done"))
+    inbox_done = sum(1 for x in inbox if x.get("done"))
+    consec = int(state.get("consec_fail") or 0)
+    active = [c for c in enriched if c.get("status") in {"진행 중", "검증 중"}]
+    return {
+        "wheel": wheel,
+        "board_pct": board_pct,
+        "today_pct": today_pct,
+        "hist_pct": hist_pct,
+        "systems": systems,
+        "by_status": {k: by_status.get(k, 0) for k in ["대기", "진행 중", "검증 중", "완료", "실패", "막힘"]},
+        "by_diff": {k: by_diff.get(k, 0) for k in ["하", "중", "상"]},
+        "cards": enriched,
+        "active": active,
+        "inbox": {"open": inbox_open, "done": inbox_done, "total": inbox_open + inbox_done},
+        "consec": {"n": consec, "max": max_fail, "pct": round(100 * consec / max(1, max_fail))},
+        "max_turns": max_turns,
+        "timeout_min": timeout_min,
+        "commits_n": len(commits),
+    }
 
 
 def git_root() -> Path:
@@ -327,6 +487,7 @@ def build_state() -> dict:
     commits = git_log(30)
     history = history_rows(50)
     blocked = sum(1 for c in cards if c.get("status") == "막힘")
+    viz = build_viz(state, cards, status, inbox, history, commits)
     return {
         "loop_state": state,
         "board": board,
@@ -342,7 +503,8 @@ def build_state() -> dict:
             "license_unknown": license_unknown_count(assets),
             "no_commit_streak": no_commit_streak(history, commits),
         },
-        "max_consec_fail": 3,
+        "max_consec_fail": viz["consec"]["max"],
+        "viz": viz,
     }
 
 

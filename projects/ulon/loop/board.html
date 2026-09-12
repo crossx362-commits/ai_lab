@@ -9,6 +9,7 @@
   --bg:#101010; --panel:#1a1a1a; --ink:#f2f0ea; --muted:#8e8a80;
   --line:#2c2c2c; --accent:#e2b657; --ok:#3dba6e; --warn:#e0a020;
   --bad:#e05645; --mid:#5aa8e0; --low:#62c48a; --high:#e07a3a;
+  --pass:#7ee0a3; --part:#e0a020; --none:#e05645; --unk:#8e8a80;
 }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 "IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif; }
@@ -23,7 +24,7 @@ textarea { min-height:52px; width:100%; }
 section.box { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin:14px 16px; }
 h2 { margin:0 0 10px; font-size:13px; color:var(--accent); letter-spacing:.04em; }
 .pre { white-space:pre-wrap; font-family:ui-monospace,Menlo,monospace; font-size:12px; max-height:360px; overflow:auto; background:#0d0d0d; padding:10px; border-radius:8px; }
-.md { overflow:auto; max-height:480px; }
+.md { overflow:auto; max-height:420px; }
 .md table { border-collapse:collapse; width:100%; font-size:13px; }
 .md th,.md td { border:1px solid var(--line); padding:4px 6px; }
 .md h1,.md h2,.md h3 { color:var(--accent); }
@@ -34,26 +35,43 @@ h2 { margin:0 0 10px; font-size:13px; color:var(--accent); letter-spacing:.04em;
 .b-fail { background:#4a1818; color:#ffc0b8; }
 .b-off { background:#2a2a2a; color:#bbb; }
 
-#status { background:#161616; border-bottom:1px solid var(--line); padding:16px 18px; display:grid; gap:10px; }
+#status { position:sticky; top:0; z-index:8; background:#161616; border-bottom:1px solid var(--line); padding:14px 18px; display:grid; gap:10px; }
 #status .top { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
 #status .task { font-size:20px; font-weight:700; }
-.stats { display:grid; grid-template-columns:repeat(6,minmax(90px,1fr)); gap:8px; }
-@media (max-width:800px){ .stats { grid-template-columns:repeat(3,1fr);} }
-.stat { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
-.stat b { display:block; font-size:20px; }
-.stat span { color:var(--muted); font-size:12px; }
-.stat.bad b { color:var(--bad); }
-.stat.ok b { color:var(--ok); }
+.rings { display:grid; grid-template-columns:repeat(4,minmax(140px,1fr)); gap:10px; }
+@media (max-width:900px){ .rings { grid-template-columns:repeat(2,1fr);} }
+.ringbox { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 12px; display:flex; gap:10px; align-items:center; }
+.ringbox svg { width:72px; height:72px; flex:none; }
+.ringbox b { display:block; font-size:22px; }
+.ringbox span { color:var(--muted); font-size:12px; }
 .alerts { display:flex; flex-wrap:wrap; gap:8px; font-size:13px; }
+
+.pbar { height:10px; background:#2a2a2a; border-radius:999px; overflow:hidden; }
+.pbar > i { display:block; height:100%; background:var(--accent); }
+.pbar.ok > i { background:var(--ok); }
+.pbar.bad > i { background:var(--bad); }
+.pbar.warn > i { background:var(--warn); }
+.pmeta { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:4px; }
+
+.stack { display:flex; height:18px; border-radius:9px; overflow:hidden; background:#2a2a2a; }
+.stack i { display:block; height:100%; min-width:0; }
+.legend { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; font-size:12px; color:var(--muted); }
+.legend b { color:var(--ink); }
+
+.now-card { background:#151515; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:8px; }
+.now-card .pct { font-size:28px; font-weight:800; color:var(--accent); }
+.grid2 { display:grid; grid-template-columns:1.3fr .7fr; gap:14px; }
+@media (max-width:960px){ .grid2 { grid-template-columns:1fr; } }
 
 .inbox-form { display:flex; gap:8px; align-items:flex-start; }
 .inbox-form textarea { flex:1; }
 ul.inbox { list-style:none; padding:0; margin:0; }
 ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; border-bottom:1px solid #2a2a2a; }
 .ack { min-height:1.2em; font-size:13px; }
+#inboxBox { border-color:#5a4a20; box-shadow:0 0 0 1px #3a3010 inset; }
 
 .kanban { display:grid; grid-template-columns:repeat(6,minmax(180px,1fr)); gap:8px; overflow-x:auto; }
-.col { background:#141414; border:1px solid var(--line); border-radius:10px; padding:8px; min-height:180px; }
+.col { background:#141414; border:1px solid var(--line); border-radius:10px; padding:8px; min-height:160px; }
 .col.blocked { border:2px solid var(--bad); }
 .col h3 { margin:0 0 8px; font-size:12px; color:var(--muted); }
 .card { background:#151515; border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; }
@@ -61,6 +79,9 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
 .d-중 { border-left:4px solid var(--mid); }
 .d-상 { border-left:4px solid var(--high); }
 .filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+
+.sysrow { display:grid; grid-template-columns:1fr 90px 1fr; gap:8px; align-items:center; padding:4px 0; border-bottom:1px solid #242424; font-size:13px; }
+.sysrow .pbar { height:8px; }
 
 .timeline { display:flex; flex-wrap:wrap; gap:6px; }
 .tick { min-width:48px; padding:6px 8px; border-radius:8px; cursor:pointer; font-size:12px; text-align:center; color:#111; }
@@ -71,13 +92,14 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
 .t-run { background:var(--mid); }
 .bars { display:flex; align-items:flex-end; gap:4px; height:72px; margin-top:10px; }
 .bars .bar { width:14px; background:var(--mid); border-radius:3px 3px 0 0; min-height:2px; }
+.bars .bar.fail { background:var(--bad); }
+.bars .bar.to { background:#888; }
 .bars .bar span { display:block; font-size:9px; color:var(--muted); transform:translateY(-14px); text-align:center; }
 
 .thumbs { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
 .thumbs img { width:96px; height:96px; object-fit:cover; border:1px solid var(--line); cursor:pointer; }
 .commit a { color:var(--accent); }
 .empty { color:var(--muted); padding:12px 4px; }
-#inboxBox { border-color:#5a4a20; box-shadow:0 0 0 1px #3a3010 inset; }
 </style>
 </head>
 <body>
@@ -89,9 +111,16 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
     <span id="nowBtns"></span>
   </div>
   <div class="muted" id="nowMeta"></div>
-  <div class="stats" id="stats"></div>
+  <div class="rings" id="rings"></div>
   <div class="alerts" id="alerts"></div>
 </div>
+
+<section class="box" id="nowWork">
+  <h2>지금 하는 일</h2>
+  <div id="activeWork"></div>
+  <div class="pmeta" id="wheelMeta"></div>
+  <div class="pbar" id="wheelBar"><i style="width:0%"></i></div>
+</section>
 
 <section class="box" id="inboxBox">
   <h2>INBOX 지시</h2>
@@ -101,6 +130,8 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
     <button class="ok" id="inboxSend">보내기</button>
   </div>
   <p class="ack muted" id="inboxAck"></p>
+  <div class="stack" id="inboxStack" style="margin:8px 0"></div>
+  <div class="legend" id="inboxLegend"></div>
   <h3 class="muted">미처리</h3>
   <ul class="inbox" id="inboxOpen"></ul>
   <h3 class="muted">처리됨</h3>
@@ -108,8 +139,12 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
 </section>
 
 <section class="box">
-  <h2>작업 보드</h2>
-  <div class="filters">
+  <h2>작업 진행</h2>
+  <div class="stack" id="pipeStack"></div>
+  <div class="legend" id="pipeLegend"></div>
+  <div class="stack" id="diffStack" style="margin-top:10px"></div>
+  <div class="legend" id="diffLegend"></div>
+  <div class="filters" style="margin-top:12px">
     <select id="fDiff"><option value="">난이도 전부</option><option>하</option><option>중</option><option>상</option></select>
     <select id="fModel"><option value="">모델 전부</option></select>
     <select id="fStatus"><option value="">상태 전부</option>
@@ -126,18 +161,29 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
 </section>
 
 <section class="box">
-  <h2>STATUS.md · 막힌 것 · 시스템 상태</h2>
-  <div class="md" id="statusHighlight"></div>
-  <h2>전문</h2>
-  <div class="md" id="statusAll"></div>
+  <h2>시스템 커버리지 (기획서 대비)</h2>
+  <div class="stack" id="sysStack"></div>
+  <div class="legend" id="sysLegend"></div>
+  <p class="muted" id="sysScore"></p>
+  <div id="sysRows"></div>
 </section>
 
 <section class="box">
-  <h2>바퀴 타임라인 (최근 50)</h2>
-  <p class="muted">초록=성공·커밋 / 노랑=성공·커밋 없음 / 빨강=실패 / 회색=타임아웃. 칸을 누르면 로그.</p>
+  <h2>막힌 것</h2>
+  <div class="md" id="statusHighlight"></div>
+</section>
+
+<section class="box">
+  <h2>바퀴 타임라인</h2>
+  <p class="muted">초록=성공·커밋 / 노랑=성공·커밋 없음 / 빨강=실패 / 회색=타임아웃</p>
   <div class="timeline" id="timeline"></div>
   <div class="bars" id="bars"></div>
   <pre class="pre" id="logView">칸을 누르면 그 바퀴 로그가 여기 뜹니다.</pre>
+</section>
+
+<section class="box">
+  <h2>STATUS.md 전문</h2>
+  <div class="md" id="statusAll"></div>
 </section>
 
 <section class="box">
@@ -167,6 +213,9 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
 
 <script>
 const COLS = ["대기","진행 중","검증 중","완료","실패","막힘"];
+const COL_COLOR = {"대기":"#5a5a5a","진행 중":"#5aa8e0","검증 중":"#e2b657","완료":"#3dba6e","실패":"#e05645","막힘":"#e05645"};
+const DIFF_COLOR = {"하":"#62c48a","중":"#5aa8e0","상":"#e07a3a"};
+const SYS_COLOR = {"원작 기준 합격":"#7ee0a3","동작함":"#3dba6e","부분":"#e0a020","미확인":"#8e8a80","없음":"#e05645"};
 let STATE = null;
 
 function esc(s) {
@@ -217,6 +266,28 @@ function elapsed(iso) {
   if (m) return `${m}분 ${s%60}초`;
   return `${s}초`;
 }
+function fmtSec(s) {
+  s = Math.max(0, Number(s)||0);
+  const m = Math.floor(s/60);
+  if (m >= 60) return `${Math.floor(m/60)}시간 ${m%60}분`;
+  if (m) return `${m}분 ${s%60}초`;
+  return `${s}초`;
+}
+function ring(pct, color) {
+  const p = Math.max(0, Math.min(100, Number(pct)||0));
+  const c = 2 * Math.PI * 26;
+  const dash = (p/100) * c;
+  return `<svg viewBox="0 0 72 72" aria-hidden="true">
+    <circle cx="36" cy="36" r="26" fill="none" stroke="#2a2a2a" stroke-width="8"/>
+    <circle cx="36" cy="36" r="26" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round"
+      stroke-dasharray="${dash} ${c}" transform="rotate(-90 36 36)"/>
+    <text x="36" y="41" text-anchor="middle" fill="#f2f0ea" font-size="14" font-weight="700">${Math.round(p)}</text>
+  </svg>`;
+}
+function stack(parts) {
+  const total = parts.reduce((a,p)=>a+(p.n||0), 0) || 1;
+  return parts.map(p => `<i title="${esc(p.label)} ${p.n}" style="width:${(100*(p.n||0)/total).toFixed(2)}%;background:${p.color}"></i>`).join("");
+}
 function extractSection(src, key) {
   if (!src) return "";
   const lines = src.split("\n");
@@ -233,6 +304,7 @@ function extractSection(src, key) {
   }
   return md(lines.slice(start, end).join("\n"));
 }
+function viz() { return STATE.viz || {}; }
 
 async function refresh() {
   const r = await fetch("/api/state");
@@ -243,6 +315,7 @@ function render() {
   const ls = STATE.loop_state || {};
   const today = ls.today || {};
   const w = STATE.warnings || {};
+  const v = viz();
   const st = ls.display_status || ls.status;
   const [bcls, blabel] = badgeOf(st, ls.wait_remaining_sec);
   document.getElementById("badge").innerHTML = `<span class="badge ${bcls}">${blabel}</span>`;
@@ -261,38 +334,101 @@ function render() {
   };
   if (btnGo) btnGo.onclick = async () => { await fetch("/api/stop", {method:"DELETE"}); refresh(); };
 
-  document.getElementById("stats").innerHTML = [
-    ["오늘 바퀴", today.loops||0, ""],
-    ["성공", today.success||0, "ok"],
-    ["실패", today.fail||0, (today.fail||0) ? "bad" : ""],
-    ["커밋", today.commits||0, ""],
-    ["막힘", w.blocked||0, (w.blocked||0) ? "bad" : ""],
-    ["라이선스 미확인", w.license_unknown||0, (w.license_unknown||0) ? "bad" : ""],
-  ].map(([k,v,c]) => `<div class="stat ${c}"><b>${v}</b><span>${k}</span></div>`).join("");
+  const sys = v.systems || {score:0};
+  const wheel = v.wheel || {pct:0,label:"—"};
+  const activePct = (v.active && v.active[0] && v.active[0].progress) || (st==="running" ? wheel.pct : 0);
+  const consec = v.consec || {n:0,max:3,pct:0};
+  document.getElementById("rings").innerHTML = [
+    [activePct, st==="running" ? "#5aa8e0" : "#e2b657", (v.active&&v.active[0]) ? `${v.active[0].progress}%` : `${activePct}%`, "지금 작업"],
+    [wheel.pct, "#e2b657", `${wheel.pct}%`, wheel.label || "이 바퀴"],
+    [sys.score||0, "#3dba6e", `${sys.score||0}%`, `시스템 ${sys.total||0}항`],
+    [v.today_pct||0, (today.fail? "#e05645":"#3dba6e"), `${v.today_pct||0}%`, `오늘 성공 ${today.success||0}/${today.loops||0}`],
+  ].map(([p,col,big,sub]) => `<div class="ringbox">${ring(p,col)}<div><b>${esc(big)}</b><span>${esc(sub)}</span></div></div>`).join("");
 
   const alerts = [];
   if (w.blocked) alerts.push(`<span class="warn">막힘 ${w.blocked}건</span>`);
   if (w.license_unknown) alerts.push(`<span class="warn">라이선스 미확인 ${w.license_unknown}건</span>`);
   if ((w.no_commit_streak||0) >= 3) alerts.push(`<span class="warn">커밋 없는 바퀴 3연속</span>`);
+  if (consec.n) alerts.push(`<span class="warn">연속 실패 ${consec.n}/${consec.max}</span>`);
   document.getElementById("alerts").innerHTML = alerts.join(" · ") || `<span class="muted">경고 없음</span>`;
 
+  renderActive();
   renderInbox();
   fillModels();
+  renderPipe();
   renderKanban();
+  renderSystems();
   const stmd = STATE.status_md || "";
-  document.getElementById("statusHighlight").innerHTML =
-    extractSection(stmd, "막힌") + extractSection(stmd, "시스템 상태") || "<p class='muted'>강조 절 없음</p>";
+  document.getElementById("statusHighlight").innerHTML = extractSection(stmd, "막힌") || "<p class='muted'>막힌 것 없음</p>";
   document.getElementById("statusAll").innerHTML = md(stmd);
   renderTimeline();
   renderCommits();
   renderAssets();
   loadLive();
 }
+function renderActive() {
+  const v = viz();
+  const ls = STATE.loop_state || {};
+  const wheel = v.wheel || {};
+  const active = v.active || [];
+  const box = document.getElementById("activeWork");
+  if (!active.length) {
+    box.innerHTML = `<p class="empty">${(ls.display_status||ls.status)==="running" ? "보드에 진행 중 카드가 없습니다. 세션은 돌아가고 있습니다." : "진행 중인 작업 없음"}</p>`;
+  } else {
+    box.innerHTML = active.map(c => `
+      <div class="now-card d-${esc(c.difficulty||"중")}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+          <div><b>${esc(c.title)}</b>
+            <div class="muted">난이도 ${esc(c.difficulty||"—")} · ${esc(c.model||"—")} · ${esc(c.status)} · 배정 #${esc(c.assigned_loop ?? "—")}</div>
+            <div class="muted">${esc(c.rationale||"")}</div>
+          </div>
+          <div class="pct">${c.progress}%</div>
+        </div>
+        <div class="pbar ${c.progress>=80?"ok":""}" style="margin-top:8px"><i style="width:${c.progress}%"></i></div>
+        <div class="pmeta"><span>${c.fail_streak ? "실패 연속 "+c.fail_streak : "진행 중"}</span><span>${c.progress} / 100</span></div>
+      </div>`).join("");
+  }
+  const bar = document.getElementById("wheelBar");
+  bar.className = "pbar " + ((wheel.pct||0)>90 ? "warn" : "");
+  bar.innerHTML = `<i style="width:${wheel.pct||0}%"></i>`;
+  document.getElementById("wheelMeta").innerHTML =
+    `<span>${esc(wheel.label||"이 바퀴")} ${wheel.pct||0}%</span><span>경과 ${fmtSec(wheel.elapsed_sec)} / 한도 ${fmtSec(wheel.limit_sec)} · 남음 ${fmtSec(wheel.remain_sec)}</span>`;
+}
+function renderPipe() {
+  const v = viz();
+  const by = v.by_status || {};
+  const pipe = COLS.map(k => ({label:k, n:by[k]||0, color:COL_COLOR[k]}));
+  document.getElementById("pipeStack").innerHTML = stack(pipe);
+  document.getElementById("pipeLegend").innerHTML = pipe.map(p => `<span><i style="display:inline-block;width:8px;height:8px;background:${p.color};border-radius:2px"></i> ${p.label} <b>${p.n}</b></span>`).join("");
+  const diff = ["하","중","상"].map(k => ({label:k, n:(v.by_diff||{})[k]||0, color:DIFF_COLOR[k]}));
+  document.getElementById("diffStack").innerHTML = stack(diff);
+  document.getElementById("diffLegend").innerHTML = "난이도 " + diff.map(p => `<span>${p.label} <b>${p.n}</b></span>`).join(" · ") + ` · 보드 진행 ${v.board_pct||0}%`;
+}
+function renderSystems() {
+  const sys = (viz().systems) || {rows:[], counts:{}, score:0, total:0};
+  const parts = Object.keys(SYS_COLOR).map(k => ({label:k, n:(sys.counts||{})[k]||0, color:SYS_COLOR[k]}));
+  document.getElementById("sysStack").innerHTML = stack(parts);
+  document.getElementById("sysLegend").innerHTML = parts.map(p => `<span>${p.label} <b>${p.n}</b></span>`).join(" · ");
+  document.getElementById("sysScore").textContent = `가중 커버리지 ${sys.score||0}%  (합격 100 · 동작함 75 · 부분 40 · 미확인 15 · 없음 0)`;
+  const rows = sys.rows || [];
+  document.getElementById("sysRows").innerHTML = rows.map(r => `
+    <div class="sysrow">
+      <div>${esc(r.name)}</div>
+      <div>${esc(r.status)}</div>
+      <div class="pbar ${r.score>=75?"ok": r.score<=0?"bad":"warn"}"><i style="width:${r.score}%"></i></div>
+    </div>`).join("") || "<p class='empty'>시스템 표 없음</p>";
+}
 function renderInbox() {
   const open = document.getElementById("inboxOpen");
   const done = document.getElementById("inboxDone");
   open.innerHTML = ""; done.innerHTML = "";
   const items = STATE.inbox || [];
+  const ib = viz().inbox || {open:0,done:0,total:0};
+  document.getElementById("inboxStack").innerHTML = stack([
+    {label:"미처리", n:ib.open, color:"#e0a020"},
+    {label:"처리됨", n:ib.done, color:"#3dba6e"},
+  ]);
+  document.getElementById("inboxLegend").innerHTML = `미처리 <b>${ib.open}</b> · 처리됨 <b>${ib.done}</b>`;
   if (!items.filter(x => !x.done).length) open.innerHTML = "<li class='empty'>미처리 없음. 위에 써서 보내면 INBOX.md에 기록됩니다.</li>";
   if (!items.filter(x => x.done).length) done.innerHTML = "<li class='muted'>처리된 항목 없음</li>";
   for (const it of items) {
@@ -341,20 +477,28 @@ function passCard(c) {
   }
   return true;
 }
+function cardPct(c) {
+  const hit = (viz().cards || []).find(x => x.id === c.id);
+  return hit ? hit.progress : 0;
+}
 function renderKanban() {
   const cards = ((STATE.board && STATE.board.cards) || []).filter(passCard);
   document.getElementById("kanban").innerHTML = COLS.map(col => {
     const list = cards.filter(c => c.status === col);
     const blocked = col === "막힘" ? " blocked" : "";
-    const inner = list.length ? list.map(c => `
+    const inner = list.length ? list.map(c => {
+      const pct = cardPct(c);
+      return `
       <div class="card d-${esc(c.difficulty||"중")}">
         <div><b>${esc(c.title)}</b></div>
-        <div class="muted">난이도 ${esc(c.difficulty||"—")} · ${esc(c.model||"—")}</div>
+        <div class="pbar" style="margin:6px 0"><i style="width:${pct}%"></i></div>
+        <div class="muted">${pct}% · 난이도 ${esc(c.difficulty||"—")} · ${esc(c.model||"—")}</div>
         <div class="muted">배정 #${esc(c.assigned_loop ?? "—")} · 완료 #${esc(c.completed_loop ?? "—")}
           ${c.commit ? `· <a href="#" data-h="${esc(c.commit)}">${esc(String(c.commit).slice(0,8))}</a>` : ""}</div>
         <div class="muted">${esc(c.rationale||"")}</div>
         <button class="reply" data-t="${esc(c.title)}">INBOX에 답하기</button>
-      </div>`).join("") : `<p class="empty">없음</p>`;
+      </div>`;
+    }).join("") : `<p class="empty">없음</p>`;
     return `<div class="col${blocked}"><h3>${col} ${list.length}</h3>${inner}</div>`;
   }).join("");
   document.querySelectorAll("#kanban .reply").forEach(b => b.onclick = () => {
@@ -396,7 +540,8 @@ function renderTimeline() {
   const max = Math.max(1, ...hist.map(r => Number(r.elapsed_sec)||0));
   document.getElementById("bars").innerHTML = hist.map(r => {
     const h = Math.max(4, Math.round(((Number(r.elapsed_sec)||0)/max)*72));
-    return `<div class="bar" title="#${r.loop} ${r.elapsed_sec||0}s" style="height:${h}px"><span>${r.loop}</span></div>`;
+    const cls = r.result==="fail"?"fail": r.result==="timeout"?"to":"";
+    return `<div class="bar ${cls}" title="#${r.loop} ${r.elapsed_sec||0}s" style="height:${h}px"><span>${r.loop}</span></div>`;
   }).join("");
 }
 async function showLog(n) {
