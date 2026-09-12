@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T16:51:35.414028+09:00",
+  "updated_at": "2026-09-12T17:07:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -187,23 +187,23 @@
       "title": "FishNet 관심 영역(기획 §7.3)",
       "difficulty": "상",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": null,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "코드 없음. 20~50 동접 전제. P3. 핵심 루프 재검증 이후.",
+      "status": "완료",
+      "assigned_loop": 20,
+      "completed_loop": 20,
+      "commit": "45207e82",
+      "rationale": "JSON 18m+DistanceCondition. 호스트 샷 광장 0/21 vis·사냥터 Skeleton vis. 게이트+NC. 2클라는 바이너리 없음.",
       "fail_streak": 0
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#19는 GM 권한을 닫음",
+      "title": "지금 하는 일: 없음 — loop#20은 관심 영역을 닫음",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 19,
-      "completed_loop": 19,
-      "commit": "aea2e089",
-      "rationale": "INBOX 16:42. 보드에 현재 작업을 한 줄로 밝힌다. 다음 바퀴가 이 카드를 고친다.",
+      "assigned_loop": 20,
+      "completed_loop": 20,
+      "commit": "45207e82",
+      "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
     {
@@ -253,14 +253,18 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "c3f00f34",
-      "rationale": "기획 §6.1 지역 범례·§18.4 본인 최근 시체 표시 및 동화풍 지도. 전용 Unity 컴파일·9개 동작 검사 PASS. 1440×900/960×540 실제 HUD 화면 검증과 master 통합은 남음.",
+      "rationale": "기존 구현 c3f00f34 유지. #2 전용 Unity Metal 로직 9검사 PASS·스탠드얼론 빌드 성공. batchmode HUD 실행 exit 1, 실제 PNG 0개·OnGUI 조작 수단 0개. 기존 batchmode가 서버 모드로 분류됨을 확인하여 동일 명령 반복 금지. 격리된 헤드리스 IMGUI 캡처 경로 입증 후 1440×900/960×540·2인 시체 수신 재검증 필요. 완료 아님.",
       "fail_streak": 0,
-      "codex_iteration": 1,
+      "codex_iteration": 2,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
         "docs/CODEX_STATUS.md",
-        "/Users/junholee/ai_lab/output/ulon-codex/map-green.log"
-      ]
+        "/Users/junholee/ai_lab/output/ulon-codex/loop2-map-graphics.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop2-headless-build.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop2-hud-headless.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop2-hud-result.json"
+      ],
+      "verification_commit": "9b9780cd"
     },
     {
       "id": "codex-storybook-lantern",
@@ -296,6 +300,24 @@
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
         "docs/CODEX_STATUS.md"
+      ]
+    },
+    {
+      "id": "codex-headless-loop",
+      "title": "그록 방식 Codex 헤드리스 연속 루프 실행",
+      "difficulty": "중",
+      "model": "gpt",
+      "owner": "codex",
+      "status": "완료",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "cad9b82e",
+      "fail_streak": 0,
+      "rationale": "예약 codex-ui 중지. 독립 부모가 codex exec 새 세션 반복(45초 간격,90분 제한,3회 실패 정지). 실제 CLI 도구 실행 확인, 프로세스 회귀 6개 PASS. 게임 완료 판정과 별개.",
+      "evidence": [
+        "loop/codex_loop.py",
+        "tools/test_codex_loop.py",
+        "/Users/junholee/ai_lab/output/ulon-codex/runtime_state.json"
       ]
     }
   ]

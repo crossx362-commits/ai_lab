@@ -1,14 +1,18 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#18** (실패) · 2026-09-12T16:45:29+0900
-grok -p 종료 코드 1
+마지막 바퀴: **#19** (성공) · 2026-09-12T16:57:08+0900
+원작 대비: 권한 있는 쪽만 GM 명령을 쓰는 점은 같고, 거절 사유·NC는 낫고, 상담원 명령 풀셋과 전용 서버 2클라 실측은 부족합니다. 핵심(무인증 지급 차단)은 통과, 원작 운영툴 합격은 아닙니다.
 
-- 모델 `gpt` · 경과 1s · 세션 rc `1`
-- HEAD `ddcc6af0 [loop#16] ui-target-cursor 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 651s · 세션 rc `0`
+- HEAD `99e5e31e [loop#19] gm-auth 검증 결과 STATUS·보드 반영` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- (이 바퀴 커밋 없음)
+- `99e5e31e [loop#19] gm-auth 검증 결과 STATUS·보드 반영`
+- `aea2e089 [loop#19] GM 패널 서버 권한 확인`
+- `33c5a72f [codex] 헤드리스 실행과 보드 결과 전용 보고 반영`
+- `bbffa594 [codex#1] 공유 보드 자율개발 지시서와 실행 근거 기록`
+- `4680fdcf fix(ulon/loop): grok 세션에 gpt 모델명을 넣지 않는다`
 
 ## 바퀴 기록
 
@@ -32,6 +36,7 @@ grok -p 종료 코드 1
 | #16 | 성공 | 2026-09-12T16:43:52+0900 | grok-4.6 | 961s |
 | #17 | 실패 | 2026-09-12T16:44:40+0900 | gpt | 1s |
 | #18 | 실패 | 2026-09-12T16:45:29+0900 | gpt | 1s |
+| #19 | 성공 | 2026-09-12T16:57:08+0900 | grok-4.6 | 651s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -73,7 +78,7 @@ grok -p 종료 코드 1
 | Moongate·Mark/Recall | 부분 | 코드. 플레이 미실행 |
 | FishNet 호스트/클라 | 부분 | `AutoStartNetwork`. 전용 서버 빌드·외부 접속 **미확인** |
 | PostgreSQL 영구 저장 | 동작함 | loop#6 /ready 200. loop#10: persist `saved_at` 왕복(운영 PG PUT/GET `loop10-latest-wins`). CharacterStore.Load가 JSON이 더 최신이면 골드99·iron_sword·검술40을 고르고 persist에 밀어 넣음. NC: 2000년 JSON(wood)은 못 덮음. 에디터 execute_code `OK gold=99 inv=iron_sword skill=40 savedAt=2099-01-01T00:00:00Z`. SQLite `test_persist_atomicity` 6/6. 클라 재접속 왕복은 **미실행**(UDP 7770 닫힘·클라 바이너리 없음) |
-| 관심 영역(Interest Management) | 없음 | 기획 §7.3. 코드 없음 |
+| 관심 영역(Interest Management) | 부분 | loop#20: `interest.json` 18m + FishNet `ObserverManager`/`DistanceCondition`. 호스트 플레이: 광장에서 몹 렌더러 0/21, 사냥터 옆에서 Skeleton 1.2m vis. 샷 `unity/Captures/loop20_interest_hunt_near.png`·`loop20_interest_plaza_far.png`. 게이트 `AssertInterest`+NC. 2클라 서로 보임은 바이너리 없어 **미실행**. 기획서에 미터값 없음 → 원작 합격 아님 |
 | LOD·거리 비활성 | 없음 | 기획 §8.1 |
 | UI 팩(Paperdoll 그림·DnD·우클릭) | 부분 | loop#14 우클릭 + loop#16 대상 지정 모드. 샷 `unity/Captures/loop16_target_heal_mark.png`(노란 십자·안내)·`loop16_target_spell.png`·`loop16_target_gather.png`·`loop16_target_interact.png`·`loop16_target_action_gather.png`(행동 탭 「채집」). 게이트 `AssertTargetCursor`+NC. Kenney 커서 스킨·외형 렌더·한글 폰트는 **없음** |
 | VFX | 동작함 | loop#8 타격 불티 + loop#9 등불·횃불·분수 루프 파티클. 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티. 분수 물줄기는 약함 |
@@ -105,20 +110,19 @@ grok -p 종료 코드 1
 
 ## 완료한 것 (이 바퀴)
 
-- `gm-auth`: GM 패널 명령을 서버가 계정으로 연다. 원장 `StreamingAssets/Data/gm_accounts.json`(비어 있음)+CLI `-ulon-gm-account`. 원격 클라는 목록에 있어야 함. F1·`-ulon-gm`은 패널만. 네트 중엔 `NetAvatar.RpcGm*`. 커밋 `aea2e089`. 게이트 `AssertGmAuth`+NC (`NcOpen`이면 무인증이 통과해 빨간불). HTTP MCP 플레이 샷 `unity/Captures/loop19_gm_panel.png`. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유라 못 돌림.
-- 원작 대비: 같은 점 — GM 명령은 권한 있는 쪽만 실행된다. 나은 점 — 거절 사유 `unauthorized`와 NC가 있다. 부족한 점 — 원작 상담원/시어 명령 풀셋이 아니고, 전용 서버에서 미등록 클라가 거절되는 2클라 실측은 이번 없음. 핵심(무인증 지급 차단)은 통과, 원작 운영툴 합격은 아님.
+- `interest-mgmt`: 기획 §7.3. 원장 `StreamingAssets/Data/interest.json` `sync_range_m=18`(ServUO `GetUpdateRange` 기본 18타일, https://github.com/ServUO/ServUO/blob/master/Server/Map.cs). `InterestSetup`이 서버 기동 전 `ObserverManager`에 `DistanceCondition`을 넣음. `DualClientProbe`는 스폰에서 몹을 기다리지 않고 사냥터로 붙음. 커밋 `45207e82`. 게이트 `AssertInterest`+NC (`NcOpen`이면 19m가 보여 빨간불). 호스트 플레이: 광장 몹 vis 0/21, 사냥터 옆 Skeleton 1.2m vis·Acolyte 18.1m 숨김. 샷 `unity/Captures/loop20_interest_hunt_near.png`·`loop20_interest_plaza_far.png`. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유라 못 돌림. 콘솔 URP `depth surface memoryless` 경고 2줄은 물 깊이 카메라 잔재로 이번 코드가 아님.
+- 원작 대비: 같은 점 — 멀리 있는 몹은 클라에 안 보인다(18타일). 나은 점 — JSON 원장·NC·호스트 vis. 부족한 점 — 기획서에 미터값이 없고, 플레이어↔플레이어 2클라 실측이 없다. 핵심(거리 밖 동기화 제외)은 호스트에서 통과, 원작 합격은 아님.
 
 ## 지금 하는 것
 
-없음. loop#19 카드 `gm-auth` 닫음.
+없음. loop#20 카드 `interest-mgmt` 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
 1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
-2. `tools/two_client_check.sh` — GM 무인증 거절도 여기서 재실측
-3. FishNet 관심 영역 (`interest-mgmt`)
-4. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선 (`uo-half-span`, `codex-*`)
-5. 그래픽·UI 폴리시·물가 셰이더·Kenney 커서 스킨은 GPT/Codex 차선 (그록 안 함)
+2. `tools/two_client_check.sh` — 관심 영역(멀리서 안 보임·가까이서 보임)과 GM 무인증 거절 재실측
+3. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선 (`uo-half-span`, `codex-*`)
+4. 그래픽·UI 폴리시·물가 셰이더·Kenney 커서 스킨은 GPT/Codex 차선 (그록 안 함)
 
 ## 막힌 것 (사람 결정)
 
@@ -132,6 +136,7 @@ grok -p 종료 코드 1
 - **ai_lab-loop 워크트리:** 앞선 작업이 아니라 뒤처짐. 그곳 빌드만 쓰지 말고 이 트리에서 다시 빌드할 것. 병합 금지.
 - **물 2·3단계(프레넬·정점 흔들림), 강 곡류:** 핸드오프상 검수 판정 뒤.
 - **에디터 점유:** PID 85035가 잠금. 배치 빌드/셀프체크는 불가. HTTP MCP로는 플레이 가능(loop#7 사용). 배치 검사는 에디터를 닫은 뒤에.
+- **관심 영역 미터값 기획서 보강 필요:** §7.3은 「주변 일정 거리」만. 구현은 ServUO 기본 18타일. 기획서가 18(또는 다른 값)을 확정하기 전 원작 합격 없음.
 - **원작 울온 절반 크기:** map0 6144×4096 타일(Stratics, 1타일≈1m → 절반 ≈3072m). 출처 https://community.stratics.com/threads/land-in-uo.221830/ . Unity Terrain 하이트맵 최대 4097. 지금 셀(300/512 m)이면 LandScale 최대 8(2400m). 3072m는 청크·더 큰 셀 중 사람 선택이 필요.
 - **INBOX vs 기획 §6.1:** 기획은 「작은 하나의 살아 있는 월드」. 오너 INBOX(절반 크기)를 우선하되, 한 지형으로 3072m는 엔진 상한과 충돌.
 - **INBOX 16:04 병렬 vs PROMPT 한 작업:** INBOX 우선. #15는 Unity와 안 겹치는 보고서만. 남은 대기 카드(클라 빌드·2클라·물가·관심영역·절반맵)는 전부 에디터/클라라 에디터 점유 중엔 나란히 못 연다.
