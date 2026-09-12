@@ -19,6 +19,7 @@ STATUS_SKIP = (
     "two_client",
     "2인",
     "사람 확인",
+    "사람 결정",
     "사람/",
     "Codex",
     "GPT",
