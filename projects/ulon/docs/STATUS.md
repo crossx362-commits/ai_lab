@@ -1,15 +1,14 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#15** (성공) · 2026-09-12T16:27:03+0900
-커밋: `b1e7ab40` 구현, `8fb446ae` 검증·STATUS. 배치 셀프체크·클라 빌드는 에디터(PID 85035) 점유라 못 돌렸습니다. 다음은 에디터를 닫은 뒤 `UlonClient.app` 재빌드입니다.
+마지막 바퀴: **#18** (실패) · 2026-09-12T16:45:29+0900
+grok -p 종료 코드 1
 
-- 모델 `grok-4.6` · 경과 1181s · 세션 rc `0`
-- HEAD `8fb446ae [loop#15] board-report-page 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- 모델 `gpt` · 경과 1s · 세션 rc `1`
+- HEAD `ddcc6af0 [loop#16] ui-target-cursor 검증 결과 STATUS·보드 반영` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `8fb446ae [loop#15] board-report-page 검증 결과 STATUS·보드 반영`
-- `b1e7ab40 [loop#15] 보드에 샷 위주 보고서 페이지`
+- (이 바퀴 커밋 없음)
 
 ## 바퀴 기록
 
@@ -30,6 +29,9 @@
 | #13 | 성공 | 2026-09-12T15:49:27+0900 | grok-4.6 | 699s |
 | #14 | 성공 | 2026-09-12T16:06:34+0900 | grok-4.6 | 980s |
 | #15 | 성공 | 2026-09-12T16:27:03+0900 | grok-4.6 | 1181s |
+| #16 | 성공 | 2026-09-12T16:43:52+0900 | grok-4.6 | 961s |
+| #17 | 실패 | 2026-09-12T16:44:40+0900 | gpt | 1s |
+| #18 | 실패 | 2026-09-12T16:45:29+0900 | gpt | 1s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -76,7 +78,7 @@
 | UI 팩(Paperdoll 그림·DnD·우클릭) | 부분 | loop#14 우클릭 + loop#16 대상 지정 모드. 샷 `unity/Captures/loop16_target_heal_mark.png`(노란 십자·안내)·`loop16_target_spell.png`·`loop16_target_gather.png`·`loop16_target_interact.png`·`loop16_target_action_gather.png`(행동 탭 「채집」). 게이트 `AssertTargetCursor`+NC. Kenney 커서 스킨·외형 렌더·한글 폰트는 **없음** |
 | VFX | 동작함 | loop#8 타격 불티 + loop#9 등불·횃불·분수 루프 파티클. 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티. 분수 물줄기는 약함 |
 | SFX | 동작함 | 같은 플레이에서 `ActionSfx.Played` 0→3. 공간 음원 3D. 귀로 들은 것은 MCP라 미확인(카운트만) |
-| GM 도구 | 부분 | GM 패널 코드. 실행 없음 |
+| GM 도구 | 부분 | loop#19: 무인증 `GmGive` `fail=unauthorized`. 원장 계정 지급 성공. 에디터 바이패스 지급 성공. 게이트 `AssertGmAuth`+NC OK. 샷 `unity/Captures/loop19_gm_panel.png`(F1 패널·광장복구·지급 버튼). 전용 서버+미등록 클라 2클라 실측은 바이너리 없어 **미실행** |
 | 백업/복구 | 부분 | 백업 버튼·`data/backups/`. 화면 복구 경로 없음. E2E 미실행 |
 | 봇/부하 테스트 | 없음 | 기획 §14.1 |
 | 알파 준비 판정 스크립트 | 동작함 | 이번 `python3 tools/test_alpha_readiness.py` → **OK** (1 test). 운영 서비스 기동은 아님 |
@@ -103,17 +105,17 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `ui-target-cursor`: 기획 §18.13 지정 모드. 붕대·주문·채집·평가 계열이 바로 안 나가고 대상을 찍는다. 확인은 월드 클릭, Esc·우클릭 취소. 서버는 기존 Try/Rpc. 커밋 `9bbabded`. 샷 `unity/Captures/loop16_target_heal_mark.png`에 노란 십자와 안내. 게이트 `AssertTargetCursor`+NC ok. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드는 에디터 점유라 못 돌림. Kenney 커서 스킨은 안 넣음(INBOX 16:38 GPT 차선).
-- 원작 대비: 같은 점 — 주문/치유/채집 후 대상을 지정한다. 나은 점 — Esc·우클릭 취소 안내가 화면에 있다. 부족한 점 — Noto Sans KR이 없어 한글 안내가 깨지고, 커서 그래픽은 IMGUI 십자라 원작 검프가 아니다. 핵심 동작(지정 모드)은 통과, 스킨은 합격 아님.
+- `gm-auth`: GM 패널 명령을 서버가 계정으로 연다. 원장 `StreamingAssets/Data/gm_accounts.json`(비어 있음)+CLI `-ulon-gm-account`. 원격 클라는 목록에 있어야 함. F1·`-ulon-gm`은 패널만. 네트 중엔 `NetAvatar.RpcGm*`. 커밋 `aea2e089`. 게이트 `AssertGmAuth`+NC (`NcOpen`이면 무인증이 통과해 빨간불). HTTP MCP 플레이 샷 `unity/Captures/loop19_gm_panel.png`. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유라 못 돌림.
+- 원작 대비: 같은 점 — GM 명령은 권한 있는 쪽만 실행된다. 나은 점 — 거절 사유 `unauthorized`와 NC가 있다. 부족한 점 — 원작 상담원/시어 명령 풀셋이 아니고, 전용 서버에서 미등록 클라가 거절되는 2클라 실측은 이번 없음. 핵심(무인증 지급 차단)은 통과, 원작 운영툴 합격은 아님.
 
 ## 지금 하는 것
 
-없음. loop#16 카드 `ui-target-cursor` 닫음.
+없음. loop#19 카드 `gm-auth` 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
 1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
-2. `tools/two_client_check.sh`
+2. `tools/two_client_check.sh` — GM 무인증 거절도 여기서 재실측
 3. FishNet 관심 영역 (`interest-mgmt`)
 4. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선 (`uo-half-span`, `codex-*`)
 5. 그래픽·UI 폴리시·물가 셰이더·Kenney 커서 스킨은 GPT/Codex 차선 (그록 안 함)

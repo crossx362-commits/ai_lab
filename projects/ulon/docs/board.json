@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T16:46:00+09:00",
+  "updated_at": "2026-09-12T16:51:35.414028+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,14 +196,26 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#16은 대상지정 모드를 닫음",
+      "title": "지금 하는 일: 없음 — loop#19는 GM 권한을 닫음",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 16,
-      "completed_loop": 16,
-      "commit": "9bbabded",
+      "assigned_loop": 19,
+      "completed_loop": 19,
+      "commit": "aea2e089",
       "rationale": "INBOX 16:42. 보드에 현재 작업을 한 줄로 밝힌다. 다음 바퀴가 이 카드를 고친다.",
+      "fail_streak": 0
+    },
+    {
+      "id": "gm-auth",
+      "title": "GM 패널(F1) 서버 측 권한 확인",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 19,
+      "completed_loop": 19,
+      "commit": "aea2e089",
+      "rationale": "DEV_INBOX 서버·네트 ②. 무인증 unauthorized. 원장 계정 지급. 샷 loop19_gm_panel. 2클라는 바이너리 없음.",
       "fail_streak": 0
     },
     {
@@ -237,16 +249,17 @@
       "difficulty": "중",
       "model": "gpt",
       "owner": "codex",
-      "status": "막힘",
+      "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "",
-      "rationale": "GAME_DESIGN §6.1·§18.4. 지역 원장 표시와 근접/타인 시체 표식 오류부터 수정. GPT 차선. 그록 루프는 진행 중/대기에 두지 않음(grok --model gpt 금지).",
+      "commit": "c3f00f34",
+      "rationale": "기획 §6.1 지역 범례·§18.4 본인 최근 시체 표시 및 동화풍 지도. 전용 Unity 컴파일·9개 동작 검사 PASS. 1440×900/960×540 실제 HUD 화면 검증과 master 통합은 남음.",
       "fail_streak": 0,
       "codex_iteration": 1,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
-        "docs/CODEX_STATUS.md"
+        "docs/CODEX_STATUS.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/map-green.log"
       ]
     },
     {
