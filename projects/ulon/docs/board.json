@@ -1,5 +1,5 @@
 {
-    "updated_at": "2026-09-12T20:52:00+09:00",
+    "updated_at": "2026-09-12T21:12:00+09:00",
     "cards": [
         {
             "id": "map-land-scale",
@@ -30,13 +30,28 @@
             "title": "원작 울온 지도 절반(약 3072m) — 하이트맵 상한 넘는 확대",
             "difficulty": "상",
             "model": "gpt",
-            "status": "막힘",
+            "status": "검증 중",
             "assigned_loop": null,
             "completed_loop": null,
-            "commit": "",
-            "rationale": "INBOX 「울온 전체지도 절반」. map0 6144×4096타일(Stratics). Unity Terrain 하이트맵 최대 4097이라 LandScale 10은 불가. 2026-09-12 오너: 월드맵도 Codex 담당. 원작 수치·엔진 제약은 추가 검증 후 확정. 그록 루프 모델 칸에 gpt를 넣지 않음. 사람 선택 대기.",
+            "commit": "44f0813e",
+            "rationale": "#72 44f0813e: 기존 섬/20m 해저 띠 보존, 동·북동 확장 육지와 1100m·폭8m 연결 길 및 기존 4레이어 구현. 전용 Unity 컴파일 exit0·60경계·기존충돌3481·통행1656·보존함수1681 PASS, 추가 육지 8m 표본 약0.492km². Metal 1440×900 렌더3장 검토: 확장 내부 연결 확인, 단순 해안/길·소품 부재로 아트 미합격. 실제 Bootstrap600m 유지; 중앙 해상 연결·콘텐츠·지도/서버·게임/2인 미완료. 기존 CS 경고·라이선스 진단 잔존.",
             "fail_streak": 0,
-            "owner": "codex"
+            "owner": "codex",
+            "resume_token": "owner-unblock-world-2055",
+            "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
+            "evidence": [
+                "/Users/junholee/ai_lab/output/ulon-codex/loop59-world/final.log",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop72-world/metal.log",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop72-world/red.log",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop72-world/green.log",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop72-world/layout-top.png",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop72-world/layout-quarter.png",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop72-world/route-corner.png",
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_EXPANSION_72.md"
+            ],
+            "codex_iteration": 72,
+            "verification_commit": "06ff8ea8",
+            "resume_condition": "중앙 섬 지형을 보존하는 해상 연결/접근로와 자연스러운 해안·지역 표식을 전용 트리에서 독립 구현. 이후 저장/재생성·지도/서버/스폰/관심영역 공통 확장 원장 및 실제 보행·2인 검사. 원본 병합·다른 IMGUI 대기는 독립 구현 차단 사유 아님."
         },
         {
             "id": "action-feel",
@@ -196,13 +211,13 @@
         },
         {
             "id": "now",
-            "title": "지금 하는 일: 없음 — loop#38는 overweight-no-run 를 닫음",
-            "difficulty": "하",
+            "title": "지금 하는 일: 없음 — loop#39는 cast-move-interrupt 를 닫음",
+            "difficulty": "중",
             "model": "grok-4.6",
             "status": "완료",
-            "assigned_loop": 38,
-            "completed_loop": 38,
-            "commit": "dce0d939",
+            "assigned_loop": 39,
+            "completed_loop": 39,
+            "commit": "22525e09",
             "rationale": "다음 바퀴가 이 카드를 고친다.",
             "fail_streak": 0
         },
@@ -333,11 +348,11 @@
             "difficulty": "중",
             "model": "gpt",
             "owner": "codex",
-            "status": "막힘",
+            "status": "대기",
             "assigned_loop": null,
             "completed_loop": null,
             "commit": "c3f00f34",
-            "rationale": "#62 지도 코드와 기획 §6.1/§18.4 대조: 지역 범례·최근 본인 시체 선택 구현 유지. #60 로직 PASS는 과거 근거이며 이번 신규 실행 아님. #3 Metal 프로브 OnGUI/Repaint 0·PNG 없음·실제640×480의 미해소 조건으로 화면/입력/2인 합격 불가. 동일 환경 재실행 금지에 따라 막힘으로 전환. 코드/에셋 변경·새 Unity 실행·게임/2인 검증·신규 커밋 없음. 구체 재개 조건은 resume_condition.",
+            "rationale": "#62 지도 코드와 기획 §6.1/§18.4 대조: 지역 범례·최근 본인 시체 선택 구현 유지. #60 로직 PASS는 과거 근거이며 이번 신규 실행 아님. #3 Metal 프로브 OnGUI/Repaint 0·PNG 없음·실제640×480의 미해소 조건으로 화면/입력/2인 합격 불가. 동일 환경 재실행 금지에 따라 막힘으로 전환. 코드/에셋 변경·새 Unity 실행·게임/2인 검증·신규 커밋 없음. 구체 재개 조건은 resume_condition.\n막힘 해소 15675b18: Metal batchmode 창 표시 없이 진단 IMGUI 두 해상도 실제 Screen/글자/모서리 픽셀 PASS, 글자만 제거·전체UI제거 대조 PASS, exit0. 기존 렌더 경로 부재 해소. 실제 지도/HUD/게임/OS입력/2인 검증은 아직 미완료.",
             "fail_streak": 0,
             "codex_iteration": 62,
             "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
@@ -349,10 +364,16 @@
                 "/Users/junholee/ai_lab/output/ulon-codex/loop3-imgui-1440.log",
                 "/Users/junholee/ai_lab/output/ulon-codex/loop3-imgui-1440/result.json",
                 "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_MAP_60.md",
-                "/Users/junholee/ai_lab/output/ulon-codex/loop62-map/review.json"
+                "/Users/junholee/ai_lab/output/ulon-codex/loop62-map/review.json",
+                "/Users/junholee/ai_lab/output/ulon-codex/offscreen-verified3/unity.log",
+                "/Users/junholee/ai_lab/output/ulon-codex/offscreen-verified3/evidence/imgui-1440x900.png",
+                "/Users/junholee/ai_lab/output/ulon-codex/offscreen-verified3/evidence/imgui-1024x768.png",
+                "/Users/junholee/ai_lab/projects/ulon/tools/offscreen_imgui/README.md"
             ],
             "verification_commit": "74fcb904",
-            "resume_condition": "창을 열지 않는 승인된 실행 경로에서 OnGUI/Repaint>0, ScreenCapture PNG 및 요청 해상도를 먼저 입증한 뒤 전용 게임 1440×900/두 번째 해상도·M 입력·지역 범례·2인 시체 수신/회수/만료 검증. 엔진/렌더 경로 변화 증거 없이 기존 프로브와 로직 검사를 반복하지 않는다. 독립 구현 요구가 새로 생기면 별도 resume_token으로 재개 가능."
+            "resume_condition": "헤드리스 렌더 경로 15675b18로 확보. tools/offscreen_imgui를 실제 SliceHud 그리기/Play 어댑터에 연결하여 화면·한글·클리핑·합성 입력 검사. 진단 UI만으로 실제 게임 합격 금지.",
+            "resume_token": "offscreen-verified-15675b18",
+            "environment_verification_commit": "15675b18"
         },
         {
             "id": "codex-storybook-lantern",
@@ -360,7 +381,7 @@
             "difficulty": "중",
             "model": "gpt",
             "owner": "codex",
-            "status": "막힘",
+            "status": "대기",
             "assigned_loop": null,
             "completed_loop": null,
             "commit": "bbd587ef",
@@ -384,7 +405,8 @@
                 "/Users/junholee/ai_lab/output/ulon-codex/loop63-lantern/review.json"
             ],
             "verification_commit": "8fc5a200",
-            "resume_condition": "별도 통합 차선에서 현재 공유 Kind 폴더·지붕·wall-corner를 보존한 기준 장면/생성기를 마련하고 가로등 적용 소유권을 인계한 뒤 resume_token 변경. 이후 Variant 배치 영속성·재생성·VFX·전용 batchmode Metal 게임 화면 검증. 독립 Variant 개선 요구가 생기면 별도 재개 가능."
+            "resume_condition": "전용 Bootstrap 한정 적용 도구·빌더 선택·비대상 보존·재로드·멱등성 구현. 원본 병합 대기는 독립 구현 차단 사유 아님.",
+            "resume_token": "owner-unblock-lantern-2055"
         },
         {
             "id": "codex-storybook-hud",
@@ -392,11 +414,11 @@
             "difficulty": "중",
             "model": "gpt",
             "owner": "codex",
-            "status": "막힘",
+            "status": "대기",
             "assigned_loop": null,
             "completed_loop": null,
             "commit": "fe7c7fd5",
-            "rationale": "#71 037fe3f2: 현재 HUD 상태19·스킨10 PASS, 전용 Unity batchmode/nographics exit0. 라이선스/Curl 잔존. 코드/에셋 변경 없는 검증 전용, 개발 진척 아님. 실제 화면·입력·DnD·게임·2인 근거 미확보로 막힘; 동일 프로브 반복 금지.",
+            "rationale": "#71 037fe3f2: 현재 HUD 상태19·스킨10 PASS, 전용 Unity batchmode/nographics exit0. 라이선스/Curl 잔존. 코드/에셋 변경 없는 검증 전용, 개발 진척 아님. 실제 화면·입력·DnD·게임·2인 근거 미확보로 막힘; 동일 프로브 반복 금지.\n막힘 해소 15675b18: Metal batchmode 창 표시 없이 진단 IMGUI 두 해상도 실제 Screen/글자/모서리 픽셀 PASS, 글자만 제거·전체UI제거 대조 PASS, exit0. 기존 렌더 경로 부재 해소. 실제 지도/HUD/게임/OS입력/2인 검증은 아직 미완료.",
             "fail_streak": 0,
             "codex_iteration": 71,
             "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
@@ -425,11 +447,16 @@
                 "/Users/junholee/ai_lab/output/ulon-codex/loop70-hud/unity.log",
                 "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_70.md",
                 "/Users/junholee/ai_lab/output/ulon-codex/loop71-hud/unity.log",
-                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_71.md"
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_71.md",
+                "/Users/junholee/ai_lab/output/ulon-codex/offscreen-verified3/unity.log",
+                "/Users/junholee/ai_lab/output/ulon-codex/offscreen-verified3/evidence/imgui-1440x900.png",
+                "/Users/junholee/ai_lab/output/ulon-codex/offscreen-verified3/evidence/imgui-1024x768.png",
+                "/Users/junholee/ai_lab/projects/ulon/tools/offscreen_imgui/README.md"
             ],
-            "resume_token": "owner-fix-1938",
-            "resume_condition": "승인 헤드리스 OnGUI/Repaint>0·ScreenCapture PNG·요청 해상도 입증 후 1440×900/작은 해상도에서 긴 한글/태그 이름·화면 네 모서리·패널 밖 드래그·드롭 성공/취소 확인. 기존 장착/해제·은행 선택/찾기·하단 도달 검증 유지. 동일 환경 IMGUI 프로브 반복 금지. 원본 통합 별도. #68 포커스 이탈/복귀 후 이름표·오래된 드롭 부재 확인 추가. #69 가방 닫기/각 탭 전환/복귀 후 이름표와 오래된 드롭 부재 및 실제 프레임 취소 확인. #70 앱 일시정지/복귀 후 오래된 이름표·드롭 부재 실제 입력 확인. #71 동일 상태 검사만 반복 금지. 지원 헤드리스 화면/입력 경로 입증 또는 독립 구현 요구/확인 가능한 결함 발생 후 resume_token 변경.",
-            "verification_commit": "037fe3f2"
+            "resume_token": "offscreen-verified-15675b18",
+            "resume_condition": "헤드리스 렌더 경로 15675b18로 확보. tools/offscreen_imgui를 실제 SliceHud 그리기/Play 어댑터에 연결하여 화면·한글·클리핑·합성 입력 검사. 진단 UI만으로 실제 게임 합격 금지.",
+            "verification_commit": "037fe3f2",
+            "environment_verification_commit": "15675b18"
         },
         {
             "id": "codex-headless-loop",
@@ -442,12 +469,13 @@
             "completed_loop": null,
             "commit": "cad9b82e",
             "fail_streak": 0,
-            "rationale": "예약 codex-ui 중지. 독립 부모가 codex exec 새 세션 반복(45초 간격,90분 제한,3회 실패 정지). 실제 CLI 도구 실행 확인, 프로세스 회귀 6개 PASS. 게임 완료 판정과 별개.",
+            "rationale": "예약 codex-ui 중지. 독립 부모가 codex exec 새 세션 반복(45초 간격,90분 제한,3회 실패 정지). 실제 CLI 도구 실행 확인, 프로세스 회귀 6개 PASS. 게임 완료 판정과 별개.\n15675b18: 원본 통합 대기가 전용 가로등 적용 구현까지 막지 않도록 지침 보정. 월드485ebce0 근거 복구 후 #72 실제 WorldExpansionTerrain 코드 수정 재개 확인. UI 렌더 경로 두 해상도/음성대조 확보로 지도/HUD 재개. 예약·다른 세션 제어 없음. 전체 하네스는 기존 운영 경고 exit1.",
             "evidence": [
                 "loop/codex_loop.py",
                 "tools/test_codex_loop.py",
                 "/Users/junholee/ai_lab/output/ulon-codex/runtime_state.json"
-            ]
+            ],
+            "unblock_commit": "15675b18"
         },
         {
             "id": "death-ghost-rez",
@@ -531,6 +559,18 @@
             "completed_loop": 36,
             "commit": "343d9484",
             "rationale": "기획 §3.1·§18.13. 샷 loop36_skill_gump·loop36_skill_lock. 게이트+NC. 2클라 서명 왕복은 없음.",
+            "fail_streak": 0
+        },
+        {
+            "id": "cast-move-interrupt",
+            "title": "시전 중 이동하면 중단 가능한 주문 취소 (§18.6)",
+            "difficulty": "중",
+            "model": "grok-4.6",
+            "status": "완료",
+            "assigned_loop": 39,
+            "completed_loop": 39,
+            "commit": "22525e09",
+            "rationale": "CastMove·모터/RPC. 게이트+NC. 샷 시전 중→이동 후 시전 중 사라짐·표적 HP 유지. 2클라 없음.",
             "fail_streak": 0
         }
     ]

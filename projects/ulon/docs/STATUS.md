@@ -1,21 +1,20 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#37** (성공) · 2026-09-12T20:40:48+0900
-- `3960ec9e` `[loop#37] 이동 리듬 플레이 샷과 STATUS`
+마지막 바퀴: **#38** (성공) · 2026-09-12T20:51:20+0900
+클라 빌드·2클라는 에디터 점유라 이번에도 못 했습니다. Codex/GPT 카드는 안 건드렸습니다.
 
-- 모델 `grok-4.6` · 경과 688s · 세션 rc `0`
-- HEAD `3960ec9e [loop#37] 이동 리듬 플레이 샷과 STATUS` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 584s · 세션 rc `0`
+- HEAD `8679c91c [loop#38] 과적 이동 플레이 샷과 STATUS` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `3960ec9e [loop#37] 이동 리듬 플레이 샷과 STATUS`
-- `dc50b5b6 [loop#37] 이동 리듬 걷기 2.5/달리기 5.0 원장과 모터`
+- `8679c91c [loop#38] 과적 이동 플레이 샷과 STATUS`
+- `dce0d939 [loop#38] 과적 시 달리기 금지`
 
 ## 바퀴 기록
 
 | 바퀴 | 결과 | 시각 | 모델 | 경과 |
 |---|---|---|---|---|
-| #7 | 성공 | 2026-09-12T14:29:57+0900 | grok-4.6 | 308s |
 | #8 | 성공 | 2026-09-12T14:42:14+0900 | grok-4.6 | 690s |
 | #9 | 성공 | 2026-09-12T14:59:24+0900 | grok-4.6 | 982s |
 | #10 | 성공 | 2026-09-12T15:10:38+0900 | grok-4.6 | 626s |
@@ -45,6 +44,7 @@
 | #35 | 성공 | 2026-09-12T20:12:59+0900 | grok-4.6 | 722s |
 | #36 | 성공 | 2026-09-12T20:28:33+0900 | grok-4.6 | 886s |
 | #37 | 성공 | 2026-09-12T20:40:48+0900 | grok-4.6 | 688s |
+| #38 | 성공 | 2026-09-12T20:51:20+0900 | grok-4.6 | 584s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -77,7 +77,7 @@
 | 플레이어 벤더·하우징 | 부분 | 코드 있음(기획상 Phase 2인데 앞섬). 플레이 미실행 |
 | 월드(마을1·필드·광산·던전3·테스트) | 부분 | loop#7 플레이: Terrain 600×600m, hres=1025. 미니맵·세계지도(M) 표시, 라벨 600m. 원작 절반(~3072m)은 아님 |
 | 몬스터 | 부분 | loop#11: 원장 **20종**(사냥 8+추가 6+보스 4+조련 2). 샷 `unity/Captures/loop11_cutthroat_seer.png`·`loop11_skelmage_squire.png`·`loop11_bonekin_runt.png`. 사냥터 8종·게이트 유지. 비인간형 원형(늑대·거미)은 메시 없어 KayKit 색·크기 변형으로 채움. 배치 셀프체크는 에디터 점유라 미실행 |
-| 마법·시약·명상·시전 중단 | 부분 | `RpcCast`가 성공 시 `RpcPlayEffect` 방송(소스 게이트). HUD 시전 버튼은 이번 플레이에서 안 누름 |
+| 마법·시약·명상·시전 중단 | 동작함 | loop#39: 시전 중 이동 시 interruptible 벼락 취소(`CastMove.BreaksOnMove`). 플레이 샷 `unity/Captures/loop39_casting.png`(나 벌목꾼 시전 중·MP 27/36·시험표적 80)·`loop39_cast_move.png`(시전 중 없음·표적 80 유지). ClickMotor.SetDestination 후 IsCasting=false·HP 불변. 게이트 `AssertCastMoveInterrupt`+NC 에디터 OK. 피격 중단은 기존. 2클라 미실행. 원작 합격 아님 |
 | 죽음→유령→부활→시체 회수 | 동작함 | loop#21 플레이어 시체 유지. loop#23: 보스 드랍은 시체·기여자/파티 창(§18.11). 호스트 플레이 헥사크 처치 때 가방에 봉인 없음·시체 items=1 vis, 룻 후 가방 「헥사크의 봉인」. 샷 `unity/Captures/loop23_hexarch_corpse.png`·`loop23_hexarch_loot_bag.png`. 게이트 `AssertBossLoot`+NC·던전 4보스 계약. 독/펫 기여자·2클라는 미실행. 원작 합격 아님 |
 | 무게·과적·STR 요구 | 동작함 | loop#38: 과적 시 달리기 불가(`CarryMove.CanRun`). 플레이 샷 `unity/Captures/loop38_overweight.png`(무게 180/156 과적·달림불가). LocalAvatar 끄고 SetRunning(true)여도 Running=false·PlanarSpeed=2.50. 가방 비우면 Running=true. 게이트 `AssertOverweightMove`+NC 에디터 OK. 집기/구매 과적 거절은 기존. 걷기 감속 배율은 기획서에 없어 안 넣음(옛 0.35 삭제). 2클라 미실행. 원작 합격 아님 |
 | Fame/Karma·가드존·범죄 | 부분 | 코드. Open PvP 플레이 미실행 |
@@ -112,18 +112,18 @@
 - **persist/postgres는 이번 살아 있음.** pid 84115, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
 - **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080)는 이번 살아 있음 — 호스트 플레이 샷에 씀. 배치 검사는 에디터를 닫은 뒤에.
-- **이번 플레이.** 에디터 플레이 오프라인(서버 OFF). 과적 180/156에서 SetRunning(true)여도 Running=false·PlanarSpeed=2.50. HUD 「과적·달림불가」. 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 호스트·2클라 바이너리 없음.
+- **이번 플레이.** 에디터 플레이 오프라인(서버 OFF). 벼락 풍업 후 HUD 「시전 중」. SetDestination 이동하면 시전 중 사라짐·시험표적 HP 80 유지. 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 호스트·2클라 바이너리 없음.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 반대로 **UlonClient.app은 그 워크트리에만** 있다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- `overweight-no-run`: 기획 §18.5. 과적이면 달리기 불가. 모터·서버 RPC가 `CarryMove`. HUD 과적·달림불가. 게이트+NC. 샷 loop38_overweight. 출처 https://www.uoguide.com/Weight .
-- 원작 대비: 같은 점 — 과적 시 달릴 수 없음. 나은 점 — 서버 RPC가 달리기 플래그를 자른다. 부족한 점 — 원작 걷기 감속·150% 이동불가는 기획 수치 없어 미적용, 2클라 없음.
+- `cast-move-interrupt`: 기획 §18.6. 시전 중 이동하면 벼락(interruptible) 취소. `CastMove`·ClickMotor·RpcRequestMove. HUD 시전 중. 게이트+NC. 샷 loop39_casting·loop39_cast_move. 출처 https://www.servuo.dev/threads/disturbing-a-spell.12340/
+- 원작 대비: 같은 점 — 시전 중 걸으면 주문이 끊긴다. 나은 점 — 서버 RPC도 같은 원장을 탄다. 부족한 점 — 방향만 바꾸는 제자리 회전·Casting Focus 저항은 없음, 2클라 없음.
 
 ## 지금 하는 것
 
-없음. loop#38 카드 `overweight-no-run`는 샷·게이트까지 닫음.
+없음. loop#39 카드 `cast-move-interrupt`는 샷·게이트까지 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
