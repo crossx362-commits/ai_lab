@@ -1,22 +1,19 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#29** (성공) · 2026-09-12T19:27:41+0900
-원작 UO 칭호는 조합이 없어서 원작 합격은 아닙니다. 클라 빌드·2클라는 에디터를 닫은 다음입니다.
+마지막 바퀴: **#32** (실패) · 2026-09-12T19:49:15+0900
+grok -p 종료 코드 1
 
-- 모델 `grok-4.6` · 경과 476s · 세션 rc `0`
-- HEAD `ecf42636 [loop#29] 복합 직업명 검증 결과 STATUS·보드 반영` · 브랜치 `master`
-- INBOX 미처리 **0**건
+- 모델 `gpt` · 경과 1s · 세션 rc `1`
+- HEAD `9ad75244 [codex] 무진척 재실행 차단과 실행 가능한 담당 카드 배정 수리` · 브랜치 `master`
+- INBOX 미처리 **1**건
 - 이 바퀴 커밋:
-- `ecf42636 [loop#29] 복합 직업명 검증 결과 STATUS·보드 반영`
-- `414cd8a5 [loop#29] 복합 직업명 JSON 원장 (마검사·레인저)`
+- (이 바퀴 커밋 없음)
 
 ## 바퀴 기록
 
 | 바퀴 | 결과 | 시각 | 모델 | 경과 |
 |---|---|---|---|---|
-| #0 | 성공 | 2026-09-12T12:28:00+0900 | grok-4.6 | 187s |
-| #1 | 성공 | 2026-09-12T13:04:00+0900 | grok-4.6 | 362s |
 | #2 | 실패 | 2026-09-12T13:37:34+0900 | grok-4.6 | 1236s |
 | #4 | 성공 | 2026-09-12T14:05:38+0900 | grok-4.6 | 705s |
 | #5 | 성공 | 2026-09-12T14:19:23+0900 | grok-4.6 | 777s |
@@ -44,6 +41,9 @@
 | #27 | 성공 | 2026-09-12T19:01:17+0900 | grok-4.6 | 771s |
 | #28 | 성공 | 2026-09-12T19:18:58+0900 | grok-4.6 | 1014s |
 | #29 | 성공 | 2026-09-12T19:27:41+0900 | grok-4.6 | 476s |
+| #30 | 성공 | 2026-09-12T19:47:38+0900 | grok-4.6 | 1149s |
+| #31 | 실패 | 2026-09-12T19:48:27+0900 | gpt | 1s |
+| #32 | 실패 | 2026-09-12T19:49:15+0900 | gpt | 1s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -91,7 +91,7 @@
 | VFX | 동작함 | loop#8 타격 불티 + loop#9 등불·횃불·분수 루프 파티클. 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티. 분수 물줄기는 약함 |
 | SFX | 동작함 | 같은 플레이에서 `ActionSfx.Played` 0→3. 공간 음원 3D. 귀로 들은 것은 MCP라 미확인(카운트만) |
 | GM 도구 | 부분 | loop#19: 무인증 `GmGive` `fail=unauthorized`. 원장 계정 지급 성공. 에디터 바이패스 지급 성공. 게이트 `AssertGmAuth`+NC OK. 샷 `unity/Captures/loop19_gm_panel.png`(F1 패널·광장복구·지급 버튼). 전용 서버+미등록 클라 2클라 실측은 바이너리 없어 **미실행** |
-| 백업/복구 | 부분 | loop#25: persist 스냅샷에 캐릭터·집·마구간. SQLite 11/11·PG 격리스키마 11/11 왕복·롤백·404 NC. 운영 POST `/backup` `db_20260912_091727` characters=19 stables=2 houses=0. GM `RpcGmRestore` 배선. 운영 DB 복원은 안 돌림(전량 덮음). Unity MCP 세션 없어 HUD 샷·게이트 플레이 없음. 원작 합격 아님 |
+| 백업/복구 | 동작함 | loop#33/#34: 호스트 플레이 GM 패널에 「백업」「복구」. 샷 `unity/Captures/loop33_gm_backup.png`·`loop34_gm_restore.png`(서버 ON·클라 ON·접속 1·복구 버튼·백업 로그 `playloop-verify|-|backup`). GmBackup persist `db_20260912_105601.json` counts characters=19 stables=2 houses=0. SQLite 11/11·PG 격리 11/11. 운영 스냅샷을 임시 스키마에 복원→GET→변조→재복원 일치 후 DROP. NcSkipRestore NC. 운영 POST `/restore` 는 전량 덮음이라 안 돌림. 원작 합격 아님 |
 | 봇/부하 테스트 | 없음 | 기획 §14.1 |
 | 알파 준비 판정 스크립트 | 동작함 | loop#30: `alpha_ready.judge` 는 파일 ok:true 를 현재로 안 씀. 스모크 실패 시 `alpha_status.json` 삭제. 보드 `/api/state.alpha_ready` live `/ready` ok=true·stale_file=false. 테스트 7/7 + board 4/4. NC: 옛 성공 파일+실측 실패=준비 아님 |
 
@@ -108,28 +108,28 @@
 ## 발견한 문제
 
 - **클라이언트 바이너리 없음.** 이 트리 `builds/client/`에 `UlonClient.app`이 없다. 실행·2클라 검사를 이번 바퀴에서 못 함.
-- **persist/postgres는 이번 살아 있음.** loop#10에서 persist.py 반영 후 `start_persist.sh`로 재기동, pid 2822, 5432·8777 청취, `/ready` 200 driver=postgres.
+- **persist/postgres는 이번 살아 있음.** pid 84115, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
-- **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080, `unity@43694413dbe9b6f3`)는 이번 살아 있음 — `EnsureHouseRoofs`·플레이 샷에 씀. 배치 검사는 에디터를 닫은 뒤에.
-- **이번 플레이 FishNet 클라 미기동.** `playmode_transition`이 길게 남음. `NetAvatar.IsClientInitialized=false`라 공격 RPC는 skip. VFX는 로컬 `Play`로 확인.
+- **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080)는 이번 살아 있음 — 호스트 플레이 샷에 씀. 배치 검사는 에디터를 닫은 뒤에.
+- **이번 플레이 FishNet 호스트 기동.** StartHost 후 srv=True cli=True `NetPlayer(Clone)`. 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 2클라 바이너리는 없음.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 반대로 **UlonClient.app은 그 워크트리에만** 있다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- `alpha-status-stale`: DEVELOPMENT_PLAN P2. `tools/alpha_ready.py` 가 현재 준비를 persist `/ready` 실측으로만 판정. 파일 `ok:true` 는 마지막 스모크 기록. 스모크 실패 시 옛 파일 삭제. 보드 소비자 `alpha_ready`(live ok=true, stale_file=false). `python3 tools/test_alpha_readiness.py` 7/7 · `test_board_reports.py` 4/4. NC: 심은 성공 파일+curl 실패 → 준비 아님·파일 없음. 클라 빌드·2클라·배치 셀프체크는 에디터 점유라 미실행.
-- 원작 대비: 같은 점 — 운영 준비 신호와 게임 규칙은 별개. 나은 점 — 장애 뒤 옛 성공 JSON을 현재로 안 읽음. 부족한 점 — 게임 화면 기능이 아님. 원작 합격 해당 없음.
-- INBOX 미처리 0. 사람 결정(에셋 수령·절반맵·관심영역 미터·폰트·Quaternius)은 그대로 막힘.
+- INBOX 긴급: `codex-storybook-hud` 그록 제외용 막힘 해제. 지도/가로등/gpt-gfx-ui 상태는 안 바꿈. 이후 Codex가 HUD를 검증 중으로 진행. PROMPT「gpt 카드 상태 변경 금지」와 충돌 → INBOX 우선(막힘 해제 1회).
+- `persist-backup-restore`: 호스트 샷 `loop34_gm_restore.png`. SQLite 11/11 + PG 격리 11/11. 운영 스냅샷 `db_20260912_105601.json` 을 임시 스키마에 복원(characters=19 stables=2) 후 DROP. NcSkipRestore NC. 운영 `/restore` 미실행. 배치 셀프체크·클라 재접속은 에디터 점유·바이너리 없음.
+- 원작 대비: 같은 점 — DB 스냅샷으로 캐릭터·마구간을 되돌림. 나은 점 — 격리 스키마에서 먼저 복원해 운영을 안 덮음. 부족한 점 — 집 행 0, 운영 전량 복원·재접속 화면은 사람 결정/바이너리.
 
 ## 지금 하는 것
 
-없음. loop#30 카드 `alpha-status-stale`는 테스트·보드 실측까지 닫음.
+없음. loop#34 카드 `persist-backup-restore`는 HUD 샷·스테이징 복원까지 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
 1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
 2. `tools/two_client_check.sh` — 관심 영역·GM 무인증·시체 동기화 재실측
-3. persist 복구: Unity 게이트 플레이 + 스테이징 복원 후 재접속 (`persist-backup-restore` 검증 중)
+3. 운영 persist 복원(전량 덮음)은 사람 확인 뒤
 4. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선
 5. 그래픽·UI 폴리시·물가 셰이더는 GPT/Codex 차선 (그록 안 함)
 6. 씬 루트 배우·시설 종류 묶음은 페이드 자가 루트를 보도록 고친 뒤
@@ -138,6 +138,7 @@
 ## 막힌 것 (사람 결정)
 
 - **그래픽·UI 개선 = GPT 차선 (2026-09-12 16:38):** 셰이더·머티리얼·HUD 외형·아이콘·페이퍼돌 그림·커서 스킨·VFX 폴리시는 그록 루프가 새로 열지 않음. 서버·저장·2클라·관심영역·클라 빌드는 계속. `water-shore-jag`·이후 UI 폴리시는 GPT.
+- **INBOX vs PROMPT 그래픽 막힘 (2026-09-12 19:41):** PROMPT는 진행 중 그래픽 카드를 막힘으로 넘기라고 함. INBOX는 그록 제외용 막힘을 대기로 되돌리고 담당 카드 상태를 그록이 바꾸지 말 것. HUD만 대기 복구. 이후 그록은 owner=codex/model=gpt 카드를 필터로만 건너뛴다.
 
 - **에셋 다운로드:** `ASSET_WANTLIST.md`의 모루·대장간 건물·마구간 건물·목공소·갱도 입구·Quaternius MegaKit. 받기는 오너 직행. 조사만 되어 있음.
 - **Quaternius Universal Base / Modular Outfits:** 기획 1차 필수인데 `_ThirdParty/Quaternius/`는 빈 폴더. 반입 여부 사람 결정.
@@ -152,3 +153,4 @@
 - **INBOX vs 기획 §6.1:** 기획은 「작은 하나의 살아 있는 월드」. 오너 INBOX(절반 크기)를 우선하되, 한 지형으로 3072m는 엔진 상한과 충돌.
 - **INBOX 16:04 병렬 vs PROMPT 한 작업:** INBOX 우선. #15는 Unity와 안 겹치는 보고서만. 남은 대기 카드(클라 빌드·2클라·물가·관심영역·절반맵)는 전부 에디터/클라라 에디터 점유 중엔 나란히 못 연다.
 - **그록/그록봇 공존:** 이 트리는 `projects/ulon`만. `ai_lab-loop`(loop-claude) 병합·수정 없음.
+- **운영 persist 전량 복원:** POST `/restore` 는 테이블 DELETE 후 삽입. 사람 확인 전 운영에 안 돌림. 스테이징(임시 스키마)만 이번 확인.

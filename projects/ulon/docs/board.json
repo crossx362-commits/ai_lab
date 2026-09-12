@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T19:50:00+09:00",
+  "updated_at": "2026-09-12T19:58:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,13 +196,13 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#30은 alpha-status-stale 을 닫음",
+      "title": "지금 하는 일: 없음 — loop#34는 persist-backup-restore 를 닫음",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 30,
-      "completed_loop": 30,
-      "commit": "d71639da",
+      "assigned_loop": 34,
+      "completed_loop": 34,
+      "commit": "",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
@@ -235,11 +235,11 @@
       "title": "DB·집·마구간 persist 백업/복구 (§14.2)",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "검증 중",
+      "status": "완료",
       "assigned_loop": 25,
-      "completed_loop": null,
+      "completed_loop": 34,
       "commit": "c94d64fd",
-      "rationale": "P2. JSON 복사만 있던 백업을 persist 스냅샷으로. SQLite+PG 격리 왕복·롤백. 운영 POST /backup 실측. 운영 복원·HUD 샷은 MCP 세션 없어 미실행.",
+      "rationale": "P2. 호스트 샷 loop34_gm_restore(복구 버튼)·loop33_gm_backup. GmBackup db_20260912_105601. SQLite+PG 격리 11/11. 운영 스냅샷 임시 스키마 복원 characters=19 stables=2. NcSkipRestore NC. 운영 /restore·클라 재접속은 없음.",
       "fail_streak": 0
     },
     {
@@ -363,17 +363,24 @@
       "difficulty": "중",
       "model": "gpt",
       "owner": "codex",
-      "status": "막힘",
+      "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "",
-      "rationale": "크림 종이·밤색 글자·세이지 강조. 기존 기능 보존, 그록 활성 HUD 변경과 분리. GPT 차선. 그록 루프는 진행 중/대기에 두지 않음(grok --model gpt 금지).",
+      "commit": "6fd9bef8",
+      "rationale": "#61 6fd9bef8: 가방/은행 마지막 줄의 빈 드롭 칸이 4~5열로 넘치는 코드 수정. 기존 셀 크기·테마·조작 유지. 전용 Unity 컴파일 exit0·기존 스킨 검사10 PASS. 0..120개 산술 모델은 3열/칸 수 보존(실제 GUILayout 검증 아님). 기존 경고·라이선스/Curl 진단 잔존. 실제 화면·DnD·게임·2인 미검증, 완료 아님.",
       "fail_streak": 0,
-      "codex_iteration": 1,
+      "codex_iteration": 61,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
-        "docs/CODEX_STATUS.md"
-      ]
+        "docs/CODEX_STATUS.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop58-hud/unity.log",
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_58.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop61-hud/unity.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop61-hud/layout-arithmetic.txt",
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_61.md"
+      ],
+      "resume_token": "owner-fix-1938",
+      "resume_condition": "OnGUI/Repaint·ScreenCapture·요청 해상도가 입증된 승인 헤드리스 경로에서 두 해상도·긴 한글·선택/비활성·장착/해제·가방/은행 0/2/3/6개 및 빈 칸 DnD·하단 스크롤 도달 검증. 동일 IMGUI 프로브 반복 금지. 원본 통합 별도."
     },
     {
       "id": "codex-headless-loop",
