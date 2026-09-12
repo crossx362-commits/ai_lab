@@ -12,6 +12,7 @@ namespace Ulon.Client
         ClickMotor motor;
         CharacterAnim anim;
         WorldBody chasing;
+        int holdFrames;
 
         void Awake()
         {
@@ -25,7 +26,16 @@ namespace Ulon.Client
                 return;
             motor.SetRunning(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift));
             if (Input.GetMouseButton(0))
+            {
+                holdFrames++;
                 HandlePointer(Input.GetMouseButtonDown(0));
+            }
+            else
+            {
+                if (ClickHold.StopOnRelease(holdFrames))
+                    motor.Stop();
+                holdFrames = 0;
+            }
             if (Input.GetKeyDown(KeyCode.F))
                 CommandOwnPet(0);
             else if (Input.GetKeyDown(KeyCode.H))

@@ -196,6 +196,8 @@ namespace Ulon.Editor
             Gate(AssertMoveAuthority);
             Gate(AssertMoveSpeedNegativeControl);
             Gate(AssertMoveSpeed);
+            Gate(AssertClickHoldNegativeControl);
+            Gate(AssertClickHold);
             Gate(AssertOverweightMoveNegativeControl);
             Gate(AssertOverweightMove);
             Gate(AssertRunStaminaNegativeControl);
