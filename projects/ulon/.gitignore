@@ -47,3 +47,9 @@ output/
 art/KayKit-Adventurers.git/
 art/KayKit-Skeletons.git/
 
+# 자율 개발 루프
+loop/env.local.sh
+loop/.lock
+loop/STOP
+logs/
+
