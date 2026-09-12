@@ -39,6 +39,7 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureActorAnimators();     // 컨트롤러 없는 액터는 게임에서 T포즈다(랩 ④)
             VisualSliceBuilder.EnsureVillagerLooks();      // 5역할을 든 것·몸 색으로 가른다(검수 랩 ③사람)
             VisualSliceBuilder.EnsureCampfireFire();       // 화덕에 불(검수 반려 — 불 메시가 없어도 파티클로 된다)
+            VisualSliceBuilder.EnsureEnvPropVfx();         // 등불·횃불·분수 프리팹에 이펙트(INBOX 씬은 FBX 말고 프리팹+이펙트)
             VisualSliceBuilder.EnsureStableYardFence();
             VisualSliceBuilder.EnsureStableBeast();       // 마당에 짐승 한 마리(빈 마당은 마구간이 아니다)    // 마구간 울타리를 닫는다(검수 반려)
             VisualSliceBuilder.EnsureEntranceFramesQualified();  // 옛 씬의 검은 큐브 문틀을 등록 조각으로 다시 세운다(검수 2026-09-07)

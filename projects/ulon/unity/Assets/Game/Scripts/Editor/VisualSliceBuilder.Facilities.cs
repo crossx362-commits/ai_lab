@@ -410,7 +410,18 @@ namespace Ulon.Editor
             Vector3 pos = new Vector3(-9.2f, 0f, -6.8f);
             var go = GameObject.Find("Campfire");
             if (go == null)
-                go = Place(fbx, pos, Vector3.zero);
+            {
+                // 화덕은 등불 메시를 쓰되 **불 없는** 기본 프리팹이다. Place()는 가로등용
+                // LanternLit(불꽃 붙음)로 가므로 여기선 기본 경로만 인스턴스한다.
+                string unlit = EnsureEnvPrefab(fbx);
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(unlit);
+                if (prefab != null)
+                {
+                    go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                    go.transform.SetPositionAndRotation(OnGround(pos), Quaternion.identity);
+                    SnapRootToGround(go);
+                }
+            }
             else
                 go.transform.SetPositionAndRotation(OnGround(pos), Quaternion.identity);
             if (go == null)

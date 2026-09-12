@@ -43,7 +43,7 @@ namespace Ulon.Editor
             // **모델 확장자를 하나만 보면 새 팩에서 조용히 샌다** — OBJ로 배포된 사슴이 RAW 그대로 놓여
             // 「Prefab이어야 한다」 게이트에 걸렸다(2026-09-07). 모델이면 전부 Env 프리팹을 거친다.
             if (IsModelPath(path))
-                path = EnsureEnvPrefab(path);
+                path = EnsureEnvPlacePrefab(path);
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab == null)
                 return null;

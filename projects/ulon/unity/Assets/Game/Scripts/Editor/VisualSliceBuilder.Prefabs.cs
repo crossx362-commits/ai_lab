@@ -98,7 +98,8 @@ namespace Ulon.Editor
                 "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bush.fbx",
                 "Assets/_ThirdParty/Kenney/Nature/RAW/Models/plant_bushLarge.fbx",
                 "Assets/_ThirdParty/Kenney/Nature/RAW/Models/rock_largeA.fbx",
-                "Assets/_ThirdParty/Kenney/Nature/RAW/Models/rock_smallA.fbx"
+                "Assets/_ThirdParty/Kenney/Nature/RAW/Models/rock_smallA.fbx",
+                "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/torch_mounted.obj"
             };
         }
 
@@ -179,6 +180,7 @@ namespace Ulon.Editor
             if (IsFenceModel(fbxPath))
                 BakeFenceUpright(visual);
             SnapVisualFeet(root, visual);
+            AttachEnvEffectIfBaked(root, fbxPath);
             // **지우고 새로 만들면 씬에 있던 인스턴스가 끊긴다** — 프리팹 자산을 지우는 순간 그것을 쓰던
             // 씬 오브젝트는 연결이 끊겨 이름이 프리팹 이름으로 돌아가고 붙여 둔 기능 컴포넌트를 잃는다.
             // 마을을 두 번째로 드레싱할 때 `Forge`·`Vendor`·`Healer`·주택 부지 표지·기사가 차례로
@@ -572,6 +574,291 @@ namespace Ulon.Editor
             PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             UnityEngine.Object.DestroyImmediate(root);
             return prefabPath;
+        }
+
+        public const string PropFlameObject = "PropFlame";
+        public const string PropSprayObject = "PropSpray";
+        const string LanternFbx = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/lantern.fbx";
+        const string TorchFbx = "Assets/_ThirdParty/KayKit/Dungeon/RAW/Models/torch_mounted.obj";
+        const string FountainFbx = "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/fountain-round.fbx";
+        const string LanternLitPrefab = EnvPrefabFolder + "/LanternLit.prefab";
+
+        /// <summary>
+        /// 씬에 놓을 때 쓰는 프리팹. 등불은 불꽃 붙인 변형, 횃불·분수는 메시 프리팹에 이펙트를 같이 굽는다.
+        /// 화덕은 등불 메시를 쓰므로 이 문을 타지 않는다.
+        /// </summary>
+        static string EnsureEnvPlacePrefab(string fbxPath)
+        {
+            string basePath = EnsureEnvPrefab(fbxPath);
+            string n = Path.GetFileNameWithoutExtension(fbxPath);
+            if (n == "lantern")
+                return EnsureLanternLitPrefab();
+            if (n == "torch_mounted" || n == "fountain-round")
+            {
+                PatchPrefabEffect(basePath, fbxPath);
+                return basePath;
+            }
+            return basePath;
+        }
+
+        static void AttachEnvEffectIfBaked(GameObject root, string fbxPath)
+        {
+            string n = Path.GetFileNameWithoutExtension(fbxPath);
+            if (n == "torch_mounted")
+                EnsureFlameChild(root, 0.78f, 0.36f, 16f);
+            else if (n == "fountain-round")
+                EnsureSprayChild(root);
+        }
+
+        static string EnsureLanternLitPrefab()
+        {
+            EnsureEnvFolder();
+            string unlit = EnsureEnvPrefab(LanternFbx);
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(LanternLitPrefab);
+            if (existing != null)
+            {
+                var live = PrefabUtility.LoadPrefabContents(LanternLitPrefab);
+                EnsureFlameChild(live, 0.82f, 0.32f, 14f);
+                PrefabUtility.SaveAsPrefabAsset(live, LanternLitPrefab);
+                PrefabUtility.UnloadPrefabContents(live);
+                return LanternLitPrefab;
+            }
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(unlit) == null)
+                return unlit;
+            var root = PrefabUtility.LoadPrefabContents(unlit);
+            root.name = "LanternLit";
+            EnsureFlameChild(root, 0.82f, 0.32f, 14f);
+            PrefabUtility.SaveAsPrefabAsset(root, LanternLitPrefab);
+            PrefabUtility.UnloadPrefabContents(root);
+            return LanternLitPrefab;
+        }
+
+        static void PatchPrefabEffect(string prefabPath, string fbxPath)
+        {
+            if (string.IsNullOrEmpty(prefabPath) || AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) == null)
+                return;
+            var go = PrefabUtility.LoadPrefabContents(prefabPath);
+            AttachEnvEffectIfBaked(go, fbxPath);
+            PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
+            PrefabUtility.UnloadPrefabContents(go);
+        }
+
+        /// <summary>
+        /// 기존 씬: RAW 모델 뿌리를 Env 프리팹으로 바꾸고, 등불·횃불·분수에 이펙트가 없으면 붙인다.
+        /// 화덕은 자체 불(`CampfireFlame`)이 있으니 가로등 불꽃을 얹지 않는다.
+        /// </summary>
+        public static int EnsureEnvPropVfx()
+        {
+            EnsureLanternLitPrefab();
+            PatchPrefabEffect(EnsureEnvPrefab(TorchFbx), TorchFbx);
+            PatchPrefabEffect(EnsureEnvPrefab(FountainFbx), FountainFbx);
+
+            int n = 0;
+            n += RelinkRawEnvRoots();
+            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var seen = new HashSet<int>();
+            for (int i = 0; i < all.Length; i++)
+            {
+                var root = PrefabUtility.GetOutermostPrefabInstanceRoot(all[i].gameObject);
+                var go = root != null ? root : all[i].gameObject;
+                if (!seen.Add(go.GetInstanceID()))
+                    continue;
+                if (go.name == "Campfire")
+                    continue;
+                string asset = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(go);
+                string kind = EffectKindOf(go, asset);
+                if (kind == "lantern")
+                {
+                    if (EnsureFlameChild(go, 0.82f, 0.32f, 14f))
+                        n++;
+                }
+                else if (kind == "torch")
+                {
+                    if (EnsureFlameChild(go, 0.78f, 0.36f, 16f))
+                        n++;
+                }
+                else if (kind == "fountain")
+                {
+                    if (EnsureSprayChild(go))
+                        n++;
+                }
+            }
+            Debug.Log("[Ulon] 소품 이펙트 — 붙이거나 다시 연결 " + n + "개 (등불=LanternLit, 횃불·분수=메시 프리팹)");
+            return n;
+        }
+
+        static int RelinkRawEnvRoots()
+        {
+            int n = 0;
+            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var seen = new HashSet<int>();
+            for (int i = 0; i < all.Length; i++)
+            {
+                var go = all[i].gameObject;
+                var outer = PrefabUtility.GetOutermostPrefabInstanceRoot(go);
+                if (outer != null && outer != go)
+                    continue;
+                if (!seen.Add(go.GetInstanceID()))
+                    continue;
+                string asset = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(go);
+                if (string.IsNullOrEmpty(asset) || !IsModelPath(asset))
+                    continue;
+                if (asset.IndexOf("/RAW/", StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+                if (go.name == "Campfire")
+                    continue;
+                string prefabPath = EnsureEnvPlacePrefab(asset);
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+                if (prefab == null)
+                    continue;
+                PrefabUtility.ReplacePrefabAssetOfPrefabInstance(go, prefab, InteractionMode.AutomatedAction);
+                n++;
+            }
+            return n;
+        }
+
+        static string EffectKindOf(GameObject go, string asset)
+        {
+            string n = go.name;
+            if (n == "DungeonTorch" || n == "DungeonFill" || n.EndsWith("Light", StringComparison.Ordinal))
+                return null;
+            if (n.IndexOf("lantern", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "lantern";
+            if (n.IndexOf("torch", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "torch";
+            if (n == "Healer" || n.IndexOf("fountain", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "fountain";
+            if (string.IsNullOrEmpty(asset))
+                return null;
+            if (asset.IndexOf("Lantern", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "lantern";
+            if (asset.IndexOf("TorchMounted", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "torch";
+            if (asset.IndexOf("FountainRound", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "fountain";
+            return null;
+        }
+
+        static bool EnsureFlameChild(GameObject root, float heightFrac, float size, float rate)
+        {
+            const string texPath = "Assets/_ThirdParty/Kenney/Particles/RAW/Textures/flame_01.png";
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
+            if (tex == null)
+            {
+                Debug.LogWarning("[Ulon] 소품 불꽃 스프라이트 없음: " + texPath);
+                return false;
+            }
+            var child = root.transform.Find(PropFlameObject);
+            bool created = child == null;
+            if (created)
+            {
+                if (HasLoopingParticles(root))
+                    return false;
+                var flame = new GameObject(PropFlameObject);
+                flame.transform.SetParent(root.transform, false);
+                child = flame.transform;
+            }
+            child.localPosition = EffectLocalPos(root, heightFrac);
+            BuildLoopParticles(child.gameObject, size, rate, new Color(1f, 0.55f, 0.13f, 0.95f), -0.18f, 14f, 0.06f, 0.9f,
+                PropEffectMaterial("PropFlame", tex, new Color(1f, 0.55f, 0.13f)));
+            return created;
+        }
+
+        static bool EnsureSprayChild(GameObject root)
+        {
+            const string texPath = "Assets/_ThirdParty/Kenney/Particles/RAW/Textures/circle_05.png";
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
+            if (tex == null)
+            {
+                Debug.LogWarning("[Ulon] 분수 스프레이 스프라이트 없음: " + texPath);
+                return false;
+            }
+            var child = root.transform.Find(PropSprayObject);
+            bool created = child == null;
+            if (created)
+            {
+                if (HasLoopingParticles(root))
+                    return false;
+                var spray = new GameObject(PropSprayObject);
+                spray.transform.SetParent(root.transform, false);
+                child = spray.transform;
+            }
+            child.localPosition = EffectLocalPos(root, 0.55f);
+            BuildLoopParticles(child.gameObject, 0.28f, 24f, new Color(0.55f, 0.82f, 1f, 0.85f), -0.55f, 16f, 0.14f, 1.35f,
+                PropEffectMaterial("PropSpray", tex, new Color(0.55f, 0.82f, 1f)));
+            return created;
+        }
+
+        static Vector3 EffectLocalPos(GameObject root, float heightFrac)
+        {
+            Bounds b = CombinedBounds(root);
+            if (b.size.sqrMagnitude < 0.0001f)
+                return new Vector3(0f, 1.2f, 0f);
+            Vector3 world = new Vector3(b.center.x, b.min.y + Mathf.Max(0.2f, b.size.y) * heightFrac, b.center.z);
+            return root.transform.InverseTransformPoint(world);
+        }
+
+        static bool HasLoopingParticles(GameObject go)
+        {
+            var systems = go.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < systems.Length; i++)
+            {
+                var main = systems[i].main;
+                var em = systems[i].emission;
+                if (main.loop && em.enabled && em.rateOverTime.constant > 0f)
+                    return true;
+            }
+            return false;
+        }
+
+        static void BuildLoopParticles(GameObject go, float size, float rate, Color color, float gravity, float cone, float radius, float speed, Material mat)
+        {
+            var ps = go.GetComponent<ParticleSystem>();
+            if (ps == null)
+                ps = go.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.playOnAwake = true;
+            main.duration = 1.2f;
+            main.startLifetime = 0.85f;
+            main.startSpeed = speed;
+            main.startSize = size;
+            main.startColor = color;
+            main.gravityModifier = gravity;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 64;
+            var emission = ps.emission;
+            emission.rateOverTime = rate;
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = cone;
+            shape.radius = radius;
+            var rend = go.GetComponent<ParticleSystemRenderer>();
+            rend.renderMode = ParticleSystemRenderMode.Billboard;
+            rend.sharedMaterial = mat;
+        }
+
+        static Material PropEffectMaterial(string name, Texture2D tex, Color tint)
+        {
+            System.IO.Directory.CreateDirectory(System.IO.Path.Combine(Application.dataPath, "Game/Art/VFX"));
+            string matPath = "Assets/Game/Art/VFX/" + name + ".mat";
+            var shader = Shader.Find("Particles/Standard Unlit") ?? Shader.Find("Sprites/Default");
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null)
+            {
+                mat = new Material(shader);
+                AssetDatabase.CreateAsset(mat, matPath);
+            }
+            mat.shader = shader;
+            mat.mainTexture = tex;
+            mat.color = tint;
+            if (mat.HasProperty("_Color"))
+                mat.SetColor("_Color", tint);
+            if (mat.HasProperty("_Mode"))
+                mat.SetFloat("_Mode", 4f);
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            EditorUtility.SetDirty(mat);
+            return mat;
         }
     }
 }

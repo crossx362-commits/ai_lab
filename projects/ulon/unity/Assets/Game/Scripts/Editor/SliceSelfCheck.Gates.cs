@@ -226,6 +226,9 @@ namespace Ulon.Editor
             Gate(AssertFishingAtWater);
             Gate(AssertCampfireFireNegativeControl);
             Gate(AssertCampfireHasFire);
+            Gate(AssertNoRawEnvRoots);
+            Gate(AssertEnvPropVfxNegativeControl);
+            Gate(AssertEnvPropVfx);
             Gate(AssertRoleLookNegativeControl);
             Gate(AssertRoleLook);
             Gate(AssertHeadgearFoundByPlace);
