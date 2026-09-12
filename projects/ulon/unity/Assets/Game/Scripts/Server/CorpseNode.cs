@@ -1,5 +1,6 @@
 using UnityEngine;
 
+// reload-nudge-2
 namespace Ulon.Server
 {
     public sealed class CorpseNode : MonoBehaviour
@@ -19,6 +20,13 @@ namespace Ulon.Server
         public float LastZ;
         public float InteractRange = 2.4f;
         public float DecaySeconds = 900f;
+        /// <summary>
+        /// 소유자/파티 우선권 창(초). GAME_DESIGN §18.4는 「우선권 시간」만 있고 수치는 없음 —
+        /// Classic UO loot rights ≈ 2분(uo.com wiki · death and dying / loot rights)을 따른다.
+        /// DecaySeconds(900)의 일부. 0 이하면 창 없이 공개(ExclusiveDisabled).
+        /// </summary>
+        public const float DefaultExclusiveSeconds = 120f;
+        public float ExclusiveSeconds = DefaultExclusiveSeconds;
         public float SpawnedAt;
         public readonly System.Collections.Generic.List<Ulon.Shared.ItemRecord> Items = new System.Collections.Generic.List<Ulon.Shared.ItemRecord>();
 

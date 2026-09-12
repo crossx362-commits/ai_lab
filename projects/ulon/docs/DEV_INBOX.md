@@ -209,3 +209,5 @@ SliceHud). **B는 네 것이다 — 나는 안 건드린다.** 시체 내용물(
 클로드=`ai_lab-loop` 물 1.7. Grok은 그 트리·셰이더·Unity 배치를 **안 붙인다.**
 ① `OfflineWorld.Player` 전역 → 몸 단위, 트리 `/Users/junholee/ai_lab`.
 - **(2026-09-11 대장) Grok·보드 실행자는 `../ai_lab-loop`에 들어가지 않는다.** 보드 실행 항목 「Grok Build: ../ai_lab-loop에서 지금 여는 랩을 닫아라」(2026-09-10 21:10)는 차선 분리 전 글이라 **폐기** — 그 지시를 따라 `StylizedWater.shader`·`VisualSliceBuilder.World.cs`가 루프 몰래 편집된 것이 검수에서 확인됨(2bec9720 작업 중). Grok의 트리는 `ai_lab`(공유) 하나, 파일은 위 표의 서버·네트 차선만.
+
+## 그록봇 2026-09-12 — 시체 루팅 우선창 (OfflineWorld.Death/Travel + 새 게이트)

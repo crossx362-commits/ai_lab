@@ -28,6 +28,7 @@ namespace Ulon.Server
             node.LastZ = body.transform.position.z;
             node.SpawnedAt = Time.time;
             node.DecaySeconds = 900f;
+            node.ExclusiveSeconds = CorpseNode.DefaultExclusiveSeconds;
             for (int i = 0; i < bag.Items.Count; i++)
                 node.Items.Add(bag.Items[i]);
             bag.Items.Clear();
@@ -109,8 +110,8 @@ namespace Ulon.Server
         /// <summary>
         /// **시체 안을 보는 것**(오너 판정 2026-09-08: **가까이 온 사람 전부**가 볼 수 있다).
         ///
-        /// 「보는 것」과 「가져가는 것」은 **규칙이 다르다** — 가져가기는 `LootAllowed`(파티)가 그대로
-        /// 지키고, 보기는 근접이면 된다. 그래서 게이트도 둘이다(하나로 묶으면 어느 쪽이 깨졌는지
+        /// 「보는 것」과 「가져가는 것」은 **규칙이 다르다** — 가져가기는 `LootAllowed`(우선창 중 소유/파티,
+        /// 창 후 공개)가 지키고, 보기는 근접이면 된다. 그래서 게이트도 둘이다(하나로 묶으면 어느 쪽이 깨졌는지
         /// 안 보인다, 검수 조건). 목록은 **방송하지 않는다**: 요청한 사람에게만 답으로 간다
         /// (`NetAvatar.RpcCorpsePeek` → TargetRpc). 유령도 볼 수는 있다 — 가져가기만 막힌다.
         /// </summary>
@@ -202,6 +203,7 @@ namespace Ulon.Server
             node.LastZ = snap.CorpseZ;
             node.SpawnedAt = Time.time;
             node.DecaySeconds = 900f;
+            node.ExclusiveSeconds = CorpseNode.DefaultExclusiveSeconds;
             for (int i = 0; i < snap.Corpse.Length; i++)
                 node.Items.Add(snap.Corpse[i]);
         }

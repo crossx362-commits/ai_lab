@@ -430,10 +430,17 @@ namespace Ulon.Server
 
         bool LootAllowed(WorldBody looter, CorpseNode node)
         {
-            if (looter == null)
+            if (looter == null || node == null)
                 return false;
-            WorldBody owner = node != null ? node.OwnerBody : null;
-            if (owner == null && node != null && !string.IsNullOrEmpty(node.OwnerId))
+            // 우선창 0 이하 = ExclusiveDisabled → peek과 같이 근접만으로 공개(사거리는 TryLootCorpse).
+            if (node.ExclusiveSeconds <= 0f)
+                return true;
+            // 창 후: 누구나(근접 검사는 TryLootCorpse). 유령 가져가기는 TryLootCorpse의 ghost 거절이 막는다.
+            if ((Time.time - node.SpawnedAt) >= node.ExclusiveSeconds)
+                return true;
+
+            WorldBody owner = node.OwnerBody;
+            if (owner == null && !string.IsNullOrEmpty(node.OwnerId))
             {
                 var all = Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
                 // **주인을 찾는 자는 시체에 이름을 적은 자와 같아야 한다**(2026-09-08 실측):
@@ -448,10 +455,17 @@ namespace Ulon.Server
                         break;
                     }
             }
-            var p = owner != null ? owner.Party : null;
-            if (p == null)
+            // 창 중: 소유자 본인 또는 그 파티만. 솔로(파티 없음)도 소유자만 — 예전 anyone true 버그 수정.
+            if (owner == null)
+            {
+                if (!string.IsNullOrEmpty(node.OwnerId) && AccountOf(looter) == node.OwnerId)
+                    return true;
+                return false;
+            }
+            if (owner == looter)
                 return true;
-            return p.Contains(looter);
+            var p = owner.Party;
+            return p != null && p.Contains(looter);
         }
 
         static string WeightRefuseMessage(int str, InventoryBag bag)

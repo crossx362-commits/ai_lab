@@ -185,6 +185,7 @@ namespace Ulon.Editor
             Gate(AssertControlSlots);
             Gate(AssertNestedBag);
             Gate(AssertGroundDecay);
+            Gate(AssertLootRight);   // 시체 루팅 우선창(§18.4) — 창 중 소유/파티·창 후 공개
             Gate(AssertStableSlice);
             Gate(AssertTravelSlice);
             Gate(AssertMarkRecall);
