@@ -281,8 +281,14 @@ def gather() -> dict:
         activities.append({'ai':ai,'stage':stage,'label':f'{ident} {stage}',
                            'task_id':p.get('task_id'),'command_id':p.get('command_id'),
                            'goal':p.get('goal') or task.get('goal',''), 'since':ago(p['started_at'])})
+    raw_config = {}
     try:
-        configured = json.loads((ROOT/'config.json').read_text(encoding='utf-8')).get('agents',{})
+        raw_config = json.loads((ROOT/'config.json').read_text(encoding='utf-8'))
+        configured = raw_config.get('agents',{})
+        for acfg in configured.values():
+            policy = raw_config.get('model_policy', {}).get(acfg.get('type'), {})
+            if policy:
+                acfg['model'] = '작업별 자동: ' + ' / '.join(dict.fromkeys(policy.values()))
     except (OSError,ValueError):
         configured = {}
     for name, acfg in configured.items():
@@ -295,6 +301,88 @@ def gather() -> dict:
     ai_cards = board_metrics.ai_state(configured,cached,activities)
     if any(a['enabled'] and not a['fresh'] for a in ai_cards) and time.time()-_PROVIDER_REFRESH_AT>60:
         refresh_providers()
+    # ── 「지금 · 다음」 파이프라인 (오너 지시 2026-09-12 「누가 뭐하고 다음엔 뭐하고 시각적으로」)
+    # 단계는 cli.execute_goal의 실제 순서다. 현재 단계는 **떠 있는 프로세스**로 정하고, 없으면 기록으로 짐작하되 그렇다고 적는다.
+    pipeline, upnext, flow = [], [], []
+    try:
+        reviewer_name = (raw_config.get("reviewer") or "-") if raw_config else "-"
+        max_attempts = int(raw_config.get("max_attempts", 3)) if raw_config else 3
+        tcfg = (raw_config.get("targets") or {}) if raw_config else {}
+        for t in running:
+            kind = (tcfg.get(t["target"]) or {}).get("kind", "unity")
+            if kind == "blender":
+                steps = [("준비", "git"), ("구현", t["agent"] or "-"), ("변경 집계", "git"), ("Blender 검증", "Blender"),
+                         ("리뷰", reviewer_name), ("커밋", "git")]
+                proc_step = {"agent": 1, "coding": 1, "blender": 3, "review": 4}
+            else:
+                gates = [g.get("name", "게이트") for g in (tcfg.get(t["target"]) or {}).get("gates", [])]
+                steps = [("준비", "git"), ("구현", t["agent"] or "-"), ("변경 집계", "git"), ("컴파일", "Unity"), ("테스트", "Unity")] \
+                        + [(g, "Unity") for g in gates] + [("리뷰", reviewer_name), ("커밋", "git")]
+                proc_step = {"agent": 1, "coding": 1, "unity": 3, "unity-test": 4, "unity-gate": 5 if gates else 4,
+                             "review": len(steps) - 2}
+            mine = [p for p in live if p.get("task_id") == t["id"]]
+            at = rows("SELECT * FROM attempts WHERE task_id=? ORDER BY n DESC LIMIT 1", (t["id"],))
+            a = dict(at[0]) if at else {}
+            if mine:
+                pr = mine[0]
+                sp = str(pr.get("stdout_path") or "")
+                cur_i = proc_step["review"] if ".review-" in sp else proc_step.get(pr.get("kind"), 2)
+                who, _ = board_metrics.actor(pr, attempt_agents)
+                who = who or steps[cur_i][1]
+                since = ago(pr["started_at"]); confirmed = True
+            else:
+                # 프로세스가 없다 = 단계 사이(집계·판정 정리)거나 다음 시도 준비 중. 짐작이라고 적는다.
+                cur_i = 2 if a.get("status") == "RUNNING" else 0
+                who = a.get("agent") or t["agent"] or "-"
+                since = ago(a["started_at"]) if a else ago(t["created_at"]); confirmed = False
+            history = [{"n": r["n"], "agent": r["agent"], "status": r["status"],
+                        "reason": (r["reason"] or r["compile_verdict"] or "")[:80]}
+                       for r in rows("SELECT * FROM attempts WHERE task_id=? ORDER BY n", (t["id"],))]
+            pipeline.append({
+                "id": t["id"], "goal": t["goal"], "target": t["target"], "branch": t["branch"] or "-",
+                "attempt": a.get("n") or t["attempts"] or 0, "max_attempts": max_attempts,
+                "steps": [{"name": n, "who": w} for n, w in steps], "cur": cur_i, "who": who,
+                "since": since, "confirmed": confirmed,
+                "next": steps[cur_i + 1][0] if cur_i + 1 < len(steps) else "완료",
+                "next_who": steps[cur_i + 1][1] if cur_i + 1 < len(steps) else "-",
+                "history": history,
+            })
+        # 이어서 할 일: 진짜 계획의 BACKLOG(의존성 순) + 접수된 명령
+        done_keys = {}
+        for t in real:
+            if t.get("plan_id") and t["status"] == "DONE" and t.get("verdict") == "PASS":
+                done_keys.setdefault(t["plan_id"], set()).add(t.get("plan_key"))
+        for t in sorted([t for t in real if t["status"] == "BACKLOG"], key=lambda x: x["id"]):
+            deps = [d for d in (t.get("depends_on") or "").split(",") if d]
+            ready = all(d in done_keys.get(t.get("plan_id"), set()) for d in deps)
+            upnext.append({"id": t["id"], "goal": t["goal"], "target": t["target"], "plan_id": t.get("plan_id"),
+                           "key": t.get("plan_key"), "deps": deps, "ready": ready, "agent": t.get("agent") or "-"})
+            if len(upnext) >= 6:
+                break
+        for c in cq.get("pending", [])[:3]:
+            upnext.append({"id": None, "goal": c.get("command", ""), "target": "명령", "plan_id": None,
+                           "key": f"명령 #{c.get('id')}", "deps": [], "ready": True, "agent": "codex"})
+        # 최근 흐름: 끝난 프로세스 12건(진짜 작업만) — 누가 무엇을 언제, 결과
+        stage_of = {"agent": "구현", "coding": "구현", "unity": "컴파일", "unity-test": "테스트", "unity-gate": "게이트",
+                    "blender": "Blender 검증", "review": "리뷰", "planning": "계획 분해"}
+        for pr in rows("SELECT p.* FROM processes p JOIN tasks t ON t.id=p.task_id"
+                       " WHERE p.status<>'RUNNING' AND t.status<>'ARCHIVED'"
+                       "   AND t.goal NOT LIKE '[NC]%' AND t.goal NOT LIKE '[병렬]%'"
+                       " ORDER BY p.id DESC LIMIT 120"):
+            t = task_by_id.get(pr["task_id"])
+            if not t or is_hidden(t, ncp):
+                continue
+            who, _ = board_metrics.actor(dict(pr), attempt_agents)
+            stage = stage_of.get(pr["kind"], pr["kind"])
+            ok = (pr["exit_code"] == 0) if pr["status"] == "EXITED" else False
+            flow.append({"task_id": pr["task_id"], "stage": stage, "who": who or ("Unity" if pr["kind"].startswith("unity") else pr["kind"]),
+                         "ok": ok, "status": pr["status"], "when": ago(pr["ended_at"] or pr["started_at"]),
+                         "secs": int((pr["ended_at"] or pr["started_at"]) - pr["started_at"])})
+            if len(flow) >= 12:
+                break
+    except Exception as exc:  # noqa: BLE001 — 파이프라인 계산이 죽어도 보드는 떠야 한다
+        flow = [{"task_id": None, "stage": f"파이프라인 계산 실패: {type(exc).__name__}: {exc}", "who": "-", "ok": False,
+                 "status": "ERROR", "when": "", "secs": 0}]
     overall = board_metrics.progress(real)
     targets = [{'target':name, **board_metrics.progress([t for t in real if t['target']==name])}
                for name in sorted({t['target'] for t in real})]
@@ -334,6 +422,7 @@ def gather() -> dict:
         "stopped": STOP.exists(),
         "free_gb": free,
         "current": cur,
+        "pipeline": pipeline, "upnext": upnext, "flow": flow,
         "tasks": [dict(t) for t in tasks],
         "blocked": [dict(t) for t in blocked],
         "live": [dict(p) for p in live],
@@ -444,6 +533,11 @@ h1{font-size:17px;letter-spacing:-.4px}
 .ai-head{display:flex;align-items:center;gap:8px}.ai-avatar{display:grid;place-items:center;width:29px;height:29px;border-radius:9px;background:#23354b;color:#c8e3ff;font-weight:700;font-size:12px}
 .ai-name{font-size:14px;font-weight:650;flex:1}.power{font-weight:700;font-size:11px;display:flex;align-items:center;gap:5px}.power:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.power.on{color:var(--ok)}.power.off{color:#9aa4b5}.power.unknown{color:#e2b46d}
 .ai-work{font-size:11px;margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}.ai-meta{font-size:10px;color:var(--mute);margin-top:5px}.busy .ai-avatar{background:#275c86}.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--run);box-shadow:0 0 10px #73b5ff80;margin-right:6px}
+.pipe{border-bottom:1px solid var(--line);padding:8px 0 12px}.pipe:last-child{border-bottom:0}.pipe h3{font-size:13px;margin:4px 0 8px;font-weight:550}.pipe .meta{font-size:11px;color:var(--mute);margin-top:6px}
+.steps{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding:4px 0}.step{display:flex;flex-direction:column;align-items:center;min-width:64px;flex:1;position:relative;font-size:10px;color:var(--mute);text-align:center}.step:not(:last-child):after{content:"";position:absolute;top:7px;left:50%;width:100%;height:2px;background:var(--line);z-index:0}.step.done:not(:last-child):after{background:var(--ok)}.step .dot{width:14px;height:14px;border-radius:50%;background:var(--line);border:2px solid var(--line);z-index:1;box-sizing:border-box}.step.done .dot{background:var(--ok);border-color:var(--ok)}.step.cur .dot{background:var(--run,#4ea1ff);border-color:var(--run,#4ea1ff);box-shadow:0 0 0 4px rgba(78,161,255,.25);animation:pulse 1.4s infinite}.step.cur{color:var(--fg,#e6ebf2);font-weight:650}.step .nm{margin-top:5px;white-space:nowrap}.step .wh{font-size:9px;opacity:.8}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(78,161,255,.45)}70%{box-shadow:0 0 0 7px rgba(78,161,255,0)}100%{box-shadow:0 0 0 0 rgba(78,161,255,0)}}
+.nextline{font-size:12px;margin-top:8px}.nextline b{color:var(--run,#4ea1ff)}.tries{font-size:10px;color:var(--mute);margin-top:4px}.tries span{margin-right:8px}
+.upnext{margin-top:10px}.upnext h4,.flow h4{font-size:11px;color:var(--mute);margin:10px 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}.upnext ol{margin:0;padding-left:18px;font-size:12px}.upnext li{margin:3px 0}.upnext .wait{color:var(--mute)}.flow ul{list-style:none;margin:0;padding:0;font-size:11px}.flow li{display:flex;gap:8px;padding:2px 0;border-bottom:1px dashed var(--line)}.flow li .t{color:var(--mute);min-width:56px}.flow li .r{min-width:36px;font-weight:600}
 .activity{border-bottom:1px solid var(--line);padding:8px 0 10px}.activity:first-child{padding-top:0}.activity:last-child{border-bottom:0}.activity h3{font-size:13px;margin:6px 0 4px;font-weight:550}.activity small{color:var(--mute);font-size:11px}
 #tasks table td{padding:9px 5px}#tasks tr:last-child td{border-bottom:0}.state-chip{font-size:10px;border:1px solid currentColor;border-radius:6px;padding:2px 5px;white-space:nowrap}
 button{background:#1a2b40;border-color:#344a65;font-size:11px}button:hover{background:#223c56;border-color:#6697c4}button:disabled{opacity:.5;cursor:wait}
@@ -474,7 +568,7 @@ textarea:focus{outline:2px solid #73b5ff;outline-offset:1px}form{margin:8px 0;al
 </header>
 <div class=grid>
   <div class=card id=c-progress><div id=progress class=progress-content>진행률 확인 중…</div></div>
-  <div class=card id=c-now><h2>지금 작업 중인 AI</h2><div id=now>…</div></div>
+  <div class=card id=c-now><h2>지금 · 다음 (누가 무엇을, 다음은 무엇)</h2><div id=now>…</div></div>
   <div class=card id=c-tasks><h2>최근 작업</h2><div id=tasks>…</div></div>
   <div class=card id=c-phases><h2>단계</h2><div id=phases>…</div></div>
   <div class=card id=c-stuck><h2>막힘</h2><div id=stuck>…</div></div>
@@ -493,6 +587,25 @@ const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;
 const STATUS_TEXT={DONE:"완료",RUNNING:"작업 중",TESTING:"검증 중",BLOCKED:"막힘",STOPPED:"중단",REVIEW:"리뷰",INTERRUPTED:"중단",BACKLOG:"대기",READY:"대기",FAILED:"실패",BLOCKED_CLOUD_REQUIRED:"AI 대기"};
 const SC={DONE:'ok',RUNNING:'run',BLOCKED:'bad',STOPPED:'warn',REVIEW:'warn',INTERRUPTED:'warn'};
 const VC={PASS:'ok',FAILED:'bad',UNKNOWN:'warn'};
+function dn(d,name){return (d.ai_cards.find(c=>c.name===name)||{}).display_name||name||'-';}
+function renderNow(d){
+  let h='';
+  for(const p of d.pipeline){
+    h+=`<div class=pipe><span class="pill ${p.confirmed?'run':'warn'}">${p.confirmed?'<span class=live-dot></span>':''}${E(dn(d,p.who))} · ${E(p.steps[p.cur].name)}${p.confirmed?'':' (프로세스 없음 · 기록으로 짐작)'}</span>
+      <h3>작업 #${p.id} · ${E(p.goal)}</h3>
+      <div class=steps>${p.steps.map((s,i)=>`<div class="step ${i<p.cur?'done':(i===p.cur?'cur':'')}"><div class=dot></div><div class=nm>${E(s.name)}</div><div class=wh>${E(dn(d,s.who))}</div></div>`).join('')}</div>
+      <div class=nextline>지금 <b>${E(dn(d,p.who))}</b>가 <b>${E(p.steps[p.cur].name)}</b> (${E(p.since)} 시작) → 다음 <b>${E(p.next)}</b>${p.next_who!=='-'?' · '+E(dn(d,p.next_who)):''}</div>
+      <div class=tries>시도 ${p.attempt}/${p.max_attempts} ${p.history.map(x=>`<span class="${VC[x.status]||'mute'}">${x.n}회 ${E(dn(d,x.agent))} ${E(x.status)}${x.reason?' — '+E(x.reason):''}</span>`).join('')}</div>
+      <div class=meta>${E(p.target)} · ${E(p.branch)}</div></div>`;
+  }
+  for(const a of d.activities.filter(a=>!a.task_id)){
+    h+=`<div class=activity><span class="pill run"><span class=live-dot></span>${E(dn(d,a.ai))} · ${E(a.stage)}</span><h3>${E(a.label)} · ${E(a.goal)}</h3><small>${E(a.since)} 시작 · 명령을 읽고 orch plan/run으로 옮기는 중 → 다음: 작업(task)이 이 칸에 파이프라인으로 뜬다</small></div>`;
+  }
+  if(!h) h=d.current?`<div class=activity><h3>작업 #${d.current.id} · ${E(d.current.goal)}</h3><p class=warn>실행 프로세스 확인 대기</p></div>`:'<div class=mute>지금 실행 중인 작업이 없습니다.</div>';
+  if(d.upnext.length) h+=`<div class=upnext><h4>이어서 할 일 (순서대로)</h4><ol>${d.upnext.map(u=>`<li class="${u.ready?'':'wait'}">${u.key?E(u.key)+' · ':''}${E(u.goal).slice(0,70)} <span class=mute>· ${E(dn(d,u.agent))}${u.deps.length?' · '+(u.ready?'선행 완료':'선행 대기: '+E(u.deps.join(',')))+'':''}</span></li>`).join('')}</ol></div>`;
+  if(d.flow.length) h+=`<div class=flow><h4>최근 흐름</h4><ul>${d.flow.map(f=>`<li><span class=t>${E(f.when)}</span><span class="r ${f.ok?'ok':(f.status==='EXITED'?'bad':'warn')}">${f.ok?'PASS':E(f.status==='EXITED'?'FAIL':f.status)}</span><span>${f.task_id?'#'+f.task_id+' ':''}${E(dn(d,f.who))} ${E(f.stage)}${f.secs?' · '+f.secs+'s':''}</span></li>`).join('')}</ul></div>`;
+  return h;
+}
 async function load(){
   const response=await fetch('/api'); if(!response.ok)throw new Error('보드 응답 '+response.status);
   const d=await response.json();
@@ -510,10 +623,7 @@ async function load(){
     <div class=progress-copy><h3>등록 작업 완료율</h3><p>검증 완료 ${pr.done} / 전체 ${pr.total}개</p>
       <div class=counts><div class=count><strong class=ok>${pr.done}</strong><span>완료</span></div><div class=count><strong class=run>${pr.running}</strong><span>진행 기록</span></div><div class=count><strong>${pr.waiting}</strong><span>대기</span></div><div class=count><strong class=warn>${pr.blocked}</strong><span>막힘·중단</span></div></div></div>
     <div class=target-list>${d.target_progress.map(t=>`<div class=target-row><div class=target-label><span>${E(t.target)}</span><span>${t.percent??'—'}% · ${t.done}/${t.total}</span></div><div class=track><span style="width:${t.percent??0}%"></span></div></div>`).join('')}</div>`;
-  document.getElementById('now').innerHTML=d.activities.length ? d.activities.map(a=>`
-    <div class=activity><span class="pill run"><span class=live-dot></span>${E((d.ai_cards.find(c=>c.name===a.ai)||{}).display_name||'검증 엔진')} · ${E(a.stage)}</span>
-    <h3>${E(a.label)} · ${E(a.goal)}</h3><small>${E(a.since)} 시작 · 실행 프로세스 확인</small></div>`).join('') :
-    (d.current?`<div class=activity><h3>작업 #${d.current.id} · ${E(d.current.goal)}</h3><p class=warn>실행 프로세스 확인 대기</p><small>개발 담당 ${E(d.current.who)} · 기록과 실제 상태를 대조 중</small></div>`:'<div class=mute>현재 실행 중인 AI 작업이 없습니다.</div>');
+  document.getElementById('now').innerHTML=renderNow(d);
 
   const stuck=[...d.blocked.map(t=>`<li><span class="${SC[t.status]||'mute'}">#${t.id}</span> ${E(t.reason||t.goal).slice(0,60)}</li>`),
                ...d.stuck.map(s=>`<li class=mute>${E(s).slice(0,70)}</li>`)];

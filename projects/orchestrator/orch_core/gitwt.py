@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -98,14 +99,26 @@ def create_worktree(repo: Path, task_id: int, subdir: str | None = None,
     wt.parent.mkdir(parents=True, exist_ok=True)
     if wt.exists():
         raise GitError(f"worktree 자리가 이미 있음: {wt}")
-    if subdir:
-        git(repo, "worktree", "add", "--no-checkout", "-b", branch, str(wt), base_ref)
-        git(wt, "sparse-checkout", "set", subdir)
-        git(wt, "checkout")
-        if not (wt / subdir).is_dir():
-            raise GitError(f"sparse checkout 뒤에 {subdir} 가 없다 — 추적된 파일이 없는 폴더인가")
-    else:
-        git(repo, "worktree", "add", "-b", branch, str(wt), base_ref)
+    # 동시 세션이 같은 저장소에서 `orch/task-NNNN`을 지우고 만들면 refs/heads/orch **디렉터리**가
+    # 사라지는 찰나에 걸려 "unable to create directory for refs/heads/orch/..."로 죽는다
+    # (2026-09-12 task 406, 내 clean 루프와 Codex의 새 작업이 겹쳤다). 한 번은 다시 해본다.
+    for attempt in (1, 2):
+        try:
+            if subdir:
+                git(repo, "worktree", "add", "--no-checkout", "-b", branch, str(wt), base_ref)
+                git(wt, "sparse-checkout", "set", subdir)
+                git(wt, "checkout")
+                if not (wt / subdir).is_dir():
+                    raise GitError(f"sparse checkout 뒤에 {subdir} 가 없다 — 추적된 파일이 없는 폴더인가")
+            else:
+                git(repo, "worktree", "add", "-b", branch, str(wt), base_ref)
+            break
+        except GitError as e:
+            racy = "cannot lock ref" in str(e) or "unable to create directory" in str(e)
+            if attempt == 2 or not racy:
+                raise
+            time.sleep(1.5)
+            git(repo, "worktree", "prune", check=False)
     return wt, branch
 
 
