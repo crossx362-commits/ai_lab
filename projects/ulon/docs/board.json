@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T14:28:36+09:00",
+  "updated_at": "2026-09-12T14:30:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -9,8 +9,8 @@
       "status": "완료",
       "assigned_loop": 5,
       "completed_loop": 7,
-      "commit": "946a381b",
-      "rationale": "INBOX 맵 작음·월드맵. #7 HTTP MCP 플레이: Terrain 600m, 월드맵 베이크 통과, HUD 600m 라벨 확인.",
+      "commit": "fbe1f41b",
+      "rationale": "INBOX 맵 작음·월드맵. 구현 946a381b. #7 검증 커밋 fbe1f41b. Terrain 600m·월드맵 HUD 플레이 확인.",
       "fail_streak": 0
     },
     {
