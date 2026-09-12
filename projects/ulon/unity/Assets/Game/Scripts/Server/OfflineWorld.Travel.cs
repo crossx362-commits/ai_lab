@@ -326,11 +326,16 @@ namespace Ulon.Server
         /// 12.2 — 수치 원장(items.json·mobs.json)을 **실행 중에** 다시 읽는다. 로더가 한 번 읽고 캐시하므로
         /// 이 길이 없으면 파일을 고쳐도 게임을 껐다 켜야 반영된다(그때 「재빌드 없이」는 반만 맞는 말이다).
         /// </summary>
-        public string GmReloadLedgers()
+        public string GmReloadLedgers() => GmReloadLedgers(null);
+
+        public string GmReloadLedgers(WorldBody actor)
         {
+            if (!GmOk(actor, out AttackResult denied))
+                return "GM 거절 — " + denied.FailReason;
             ItemData.Reload();
             MobData.Reload();
             RecipeData.Reload();
+            GmAccounts.Reload();
             string err = "";
             if (!string.IsNullOrEmpty(ItemData.LoadError))
                 err += " 아이템: " + ItemData.LoadError;
@@ -338,60 +343,85 @@ namespace Ulon.Server
                 err += " 몹: " + MobData.LoadError;
             if (!string.IsNullOrEmpty(RecipeData.LoadError))
                 err += " 제작법: " + RecipeData.LoadError;
-            OpLog.Write("gm", PersistDriver.AccountKey(), "-", "reload_ledgers");
+            OpLog.Write("gm", AccountOf(actor), "-", "reload_ledgers");
             return "원장 재적재 — 아이템 " + ItemData.Count + "종·몹 " + MobData.Count + "종·제작법 " + RecipeData.Count + "종" + (err == "" ? "" : " / 불량:" + err);
+        }
+
+        bool GmOk(WorldBody actor, out AttackResult denied)
+        {
+            denied = default;
+            string account = AccountOf(actor);
+            if (GmAuthority.Allowed(account))
+                return true;
+            denied = new AttackResult { FailReason = GmAuthority.Denied };
+            OpLog.Write("gm", account, "-", "denied");
+            return false;
         }
 
         public AttackResult GmWarpPlaza(WorldBody body)
         {
+            if (!GmOk(body, out AttackResult denied))
+                return denied;
             if (body == null)
                 return new AttackResult { FailReason = "no_body" };
             WarpBody(body, 0f, 0f);
-            OpLog.Write("gm", PersistDriver.AccountKey(), body.name, "warp_plaza");
+            OpLog.Write("gm", AccountOf(body), body.name, "warp_plaza");
             return new AttackResult { Applied = true };
         }
 
         /// <summary>§6.1 테스트 공간으로 워프 — 개발자 전용 QA 마당은 마을에서 이어지는 길이 없다.</summary>
         public AttackResult GmWarpTest(WorldBody body)
         {
+            if (!GmOk(body, out AttackResult denied))
+                return denied;
             if (body == null)
                 return new AttackResult { FailReason = "no_body" };
             WarpBody(body, WorldRegions.TestChamber.X, WorldRegions.TestChamber.Z);
-            OpLog.Write("gm", PersistDriver.AccountKey(), body.name, "warp_test");
+            OpLog.Write("gm", AccountOf(body), body.name, "warp_test");
             return new AttackResult { Applied = true };
         }
 
         public AttackResult GmGive(WorldBody body, string template, int amount)
         {
+            if (!GmOk(body, out AttackResult denied))
+                return denied;
             if (body == null || string.IsNullOrEmpty(template))
                 return new AttackResult { FailReason = "no_body" };
             Bag(body).Add(template, amount < 1 ? 1 : amount);
-            OpLog.Write("gm", PersistDriver.AccountKey(), template, "give " + amount);
+            OpLog.Write("gm", AccountOf(body), template, "give " + amount);
             return new AttackResult { Applied = true };
         }
 
         public AttackResult GmTake(WorldBody body, string template)
         {
+            if (!GmOk(body, out AttackResult denied))
+                return denied;
             if (body == null || string.IsNullOrEmpty(template))
                 return new AttackResult { FailReason = "no_body" };
             if (!Bag(body).TakeOne(template))
                 return new AttackResult { FailReason = "missing" };
-            OpLog.Write("gm", PersistDriver.AccountKey(), template, "take");
+            OpLog.Write("gm", AccountOf(body), template, "take");
             return new AttackResult { Applied = true };
         }
 
         public AttackResult GmSetSkill(WorldBody body, SkillId skill, float value)
         {
+            if (!GmOk(body, out AttackResult denied))
+                return denied;
             if (body == null)
                 return new AttackResult { FailReason = "no_body" };
             if (!SkillsOf(body).TrySet(skill, value))
                 return new AttackResult { FailReason = "lock" };
-            OpLog.Write("gm", PersistDriver.AccountKey(), skill.ToString(), "set " + value.ToString("0.0"));
+            OpLog.Write("gm", AccountOf(body), skill.ToString(), "set " + value.ToString("0.0"));
             return new AttackResult { Applied = true };
         }
 
-        public AttackResult GmSpawnSkeleton()
+        public AttackResult GmSpawnSkeleton() => GmSpawnSkeleton(null);
+
+        public AttackResult GmSpawnSkeleton(WorldBody actor)
         {
+            if (!GmOk(actor, out AttackResult denied))
+                return denied;
             var src = GameObject.Find("Skeleton");
             if (src == null)
                 return new AttackResult { FailReason = "no_template" };
@@ -409,12 +439,16 @@ namespace Ulon.Server
                 body.Ghost = false;
                 body.ResetHp();
             }
-            OpLog.Write("gm", PersistDriver.AccountKey(), "Skeleton_gm", "spawn");
+            OpLog.Write("gm", AccountOf(actor), "Skeleton_gm", "spawn");
             return new AttackResult { Applied = true };
         }
 
-        public AttackResult GmDespawnExtra()
+        public AttackResult GmDespawnExtra() => GmDespawnExtra(null);
+
+        public AttackResult GmDespawnExtra(WorldBody actor)
         {
+            if (!GmOk(actor, out AttackResult denied))
+                return denied;
             int n = 0;
             var all = Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);
             for (int i = 0; i < all.Length; i++)
@@ -424,8 +458,27 @@ namespace Ulon.Server
                 KillGo(all[i].gameObject);
                 n++;
             }
-            OpLog.Write("gm", PersistDriver.AccountKey(), "Skeleton_gm", "despawn " + n);
+            OpLog.Write("gm", AccountOf(actor), "Skeleton_gm", "despawn " + n);
             return n > 0 ? new AttackResult { Applied = true } : new AttackResult { FailReason = "none" };
+        }
+
+        public string GmBackup(WorldBody actor)
+        {
+            if (!GmOk(actor, out _))
+                return "";
+            string path = OpLog.Backup();
+            OpLog.Write("gm", AccountOf(actor), "-", "backup");
+            return path ?? "";
+        }
+
+        public AttackResult GmFreeze(WorldBody actor, bool frozen)
+        {
+            if (!GmOk(actor, out AttackResult denied))
+                return denied;
+            string account = AccountOf(actor);
+            OpLog.Freeze(account, frozen);
+            PersistDriver.Frozen = frozen && account == PersistDriver.AccountKey();
+            return new AttackResult { Applied = true };
         }
 
         bool LootAllowed(WorldBody looter, CorpseNode node)

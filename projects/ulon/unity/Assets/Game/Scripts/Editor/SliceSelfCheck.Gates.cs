@@ -182,6 +182,8 @@ namespace Ulon.Editor
             Gate(AssertContextMenu);
             Gate(AssertTargetCursorNegativeControl);
             Gate(AssertTargetCursor);
+            Gate(AssertGmAuthNegativeControl);
+            Gate(AssertGmAuth);
             Gate(AssertStrengthRequirement);
             Gate(AssertRepairAndToolReadouts);
             // VFX는 **화면으로** 재야 한다 — 셀프체크는 -nographics라 카메라 렌더가 불가능하다.

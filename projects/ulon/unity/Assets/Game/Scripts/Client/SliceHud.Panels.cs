@@ -614,25 +614,65 @@ namespace Ulon.Client
         }
 
         // ── 디버그(GM) — 기본 숨김, F1 ────────────────────────────────────────────────
-        void PanelGm(OfflineWorld world, WorldBody me)
+        void PanelGm(OfflineWorld world, WorldBody me, NetAvatar net)
         {
             GUILayout.Label(PersistDriver.Frozen ? "GM  계정 정지됨" : "GM  (F1로 열고 닫음)");
-            Row3(("광장복구", () => world.GmWarpPlaza(me)),
-                 ("테스트공간", () => world.GmWarpTest(me)),
-                 ("검술+10", () => world.GmSetSkill(me, SkillId.Swordsmanship,
-                                                    world.SkillsOf(me).Get(SkillId.Swordsmanship) + 10f)));
-            Row3(("곡괭이", () => world.GmGive(me, ItemCatalog.Pickaxe, 1)),
-                 ("철검", () => world.GmGive(me, ItemCatalog.IronSword, 1)),
-                 ("회수", () => world.GmTake(me, "iron_ore")));
-            Row3(("스켈소환", () => world.GmSpawnSkeleton()),
-                 ("스켈삭제", () => world.GmDespawnExtra()),
-                 ("백업", () => OpLog.Backup()));
-            Row3(("원장 다시 읽기", () => ledgerLine = world.GmReloadLedgers()),
+            Row3(("광장복구", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmWarpPlaza();
+                     else world.GmWarpPlaza(me);
+                 }),
+                 ("테스트공간", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmWarpTest();
+                     else world.GmWarpTest(me);
+                 }),
+                 ("검술+10", () =>
+                 {
+                     float next = world.SkillsOf(me).Get(SkillId.Swordsmanship) + 10f;
+                     if (net != null && net.IsClientInitialized) net.RpcGmSetSkill((int)SkillId.Swordsmanship, next);
+                     else world.GmSetSkill(me, SkillId.Swordsmanship, next);
+                 }));
+            Row3(("곡괭이", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmGive(ItemCatalog.Pickaxe, 1);
+                     else world.GmGive(me, ItemCatalog.Pickaxe, 1);
+                 }),
+                 ("철검", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmGive(ItemCatalog.IronSword, 1);
+                     else world.GmGive(me, ItemCatalog.IronSword, 1);
+                 }),
+                 ("회수", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmTake("iron_ore");
+                     else world.GmTake(me, "iron_ore");
+                 }));
+            Row3(("스켈소환", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmSpawn();
+                     else world.GmSpawnSkeleton(me);
+                 }),
+                 ("스켈삭제", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmDespawn();
+                     else world.GmDespawnExtra(me);
+                 }),
+                 ("백업", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmBackup();
+                     else world.GmBackup(me);
+                 }));
+            Row3(("원장 다시 읽기", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmReload();
+                     else ledgerLine = world.GmReloadLedgers(me);
+                 }),
                  (PersistDriver.Frozen ? "정지 해제" : "계정 정지", () =>
                  {
                      bool next = !OpLog.IsFrozen(PersistDriver.AccountKey());
-                     OpLog.Freeze(PersistDriver.AccountKey(), next);
-                     PersistDriver.Frozen = next;
+                     if (net != null && net.IsClientInitialized) net.RpcGmFreeze(next);
+                     else world.GmFreeze(me, next);
                  }));
             if (ledgerLine != "")
                 GUILayout.Label(ledgerLine);

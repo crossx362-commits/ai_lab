@@ -7,7 +7,7 @@ using Ulon.Shared;
 
 namespace Ulon.Client
 {
-    public sealed class NetAvatar : NetworkBehaviour, IHintSink
+    public sealed partial class NetAvatar : NetworkBehaviour, IHintSink
     {
         /// <summary>이 클라 화면에 떠 있는 마지막 안내 — TargetRpc로만 채워진다(검수 B).</summary>
         string clientHint = "";
@@ -265,6 +265,8 @@ namespace Ulon.Client
             accountId = account;
             CharacterStore.EnsureRunning();
             var body = GetComponent<WorldBody>();
+            if (body != null && !string.IsNullOrEmpty(account))
+                body.AccountId = account;
             var skills = OfflineWorld.Instance.SkillsOf(body);
             var stats = OfflineWorld.Instance.StatsOf(body);
             var snap = CharacterStore.Load(account);

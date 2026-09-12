@@ -355,7 +355,7 @@ namespace Ulon.Client
                     case Panel.Skills: PanelSkills(world); break;
                     case Panel.Social: PanelSocial(world, me, net); break;
                     case Panel.Nearby: PanelNearby(world, me, net); break;
-                    case Panel.Gm: PanelGm(world, me); break;
+                    case Panel.Gm: PanelGm(world, me, net); break;
                 }
                 GUILayout.EndVertical();
                 if (Event.current.type == EventType.Repaint)
