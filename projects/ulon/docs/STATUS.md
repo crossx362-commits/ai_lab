@@ -1,22 +1,20 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#39** (성공) · 2026-09-12T21:07:21+0900
-커밋: `22525e09` 구현, `af38a15f` 샷·STATUS. 클라 빌드·2클라는 에디터 점유라 다음입니다.
+마지막 바퀴: **#40** (성공) · 2026-09-12T21:19:18+0900
+**원작 대비:** 같은 점 — 스태미나 바닥이면 못 달린다. 나은 점 — 소모/회복이 JSON. 부족한 점 — 피격 스태미나 감소·2클라 없음. 소모 4/s·회복 2/s는 기획서에 없는 프로젝트 값.
 
-- 모델 `grok-4.6` · 경과 914s · 세션 rc `0`
-- HEAD `af38a15f [loop#39] 시전 이동 플레이 샷과 STATUS` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 670s · 세션 rc `0`
+- HEAD `a6334457 [loop#40] 스태미나 플레이 샷과 STATUS` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `af38a15f [loop#39] 시전 이동 플레이 샷과 STATUS`
-- `22525e09 [loop#39] 시전 중 이동하면 벼락 취소`
-- `15675b18 [codex] 헤드리스 IMGUI 렌더 경로 검증과 개발 막힘 해소`
+- `a6334457 [loop#40] 스태미나 플레이 샷과 STATUS`
+- `4e12510d [loop#40] 달리기 스태미나 0이면 걷기만`
 
 ## 바퀴 기록
 
 | 바퀴 | 결과 | 시각 | 모델 | 경과 |
 |---|---|---|---|---|
-| #9 | 성공 | 2026-09-12T14:59:24+0900 | grok-4.6 | 982s |
 | #10 | 성공 | 2026-09-12T15:10:38+0900 | grok-4.6 | 626s |
 | #11 | 성공 | 2026-09-12T15:25:06+0900 | grok-4.6 | 819s |
 | #12 | 성공 | 2026-09-12T15:37:01+0900 | grok-4.6 | 666s |
@@ -46,6 +44,7 @@
 | #37 | 성공 | 2026-09-12T20:40:48+0900 | grok-4.6 | 688s |
 | #38 | 성공 | 2026-09-12T20:51:20+0900 | grok-4.6 | 584s |
 | #39 | 성공 | 2026-09-12T21:07:21+0900 | grok-4.6 | 914s |
+| #40 | 성공 | 2026-09-12T21:19:18+0900 | grok-4.6 | 670s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -78,7 +77,7 @@
 | 플레이어 벤더·하우징 | 부분 | 코드 있음(기획상 Phase 2인데 앞섬). 플레이 미실행 |
 | 월드(마을1·필드·광산·던전3·테스트) | 부분 | loop#7 플레이: Terrain 600×600m, hres=1025. 미니맵·세계지도(M) 표시, 라벨 600m. 원작 절반(~3072m)은 아님 |
 | 몬스터 | 부분 | loop#11: 원장 **20종**(사냥 8+추가 6+보스 4+조련 2). 샷 `unity/Captures/loop11_cutthroat_seer.png`·`loop11_skelmage_squire.png`·`loop11_bonekin_runt.png`. 사냥터 8종·게이트 유지. 비인간형 원형(늑대·거미)은 메시 없어 KayKit 색·크기 변형으로 채움. 배치 셀프체크는 에디터 점유라 미실행 |
-| 마법·시약·명상·시전 중단 | 동작함 | loop#39: 시전 중 이동 시 interruptible 벼락 취소(`CastMove.BreaksOnMove`). 플레이 샷 `unity/Captures/loop39_casting.png`(나 벌목꾼 시전 중·MP 27/36·시험표적 80)·`loop39_cast_move.png`(시전 중 없음·표적 80 유지). ClickMotor.SetDestination 후 IsCasting=false·HP 불변. 게이트 `AssertCastMoveInterrupt`+NC 에디터 OK. 피격 중단은 기존. 2클라 미실행. 원작 합격 아님 |
+| 마법·시약·명상·시전 중단 | 동작함 | loop#39 시전 이동 취소. loop#41: 마나 자연 회복(`ManaRegen`, 명상+INT, 중갑×0.5). 플레이 SetMana(2)→저 MP 5/36 → ~2s 후 10/36. 중갑 철판 후 rate 0.76·샷 MP 중갑 7/36. 게이트 `AssertManaRegen`+NC 에디터 OK. 샷 `unity/Captures/loop41_mana_low.png`·`loop41_mana_regen.png`·`loop41_mana_heavy.png`. 클릭 명상은 숙련용 유지. 2클라 미실행. 원작 합격 아님. 1.0+명상/100+INT/50 은 기획서에 없는 프로젝트 값 |
 | 죽음→유령→부활→시체 회수 | 동작함 | loop#21 플레이어 시체 유지. loop#23: 보스 드랍은 시체·기여자/파티 창(§18.11). 호스트 플레이 헥사크 처치 때 가방에 봉인 없음·시체 items=1 vis, 룻 후 가방 「헥사크의 봉인」. 샷 `unity/Captures/loop23_hexarch_corpse.png`·`loop23_hexarch_loot_bag.png`. 게이트 `AssertBossLoot`+NC·던전 4보스 계약. 독/펫 기여자·2클라는 미실행. 원작 합격 아님 |
 | 무게·과적·STR 요구 | 동작함 | loop#38: 과적 시 달리기 불가(`CarryMove.CanRun`). 플레이 샷 `unity/Captures/loop38_overweight.png`(무게 180/156 과적·달림불가). LocalAvatar 끄고 SetRunning(true)여도 Running=false·PlanarSpeed=2.50. 가방 비우면 Running=true. 게이트 `AssertOverweightMove`+NC 에디터 OK. 집기/구매 과적 거절은 기존. 걷기 감속 배율은 기획서에 없어 안 넣음(옛 0.35 삭제). 2클라 미실행. 원작 합격 아님 |
 | Fame/Karma·가드존·범죄 | 부분 | 코드. Open PvP 플레이 미실행 |
@@ -113,18 +112,18 @@
 - **persist/postgres는 이번 살아 있음.** pid 84115, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
 - **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080)는 이번 살아 있음 — 호스트 플레이 샷에 씀. 배치 검사는 에디터를 닫은 뒤에.
-- **이번 플레이.** 에디터 플레이 오프라인(서버 OFF). HUD ST 35/35. SetStamina(0) 후 SetRunning(true)여도 Running=false. 걷기 중 회복(2/s). 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 호스트·2클라 바이너리 없음.
+- **이번 플레이.** 에디터 플레이 오프라인(서버 OFF). HUD MP 2→5/36→10/36. 철판 중갑 후 MP 중갑 7/36·무게 14/156. 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 호스트·2클라 바이너리 없음.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 반대로 **UlonClient.app은 그 워크트리에만** 있다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- `run-stamina`: 기획 §18.2. DEX에서 MaxStamina. 달리면 소모, 0이면 걷기만. `RunStamina`·ClickMotor·RpcRequestMove. HUD ST 바·기진. 게이트+NC. 샷 loop40_stamina_full·loop40_stamina_zero. 구현 `4e12510d`. 출처 https://uo.com/wiki/ultima-online-wiki/player/stats/skills-stats-and-attributes/
-- 원작 대비: 같은 점 — 스태미나가 바닥이면 달릴 수 없다. 나은 점 — 소모/회복이 JSON 원장. 부족한 점 — 피격·과적 이동 스태미나 감소는 없음, 2클라 없음. 소모 4/s·회복 2/s는 기획서에 없는 프로젝트 단순값.
+- `mana-regen`: 기획 §18.6. 시간 지나면 마나 회복. 속도는 명상 스킬·INT, 중갑은 HeavyMul 0.5. `ManaRegen`·ClickMotor.TickMana. HUD MP·중갑. 게이트+NC. 샷 loop41_mana_low·loop41_mana_regen·loop41_mana_heavy. 구현 `90504443`. 출처 https://uo.com/wiki/ultima-online-wiki/skills/magery/
+- 원작 대비: 같은 점 — 마나는 시간이 지나면 차고, 중갑이면 회복이 느리다. 나은 점 — 비율이 JSON 원장. 부족한 점 — 원작 명상 공식·앉기 전용 액티브 명상은 아님, 2클라 없음. base 1/s·명상/100·INT/50은 기획서에 없는 프로젝트 단순값.
 
 ## 지금 하는 것
 
-없음. loop#40 카드 `run-stamina`는 샷·게이트까지 닫음.
+없음. loop#41 카드 `mana-regen`는 샷·게이트까지 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
@@ -148,6 +147,7 @@
 - **이동 속도:** 기획 §7.2.1 적용함(loop#37). 기마 10.0 m/s는 원장만 — 탑승 플레이가 없어 모터에 안 묶음. Always Run 옵션 UI는 GPT HUD 차선.
 - **과적 걷기 감속:** 원작 UO는 과적 시 걷기도 느려진다(uoguide Weight). 기획서에 배율이 없어 이번엔 달리기 금지와 걷기 2.5 m/s만. 감속·이동불가 문턱은 「기획서 보강 필요」.
 - **달리기 스태미나 수치:** Max=10+DEX는 기획 §18.2 「단순 공식」. 소모 4/s·회복 2/s는 기획서에 없어 프로젝트 값(`run_stamina.json`). 원작 피격 스태미나 감소는 안 넣음.
+- **마나 자연 회복 수치:** 기획 §18.6은 Meditation이 회복을 담당·중갑 패널티만. 공식 숫자는 없어 `mana_regen.json` 프로젝트 값(1 + 명상/100 + INT/50, 중갑×0.5). 원작 명상 틱 공식은 안 넣음.
 - **ai_lab-loop 워크트리:** 앞선 작업이 아니라 뒤처짐. 그곳 빌드만 쓰지 말고 이 트리에서 다시 빌드할 것. 병합 금지.
 - **물 2·3단계(프레넬·정점 흔들림), 강 곡류:** 핸드오프상 검수 판정 뒤.
 - **에디터 점유:** PID 85035가 잠금. 배치 빌드/셀프체크는 불가. HTTP MCP로는 플레이 가능(loop#7 사용). 배치 검사는 에디터를 닫은 뒤에.
