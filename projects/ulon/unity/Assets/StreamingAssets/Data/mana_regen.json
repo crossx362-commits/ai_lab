@@ -1,0 +1,6 @@
+{
+  "base_per_s": 1,
+  "meditation_div": 100,
+  "int_div": 50,
+  "source": "GAME_DESIGN §18.6 Mana — INT에서 Mana Pool, Meditation이 회복을 담당. Armor Trade-off: 중갑은 active meditation/마나 회복에 패널티(기존 HeavyMul 0.5). 공식은 UO 수치 비복제 단순값: base + Meditation/100 + INT/50. 클릭 명상(MeditationResolve, 쿨다운 2s)은 숙련 상승용으로 유지. https://uo.com/wiki/ultima-online-wiki/skills/magery/ https://uo.com/wiki/ultima-online-wiki/player/stats/skills-stats-and-attributes/"
+}

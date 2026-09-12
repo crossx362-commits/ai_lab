@@ -234,7 +234,7 @@ namespace Ulon.Client
                                 (string.IsNullOrEmpty(title) ? "" : "  " + title) +
                                 (me.IsCasting(Time.time) ? "  시전 중" : ""));
                 Bar("HP", me.Hp, me.MaxHp);
-                Bar("MP", me.Mana, me.MaxMana);
+                Bar("MP" + (bag != null && ItemCatalog.HasHeavyArmor(bag.Items) ? " 중갑" : ""), me.Mana, me.MaxMana);
                 Bar("ST" + (RunStamina.CanRun(me.Stamina) ? "" : " 기진"), me.Stamina, me.MaxStamina);
                 float w = bag != null ? bag.TotalWeight() : 0f;
                 int cap = ItemCatalog.CarryCap(st.Str);

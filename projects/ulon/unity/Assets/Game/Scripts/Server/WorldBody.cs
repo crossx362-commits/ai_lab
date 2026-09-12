@@ -156,6 +156,25 @@ namespace Ulon.Server
                 SetStamina(Stamina + RunStamina.RegenPerSecond * dt);
         }
 
+        /// <summary>명상·INT 기반 자연 회복. 중갑은 호출부가 깎은 비율을 넘긴다(§18.6).</summary>
+        public void TickMana(float perSecond, float dt)
+        {
+            if (Ghost || dt <= 0f)
+                return;
+            SetMana(Mana + perSecond * dt);
+        }
+
+        /// <summary>가방 중갑·스킬/스탯을 읽어 회복 비율을 정한다.</summary>
+        public void TickMana(float dt)
+        {
+            var bag = GetComponent<InventoryBag>();
+            bool heavy = bag != null && ItemCatalog.HasHeavyArmor(bag.Items);
+            var world = OfflineWorld.Instance;
+            SkillSet skills = world != null ? world.SkillsOf(this) : null;
+            StatSet stats = world != null ? world.StatsOf(this) : null;
+            TickMana(ManaRegen.PerSecond(skills, stats, heavy), dt);
+        }
+
         public void ResetHp() => SetHp(MaxHp);
 
         /// <summary>보스 시체 우선권 — 때린 사람 계정. 시체로 복사한다.</summary>

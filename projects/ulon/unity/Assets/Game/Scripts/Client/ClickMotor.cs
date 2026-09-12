@@ -123,6 +123,7 @@ namespace Ulon.Client
 
             var stamBody = GetComponent<WorldBody>();
             stamBody?.TickStamina(Running && planar.sqrMagnitude > 0.01f, Time.deltaTime);
+            stamBody?.TickMana(Time.deltaTime);
             if (!CanRunNow())
                 Running = false;
 
