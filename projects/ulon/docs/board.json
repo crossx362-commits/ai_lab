@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T21:39:00+09:00",
+  "updated_at": "2026-09-12T21:51:59+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -221,13 +221,13 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#42는 hp-regen 를 닫음",
+      "title": "지금 하는 일: 없음 — loop#43는 attack-speed 를 닫음",
       "difficulty": "중",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 42,
-      "completed_loop": 42,
-      "commit": "b9113a9a",
+      "assigned_loop": 43,
+      "completed_loop": 43,
+      "commit": "89a26074",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
@@ -471,13 +471,13 @@
       "difficulty": "중",
       "model": "gpt",
       "owner": "codex",
-      "status": "대기",
+      "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "fe7c7fd5",
-      "rationale": "#71 037fe3f2: 현재 HUD 상태19·스킨10 PASS, 전용 Unity batchmode/nographics exit0. 라이선스/Curl 잔존. 코드/에셋 변경 없는 검증 전용, 개발 진척 아님. 실제 화면·입력·DnD·게임·2인 근거 미확보로 막힘; 동일 프로브 반복 금지.\n막힘 해소 15675b18: Metal batchmode 창 표시 없이 진단 IMGUI 두 해상도 실제 Screen/글자/모서리 픽셀 PASS, 글자만 제거·전체UI제거 대조 PASS, exit0. 기존 렌더 경로 부재 해소. 실제 지도/HUD/게임/OS입력/2인 검증은 아직 미완료.",
+      "commit": "92b4bda8",
+      "rationale": "#75 92b4bda8: 실제 SliceHud.OnGUI 헤드리스 연결, 가방 세로 스크롤·미니맵/퀵바 겹침·3열/이름 줄바꿈 수리. Metal 두 해상도 한글/배치·하단 안내·이름표 픽셀/IMGUI 제거 PASS, exit0. 숨긴 셀 드롭 실제 fixture 이동 FAIL→viewport 경계 적용 후 외부 불변/동일 내부 이동 PASS. 합성 MouseUp·기존 상태19/스킨10·지도 회귀 PASS. 기존 경고 잔존. Play/OS 슬롯입력·서버 DnD·장착/2인·원본 배포 미검증.",
       "fail_streak": 0,
-      "codex_iteration": 71,
+      "codex_iteration": 75,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
         "docs/CODEX_STATUS.md",
@@ -508,11 +508,23 @@
         "/Users/junholee/ai_lab/output/ulon-codex/offscreen-verified3/unity.log",
         "/Users/junholee/ai_lab/output/ulon-codex/offscreen-verified3/evidence/imgui-1440x900.png",
         "/Users/junholee/ai_lab/output/ulon-codex/offscreen-verified3/evidence/imgui-1024x768.png",
-        "/Users/junholee/ai_lab/projects/ulon/tools/offscreen_imgui/README.md"
+        "/Users/junholee/ai_lab/projects/ulon/tools/offscreen_imgui/README.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/release.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/release/hud-1440x900.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/release/hud-1024x768.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/release/selected.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/release/drag-corner.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/release/negative-no-imgui.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/hidden-red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/regression-final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/map-regression.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/orientation-negative.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop75-hud/release-visual-equivalence.json",
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_75.md"
       ],
-      "resume_token": "offscreen-verified-15675b18",
-      "resume_condition": "헤드리스 렌더 경로 15675b18로 확보. tools/offscreen_imgui를 실제 SliceHud 그리기/Play 어댑터에 연결하여 화면·한글·클리핑·합성 입력 검사. 진단 UI만으로 실제 게임 합격 금지.",
-      "verification_commit": "037fe3f2",
+      "resume_token": "hud-render-scroll-75",
+      "resume_condition": "전용 Play/실제 아이템 fixture에서 스크롤 후 슬롯 클릭·드래그 시작→은행/주머니 이동·장착/해제·입력 전달 검사. 현재 Editor 합성 셀/상태 결과를 OS/게임/2인 합격으로 사용하지 않는다. 원본 통합 대기로 독립 검증을 미루지 않는다.",
+      "verification_commit": "92b4bda8",
       "environment_verification_commit": "15675b18"
     },
     {
@@ -652,6 +664,18 @@
       "completed_loop": 42,
       "commit": "b9113a9a",
       "rationale": "HpRegen·모터 TickHp. 게이트+NC. 샷 HP 17/59→29/59. 유령/시체 제외. 2클라 없음.",
+      "fail_streak": 0
+    },
+    {
+      "id": "attack-speed",
+      "title": "휘두름 간격 — DEX·스태미나 (§18.2)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 43,
+      "completed_loop": 43,
+      "commit": "89a26074",
+      "rationale": "AttackSpeed·게이트+NC. 샷 휘두름 1.77/1.10/0.50s. DEX25 0.7s=cooldown·DEX80 적용. 2클라 없음.",
       "fail_streak": 0
     }
   ]
