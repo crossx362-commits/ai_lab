@@ -52,11 +52,12 @@ namespace Ulon.Client
 
         public void ApplyServerStop() => hasDestination = false;
 
-        public void ApplyServerRunning(bool run) => Running = run;
+        public void ApplyServerRunning(bool run) => Running = run && CarryMove.CanRun(!IsLight());
 
-        /// <summary>소유 클라 입력. 모터가 꺼져 있어도 RPC는 나간다.</summary>
+        /// <summary>소유 클라 입력. 모터가 꺼져 있어도 RPC는 나간다. 과적이면 달리기를 끈다(§18.5).</summary>
         public void SetRunning(bool run)
         {
+            run = run && CarryMove.CanRun(!IsLight());
             if (Running == run)
                 return;
             Running = run;
@@ -93,6 +94,8 @@ namespace Ulon.Client
                 PlanarSpeed = 0f;
                 return;
             }
+            if (!CarryMove.CanRun(!IsLight()))
+                Running = false;
             float speed = MoveSpeed.MetersPerSecond(Running);
             Vector3 planar = Vector3.zero;
             if (hasDestination)
@@ -111,12 +114,6 @@ namespace Ulon.Client
                 hasDestination = false;
                 planar = wasd * speed;
             }
-
-            var bag = GetComponent<InventoryBag>();
-            var world = OfflineWorld.Instance;
-            var body = GetComponent<WorldBody>();
-            if (bag != null && world != null && body != null && bag.Overweight(world.StatsOf(body).Str))
-                planar *= 0.35f;
 
             if (planar.sqrMagnitude > 0.01f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(planar), 12f * Time.deltaTime);
@@ -145,6 +142,16 @@ namespace Ulon.Client
             forward.Normalize();
             right.Normalize();
             return (forward * z + right * x).normalized;
+        }
+
+        bool IsLight()
+        {
+            var bag = GetComponent<InventoryBag>();
+            var world = OfflineWorld.Instance;
+            var body = GetComponent<WorldBody>();
+            if (bag == null || world == null || body == null)
+                return true;
+            return !bag.Overweight(world.StatsOf(body).Str);
         }
     }
 }

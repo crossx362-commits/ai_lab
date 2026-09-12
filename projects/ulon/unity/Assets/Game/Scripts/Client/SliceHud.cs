@@ -238,7 +238,7 @@ namespace Ulon.Client
                 int cap = ItemCatalog.CarryCap(st.Str);
                 GUILayout.Label("STR " + st.Str + "  DEX " + st.Dex + "  INT " + st.Int +
                                 "  G " + me.Gold + "  무게 " + w.ToString("0") + "/" + cap +
-                                (bag != null && bag.Overweight(st.Str) ? " 과적" : ""));
+                                (bag != null && bag.Overweight(st.Str) ? " 과적·달림불가" : ""));
                 GUILayout.Label(ToolLine(bag) + "  동료 " + world.CountFollowers(me.CharacterId) + "/" + TameResolve.FollowerCap);
                 GUILayout.Label(StateLine(world, me));
                 string recovery = RecoveryLine(me);

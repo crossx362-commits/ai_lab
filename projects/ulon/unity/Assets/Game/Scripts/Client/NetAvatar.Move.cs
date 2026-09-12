@@ -1,5 +1,6 @@
 using FishNet.Object;
 using UnityEngine;
+using Ulon.Server;
 using Ulon.Shared;
 
 namespace Ulon.Client
@@ -23,6 +24,12 @@ namespace Ulon.Client
             var motor = GetComponent<ClickMotor>();
             if (motor == null)
                 return;
+            var bag = GetComponent<InventoryBag>();
+            var world = OfflineWorld.Instance;
+            var body = GetComponent<WorldBody>();
+            bool overweight = bag != null && world != null && body != null &&
+                              bag.Overweight(world.StatsOf(body).Str);
+            running = running && CarryMove.CanRun(overweight);
             motor.ApplyServerRunning(running);
             if (stop)
             {
