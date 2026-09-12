@@ -121,12 +121,122 @@ class AtomicSaveTests:
             persist.put_house("plot", {"OwnerCharacterId": "other", "Items": [item(), item()]})
         self.assertEqual(persist.get_house("plot"), before)
 
+    def _seed_world(self, gold=15):
+        persist.put_character({
+            "AccountId": "bak", "CharacterId": "bak", "Gold": gold,
+            "Inventory": [item()], "Skills": [{"Id": 0, "Value": 12, "Lock": 0}],
+            "Bank": [item(1)], "Spells": [1],
+        })
+        persist.put_house("plot-bak", {
+            "OwnerCharacterId": "bak", "AccountId": "bak",
+            "Items": [item()],
+        })
+        persist.put_stable("bak", {"PetId": "wolf", "ControlSlots": 2, "DisplayName": "늑대"})
+
+    def test_backup_restore_round_trip_includes_house_and_stable(self):
+        self._seed_world(15)
+        snap = persist.write_backup()
+        self.assertTrue(Path(snap["path"]).is_file())
+        self.assertGreaterEqual(snap["counts"]["characters"], 1)
+        self.assertGreaterEqual(snap["counts"]["houses"], 1)
+        self.assertGreaterEqual(snap["counts"]["stables"], 1)
+        persist.put_character({"AccountId": "bak", "CharacterId": "bak", "Gold": 99})
+        persist.put_house("plot-bak", {"OwnerCharacterId": "other", "Items": []})
+        persist.put_stable("bak", {"PetId": "gone", "ControlSlots": 1})
+        persist.restore_snapshot(snap)
+        loaded = persist.get_character("bak")
+        self.assertEqual(loaded["Gold"], 15)
+        self.assertEqual(loaded["Inventory"], [item()])
+        house = persist.get_house("plot-bak")
+        self.assertEqual(house["OwnerCharacterId"], "bak")
+        self.assertEqual(house["Items"], [item()])
+        stable = persist.get_stable("bak")
+        self.assertEqual(stable["PetId"], "wolf")
+        self.assertEqual(stable["ControlSlots"], 2)
+
+    def test_restore_missing_table_does_not_touch_live_rows(self):
+        self._seed_world(15)
+        snap = persist.export_snapshot()
+        persist.put_character({"AccountId": "bak", "CharacterId": "bak", "Gold": 99})
+        bad = copy.deepcopy(snap)
+        del bad["tables"]["houses"]
+        with self.assertRaises(ValueError):
+            persist.restore_snapshot(bad)
+        self.assertEqual(persist.get_character("bak")["Gold"], 99)
+        self.assertEqual(persist.get_house("plot-bak")["OwnerCharacterId"], "bak")
+
+    def test_restore_insert_failure_rolls_back(self):
+        self._seed_world(15)
+        snap = persist.export_snapshot()
+        persist.put_character({"AccountId": "bak", "CharacterId": "bak", "Gold": 99})
+        bad = copy.deepcopy(snap)
+        row = copy.deepcopy(bad["tables"]["characters"][0])
+        bad["tables"]["characters"].append(row)
+        with self.assertRaises(Exception):
+            persist.restore_snapshot(bad)
+        self.assertEqual(persist.get_character("bak")["Gold"], 99)
+        self.assertEqual(persist.get_house("plot-bak")["OwnerCharacterId"], "bak")
+        self.assertEqual(persist.get_stable("bak")["PetId"], "wolf")
+
+    def test_http_backup_and_restore(self):
+        self._seed_world(15)
+        server = ThreadingHTTPServer(("127.0.0.1", 0), persist.Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            base = "http://127.0.0.1:" + str(server.server_port)
+            req = urllib.request.Request(base + "/backup", data=b"{}", method="POST")
+            req.add_header("Content-Type", "application/json")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                saved = json.load(resp)
+            self.assertTrue(saved["ok"])
+            self.assertTrue(Path(saved["path"]).is_file())
+            persist.put_character({"AccountId": "bak", "CharacterId": "bak", "Gold": 1})
+            body = json.dumps({"path": saved["path"]}).encode()
+            req = urllib.request.Request(base + "/restore", data=body, method="POST")
+            req.add_header("Content-Type", "application/json")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                restored = json.load(resp)
+            self.assertTrue(restored["ok"])
+            self.assertEqual(persist.get_character("bak")["Gold"], 15)
+            self.assertEqual(persist.get_stable("bak")["PetId"], "wolf")
+            missing = urllib.request.Request(
+                base + "/restore",
+                data=json.dumps({"path": "/no/such/backup.json"}).encode(),
+                method="POST",
+            )
+            missing.add_header("Content-Type", "application/json")
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                urllib.request.urlopen(missing, timeout=5)
+            self.assertEqual(ctx.exception.code, 404)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
+    def test_nc_skip_restore_refuses(self):
+        self._seed_world(15)
+        snap = persist.export_snapshot()
+        persist.NC_SKIP_RESTORE = True
+        try:
+            with self.assertRaises(RuntimeError):
+                persist.restore_snapshot(snap)
+            self.assertEqual(persist.get_character("bak")["Gold"], 15)
+        finally:
+            persist.NC_SKIP_RESTORE = False
+
 
 class SQLiteTests(AtomicSaveTests, unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.patch = patch.multiple(persist, POSTGRES=False, DB_PATH=Path(self.temp.name) / "db.sqlite")
+        self.patch = patch.multiple(
+            persist,
+            POSTGRES=False,
+            DB_PATH=Path(self.temp.name) / "db.sqlite",
+            BACKUP_DIR=Path(self.temp.name) / "backups",
+            NC_SKIP_RESTORE=False,
+        )
         self.patch.start()
         self.addCleanup(self.patch.stop)
         persist.init()
@@ -138,14 +248,21 @@ class PostgreSQLTests(AtomicSaveTests, unittest.TestCase):
         import psycopg2
         from psycopg2.extensions import make_dsn
         self.schema = "ulon_test_" + uuid.uuid4().hex
+        self.bakdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.bakdir.cleanup)
         self.admin = psycopg2.connect(os.environ["ULON_TEST_PG_DSN"])
         self.admin.autocommit = True
         self.addCleanup(self.admin.close)
         with self.admin.cursor() as cur:
             cur.execute('CREATE SCHEMA "' + self.schema + '"')
         self.addCleanup(self.drop_schema)
-        self.patch = patch.multiple(persist, POSTGRES=True,
-            DATABASE_URL=make_dsn(os.environ["ULON_TEST_PG_DSN"], options="-c search_path=" + self.schema))
+        self.patch = patch.multiple(
+            persist,
+            POSTGRES=True,
+            DATABASE_URL=make_dsn(os.environ["ULON_TEST_PG_DSN"], options="-c search_path=" + self.schema),
+            BACKUP_DIR=Path(self.bakdir.name),
+            NC_SKIP_RESTORE=False,
+        )
         self.patch.start()
         self.addCleanup(self.patch.stop)
         persist.init()

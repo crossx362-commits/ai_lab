@@ -50,6 +50,21 @@ def pick_url() -> str:
 
 DATABASE_URL = pick_url()
 POSTGRES = DATABASE_URL.startswith("postgres")
+BACKUP_DIR = DATA / "backups"
+NC_SKIP_RESTORE = False
+SNAPSHOT_TABLES = (
+    "accounts",
+    "characters",
+    "character_skills",
+    "inventories",
+    "bank_items",
+    "spellbook",
+    "corpses",
+    "corpse_items",
+    "houses",
+    "house_items",
+    "stables",
+)
 
 
 def connect(*, transaction=False):
@@ -608,6 +623,129 @@ def put_stable(character_id: str, body: dict) -> dict:
     return get_stable(character_id)
 
 
+def _jsonable(v):
+    if v is None or isinstance(v, (int, float, str, bool)):
+        return v
+    if isinstance(v, bytes):
+        return v.decode("utf-8", "replace")
+    return str(v)
+
+
+def _ident(name: str) -> str:
+    if not isinstance(name, str) or not name.isidentifier() or not name.isascii():
+        raise ValueError("bad identifier")
+    return name
+
+
+def export_snapshot() -> dict:
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        tables = {}
+        counts = {}
+        for table in SNAPSHOT_TABLES:
+            cur.execute("SELECT * FROM " + table)
+            rows = []
+            for row in _all(cur):
+                rows.append({str(k): _jsonable(v) for k, v in row.items()})
+            tables[table] = rows
+            counts[table] = len(rows)
+        return {
+            "ok": True,
+            "time": _now(),
+            "driver": "postgres" if POSTGRES else "sqlite",
+            "tables": tables,
+            "counts": counts,
+        }
+    finally:
+        conn.close()
+
+
+def write_backup(directory=None) -> dict:
+    snap = export_snapshot()
+    dest = Path(directory) if directory else BACKUP_DIR
+    dest.mkdir(parents=True, exist_ok=True)
+    ident = "db_" + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    path = dest / (ident + ".json")
+    snap["id"] = ident
+    snap["path"] = str(path)
+    path.write_text(json.dumps(snap, ensure_ascii=False), encoding="utf-8")
+    return snap
+
+
+def latest_backup_path():
+    if not BACKUP_DIR.exists():
+        return None
+    files = sorted(BACKUP_DIR.glob("db_*.json"), key=lambda p: p.stat().st_mtime)
+    return files[-1] if files else None
+
+
+def load_backup_file(path) -> dict:
+    p = Path(path)
+    if not p.is_file():
+        raise FileNotFoundError("backup not found")
+    snap = json.loads(p.read_text(encoding="utf-8"))
+    if not isinstance(snap, dict):
+        raise ValueError("backup is not an object")
+    return snap
+
+
+def restore_snapshot(snap: dict) -> dict:
+    if NC_SKIP_RESTORE:
+        raise RuntimeError("nc")
+    if not isinstance(snap, dict):
+        raise ValueError("backup is not an object")
+    tables = snap.get("tables")
+    if not isinstance(tables, dict):
+        raise ValueError("backup missing tables")
+    for table in SNAPSHOT_TABLES:
+        if table not in tables:
+            raise ValueError("missing table " + table)
+        if not isinstance(tables[table], list):
+            raise ValueError("table " + table + " is not a list")
+    conn = connect(transaction=True)
+    try:
+        cur = conn.cursor()
+        for table in reversed(SNAPSHOT_TABLES):
+            cur.execute("DELETE FROM " + table)
+        for table in SNAPSHOT_TABLES:
+            for row in tables[table]:
+                if not isinstance(row, dict) or not row:
+                    raise ValueError("empty row in " + table)
+                cols = [_ident(str(k)) for k in row.keys()]
+                placeholders = ", ".join(["?"] * len(cols))
+                cur.execute(
+                    sql("INSERT INTO " + table + " (" + ", ".join(cols) + ") VALUES (" + placeholders + ")"),
+                    [row[c] for c in cols],
+                )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+    return {"ok": True, "id": str(snap.get("id") or ""), "counts": snap.get("counts") or {}}
+
+
+def restore_from_request(body: dict) -> dict:
+    if NC_SKIP_RESTORE:
+        raise RuntimeError("nc")
+    if not isinstance(body, dict):
+        body = {}
+    if isinstance(body.get("tables"), dict):
+        snap = body
+    elif body.get("path"):
+        snap = load_backup_file(body["path"])
+    elif body.get("id"):
+        snap = load_backup_file(BACKUP_DIR / (str(body["id"]) + ".json"))
+    else:
+        latest = latest_backup_path()
+        if latest is None:
+            raise FileNotFoundError("no backup")
+        snap = load_backup_file(latest)
+    return restore_snapshot(snap)
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print("[persist]", fmt % args, flush=True)
@@ -619,6 +757,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
+
+    def _read_json(self):
+        length = int(self.headers.get("Content-Length", "0") or 0)
+        raw = self.rfile.read(length) if length else b"{}"
+        return json.loads(raw.decode() or "{}")
 
     def do_GET(self):
         if self.path == "/ready":
@@ -660,6 +803,18 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/stable/"):
             character_id = unquote(self.path.split("/stable/", 1)[1].strip("/"))
             self._send(200, get_stable(character_id))
+            return
+        if self.path in ("/backup", "/backups"):
+            latest = latest_backup_path()
+            n = len(list(BACKUP_DIR.glob("db_*.json"))) if BACKUP_DIR.exists() else 0
+            self._send(
+                200,
+                {
+                    "ok": True,
+                    "latest": str(latest) if latest else "",
+                    "count": n,
+                },
+            )
             return
         self._send(404, {"ok": False})
 
@@ -703,6 +858,37 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             traceback.print_exc()
             self._send(400, {"ok": False, "message": str(e)})
+
+    def do_POST(self):
+        if self.path == "/backup":
+            try:
+                saved = write_backup()
+                self._send(
+                    200,
+                    {
+                        "ok": True,
+                        "id": saved.get("id", ""),
+                        "path": saved.get("path", ""),
+                        "counts": saved.get("counts") or {},
+                        "time": saved.get("time", ""),
+                    },
+                )
+            except Exception as e:
+                traceback.print_exc()
+                self._send(400, {"ok": False, "message": str(e)})
+            return
+        if self.path == "/restore":
+            try:
+                body = self._read_json()
+                result = restore_from_request(body)
+                self._send(200, result)
+            except FileNotFoundError as e:
+                self._send(404, {"ok": False, "message": str(e)})
+            except Exception as e:
+                traceback.print_exc()
+                self._send(400, {"ok": False, "message": str(e)})
+            return
+        self._send(404, {"ok": False})
 
 
 def main():

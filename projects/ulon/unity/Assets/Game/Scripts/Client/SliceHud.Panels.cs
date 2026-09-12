@@ -681,6 +681,11 @@ namespace Ulon.Client
                      bool next = !OpLog.IsFrozen(PersistDriver.AccountKey());
                      if (net != null && net.IsClientInitialized) net.RpcGmFreeze(next);
                      else world.GmFreeze(me, next);
+                 }),
+                 ("복구", () =>
+                 {
+                     if (net != null && net.IsClientInitialized) net.RpcGmRestore();
+                     else world.GmRestore(me);
                  }));
             if (ledgerLine != "")
                 GUILayout.Label(ledgerLine);

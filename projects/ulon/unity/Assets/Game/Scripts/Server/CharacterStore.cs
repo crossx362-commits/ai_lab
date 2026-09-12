@@ -75,6 +75,100 @@ namespace Ulon.Server
             }
         }
 
+        [Serializable]
+        public class PersistBackupReply
+        {
+            public bool ok;
+            public string path;
+            public string id;
+            public string message;
+        }
+
+        public static string BackupPersist()
+        {
+            EnsureRunning();
+            if (!Health())
+                return "";
+            try
+            {
+                using var resp = Post("/backup", "{}");
+                if (resp == null || (int)resp.StatusCode != 200)
+                    return "";
+                var reply = JsonUtility.FromJson<PersistBackupReply>(ReadBody(resp));
+                return reply != null && reply.ok ? (reply.path ?? "") : "";
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogWarning("[Ulon] persist backup 실패: " + e.Message);
+                return "";
+            }
+        }
+
+        public static string RestorePersist(string path)
+        {
+            if (PersistBackup.NcSkipRestore)
+                return "";
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                return "";
+            EnsureRunning();
+            if (!Health())
+                return "";
+            try
+            {
+                string json = File.ReadAllText(path, Encoding.UTF8);
+                using var resp = Post("/restore", json);
+                if (resp == null || (int)resp.StatusCode != 200)
+                    return "";
+                var reply = JsonUtility.FromJson<PersistBackupReply>(ReadBody(resp));
+                if (reply == null || !reply.ok)
+                    return "";
+                return path;
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogWarning("[Ulon] persist restore 실패: " + e.Message);
+                return "";
+            }
+        }
+
+        public static string RestoreLatest()
+        {
+            if (PersistBackup.NcSkipRestore)
+                return "";
+            string dir = Path.GetFullPath(Path.Combine(Application.dataPath, "../../data/backups"));
+            if (!Directory.Exists(dir))
+                return "";
+            string latest = "";
+            DateTime best = DateTime.MinValue;
+            string[] files = Directory.GetFiles(dir, "db_*.json");
+            for (int i = 0; i < files.Length; i++)
+            {
+                DateTime t = File.GetLastWriteTimeUtc(files[i]);
+                if (t >= best)
+                {
+                    best = t;
+                    latest = files[i];
+                }
+            }
+            if (latest.Length == 0)
+            {
+                string[] folders = Directory.GetDirectories(dir);
+                for (int i = 0; i < folders.Length; i++)
+                {
+                    string nested = Path.Combine(folders[i], "persist.json");
+                    if (!File.Exists(nested))
+                        continue;
+                    DateTime t = File.GetLastWriteTimeUtc(nested);
+                    if (t >= best)
+                    {
+                        best = t;
+                        latest = nested;
+                    }
+                }
+            }
+            return RestorePersist(latest);
+        }
+
         public static string FilePath(string accountId)
         {
             return Path.Combine(DataDir, accountId + ".json");
@@ -403,6 +497,20 @@ namespace Ulon.Server
             return (HttpWebResponse)req.GetResponse();
         }
 
+        static HttpWebResponse Post(string path, string json)
+        {
+            var req = (HttpWebRequest)WebRequest.Create(BaseUrl + path);
+            req.Method = "POST";
+            req.ContentType = "application/json; charset=utf-8";
+            req.Timeout = 8000;
+            req.Proxy = null;
+            byte[] bytes = Encoding.UTF8.GetBytes(json ?? "{}");
+            req.ContentLength = bytes.Length;
+            using (var s = req.GetRequestStream())
+                s.Write(bytes, 0, bytes.Length);
+            return (HttpWebResponse)req.GetResponse();
+        }
+
         static string ReadBody(HttpWebResponse resp)
         {
             using var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8);
@@ -492,8 +600,16 @@ namespace Ulon.Server
             }
             if (File.Exists(LogPath))
                 File.Copy(LogPath, Path.Combine(dest, "oplog.jsonl"), true);
+            string persistSnap = CharacterStore.BackupPersist();
+            if (!string.IsNullOrEmpty(persistSnap) && File.Exists(persistSnap))
+                File.Copy(persistSnap, Path.Combine(dest, "persist.json"), true);
             Write("gm", "", "backup", dest);
             return dest;
         }
+    }
+
+    public static class PersistBackup
+    {
+        public static bool NcSkipRestore;
     }
 }

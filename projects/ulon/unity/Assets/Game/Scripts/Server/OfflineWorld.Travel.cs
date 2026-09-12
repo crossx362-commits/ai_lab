@@ -471,6 +471,17 @@ namespace Ulon.Server
             return path ?? "";
         }
 
+        public string GmRestore(WorldBody actor)
+        {
+            if (!GmOk(actor, out _))
+                return "";
+            if (PersistBackup.NcSkipRestore)
+                return "";
+            string path = CharacterStore.RestoreLatest();
+            OpLog.Write("gm", AccountOf(actor), "-", "restore " + path);
+            return path ?? "";
+        }
+
         public AttackResult GmFreeze(WorldBody actor, bool frozen)
         {
             if (!GmOk(actor, out AttackResult denied))

@@ -105,6 +105,15 @@ namespace Ulon.Client
         }
 
         [ServerRpc]
+        public void RpcGmRestore()
+        {
+            if (OfflineWorld.Instance == null)
+                return;
+            string path = OfflineWorld.Instance.GmRestore(GetComponent<WorldBody>());
+            SendHint(string.IsNullOrEmpty(path) ? "GM 거절 — " + GmAuthority.Denied : "복구 " + path);
+        }
+
+        [ServerRpc]
         public void RpcGmFreeze(bool frozen)
         {
             if (OfflineWorld.Instance == null)

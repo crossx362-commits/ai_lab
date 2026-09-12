@@ -211,6 +211,8 @@ namespace Ulon.Editor
             Gate(AssertBossLoot);    // §18.11 보스/정예 기여자 우선권
             Gate(AssertSecureTradeNegativeControl);
             Gate(AssertSecureTrade); // §18.9 골드+중복 지급 방지
+            Gate(AssertPersistBackupNegativeControl);
+            Gate(AssertPersistBackup); // §14.2 DB·집·마구간 백업/복구
             Gate(AssertDeathKeepNegativeControl);
             Gate(AssertDeathKeep);   // §18.4 보호 아이템은 시체로 안 가고, 장착은 풀린다
             Gate(AssertStableSlice);
