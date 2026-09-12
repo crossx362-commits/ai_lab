@@ -87,3 +87,15 @@ no_progress로 기록하고 동일 카드 재호출을 유예한다. 새 검증�
 부모가 보드를 로컬로 기다리며 새 CLI를 호출하지 않는다.
 사용자가 정지하면 `loop/CODEX_STOP`을 만들고 새 카드를 시작하지 않는다.
 추가 결제·유료 API·외부 메시지 발송은 하지 않는다.
+
+## 막힘 해결 지시 (오너 2026-09-12 20:45 이후)
+
+오너가 막힌 것을 해결하라고 지시했다. 원본 통합 대기는 전용 트리에서의 구현을 막지 않는다.
+가로등은 전용 트리의 실제 Bootstrap에 기존 LanternLit 인스턴스를 Variant로 교체하는 한정된 Editor 적용 도구를 구현한다. Transform·부모·이름·활성·VFX를 보존하고, 비대상 오브젝트 불변·저장 후 재로딩·중복 적용 멱등성을 검사한다. 기존 배치 생성기에서도 Variant를 선택하도록 하여 재생성 때 되돌아가지 않게 한다. 원본은 수정하지 않으며 이 독립 적용/재생성 작업을 원본 병합 권한 대기로 미루지 않는다. 원본 최신 상태에 적용할 때 같은 도구를 쓸 수 있어야 한다. 실제 주 장면 배포와 전용 트리 적용 근거는 구별한다.
+월드 확장은 485ebce0의 6×6 타일 구현과 loop59-world/final.log를 기준으로 이어간다. 보드가 과거 「하이트맵 상한·사람 선택 대기」로 돌아간 것은 현재 엔진 제약의 증거가 아니다. 기획 범위의 확장 육지·연결 경로를 다음 구현으로 진행한다.
+헤드리스 UI: 기존 batch Player의 자동 ScreenCapture 대기만 반복하지 않는다. root가 별도 output/ulon-codex/offscreen-repair 프로젝트에서 native RenderPlayModeViewCamerasInternal을 조사 중이다. 해당 격리 프로젝트는 수정/실행하지 않는다. native 호출에서 OnGUI2/Repaint1은 발생했으나 픽셀/해상도 아직 미합격이다. 이 실험을 실제 UI 검증 PASS로 사용하지 않는다.
+
+### 헤드리스 UI 재개 경로 실측 완료
+
+공유 원본 `projects/ulon/tools/offscreen_imgui/`는 root 소유의 새 검증 도구다. 이 디렉터리만 전용 트리로 가져와 적용해도 된다(타 에이전트 변경 복사 금지와 무관). README의 최종 증거 `output/ulon-codex/offscreen-verified3/`를 따른다. Unity 6000.3.14f1 Metal batchmode에서 창 Show/Focus 없이 실제 Screen1440×900/1024×768·OnGUI/Repaint·글자/모서리 픽셀·두 음성 대조 PASS/exit0를 확보했다.
+기존 「지원 경로 미확보」·ScreenCapture PNG만 허용하는 조건은 이 근거로 해소했다. 이제 실제 SliceHud의 그리기 코드를 같은 OnGUI 문맥에 연결하거나 Play 어댑터로 연결하여 지도/HUD의 한글·배치·클리핑·입력을 검증한다. 진단 프로브만 다시 돌리고 막힘 처리하지 않는다. 내부 API가 이 Unity 버전에 실제 동작한다는 근거이며, 공용 지원 API나 실제 게임/OS입력/2인 PASS는 아니다. 합성 입력과 실제 OS 입력을 구별하되 헤드리스 테스트 구현 자체를 승인 대기로 막지 않는다. 새 도구의 camera.targetTexture, s_RenderingView, GL.LoadPixelMatrix, Editor 프레임 폰트 준비를 함께 보존한다.

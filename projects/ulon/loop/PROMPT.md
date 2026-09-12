@@ -97,7 +97,7 @@ Unity 버전은 `unity/ProjectSettings/ProjectVersion.txt` (6000.3.14f1). FishNe
 }
 ```
 
-깨져 있으면 새로 만들지 말고 `git checkout -- docs/board.json`으로 마지막 정상본을 복구한다.
+보드 JSON이 깨져 있으면 현재 파일을 진단 사본으로 보존하고 다시 읽는다. `git checkout/restore`로 공유 보드 전체를 과거 커밋으로 되돌리지 않는다(다른 담당의 최신 결과 유실). 현재 정상본의 본인 카드만 수정하며 다른 담당 필드·근거는 보존한다.
 한 바퀴에 최소 한 번 갱신한다.
 
 ### B-0. 에셋 사용 원칙 — 기존 무료 에셋 → 없으면 생성 → 그것도 안 되면 자리표시
