@@ -69,7 +69,7 @@
       "status": "완료",
       "assigned_loop": 6,
       "completed_loop": 6,
-      "commit": "",
+      "commit": "3e136972",
       "rationale": "P0. Unity 불필요. #6 실측: pg_isready, characters 17행, /ready 200 driver=postgres, smoke ok=true.",
       "fail_streak": 0
     },
