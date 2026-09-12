@@ -48,6 +48,10 @@ namespace Ulon.Editor
                 stranger.ResetHp();
                 strangerGo.AddComponent<InventoryBag>();
 
+                healerGo = new GameObject("selfcheck-lootright-healer");
+                healerGo.transform.position = ownerGo.transform.position;
+                var healer = healerGo.AddComponent<HealerStation>();
+
                 world.HandleDeath(owner, "loot-owner");
                 var solo = OfflineWorld.FindCorpse("loot-owner");
                 if (solo == null)
@@ -59,17 +63,20 @@ namespace Ulon.Editor
                 if (deniedSolo.Applied || deniedSolo.FailReason != "loot_right")
                     throw new InvalidOperationException("창 중 솔로 시체는 낮선이 loot_right로 거절돼야 합니다: " + deniedSolo.FailReason);
 
+                // 유령은 가져가기 불가(Death.cs). 회수는 부활 뒤 — RunCharacter와 같은 약속.
+                var ghostLoot = world.TryLootCorpse(owner, solo);
+                if (ghostLoot.Applied || ghostLoot.FailReason != "ghost")
+                    throw new InvalidOperationException("유령 소유자 룻은 ghost로 거절돼야 합니다: " + ghostLoot.FailReason);
+
+                var rez = world.TryResurrect(owner, healer);
+                if (!rez.Applied || owner.Ghost)
+                    throw new InvalidOperationException("부활 실패: " + rez.FailReason);
+
                 var ownerLoot = world.TryLootCorpse(owner, solo);
                 if (!ownerLoot.Applied)
                     throw new InvalidOperationException("창 중 솔로 소유자 룻 실패: " + ownerLoot.FailReason);
 
                 // --- 파티: 창 중 파티원 성공·낮선 거절 (기존 RunCharacter와 같은 약속, 복제 호출 아님) ---
-                healerGo = new GameObject("selfcheck-lootright-healer");
-                healerGo.transform.position = ownerGo.transform.position;
-                var healer = healerGo.AddComponent<HealerStation>();
-                var rez = world.TryResurrect(owner, healer);
-                if (!rez.Applied || owner.Ghost)
-                    throw new InvalidOperationException("부활 실패: " + rez.FailReason);
 
                 palGo = new GameObject("selfcheck-lootright-pal");
                 palGo.transform.position = ownerGo.transform.position;

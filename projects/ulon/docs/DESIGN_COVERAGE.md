@@ -103,7 +103,7 @@
 | STR/DEX/INT·Stat Lock·성장 §18.2 | ① | `StatsOf`, 잠금 전환, 행동으로 상승 |
 | 지원 스킬(전술·해부·평가·명상) §18.3 | ① | 스킬 목록·판정 반영 |
 | 죽음→유령→부활→시체 회수 §18.4 | ① | 유령 표시, 치유사 부활, 시체 위치 안내 |
-| 시체 Decay·우선권(Loot Rights) §18.4·§18.11 | ② | Decay는 있으나 **파티 우선권 없음** |
+| 시체 Decay·우선권(Loot Rights) §18.4·§18.11 | ① | 플레이어 시체 2분 소유/파티 창 후 공개(`LootAllowed`). 보스/정예 기여자는 미착수 |
 | 무게·과적 제한 §18.5 | ① | HUD 무게 표시, 과적 시 이동 제한 |
 | Strength Requirement §18.5 | ① | items.json `strReq`, `EquipResolve`가 「근력 N 필요」로 장착 거부 |
 | 중첩 컨테이너(parent_container_id) §18.5 | ② | 주머니 1단만 |
