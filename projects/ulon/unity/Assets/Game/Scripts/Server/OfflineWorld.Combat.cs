@@ -128,6 +128,11 @@ namespace Ulon.Server
                 dmg = (dmg * 5) / 4;
             if (dmg > 0 && target.IsWarded(Time.time))
                 dmg = dmg / 2;
+            int armor = PhysicalArmor.Of(defBag != null ? defBag.Items : null);
+            int reduced = PhysicalArmor.Apply(dmg, armor);
+            if (armor > 0 && reduced < dmg)
+                LastCombatMessage = Tell(attacker, "방 " + armor);
+            dmg = reduced;
             result.Damage = dmg;
             target.ApplyDamage(dmg);
             AfterEnemyHurt(attacker, target, dmg);

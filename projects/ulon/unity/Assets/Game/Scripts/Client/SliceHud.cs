@@ -250,11 +250,18 @@ namespace Ulon.Client
                     if (targetShield)
                         parryPct = ParryChance.Percent(world.SkillsOf(world.Selected).Get(SkillId.Parrying));
                 }
+                int targetArmor = 0;
+                if (world.Selected != null)
+                {
+                    var tbagArmor = world.Selected.GetComponent<InventoryBag>();
+                    targetArmor = PhysicalArmor.Of(tbagArmor != null ? tbagArmor.Items : null);
+                }
                 GUILayout.Label("STR " + st.Str + "  DEX " + st.Dex + "  INT " + st.Int +
                                 "  G " + me.Gold + "  무게 " + w.ToString("0") + "/" + cap +
                                 "  휘두름 " + AttackSpeed.Seconds(st, me.Stamina).ToString("0.00") + "s" +
                                 "  명중 " + (HitChance.Percent(atkSkill, defSkill) * 100f).ToString("0") + "%" +
                                 (targetShield ? "  막기 " + (parryPct * 100f).ToString("0") + "%" : "") +
+                                (targetArmor > 0 ? "  방 " + targetArmor : "") +
                                 (!string.IsNullOrEmpty(world.LastCombatMessage) ? "  " + world.LastCombatMessage : "") +
                                 (bag != null && bag.Overweight(st.Str) ? " 과적·달림불가" : "") +
                                 (!RunStamina.CanRun(me.Stamina) ? " 기진·달림불가" : "") +

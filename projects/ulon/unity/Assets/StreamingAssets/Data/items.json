@@ -14,7 +14,7 @@
     { "id": "wooden_bow",    "name": "나무 활", "weight": 6.0,  "buy": 22, "uses": 30, "strReq": 0,  "container": false, "slot": "right_hand" },
     { "id": "wooden_spear",  "name": "나무 창", "weight": 6.0,  "buy": 20, "uses": 30, "strReq": 0,  "container": false, "slot": "right_hand" },
     { "id": "wooden_shield", "name": "나무 방패", "weight": 6.0,  "buy": 20, "uses": 30, "strReq": 0,  "container": false, "slot": "left_hand" },
-    { "id": "iron_plate",    "name": "철 갑옷", "weight": 14.0, "buy": 0,  "uses": 40, "strReq": 0,  "container": false, "slot": "chest" },
+    { "id": "iron_plate",    "name": "철 갑옷", "weight": 14.0, "buy": 0,  "uses": 40, "strReq": 0,  "container": false, "slot": "chest", "armor": 4 },
     { "id": "cloth",         "name": "천", "weight": 0.5,  "buy": 3,  "uses": 0,  "strReq": 0,  "container": false },
     { "id": "blank",         "name": "빈 양피지", "weight": 0.2,  "buy": 4,  "uses": 0,  "strReq": 0,  "container": false },
     { "id": "scroll_ember",  "name": "불씨 주문서", "weight": 0.2,  "buy": 16, "uses": 0,  "strReq": 0,  "container": false },

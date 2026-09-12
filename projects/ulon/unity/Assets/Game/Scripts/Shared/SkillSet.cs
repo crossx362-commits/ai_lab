@@ -401,6 +401,26 @@ namespace Ulon.Shared
             return HasHeavyArmor(items) ? 2 : 0;
         }
 
+        public static int ArmorOf(string id)
+        {
+            if (ItemData.TryGet(id, out var data))
+                return data.armor;
+            if (id == IronPlate)
+                return 4;
+            return 0;
+        }
+
+        public static int ArmorOf(IList<ItemRecord> items)
+        {
+            if (items == null)
+                return 0;
+            int sum = 0;
+            for (int i = 0; i < items.Count; i++)
+                if (items[i].Amount > 0)
+                    sum += ArmorOf(items[i].TemplateId);
+            return sum;
+        }
+
         public static string CombatWeaponOf(IList<ItemRecord> items)
         {
             if (Has(items, WoodenBow))

@@ -29,6 +29,10 @@ namespace Ulon.Shared
         /// 원장은 items.json `keepOnDeath`. 없으면 false.
         /// </summary>
         public bool keepOnDeath;
+        /// <summary>
+        /// 기획 §18.3 물리 방어 AR. 마법 피해에는 안 쓴다. 원장은 items.json `armor`.
+        /// </summary>
+        public int armor;
     }
 
     public static class ItemData
@@ -120,6 +124,8 @@ namespace Ulon.Shared
                 return "uses " + rec.uses;
             if (rec.strReq < 0)
                 return "strReq " + rec.strReq;
+            if (rec.armor < 0)
+                return "armor " + rec.armor;
             return "";
         }
 

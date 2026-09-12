@@ -1,0 +1,4 @@
+{
+  "min_remaining": 0,
+  "source": "GAME_DESIGN §18.3 마법은 단순 방어력으로 안 막음. 물리 피해만 장비 AR(items.json armor). 철갑 폴백 4. 방패는 막기 판정이라 AR 0. 원작 Virtual Armor 비복제."
+}

@@ -570,6 +570,7 @@ namespace Ulon.Server
             AttackResolve.TryParry(SkillsOf(defender), StatsOf(defender), shield, 20f, ref dmg, out _, out _);
             if (shield)
                 bag.WearTool(ItemCatalog.WoodenShield);
+            dmg = PhysicalArmor.Apply(dmg, bag != null ? bag.Items : null);
             defender.ApplyDamage(dmg);
             if (defender.IsAvatar && enemy.IsEnemy)
                 DefendOwner(defender, enemy);
