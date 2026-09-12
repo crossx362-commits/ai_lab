@@ -653,6 +653,7 @@ import json, pathlib, sys
 p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
 d["default_target"] = "blender_sandbox"
 d["agents"]["nc"]["capabilities"] = ["BLENDER"]
+d["ladder"] = ["nc"]; d["research_agent"] = None   # run-plan은 사다리로 고른다 — 모델 호출 0 유지
 p.write_text(json.dumps(d, ensure_ascii=False, indent=2))
 PY2
 }
@@ -762,6 +763,49 @@ check gate_probe_fail FAILED "게이트 GateProbe 실패" /tmp/nc_gate_fail.log
 mkcfg_g state/nc_gate_ok.json "printf 'namespace SandboxGame { public static class NcGate2 { public const int V = 2; } }\n' > Assets/Game/Scripts/NcGate2.cs"
 ORCH_CONFIG="$HERE/state/nc_gate_ok.json" ./orch run "[NC] gate_probe_ok" --agent nc >/tmp/nc_gate_ok.log 2>&1
 check gate_probe_ok PASS "게이트 GateProbe 통과" /tmp/nc_gate_ok.log
+
+# 계획 안 코드 전달 — T2는 **T1이 만든 파일 위에서** 출발해야 한다(계획 7 T4 반려 원인, 2026-09-11).
+# 같은 스크립트 에이전트가 두 번 불리지만 "T1의 흔적(tests/test_t1.py)이 보이면" T2 행동을 한다.
+# 전달이 안 되면 T2도 T1 행동을 반복해 test_t2.py가 영영 생기지 않는다 → 빨간불.
+mkcfg_b state/nc_plan_inherit.json "if [ -f tests/test_t1.py ]; then printf 'import bpy\ndef test_sphere():\n    assert \"Sphere\" in bpy.data.objects\n' > tests/test_t2.py; printf 'import bpy\ndef build():\n    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0,0,0.5))\n    bpy.context.active_object.name = \"Crate\"\n    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(2,0,0.3))\n    bpy.context.active_object.name = \"Sphere\"\n' > build.py; else printf 'import bpy\ndef test_crate():\n    assert \"Crate\" in bpy.data.objects\n' > tests/test_t1.py; fi"
+PI_ID=$(ORCH_CONFIG="$HERE/state/nc_plan_inherit.json" python3 - <<'PYPI'
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from orch_core import db
+conn = db.connect()
+pid = db.create_plan(conn, "[NC] plan_inherit", "nc", "blender_sandbox")
+for key, goal, dep in (("T1", "T1 테스트 추가", ""), ("T2", "T2 구 추가", "T1")):
+    db.create_task(conn, goal, "blender_sandbox", "nc", None, status="BACKLOG",
+                   plan_id=pid, plan_key=key, depends_on=dep, done_criteria="Blender 검증", risk="low")
+db.update_plan(conn, pid, status="READY", note="NC")
+print(pid)
+PYPI
+)
+if [[ -n "$PI_ID" ]]; then
+  ORCH_CONFIG="$HERE/state/nc_plan_inherit.json" ./orch run-plan --plan "$PI_ID" >/tmp/nc_plan_inherit.log 2>&1
+  for id in $(grep -E "^  task " /tmp/nc_plan_inherit.log | sed 's/.*: *//'); do TASKS+=("$id"); done
+  PB=$(printf "orch/plan-%04d" "$PI_ID")
+  if [[ $(grep -cE "^  status   : DONE" /tmp/nc_plan_inherit.log) -eq 2 ]] \
+     && git -C blender_sandbox cat-file -e "$PB:tests/test_t1.py" 2>/dev/null \
+     && git -C blender_sandbox cat-file -e "$PB:tests/test_t2.py" 2>/dev/null; then
+    echo "  PASS  plan_inherit — T2가 T1의 파일 위에서 출발, 통합 브랜치 $PB 에 둘 다 있음"; PASS=$((PASS+1))
+  else echo "  FAIL  plan_inherit (로그: /tmp/nc_plan_inherit.log)"; FAIL=$((FAIL+1)); fi
+  git -C blender_sandbox branch -D "$PB" >/dev/null 2>&1 || true
+else echo "  FAIL  plan_inherit — 계획을 못 만들었다"; FAIL=$((FAIL+1)); fi
+
+# 게이트 전제(preflight) — 전제 명령이 실패하면 AI를 부르지 않고 BLOCKED. 시도를 태우지 않는다(울온 postgres, 2026-09-12).
+mkcfg_b state/nc_preflight.json "echo SHOULD_NOT_RUN > build.py"
+python3 - <<'PYPF'
+import json, pathlib
+p = pathlib.Path("state/nc_preflight.json"); d = json.loads(p.read_text())
+d["targets"]["blender_sandbox"]["preflight"] = [{"name": "nc_false", "cmd": ["/usr/bin/false"]}]
+p.write_text(json.dumps(d, ensure_ascii=False, indent=2))
+PYPF
+ORCH_CONFIG="$HERE/state/nc_preflight.json" ./orch run "[NC] preflight" --agent nc >/tmp/nc_preflight.log 2>&1
+for id in $(grep -E "^\[task [0-9]+\]" /tmp/nc_preflight.log | head -1 | grep -oE "[0-9]+" | head -1); do TASKS+=("$id"); done
+if grep -q "전제 미충족: nc_false" /tmp/nc_preflight.log && ! grep -q "^--- 시도 1" /tmp/nc_preflight.log; then
+  echo "  PASS  preflight — 전제 실패면 AI를 부르지 않고 막는다"; PASS=$((PASS+1))
+else echo "  FAIL  preflight (로그: /tmp/nc_preflight.log)"; FAIL=$((FAIL+1)); fi
 lap
 
 echo

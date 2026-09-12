@@ -35,6 +35,8 @@ class Target:
     gates: list[dict] = field(default_factory=list)   # 추가 게이트: {"name","execute_method","timeout_sec"}
     library_cache: bool = False          # Unity Library를 target별 캐시로 공유(판마다 재임포트 방지)
     library_seed: Path | None = None     # 첫 캐시를 여기서 복사(본 체크아웃의 Library)
+    link_paths: list[str] = field(default_factory=list)  # 본 체크아웃의 미추적 로컬 자원을 worktree에 링크(venv 등)
+    preflight: list[dict] = field(default_factory=list)  # 게이트 전제 확인 [{name, cmd:[...]}] — 실패면 시도 소모 없이 BLOCKED
     blender_bin: Path | None = None
     blender_check: str = "orch_check.py"  # 저장소 안의 검증 장치(protected_globs로 보호할 것)
     blender_timeout_sec: int = 300
@@ -123,6 +125,7 @@ class Config:
                 test_platforms=[], test_guard_globs=list(t.get("test_guard_globs", ["tests/**"])),
                 kind="blender", blender_bin=bbin, blender_check=check,
                 blender_timeout_sec=int(t.get("blender_timeout_sec", 300)), subdir=subdir,
+                link_paths=list(t.get("link_paths", [])), preflight=list(t.get("preflight", [])),
             )
         unity_project = (ROOT / t["unity_project"]).resolve()
         editor = Path(
@@ -149,6 +152,7 @@ class Config:
             gates=list(t.get("gates", [])),
             library_cache=bool(t.get("library_cache", False)),
             library_seed=(ROOT / t["library_seed"]).resolve() if t.get("library_seed") else None,
+            link_paths=list(t.get("link_paths", [])), preflight=list(t.get("preflight", [])),
         )
 
     def agent(self, name: str) -> AgentConfig:

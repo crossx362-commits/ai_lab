@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import argparse
 import shutil
 import sys
@@ -23,7 +24,7 @@ from pathlib import Path
 
 from . import (agents, blenderrun, config, db, gitwt, loganalyze, logs, memory, planner,
                proc, providers, recover, review, router, safety, unityrun)
-from . import handoff
+from . import handoff, model_policy
 
 
 def _p(msg: str = "") -> None:
@@ -114,11 +115,14 @@ def cmd_verify(args) -> int:
 
 
 def run_side_agent(cfg, conn, *, agent_name: str, prompt: str, workdir: Path,
-                   log_prefix: Path, task_id=None, attempt_id=None):
+                   log_prefix: Path, task_id=None, attempt_id=None, task_kind="coding"):
     """파일을 만들어 내는 보조 호출(분해·리뷰). worktree가 아니라 **별도 작업 폴더**에서 돈다 —
     그래야 보조가 만든 파일이 개발 diff에 섞이지 않는다."""
     workdir.mkdir(parents=True, exist_ok=True)
-    agent = agents.build(cfg.agent(agent_name))
+    selected = model_policy.select(cfg, agent_name, task_kind)
+    agent = agents.build(selected)
+    _p(f"  모델 선택: {agent_name} / {selected.model} — {task_kind}")
+    logs.write(Path(f"{log_prefix}.model.txt"), f"{agent_name} / {selected.model} — {task_kind}")
     logs.write(Path(f"{log_prefix}.prompt.txt"), prompt)
     ar = agent.run(prompt, worktree=workdir, log_prefix=log_prefix,
                    conn=conn, task_id=task_id, attempt_id=attempt_id)
@@ -156,7 +160,7 @@ def run_reviewer(cfg, conn, *, task_id, attempt_id, prefix: Path, goal: str,
                                      diff=diff, review_path=rpath)
         ar = run_side_agent(cfg, conn, agent_name=name, prompt=prompt, workdir=workdir,
                             log_prefix=Path(f"{prefix}.review-{name}"),
-                            task_id=task_id, attempt_id=attempt_id)
+                            task_id=task_id, attempt_id=attempt_id, task_kind="review")
         hit = providers.classify_failure(ar.all_output)
         if hit and not ar.ok:
             providers.mark(name, hit[0], f"리뷰 중 감지: {(ar.reason or '')[:60]}", hit[1])
@@ -223,7 +227,8 @@ def _usable(cfg, pstat, *, prefer: list[str], capability: str = providers.CODING
 
 def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
                  max_attempts: int | None = None, plan_id: int | None = None,
-                 plan_key: str | None = None, done_criteria: str = "") -> int:
+                 plan_key: str | None = None, done_criteria: str = "",
+                 base_ref: str | None = None) -> int:
     """목표 하나를 끝까지 몬다. run과 run-plan이 **같은 본체**를 쓴다 —
     게이트가 두 벌이 되면 한쪽만 강화되고 다른 쪽이 구멍이 된다."""
     args_goal = goal
@@ -322,12 +327,15 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         _p(f"[회수] task {r['id']} 주인 없음 → {recover.INTERRUPTED} (worktree 보존)")
     task_id = db.create_task(conn, args_goal, t.name, ladder[0], None,
                              plan_id=plan_id, plan_key=plan_key, done_criteria=done_criteria)
-    base = gitwt.head(t.repo)
+    # 계획의 Task는 **앞 Task가 쌓은 통합 브랜치**에서 출발한다. HEAD에서 출발시켰더니 T4가 T1·T2의
+    # 코드를 볼 수 없었고 리뷰어는 "T1·T2 알림을 구독하지 않았다"고 반려했다(계획 7, 2026-09-11).
+    base = gitwt.rev(t.repo, base_ref or "HEAD")
 
-    _p(f"[task {task_id}] target={t.name} base={base[:8]} max_attempts={max_attempts}")
+    _p(f"[task {task_id}] target={t.name} base={base[:8]}" + (f" ({base_ref})" if base_ref else "")
+       + f" max_attempts={max_attempts}")
 
     try:
-        wt, branch = gitwt.create_worktree(t.repo, task_id, subdir=t.subdir)
+        wt, branch = gitwt.create_worktree(t.repo, task_id, subdir=t.subdir, base_ref=base)
     except gitwt.GitError as e:
         db.update_task(conn, task_id, status="FAILED", reason=str(e), ended_at=db.now())
         _p(f"worktree 생성 실패: {e}")
@@ -341,6 +349,18 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         note = unityrun.prepare_library(t, uproj)
         if note:
             _p(f"[task {task_id}] {note}")
+    for note in gitwt.link_local(wd, t.workdir(t.repo), t.link_paths):
+        _p(f"[task {task_id}] {note}")
+    # 게이트 전제(로컬 DB 등)가 안 서 있으면 AI를 부르지 않는다 — 환경 실패로 시도 3회를 태우고
+    # "AI가 못 했다"로 적으면 인프라 실패를 이슈 실패로 오판하는 것이다(울온 postgres, 2026-09-12).
+    for pf in t.preflight:
+        r = subprocess.run(pf["cmd"], capture_output=True, text=True)
+        if r.returncode != 0:
+            why = f"전제 미충족: {pf.get('name', pf['cmd'][0])} (exit {r.returncode}) {(r.stdout + r.stderr).strip()[:160]}"
+            _p(f"[task {task_id}] {why}")
+            db.update_task(conn, task_id, status="BLOCKED", verdict="UNKNOWN", reason=why)
+            return 1
+        _p(f"[task {task_id}] 전제 확인: {pf.get('name', pf['cmd'][0])} OK")
     _p(f"[task {task_id}] worktree={wt}" + (f" (작업 폴더 {t.subdir})" if t.subdir else ""))
     _p(f"[task {task_id}] branch={branch}")
 
@@ -369,8 +389,11 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
         decision = router.decide(goal=args_goal, ladder=ladder, attempt=n,
                                  failures=history, research_agent=cfg.research_agent)
         agent_name = decision.agent
-        agent_cfg = cfg.agent(agent_name)
+        kind = model_policy.task_kind(args_goal, failures=bool(history))
+        agent_cfg = model_policy.select(cfg, agent_name, kind)
         agent = agents.build(agent_cfg)
+        logs.write(Path(f"{prefix}.model.txt"), f"{agent_name} / {agent_cfg.model} — {kind}")
+        _p(f"  모델 선택: {agent_cfg.model} — {kind}")
         _p(f"  담당: {agent_name} — {decision.reason}")
 
         attempt_id = db.create_attempt(conn, task_id, n, agent_name, agent.model_name())
@@ -524,8 +547,9 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             final_verdict, final_reason = "FAILED", reason
             continue
 
-        # 4) Unity 판정
+        # 4) Unity 판정 — 게이트 전 변경 목록을 찍어 둔다(게이트가 남긴 부산물을 가려내기 위해)
         recover.beat(conn, task_id)
+        pre_gate = gitwt.snapshot(wd)
         mnow = memory.assess(memory.sample())
         slots = memory.effective_unity_slots(mnow.state, cfg.unity_slots)
         if slots != cfg.unity_slots:
@@ -575,6 +599,10 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
                     errtext = "\n".join(gr.failures[:20]) or gr.reason
                     break
 
+        # 5c) 게이트가 남긴 부산물(씬 재저장 등)은 AI의 변경이 아니다 — 되돌리고 나서 리뷰·커밋한다.
+        for note in gitwt.discard_extra(wd, pre_gate):
+            _p(f"  {note}")
+
         # 6) 게이트를 다 지났으면 한 등급 위가 diff를 다시 본다 — "돌아간다"와 "목표를 했다"는 다르다.
         review_note = ""
         review_unknown = False
@@ -612,6 +640,10 @@ def execute_goal(cfg, t, *, goal: str, agent: str | None = None,
             gate = gate_label(t)
             commit_hash = gitwt.commit(
                 wd, f"orch(task-{task_id:04d}): {args_goal}\n\n시도 {n}회, {gate} PASS{review_note}")
+            if plan_id and commit_hash and not review_unknown:
+                # 통합 브랜치 전진 — 다음 Task가 이 위에서 출발한다.
+                gitwt.set_branch(t.repo, plan_branch_name(plan_id), commit_hash)
+                _p(f"  통합 브랜치 {plan_branch_name(plan_id)} → {commit_hash[:8]}")
             final_verdict, final_reason = "PASS", ur.reason
             break
 
@@ -775,9 +807,24 @@ def cmd_plan(args) -> int:
     _p(f"[plan {plan_id}] 분해 담당: {agent_name}")
     prompt = planner.build_prompt(goal=args.goal, project=t.unity_project,
                                   unity_version=t.engine_label, plan_path=ppath)
-    ar = run_side_agent(cfg, conn, agent_name=agent_name, prompt=prompt, workdir=workdir,
-                        log_prefix=config.LOG_DIR / f"plan{plan_id:04d}")
-    _p(f"  {agent_name}: exit={ar.exit_code} status={ar.status} ({ar.duration_s:.1f}s)")
+    for index, agent_name in enumerate(candidates):
+        # 실패한 호출이 남긴 결과는 다음 호출의 성공 근거가 될 수 없다.
+        if ppath.exists():
+            ppath.unlink()
+        db.update_plan(conn, plan_id, agent=agent_name)
+        ar = run_side_agent(cfg, conn, agent_name=agent_name, prompt=prompt, workdir=workdir,
+                            log_prefix=config.LOG_DIR / f"plan{plan_id:04d}-{agent_name}",
+                            task_kind="planning")
+        _p(f"  {agent_name}: exit={ar.exit_code} status={ar.status} ({ar.duration_s:.1f}s)")
+        if ar.ok:
+            break
+        hit = providers.classify_failure(ar.all_output)
+        model_unavailable = model_policy.unavailable(ar.all_output)
+        if hit:
+            providers.mark(agent_name, hit[0], "계획 생성 중 Provider 장애", hit[1])
+        if not (hit or model_unavailable) or index + 1 == len(candidates):
+            break
+        _p(f"  계획 모델/Provider 사용 불가 — {candidates[index + 1]}로 대체")
 
     if ar.status in ("SPAWN_FAILED", "TIMEOUT"):
         db.update_plan(conn, plan_id, status="BLOCKED", note=f"인프라 실패: {ar.reason}")
@@ -841,6 +888,10 @@ def wait_for_provider(cfg, *, capability=None, max_wait: int = 0, poll: int = 30
         time.sleep(nap)
 
 
+def plan_branch_name(plan_id: int) -> str:
+    return f"orch/plan-{plan_id:04d}"
+
+
 def cmd_run_plan(args) -> int:
     cfg = config.load()
     t = cfg.target(args.target)
@@ -849,6 +900,13 @@ def cmd_run_plan(args) -> int:
     if not plan:
         _p(f"계획 {args.plan} 없음")
         return 2
+    # 계획 통합 브랜치: T1의 커밋 위에 T2가, 그 위에 T3가 쌓인다. 없으면 지금 HEAD에서 연다.
+    pb = plan_branch_name(args.plan)
+    if not gitwt.branch_exists(t.repo, pb):
+        gitwt.git(t.repo, "branch", pb, "HEAD")
+        _p(f"통합 브랜치 {pb} 를 HEAD에서 열었다")
+    else:
+        _p(f"통합 브랜치 {pb} = {gitwt.rev(t.repo, pb)[:8]} (앞 Task의 결과 위에서 이어간다)")
 
     tasks = [r for r in db.plan_tasks(conn, args.plan) if r["status"] == "BACKLOG"]
     if not tasks:
@@ -883,7 +941,7 @@ def cmd_run_plan(args) -> int:
         db.update_task(conn, row["id"], status="ARCHIVED", reason="[계획 자리표시]")
         rc = execute_goal(cfg, t, goal=row["goal"], max_attempts=args.max_attempts,
                           plan_id=args.plan, plan_key=row["plan_key"],
-                          done_criteria=row["done_criteria"] or "")
+                          done_criteria=row["done_criteria"] or "", base_ref=pb)
         if rc == 0:
             done_keys.add(row["plan_key"])
         else:
@@ -894,7 +952,7 @@ def cmd_run_plan(args) -> int:
                 if wait_for_provider(cfg, max_wait=args.wait_for_provider):
                     rc = execute_goal(cfg, t, goal=row["goal"], max_attempts=args.max_attempts,
                                       plan_id=args.plan, plan_key=row["plan_key"],
-                                      done_criteria=row["done_criteria"] or "")
+                                      done_criteria=row["done_criteria"] or "", base_ref=pb)
                     if rc == 0:
                         done_keys.add(row["plan_key"])
                         rc_all = 0 if rc_all == 3 else rc_all

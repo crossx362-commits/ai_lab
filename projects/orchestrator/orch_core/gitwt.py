@@ -75,7 +75,21 @@ def is_clean(repo: Path, subdir: str | None = None) -> bool:
     return git(repo, *args).strip() == ""
 
 
-def create_worktree(repo: Path, task_id: int, subdir: str | None = None) -> tuple[Path, str]:
+def rev(repo: Path, ref: str = "HEAD") -> str:
+    return git(repo, "rev-parse", ref).strip()
+
+
+def branch_exists(repo: Path, name: str) -> bool:
+    return git(repo, "rev-parse", "--verify", "--quiet", f"refs/heads/{name}", check=False).strip() != ""
+
+
+def set_branch(repo: Path, name: str, commit: str) -> None:
+    """브랜치를 커밋으로 옮긴다(계획 통합 브랜치 전진용). push/reset이 아니라 branch -f 다."""
+    git(repo, "branch", "-f", name, commit)
+
+
+def create_worktree(repo: Path, task_id: int, subdir: str | None = None,
+                    base_ref: str = "HEAD") -> tuple[Path, str]:
     """작업용 worktree. subdir이 있으면 **sparse checkout으로 그 폴더만** 내려받는다 —
     모노레포 전체를 판마다 풀면 느리고, 남의 프로젝트가 작업 디렉터리에 같이 보이면
     AI가 거기까지 손을 댄다."""
@@ -85,14 +99,82 @@ def create_worktree(repo: Path, task_id: int, subdir: str | None = None) -> tupl
     if wt.exists():
         raise GitError(f"worktree 자리가 이미 있음: {wt}")
     if subdir:
-        git(repo, "worktree", "add", "--no-checkout", "-b", branch, str(wt), "HEAD")
+        git(repo, "worktree", "add", "--no-checkout", "-b", branch, str(wt), base_ref)
         git(wt, "sparse-checkout", "set", subdir)
         git(wt, "checkout")
         if not (wt / subdir).is_dir():
             raise GitError(f"sparse checkout 뒤에 {subdir} 가 없다 — 추적된 파일이 없는 폴더인가")
     else:
-        git(repo, "worktree", "add", "-b", branch, str(wt), "HEAD")
+        git(repo, "worktree", "add", "-b", branch, str(wt), base_ref)
     return wt, branch
+
+
+def exclude_paths(inside: Path, paths: list[Path]) -> None:
+    """이 worktree 전용 exclude(info/exclude)에 경로를 적는다 — 저장소 .gitignore는 건드리지 않는다.
+    심볼릭 링크는 git에 파일이라 `폴더/` 규칙에 안 걸린다(2026-09-11 task 357)."""
+    top = Path(git(inside, "rev-parse", "--show-toplevel").strip())
+    excl = Path(git(inside, "rev-parse", "--git-path", "info/exclude").strip())
+    if not excl.is_absolute():
+        excl = top / excl
+    excl.parent.mkdir(parents=True, exist_ok=True)
+    with excl.open("a", encoding="utf-8") as f:
+        for p in paths:
+            f.write(f"/{p.relative_to(top).as_posix()}\n")
+
+
+def link_local(wd: Path, src_dir: Path, rel_paths: list[str]) -> list[str]:
+    """본 체크아웃에만 있는 로컬 자원(venv·캐시 같은 미추적 폴더)을 worktree에 링크로 심는다.
+    울온의 SliceSelfCheck는 server/.venv 의 파이썬으로 persist 서버를 띄운다 — worktree엔 venv가
+    없어 psycopg2 부재로 게이트가 죽었다(2026-09-11 task 360)."""
+    notes = []
+    linked = []
+    for rel in rel_paths:
+        src, dst = src_dir / rel, wd / rel
+        if not src.exists():
+            notes.append(f"링크 원본 없음(건너뜀): {src}")
+            continue
+        if dst.exists() or dst.is_symlink():
+            continue
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.symlink_to(src, target_is_directory=src.is_dir())
+        linked.append(dst)
+        notes.append(f"로컬 자원 링크: {rel} → {src}")
+    if linked:
+        exclude_paths(wd, linked)
+    return notes
+
+
+def snapshot(wd: Path) -> set[str]:
+    """지금 이 폴더의 변경 목록(추적 수정 + 미추적). 게이트 전후를 비교해 게이트의 부산물을 가려낸다."""
+    return {ln[3:].strip() for ln in git(wd, "status", "--porcelain", "--untracked-files=all", "--", ".").splitlines()
+            if ln.strip()}
+
+
+def discard_extra(wd: Path, before: set[str]) -> list[str]:
+    """게이트가 남긴 부산물을 되돌린다 — 울온 SliceSelfCheck는 씬·지형을 다시 저장한다(8파일 ±10만 줄).
+    그것을 AI의 변경으로 세거나 커밋하면 판정도 이력도 오염된다. worktree 안, 게이트 뒤에 새로 생긴 것만."""
+    out = []
+    for ln in git(wd, "status", "--porcelain", "--untracked-files=all", "--", ".").splitlines():
+        if not ln.strip():
+            continue
+        code, path = ln[:2], ln[3:].strip()
+        if path in before:
+            continue
+        if path.endswith(".meta") and path[:-5] in before:
+            # AI가 새로 만든 자산에 Unity가 붙인 .meta — 이건 부산물이 아니라 그 자산의 일부다(없으면 커밋이 깨진다).
+            continue
+        top = Path(git(wd, "rev-parse", "--show-toplevel").strip())
+        full = top / path
+        if code.strip() == "??":
+            try:
+                full.unlink()
+                out.append(f"부산물 삭제: {path}")
+            except OSError as e:
+                out.append(f"부산물 삭제 실패: {path} ({e})")
+        else:
+            git(wd, "restore", "--source", "HEAD", "--staged", "--worktree", "--", full.as_posix(), check=False)
+            out.append(f"부산물 되돌림: {path}")
+    return out
 
 
 def remove_worktree(repo: Path, wt: Path, branch: str | None = None) -> None:

@@ -101,13 +101,24 @@
 
 ## 에이전트 등급 (사다리)
 
-```
-codex(낮은 추론) → astra(높은 추론)
-```
-이 기계의 codex 기본 모델이 이미 `gpt-6-astra`라, Codex와 Astra는 **모델명이 아니라 추론 강도**로
-가른다(`extra_config: model_reasoning_effort`). 등급은 시도마다 라우터가 점수로 정하고
-(`router.py`) **한 시도에 한 칸만** 오른다 — 두 칸을 뛰면 중간 등급이 풀 수 있었는지 알 수 없다.
-Claude·Grok 어댑터는 선택 기능으로 보존하고 기본 설정에서 끈다. `ollama(gemma4:12b)`는 현재 **로그 압축 보조**다(파일을 고치지 않는다). 작업 준비·GPT 호출 필요 판단은 아직 구현하지 않았다.
+모델은 `config.json`의 `model_policy`에서 Provider 종류와 작업 단계로 선택한다.
+
+| 작업 | Codex | Claude |
+|---|---|---|
+| 설계 | gpt-6-astra | fable |
+| 구현 | gpt-5.6-sol | sonnet |
+| 최종 검수 | gpt-6-astra | fable |
+| 테스트 작성 | gpt-5.6-terra | sonnet |
+| 오류 수정 | gpt-6-astra | opus |
+| 문서 | gpt-5.6-luna | haiku |
+
+설계·리뷰는 실제 실행 단계로, 구현 요청은 오류/문서/테스트 관련 문구와 이전 실패 여부로 분류한다.
+기본은 구현이다. 이는 설정 가능한 운영 정책이며 모델 간 성능 우위를 검증했다는 뜻은 아니다.
+`--agent`는 Provider 프로필을 지정하며 그 Provider 안에서는 작업별 모델 선택이 적용된다.
+모델 정책이 없는 Provider는 기존 기본 모델을 유지한다. 실제 선택 모델은 시도/사용 기록과
+`*.model.txt` 로그에 남는다. 인증·한도 장애 시 기존 Provider 대체 경로를 사용한다.
+잔여 퍼센트에 따른 선제 전환은 아직 적용하지 않으며, 같은 계정 내 모델 변경으로 한도를 우회한다고 가정하지 않는다.
+Grok은 기본 OFF, Ollama는 로그 압축 보조로 유지한다.
 
 `ORCH_NO_CLOUD=1`이면 script 외의 에이전트를 **빌드조차 거부**한다 — 시험용 판이 유료 모델을
 부르는 사고를 코드로 막는다.
@@ -127,6 +138,10 @@ Claude·Grok 어댑터는 선택 기능으로 보존하고 기본 설정에서 �
 ./orch plans --plan 7        # 확인
 ./orch run-plan --plan 7     # 의존성 순서로 실행
 ```
+계획의 Task는 **통합 브랜치 `orch/plan-NNNN`** 위에 쌓인다: run-plan이 HEAD에서 한 번 열고, Task가 PASS
+커밋을 만들 때마다 전진시킨다. 다음 Task의 worktree는 그 위에서 출발하므로 앞 Task의 코드를 본다
+(계획 7 T4가 T1·T2 코드를 못 봐 반려된 원인, NC `plan_inherit`). 브랜치를 옮기는 것은 `branch -f`뿐이다.
+
 분해와 리뷰 모두 **응답을 stdout에서 긁지 않고 파일(plan.json·review.json)로 받는다** —
 "모델이 뭔가 말했다"와 "결과물이 생겼다"를 구분하기 위해서다. 파일이 없으면 UNKNOWN이다.
 
@@ -252,6 +267,13 @@ AI가 "만들었다"고 말한 것은 만든 것이 아니다. 저장소의 검�
   판마다 750MB를 재임포트하지 않기 위해서다. 동시 실행은 슬롯이 막는다.
 - 프로젝트 자기 검사는 `gates`에 `execute_method`로 건다 — 울온의 자는 NUnit이 아니라
   `Ulon.Editor.SliceSelfCheck.Run`의 **종료코드**다(NC `gate_probe_fail/ok`).
+- `link_paths`: 본 체크아웃에만 있는 **미추적 로컬 자원**(울온 `server/.venv`)을 worktree에 링크한다 —
+  없으면 게이트가 psycopg2 부재로 죽는다(task 360). 링크는 worktree의 info/exclude에 적어 변경으로 안 센다.
+- `preflight`: 게이트 전제 명령(울온 `pg_isready`). 실패면 **AI를 부르지 않고** BLOCKED/UNKNOWN —
+  환경 실패로 시도 3회를 태워 "AI가 못 했다"로 적지 않기 위해서다(NC `preflight`).
+  울온 Postgres는 launchd가 아니라 손으로 켠다: `LC_ALL=en_US.UTF-8 pg_ctl -D /opt/homebrew/var/postgresql@16 start`.
+- **게이트 부산물은 되돌린다**: SliceSelfCheck는 씬·지형 8파일을 다시 저장한다. 게이트 전 `git status`를 찍어
+  두고 게이트 뒤 새로 생긴 변경만 되돌린다(AI가 만든 자산의 `.meta`는 그 자산의 일부라 남긴다).
 
 | target | kind | 폴더 | 게이트 |
 |---|---|---|---|

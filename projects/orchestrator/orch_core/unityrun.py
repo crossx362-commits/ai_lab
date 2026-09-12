@@ -329,20 +329,9 @@ def prepare_library(target: Target, project_path: Path) -> str:
             cache.mkdir(parents=True, exist_ok=True)
             note = "공유 Library 캐시 새로 만듦(첫 임포트는 오래 걸린다)"
     lib.symlink_to(cache, target_is_directory=True)
-    # 심볼릭 링크는 git에 "파일"로 보여서 `unity/Library/` 같은 폴더 무시 규칙에 안 걸린다 —
-    # 첫 실측(2026-09-11 task 357)에서 이 링크가 "허용 범위 밖 파일 수정"으로 잡혀 판이 죽었다.
-    # 이 worktree 전용 exclude에 적어 두어 변경 집계에서 뺀다(저장소 .gitignore는 건드리지 않는다).
+    from . import gitwt
     try:
-        toplevel = pathlib.Path(subprocess.run(["git", "-C", str(project_path), "rev-parse", "--show-toplevel"],
-                                               capture_output=True, text=True, check=True).stdout.strip())
-        excl = pathlib.Path(subprocess.run(["git", "-C", str(project_path), "rev-parse", "--git-path", "info/exclude"],
-                                           capture_output=True, text=True, check=True).stdout.strip())
-        if not excl.is_absolute():
-            excl = toplevel / excl
-        excl.parent.mkdir(parents=True, exist_ok=True)
-        rel = lib.relative_to(toplevel)
-        with excl.open("a", encoding="utf-8") as f:
-            f.write(f"/{rel.as_posix()}\n")
-    except (subprocess.CalledProcessError, ValueError, OSError) as e:
+        gitwt.exclude_paths(project_path, [lib])
+    except Exception as e:  # noqa: BLE001
         note += f" (exclude 등록 실패: {e})"
     return note

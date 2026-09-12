@@ -82,7 +82,22 @@
       "library_cache": true,
       "library_seed": "../../projects/ulon/unity/Library",
       "unity_timeout_sec": 1800,
-      "unity_stall_sec": 300
+      "unity_stall_sec": 300,
+      "link_paths": [
+        "server/.venv"
+      ],
+      "preflight": [
+        {
+          "name": "postgres(울온 persist 서버 전제)",
+          "cmd": [
+            "/opt/homebrew/bin/pg_isready",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "5432"
+          ]
+        }
+      ]
     },
     "ulon_props": {
       "kind": "blender",
@@ -180,5 +195,23 @@
   },
   "planner": "claude",
   "reviewer": "claude",
-  "blender_bin": "/Applications/Blender.app/Contents/MacOS/Blender"
+  "blender_bin": "/Applications/Blender.app/Contents/MacOS/Blender",
+  "model_policy": {
+    "codex": {
+      "planning": "gpt-6-astra",
+      "coding": "gpt-5.6-sol",
+      "review": "gpt-6-astra",
+      "debugging": "gpt-6-astra",
+      "testing": "gpt-5.6-terra",
+      "documentation": "gpt-5.6-luna"
+    },
+    "claude": {
+      "planning": "fable",
+      "coding": "sonnet",
+      "review": "fable",
+      "debugging": "opus",
+      "testing": "sonnet",
+      "documentation": "haiku"
+    }
+  }
 }
