@@ -897,17 +897,24 @@ def last_work_line(path: Path) -> str:
         return ""
     for ln in reversed(lines):
         t = ln.strip()
-        if len(t) < 10:
+        if t.startswith("========"):
             continue
-        if t.startswith("========") or "PROMPT.md" in t or t.startswith("`loop/"):
+        t = t.replace("`loop/PROMPT.md`를 읽고 지시대로 바로 실행하겠습니다.", " ")
+        t = t.replace("loop/PROMPT.md를 읽고 일하라.", " ")
+        t = " ".join(t.split())
+        if len(t) < 12:
             continue
-        return t[:220]
+        if t.startswith("`loop/"):
+            continue
+        return t[-220:]
     return ""
 
 
 def grok_now_display(state: dict, cards: list) -> dict:
     raw = (state.get("current_task") or "").strip()
     boiler = (not raw) or "PROMPT.md" in raw or raw.startswith("grok -p")
+    asg_path = ROOT / "logs" / "current_assignment.json"
+    asg = read_json(asg_path, {}) if asg_path.exists() else {}
     live = [
         c
         for c in cards
@@ -916,18 +923,25 @@ def grok_now_display(state: dict, cards: list) -> dict:
         and c.get("id") not in {"now", "gpt-gfx-ui"}
     ]
     cur = state.get("loop")
-    same = [c for c in live if c.get("assigned_loop") == cur]
-    pick = (same or live or [None])[0]
+    if asg.get("loop") == cur and asg.get("title"):
+        hit = next((c for c in live if c.get("id") == asg.get("id")), None)
+        pick = hit or {"id": asg.get("id") or "", "title": asg.get("title")}
+    else:
+        same = [c for c in live if c.get("assigned_loop") == cur]
+        pick = (same or live or [None])[0]
+    logp = state.get("log_path") or ""
+    detail = last_work_line(Path(logp)) if logp else ""
     title = (pick.get("title") if pick else "") or ("" if boiler else raw)
+    if not title and detail:
+        title = detail.split(".")[-1].strip()[:80] or detail[:80]
     if not title:
         if (state.get("display_status") or state.get("status")) == "running":
             title = "다음 작업 고르는 중"
         else:
             title = raw or "대기"
-    logp = state.get("log_path") or ""
     return {
         "title": title,
-        "detail": last_work_line(Path(logp)) if logp else "",
+        "detail": detail,
         "card_id": (pick or {}).get("id") or "",
         "from_card": bool(pick),
     }

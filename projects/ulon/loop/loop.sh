@@ -283,7 +283,15 @@ while true; do
   DAY="$(today)"
   DAY_LOG="$LOG_DIR/${DAY}.log"
   WHEEL_LOG="$LOG_DIR/loop_$(printf '%04d' "$LOOP_NO").log"
-  PICK="$(pick_model)"
+  PICK="$("$PYTHON_BIN" "$ROOT/loop/claim_next.py" \
+    --root "$ROOT" \
+    --loop "$LOOP_NO" \
+    --model-low "$MODEL_LOW" \
+    --model-mid "$MODEL_MID" \
+    --model-high "$MODEL_HIGH" \
+    --effort-low "${EFFORT_LOW:-low}" \
+    --effort-mid "${EFFORT_MID:-medium}" \
+    --effort-high "${EFFORT_HIGH:-high}")"
   MODEL="$(printf '%s\n' "$PICK" | sed -n '1p')"
   EFFORT="$(printf '%s\n' "$PICK" | sed -n '2p')"
   TASK_TITLE="$(printf '%s\n' "$PICK" | sed -n '3p')"
