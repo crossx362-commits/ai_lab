@@ -90,7 +90,7 @@ namespace Ulon.Server
             if (attacker.IsAvatar)
                 attacker.RecalcFromStr(StatsOf(attacker).Str);
 
-            nextAttackAt[id] = Time.time + attackCooldown;
+            nextAttackAt[id] = Time.time + AttackSpeed.Seconds(StatsOf(attacker), attacker.Stamina);
             if (!string.IsNullOrEmpty(weapon) && atkBag != null && ItemCatalog.MaxUsesOf(weapon) > 0)
                 atkBag.WearTool(weapon);
             int dmg = result.Damage;

@@ -1,0 +1,6 @@
+{
+  "base_s": 1.8,
+  "stam_div": 50,
+  "min_s": 0.5,
+  "source": "GAME_DESIGN §18.2 DEX=Stamina, 공격 속도 보정. UO 휘두름은 현재 스태미나(https://www.uoguide.com/Swing_Speed https://www.uoguide.com/Dexterity). 무기 속도·SSI·틱 공식은 기획서에 없어 비복제. 프로젝트 값: max(0.5, 1.8 − 스태미나/50). 기본 DEX25 만땅 35=옛 고정 1.1초."
+}

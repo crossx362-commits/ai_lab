@@ -543,7 +543,7 @@ namespace Ulon.Server
                 ready = 0f;
             if (now < ready)
                 return;
-            nextAttackAt[id] = now + attackCooldown;
+            nextAttackAt[id] = now + AttackSpeed.Seconds(StatsOf(attacker), attacker.Stamina);
             defender.ApplyDamage(AttackResolve.RetaliationDamage);
         }
 

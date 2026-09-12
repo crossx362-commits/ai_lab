@@ -240,6 +240,7 @@ namespace Ulon.Client
                 int cap = ItemCatalog.CarryCap(st.Str);
                 GUILayout.Label("STR " + st.Str + "  DEX " + st.Dex + "  INT " + st.Int +
                                 "  G " + me.Gold + "  무게 " + w.ToString("0") + "/" + cap +
+                                "  휘두름 " + AttackSpeed.Seconds(st, me.Stamina).ToString("0.00") + "s" +
                                 (bag != null && bag.Overweight(st.Str) ? " 과적·달림불가" : "") +
                                 (!RunStamina.CanRun(me.Stamina) ? " 기진·달림불가" : "") +
                                 (me.IsCasting(Time.time) ? " 시전 중" : ""));
