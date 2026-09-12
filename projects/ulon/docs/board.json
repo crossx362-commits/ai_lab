@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T22:25:00+09:00",
+  "updated_at": "2026-09-12T22:40:00+0900",
   "cards": [
     {
       "id": "map-land-scale",
@@ -33,8 +33,8 @@
       "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "2ea59bf1",
-      "rationale": "#78 0a186926/2ea59bf1: 중앙 지형 보존·180m 목조 해상 잔교(3144삼각형) 구현. 전용 Metal visual-fixed.log exit0: 상판1765·접점2247·난간36/누락NC·중앙충돌3481·길1656·해안725 PASS. 동쪽 공면 줄무늬 수리 후 근경3장 확인. ACCESS_FAIL 서쪽 기존 산비탈179.46%>65%로 전체 연결 미합격. 중앙 우회 접근로·저장/지도/서버·게임/2인·최종아트 남음; 검증 중.",
+      "commit": "983dceb4",
+      "rationale": "#79 983dceb4: 중앙 지형 보존400m 목조 우회/잔교 측면 접속 구현(7704삼각형). 전용 Metal final.log exit0: 중앙→확장7530표본 최대경사30%≤65%, 폭/난간338·코너4·누락/문막기NC 및 기존지형3481/길1656 PASS. 실제PNG3뷰 검토·계단형 음영 수리. 기존 직행179.46%는 그대로; 저장/재생성·Bootstrap·지도/서버·게임/2인·최종아트 남음. 검증 중.",
       "fail_streak": 0,
       "owner": "codex",
       "resume_token": "owner-unblock-world-2055",
@@ -67,11 +67,23 @@
         "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/visual-fixed/crossing-west.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/visual-fixed/crossing-east.png",
         "/Users/junholee/ai_lab/output/ulon-codex/loop78-world/visual-fixed/layout-top.png",
-        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_CROSSING_78.md"
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_CROSSING_78.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/green.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/extended.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/clearance.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/entry.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/static.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/review.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/final/approach-overview.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/final/approach-entry.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop79-world/final/approach-gate.png",
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_APPROACH_79.md"
       ],
-      "codex_iteration": 78,
-      "verification_commit": "2ea59bf1",
-      "resume_condition": "2ea59bf1/loop78-world/visual-fixed.log·PNG 기준. 중앙 높이를 보존하는 산비탈 우회 접근로를 독립 구현하여 ACCESS_FAIL(179.46%>65%) 해소. 동일 경사 재검사만 반복 금지. 이후 저장/재생성·지역 표식·지도/서버/스폰/관심영역·실제보행/2인 검사. 원본 통합 대기는 독립 구현을 막지 않는다."
+      "codex_iteration": 79,
+      "verification_commit": "983dceb4",
+      "resume_condition": "983dceb4 및 loop79-world/final.log·final/approach-*.png 기준. 새 우회는 중앙원점→(120,40)→(120,-90)→(300,-90)→잔교→초원 충돌PASS. 기존 직행179.46% 재검사 반복 금지. 다음은 procedural Mesh/Terrain 자산 저장·재로딩/재생성 검증; Bootstrap 기존 콘텐츠/가로등 보존을 대조한 전용 적용, 지도/서버/스폰/관심영역·실제보행/2인 후속. 높은 교각/단조로운 아트/지역 표식 미완료. 원본 통합 대기는 독립 구현을 막지 않는다."
     },
     {
       "id": "action-feel",
@@ -717,6 +729,18 @@
       "completed_loop": 45,
       "commit": "d060eb4f",
       "rationale": "HitChance JSON+게이트+NC. 샷 빗나감 30HP 유지·명중 30→18. HCI/DCI 없음. 2클라 없음.",
+      "fail_streak": 0
+    },
+    {
+      "id": "auto-47-씬-루트-배우-시설-종류-묶음은-페이드-자가",
+      "title": "씬 루트 배우·시설 종류 묶음은 페이드 자가 루트를 보도록 고친 뒤",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 47,
+      "completed_loop": 47,
+      "commit": "241d9a4b",
+      "rationale": "페이드는 자가 루트 좌표. KindActor 19·KindFacility 9. 게이트+NC·플레이 샷. 구현 241d9a4b. 배치 셀프체크는 에디터 점유.",
       "fail_streak": 0
     }
   ]
