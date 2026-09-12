@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T23:02:46+0900",
+  "updated_at": "2026-09-12T23:16:00+0900",
   "cards": [
     {
       "id": "map-land-scale",
@@ -781,6 +781,18 @@
       "completed_loop": 49,
       "commit": "804cb14a",
       "rationale": "KindRock 3·KindPlant 6·KindArch 4·KindSeat 3. 게이트+NC·플레이 샷. 구현 804cb14a. 배치 셀프체크는 에디터 점유.",
+      "fail_streak": 0
+    },
+    {
+      "id": "auto-50-씬-루트-원점-중복-가로등-아치-벤치-덤불은",
+      "title": "씬 루트 원점 중복 가로등·아치·벤치·덤불은 사람 결정 전 삭제하지 않음",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "막힘",
+      "assigned_loop": 50,
+      "completed_loop": 50,
+      "commit": "d29d0267",
+      "rationale": "원점 가로등4·아치4·벤치2·덤불4 확인·삭제 안 함. Keep 게이트+NC·플레이 샷 d29d0267. 삭제/이동은 사람 결정.",
       "fail_streak": 0
     }
   ]

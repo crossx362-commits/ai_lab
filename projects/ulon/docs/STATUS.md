@@ -1,21 +1,20 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#48** (성공) · 2026-09-12T22:50:52+0900
-- 원작 대비: 같은 점 — 마을 나무·수레·가로등이 광장에 그대로 있음. 나은 점 — 씬 루트 소품도 종류 폴더로 읽힘. 부족한 점 — 바위·덤불·포장 아치·좌석은 아직 씬 루트에 흩어져 있음. 가로등 4개는 묶기 전부터 원점 근처 중복이었습니다.
+마지막 바퀴: **#49** (성공) · 2026-09-12T23:03:25+0900
+커밋 `804cb14a` · STATUS `fcf9c8c5`.
 
-- 모델 `grok-4.6` · 경과 626s · 세션 rc `0`
-- HEAD `6cab102f [loop#48] 나무·수레·가로등 종류 묶음 STATUS` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 706s · 세션 rc `0`
+- HEAD `fcf9c8c5 [loop#49] 바위·덤불·아치·좌석 종류 묶음 STATUS` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `6cab102f [loop#48] 나무·수레·가로등 종류 묶음 STATUS`
-- `dfd19b0a [loop#48] 씬 루트 나무·수레·가로등 Kind 폴더`
+- `fcf9c8c5 [loop#49] 바위·덤불·아치·좌석 종류 묶음 STATUS`
+- `804cb14a [loop#49] 씬 루트 바위·덤불·아치·좌석 Kind 폴더`
 
 ## 바퀴 기록
 
 | 바퀴 | 결과 | 시각 | 모델 | 경과 |
 |---|---|---|---|---|
-| #17 | 실패 | 2026-09-12T16:44:40+0900 | gpt | 1s |
 | #18 | 실패 | 2026-09-12T16:45:29+0900 | gpt | 1s |
 | #19 | 성공 | 2026-09-12T16:57:08+0900 | grok-4.6 | 651s |
 | #20 | 성공 | 2026-09-12T17:07:56+0900 | grok-4.6 | 600s |
@@ -45,6 +44,7 @@
 | #46 | 성공 | 2026-09-12T22:26:11+0900 | grok-4.6 | 551s |
 | #47 | 성공 | 2026-09-12T22:39:38+0900 | grok-4.6 | 760s |
 | #48 | 성공 | 2026-09-12T22:50:52+0900 | grok-4.6 | 626s |
+| #49 | 성공 | 2026-09-12T23:03:25+0900 | grok-4.6 | 706s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -112,18 +112,18 @@
 - **persist/postgres는 이번 살아 있음.** pid 84115, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
 - **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크는 불가. HTTP MCP로 종류 묶음·페이드 NC·플레이 확인. 배치 검사는 에디터를 닫은 뒤에.
-- **이번 플레이.** 에디터 플레이: HUD·광장·바위·덤불·좌석 유지, 콘솔 error/warning 0. 샷 `loop49_play.png`. 플레이어 발 y≈10.05. 2클라 미실행.
+- **이번 플레이.** 에디터 플레이: 콘솔 error/warning 0. 플레이어 발 y≈10.05. 원점 겹침 소품은 삭제하지 않음. 샷 `unity/Captures/loop50_origin.png`·`loop50_origin_close.png`·`loop50_origin_under_fountain.png`·`loop50_village_lantern.png`. 2클라 미실행.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 이 트리에도 loop#46로 `UlonClient.app`을 다시 넣었다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- 씬 루트 바위 3·덤불 6·포장 아치 4·좌석 3을 `KindRock`/`KindPlant`/`KindArch`/`KindSeat`로 묶음. 월드 좌표 유지. 페이드 자가 루트. `wall-arch`는 House가 아니라 Arch, `stall-bench`/`stall-stool`은 Stall이 아니라 Seat. 게이트+NC 에디터 통과. 플레이 콘솔 error/warning 0. 샷 `unity/Captures/loop49_kind_folders.png`·`loop49_village.png`·`loop49_rock_plant.png`·`loop49_seat.png`·`loop49_play.png`. 플레이어 발 y≈10.05. 배치 셀프체크 전체는 에디터 점유라 생략. `test_alpha_readiness` 7/7.
-- 원작 대비: 같은 점 — 광장 바위·덤불·의자·벤치가 제자리에 있음. 나은 점 — 씬 루트 소품이 종류 폴더로 읽힘. 부족한 점 — 원점 중복 아치 4·벤치 2·덤불 4·가로등 4는 묶기 전부터 겹쳐 있음. 삭제는 사람 결정.
+- 원점 중복 가로등 4·아치 4·벤치 2·덤불 4를 **삭제하지 않음**. VillageDecor에 제자리 가로등 8·벤치/의자·덤불이 따로 있다. 원점 잔재는 광장 분수(Healer)와 같은 자리(0, 10, 0). 게이트 `AssertOriginKeep`+NC: 하나 끄면 FAIL·되돌리면 통과. 플레이 콘솔 error/warning 0. 샷 `unity/Captures/loop50_origin.png`·`loop50_origin_close.png`·`loop50_origin_under_fountain.png`(분수 잠깐 끄고 찍고 복구)·`loop50_village_lantern.png`. 배치 셀프체크 전체는 에디터 점유라 생략. `test_alpha_readiness` 7/7. 구현 `d29d0267`.
+- 원작 대비: 같은 점 — 광장 귀퉁이 가로등·벤치가 제자리에 있음. 나은 점 — 원점 잔재를 세서 지우지 못하게 잠금. 부족한 점 — 원점 더미가 분수와 겹쳐 보임. 삭제·이동은 사람 결정.
 
 ## 지금 하는 것
 
-없음. loop#49 카드는 씬 루트 바위·덤불·포장 아치·좌석 종류 묶음까지 닫음.
+없음. loop#50 카드는 원점 중복 삭제 금지까지 닫고, 삭제 여부는 막힘.
 
 ## 다음 할 것 (우선순위 → board.json)
 
@@ -132,7 +132,6 @@
 3. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선
 4. 그래픽·UI 폴리시·물가 셰이더는 GPT/Codex 차선 (그록 안 함)
 5. 문 칸 모서리 기둥은 사람/다음 바퀴 — 문을 가리지 않는 조각이 필요
-6. 씬 루트 원점 중복 가로등·아치·벤치·덤불은 사람 결정 전 삭제하지 않음
 
 ## 막힌 것 (사람 결정)
 
@@ -159,3 +158,4 @@
 - **INBOX 16:04 병렬 vs PROMPT 한 작업:** INBOX 우선. #15는 Unity와 안 겹치는 보고서만. 클라 빌드는 #46에서 닫음. 남은 2클라는 바이너리로 돌릴 수 있음. 물가·절반맵은 Codex.
 - **그록/그록봇 공존:** 이 트리는 `projects/ulon`만. `ai_lab-loop`(loop-claude) 병합·수정 없음.
 - **운영 persist 전량 복원:** POST `/restore` 는 테이블 DELETE 후 삽입. 사람 확인 전 운영에 안 돌림. 스테이징(임시 스키마)만 이번 확인.
+- **원점 중복 소품 삭제 (2026-09-12):** `KindLight` 가로등 4·`KindArch` 아치 4·`KindSeat` 벤치 2·`KindPlant` 덤불 4가 월드 (0, 10, 0)에 겹침. VillageDecor 광장 귀퉁이 가로등 8은 별개. 게이트가 개수를 지킴. 지울지·옮길지는 사람 결정. 임의 삭제 안 함.
