@@ -1,4 +1,113 @@
 {
-  "updated_at": "",
-  "cards": []
+  "updated_at": "2026-09-12T13:02:28+09:00",
+  "cards": [
+    {
+      "id": "loop0-survey",
+      "title": "0번째 바퀴 현황 파악 (STATUS·ASSETS·보드)",
+      "difficulty": "하",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 0,
+      "completed_loop": 0,
+      "commit": "",
+      "rationale": "문서 작성과 프로세스 확인만. 코드 변경 없음.",
+      "fail_streak": 0
+    },
+    {
+      "id": "persist-ready",
+      "title": "운영 PostgreSQL+persist 기동 후 /ready 200 실측",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": 1,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "기동 스크립트는 있으나 이번 pid 사망·5432 미청취. P0. Unity 불필요.",
+      "fail_streak": 0
+    },
+    {
+      "id": "client-rebuild",
+      "title": "이 트리에서 UlonClient.app 재빌드",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "실행·2클라 검사의 전제. 스크립트 있음. 에디터 점유 시 완료 금지.",
+      "fail_streak": 0
+    },
+    {
+      "id": "two-client-core",
+      "title": "two_client_check로 2인 동기화 최소 재검증",
+      "difficulty": "상",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "클라 빌드 이후. 마지막 통과 로그는 2026-09-03. §13.1의 일부만.",
+      "fail_streak": 0
+    },
+    {
+      "id": "persist-latest-wins",
+      "title": "DB 중단 중 저장→복구→재접속 시 최신 인벤·스탯 유지",
+      "difficulty": "상",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "DEVELOPMENT_PLAN P0. JSON 폴백과 PG 최신 선택. persist-ready 이후.",
+      "fail_streak": 0
+    },
+    {
+      "id": "water-shore-jag",
+      "title": "물가 톱니 — 깊이 버퍼 계단 (핸드오프 미닫힘)",
+      "difficulty": "상",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "셰이더·깊이 텍스처. 검수가 판정한 2·3단계는 손대지 않음. VisualSliceBuilder 분할 금지.",
+      "fail_streak": 0
+    },
+    {
+      "id": "ui-paperdoll",
+      "title": "Paperdoll 슬롯 그림·컨테이너 드래그 (기획 §18.13)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "지금 HUD는 IMGUI 버튼 138개. Kenney UI 팩은 미반입(사람 결정).",
+      "fail_streak": 0
+    },
+    {
+      "id": "mob-catalog-20",
+      "title": "몬스터 원장 14종 → 기획 20종 내외",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "기존 KayKit 파생·색/장비 변형. 새 유료 팩 금지. Barbarian 사용 금지.",
+      "fail_streak": 0
+    },
+    {
+      "id": "interest-mgmt",
+      "title": "FishNet 관심 영역(기획 §7.3)",
+      "difficulty": "상",
+      "model": "grok-4.6",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "코드 없음. 20~50 동접 전제. P3. 핵심 루프 재검증 이후.",
+      "fail_streak": 0
+    }
+  ]
 }
