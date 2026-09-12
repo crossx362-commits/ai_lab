@@ -1,9 +1,12 @@
 # 울온 자율 개발 루프 설정. 비밀값은 loop/env.local.sh (git 제외).
 
-# 모델 (난이도별) — Codex CLI slug
-MODEL_LOW=gpt-5.3-codex-spark   # 하: 가볍고 빠른 모델
-MODEL_MID=gpt-5.6-sol           # 중: 기본 모델
-MODEL_HIGH=gpt-6-astra          # 상: 가장 강한 모델
+# 모델 (난이도별) — Grok만. GPT/Codex 쓰지 않는다.
+MODEL_LOW=grok-4.5              # 하
+MODEL_MID=grok-4.6              # 중
+MODEL_HIGH=grok-4.6             # 상
+EFFORT_LOW=low
+EFFORT_MID=medium
+EFFORT_HIGH=high
 
 # 루프 (환경변수가 있으면 그걸 쓴다 — 수동 두 바퀴: MAX_LOOPS=2 ./loop/loop.sh)
 MAX_TURNS="${MAX_TURNS:-80}"                    # 한 바퀴 최대 턴 수 (PROMPT에 명시, 하드 제한은 타임아웃)
@@ -20,13 +23,13 @@ RUN_SERVER_CMD="./server/start_postgres.sh && ./server/start_persist.sh && ./bui
 RUN_CLIENT_CMD="./builds/client/UlonClient.app/Contents/MacOS/Ulon -ulon-client -ulon-host 127.0.0.1"
 TEST_CMD='python3 tools/test_alpha_readiness.py && SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh'
 
-# 이미지 생성 (GPT)
-IMAGE_PROVIDER=openai
-IMAGE_MODEL=gpt-image-1
+# 이미지 생성 (Grok image_gen / image_edit)
+IMAGE_PROVIDER=xai
+IMAGE_MODEL=grok-imagine
 
-# 3D 모델링 (GPT + Blender)
-MODEL_PROVIDER=openai
-MODEL_LLM=gpt-5.6-sol
+# 3D 모델링 (Grok bpy + Blender)
+MODEL_PROVIDER=xai
+MODEL_LLM=grok-4.6
 BLENDER_BIN=/Applications/Blender.app/Contents/MacOS/Blender
 
 # 보드
@@ -34,5 +37,5 @@ BOARD_PORT=8787
 
 # 도구 경로 (launchd는 터미널 PATH를 물려받지 않음)
 UNITY_BIN=/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS/Unity
-CODEX_BIN=/opt/homebrew/bin/codex
+GROK_BIN=/Users/junholee/.grok/bin/grok
 PYTHON_BIN=/opt/homebrew/bin/python3

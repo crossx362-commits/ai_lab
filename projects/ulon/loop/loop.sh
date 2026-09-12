@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # 울온 자율 개발 루프.
-# 한 바퀴마다 새 codex exec 세션. 대화를 이어 붙이지 않는다.
+# 한 바퀴마다 새 grok -p 세션. 대화를 이어 붙이지 않는다. GPT/Codex 금지.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 # launchd는 터미널 PATH를 안 물려준다.
-export PATH="$ROOT/loop/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/junholee/.unity/bin:/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS:/Applications/Blender.app/Contents/MacOS:/opt/homebrew/opt/postgresql@16/bin:${PATH:-}"
+export PATH="$ROOT/loop/bin:/Users/junholee/.grok/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/junholee/.unity/bin:/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS:/Applications/Blender.app/Contents/MacOS:/opt/homebrew/opt/postgresql@16/bin:${PATH:-}"
 export HOME="${HOME:-/Users/junholee}"
 export LANG="${LANG:-ko_KR.UTF-8}"
 export LC_ALL="${LC_ALL:-en_US.UTF-8}"
@@ -27,17 +27,18 @@ LOG_DIR="$ROOT/logs"
 STATE="$LOG_DIR/loop_state.json"
 HISTORY="$LOG_DIR/loop_history.jsonl"
 PROMPT_FILE="$ROOT/loop/PROMPT.md"
-CODEX_BIN="${CODEX_BIN:-/opt/homebrew/bin/codex}"
+GROK_BIN="${GROK_BIN:-/Users/junholee/.grok/bin/grok}"
 PYTHON_BIN="${PYTHON_BIN:-/opt/homebrew/bin/python3}"
 BLENDER_BIN="${BLENDER_BIN:-/Applications/Blender.app/Contents/MacOS/Blender}"
+GROK_LEADER_SOCKET="${GROK_LEADER_SOCKET:-/Users/junholee/.grok/leader-ulon-loop.sock}"
 
 mkdir -p "$LOG_DIR"
 
-if [ ! -x "$CODEX_BIN" ] && ! command -v codex >/dev/null 2>&1; then
-  echo "codex CLI가 없습니다: $CODEX_BIN" >&2
+if [ ! -x "$GROK_BIN" ] && ! command -v grok >/dev/null 2>&1; then
+  echo "grok CLI가 없습니다: $GROK_BIN" >&2
   exit 1
 fi
-command -v codex >/dev/null 2>&1 && CODEX_BIN="$(command -v codex)"
+command -v grok >/dev/null 2>&1 && GROK_BIN="$(command -v grok)"
 
 # --- lock: 한 번에 한 루프만 ---
 if [ -f "$LOCK" ]; then
@@ -137,15 +138,19 @@ PY
 
 pick_model() {
   ROOT="$ROOT" MODEL_LOW="$MODEL_LOW" MODEL_MID="$MODEL_MID" MODEL_HIGH="$MODEL_HIGH" \
+  EFFORT_LOW="${EFFORT_LOW:-low}" EFFORT_MID="${EFFORT_MID:-medium}" EFFORT_HIGH="${EFFORT_HIGH:-high}" \
   "$PYTHON_BIN" - <<'PY'
 import json, os
 from pathlib import Path
 root = Path(os.environ["ROOT"])
 low, mid, high = os.environ["MODEL_LOW"], os.environ["MODEL_MID"], os.environ["MODEL_HIGH"]
+el, em, eh = os.environ["EFFORT_LOW"], os.environ["EFFORT_MID"], os.environ["EFFORT_HIGH"]
+effort = {"하": el, "중": em, "상": eh}
 status = root / "docs" / "STATUS.md"
 text = status.read_text(encoding="utf-8") if status.exists() else ""
 if (not status.exists()) or ("시스템 상태" not in text):
     print(high)
+    print(eh)
     raise SystemExit
 board = root / "docs" / "board.json"
 if board.exists():
@@ -158,14 +163,13 @@ if board.exists():
         for c in cards:
             if c.get("status") != want:
                 continue
-            m = (c.get("model") or "").strip()
-            if m:
-                print(m)
-                raise SystemExit
             d = c.get("difficulty") or "중"
-            print({"하": low, "중": mid, "상": high}.get(d, mid))
+            m = (c.get("model") or "").strip() or {"하": low, "중": mid, "상": high}.get(d, mid)
+            print(m)
+            print(effort.get(d, em))
             raise SystemExit
 print(mid)
+print(em)
 PY
 }
 
@@ -272,30 +276,34 @@ while true; do
   DAY="$(today)"
   DAY_LOG="$LOG_DIR/${DAY}.log"
   WHEEL_LOG="$LOG_DIR/loop_$(printf '%04d' "$LOOP_NO").log"
-  MODEL="$(pick_model)"
+  PICK="$(pick_model)"
+  MODEL="$(printf '%s\n' "$PICK" | sed -n '1p')"
+  EFFORT="$(printf '%s\n' "$PICK" | sed -n '2p')"
+  EFFORT="${EFFORT:-medium}"
   START_EPOCH="$(date +%s)"
 
   {
-    echo "======== loop #$LOOP_NO start $STARTED model=$MODEL pid=$$ ========"
+    echo "======== loop #$LOOP_NO start $STARTED model=$MODEL effort=$EFFORT pid=$$ ========"
   } | tee -a "$DAY_LOG" "$WHEEL_LOG"
 
   ST_LOOP="$LOOP_NO" ST_STARTED_AT="$STARTED" ST_ENDED_AT="" \
   ST_RESULT="running" ST_CONSEC_FAIL="$CONSEC" ST_PID="$$" \
-  ST_STATUS="running" ST_CURRENT_TASK="codex exec ($MODEL) — PROMPT.md" \
+  ST_STATUS="running" ST_CURRENT_TASK="grok -p ($MODEL/$EFFORT) — PROMPT.md" \
   ST_MODEL="$MODEL" ST_WAIT_REMAINING_SEC=0 ST_LOG_PATH="$WHEEL_LOG" \
   ST_FAIL_REASON="" ST_TODAY="$(count_today)" \
   write_state
 
   set +e
   "$PYTHON_BIN" "$ROOT/loop/run_timeout.py" "$TIMEOUT_SEC" \
-    "$CODEX_BIN" exec \
+    "$GROK_BIN" \
+      --leader-socket "$GROK_LEADER_SOCKET" \
+      --cwd "$ROOT" \
       --model "$MODEL" \
-      --cd "$ROOT" \
-      --ephemeral \
-      --dangerously-bypass-approvals-and-sandbox \
-      --skip-git-repo-check \
-      -c "model_reasoning_effort=\"medium\"" \
-      "loop/PROMPT.md를 읽고 일하라." \
+      --reasoning-effort "$EFFORT" \
+      --max-turns "${MAX_TURNS:-80}" \
+      --always-approve \
+      --output-format plain \
+      -p "loop/PROMPT.md를 읽고 일하라." \
     >>"$WHEEL_LOG" 2>&1
   RC=$?
   set -e
@@ -314,7 +322,7 @@ while true; do
     CONSEC=$((CONSEC + 1))
   elif [ "$RC" -ne 0 ]; then
     RESULT="fail"
-    FAIL_REASON="codex exec 종료 코드 $RC"
+    FAIL_REASON="grok -p 종료 코드 $RC"
     CONSEC=$((CONSEC + 1))
   else
     CONSEC=0

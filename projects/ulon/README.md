@@ -37,13 +37,13 @@ Unity 에디터는 **`projects/ulon/unity`** 만 연다. 재와별(`projects/ash
 
 ## 자율 개발 루프
 
-코덱스가 총괄하는 헤드리스 개발 루프. 기획서는 옮기지 않고 `loop/env.sh`의 `DESIGN_DOC`로 읽는다. 로그인 자동 실행은 **아직 켜지 않았다** (plist는 `Disabled`).
+그록이 총괄하는 헤드리스 개발 루프. 기획서는 옮기지 않고 `loop/env.sh`의 `DESIGN_DOC`로 읽는다. GPT/Codex는 쓰지 않는다. 로그인 자동 실행은 **아직 켜지 않았다** (plist는 `Disabled`).
 
 ### 만든 파일
 
 | 경로 | 역할 |
 |---|---|
-| `loop/loop.sh` | 루프 본체. 한 바퀴마다 새 `codex exec` |
+| `loop/loop.sh` | 루프 본체. 한 바퀴마다 새 `grok -p` |
 | `loop/env.sh` | 모델·타임아웃·빌드/실행 명령 |
 | `loop/env.local.sh` | 비밀값 (git 제외) |
 | `loop/PROMPT.md` | 한 바퀴 지시서 |

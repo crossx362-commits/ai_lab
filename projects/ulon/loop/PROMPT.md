@@ -1,6 +1,7 @@
 # 울온 자율 개발 루프 — 한 바퀴 지시서
 
-너는 이전 세션의 기억이 없다. 상태는 전부 파일에 있다. 이 문서를 읽고 한 바퀴만 일하라.
+너는 Grok이다. 이전 세션의 기억이 없다. 상태는 전부 파일에 있다. 이 문서를 읽고 한 바퀴만 일하라.
+코드·이미지·3D 스크립트·커밋까지 전부 이 세션에서 한다. OpenAI API와 `codex` CLI는 호출하지 마라.
 
 프로젝트 루트: 이 파일이 있는 `loop/`의 부모. 작업 디렉터리는 그 루트다.
 설정: `loop/env.sh` (비밀값은 `loop/env.local.sh`). 기획서 경로는 `DESIGN_DOC`. 빌드·실행·테스트 명령은 `BUILD_CMD` / `RUN_SERVER_CMD` / `RUN_CLIENT_CMD` / `TEST_CMD`.
@@ -103,7 +104,7 @@ Unity 버전은 `unity/ProjectSettings/ProjectVersion.txt` (6000.3.14f1). FishNe
 2. 비슷한 게 있으면 수정(색 변경, 조합, 크기 조정)해서 쓴다. 원본은 남기고 수정본은 별도 경로. `_ThirdParty/` 원본은 직접 수정하지 않는다. Game용 Variant만 만든다.
 3. 없을 때만 생성한다. 이미 적용된 에셋과 같은 스타일로: 해상도·스케일·팔레트·시점·조명 방향을 ASSETS.md 스타일 메모에 맞추고, 기존 에셋을 참조 이미지로 넣는다.
 4. 생성물을 기존 에셋 옆에 실제로 놓고 스크린샷으로 비교한다. 튀면 불합격.
-5. 생성 에셋도 ASSETS.md에 등록한다. 출처: 생성(GPT, 날짜, 프롬프트 파일 경로).
+5. 생성 에셋도 ASSETS.md에 등록한다. 출처: 생성(Grok, 날짜, 프롬프트 파일 경로).
 
 라이선스: 상업 이용·저작자 표기 조건을 확인해 적는다. 미확인이거나 재배포·수정 금지면 새 작업에 쓰지 않는다. 이미 쓰고 있으면 「막힌 것」에 올리고 임의로 빼거나 교체하지 않는다.
 라이선스 확인 없이 인터넷에서 새 에셋을 받지 않는다. 필요하면 「막힌 것」에 후보(링크, 라이선스)를 올리고 사람이 받는다.
@@ -112,9 +113,9 @@ Unity 버전은 `unity/ProjectSettings/ProjectVersion.txt` (6000.3.14f1). FishNe
 
 이 프로젝트의 아트 방식은 기획서 기준 **저폴리 3D를 직접 사용**한다 (3D 제작 후 2D 렌더가 기본이 아님). 판단이 기획서·적용 에셋과 어긋나면 「막힌 것」에 올린다.
 
-### B-1. 이미지·스프라이트 생성 (GPT)
+### B-1. 이미지·스프라이트 생성 (Grok)
 
-`loop/env.sh`의 `IMAGE_MODEL`로 생성한다. 다른 도구로 바꾸지 않는다. `IMAGE_PROVIDER=openai`. 키는 `OPENAI_API_KEY`(env.local.sh).
+이 세션의 이미지 도구(`image_gen` / `image_edit`)로만 생성한다. OpenAI·GPT·Codex 이미지 API는 쓰지 않는다. `IMAGE_PROVIDER=xai`.
 생성 전에 기획서의 아트 방향과 ASSETS.md 스타일 기준을 프롬프트에 반영한다.
 저장: `assets/generated/<날짜>/`, 옆에 같은 이름의 `.prompt.txt`(프롬프트·모델·시드·크기). 재생성 가능해야 한다.
 게임에 넣기 전 체크:
@@ -130,9 +131,9 @@ Unity 버전은 `unity/ProjectSettings/ProjectVersion.txt` (6000.3.14f1). FishNe
 
 이 게임은 3D가 기본이라 이미지 생성은 UI·텍스처·아이콘 등 기획서가 요구할 때만 한다.
 
-### B-2. 3D 모델링 (GPT + Blender)
+### B-2. 3D 모델링 (Grok + Blender)
 
-GPT가 bpy 스크립트를 쓰고, `"$BLENDER_BIN" --background --python <스크립트>`로 헤드리스 실행한다. UI를 열지 않는다. `MODEL_LLM`을 쓴다.
+네가 bpy 스크립트를 쓰고, `"$BLENDER_BIN" --background --python <스크립트>`로 헤드리스 실행한다. UI를 열지 않는다. OpenAI/GPT는 쓰지 않는다.
 기획서의 3D 규격(폴리곤 예산, 단위·스케일, 축, 텍스처 해상도, 타겟 엔진=Unity 6000.3, 1 unit = 1 m, 인간 키 약 1.7~1.9 m)을 스크립트에 반영한다.
 파일:
 
