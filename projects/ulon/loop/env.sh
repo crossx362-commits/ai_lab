@@ -1,12 +1,12 @@
 # 울온 자율 개발 루프 설정. 비밀값은 loop/env.local.sh (git 제외).
 
 # 모델 (난이도별) — Grok만. GPT/Codex 쓰지 않는다.
-MODEL_LOW=grok-4.5              # 하
+MODEL_LOW=grok-4.6              # 하
 MODEL_MID=grok-4.6              # 중
 MODEL_HIGH=grok-4.6             # 상
-EFFORT_LOW=low
+EFFORT_LOW=medium
 EFFORT_MID=medium
-EFFORT_HIGH=high
+EFFORT_HIGH=medium
 
 # 루프 (환경변수가 있으면 그걸 쓴다 — 수동 두 바퀴: MAX_LOOPS=2 ./loop/loop.sh)
 MAX_TURNS="${MAX_TURNS:-80}"                    # 한 바퀴 최대 턴 수 (PROMPT에 명시, 하드 제한은 타임아웃)

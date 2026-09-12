@@ -149,8 +149,8 @@ effort = {"하": el, "중": em, "상": eh}
 status = root / "docs" / "STATUS.md"
 text = status.read_text(encoding="utf-8") if status.exists() else ""
 if (not status.exists()) or ("시스템 상태" not in text):
-    print(high)
-    print(eh)
+    print(mid)
+    print(em)
     raise SystemExit
 board = root / "docs" / "board.json"
 if board.exists():
