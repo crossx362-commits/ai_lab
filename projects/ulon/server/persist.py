@@ -101,6 +101,7 @@ def migrate(cur):
         ("karma", "INTEGER NOT NULL DEFAULT 0"),
         ("notoriety", "INTEGER NOT NULL DEFAULT 0"),
         ("murder_count", "INTEGER NOT NULL DEFAULT 0"),
+        ("saved_at", "TEXT NOT NULL DEFAULT ''"),
     )
     for name, decl in cols:
         try:
@@ -332,6 +333,7 @@ def get_character(account_id: str) -> dict | None:
             "Karma": int(char.get("karma") or 0),
             "Notoriety": int(char.get("notoriety") or 0),
             "MurderCount": int(char.get("murder_count") or 0),
+            "SavedAt": str(char.get("saved_at") or ""),
             "Spells": spells,
             "Skills": skills,
             "Inventory": inv,
@@ -370,6 +372,7 @@ def put_character(body: dict) -> dict:
     karma = int(body.get("karma", body.get("Karma", 0)))
     notoriety = int(body.get("notoriety", body.get("Notoriety", 0)))
     murder_count = int(body.get("murderCount", body.get("MurderCount", 0)))
+    saved_at = str(body.get("savedAt") or body.get("SavedAt") or "") or _now()
     skills = body.get("skills") or body.get("Skills") or []
     inventory = body.get("inventory") or body.get("Inventory") or []
     bank = body.get("bank") or body.get("Bank") or []
@@ -390,18 +393,19 @@ def put_character(body: dict) -> dict:
         cur.execute(
             sql(
                 """
-                INSERT INTO characters(character_id, account_id, name, pos_x, pos_y, pos_z, hp, str, dex, intel, str_lock, dex_lock, intel_lock, appearance, mana, ghost, gold, fame, karma, notoriety, murder_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO characters(character_id, account_id, name, pos_x, pos_y, pos_z, hp, str, dex, intel, str_lock, dex_lock, intel_lock, appearance, mana, ghost, gold, fame, karma, notoriety, murder_count, saved_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(character_id) DO UPDATE SET
                     name=excluded.name, pos_x=excluded.pos_x, pos_y=excluded.pos_y,
                     pos_z=excluded.pos_z, hp=excluded.hp,
                     str=excluded.str, dex=excluded.dex, intel=excluded.intel,
                     str_lock=excluded.str_lock, dex_lock=excluded.dex_lock, intel_lock=excluded.intel_lock,
                     appearance=excluded.appearance, mana=excluded.mana, ghost=excluded.ghost, gold=excluded.gold,
-                    fame=excluded.fame, karma=excluded.karma, notoriety=excluded.notoriety, murder_count=excluded.murder_count
+                    fame=excluded.fame, karma=excluded.karma, notoriety=excluded.notoriety, murder_count=excluded.murder_count,
+                    saved_at=excluded.saved_at
                 """
             ),
-            (character_id, account, name, x, y, z, hp, strength, dex, intel, str_lock, dex_lock, int_lock, appearance, mana, ghost, gold, fame, karma, notoriety, murder_count),
+            (character_id, account, name, x, y, z, hp, strength, dex, intel, str_lock, dex_lock, int_lock, appearance, mana, ghost, gold, fame, karma, notoriety, murder_count, saved_at),
         )
         cur.execute(sql("DELETE FROM character_skills WHERE character_id = ?"), (character_id,))
         for s in skills:

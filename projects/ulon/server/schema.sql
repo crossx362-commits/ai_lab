@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS characters (
     fame INTEGER NOT NULL DEFAULT 0,
     karma INTEGER NOT NULL DEFAULT 0,
     notoriety INTEGER NOT NULL DEFAULT 0,
-    murder_count INTEGER NOT NULL DEFAULT 0
+    murder_count INTEGER NOT NULL DEFAULT 0,
+    saved_at TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS character_skills (

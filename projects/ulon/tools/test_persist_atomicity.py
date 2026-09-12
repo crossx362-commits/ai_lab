@@ -67,10 +67,26 @@ class AtomicSaveTests:
         self.assertEqual(saved["Gold"], 15)
         for key in ("Inventory", "Bank", "Corpse"):
             self.assertEqual(saved[key], [item()])
+        self.assertEqual(persist.get_character("player")["Gold"], 15)
         self.assertEqual(persist.get_character("player"), saved)
         stable = persist.put_stable("player", {"PetId": "pet", "ControlSlots": 2})
         self.assertEqual(stable["PetId"], "pet")
         self.assertEqual(persist.get_stable("player"), stable)
+
+    def test_saved_at_round_trip_and_update(self):
+        first = persist.put_character({"AccountId": "stamp", "Gold": 10, "SavedAt": "2020-01-01T00:00:00Z"})
+        self.assertEqual(first["SavedAt"], "2020-01-01T00:00:00Z")
+        self.assertEqual(persist.get_character("stamp")["SavedAt"], "2020-01-01T00:00:00Z")
+        later = persist.put_character({"AccountId": "stamp", "Gold": 99, "SavedAt": "2026-09-12T00:00:00Z",
+                                       "Inventory": [item()], "Skills": [{"Id": 0, "Value": 40}]})
+        self.assertEqual(later["Gold"], 99)
+        self.assertEqual(later["SavedAt"], "2026-09-12T00:00:00Z")
+        loaded = persist.get_character("stamp")
+        self.assertEqual(loaded["Gold"], 99)
+        self.assertEqual(loaded["SavedAt"], "2026-09-12T00:00:00Z")
+        self.assertEqual(loaded["Inventory"], [item()])
+        stamped = persist.put_character({"AccountId": "autostamp", "Gold": 3})
+        self.assertTrue(stamped["SavedAt"])
 
     def test_failed_character_save_preserves_whole_snapshot(self):
         for field in ("Skills", "Inventory", "Bank", "Spells", "Corpse"):

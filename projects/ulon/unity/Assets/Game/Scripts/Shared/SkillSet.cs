@@ -588,6 +588,8 @@ namespace Ulon.Shared
         public int Karma;
         public int Notoriety;
         public int MurderCount;
+        /// <summary>UTC ISO-8601. JSON 폴백과 DB 중 최신을 고를 때 쓴다.</summary>
+        public string SavedAt = "";
     }
 
     [Serializable]

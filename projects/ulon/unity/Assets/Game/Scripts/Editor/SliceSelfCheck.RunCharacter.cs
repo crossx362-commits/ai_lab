@@ -89,6 +89,55 @@ namespace Ulon.Editor
             loaded = CharacterStore.Load("selfcheck");
             if (loaded == null || loaded.Str != 44 || loaded.Dex != 22 || loaded.Int != 18)
                 throw new InvalidOperationException("persist STR/DEX/INT 왕복 실패");
+            if (string.IsNullOrEmpty(loaded.SavedAt))
+                throw new InvalidOperationException("persist SavedAt 왕복 실패");
+
+            var olderSnap = new CharacterSnapshot { AccountId = "x", Gold = 10, SavedAt = "2020-01-01T00:00:00Z" };
+            var newerSnap = new CharacterSnapshot { AccountId = "x", Gold = 99, SavedAt = "2026-09-12T00:00:00Z" };
+            if (CharacterStore.PreferLatest(olderSnap, newerSnap).Gold != 99)
+                throw new InvalidOperationException("JSON이 더 최신이면 이겨야 합니다.");
+            if (CharacterStore.PreferLatest(newerSnap, olderSnap).Gold != 99)
+                throw new InvalidOperationException("persist가 더 최신이면 이겨야 합니다.");
+            if (CharacterStore.PreferLatest(olderSnap, new CharacterSnapshot { AccountId = "x", Gold = 1 }).Gold != 10)
+                throw new InvalidOperationException("스탬프 없는 옛 JSON은 persist를 덮으면 안 됩니다.");
+
+            const string lw = "selfcheck-latest";
+            var stale = new CharacterSnapshot
+            {
+                AccountId = lw,
+                CharacterId = lw,
+                Name = "검사",
+                Gold = 10,
+                Inventory = new[] { new ItemRecord { Slot = 0, TemplateId = "iron_ore", Amount = 1 } }
+            };
+            CharacterStore.Save(stale);
+            var fallback = new CharacterSnapshot
+            {
+                AccountId = lw,
+                CharacterId = lw,
+                Name = "검사",
+                Gold = 99,
+                SavedAt = "2099-01-01T00:00:00Z",
+                Inventory = new[] { new ItemRecord { Slot = 0, TemplateId = "iron_sword", Amount = 1 } },
+                Skills = new[] { new SkillRecord { Id = (int)SkillId.Swordsmanship, Value = 40f, Lock = 0 } }
+            };
+            File.WriteAllText(CharacterStore.FilePath(lw), JsonUtility.ToJson(fallback, true), System.Text.Encoding.UTF8);
+            loaded = CharacterStore.Load(lw);
+            if (loaded == null || loaded.Gold != 99 || loaded.Inventory == null || loaded.Inventory.Length != 1
+                || loaded.Inventory[0].TemplateId != "iron_sword" || Math.Abs(loaded.Skills[0].Value - 40f) > 0.0001f)
+                throw new InvalidOperationException("DB 복구 후 JSON 최신이 인벤·스탯을 유지해야 합니다.");
+            File.WriteAllText(CharacterStore.FilePath(lw), JsonUtility.ToJson(new CharacterSnapshot
+            {
+                AccountId = lw,
+                CharacterId = lw,
+                Name = "검사",
+                Gold = 1,
+                SavedAt = "2000-01-01T00:00:00Z",
+                Inventory = new[] { new ItemRecord { Slot = 0, TemplateId = "wood", Amount = 9 } }
+            }, true), System.Text.Encoding.UTF8);
+            loaded = CharacterStore.Load(lw);
+            if (loaded == null || loaded.Gold != 99 || loaded.Inventory[0].TemplateId != "iron_sword")
+                throw new InvalidOperationException("더 오래된 JSON이 persist를 덮으면 안 됩니다.");
 
             var cap = new SkillSet();
             cap.ForceSet(SkillId.Archery, 100f, SkillLock.Locked);

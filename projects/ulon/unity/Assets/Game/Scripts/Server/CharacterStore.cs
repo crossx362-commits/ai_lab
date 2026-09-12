@@ -75,30 +75,81 @@ namespace Ulon.Server
             }
         }
 
+        public static string FilePath(string accountId)
+        {
+            return Path.Combine(DataDir, accountId + ".json");
+        }
+
+        public static string StampNow()
+        {
+            return DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+        }
+
+        /// <summary>
+        /// persist와 JSON 폴백 중 SavedAt이 더 늦은 쪽. 스탬프가 없으면 persist를 유지한다
+        /// (옛 파일 mtime으로 운영 DB를 덮지 않기 위함).
+        /// </summary>
+        public static CharacterSnapshot PreferLatest(CharacterSnapshot persistSnap, CharacterSnapshot fileSnap)
+        {
+            if (fileSnap == null)
+                return persistSnap;
+            if (persistSnap == null)
+                return fileSnap;
+            if (ParseSavedAt(fileSnap) > ParseSavedAt(persistSnap))
+                return fileSnap;
+            return persistSnap;
+        }
+
+        static DateTime ParseSavedAt(CharacterSnapshot snap)
+        {
+            if (snap == null || string.IsNullOrEmpty(snap.SavedAt))
+                return DateTime.MinValue;
+            if (DateTime.TryParse(snap.SavedAt, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal,
+                    out DateTime t))
+                return t;
+            return DateTime.MinValue;
+        }
+
         public static CharacterSnapshot Load(string accountId)
         {
             if (string.IsNullOrEmpty(accountId))
                 return null;
             EnsureRunning();
+            CharacterSnapshot persistSnap = null;
+            bool persist404 = false;
             if (Health())
             {
                 try
                 {
                     using var resp = Get("/character/" + Uri.EscapeDataString(accountId));
                     if (resp != null && (int)resp.StatusCode == 200)
-                        return UnpackSnap(JsonUtility.FromJson<CharacterSnapshot>(ReadBody(resp)));
+                        persistSnap = UnpackSnap(JsonUtility.FromJson<CharacterSnapshot>(ReadBody(resp)));
                 }
                 catch (WebException ex)
                 {
                     if (ex.Response is HttpWebResponse http && http.StatusCode == HttpStatusCode.NotFound)
-                        return LoadFile(accountId);
+                        persist404 = true;
+                    else
+                        UnityEngine.Debug.LogWarning("[Ulon] persist HTTP load 실패, 파일로 시도: " + ex.Message);
                 }
                 catch (Exception e)
                 {
                     UnityEngine.Debug.LogWarning("[Ulon] persist HTTP load 실패, 파일로 시도: " + e.Message);
                 }
             }
-            return LoadFile(accountId);
+            CharacterSnapshot fileSnap = LoadFile(accountId);
+            CharacterSnapshot chosen = PreferLatest(persistSnap, fileSnap);
+            if (chosen == null)
+                return null;
+            bool fileWon = fileSnap != null && ReferenceEquals(chosen, fileSnap);
+            if (fileWon && Health() && (persist404 || persistSnap != null))
+            {
+                CharacterSnapshot pushed = PutHttp(chosen);
+                if (pushed != null)
+                    return pushed;
+            }
+            return chosen;
         }
 
         public static CharacterSnapshot Save(CharacterSnapshot snap)
@@ -111,12 +162,19 @@ namespace Ulon.Server
                 return snap;
             if (snap == null || string.IsNullOrEmpty(snap.AccountId))
                 return snap;
+            snap.SavedAt = StampNow();
             PackSnap(snap);
             SaveFile(snap);
             UnpackSnap(snap);
             EnsureRunning();
-            if (!Health())
-                return snap;
+            CharacterSnapshot http = PutHttp(snap);
+            return http ?? snap;
+        }
+
+        static CharacterSnapshot PutHttp(CharacterSnapshot snap)
+        {
+            if (snap == null || string.IsNullOrEmpty(snap.AccountId) || !Health())
+                return null;
             try
             {
                 PackSnap(snap);
@@ -136,7 +194,7 @@ namespace Ulon.Server
             catch (Exception e)
             {
                 UnityEngine.Debug.LogWarning("[Ulon] persist HTTP save 실패, 파일은 저장됨: " + e.Message);
-                return snap;
+                return null;
             }
         }
 
