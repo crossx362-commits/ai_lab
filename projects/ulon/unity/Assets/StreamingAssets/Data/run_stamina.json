@@ -1,0 +1,5 @@
+{
+  "drain_per_s": 4,
+  "regen_per_s": 2,
+  "source": "GAME_DESIGN §18.2 DEX=Stamina. MaxStamina=10+DEX (MaxMana와 같은 단순 공식, UO 공식 비복제). 달리기 소모/정지 회복은 밸런스용 프로젝트 값. 원작 동작: 스태미나 0이면 달릴 수 없다. https://uo.com/wiki/ultima-online-wiki/player/stats/skills-stats-and-attributes/ https://www.uoguide.com/Stamina"
+}

@@ -82,7 +82,7 @@ namespace Ulon.Client
         public static Rect CombatZone => new Rect(Screen.width * 0.27f, Screen.height * 0.18f,
                                                   Screen.width * 0.46f, Screen.height * 0.56f);
 
-        static Rect StatusRect => new Rect(12f, 12f, CardW, 148f);
+        static Rect StatusRect => new Rect(12f, 12f, CardW, 186f);
         static Rect TargetRect => new Rect((Screen.width - TargetW) * 0.5f, 12f, TargetW, 58f);
         static Rect QuickRect => new Rect((Screen.width - 580f) * 0.5f, Screen.height - 54f, 580f, 42f);
         static Rect TabsRect => new Rect(Screen.width - 318f, Screen.height - 54f, 306f, 42f);
@@ -235,11 +235,13 @@ namespace Ulon.Client
                                 (me.IsCasting(Time.time) ? "  시전 중" : ""));
                 Bar("HP", me.Hp, me.MaxHp);
                 Bar("MP", me.Mana, me.MaxMana);
+                Bar("ST" + (RunStamina.CanRun(me.Stamina) ? "" : " 기진"), me.Stamina, me.MaxStamina);
                 float w = bag != null ? bag.TotalWeight() : 0f;
                 int cap = ItemCatalog.CarryCap(st.Str);
                 GUILayout.Label("STR " + st.Str + "  DEX " + st.Dex + "  INT " + st.Int +
                                 "  G " + me.Gold + "  무게 " + w.ToString("0") + "/" + cap +
                                 (bag != null && bag.Overweight(st.Str) ? " 과적·달림불가" : "") +
+                                (!RunStamina.CanRun(me.Stamina) ? " 기진·달림불가" : "") +
                                 (me.IsCasting(Time.time) ? " 시전 중" : ""));
                 GUILayout.Label(ToolLine(bag) + "  동료 " + world.CountFollowers(me.CharacterId) + "/" + TameResolve.FollowerCap);
                 GUILayout.Label(StateLine(world, me));

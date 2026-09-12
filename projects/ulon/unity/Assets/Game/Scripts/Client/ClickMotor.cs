@@ -55,12 +55,12 @@ namespace Ulon.Client
 
         public void ApplyServerStop() => hasDestination = false;
 
-        public void ApplyServerRunning(bool run) => Running = run && CarryMove.CanRun(!IsLight());
+        public void ApplyServerRunning(bool run) => Running = run && CanRunNow();
 
-        /// <summary>소유 클라 입력. 모터가 꺼져 있어도 RPC는 나간다. 과적이면 달리기를 끈다(§18.5).</summary>
+        /// <summary>소유 클라 입력. 모터가 꺼져 있어도 RPC는 나간다. 과적·기진이면 달리기를 끈다(§18.5·§18.2).</summary>
         public void SetRunning(bool run)
         {
-            run = run && CarryMove.CanRun(!IsLight());
+            run = run && CanRunNow();
             if (Running == run)
                 return;
             Running = run;
@@ -97,7 +97,7 @@ namespace Ulon.Client
                 PlanarSpeed = 0f;
                 return;
             }
-            if (!CarryMove.CanRun(!IsLight()))
+            if (!CanRunNow())
                 Running = false;
             float speed = MoveSpeed.MetersPerSecond(Running);
             Vector3 planar = Vector3.zero;
@@ -120,6 +120,11 @@ namespace Ulon.Client
                 hasDestination = false;
                 planar = wasd * speed;
             }
+
+            var stamBody = GetComponent<WorldBody>();
+            stamBody?.TickStamina(Running && planar.sqrMagnitude > 0.01f, Time.deltaTime);
+            if (!CanRunNow())
+                Running = false;
 
             if (planar.sqrMagnitude > 0.01f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(planar), 12f * Time.deltaTime);
@@ -158,6 +163,13 @@ namespace Ulon.Client
             if (bag == null || world == null || body == null)
                 return true;
             return !bag.Overweight(world.StatsOf(body).Str);
+        }
+
+        bool CanRunNow()
+        {
+            var body = GetComponent<WorldBody>();
+            float stam = body != null ? body.Stamina : 1f;
+            return CarryMove.CanRun(!IsLight()) && RunStamina.CanRun(stam);
         }
     }
 }

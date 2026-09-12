@@ -14,6 +14,7 @@ namespace Ulon.Server
         public int Appearance;
         public float MaxHp = 30f;
         public float MaxMana = 35f;
+        public float MaxStamina = 35f;
         public bool Ghost;
         /// <summary>
         /// **골드는 서버가 정한다**(축 ③). 필드였을 때는 클라 프로세스의 오프라인 폴백이 제 손으로
@@ -79,6 +80,7 @@ namespace Ulon.Server
 
         public float Hp { get; private set; }
         public float Mana { get; private set; }
+        public float Stamina { get; private set; } = 35f;
         public bool Alive => Hp > 0f && !Ghost;
         public bool IsHidden(float now) => now < HiddenUntil;
         public bool IsCampSafe(float now) => now < CampSafeUntil;
@@ -124,9 +126,34 @@ namespace Ulon.Server
                 SetMana(MaxMana);
         }
 
+        public void RecalcFromDex(int dexterity)
+        {
+            MaxStamina = StatSet.MaxStaminaOf(dexterity);
+            if (Stamina > MaxStamina)
+                SetStamina(MaxStamina);
+            if (Stamina <= 0f && !Ghost)
+                SetStamina(MaxStamina);
+        }
+
         public void SetMana(float value)
         {
             Mana = Mathf.Clamp(value, 0f, MaxMana);
+        }
+
+        public void SetStamina(float value)
+        {
+            Stamina = Mathf.Clamp(value, 0f, MaxStamina);
+        }
+
+        /// <summary>달리기면 소모, 아니면 회복. 수치는 RunStamina 원장.</summary>
+        public void TickStamina(bool runningMove, float dt)
+        {
+            if (Ghost || dt <= 0f)
+                return;
+            if (runningMove)
+                SetStamina(Stamina - RunStamina.DrainPerSecond * dt);
+            else
+                SetStamina(Stamina + RunStamina.RegenPerSecond * dt);
         }
 
         public void ResetHp() => SetHp(MaxHp);

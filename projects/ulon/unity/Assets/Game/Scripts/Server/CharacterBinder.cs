@@ -64,6 +64,7 @@ namespace Ulon.Server
                 stats.ForceSet(s, d, i, (SkillLock)snap.StrLock, (SkillLock)snap.DexLock, (SkillLock)snap.IntLock);
                 body.RecalcFromStr(stats.Str);
                 body.RecalcFromInt(stats.Int);
+                body.RecalcFromDex(stats.Dex);
             }
             body.Ghost = snap.Ghost;
             if (snap.Ghost)

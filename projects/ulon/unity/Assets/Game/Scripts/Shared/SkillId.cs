@@ -306,6 +306,8 @@ namespace Ulon.Shared
 
         public static int MaxManaOf(int intelligence) => 10 + intelligence;
 
+        public static int MaxStaminaOf(int dexterity) => 10 + dexterity;
+
         static int Clamp(int v)
         {
             if (v < 1) return 1;

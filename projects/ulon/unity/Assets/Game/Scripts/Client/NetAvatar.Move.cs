@@ -29,7 +29,8 @@ namespace Ulon.Client
             var body = GetComponent<WorldBody>();
             bool overweight = bag != null && world != null && body != null &&
                               bag.Overweight(world.StatsOf(body).Str);
-            running = running && CarryMove.CanRun(overweight);
+            float stam = body != null ? body.Stamina : 1f;
+            running = running && CarryMove.CanRun(overweight) && RunStamina.CanRun(stam);
             motor.ApplyServerRunning(running);
             if (stop)
             {

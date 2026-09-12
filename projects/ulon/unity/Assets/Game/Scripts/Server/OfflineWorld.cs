@@ -219,6 +219,7 @@ namespace Ulon.Server
                     Player = bodies[i];
                     bodies[i].RecalcFromStr(StatsOf(bodies[i]).Str);
                     bodies[i].RecalcFromInt(StatsOf(bodies[i]).Int);
+                    bodies[i].RecalcFromDex(StatsOf(bodies[i]).Dex);
                     bodies[i].ResetHp();
                 }
             }
