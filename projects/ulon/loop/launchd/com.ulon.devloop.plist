@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ulon.devloop</string>
+  <key>WorkingDirectory</key>
+  <string>/Users/junholee/ai_lab/projects/ulon</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/junholee/ai_lab/projects/ulon/loop/loop.sh</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/junholee/ai_lab/projects/ulon/logs/launchd-loop.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/junholee/ai_lab/projects/ulon/logs/launchd-loop.err.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/junholee/ai_lab/projects/ulon/loop/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/junholee/.unity/bin:/Applications/Unity/Hub/Editor/6000.3.14f1/Unity.app/Contents/MacOS:/Applications/Blender.app/Contents/MacOS:/opt/homebrew/opt/postgresql@16/bin</string>
+    <key>HOME</key>
+    <string>/Users/junholee</string>
+    <key>LANG</key>
+    <string>ko_KR.UTF-8</string>
+    <key>LC_ALL</key>
+    <string>en_US.UTF-8</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+    <key>PYTHONUTF8</key>
+    <string>1</string>
+  </dict>
+</dict>
+</plist>

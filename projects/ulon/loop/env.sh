@@ -18,7 +18,7 @@ DESIGN_DOC="docs/GAME_DESIGN.md docs/DESIGN.md docs/source/울온_철학_저폴�
 BUILD_CMD="./tools/rebuild_client.sh"
 RUN_SERVER_CMD="./server/start_postgres.sh && ./server/start_persist.sh && ./builds/client/UlonClient.app/Contents/MacOS/Ulon -batchmode -nographics -ulon-server -logFile ./builds/check/server.log"
 RUN_CLIENT_CMD="./builds/client/UlonClient.app/Contents/MacOS/Ulon -ulon-client -ulon-host 127.0.0.1"
-TEST_CMD="python3 tools/test_alpha_readiness.py && SELFCHECK_LOG=\$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh"
+TEST_CMD='python3 tools/test_alpha_readiness.py && SELFCHECK_LOG=$PWD/unity/Logs/selfcheck_dev.log ./tools/slice_selfcheck.sh'
 
 # 이미지 생성 (GPT)
 IMAGE_PROVIDER=openai

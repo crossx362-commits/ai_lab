@@ -34,3 +34,70 @@ Unity 에디터는 **`projects/ulon/unity`** 만 연다. 재와별(`projects/ash
 - 클라이언트에서 스킬·골드·드랍·거래 결과 결정
 - UO의 고유 이름·세계관·재료명 복제
 - 하우징·Open PvP·조련을 MVP에 넣기
+
+## 자율 개발 루프
+
+코덱스가 총괄하는 헤드리스 개발 루프. 기획서는 옮기지 않고 `loop/env.sh`의 `DESIGN_DOC`로 읽는다. 로그인 자동 실행은 **아직 켜지 않았다** (plist는 `Disabled`).
+
+### 만든 파일
+
+| 경로 | 역할 |
+|---|---|
+| `loop/loop.sh` | 루프 본체. 한 바퀴마다 새 `codex exec` |
+| `loop/env.sh` | 모델·타임아웃·빌드/실행 명령 |
+| `loop/env.local.sh` | 비밀값 (git 제외) |
+| `loop/PROMPT.md` | 한 바퀴 지시서 |
+| `loop/board_server.py` | 현황 보드 `http://127.0.0.1:8787` |
+| `loop/board.html` | 보드 화면 |
+| `loop/launchd/*.plist` | launchd 등록용 (복사본) |
+| `docs/feedback/INBOX.md` | 사람 지시함 |
+| `docs/board.json` | 칸반 데이터 |
+| `docs/STATUS.md` | 현황 (0번째 바퀴에서 작성) |
+| `docs/ASSETS.md` | 에셋 목록 (0번째 바퀴에서 작성) |
+| `logs/` | 날짜별 로그, `loop_state.json` |
+
+### 켜는 법
+
+보드만 (루프와 별개):
+
+```bash
+cd /Users/junholee/ai_lab/projects/ulon
+python3 loop/board_server.py
+# http://127.0.0.1:8787
+```
+
+루프 수동 (두 바퀴 시험):
+
+```bash
+cd /Users/junholee/ai_lab/projects/ulon
+MAX_LOOPS=2 ./loop/loop.sh
+```
+
+로그인 자동 실행 (확인 끝난 뒤):
+
+```bash
+cp loop/launchd/com.ulon.autodev.loop.plist ~/Library/LaunchAgents/
+cp loop/launchd/com.ulon.autodev.board.plist ~/Library/LaunchAgents/
+# plist의 Disabled를 false로 바꾼 다음
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ulon.autodev.board.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ulon.autodev.loop.plist
+```
+
+### 끄는 법
+
+- 보드에서 **정지**: `loop/STOP` 생성. 현재 바퀴를 마친 뒤 멈춤.
+- 정지 해제: 보드의 정지 해제, 또는 `rm loop/STOP`.
+- 즉시 종료가 필요하면 해당 프로세스만 종료. `launchctl bootout gui/$(id -u)/com.ulon.autodev.loop`
+
+### 상태 보는 법
+
+- 보드: http://127.0.0.1:8787
+- `logs/loop_state.json` — 바퀴 번호, pid, 연속 실패
+- `docs/STATUS.md`, `docs/board.json`, `docs/feedback/INBOX.md`
+
+### 문제 생겼을 때 볼 로그
+
+- 오늘 로그: `logs/YYYY-MM-DD.log`
+- 바퀴 로그: `logs/loop_0001.log`
+- 연속 실패 정지: `logs/stopped_fail.txt`
+- launchd: `logs/launchd_loop.stdout.log`, `logs/launchd_loop.stderr.log`, `logs/launchd_board.*.log`

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>울온 개발 현황 보드</title>
+<style>
+:root {
+  --bg: #12110f; --panel: #1c1a16; --ink: #e8e0d0; --muted: #9a8f7a;
+  --line: #3a3428; --accent: #c4a35a; --ok: #6fbf73; --warn: #d4a017;
+  --bad: #d45b4a; --mid: #6aa8d8; --low: #7dba8a; --high: #d47a3a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 "IBM Plex Sans KR", "Apple SD Gothic Neo", sans-serif; }
+header.status {
+  position: sticky; top: 0; z-index: 5; background: #0e0d0b; border-bottom: 1px solid var(--line);
+  padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+}
+.badge { padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+.b-run { background: #1e4d2a; color: #b6f0bc; }
+.b-wait { background: #3a3010; color: #f0d78a; }
+.b-stop { background: #3a2018; color: #f0b0a4; }
+.b-fail { background: #5a1818; color: #ffc0b8; }
+.b-off { background: #2a2a2a; color: #bbb; }
+button { cursor: pointer; background: #2a261e; color: var(--ink); border: 1px solid var(--line); padding: 6px 10px; border-radius: 6px; }
+button.danger { border-color: var(--bad); color: #f2c2ba; }
+button.ok { border-color: var(--ok); }
+main { padding: 16px; display: grid; gap: 18px; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+h2 { margin: 0 0 10px; font-size: 15px; color: var(--accent); }
+.inbox-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.inbox-form textarea { flex: 1; min-width: 240px; min-height: 44px; background: #0e0d0b; color: var(--ink); border: 1px solid var(--accent); border-radius: 6px; padding: 8px; }
+.kanban { display: grid; grid-template-columns: repeat(6, minmax(160px, 1fr)); gap: 8px; overflow-x: auto; }
+.col { background: #15130f; border: 1px solid var(--line); border-radius: 8px; padding: 8px; min-height: 120px; }
+.col.blocked { border-color: var(--bad); }
+.col h3 { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.card { background: #221f18; border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+.d-하 { border-left: 4px solid var(--low); }
+.d-중 { border-left: 4px solid var(--mid); }
+.d-상 { border-left: 4px solid var(--high); }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+select, input[type=text] { background: #0e0d0b; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.timeline { display: flex; gap: 3px; flex-wrap: wrap; }
+.tick { width: 14px; height: 28px; border-radius: 3px; cursor: pointer; }
+.t-ok { background: var(--ok); }
+.t-noc { background: var(--warn); }
+.t-fail { background: var(--bad); }
+.t-to { background: #888; }
+.md { overflow: auto; max-height: 480px; }
+.md table { border-collapse: collapse; width: 100%; }
+.md th, .md td { border: 1px solid var(--line); padding: 4px 6px; }
+.md h1,.md h2,.md h3 { color: var(--accent); }
+.warn { color: var(--bad); font-weight: 700; }
+.muted { color: var(--muted); }
+.pre { white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace; font-size: 12px; max-height: 360px; overflow: auto; background: #0e0d0b; padding: 8px; border-radius: 6px; }
+.thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.thumbs img { width: 96px; height: 96px; object-fit: cover; border: 1px solid var(--line); cursor: pointer; }
+ul.inbox { list-style: none; padding: 0; }
+ul.inbox li { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; border-bottom: 1px solid #2a261e; }
+</style>
+</head>
+<body>
+<header class="status" id="statusbar"></header>
+<main>
+  <section>
+    <h2>INBOX 지시</h2>
+    <div class="inbox-form">
+      <textarea id="inboxText" placeholder="루프에 시킬 일을 적으세요"></textarea>
+      <select id="inboxPri"><option value="normal">보통</option><option value="urgent">긴급</option></select>
+      <button class="ok" id="inboxSend">보내기</button>
+    </div>
+    <p id="inboxAck" class="muted"></p>
+    <h3 class="muted">미처리</h3>
+    <ul class="inbox" id="inboxOpen"></ul>
+    <h3 class="muted">처리됨</h3>
+    <ul class="inbox" id="inboxDone"></ul>
+  </section>
+  <section>
+    <h2>작업 보드</h2>
+    <div class="filters">
+      <select id="fDiff"><option value="">난이도</option><option>하</option><option>중</option><option>상</option></select>
+      <input id="fModel" type="text" placeholder="모델">
+      <select id="fStatus"><option value="">상태</option><option>대기</option><option>진행 중</option><option>검증 중</option><option>완료</option><option>실패</option><option>막힘</option></select>
+      <input id="fLoop" type="text" placeholder="최근 N바퀴">
+    </div>
+    <div class="kanban" id="kanban"></div>
+  </section>
+  <section>
+    <h2>STATUS — 막힌 것 / 시스템 상태</h2>
+    <div class="md" id="statusHighlight"></div>
+    <details open><summary>STATUS.md 전체</summary><div class="md" id="statusAll"></div></details>
+  </section>
+  <section>
+    <h2>바퀴 타임라인</h2>
+    <div class="timeline" id="timeline"></div>
+    <div id="graph" class="muted"></div>
+    <pre class="pre" id="logView">바퀴 칸을 누르면 로그가 나옵니다.</pre>
+  </section>
+  <section>
+    <h2>최근 커밋</h2>
+    <div id="commits"></div>
+    <pre class="pre" id="commitView"></pre>
+  </section>
+  <section>
+    <h2>에셋</h2>
+    <div class="filters">
+      <select id="aFilter">
+        <option value="">전체</option>
+        <option value="사용">사용 중</option>
+        <option value="미사용">미사용</option>
+        <option value="미확인">라이선스 미확인</option>
+        <option value="생성">생성됨</option>
+      </select>
+    </div>
+    <div class="md" id="assetsView"></div>
+    <div class="thumbs" id="thumbs"></div>
+  </section>
+  <section>
+    <h2>라이브 로그</h2>
+    <input id="logSearch" type="text" placeholder="검색">
+    <pre class="pre" id="liveLog"></pre>
+  </section>
+</main>
+<script>
+const COLS = ["대기","진행 중","검증 중","완료","실패","막힘"];
+let STATE = null;
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function md(src) {
+  if (!src) return "<p class='muted'>(파일 없음)</p>";
+  const lines = src.replace(/\r/g,"").split("\n");
+  let html = "", inTable = false, inCode = false;
+  for (const line of lines) {
+    if (line.startsWith("```")) { inCode = !inCode; html += inCode ? "<pre class='pre'>" : "</pre>"; continue; }
+    if (inCode) { html += esc(line) + "\n"; continue; }
+    if (line.startsWith("|")) {
+      if (!inTable) { html += "<table>"; inTable = true; }
+      const cells = line.split("|").slice(1,-1);
+      if (cells.every(c => /^[\s:-]+$/.test(c))) continue;
+      const tag = html.endsWith("<table>") ? "th" : "td";
+      html += "<tr>" + cells.map(c => `<${tag}>${inline(c.trim())}</${tag}>`).join("") + "</tr>";
+      continue;
+    } else if (inTable) { html += "</table>"; inTable = false; }
+    if (/^### /.test(line)) html += `<h3>${inline(line.slice(4))}</h3>`;
+    else if (/^## /.test(line)) html += `<h2>${inline(line.slice(3))}</h2>`;
+    else if (/^# /.test(line)) html += `<h1>${inline(line.slice(2))}</h1>`;
+    else if (/^[-*] /.test(line)) html += `<li>${inline(line.slice(2))}</li>`;
+    else if (!line.trim()) html += "<br>";
+    else html += `<p>${inline(line)}</p>`;
+  }
+  if (inTable) html += "</table>";
+  return html;
+}
+function inline(s) {
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+function badge(st) {
+  const map = {
+    running: ["b-run","실행 중"],
+    waiting: ["b-wait","대기 중"],
+    stopped_stop: ["b-stop","STOP으로 정지"],
+    stopped_fail: ["b-fail","실패로 정지"],
+  };
+  const [cls, label] = map[st] || ["b-off","서비스 꺼짐"];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function elapsed(iso) {
+  if (!iso) return "";
+  const t = Date.parse(iso);
+  if (!t) return iso;
+  const s = Math.max(0, Math.floor((Date.now()-t)/1000));
+  const m = Math.floor(s/60), h = Math.floor(m/60);
+  if (h) return `${h}시간 ${m%60}분`;
+  if (m) return `${m}분 ${s%60}초`;
+  return `${s}초`;
+}
+
+async function refresh() {
+  const r = await fetch("/api/state");
+  STATE = await r.json();
+  render();
+}
+function render() {
+  const ls = STATE.loop_state || {};
+  const today = ls.today || {};
+  const w = STATE.warnings || {};
+  let wait = "";
+  if (ls.status === "waiting") wait = ` (다음 바퀴까지 ${ls.wait_remaining_sec ?? 0}초)`;
+  document.getElementById("statusbar").innerHTML = `
+    ${badge(ls.status)}
+    <strong>바퀴 #${ls.loop ?? "—"}</strong>
+    <span>시작 ${esc(ls.started_at || "—")}</span>
+    <span>경과 ${elapsed(ls.started_at)}</span>
+    <span>${esc(ls.current_task || "")}${wait}</span>
+    <span>오늘 바퀴 ${today.loops||0} / 성공 ${today.success||0} / 실패 ${today.fail||0} / 커밋 ${today.commits||0}</span>
+    <span>연속 실패 ${ls.consec_fail||0} / ${STATE.max_consec_fail||3}</span>
+    <span class="warn">막힘 ${w.blocked||0} · 라이선스 미확인 ${w.license_unknown||0} · 커밋없는바퀴 ${w.no_commit_streak||0}</span>
+    ${STATE.stop
+      ? `<button class="ok" id="btnGo">정지 해제</button>`
+      : `<button class="danger" id="btnStop">정지</button>`}
+  `;
+  const btnStop = document.getElementById("btnStop");
+  const btnGo = document.getElementById("btnGo");
+  if (btnStop) btnStop.onclick = async () => {
+    if (!confirm("현재 바퀴를 마친 뒤 멈춥니다. STOP 파일을 만들까요?")) return;
+    await fetch("/api/stop", {method:"POST", headers:{"Content-Type":"application/json"}, body:"{}"});
+    refresh();
+  };
+  if (btnGo) btnGo.onclick = async () => {
+    await fetch("/api/stop", {method:"DELETE"});
+    refresh();
+  };
+  renderInbox();
+  renderKanban();
+  const st = STATE.status_md || "";
+  const blocked = extractSection(st, "막힌");
+  const sys = extractSection(st, "시스템 상태");
+  document.getElementById("statusHighlight").innerHTML = (blocked||"") + (sys||"<p class='muted'>강조할 절이 아직 없습니다.</p>");
+  document.getElementById("statusAll").innerHTML = md(st);
+  renderTimeline();
+  renderCommits();
+  renderAssets();
+  const live = (STATE.loop_state && STATE.loop_state.log_path) ? "" : "";
+  loadLive();
+}
+function extractSection(src, key) {
+  if (!src) return "";
+  const lines = src.split("\n");
+  let start = -1;
+  for (let i=0;i<lines.length;i++) {
+    if (lines[i].includes(key) && /^#{1,3} /.test(lines[i])) { start = i; break; }
+  }
+  if (start < 0) return "";
+  let end = lines.length;
+  const level = (lines[start].match(/^#+/)||["#"])[0].length;
+  for (let i=start+1;i<lines.length;i++) {
+    const m = lines[i].match(/^(#{1,3}) /);
+    if (m && m[1].length <= level) { end = i; break; }
+  }
+  return md(lines.slice(start, end).join("\n"));
+}
+function renderInbox() {
+  const open = document.getElementById("inboxOpen");
+  const done = document.getElementById("inboxDone");
+  open.innerHTML = ""; done.innerHTML = "";
+  for (const it of (STATE.inbox||[])) {
+    const li = document.createElement("li");
+    if (it.done) {
+      li.innerHTML = `<span>[x] 바퀴#${esc(it.loop)} ${esc(it.text)}</span>`;
+      done.appendChild(li);
+    } else {
+      li.innerHTML = `<span>${it.urgent?"[긴급] ":""}${esc(it.ts)} ${esc(it.text)}</span>
+        <button data-i="${it.index}" class="edit">수정</button>
+        <button data-i="${it.index}" class="del">삭제</button>`;
+      open.appendChild(li);
+    }
+  }
+  open.querySelectorAll(".del").forEach(b => b.onclick = async () => {
+    await fetch("/api/inbox?index="+b.dataset.i, {method:"DELETE"});
+    refresh();
+  });
+  open.querySelectorAll(".edit").forEach(b => b.onclick = async () => {
+    const it = STATE.inbox.find(x => String(x.index)===b.dataset.i);
+    const text = prompt("수정", it ? it.text : "");
+    if (text==null) return;
+    await fetch("/api/inbox", {method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({index: Number(b.dataset.i), text})});
+    refresh();
+  });
+}
+function passCard(c) {
+  const d = document.getElementById("fDiff").value;
+  const m = document.getElementById("fModel").value.trim();
+  const s = document.getElementById("fStatus").value;
+  const n = parseInt(document.getElementById("fLoop").value, 10);
+  if (d && c.difficulty !== d) return false;
+  if (m && !(c.model||"").includes(m)) return false;
+  if (s && c.status !== s) return false;
+  if (!isNaN(n) && n>0) {
+    const cur = (STATE.loop_state||{}).loop || 0;
+    const al = c.assigned_loop ?? 0;
+    if (al < cur-n+1) return false;
+  }
+  return true;
+}
+function renderKanban() {
+  const box = document.getElementById("kanban");
+  box.innerHTML = "";
+  const cards = (STATE.board && STATE.board.cards) || [];
+  for (const col of COLS) {
+    const div = document.createElement("div");
+    div.className = "col" + (col==="막힘" ? " blocked" : "");
+    div.innerHTML = `<h3>${col}</h3>`;
+    for (const c of cards.filter(x => x.status===col && passCard(x))) {
+      const el = document.createElement("div");
+      el.className = "card d-" + (c.difficulty||"중");
+      el.innerHTML = `<strong>${esc(c.title)}</strong>
+        <div class="muted">${esc(c.difficulty)} · ${esc(c.model||"")}</div>
+        <div class="muted">배정 #${esc(c.assigned_loop)} 완료 #${esc(c.completed_loop)}</div>
+        ${c.commit ? `<a href="#" data-h="${esc(c.commit)}">${esc(String(c.commit).slice(0,8))}</a>` : ""}
+        <div class="muted">${esc(c.rationale||"")}</div>
+        <button class="reply">INBOX에 답하기</button>`;
+      el.querySelector(".reply").onclick = () => {
+        document.getElementById("inboxText").value = `[${c.title}] `;
+        document.getElementById("inboxText").focus();
+      };
+      const a = el.querySelector("a");
+      if (a) a.onclick = (ev) => { ev.preventDefault(); showCommit(a.dataset.h); };
+      div.appendChild(el);
+    }
+    box.appendChild(div);
+  }
+}
+function renderTimeline() {
+  const hist = STATE.history || [];
+  const commits = new Set((STATE.commits||[]).map(c => c.loop));
+  const box = document.getElementById("timeline");
+  box.innerHTML = "";
+  const widths = [];
+  for (const row of hist) {
+    const t = document.createElement("div");
+    let cls = "t-ok";
+    if (row.result === "timeout") cls = "t-to";
+    else if (row.result === "fail") cls = "t-fail";
+    else if (row.result === "success" && !commits.has(row.loop)) cls = "t-noc";
+    t.className = "tick " + cls;
+    t.title = `#${row.loop} ${row.result} ${row.elapsed_sec||0}s`;
+    t.onclick = () => showLog(row.loop);
+    box.appendChild(t);
+    widths.push(row.elapsed_sec||0);
+  }
+  const max = Math.max(1, ...widths);
+  document.getElementById("graph").innerHTML = widths.map((s,i) => {
+    const h = Math.max(4, Math.round(40*s/max));
+    return `<span title="${s}s" style="display:inline-block;width:8px;height:${h}px;background:#c4a35a;margin-right:2px;vertical-align:bottom"></span>`;
+  }).join("");
+}
+async function showLog(n) {
+  const r = await fetch("/api/log/"+n);
+  const j = await r.json();
+  document.getElementById("logView").textContent = j.text || "(로그 없음)";
+}
+function renderCommits() {
+  const box = document.getElementById("commits");
+  box.innerHTML = "<table><tr><th>바퀴</th><th>메시지</th><th>파일</th><th>시각</th></tr>" +
+    (STATE.commits||[]).map(c => `<tr>
+      <td>${c.loop ?? "—"}</td>
+      <td><a href="#" data-h="${esc(c.hash)}">${esc(c.message)}</a></td>
+      <td>${c.files}</td>
+      <td>${esc(c.date)}</td>
+    </tr>`).join("") + "</table>";
+  box.querySelectorAll("a").forEach(a => a.onclick = (ev) => { ev.preventDefault(); showCommit(a.dataset.h); });
+}
+async function showCommit(h) {
+  const r = await fetch("/api/commit/"+h);
+  const j = await r.json();
+  document.getElementById("commitView").textContent = (j.stat||"") + "\n" + (j.diff||j.error||"");
+}
+function renderAssets() {
+  const f = document.getElementById("aFilter").value;
+  let src = STATE.assets_md || "";
+  if (f) {
+    src = src.split("\n").filter(l => !l.startsWith("|") || l.includes(f) || /경로|---/.test(l)).join("\n");
+  }
+  document.getElementById("assetsView").innerHTML = md(src);
+  const thumbs = document.getElementById("thumbs");
+  thumbs.innerHTML = "";
+  for (const p of (STATE.previews||[])) {
+    const img = document.createElement("img");
+    img.src = "/api/file?path=" + encodeURIComponent(p.path);
+    img.title = p.name;
+    img.onclick = async () => {
+      let extra = "";
+      if (p.prompt) {
+        const t = await fetch("/api/file?path="+encodeURIComponent(p.prompt));
+        extra = "\n\n" + await t.text();
+      }
+      alert(p.path + extra);
+    };
+    thumbs.appendChild(img);
+  }
+}
+async function loadLive() {
+  const n = (STATE.loop_state||{}).loop;
+  if (n==null) { document.getElementById("liveLog").textContent = "(루프 상태 없음)"; return; }
+  const r = await fetch("/api/log/"+n);
+  const j = await r.json();
+  let text = j.text || "";
+  const q = document.getElementById("logSearch").value.trim();
+  if (q) text = text.split("\n").filter(l => l.includes(q)).join("\n");
+  const el = document.getElementById("liveLog");
+  const stick = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+  el.textContent = text || "(로그 없음)";
+  if (stick) el.scrollTop = el.scrollHeight;
+}
+document.getElementById("inboxSend").onclick = async () => {
+  const text = document.getElementById("inboxText").value.trim();
+  const urgent = document.getElementById("inboxPri").value === "urgent";
+  if (!text) return;
+  const r = await fetch("/api/inbox", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({text, urgent})});
+  const j = await r.json();
+  document.getElementById("inboxAck").textContent = j.ok ? "파일에 기록됨: " + j.line : "기록 실패";
+  if (j.ok) document.getElementById("inboxText").value = "";
+  refresh();
+};
+["fDiff","fModel","fStatus","fLoop","aFilter"].forEach(id => {
+  document.getElementById(id).addEventListener("input", () => { if (STATE) { renderKanban(); renderAssets(); } });
+  document.getElementById(id).addEventListener("change", () => { if (STATE) { renderKanban(); renderAssets(); } });
+});
+document.getElementById("logSearch").addEventListener("input", loadLive);
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

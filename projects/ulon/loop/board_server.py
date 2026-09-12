@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""울온 개발 현황 보드. 파일만 읽고 쓴다. 판단·실행은 하지 않는다.
-
-    python3 loop/board_server.py
-    http://127.0.0.1:8787  (localhost 바인딩만)
-"""
+"""울온 개발 현황 보드. 표준 라이브러리만. 판단·실행은 하지 않는다."""
 from __future__ import annotations
 
 import json
@@ -11,66 +7,61 @@ import os
 import re
 import subprocess
 import sys
-import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
-from zoneinfo import ZoneInfo
 
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+ROOT = Path(__file__).resolve().parent.parent
+LOOP = ROOT / "loop"
+DOCS = ROOT / "docs"
+INBOX = DOCS / "feedback" / "INBOX.md"
+BOARD = DOCS / "board.json"
+STATUS = DOCS / "STATUS.md"
+ASSETS = DOCS / "ASSETS.md"
+STOP = LOOP / "STOP"
+LOG_DIR = ROOT / "logs"
+STATE = LOG_DIR / "loop_state.json"
+HTML = LOOP / "board.html"
+ENV = LOOP / "env.sh"
 
-HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent
-TZ = ZoneInfo("Asia/Seoul")
-LOCK = threading.Lock()
-
-def load_env_port() -> int:
-    env = HERE / "env.sh"
-    port = os.environ.get("BOARD_PORT", "")
-    if port.isdigit():
-        return int(port)
-    if env.exists():
-        for line in env.read_text(encoding="utf-8").splitlines():
-            s = line.strip()
-            if s.startswith("BOARD_PORT="):
-                v = s.split("=", 1)[1].strip().split()[0]
-                if v.isdigit():
-                    return int(v)
-    return 8787
-
-
-PORT = load_env_port()
-HTML = HERE / "board.html"
-INBOX = ROOT / "docs" / "feedback" / "INBOX.md"
-STATUS = ROOT / "docs" / "STATUS.md"
-ASSETS = ROOT / "docs" / "ASSETS.md"
-BOARD = ROOT / "docs" / "board.json"
-CREDITS = ROOT / "docs" / "CREDITS.md"
-STATE = ROOT / "logs" / "loop_state.json"
-HISTORY = ROOT / "logs" / "loop_history.jsonl"
-STOP = HERE / "STOP"
-LOCKFILE = HERE / ".lock"
-
-INBOX_ITEM = re.compile(
-    r"^- \[([ xX])\](?:\s*\[(긴급)\])?\s*(?:\((\d{4}-\d{2}-\d{2} \d{2}:\d{2})\)\s*)?(.*)$"
+INBOX_LINE = re.compile(
+    r"^- \[(?P<done>[ xX])\]"
+    r"(?: · 바퀴#(?P<loop>\d+))?"
+    r"(?P<urgent> \[긴급\])?"
+    r"(?: \((?P<ts>[^)]+)\))?"
+    r" (?P<text>.*)$"
 )
 
 
-def now_stamp() -> str:
-    return datetime.now(TZ).strftime("%Y-%m-%d %H:%M")
+def load_env_port() -> int:
+    port = 8787
+    if ENV.exists():
+        for line in ENV.read_text(encoding="utf-8").splitlines():
+            s = line.strip()
+            if s.startswith("BOARD_PORT="):
+                raw = s.split("=", 1)[1].split("#", 1)[0].strip().strip("'\"")
+                try:
+                    port = int(raw)
+                except ValueError:
+                    pass
+    return int(os.environ.get("BOARD_PORT", port))
 
 
-def read_text(path: Path) -> str:
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8")
+def git_root() -> Path:
+    p = ROOT
+    while p != p.parent:
+        if (p / ".git").exists():
+            return p
+        p = p.parent
+    return ROOT
 
 
-def write_text(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+def git_rel() -> str:
+    try:
+        return str(ROOT.relative_to(git_root()))
+    except ValueError:
+        return "."
 
 
 def read_json(path: Path, default):
@@ -82,220 +73,180 @@ def read_json(path: Path, default):
         return default
 
 
-def git(*args: str) -> str:
-    try:
-        return subprocess.check_output(
-            ["git", *args],
-            cwd=str(ROOT),
-            text=True,
-            stderr=subprocess.DEVNULL,
-        )
-    except Exception:
-        return ""
+def now_kst() -> str:
+    # Asia/Seoul = UTC+9, stdlib only (zoneinfo may miss tzdata)
+    return datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
 
 
-def parse_inbox(text: str) -> list[dict]:
+def parse_inbox() -> list[dict]:
+    if not INBOX.exists():
+        return []
     items = []
-    for i, raw in enumerate(text.splitlines()):
-        m = INBOX_ITEM.match(raw.rstrip())
-        if not m:
+    in_items = False
+    for i, line in enumerate(INBOX.read_text(encoding="utf-8").splitlines()):
+        if line.strip() == "## 항목":
+            in_items = True
             continue
-        done = m.group(1).lower() == "x"
-        urgent = m.group(2) == "긴급"
-        ts = m.group(3) or ""
-        body = (m.group(4) or "").strip()
-        loop_n = None
-        lm = re.search(r"바퀴#(\d+)", body)
-        if lm:
-            loop_n = int(lm.group(1))
+        if not in_items:
+            continue
+        m = INBOX_LINE.match(line)
+        if not m:
+            if line.strip().startswith("- ["):
+                items.append(
+                    {
+                        "index": i,
+                        "raw": line,
+                        "done": False,
+                        "urgent": "[긴급]" in line,
+                        "loop": None,
+                        "ts": "",
+                        "text": line.lstrip("- ").strip(),
+                    }
+                )
+            continue
         items.append(
             {
-                "id": i,
-                "done": done,
-                "urgent": urgent,
-                "ts": ts,
-                "text": body,
-                "loop": loop_n,
-                "raw": raw,
+                "index": i,
+                "raw": line,
+                "done": m.group("done").lower() == "x",
+                "urgent": bool(m.group("urgent")),
+                "loop": int(m.group("loop")) if m.group("loop") else None,
+                "ts": m.group("ts") or "",
+                "text": (m.group("text") or "").strip(),
             }
         )
     return items
 
 
-def append_inbox(text: str, urgent: bool) -> dict:
-    with LOCK:
-        cur = read_text(INBOX)
-        if cur and not cur.endswith("\n"):
-            cur += "\n"
-        stamp = now_stamp()
-        flag = "[긴급] " if urgent else ""
-        line = f"- [ ] {flag}({stamp}) {text.strip()}"
-        if "## 항목" in cur and not cur.rstrip().endswith("## 항목"):
-            cur = cur.rstrip() + "\n" + line + "\n"
-        elif "## 항목" in cur:
-            cur = cur.rstrip() + "\n" + line + "\n"
-        else:
-            cur = cur + ("\n" if cur else "") + line + "\n"
-        write_text(INBOX, cur)
-        # 다시 읽어 확인
-        check = read_text(INBOX)
-        ok = line in check
-        return {"ok": ok, "line": line}
-
-
-def patch_inbox(item_id: int, new_text: str) -> dict:
-    with LOCK:
-        lines = read_text(INBOX).splitlines()
-        if item_id < 0 or item_id >= len(lines):
-            return {"ok": False, "error": "없는 항목"}
-        m = INBOX_ITEM.match(lines[item_id])
-        if not m:
-            return {"ok": False, "error": "INBOX 항목이 아님"}
-        if m.group(1).lower() == "x":
-            return {"ok": False, "error": "처리된 항목은 수정하지 않음"}
-        urgent = m.group(2) == "긴급"
-        ts = m.group(3) or now_stamp()
-        flag = "[긴급] " if urgent else ""
-        lines[item_id] = f"- [ ] {flag}({ts}) {new_text.strip()}"
-        write_text(INBOX, "\n".join(lines) + "\n")
-        return {"ok": True, "line": lines[item_id]}
-
-
-def delete_inbox(item_id: int) -> dict:
-    with LOCK:
-        lines = read_text(INBOX).splitlines()
-        if item_id < 0 or item_id >= len(lines):
-            return {"ok": False, "error": "없는 항목"}
-        m = INBOX_ITEM.match(lines[item_id])
-        if not m:
-            return {"ok": False, "error": "INBOX 항목이 아님"}
-        if m.group(1).lower() == "x":
-            return {"ok": False, "error": "처리된 항목은 삭제하지 않음"}
-        del lines[item_id]
-        write_text(INBOX, "\n".join(lines) + "\n")
-        return {"ok": True}
-
-
-def loop_alive(state: dict) -> bool:
-    pid = state.get("pid")
-    if not pid:
-        # lock 파일의 pid도 본다
-        if LOCKFILE.exists():
-            try:
-                pid = int(LOCKFILE.read_text(encoding="utf-8").strip())
-            except Exception:
-                return False
-        else:
-            return False
-    try:
-        os.kill(int(pid), 0)
-        return True
-    except Exception:
+def rewrite_inbox_line(index: int, new_line: str | None) -> bool:
+    if not INBOX.exists():
         return False
+    lines = INBOX.read_text(encoding="utf-8").splitlines()
+    if index < 0 or index >= len(lines):
+        return False
+    if new_line is None:
+        del lines[index]
+    else:
+        lines[index] = new_line
+    INBOX.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return True
 
 
-def badge(state: dict) -> str:
-    if STOP.exists() and not loop_alive(state):
-        return "STOP으로 정지"
-    if state.get("status") == "stopped_fail":
-        return "실패로 정지"
-    if state.get("status") == "stopped_stop":
-        return "STOP으로 정지"
-    if loop_alive(state):
-        st = state.get("status") or "running"
-        if st == "waiting":
-            n = state.get("wait_remaining_sec") or 0
-            return f"대기 중(다음 바퀴까지 {n}초)"
-        if st == "running":
-            return "실행 중"
-        return st
-    if state:
-        return "서비스 꺼짐"
-    return "서비스 꺼짐"
+def append_inbox(text: str, urgent: bool) -> str:
+    INBOX.parent.mkdir(parents=True, exist_ok=True)
+    if not INBOX.exists():
+        INBOX.write_text(
+            "# INBOX\n\n형식:\n\n- `- [ ] (YYYY-MM-DD HH:MM) 내용`\n\n## 항목\n",
+            encoding="utf-8",
+        )
+    body = INBOX.read_text(encoding="utf-8")
+    if "## 항목" not in body:
+        body = body.rstrip() + "\n\n## 항목\n"
+    flag = " [긴급]" if urgent else ""
+    line = f"- [ ]{flag} ({now_kst()}) {text.strip()}"
+    if not body.endswith("\n"):
+        body += "\n"
+    body += line + "\n"
+    INBOX.write_text(body, encoding="utf-8")
+    # 다시 읽어 확인
+    return line if line in INBOX.read_text(encoding="utf-8") else ""
 
 
-def parse_status_highlights(md: str) -> dict:
-    blocked = []
-    table = []
-    if not md:
-        return {"blocked": blocked, "system_table_md": ""}
-    lines = md.splitlines()
-    in_blocked = False
-    in_table = False
-    table_lines = []
-    for line in lines:
-        if re.match(r"^#+ .*막힌", line):
-            in_blocked = True
-            in_table = False
-            continue
-        if in_blocked and re.match(r"^#+ ", line):
-            in_blocked = False
-        if in_blocked:
-            s = line.strip()
-            if s.startswith("- ") or s.startswith("* "):
-                blocked.append(s[2:].strip())
-            elif s and not s.startswith("#"):
-                blocked.append(s)
-        if "시스템 상태" in line and line.strip().startswith("|"):
-            in_table = True
-        if re.match(r"^#+ .*시스템 상태", line):
-            in_table = True
-            table_lines = []
-            continue
-        if in_table:
-            if line.startswith("|"):
-                table_lines.append(line)
-            elif table_lines and not line.strip():
-                continue
-            elif table_lines and not line.startswith("|"):
-                in_table = False
-    return {"blocked": blocked, "system_table_md": "\n".join(table_lines)}
-
-
-def parse_assets(md: str) -> list[dict]:
+def git_log(n: int = 30) -> list[dict]:
+    root = git_root()
+    rel = git_rel()
+    try:
+        out = subprocess.check_output(
+            [
+                "git",
+                "log",
+                f"-{n}",
+                "--pretty=format:%H%x09%ad%x09%s",
+                "--date=iso-strict",
+                "--",
+                rel,
+            ],
+            cwd=str(root),
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return []
     rows = []
-    if not md:
-        return rows
-    in_table = False
-    headers = []
-    for line in md.splitlines():
-        if not line.startswith("|"):
-            in_table = False
+    for line in out.splitlines():
+        if not line.strip():
             continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if all(set(c) <= set("-: ") and c for c in cells):
-            in_table = True
+        parts = line.split("\t", 2)
+        if len(parts) < 3:
             continue
-        if not in_table and any("경로" in c or "종류" in c or "라이선스" in c for c in cells):
-            headers = cells
-            in_table = True
-            continue
-        if in_table and headers:
-            rec = {}
-            for i, h in enumerate(headers):
-                rec[h] = cells[i] if i < len(cells) else ""
-            blob = " ".join(rec.values())
-            rec["_used"] = any(x in blob for x in ("사용", "적용", "씬", "프리팹"))
-            rec["_unused"] = "미사용" in blob
-            rec["_unknown_license"] = any(
-                x in blob for x in ("미확인", "출처 미확인", "라이선스 미확인")
+        h, ts, msg = parts
+        files = 0
+        try:
+            stat = subprocess.check_output(
+                ["git", "show", "--pretty=", "--name-only", h, "--", rel],
+                cwd=str(root),
+                text=True,
+                stderr=subprocess.DEVNULL,
             )
-            rec["_generated"] = "생성" in blob or "GPT" in blob
-            rows.append(rec)
+            files = len([x for x in stat.splitlines() if x.strip()])
+        except Exception:
+            files = 0
+        m = re.search(r"\[loop#(\d+)\]", msg)
+        rows.append(
+            {
+                "hash": h,
+                "short": h[:8],
+                "date": ts,
+                "message": msg,
+                "files": files,
+                "loop": int(m.group(1)) if m else None,
+            }
+        )
     return rows
 
 
-def recent_previews() -> list[dict]:
+def git_commit(h: str) -> dict:
+    if not re.fullmatch(r"[0-9a-fA-F]{7,40}", h):
+        return {"error": "bad hash"}
+    root = git_root()
+    rel = git_rel()
+    try:
+        stat = subprocess.check_output(
+            ["git", "show", "--stat", "--format=fuller", h, "--", rel],
+            cwd=str(root),
+            text=True,
+            stderr=subprocess.STDOUT,
+        )
+        diff = subprocess.check_output(
+            ["git", "show", "--pretty=", "--unified=3", h, "--", rel],
+            cwd=str(root),
+            text=True,
+            stderr=subprocess.STDOUT,
+        )
+    except subprocess.CalledProcessError as e:
+        return {"error": e.output[-4000:] if e.output else str(e)}
+    if len(diff) > 40000:
+        diff = diff[:40000] + "\n… (truncated)\n"
+    return {"hash": h, "stat": stat, "diff": diff}
+
+
+def wheel_log(n: int) -> str:
+    path = LOG_DIR / f"loop_{int(n):04d}.log"
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if len(text) > 200000:
+        return text[-200000:]
+    return text
+
+
+def asset_previews() -> list[dict]:
     out = []
-    roots = [
-        ROOT / "assets" / "generated",
-        ROOT / "assets" / "3d" / "preview",
-    ]
-    for base in roots:
+    for base in (ROOT / "assets" / "generated", ROOT / "assets" / "3d" / "preview"):
         if not base.exists():
             continue
-        for p in sorted(base.rglob("*"), key=lambda x: x.stat().st_mtime if x.is_file() else 0, reverse=True):
-            if p.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+        for p in sorted(base.rglob("*")):
+            if p.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
                 continue
             rel = str(p.relative_to(ROOT))
             prompt = p.with_suffix(".prompt.txt")
@@ -305,20 +256,43 @@ def recent_previews() -> list[dict]:
                 {
                     "path": rel,
                     "name": p.name,
-                    "mtime": datetime.fromtimestamp(p.stat().st_mtime, TZ).isoformat(),
+                    "mtime": p.stat().st_mtime,
                     "prompt": str(prompt.relative_to(ROOT)) if prompt.exists() else "",
                 }
             )
-            if len(out) >= 24:
-                return out
-    return out
+    out.sort(key=lambda x: x["mtime"], reverse=True)
+    return out[:40]
+
+
+def license_unknown_count(assets_md: str) -> int:
+    n = 0
+    for line in assets_md.splitlines():
+        if "출처 미확인" in line or "라이선스 미확인" in line:
+            n += 1
+    return n
+
+
+def no_commit_streak(history: list, commits: list[dict]) -> int:
+    hashed = {c.get("loop") for c in commits if c.get("loop") is not None}
+    streak = 0
+    for row in reversed(history):
+        if row.get("result") != "success":
+            continue
+        loop = row.get("loop")
+        if loop in hashed:
+            break
+        streak += 1
+        if streak >= 3:
+            break
+    return streak
 
 
 def history_rows(limit: int = 50) -> list[dict]:
-    if not HISTORY.exists():
+    path = LOG_DIR / "loop_history.jsonl"
+    if not path.exists():
         return []
     rows = []
-    for line in HISTORY.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
             continue
@@ -329,117 +303,33 @@ def history_rows(limit: int = 50) -> list[dict]:
     return rows[-limit:]
 
 
-def recent_commits(n: int = 30) -> list[dict]:
-    fmt = "%H%x09%ad%x09%s"
-    raw = git("log", f"-{n}", f"--pretty=format:{fmt}", "--date=iso-strict", "--", ".")
-    out = []
-    for line in raw.splitlines():
-        parts = line.split("\t", 2)
-        if len(parts) < 3:
-            continue
-        h, ts, msg = parts
-        stat = git("show", "--numstat", "--format=", h)
-        files = 0
-        for sl in stat.splitlines():
-            if sl.strip():
-                files += 1
-        lm = re.search(r"\[loop#(\d+)\]", msg)
-        out.append(
-            {
-                "hash": h,
-                "short": h[:8],
-                "ts": ts,
-                "message": msg,
-                "files": files,
-                "loop": int(lm.group(1)) if lm else None,
-            }
-        )
-    return out
-
-
-def warnings(state: dict, inbox: list[dict], assets: list[dict], cards: list[dict]) -> list[str]:
-    w = []
-    blocked = sum(1 for c in cards if c.get("status") == "막힘")
-    if blocked:
-        w.append(f"막힘 {blocked}건")
-    lic = sum(1 for a in assets if a.get("_unknown_license"))
-    if lic:
-        w.append(f"라이선스 미확인 {lic}건")
-    hist = history_rows(8)
-    streak = 0
-    for row in reversed(hist):
-        if row.get("result") == "success":
-            # 커밋 없는 성공도 노랑. 여기서는 커밋 여부 별도.
-            msg = git("log", "-1", "--pretty=%s", "--", ".")
-            # 최근 바퀴 3연속 커밋 없음: history만으로는 약함. loop 커밋 메시지로 본다.
-        if row.get("result") in ("success",) and not git(
-            "log", "-1", "--pretty=%s", "--grep", f"\\[loop#{row.get('loop')}\\]", "--", "."
-        ):
-            streak += 1
-        else:
-            break
-    # 더 단순한 판정: 최근 3바퀴 모두 success인데 해당 바퀴 커밋이 없으면 경고
-    last3 = hist[-3:] if len(hist) >= 3 else []
-    if len(last3) == 3:
-        no_commit = 0
-        for row in last3:
-            n = row.get("loop")
-            found = git("log", "--pretty=%s", "--grep", f"\\[loop#{n}\\]", "--", ".")
-            if not found.strip():
-                no_commit += 1
-        if no_commit == 3:
-            w.append("커밋 없는 바퀴 3연속")
-    return w
-
-
 def build_state() -> dict:
     state = read_json(STATE, {})
-    board = read_json(BOARD, {"cards": []})
-    cards = board.get("cards") if isinstance(board, dict) else []
-    inbox_text = read_text(INBOX)
-    inbox = parse_inbox(inbox_text)
-    status_md = read_text(STATUS)
-    assets_md = read_text(ASSETS)
-    assets = parse_assets(assets_md)
-    hl = parse_status_highlights(status_md)
-    hist = history_rows(50)
-    commits = recent_commits(30)
-    today = state.get("today") or {"loops": 0, "success": 0, "fail": 0, "commits": 0}
+    board = read_json(BOARD, {"updated_at": "", "cards": []})
+    cards = board.get("cards") or []
+    inbox = parse_inbox()
+    status = STATUS.read_text(encoding="utf-8") if STATUS.exists() else ""
+    assets = ASSETS.read_text(encoding="utf-8") if ASSETS.exists() else ""
+    commits = git_log(30)
+    history = history_rows(50)
+    blocked = sum(1 for c in cards if c.get("status") == "막힘")
     return {
-        "badge": badge(state),
-        "alive": loop_alive(state),
-        "stop": STOP.exists(),
-        "loop": state,
-        "today": today,
-        "warnings": warnings(state, inbox, assets, cards),
-        "inbox": inbox,
+        "loop_state": state,
         "board": board,
-        "cards": cards,
-        "status_md": status_md,
-        "status_highlights": hl,
-        "assets_md": assets_md,
-        "assets": assets,
-        "previews": recent_previews(),
-        "history": hist,
+        "inbox": inbox,
+        "status_md": status,
+        "assets_md": assets,
         "commits": commits,
-        "credits_md": read_text(CREDITS),
+        "history": history,
+        "previews": asset_previews(),
+        "stop": STOP.exists(),
+        "warnings": {
+            "blocked": blocked,
+            "license_unknown": license_unknown_count(assets),
+            "no_commit_streak": no_commit_streak(history, commits),
+        },
+        "max_consec_fail": 3,
     }
-
-
-def log_path_for(loop_no: int) -> Path:
-    return ROOT / "logs" / f"loop_{int(loop_no):04d}.log"
-
-
-def safe_under(root: Path, rel: str) -> Path | None:
-    rel = rel.lstrip("/")
-    if ".." in Path(rel).parts:
-        return None
-    p = (root / rel).resolve()
-    try:
-        p.relative_to(root.resolve())
-    except ValueError:
-        return None
-    return p if p.exists() else None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -449,165 +339,199 @@ class Handler(BaseHTTPRequestHandler):
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
     def _json(self, code: int, obj) -> None:
-        body = json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8")
+        data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.write(data)
+
+    def _text(self, code: int, text: str, ctype: str) -> None:
+        data = text.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _bytes(self, code: int, data: bytes, ctype: str) -> None:
         self.send_response(code)
         self.send_header("Content-Type", ctype)
-        self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
 
-    def _read_body(self) -> dict:
+    def _body(self) -> bytes:
         n = int(self.headers.get("Content-Length") or 0)
-        raw = self.rfile.read(n) if n else b""
-        if not raw:
-            return {}
-        try:
-            return json.loads(raw.decode("utf-8"))
-        except Exception:
-            return {}
+        return self.rfile.read(n) if n else b""
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         u = urlparse(self.path)
         path = unquote(u.path)
-        if path in ("/", "/index.html", "/board.html"):
+        if path in ("/", "/index.html"):
             if not HTML.exists():
-                self._bytes(404, b"board.html missing", "text/plain")
+                self._text(500, "board.html missing", "text/plain; charset=utf-8")
                 return
-            self._bytes(200, HTML.read_bytes(), "text/html; charset=utf-8")
+            self._text(200, HTML.read_text(encoding="utf-8"), "text/html; charset=utf-8")
             return
         if path == "/api/state":
             self._json(200, build_state())
             return
         if path.startswith("/api/log/"):
-            rest = path[len("/api/log/") :]
             try:
-                n = int(rest)
+                n = int(path.rsplit("/", 1)[-1])
             except ValueError:
-                self._json(400, {"ok": False, "error": "바퀴 번호"})
+                self._json(400, {"error": "bad loop id"})
                 return
-            p = log_path_for(n)
-            self._json(
-                200,
-                {
-                    "ok": p.exists(),
-                    "loop": n,
-                    "path": str(p.relative_to(ROOT)) if p.exists() else "",
-                    "text": read_text(p)[-200000:],
-                },
-            )
+            self._json(200, {"loop": n, "text": wheel_log(n)})
             return
         if path.startswith("/api/commit/"):
-            h = path[len("/api/commit/") :]
-            if not re.fullmatch(r"[0-9a-fA-F]{4,40}", h):
-                self._json(400, {"ok": False, "error": "해시"})
-                return
-            stat = git("show", "--stat", "--format=fuller", h)
-            patch = git("show", "--format=", "--", h)
-            self._json(200, {"ok": bool(stat), "hash": h, "stat": stat, "diff": patch[:120000]})
+            h = path.rsplit("/", 1)[-1]
+            self._json(200, git_commit(h))
             return
         if path == "/api/file":
-            q = parse_qs(u.query)
-            rel = (q.get("path") or [""])[0]
-            p = safe_under(ROOT, rel)
-            if p is None or not p.is_file():
-                self._json(404, {"ok": False})
-                return
-            allowed = p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".txt", ".md", ".json"}
-            if not allowed:
-                self._json(403, {"ok": False})
-                return
-            ctype = {
-                ".png": "image/png",
-                ".jpg": "image/jpeg",
-                ".jpeg": "image/jpeg",
-                ".webp": "image/webp",
-                ".gif": "image/gif",
-                ".txt": "text/plain; charset=utf-8",
-                ".md": "text/plain; charset=utf-8",
-                ".json": "application/json; charset=utf-8",
-            }[p.suffix.lower()]
-            self._bytes(200, p.read_bytes(), ctype)
+            qs = parse_qs(u.query)
+            rel = (qs.get("path") or [""])[0]
+            self._serve_preview(rel)
             return
-        self._json(404, {"ok": False, "error": "not found"})
+        self._text(404, "not found", "text/plain; charset=utf-8")
 
-    def do_POST(self) -> None:  # noqa: N802
+    def _serve_preview(self, rel: str) -> None:
+        if not rel or ".." in rel.split("/"):
+            self._text(400, "bad path", "text/plain")
+            return
+        p = (ROOT / rel).resolve()
+        try:
+            p.relative_to(ROOT)
+        except ValueError:
+            self._text(403, "forbidden", "text/plain")
+            return
+        allowed = (ROOT / "assets").resolve()
+        try:
+            p.relative_to(allowed)
+        except ValueError:
+            self._text(403, "forbidden", "text/plain")
+            return
+        if not p.is_file():
+            self._text(404, "missing", "text/plain")
+            return
+        ctype = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".webp": "image/webp",
+            ".txt": "text/plain; charset=utf-8",
+        }.get(p.suffix.lower())
+        if not ctype:
+            self._text(403, "type", "text/plain")
+            return
+        self._bytes(200, p.read_bytes(), ctype)
+
+    def do_POST(self) -> None:
         u = urlparse(self.path)
-        path = unquote(u.path)
-        body = self._read_body()
+        path = u.path
+        try:
+            payload = json.loads(self._body() or b"{}")
+        except json.JSONDecodeError:
+            self._json(400, {"error": "invalid json"})
+            return
         if path == "/api/inbox":
-            text = str(body.get("text") or "").strip()
+            text = (payload.get("text") or "").strip()
             if not text:
-                self._json(400, {"ok": False, "error": "내용이 비어 있음"})
+                self._json(400, {"error": "empty"})
                 return
-            urgent = str(body.get("priority") or "") in ("긴급", "urgent", "high")
-            result = append_inbox(text, urgent)
-            self._json(200 if result["ok"] else 500, result)
+            line = append_inbox(text, bool(payload.get("urgent")))
+            if not line:
+                self._json(500, {"error": "write failed"})
+                return
+            items = parse_inbox()
+            ok = any(it["raw"] == line for it in items)
+            self._json(200 if ok else 500, {"ok": ok, "line": line, "inbox": items})
             return
         if path == "/api/stop":
             STOP.write_text("stop\n", encoding="utf-8")
-            self._json(200, {"ok": True, "message": "현재 바퀴를 마친 뒤 멈춥니다."})
+            self._json(200, {"ok": True, "stop": True, "note": "현재 바퀴를 마친 뒤 멈춥니다."})
             return
-        self._json(404, {"ok": False})
+        self._json(404, {"error": "not found"})
 
-    def do_PATCH(self) -> None:  # noqa: N802
+    def do_PATCH(self) -> None:
         u = urlparse(self.path)
-        path = unquote(u.path)
-        body = self._read_body()
-        if path == "/api/inbox":
-            try:
-                item_id = int(body.get("id"))
-            except Exception:
-                self._json(400, {"ok": False, "error": "id"})
-                return
-            text = str(body.get("text") or "").strip()
-            if not text:
-                self._json(400, {"ok": False, "error": "내용이 비어 있음"})
-                return
-            result = patch_inbox(item_id, text)
-            self._json(200 if result.get("ok") else 400, result)
+        try:
+            payload = json.loads(self._body() or b"{}")
+        except json.JSONDecodeError:
+            self._json(400, {"error": "invalid json"})
             return
-        self._json(404, {"ok": False})
+        if u.path != "/api/inbox":
+            self._json(404, {"error": "not found"})
+            return
+        try:
+            index = int(payload["index"])
+        except (KeyError, TypeError, ValueError):
+            self._json(400, {"error": "index required"})
+            return
+        items = {it["index"]: it for it in parse_inbox()}
+        it = items.get(index)
+        if not it or it["done"]:
+            self._json(400, {"error": "cannot edit"})
+            return
+        text = (payload.get("text") or "").strip()
+        if not text:
+            self._json(400, {"error": "empty"})
+            return
+        urgent = it["urgent"] if payload.get("urgent") is None else bool(payload.get("urgent"))
+        ts = it["ts"] or now_kst()
+        flag = " [긴급]" if urgent else ""
+        line = f"- [ ]{flag} ({ts}) {text}"
+        if not rewrite_inbox_line(index, line):
+            self._json(500, {"error": "write failed"})
+            return
+        self._json(200, {"ok": True, "inbox": parse_inbox()})
 
-    def do_DELETE(self) -> None:  # noqa: N802
+    def do_DELETE(self) -> None:
         u = urlparse(self.path)
-        path = unquote(u.path)
-        if path == "/api/stop":
+        if u.path == "/api/stop":
             if STOP.exists():
                 STOP.unlink()
-            self._json(200, {"ok": True, "message": "정지 해제"})
+            self._json(200, {"ok": True, "stop": False})
             return
-        if path == "/api/inbox":
-            body = self._read_body()
-            q = parse_qs(u.query)
-            raw_id = body.get("id", (q.get("id") or [None])[0])
-            try:
-                item_id = int(raw_id)
-            except Exception:
-                self._json(400, {"ok": False, "error": "id"})
-                return
-            result = delete_inbox(item_id)
-            self._json(200 if result.get("ok") else 400, result)
+        if u.path != "/api/inbox":
+            self._json(404, {"error": "not found"})
             return
-        self._json(404, {"ok": False})
+        qs = parse_qs(u.query)
+        try:
+            payload = json.loads(self._body() or b"{}")
+        except json.JSONDecodeError:
+            payload = {}
+        raw = (qs.get("index") or [payload.get("index")])[0]
+        try:
+            index = int(raw)
+        except (TypeError, ValueError):
+            self._json(400, {"error": "index required"})
+            return
+        items = {it["index"]: it for it in parse_inbox()}
+        it = items.get(index)
+        if not it or it["done"]:
+            self._json(400, {"error": "cannot delete processed"})
+            return
+        if not rewrite_inbox_line(index, None):
+            self._json(500, {"error": "write failed"})
+            return
+        self._json(200, {"ok": True, "inbox": parse_inbox()})
 
 
 def main() -> int:
-    host = "127.0.0.1"
-    httpd = ThreadingHTTPServer((host, PORT), Handler)
-    print(f"ulon board http://{host}:{PORT}", flush=True)
+    port = load_env_port()
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    print(f"ulon board http://127.0.0.1:{port}", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("stopped", flush=True)
+        pass
+    finally:
+        httpd.server_close()
     return 0
 
 
