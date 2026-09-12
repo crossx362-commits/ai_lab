@@ -63,9 +63,9 @@
 | 시스템 | 상태 | 이번 근거 |
 |---|---|---|
 | 카메라 고정 3/4 쿼터뷰 | 동작함 | loop#7: 에디터 플레이 샷 `unity/Captures/loop7_play_minimap.png` — 고정 3/4, 줌만. 회전 없음 |
-| 스킬 100/총합 700·↑↓Lock | 부분 | HUD·서버 코드. 플레이 미실행 |
+| 스킬 100/총합 700·↑↓Lock | 동작함 | loop#36: HUD가 `TryCycleSkillLock`/`RpcCycleSkillLock`. 플레이 샷 `unity/Captures/loop36_skill_gump.png`(합계 1.0/700·능력 90/225·검술 ↓)·`loop36_skill_lock.png`(검술 x·STR ↓). 게이트 `AssertSkillLockAuth`+NC 에디터 OK. 오프라인 Fire 검술 ↑→↓→x. 호스트 켠 뒤 Try 채광 Down→Locked. 2클라 서명 왕복은 미실행. 원작 검프 아님 |
 | 숙련 칭호 | 부분 | loop#29: `job_combos.json` 7행 + `SkillJobCombos`. 호스트 플레이 HUD 「달인 마검사」·「전문가 레인저」. 샷 `unity/Captures/loop29_mageknight.png`·`loop29_ranger.png`. 게이트 `AssertJobComboTitles`+NC. 보조 하한 30은 §3.2 초심자 선. 배치 셀프체크 미실행. 원작 합격 아님(원작 칭호는 최고 스킬 하나) |
-| STR/DEX/INT·Stat Lock | 부분 | 코드. 플레이 미실행 |
+| STR/DEX/INT·Stat Lock | 부분 | loop#36: `TryCycleStatLock`/`RpcCycleStatLock`. 샷 STR ↑→↓. 능력 합계 90/225 표시. 스탯 성장 플레이는 미실행. 원작 합격 아님 |
 | 클릭 이동 | 부분 | loop#22: 호스트 NT `_clientAuthoritative=0`. 목적지 RPC·섬 밖 거절. 광장 −1.2→+6.8m 보행. 샷 `unity/Captures/loop22_move_before.png`·`loop22_move_after.png`. 게이트 `AssertMoveAuthority`+NC. WASD 원격 클라는 모터 꺼짐(기획 보류). 2클라 미실행 |
 | 타깃 RPG 전투(서버 판정) | 부분 | loop#8: 스켈레톤에서 타격 VFX 재생 확인. FishNet 클라 미기동이라 `RpcRequestAttack`은 skip·HP 30 유지. 서버 판정 자체는 이번 미실행 |
 | 스킬/마법 퀵바 | 동작함 | loop#35: 원장 `QuickbarSlots` 1–9. 플레이 샷 `unity/Captures/loop35_quickbar.png`(1 붕대·2 물약·3 명상·4 불씨·5 봉합). `FireQuickbarAt(0)` 후 샷 `loop35_hotkey_bandage.png`(「치유 대상을 지정하세요」). 게이트+NC 에디터 OK. 물리 Alpha1 키는 MCP라 미실행. 커스텀 할당 없음. 원작 합격 아님 |
@@ -112,18 +112,18 @@
 - **persist/postgres는 이번 살아 있음.** pid 84115, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
 - **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080)는 이번 살아 있음 — 호스트 플레이 샷에 씀. 배치 검사는 에디터를 닫은 뒤에.
-- **이번 플레이 FishNet 호스트 기동.** StartHost 후 srv=True cli=True `NetPlayer(Clone)`. 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 2클라 바이너리는 없음.
+- **이번 플레이.** 에디터 플레이 world+player. 첫 샷은 서버 OFF(오프라인 Try). 이후 StartConnection srv=True cli=True av cliInit. 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 2클라 바이너리는 없음.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 반대로 **UlonClient.app은 그 워크트리에만** 있다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- `quickbar-hotkeys`: 기획 §4.2. 원장 `QuickbarSlots` + HUD 번호 칸 + `FireQuickbar` 공통 경로. 커밋 `043383c5`. 게이트+NC 에디터 execute_code OK. 플레이 샷 퀵바 번호·붕대 지정 모드. 물리 숫자키·2클라·커스텀 할당은 없음.
-- 원작 대비: 같은 점 — 1–9로 붕대·물약·명상·주문을 탄다. 나은 점 — 칸에 번호가 보여 키가 읽힌다. 부족한 점 — 슬롯 재배치 없음, 물리 키는 MCP `FireQuickbarAt`로 대체, 원작 검프 아님.
+- `skill-stat-lock`: 기획 §3.1·§18.13. HUD 잠금을 서버 Try/Rpc로. 검프 합계 700/225. 게이트+NC. 샷 합계·검술 ↓/x·STR ↓.
+- 원작 대비: 같은 점 — ↑/↓/Lock 과 총합 700이 화면에 있다. 나은 점 — 칸에 합계가 바로 보인다. 부족한 점 — IMGUI 검프, 물리 클릭은 MCP `FireCycle*`로 대체, 2클라 잠금 서명 왕복 미실행.
 
 ## 지금 하는 것
 
-없음. loop#35 카드 `quickbar-hotkeys`는 샷·게이트까지 닫음.
+없음. loop#36 카드 `skill-stat-lock`는 샷·게이트까지 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 

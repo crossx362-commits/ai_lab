@@ -1,5 +1,5 @@
 {
-    "updated_at": "2026-09-12T20:14:00+09:00",
+    "updated_at": "2026-09-12T20:28:03+09:00",
     "cards": [
         {
             "id": "map-land-scale",
@@ -196,13 +196,13 @@
         },
         {
             "id": "now",
-            "title": "지금 하는 일: 없음 — loop#35는 quickbar-hotkeys 를 닫음",
+            "title": "지금 하는 일: 없음 — loop#36는 skill-stat-lock 를 닫음",
             "difficulty": "하",
             "model": "grok-4.6",
             "status": "완료",
-            "assigned_loop": 35,
-            "completed_loop": 35,
-            "commit": "043383c5",
+            "assigned_loop": 36,
+            "completed_loop": 36,
+            "commit": "343d9484",
             "rationale": "다음 바퀴가 이 카드를 고친다.",
             "fail_streak": 0
         },
@@ -371,10 +371,10 @@
             "status": "검증 중",
             "assigned_loop": null,
             "completed_loop": null,
-            "commit": "0711b395",
-            "rationale": "#65 0711b395: 장비 칸 아래 전체 장착 이름/비장착 안내 추가, 기존 줄바꿈·밤색 스타일 재사용. 전용 Unity 컴파일 exit0·기존 스킨10 PASS. 라이선스/Curl 진단 잔존. 실제 화면·긴 이름·하단 도달·장착/해제·DnD·게임·2인 미검증, 완료 아님.",
+            "commit": "fe7c7fd5",
+            "rationale": "#70 fe7c7fd5: 앱 일시정지 시 기존 드래그 취소. 수정 전 pause 상태 FAIL(exit1), 수정 후 상태19·스킨10 PASS·전용 Unity 컴파일 exit0. 기존 Editor 경고·라이선스/Curl 잔존. 실제 OS 입력·프레임·화면·DnD·게임·2인 미검증, 완료 아님.",
             "fail_streak": 0,
-            "codex_iteration": 65,
+            "codex_iteration": 70,
             "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
             "evidence": [
                 "docs/CODEX_STATUS.md",
@@ -386,10 +386,23 @@
                 "/Users/junholee/ai_lab/output/ulon-codex/loop64-hud/unity.log",
                 "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_64.md",
                 "/Users/junholee/ai_lab/output/ulon-codex/loop65-hud/unity.log",
-                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_65.md"
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_65.md",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop66-hud/unity.log",
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_66.md",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop67-hud/unity.log",
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_67.md",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop68-hud/red.log",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop68-hud/unity.log",
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_68.md",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop69-hud/red.log",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop69-hud/unity.log",
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_69.md",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop70-hud/pause-red.log",
+                "/Users/junholee/ai_lab/output/ulon-codex/loop70-hud/unity.log",
+                "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_HUD_70.md"
             ],
             "resume_token": "owner-fix-1938",
-            "resume_condition": "승인 헤드리스 OnGUI/Repaint>0·ScreenCapture PNG·요청 해상도 입증 후 1440×900/작은 해상도에서 긴 한글·태그 모양 이름·장착/해제 후 전체 이름 안내·추가 안내 높이와 하단 도달·은행 선택/해제/찾기·가방/은행 0/2/3/6개·DnD 검증. 동일 환경 IMGUI 프로브 반복 금지. 원본 통합 별도."
+            "resume_condition": "승인 헤드리스 OnGUI/Repaint>0·ScreenCapture PNG·요청 해상도 입증 후 1440×900/작은 해상도에서 긴 한글/태그 이름·화면 네 모서리·패널 밖 드래그·드롭 성공/취소 확인. 기존 장착/해제·은행 선택/찾기·하단 도달 검증 유지. 동일 환경 IMGUI 프로브 반복 금지. 원본 통합 별도. #68 포커스 이탈/복귀 후 이름표·오래된 드롭 부재 확인 추가. #69 가방 닫기/각 탭 전환/복귀 후 이름표와 오래된 드롭 부재 및 실제 프레임 취소 확인. #70 앱 일시정지/복귀 후 오래된 이름표·드롭 부재 실제 입력 확인."
         },
         {
             "id": "codex-headless-loop",
@@ -479,6 +492,18 @@
             "completed_loop": 35,
             "commit": "043383c5",
             "rationale": "기획 §4.2. 샷 loop35_quickbar·loop35_hotkey_bandage. 게이트+NC. 물리 Alpha1·2클라는 없음.",
+            "fail_streak": 0
+        },
+        {
+            "id": "skill-stat-lock",
+            "title": "스킬/스탯 ↑↓Lock 서버 권위 + 검프 합계 700/225",
+            "difficulty": "중",
+            "model": "grok-4.6",
+            "status": "완료",
+            "assigned_loop": 36,
+            "completed_loop": 36,
+            "commit": "343d9484",
+            "rationale": "기획 §3.1·§18.13. 샷 loop36_skill_gump·loop36_skill_lock. 게이트+NC. 2클라 서명 왕복은 없음.",
             "fail_streak": 0
         }
     ]
