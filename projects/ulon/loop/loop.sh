@@ -258,7 +258,7 @@ while true; do
     exit 0
   fi
 
-  if [ "$MAX_LOOPS" -gt 0 ] && [ "$LOOP_NO" -ge "$MAX_LOOPS" ]; then
+  if [ "$MAX_LOOPS" -gt 0 ] && [ $((LOOP_NO + 1)) -ge "$MAX_LOOPS" ]; then
     ST_LOOP="$LOOP_NO" ST_STATUS="stopped_stop" ST_RESULT="max_loops" \
     ST_CURRENT_TASK="MAX_LOOPS=$MAX_LOOPS 도달" ST_PID="" \
     ST_WAIT_REMAINING_SEC=0 ST_ENDED_AT="$(now_iso)" ST_TODAY="$(count_today)" \
@@ -357,7 +357,7 @@ while true; do
     exit 0
   fi
 
-  if [ "$MAX_LOOPS" -gt 0 ] && [ "$LOOP_NO" -ge "$MAX_LOOPS" ]; then
+  if [ "$MAX_LOOPS" -gt 0 ] && [ $((LOOP_NO + 1)) -ge "$MAX_LOOPS" ]; then
     ST_LOOP="$LOOP_NO" ST_ENDED_AT="$ENDED" ST_RESULT="$RESULT" \
     ST_CONSEC_FAIL="$CONSEC" ST_PID="" ST_STATUS="stopped_stop" \
     ST_CURRENT_TASK="MAX_LOOPS=$MAX_LOOPS 도달" ST_MODEL="$MODEL" \
