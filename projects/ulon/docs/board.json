@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T17:22:15.411656+09:00",
+  "updated_at": "2026-09-12T17:33:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,14 +196,26 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#21은 죽음·유령·부활을 닫음",
+      "title": "지금 하는 일: 없음 — loop#22는 위치 서버 권위를 닫음",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 21,
-      "completed_loop": 21,
-      "commit": "69b02f1b",
+      "assigned_loop": 22,
+      "completed_loop": 22,
+      "commit": "5d92229d",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
+      "fail_streak": 0
+    },
+    {
+      "id": "move-server-auth",
+      "title": "위치 서버 권위 — NT 클라권위 해제·이동 검증(§7.2)",
+      "difficulty": "상",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 22,
+      "completed_loop": 22,
+      "commit": "5d92229d",
+      "rationale": "DEV_INBOX 서버 큐 ③. NT 서버·RpcRequestMove·섬 밖 거절. 호스트 8m 보행 샷. 2클라는 바이너리 없음.",
       "fail_streak": 0
     },
     {
@@ -276,20 +288,23 @@
       "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "8c16621a",
-      "rationale": "임시 비교 불꽃 설정·범위 검사 보완(8c16621a). 기존 설정 상단 1.989863m>등갓 1.556m로 FAIL(exit 1); 후보 3시드×120프레임 1968 입자 샘플은 1.219352~1.359135m로 창 내부 PASS. Unity batchmode/Metal exit 0·360tris/1.556m/5재질 보존, 기존 C# 경고·라이선스 진단 잔존. 1440×900 직접 검수: 지붕 밖 불꽃 제거, 불투명 창 안 불꽃 가독성은 미확인. 기존 colormap 연결 확인, UV 색상 대조는 남음. 같은 점=§8.1 저폴리/크기; 개선=실루엣과 범위 실측; 부족=불꽃 가독성·별도 Variant/마을 반영·게임/2인 검증. 게임 프리팹·Blender 원본 미변경. 문서 af093224.",
+      "commit": "f8f9722a",
+      "rationale": "가로등 비교의 검은 지면 원인 확인: git 제외 TerrainCtrl 3장 누락. 누락검사 exit1→기존 알파맵 재구움 exit0→원래 GUID 복원 후 새 Unity 재로딩 exit0. 1440×900 Metal 전후 직접 검수: 잔디/흙/길 복구, 후보 청록 지붕·주황 창 식별. 정적325소스 PASS, 라이선스 진단 잔존. §8.1 기존 크기/쿼터뷰 유지·주변 비교 개선. 실제 플레이/불꽃 움직임/2인/5재질 비용 미검증. Bootstrap·원본 프리팹 유지. 다음: 복구된 전용 지형에서 Play mode 한 배치 검수.",
       "fail_streak": 0,
-      "codex_iteration": 5,
+      "codex_iteration": 7,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
-        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/green/unity-comparison.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/green/flame-envelope.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/green/unity.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/envelope-red/flame-envelope.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/envelope-red/unity.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop5-lantern/red/original-materials.txt"
+        "/Users/junholee/ai_lab/output/ulon-codex/loop7-lantern/red/terrain.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop7-lantern/red/unity.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop7-lantern/green/town-after.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop7-lantern/reload/terrain.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop7-lantern/reload/town-before.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop7-lantern/reload/town-after.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop7-lantern/reload/town.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop7-lantern/reload/unity.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop7-lantern/static-check.log"
       ],
-      "verification_commit": "af093224"
+      "verification_commit": "b33c32a2"
     },
     {
       "id": "codex-storybook-hud",

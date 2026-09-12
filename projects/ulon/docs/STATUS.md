@@ -1,17 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#20** (성공) · 2026-09-12T17:07:56+0900
-커밋 `45207e82`, `24d593b5`. 다음은 에디터를 닫은 뒤 클라 재빌드와 `two_client_check`입니다.
+마지막 바퀴: **#21** (성공) · 2026-09-12T17:23:03+0900
+커밋 `69b02f1b`, `bc972e93`. 클라 바이너리·2클라는 에디터 점유라 다음입니다.
 
-- 모델 `grok-4.6` · 경과 600s · 세션 rc `0`
-- HEAD `24d593b5 [loop#20] interest-mgmt 검증 결과 STATUS·보드 반영` · 브랜치 `master`
-- INBOX 미처리 **1**건
+- 모델 `grok-4.6` · 경과 859s · 세션 rc `0`
+- HEAD `bc972e93 [loop#21] death-ghost-rez 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `24d593b5 [loop#20] interest-mgmt 검증 결과 STATUS·보드 반영`
-- `45207e82 [loop#20] FishNet 관심 영역 18m DistanceCondition`
-- `5b20c4b3 [codex] 동화풍에 워크래프트풍 실루엣과 색 대비 혼합`
-- `cad9b82e [codex] 예약 대신 그록 방식 헤드리스 연속 개발 루프 실행`
+- `bc972e93 [loop#21] death-ghost-rez 검증 결과 STATUS·보드 반영`
+- `69b02f1b [loop#21] 사망 시 보호 아이템 유지·장착 해제`
 
 ## 바퀴 기록
 
@@ -37,6 +35,7 @@
 | #18 | 실패 | 2026-09-12T16:45:29+0900 | gpt | 1s |
 | #19 | 성공 | 2026-09-12T16:57:08+0900 | grok-4.6 | 651s |
 | #20 | 성공 | 2026-09-12T17:07:56+0900 | grok-4.6 | 600s |
+| #21 | 성공 | 2026-09-12T17:23:03+0900 | grok-4.6 | 859s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -58,7 +57,7 @@
 | 스킬 100/총합 700·↑↓Lock | 부분 | HUD·서버 코드. 플레이 미실행 |
 | 숙련 칭호 | 부분 | `TitleOf`. 복합 직업명(마검사 등)은 **없음** |
 | STR/DEX/INT·Stat Lock | 부분 | 코드. 플레이 미실행 |
-| 클릭 이동 | 부분 | `ClickMotor`. WASD는 기획 보류·**없음** |
+| 클릭 이동 | 부분 | loop#22: 호스트 NT `_clientAuthoritative=0`. 목적지 RPC·섬 밖 거절. 광장 −1.2→+6.8m 보행. 샷 `unity/Captures/loop22_move_before.png`·`loop22_move_after.png`. 게이트 `AssertMoveAuthority`+NC. WASD 원격 클라는 모터 꺼짐(기획 보류). 2클라 미실행 |
 | 타깃 RPG 전투(서버 판정) | 부분 | loop#8: 스켈레톤에서 타격 VFX 재생 확인. FishNet 클라 미기동이라 `RpcRequestAttack`은 skip·HP 30 유지. 서버 판정 자체는 이번 미실행 |
 | 스킬/마법 퀵바 | 부분 | IMGUI 버튼. 단축키·사용성 미검증 |
 | 장비·인벤·내구도·수리 | 부분 | 코드·게이트. 플레이 미실행 |
@@ -76,7 +75,7 @@
 | 파티·길드·길드전·결투 | 부분 | HUD 패널 코드. 플레이 미실행 |
 | 조련·마구간·Follower | 부분 | Phase 2가 앞섬. 플레이 미실행 |
 | Moongate·Mark/Recall | 부분 | 코드. 플레이 미실행 |
-| FishNet 호스트/클라 | 부분 | `AutoStartNetwork`. 전용 서버 빌드·외부 접속 **미확인** |
+| FishNet 호스트/클라 | 부분 | loop#22: 호스트 StartHost 후 NetPlayer Clone owner/srv/cli, NT 서버 권위. 전용 서버 빌드·외부 접속·2클라 **미확인** |
 | PostgreSQL 영구 저장 | 동작함 | loop#6 /ready 200. loop#10: persist `saved_at` 왕복(운영 PG PUT/GET `loop10-latest-wins`). CharacterStore.Load가 JSON이 더 최신이면 골드99·iron_sword·검술40을 고르고 persist에 밀어 넣음. NC: 2000년 JSON(wood)은 못 덮음. 에디터 execute_code `OK gold=99 inv=iron_sword skill=40 savedAt=2099-01-01T00:00:00Z`. SQLite `test_persist_atomicity` 6/6. 클라 재접속 왕복은 **미실행**(UDP 7770 닫힘·클라 바이너리 없음) |
 | 관심 영역(Interest Management) | 부분 | loop#20: `interest.json` 18m + FishNet `ObserverManager`/`DistanceCondition`. 호스트 플레이: 광장에서 몹 렌더러 0/21, 사냥터 옆에서 Skeleton 1.2m vis. 샷 `unity/Captures/loop20_interest_hunt_near.png`·`loop20_interest_plaza_far.png`. 게이트 `AssertInterest`+NC. 2클라 서로 보임은 바이너리 없어 **미실행**. 기획서에 미터값 없음 → 원작 합격 아님 |
 | LOD·거리 비활성 | 없음 | 기획 §8.1 |
@@ -110,13 +109,12 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `death-ghost-rez`: 기획 §18.4 보호 예외. `items.json` 보스 문장 넷 `keepOnDeath`. 사망 시 일반 아이템만 시체, 보호 아이템은 가방, 장착 해제. 유령 공격 `ghost` 거절. 게이트 `AssertDeathKeep`+NC (`NcDropProtected`면 문장이 시체로 가 빨간불). 에디터 플레이: ghost=True HP0, 시체 wood+iron_sword, 가방 warden_crest. 치유사 부활 후 사거리 안 룻 성공. 샷 `unity/Captures/loop21_ghost.png`·`loop21_rez_loot.png`. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유. 콘솔 URP depth memoryless 경고 2줄은 이번 코드 아님.
-- INBOX 16:59 아트 방향은 CODEX_PROMPT.md 반영 확인. 그록은 그래픽 카드 안 염.
-- 원작 대비: 같은 점 — 죽으면 유령, 가방은 시체, 치유사 부활, 시체 회수. 나은 점 — 보호 태그가 JSON 원장·NC. 부족한 점 — 유령 외형 구분 없음(GPT), 지도 시체 표시는 Codex, 골드 필드가 시체로 안 감, 마법 부활 미플레이. 핵심(유령·시체·부활·회수)은 통과, 원작 합격은 아님.
+- `move-server-auth`: 기획 §7.2 위치는 서버. `NetPlayer` NetworkTransform `_clientAuthoritative: 0`·`_sendToOwner: 1`. 원격 클라 모터 끄고 목적지만 `RpcRequestMove`. `MoveAuthority`가 섬 밖·NaN 거절(먼 클릭은 걸어가므로 거리 상한 없음). 게이트 `AssertMoveAuthority`+NC. 호스트 플레이: 광장 (−1.20,10.08,1.20)→(6.76,10.08,1.20), 섬 밖 RPC는 좌표 유지. 샷 `unity/Captures/loop22_move_before.png`·`loop22_move_after.png`. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유. 콘솔 URP depth memoryless 2줄은 이번 코드 아님.
+- 원작 대비: 같은 점 — 클릭하면 그곳으로 걷고, 위치는 서버가 정함. 나은 점 — 섬 밖·NaN 거절을 NC로 고정. 부족한 점 — 2클라에서 남의 아바타가 움직이는지 미실행, 이동 속도 기획서 없음, 원격 WASD 없음(기획 보류). 핵심(서버가 위치를 소유)은 호스트에서 통과, 원작 합격은 아님.
 
 ## 지금 하는 것
 
-없음. loop#21 카드 `death-ghost-rez` 닫음.
+없음. loop#22 카드 `move-server-auth` 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
