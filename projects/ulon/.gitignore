@@ -51,5 +51,6 @@ art/KayKit-Skeletons.git/
 loop/env.local.sh
 loop/.lock
 loop/STOP
+loop/__pycache__/
 logs/
 

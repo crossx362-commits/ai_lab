@@ -37,7 +37,13 @@ Unity 에디터는 **`projects/ulon/unity`** 만 연다. 재와별(`projects/ash
 
 ## 자율 개발 루프
 
-그록이 총괄하는 헤드리스 개발 루프. 기획서는 옮기지 않고 `loop/env.sh`의 `DESIGN_DOC`로 읽는다. GPT/Codex는 쓰지 않는다. 로그인 자동 실행은 **아직 켜지 않았다** (plist는 `Disabled`).
+그록이 총괄하는 헤드리스 개발 루프. 기획서는 옮기지 않고 `loop/env.sh`의 `DESIGN_DOC`로 읽는다. 이 트리(`ai_lab`)는 오너 정책상 **Grok 전용**이라 `codex exec`는 쓰지 않는다. 한 바퀴마다 새 `grok -p` 세션. 로그인 자동 실행은 **아직 켜지 않았다** (plist는 `Disabled`).
+
+도구 (2026-09-12 확인):
+- `codex` 0.153.4 · ChatGPT 로그인됨 (루프는 호출하지 않음)
+- Blender 5.2.0 LTS 헤드리스 (`/Applications/Blender.app/Contents/MacOS/Blender`, `loop/bin/blender` 심볼릭 링크)
+- Unity 6000.3.14f1 · `BUILD_CMD=./tools/rebuild_client.sh`
+- `TEST_CMD` 중 `python3 tools/test_alpha_readiness.py` → OK. 클라 앱·Postgres는 0번째 바퀴 기준 미기동.
 
 ### 만든 파일
 
@@ -48,7 +54,8 @@ Unity 에디터는 **`projects/ulon/unity`** 만 연다. 재와별(`projects/ash
 | `loop/env.local.sh` | 비밀값 (git 제외) |
 | `loop/PROMPT.md` | 한 바퀴 지시서 |
 | `loop/board_server.py` | 현황 보드 `http://127.0.0.1:8787` |
-| `loop/board.html` | 보드 화면 |
+| `loop/board.html` | 보드 화면 (상태줄→INBOX→칸반→STATUS→타임라인→커밋→에셋→라이브 로그) |
+| `assets/3d/scripts/validate.py` | Blender 헤드리스 메시 검사 |
 | `loop/launchd/*.plist` | launchd 등록용 (복사본) |
 | `docs/feedback/INBOX.md` | 사람 지시함 |
 | `docs/board.json` | 칸반 데이터 |

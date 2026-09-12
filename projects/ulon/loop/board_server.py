@@ -303,8 +303,22 @@ def history_rows(limit: int = 50) -> list[dict]:
     return rows[-limit:]
 
 
+def pid_alive(pid) -> bool:
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except Exception:
+        return False
+
+
 def build_state() -> dict:
     state = read_json(STATE, {})
+    if state.get("status") == "running" and not pid_alive(state.get("pid")):
+        state = dict(state)
+        state["display_status"] = "off"
+    else:
+        state = dict(state)
+        state["display_status"] = state.get("status") or "off"
     board = read_json(BOARD, {"updated_at": "", "cards": []})
     cards = board.get("cards") or []
     inbox = parse_inbox()
