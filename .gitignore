@@ -154,5 +154,3 @@ projects/ulon/unity/mono_crash.*.json
 # `TerrainTriplanar.mat`의 참조 한 줄이 흔들려 8.4MB 잡음이 작은 충돌 자리로 바뀔 뿐이다.
 projects/ulon/unity/Assets/Game/Art/Env/TerrainCtrl?.asset
 
-# 오케스트레이터 sparse worktree 자리(projects/orchestrator)
-.orch/
