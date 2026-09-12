@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-13T00:15:00+0900",
+  "updated_at": "2026-09-13T00:27:00+0900",
   "cards": [
     {
       "id": "map-land-scale",
@@ -33,8 +33,8 @@
       "status": "검증 중",
       "assigned_loop": null,
       "completed_loop": null,
-      "commit": "ef83a6f7",
-      "rationale": "#82 ef83a6f7: 광맥 보존 북측 흙길3180tri·실제Ground 정합/재생성 적용. (12,8) 이후13lane/32201표본·저장/재생성36Terrain+193Mesh·기존4968블록 보존 PASS. 전체 원점은 HealerNpc 겹침 FAIL; 잔교 직행 전후 동일 FAIL. 기본LOD5 길 가림 잔존(미저장LOD1 진단 해소). 영구배포/Play/2인 미완료.",
+      "commit": "353c2638",
+      "rationale": "#88 353c2638: Ground LOD5→1 한정 적용·저장/재로딩/18706객체 보존 PASS(YAML 한 줄). Metal4뷰 광산 길35173→39183픽셀; 동기렌더읽기9.51→9.66ms, FPS 아님. 큰 가림 개선/작은 가장자리·입구표시 이음 잔존. 부분 접근 PASS·전체원점 HealerNpc FAIL 유지. 자동배포/재생성·Play/2인 미완료.",
       "fail_streak": 0,
       "owner": "codex",
       "resume_token": "owner-unblock-world-2055",
@@ -142,11 +142,30 @@
         "/Users/junholee/ai_lab/output/ulon-codex/loop82-world/fixtures/locations.json",
         "/Users/junholee/ai_lab/output/ulon-codex/loop82-world/static-final.log",
         "/Users/junholee/ai_lab/output/ulon-codex/loop82-world/harness-after.log",
-        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_ENTRY_82.md"
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_ENTRY_82.md",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/scope-red.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/apply-final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/saved-final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/entry-regression.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/cost-final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/cost-final/lod-cost.csv",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/scene.diff",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/final-scene-preservation.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/source-preservation.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/review-notes.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/saved-final/saved-mine.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/saved-final/saved-overview.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/saved-final/saved-turn.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/saved-final/saved-village.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/static-final.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/harness-after.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop88-world/fixtures/locations.json",
+        "/Users/junholee/ai_lab/.worktrees/ulon-codex-art/projects/ulon/docs/CODEX_WORLD_LOD_88.md"
       ],
-      "codex_iteration": 82,
-      "verification_commit": "ef83a6f7",
-      "resume_condition": "ef83a6f7 및 loop82-world/fresh-final.log·full-access.log·lod-diagnostic.log·CODEX_WORLD_ENTRY_82.md 기준. 다음은 기존Ground/콘텐츠 보존하에 기본LOD 길가림 해결(LOD5→1 미저장 진단에서 해소, 렌더비용 검증 필요), 중앙원점 HealerNpc 겹침의 실제 ClickMotor/CharacterController 헤드리스 Play 검증. NPC삭제/검사제외/기준완화 금지. (12,8) 이후 부분PASS를 전체원점PASS로 바꾸지 말 것. Crossing x221.5 lane-3 Ground rise0.0623245 vs 함수0.039712+0.02는 baseline/fixed 동일FAIL, 우회x300 구간과 구별. fixtures/Assets의 __CodexWorld80Final/__CodexWorld81Apply/__CodexWorld82Entry/__CodexWorld82Regeneration/__CodexWorld82Applied 및 .meta 복원, Library복사금지. Run/ApplyRegenerated는 새폴더만; Verify/FullAccess/Render/LodDiagnostic 재현 가능. 이후 외곽수면·영구revision/지도/서버/2인. 같은실패만 반복/원본통합대기 금지."
+      "codex_iteration": 88,
+      "verification_commit": "353c2638",
+      "resume_condition": "353c2638·CODEX_WORLD_LOD_88.md·loop88-world 기준. GroundLodCheck는 명시 적용/저장복사본만; 실제Bootstrap/재생성자동연동 아님. 다음 중앙원점 ClickMotor/CharacterController 헤드리스Play 및 입구표시 이음/잔여가림 위치대조, revision재생성의 LOD보존계약/Play비용 검증. NPC삭제/검사제외/기준완화 금지; 부분PASS를 전체로 바꾸지 말 것. #82직행잔교 baseline/fixed 동일FAIL 유지. fixtures/Assets의 #82다섯폴더+#88Lod/#88LodFinal 및 .meta복원, Library복사금지. CODEX_WORLD_LOD_ASSETS=Assets/__CodexWorld88LodFinal로 Verify/RenderSaved; Run은새폴더. 같은조건Probe반복금지. 이후 외곽수면/지도/서버/2인/원본배포."
     },
     {
       "id": "action-feel",
@@ -913,6 +932,18 @@
       "completed_loop": 54,
       "commit": "b9200efc",
       "rationale": "§18.3 방패 막기. ParryChance 방패술*0.3. 게이트+NC 에디터 OK. 샷 loop54_parry_block 400HP 막음·loop54_parry_open 400→388. Bushido/무기막기 없음.",
+      "fail_streak": 0
+    },
+    {
+      "id": "auto-55-타깃-RPG-전투-서버-판정",
+      "title": "타깃 RPG 전투(서버 판정)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 55,
+      "completed_loop": 55,
+      "commit": "a89be4a1",
+      "rationale": "§18.3 물리 AR. 철갑 4, 마법은 PhysicalArmor 안 탐. 게이트+NC 에디터 OK. 샷 loop55_armor_plate-1 400→392 방4. 원작 Virtual Armor 없음.",
       "fail_streak": 0
     }
   ]
