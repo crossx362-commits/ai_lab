@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T22:12:00+09:00",
+  "updated_at": "2026-09-12T22:16:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -701,11 +701,11 @@
       "title": "명중은 무기 스킬 — 빗나감 (§18.3)",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "검증 중",
+      "status": "완료",
       "assigned_loop": 45,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "난이도 중: AttackResolve 명중 공식+JSON. 게이트+NC 에디터 OK. 플레이 샷 대기.",
+      "completed_loop": 45,
+      "commit": "d060eb4f",
+      "rationale": "HitChance JSON+게이트+NC. 샷 빗나감 30HP 유지·명중 30→18. HCI/DCI 없음. 2클라 없음.",
       "fail_streak": 0
     }
   ]

@@ -83,7 +83,7 @@ namespace Ulon.Client
                                                   Screen.width * 0.46f, Screen.height * 0.56f);
 
         static Rect StatusRect => new Rect(12f, 12f, CardW, 186f);
-        static Rect TargetRect => new Rect((Screen.width - TargetW) * 0.5f, 12f, TargetW, 58f);
+        static Rect TargetRect => new Rect((Screen.width - TargetW) * 0.5f, 12f, TargetW, 78f);
         static Rect QuickRect => new Rect((Screen.width - 580f) * 0.5f, Screen.height - 54f, 580f, 42f);
         static Rect TabsRect => new Rect(Screen.width - 318f, Screen.height - 54f, 306f, 42f);
         /// <summary>패널 높이는 **내용에 맞춘다** — 내용이 위 1/4인데 화면을 위아래로 다 쓰면 안 된다(검수).</summary>
@@ -245,6 +245,7 @@ namespace Ulon.Client
                                 "  G " + me.Gold + "  무게 " + w.ToString("0") + "/" + cap +
                                 "  휘두름 " + AttackSpeed.Seconds(st, me.Stamina).ToString("0.00") + "s" +
                                 "  명중 " + (HitChance.Percent(atkSkill, defSkill) * 100f).ToString("0") + "%" +
+                                (!string.IsNullOrEmpty(world.LastCombatMessage) ? "  " + world.LastCombatMessage : "") +
                                 (bag != null && bag.Overweight(st.Str) ? " 과적·달림불가" : "") +
                                 (!RunStamina.CanRun(me.Stamina) ? " 기진·달림불가" : "") +
                                 (me.IsCasting(Time.time) ? " 시전 중" : ""));
