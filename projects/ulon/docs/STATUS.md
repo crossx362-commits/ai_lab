@@ -1,23 +1,20 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#36** (성공) · 2026-09-12T20:28:33+0900
-owner=codex / model=gpt 카드는 건드리지 않았습니다. 클라 빌드·2클라는 에디터 점유라 다음입니다.
+마지막 바퀴: **#37** (성공) · 2026-09-12T20:40:48+0900
+- `3960ec9e` `[loop#37] 이동 리듬 플레이 샷과 STATUS`
 
-- 모델 `grok-4.6` · 경과 886s · 세션 rc `0`
-- HEAD `5346928c [loop#36] 스킬 잠금 플레이 샷과 STATUS` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 688s · 세션 rc `0`
+- HEAD `3960ec9e [loop#37] 이동 리듬 플레이 샷과 STATUS` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `5346928c [loop#36] 스킬 잠금 플레이 샷과 STATUS`
-- `343d9484 [loop#36] 스킬/스탯 잠금 서버 권위와 합계 700`
-- `f843c495 fix(ulon/board): 그록 지금 하는 일을 진행 중 카드·로그로 표시`
-- `9e19f2b0 feat(ulon): 막힌 에셋·기획 수치 일부를 푼다`
+- `3960ec9e [loop#37] 이동 리듬 플레이 샷과 STATUS`
+- `dc50b5b6 [loop#37] 이동 리듬 걷기 2.5/달리기 5.0 원장과 모터`
 
 ## 바퀴 기록
 
 | 바퀴 | 결과 | 시각 | 모델 | 경과 |
 |---|---|---|---|---|
-| #6 | 성공 | 2026-09-12T14:24:02+0900 | grok-4.6 | 231s |
 | #7 | 성공 | 2026-09-12T14:29:57+0900 | grok-4.6 | 308s |
 | #8 | 성공 | 2026-09-12T14:42:14+0900 | grok-4.6 | 690s |
 | #9 | 성공 | 2026-09-12T14:59:24+0900 | grok-4.6 | 982s |
@@ -47,6 +44,7 @@ owner=codex / model=gpt 카드는 건드리지 않았습니다. 클라 빌드·2
 | #34 | 성공 | 2026-09-12T20:00:10+0900 | grok-4.6 | 593s |
 | #35 | 성공 | 2026-09-12T20:12:59+0900 | grok-4.6 | 722s |
 | #36 | 성공 | 2026-09-12T20:28:33+0900 | grok-4.6 | 886s |
+| #37 | 성공 | 2026-09-12T20:40:48+0900 | grok-4.6 | 688s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -81,7 +79,7 @@ owner=codex / model=gpt 카드는 건드리지 않았습니다. 클라 빌드·2
 | 몬스터 | 부분 | loop#11: 원장 **20종**(사냥 8+추가 6+보스 4+조련 2). 샷 `unity/Captures/loop11_cutthroat_seer.png`·`loop11_skelmage_squire.png`·`loop11_bonekin_runt.png`. 사냥터 8종·게이트 유지. 비인간형 원형(늑대·거미)은 메시 없어 KayKit 색·크기 변형으로 채움. 배치 셀프체크는 에디터 점유라 미실행 |
 | 마법·시약·명상·시전 중단 | 부분 | `RpcCast`가 성공 시 `RpcPlayEffect` 방송(소스 게이트). HUD 시전 버튼은 이번 플레이에서 안 누름 |
 | 죽음→유령→부활→시체 회수 | 동작함 | loop#21 플레이어 시체 유지. loop#23: 보스 드랍은 시체·기여자/파티 창(§18.11). 호스트 플레이 헥사크 처치 때 가방에 봉인 없음·시체 items=1 vis, 룻 후 가방 「헥사크의 봉인」. 샷 `unity/Captures/loop23_hexarch_corpse.png`·`loop23_hexarch_loot_bag.png`. 게이트 `AssertBossLoot`+NC·던전 4보스 계약. 독/펫 기여자·2클라는 미실행. 원작 합격 아님 |
-| 무게·과적·STR 요구 | 부분 | 코드. 중첩 컨테이너는 주머니 1단 |
+| 무게·과적·STR 요구 | 동작함 | loop#38: 과적 시 달리기 불가(`CarryMove.CanRun`). 플레이 샷 `unity/Captures/loop38_overweight.png`(무게 180/156 과적·달림불가). LocalAvatar 끄고 SetRunning(true)여도 Running=false·PlanarSpeed=2.50. 가방 비우면 Running=true. 게이트 `AssertOverweightMove`+NC 에디터 OK. 집기/구매 과적 거절은 기존. 걷기 감속 배율은 기획서에 없어 안 넣음(옛 0.35 삭제). 2클라 미실행. 원작 합격 아님 |
 | Fame/Karma·가드존·범죄 | 부분 | 코드. Open PvP 플레이 미실행 |
 | 파티·길드·길드전·결투 | 부분 | HUD 패널 코드. 플레이 미실행 |
 | 조련·마구간·Follower | 부분 | Phase 2가 앞섬. 플레이 미실행 |
@@ -114,18 +112,18 @@ owner=codex / model=gpt 카드는 건드리지 않았습니다. 클라 빌드·2
 - **persist/postgres는 이번 살아 있음.** pid 84115, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
 - **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080)는 이번 살아 있음 — 호스트 플레이 샷에 씀. 배치 검사는 에디터를 닫은 뒤에.
-- **이번 플레이.** 에디터 플레이 오프라인(서버 OFF). ClickMotor 걷기 PlanarSpeed 2.50 · 달리기 2s 9.85m. 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 호스트·2클라 바이너리 없음.
+- **이번 플레이.** 에디터 플레이 오프라인(서버 OFF). 과적 180/156에서 SetRunning(true)여도 Running=false·PlanarSpeed=2.50. HUD 「과적·달림불가」. 콘솔 게임 에러 0. 엔진 depth memoryless 경고 2줄. 호스트·2클라 바이너리 없음.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 반대로 **UlonClient.app은 그 워크트리에만** 있다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- `move-speed-rhythm`: 기획 §7.2.1. `move_speed.json` + ClickMotor가 4.2 대신 원장. Shift=달리기. `RpcRequestMove(..., running)`. 게이트+NC. 플레이 PlanarSpeed 2.50 · 달리기 ≈4.93 m/s. 샷 walk/run.
-- 원작 대비: 같은 점 — 타일당 400ms/200ms = 2.5/5.0 m/s. 나은 점 — 합계 속도가 코드 상수가 아니라 JSON. 부족한 점 — 물리 Shift는 MCP `SetRunning`으로 대체, 기마 속도는 원장만, 2클라 미실행. 원작 Always Run UI 없음.
+- `overweight-no-run`: 기획 §18.5. 과적이면 달리기 불가. 모터·서버 RPC가 `CarryMove`. HUD 과적·달림불가. 게이트+NC. 샷 loop38_overweight. 출처 https://www.uoguide.com/Weight .
+- 원작 대비: 같은 점 — 과적 시 달릴 수 없음. 나은 점 — 서버 RPC가 달리기 플래그를 자른다. 부족한 점 — 원작 걷기 감속·150% 이동불가는 기획 수치 없어 미적용, 2클라 없음.
 
 ## 지금 하는 것
 
-없음. loop#37 카드 `move-speed-rhythm`는 샷·게이트까지 닫음.
+없음. loop#38 카드 `overweight-no-run`는 샷·게이트까지 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
@@ -147,6 +145,7 @@ owner=codex / model=gpt 카드는 건드리지 않았습니다. 클라 빌드·2
 - **Noto Sans KR:** 반입함 (`Resources/Fonts/NotoSansKR-Regular.ttf`, SIL OFL). HUD `EnsureUiFont`. 에디터 임포트·화면 확인은 다음.
 - **Kenney UI Pack:** Grey 버튼/패널 42장 반입. HUD 스킨 적용은 GPT UI 차선.
 - **이동 속도:** 기획 §7.2.1 적용함(loop#37). 기마 10.0 m/s는 원장만 — 탑승 플레이가 없어 모터에 안 묶음. Always Run 옵션 UI는 GPT HUD 차선.
+- **과적 걷기 감속:** 원작 UO는 과적 시 걷기도 느려진다(uoguide Weight). 기획서에 배율이 없어 이번엔 달리기 금지와 걷기 2.5 m/s만. 감속·이동불가 문턱은 「기획서 보강 필요」.
 - **ai_lab-loop 워크트리:** 앞선 작업이 아니라 뒤처짐. 그곳 빌드만 쓰지 말고 이 트리에서 다시 빌드할 것. 병합 금지.
 - **물 2·3단계(프레넬·정점 흔들림), 강 곡류:** 핸드오프상 검수 판정 뒤.
 - **에디터 점유:** PID 85035가 잠금. 배치 빌드/셀프체크는 불가. HTTP MCP로는 플레이 가능(loop#7 사용). 배치 검사는 에디터를 닫은 뒤에.

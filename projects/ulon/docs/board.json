@@ -1,5 +1,5 @@
 {
-    "updated_at": "2026-09-12T20:40:00+09:00",
+    "updated_at": "2026-09-12T20:52:00+09:00",
     "cards": [
         {
             "id": "map-land-scale",
@@ -196,14 +196,26 @@
         },
         {
             "id": "now",
-            "title": "지금 하는 일: 없음 — loop#37는 move-speed-rhythm 를 닫음",
+            "title": "지금 하는 일: 없음 — loop#38는 overweight-no-run 를 닫음",
             "difficulty": "하",
             "model": "grok-4.6",
             "status": "완료",
-            "assigned_loop": 37,
-            "completed_loop": 37,
-            "commit": "dc50b5b6",
+            "assigned_loop": 38,
+            "completed_loop": 38,
+            "commit": "dce0d939",
             "rationale": "다음 바퀴가 이 카드를 고친다.",
+            "fail_streak": 0
+        },
+        {
+            "id": "overweight-no-run",
+            "title": "과적 시 달리기 금지 (§18.5)",
+            "difficulty": "중",
+            "model": "grok-4.6",
+            "status": "완료",
+            "assigned_loop": 38,
+            "completed_loop": 38,
+            "commit": "dce0d939",
+            "rationale": "CarryMove·모터·RPC. 게이트+NC. 샷 180/156 과적·달림불가 PlanarSpeed 2.50. 걷기 감속은 기획 수치 없음.",
             "fail_streak": 0
         },
         {
