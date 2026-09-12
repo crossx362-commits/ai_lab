@@ -157,14 +157,25 @@ namespace Ulon.Editor
 
         static Transform SceneRootKindLeaf(params string[] kinds)
         {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            var roots = scene.GetRootGameObjects();
             for (int k = 0; k < kinds.Length; k++)
             {
-                var folder = GameObject.Find(VisualSliceBuilder.KindFolderName(kinds[k]));
+                string want = VisualSliceBuilder.KindFolderName(kinds[k]);
+                Transform folder = null;
+                for (int r = 0; r < roots.Length; r++)
+                {
+                    if (roots[r] != null && roots[r].name == want)
+                    {
+                        folder = roots[r].transform;
+                        break;
+                    }
+                }
                 if (folder == null)
                     continue;
-                for (int i = 0; i < folder.transform.childCount; i++)
+                for (int i = 0; i < folder.childCount; i++)
                 {
-                    var c = folder.transform.GetChild(i);
+                    var c = folder.GetChild(i);
                     if (!string.IsNullOrEmpty(VisualSliceBuilder.SceneRootKind(c)))
                         return c;
                 }
@@ -174,15 +185,17 @@ namespace Ulon.Editor
 
         static void AssertSceneRootActorFacilityKindsNegativeControl()
         {
-            Transform leaf = SceneRootKindLeaf("Tree", "Light", "Cart", "Facility");
+            Transform leaf = SceneRootKindLeaf("Rock", "Plant", "Arch", "Seat", "Tree", "Light", "Cart", "Facility");
             if (leaf == null)
             {
-                var named = GameObject.Find("Tree") ?? GameObject.Find("LanternLit") ??
+                var named = GameObject.Find("RockLarge") ?? GameObject.Find("PlantBush") ??
+                            GameObject.Find("WallArch") ?? GameObject.Find("StallBench") ??
+                            GameObject.Find("Tree") ?? GameObject.Find("LanternLit") ??
                             GameObject.Find("Cart") ?? GameObject.Find("Forge");
                 leaf = named != null ? named.transform : null;
             }
             if (leaf == null)
-                throw new InvalidOperationException("씬 루트 종류 폴더 NC — 나무·가로등·수레·시설을 못 찾았습니다(0이면 실패).");
+                throw new InvalidOperationException("씬 루트 종류 폴더 NC — 바위·덤불·아치·좌석·나무·가로등·수레·시설을 못 찾았습니다(0이면 실패).");
             var home = leaf.parent;
             string before = SceneRootKindReason(true);
             if (!string.IsNullOrEmpty(before))

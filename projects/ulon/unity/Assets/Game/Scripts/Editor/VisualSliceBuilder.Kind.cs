@@ -49,6 +49,13 @@ namespace Ulon.Editor
                 n.StartsWith("hedge", StringComparison.Ordinal) || n.IndexOf("bush", StringComparison.Ordinal) >= 0 ||
                 n.IndexOf("flax", StringComparison.Ordinal) >= 0 || n.IndexOf("tuft", StringComparison.Ordinal) >= 0)
                 return "Plant";
+            // 포장 아치·좌석은 벽/포장마차보다 먼저. wall-arch를 House로, stall-bench를 Stall로 넣지 않는다.
+            if (n.StartsWith("wallarch", StringComparison.Ordinal) || n.StartsWith("wall-arch", StringComparison.Ordinal))
+                return "Arch";
+            if (n.StartsWith("stallbench", StringComparison.Ordinal) || n.StartsWith("stall-bench", StringComparison.Ordinal) ||
+                n.StartsWith("stallstool", StringComparison.Ordinal) || n.StartsWith("stall-stool", StringComparison.Ordinal) ||
+                n.StartsWith("bench", StringComparison.Ordinal) || n.StartsWith("stool", StringComparison.Ordinal))
+                return "Seat";
             if (n.StartsWith("lantern", StringComparison.Ordinal) || n.StartsWith("torch", StringComparison.Ordinal) ||
                 n.IndexOf("torch", StringComparison.Ordinal) >= 0 || n.IndexOf("light", StringComparison.Ordinal) >= 0 ||
                 n.StartsWith("fountain", StringComparison.Ordinal) || n.StartsWith("campfire", StringComparison.Ordinal))
@@ -106,7 +113,7 @@ namespace Ulon.Editor
         }
 
         /// <summary>
-        /// 씬 루트에 흩어진 배우·시설·나무·수레·가로등만 종류로 묶는다.
+        /// 씬 루트에 흩어진 배우·시설·나무·수레·가로등·바위·덤불·포장 아치·좌석만 종류로 묶는다.
         /// 구역 통·지형·카메라·Directional Light는 그대로 둔다. Misc는 루트에서 안 묶는다.
         /// </summary>
         public static string SceneRootKind(Transform t)
@@ -121,7 +128,8 @@ namespace Ulon.Editor
             if (t.GetComponent<CharacterController>() != null || t.GetComponent<WorldBody>() != null)
                 return "Actor";
             string prop = KindOf(n);
-            if (prop == "Tree" || prop == "Cart" || prop == "Light")
+            if (prop == "Tree" || prop == "Cart" || prop == "Light" ||
+                prop == "Rock" || prop == "Plant" || prop == "Arch" || prop == "Seat")
                 return prop;
             return "";
         }
@@ -219,7 +227,7 @@ namespace Ulon.Editor
             return moved;
         }
 
-        /// <summary>씬 루트 배우·시설·나무·수레·가로등을 Kind* 아래로. 월드 좌표 유지.</summary>
+        /// <summary>씬 루트 배우·시설·나무·수레·가로등·바위·덤불·아치·좌석을 Kind* 아래로. 월드 좌표 유지.</summary>
         public static int EnsureSceneRootActorFacilityKinds()
         {
             int moved = 0;
