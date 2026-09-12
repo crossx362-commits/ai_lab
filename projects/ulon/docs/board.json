@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T15:40:00+09:00",
+  "updated_at": "2026-09-12T16:45:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -138,11 +138,11 @@
       "title": "몬스터 원장 14종 → 기획 20종 내외",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": null,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "기존 KayKit 파생·색/장비 변형. 새 유료 팩 금지. Barbarian 사용 금지.",
+      "status": "완료",
+      "assigned_loop": 11,
+      "completed_loop": 11,
+      "commit": "dfca3eb2",
+      "rationale": "기존 KayKit 파생·색/장비 변형. 새 유료 팩 금지. Barbarian 사용 금지. 사냥터 8종은 유지. 구현 dfca3eb2. 샷 3장·플레이 콘솔 0.",
       "fail_streak": 0
     },
     {
