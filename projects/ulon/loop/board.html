@@ -108,6 +108,23 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
 .thumbs img { width:96px; height:96px; object-fit:cover; border:1px solid var(--line); cursor:pointer; }
 .commit a { color:var(--accent); }
 .empty { color:var(--muted); padding:12px 4px; }
+
+.pages { display:flex; gap:6px; }
+.pages button.on { background:#3a3010; border-color:var(--accent); color:var(--accent); font-weight:700; }
+#page-report { display:none; }
+body.page-report #page-dash { display:none; }
+body.page-report #page-report { display:block; }
+.report-group { margin-bottom:28px; }
+.report-group h2 { font-size:16px; }
+.report-shots { display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:14px; }
+.report-shot { background:#151515; border:1px solid var(--line); border-radius:12px; padding:10px; }
+.report-shot img { width:100%; height:auto; max-height:70vh; object-fit:contain; background:#0d0d0d; cursor:zoom-in; border-radius:8px; display:block; }
+.report-shot.missing { border-color:var(--bad); }
+.report-shot .cap { margin-top:8px; font-size:13px; color:var(--muted); }
+#lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:30; align-items:center; justify-content:center; padding:24px; }
+#lightbox.on { display:flex; }
+#lightbox img { max-width:96vw; max-height:92vh; object-fit:contain; }
+@media (max-width:720px){ .report-shots { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -115,6 +132,10 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
   <div class="top">
     <span id="badge"></span>
     <span class="task" id="nowTask">불러오는 중…</span>
+    <span class="pages">
+      <button type="button" id="tabDash" class="on">현황</button>
+      <button type="button" id="tabReport">보고서</button>
+    </span>
     <span style="flex:1"></span>
     <span id="nowBtns"></span>
   </div>
@@ -123,6 +144,7 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
   <div class="alerts" id="alerts"></div>
 </div>
 
+<div id="page-dash">
 <section class="box" id="nowWork">
   <h2>지금 하는 일</h2>
   <div id="activeWork"></div>
@@ -236,6 +258,17 @@ ul.inbox li { display:flex; gap:8px; align-items:flex-start; padding:8px 0; bord
   <input id="logSearch" type="text" placeholder="검색" style="width:100%;margin-bottom:8px">
   <pre class="pre" id="liveLog"></pre>
 </section>
+</div>
+
+<div id="page-report">
+<section class="box">
+  <h2>눈으로 본 샷</h2>
+  <p class="muted" id="reportNote"></p>
+  <p class="muted" id="reportMeta"></p>
+  <div id="reportList"></div>
+</section>
+</div>
+<div id="lightbox" title="닫기"><img alt=""></div>
 
 <script>
 const COLS = ["대기","진행 중","검증 중","완료","실패","막힘"];
@@ -331,6 +364,51 @@ function extractSection(src, key) {
   return md(lines.slice(start, end).join("\n"));
 }
 function viz() { return STATE.viz || {}; }
+function setPage(name) {
+  const report = name === "report";
+  document.body.classList.toggle("page-report", report);
+  document.getElementById("tabDash").classList.toggle("on", !report);
+  document.getElementById("tabReport").classList.toggle("on", report);
+  const want = report ? "#report" : "#dash";
+  if (location.hash !== want) history.replaceState(null, "", want);
+}
+function renderReports() {
+  const rep = STATE.reports || {groups:[], note:"", shot_count:0, missing_count:0};
+  document.getElementById("reportNote").textContent = rep.note || "";
+  document.getElementById("reportMeta").textContent =
+    `샷 ${rep.shot_count||0}장` + (rep.missing_count ? ` · 파일 없음 ${rep.missing_count}` : "");
+  document.getElementById("tabReport").textContent = `보고서 ${rep.shot_count||0}`;
+  const box = document.getElementById("reportList");
+  const groups = rep.groups || [];
+  if (!groups.length) {
+    box.innerHTML = "<p class='empty'>눈으로 확인한 샷이 아직 없습니다. STATUS.md에 경로를 적으면 여기 뜹니다.</p>";
+    return;
+  }
+  box.innerHTML = groups.map(g => {
+    const shots = (g.shots||[]).map(s => {
+      if (s.missing) {
+        return `<div class="report-shot missing"><div class="warn">파일 없음</div><div class="cap"><code>${esc(s.path)}</code><br>${esc(s.caption||"")}</div></div>`;
+      }
+      const src = "/api/file?path=" + encodeURIComponent(s.path);
+      return `<div class="report-shot">
+        <img src="${src}" alt="${esc(s.name)}" data-full="${src}">
+        <div class="cap"><b>${esc(s.name)}</b><br>${esc(s.caption||"")}</div>
+      </div>`;
+    }).join("");
+    return `<div class="report-group">
+      <h2>바퀴 #${esc(g.loop)} · ${esc(g.title||g.system||"")}</h2>
+      <p class="muted">${esc(g.system||"")}${g.card_id ? " · " + esc(g.card_id) : ""}</p>
+      <div class="report-shots">${shots || "<p class='empty'>샷 없음</p>"}</div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("img[data-full]").forEach(img => {
+    img.onclick = () => {
+      const lb = document.getElementById("lightbox");
+      lb.querySelector("img").src = img.dataset.full;
+      lb.classList.add("on");
+    };
+  });
+}
 
 async function refresh() {
   const r = await fetch("/api/state");
@@ -394,6 +472,7 @@ function render() {
   renderTimeline();
   renderCommits();
   renderAssets();
+  renderReports();
   loadLive();
 }
 function renderActive() {
@@ -684,6 +763,11 @@ document.getElementById("inboxSend").onclick = async () => {
   document.getElementById(id).addEventListener("change", () => { if (STATE) render(); });
 });
 document.getElementById("logSearch").addEventListener("input", loadLive);
+document.getElementById("tabDash").onclick = () => setPage("dash");
+document.getElementById("tabReport").onclick = () => setPage("report");
+document.getElementById("lightbox").onclick = () => document.getElementById("lightbox").classList.remove("on");
+window.addEventListener("hashchange", () => setPage(location.hash === "#report" ? "report" : "dash"));
+setPage(location.hash === "#report" ? "report" : "dash");
 refresh();
 setInterval(refresh, 3000);
 </script>

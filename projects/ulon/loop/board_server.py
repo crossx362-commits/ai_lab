@@ -28,6 +28,7 @@ LOG_DIR = ROOT / "logs"
 STATE = LOG_DIR / "loop_state.json"
 HTML = LOOP / "board.html"
 ENV = LOOP / "env.sh"
+CAPTURES = ROOT / "unity" / "Captures"
 
 INBOX_LINE = re.compile(
     r"^- \[(?P<done>[ xX])\]"
@@ -36,6 +37,14 @@ INBOX_LINE = re.compile(
     r"(?: \((?P<ts>[^)]+)\))?"
     r" (?P<text>.*)$"
 )
+SHOT_TICK = re.compile(
+    r"`(?:unity/Captures/)?(loop\d+_[^`]+?\.(?:png|jpe?g|webp))`",
+    re.I,
+)
+LOOP_HASH = re.compile(r"loop#(\d+)")
+LOOP_FILE = re.compile(r"^loop(\d+)_.+\.(png|jpe?g|webp)$", re.I)
+DUP_STEM = re.compile(r"-\d+$")
+IMG_SUFFIX = {".png", ".jpg", ".jpeg", ".webp"}
 
 
 def _env_int(key: str, default: int) -> int:
@@ -597,6 +606,137 @@ def wheel_log(n: int) -> str:
     return text
 
 
+def _loop_from_rel(rel: str):
+    m = re.search(r"(?:^|/)loop(\d+)_", rel)
+    return int(m.group(1)) if m else None
+
+
+def _is_dup_shot(name: str) -> bool:
+    return bool(DUP_STEM.search(Path(name).stem))
+
+
+def _capture_index(capture_dir: Path) -> dict:
+    out = {}
+    if not capture_dir.exists():
+        return out
+    for p in capture_dir.iterdir():
+        if not p.is_file() or p.suffix.lower() not in IMG_SUFFIX:
+            continue
+        out[f"unity/Captures/{p.name}"] = p
+    return out
+
+
+def collect_reports(status_md: str, cards: list, capture_dir: Path) -> dict:
+    """STATUS에 적힌 경로 + 완료 바퀴의 loopN_ 샷만. MCP 중복(-1)과 ulon_anim_*는 제외."""
+    files = _capture_index(capture_dir)
+    groups: dict[int, dict] = {}
+
+    def ensure(loop: int, title: str = "", note: str = "", system: str = "") -> dict:
+        g = groups.setdefault(
+            loop,
+            {
+                "loop": loop,
+                "title": title,
+                "system": system,
+                "note": note,
+                "card_id": "",
+                "shots": [],
+                "_seen": set(),
+            },
+        )
+        if title and not g["title"]:
+            g["title"] = title
+        if system and not g["system"]:
+            g["system"] = system
+        if note and len(note) > len(g.get("note") or ""):
+            g["note"] = note
+        return g
+
+    def add_shot(loop: int, rel: str, caption: str, system: str = "", title: str = "") -> None:
+        if loop is None:
+            return
+        g = ensure(loop, title=title, note=caption, system=system)
+        if rel in g["_seen"]:
+            return
+        g["_seen"].add(rel)
+        p = files.get(rel)
+        g["shots"].append(
+            {
+                "path": rel,
+                "name": Path(rel).name,
+                "caption": caption or Path(rel).stem,
+                "missing": p is None,
+                "mtime": p.stat().st_mtime if p else 0,
+            }
+        )
+
+    cited_loops = set()
+    systems = parse_systems(status_md or "")
+    for row in systems.get("rows") or []:
+        note = row.get("note") or ""
+        ticks = [f"unity/Captures/{name}" for name in SHOT_TICK.findall(note)]
+        loops = [int(x) for x in LOOP_HASH.findall(note)]
+        for rel in ticks:
+            loop = _loop_from_rel(rel)
+            if loop is None and loops:
+                loop = loops[0]
+            if loop is None:
+                continue
+            cited_loops.add(loop)
+            add_shot(loop, rel, note, system=row.get("name") or "")
+        for loop in loops:
+            if loop in cited_loops:
+                continue
+            cited_loops.add(loop)
+            for rel, p in files.items():
+                if _is_dup_shot(p.name):
+                    continue
+                m = LOOP_FILE.match(p.name)
+                if m and int(m.group(1)) == loop:
+                    add_shot(loop, rel, note, system=row.get("name") or "")
+
+    by_loop_card = {}
+    for c in cards or []:
+        n = c.get("completed_loop")
+        if n is None or c.get("status") != "완료":
+            continue
+        by_loop_card[int(n)] = c
+
+    for n, c in by_loop_card.items():
+        ensure(n, title=c.get("title") or "", note=c.get("rationale") or "")
+        groups[n]["card_id"] = c.get("id") or ""
+        if n in cited_loops and groups[n]["shots"]:
+            continue
+        for rel, p in files.items():
+            if _is_dup_shot(p.name):
+                continue
+            m = LOOP_FILE.match(p.name)
+            if m and int(m.group(1)) == n:
+                add_shot(
+                    n,
+                    rel,
+                    groups[n].get("note") or (c.get("rationale") or ""),
+                    title=c.get("title") or "",
+                )
+
+    out_groups = []
+    for loop in sorted(groups, reverse=True):
+        g = groups[loop]
+        g.pop("_seen", None)
+        g["shots"].sort(key=lambda s: (s.get("missing", False), s.get("name") or ""))
+        if not g["shots"]:
+            continue
+        out_groups.append(g)
+    n_shots = sum(len(g["shots"]) for g in out_groups)
+    n_missing = sum(1 for g in out_groups for s in g["shots"] if s.get("missing"))
+    return {
+        "note": "STATUS.md에 적힌 샷과 완료 바퀴의 loopN_ 파일만. MCP 중복(-1)과 바퀴 번호 없는 파일은 넣지 않음.",
+        "groups": out_groups,
+        "shot_count": n_shots,
+        "missing_count": n_missing,
+    }
+
+
 def asset_previews() -> list[dict]:
     out = []
     for base in (ROOT / "assets" / "generated", ROOT / "assets" / "3d" / "preview"):
@@ -685,6 +825,7 @@ def build_state() -> dict:
     history = history_rows(50)
     blocked = sum(1 for c in cards if c.get("status") == "막힘")
     viz = build_viz(state, cards, status, inbox, history, commits)
+    reports = collect_reports(status, cards, CAPTURES)
     return {
         "loop_state": state,
         "board": board,
@@ -694,6 +835,7 @@ def build_state() -> dict:
         "commits": commits,
         "history": history,
         "previews": asset_previews(),
+        "reports": reports,
         "stop": STOP.exists(),
         "warnings": {
             "blocked": blocked,
@@ -728,6 +870,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(data)
+
+    def _allowed_file(self, p: Path) -> bool:
+        for allowed in ((ROOT / "assets").resolve(), CAPTURES.resolve()):
+            try:
+                p.relative_to(allowed)
+                return True
+            except ValueError:
+                continue
+        return False
 
     def _bytes(self, code: int, data: bytes, ctype: str) -> None:
         self.send_response(code)
@@ -781,10 +932,7 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             self._text(403, "forbidden", "text/plain")
             return
-        allowed = (ROOT / "assets").resolve()
-        try:
-            p.relative_to(allowed)
-        except ValueError:
+        if not self._allowed_file(p):
             self._text(403, "forbidden", "text/plain")
             return
         if not p.is_file():

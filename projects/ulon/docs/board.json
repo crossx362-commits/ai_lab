@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T16:10:00+09:00",
+  "updated_at": "2026-09-12T16:25:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -174,8 +174,8 @@
       "title": "보드에 보고서 페이지(샷 위주)",
       "difficulty": "하",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": null,
+      "status": "검증 중",
+      "assigned_loop": 15,
       "completed_loop": null,
       "commit": "",
       "rationale": "INBOX 15:50. loop/board.html. Unity 잠금과 안 겹침. 눈으로 본 PNG만.",
