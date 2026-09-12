@@ -172,9 +172,11 @@ if board.exists():
             m = raw if raw.startswith("grok") else by_diff.get(d, mid)
             print(m)
             print(effort.get(d, em))
+            print((c.get("title") or c.get("id") or "").strip())
             raise SystemExit
 print(mid)
 print(em)
+print("")
 PY
 }
 
@@ -284,7 +286,9 @@ while true; do
   PICK="$(pick_model)"
   MODEL="$(printf '%s\n' "$PICK" | sed -n '1p')"
   EFFORT="$(printf '%s\n' "$PICK" | sed -n '2p')"
+  TASK_TITLE="$(printf '%s\n' "$PICK" | sed -n '3p')"
   EFFORT="${EFFORT:-medium}"
+  TASK_TITLE="${TASK_TITLE:-다음 작업 고르는 중}"
   START_EPOCH="$(date +%s)"
 
   {
@@ -293,7 +297,7 @@ while true; do
 
   ST_LOOP="$LOOP_NO" ST_STARTED_AT="$STARTED" ST_ENDED_AT="" \
   ST_RESULT="running" ST_CONSEC_FAIL="$CONSEC" ST_PID="$$" \
-  ST_STATUS="running" ST_CURRENT_TASK="grok -p ($MODEL/$EFFORT) — PROMPT.md" \
+  ST_STATUS="running" ST_CURRENT_TASK="$TASK_TITLE" \
   ST_MODEL="$MODEL" ST_WAIT_REMAINING_SEC=0 ST_LOG_PATH="$WHEEL_LOG" \
   ST_FAIL_REASON="" ST_TODAY="$(count_today)" \
   write_state

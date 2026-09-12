@@ -827,6 +827,112 @@ def persist_alpha_ready() -> dict:
         }
 
 
+def development_plan(path=None) -> dict:
+    """Read the plan itself; task completion never implies MVP acceptance."""
+    path = path or DOCS / "DEVELOPMENT_PLAN.md"
+    result = {"mvp_status": "판정 자료 없음", "stages": [], "priorities": [],
+              "source": "DEVELOPMENT_PLAN.md"}
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError:
+        return result
+    result["source_heading"] = source.splitlines()[0].lstrip("# ")
+    section = ""
+    for line in source.splitlines():
+        if line.startswith("## "):
+            section = line[3:].strip()
+        if section == "현재 판정" and line.startswith("**MVP "):
+            verdict, _, note = line.partition("** ")
+            result["mvp_status"] = verdict.removeprefix("**MVP ").rstrip(".*")
+            result["mvp_note"] = note
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) != 3 or cells[0].startswith(("---", "계획 단계", "우선순위")):
+            continue
+        if section == "현재 판정":
+            result["stages"].append({"name": cells[0], "state": "원문 확인",
+                                     "summary": cells[2], "code": cells[1]})
+        elif section == "이어서 진행할 순서" and cells[0] in ("P0", "P1", "P2", "P3", "P4"):
+            result["priorities"].append({"priority": cells[0], "title": cells[1], "evidence": cells[2]})
+    return result
+
+
+def codex_runtime() -> dict:
+    path = ROOT.parents[1] / "output" / "ulon-codex" / "runtime_state.json"
+    raw = read_json(path, {})
+    state = {key: raw.get(key) for key in (
+        "loop", "status", "current_task", "heartbeat", "consec_fail", "result")}
+    state["display_status"] = raw.get("status") or "unknown"
+    if not raw:
+        return state
+    if not pid_alive(raw.get("pid")):
+        state["display_status"] = "off"
+    elif raw.get("status") == "running":
+        try:
+            age = (datetime.now(timezone.utc) - datetime.fromisoformat(raw["heartbeat"])).total_seconds()
+        except (ValueError, KeyError, TypeError):
+            age = float("inf")
+        if age > 15 or age < -5:
+            state["display_status"] = "stale"
+        elif not pid_alive(raw.get("child_pid")):
+            state["display_status"] = "child_missing"
+    return state
+
+
+def _is_gpt_card(c: dict) -> bool:
+    m = (c.get("model") or "").strip().lower()
+    o = (c.get("owner") or "").strip().lower()
+    return o in {"gpt", "codex"} or m in {"gpt", "codex", "openai"} or (
+        bool(m) and not m.startswith("grok")
+    )
+
+
+def last_work_line(path: Path) -> str:
+    if not path or not path.exists():
+        return ""
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return ""
+    for ln in reversed(lines):
+        t = ln.strip()
+        if len(t) < 10:
+            continue
+        if t.startswith("========") or "PROMPT.md" in t or t.startswith("`loop/"):
+            continue
+        return t[:220]
+    return ""
+
+
+def grok_now_display(state: dict, cards: list) -> dict:
+    raw = (state.get("current_task") or "").strip()
+    boiler = (not raw) or "PROMPT.md" in raw or raw.startswith("grok -p")
+    live = [
+        c
+        for c in cards
+        if c.get("status") == "진행 중"
+        and not _is_gpt_card(c)
+        and c.get("id") not in {"now", "gpt-gfx-ui"}
+    ]
+    cur = state.get("loop")
+    same = [c for c in live if c.get("assigned_loop") == cur]
+    pick = (same or live or [None])[0]
+    title = (pick.get("title") if pick else "") or ("" if boiler else raw)
+    if not title:
+        if (state.get("display_status") or state.get("status")) == "running":
+            title = "다음 작업 고르는 중"
+        else:
+            title = raw or "대기"
+    logp = state.get("log_path") or ""
+    return {
+        "title": title,
+        "detail": last_work_line(Path(logp)) if logp else "",
+        "card_id": (pick or {}).get("id") or "",
+        "from_card": bool(pick),
+    }
+
+
 def build_state() -> dict:
     state = read_json(STATE, {})
     if state.get("status") == "running" and not pid_alive(state.get("pid")):
@@ -847,6 +953,8 @@ def build_state() -> dict:
     reports = collect_reports(status, cards, CAPTURES)
     return {
         "loop_state": state,
+        "codex_state": codex_runtime(),
+        "development_plan": development_plan(),
         "board": board,
         "inbox": inbox,
         "status_md": status,
@@ -864,6 +972,7 @@ def build_state() -> dict:
         "alpha_ready": persist_alpha_ready(),
         "max_consec_fail": viz["consec"]["max"],
         "viz": viz,
+        "now_display": grok_now_display(state, cards),
     }
 
 
