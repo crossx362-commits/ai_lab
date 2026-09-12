@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T15:20:00+09:00",
+  "updated_at": "2026-09-12T15:40:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -102,11 +102,11 @@
       "title": "DB 중단 중 저장→복구→재접속 시 최신 인벤·스탯 유지",
       "difficulty": "상",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": null,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "DEVELOPMENT_PLAN P0. JSON 폴백과 PG 최신 선택. persist-ready 이후.",
+      "status": "완료",
+      "assigned_loop": 10,
+      "completed_loop": 10,
+      "commit": "c75d9273",
+      "rationale": "P0. Load가 SavedAt 최신. Unity execute_code OK+NC. 클라 재접속 화면은 바이너리 없어 미실행.",
       "fail_streak": 0
     },
     {

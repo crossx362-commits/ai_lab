@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#8** (성공) · 2026-09-12T14:42:14+0900
-**커밋.** `3b81de7b` 구현, `8d1106fe` STATUS. 다음 카드는 `scene-prefab-vfx`(FBX 대신 프리팹+이펙트).
+마지막 바퀴: **#9** (성공) · 2026-09-12T14:59:24+0900
+**다음:** 에디터 점유 해제 후 이 트리에서 `UlonClient.app` 재빌드. 원작 지도 절반(~3072m)은 사람 선택으로 남아 있습니다.
 
-- 모델 `grok-4.6` · 경과 690s · 세션 rc `0`
-- HEAD `8d1106fe [loop#8] 행동 체감 검증 결과 STATUS·보드 반영` · 브랜치 `master`
-- INBOX 미처리 **2**건
+- 모델 `grok-4.6` · 경과 982s · 세션 rc `0`
+- HEAD `38dd9d4d [loop#9] 프리팹+이펙트 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- INBOX 미처리 **1**건
 - 이 바퀴 커밋:
-- `8d1106fe [loop#8] 행동 체감 검증 결과 STATUS·보드 반영`
-- `3b81de7b [loop#8] 타격·시전 때 VFX가 플레이에서 실제로 나오게`
+- `38dd9d4d [loop#9] 프리팹+이펙트 검증 결과 STATUS·보드 반영`
+- `bb30c594 [loop#9] 씬 소품을 Env 프리팹으로 두고 등불·횃불·분수에 이펙트를 붙임`
 
 ## 바퀴 기록
 
@@ -23,6 +23,7 @@
 | #6 | 성공 | 2026-09-12T14:24:02+0900 | grok-4.6 | 231s |
 | #7 | 성공 | 2026-09-12T14:29:57+0900 | grok-4.6 | 308s |
 | #8 | 성공 | 2026-09-12T14:42:14+0900 | grok-4.6 | 690s |
+| #9 | 성공 | 2026-09-12T14:59:24+0900 | grok-4.6 | 982s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -63,7 +64,7 @@
 | 조련·마구간·Follower | 부분 | Phase 2가 앞섬. 플레이 미실행 |
 | Moongate·Mark/Recall | 부분 | 코드. 플레이 미실행 |
 | FishNet 호스트/클라 | 부분 | `AutoStartNetwork`. 전용 서버 빌드·외부 접속 **미확인** |
-| PostgreSQL 영구 저장 | 동작함 | loop#6: `pg_isready` 수락, `characters` 17행, persist pid 68384·8777 청취, `GET /ready` HTTP 200 `ok:true` `driver:postgres` (sha `e020037e…`=persist.py). `GET /character/selfcheck` 200. `closed_alpha_smoke.sh` ok. 클라 재접속 저장 왕복은 **미실행**(UDP 7770 닫힘·클라 바이너리 없음) |
+| PostgreSQL 영구 저장 | 동작함 | loop#6 /ready 200. loop#10: persist `saved_at` 왕복(운영 PG PUT/GET `loop10-latest-wins`). CharacterStore.Load가 JSON이 더 최신이면 골드99·iron_sword·검술40을 고르고 persist에 밀어 넣음. NC: 2000년 JSON(wood)은 못 덮음. 에디터 execute_code `OK gold=99 inv=iron_sword skill=40 savedAt=2099-01-01T00:00:00Z`. SQLite `test_persist_atomicity` 6/6. 클라 재접속 왕복은 **미실행**(UDP 7770 닫힘·클라 바이너리 없음) |
 | 관심 영역(Interest Management) | 없음 | 기획 §7.3. 코드 없음 |
 | LOD·거리 비활성 | 없음 | 기획 §8.1 |
 | UI 팩(Paperdoll 그림·DnD·우클릭) | 없음 | HUD는 IMGUI 기본 버튼. Kenney UI 팩 미반입 |
@@ -87,7 +88,7 @@
 ## 발견한 문제
 
 - **클라이언트 바이너리 없음.** 이 트리 `builds/client/`에 `UlonClient.app`이 없다. 실행·2클라 검사를 이번 바퀴에서 못 함.
-- **persist/postgres는 이번 살아 있음.** pid 68384, 5432·8777 청취, `/ready` 200. 옛 STATUS의 pid 사망은 낡은 기록이었다.
+- **persist/postgres는 이번 살아 있음.** loop#10에서 persist.py 반영 후 `start_persist.sh`로 재기동, pid 2822, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
 - **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080, `unity@43694413dbe9b6f3`)로 플레이·샷. Grok stdio MCP는 Start Session 없음.
 - **이번 플레이 FishNet 클라 미기동.** `playmode_transition`이 길게 남음. `NetAvatar.IsClientInitialized=false`라 공격 RPC는 skip. VFX는 로컬 `Play`로 확인.
@@ -96,13 +97,13 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `scene-prefab-vfx`: `Place()`는 모델을 Env 프리팹으로만 놓는다. 등불은 `LanternLit`(불꽃), 횃불·분수는 메시 프리팹에 루프 파티클. 화덕은 불 없는 등불 메시+`CampfireFlame`(RAW 뿌리 유지 — 바꾸면 불을 잃음).
-- 게이트 `AssertNoRawEnvRoots`·`AssertEnvPropVfx`(+NC). `test_alpha_readiness.py` OK. 에디터 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티.
-- 원작 대비: 같은 점 — 마을 등불·횃불이 타고 분수 자리가 있다. 나은 점 — 3D 파티클(Kenney CC0). 부족한 점 — 분수 물줄기가 약하고, 등불 메시가 흰 장대로 읽힘. 핵심(FBX 직접 붙이지 않고 프리팹+이펙트)은 이 카드 범위에서 통과. 구현 `bb30c594`.
+- `persist-latest-wins`: DB에 옛 스냅샷이 있고 JSON 폴백이 더 최신이면 Load가 JSON을 고른 뒤 persist에 반영. 스탬프 없는/더 옛 JSON은 persist를 덮지 않음(NC).
+- 구현 `c75d9273`. persist 재기동 후 `/ready` 200 `driver:postgres`. 에디터 점유라 배치 셀프체크·클라 재접속은 못 함.
+- 원작 대비: 같은 점 — 캐릭터 인벤·스탯의 진실은 서버/DB. 나은 점 — 저장소 장애 중 로컬 JSON이 안 버려진다. 부족한 점 — 집·마구간은 파일 폴백 없음, 게임 클라 재접속 화면은 미실행. 핵심(최신 인벤·스탯 유지)은 이 카드 범위에서 통과.
 
 ## 지금 하는 것
 
-없음. loop#9 카드 `scene-prefab-vfx` 닫음.
+없음. loop#10 카드 `persist-latest-wins` 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
