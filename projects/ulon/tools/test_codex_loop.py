@@ -47,6 +47,26 @@ class LoopTests(unittest.TestCase):
         self.assertEqual(rows[0]['result'], 'no_progress')
         self.assertNotEqual(rows[0]['card_id'], rows[1]['card_id'])
 
+    def test_progress_does_not_monopolize_first_card(self):
+        body = 'from pathlib import Path\np=Path("projects/ulon/art/progress.txt")\np.parent.mkdir(parents=True,exist_ok=True)\np.write_text(p.read_text()+"x" if p.exists() else "x")\n'
+        result, state, rows = self.run_case(body, loops=4)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([r['card_id'] for r in rows], ['0','1','2','0'])
+        self.assertTrue(all(r['content_changed'] for r in rows))
+
+    def test_oldest_execution_wins_over_board_and_status_order(self):
+        cards = [{'id':'world','owner':'codex','status':'진행 중'},
+                 {'id':'hud','owner':'codex','status':'검증 중'}]
+        self.assertEqual(loop.select_card(cards, {}, {'world':82,'hud':75})['id'], 'hud')
+
+    def test_history_restores_order_and_ignores_partial_line(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p = Path(folder)/'history.jsonl'
+            p.write_text('{"card_id":"hud"}\n{"card_id":"world"}\n{"card_id":')
+            self.assertEqual(loop.execution_order(p), {'hud':1,'world':2})
+            cards=[{'id':x,'owner':'codex','status':'검증 중'} for x in ['world','hud']]
+            self.assertEqual(loop.select_card(cards,{},loop.execution_order(p))['id'],'hud')
+
     def test_existing_stop_starts_no_session(self):
         result, state, rows = self.run_case('raise RuntimeError("실행되면 안 됨")\n', stop=True)
         self.assertEqual(result.returncode, 0)
@@ -106,7 +126,8 @@ class LoopTests(unittest.TestCase):
         body='import json\nfrom pathlib import Path\np=Path("board.json")\nb=json.loads(p.read_text())\nb["cards"][0]["resume_token"]="new"\np.write_text(json.dumps(b))\n'
         result,state,rows=self.run_case(body,loops=2)
         self.assertEqual(result.returncode,0,result.stderr)
-        self.assertEqual(rows[0]['card_id'],rows[1]['card_id'])
+        self.assertNotIn(rows[0]['card_id'],state['deferred_cards'])
+        self.assertNotEqual(rows[0]['card_id'],rows[1]['card_id'])
 
     def test_no_ready_card_does_not_start_cli(self):
         import time

@@ -24,14 +24,30 @@ def card_signature(card):
     return json.dumps([card.get('status'), card.get('resume_token')], ensure_ascii=False)
 
 
-def select_card(cards, deferred):
-    for status in ('진행 중', '대기', '검증 중'):
-        for card in cards:
-            owner = card.get('owner')
-            mine = owner == 'codex' or (not owner and card.get('model') in ('gpt', 'codex'))
-            if mine and card.get('status') == status and deferred.get(card['id']) != card_signature(card):
-                return card
-    return None
+def execution_order(history_path):
+    """재시작해도 보드 순서 대신 실제 마지막 실행 순서를 복원한다."""
+    last = {}
+    if history_path.exists():
+        for index, line in enumerate(history_path.read_text(encoding='utf-8').splitlines(), 1):
+            try:
+                row = json.loads(line)
+                if row.get('card_id'):
+                    last[row['card_id']] = index
+            except (ValueError, AttributeError):
+                continue  # 중단된 마지막 행은 실행 근거로 사용하지 않는다.
+    return last
+
+
+def select_card(cards, deferred, last_run=None):
+    last_run = last_run or {}
+    statuses = {'진행 중': 0, '대기': 1, '검증 중': 2}
+    eligible = []
+    for index, card in enumerate(cards):
+        owner = card.get('owner')
+        mine = owner == 'codex' or (not owner and card.get('model') in ('gpt', 'codex'))
+        if mine and card.get('status') in statuses and deferred.get(card['id']) != card_signature(card):
+            eligible.append((last_run.get(card['id'], 0), statuses[card['status']], index, card))
+    return min(eligible, key=lambda row: row[:3])[3] if eligible else None
 
 
 def content_fingerprint(worktree):
@@ -131,7 +147,7 @@ def run(args):
                     save(status='waiting_board', child_pid=None)
                     time.sleep(1)
                     continue
-                selected = select_card(cards, deferred)
+                selected = select_card(cards, deferred, execution_order(args.run_dir / 'history.jsonl'))
                 if selected is None:
                     save(status='waiting_work', child_pid=None, current_task='실행 가능한 담당 카드 없음')
                     time.sleep(1)
