@@ -33,9 +33,17 @@ Shader "Ulon/StylizedWater"
         _DeepAlpha ("깊은 곳 불투명도", Range(0,1)) = 1.0
         _FoamColor ("거품 색", Color) = (1,1,1,1)
         _FoamWidthM ("거품 띠 가로폭(m)", Float) = 2.0
+        _FoamTanFloor ("거품 폭이 기울기를 믿는 하한(tan)", Float) = 0.0
+        _FoamLit ("거품이 빛(과 그림자)을 받는 몫", Range(0,1)) = 1.0
+        _RippleFadeStart ("잔물결이 줄기 시작하는 거리(m)", Float) = 30.0
+        _RippleFadeLen ("잔물결이 다 꺼지기까지(m)", Float) = 70.0
+        _DebugDepth ("판별 — 물이 읽는 깊이를 그대로 그린다(m)", Float) = 0.0
         _FoamDepthSteep ("거품 문턱 상한(m)", Float) = 0.30
         _FoamMaxAlpha ("거품 최대 덮음", Range(0,1)) = 0.75
-        _FoamMinBandPx ("거품 띠 가시 하한(px)", Float) = 0.0
+        _FoamBreak ("거품 이음선 깨기", Range(0,1)) = 0.0
+        _FoamBreakScale ("거품 깨기 타일(1/m)", Float) = 2.5
+        _FoamWobbleM ("거품 물가 밀고당김(m)", Float) = 0.0
+        _FoamWobbleScale ("밀고당김 타일(1/m)", Float) = 0.8
         _FoamNoiseScale ("거품 잡음 타일(1/m)", Float) = 0.6
         _FoamJitter ("거품 가장자리 흐트러짐", Range(0,1)) = 0.40
         _FoamEdgeSoft ("거품 가장자리 부드러움", Range(0.01,1)) = 0.22
@@ -70,8 +78,9 @@ Shader "Ulon/StylizedWater"
 
         fixed4 _Color, _ShallowColor, _DeepColor, _FoamColor;
         float _DepthMax, _ShallowAlpha, _DeepAlpha;
+        float _FoamTanFloor, _FoamLit, _RippleFadeStart, _RippleFadeLen, _DebugDepth;
         float _FoamDepthSteep, _FoamWidthM, _FoamNoiseScale, _FoamJitter, _FoamEdgeSoft, _TintStrength;
-        float _FoamMaxAlpha, _FoamMinBandPx;
+        float _FoamMaxAlpha, _FoamBreak, _FoamBreakScale, _FoamWobbleM, _FoamWobbleScale;
         float _RippleScale, _RippleSpeed, _RippleTint, _RippleCrest, _RippleCrestStrength;
         half _Glossiness, _Metallic;
 
@@ -165,7 +174,15 @@ Shader "Ulon/StylizedWater"
             //   그런 애매함이 없다: 벽이면 옆 픽셀과 깊이가 크게 벌어진다.
             float wallCut = 1.0 - smoothstep(0.06, 0.20, fwidth(diff));
             float cut = steepCut * wallCut;
-            float foamMax = min(_FoamWidthM * tanS * cut, _FoamDepthSteep * cut);
+            // **바닥이 완만하면 기울기 항이 답하지 않는다**(물가 톱니 판별 2026-09-11).
+            // `tanS`는 깊이-법선 텍스처에서 픽셀마다 복호한 값이라 **면마다 튄다**. 백사장
+            // (tan 0.056)에서는 `_FoamWidthM * tanS` = 0.22로 깊이 문턱(0.30)보다 작아 **튀는 쪽이
+            // 이긴다** — 거품 띠의 바깥선이 칸마다 들쭉날쭉해지고, 그게 화면에서 **물가 톱니**로 읽힌다
+            // (거품을 끄면 경계가 매끈해지는 것이 그 증거다). 기울기가 이 하한 아래면 깊이 규칙이
+            // 답하게 둔다 — 규칙을 없애는 것이 아니라 **못 재는 구간을 제 자에게 넘기는 것**이다.
+            // 하한은 취향이 아니라 `_FoamDepthSteep / _FoamWidthM`에서 나온다(둘이 맞물리는 점).
+            float tanF = max(tanS, _FoamTanFloor);
+            float foamMax = min(_FoamWidthM * tanF * cut, _FoamDepthSteep * cut);
 
             float t = saturate(diff / max(0.01, _DepthMax));
             fixed4 water = lerp(_ShallowColor, _DeepColor, t);
@@ -186,13 +203,29 @@ Shader "Ulon/StylizedWater"
             // **멀어지면 끈다.** 절차 잡음은 밉맵이 없어 먼 거리에서 픽셀마다 튄다 — 첫 판에서
             // `15`의 바다가 **흰 반짝이로 뒤덮였다**(3m 무늬가 200m 밖에서 한 픽셀 아래로 들어간
             // 것이다). 가까운 데서만 물결을 주고 먼 바다는 매끈한 색으로 둔다.
-            float rippleFade = saturate(1.0 - (IN.screenPos.w - 30.0) / 70.0);
+            // **거리 상수는 판별 축이다**(검수 2026-09-11): `65`의 직선 단이 이 거리를 따라
+            // 움직이는지 보려면 값을 밖에서 바꿀 수 있어야 한다. 기본값은 1.5단계 그대로(30·70).
+            float rippleFade = saturate(1.0 - (IN.screenPos.w - _RippleFadeStart) / max(0.01, _RippleFadeLen));
             water.rgb *= 1.0 + (rip - 0.5) * _RippleTint * rippleFade;
             // 마루만 희게 — 잔물결이 「밝기 얼룩」이 아니라 **물결**로 읽히려면 끝이 서야 한다.
             float crest = smoothstep(_RippleCrest, _RippleCrest + 0.12, rip) * _RippleCrestStrength * rippleFade;
 
             // 거품 — 얕을수록 짙다. 문턱은 위에서 바닥 기울기로 유도한 값이다.
-            float foam = 1.0 - saturate(diff / max(0.01, foamMax));
+            // **거품이 시작되는 자리를 밀고 당긴다**(1.7c, 검수 판정 ⓑ). 1.7b는 흰 **양**을
+            // 깎아 줄을 지우려 했는데, 자가 그것을 「거품이 사라졌다」로 잡았다(하한 2%) —
+            // **자와 처방이 정면으로 부딪히면 대개 처방이 엉뚱한 축을 깎고 있다.** 양은 그대로
+            // 두고 **문턱의 위치**만 월드 잡음으로 ±수십 cm 흔들면 흰 몫은 거의 유지된 채
+            // 물가가 계단 노치를 따라가지 않는다. 잡음은 반드시 **월드 좌표** 기준이다 —
+            // UV·화면 좌표로 하면 카메라가 움직일 때 무늬가 물 위를 헤엄친다.
+            // (`_FoamWobbleM = 0`이면 밀고당김이 꺼진다 — NC 경로.)
+            // **문턱이 0인 자리는 밀고 당길 것도 없다.** 그냥 더하면 `foamMax = 0`인 곳
+            // (45°↑ 벽 · 거품 끔 NC)에서도 음수 잡음이 `diff`를 0 아래로 밀어 **거품이 생긴다** —
+            // 첫 판에서 거품 끔 NC가 0.4% → 1.5%로 무뎌진 것이 그것이다(자를 무르게 만드는 구멍은
+            // 화면이 좋아져도 메워야 한다). 밀고당김을 띠 폭에 비례시키면 원리상 닫힌다.
+            float wnoise = VNoise(IN.worldPos.xz * _FoamWobbleScale);
+            float wobScale = saturate(foamMax / max(1e-4, _FoamDepthSteep));
+            float wob = (wnoise - 0.5) * 2.0 * _FoamWobbleM * wobScale;
+            float foam = 1.0 - saturate((diff + wob) / max(0.01, foamMax));
             // **잡음은 문턱에 곱하지 않는다**(검수 판정): 곱하면 띠의 **폭 자체**가 잡음만큼
             // 커졌다 작아져 호수가 흰 웅덩이가 된다. 가장자리에 **더한다** — 그러면 폭은
             // 그대로고 경계만 우글거린다. 안쪽(foam이 1에 가까운 곳)은 그대로 하얗다.
@@ -205,26 +238,51 @@ Shader "Ulon/StylizedWater"
             // **거품 안에서도 물색이 비쳐야 한다**(검수 판정 1.6단계). 마스크를 1까지 올리면
             // 띠가 **순백 한 겹**이 되어 과노출로 읽힌다(`64` 좌안). 덮음에 상한을 둔다 —
             // 물빛 위에 거품을 **얹는** 것이지 물을 흰색으로 **갈아치우는** 것이 아니다.
-            // **물가 실루엣의 1~2px 순백 선**(1.7단계, 검수 판정). 거품값은 수심 0에서 언제나 1
-            // 이라 메시가 끝나는 픽셀이 **순백 고원**이 된다. 폭으로 알파를 깎는 길은 세 번
-            // 빗나갔다 — ①`fwidth(diff)`는 완경사에서 「안 좁다」 ②`1/fwidth(foam)`은 고원에서
-            // 기울기 0 ③가로폭×px/m×|시선.y|는 이 자리에서 ~7px라 하한 6에 안 걸린다.
-            // 원인은 띠 폭이 아니라 **수심 0 고원 자체**다. 수심 0에서 화면 2px는 완전히 끄고
-            // 4px에서 되돌리면 그 고원이 선이 되기 전에 사라진다. 원거리(`15`)에서 같은 3px는
-            // 수 미터라 호수 띠를 삼키므로 월드 상한(10~20cm)을 둔다.
-            // (`_FoamMinBandPx = 0`이면 이 죽임을 끈다 — NC 경로.)
-            float mPerPx = max(1e-4, fwidth(diff));
-            float goneM = min(2.0 * mPerPx, 0.10);
-            float fullM = min(4.0 * mPerPx, 0.20);
-            float outer = _FoamMinBandPx <= 0.0
-                        ? 1.0
-                        : smoothstep(goneM, max(fullM, goneM + 1e-4), diff);
+            // **물가 순백 선 — 원인은 폭이 아니라 「고르게 이어짐」이다**(1.7b).
+            // 폭을 죽이는 길을 네 번 갔다(①`fwidth(diff)` ②`1/fwidth(foam)` ③가로폭×px/m
+            // ④월드 가로폭 `foamMax/tanS`). 넷째 판을 찍고 **셈이 가설을 부쉈다**:
+            //   문제의 `64` 좌안 선 = 흰 픽셀 **세로런 중앙값 3px**
+            //   검수가 받은 `15` 호수 띠 = **1px**
+            // **나쁜 쪽이 더 두껍다.** 좁아서 나쁜 게 아니라 **끊기지 않고 이어져** 계단 노치를
+            // 그대로 그리기 때문에 나쁘다. 그래서 폭이 아니라 **이어짐**을 끊는다 — 거품 덮음에
+            // 잔칸 잡음을 곱해 얼룩지게 만들면 같은 자리가 「선」이 아니라 「거품 무리」로 읽힌다.
+            // 값이 0이면 이 깨기가 꺼진다(NC 경로 — 그 판에서 선이 되살아나야 한다).
+            float2 buv = IN.worldPos.xz * _FoamBreakScale;
+            float bnoise = VNoise(buv) * 0.6 + VNoise(buv * 3.1) * 0.4;
+            float outer = lerp(1.0 - _FoamBreak, 1.0, bnoise);
             float foamCover = foamMask * _FoamMaxAlpha * outer;
 
             o.Albedo = lerp(water.rgb + crest, _FoamColor.rgb, foamCover) * _Color.rgb;
             o.Metallic = _Metallic * (1.0 - foamCover);
             o.Smoothness = _Glossiness * (1.0 - foamCover);
             o.Alpha = max(lerp(_ShallowAlpha, _DeepAlpha, t), foamMask * outer) * _Color.a;
+
+            // **물거품은 그림자를 덜 받는다**(근접 샷 `65_sea_close`의 회색 얼룩, 2026-09-11).
+            // 얼룩의 정체는 확정돼 있다: **지형의 셀프 섀도**가 얕은 물 아래로 비쳐 흰 거품 위에
+            // 재처럼 얹힌다(라이트 그림자를 전부 끄면 사라지고, 물의 `receiveShadows`로는 안 된다 —
+            // 그림자는 물이 아니라 **바닥**이 받는다). 그러니 고칠 자리는 「물 아래로 비치는 그림자를
+            // 물색이 얼마나 받는가」다. 물거품은 공기를 머금은 **산란체**라 그늘 속에서도 하얗다 —
+            // 덮인 몫만큼 알베도에서 덜고 **자체 발광**으로 옮긴다. 물 본체는 그대로 빛을 받는다.
+            // `_FoamLit = 1`이면 이 처방이 꺼진다(NC 경로 — 그 판에서 얼룩이 돌아와야 한다).
+            // **아직 원장(`EnsureWater`)에 걸지 않았다** — 이 안건이 대기로 내려가 화면 검증(NC 한 판 +
+            // `qa_shots`)을 못 했기 때문이다. 재개하는 사람이 `mat.SetFloat("_FoamLit", 0.2f)` 한 줄로
+            // 켜고 그 검증부터 하면 된다. 기본값 1.0에서 이 블록은 화면을 바꾸지 않는다.
+            float unlit = foamCover * (1.0 - _FoamLit);
+            o.Albedo *= 1.0 - unlit;
+            o.Emission += _FoamColor.rgb * _Color.rgb * unlit;
+
+            // **판별 — 물이 읽는 깊이를 그대로 그린다**(검수 1순위 2026-09-11).
+            // 「바꿔 끼우기」 전에 **보이게** 한다: 톱니와 직선 단이 **깊이 그림에 이미 있으면**
+            // 범인은 깊이 원본이고, 없으면 그 값을 **쓰는 식**이다. 0이면 완전히 꺼진다.
+            if (_DebugDepth > 0.0)
+            {
+                float g = saturate(diff / _DebugDepth);
+                o.Albedo = 0;
+                o.Emission = float3(g, g, g);
+                o.Alpha = 1;
+                o.Metallic = 0;
+                o.Smoothness = 0;
+            }
         }
         ENDCG
     }

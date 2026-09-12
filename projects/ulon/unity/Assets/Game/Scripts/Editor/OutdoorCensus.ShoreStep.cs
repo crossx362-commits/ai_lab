@@ -75,34 +75,430 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// **축을 하나씩 실제로 재굽는다**(검수 지시 2026-09-11). 「가로 해상도를 바꿔도 노치가
+        /// 그대로였다」는 앞선 판별은 **다른 자**(`MeasureShoreEdge`)로 잰 것이라 그 자가 못 보는
+        /// 것을 못 봤을 수 있다. 여기서는 같은 자(ⓒ 화면 경계)를 **해상도만 바꿔 가며** 댄다.
+        ///
+        /// 읽는 법: 평평한 구간 길이가 **셀 px에 비례**하면 범인은 격자(메시 면)다. 셀을 절반·두 배로
+        /// 해도 안 변하면 격자가 아니라 **높이값 자체의 계단**(양자화·스냅)이다.
+        /// </summary>
+        public static void RunShoreStepRes()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            int keep = VisualSliceBuilder.HeightResOverride;
+            try
+            {
+                foreach (int res in new[] { 513, 257, 1025 })
+                {
+                    VisualSliceBuilder.HeightResOverride = res;
+                    VisualSliceBuilder.EnsureVillageTerrain();
+                    UnityEditor.AssetDatabase.SaveAssets();
+                    var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+                    float c = td.size.x / (td.heightmapResolution - 1);
+                    float ac = td.size.x / td.alphamapResolution;
+                    ProbeTag = "r_h" + td.heightmapResolution;
+                    Debug.Log("[물가결] ── 하이트맵 " + td.heightmapResolution + "² · 셀 " +
+                              c.ToString("0.000") + "m ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                }
+            }
+            finally
+            {
+                VisualSliceBuilder.HeightResOverride = keep;
+                VisualSliceBuilder.EnsureVillageTerrain();
+                UnityEditor.AssetDatabase.SaveAssets();
+                Debug.Log("[물가결] 원장 해상도로 되돌렸다.");
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **도포(알파맵) 격자 축** — 높이 격자를 1/2·2배로 굽어도 ⓒ가 안 변했고, 톱니의 **월드 크기**는
+        /// 0.6m 언저리로 고정이었다(렌더를 2배로 하면 px만 배가). 0.6m짜리 격자가 하나 더 있다:
+        /// **도포 셀 0.586m**(알파맵 512²). 얕은 물은 반투명이라 **바닥 도포가 비쳐** 물 색을 정하므로
+        /// 물↔뭍 경계가 도포 격자를 탈 수 있다. 여기서 도포만 256·1024로 굽어 가른다.
+        /// </summary>
+        public static void RunShoreStepAlpha()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            int keep = VisualSliceBuilder.AlphaResOverride;
+            try
+            {
+                foreach (int res in new[] { 512, 256, 1024 })
+                {
+                    VisualSliceBuilder.AlphaResOverride = res;
+                    VisualSliceBuilder.EnsureVillageTerrain();
+                    UnityEditor.AssetDatabase.SaveAssets();
+                    var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+                    float c = td.size.x / (td.heightmapResolution - 1);
+                    float ac = td.size.x / td.alphamapResolution;
+                    ProbeTag = "h_alpha" + td.alphamapResolution;
+                    Debug.Log("[물가결] ── 알파맵 " + td.alphamapResolution + "² · 도포 셀 " +
+                              ac.ToString("0.000") + "m ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                }
+            }
+            finally
+            {
+                VisualSliceBuilder.AlphaResOverride = keep;
+                VisualSliceBuilder.EnsureVillageTerrain();
+                UnityEditor.AssetDatabase.SaveAssets();
+                Debug.Log("[물가결] 원장 도포 해상도로 되돌렸다.");
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **경사 하한 축** — 도포 격자가 톱니를 정한다는 것까지는 갈렸다(도포 셀 2배 → 톱니 1.7배,
+        /// 높이 셀은 4배를 오가도 불변). 그러면 **도포 규칙 중 무엇이 칸마다 튀느냐**가 다음 물음이다.
+        /// 후보는 `ShoreSandRaw`의 「걸어온 거리」 — 백사장 경사(0.056)가 하한(0.05)에 거의 붙어 있어
+        /// 나누기가 잡음을 증폭한다. 하한만 바꿔 가며 굽고 ⓒ를 잰다.
+        /// </summary>
+        public static void RunShoreStepBank()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            try
+            {
+                foreach (float floor in new[] { 0.05f, 0.14f, 0.30f })
+                {
+                    WorldSplat.BankTanFloorOverride = floor;
+                    VisualSliceBuilder.EnsureVillageTerrain();
+                    UnityEditor.AssetDatabase.SaveAssets();
+                    var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+                    float c = td.size.x / (td.heightmapResolution - 1);
+                    float ac = td.size.x / td.alphamapResolution;
+                    ProbeTag = "i_bank" + floor.ToString("0.00");
+                    Debug.Log("[물가결] ── 경사 하한 tan " + floor.ToString("0.00") + " ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                }
+            }
+            finally
+            {
+                WorldSplat.BankTanFloorOverride = -1f;
+                VisualSliceBuilder.EnsureVillageTerrain();
+                UnityEditor.AssetDatabase.SaveAssets();
+                Debug.Log("[물가결] 원장 하한으로 되돌렸다.");
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **그림자 축** — 격자(높이·도포) 둘 다 눈으로도 셈으로도 기각된 뒤 남은 후보.
+        /// 물 셰이더는 `alpha:fade fullforwardshadows`라 **반투명인 채로 그림자를 받는다**.
+        /// 빌트인 RP는 그런 표면의 그림자를 **디더**로 섞고(물 안쪽에 보이는 2px 체크무늬가 그것),
+        /// 그림자 맵의 계단이 얕은 물의 알파에 그대로 실리면 **물가가 톱니**가 된다.
+        /// 그림자만 끄고 같은 자리를 렌더해 눈과 셈으로 가른다.
+        /// </summary>
+        public static void RunShoreStepShadow()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+
+            ProbeTag = "s_on";
+            Debug.Log("[물가결] ── 그림자 그대로 ──");
+            ScreenEdge(c, ac, "15_lake_river");
+            ScreenEdge(c, ac, "64_river_bend");
+
+            var lights = Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
+            var keep = new LightShadows[lights.Length];
+            for (int i = 0; i < lights.Length; i++) { keep[i] = lights[i].shadows; lights[i].shadows = LightShadows.None; }
+            try
+            {
+                ProbeTag = "s_off";
+                Debug.Log("[물가결] ── 그림자 끔(라이트 " + lights.Length + "개) ──");
+                ScreenEdge(c, ac, "15_lake_river");
+                ScreenEdge(c, ac, "64_river_bend");
+            }
+            finally
+            {
+                for (int i = 0; i < lights.Length; i++) lights[i].shadows = keep[i];
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **지형 렌더 LOD 축** — 이것이 앞선 「해상도 기각」을 설명할 수 있다.
+        /// `terrainData.heightmapResolution`은 **데이터**의 눈금이고, 화면에 실제로 그려지는
+        /// **삼각형의 크기**는 `Terrain.heightmapPixelError`가 정한다. 데이터를 1025로 굽어도
+        /// LOD가 성기면 메시는 그대로다 — 톱니 크기가 해상도와 무관하게 고정이던 이유가 여기일 수 있다.
+        /// 물은 `ZWrite Off` 반투명이라 물가 선은 **지형 삼각형의 실루엣**이 그린다.
+        /// </summary>
+        public static void RunShoreStepLod()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var terrain = Object.FindFirstObjectByType<Terrain>();
+            var td = terrain.terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+            Debug.Log("[물가결] 현재 LOD — heightmapPixelError " + terrain.heightmapPixelError.ToString("0.00") +
+                      " · basemapDistance " + terrain.basemapDistance.ToString("0"));
+
+            float keep = terrain.heightmapPixelError;
+            try
+            {
+                foreach (float err in new[] { keep, 1f })
+                {
+                    terrain.heightmapPixelError = err;
+                    ProbeTag = "l_err" + err.ToString("0.0");
+                    Debug.Log("[물가결] ── 지형 LOD 오차 " + err.ToString("0.00") + "px ──");
+                    ScreenEdge(c, ac, "15_lake_river");
+                    ScreenEdge(c, ac, "64_river_bend");
+                }
+            }
+            finally { terrain.heightmapPixelError = keep; }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **베이스맵 축** — 유니티 지형은 `basemapDistance`보다 먼 곳을 **미리 합성한 저해상 텍스처**
+        /// (`baseMapResolution`)로 그린다. 조망 샷의 물가가 그 거리 밖이면 도포 경계는 **알파맵이 아니라
+        /// 베이스맵**이 그린다 — 알파맵 해상도를 1024로 올려도 화면이 안 변하던 것이 이것으로 설명된다.
+        /// 거리를 멀리 밀어(항상 상세) 같은 자리를 렌더해 가른다.
+        /// </summary>
+        public static void RunShoreStepBasemap()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var terrain = Object.FindFirstObjectByType<Terrain>();
+            var td = terrain.terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+            Debug.Log("[물가결] 베이스맵 — baseMapResolution " + td.baseMapResolution + "² · 칸 " +
+                      (td.size.x / td.baseMapResolution).ToString("0.000") + "m · basemapDistance " +
+                      terrain.basemapDistance.ToString("0"));
+
+            float keep = terrain.basemapDistance;
+            try
+            {
+                foreach (float d in new[] { keep, 2000f })
+                {
+                    terrain.basemapDistance = d;
+                    ProbeTag = "b_dist" + d.ToString("0");
+                    Debug.Log("[물가결] ── 베이스맵 거리 " + d.ToString("0") + "m ──");
+                    ScreenEdge(c, ac, "15_lake_river");
+                    ScreenEdge(c, ac, "64_river_bend");
+                }
+            }
+            finally { terrain.basemapDistance = keep; }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **「바꿔 끼우기」 전에 「보이게」**(검수 1순위 2026-09-11). 셋을 한 판에 잰다:
+        ///   ⓘ **배선** — 렌더에 쓰는 카메라의 near/far·`depthTextureMode`를 **찍는다**.
+        ///     far 500→120이 무변화였다면 **바꾼 카메라가 그 깊이를 굽는 카메라가 아닐** 수 있다.
+        ///     「바꿨는데 안 변한다」는 배선을 의심하라는 신호다 — 이 랩에서 이미 한 번 맞았다.
+        ///   ⓙ **깊이 그림** — 물이 읽는 `diff`를 회색으로 그대로 그린다. 톱니와 `65`의 직선 단이
+        ///     **그 그림에 이미 있으면** 범인은 깊이 **원본**, 없으면 그 값을 **쓰는 식**이다.
+        ///   ⓚ **거리 규칙** — 먼 거리 잔물결 끄기의 거리를 크게/작게 바꿔 직선 단이 **따라 움직이는지**.
+        /// </summary>
+        public static void RunWaterDepthDebug()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var water = GameObject.Find(VisualSliceBuilder.WaterObject);
+            Debug.Log("[물가결] ⓘ 배선 — 수면 오브젝트 " + (water != null ? water.name : "없음") +
+                      " · 깊이 요구 부품 " + (water != null && water.GetComponent<Ulon.Client.WaterDepthCamera>() != null) +
+                      " · 씬 카메라 " + Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).Length + "대");
+            WireLog = true;
+
+            var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+
+            var mat = FindWaterMatForProbe();
+            if (mat == null) { Debug.LogError("[물가결] 물 재질을 못 찾음"); return; }
+            float kDbg = mat.GetFloat("_DebugDepth");
+            float kStart = mat.GetFloat("_RippleFadeStart"), kLen = mat.GetFloat("_RippleFadeLen");
+            try
+            {
+                ProbeTag = "j_depth";
+                mat.SetFloat("_DebugDepth", 4f);
+                ScreenEdge(c, ac, "15_lake_river");
+                ScreenEdge(c, ac, "65_sea_close");
+                mat.SetFloat("_DebugDepth", 0f);
+
+                foreach (var pair in new[] { new Vector2(30f, 70f), new Vector2(8f, 12f), new Vector2(200f, 400f) })
+                {
+                    mat.SetFloat("_RippleFadeStart", pair.x);
+                    mat.SetFloat("_RippleFadeLen", pair.y);
+                    ProbeTag = "k_rip" + pair.x.ToString("0") + "_" + pair.y.ToString("0");
+                    Debug.Log("[물가결] ⓚ 잔물결 끄기 " + pair.x.ToString("0") + "m부터 " +
+                              pair.y.ToString("0") + "m에 걸쳐 ──");
+                    ScreenEdge(c, ac, "65_sea_close");
+                }
+            }
+            finally
+            {
+                mat.SetFloat("_DebugDepth", kDbg);
+                mat.SetFloat("_RippleFadeStart", kStart);
+                mat.SetFloat("_RippleFadeLen", kLen);
+                WireLog = false;
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        static bool WireLog = false;
+
+        /// <summary>이번 판이 무슨 조건이었는지 — 뜨는 PNG 이름에 붙는다.</summary>
+        static string ProbeTag = "base";
+        /// <summary>판별 전용 — 0 이상이면 ⓒ의 카메라 far가 그 값이 된다.</summary>
+        static float FarOverride = -1f;
+
+        /// <summary>
+        /// **깊이 눈금 축** — 물을 끄면 톱니가 **완전히 사라진다**(`w_off` 판). 그러니 톱니는 뭍이
+        /// 아니라 **물이 그린다**. 물은 얕은 색을 `_CameraDepthNormalsTexture`의 깊이로 정하는데,
+        /// 그 깊이는 **far 기준 선형 16비트**다(far 500m면 한 눈금 7.6mm). 물가가 완경사면 그 한 눈금이
+        /// 지면에서 수십 cm로 퍼지고, 시선이 지면과 얕은 각을 이루면 화면에서 더 넓어진다.
+        /// far만 줄여(정밀도를 올려) 톱니가 따라 줄면 **범인은 깊이 눈금**이다.
+        /// </summary>
+        public static void RunShoreStepFar()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+            try
+            {
+                foreach (float far in new[] { 500f, 200f, 120f })
+                {
+                    FarOverride = far;
+                    ProbeTag = "f_far" + far.ToString("0");
+                    Debug.Log("[물가결] ── far " + far.ToString("0") + "m (깊이 한 눈금 " +
+                              (far / 65536f * 1000f).ToString("0.00") + "mm) ──");
+                    ScreenEdge(c, ac, "15_lake_river");
+                    ScreenEdge(c, ac, "65_sea_close");
+                }
+            }
+            finally { FarOverride = -1f; }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
+        /// **격자가 기각된 뒤의 두 축**(2026-09-11). 셀을 1/2·2배로 굽어도 ⓒ가 안 변했으니
+        /// 톱니는 **지형 격자가 아니다**. 남은 후보를 하나씩 끈다:
+        ///   ⓕ **렌더 해상도** — 2배로 렌더해 톱니 px가 **배가되면 세계에 붙은 것**, 그대로면
+        ///      **화면에 붙은 것**(디더·후처리·셰이더의 화면 좌표 잡음)이다.
+        ///   ⓖ **거품 잡음** — 1.7b·1.7c에서 내가 물가에 넣은 월드 잡음(`_FoamBreak`·`_FoamWobbleM`)을
+        ///      끄고 잰다. 내가 만든 것이면 여기서 톱니가 준다. **처방을 짜기 전에 내 것부터 의심한다.**
+        /// </summary>
+        public static void RunShoreStepAxes()
+        {
+            const string scenePath = "Assets/Game/Scenes/Bootstrap.unity";
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().path != scenePath)
+                UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+
+            var td = Object.FindFirstObjectByType<Terrain>().terrainData;
+            float c = td.size.x / (td.heightmapResolution - 1);
+            float ac = td.size.x / td.alphamapResolution;
+
+            ProbeTag = "f_res2x";
+            Debug.Log("[물가결] ── ⓕ 렌더 2배(2560×1440) ──");
+            ScreenEdge(c, ac, "64_river_bend", 2560, 1440);
+            ScreenEdge(c, ac, "15_lake_river", 2560, 1440);
+
+            Material water = null;
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                var m = r.sharedMaterial;
+                if (m != null && m.shader != null && m.shader.name.Contains("StylizedWater")) { water = m; break; }
+            }
+            if (water == null) { Debug.LogWarning("[물가결] 물 머티리얼을 못 찾음 — ⓖ 건너뜀"); }
+            else
+            {
+                float kBreak = water.GetFloat("_FoamBreak"), kWob = water.GetFloat("_FoamWobbleM");
+                float kMax = water.GetFloat("_FoamMaxAlpha");
+                try
+                {
+                    water.SetFloat("_FoamBreak", 0f); water.SetFloat("_FoamWobbleM", 0f);
+                    ProbeTag = "g1_nonoise";
+                    Debug.Log("[물가결] ── ⓖ1 물가 잡음 끔(_FoamBreak=0 · _FoamWobbleM=0) ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                    water.SetFloat("_FoamMaxAlpha", 0f);
+                    ProbeTag = "g2_nofoam";
+                    Debug.Log("[물가결] ── ⓖ2 거품 자체 끔(_FoamMaxAlpha=0) ──");
+                    ScreenEdge(c, ac, "64_river_bend");
+                    ScreenEdge(c, ac, "15_lake_river");
+                }
+                finally
+                {
+                    water.SetFloat("_FoamBreak", kBreak); water.SetFloat("_FoamWobbleM", kWob);
+                    water.SetFloat("_FoamMaxAlpha", kMax);
+                }
+            }
+            if (Application.isBatchMode) UnityEditor.EditorApplication.Exit(0);
+        }
+
+        /// <summary>
         /// ⓒ **화면에서 직접** — `64_river_bend`를 렌더해 열마다 물↔뭍 경계를 찾고, 그 경계 y가
         /// **가로로 몇 픽셀이나 같은 값에 머무는지** 잰다. 계단 하나가 화면에서 몇 px인지가 답이다.
         /// 셀 크기를 그 거리에서의 화면 픽셀로 환산해 나란히 찍는다 — 둘이 맞으면 범인은 격자다.
         /// </summary>
-        static void ScreenEdge(float cell, float alphaCell)
+        static void ScreenEdge(float cell, float alphaCell, string shot = "64_river_bend", int W = 1280, int H = 720)
         {
             var shots = QaShots.BuildShots();
             int idx = -1;
             for (int i = 0; i < shots.Length; i++)
-                if (QaShots.NameOf(shots[i]) == "64_river_bend") { idx = i; break; }
-            if (idx < 0) { Debug.LogWarning("[물가결] 64_river_bend를 못 찾음"); return; }
+                if (QaShots.NameOf(shots[i]) == shot) { idx = i; break; }
+            if (idx < 0) { Debug.LogWarning("[물가결] " + shot + "를 못 찾음"); return; }
             QaShots.EyeOf(shots[idx], out Vector3 eye, out Vector3 look);
 
-            const int W = 1280, H = 720;
             var camGo = new GameObject("ShoreStepCam");
             var cam = camGo.AddComponent<Camera>();
-            cam.fieldOfView = 55f; cam.nearClipPlane = 0.05f; cam.farClipPlane = 500f;
+            cam.fieldOfView = 55f; cam.nearClipPlane = 0.05f;
+            // **far는 판별 축이다** — 빌트인 `_CameraDepthNormalsTexture`의 깊이는 far 기준 **선형
+            // 16비트**라 far를 줄이면 정밀도가 그만큼 올라간다. 물이 그 깊이로 얕은 색을 정하므로,
+            // far를 줄여 톱니가 줄면 범인은 **깊이 눈금**이다(기본은 샷과 같은 500m).
+            cam.farClipPlane = FarOverride > 0f ? FarOverride : 500f;
             var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32);
             var tex = new Texture2D(W, H, TextureFormat.RGB24, false);
             cam.targetTexture = rt;
             camGo.transform.position = eye;
             camGo.transform.LookAt(look);
             cam.Render();
+            if (WireLog)
+                Debug.Log("[물가결] ⓘ 렌더 카메라 — near " + cam.nearClipPlane.ToString("0.00") +
+                          " · far " + cam.farClipPlane.ToString("0") + " · depthTextureMode " +
+                          cam.depthTextureMode + " · 해상도 " + W + "x" + H);
             RenderTexture.active = rt;
             tex.ReadPixels(new Rect(0, 0, W, H), 0, 0);
             tex.Apply();
             RenderTexture.active = null;
             var px = tex.GetPixels32();
+            // **눈으로도 본다** — 셈만 보면 자가 못 보는 것을 나도 못 본다(비추적 폴더).
+            string probeDir = System.IO.Path.GetFullPath(
+                System.IO.Path.Combine(Application.dataPath, "../../builds/qa/probe"));
+            System.IO.Directory.CreateDirectory(probeDir);
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(probeDir,
+                shot + "_" + W + "_" + ProbeTag + ".png"), tex.EncodeToPNG());
 
             // 열마다 아래에서 위로 훑어 **물이 끝나는 첫 자리**(경계). 물은 파랑이 우세한 픽셀이다.
             var edge = new int[W];
@@ -154,17 +550,59 @@ namespace Ulon.Editor
             if (run > 1) { runs++; sum += run; if (run > longest) longest = run; }
             float dist = (look - eye).magnitude;
             float mPerPx = 2f * dist * Mathf.Tan(55f * 0.5f * Mathf.Deg2Rad) * 16f / 9f / W;
-            Debug.Log("[물가결] ⓒ 화면 경계 — 표본 " + valid + "열 · 평평한 구간 " + runs + "개 · 평균 " +
+            // **투영을 풀어 다시 잰다**(검수 1순위 2026-09-11, 내가 스스로 의심한 축).
+            // 위 `mPerPx`는 **화면에 수직인 평면**을 가정한 환산이라, 지면을 **비스듬히 내려다보는**
+            // 샷에서는 크게 틀린다. 물가에서 화면 1px가 지면에서 몇 m인지는 **레이를 실제로 쏴서**
+            // 수면 평면(y = SeaLevel)과 만나게 하고 옆 픽셀과의 거리를 재야 나온다.
+            // 이 환산이 틀렸다면 「톱니 0.6m 고정」이라는 전제와 격자 기각이 같이 흔들린다.
+            float groundM = GroundMetersPerPixel(cam, edge, W, H);
+            Debug.Log("[물가결] ⓧ " + shot + " 투영 환산 — 화면 평면 가정 " + mPerPx.ToString("0.000") +
+                      " m/px 대 **물가 지면 실측 " + groundM.ToString("0.000") + " m/px**(" +
+                      (groundM / Mathf.Max(1e-6f, mPerPx)).ToString("0.0") + "배) · 그러면 평평한 구간 " +
+                      longest + "px는 지면에서 **" + (longest * groundM).ToString("0.00") + "m**");
+            Debug.Log("[물가결] ⓒ " + shot + " 화면 경계 — 표본 " + valid + "열 · 평평한 구간 " + runs + "개 · 평균 " +
                       (runs > 0 ? (sum / (float)runs).ToString("0.0") : "—") + "px · 가장 긴 것 " + longest +
                       "px · 이 거리(" + dist.ToString("0") + "m)에서 높이 셀은 " + (cell / mPerPx).ToString("0") +
                       "px · 도포 셀은 " + (alphaCell / mPerPx).ToString("0") + "px");
 
-            Debug.Log("[물가결] ⓓ 모래↔잔디 경계 — 표본 " + sValid + "열 · 평평한 구간 " + sRuns +
+            Debug.Log("[물가결] ⓓ " + shot + " 모래↔잔디 경계 — 표본 " + sValid + "열 · 평평한 구간 " + sRuns +
                       "개 · 평균 " + (sRuns > 0 ? (sSum / (float)sRuns).ToString("0.0") : "—") +
                       "px · 가장 긴 것 " + sLongest + "px");
 
             cam.targetTexture = null; RenderTexture.active = null;
             Object.DestroyImmediate(camGo); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
+        }
+
+        /// <summary>
+        /// 물가 경계 픽셀들에서 **화면 1px가 지면에서 몇 m인가** — 레이를 수면 평면에 맞혀 잰다.
+        /// 경계가 잡힌 열들의 중앙값을 쓴다(한 열이 하늘을 보면 값이 미친다).
+        /// </summary>
+        static float GroundMetersPerPixel(Camera cam, int[] edge, int W, int H)
+        {
+            var vals = new System.Collections.Generic.List<float>();
+            float sea = WorldTerrain.SeaLevel;
+            for (int i = 1; i < W - 1; i++)
+            {
+                if (edge[i] < 0) continue;
+                if (!HitSea(cam, i, edge[i], W, H, sea, out Vector3 a)) continue;
+                if (!HitSea(cam, i + 1, edge[i], W, H, sea, out Vector3 b)) continue;
+                float d = (b - a).magnitude;
+                if (d > 0f && d < 50f) vals.Add(d);
+            }
+            if (vals.Count == 0) return 0f;
+            vals.Sort();
+            return vals[vals.Count / 2];
+        }
+
+        static bool HitSea(Camera cam, int px, int py, int W, int H, float sea, out Vector3 p)
+        {
+            p = Vector3.zero;
+            var ray = cam.ViewportPointToRay(new Vector3(px / (float)W, py / (float)H, 0f));
+            if (ray.direction.y >= -1e-5f) return false;
+            float t = (sea - ray.origin.y) / ray.direction.y;
+            if (t <= 0f || t > 2000f) return false;
+            p = ray.origin + ray.direction * t;
+            return true;
         }
 
         /// <summary>이 x에서 강 남쪽 물가의 z — 중심선에서 +z로 나가며 물이 끝나는 자리.</summary>

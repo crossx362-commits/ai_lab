@@ -67,15 +67,19 @@ Material:
     - _DepthMax: 2.2
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
+    - _FoamBreak: 0.55
+    - _FoamBreakScale: 1.6
     - _FoamCutoff: 0.55
     - _FoamDepth: 0
     - _FoamDepthSteep: 0.3
     - _FoamEdgeSoft: 0.38
     - _FoamJitter: 0.4
     - _FoamMaxAlpha: 0.75
-    - _FoamMinBandPx: 0
     - _FoamNoiseScale: 0.6
+    - _FoamTanFloor: 0.06
     - _FoamWidthM: 4
+    - _FoamWobbleM: 0.45
+    - _FoamWobbleScale: 0.45
     - _GlossMapScale: 1
     - _Glossiness: 0.25
     - _GlossyReflections: 1

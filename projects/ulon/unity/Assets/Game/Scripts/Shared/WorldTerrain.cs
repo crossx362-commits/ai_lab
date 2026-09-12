@@ -47,9 +47,26 @@ namespace Ulon.Shared
         public const float MountainStart = 92f;  // 산 시작
         public const float MountainPeak = 105f;  // 능선
         public const float MountainEnd = 118f;   // 산 끝
-        public const float CoastEnd = 128f;      // 해안선 — 여기부터 바다
+        public const float CoastEnd = 146f;      // 해안 프로필 끝 — 여기부터 바다 바닥
         public const float MountainHeight = 30f; // 능선 평균 높이(위에 능선 노이즈)
         public const float SeaFloor = 0.4f;
+
+        // **백사장**(대장 판정 ⓐ 2026-09-11 「44°로 꺼지는 해안은 상식 모순 — 실제 백사장은 1~5°」).
+        // 옛 해안은 산끝 118에서 128까지 10m에 9.6m를 내려꽂아 **물가 48°**였고, 그래서
+        // **수심 0.5m까지의 가로 폭이 0.5m**였다(실측, `OutdoorCensus.RunCoastRamp`) — 200m 밖
+        // 조망에서 그 띠는 한 픽셀도 안 된다. 깊이 색도 거품도 그릴 자리가 없었던 것이다.
+        // 이제 해안을 **세 토막**으로 짓는다. 백사장 구간만 완만하면 되지 먼 바다까지 완만할
+        // 필요는 없다 — 300m 섬에 2.6m 수심을 1~5°로 내려가려면 40m가 필요하고 그건 지도가 없다.
+        //   ① 접근 비탈 `MountainEnd`→`BeachTopM` : 뭍 높이에서 백사장 머리까지(약 40°, 모래 언덕)
+        //   ② **백사장** `BeachTopM`→`BeachEndM`   : **선형**으로 완만하게(약 5°) — 물가가 이 안에 있다
+        //   ③ 앞바다 `BeachEndM`→`CoastEnd`        : 바다 바닥까지 마저 내려간다
+        // 목표는 최댓값이 아니라 **구간**이다(검수 조건) — 너무 완만하면 섬이 접시가 된다.
+        public const float BeachTopM = 126f;               // 백사장 머리(뭍 쪽)
+        public const float BeachEndM = 140f;               // 백사장 발치(물 쪽)
+        public const float BeachTopH = SeaLevel + 0.30f;   // 머리는 수면보다 이만큼 높다
+        public const float BeachEndH = SeaLevel - 0.55f;   // 발치는 이만큼 잠긴다
+        /// <summary>네거티브 컨트롤 — 켜면 옛 해안(118→128 직하)으로 되돌아간다. 게이트가 이 판에서 울어야 한다.</summary>
+        public static bool BeachDisabled = false;
 
         // 호수 — 마을(반경 48)·던전(±68 모서리) 밖 서쪽 평지.
         public const float LakeX = -70f;
@@ -126,8 +143,28 @@ namespace Ulon.Shared
             }
             else if (m <= CoastEnd)
             {
-                float t = Mathf.InverseLerp(MountainEnd, CoastEnd, m);
-                h = Mathf.Lerp(LandBase, SeaFloor, Mathf.SmoothStep(0f, 1f, t));
+                if (BeachDisabled)
+                {
+                    // 옛 해안 — 산끝에서 10m 만에 바다 바닥까지(물가 48°). NC 경로.
+                    float t0 = Mathf.InverseLerp(MountainEnd, MountainEnd + 10f, m);
+                    h = Mathf.Lerp(LandBase, SeaFloor, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t0)));
+                }
+                else if (m <= BeachTopM)
+                {
+                    // ① 접근 비탈 — 모래 언덕. 여기는 가팔라도 된다(물가가 아니다).
+                    h = Mathf.Lerp(LandBase, BeachTopH, Mathf.InverseLerp(MountainEnd, BeachTopM, m));
+                }
+                else if (m <= BeachEndM)
+                {
+                    // ② **백사장은 고르다** — 여기만 `SmoothStep`을 쓰지 않는다. S자를 넣으면 양 끝이
+                    //    평평해지는 대신 **한가운데가 1.5배 가팔라지고**, 물가가 하필 그 한가운데다.
+                    h = Mathf.Lerp(BeachTopH, BeachEndH, Mathf.InverseLerp(BeachTopM, BeachEndM, m));
+                }
+                else
+                {
+                    // ③ 앞바다 — 바닥까지 마저.
+                    h = Mathf.Lerp(BeachEndH, SeaFloor, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(BeachEndM, CoastEnd, m)));
+                }
             }
             else
             {
@@ -137,7 +174,11 @@ namespace Ulon.Shared
             // 지형 가장자리는 반드시 바다로 — 노이즈가 육지를 경계 밖으로 밀면 조망에서
             // 수직 절벽(맵 끝 단면)이 보인다(조망 샷 실측).
             float edge = Mathf.Max(Mathf.Abs(wx), Mathf.Abs(wz));
-            float rim = Span * 0.5f - 14f;
+            // **테두리는 백사장을 먹지 않을 만큼만 안으로 들어온다.** 14m였을 때는 해안이
+            // 118~128에 있어 겹치지 않았는데, 백사장을 밖으로 밀자(126~140) 테두리가 **백사장을
+            // 눌러** 방위 24곳 중 7곳에서 얕은 띠가 0.5~2.8m로 찌그러졌다(실측). 10m로 줄여
+            // 백사장 발치(140) 밖에서만 물리게 한다 — 테두리의 일(지도 끝을 바다로)은 그대로다.
+            float rim = Span * 0.5f - 10f;
             if (edge > rim)
                 h = Mathf.Lerp(h, SeaFloor, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(rim, Span * 0.5f, edge)));
 

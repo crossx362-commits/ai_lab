@@ -16,6 +16,26 @@ namespace Ulon.Editor
         /// (프레임 안이라도 언덕 뒤면 화면에 없다 — 강 셈에서 값을 치른 교훈).
         /// 고른 자리는 로그로 남긴다: 세계가 바뀌면 자리도 바뀌므로 상수로 박지 않는다.
         /// </summary>
+        /// <summary>
+        /// **깊은 물이 화면을 채우는 근접 샷**(빚 갚기 2026-09-11). 물가 거품 자(`AssertShoreFoam`)의
+        /// 대상이 `15_lake_river` **하나**로 줄어 있었다 — `63`·`64`는 수심 2m 넘는 픽셀이 0이라
+        /// 뺀 것이고 그 사유는 옳았지만, 그 결과 **표본 하나짜리 자**가 됐다. 자에 대상을 붙이는 것이
+        /// 자를 무르게 두지 않는 길이다.
+        ///
+        /// 자리는 원장에서 유도한다: **강 하구를 피해**(+x 방위) 바다 물가를 찾고, 뭍 쪽으로 7m 물러나
+        /// 눈높이 수면+5.5m에서 바다 22m 앞을 본다. 그 자리는 `CoastEnd` 밖이라 수심 2.6m까지 간다.
+        /// </summary>
+        static Shot SeaCloseShot(string name)
+        {
+            float sea = WorldTerrain.SeaLevel;
+            float wx = WorldTerrain.BeachEndM;                  // 못 찾으면 백사장 발치
+            for (float r = 100f; r <= 200f; r += 0.25f)
+                if (WorldTerrain.HeightAt(r, 0f) < sea) { wx = r; break; }
+            Debug.Log("[샷] " + name + " — 바다 물가 x=" + wx.ToString("0.0") +
+                      " · 22m 앞 수심 " + (sea - WorldTerrain.HeightAt(wx + 22f, 0f)).ToString("0.00") + "m");
+            return Free(name, new Vector3(wx - 7f, sea + 5.5f, 0f), new Vector3(wx + 22f, sea, 0f));
+        }
+
         static Shot LakeRiverShot(string name)
         {
             float sea = WorldTerrain.SeaLevel;

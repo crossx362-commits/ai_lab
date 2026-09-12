@@ -38,7 +38,14 @@ namespace Ulon.Editor
                       "m (하한 " + ShoreBandMin.ToString("0.0") + "m)");
 
             // **반대쪽 한계**: 옛 높이 규칙으로 재면 빨간불이어야 한다. 아니면 이 자는 폭을 안 재는 것이다.
-            float oldSea = ShoreBandWorst(0f, 0f, false, true, out _);
+            // **바다 쪽은 옛 해안(가파른 둑) 위에서 건다**(백사장 랩 2026-09-11): 높이 규칙이 무너지는
+            // 것은 **둑이 가파를 때**인데, 해안이 백사장이 된 지금은 옛 규칙으로도 3.3m가 나와
+            // 이 NC가 조용히 초록불이 됐다. 자를 무르게 만든 것은 내 지형 변경이므로 **전제를 복원해**
+            // 건다 — 이 NC가 묻는 것은 「해안이 가파르냐」가 아니라 「자가 폭을 재느냐」다.
+            float oldSea;
+            WorldTerrain.BeachDisabled = true;
+            try { oldSea = ShoreBandWorst(0f, 0f, false, true, out _); }
+            finally { WorldTerrain.BeachDisabled = false; }
             float oldRiver = RiverBandWorst(true, out _);
             if (oldSea >= ShoreBandMin)
                 throw new InvalidOperationException("반대쪽 한계 실패 — 옛 높이 규칙(" + oldSea.ToString("0.0") +

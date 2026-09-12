@@ -596,6 +596,19 @@ namespace Ulon.Shared
             return Mathf.PerlinNoise(wx * 0.012f + 29.3f, wz * 0.012f + 64.1f);
         }
 
+        /// <summary>
+        /// **「걸어온 거리」 규칙이 경사를 믿는 하한**(tan). 이름을 붙인 것은 **판별을 위해서**였다:
+        /// 백사장 경사(0.056)가 이 하한(0.05)에 거의 붙어 있어 나누기가 잡음을 증폭할 것 같았다.
+        /// **셈이 기각했다**(`RunShoreStepBank`, 2026-09-11) — 0.05·0.14·0.30 세 판을 실제로 굽었는데
+        /// ⓒ·ⓓ가 **소수점까지 같았다**. `byWalk`는 평평한 물가에서 `Mathf.Max(byHeight, byWalk)`의
+        /// 높이 항에 먹혀 화면에 아무 말도 하지 않는다. 그래서 값은 **원장 그대로 둔다** —
+        /// 화면이 안 변하는 변경을 「고쳤다」고 기록하지 않기 위해서다.
+        /// </summary>
+        public const float BankTanFloor = 0.05f;
+        /// <summary>판별 전용 — 0 이상이면 그 값이 하한이 된다(NC·축 재기).</summary>
+        public static float BankTanFloorOverride = -1f;
+        public static float BankTanFloorNow => BankTanFloorOverride > 0f ? BankTanFloorOverride : BankTanFloor;
+
         /// <summary>물가 둑의 경사(tan) — 산 형태를 읽는 `MacroSlopeTan`과 달리 **둑 하나**를 읽는 2m 자.</summary>
         public static float BankSlopeTan(float wx, float wz)
         {
@@ -661,7 +674,12 @@ namespace Ulon.Shared
             float beach = ShoreBeachAt(wx, wz);
             float byHeight = ShoreSandHeightAt(wx, wz);
             // 경사가 0에 가까우면 「걸어온 거리」가 무한이 된다 — 그 자리는 높이 규칙이 답한다.
-            float tan = Mathf.Max(BankSlopeTan(wx, wz), 0.05f);
+            // **하한은 백사장의 경사(3.2° = tan 0.056)보다 높아야 한다**(2026-09-11 톱니 판별).
+            // 하한이 그보다 낮으면 물가에서 `walked`가 **경사 잡음을 그대로 증폭**한다: 0.056이
+            // 0.04~0.08로 흔들리면 걸어온 거리가 2배로 출렁이고, 그 출렁임이 도포 칸(0.586m)마다
+            // 따로 찍혀 **물가가 톱니로 구워진다**. 하한을 올리면 그 자리는 높이 규칙(`byHeight`)이
+            // 답한다 — 규칙을 없애는 것이 아니라 **못 재는 구간을 제 자에게 넘기는 것**이다.
+            float tan = Mathf.Max(BankSlopeTan(wx, wz), BankTanFloorNow);
             float walked = (h - WorldTerrain.SeaLevel) / tan;
             float flat = Mathf.Lerp(ShoreHorizMin, ShoreHorizMax, beach);
             float fade = Mathf.Lerp(ShoreHorizFadeMin, ShoreHorizFadeMax, beach);

@@ -804,6 +804,7 @@ namespace Ulon.Editor
                 // 다 놓치고 바다 만과 부두만 담았다(검수 2026-09-10). `QaShots.Vista.cs` 참조.
                 LakeRiverShot("15_lake_river"),
                 RiverBendShot("64_river_bend"),
+                SeaCloseShot("65_sea_close"),
                 // 효과를 **야외 대낮**에서도 한 장(실내만 보면 어두운 배경 덕을 본다), 그리고
                 // 풍차(은행) 뒤에 선 자리 — 건물을 페이드 대상에 올린 뒤 화면이 어떻게 보이는지(검수 요구).
                 Vfx(Stand(PlayCamOutdoor("25_action_vfx_village", 0f, 0f))),
