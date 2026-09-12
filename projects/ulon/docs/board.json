@@ -1,4 +1,90 @@
 {
-  "updated_at": "",
-  "cards": []
+  "updated_at": "2026-09-12",
+  "cards": [],
+  "plan_snapshot": {
+    "source": "DEVELOPMENT_PLAN.md",
+    "source_date": "2026-09-11",
+    "mvp_status": "완료 미확인",
+    "mvp_note": "외부 서버 2인 접속부터 재접속·사냥·성장·채집·제작·거래·은행까지 이어지는 전체 실행 증거가 아직 확인되지 않았다.",
+    "stages": [
+      {
+        "name": "부트스트랩·Vertical Slice",
+        "state": "부분 검증",
+        "icon": "🧱",
+        "summary": "C# 소스 303개 컴파일 통과. 씬·게임 플레이는 미검증."
+      },
+      {
+        "name": "온라인·저장",
+        "state": "부분 검증",
+        "icon": "💾",
+        "summary": "DB 정상 저장 및 실패 롤백 검증. 게임 재접속·외부 2인 검증이 남음."
+      },
+      {
+        "name": "채집·제작·경제",
+        "state": "부분 검증",
+        "icon": "⛏️",
+        "summary": "구현은 존재. 다중 플레이어 거래·로그 귀속·중단 복구 검증이 남음."
+      },
+      {
+        "name": "콘텐츠·UX",
+        "state": "부분 검증",
+        "icon": "🎮",
+        "summary": "퀵바·SFX·VFX 구현은 확인. 실제 UI 조작·청취·재생은 미검증."
+      },
+      {
+        "name": "안정화·운영",
+        "state": "미완료",
+        "icon": "🧯",
+        "summary": "준비 상태 허위 성공은 수정. DB 백업·복구 E2E, 관심 영역·부하 시험이 남음."
+      },
+      {
+        "name": "Closed Alpha",
+        "state": "미완료",
+        "icon": "🚪",
+        "summary": "운영 PostgreSQL 연결 거부가 확인됨. 외부 배포·20~50명 부하·장시간 검증은 미확인."
+      }
+    ],
+    "priorities": [
+      {
+        "priority": "P0",
+        "title": "JSON 폴백과 DB 복구 후 최신 저장 선택 검증",
+        "evidence": "DB 중단 중 저장 → 복구 → 재접속 후 최신 인벤토리·스탯 유지 확인"
+      },
+      {
+        "priority": "P0",
+        "title": "운영 PostgreSQL 및 저장 서비스 기동·준비 확인",
+        "evidence": "실제 /ready 200, DB 조회, 서비스 재시작 후 동일 데이터 확인"
+      },
+      {
+        "priority": "P1",
+        "title": "두 플레이어 핵심 순환 같은 버전에서 재검증",
+        "evidence": "서버/a/b 로그, 거래 양쪽 결과, 은행·제작·재접속 확인"
+      },
+      {
+        "priority": "P1",
+        "title": "외부 전용 서버 검증",
+        "evidence": "외부 서버 빌드와 별도 머신 2인 연결 결과"
+      },
+      {
+        "priority": "P2",
+        "title": "DB·집·마구간 포함 백업/복원과 중복 거래 방지",
+        "evidence": "고장 주입, 복원 전후 데이터 비교"
+      },
+      {
+        "priority": "P2",
+        "title": "준비 상태 소비자와 오래된 상태 파일 처리 점검",
+        "evidence": "장애 뒤 과거 성공 상태를 현재 성공으로 오인하지 않음"
+      },
+      {
+        "priority": "P3",
+        "title": "관심 영역·LOD·20~50명 부하·메모리 기준선",
+        "evidence": "실제 CPU/RAM/FPS/지연 측정"
+      },
+      {
+        "priority": "P4",
+        "title": "퀵바·Paperdoll·컨테이너 UX·SFX/VFX 사용성",
+        "evidence": "플레이 화면과 입력/결과 검증"
+      }
+    ]
+  }
 }
