@@ -78,6 +78,8 @@ namespace Ulon.Editor
             var spots = VisualSliceBuilder.HuntSpots;
             for (int i = 0; i < spots.Length; i++)
                 names.Add(spots[i].Name);
+            for (int i = 0; i < ExtraMobRoster.Spots.Length; i++)
+                names.Add(ExtraMobRoster.Spots[i].Name);
             names.Add(Dungeon1.MobObject); names.Add(Dungeon1.BossObject);
             names.Add(Dungeon2.MobObject); names.Add(Dungeon2.BossObject);
             names.Add(Dungeon3.MobObject); names.Add(Dungeon3.BossObject);

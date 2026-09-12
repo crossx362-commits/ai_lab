@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Ulon.Shared;
 using UnityEngine;
 
 namespace Ulon.Editor
@@ -200,6 +201,8 @@ namespace Ulon.Editor
             var spots = VisualSliceBuilder.HuntSpots;
             for (int i = 0; i < spots.Length; i++)
                 names.Add(spots[i].Name);
+            for (int i = 0; i < ExtraMobRoster.Spots.Length; i++)
+                names.Add(ExtraMobRoster.Spots[i].Name);
             names.Add(Ulon.Shared.Dungeon1.MobObject);
             names.Add(Ulon.Shared.Dungeon2.MobObject);
             names.Add(Ulon.Shared.Dungeon3.MobObject);

@@ -30,6 +30,8 @@ namespace Ulon.Editor
             NetworkSliceSetup.WireMob("Acolyte");
             NetworkSliceSetup.WireMob("Minion");
             NetworkSliceSetup.WireMob("SkelRogue");
+            for (int i = 0; i < ExtraMobRoster.Spots.Length; i++)
+                NetworkSliceSetup.WireMob(ExtraMobRoster.Spots[i].Name);
             NetworkSliceSetup.WireMob(Dungeon1.MobObject);
             NetworkSliceSetup.WireMob(Dungeon1.BossObject);
             NetworkSliceSetup.WireMob(Dungeon2.MobObject);

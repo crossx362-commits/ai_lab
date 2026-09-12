@@ -100,7 +100,7 @@ namespace Ulon.Editor
                 MobData.Reload();
             }
 
-            if (ItemData.Count < 27 || MobData.Count != 14 || ItemData.LoadError != "" || MobData.LoadError != "")
+            if (ItemData.Count < 27 || MobData.Count != 20 || ItemData.LoadError != "" || MobData.LoadError != "")
                 throw new InvalidOperationException("원장 복구 실패 — 아이템 " + ItemData.Count + "종/몹 " + MobData.Count + "종.");
 
             Debug.Log("[Ulon] 원장 레코드 검증 통과 — 불량 아이템 3건·몹 2건 폐기 후 코드 폴백(철검 8·강철폭군 210) 유지, 사유 로그 적재");

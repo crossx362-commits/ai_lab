@@ -52,6 +52,8 @@ namespace Ulon.Editor
             Gate(AssertDungeonLighting);
             Gate(AssertWorldTerrain);
             Gate(AssertHuntGround);
+            Gate(AssertExtraMobCatalogNegativeControl);
+            Gate(AssertExtraMobCatalog);
             Gate(AssertFishingSpotMissingNegativeControl);
             Gate(AssertNoRolelessWatermillNegativeControl);
             Gate(AssertNoRolelessWatermill);

@@ -459,6 +459,8 @@ namespace Ulon.Editor
             // 세우기(`EnsureHuntMobs`)와 자리 잡기(`EnsureHuntMobPlacement`)가 같은 원장을 본다.
             EnsureHuntMobs();
             EnsureHuntMobPlacement();
+            EnsureExtraMobs();
+            EnsureExtraMobPlacement();
             EnsureFieldBoss();
             MoveNamed("Banker", new Vector3(-10.5f, 0f, 8.5f), Vector3.zero);
             var forgeGo = EnsureLandmarkObject("Forge", "Assets/_ThirdParty/Kenney/FantasyTown/RAW/Models/stall.fbx", null,

@@ -36,6 +36,8 @@ namespace Ulon.Editor
             };
             for (int i = 0; i < VisualSliceBuilder.HuntSpots.Length; i++)
                 roster.Add((VisualSliceBuilder.HuntSpots[i].Name, "사냥터 몹"));
+            for (int i = 0; i < ExtraMobRoster.Spots.Length; i++)
+                roster.Add((ExtraMobRoster.Spots[i].Name, "추가 잡몹"));
             var fac = RoleLook.Facilities;
             for (int i = 0; i < fac.Length; i++)
                 roster.Add((fac[i].Object, "마을 " + fac[i].Role));

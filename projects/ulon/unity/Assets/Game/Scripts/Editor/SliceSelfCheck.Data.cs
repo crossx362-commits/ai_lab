@@ -84,8 +84,8 @@ namespace Ulon.Editor
             MobData.Reload();
             if (string.IsNullOrEmpty(MobData.LoadedFrom))
                 throw new InvalidOperationException("몬스터 수치 원장을 못 읽었습니다: " + MobData.FullPath + " (" + MobData.LoadError + ")");
-            if (MobData.Count != 14)
-                throw new InvalidOperationException("몬스터 수치 원장은 14종이어야 합니다: " + MobData.Count);
+            if (MobData.Count != 20)
+                throw new InvalidOperationException("몬스터 수치 원장은 20종이어야 합니다: " + MobData.Count);
 
             // 파일 값이 옮기기 전 코드 값과 같은지(밸런스 무변경 이관)
             if (MobCatalog.MaxHpOf(MobCatalog.Skeleton) != 30f || MobCatalog.MaxHpOf(MobCatalog.IronTyrant) != 210f)

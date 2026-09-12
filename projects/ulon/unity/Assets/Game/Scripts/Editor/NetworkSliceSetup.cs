@@ -52,6 +52,8 @@ namespace Ulon.Editor
             WireMob("Acolyte");
             WireMob("Minion");
             WireMob("SkelRogue");
+            for (int i = 0; i < ExtraMobRoster.Spots.Length; i++)
+                WireMob(ExtraMobRoster.Spots[i].Name);
             WireMob(Dungeon1.MobObject);
             WireMob(Dungeon1.BossObject);
             WireMob(Dungeon2.MobObject);

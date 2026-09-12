@@ -115,6 +115,8 @@ namespace Ulon.Editor
             var names = new List<string>();
             for (int i = 0; i < HuntSpots.Length; i++)
                 names.Add(HuntSpots[i].Name);
+            for (int i = 0; i < ExtraMobRoster.Spots.Length; i++)
+                names.Add(ExtraMobRoster.Spots[i].Name);
             names.Add(Dungeon1.MobObject); names.Add(Dungeon2.MobObject); names.Add(Dungeon3.MobObject);
             names.Add("Companion");
             int removed = 0;
