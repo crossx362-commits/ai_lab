@@ -4,6 +4,9 @@ namespace Ulon.Shared
     {
         public const float SliceStep = 0.1f;
 
+        /// <summary>네거티브 컨트롤 — true면 주 스탯만 시도(옛 동작, 부가 안 오른다).</summary>
+        public static bool NcPrimaryOnly;
+
         public static bool TryRaise(SkillSet skills, SkillId id, float actionDifficulty, out float before, out float after, StatSet stats = null)
         {
             before = skills.Get(id);
@@ -20,7 +23,7 @@ namespace Ulon.Shared
                 return false;
             after = skills.Get(id);
             if (after > before && stats != null)
-                stats.TryRaise(StatSet.PrimaryOf(id));
+                stats.TryGainFromSkill(id);
             return after > before;
         }
     }

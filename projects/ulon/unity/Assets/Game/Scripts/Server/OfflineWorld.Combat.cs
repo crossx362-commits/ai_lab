@@ -90,7 +90,12 @@ namespace Ulon.Server
             attacker.BreakHide();
             attacker.CombatUntil = Time.time + TravelMark.CombatSeconds;
             if (attacker.IsAvatar)
-                attacker.RecalcFromStr(StatsOf(attacker).Str);
+            {
+                var gained = StatsOf(attacker);
+                attacker.RecalcFromStr(gained.Str);
+                attacker.RecalcFromDex(gained.Dex);
+                attacker.RecalcFromInt(gained.Int);
+            }
 
             nextAttackAt[id] = Time.time + AttackSpeed.Seconds(StatsOf(attacker), attacker.Stamina);
             if (!result.Hit)

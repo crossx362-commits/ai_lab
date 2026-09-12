@@ -302,6 +302,49 @@ namespace Ulon.Shared
             }
         }
 
+        /// <summary>
+        /// 기획 §18.2 Secondary. 짝은 uo.com Skills/Stats 표.
+        /// 기존 PrimaryOf 는 그대로 두고, 표의 나머지 능력치를 부로 쓴다.
+        /// </summary>
+        public static StatId SecondaryOf(SkillId skill)
+        {
+            switch (skill)
+            {
+                case SkillId.Swordsmanship:
+                case SkillId.Tactics:
+                case SkillId.Mining:
+                case SkillId.Lumberjacking:
+                case SkillId.Blacksmithing:
+                case SkillId.Carpentry:
+                case SkillId.Mace:
+                case SkillId.MagicResist:
+                case SkillId.Alchemy:
+                case SkillId.Inscription:
+                    return StatId.Dex;
+                case SkillId.Archery:
+                case SkillId.Parrying:
+                case SkillId.Fencing:
+                case SkillId.Fishing:
+                case SkillId.Anatomy:
+                case SkillId.Magery:
+                case SkillId.EvaluateIntelligence:
+                case SkillId.Meditation:
+                case SkillId.AnimalLore:
+                    return StatId.Str;
+                default:
+                    return StatId.Int;
+            }
+        }
+
+        public bool TryGainFromSkill(SkillId skill)
+        {
+            if (TryRaise(PrimaryOf(skill)))
+                return true;
+            if (SkillGain.NcPrimaryOnly)
+                return false;
+            return TryRaise(SecondaryOf(skill));
+        }
+
         public static int MaxHpOf(int strength) => 20 + strength;
 
         public static int MaxManaOf(int intelligence) => 10 + intelligence;

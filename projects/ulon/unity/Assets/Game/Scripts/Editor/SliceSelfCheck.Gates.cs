@@ -186,6 +186,8 @@ namespace Ulon.Editor
             Gate(AssertQuickbarHotkeys);
             Gate(AssertSkillLockAuthNegativeControl);
             Gate(AssertSkillLockAuth);
+            Gate(AssertStatSecondaryGainNegativeControl);
+            Gate(AssertStatSecondaryGain);
             Gate(AssertGmAuthNegativeControl);
             Gate(AssertGmAuth);
             Gate(AssertInterestNegativeControl);
