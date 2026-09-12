@@ -240,6 +240,8 @@ namespace Ulon.Editor
             Gate(AssertMarkRecall);
             Gate(AssertOpenPvpSlice);
             Gate(AssertSkillTitleSlice);
+            Gate(AssertSkillTitleRanksNegativeControl);
+            Gate(AssertSkillTitleRanks); // §3.2 숙련 칭호 구간 원장·검프
             Gate(AssertJobComboTitlesNegativeControl);
             Gate(AssertJobComboTitles); // §3.2 복합 직업명
             Gate(AssertReputationTitle);

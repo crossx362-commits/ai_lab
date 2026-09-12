@@ -80,15 +80,15 @@ namespace Ulon.Shared
 
         public static string RankOf(float value)
         {
-            if (value >= 99.999f) return "그랜드마스터";
-            if (value >= 90f) return "대가";
-            if (value >= 80f) return "달인";
-            if (value >= 70f) return "전문가";
-            if (value >= 60f) return "숙련";
-            if (value >= 50f) return "견습";
-            if (value >= 40f) return "수습";
-            if (value >= 30f) return "초심자";
-            return "";
+            return SkillTitleRanks.Of(value);
+        }
+
+        public static string GumpLine(SkillId id, float value)
+        {
+            string rank = RankOf(value);
+            string name = SkillNames.KoreanOf(id);
+            string num = value.ToString("0.0");
+            return rank.Length == 0 ? name + " " + num : rank + " " + name + " " + num;
         }
 
         public static SkillId Highest(SkillSet skills)

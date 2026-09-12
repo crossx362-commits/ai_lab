@@ -1,0 +1,11 @@
+{
+  "neophyte": 30,
+  "novice": 40,
+  "apprentice": 50,
+  "journeyman": 60,
+  "expert": 70,
+  "adept": 80,
+  "master": 90,
+  "grandmaster": 100,
+  "source": "GAME_DESIGN.md §3.2 Classic UO 단계감. 30 미만은 별도 숙련 칭호 없음, 30 초심자, 40 수습, 50 견습, 60 숙련, 70 전문가, 80 달인, 90 대가, 100 그랜드마스터. 대표 칭호는 최고 스킬 하나."
+}

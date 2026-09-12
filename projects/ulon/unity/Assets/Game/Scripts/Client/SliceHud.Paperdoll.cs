@@ -36,7 +36,13 @@ namespace Ulon.Client
         void PaperFigure(WorldBody me)
         {
             string name = me != null ? me.DisplayName : "";
-            GUILayout.Box(string.IsNullOrEmpty(name) ? "인형" : name, GUILayout.Width(88f), GUILayout.Height(40f));
+            string title = "";
+            if (me != null && OfflineWorld.Instance != null)
+                title = OfflineWorld.Instance.TitleOf(me);
+            string line = string.IsNullOrEmpty(name) ? "인형" : name;
+            if (!string.IsNullOrEmpty(title))
+                line = line + "\n" + title;
+            GUILayout.Box(line, GUILayout.Width(88f), GUILayout.Height(52f));
         }
 
         void PaperSlot(WorldBody me, NetAvatar net, string equipped, EquipSlot slot)

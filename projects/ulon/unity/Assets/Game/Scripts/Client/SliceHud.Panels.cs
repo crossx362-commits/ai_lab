@@ -124,7 +124,7 @@ namespace Ulon.Client
                 for (int c = 0; c < 2 && i + c < n; c++)
                 {
                     var id = (SkillId)(i + c);
-                    if (Btn(SkillNames.KoreanOf(id) + " " + sk.Get(id).ToString("0.0") + " " + LockMark(sk.GetLock(id))))
+                    if (Btn(SkillTitles.GumpLine(id, sk.Get(id)) + " " + LockMark(sk.GetLock(id))))
                         CycleSkillLock(net, id);
                 }
                 GUILayout.EndHorizontal();
