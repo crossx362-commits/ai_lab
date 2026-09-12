@@ -119,13 +119,16 @@ namespace Ulon.Client
             // **화면이 읽는 자리에 얹는다** — HUD·행동 판정이 보는 것은 `OfflineWorld.SkillsOf(body)`다.
             var mySkills = OfflineWorld.Instance != null ? OfflineWorld.Instance.SkillsOf(body) : null;
             if (mySkills != null && !string.IsNullOrEmpty(skillSig.Value))
+            {
                 mySkills.ApplyNetworkValues(ParseSkills(skillSig.Value));
+                mySkills.ApplyNetworkLocks(ParseSkillLocks(skillSig.Value));
+            }
         }
 
         float nextSigAt;
 
-        /// <summary>스킬 원장을 한 줄로 — `SkillId` 순서대로 값만 `|`로 잇는다(전량, 대표만이 아니다).</summary>
-        internal static string SkillSignature(SkillSet skills)
+        /// <summary>스킬 원장을 한 줄로 — `값:잠금`을 `|`로 잇는다(전량). 옛 `값`만 있는 줄도 읽는다.</summary>
+        public static string SkillSignature(SkillSet skills)
         {
             if (skills == null)
                 return "";
@@ -133,7 +136,10 @@ namespace Ulon.Client
             for (int i = 0; i < (int)SkillId.Count; i++)
             {
                 if (sb.Length > 0) sb.Append('|');
-                sb.Append(skills.Get((SkillId)i).ToString("0.###"));
+                var id = (SkillId)i;
+                sb.Append(skills.Get(id).ToString("0.###"));
+                sb.Append(':');
+                sb.Append((int)skills.GetLock(id));
             }
             return sb.ToString();
         }
@@ -143,8 +149,34 @@ namespace Ulon.Client
             var parts = sig.Split('|');
             var v = new float[parts.Length];
             for (int i = 0; i < parts.Length; i++)
-                float.TryParse(parts[i], out v[i]);
+            {
+                string num = SkillSigNumber(parts[i]);
+                float.TryParse(num, out v[i]);
+            }
             return v;
+        }
+
+        static SkillLock[] ParseSkillLocks(string sig)
+        {
+            var parts = sig.Split('|');
+            var v = new SkillLock[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+            {
+                int colon = parts[i].IndexOf(':');
+                int lockVal = 0;
+                if (colon >= 0)
+                    int.TryParse(parts[i].Substring(colon + 1), out lockVal);
+                if (lockVal < 0 || lockVal > 2)
+                    lockVal = 0;
+                v[i] = (SkillLock)lockVal;
+            }
+            return v;
+        }
+
+        static string SkillSigNumber(string part)
+        {
+            int colon = part.IndexOf(':');
+            return colon >= 0 ? part.Substring(0, colon) : part;
         }
 
         /// <summary>가방을 한 줄로 — `템플릿:개수:남은횟수` 를 `|`로 잇는다(빈 가방은 빈 문자열).</summary>

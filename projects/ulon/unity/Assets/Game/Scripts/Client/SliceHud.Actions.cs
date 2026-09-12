@@ -73,6 +73,22 @@ namespace Ulon.Client
                 OfflineWorld.Instance.TryRecall(Me(net));
         }
 
+        static void CycleSkillLock(NetAvatar net, SkillId id)
+        {
+            if (net != null && net.IsClientInitialized)
+                net.RpcCycleSkillLock((int)id);
+            else if (OfflineWorld.Instance != null)
+                OfflineWorld.Instance.TryCycleSkillLock(Me(net), id);
+        }
+
+        static void CycleStatLock(NetAvatar net, StatId id)
+        {
+            if (net != null && net.IsClientInitialized)
+                net.RpcCycleStatLock((int)id);
+            else if (OfflineWorld.Instance != null)
+                OfflineWorld.Instance.TryCycleStatLock(Me(net), id);
+        }
+
         static void Meditate(NetAvatar net)
         {
             if (net != null && net.IsClientInitialized)

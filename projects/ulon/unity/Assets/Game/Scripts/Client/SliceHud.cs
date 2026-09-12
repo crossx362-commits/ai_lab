@@ -101,8 +101,26 @@ namespace Ulon.Client
         /// <summary>이 프레임에 실제로 그린 UI 영역 — 게이트가 겹침·중앙 침범을 재는 데 쓴다.</summary>
         public static readonly System.Collections.Generic.List<Rect> DrawnAreas = new System.Collections.Generic.List<Rect>();
 
+        static Font uiFont;
+        static bool uiFontTried;
+
+        static void EnsureUiFont()
+        {
+            if (uiFontTried)
+            {
+                if (uiFont != null)
+                    GUI.skin.font = uiFont;
+                return;
+            }
+            uiFontTried = true;
+            uiFont = Resources.Load<Font>("Fonts/NotoSansKR-Regular");
+            if (uiFont != null)
+                GUI.skin.font = uiFont;
+        }
+
         void OnGUI()
         {
+            EnsureUiFont();
             OfflineWorld world = OfflineWorld.Instance;
             if (world == null)
                 return;
@@ -339,6 +357,28 @@ namespace Ulon.Client
             return QuickbarSlots.Label(index, slots[index].Name);
         }
 
+        /// <summary>MCP·게이트가 같은 경로로 스킬 잠금을 돌린다.</summary>
+        public string FireCycleSkillLock(SkillId id)
+        {
+            var world = OfflineWorld.Instance;
+            if (world == null || world.Player == null)
+                return "no_player";
+            var net = world.Player.GetComponent<NetAvatar>();
+            CycleSkillLock(net, id);
+            return SkillNames.KoreanOf(id) + " " + SkillLockMarks.Glyph(world.SkillsOf(world.Player).GetLock(id));
+        }
+
+        /// <summary>MCP·게이트가 같은 경로로 STR/DEX/INT 잠금을 돌린다.</summary>
+        public string FireCycleStatLock(StatId id)
+        {
+            var world = OfflineWorld.Instance;
+            if (world == null || world.Player == null)
+                return "no_player";
+            var net = world.Player.GetComponent<NetAvatar>();
+            CycleStatLock(net, id);
+            return id.ToString().ToUpperInvariant() + " " + SkillLockMarks.Glyph(world.StatsOf(world.Player).GetLock(id));
+        }
+
         static void FireQuickbar(QuickbarSlot slot, NetAvatar net)
         {
             switch (slot.Kind)
@@ -400,7 +440,7 @@ namespace Ulon.Client
                 {
                     case Panel.Bag: PanelBag(world, me, net); break;
                     case Panel.Action: PanelAction(world, me, net); break;
-                    case Panel.Skills: PanelSkills(world); break;
+                    case Panel.Skills: PanelSkills(world, me, net); break;
                     case Panel.Social: PanelSocial(world, me, net); break;
                     case Panel.Nearby: PanelNearby(world, me, net); break;
                     case Panel.Gm: PanelGm(world, me, net); break;

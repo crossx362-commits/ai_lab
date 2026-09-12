@@ -99,11 +99,13 @@ namespace Ulon.Client
             GUILayout.EndHorizontal();
         }
 
-        void PanelSkills(OfflineWorld world)
+        void PanelSkills(OfflineWorld world, WorldBody me, NetAvatar net)
         {
-            var sk = world.PlayerSkills;
-            var st = world.PlayerStats;
+            var sk = me != null ? world.SkillsOf(me) : world.PlayerSkills;
+            var st = me != null ? world.StatsOf(me) : world.PlayerStats;
             GUILayout.Label("스킬 — 이름을 누르면 잠금(↑ 오름 · = 고정 · ↓ 내림)");
+            GUILayout.Label("합계 " + sk.Total.ToString("0.0") + " / " + SkillSet.TotalCap.ToString("0"));
+            GUILayout.Label("능력 " + st.Total + " / " + StatSet.TotalCap);
             GUILayout.BeginHorizontal();
             for (int i = 0; i < 3; i++)
             {
@@ -111,7 +113,7 @@ namespace Ulon.Client
                 string name = id == StatId.Str ? "STR" : id == StatId.Dex ? "DEX" : "INT";
                 int val = id == StatId.Str ? st.Str : id == StatId.Dex ? st.Dex : st.Int;
                 if (Btn(name + " " + val + " " + LockMark(st.GetLock(id))))
-                    st.CycleLock(id);
+                    CycleStatLock(net, id);
             }
             GUILayout.EndHorizontal();
             skillScroll = GUILayout.BeginScrollView(skillScroll);
@@ -123,14 +125,14 @@ namespace Ulon.Client
                 {
                     var id = (SkillId)(i + c);
                     if (Btn(SkillNames.KoreanOf(id) + " " + sk.Get(id).ToString("0.0") + " " + LockMark(sk.GetLock(id))))
-                        sk.CycleLock(id);
+                        CycleSkillLock(net, id);
                 }
                 GUILayout.EndHorizontal();
             }
             GUILayout.EndScrollView();
         }
 
-        static string LockMark(SkillLock state) => state == SkillLock.Up ? "↑" : state == SkillLock.Down ? "↓" : "=";
+        static string LockMark(SkillLock state) => SkillLockMarks.Glyph(state);
 
         void PanelSocial(OfflineWorld world, WorldBody me, NetAvatar net)
         {

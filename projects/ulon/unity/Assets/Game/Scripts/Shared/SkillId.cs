@@ -214,6 +214,8 @@ namespace Ulon.Shared
 
         public void SetLock(StatId id, SkillLock state)
         {
+            if (WriteAuthority.Refuse("능력치 잠금 " + id))
+                return;
             if (id == StatId.Str) strLock = state;
             else if (id == StatId.Dex) dexLock = state;
             else intLock = state;

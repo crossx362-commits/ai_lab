@@ -28,11 +28,23 @@ namespace Ulon.Shared
         }
         public SkillLock GetLock(SkillId id) => locks[(int)id];
 
-        public void SetLock(SkillId id, SkillLock state) => locks[(int)id] = state;
-
-        public void CycleLock(SkillId id)
+        public void SetLock(SkillId id, SkillLock state)
         {
-            locks[(int)id] = SkillLockMarks.Next(locks[(int)id]);
+            if (WriteAuthority.Refuse("스킬 잠금 " + id))
+                return;
+            locks[(int)id] = state;
+        }
+
+        public void CycleLock(SkillId id) => SetLock(id, SkillLockMarks.Next(GetLock(id)));
+
+        /// <summary>서버가 알려 준 잠금 원장을 그대로 얹는다 — 문을 지나지 않는 자리(축 ④와 같음).</summary>
+        public void ApplyNetworkLocks(SkillLock[] incoming)
+        {
+            if (incoming == null)
+                return;
+            int n = Math.Min(incoming.Length, locks.Length);
+            for (int i = 0; i < n; i++)
+                locks[i] = incoming[i];
         }
 
         public float Total
