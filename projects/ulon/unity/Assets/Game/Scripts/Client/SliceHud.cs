@@ -231,14 +231,16 @@ namespace Ulon.Client
                 string title = world.TitleOf(me);
                 GUILayout.Label(me.DisplayName + " " + guildTag +
                                 (string.IsNullOrEmpty(repTitle) ? "" : "  " + repTitle) +
-                                (string.IsNullOrEmpty(title) ? "" : "  " + title));
+                                (string.IsNullOrEmpty(title) ? "" : "  " + title) +
+                                (me.IsCasting(Time.time) ? "  시전 중" : ""));
                 Bar("HP", me.Hp, me.MaxHp);
                 Bar("MP", me.Mana, me.MaxMana);
                 float w = bag != null ? bag.TotalWeight() : 0f;
                 int cap = ItemCatalog.CarryCap(st.Str);
                 GUILayout.Label("STR " + st.Str + "  DEX " + st.Dex + "  INT " + st.Int +
                                 "  G " + me.Gold + "  무게 " + w.ToString("0") + "/" + cap +
-                                (bag != null && bag.Overweight(st.Str) ? " 과적·달림불가" : ""));
+                                (bag != null && bag.Overweight(st.Str) ? " 과적·달림불가" : "") +
+                                (me.IsCasting(Time.time) ? " 시전 중" : ""));
                 GUILayout.Label(ToolLine(bag) + "  동료 " + world.CountFollowers(me.CharacterId) + "/" + TameResolve.FollowerCap);
                 GUILayout.Label(StateLine(world, me));
                 string recovery = RecoveryLine(me);
@@ -262,6 +264,7 @@ namespace Ulon.Client
             string s = NotorietyId.Korean(me.Notoriety) + "  명성 " + me.Fame + "  " +
                        (GuardZone.Contains(me.transform.position.x, me.transform.position.z) ? "마을" : "야외");
             if (me.Ghost) s += "  유령";
+            if (me.IsCasting(Time.time)) s += "  시전 중";
             if (me.IsHidden(Time.time)) s += me.CanMoveHidden(Time.time) ? "  잠행" : "  은신";
             if (me.IsCampSafe(Time.time)) s += "  야영";
             return s;

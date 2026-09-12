@@ -45,6 +45,9 @@ namespace Ulon.Client
         /// <summary>서버 모터가 목적지를 받는다. RPC를 다시 보내지 않는다.</summary>
         public void ApplyServerDestination(Vector3 world)
         {
+            var ow = OfflineWorld.Instance;
+            var body = GetComponent<WorldBody>();
+            ow?.TryInterruptCastByMove(body);
             destination = world;
             destination.y = transform.position.y;
             hasDestination = true;
@@ -111,6 +114,9 @@ namespace Ulon.Client
             Vector3 wasd = ReadWasd();
             if (wasd.sqrMagnitude > 0.01f)
             {
+                var ow = OfflineWorld.Instance;
+                var body = GetComponent<WorldBody>();
+                ow?.TryInterruptCastByMove(body);
                 hasDestination = false;
                 planar = wasd * speed;
             }

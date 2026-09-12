@@ -203,6 +203,8 @@ namespace Ulon.Editor
             Gate(AssertOverweight);
             Gate(AssertMeditationArmorPenalty);
             Gate(AssertCastInterrupt);
+            Gate(AssertCastMoveInterruptNegativeControl);
+            Gate(AssertCastMoveInterrupt);
             Gate(AssertCleanse);
             Gate(AssertWard);
             Gate(AssertBind);

@@ -276,6 +276,21 @@ namespace Ulon.Server
             return new AttackResult { Applied = true, Hit = true, Damage = -heal, SkillBefore = mb, SkillAfter = ma };
         }
 
+        /// <summary>시전 중 이동. interruptible 주문만 끊는다(§18.6 + 원작).</summary>
+        public bool TryInterruptCastByMove(WorldBody body)
+        {
+            if (body == null)
+                return false;
+            if (!body.IsCasting(Time.time))
+                return false;
+            if (!SpellCast.Interruptible(body.PendingSpell))
+                return false;
+            if (!CastMove.BreaksOnMove)
+                return false;
+            body.ClearCast();
+            return true;
+        }
+
         public void TickCast(float now)
         {
             var list = Object.FindObjectsByType<WorldBody>(FindObjectsSortMode.None);

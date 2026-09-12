@@ -36,6 +36,8 @@ namespace Ulon.Client
                 motor.ApplyServerStop();
                 return;
             }
+            if (world != null && body != null)
+                world.TryInterruptCastByMove(body);
             if (!MoveAuthority.Accept(dest))
                 return;
             motor.ApplyServerDestination(dest);
