@@ -78,6 +78,17 @@ class ReportCollectTests(unittest.TestCase):
         self.assertNotIn("loop14_context_pet-1.png", all_names)
         self.assertNotIn("loop9_lantern_flame.png", names9)
 
+    def test_persist_alpha_ready_never_trusts_file_over_live(self):
+        got = board.persist_alpha_ready()
+        self.assertIn("ok", got)
+        self.assertIn("stale_file", got)
+        self.assertIn("live", got)
+        self.assertIsInstance(got["ok"], bool)
+        if got.get("stale_file"):
+            self.assertFalse(got["ok"])
+            self.assertTrue((got.get("file") or {}).get("ok_claim"))
+            self.assertFalse((got.get("live") or {}).get("ok"))
+
     def test_nc_empty_status_does_not_dump_captures(self):
         r = board.collect_reports("# no table\n", [], self.tmp)
         self.assertEqual(r["groups"], [])

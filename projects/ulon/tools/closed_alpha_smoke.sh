@@ -13,6 +13,7 @@ touch "$ROOT/data/frozen.txt"
 READY="$(curl --max-time 5 -sf http://127.0.0.1:8777/ready || true)"
 if ! python3 -c 'import json,sys; body=json.loads(sys.argv[1]); sys.exit(0 if isinstance(body,dict) and body.get("ok") is True else 1)' "$READY" 2>/dev/null; then
   echo "[ulon] persist /ready 실패" >&2
+  rm -f "$OUT"
   exit 2
 fi
 
@@ -36,17 +37,19 @@ HAS_CLIENT=0
 
 python3 - "$OUT" "$READY" "$BAK" "$LAN" "$GAME" "$HAS_CLIENT" <<'PY'
 import json, sys
+from datetime import datetime, timezone
 out, ready, bak, lan, game, client = sys.argv[1:7]
 body = json.loads(ready)
 status = {
     "ok": True,
+    "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "persist": body,
     "backup": bak,
     "lan": lan,
     "gameUdp7770": game == "1",
     "clientBinary": client == "1",
     "connect": f"{lan}:7770",
-    "note": "외부 배포 없음. 호스트는 에디터 호스트 또는 -ulon-server. 클라는 -ulon-client -ulon-host <lan> -ulon-account <id>",
+    "note": "이 파일은 마지막 스모크 기록이다. 현재 준비는 persist /ready 실측만. 외부 배포 없음. 호스트는 에디터 호스트 또는 -ulon-server. 클라는 -ulon-client -ulon-host <lan> -ulon-account <id>",
 }
 open(out, "w", encoding="utf-8").write(json.dumps(status, ensure_ascii=False, indent=2) + "\n")
 print(json.dumps(status, ensure_ascii=False, indent=2))

@@ -457,6 +457,10 @@ function render() {
   if (w.license_unknown) alerts.push(`<span class="warn">라이선스 미확인 ${w.license_unknown}건</span>`);
   if ((w.no_commit_streak||0) >= 3) alerts.push(`<span class="warn">커밋 없는 바퀴 3연속</span>`);
   if (consec.n) alerts.push(`<span class="warn">연속 실패 ${consec.n}/${consec.max}</span>`);
+  const ar = STATE.alpha_ready || {};
+  if (ar.stale_file) alerts.push(`<span class="warn">alpha_status.json 은 옛 성공 · persist /ready 실측 실패</span>`);
+  else if (ar.ok) alerts.push(`<span class="okt">persist 준비 live /ready</span>`);
+  else if (ar.reason) alerts.push(`<span class="warn">persist 준비 아님 · ${esc(ar.reason)}</span>`);
   document.getElementById("alerts").innerHTML = alerts.join(" · ") || `<span class="muted">경고 없음</span>`;
 
   renderActive();

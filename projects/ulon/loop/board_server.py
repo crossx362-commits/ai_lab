@@ -808,6 +808,25 @@ def pid_alive(pid) -> bool:
         return False
 
 
+def persist_alpha_ready() -> dict:
+    """파일 ok:true 가 현재 준비가 아니다. /ready 실측만."""
+    tools = ROOT / "tools"
+    if str(tools) not in sys.path:
+        sys.path.insert(0, str(tools))
+    try:
+        import alpha_ready
+
+        return alpha_ready.judge(ROOT / "data" / "alpha_status.json")
+    except Exception as e:
+        return {
+            "ok": False,
+            "stale_file": False,
+            "file": {"present": False, "ok_claim": False, "body": {}},
+            "live": {"ok": False, "http": 0, "body": {}, "error": str(e)},
+            "reason": "판정 실패: " + str(e),
+        }
+
+
 def build_state() -> dict:
     state = read_json(STATE, {})
     if state.get("status") == "running" and not pid_alive(state.get("pid")):
@@ -842,6 +861,7 @@ def build_state() -> dict:
             "license_unknown": license_unknown_count(assets),
             "no_commit_streak": no_commit_streak(history, commits),
         },
+        "alpha_ready": persist_alpha_ready(),
         "max_consec_fail": viz["consec"]["max"],
         "viz": viz,
     }
