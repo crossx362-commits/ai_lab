@@ -110,5 +110,94 @@ namespace Ulon.Editor
                 throw new InvalidOperationException("종류 폴더 NC 실패 — 되돌렸는데 빨간불이 남았습니다(계측이 세계를 바꿨습니다).");
             Debug.Log("[Ulon] 종류 폴더 양방향 NC 통과 — 루트로 올리면 FAIL · 되돌리면 통과");
         }
+
+        static void AssertSceneRootActorFacilityKinds()
+        {
+            string reason = SceneRootKindReason(true);
+            if (!string.IsNullOrEmpty(reason))
+                throw new InvalidOperationException(reason);
+        }
+
+        static string SceneRootKindReason(bool log)
+        {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            var roots = scene.GetRootGameObjects();
+            var loose = new List<string>();
+            int folders = 0;
+            int housed = 0;
+            for (int i = 0; i < roots.Length; i++)
+            {
+                var go = roots[i];
+                if (go == null)
+                    continue;
+                if (VisualSliceBuilder.IsKindFolder(go.name))
+                {
+                    if (go.transform.childCount > 0)
+                    {
+                        folders++;
+                        housed += go.transform.childCount;
+                    }
+                    continue;
+                }
+                if (!string.IsNullOrEmpty(VisualSliceBuilder.SceneRootKind(go.transform)))
+                    loose.Add(go.name);
+            }
+            if (folders == 0 && housed == 0 && loose.Count == 0)
+                return "씬 루트 배우·시설 종류 폴더를 하나도 못 찾았습니다 — 잰 것이 없습니다(0이면 실패).";
+            if (loose.Count > 0)
+            {
+                int n = Math.Min(loose.Count, 8);
+                return "씬 루트에 종류 폴더 밖 배우·시설 " + loose.Count + "개: " +
+                       string.Join(", ", loose.GetRange(0, n).ToArray());
+            }
+            if (log)
+                Debug.Log("[Ulon] 씬 루트 종류 폴더 — 폴더 " + folders + " · 묶인 배우·시설 " + housed);
+            return "";
+        }
+
+        static void AssertSceneRootActorFacilityKindsNegativeControl()
+        {
+            var folder = GameObject.Find(VisualSliceBuilder.KindFolderName("Facility"));
+            Transform leaf = null;
+            if (folder != null)
+            {
+                for (int i = 0; i < folder.transform.childCount; i++)
+                {
+                    var c = folder.transform.GetChild(i);
+                    if (!string.IsNullOrEmpty(VisualSliceBuilder.SceneRootKind(c)))
+                    {
+                        leaf = c;
+                        break;
+                    }
+                }
+            }
+            if (leaf == null)
+            {
+                var forge = GameObject.Find("Forge");
+                leaf = forge != null ? forge.transform : null;
+            }
+            if (leaf == null)
+                throw new InvalidOperationException("씬 루트 종류 폴더 NC — 시설을 못 찾았습니다(0이면 실패).");
+            var home = leaf.parent;
+            string before = SceneRootKindReason(true);
+            if (!string.IsNullOrEmpty(before))
+                throw new InvalidOperationException("씬 루트 종류 폴더 NC 실패 — 손대기 전부터 빨간불입니다: " + before);
+            bool red;
+            try
+            {
+                leaf.SetParent(null, true);
+                red = !string.IsNullOrEmpty(SceneRootKindReason(false));
+            }
+            finally
+            {
+                if (home != null)
+                    leaf.SetParent(home, true);
+            }
+            if (!red)
+                throw new InvalidOperationException("씬 루트 종류 폴더 NC 실패 — 시설을 씬 루트로 올렸는데 통과했습니다. 빈 통과입니다.");
+            if (!string.IsNullOrEmpty(SceneRootKindReason(false)))
+                throw new InvalidOperationException("씬 루트 종류 폴더 NC 실패 — 되돌렸는데 빨간불이 남았습니다(계측이 세계를 바꿨습니다).");
+            Debug.Log("[Ulon] 씬 루트 종류 폴더 양방향 NC 통과 — 루트로 올리면 FAIL · 되돌리면 통과");
+        }
     }
 }

@@ -131,14 +131,23 @@ namespace Ulon.Client
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             var roots = scene.GetRootGameObjects();
             for (int i = 0; i < roots.Length; i++)
+                WakeNamed(roots[i].transform, "Skeleton");
+        }
+
+        static void WakeNamed(Transform t, string name)
+        {
+            if (t == null)
+                return;
+            if (t.name == name)
             {
-                if (roots[i].name != "Skeleton")
-                    continue;
-                var nob = roots[i].GetComponent<FishNet.Object.NetworkObject>();
+                var nob = t.GetComponent<FishNet.Object.NetworkObject>();
                 if (nob != null)
                     nob.enabled = false;
-                roots[i].SetActive(true);
+                t.gameObject.SetActive(true);
+                return;
             }
+            for (int i = 0; i < t.childCount; i++)
+                WakeNamed(t.GetChild(i), name);
         }
 
         static void TintIfDefault(string name, Color color)

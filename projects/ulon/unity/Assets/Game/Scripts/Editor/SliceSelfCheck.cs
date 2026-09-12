@@ -52,6 +52,8 @@ namespace Ulon.Editor
             VisualSliceBuilder.EnsureCapBuried();        // 뚜껑을 지표 아래로 묻고 Terrain 홀을 메운다(반려 B)
             VisualSliceBuilder.EnsureVillagePlaza();       // 광장 바닥을 원장으로(칸·무늬·가로등, 검수 랩 ②)
             VisualSliceBuilder.EnsureSceneKindFolders();   // 구역 루트 아래를 종류 폴더로(INBOX 18:37)
+            Debug.Log("[Ulon] 건물 시야 페이드(자가 루트) — 레이어 올린 렌더러 " +
+                      VisualSliceBuilder.EnsureBuildingsFadeable() + "개");
             VisualSliceBuilder.EnsureWorldPropMaterials(); // 소품이 전부 놓인 뒤에 칠한다(반려 A)
             VisualSliceBuilder.EnsureOutdoorPropMaterials(); // 야외에 남은 던전 텍스처를 마을 톤으로
             VisualSliceBuilder.EnsureWorldAtmosphere();    // 대기는 원장 하나에서 — 씬에 옛 값이 남아 있으면 여기서 수렴한다
@@ -131,7 +133,20 @@ namespace Ulon.Editor
                 UnityEngine.Object.DestroyImmediate(serverRaiderGo);
             }
 
-            var rogue = Array.Find(scene.GetRootGameObjects(), go => go.name == "Rogue");
+            var rogue = GameObject.Find("Rogue");
+            if (rogue == null)
+            {
+                var bodies = UnityEngine.Object.FindObjectsByType<WorldBody>(
+                    FindObjectsInactive.Include, FindObjectsSortMode.None);
+                for (int ri = 0; ri < bodies.Length; ri++)
+                {
+                    if (bodies[ri] != null && bodies[ri].name == "Rogue")
+                    {
+                        rogue = bodies[ri].gameObject;
+                        break;
+                    }
+                }
+            }
             var rogueBody = rogue != null ? rogue.GetComponent<WorldBody>() : null;
             if (rogueBody == null || rogueBody.MobId != "rogue" || !rogueBody.IsEnemy)
                 throw new InvalidOperationException("네 번째 몬스터 자객이 사냥 구역에 있어야 합니다.");

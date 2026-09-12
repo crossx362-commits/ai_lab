@@ -121,6 +121,48 @@ namespace Ulon.Editor
         }
 
         /// <summary>
+        /// 종류 폴더는 원점에 선다. 페이드가 씬 루트 좌표만 보면 마을 밖 자식도 걷힌다.
+        /// 자가 루트 자리를 쓰는지 — 폴더 아래 마을 밖 큐브는 레이어가 안 바뀌고, 마을 안은 바뀐다.
+        /// </summary>
+        static void AssertBuildingsFadeSelfRootNegativeControl()
+        {
+            int want = LayerMask.NameToLayer(VisualSliceBuilder.DungeonBlockerLayer);
+            if (want < 0)
+                throw new InvalidOperationException("페이드 자가 루트 NC — 레이어가 없습니다(0이면 실패).");
+            var folder = VisualSliceBuilder.SceneKindFolder("FadeNc");
+            var far = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            far.name = "FadeSelfRootNcFar";
+            far.transform.SetParent(folder, true);
+            far.transform.position = new Vector3(120f, 1f, 120f);
+            var near = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            near.name = "FadeSelfRootNcNear";
+            near.transform.SetParent(folder, true);
+            near.transform.position = new Vector3(0f, 1f, 0f);
+            int farLayer = far.layer;
+            int nearLayer = near.layer;
+            try
+            {
+                VisualSliceBuilder.EnsureBuildingsFadeable();
+                if (far.layer == want)
+                    throw new InvalidOperationException(
+                        "페이드 자가 루트 NC 실패 — 종류 폴더 원점만 보고 마을 밖 큐브에 블로커 레이어를 올렸습니다.");
+                if (near.layer != want)
+                    throw new InvalidOperationException(
+                        "페이드 자가 루트 NC 실패 — 마을 안 자가 루트에 블로커 레이어가 안 올랐습니다(잔 것이 없습니다).");
+            }
+            finally
+            {
+                far.layer = farLayer;
+                near.layer = nearLayer;
+                UnityEngine.Object.DestroyImmediate(far);
+                UnityEngine.Object.DestroyImmediate(near);
+                if (folder != null && folder.childCount == 0)
+                    UnityEngine.Object.DestroyImmediate(folder.gameObject);
+            }
+            Debug.Log("[Ulon] 페이드 자가 루트 양방향 NC 통과 — 폴더 아래 마을 밖은 안 걷히고 마을 안은 걷힌다");
+        }
+
+        /// <summary>
         /// **근접 샷의 피사체는 자기 자신을 가림으로 세지 않는다**(검수 판정 2026-09-07 1).
         ///
         /// `33_campfire`에서 돌·장작이 반투명 유령으로 찍혔다. 페이드 **사본이 남은 것이 아니라**

@@ -115,10 +115,12 @@ namespace Ulon.Editor
             for (int i = 0; i < all.Length; i++)
             {
                 var go = all[i];
-                if (go == null || !go.scene.IsValid() || go.transform.parent != null)
-                    continue;                                   // 루트 단위로만 판단한다(자식은 함께 딸려간다)
-                // **이름 목록으로 하나씩 추가하면 두더지잡기가 된다** — 낚시터를 넣으니 화덕이 나왔다.
-                // 규칙으로 쓴다: 마을 안의 **정적 렌더러는 전부** 시야에 끼면 걷힌다.
+                if (go == null || !go.scene.IsValid())
+                    continue;
+                // **자가 루트**(배치 단위)만 본다. 씬 루트 가정은 Kind* 폴더가 원점(0,0)에 서면
+                // 마을 밖 자식까지 통째로 페이드한다 — 배우·시설을 종류로 묶으면 그 구멍으로 샌다.
+                if (!IsFadeSelfRoot(go.transform))
+                    continue;
                 var p = go.transform.position;
                 if (Mathf.Abs(p.x) > VillageFadeRadius || Mathf.Abs(p.z) > VillageFadeRadius)
                     continue;

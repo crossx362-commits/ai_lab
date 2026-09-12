@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Generic;
+using Ulon.Server;
 using Ulon.Shared;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Ulon.Editor
 {
     /// <summary>
     /// 씬 구역 루트(VillageDecor·Region_* 등) 아래 소품을 **종류 폴더**로 묶는다.
     /// 구역 루트 이름은 게이트가 찾으니 바꾸지 않는다. 폴더 이름은 `Kind` 접두사다.
+    /// 씬 루트 배우·시설도 같은 접두사 폴더로 묶되, 페이드는 폴더가 아니라 **자가 루트**를 본다.
     /// </summary>
     public static partial class VisualSliceBuilder
     {
@@ -69,6 +72,71 @@ namespace Ulon.Editor
             if (n.StartsWith("stair", StringComparison.Ordinal))
                 return "Stair";
             return "Misc";
+        }
+
+        /// <summary>구역·던전 방처럼 **담는 통**. 페이드·종류 묶음의 자가 루트가 아니다.</summary>
+        public static bool IsZoneContainer(string name)
+        {
+            if (string.IsNullOrEmpty(name) || IsKindFolder(name))
+                return false;
+            if (name == "VillageDecor" || name == "PlainScatter" || name == "HuntCover" ||
+                name == "EastField" || name == "SouthField" || name == "NorthField")
+                return true;
+            if (name == WorldRegions.MeadowObject || name == WorldRegions.ForestObject ||
+                name == WorldRegions.MineObject || name == WorldRegions.TestChamberObject)
+                return true;
+            return name == Dungeon1.InteriorObject || name == Dungeon2.InteriorObject ||
+                   name == Dungeon3.InteriorObject;
+        }
+
+        /// <summary>
+        /// 시야 페이드가 자리를 재는 **배치 단위**. 종류 폴더·구역 통은 원점에 서서 자식 좌표를 삼킨다.
+        /// 부모는 씬 루트이거나 그 통/폴더 한 겹이어야 한다(벽 조각은 집의 일부가 단위다).
+        /// </summary>
+        public static bool IsFadeSelfRoot(Transform t)
+        {
+            if (t == null)
+                return false;
+            if (IsKindFolder(t.name) || IsZoneContainer(t.name) || GroundFit.SkipContainer(t.name))
+                return false;
+            var p = t.parent;
+            if (p == null)
+                return true;
+            return IsKindFolder(p.name) || IsZoneContainer(p.name);
+        }
+
+        /// <summary>씬 루트에 흩어진 배우·시설만 종류로 묶는다. 구역 통·지형·카메라는 그대로 둔다.</summary>
+        public static string SceneRootKind(Transform t)
+        {
+            if (t == null)
+                return "";
+            string n = t.name;
+            if (IsKindFolder(n) || IsZoneContainer(n) || GroundFit.SkipContainer(n))
+                return "";
+            if (RoleLook.TryGet(n, out _) || IsBuildingObject(n))
+                return n == HousingPlot.HouseObject || n == "House" ? "House" : "Facility";
+            if (t.GetComponent<CharacterController>() != null || t.GetComponent<WorldBody>() != null)
+                return "Actor";
+            return "";
+        }
+
+        public static Transform SceneKindFolder(string kind)
+        {
+            if (string.IsNullOrEmpty(kind))
+                return null;
+            string folder = KindFolderName(kind);
+            var scene = SceneManager.GetActiveScene();
+            var roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                if (roots[i] != null && roots[i].name == folder)
+                    return roots[i].transform;
+            }
+            var go = new GameObject(folder);
+            go.transform.position = Vector3.zero;
+            go.transform.rotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            return go.transform;
         }
 
         public static Transform KindFolder(Transform parent, string kind)
@@ -139,8 +207,42 @@ namespace Ulon.Editor
                 if (go != null)
                     moved += OrganizeZone(go.transform);
             }
+            moved += EnsureSceneRootActorFacilityKinds();
             if (moved > 0)
                 Debug.Log("[Ulon] 씬 종류 폴더 — 옮긴 소품 " + moved + "개");
+            return moved;
+        }
+
+        /// <summary>씬 루트 배우·시설을 KindActor/KindFacility/KindHouse 아래로. 월드 좌표 유지.</summary>
+        public static int EnsureSceneRootActorFacilityKinds()
+        {
+            int moved = 0;
+            var scene = SceneManager.GetActiveScene();
+            var roots = scene.GetRootGameObjects();
+            var list = new List<GameObject>(roots.Length);
+            for (int i = 0; i < roots.Length; i++)
+                list.Add(roots[i]);
+            for (int i = 0; i < list.Count; i++)
+            {
+                var go = list[i];
+                if (go == null)
+                    continue;
+                string kind = SceneRootKind(go.transform);
+                if (string.IsNullOrEmpty(kind))
+                    continue;
+                var folder = SceneKindFolder(kind);
+                if (folder == null || go.transform == folder || go.transform.parent == folder)
+                    continue;
+                go.transform.SetParent(folder, true);
+                moved++;
+            }
+            var leftover = scene.GetRootGameObjects();
+            for (int i = 0; i < leftover.Length; i++)
+            {
+                var go = leftover[i];
+                if (go != null && IsKindFolder(go.name) && go.transform.childCount == 0)
+                    UnityEngine.Object.DestroyImmediate(go);
+            }
             return moved;
         }
 
