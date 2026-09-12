@@ -806,6 +806,57 @@ for id in $(grep -E "^\[task [0-9]+\]" /tmp/nc_preflight.log | head -1 | grep -o
 if grep -q "전제 미충족: nc_false" /tmp/nc_preflight.log && ! grep -q "^--- 시도 1" /tmp/nc_preflight.log; then
   echo "  PASS  preflight — 전제 실패면 AI를 부르지 않고 막는다"; PASS=$((PASS+1))
 else echo "  FAIL  preflight (로그: /tmp/nc_preflight.log)"; FAIL=$((FAIL+1)); fi
+
+# 자율 운전(autopilot) — 오너가 세울 때만 멈춘다. 세 가지를 시험한다:
+#  ① STOP이 켜져 있으면 **한 주기도 일하지 않는다**(빨간불부터)
+#  ② 남은 계획이 있으면 스스로 집어 끝까지 민다
+#  ③ 진전이 없는 계획은 무한 재시도하지 않고 그 계획만 보류한다
+mkcfg_b state/nc_autopilot.json "printf 'import bpy\ndef build():\n    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0,0,0.5))\n    bpy.context.active_object.name = \"Crate\"\n' > build.py"
+AP_ID=$(ORCH_CONFIG="$HERE/state/nc_autopilot.json" python3 - <<'PYAP'
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from orch_core import db
+conn = db.connect()
+pid = db.create_plan(conn, "[NC] autopilot", "nc", "blender_sandbox")
+db.create_task(conn, "AP 과제", "blender_sandbox", "nc", None, status="BACKLOG",
+               plan_id=pid, plan_key="T1", depends_on="", done_criteria="Blender 검증", risk="low")
+db.update_plan(conn, pid, status="READY", note="NC")
+print(pid)
+PYAP
+)
+# ① STOP 켜고 한 주기 — 아무 작업도 시작하면 안 된다
+./orch stop >/dev/null 2>&1
+ORCH_CONFIG="$HERE/state/nc_autopilot.json" ./orch autopilot --once --wait-for-provider 0 >/tmp/nc_autopilot_stop.log 2>&1
+AP_RC=$?
+./orch resume >/dev/null 2>&1
+if grep -q "STOP — 오너가 세웠다" /tmp/nc_autopilot_stop.log && [[ $AP_RC -eq 2 ]] && ! grep -q "계획 #.* 실행" /tmp/nc_autopilot_stop.log; then
+  echo "  PASS  autopilot_stop — STOP이면 한 주기도 일하지 않는다"; PASS=$((PASS+1))
+else echo "  FAIL  autopilot_stop (로그: /tmp/nc_autopilot_stop.log, rc=$AP_RC)"; FAIL=$((FAIL+1)); fi
+# ② 남은 계획을 스스로 집어 끝낸다
+ORCH_CONFIG="$HERE/state/nc_autopilot.json" ./orch autopilot --once --wait-for-provider 0 >/tmp/nc_autopilot_run.log 2>&1
+for id in $(grep -E "^\[task [0-9]+\]" /tmp/nc_autopilot_run.log | grep -oE "task [0-9]+" | awk '{print $2}'); do TASKS+=("$id"); done
+if grep -q "계획 #$AP_ID 실행" /tmp/nc_autopilot_run.log && grep -q "진전: 완료 0 → 1" /tmp/nc_autopilot_run.log; then
+  echo "  PASS  autopilot_run — 남은 계획을 스스로 집어 완료까지"; PASS=$((PASS+1))
+else echo "  FAIL  autopilot_run (로그: /tmp/nc_autopilot_run.log)"; FAIL=$((FAIL+1)); fi
+# ③ 진전 없는 계획은 보류 — 구현이 아무 파일도 안 고치게 만들어 매 주기 실패시킨다
+mkcfg_b state/nc_autopilot_idle.json "exit 0"
+AP2=$(ORCH_CONFIG="$HERE/state/nc_autopilot_idle.json" python3 - <<'PYAP2'
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path.cwd()))
+from orch_core import db
+conn = db.connect()
+pid = db.create_plan(conn, "[NC] autopilot_idle", "nc", "blender_sandbox")
+db.create_task(conn, "진전 없는 과제", "blender_sandbox", "nc", None, status="BACKLOG",
+               plan_id=pid, plan_key="T1", depends_on="", done_criteria="Blender 검증", risk="low")
+db.update_plan(conn, pid, status="READY", note="NC")
+print(pid)
+PYAP2
+)
+ORCH_CONFIG="$HERE/state/nc_autopilot_idle.json" ./orch autopilot --max-cycles 4 --interval 1 --max-attempts 1 --wait-for-provider 0 >/tmp/nc_autopilot_idle.log 2>&1
+for id in $(grep -E "^\[task [0-9]+\]" /tmp/nc_autopilot_idle.log | grep -oE "task [0-9]+" | awk '{print $2}'); do TASKS+=("$id"); done
+if grep -q "계획 #$AP2 보류" /tmp/nc_autopilot_idle.log && [[ $(grep -c "계획 #$AP2 실행" /tmp/nc_autopilot_idle.log) -le 3 ]]; then
+  echo "  PASS  autopilot_idle — 진전 없는 계획은 3주기에서 보류(무한 재시도 아님)"; PASS=$((PASS+1))
+else echo "  FAIL  autopilot_idle (로그: /tmp/nc_autopilot_idle.log)"; FAIL=$((FAIL+1)); fi
 lap
 
 echo

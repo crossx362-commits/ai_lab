@@ -965,6 +965,125 @@ def cmd_run_plan(args) -> int:
     return rc_all
 
 
+
+# ─────────────────────────── 자율 운전 (오너 지시 2026-09-12 「내가 멈출 때만 일 멈춰야지」)
+
+def _next_plan(conn, target: str, skip: set) -> int | None:
+    """이어갈 계획을 고른다 — 그 target의 Task가 남아 있는 **가장 최근** 계획.
+    최근 것부터 무는 이유: 오너의 최신 지시가 최신 계획이다. 오래된 계획을 먼저 물면
+    버려진 옛 지시를 다시 파고, 새 명령이 영영 시작되지 않는다(NC autopilot_run에서 실측)."""
+    out = []
+    for p in db.list_plans(conn, 60):
+        if p["id"] in skip or (p["note"] or "").startswith("[자동 보류]"):
+            continue
+        tasks = db.plan_tasks(conn, p["id"])
+        if not tasks or not any(r["target"] == target for r in tasks):
+            continue
+        if any(r["status"] == "BACKLOG" for r in tasks):
+            out.append(p["id"])
+    return max(out) if out else None
+
+
+def _plan_done_count(conn, plan_id: int) -> int:
+    return sum(1 for r in db.plan_tasks(conn, plan_id) if r["status"] == "DONE")
+
+
+class _NS:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
+def cmd_autopilot(args) -> int:
+    """오너가 세울 때까지 스스로 계속 돈다.
+
+    **멈추는 것은 오너의 STOP뿐이다.** 실패는 멈춤이 아니라 기다렸다 다시 하는 것이다 —
+    인프라 실패(인증 만료·한도·경합)를 "AI가 못 했다"로 굳혀 버리면 함대가 조용히 서 버린다
+    (2026-09-12 명령 #6~#9가 전부 BLOCKED로 끝나고 아무도 다시 집지 않았다).
+    다만 **같은 계획에서 진전이 0인 주기가 반복되면 그 계획만 보류**한다 — 무한 재시도는
+    돈만 태우고 같은 실패를 쌓는다.
+    """
+    cfg = config.load()
+    t = cfg.target(args.target)
+    conn = db.connect()
+    ap = cfg.raw.get("autopilot") or {}
+    goal = args.goal or ap.get("goal") or ""
+    interval = args.interval if args.interval is not None else int(ap.get("interval_sec", 60))
+    max_idle = int(ap.get("max_no_progress", 3))
+    skip: set[int] = set()
+    no_progress: dict[int, int] = {}
+    fails = 0
+    cycle = 0
+    _p(f"[autopilot] 시작 — target={t.name} 주기={interval}s "
+       f"(세우려면 ./orch stop 또는 보드 「세우기」)")
+    while True:
+        cycle += 1
+        if args.max_cycles and cycle > args.max_cycles:
+            _p(f"[autopilot] 주기 상한 {args.max_cycles} 도달 — 끝낸다")
+            return 0
+        if safety.stop_requested():
+            _p(f"[autopilot] 주기 {cycle}: STOP — 오너가 세웠다. 아무것도 시작하지 않는다")
+            if args.max_cycles or args.once:
+                return 2
+            time.sleep(min(interval, 30))
+            continue
+
+        # 죽은 판(주인 없는 RUNNING)을 먼저 회수한다 — 그대로 두면 다음 주기가 그것을 진행 중으로 본다.
+        recover.recover(conn, dry_run=False, stale_sec=600)
+
+        plan_id = _next_plan(conn, t.name, skip)
+        if plan_id is None and goal:
+            _p(f"[autopilot] 주기 {cycle}: 이어갈 계획 없음 → 새 계획을 세운다")
+            rc = cmd_plan(_NS(target=t.name, goal=goal, agent=None))
+            if rc != 0:
+                fails += 1
+                wait = min(interval * (2 ** min(fails, 3)), 1800)
+                _p(f"[autopilot] 분해 실패(rc={rc}) — {wait}s 뒤 다시 (연속 {fails}회)")
+                if args.max_cycles or args.once:
+                    return rc
+                time.sleep(wait)
+                continue
+            plan_id = _next_plan(conn, t.name, skip)
+        if plan_id is None:
+            _p(f"[autopilot] 주기 {cycle}: 할 일이 없다(목표 미설정) — 기다린다")
+            if args.max_cycles or args.once:
+                return 0
+            time.sleep(interval)
+            continue
+
+        before = _plan_done_count(conn, plan_id)
+        _p(f"\n[autopilot] 주기 {cycle}: 계획 #{plan_id} 실행 (완료 {before}개)")
+        rc = cmd_run_plan(_NS(target=t.name, plan=plan_id, max_attempts=args.max_attempts,
+                              keep_going=True, wait_for_provider=args.wait_for_provider))
+        after = _plan_done_count(conn, plan_id)
+        if after > before:
+            fails = 0
+            no_progress[plan_id] = 0
+            _p(f"[autopilot] 계획 #{plan_id} 진전: 완료 {before} → {after}")
+        else:
+            fails += 1
+            no_progress[plan_id] = no_progress.get(plan_id, 0) + 1
+            _p(f"[autopilot] 계획 #{plan_id} 진전 없음 ({no_progress[plan_id]}/{max_idle}회)")
+            if no_progress[plan_id] < max_idle:
+                # 실패한 Task는 자리표시가 치워져 있어 그대로 두면 이 계획은 다시 집히지 않는다.
+                # 다시 큐에 올려야 "계속 개발"이 된다 — 되돌리는 것도 기록되는 절차다(requeue).
+                cmd_requeue(_NS(plan=plan_id))
+            if no_progress[plan_id] >= max_idle:
+                # 이 계획만 보류한다. 함대는 계속 돈다 — 다음 주기에 새 계획을 세운다.
+                skip.add(plan_id)
+                db.update_plan(conn, plan_id, status="BLOCKED",
+                               note=f"[자동 보류] {max_idle}주기 연속 진전 없음 — 사람이 봐야 한다")
+                _p(f"[autopilot] 계획 #{plan_id} 보류 — 사람 검토 대기(보드 「막힘」)")
+
+        if _next_plan(conn, t.name, skip) is None and not goal:
+            _p("[autopilot] 남은 계획이 없다")
+            if args.max_cycles or args.once:
+                return 0
+        if args.once:
+            return 0 if after > before else 1
+        wait = interval if fails == 0 else min(interval * (2 ** min(fails, 3)), 1800)
+        time.sleep(wait)
+
+
 def cmd_requeue(args) -> int:
     """계획에서 끝나지 않은 Task를 다시 큐에 올린다.
 
@@ -1235,6 +1354,16 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--wait-for-provider", type=int, default=0, metavar="초",
                     help="Provider가 한도·인증으로 막히면 풀릴 때까지 기다린다(최대 이 시간, 0=대기 안 함)")
     rp.set_defaults(func=cmd_run_plan)
+
+    ap_ = sub.add_parser("autopilot", help="오너가 세울 때까지 스스로 계속 개발한다")
+    ap_.add_argument("--goal", default=None, help="이어갈 계획이 없을 때 세울 새 계획의 목표(기본 config.autopilot.goal)")
+    ap_.add_argument("--interval", type=int, default=None, metavar="초", help="주기 간 대기(기본 config.autopilot.interval_sec)")
+    ap_.add_argument("--max-attempts", type=int, default=None)
+    ap_.add_argument("--max-cycles", type=int, default=0, help="시험용 주기 상한(0=무한)")
+    ap_.add_argument("--once", action="store_true", help="한 주기만 돌고 끝낸다")
+    ap_.add_argument("--wait-for-provider", type=int, default=3600, metavar="초",
+                     help="Provider가 막히면 풀릴 때까지 기다린다(기본 1시간, 0=대기 안 함)")
+    ap_.set_defaults(func=cmd_autopilot)
 
     rq = sub.add_parser("requeue", help="계획에서 끝나지 않은 Task를 다시 큐에 올린다")
     rq.add_argument("--plan", type=int, required=True)

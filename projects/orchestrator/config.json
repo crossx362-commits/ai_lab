@@ -8,6 +8,12 @@
     "astra"
   ],
   "research_agent": null,
+  "autopilot": {
+    "target": "ulon",
+    "goal": "울온(projects/ulon)의 docs/DEVELOPMENT_PLAN.md와 docs/GAME_DESIGN.md를 읽고, 아직 코드로 성립하지 않은 가장 높은 우선순위 항목 하나를 골라 구현 가능한 Task로 나눠라. 기존 코드와 미커밋 작업을 보존하고, 각 Task는 SliceSelfCheck 게이트로 검증 가능해야 한다.",
+    "interval_sec": 60,
+    "max_no_progress": 3
+  },
   "log_summarizer": {
     "enabled": true,
     "model": "gemma4:12b",
