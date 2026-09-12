@@ -433,3 +433,5 @@ if hasattr(sys.stdout, "reconfigure"):
 
 <!-- codex-loop-mode-guardrail-2026-09-12 -->
 - 2026-09-12: 오너가 요구한 그록 방식 자율개발을 예약 작업으로 잘못 대체함. 이 요청은 상주 부모 프로세스가 새 CLI 세션을 연속 실행하는 방식이다. `projects/ulon/loop/codex_loop.py`로 구현하고 기존 Codex 예약은 PAUSED. 회귀 검사는 `projects/ulon/tools/test_codex_loop.py`(중복 잠금·STOP·새 세션·실패 제한·타임아웃). 예약으로 다시 대체하지 않는다.
+
+- 2026-09-12: Codex가 검증/통합 막힘 조회만 57바퀴 반복. 원인: 담당 외 루프가 GPT 카드 상태를 막힘으로 변경하고 rc=0만으로 새 세션 반복. `codex_loop.py`에서 담당/실행가능 카드 선택·게임 소스/에셋 무변경 no_progress 유예·전부 유예 시 CLI 없는 waiting_work를 강제. `test_codex_loop.py` 10개 검사(타담당/막힘 제외, 다른 카드 진행, Git 오류, 실행 중 재개 토큰 보존 포함). 보드 타담당 상태 변경 금지.
