@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T16:35:00+09:00",
+  "updated_at": "2026-09-12T16:43:00.070168+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -29,13 +29,14 @@
       "id": "uo-half-span",
       "title": "원작 울온 지도 절반(약 3072m) — 하이트맵 상한 넘는 확대",
       "difficulty": "상",
-      "model": "grok-4.6",
+      "model": "gpt",
       "status": "대기",
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "",
-      "rationale": "INBOX 「울온 전체지도 절반」. map0 6144×4096타일(Stratics). Unity Terrain 하이트맵 최대 4097이라 LandScale 10은 불가.",
-      "fail_streak": 0
+      "rationale": "INBOX 「울온 전체지도 절반」. map0 6144×4096타일(Stratics). Unity Terrain 하이트맵 최대 4097이라 LandScale 10은 불가. 2026-09-12 오너: 월드맵도 Codex 담당. 원작 수치·엔진 제약은 추가 검증 후 확정.",
+      "fail_streak": 0,
+      "owner": "codex"
     },
     {
       "id": "action-feel",
@@ -194,15 +195,27 @@
       "fail_streak": 0
     },
     {
-      "id": "ui-target-cursor",
-      "title": "대상 지정 커서 (마법·치유·채집·상호작용)",
-      "difficulty": "중",
-      "model": "gpt",
-      "status": "막힘",
+      "id": "now",
+      "title": "지금 하는 일: 없음 — loop#16은 대상지정 모드를 닫음",
+      "difficulty": "하",
+      "model": "grok-4.6",
+      "status": "완료",
       "assigned_loop": 16,
-      "completed_loop": null,
-      "commit": "",
-      "rationale": "오너 2026-09-12: 그래픽·UI는 GPT. #16이 열었으면 닫고 이어가지 말 것.",
+      "completed_loop": 16,
+      "commit": "9bbabded",
+      "rationale": "INBOX 16:42. 보드에 현재 작업을 한 줄로 밝힌다. 다음 바퀴가 이 카드를 고친다.",
+      "fail_streak": 0
+    },
+    {
+      "id": "ui-target-cursor",
+      "title": "대상 지정 모드 (치유·주문·채집·상호작용) — 스킨 아님",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 16,
+      "completed_loop": 16,
+      "commit": "9bbabded",
+      "rationale": "INBOX 16:38 이 바퀴에서 닫음. 지정 모드·노란 십자·안내 문구. Kenney 커서 스킨은 gpt-gfx-ui.",
       "fail_streak": 0
     },
     {
@@ -210,12 +223,67 @@
       "title": "그래픽·UI 개선은 GPT 차선",
       "difficulty": "상",
       "model": "gpt",
-      "status": "막힘",
+      "status": "진행 중",
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "",
-      "rationale": "오너 2026-09-12 16:38. 그록 루프는 셰이더·HUD 외형·아이콘·VFX 폴리시를 새로 열지 않음.",
-      "fail_streak": 0
+      "rationale": "오너 승인: Codex 전용 워크트리와 공유 보드로 동화풍 그래픽·UI·월드맵 자율개발 진행. 세부 카드는 codex-* 참조.",
+      "fail_streak": 0,
+      "owner": "codex"
+    },
+    {
+      "id": "codex-worldmap-guide",
+      "title": "기획 지역 안내·내 최근 시체·동화풍 월드맵",
+      "difficulty": "중",
+      "model": "gpt",
+      "owner": "codex",
+      "status": "진행 중",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "GAME_DESIGN §6.1·§18.4. 지역 원장 표시와 근접/타인 시체 표식 오류부터 수정.",
+      "fail_streak": 0,
+      "codex_iteration": 1,
+      "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
+      "evidence": [
+        "docs/CODEX_STATUS.md"
+      ]
+    },
+    {
+      "id": "codex-storybook-lantern",
+      "title": "Blender 동화풍 가로등 Unity 반영·화면 검증",
+      "difficulty": "중",
+      "model": "gpt",
+      "owner": "codex",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "360tris·1.556m Blender 원본/FBX 있음. Unity 임포트와 VFX 호환은 아직 미검증.",
+      "fail_streak": 0,
+      "codex_iteration": 1,
+      "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
+      "evidence": [
+        "docs/CODEX_STATUS.md"
+      ]
+    },
+    {
+      "id": "codex-storybook-hud",
+      "title": "동화책 UI 테마·가방·장비창 가독성",
+      "difficulty": "중",
+      "model": "gpt",
+      "owner": "codex",
+      "status": "대기",
+      "assigned_loop": null,
+      "completed_loop": null,
+      "commit": "",
+      "rationale": "크림 종이·밤색 글자·세이지 강조. 기존 기능 보존, 그록 활성 HUD 변경과 분리.",
+      "fail_streak": 0,
+      "codex_iteration": 1,
+      "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
+      "evidence": [
+        "docs/CODEX_STATUS.md"
+      ]
     }
   ]
 }

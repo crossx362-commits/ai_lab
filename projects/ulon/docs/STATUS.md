@@ -73,7 +73,7 @@
 | PostgreSQL 영구 저장 | 동작함 | loop#6 /ready 200. loop#10: persist `saved_at` 왕복(운영 PG PUT/GET `loop10-latest-wins`). CharacterStore.Load가 JSON이 더 최신이면 골드99·iron_sword·검술40을 고르고 persist에 밀어 넣음. NC: 2000년 JSON(wood)은 못 덮음. 에디터 execute_code `OK gold=99 inv=iron_sword skill=40 savedAt=2099-01-01T00:00:00Z`. SQLite `test_persist_atomicity` 6/6. 클라 재접속 왕복은 **미실행**(UDP 7770 닫힘·클라 바이너리 없음) |
 | 관심 영역(Interest Management) | 없음 | 기획 §7.3. 코드 없음 |
 | LOD·거리 비활성 | 없음 | 기획 §8.1 |
-| UI 팩(Paperdoll 그림·DnD·우클릭) | 부분 | loop#14: 우클릭 메뉴(훈련·펫 명령·집 보안). 샷 `unity/Captures/loop14_context_trainer.png`·`loop14_context_house.png`·`loop14_context_pet.png`·`loop14_context_train_open.png`. 게이트 `AssertContextMenu`+NC·HUD 도달 OK. 물리 우클릭은 MCP에서 `OpenWorldContext`로 대체. Kenney UI·대상 커서·외형 렌더는 **없음** |
+| UI 팩(Paperdoll 그림·DnD·우클릭) | 부분 | loop#14 우클릭 + loop#16 대상 지정 모드. 샷 `unity/Captures/loop16_target_heal_mark.png`(노란 십자·안내)·`loop16_target_spell.png`·`loop16_target_gather.png`·`loop16_target_interact.png`·`loop16_target_action_gather.png`(행동 탭 「채집」). 게이트 `AssertTargetCursor`+NC. Kenney 커서 스킨·외형 렌더·한글 폰트는 **없음** |
 | VFX | 동작함 | loop#8 타격 불티 + loop#9 등불·횃불·분수 루프 파티클. 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티. 분수 물줄기는 약함 |
 | SFX | 동작함 | 같은 플레이에서 `ActionSfx.Played` 0→3. 공간 음원 3D. 귀로 들은 것은 MCP라 미확인(카운트만) |
 | GM 도구 | 부분 | GM 패널 코드. 실행 없음 |
@@ -103,20 +103,20 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `board-report-page`: 보드 `http://127.0.0.1:8787/#report`에 보고서 탭. STATUS에 적힌 플레이 샷 + 완료 바퀴 `loopN_` PNG만 크게 보여 줌. MCP 중복(`-1`)·`ulon_anim_*` 제외. `/api/file`은 `assets/`와 `unity/Captures/`만. NC: `unity/Assets`·`docs/` 403, `..` 400. 테스트 `tools/test_board_reports.py` 3/3. 샷 `unity/Captures/loop15_board_dash.png`·`loop15_board_report.png`·`loop15_board_report_mobile.png`. 배치 셀프체크·클라 빌드는 에디터 점유라 못 돌림.
-- 원작 대비: 같은 점 — 해당 없음(개발 보드). 나은 점 — 눈으로 본 샷이 칸반·로그보다 앞에 있음. 부족한 점 — 게임 원작 합격과 무관. 카드는 통과.
+- `ui-target-cursor`: 기획 §18.13 지정 모드. 붕대·주문·채집·평가 계열이 바로 안 나가고 대상을 찍는다. 확인은 월드 클릭, Esc·우클릭 취소. 서버는 기존 Try/Rpc. 커밋 `9bbabded`. 샷 `unity/Captures/loop16_target_heal_mark.png`에 노란 십자와 안내. 게이트 `AssertTargetCursor`+NC ok. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드는 에디터 점유라 못 돌림. Kenney 커서 스킨은 안 넣음(INBOX 16:38 GPT 차선).
+- 원작 대비: 같은 점 — 주문/치유/채집 후 대상을 지정한다. 나은 점 — Esc·우클릭 취소 안내가 화면에 있다. 부족한 점 — Noto Sans KR이 없어 한글 안내가 깨지고, 커서 그래픽은 IMGUI 십자라 원작 검프가 아니다. 핵심 동작(지정 모드)은 통과, 스킨은 합격 아님.
 
 ## 지금 하는 것
 
-loop#16 `ui-target-cursor` — 기획 §18.13 대상 지정 커서(마법·치유·채집·상호작용). 에디터 PID 85035 점유라 배치는 안 돌리고 MCP 플레이로 검증.
+없음. loop#16 카드 `ui-target-cursor` 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
 1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
 2. `tools/two_client_check.sh`
 3. FishNet 관심 영역 (`interest-mgmt`)
-4. 원작 지도 절반(~3072m) 사람 선택 (`uo-half-span`)
-5. 그래픽·UI 폴리시·물가 셰이더·대상 커서는 GPT 차선 (그록 안 함)
+4. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선 (`uo-half-span`, `codex-*`)
+5. 그래픽·UI 폴리시·물가 셰이더·Kenney 커서 스킨은 GPT/Codex 차선 (그록 안 함)
 
 ## 막힌 것 (사람 결정)
 
