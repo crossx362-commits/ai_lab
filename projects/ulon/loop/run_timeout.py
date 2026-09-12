@@ -23,7 +23,11 @@ def main() -> int:
         print("timeout must be a number of seconds", file=sys.stderr)
         return 2
     cmd = sys.argv[2:]
-    proc = subprocess.Popen(cmd, start_new_session=True)
+    proc = subprocess.Popen(
+        cmd,
+        start_new_session=True,
+        stdin=subprocess.DEVNULL,
+    )
     deadline = time.time() + timeout
     while proc.poll() is None:
         if time.time() >= deadline:
