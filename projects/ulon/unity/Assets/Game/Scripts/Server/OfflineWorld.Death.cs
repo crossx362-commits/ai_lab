@@ -29,9 +29,22 @@ namespace Ulon.Server
             node.SpawnedAt = Time.time;
             node.DecaySeconds = 900f;
             node.ExclusiveSeconds = CorpseNode.DefaultExclusiveSeconds;
+            var keep = new List<ItemRecord>();
             for (int i = 0; i < bag.Items.Count; i++)
-                node.Items.Add(bag.Items[i]);
+            {
+                var rec = bag.Items[i];
+                if (ItemCatalog.KeepOnDeath(rec.TemplateId))
+                {
+                    rec.ParentContainerId = "";
+                    keep.Add(rec);
+                }
+                else
+                    node.Items.Add(rec);
+            }
             bag.Items.Clear();
+            for (int i = 0; i < keep.Count; i++)
+                bag.Items.Add(keep[i]);
+            equipped.Remove(body.GetInstanceID());
             OpLog.Write("drop", ownerId ?? "", node.CorpseId, "corpse");
             return new AttackResult { Applied = true, Hit = true };
         }

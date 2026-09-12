@@ -24,6 +24,11 @@ namespace Ulon.Shared
         public bool container;
         /// <summary>장비 칸 id. 비면 착용 대상 아님. 원장은 items.json `slot`.</summary>
         public string slot;
+        /// <summary>
+        /// 기획 §18.4 보호 예외 — true면 사망 시 시체로 옮기지 않는다(퀘스트 핵심·계정 귀속).
+        /// 원장은 items.json `keepOnDeath`. 없으면 false.
+        /// </summary>
+        public bool keepOnDeath;
     }
 
     public static class ItemData

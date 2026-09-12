@@ -339,6 +339,27 @@ namespace Ulon.Shared
             return false;
         }
 
+        /// <summary>
+        /// 네거티브 컨트롤 — true면 보호 태그를 무시하고 전부 시체로 보낸다.
+        /// 자가 살아 있는지 확인용. 운영 경로에서는 항상 false.
+        /// </summary>
+        public static bool NcDropProtected;
+
+        /// <summary>
+        /// 기획 §18.4 보호 예외. 원장 `items.json` keepOnDeath.
+        /// 파일이 없을 때의 폴백은 보스 문장 넷(워든·캡틴·헥스·폭군).
+        /// </summary>
+        public static bool KeepOnDeath(string id)
+        {
+            if (NcDropProtected)
+                return false;
+            if (string.IsNullOrEmpty(id))
+                return false;
+            if (ItemData.TryGet(id, out var data))
+                return data.keepOnDeath;
+            return id == WardenCrest || id == CaptainSigil || id == HexSeal || id == TyrantCore;
+        }
+
         public static bool HasShield(IList<ItemRecord> items) => Has(items, WoodenShield);
 
         public static bool IsMeleeWeapon(string id)
