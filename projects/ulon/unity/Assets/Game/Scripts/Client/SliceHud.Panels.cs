@@ -567,6 +567,7 @@ namespace Ulon.Client
             bool open = false;
             string otherName = "", mineOffer = "", theirs = "";
             bool mineOk = false, theirOk = false;
+            int mineGold = 0, theirGold = 0;
             if (TradeView.Open && net != null)
             {
                 int myId = net.ObjectId;
@@ -578,6 +579,8 @@ namespace Ulon.Client
                 otherName = iAmA ? TradeView.NameB : TradeView.NameA;
                 mineOffer = iAmA ? TradeView.OfferA : TradeView.OfferB;
                 theirs = iAmA ? TradeView.OfferB : TradeView.OfferA;
+                mineGold = iAmA ? TradeView.GoldA : TradeView.GoldB;
+                theirGold = iAmA ? TradeView.GoldB : TradeView.GoldA;
                 mineOk = iAmA ? TradeView.AcceptA : TradeView.AcceptB;
                 theirOk = iAmA ? TradeView.AcceptB : TradeView.AcceptA;
             }
@@ -588,17 +591,22 @@ namespace Ulon.Client
                 otherName = other != null ? other.DisplayName : "?";
                 mineOffer = me == me.Trade.A ? me.Trade.OfferA : me.Trade.OfferB;
                 theirs = me == me.Trade.A ? me.Trade.OfferB : me.Trade.OfferA;
+                mineGold = me == me.Trade.A ? me.Trade.GoldA : me.Trade.GoldB;
+                theirGold = me == me.Trade.A ? me.Trade.GoldB : me.Trade.GoldA;
                 mineOk = me == me.Trade.A ? me.Trade.AcceptA : me.Trade.AcceptB;
                 theirOk = me == me.Trade.A ? me.Trade.AcceptB : me.Trade.AcceptA;
             }
             if (!open)
                 return;
             GUILayout.Label("거래  " + otherName);
-            GUILayout.Label("나: " + Label(mineOffer) + (mineOk ? "  수락" : ""));
-            GUILayout.Label("상대: " + Label(theirs) + (theirOk ? "  수락" : ""));
+            GUILayout.Label("나: " + Label(mineOffer) + "  골드 " + mineGold + (mineOk ? "  수락" : ""));
+            GUILayout.Label("상대: " + Label(theirs) + "  골드 " + theirGold + (theirOk ? "  수락" : ""));
             Row3(("광석", () => Offer(net, me, "iron_ore")),
                  ("철검", () => Offer(net, me, "iron_sword")),
                  ("없음", () => Offer(net, me, "")));
+            Row3(("골드+1", () => OfferGold(net, me, mineGold + 1)),
+                 ("골드+10", () => OfferGold(net, me, mineGold + 10)),
+                 ("골드0", () => OfferGold(net, me, 0)));
             GUILayout.BeginHorizontal();
             if (Btn("수락"))
             {

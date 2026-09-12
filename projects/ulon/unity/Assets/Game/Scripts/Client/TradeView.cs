@@ -7,6 +7,8 @@ namespace Ulon.Client
         public static int IdB;
         public static string OfferA = "";
         public static string OfferB = "";
+        public static int GoldA;
+        public static int GoldB;
         public static bool AcceptA;
         public static bool AcceptB;
         public static string NameA = "";

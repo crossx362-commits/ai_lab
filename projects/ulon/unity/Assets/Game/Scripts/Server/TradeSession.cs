@@ -8,15 +8,29 @@ namespace Ulon.Server
         public WorldBody B;
         public string OfferA = "";
         public string OfferB = "";
+        public int GoldA;
+        public int GoldB;
         public bool AcceptA;
         public bool AcceptB;
+        public bool Settled;
 
         public WorldBody Other(WorldBody me) => me == A ? B : A;
 
         public void SetOffer(WorldBody me, string template)
         {
-            if (me == A) { OfferA = template ?? ""; AcceptA = false; AcceptB = false; }
-            else { OfferB = template ?? ""; AcceptA = false; AcceptB = false; }
+            if (me == A) OfferA = template ?? "";
+            else OfferB = template ?? "";
+            AcceptA = false;
+            AcceptB = false;
+        }
+
+        public void SetGold(WorldBody me, int gold)
+        {
+            int n = gold < 0 ? 0 : gold;
+            if (me == A) GoldA = n;
+            else GoldB = n;
+            AcceptA = false;
+            AcceptB = false;
         }
 
         public bool SetAccept(WorldBody me, bool value)

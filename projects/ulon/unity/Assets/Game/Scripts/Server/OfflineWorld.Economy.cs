@@ -53,6 +53,8 @@ namespace Ulon.Server
         {
             if (from == null || to == null || from == to)
                 return new AttackResult { FailReason = "no_target" };
+            if (from.Ghost || to.Ghost)
+                return new AttackResult { FailReason = "ghost" };
             float dist = Vector3.Distance(from.transform.position, to.transform.position);
             if (dist > 2.8f)
                 return new AttackResult { FailReason = "range" };
@@ -68,34 +70,74 @@ namespace Ulon.Server
                 me.Trade?.SetOffer(me, template);
         }
 
+        public void SetTradeGold(WorldBody me, int gold)
+        {
+            if (me != null)
+                me.Trade?.SetGold(me, gold);
+        }
+
         public AttackResult ConfirmTrade(WorldBody me)
         {
             var t = me != null ? me.Trade : null;
             if (t == null)
                 return new AttackResult { FailReason = "no_trade" };
-            if (!t.SetAccept(me, true))
+            if (!t.Settled && !t.SetAccept(me, true))
                 return new AttackResult { FailReason = "waiting" };
-            string offerA = t.OfferA;
-            string offerB = t.OfferB;
             var a = t.A;
             var b = t.B;
-            if (!string.IsNullOrEmpty(offerA) && CountItem(Bag(a), offerA) < 1)
-                return CancelTrade(me, "missing");
-            if (!string.IsNullOrEmpty(offerB) && CountItem(Bag(b), offerB) < 1)
-                return CancelTrade(me, "missing");
+            var bagA = Bag(a);
+            var bagB = Bag(b);
+            string offerA = t.OfferA ?? "";
+            string offerB = t.OfferB ?? "";
+            float wA = string.IsNullOrEmpty(offerA) ? 0f : ItemCatalog.WeightOf(offerA);
+            float wB = string.IsNullOrEmpty(offerB) ? 0f : ItemCatalog.WeightOf(offerB);
+            float extraB = wA - wB;
+            float extraA = wB - wA;
+            var check = TradeResolve.Settle(new TradeSettleRequest
+            {
+                Settled = t.Settled,
+                AcceptA = t.AcceptA,
+                AcceptB = t.AcceptB,
+                GoldA = t.GoldA,
+                GoldB = t.GoldB,
+                HaveGoldA = a != null ? a.Gold : 0,
+                HaveGoldB = b != null ? b.Gold : 0,
+                OfferA = offerA,
+                OfferB = offerB,
+                HaveItemA = string.IsNullOrEmpty(offerA) || CountItem(bagA, offerA) >= 1,
+                HaveItemB = string.IsNullOrEmpty(offerB) || CountItem(bagB, offerB) >= 1,
+                CanCarryA = extraA <= 0f || bagA.CanCarryWeight(StatsOf(a).Str, extraA),
+                CanCarryB = extraB <= 0f || bagB.CanCarryWeight(StatsOf(b).Str, extraB),
+                GhostA = a != null && a.Ghost,
+                GhostB = b != null && b.Ghost
+            });
+            if (!check.Applied)
+                return check;
             if (!string.IsNullOrEmpty(offerA))
             {
-                ConsumeItem(Bag(a), offerA, 1);
-                Bag(b).Add(offerA, 1);
+                ConsumeItem(bagA, offerA, 1);
+                bagB.Add(offerA, 1);
             }
             if (!string.IsNullOrEmpty(offerB))
             {
-                ConsumeItem(Bag(b), offerB, 1);
-                Bag(a).Add(offerB, 1);
+                ConsumeItem(bagB, offerB, 1);
+                bagA.Add(offerB, 1);
             }
+            if (a != null)
+            {
+                a.Gold -= t.GoldA;
+                a.Gold += t.GoldB;
+            }
+            if (b != null)
+            {
+                b.Gold -= t.GoldB;
+                b.Gold += t.GoldA;
+            }
+            t.Settled = true;
             if (a != null) a.Trade = null;
             if (b != null) b.Trade = null;
-            OpLog.Write("trade", PersistDriver.AccountKey(), "trade", (offerA ?? "") + "<->" + (offerB ?? ""));
+            OpLog.Write("trade", PersistDriver.AccountKey(), "trade",
+                (offerA ?? "") + "+" + t.GoldA + "<->" + (offerB ?? "") + "+" + t.GoldB);
             return new AttackResult { Applied = true, Hit = true };
         }
 

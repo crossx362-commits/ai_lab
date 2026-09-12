@@ -28,6 +28,14 @@ namespace Ulon.Client
                 OfflineWorld.Instance?.SetTradeOffer(me, template);
         }
 
+        static void OfferGold(NetAvatar net, WorldBody me, int gold)
+        {
+            if (net != null && net.IsClientInitialized)
+                net.RpcTradeGold(gold);
+            else
+                OfflineWorld.Instance?.SetTradeGold(me, gold);
+        }
+
         static void Cast(NetAvatar net, SpellId spell)
         {
             if (EnterTarget(TargetKind.Spell, (int)spell))

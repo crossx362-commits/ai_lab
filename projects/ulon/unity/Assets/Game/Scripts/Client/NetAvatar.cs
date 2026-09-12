@@ -402,16 +402,16 @@ namespace Ulon.Client
             var t = me != null ? me.Trade : null;
             if (t == null)
             {
-                RpcTradeState(false, 0, 0, "", "", "", "", false, false);
+                RpcTradeState(false, 0, 0, "", "", "", "", 0, 0, false, false);
                 return;
             }
             int idA = t.A.GetComponent<NetworkObject>() != null ? t.A.GetComponent<NetworkObject>().ObjectId : 0;
             int idB = t.B.GetComponent<NetworkObject>() != null ? t.B.GetComponent<NetworkObject>().ObjectId : 0;
-            RpcTradeState(true, idA, idB, t.A.DisplayName, t.B.DisplayName, t.OfferA, t.OfferB, t.AcceptA, t.AcceptB);
+            RpcTradeState(true, idA, idB, t.A.DisplayName, t.B.DisplayName, t.OfferA, t.OfferB, t.GoldA, t.GoldB, t.AcceptA, t.AcceptB);
         }
 
         [ObserversRpc]
-        void RpcTradeState(bool open, int idA, int idB, string nameA, string nameB, string offerA, string offerB, bool accA, bool accB)
+        void RpcTradeState(bool open, int idA, int idB, string nameA, string nameB, string offerA, string offerB, int goldA, int goldB, bool accA, bool accB)
         {
             TradeView.Open = open;
             TradeView.IdA = idA;
@@ -420,6 +420,8 @@ namespace Ulon.Client
             TradeView.NameB = nameB;
             TradeView.OfferA = offerA;
             TradeView.OfferB = offerB;
+            TradeView.GoldA = goldA;
+            TradeView.GoldB = goldB;
             TradeView.AcceptA = accA;
             TradeView.AcceptB = accB;
         }
