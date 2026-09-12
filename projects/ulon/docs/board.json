@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T22:49:38+0900",
+  "updated_at": "2026-09-12T23:02:46+0900",
   "cards": [
     {
       "id": "map-land-scale",
@@ -769,6 +769,18 @@
       "completed_loop": 48,
       "commit": "dfd19b0a",
       "rationale": "KindTree 2·KindCart 1·KindLight 4. 게이트+NC·플레이 샷. 구현 dfd19b0a. 배치 셀프체크는 에디터 점유.",
+      "fail_streak": 0
+    },
+    {
+      "id": "auto-49-씬-루트에-남은-바위-덤불-포장-아치-좌석-",
+      "title": "씬 루트에 남은 바위·덤불·포장 아치·좌석 종류 묶음",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 49,
+      "completed_loop": 49,
+      "commit": "804cb14a",
+      "rationale": "KindRock 3·KindPlant 6·KindArch 4·KindSeat 3. 게이트+NC·플레이 샷. 구현 804cb14a. 배치 셀프체크는 에디터 점유.",
       "fail_streak": 0
     }
   ]
