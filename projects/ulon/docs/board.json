@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T19:35:00+09:00",
+  "updated_at": "2026-09-12T19:50:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,13 +196,13 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#29는 복합 직업명을 검증 중으로 둠",
+      "title": "지금 하는 일: 없음 — loop#30은 alpha-status-stale 을 닫음",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 29,
-      "completed_loop": 29,
-      "commit": "414cd8a5",
+      "assigned_loop": 30,
+      "completed_loop": 30,
+      "commit": "d71639da",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
       "fail_streak": 0
     },
@@ -216,6 +216,18 @@
       "completed_loop": null,
       "commit": "ec8319f2",
       "rationale": "INBOX 18:20 집 모양. Kenney 외사면을 폭만 ×2 하면 납작 판. 플레이 샷 ridge. 배치 셀프체크·모서리 벽은 남음.",
+      "fail_streak": 0
+    },
+    {
+      "id": "alpha-status-stale",
+      "title": "오래된 alpha_status 성공을 현재 준비로 안 씀",
+      "difficulty": "하",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 30,
+      "completed_loop": 30,
+      "commit": "d71639da",
+      "rationale": "P2. 스모크 실패 시 옛 파일 삭제. 보드 live /ready. 테스트 7/7+4/4. NC: 옛 ok:true+실측 실패=준비 아님.",
       "fail_streak": 0
     },
     {

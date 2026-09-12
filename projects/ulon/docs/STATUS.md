@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#28** (성공) · 2026-09-12T19:18:58+0900
-에셋 수령·절반 맵·관심영역 미터·폰트·Quaternius는 그대로 막힘입니다.
+마지막 바퀴: **#29** (성공) · 2026-09-12T19:27:41+0900
+원작 UO 칭호는 조합이 없어서 원작 합격은 아닙니다. 클라 빌드·2클라는 에디터를 닫은 다음입니다.
 
-- 모델 `grok-4.6` · 경과 1014s · 세션 rc `0`
-- HEAD `c2ee97fa [loop#28] 민가 모서리 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 476s · 세션 rc `0`
+- HEAD `ecf42636 [loop#29] 복합 직업명 검증 결과 STATUS·보드 반영` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `c2ee97fa [loop#28] 민가 모서리 검증 결과 STATUS·보드 반영`
-- `f8ecfeb1 [loop#28] 민가 모서리를 Kenney wall-corner L자로 막음`
+- `ecf42636 [loop#29] 복합 직업명 검증 결과 STATUS·보드 반영`
+- `414cd8a5 [loop#29] 복합 직업명 JSON 원장 (마검사·레인저)`
 
 ## 바퀴 기록
 
@@ -43,6 +43,7 @@
 | #26 | 성공 | 2026-09-12T18:47:38+0900 | grok-4.6 | 1630s |
 | #27 | 성공 | 2026-09-12T19:01:17+0900 | grok-4.6 | 771s |
 | #28 | 성공 | 2026-09-12T19:18:58+0900 | grok-4.6 | 1014s |
+| #29 | 성공 | 2026-09-12T19:27:41+0900 | grok-4.6 | 476s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -92,7 +93,7 @@
 | GM 도구 | 부분 | loop#19: 무인증 `GmGive` `fail=unauthorized`. 원장 계정 지급 성공. 에디터 바이패스 지급 성공. 게이트 `AssertGmAuth`+NC OK. 샷 `unity/Captures/loop19_gm_panel.png`(F1 패널·광장복구·지급 버튼). 전용 서버+미등록 클라 2클라 실측은 바이너리 없어 **미실행** |
 | 백업/복구 | 부분 | loop#25: persist 스냅샷에 캐릭터·집·마구간. SQLite 11/11·PG 격리스키마 11/11 왕복·롤백·404 NC. 운영 POST `/backup` `db_20260912_091727` characters=19 stables=2 houses=0. GM `RpcGmRestore` 배선. 운영 DB 복원은 안 돌림(전량 덮음). Unity MCP 세션 없어 HUD 샷·게이트 플레이 없음. 원작 합격 아님 |
 | 봇/부하 테스트 | 없음 | 기획 §14.1 |
-| 알파 준비 판정 스크립트 | 동작함 | 이번 `python3 tools/test_alpha_readiness.py` → **OK** (1 test). 운영 서비스 기동은 아님 |
+| 알파 준비 판정 스크립트 | 동작함 | loop#30: `alpha_ready.judge` 는 파일 ok:true 를 현재로 안 씀. 스모크 실패 시 `alpha_status.json` 삭제. 보드 `/api/state.alpha_ready` live `/ready` ok=true·stale_file=false. 테스트 7/7 + board 4/4. NC: 옛 성공 파일+실측 실패=준비 아님 |
 
 ## 진행 중이던 작업 (최근 커밋)
 
@@ -116,19 +117,19 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `job-combo-titles`: 기획 §3.2 복합 직업명. 원장 `StreamingAssets/Data/job_combos.json` 7행(마검사·레인저·성직자·광물 장인·무기 장인·야수조련사). 보조 하한 30은 같은 절 초심자 선(출처 없는 새 수치 없음). `SkillTitles.Of`가 `SkillJobCombos.JobOf`를 씀. 게이트 `AssertJobComboTitles`+NC(`NcDisable`이면 「달인 검사」). 에디터 리플렉션 게이트 OK. 호스트 플레이 HUD 샷 `unity/Captures/loop29_mageknight.png`(나 달인 마검사)·`loop29_ranger.png`(나 전문가 레인저). 콘솔: 지면 리프트 로그 2·Metal memoryless 2·종료 저장 건너뜀 1. 에러 없음. `python3 tools/test_alpha_readiness.py` OK. 배치 셀프체크는 에디터 점유라 미실행. 2클라 미실행.
-- 원작 대비: 같은 점 — 최고 스킬 숙련 접두사(달인/전문가)는 그대로. 나은 점 — 기획서 조합명이 HUD에 보임. 부족한 점 — 원작 UO 칭호는 조합이 없고, 배치 셀프체크·2클라 없음. 원작 합격 아님.
+- `alpha-status-stale`: DEVELOPMENT_PLAN P2. `tools/alpha_ready.py` 가 현재 준비를 persist `/ready` 실측으로만 판정. 파일 `ok:true` 는 마지막 스모크 기록. 스모크 실패 시 옛 파일 삭제. 보드 소비자 `alpha_ready`(live ok=true, stale_file=false). `python3 tools/test_alpha_readiness.py` 7/7 · `test_board_reports.py` 4/4. NC: 심은 성공 파일+curl 실패 → 준비 아님·파일 없음. 클라 빌드·2클라·배치 셀프체크는 에디터 점유라 미실행.
+- 원작 대비: 같은 점 — 운영 준비 신호와 게임 규칙은 별개. 나은 점 — 장애 뒤 옛 성공 JSON을 현재로 안 읽음. 부족한 점 — 게임 화면 기능이 아님. 원작 합격 해당 없음.
 - INBOX 미처리 0. 사람 결정(에셋 수령·절반맵·관심영역 미터·폰트·Quaternius)은 그대로 막힘.
 
 ## 지금 하는 것
 
-없음. loop#29 카드 `job-combo-titles`는 검증 중(배치 셀프체크).
+없음. loop#30 카드 `alpha-status-stale`는 테스트·보드 실측까지 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 
 1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
 2. `tools/two_client_check.sh` — 관심 영역·GM 무인증·시체 동기화 재실측
-3. persist 복구: Unity 게이트 플레이 + 스테이징 복원 후 재접속
+3. persist 복구: Unity 게이트 플레이 + 스테이징 복원 후 재접속 (`persist-backup-restore` 검증 중)
 4. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선
 5. 그래픽·UI 폴리시·물가 셰이더는 GPT/Codex 차선 (그록 안 함)
 6. 씬 루트 배우·시설 종류 묶음은 페이드 자가 루트를 보도록 고친 뒤
