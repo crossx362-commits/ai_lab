@@ -131,6 +131,20 @@ namespace Ulon.Server
 
         public void ResetHp() => SetHp(MaxHp);
 
+        /// <summary>보스 시체 우선권 — 때린 사람 계정. 시체로 복사한다.</summary>
+        [System.NonSerialized]
+        public readonly System.Collections.Generic.List<string> DamageContributors =
+            new System.Collections.Generic.List<string>();
+
+        public void NoteContributor(string accountId)
+        {
+            if (string.IsNullOrEmpty(accountId))
+                return;
+            if (DamageContributors.Contains(accountId))
+                return;
+            DamageContributors.Add(accountId);
+        }
+
         public void ApplyDamage(int amount)
         {
             if (!Alive)

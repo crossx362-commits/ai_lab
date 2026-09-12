@@ -207,6 +207,8 @@ namespace Ulon.Editor
             Gate(AssertNestedBag);
             Gate(AssertGroundDecay);
             Gate(AssertLootRight);   // 시체 루팅 우선창(§18.4) — 창 중 소유/파티·창 후 공개
+            Gate(AssertBossLootNegativeControl);
+            Gate(AssertBossLoot);    // §18.11 보스/정예 기여자 우선권
             Gate(AssertDeathKeepNegativeControl);
             Gate(AssertDeathKeep);   // §18.4 보호 아이템은 시체로 안 가고, 장착은 풀린다
             Gate(AssertStableSlice);

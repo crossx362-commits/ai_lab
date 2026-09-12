@@ -62,6 +62,7 @@ namespace Ulon.Server
                 int gear = ItemCatalog.EquipmentMagicResist(targetBag != null ? targetBag.Items : null);
                 MagicResistResolve.TryResist(targetSkills, targetStats, gear, MagicResistResolve.Difficulty, ref dmg, out _, out _);
                 target.ApplyDamage(dmg);
+                AfterEnemyHurt(body, target, dmg);
                 body.BreakHide();
                 body.CombatUntil = Time.time + TravelMark.CombatSeconds;
                 SkillGain.TryRaise(skills, SkillId.Magery, 20f, out float before, out float after, stats);
@@ -175,6 +176,7 @@ namespace Ulon.Server
                 int gear = ItemCatalog.EquipmentMagicResist(targetBag != null ? targetBag.Items : null);
                 MagicResistResolve.TryResist(targetSkills, targetStats, gear, MagicResistResolve.Difficulty, ref dmg, out _, out _);
                 target.ApplyDamage(dmg);
+                AfterEnemyHurt(body, target, dmg);
                 body.BreakHide();
                 body.CombatUntil = Time.time + TravelMark.CombatSeconds;
                 SkillGain.TryRaise(skills, SkillId.Magery, 20f, out float sb, out float sa, stats);
@@ -314,6 +316,7 @@ namespace Ulon.Server
             int gear = ItemCatalog.EquipmentMagicResist(targetBag != null ? targetBag.Items : null);
             MagicResistResolve.TryResist(targetSkills, targetStats, gear, MagicResistResolve.Difficulty, ref dmg, out _, out _);
             target.ApplyDamage(dmg);
+            AfterEnemyHurt(body, target, dmg);
             body.BreakHide();
             body.CombatUntil = Time.time + TravelMark.CombatSeconds;
             SkillGain.TryRaise(skills, SkillId.Magery, 20f, out _, out _, stats);

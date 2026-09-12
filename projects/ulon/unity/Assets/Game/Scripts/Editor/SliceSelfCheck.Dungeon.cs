@@ -79,8 +79,7 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("헥사크 처치 실패: " + slay.FailReason);
                 if (elite.Alive)
                     throw new InvalidOperationException("헥사크가 죽어야 합니다.");
-                if (!ItemCatalog.Has(bag.Items, ItemCatalog.HexSeal))
-                    throw new InvalidOperationException("헥사크는 헥스 인장(hex_seal)을 서버가 지급해야 합니다.");
+                TakeBossDropFromCorpse(slayer, elite, ItemCatalog.HexSeal);
                 if (ItemCatalog.Has(bag.Items, ItemCatalog.WardenCrest) || ItemCatalog.Has(bag.Items, ItemCatalog.CaptainSigil))
                     throw new InvalidOperationException("헥사크는 본워든/섀도우캡틴 드랍을 주면 안 됩니다.");
                 UnityEngine.Object.DestroyImmediate(eliteGo);
@@ -207,8 +206,7 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("본워든 처치 실패: " + slay.FailReason);
                 if (elite.Alive)
                     throw new InvalidOperationException("본워든이 죽어야 합니다.");
-                if (!ItemCatalog.Has(bag.Items, ItemCatalog.WardenCrest))
-                    throw new InvalidOperationException("본워든은 수호자 문장(warden_crest)을 서버가 지급해야 합니다.");
+                TakeBossDropFromCorpse(slayer, elite, ItemCatalog.WardenCrest);
                 UnityEngine.Object.DestroyImmediate(eliteGo);
                 UnityEngine.Object.DestroyImmediate(slayerGo);
 
@@ -354,8 +352,7 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("섀도우캡틴 처치 실패: " + slay.FailReason);
                 if (elite.Alive)
                     throw new InvalidOperationException("섀도우캡틴이 죽어야 합니다.");
-                if (!ItemCatalog.Has(bag.Items, ItemCatalog.CaptainSigil))
-                    throw new InvalidOperationException("섀도우캡틴은 캡틴 인장(captain_sigil)을 서버가 지급해야 합니다.");
+                TakeBossDropFromCorpse(slayer, elite, ItemCatalog.CaptainSigil);
                 if (ItemCatalog.Has(bag.Items, ItemCatalog.WardenCrest))
                     throw new InvalidOperationException("섀도우캡틴은 본워든 드랍(warden_crest)을 주면 안 됩니다.");
                 UnityEngine.Object.DestroyImmediate(eliteGo);
@@ -513,8 +510,7 @@ namespace Ulon.Editor
                     throw new InvalidOperationException("강철폭군 처치 실패: " + slay.FailReason);
                 if (elite.Alive)
                     throw new InvalidOperationException("강철폭군이 죽어야 합니다.");
-                if (!ItemCatalog.Has(bag.Items, ItemCatalog.TyrantCore))
-                    throw new InvalidOperationException("강철폭군은 폭군의 핵(tyrant_core)을 서버가 지급해야 합니다.");
+                TakeBossDropFromCorpse(slayer, elite, ItemCatalog.TyrantCore);
                 if (ItemCatalog.Has(bag.Items, ItemCatalog.CaptainSigil) || ItemCatalog.Has(bag.Items, ItemCatalog.WardenCrest))
                     throw new InvalidOperationException("강철폭군은 다른 보스 드랍을 주면 안 됩니다.");
                 UnityEngine.Object.DestroyImmediate(eliteGo);

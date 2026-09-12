@@ -102,6 +102,7 @@ namespace Ulon.Server
                 dmg = dmg / 2;
             result.Damage = dmg;
             target.ApplyDamage(dmg);
+            AfterEnemyHurt(attacker, target, dmg);
             if (dmg > 0 && target.IsCasting(Time.time))
                 target.ClearCast();
             if (ItemCatalog.IsMeleeWeapon(weapon) && poisonedWeapon.TryGetValue(id, out bool charged) && charged)
@@ -130,15 +131,6 @@ namespace Ulon.Server
                     attacker.Fame += 10;
                     attacker.Karma += 1;
                     OpLog.Write("fame", PersistDriver.AccountKey(), target.name, "kill +10");
-                    if (MobCatalog.IsBoss(target.MobId))
-                    {
-                        string drop = MobCatalog.KillDropOf(target.MobId);
-                        if (!string.IsNullOrEmpty(drop))
-                        {
-                            Bag(attacker).Add(drop, 1);
-                            OpLog.Write("drop", PersistDriver.AccountKey(), target.MobId, drop);
-                        }
-                    }
                 }
             }
             else if (attacker.IsAvatar && target.IsEnemy && weaponSkill != SkillId.Archery && weaponSkill != SkillId.Fencing)
@@ -485,6 +477,7 @@ namespace Ulon.Server
             int dmg = result.Damage;
             MagicResistResolve.TryResist(targetSkills, targetStats, gear, MagicResistResolve.Difficulty, ref dmg, out _, out _);
             target.ApplyDamage(dmg);
+            AfterEnemyHurt(body, target, dmg);
             body.BreakHide();
             body.CombatUntil = Time.time + TravelMark.CombatSeconds;
             if (target.IsAvatar)

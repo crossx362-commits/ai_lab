@@ -485,6 +485,14 @@ namespace Ulon.Server
         {
             if (looter == null || node == null)
                 return false;
+            if (!string.IsNullOrEmpty(node.MobId) && MobCatalog.IsBoss(node.MobId))
+            {
+                if (BossLootRights.NcOpen || node.ExclusiveSeconds <= 0f)
+                    return true;
+                if ((Time.time - node.SpawnedAt) >= node.ExclusiveSeconds)
+                    return true;
+                return IsBossContributor(looter, node);
+            }
             // 우선창 0 이하 = ExclusiveDisabled → peek과 같이 근접만으로 공개(사거리는 TryLootCorpse).
             if (node.ExclusiveSeconds <= 0f)
                 return true;
@@ -519,6 +527,37 @@ namespace Ulon.Server
                 return true;
             var p = owner.Party;
             return p != null && p.Contains(looter);
+        }
+
+        bool IsBossContributor(WorldBody looter, CorpseNode node)
+        {
+            if (looter == null || node == null)
+                return false;
+            if (HasContributorId(node, AccountOf(looter)))
+                return true;
+            var party = looter.Party;
+            if (party == null)
+                return false;
+            if (party.Leader != null && HasContributorId(node, AccountOf(party.Leader)))
+                return true;
+            for (int i = 0; i < party.Members.Count; i++)
+            {
+                if (party.Members[i] != null && HasContributorId(node, AccountOf(party.Members[i])))
+                    return true;
+            }
+            return false;
+        }
+
+        static bool HasContributorId(CorpseNode node, string accountId)
+        {
+            if (node == null || string.IsNullOrEmpty(accountId))
+                return false;
+            for (int i = 0; i < node.ContributorIds.Count; i++)
+            {
+                if (node.ContributorIds[i] == accountId)
+                    return true;
+            }
+            return false;
         }
 
         static string WeightRefuseMessage(int str, InventoryBag bag)

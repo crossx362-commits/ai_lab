@@ -177,6 +177,52 @@ namespace Ulon.Server
             }
         }
 
+        /// <summary>
+        /// 보스 기여자 기록·시체 드랍. 가방에 바로 넣지 않는다(§18.11).
+        /// 같은 죽음에서 여러 경로가 불러도 시체는 하나.
+        /// </summary>
+        void AfterEnemyHurt(WorldBody attacker, WorldBody target, int dmg)
+        {
+            if (target == null)
+                return;
+            if (dmg > 0 && attacker != null && attacker.IsAvatar && MobCatalog.IsBoss(target.MobId))
+                target.NoteContributor(AccountOf(attacker));
+            if (!target.Alive)
+                TrySpawnBossCorpse(target);
+        }
+
+        void TrySpawnBossCorpse(WorldBody target)
+        {
+            if (target == null || target.Alive)
+                return;
+            if (!MobCatalog.IsBoss(target.MobId))
+                return;
+            string ownerId = "boss:" + target.GetInstanceID();
+            if (FindCorpse(ownerId) != null)
+                return;
+            var go = SpawnCorpseGo(target);
+            var node = go.AddComponent<CorpseNode>();
+            node.CorpseId = System.Guid.NewGuid().ToString("N");
+            node.OwnerId = ownerId;
+            node.OwnerBody = null;
+            node.MobId = target.MobId ?? "";
+            node.LastKind = string.IsNullOrEmpty(target.DisplayName) ? "시체" : target.DisplayName;
+            node.LastX = target.transform.position.x;
+            node.LastY = target.transform.position.y;
+            node.LastZ = target.transform.position.z;
+            node.SpawnedAt = Time.time;
+            node.DecaySeconds = 900f;
+            node.ExclusiveSeconds = BossLootRights.ExclusiveFor(target.MobId)
+                ? CorpseNode.DefaultExclusiveSeconds
+                : 0f;
+            for (int i = 0; i < target.DamageContributors.Count; i++)
+                node.ContributorIds.Add(target.DamageContributors[i]);
+            string drop = MobCatalog.KillDropOf(target.MobId);
+            if (!string.IsNullOrEmpty(drop))
+                node.Items.Add(new ItemRecord { TemplateId = drop, Amount = 1 });
+            OpLog.Write("drop", ownerId, node.CorpseId, string.IsNullOrEmpty(drop) ? "boss_corpse" : drop);
+        }
+
         public AttackResult TryLootCorpse(WorldBody body, CorpseNode node)
         {
             if (body == null || node == null)

@@ -28,6 +28,11 @@ namespace Ulon.Server
         public const float DefaultExclusiveSeconds = 120f;
         public float ExclusiveSeconds = DefaultExclusiveSeconds;
         public float SpawnedAt;
+        /// <summary>보스/정예 시체면 MobCatalog id. 빈 값이면 플레이어 시체(소유자/파티 창).</summary>
+        public string MobId = "";
+        /// <summary>이 보스를 때린 계정. 창 중 룻은 이 목록·그 파티만.</summary>
+        public readonly System.Collections.Generic.List<string> ContributorIds =
+            new System.Collections.Generic.List<string>();
         public readonly System.Collections.Generic.List<Ulon.Shared.ItemRecord> Items = new System.Collections.Generic.List<Ulon.Shared.ItemRecord>();
 
         public float SecondsLeft
