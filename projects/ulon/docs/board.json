@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T18:06:12.565503+09:00",
+  "updated_at": "2026-09-12T18:20:00+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,14 +196,26 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#24는 안전 거래 골드·중복 지급을 닫음",
+      "title": "지금 하는 일: 없음 — loop#25는 persist DB 백업/복구를 검증 중으로 둠",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 24,
-      "completed_loop": 24,
-      "commit": "f5650001",
+      "assigned_loop": 25,
+      "completed_loop": 25,
+      "commit": "c94d64fd",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
+      "fail_streak": 0
+    },
+    {
+      "id": "persist-backup-restore",
+      "title": "DB·집·마구간 persist 백업/복구 (§14.2)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "검증 중",
+      "assigned_loop": 25,
+      "completed_loop": null,
+      "commit": "c94d64fd",
+      "rationale": "P2. JSON 복사만 있던 백업을 persist 스냅샷으로. SQLite+PG 격리 왕복·롤백. 운영 POST /backup 실측. 운영 복원·HUD 샷은 MCP 세션 없어 미실행.",
       "fail_streak": 0
     },
     {
@@ -301,18 +313,18 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "bbd587ef",
-      "rationale": "아트 bbd587ef 보존. #14 5f48d230: 전용 Unity Metal batchmode exit0/C#오류0. 고정 입자 Edit mode 투명 렌더러 경계 조사에서 외부 겹침 후보 Healer/PropSpray 1개 확보(queue3000). 불꽃 깊이16.786~17.043, Spray27.064~29.933으로 뒤쪽. AABB는 실제 픽셀 겹침/정렬 합격 아님; SeaWater 카메라 평면 교차는 판정 제외. 1440×900 town-after 직접 검수: 청록 지붕·호박 창·목재 기둥 식별. §4.2/8.1 시점·저폴리 유지, 후속 검증 후보·깊이 근거 개선. 앞뒤 픽셀 대조/Play/접속/조작/2인/성능 미검증·기존 경고/라이선스 진단 잔존. 다음은 확인한 Spray와 불꽃의 같은 프레임 ON/OFF 픽셀 겹침 검증. 내부기록 cda3685c.",
+      "rationale": "아트 bbd587ef 보존. #17 c8718e8a: 전용 Unity Metal batchmode 2회 exit0/C#오류0. Spray 로컬y=-5.000670, 지표y=10. 입자20개 모두 지표보다1.43~3.52m 아래·시선20개 TerrainCollider 충돌. 실제 지하 설치 확인, ON/OFF 변화0픽셀. 1440×900 마을 직접 검수(Edit mode). §4.2/8.1 시점·크기 유지, 가림 좌표 특정 개선. EffectLocalPos/CombinedBounds의 최초·재설치 호출 재현 후 수리 필요. 설치 코드 원인 확정 전. 투명 정렬/Play/접속/조작/2인/성능 미검증; 기존 경고·라이선스 진단 잔존.",
       "fail_streak": 0,
-      "codex_iteration": 14,
+      "codex_iteration": 17,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
-        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/transparent-census.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/town-after.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/town.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/unity.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/static-check.log"
+        "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/spray-on.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/spray-off.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/terrain-placement.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/pixel-analysis.json",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop17-lantern/unity-final.log"
       ],
-      "verification_commit": "5f48d230"
+      "verification_commit": "c8718e8a"
     },
     {
       "id": "codex-storybook-hud",

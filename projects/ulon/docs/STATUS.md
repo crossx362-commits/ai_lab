@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#23** (성공) · 2026-09-12T17:52:56+0900
-커밋 `5433fab3`, `475f02ae`. 에디터 PID 85035가 아직 잠그고 있어 클라 빌드·`two_client_check`는 다음입니다.
+마지막 바퀴: **#24** (성공) · 2026-09-12T18:09:16+0900
+- 에디터 PID 85035가 잠금이라 클라 빌드·`two_client_check`는 못 했습니다. 2클라 거래 창 동기화는 미실행이라 원작 합격은 아닙니다.
 
-- 모델 `grok-4.6` · 경과 1027s · 세션 rc `0`
-- HEAD `475f02ae [loop#23] boss-loot-rights 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 932s · 세션 rc `0`
+- HEAD `ffd0962d [loop#24] secure-trade-gold 검증 결과 STATUS·보드 반영` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `475f02ae [loop#23] boss-loot-rights 검증 결과 STATUS·보드 반영`
-- `5433fab3 [loop#23] 보스 시체 기여자 우선권 — 가방 즉시 지급 제거`
+- `ffd0962d [loop#24] secure-trade-gold 검증 결과 STATUS·보드 반영`
+- `f5650001 [loop#24] 안전 거래 골드·중복 지급 방지`
 
 ## 바퀴 기록
 
@@ -38,6 +38,7 @@
 | #21 | 성공 | 2026-09-12T17:23:03+0900 | grok-4.6 | 859s |
 | #22 | 성공 | 2026-09-12T17:35:01+0900 | grok-4.6 | 670s |
 | #23 | 성공 | 2026-09-12T17:52:56+0900 | grok-4.6 | 1027s |
+| #24 | 성공 | 2026-09-12T18:09:16+0900 | grok-4.6 | 932s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -85,7 +86,7 @@
 | VFX | 동작함 | loop#8 타격 불티 + loop#9 등불·횃불·분수 루프 파티클. 샷 `unity/Captures/loop9_fountain_spray.png`에 주황 불티. 분수 물줄기는 약함 |
 | SFX | 동작함 | 같은 플레이에서 `ActionSfx.Played` 0→3. 공간 음원 3D. 귀로 들은 것은 MCP라 미확인(카운트만) |
 | GM 도구 | 부분 | loop#19: 무인증 `GmGive` `fail=unauthorized`. 원장 계정 지급 성공. 에디터 바이패스 지급 성공. 게이트 `AssertGmAuth`+NC OK. 샷 `unity/Captures/loop19_gm_panel.png`(F1 패널·광장복구·지급 버튼). 전용 서버+미등록 클라 2클라 실측은 바이너리 없어 **미실행** |
-| 백업/복구 | 부분 | 백업 버튼·`data/backups/`. 화면 복구 경로 없음. E2E 미실행 |
+| 백업/복구 | 부분 | loop#25: persist 스냅샷에 캐릭터·집·마구간. SQLite 11/11·PG 격리스키마 11/11 왕복·롤백·404 NC. 운영 POST `/backup` `db_20260912_091727` characters=19 stables=2 houses=0. GM `RpcGmRestore` 배선. 운영 DB 복원은 안 돌림(전량 덮음). Unity MCP 세션 없어 HUD 샷·게이트 플레이 없음. 원작 합격 아님 |
 | 봇/부하 테스트 | 없음 | 기획 §14.1 |
 | 알파 준비 판정 스크립트 | 동작함 | 이번 `python3 tools/test_alpha_readiness.py` → **OK** (1 test). 운영 서비스 기동은 아님 |
 
@@ -104,26 +105,27 @@
 - **클라이언트 바이너리 없음.** 이 트리 `builds/client/`에 `UlonClient.app`이 없다. 실행·2클라 검사를 이번 바퀴에서 못 함.
 - **persist/postgres는 이번 살아 있음.** loop#10에서 persist.py 반영 후 `start_persist.sh`로 재기동, pid 2822, 5432·8777 청취, `/ready` 200 driver=postgres.
 - **셀프체크·QA샷 이번 미실행.** 마지막 `unity/Logs/selfcheck_dev.log`는 2026-09-11(배치 종료 `Exiting batchmode successfully` — 게이트 합격 문구는 로그에서 못 찾음). `two_client` 마지막은 2026-09-03.
-- **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080, `unity@43694413dbe9b6f3`)로 플레이·샷. Grok stdio MCP는 Start Session 없음.
+- **울온 Unity 에디터 점유.** PID 85035가 `projects/ulon/unity`를 잠금. 배치 셀프체크·클라 빌드는 불가. HTTP MCP(127.0.0.1:8080, `unity@43694413dbe9b6f3`)는 이번 바퀴에서 인스턴스 없음(Start Session 필요). Grok stdio MCP도 세션 없음.
 - **이번 플레이 FishNet 클라 미기동.** `playmode_transition`이 길게 남음. `NetAvatar.IsClientInitialized=false`라 공격 RPC는 skip. VFX는 로컬 `Play`로 확인.
 - **기획서–코드 불일치(문서):** 하우징·조련·길드/PvP가 MVP 후순위인데 코드가 앞섬(`DESIGN_COVERAGE`). 몬스터 원장 20종은 채웠으나 §10.1 사족·비행 원형은 메시 없음. 방어구 세트 얇음. UI가 원작 검프가 아님.
 - **워크트리 분기:** `/Users/junholee/ai_lab-loop` (`loop-claude`, HEAD `2462cead`)는 이 트리보다 **뒤**다(물 깊이색 커밋에서 멈춤). 이 트리가 persist·루프·루팅을 더 갖고 있다. 반대로 **UlonClient.app은 그 워크트리에만** 있다. 병합·리베이스·그 트리 수정은 하지 않음.
 
 ## 완료한 것 (이 바퀴)
 
-- `secure-trade-gold`: 기획 §18.9 안전 거래에 골드 Offer·정산, 제안 변경 시 수락 해제, 정산된 세션 재적용 `duplicate`. `TradeResolve`+게이트 `AssertSecureTrade`+NC `NcAllowDuplicate`. 호스트 플레이: 골드 50+철검→40/10, 중복 거절, 근처 창 「골드 5」 후 35/15. 샷 `unity/Captures/loop24_trade_panel.png`·`loop24_trade_offer.png`. `test_alpha_readiness.py` OK. execute_code 게이트 GATE_OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유. 콘솔 URP depth memoryless 2줄은 이번 코드 아님.
-- 원작 대비: 같은 점 — 양쪽 제안+골드 확인 후 쌍방 수락, 내용 바꾸면 수락 풀림. 나은 점 — 정산 재적용을 코드로 막고 NC가 자가 산다. 부족한 점 — 2클라 창 동기화 미실행, 원작 거래 창 외형 아님. 원작 합격 아님.
+- `persist-backup-restore`: 기획 §14.2 DB 백업/복구. persist `export_snapshot`/`restore_snapshot` + POST `/backup` `/restore`. 집·마구간 포함. `OpLog.Backup`이 `persist.json`을 폴더에 복사. GM 패널 「복구」→`RpcGmRestore`. 게이트 `AssertPersistBackup`+NC. SQLite·PG 격리 스키마 왕복/롤백/없는 파일 404. 운영 persist 재기동 후 POST `/backup` 실측(복원은 운영에 안 넣음). `test_alpha_readiness.py` OK. Unity MCP 세션 없음·에디터 점유라 셀프체크·HUD 샷 없음.
+- 원작 대비: 같은 점 — 캐릭터·집·마구간을 한 스냅샷으로 남기고 실패 시 롤백. 나은 점 — 빠진 테이블·중복 PK NC가 산다. 부족한 점 — 운영 복원·재시작 후 월드 재로드·HUD 샷 미실행. 원작 합격 아님.
 
 ## 지금 하는 것
 
-없음. loop#24 카드 `secure-trade-gold` 닫음.
+없음. loop#25 카드 `persist-backup-restore`는 검증 중(운영 복원·화면 미실행).
 
 ## 다음 할 것 (우선순위 → board.json)
 
 1. 이 트리에서 `UlonClient.app` 재빌드 (에디터 점유 해제 후)
 2. `tools/two_client_check.sh` — 관심 영역·GM 무인증·시체 동기화 재실측
-3. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선 (`uo-half-span`, `codex-*`)
-4. 그래픽·UI 폴리시·물가 셰이더·Kenney 커서 스킨·유령 외형은 GPT/Codex 차선 (그록 안 함)
+3. persist 복구: Unity 게이트 플레이 + 운영이 아닌 스테이징에서 복원 후 재접속
+4. 원작 지도 절반·동화풍 그래픽·월드맵은 Codex 차선 (`uo-half-span`, `codex-*`)
+5. 그래픽·UI 폴리시·물가 셰이더·Kenney 커서 스킨·유령 외형은 GPT/Codex 차선 (그록 안 함)
 
 ## 막힌 것 (사람 결정)
 
