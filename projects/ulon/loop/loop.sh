@@ -123,14 +123,14 @@ import json, sys
 from pathlib import Path
 p = Path(sys.argv[1])
 if not p.exists():
-    print("0")
+    print("-1")
     print("0")
     raise SystemExit
 try:
     d = json.loads(p.read_text(encoding="utf-8"))
 except Exception:
-    print("0"); print("0"); raise SystemExit
-print(int(d.get("loop") or 0))
+    print("-1"); print("0"); raise SystemExit
+print(int(d.get("loop") if d.get("loop") is not None else -1))
 print(int(d.get("consec_fail") or 0))
 PY
 }

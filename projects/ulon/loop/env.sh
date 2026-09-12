@@ -5,13 +5,13 @@ MODEL_LOW=gpt-5.3-codex-spark   # 하: 가볍고 빠른 모델
 MODEL_MID=gpt-5.6-sol           # 중: 기본 모델
 MODEL_HIGH=gpt-6-astra          # 상: 가장 강한 모델
 
-# 루프
-MAX_TURNS=80                    # 한 바퀴 최대 턴 수 (PROMPT에 명시, 하드 제한은 타임아웃)
-SLEEP_BETWEEN=45                # 바퀴 사이 대기(초)
-MAX_LOOPS=0                     # 최대 바퀴 수 (0이면 무제한)
-LOOP_TIMEOUT_MIN=90             # 바퀴 타임아웃(분)
-MAX_CONSEC_FAIL=3               # 연속 실패 허용 횟수
-LOG_KEEP_DAYS=14                # 로그 보관 일수
+# 루프 (환경변수가 있으면 그걸 쓴다 — 수동 두 바퀴: MAX_LOOPS=2 ./loop/loop.sh)
+MAX_TURNS="${MAX_TURNS:-80}"                    # 한 바퀴 최대 턴 수 (PROMPT에 명시, 하드 제한은 타임아웃)
+SLEEP_BETWEEN="${SLEEP_BETWEEN:-45}"            # 바퀴 사이 대기(초)
+MAX_LOOPS="${MAX_LOOPS:-0}"                     # 최대 바퀴 수 (0이면 무제한)
+LOOP_TIMEOUT_MIN="${LOOP_TIMEOUT_MIN:-90}"      # 바퀴 타임아웃(분)
+MAX_CONSEC_FAIL="${MAX_CONSEC_FAIL:-3}"         # 연속 실패 허용 횟수
+LOG_KEEP_DAYS="${LOG_KEEP_DAYS:-14}"            # 로그 보관 일수
 
 # 프로젝트
 DESIGN_DOC="docs/GAME_DESIGN.md docs/DESIGN.md docs/source/울온_철학_저폴리3D_온라인_샌드박스_RPG_통합기획서_v1.1_UO보완_검토완료.docx"

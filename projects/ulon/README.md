@@ -70,7 +70,7 @@ python3 loop/board_server.py
 
 ```bash
 cd /Users/junholee/ai_lab/projects/ulon
-MAX_LOOPS=2 ./loop/loop.sh
+MAX_LOOPS=2 SLEEP_BETWEEN=5 ./loop/loop.sh
 ```
 
 로그인 자동 실행 (확인 끝난 뒤):
