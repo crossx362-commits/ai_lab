@@ -1,15 +1,15 @@
 # 울온 현황
 
 <!-- loop-stamp:start -->
-마지막 바퀴: **#22** (성공) · 2026-09-12T17:35:01+0900
-커밋 `5d92229d`, `af5c7f85`. 에디터 PID 85035가 아직 잠그고 있어 클라 빌드·`two_client_check`는 다음입니다.
+마지막 바퀴: **#23** (성공) · 2026-09-12T17:52:56+0900
+커밋 `5433fab3`, `475f02ae`. 에디터 PID 85035가 아직 잠그고 있어 클라 빌드·`two_client_check`는 다음입니다.
 
-- 모델 `grok-4.6` · 경과 670s · 세션 rc `0`
-- HEAD `af5c7f85 [loop#22] move-server-auth 검증 결과 STATUS·보드 반영` · 브랜치 `master`
+- 모델 `grok-4.6` · 경과 1027s · 세션 rc `0`
+- HEAD `475f02ae [loop#23] boss-loot-rights 검증 결과 STATUS·보드 반영` · 브랜치 `master`
 - INBOX 미처리 **0**건
 - 이 바퀴 커밋:
-- `af5c7f85 [loop#22] move-server-auth 검증 결과 STATUS·보드 반영`
-- `5d92229d [loop#22] 위치 서버 권위 — NT 클라권위 해제·이동 검증`
+- `475f02ae [loop#23] boss-loot-rights 검증 결과 STATUS·보드 반영`
+- `5433fab3 [loop#23] 보스 시체 기여자 우선권 — 가방 즉시 지급 제거`
 
 ## 바퀴 기록
 
@@ -37,6 +37,7 @@
 | #20 | 성공 | 2026-09-12T17:07:56+0900 | grok-4.6 | 600s |
 | #21 | 성공 | 2026-09-12T17:23:03+0900 | grok-4.6 | 859s |
 | #22 | 성공 | 2026-09-12T17:35:01+0900 | grok-4.6 | 670s |
+| #23 | 성공 | 2026-09-12T17:52:56+0900 | grok-4.6 | 1027s |
 <!-- loop-stamp:end -->
 
 ## 아트 방식
@@ -64,7 +65,7 @@
 | 장비·인벤·내구도·수리 | 부분 | 코드·게이트. 플레이 미실행 |
 | 채집·제작·Maker Mark | 부분 | 제작법·스테이션 코드. 플레이 미실행 |
 | 공급 비율 45/25/20/10 | 부분 | 드랍·제작은 있음. 비율 계측 **없음** |
-| 안전 거래 | 부분 | `TradeView`. 2클라 이번 미실행 |
+| 안전 거래 | 부분 | loop#24: 골드 Offer+정산·중복 `duplicate`. 게이트 `AssertSecureTrade`+NC. 호스트 플레이 50→40(+철검)·40→35. 샷 `unity/Captures/loop24_trade_panel.png`(근처 창 「골드 5」). 2클라 미실행. 원작 합격 아님 |
 | NPC 상점·은행·훈련 | 부분 | 스테이션 코드·QA 샷. 플레이 미실행 |
 | 플레이어 벤더·하우징 | 부분 | 코드 있음(기획상 Phase 2인데 앞섬). 플레이 미실행 |
 | 월드(마을1·필드·광산·던전3·테스트) | 부분 | loop#7 플레이: Terrain 600×600m, hres=1025. 미니맵·세계지도(M) 표시, 라벨 600m. 원작 절반(~3072m)은 아님 |
@@ -110,12 +111,12 @@
 
 ## 완료한 것 (이 바퀴)
 
-- `boss-loot-rights`: 기획 §18.11 보스/정예 시체는 기여자·파티 우선권 후 공개. 처치자 가방 즉시 지급 제거. `TrySpawnBossCorpse`·`ContributorIds`. 게이트 `AssertBossLoot`+NC, 던전 1~3·필드 보스 계약 `TakeBossDropFromCorpse`. 플레이: 헥사크 처치 직후 `bagSeal=False` 시체 `hex_seal` vis, 룻 후 가방 「헥사크의 봉인」. 샷 `unity/Captures/loop23_hexarch_corpse.png`·`loop23_hexarch_loot_bag.png`. `test_alpha_readiness.py` OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유. 콘솔 URP depth memoryless 2줄은 이번 코드 아님. 독 틱·펫 공격 기여자는 이번 범위 밖.
-- 원작 대비: 같은 점 — 보스 룻이 시체에 있고 창 중 때린 사람/파티만. 나은 점 — NC로 창을 끄면 낮선 룻이 통과해 자가 산다. 부족한 점 — 창 길이 기획서 없음(원작 ≈2분 따름), 2클라 시체 동기화 미실행, 잡몹은 즉시 드랍 유지. 원작 합격 아님.
+- `secure-trade-gold`: 기획 §18.9 안전 거래에 골드 Offer·정산, 제안 변경 시 수락 해제, 정산된 세션 재적용 `duplicate`. `TradeResolve`+게이트 `AssertSecureTrade`+NC `NcAllowDuplicate`. 호스트 플레이: 골드 50+철검→40/10, 중복 거절, 근처 창 「골드 5」 후 35/15. 샷 `unity/Captures/loop24_trade_panel.png`·`loop24_trade_offer.png`. `test_alpha_readiness.py` OK. execute_code 게이트 GATE_OK. 배치 셀프체크·클라 빌드·2클라는 에디터 점유. 콘솔 URP depth memoryless 2줄은 이번 코드 아님.
+- 원작 대비: 같은 점 — 양쪽 제안+골드 확인 후 쌍방 수락, 내용 바꾸면 수락 풀림. 나은 점 — 정산 재적용을 코드로 막고 NC가 자가 산다. 부족한 점 — 2클라 창 동기화 미실행, 원작 거래 창 외형 아님. 원작 합격 아님.
 
 ## 지금 하는 것
 
-없음. loop#23 카드 `boss-loot-rights` 닫음.
+없음. loop#24 카드 `secure-trade-gold` 닫음.
 
 ## 다음 할 것 (우선순위 → board.json)
 

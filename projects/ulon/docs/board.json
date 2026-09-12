@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-12T17:52:00+09:00",
+  "updated_at": "2026-09-12T18:06:12.565503+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -196,14 +196,26 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: 없음 — loop#23은 보스 시체 기여자 우선권을 닫음",
+      "title": "지금 하는 일: 없음 — loop#24는 안전 거래 골드·중복 지급을 닫음",
       "difficulty": "하",
       "model": "grok-4.6",
       "status": "완료",
-      "assigned_loop": 23,
-      "completed_loop": 23,
-      "commit": "5433fab3",
+      "assigned_loop": 24,
+      "completed_loop": 24,
+      "commit": "f5650001",
       "rationale": "다음 바퀴가 이 카드를 고친다.",
+      "fail_streak": 0
+    },
+    {
+      "id": "secure-trade-gold",
+      "title": "안전 거래 골드 + 중복 지급 방지 (§18.9)",
+      "difficulty": "중",
+      "model": "grok-4.6",
+      "status": "완료",
+      "assigned_loop": 24,
+      "completed_loop": 24,
+      "commit": "f5650001",
+      "rationale": "P2. 골드 Offer+정산·중복 duplicate. 게이트+NC. 호스트 샷 근처 창 골드 5. 2클라 없음.",
       "fail_streak": 0
     },
     {
@@ -289,25 +301,18 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "bbd587ef",
-      "rationale": "창 submesh만 숨기면19픽셀로 가림 원인 특정. 별도 Variant 창 재질 Standard Fade로 수리(bbd587ef), 원본 Blender/FBX 보존. 같은 Play Tick 불꽃 ON/OFF 회귀: 수리전0/0/0 FAIL→수리후18/19/17 PASS. Metal1440×900 직접 검수·임포트/Play exit0,360tris·1.556m·5재질·정적326소스 PASS. §8.1 크기/쿼터뷰 유지, 가까운 화면 내부 불꽃 식별 개선. 거리18 동적 가독성/투명 정렬·비용/접속·조작·2인·IMGUI 미검증, 게임 배치 미저장. 검색 인덱스 예외/라이선스 진단 잔존: 동일 조건 반복 중단, 다음 렌더 전 전용 인덱스 원인 분리 필요. 기록5163b1a3.",
+      "rationale": "아트 bbd587ef 보존. #14 5f48d230: 전용 Unity Metal batchmode exit0/C#오류0. 고정 입자 Edit mode 투명 렌더러 경계 조사에서 외부 겹침 후보 Healer/PropSpray 1개 확보(queue3000). 불꽃 깊이16.786~17.043, Spray27.064~29.933으로 뒤쪽. AABB는 실제 픽셀 겹침/정렬 합격 아님; SeaWater 카메라 평면 교차는 판정 제외. 1440×900 town-after 직접 검수: 청록 지붕·호박 창·목재 기둥 식별. §4.2/8.1 시점·저폴리 유지, 후속 검증 후보·깊이 근거 개선. 앞뒤 픽셀 대조/Play/접속/조작/2인/성능 미검증·기존 경고/라이선스 진단 잔존. 다음은 확인한 Spray와 불꽃의 같은 프레임 ON/OFF 픽셀 겹침 검증. 내부기록 cda3685c.",
       "fail_streak": 0,
-      "codex_iteration": 10,
+      "codex_iteration": 14,
       "worktree": "/Users/junholee/ai_lab/.worktrees/ulon-codex-art",
       "evidence": [
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/isolation/submeshes.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/isolation/pixel-comparison.json",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/isolation/flame-visibility.json",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/flame-visibility.json",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/play-0.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/play-0-no-flame.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/play.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/green/unity.log",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/import/unity-comparison.png",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/import/result.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/import/flame-envelope.txt",
-        "/Users/junholee/ai_lab/output/ulon-codex/loop10-lantern/static-check.log"
+        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/transparent-census.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/town-after.png",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/town.txt",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/unity.log",
+        "/Users/junholee/ai_lab/output/ulon-codex/loop14-lantern/static-check.log"
       ],
-      "verification_commit": "bbd587ef"
+      "verification_commit": "5f48d230"
     },
     {
       "id": "codex-storybook-hud",
