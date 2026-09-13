@@ -262,6 +262,7 @@ namespace Ulon.Client
             }
 
             motor.Stop();
+            FaceToward(chasing.transform.position);
             var net = GetComponent<NetAvatar>();
             if (net != null && net.IsClientInitialized)
             {
@@ -278,10 +279,20 @@ namespace Ulon.Client
             if (result.Applied)
             {
                 anim?.PlayAttack();
+                chasing.GetComponent<CharacterAnim>()?.PlayHit();
                 // §18.15 — 결과가 숫자로만 나지 않게. 타격 지점에 불티.
                 ActionVfx.Play(ActionVfx.Kind.Hit, chasing.transform.position + Vector3.up * 1.0f);
                 ActionSfx.Play(ActionSfx.Kind.Hit, chasing.transform.position + Vector3.up * 1.0f);
             }
+        }
+
+        void FaceToward(Vector3 world)
+        {
+            Vector3 to = world - transform.position;
+            to.y = 0f;
+            if (to.sqrMagnitude < 0.0001f)
+                return;
+            transform.rotation = Quaternion.LookRotation(to.normalized, Vector3.up);
         }
 
         void TryUseNode(ResourceNode node)

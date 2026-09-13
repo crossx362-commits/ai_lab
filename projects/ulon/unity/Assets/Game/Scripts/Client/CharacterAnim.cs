@@ -70,5 +70,16 @@ namespace Ulon.Client
             animator.SetTrigger(AttackId);
             animator.CrossFadeInFixedTime("Attack", 0.05f, 0, 0f);
         }
+
+        /// <summary>피격 모션 — 없으면 조용히 무시(클립 없는 액터도 있음).</summary>
+        public void PlayHit()
+        {
+            if (animator == null)
+                Bind();
+            if (animator == null)
+                return;
+            // KayKit 공용 클립명. 컨트롤러에 상태 없어도 CrossFade는 경고만 내고 멈추지 않는다.
+            animator.CrossFadeInFixedTime("Hit_A", 0.05f, 0, 0f);
+        }
     }
 }

@@ -65,6 +65,10 @@ namespace Ulon.Client
             return point.y < ground - 1.0f;
         }
 
+        // 야외에서 캐릭터 애니가 읽히게 — 옛 씬 직렬화 값(18m+)은 화면에서 사람형이 점처럼 보인다.
+        // SerializeField 기본값은 씬에 안 먹으니 OnEnable에서 한 번 당긴다. 줌아웃은 그대로 가능.
+        const float OutdoorReadableDistance = 12f;
+
         void OnEnable()
         {
             var cam = GetComponent<Camera>();
@@ -76,6 +80,8 @@ namespace Ulon.Client
             float farMin = Ulon.Shared.WorldTerrain.Half;
             if (cam.farClipPlane < farMin)
                 cam.farClipPlane = farMin;
+            if (distance > OutdoorReadableDistance)
+                distance = OutdoorReadableDistance;
         }
 
         void LateUpdate()
