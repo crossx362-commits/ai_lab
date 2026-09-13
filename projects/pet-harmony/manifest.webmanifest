@@ -1,0 +1,12 @@
+{
+  "name": "펫과나 — 펫 오디션",
+  "short_name": "펫과나",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffaf5",
+  "theme_color": "#fff7ed",
+  "description": "입양 전, 우리 집과 펫 후보의 생활을 따뜻하게 살펴보는 오디션",
+  "icons": [
+    { "src": "/assets/icon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
