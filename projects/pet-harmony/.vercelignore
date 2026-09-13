@@ -1,3 +1,4 @@
 assets/*.png
+!assets/og-share.png
 pet-harmony-deploy.zip
 test-artifacts/
