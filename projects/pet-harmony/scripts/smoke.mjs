@@ -1,4 +1,4 @@
-const base = process.argv[2] || 'https://pet-harmony-ebon.vercel.app';
+const base = process.argv[2] || 'https://petnna-app.vercel.app';
 const checks = [
   ['home', '/'],
   ['css', '/css/app.css'],

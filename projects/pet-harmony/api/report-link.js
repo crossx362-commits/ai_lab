@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
   try {
     const unlocks = await supabaseRequest(`unlocks?result_id=eq.${encodeURIComponent(resultId)}&product=eq.pdf&status=eq.active&select=result_id`, { method: 'GET' });
     if (!unlocks.length) return res.status(403).json({ error: 'pdf_not_unlocked' });
-    const link = `${process.env.PUBLIC_SITE_URL || 'https://pet-harmony-ebon.vercel.app'}/#/result/${encodeURIComponent(resultId)}`;
+    const link = `${process.env.PUBLIC_SITE_URL || 'https://petnna-app.vercel.app'}/#/result/${encodeURIComponent(resultId)}`;
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },

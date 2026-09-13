@@ -12,7 +12,7 @@
 2. Webhook을 만들고 `PAYMENT.CAPTURE.COMPLETED` 이벤트를 선택한다.
 3. Webhook URL은 다음 주소다.
 
-`https://pet-harmony-ebon.vercel.app/api/webhook`
+`https://petnna-app.vercel.app/api/webhook`
 
 4. Webhook ID를 복사한다.
 
@@ -34,7 +34,7 @@ Secret 값은 소스 코드나 채팅에 넣지 않는다.
 ## 4. 확인
 
 ```bash
-node scripts/smoke.mjs https://pet-harmony-ebon.vercel.app
+node scripts/smoke.mjs https://petnna-app.vercel.app
 ```
 
 헬스체크에서 `paymentConfigured=true`, `webhookConfigured=true`가 되어야 한다. 그 뒤 Sandbox에서 `$0.99` 결제, 상세 해금, `$3.99` PDF 결제 순서로 E2E 테스트한다.

@@ -867,7 +867,7 @@
 
   $('#copy-share').addEventListener('click', async () => {
     const text = $('#share-text').textContent;
-    const shareUrl = new URL('https://pet-harmony-ebon.vercel.app/');
+    const shareUrl = new URL('https://petnna-app.vercel.app/');
     shareUrl.searchParams.set('utm_source', 'share');
     shareUrl.searchParams.set('utm_medium', 'copy');
     shareUrl.searchParams.set('utm_campaign', state.mode || 'result');

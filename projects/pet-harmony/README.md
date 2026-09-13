@@ -31,7 +31,7 @@ python3 -m http.server 8910
 
 ## 배포 주소
 
-https://pet-harmony-ebon.vercel.app/
+https://petnna-app.vercel.app/
 
 ## 결제 API 환경변수
 
@@ -45,6 +45,6 @@ Vercel 배포 시 `.env.example`의 값을 Vercel Project Environment Variables�
 - 공개 HTTPS 도메인에서 OG 이미지 절대 URL 적용 완료
 - 생일을 모르면 모드별 기본 성향으로 추정합니다.
 
-배포 상태 확인: `https://pet-harmony-ebon.vercel.app/api/health`
+배포 상태 확인: `https://petnna-app.vercel.app/api/health`
 
-배포 스모크 QA: `node scripts/smoke.mjs https://pet-harmony-ebon.vercel.app`
+배포 스모크 QA: `node scripts/smoke.mjs https://petnna-app.vercel.app`
