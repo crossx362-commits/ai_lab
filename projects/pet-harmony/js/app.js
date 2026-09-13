@@ -867,11 +867,16 @@
 
   $('#copy-share').addEventListener('click', async () => {
     const text = $('#share-text').textContent;
+    const shareUrl = new URL('https://pet-harmony-ebon.vercel.app/');
+    shareUrl.searchParams.set('utm_source', 'share');
+    shareUrl.searchParams.set('utm_medium', 'copy');
+    shareUrl.searchParams.set('utm_campaign', state.mode || 'result');
+    const payload = text + '\n' + shareUrl.toString();
     try {
-      await navigator.clipboard.writeText(text + '\n' + location.href);
+      await navigator.clipboard.writeText(payload);
       alert('공유 문구를 복사했어요.');
     } catch {
-      prompt('복사해서 공유하세요', text);
+      prompt('복사해서 공유하세요', payload);
     }
   });
   $('#save-pdf').addEventListener('click', () => {
