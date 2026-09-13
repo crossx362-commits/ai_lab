@@ -65,9 +65,11 @@ namespace Ulon.Client
             return point.y < ground - 1.0f;
         }
 
-        // 야외에서 캐릭터 애니가 읽히게 — 옛 씬 직렬화 값(18m+)은 화면에서 사람형이 점처럼 보인다.
-        // SerializeField 기본값은 씬에 안 먹으니 OnEnable에서 한 번 당긴다. 줌아웃은 그대로 가능.
-        const float OutdoorReadableDistance = 12f;
+        // 야외에서 캐릭터 애니가 읽히게 — KayKit 키 ~0.6m라 12m에서도 손 모션이 점으로 사라진다(실측 2026-09-13).
+        // SerializeField 기본값은 씬에 안 먹으니 OnEnable에서 당긴다. minDistance도 같이 내려야
+        // LateUpdate Clamp가 다시 8m로 밀어 올리지 않는다.
+        const float OutdoorReadableDistance = 5.5f;
+        const float OutdoorReadableMinDistance = 3.5f;
 
         void OnEnable()
         {
@@ -80,6 +82,8 @@ namespace Ulon.Client
             float farMin = Ulon.Shared.WorldTerrain.Half;
             if (cam.farClipPlane < farMin)
                 cam.farClipPlane = farMin;
+            if (minDistance > OutdoorReadableMinDistance)
+                minDistance = OutdoorReadableMinDistance;
             if (distance > OutdoorReadableDistance)
                 distance = OutdoorReadableDistance;
         }
