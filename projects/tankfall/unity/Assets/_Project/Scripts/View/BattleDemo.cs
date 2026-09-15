@@ -132,6 +132,7 @@ namespace Tankfall.View
         Material _mineMat, _fireMat, _cloudMat;
         float _beamTimer;
         TankKind[] _roster = DefaultRoster;   // -roster Cannon,Carrot,Laser 로 바꿀 수 있다(연출 확인용)
+        MapKind _map = MapKind.TwinHills;
         bool _forceSpecial;                    // -forcespecial: AI 가 항상 2번탄 — 위성탄·독구름 같은 연출을 확인할 때만
         Vec3 _pendingImpact;
         int _pendingDirect = -1;
@@ -147,14 +148,7 @@ namespace Tankfall.View
             new GameObject("[Tankfall Battle]").AddComponent<BattleDemo>();
         }
 
-        static float Height(float x, float z)
-        {
-            float h = 4f;
-            h += 22f * Mathf.Exp(-(((x - 60f) * (x - 60f) + (z - 100f) * (z - 100f)) / 900f));
-            h += 20f * Mathf.Exp(-(((x - 145f) * (x - 145f) + (z - 105f) * (z - 105f)) / 800f));
-            h += 2.5f * Mathf.Sin(x * 0.06f) * Mathf.Cos(z * 0.05f);
-            return h;
-        }
+        float Height(float x, float z) => MapHeightFunction.Height(_map, x, z);
 
         Unit Current => _units.Count == 0 ? null : _units[Mathf.Clamp(_turn, 0, _units.Count - 1)];
         bool IsPlayerTurn => Current != null && Current.Team == 0;
@@ -174,6 +168,11 @@ namespace Tankfall.View
                 else if (args[i] == "-phasecheck") _phaseCheck = true;
                 else if (args[i] == "-gallery") _gallery = true;
                 else if (args[i] == "-forcespecial") _forceSpecial = true;
+                else if (args[i] == "-map" && i + 1 < args.Length)
+                {
+                    if (!MapHeightFunction.TryParse(args[i + 1], out _map))
+                        Debug.LogWarning($"[Tankfall] -map 모르는 이름 '{args[i + 1]}' — TwinHills");
+                }
                 else if (args[i] == "-shotdir" && i + 1 < args.Length) _shotDir = args[i + 1];
                 else if (args[i] == "-roster" && i + 1 < args.Length)
                 {
@@ -193,7 +192,8 @@ namespace Tankfall.View
             if (string.IsNullOrEmpty(_shotDir)) _shotDir = "Screenshots";
 
             SetupWorld();
-            _vol = new SdfVolume(Voxel, ChunkN, OriginY, Height, Mathf.RoundToInt(MapSize / Voxel));
+            _vol = new SdfVolume(Voxel, ChunkN, OriginY, Height, Mathf.RoundToInt(MapSize / Voxel),
+                                MapHeightFunction.Grad(_map));
 
             var go = new GameObject("Terrain");
             _terrain = go.AddComponent<TerrainView>();
@@ -204,7 +204,7 @@ namespace Tankfall.View
 
             SpawnTeams();
             RollWind();
-            _log = $"전투 개시 — {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
+            _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
         }
 
         void SpawnTeams()
@@ -228,8 +228,7 @@ namespace Tankfall.View
             for (int t = 0; t < 2; t++)
                 for (int i = 0; i < 3; i++)
                 {
-                    float x = t == 0 ? 55f + i * 14f : 150f + i * 12f;
-                    float z = t == 0 ? 40f + i * 8f : 155f - i * 9f;
+                    MapHeightFunction.Spawn(_map, t, i, out float x, out float z);
                     var root = ProceduralTank.Build(TankShape.Of(kinds[i]),
                                                     MakeMat(TankShape.BodyColor(kinds[i]), 0.22f),
                                                     track, teamMat[t], out var tur, out var bar, out var fp, wood);
@@ -241,8 +240,8 @@ namespace Tankfall.View
                     float g = TankGroundProbe.GroundBelow(_vol, x, z, 60f);
                     root.position = new Vector3(x, (float.IsNegativeInfinity(g) ? 10f : g) + GroundVisualLift, z);
                     // 서로 마주보게
-                    u.Heading = t == 0 ? Mathf.Atan2(150f - x, 155f - z) * Mathf.Rad2Deg
-                                       : Mathf.Atan2(60f - x, 45f - z) * Mathf.Rad2Deg;
+                    MapHeightFunction.Spawn(_map, 1 - t, i, out float ox, out float oz);
+                    u.Heading = Mathf.Atan2(ox - x, oz - z) * Mathf.Rad2Deg;
                     root.rotation = Quaternion.Euler(0, u.Heading, 0);
                     _units.Add(u);
                 }
