@@ -6,6 +6,7 @@
 #   ./tools/verify.sh play     §7-6 세 문제만
 #   ./tools/verify.sh battle   AI 자동 대전(명중률·한 판 길이)
 #   ./tools/verify.sh compile  컴파일만 (유니티 Play 가능 여부)
+#   ./tools/verify.sh turn|shell|nice   원작 시스템 라이브러리 단위 검증
 #
 # 상수를 바꿨으면 반드시 이걸 돌려라. 특히 CeilingCollapse.MinThickness,
 # TankGroundProbe.StepHeight/WalkStep 은 바꾸면 탱크가 갇힌다(명세 §7-6).
@@ -59,7 +60,7 @@ compile_check() {
 
   rm -f "$OUT/unityall.dll"
   local b=(-nologo -target:library -nostdlib+ -out:"$OUT/unityall.dll" -r:"$NS")
-  for m in UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.InputLegacyModule UnityEngine.TextRenderingModule UnityEngine.ScreenCaptureModule; do
+  for m in UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.InputLegacyModule UnityEngine.TextRenderingModule UnityEngine.ScreenCaptureModule UnityEngine.PhysicsModule; do   # PhysicsModule: CreatePrimitive 의 Collider(위성탄 빔)
     b+=(-r:"$UE/$m.dll")
   done
   b+=($SIM/*.cs $VIEW/*.cs)
@@ -77,13 +78,19 @@ case "${1:-all}" in
     run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs ;;
   ball)    run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs ;;
   battle)  run_console BattleSimVerify $SIM/*.cs tools/BattleSimVerify.cs ;;
+  turn)    run_console TurnOrderVerify    $SIM/*.cs tools/TurnOrderVerify.cs ;;      # 딜레이 턴제(원작 규칙)
+  shell)   run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs ;;   # 2번탄 고유 메커니즘
+  nice)    run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs ;;       # 나이스샷·SS
   all)
     compile_check; echo
     run_console SdfVerify      $SIM/*.cs tools/SdfVerify.cs; echo
     run_console GameplayVerify $SIM/*.cs tools/GameplayVerify.cs; echo
     run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs; echo
+    run_console TurnOrderVerify    $SIM/*.cs tools/TurnOrderVerify.cs; echo
+    run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs; echo
+    run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs; echo
     run_console BattleSimVerify  $SIM/*.cs tools/BattleSimVerify.cs ;;
-  *) echo "사용: $0 [all|sdf|play|ball|battle|compile]"; exit 2 ;;
+  *) echo "사용: $0 [all|sdf|play|ball|battle|turn|shell|nice|compile]"; exit 2 ;;
 esac
 
 echo

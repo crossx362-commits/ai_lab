@@ -136,6 +136,37 @@ namespace Tankfall.Sim
             return MathF.Pow(1f - t, FalloffExponent);
         }
 
+        // ── 낙하 피해(§28) ──────────────────────────────────────────────────────
+        // ⚠️ **왜 이게 있어야 하는가 — 12종 매치업 실측이 요구했다.**
+        //    굴착 반경이 큰 탱크가 예외 없이 바닥에 깔렸다:
+        //      이온어태커 굴착 12.0m → 10%   캐터펄트 9.0m → 28%   마인랜더 8.5m → 38%
+        //      ↔ 듀크 6.5m → 94%   캐롯 7.0m → 85%
+        //    지형은 양 팀이 같이 쓰는 자원이라, 크게 파면 §2-5-1 의 되먹임 나선이
+        //    **먼저 자기 명중률을 무너뜨린다.** 그런데 §28 "발밑을 도려내 떨어뜨린다"의
+        //    **보상이 코드에 아예 없었다** — 떨어져도 재접지만 하고 피해는 0이었다.
+        //    즉 굴착은 순수 자해였고, 이건 수치를 아무리 만져도 못 고친다. 빠진 기능이었다.
+        //
+        // ⚠️ 무료 구간이 필요하다. 착탄마다 지면이 몇 cm 씩 꺼지는데 그걸 전부 피해로 세면
+        //    아무도 안 판 판에서도 체력이 줄어든다(원인 못 찾는 버그가 된다).
+        public const float FallFreeMeters = 3f;
+        public const float FallDamagePerMeter = 26f;
+        public const float FallDamageMax = 420f;
+
+        /// <summary>발밑이 사라져 떨어진 높이(m)에 대한 피해. 3m 까지는 무피해.</summary>
+        public static int FromFall(float dropMeters)
+        {
+            float over = dropMeters - FallFreeMeters;
+            if (over <= 0f) return 0;
+            return (int)MathF.Round(MathF.Min(over * FallDamagePerMeter, FallDamageMax));
+        }
+
+        /// <summary>
+        /// 방어력 적용(원작 스탯). 받는 피해 = 원피해 × 100 / 방어력.
+        /// 검증: "슈퍼탱크 전 속성 0.8배" = 100/125. 피해를 주는 모든 경로가 이걸 통과해야 한다.
+        /// </summary>
+        public static int AfterDefense(int raw, float defense)
+            => defense <= 0f ? raw : (int)MathF.Round(raw * 100f / defense);
+
         /// <summary>폭발 피해 + 직격 보너스(§6-2).</summary>
         public static int Compute(float distance, float radius, float baseDamage,
                                   float directDamage, bool isDirect)

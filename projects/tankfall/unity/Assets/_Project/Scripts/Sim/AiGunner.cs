@@ -65,10 +65,155 @@ namespace Tankfall.Sim
         public const float ErrorExpert = 0.015f;   // 실측 99%
         public const float ErrorAce = 0.0075f;     // 실측 100% — 사실상 빗나가지 않는다
 
+        /// <summary>
+        /// 탄종 선택(§8). **특수탄은 탄도를 바꾸지 않으므로** 궤적을 한 번만 계산하고
+        /// 같은 착탄점에 두 프로필을 대 보면 된다 — 조준을 두 번 풀 필요가 없다.
+        ///
+        /// ⚠️ 피해량만으로 고르면 **굴착탄은 영원히 안 쓰인다**(피해가 절반이다).
+        ///    굴착탄의 값어치는 피해가 아니라 지형이다. 그래서 두 갈래로 판단한다:
+        ///      · 굴착형(굴착 반경이 커진 탄) → "때려도 안 아플 때" 쓴다. 발밑을 파서 떨어뜨린다(§28)
+        ///      · 그 외                      → 기대 피해가 뚜렷이 클 때만 쓴다
+        ///    탄이 3발뿐이라 "조금 이득"에 쓰면 정작 필요할 때 없다. 그래서 문턱을 둔다.
+        /// </summary>
+        /// <summary>
+        /// 1번탄 vs 2번탄. **원작대로 둘 다 무한**이라 탄수 계산이 없다 — 남는 비용은 2번탄의 추가 딜레이[추정]뿐이다.
+        /// 그래서 문턱은 낮다(1.10배). 폭발 피해로 안 보이는 효과(독·불·속박·지뢰)는 <see cref="EffectValue"/> 로 셈한다.
+        /// 위성탄은 착탄점이 다르므로 호출자가 SatelliteStrike 로 푼 착탄점을 <paramref name="specialImpact"/> 로 준다.
+        /// </summary>
+        /// <summary>다탄두 한 발의 착탄. <see cref="SimulatePattern"/> 이 만든다.</summary>
+        public struct SubImpact { public Vec3 Impact; public int DirectId; public float Scale; }
+
+        /// <summary>
+        /// 패턴의 전 발을 실제로 날려 착탄점을 모은다(빗나간 발은 뺀다). 중앙 탄(편차 0)은 이미 쏜 결과를 재사용.
+        /// 조준(Decide)이 시뮬 검증인 것과 같은 원칙 — 탄종 선택도 추정식이 아니라 시뮬 결과로 한다.
+        /// </summary>
+        public static List<SubImpact> SimulatePattern(SdfVolume vol, Vec3 muzzle, float yawDeg, float pitchDeg, float speed, Vec3 accel,
+                                                      IReadOnlyList<TankHitbox> boxes, int shooterId, float mapSize,
+                                                      IReadOnlyList<Spread.ShotPattern> pattern, ShotResult? center = null)
+        {
+            var list = new List<SubImpact>(pattern.Count);
+            for (int i = 0; i < pattern.Count; i++)
+            {
+                var pt = pattern[i];
+                ShotResult sub;
+                if (center.HasValue && pt.YawOffsetDeg == 0f && pt.PitchOffsetDeg == 0f) sub = center.Value;
+                else sub = ProjectileSimulator.Simulate(vol, muzzle,
+                        Ballistics.VelocityFrom(yawDeg + pt.YawOffsetDeg, pitchDeg + pt.PitchOffsetDeg, speed), accel, boxes, shooterId, mapSize);
+                if (sub.Hit) list.Add(new SubImpact { Impact = sub.Impact, DirectId = sub.DirectHitTankId, Scale = pt.DamageScale });
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// 1번탄 vs 2번탄 (§8). 양쪽 패턴의 **실제 착탄점 합**으로 기대 피해를 비교한다.
+        ///
+        /// ⚠️ 예전엔 중앙 탄 한 발의 피해 × 발수^0.85 로 어림했다. 그 식으로는 멀티미사일 2번(60×9)이
+        ///    1번(175×3)을 어떤 상황에서도 못 넘어 120판 동안 0회 — 선택지가 식 때문에 죽어 있었다.
+        ///    부채꼴이 실제로 몇 발이나 폭발 반경 안에 떨어지는지는 지형·거리에 달렸으니 쏴 봐야 안다.
+        /// </summary>
+        /// <param name="normal">1번탄 패턴 착탄점들(SimulatePattern).</param>
+        /// <param name="special">2번탄 패턴 착탄점들. 위성탄처럼 착탄점이 따로 계산되는 탄은 null 로 두고 specialImpact 로 넘긴다.</param>
+        public static ShellKind PickShell(TankStats baseSt, IReadOnlyList<SubImpact> normal, IReadOnlyList<SubImpact> special,
+                                          IReadOnlyList<Target> enemies, Vec3? specialImpact = null, int specialDirectId = -1)
+        {
+            if (enemies == null || enemies.Count == 0 || normal == null) return ShellKind.Normal;
+            var sp = baseSt.WithShell(ShellKind.Special);
+            var fx = ShellEffects.Of(baseSt.Kind, ShellKind.Special);
+
+            float vNormal = 0f;
+            for (int i = 0; i < normal.Count; i++)
+                vNormal += ExpectedDamage(baseSt, normal[i].Impact, normal[i].DirectId, enemies) * normal[i].Scale;
+
+            float vSpecial = 0f;
+            Vec3 spCenter; bool haveCenter = false;
+            if (specialImpact.HasValue)
+            {
+                // 위성탄: 착탄 X·Z 의 하늘에서 수직 낙하 — 호출부가 먼저 풀어서 넘긴다
+                spCenter = specialImpact.Value; haveCenter = true;
+                vSpecial = ExpectedDamage(sp, spCenter, specialDirectId, enemies);
+            }
+            else
+            {
+                spCenter = default;
+                if (special != null)
+                    for (int i = 0; i < special.Count; i++)
+                    {
+                        Vec3 imp = special[i].Impact; int dir = special[i].DirectId;
+                        if (fx.Type == ShellEffects.EffectType.Homing)
+                        {
+                            // 유도탄: 착탄점이 가까운 적에게 끌린다 → 그 적 중심에서의 피해로 평가
+                            float best = ShellEffects.HomingRange; int who = -1;
+                            for (int e = 0; e < enemies.Count; e++)
+                            {
+                                float d = (enemies[e].Center - imp).Length;
+                                if (d < best) { best = d; who = e; }
+                            }
+                            if (who >= 0) { imp = enemies[who].Center; dir = enemies[who].Id; }
+                        }
+                        vSpecial += ExpectedDamage(sp, imp, dir, enemies) * special[i].Scale;
+                        if (i == special.Count / 2) { spCenter = imp; haveCenter = true; }   // 부채꼴 중앙 발
+                    }
+            }
+            if (haveCenter) vSpecial += EffectValue(baseSt.Kind, sp, spCenter, enemies);
+
+            // 굴착 특화 판단(발밑 끊기)은 유지 — 낙하 피해가 있으니 굴착이 곧 화력이다
+            if (haveCenter && sp.CraterRadius > baseSt.CraterRadius * 1.3f)
+            {
+                float near = float.MaxValue;
+                for (int i = 0; i < enemies.Count; i++) near = MathF.Min(near, (enemies[i].Center - spCenter).Length);
+                if (vNormal < 60f && near < sp.CraterRadius) return ShellKind.Special;
+            }
+            // 원작대로 2번탄이 무한이라 비용은 추가 딜레이[추정 +20%]뿐 — 조금이라도 나으면 쓴다
+            return vSpecial > vNormal * 1.02f + 10f ? ShellKind.Special : ShellKind.Normal;
+        }
+
+        /// <summary>
+        /// 폭발 피해에 안 잡히는 2번탄 효과의 기대 가치 [추정]. 전부 "맞으면"이 전제라 폭발 반경 안에 적이 있어야 한다.
+        /// </summary>
+        static float EffectValue(TankKind kind, TankStats sp, Vec3 impact, IReadOnlyList<Target> enemies)
+        {
+            var fx = ShellEffects.Of(kind, ShellKind.Special);
+            float near = float.MaxValue; int inBlast = 0;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                float d = (enemies[i].Center - impact).Length;
+                near = MathF.Min(near, d);
+                if (d <= sp.BlastRadius) inBlast++;
+            }
+            switch (fx.Type)
+            {
+                case ShellEffects.EffectType.Poison:
+                case ShellEffects.EffectType.Burn:
+                case ShellEffects.EffectType.PoisonCloud:
+                    return inBlast > 0 ? fx.Param1 * fx.Param2 * 0.8f * inBlast : 0f;   // 지속피해 총량의 80%(장판은 적이 나가면 끊기지만 나가려면 이동을 써야 한다)
+                case ShellEffects.EffectType.Root:
+                    return inBlast > 0 ? 40f : 0f;                                        // 움직임 봉쇄 [추정 40]
+                case ShellEffects.EffectType.Mine:
+                    return fx.Param1 * 0.5f * MathF.Max(0f, 1f - near / 20f);             // 적 가까이 깔수록 가치 [추정]
+                default:
+                    return 0f;
+            }
+        }
+
+        static float ExpectedDamage(TankStats st, Vec3 impact, int directHitId, IReadOnlyList<Target> enemies)
+        {
+            float sum = 0f;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                float d = (enemies[i].Center - impact).Length;
+                bool direct = enemies[i].Id == directHitId;
+                if (d > st.BlastRadius && !direct) continue;
+                sum += Damage.AfterDefense(Damage.Compute(d, st.BlastRadius, st.BaseDamage, st.DirectDamage, direct),
+                                           enemies[i].Defense > 0f ? enemies[i].Defense : 100f);
+            }
+            return sum;
+        }
+
         public struct Target
         {
             public int Id;
             public Vec3 Center;
+            public float Defense;   // 표적 방어력 — 없으면 100(원피해)
         }
 
         /// <summary>
@@ -77,8 +222,11 @@ namespace Tankfall.Sim
         /// </summary>
         public static AimPlan Decide(SdfVolume vol, Vec3 from, IReadOnlyList<Target> enemies, Vec3 wind,
                                      float errorRatio, ref Rng rng, float mapSize = 200f,
-                                     float minPitch = -5f, float maxPitch = 80f)
+                                     TankStats? tank = null)
         {
+            // 탱크 종류가 사거리·탄도·사각을 바꾼다(§9-3). 안 주면 밸런스 기준값.
+            var st = tank ?? TankStats.Get(TankKind.Carrot);   // 기준 탱크(원작 초심자용 평준화)
+            float minPitch = st.MinPitch, maxPitch = st.MaxPitch;
             var plan = new AimPlan { TargetId = -1 };
             if (enemies == null || enemies.Count == 0) return plan;
 
@@ -114,7 +262,7 @@ namespace Tankfall.Sim
                 aim = new Vec3(ax, ay, az);
             }
 
-            var accel = Ballistics.Accel(wind.X, wind.Z);
+            var accel = st.AccelWith(wind.X, wind.Z);
 
             // 후보 중 **실제로 쏴 보고** 조준점에 가장 가까이 떨어지는 것을 고른다.
             //
@@ -125,7 +273,7 @@ namespace Tankfall.Sim
             float bestMiss = float.MaxValue;
             for (float pw = 0.30f; pw <= 1.0001f; pw += 0.025f)
             {
-                float speed = Ballistics.PowerToSpeed(pw);
+                float speed = st.SpeedAt(pw);
                 if (!Ballistics.SolveLaunchAngles(from, aim, speed, accel, out var lo, out var hi)) continue;
 
                 // 고각 우선 — 언덕을 넘긴다(§5-7). 범위를 벗어나면 저각.
@@ -157,7 +305,7 @@ namespace Tankfall.Sim
             Vec3 d2 = aim - from;
             plan.Valid = true;
             plan.Power = 1f;
-            plan.PitchDeg = 55f;
+            plan.PitchDeg = MathF.Min(55f, maxPitch);
             plan.YawDeg = MathF.Atan2(d2.X, d2.Z) * (180f / MathF.PI);
             return plan;
         }
