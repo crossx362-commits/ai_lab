@@ -8,8 +8,8 @@
 #   ./tools/verify.sh compile  컴파일만 (유니티 Play 가능 여부)
 #   ./tools/verify.sh turn|shell|nice   원작 시스템 라이브러리 단위 검증
 #
-# 상수를 바꿨으면 반드시 이걸 돌려라. 특히 CeilingCollapse.MinThickness,
-# TankGroundProbe.StepHeight/WalkStep 은 바꾸면 탱크가 갇힌다(명세 §7-6).
+# 상수를 바꾸면 반드시 이걸 돌려라. 특히 CeilingCollapse.MinThickness,
+# TankGroundProbe.StepHeight/WalkStep 은 바꾸면 탱크가 갖힌다(명세 §7-6).
 set -u
 
 cd "$(dirname "$0")/.."
@@ -38,7 +38,6 @@ run_console() {   # $1=출력이름  $2...=소스
   done
   a+=("$@")
   "$DOTNET" "$CSC" "${a[@]}" || { echo "  ❌ 컴파일 실패: $name"; RC=1; return 1; }
-  # ⚠️ 옛 빌드가 돌아 "최적화 됐다"고 오판한 적이 있다. 없으면 실행하지 않는다.
   [ -f "$OUT/$name.dll" ] || { echo "  ❌ 산출물 없음: $name"; RC=1; return 1; }
   printf '%s' '{"runtimeOptions":{"tfm":"net9.0","framework":{"name":"Microsoft.NETCore.App","version":"9.0.0"}}}' > "$OUT/$name.runtimeconfig.json"
   "$DOTNET" "$OUT/$name.dll" || RC=1
@@ -60,7 +59,7 @@ compile_check() {
 
   rm -f "$OUT/unityall.dll"
   local b=(-nologo -target:library -nostdlib+ -out:"$OUT/unityall.dll" -r:"$NS")
-  for m in UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.InputLegacyModule UnityEngine.TextRenderingModule UnityEngine.ScreenCaptureModule UnityEngine.PhysicsModule; do   # PhysicsModule: CreatePrimitive 의 Collider(위성탄 빔)
+  for m in UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.InputLegacyModule UnityEngine.TextRenderingModule UnityEngine.ScreenCaptureModule UnityEngine.PhysicsModule; do
     b+=(-r:"$UE/$m.dll")
   done
   b+=($SIM/*.cs $VIEW/*.cs)
@@ -78,9 +77,10 @@ case "${1:-all}" in
     run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs ;;
   ball)    run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs ;;
   battle)  run_console BattleSimVerify $SIM/*.cs tools/BattleSimVerify.cs ;;
-  turn)    run_console TurnOrderVerify    $SIM/*.cs tools/TurnOrderVerify.cs ;;      # 딜레이 턴제(원작 규칙)
-  shell)   run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs ;;   # 2번탄 고유 메커니즘
-  nice)    run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs ;;       # 나이스샷·SS
+  turn)    run_console TurnOrderVerify    $SIM/*.cs tools/TurnOrderVerify.cs ;;
+  shell)   run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs ;;
+  nice)    run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs ;;
+  map)     run_console MapVerify          $SIM/*.cs tools/MapVerify.cs ;;
   all)
     compile_check; echo
     run_console SdfVerify      $SIM/*.cs tools/SdfVerify.cs; echo
@@ -89,8 +89,9 @@ case "${1:-all}" in
     run_console TurnOrderVerify    $SIM/*.cs tools/TurnOrderVerify.cs; echo
     run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs; echo
     run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs; echo
+    run_console MapVerify          $SIM/*.cs tools/MapVerify.cs; echo
     run_console BattleSimVerify  $SIM/*.cs tools/BattleSimVerify.cs ;;
-  *) echo "사용: $0 [all|sdf|play|ball|battle|turn|shell|nice|compile]"; exit 2 ;;
+  *) echo "사용: $0 [all|sdf|play|ball|battle|turn|shell|nice|map|compile]"; exit 2 ;;
 esac
 
 echo
