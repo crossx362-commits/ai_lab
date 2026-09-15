@@ -6,7 +6,7 @@
 
 ## 지금 실행하면 보이는 것
 
-Unity Hub에서 **`projects/tankfall/unity`** 를 열고 **Play**를 누르면 된다.
+Unity Hub에서 **`projects/tank-artillery/unity`** 를 열고 **Play**를 누르면 된다.
 씬을 만들 필요가 없다 — `PlayDemo.cs` 가 `[RuntimeInitializeOnLoadMethod]` 로 카메라·조명·지형·탱크를 전부 코드로 생성한다.
 
 | 키 | 동작 |
@@ -32,7 +32,7 @@ Unity Hub에서 **`projects/tankfall/unity`** 를 열고 **Play**를 누르면 �
 ## 구조
 
 ```
-projects/tankfall/
+projects/tank-artillery/
 ├── unity/                                  # 유니티 프로젝트 루트
 │   └── Assets/_Project/Scripts/
 │       ├── Sim/    (Tankfall.Sim.asmdef)   # 순수 C# · UnityEngine 참조 금지

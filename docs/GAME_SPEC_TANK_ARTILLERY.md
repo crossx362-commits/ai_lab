@@ -861,7 +861,7 @@ fallDamage = clamp((fallHeight − 3m) × 12, 0, 240)
 ## 7. 지형 시스템 — SDF 볼륨 + Surface Nets
 
 > **"코드로 그린다"**: 유니티 Terrain도, 미리 만든 지형 메시 에셋도 없다. SDF에서 메시를 매번 생성한다.
-> 구현·검증 완료 — `projects/tankfall/Sim/`, 하네스 `tools/SdfVerify.cs`.
+> 구현·검증 완료 — `projects/tank-artillery/Sim/`, 하네스 `tools/SdfVerify.cs`.
 
 ### 7-1. 자료 구조 — 하이브리드 희소
 
@@ -1042,7 +1042,7 @@ Job System 병렬화는 **더 이상 필요 없다**(청크 빌드가 서로 독
 ### 7-8. 구현 위치
 
 ```
-projects/tankfall/
+projects/tank-artillery/
 ├── Sim/SdfVolume.cs        # 하이브리드 희소 SDF + 삼선형 샘플 + 기둥 표면 탐색
 ├── Sim/SurfaceNets.cs      # SDF → 메시 (로컬 캐시 포함)
 ├── Sim/SdfDeformer.cs      # 구 빼기 + DirtyBounds
@@ -1270,12 +1270,12 @@ struct TurnResult {
 
 > 각 게이트는 **"통과"가 아니라 "빨간불을 먼저 봤는가"**로 판정한다. 네거티브 컨트롤이 없는 통과는 통과가 아니다.
 >
-> **지금 돌려볼 수 있는 것**: Unity Hub → `projects/tankfall/unity` → Play.
-> 유니티 없이 SIM만 검증: `./projects/tankfall/tools/verify.sh`
+> **지금 돌려볼 수 있는 것**: Unity Hub → `projects/tank-artillery/unity` → Play.
+> 유니티 없이 SIM만 검증: `./projects/tank-artillery/tools/verify.sh`
 
 ### M0 — 서 있는 탱크 ✅ **구현 완료** (2026-09-15)
 구현: SDF 지형 + 청크 메시 · 프로시저럴 탱크(§9) · 3인칭 카메라 · WASD 이동 · 접지 정렬 · 턱 넘기
-산출물: `projects/tankfall/unity` — **Unity Hub에서 열고 Play만 누르면 돈다**(씬 불필요, §3-0).
+산출물: `projects/tank-artillery/unity` — **Unity Hub에서 열고 Play만 누르면 돈다**(씬 불필요, §3-0).
 **남은 게이트(사람이 눈으로)**: 42° 경사에서 등반이 막히는가 · 탱크가 지형에 제대로 붙어 있는가 · 처마 아래로 들어가지는가.
 
 ### M1 — 쏘는 재미 ★ 최대 관문  ✅ **구현 완료** (2026-09-15, 사람 체감 검증은 남음)
