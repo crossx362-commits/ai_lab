@@ -1,9 +1,9 @@
 // §5 탄도·조준 역산이 실제로 맞는지 재는 하네스.
 //
 // 핵심 질문: AI 가 빗나가는 게 **의도한 난이도 오차** 때문인가, **공식 버그** 때문인가.
-// 오차를 0으로 두고 쏴서 목표에 얼마나 붙는지 보면 갈린다.
+// 오차를 0으로 두고 쏠서 목표에 얼마나 붙는지 보면 갈린다.
 //
-// ⚠️ 네거티브 컨트롤: 일부러 5° 틀어 쏜 탄이 잘 맞으면 측정이 고장 난 것이다.
+// ⚠️ 네거티브 컨트롤: 일부러 5° 틀어 쏌 탄이 잘 맞으면 측정이 고장 난 것이다.
 
 using System;
 using System.Collections.Generic;
@@ -15,13 +15,7 @@ static class BallisticsVerify
     const int ChunkN = 16;
 
     static float Flat(float x, float z) => 10f;
-    static float Hills(float x, float z)
-    {
-        float h = 4f;
-        h += 22f * MathF.Exp(-(((x - 60f) * (x - 60f) + (z - 100f) * (z - 100f)) / 900f));
-        h += 20f * MathF.Exp(-(((x - 145f) * (x - 145f) + (z - 105f) * (z - 105f)) / 800f));
-        return h;
-    }
+    static float Hills(float x, float z) => MapHeightFunction.TwinHills(x, z);
 
     static SdfVolume Vol(Func<float, float, float> h)
         => new SdfVolume(Voxel, ChunkN, -20f, h, (int)(MapSize / Voxel));
@@ -31,7 +25,6 @@ static class BallisticsVerify
         Console.OutputEncoding = System.Text.Encoding.UTF8;
         Console.WriteLine("=== §5 탄도 · 조준 역산 검증 ===\n");
 
-        // [1] 명세 §5-1 상수가 설계대로인가
         Console.WriteLine("[1] 사거리 표 (평지, 45°, 바람 0)");
         Console.WriteLine($"    {"파워",5} {"v0",8} {"이론사거리",11} {"실측사거리",11} {"비행",7}");
         var vol = Vol(Flat);
@@ -49,7 +42,6 @@ static class BallisticsVerify
         }
         Console.WriteLine("    ※ 실측이 이론보다 약간 큰 것은 발사점이 지면보다 높기 때문 (정상)\n");
 
-        // [2] 조준 역산 — 오차 0으로 쏘면 얼마나 붙나
         Console.WriteLine("[2] ★ 조준 역산 정확도 (오차 0). 이게 크면 공식 버그다");
         Console.WriteLine($"    {"지형",6} {"거리",7} {"바람",7} {"해",5} {"파워",6} {"각도",7} {"목표와 거리",12}");
         int solved = 0, total = 0, good = 0;
@@ -65,14 +57,12 @@ static class BallisticsVerify
                     var from = new Vec3(sx, hf(sx, sz) + 2.5f, sz);
                     var to = new Vec3(tx, hf(tx, tz) + 1.2f, tz);
                     var acc = Ballistics.Accel(wx, wz);
-
                     bool ok = false;
                     for (float pw = 0.3f; pw <= 1.0f; pw += 0.05f)
                     {
                         float sp = Ballistics.PowerToSpeed(pw);
                         if (!Ballistics.SolveLaunchAngles(from, to, sp, acc, out var lo, out var hi))
                             continue;
-                        // 고각 해 우선(§5-7) — 언덕을 넘긴다
                         foreach (var sol in new[] { hi, lo })
                         {
                             float pitch = sol.PitchDeg;
@@ -93,8 +83,7 @@ static class BallisticsVerify
         }
         Console.WriteLine($"    → {total}개 중 {solved}개 해 찾음, {good}개가 3m 이내\n");
 
-        // [3] 네거티브 컨트롤 — 일부러 틀리면 빗나가야 한다
-        Console.WriteLine("[3] 네거티브 컨트롤 (같은 상황에서 각도만 5° 틀어 쏜다)");
+        Console.WriteLine("[3] 네거티브 컨트롤 (같은 상황에서 각도만 5° 틀어 쏌다)");
         {
             var v = Vol(Flat);
             var from = new Vec3(100f, 12.5f, 25f);
@@ -112,8 +101,7 @@ static class BallisticsVerify
             Console.WriteLine("    ※ 정답이 작고 ±5°가 크게 빗나가야 정상");
         }
 
-        // [4] 바람 효과가 명세 수치대로인가 (§5-1: 바람 1당 최대사거리에서 ≈2.6m)
-        Console.WriteLine("\n[4] 바람 편차 — 파워 70(사거리 ~172m). 파워 100 은 맵 밖이라 잴 수 없다");
+        Console.WriteLine("\n[4] 바람 편차 — 파워 70(사거리 ~172m). 파워 100 은 맵 밖이라 쟀 수 없다");
         {
             var v = Vol(Flat);
             var from = new Vec3(100f, 12f, 20f);
