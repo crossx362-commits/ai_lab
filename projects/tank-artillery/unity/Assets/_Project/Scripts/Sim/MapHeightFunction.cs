@@ -70,11 +70,7 @@ namespace Tankfall.Sim
             h = 5f; hx = 0f; hz = 0f;
             Bump(x, z, TwinWestHillX, TwinWestHillZ, 14f, 1600f, ref h, ref hx, ref hz);
             Bump(x, z, TwinEastHillX, TwinEastHillZ, 14f, 1600f, ref h, ref hx, ref hz);
-            float sx = MathF.Sin(x * 0.05f), cx = MathF.Cos(x * 0.05f);
-            float sz = MathF.Sin(z * 0.05f), cz = MathF.Cos(z * 0.05f);
-            h += 1.2f * sx * cz;
-            hx += 1.2f * 0.05f * cx * cz;
-            hz += 1.2f * sx * (-0.05f * sz);
+            AddDetailRipple(x, z, 1.2f, 0.05f, ref h, ref hx, ref hz);
         }
 
         static void Bump(float x, float z, float cx, float cz, float amp, float s,
@@ -104,11 +100,23 @@ namespace Tankfall.Sim
                 hz = dr * dz;
             }
             else { hx = 0f; hz = 0f; }
-            float sx = MathF.Sin(x * 0.04f), cx = MathF.Cos(x * 0.04f);
-            float sz = MathF.Sin(z * 0.04f), cz = MathF.Cos(z * 0.04f);
-            h += 0.8f * sx * cz;
-            hx += 0.8f * 0.04f * cx * cz;
-            hz += 0.8f * sx * (-0.04f * sz);
+            AddDetailRipple(x, z, 0.8f, 0.04f, ref h, ref hx, ref hz);
+        }
+
+        /// <summary>
+        /// 표면 디테일용 잔물결. **X=100(스폰 중심선) 기준 짝함수**로 둔다.
+        /// ⚠️ 처음엔 `sin(x*k)*cos(z*k)` 를 썼는데 sin 은 x=100 기준 대칭이 아니다 —
+        ///    슬롯에 따라 A/B 스폰 높이가 최대 0.74m 벌어져 `MapVerify` 대칭 게이트를 떨어뜨렸다
+        ///    (TwinHills 는 진폭이 작아 우연히 허용치 0.5m 안에 들었을 뿐, 같은 결함을 갖고 있었다).
+        ///    `cos((x-100)*k)` 는 x→200-x 미러에서 부호만 바뀌는 (x-100) 을 짝함수에 넣으므로 항상 대칭이다.
+        /// </summary>
+        static void AddDetailRipple(float x, float z, float amp, float k, ref float h, ref float hx, ref float hz)
+        {
+            float cxm = MathF.Cos((x - 100f) * k), sxm = MathF.Sin((x - 100f) * k);
+            float sz = MathF.Sin(z * k), cz = MathF.Cos(z * k);
+            h += amp * cxm * cz;
+            hx += amp * (-k * sxm) * cz;
+            hz += amp * cxm * (-k * sz);
         }
 
         static void EvalTerrace(float x, float z, out float h, out float hx, out float hz)

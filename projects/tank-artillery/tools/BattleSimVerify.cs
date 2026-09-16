@@ -70,6 +70,21 @@ static class BattleSimVerify
 
     static float _specPerMatch;
 
+    // ── 맵 ──  게임(BattleDemo)과 **같은 함수·같은 스폰**을 써야 승률이 게임의 승률이다(교대 순서 버그의 교훈, §2-9-1).
+    //   TANKFALL_MAP=TwinHills(기본)|Crater|Terrace — MapHeightFunction(§맵 3종). Legacy = 옛 언덕(22m·20m, §2-9-4 까지 전부 이 맵에서 잰 값) — 비교·회귀용.
+    static string MapName = "TwinHills";
+    static bool LegacyMap => MapName == "Legacy";
+    static MapKind Map = MapKind.TwinHills;
+    static SdfVolume NewVolume()
+        => LegacyMap ? new SdfVolume(Voxel, ChunkN, -20f, Hills, (int)(MapSize / Voxel))
+                     : new SdfVolume(Voxel, ChunkN, -20f, MapHeightFunction.Fn(Map), (int)(MapSize / Voxel), MapHeightFunction.Grad(Map));
+    static void SpawnAt(int side, int slot, out float x, out float z)
+    {
+        if (LegacyMap) { x = side == 0 ? 55f + slot * 14f : 150f + slot * 12f; z = side == 0 ? 40f + slot * 8f : 155f - slot * 9f; return; }
+        MapHeightFunction.Spawn(Map, side, slot, out x, out z);
+    }
+
+    /// <summary>옛 언덕. §2-9-4 까지의 매치업 전부는 이 맵에서 잰 것이다(회귀 비교용으로 남긴다).</summary>
     static float Hills(float x, float z)
     {
         float h = 4f;
@@ -116,14 +131,13 @@ static class BattleSimVerify
                                 int firstTeam = 0, bool swapSpawn = false, bool alternate = true)
     {
         var rng = new Rng(seed);
-        var vol = new SdfVolume(Voxel, ChunkN, -20f, Hills, (int)(MapSize / Voxel));
+        var vol = NewVolume();
         var units = new List<U>();
         for (int t = 0; t < 2; t++)
             for (int i = 0; i < 3; i++)
             {
                 int side = swapSpawn ? 1 - t : t;      // 스폰 교환 — 지형 비대칭 판별용
-                float x = side == 0 ? 55f + i * 14f : 150f + i * 12f;
-                float z = side == 0 ? 40f + i * 8f : 155f - i * 9f;
+                SpawnAt(side, i, out float x, out float z);
                 float g = TankGroundProbe.GroundBelow(vol, x, z, 60f);
                 var kind = t == 0 ? (teamA ?? TankKind.Carrot) : (teamB ?? TankKind.Carrot);
                 // 종류를 지정한 실험에서는 그 탱크의 HP 를 쓴다(hp 인자는 HP 스윕 전용)
@@ -347,6 +361,14 @@ static class BattleSimVerify
     static void Main()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        var mapEnv = Environment.GetEnvironmentVariable("TANKFALL_MAP");
+        if (!string.IsNullOrEmpty(mapEnv))
+        {
+            if (mapEnv.Trim().Equals("Legacy", StringComparison.OrdinalIgnoreCase)) MapName = "Legacy";
+            else if (MapHeightFunction.TryParse(mapEnv, out Map)) MapName = MapHeightFunction.Name(Map);
+            else { Console.WriteLine($"❌ TANKFALL_MAP={mapEnv}: 모르는 맵(TwinHills|Crater|Terrace|Legacy)"); Environment.Exit(2); }
+        }
+        Console.WriteLine($"맵: {MapName}" + (LegacyMap ? " (옛 언덕 — §2-9-4 회귀 비교용)" : " (MapHeightFunction — 게임과 동일)"));
         var rowEnv = Environment.GetEnvironmentVariable("TANKFALL_ROW");
         if (!string.IsNullOrEmpty(rowEnv))
         {
@@ -418,7 +440,7 @@ static class BattleSimVerify
         Console.WriteLine($"    {"오차",6} {"중앙값",9} {"90분위",9} {"최대",9} {"21m초과",8}");
         foreach (var (name, err) in levels)
         {
-            var dvol = new SdfVolume(Voxel, ChunkN, -20f, Hills, (int)(MapSize / Voxel));
+            var dvol = NewVolume();
             var drng = new Rng(4242);
             var misses = new List<float>();
             for (int i = 0; i < 24; i++)
@@ -551,12 +573,13 @@ static class BattleSimVerify
             }
             Console.WriteLine("    ※ 읽는 법: 'B선공'에서 뒤집히면 선공 이점, '스폰 교환'에서 뒤집히면 지형 비대칭.");
             // 지형 비대칭을 숫자로: 각 스폰 지점의 지면 높이
-            var probe = new SdfVolume(Voxel, ChunkN, -20f, Hills, (int)(MapSize / Voxel));
+            var probe = NewVolume();
             string ha = "", hb = "";
             for (int i = 0; i < 3; i++)
             {
-                float ga = TankGroundProbe.GroundBelow(probe, 55f + i * 14f, 40f + i * 8f, 60f);
-                float gb = TankGroundProbe.GroundBelow(probe, 150f + i * 12f, 155f - i * 9f, 60f);
+                SpawnAt(0, i, out float sax, out float saz); SpawnAt(1, i, out float sbx, out float sbz);
+                float ga = TankGroundProbe.GroundBelow(probe, sax, saz, 60f);
+                float gb = TankGroundProbe.GroundBelow(probe, sbx, sbz, 60f);
                 ha += $"{ga,5:F1} "; hb += $"{gb,5:F1} ";
             }
             Console.WriteLine($"    스폰 지면 높이  A팀 [{ha}]  B팀 [{hb}]  (높은 쪽이 사거리·시야 유리)");

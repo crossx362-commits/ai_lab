@@ -3,7 +3,7 @@
 #
 #   ./tools/unity_build.sh              # Windows 64 개발(Build/Tankfall.exe)
 #   ./tools/unity_build.sh run          # 빌드 후 -autoshot 실행
-#   UNITY_VER=6000.3.14f1 ./tools/unity_build.sh
+#   UNITY_VER=6000.6.0f1 ./tools/unity_build.sh
 #
 # 종료 코드: 0 성공, 1 빌드 실패, 2 Unity.exe 없음.
 set -u
@@ -12,7 +12,7 @@ ROOT="$(pwd)"
 PROJ="$ROOT/unity"
 OUT_DIR="$PROJ/Build"
 LOG="${TANKFALL_BUILD_LOG:-$ROOT/tools/.unity_build.log}"
-UNITY_VER="${UNITY_VER:-6000.3.14f1}"
+UNITY_VER="${UNITY_VER:-6000.6.0f1}"
 
 find_unity() {
   if [ -n "${UNITY_EXE:-}" ] && [ -x "$UNITY_EXE" ]; then echo "$UNITY_EXE"; return; fi

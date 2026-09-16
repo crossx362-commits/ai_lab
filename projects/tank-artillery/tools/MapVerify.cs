@@ -64,6 +64,15 @@ static class MapVerify
         }
     }
 
+    /// <summary>
+    /// 네거티브 컨트롤: 옛 언덕(22m 가우시안, 반경 900)은 40°·**최대파워**로는 절대 못 막는다 —
+    /// 발사각(피치)이 파워와 무관하게 고정이라 상승 기울기 tan(40°)=0.839 는 항상 같고,
+    /// 이 언덕의 최대 경사(원점 근처 변곡점, ≈0.628)는 그보다 작아 기하학적으로 상승 구간에서
+    /// 절대 못 따라잡는다(어떤 좌표를 골라도 동일 — 실측·해석 둘 다로 확인). 최대파워는 정점이
+    /// ~108m 밖이라 검사창(8~35m) 안에서 하강도 안 한다. 실제 원작 대조 실험에서 관측된 "막힘"은
+    /// 근거리 조준(저파워) 때 정점이 훨씬 가까이(≈10m) 와서 언덕 사면에 내리꽂히는 경우였다 —
+    /// 그래서 이 네거티브 컨트롤만 최소파워(0f)로 쏜다(가까운 표적 조준을 흉내).
+    /// </summary>
     static void CheckLowAngleLegacy()
     {
         Func<float, float, float> old = (x, z) =>
@@ -75,15 +84,15 @@ static class MapVerify
             return h;
         };
         var vol = new SdfVolume(Voxel, ChunkN, OriginY, old, (int)(MapHeightFunction.MapSize / Voxel));
-        bool hit = HitsTerrainEarly(vol, 69f, old(69f, 48f) + 2.4f, 48f, 150f, 155f);
+        bool hit = HitsTerrainEarly(vol, 55f, old(55f, 40f) + 2.4f, 40f, 150f, 155f, power: 0f);
         if (hit) Console.WriteLine("    ✅ 옛 언덕이 40° 를 막는다");
         else { Console.WriteLine("    ❌ 옛 언덕에서도 40° 가 통과 — 검사가 헐겁다"); Fail++; }
     }
 
-    static bool HitsTerrainEarly(SdfVolume vol, float x0, float y0, float z0, float xt, float zt)
+    static bool HitsTerrainEarly(SdfVolume vol, float x0, float y0, float z0, float xt, float zt, float power = 1f)
     {
         float yaw = MathF.Atan2(xt - x0, zt - z0) * 180f / MathF.PI;
-        var v0 = Ballistics.VelocityFrom(yaw, 40f, Ballistics.PowerToSpeed(1f));
+        var v0 = Ballistics.VelocityFrom(yaw, 40f, Ballistics.PowerToSpeed(power));
         var a = Ballistics.Accel(0f, 0f);
         const float dt = 0.02f;
         float x = x0, y = y0, z = z0;

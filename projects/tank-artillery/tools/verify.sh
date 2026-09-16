@@ -16,10 +16,14 @@ cd "$(dirname "$0")/.."
 SIM=unity/Assets/_Project/Scripts/Sim
 VIEW=unity/Assets/_Project/Scripts/View
 
-UNITY_VER="${UNITY_VER:-6000.3.14f1}"
+UNITY_VER="${UNITY_VER:-6000.6.0f1}"
 UD="/c/Program Files/Unity/Hub/Editor/$UNITY_VER/Editor/Data"
 DOTNET="/c/Program Files/dotnet/dotnet"
+# ⚠️ csc.dll 위치가 유니티 버전마다 바뀐다(6000.3: DotNetSdkRoslyn/csc.dll, 6000.6: DotNetSdk/sdk/<버전>/Roslyn/bincore/csc.dll).
+#    버전 폴더명을 하드코딩하면 다음 업그레이드에서 또 깨지므로 두 자리 다 찾아보고 없으면 에러로 바로 멈춘다.
 CSC="$UD/DotNetSdkRoslyn/csc.dll"
+[ -f "$CSC" ] || CSC="$(find "$UD/DotNetSdk/sdk" -maxdepth 4 -path "*/Roslyn/bincore/csc.dll" 2>/dev/null | head -1)"
+[ -n "$CSC" ] && [ -f "$CSC" ] || { echo "❌ csc.dll 을 못 찾음 (UNITY_VER=$UNITY_VER) — Unity 재설치 확인"; exit 2; }
 COREREF="/c/Program Files/dotnet/shared/Microsoft.NETCore.App/9.0.19"
 UE="$UD/Managed/UnityEngine"
 NS="$UD/NetStandard/ref/2.1.0/netstandard.dll"
@@ -59,7 +63,9 @@ compile_check() {
 
   rm -f "$OUT/unityall.dll"
   local b=(-nologo -target:library -nostdlib+ -out:"$OUT/unityall.dll" -r:"$NS")
-  for m in UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.InputLegacyModule UnityEngine.TextRenderingModule UnityEngine.ScreenCaptureModule UnityEngine.PhysicsModule; do
+  # ⚠️ ScriptingModule: Unity 6000.6 부터 RuntimeInitializeOnLoadMethodAttribute 의 기반 타입이
+  #    CoreModule 이 아니라 여기서 PreserveAttribute 를 끌어온다(6000.3 에서는 안 걸렸다) — 버전 올릴 때마다 재확인.
+  for m in UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.InputLegacyModule UnityEngine.TextRenderingModule UnityEngine.ScreenCaptureModule UnityEngine.PhysicsModule UnityEngine.ScriptingModule; do
     b+=(-r:"$UE/$m.dll")
   done
   b+=($SIM/*.cs $VIEW/*.cs)
