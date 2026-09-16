@@ -115,7 +115,13 @@ namespace Tankfall.View
         static readonly TankKind[] DefaultRoster = { TankKind.Cannon, TankKind.Carrot, TankKind.Laser };
 
         /// <summary>판 전체 날씨. 눈이면 포세이돈만 강해진다(원작 고유 능력).</summary>
+        /// ⚠️ 이건 한 번 고정하고 마는 값이 아니다 — 반드시 `SetWeather()` 로만 바꿔라.
+        ///    유닛이 자기 사본(`Unit.W`)을 들고 있어서 직접 대입하면 이미 생성된 탱크가 옛 날씨로 남는다.
         Weather _weather = Weather.Clear;
+        /// <summary>`-weather clear|snow` 로 고정했는가. 안 주면 판 시작에 25% 확률로 눈[추정].</summary>
+        Weather? _weatherForced;
+        /// <summary>눈이 올 확률. 원작 기획서에 빈도 규칙이 없어 내가 정한 값이다 — [추정].</summary>
+        const float SnowChance = 0.25f;
         string _log = "";
         float _camYaw = 180f, _camPitch = 20f, _camDist = 26f;
         float _phaseTimer;
@@ -174,6 +180,11 @@ namespace Tankfall.View
                         Debug.LogWarning($"[Tankfall] -map 모르는 이름 '{args[i + 1]}' — TwinHills");
                 }
                 else if (args[i] == "-shotdir" && i + 1 < args.Length) _shotDir = args[i + 1];
+                else if (args[i] == "-weather" && i + 1 < args.Length)
+                {
+                    if (System.Enum.TryParse<Weather>(args[i + 1].Trim(), true, out var w)) _weatherForced = w;
+                    else Debug.LogWarning($"[Tankfall] -weather 모르는 이름 '{args[i + 1]}' — 무작위");
+                }
                 else if (args[i] == "-roster" && i + 1 < args.Length)
                 {
                     // 세 종류를 쉼표로. 모르는 이름이면 기본 로스터를 유지하고 로그만 남긴다 — 자동사격이 죽으면 안 된다.
@@ -202,9 +213,12 @@ namespace Tankfall.View
             _terrain.BuildRegion(0, cells / ChunkN, _vol.GridY(-2f) / ChunkN, _vol.GridY(40f) / ChunkN + 1,
                                  0, cells / ChunkN);
 
+            // ⚠️ 날씨는 **스폰보다 먼저** 정한다(유닛이 생성될 때 `W` 사본을 뜬다). 바람과 달리 판 내내 안 바뀐다 —
+            //    "이번 판은 눈"이 보이면 포세이돈을 고를지가 선택지가 되기 때문이다(성장 없는 PvP, §62).
+            SetWeather(_weatherForced ?? (Random.value < SnowChance ? Weather.Snow : Weather.Clear));
             SpawnTeams();
             RollWind();
-            _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
+            _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
         }
 
         void SpawnTeams()
@@ -293,6 +307,18 @@ namespace Tankfall.View
         }
 
         /// <summary>바람은 라운드 동안 고정(§15) — 매 턴 바뀌면 운 요소가 너무 커진다.</summary>
+        /// <summary>
+        /// 날씨를 바꾸는 **유일한 경로**. 유닛이 각자 `W` 사본을 들고 있어서(`Unit.St` 가 그걸 본다)
+        /// `_weather` 에 직접 대입하면 이미 생성된 탱크는 옛 날씨로 남는다 — 포세이돈 능력이 조용히 죽는 길이다.
+        /// </summary>
+        void SetWeather(Weather w)
+        {
+            _weather = w;
+            if (_units != null) foreach (var u in _units) u.W = w;
+        }
+
+        static string WeatherName(Weather w) => w == Weather.Snow ? "눈" : "맑음";
+
         void RollWind()
         {
             float a = Random.Range(0f, Mathf.PI * 2f);
@@ -956,7 +982,7 @@ namespace Tankfall.View
             if (u == null) { GUI.Label(new Rect(20, 20, 600, 30), "초기화 실패 — 로그 확인"); return; }
             string wd = WindArrow(_wind);
             string dl = _order != null && Current != null ? $"  ·  딜레이 {_order.Accumulated(Current.Id)}" : "";
-            GUILayout.Label($"<b>TANKFALL</b>  라운드 {_round}  ·  바람 {wd} {_wind.magnitude:F1}{dl}  ·  {1f / Mathf.Max(Time.smoothDeltaTime, 1e-5f):F0} fps", st);
+            GUILayout.Label($"<b>TANKFALL</b>  라운드 {_round}  ·  {WeatherName(_weather)}  ·  바람 {wd} {_wind.magnitude:F1}{dl}  ·  {1f / Mathf.Max(Time.smoothDeltaTime, 1e-5f):F0} fps", st);
 
             string a = "", b = "";
             foreach (var x in _units)

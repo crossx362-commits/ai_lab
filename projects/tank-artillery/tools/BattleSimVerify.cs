@@ -72,6 +72,10 @@ static class BattleSimVerify
 
     // ── 맵 ──  게임(BattleDemo)과 **같은 함수·같은 스폰**을 써야 승률이 게임의 승률이다(교대 순서 버그의 교훈, §2-9-1).
     //   TANKFALL_MAP=TwinHills(기본)|Crater|Terrace — MapHeightFunction(§맵 3종). Legacy = 옛 언덕(22m·20m, §2-9-4 까지 전부 이 맵에서 잰 값) — 비교·회귀용.
+    // ── 날씨 ──  TANKFALL_WEATHER=Clear(기본)|Snow. 눈이면 포세이돈만 세진다(SnowBonus) —
+    //   게임은 판 시작에 25% 확률로 눈이 오는데(BattleDemo.SnowChance [추정]) 하네스가 늘 맑음으로만 재면
+    //   포세이돈의 고유 능력은 **한 번도 측정되지 않는다**(= 살아 있다고 말할 수 없다).
+    static Weather Wx = Weather.Clear;
     static string MapName = "TwinHills";
     static bool LegacyMap => MapName == "Legacy";
     static MapKind Map = MapKind.TwinHills;
@@ -369,6 +373,12 @@ static class BattleSimVerify
             else { Console.WriteLine($"❌ TANKFALL_MAP={mapEnv}: 모르는 맵(TwinHills|Crater|Terrace|Legacy)"); Environment.Exit(2); }
         }
         Console.WriteLine($"맵: {MapName}" + (LegacyMap ? " (옛 언덕 — §2-9-4 회귀 비교용)" : " (MapHeightFunction — 게임과 동일)"));
+        var wEnv = Environment.GetEnvironmentVariable("TANKFALL_WEATHER");
+        if (!string.IsNullOrEmpty(wEnv))
+        {
+            if (!Enum.TryParse(wEnv.Trim(), true, out Wx)) { Console.WriteLine($"❌ TANKFALL_WEATHER={wEnv}: 모르는 날씨(Clear|Snow)"); Environment.Exit(2); }
+            Console.WriteLine($"날씨: {Wx} (포세이돈 SnowBonus 측정용)");
+        }
         var rowEnv = Environment.GetEnvironmentVariable("TANKFALL_ROW");
         if (!string.IsNullOrEmpty(rowEnv))
         {
@@ -564,7 +574,7 @@ static class BattleSimVerify
                 for (uint m = 0; m < 20u; m++)
                 {
                     var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius,
-                                     TankKind.Carrot, TankKind.Carrot, Weather.Clear, c.first, c.swap, c.alt);
+                                     TankKind.Carrot, TankKind.Carrot, Wx, c.first, c.swap, c.alt);
                     if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
                 }
                 float pct = decided > 0 ? winA * 100f / decided : -1f;
@@ -606,7 +616,7 @@ static class BattleSimVerify
                 for (uint m = 0; m < 20u; m++)
                 {
                     var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius,
-                                     kind, kind, Weather.Clear, c.first, c.swap, c.alt);
+                                     kind, kind, Wx, c.first, c.swap, c.alt);
                     turnsSum += r.Turns;
                     if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
                 }
@@ -679,7 +689,7 @@ static class BattleSimVerify
                     //   그대로 새어 들어와 탱크 자체의 좌우 대칭성과 뒤섞인다. 그래서 스폰 교환과 별도로
                     //   선공도 2판마다 교차해 "탱크 수치만의" 대칭성을 분리해 잰다(선공 자체의 효과는 [6-2]가 따로 잰다).
                     var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius, kinds[ai], kinds[bi],
-                                     Weather.Clear, (int)((m >> 1) & 1), (m & 1) == 1, true);
+                                     Wx, (int)((m >> 1) & 1), (m & 1) == 1, true);
                     turns += r.Turns; spec += r.SpecialUsed; fall += r.FallDealt;
                     ssN += r.SsUsed; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots;
                     shotsA += r.ShotsA; hitsA += r.HitsA; blastA += r.BlastDealtA;
@@ -721,7 +731,7 @@ static class BattleSimVerify
         Console.WriteLine("");
         foreach (int i in rows)
         {
-            var t = Stats(kinds[i], ShellKind.Normal, 1f, Weather.Clear);   // 단일 행 실험의 굴착 배율이 표에도 보이게
+            var t = Stats(kinds[i], ShellKind.Normal, 1f, Wx);   // 단일 행 실험의 굴착 배율이 표에도 보이게
             // ⚠️ 특수탄/판이 0 에 가까우면 밸런스가 아니라 **선택지가 죽어 있다**는 신호다.
             string dead = spUse[i] < 0.5f ? "  ❌사장" : "";
             Console.WriteLine($"    {t.Name,-14}{TankStats.EraName(t.Era),-6}{t.Hp,5}{t.MaxRange,6:F0}m{t.BlastRadius,5:F1}m{t.CraterRadius,5:F1}m{t.DirectDamage,6:F0}{spUse[i],9:F1}{ssAvg[i],6:F1}{turnAvg[i],7:F0}{hitPct[i],6:F0}{dmgPerShot[i],9:F0}{fallAvg[i],6:F0}{dotAvg[i],6:F0}{mineAvg[i],7:F0}{satAvg[i],5:F1}{dead}");
