@@ -196,6 +196,7 @@ namespace Tankfall.View
                 }
                 else if (args[i] == "-practice") _practice = true;
                 else if (args[i] == "-practiceselftest") { _practice = true; _practiceSelfTest = true; }
+                else if (args[i] == "-supplyselftest") _supplySelfTest = true;
                 else if (args[i] == "-difficulty" && i + 1 < args.Length)
                 {
                     int found = -1;
@@ -309,6 +310,7 @@ namespace Tankfall.View
             // 턴 순서: 팀 교차 A1 B1 A2 B2 A3 B3 (§52)
             _units.Sort((a, b) => (a.Id % 3) * 2 + a.Team - ((b.Id % 3) * 2 + b.Team));
             _status.Clear(); _hazards.Clear(); _pendingShots.Clear(); RefreshHazards();
+            _supply.Clear(); RefreshCrates();
             _order = new TurnOrder();
             foreach (var u in _units) _order.Add(u.Id, TankStats.Get(u.Kind).Delay);
             _turn = 0;   // 전원 누적 0 → 첫 등록(아군1)이 먼저. TurnOrder.Next 와 일치한다
@@ -378,8 +380,10 @@ namespace Tankfall.View
             if (_units.Count == 0) return;                 // Start 가 실패한 경우
             if (_gallery) { GalleryStep(); return; }
             if (_perf) { PerfStep(); return; }
+            if (_supplySelfTest) { SupplySelfTestStep(); return; }
             if (_autoShot) { AutoShotStep(); return; }
             float dt = Time.deltaTime;
+            TickHelicopter(dt);
 
             // F2 = 연습장 "정답 보기"(§5-7). ⚠️ **PvP HUD 에는 절대 노출 금지**(기획서 §58) —
             //    그래서 연습장에서만 열린다. 이 조건을 풀지 마라.
@@ -574,6 +578,7 @@ namespace Tankfall.View
                 if (TankGroundProbe.CanStepTo(_vol, ground, nx, nz, out float ny) != TankGroundProbe.MoveResult.Ok) break;
                 p.x = nx; p.z = nz; ground = ny;
                 moved += Mathf.Abs(each);
+                TryPickupSupplyAt(u, p.x, ground, p.z);   // 원작: 보급은 "이동으로 줍는" 것이다
                 // 지뢰·지속불 — 밟는 순간
                 int hz = Damage.AfterDefense(_hazards.OnUnitAt(u.Id, u.Kind, new Vec3(p.x, ground + 1.2f, p.z)), u.St.Defense);
                 if (hz > 0)
@@ -884,6 +889,7 @@ namespace Tankfall.View
                 float craterEach = _shooterStats.CraterRadius * (_pendingShots.Count > 1 ? 0.65f : 1f);   // 다탄두 발당 굴착 [추정]
                 var swB = _timeEvents ? System.Diagnostics.Stopwatch.StartNew() : null;
                 string dmgLog = "";
+                var impacts = new List<Vec3>();          // 보급 상자 파괴 판정용(아래에서 쓴다)
                 foreach (var ps in _pendingShots)
                 {
                     Vec3 impact = ps.impact; int directId = ps.direct;
@@ -902,6 +908,7 @@ namespace Tankfall.View
                         dmgLog += "  [위성탄]";   // HUD 폰트에 🛰 글리프가 없어 □ 로 찍혔다
                     }
 
+                    impacts.Add(impact);
                     // 지형 파괴 → 천장 붕괴(§7-6-1) → 영향 청크만 재생성
                     var blast = SdfDeformer.SubtractSphere(_vol, new BlastRequest(impact.X, impact.Y, impact.Z, craterEach));
                     var collapse = CeilingCollapse.Apply(_vol, blast);
@@ -934,6 +941,15 @@ namespace Tankfall.View
                 if (swB != null) Debug.Log($"[Tankfall] EVENT 착탄처리 ×{_pendingShots.Count} {swB.Elapsed.TotalMilliseconds:F2} ms");
                 _pendingShots.Clear();
                 RefreshHazards();
+                // 헬기 보급(§2-9-11): 폭발이 상자를 부순다(원작 — 안의 아이템도 사라진다). 지형이 깎였으니 남은 건 내려앉힌다.
+                if (_itemSlots > 0 && _supply.Count > 0)
+                {
+                    int broke = 0;
+                    foreach (var ip in impacts) broke += _supply.DestroyNear(ip.X, ip.Y, ip.Z, _shooterStats.BlastRadius);
+                    _supply.Settle((x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f));
+                    if (broke > 0) dmgLog += $"  [보급 상자 {broke}개 파괴]";
+                    RefreshCrates();
+                }
 
                 // 발밑이 사라진 탱크는 떨어지면서 피해를 입는다(§28). 폭발 피해와 별개다.
                 // ⚠️ GroundUnit 에 넣으면 안 된다 — 그건 매 프레임 돌아서 낙하 피해가 무한히 누적된다.
@@ -1063,8 +1079,9 @@ namespace Tankfall.View
             _niceFlash = null;
             // 라운드 = 행동 수 / 유닛 수. 서든데스가 이 값을 본다
             int round = _order.ActionsTaken / _units.Count + 1;
-            if (round != _round) { _round = round; RollWind(); }
+            if (round != _round) { _round = round; RollWind(); RollSupply(); }
 
+            TryPickupSupply(Current);        // 상자 위에 서 있으면 이동 없이도 줍는다
             _items.TickStartOfTurn(Current.Id);
             Current.Gauge = MoveGaugeMax * _items.MoveScale(Current.Id);   // 이동증가(원작 5턴 2배)
             _itemSel = 0;
@@ -1351,7 +1368,7 @@ namespace Tankfall.View
                 if (!string.IsNullOrEmpty(_practiceAnswer)) GUILayout.Label($"<b>{_practiceAnswer}</b>", st);
             }
             else
-            GUILayout.Label($"<b>TANKFALL</b>  라운드 {_round}  ·  {WeatherName(_weather)}  ·  바람 {wd} {_wind.magnitude:F1}{dl}  ·  AI {Difficulties[_difficulty].Name}(F1)  ·  {1f / Mathf.Max(Time.smoothDeltaTime, 1e-5f):F0} fps", st);
+            GUILayout.Label($"<b>TANKFALL</b>  라운드 {_round}  ·  {WeatherName(_weather)}  ·  바람 {wd} {_wind.magnitude:F1}{dl}  ·  AI {Difficulties[_difficulty].Name}(F1){(_supply.Count > 0 ? $"  ·  보급상자 {_supply.Count}" : "")}  ·  {1f / Mathf.Max(Time.smoothDeltaTime, 1e-5f):F0} fps", st);
 
             string a = "", b = "";
             foreach (var x in _units)
@@ -1481,6 +1498,170 @@ namespace Tankfall.View
         // 기획서 §68 의 연습장. §1("포격 감각이 실력을 결정한다")·§4("조작은 쉽게, 포격은 어렵게")를
         // 가르치는 자리다. 전투와 같은 탄도·지형·바람을 쓰되 **적이 반격하지 않고 표적이 되살아난다** —
         // 한 판을 이기는 게 목적이 아니라 같은 조건을 반복해서 감각을 만드는 게 목적이기 때문이다.
+        // ── 헬기 보급(§2-9-11) ── 게임과 하네스가 같은 Sim/SupplyDrop 을 쓴다.
+        //    원작: 일정 확률로 헬기가 나타나 상자를 떨구고 사라진다 / 이동으로 주우면 아이템 획득 /
+        //    상자를 부수면 안의 아이템도 사라진다(출처는 Sim/SupplyDrop.cs 머리말).
+        readonly SupplyDrop _supply = new SupplyDrop();
+        Rng _supplyRng = new Rng(0x2B31Du);
+        readonly List<Transform> _crateGos = new List<Transform>();
+        Material _crateMat;
+        Transform _heli;                 // 떨구고 지나가는 헬기(가로지르는 판때기 한 장)
+        float _heliTimer;
+        Vector3 _heliFrom, _heliTo;
+
+        float GroundOf(float x, float z, float nearY)
+        {
+            float g = TankGroundProbe.GroundBelow(_vol, x, z, nearY + 6f);
+            return float.IsNegativeInfinity(g) ? nearY : g;
+        }
+
+        /// <summary>라운드가 바뀔 때 호출. 살아 있는 탱크를 앵커로 넘긴다 — 닿을 수 있는 자리에 떨어져야 보급이다.</summary>
+        void RollSupply()
+        {
+            if (_itemSlots == 0) return;
+            var anchors = new List<Vec3>();
+            foreach (var u in _units) if (u.Alive) { var p = u.Pos; anchors.Add(new Vec3(p.x, p.y, p.z)); }
+            if (anchors.Count == 0) return;
+            int n = _supply.RollDrop(ref _supplyRng, MapSize, (x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f), anchors);
+            if (n <= 0) return;
+            var last = _supply.Crates[_supply.Count - 1];
+            ShowHelicopter(last.X, last.Z);
+            _log = "[보급] 헬기가 상자를 떨궜다 — 이동해서 주우면 아이템, 부수면 사라진다";
+            RefreshCrates();
+        }
+
+        void ShowHelicopter(float x, float z)
+        {
+            if (_heli == null)
+            {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                go.name = "SupplyHeli";
+                Destroy(go.GetComponent<Collider>());
+                var mr = go.GetComponent<MeshRenderer>();
+                mr.sharedMaterial = MakeMat(new Color(0.20f, 0.24f, 0.28f), 0.6f);
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                go.transform.localScale = new Vector3(5.0f, 1.2f, 2.0f);
+                _heli = go.transform;
+            }
+            float y = GroundOf(x, z, 20f) + 26f;
+            _heliFrom = new Vector3(x - 70f, y, z);
+            _heliTo = new Vector3(x + 70f, y, z);
+            _heliTimer = 2.2f;
+            _heli.position = _heliFrom;
+            _heli.gameObject.SetActive(true);
+        }
+
+        void TickHelicopter(float dt)
+        {
+            if (_heli == null || !_heli.gameObject.activeSelf) return;
+            _heliTimer -= dt;
+            if (_heliTimer <= 0f) { _heli.gameObject.SetActive(false); return; }
+            _heli.position = Vector3.Lerp(_heliTo, _heliFrom, _heliTimer / 2.2f);
+        }
+
+        /// <summary>상자 뷰를 상태에 맞춘다. 지형이 깎였으면 먼저 내려앉힌다.</summary>
+        void RefreshCrates()
+        {
+            if (_crateMat == null) _crateMat = MakeMat(new Color(0.85f, 0.65f, 0.20f), 0.35f);
+            int used = 0;
+            foreach (var c in _supply.Crates)
+            {
+                if (used >= _crateGos.Count)
+                {
+                    var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    go.name = $"Crate{_crateGos.Count}";
+                    Destroy(go.GetComponent<Collider>());
+                    go.GetComponent<MeshRenderer>().sharedMaterial = _crateMat;
+                    _crateGos.Add(go.transform);
+                }
+                var t = _crateGos[used++];
+                t.gameObject.SetActive(true);
+                t.position = new Vector3(c.X, GroundOf(c.X, c.Z, c.Y) + 1.0f, c.Z);
+                t.localScale = Vector3.one * 2.0f;
+            }
+            for (int i = used; i < _crateGos.Count; i++) _crateGos[i].gameObject.SetActive(false);
+        }
+
+        /// <summary>이 유닛이 서 있는 자리의 상자를 줍는다(원작: "이동으로 상자를 얻으면 아이템").</summary>
+        bool TryPickupSupply(Unit u) { var p = u.Pos; return TryPickupSupplyAt(u, p.x, p.y, p.z); }
+
+        bool TryPickupSupplyAt(Unit u, float x, float y, float z)
+        {
+            if (_itemSlots == 0 || _supply.Count == 0) return false;
+            var got = _supply.TryPickup(x, y, z);
+            if (got == ItemKind.None) return false;
+            _items.Bag(u.Id).Add(got);
+            _log = $"[보급] {(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} 획득 — {Items.Get(got).Name}";
+            RefreshCrates();
+            return true;
+        }
+
+        /// <summary>
+        /// `-supplyselftest` — 헬기 보급이 **게임에서 실제로 동작하는지** 스스로 확인한다.
+        /// ⚠️ 이게 없으면 보급은 검증 불가다: 기본 `-autoshot` 은 라운드 1 에서 끝나는데
+        ///    투하는 라운드가 바뀔 때 일어나므로 한 번도 안 굴러간다("컴파일됨 = 동작함" 이 아니다).
+        /// 세 가지를 순서대로 잰다 — ① 앵커 투하가 닿을 자리에 떨어지는가 ② 걸어가서 주워지는가
+        /// ③ 폭발이 상자를 부수는가. 하나라도 실패하면 종료 코드 1 로 죽는다.
+        /// </summary>
+        void SupplySelfTestStep()
+        {
+            _frame++;
+            var me = _units[0];
+            if (_frame == 1)
+            {
+                _camYaw = 160f; _camPitch = 30f; _camDist = 45f; UpdateCamera(0f);
+                var anchors = new List<Vec3> { new Vec3(me.Pos.x, me.Pos.y, me.Pos.z) };
+                for (int t = 0; t < 40 && _supply.Count == 0; t++)
+                    _supply.RollDrop(ref _supplyRng, MapSize, (x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f), anchors);
+                if (_supply.Count == 0) { Debug.Log("[Tankfall] ❌ 보급 자체검사 — 40번 굴려도 상자가 안 떨어졌다(투하 로직 고장)"); Application.Quit(1); return; }
+                var c0 = _supply.Crates[0];
+                float d0 = Mathf.Sqrt((c0.X - me.Pos.x) * (c0.X - me.Pos.x) + (c0.Z - me.Pos.z) * (c0.Z - me.Pos.z));
+                Debug.Log($"[Tankfall] 보급 자체검사 ① 투하 거리 {d0:F1}m (앵커 {SupplyDrop.AnchorMin}~{SupplyDrop.AnchorMax}m)");
+                _supplyTestBag0 = _items.Count(me.Id);   // ⚠️ 여기서 재야 한다 — 뒤에서 재면 "안 주웠는데 통과"가 된다
+                RefreshCrates();
+                Shot("보급_투하");
+                return;
+            }
+            if (_supply.Count > 0 && _items.Count(me.Id) <= _supplyTestBag0)
+            {
+                var c = _supply.Crates[0];
+                me.Heading = Mathf.Atan2(c.X - me.Pos.x, c.Z - me.Pos.z) * Mathf.Rad2Deg;
+                me.Gauge = MoveGaugeMax;                 // 자체검사는 게이지 제한을 안 본다(이동 로직만 본다)
+                DriveUnit(me, 1f, 1f / 30f);
+                GroundUnit(me, 1f / 30f);
+                UpdateCamera(0.1f);
+                if (_frame > 600)
+                {
+                    Debug.Log($"[Tankfall] ❌ 보급 자체검사 — 600프레임 걸어도 못 주웠다(이동/획득 고장, 남은 상자 {_supply.Count})");
+                    Application.Quit(1);
+                }
+                return;
+            }
+            if (!_supplyTestPicked)
+            {
+                _supplyTestPicked = true;
+                Debug.Log($"[Tankfall] 보급 자체검사 ② 획득 성공 — 가방 {_supplyTestBag0} → {_items.Count(me.Id)} ({_frame}프레임 걸어감)");
+                Shot("보급_획득");
+                // ③ 폭발로 부수기
+                var anchors = new List<Vec3> { new Vec3(me.Pos.x, me.Pos.y, me.Pos.z) };
+                for (int t = 0; t < 40 && _supply.Count == 0; t++)
+                    _supply.RollDrop(ref _supplyRng, MapSize, (x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f), anchors);
+                if (_supply.Count == 0) { Debug.Log("[Tankfall] ❌ 보급 자체검사 — 파괴 시험용 상자를 못 만들었다"); Application.Quit(1); return; }
+                var c = _supply.Crates[0];
+                int broke = _supply.DestroyNear(c.X, c.Y, c.Z, 1f);
+                RefreshCrates();
+                if (broke != 1) { Debug.Log($"[Tankfall] ❌ 보급 자체검사 ③ 폭발이 상자를 안 부쉈다(부순 수 {broke})"); Application.Quit(1); return; }
+                Debug.Log("[Tankfall] 보급 자체검사 ③ 폭발로 파괴 확인");
+                Debug.Log("[Tankfall] ✅ 헬기 보급(§2-9-11) — 투하·획득·파괴 전부 게임에서 동작한다");
+                VerifyShots();
+                Application.Quit(0);
+            }
+        }
+
+        bool _supplySelfTest;
+        int _supplyTestBag0 = -1;
+        bool _supplyTestPicked;
+
         // ── 아이템(§2-9-10) ── 게임과 하네스가 같은 Sim/ItemState 를 쓴다.
         readonly ItemState _items = new ItemState();
         int _itemSlots = 2;              // -items N 으로 조절, 0 이면 끔
