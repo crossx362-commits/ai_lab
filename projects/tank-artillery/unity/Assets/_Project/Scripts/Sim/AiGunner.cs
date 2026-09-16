@@ -60,10 +60,13 @@ namespace Tankfall.Sim
         ///    그건 §1 "포격 감각이 실력을 결정한다" 를 깨는 것이다. 판 길이는
         ///    서든데스(상한)로 자르고, 이 값은 **위험도**만 정한다.
         /// </summary>
-        public const float ErrorNovice = 0.04f;    // 실측 68% 명중 · 11.9분 — 사람이 이기는 난이도
-        public const float ErrorNormal = 0.025f;   // 실측 84% · 7.3분 — 기본값
-        public const float ErrorExpert = 0.015f;   // 실측 99%
-        public const float ErrorAce = 0.0075f;     // 실측 100% — 사실상 빗나가지 않는다
+        // 아래 실측치는 **게임이 쓰는 TwinHills 기준**(2026-09-16 재측정, §2-9-8).
+        // 옛 하네스 언덕에서 잰 값과 크게 다르니 맵을 바꾸면 반드시 다시 재라.
+        // 라운드로빈(서로 다른 난이도끼리 붙이기)에서 강한 쪽이 일관되게 이긴다 = 사다리 성립.
+        public const float ErrorNovice = 0.04f;    // 명중 75% · 9.8분 — 사람이 이기는 난이도
+        public const float ErrorNormal = 0.025f;   // 명중 83% · 6.2분 — 기본값
+        public const float ErrorExpert = 0.015f;   // 명중 94% · 4.1분
+        public const float ErrorAce = 0.0075f;     // 명중 97% · 3.5분 — 사실상 빗나가지 않는다
 
         /// <summary>
         /// 탄종 선택(§8). **특수탄은 탄도를 바꾸지 않으므로** 궤적을 한 번만 계산하고

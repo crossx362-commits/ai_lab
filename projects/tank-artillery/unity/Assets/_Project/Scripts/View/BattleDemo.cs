@@ -100,10 +100,19 @@ namespace Tankfall.View
         Vector2 _wind;                   // 수평 방향 × 세기
 
         /// <summary>
-        /// 기본 난이도. 자동 대전 40판 실측으로 고른 값 — 3% 여야 명중률 ≈50%,
-        /// 한 판 ≈14분으로 기획서 §55(8~15분) 안에 들어온다. 6% 면 40분짜리 게임이 된다.
+        /// 난이도 사다리(§2-9-8 로 "강한 쪽이 실제로 이긴다" 검증됨). `-difficulty` 로 고르고,
+        /// 게임 중에는 F1 으로 순환한다. 기본은 중급(명중 83% · 6.2분, TwinHills 실측).
+        /// ⚠️ 상수 자체를 만지지 마라 — 판 길이를 늘리는 손잡이는 지형을 갈아 실력 변별력을 지운다(AiGunner 머리말).
         /// </summary>
-        const float AiDifficulty = AiGunner.ErrorNormal;
+        static readonly (string Name, float Err)[] Difficulties =
+        {
+            ("초급", AiGunner.ErrorNovice),
+            ("중급", AiGunner.ErrorNormal),
+            ("상급", AiGunner.ErrorExpert),
+            ("에이스", AiGunner.ErrorAce),
+        };
+        int _difficulty = 1;   // 중급
+        float AiDifficulty => Difficulties[_difficulty].Err;
         Rng _aiRng = new Rng(0xA17C0DEu);   // 결정론 — UnityEngine.Random 은 리플레이를 깬다
         int _round = 1;
 
@@ -180,6 +189,22 @@ namespace Tankfall.View
                         Debug.LogWarning($"[Tankfall] -map 모르는 이름 '{args[i + 1]}' — TwinHills");
                 }
                 else if (args[i] == "-shotdir" && i + 1 < args.Length) _shotDir = args[i + 1];
+                else if (args[i] == "-difficulty" && i + 1 < args.Length)
+                {
+                    int found = -1;
+                    for (int d = 0; d < Difficulties.Length; d++)
+                        if (string.Equals(Difficulties[d].Name, args[i + 1].Trim(), System.StringComparison.OrdinalIgnoreCase)) found = d;
+                    // 한글 이름이 인자로 넘기기 번거로우니 영문 별칭도 받는다.
+                    switch (args[i + 1].Trim().ToLowerInvariant())
+                    {
+                        case "novice": case "easy": found = 0; break;
+                        case "normal": found = 1; break;
+                        case "expert": case "hard": found = 2; break;
+                        case "ace": found = 3; break;
+                    }
+                    if (found >= 0) _difficulty = found;
+                    else Debug.LogWarning($"[Tankfall] -difficulty 모르는 이름 '{args[i + 1]}' — 중급");
+                }
                 else if (args[i] == "-weather" && i + 1 < args.Length)
                 {
                     if (System.Enum.TryParse<Weather>(args[i + 1].Trim(), true, out var w)) _weatherForced = w;
@@ -218,7 +243,7 @@ namespace Tankfall.View
             SetWeather(_weatherForced ?? (Random.value < SnowChance ? Weather.Snow : Weather.Clear));
             SpawnTeams();
             RollWind();
-            _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
+            _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
         }
 
         void SpawnTeams()
@@ -333,6 +358,13 @@ namespace Tankfall.View
             if (_perf) { PerfStep(); return; }
             if (_autoShot) { AutoShotStep(); return; }
             float dt = Time.deltaTime;
+
+            // F1 = AI 난이도 순환. 다음 AI 조준부터 바로 반영된다(AiDifficulty 는 프로퍼티라 캐시가 없다).
+            if (Input.GetKeyDown(KeyCode.F1))
+            {
+                _difficulty = (_difficulty + 1) % Difficulties.Length;
+                _log = $"AI 난이도 → {Difficulties[_difficulty].Name}";
+            }
 
             switch (_phase)
             {
@@ -982,7 +1014,7 @@ namespace Tankfall.View
             if (u == null) { GUI.Label(new Rect(20, 20, 600, 30), "초기화 실패 — 로그 확인"); return; }
             string wd = WindArrow(_wind);
             string dl = _order != null && Current != null ? $"  ·  딜레이 {_order.Accumulated(Current.Id)}" : "";
-            GUILayout.Label($"<b>TANKFALL</b>  라운드 {_round}  ·  {WeatherName(_weather)}  ·  바람 {wd} {_wind.magnitude:F1}{dl}  ·  {1f / Mathf.Max(Time.smoothDeltaTime, 1e-5f):F0} fps", st);
+            GUILayout.Label($"<b>TANKFALL</b>  라운드 {_round}  ·  {WeatherName(_weather)}  ·  바람 {wd} {_wind.magnitude:F1}{dl}  ·  AI {Difficulties[_difficulty].Name}(F1)  ·  {1f / Mathf.Max(Time.smoothDeltaTime, 1e-5f):F0} fps", st);
 
             string a = "", b = "";
             foreach (var x in _units)
