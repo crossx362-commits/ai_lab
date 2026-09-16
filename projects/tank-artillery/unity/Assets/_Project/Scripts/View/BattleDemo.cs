@@ -189,6 +189,8 @@ namespace Tankfall.View
                         Debug.LogWarning($"[Tankfall] -map 모르는 이름 '{args[i + 1]}' — TwinHills");
                 }
                 else if (args[i] == "-shotdir" && i + 1 < args.Length) _shotDir = args[i + 1];
+                else if (args[i] == "-practice") _practice = true;
+                else if (args[i] == "-practiceselftest") { _practice = true; _practiceSelfTest = true; }
                 else if (args[i] == "-difficulty" && i + 1 < args.Length)
                 {
                     int found = -1;
@@ -242,6 +244,13 @@ namespace Tankfall.View
             //    "이번 판은 눈"이 보이면 포세이돈을 고를지가 선택지가 되기 때문이다(성장 없는 PvP, §62).
             SetWeather(_weatherForced ?? (Random.value < SnowChance ? Weather.Snow : Weather.Clear));
             SpawnTeams();
+            if (_practice)
+            {
+                // 연습장은 "나 하나 vs 표적 셋". 아군 2·3번은 쓰지 않으니 치운다(턴이 안 오므로 서 있기만 한다).
+                foreach (var u in _units)
+                    if (u.Team == 0 && u.Id != 0) u.Root.gameObject.SetActive(false);
+                _turn = 0;
+            }
             RollWind();
             _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
         }
@@ -358,6 +367,11 @@ namespace Tankfall.View
             if (_perf) { PerfStep(); return; }
             if (_autoShot) { AutoShotStep(); return; }
             float dt = Time.deltaTime;
+
+            // F2 = 연습장 "정답 보기"(§5-7). ⚠️ **PvP HUD 에는 절대 노출 금지**(기획서 §58) —
+            //    그래서 연습장에서만 열린다. 이 조건을 풀지 마라.
+            if (_practice && Input.GetKeyDown(KeyCode.F2)) ShowPracticeAnswer();
+            if (_practiceSelfTest && _phase == Phase.Move) { PracticeSelfTestFire(); return; }
 
             // F1 = AI 난이도 순환. 다음 AI 조준부터 바로 반영된다(AiDifficulty 는 프로퍼티라 캐시가 없다).
             if (Input.GetKeyDown(KeyCode.F1))
@@ -814,6 +828,21 @@ namespace Tankfall.View
 
             var c = _pendingImpact;
             if (_pendingShots.Count == 0 && c.LengthSq > 0.001f) _pendingShots.Add((c, _pendingDirect, 1f));
+            // 연습장 채점용 — 다탄두면 중앙 탄(첫 발)을 기준으로 잰다.
+            // ⚠️ 거리를 **여기서** 확정한다. 아래에서 지형이 깎이면 표적이 크레이터로 떨어지는데,
+            //    턴이 넘어간 뒤에 재면 그 낙하 거리까지 오차로 세어 5m 씩 부풀었다(실측으로 잡음).
+            if (_practice)
+            {
+                _practiceImpact = _pendingShots.Count > 0 ? _pendingShots[0].impact : c;
+                _practiceMissAtImpact = float.MaxValue;
+                foreach (var o in _units)
+                {
+                    if (o.Team == 0) continue;
+                    var d = o.Center - _practiceImpact;
+                    float dist = Mathf.Sqrt(d.X * d.X + d.Y * d.Y + d.Z * d.Z);
+                    if (dist < _practiceMissAtImpact) _practiceMissAtImpact = dist;
+                }
+            }
             if (_pendingShots.Count > 0)
             {
                 var fx = ShellEffects.Of(_shooterKind, _shooterShell);
@@ -938,6 +967,8 @@ namespace Tankfall.View
 
         void NextTurn()
         {
+            if (_practice) { PracticeNextTurn(); return; }
+
             ApplySuddenDeath();
 
             int aliveA = 0, aliveB = 0;
@@ -978,6 +1009,189 @@ namespace Tankfall.View
             if (IsPlayerTurn) _log = "MOVE — WASD 이동, 스페이스/우클릭으로 조준 진입";
         }
 
+        // ---------------- 연습장(§68) ----------------
+
+        /// <summary>
+        /// 연습장의 턴. 전투와 다른 점은 셋뿐이다: 표적이 **되살아나고**, 적이 **반격하지 않으며**,
+        /// 턴이 항상 **플레이어에게 돌아온다**. 서든데스·승패 판정도 돌리지 않는다 —
+        /// 연습장은 이기는 곳이 아니라 같은 조건을 반복하는 곳이다.
+        /// </summary>
+        void PracticeNextTurn()
+        {
+            var me = _units[0];   // 연습장은 아군 1번만 쏜다
+
+            // 이번 발의 성적 — Impact() 가 착탄 순간에 확정해 둔 거리를 쓴다(지형이 깎이기 전 값).
+            float miss = _practiceMissAtImpact;
+            if (_practiceImpact.LengthSq > 0.001f)
+            {
+                _practiceShots++;
+                _practiceLastMiss = miss;
+                if (miss < _practiceBestMiss) _practiceBestMiss = miss;
+                bool hit = miss <= _shooterStats.BlastRadius;
+                if (hit) _practiceHits++;
+                if (_practiceSolveVerified) { _practiceVerifiedShots++; if (hit) _practiceVerifiedHits++; }
+                _log = hit ? $"명중! 표적까지 {miss:F1}m (폭발 반경 {_shooterStats.BlastRadius:F1}m)"
+                           : $"빗나감 — 표적까지 {miss:F1}m";
+                if (_practiceSelfTest)
+                {
+                    var t0 = _units.Find(o => o.Team == 1);
+                    Debug.Log($"[Tankfall] 연습장 채점 실제오차 {miss:F2}m 착탄({_practiceImpact.X:F1},{_practiceImpact.Y:F1},{_practiceImpact.Z:F1})" +
+                              (t0 != null ? $" 표적0중심({t0.Center.X:F1},{t0.Center.Y:F1},{t0.Center.Z:F1})" : ""));
+                }
+            }
+            _practiceImpact = default; _practiceMissAtImpact = float.MaxValue;
+
+            // 표적 부활 — **매번 자리를 옮긴다**.
+            // ⚠️ 처음엔 제자리에서 되살렸는데, 같은 곳을 계속 쏘니 크레이터가 깊어져 표적이 구덩이에 잠겼고
+            //    캐롯(0~40°)의 각도로는 닿지 않는 자리가 됐다 — 자체검사 명중률이 발을 거듭할수록 떨어져서 들켰다.
+            //    연습장은 같은 구덩이를 파는 곳이 아니라 **매번 다른 거리·방향을 읽는 곳**이다(§1 포격 감각).
+            //    지형 파괴 자체는 남겨둔다 — 전투와 같은 전장에서 연습해야 감각이 옮겨간다.
+            foreach (var o in _units)
+            {
+                if (o.Team == 0) continue;
+                o.Hp = o.HpMax;
+                o.Root.gameObject.SetActive(true);
+                PlaceTargetRandomly(o);
+            }
+
+            _niceFlash = null;
+            RollWind();          // 매 발 바람이 바뀐다 — 바람 읽기가 연습의 핵심이다
+            _practiceAnswer = "";
+            _turn = 0;           // 턴은 항상 나에게 돌아온다(Current = _units[_turn])
+            me.Gauge = MoveGaugeMax;
+            _power = 0f; _charging = false;
+            _phase = Phase.Move;
+            _phaseTimer = MovePhaseSec;
+            _log = $"연습 {_practiceShots}발 · 명중 {_practiceHits} — MOVE(스페이스로 조준)";
+        }
+
+        /// <summary>연습 표적을 적 진영 쪽 임의 위치에 지면 위로 세운다.</summary>
+        void PlaceTargetRandomly(Unit o)
+        {
+            for (int tries = 0; tries < 12; tries++)
+            {
+                float x = Random.Range(MapSize * 0.55f, MapSize * 0.92f);
+                float z = Random.Range(MapSize * 0.12f, MapSize * 0.88f);
+                float g = TankGroundProbe.GroundBelow(_vol, x, z, 60f);
+                if (float.IsNegativeInfinity(g)) continue;
+                o.Root.position = new Vector3(x, g + GroundVisualLift, z);
+                return;
+            }
+        }
+
+        /// <summary>정답대로 자동 발사해 채점까지 돌려본다(`-practiceselftest`). 20발 쏘고 결과를 찍고 끝낸다.</summary>
+        void PracticeSelfTestFire()
+        {
+            if (_practiceSelfTestShots == 3) Shot("연습장");   // 오너에게 보여줄 화면 한 장
+            if (_practiceSelfTestShots >= 20)
+            {
+                float acc = _practiceShots > 0 ? _practiceHits * 100f / _practiceShots : 0f;
+                float vacc = _practiceVerifiedShots > 0 ? _practiceVerifiedHits * 100f / _practiceVerifiedShots : -1f;
+                Debug.Log($"[Tankfall] 연습장 자체검사 — 전체 {_practiceHits}/{_practiceShots}발 ({acc:F0}%), " +
+                          $"검증통과 해만 {_practiceVerifiedHits}/{_practiceVerifiedShots}발 ({vacc:F0}%), 최고 오차 {_practiceBestMiss:F2}m");
+                // ⚠️ 게이트는 **전체 명중률이 아니라 "검증통과라고 말한 해"의 명중률**이다.
+                //    지형·각도 범위 때문에 애초에 해가 없는 배치도 나오는데(폴백), 그걸 못 맞혔다고 역산이
+                //    틀린 건 아니다. 거짓말을 안 하려면 주장한 것만 재야 한다 — "된다고 한 건 된다".
+                if (_practiceVerifiedShots >= 5 && vacc >= 90f)
+                    Debug.Log("[Tankfall] ✅ 정답 보기가 '된다'고 한 해는 실제로 맞는다(§5-7 역산 + 채점 정상)");
+                else if (_practiceVerifiedShots < 5)
+                    Debug.Log("[Tankfall] ❌ 검증통과 해 표본이 너무 적다 — 판단 불가");
+                else
+                    Debug.Log("[Tankfall] ❌ 검증통과라고 한 해가 실제로는 안 맞는다 — 역산이나 채점이 고장났다");
+                Application.Quit();
+                return;
+            }
+            _practiceSelfTestShots++;
+            var me = _units[0];
+            if (!TrySolvePractice(out float pitch, out float yaw, out float power))
+            {
+                Debug.Log("[Tankfall] 연습장 자체검사 — 해 없음, 이 발은 건너뛴다");
+                PracticeNextTurn();
+                return;
+            }
+            // ⚠️ `FireFrom` 의 turretYaw 는 **차체 방향 기준 상대각**이다(worldYaw = Heading + turretYaw).
+            //    역산이 주는 건 월드 야우라 그대로 넘기면 차체 방향이 한 번 더 더해져 엉뚱한 데로 날아간다
+            //    (처음에 이걸 몰라 자체검사가 20발 전부 지형 밖으로 나갔다).
+            float rel = Mathf.DeltaAngle(me.Heading, yaw);
+            me.TurretYaw = rel; me.BarrelPitch = pitch;
+            Debug.Log($"[Tankfall] 연습장 시도{_practiceSelfTestShots}: {_practiceSolveNote} 바람{_wind.magnitude:F1}");
+            FireFrom(me, rel, pitch, power);
+        }
+
+        /// <summary>
+        /// 연습장 "정답 보기"(§5-7). 지금 바람·지형에서 가장 가까운 표적을 맞히는 각도·파워를 계산해 보여준다.
+        /// ⚠️ 기획서 §58 에 따라 **PvP 에서는 절대 노출하면 안 된다** — 호출부가 `_practice` 로 잠겨 있다.
+        /// </summary>
+        void ShowPracticeAnswer()
+        {
+            if (TrySolvePractice(out float pitch, out float yaw, out float power))
+                _practiceAnswer = $"정답: 각 {pitch:F1}° · 파워 {power * 100f:F0} · 야우 {yaw:F1}°";
+            else
+                _practiceAnswer = "해 없음 — 이 각도 범위·사거리로는 못 닿는다";
+            _log = _practiceAnswer;
+        }
+
+        /// <summary>
+        /// 지금 바람·지형에서 가장 가까운 표적을 맞히는 각도·파워를 §5-7 역산으로 구한다.
+        /// **정답 보기와 자체검사가 같은 이 함수를 쓴다** — 둘이 다른 계산을 하면 검사가 검사가 아니다.
+        /// 파워를 훑어 가장 낮은 파워로 풀리는 해를 고른다. 해가 없으면 사거리·각도 범위 밖이라는 뜻이다.
+        /// </summary>
+        bool TrySolvePractice(out float pitchDeg, out float yawDeg, out float power01)
+        {
+            pitchDeg = 0f; yawDeg = 0f; power01 = 0f;
+            _practiceSolveVerified = false;
+            var me = _units[0];
+            Unit target = null; float best = float.MaxValue;
+            foreach (var o in _units)
+            {
+                if (o.Team == 0 || !o.Alive) continue;
+                var d = o.Center - me.Center;
+                if (d.LengthSq < best) { best = d.LengthSq; target = o; }
+            }
+            if (target == null) return false;
+
+            var st = TankStats.For(me.Kind, ShellKind.Normal, me.HpFrac, me.W);
+            var accel = st.AccelWith(_wind.x, _wind.y);
+            var from = new Vec3(me.Fire.position.x, me.Fire.position.y, me.Fire.position.z);
+            for (int i = 1; i <= 20; i++)
+            {
+                float power = i / 20f;
+                float speed = st.SpeedAt(power);   // FireFrom 과 **같은 함수** — 따로 계산하면 정답이 정답이 아니게 된다
+                if (!Ballistics.SolveLaunchAngles(from, target.Center, speed, accel, out var low, out var high)) continue;
+                // §5-7 5단계: 두 해를 **실제로 날려보고 지형에 막히지 않는 쪽**을 택한다.
+                //   ⚠️ 이 단계를 빼면 저각 해가 언덕에 박히는데도 "정답"이라고 내놓는다
+                //      (실측: 자체검사 명중률 75% — 빠진 5발이 전부 막힌 저각 해였다).
+                //   둘 다 막히면 고각 해를 준다(산 넘기기).
+                var boxes = new List<TankHitbox>();
+                foreach (var o in _units) if (o.Alive) boxes.Add(new TankHitbox { Id = o.Id, Center = o.Center, Radius = TankRadius });
+                bool haveFallback = false; float fbPitch = 0f, fbYaw = 0f, fbPower = 0f;
+                foreach (var cand in new[] { low, high })
+                {
+                    if (cand.PitchDeg < st.MinPitch || cand.PitchDeg > st.MaxPitch) continue;
+                    if (!haveFallback) { haveFallback = true; fbPitch = cand.PitchDeg; fbYaw = cand.YawDeg; fbPower = power; }
+                    var sim = ProjectileSimulator.Simulate(_vol, from,
+                        Ballistics.VelocityFrom(cand.YawDeg, cand.PitchDeg, speed), accel, boxes, me.Id, MapSize);
+                    var miss = sim.Impact - target.Center;
+                    // 허용 오차는 **폭발 반경이 아니라 탱크 반경**이다. 폭발 반경(캐롯 7m)까지 열어두면
+                    // 5m 씩 빗나간 해도 "정답"이라고 내놓는다(실측으로 걸렸다). 연습장의 정답은 표적을
+                    // 직접 맞히는 해여야 한다 — 시뮬 시간 간격 때문에 착탄점이 탱크 표면에 찍히므로 반경만큼은 연다.
+                    if (!sim.Hit || miss.LengthSq > TankRadius * TankRadius) continue;   // 막혔거나 빗나갔다
+                    pitchDeg = cand.PitchDeg; yawDeg = cand.YawDeg; power01 = power;
+                    _practiceSolveNote = $"해 검증통과 각{pitchDeg:F1} 파워{power * 100:F0} 예측오차{Mathf.Sqrt(miss.LengthSq):F2}m 표적({target.Center.X:F0},{target.Center.Z:F0}) 포구({from.X:F1},{from.Y:F1},{from.Z:F1})";
+                    _practiceSolveVerified = true;
+                    return true;
+                }
+                if (haveFallback && i == 20)
+                {
+                    pitchDeg = fbPitch; yawDeg = fbYaw; power01 = fbPower;
+                    _practiceSolveNote = $"해 폴백(전부 막힘) 각{pitchDeg:F1} 파워{fbPower * 100:F0}";
+                    _practiceSolveVerified = false;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // ---------------- 카메라 · HUD ----------------
 
         void UpdateCamera(float dt)
@@ -1014,6 +1228,16 @@ namespace Tankfall.View
             if (u == null) { GUI.Label(new Rect(20, 20, 600, 30), "초기화 실패 — 로그 확인"); return; }
             string wd = WindArrow(_wind);
             string dl = _order != null && Current != null ? $"  ·  딜레이 {_order.Accumulated(Current.Id)}" : "";
+            if (_practice)
+            {
+                float acc = _practiceShots > 0 ? _practiceHits * 100f / _practiceShots : 0f;
+                string bestTxt = _practiceBestMiss < float.MaxValue ? $"{_practiceBestMiss:F1}m" : "-";
+                string lastTxt = _practiceLastMiss >= 0f ? $"{_practiceLastMiss:F1}m" : "-";
+                GUILayout.Label($"<b>TANKFALL 연습장</b>  {WeatherName(_weather)}  ·  바람 {wd} {_wind.magnitude:F1}  ·  " +
+                                $"{_practiceHits}/{_practiceShots}발 ({acc:F0}%)  ·  이번 {lastTxt} / 최고 {bestTxt}  ·  F2=정답 보기", st);
+                if (!string.IsNullOrEmpty(_practiceAnswer)) GUILayout.Label($"<b>{_practiceAnswer}</b>", st);
+            }
+            else
             GUILayout.Label($"<b>TANKFALL</b>  라운드 {_round}  ·  {WeatherName(_weather)}  ·  바람 {wd} {_wind.magnitude:F1}{dl}  ·  AI {Difficulties[_difficulty].Name}(F1)  ·  {1f / Mathf.Max(Time.smoothDeltaTime, 1e-5f):F0} fps", st);
 
             string a = "", b = "";
@@ -1120,6 +1344,25 @@ namespace Tankfall.View
         /// 정면·측면·부감 세 각도로 찍는 이유도 같다: 한 각도에서만 갈리면 게임에선 안 갈린다.
         /// </summary>
         bool _gallery;
+
+        // ── 연습장(§68) ──
+        // 기획서 §68 의 연습장. §1("포격 감각이 실력을 결정한다")·§4("조작은 쉽게, 포격은 어렵게")를
+        // 가르치는 자리다. 전투와 같은 탄도·지형·바람을 쓰되 **적이 반격하지 않고 표적이 되살아난다** —
+        // 한 판을 이기는 게 목적이 아니라 같은 조건을 반복해서 감각을 만드는 게 목적이기 때문이다.
+        bool _practice;
+        int _practiceShots, _practiceHits;
+        float _practiceBestMiss = float.MaxValue, _practiceLastMiss = -1f;
+        string _practiceAnswer = "";
+        Vec3 _practiceImpact;
+        float _practiceMissAtImpact = float.MaxValue;   // 착탄 **순간**의 표적까지 거리(지형이 깎이기 전)
+        /// <summary>`-practiceselftest`: 정답 보기가 낸 각도·파워로 **자동으로 쏴 보고** 실제로 맞는지 센다.
+        /// 사람 입력이 필요한 모드라 이게 없으면 연습장은 자동 검증이 불가능하다. 정답 기능의 네거티브 컨트롤이기도 하다 —
+        /// 정답대로 쐈는데 안 맞으면 역산(§5-7)이나 채점이 고장난 것이다.</summary>
+        bool _practiceSelfTest;
+        string _practiceSolveNote = "";
+        bool _practiceSolveVerified;                 // 이번 해가 시뮬 검증을 통과한 해인가(폴백이 아닌가)
+        int _practiceVerifiedShots, _practiceVerifiedHits;
+        int _practiceSelfTestShots;
         Phase _lastLoggedPhase = Phase.GameOver;
         int _pcTurns, _pcForced, _pcMoveSkips;
         float _pcMoveHold;
