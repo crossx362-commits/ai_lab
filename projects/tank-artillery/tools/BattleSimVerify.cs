@@ -76,6 +76,9 @@ static class BattleSimVerify
     //   게임은 판 시작에 25% 확률로 눈이 오는데(BattleDemo.SnowChance [추정]) 하네스가 늘 맑음으로만 재면
     //   포세이돈의 고유 능력은 **한 번도 측정되지 않는다**(= 살아 있다고 말할 수 없다).
     static Weather Wx = Weather.Clear;
+    /// <summary>[6-2-1] 미러 게이트 표본. 20판(±11%p)으로는 편향과 운을 못 가른다 — 실측으로 배운 값.</summary>
+    const uint MirrorGateN = 60u;
+    static bool RcFail;
     static string MapName = "TwinHills";
     static bool LegacyMap => MapName == "Legacy";
     static MapKind Map = MapKind.TwinHills;
@@ -128,11 +131,14 @@ static class BattleSimVerify
         public bool Timeout;
     }
 
+    /// <param name="errorRatioB">B팀만 다른 조준 오차를 줄 때. null 이면 양 팀 같다(기존 호출 전부 이 경로).
+    /// 난이도 사다리([7])는 이게 없으면 잴 수 없다 — 같은 난이도끼리 붙이면 당연히 50% 라 사다리인지 알 수 없다.</param>
     static MatchResult RunMatch(uint seed, float errorRatio, int hp = MaxHp, int maxTurns = 400,
                                 int suddenDeathTurn = 0, float craterRadius = BlastRadius,
                                 TankKind? teamA = null, TankKind? teamB = null,
                                 Weather weather = Weather.Clear,
-                                int firstTeam = 0, bool swapSpawn = false, bool alternate = true)
+                                int firstTeam = 0, bool swapSpawn = false, bool alternate = true,
+                                float? errorRatioB = null)
     {
         var rng = new Rng(seed);
         var vol = NewVolume();
@@ -155,13 +161,26 @@ static class BattleSimVerify
         //    팀 교대인데 하네스만 달랐다. 특수탄이 죽어 있을 땐 미러 50% 로 안 보였고, 낙하 피해가
         //    들어오자 미러 80~90% 로 터졌다 — 세 발 연속 굴착이 상대 발밑을 통째로 끊는다.
         //    게임과 같은 교대 순서로 맞춘다. 판별용으로 옛 순서(alternate=false)도 남긴다.
-        if (alternate) units.Sort((a, b) => (a.Id % 3) * 2 + a.Team - ((b.Id % 3) * 2 + b.Team));
+        // ⚠️ **두 번째 하네스 버그**(2026-09-16 발견). 예전엔 교대 리스트를 만든 뒤 등록 인덱스를
+        //    `(i + firstTeam) % 6` 으로 **한 칸 회전**시켜 "B선공"을 만들었다. 그런데 이 맵의 조준 AI 는
+        //    가장 가까운 적을 쏘므로 같은 슬롯끼리 1:1 결투 3쌍이 된다(A0↔B0, A1↔B1, A2↔B2).
+        //    한 칸 회전은 **첫 쌍의 선공만 뒤집고 나머지 두 쌍은 그대로 A 가 먼저 쏜다** — 즉 "B선공"이
+        //    3쌍 중 1쌍에만 걸린 반쪽짜리 대조군이었다. 오차 0% 자기전에서 B선공인데도 A 가 68% 이기는
+        //    것으로 들통났다(구조적 편향이 아니라 대조군이 고장난 것이었다).
+        //    이제 **팀 순서 자체를 뒤집어** 세 쌍 전부에서 선공이 넘어가게 한다.
+        if (alternate)
+        {
+            int ft = firstTeam;
+            units.Sort((a, b) => (a.Id % 3) * 2 + (ft == 1 ? 1 - a.Team : a.Team)
+                               - ((b.Id % 3) * 2 + (ft == 1 ? 1 - b.Team : b.Team)));
+        }
 
-        // 원작 딜레이 턴제(TurnOrder). 동률은 등록 순서이므로 교대 리스트를 firstTeam 부터 돌려 등록한다.
+        // 원작 딜레이 턴제(TurnOrder). 동률은 등록 순서이므로 리스트 순서 그대로 등록한다.
+        // (alternate=false 인 옛 순차 순서에서는 firstTeam 이 옛 회전 의미 그대로다 — 판별용으로만 쓴다.)
         var order = new TurnOrder();
         for (int i = 0; i < units.Count; i++)
         {
-            var uu = units[(i + firstTeam) % units.Count];
+            var uu = alternate ? units[i] : units[(i + firstTeam * 3) % units.Count];
             order.Add(uu.Id, uu.St.Delay);
         }
         var byId = new Dictionary<int, U>();
@@ -234,7 +253,8 @@ static class BattleSimVerify
             if (enemies.Count == 0) break;
 
             var st = u.St;
-            var plan = AiGunner.Decide(vol, u.Muzzle, enemies, wind, errorRatio, ref rng, MapSize, st);
+            float err = (u.Team == 1 && errorRatioB.HasValue) ? errorRatioB.Value : errorRatio;
+            var plan = AiGunner.Decide(vol, u.Muzzle, enemies, wind, err, ref rng, MapSize, st);
             if (!plan.Valid) continue;
 
             float speed = st.SpeedAt(plan.Power);
@@ -249,7 +269,7 @@ static class BattleSimVerify
             int bk = Math.Min(7, res.Turns / 20);
             res.BucketShots[bk]++;
             // 나이스샷 판정(원작: 게이지를 표시 지점에 정확히 멈추면 포인트 +1) — AI 는 확률 [추정]
-            if (NiceShot.AiJudge(errorRatio, ref rng)) u.Skill.OnNiceShot();
+            if (NiceShot.AiJudge(err, ref rng)) u.Skill.OnNiceShot();
             if (!shot.Hit) continue;
 
             // ⚠️ 탄착오차는 **목표 근처에 떨어진 사격만** 평균 내야 한다.
@@ -629,6 +649,111 @@ static class BattleSimVerify
         Console.WriteLine("    ※ 읽는 법: 'B선공'에서 뒤집히면 선공 이점, '스폰 교환'에서 뒤집히면 지형 비대칭.");
         Console.WriteLine("    ※ 판이 짧을수록(레이저 등) 선공 이점이 상쇄되기 전에 끝난다는 가설 — 평균 턴 열로 대조.");
 
+        // [6-2-1] 매치업표 미러 열의 **게이트**. 미러 칸은 셀당 20판이라 ±11%p 로 흔들려 한 칸만 보면
+        //         "편향"과 "운"을 못 가른다(실제로 그래서 두 번이나 오진했다). 12종 전부를 매치업과
+        //         **똑같은 조건 패턴**(선공·스폰 2판마다 교차)으로 표본만 늘려 재고 평균을 본다.
+        //         12종 평균이 50% 에서 벗어나면 그건 탱크가 아니라 하네스가 기운 것이다.
+        Console.WriteLine("");
+        Console.WriteLine($"[6-2-1] 미러 게이트 — 12종 자기전, 각 {MirrorGateN}판, 매치업과 같은 교차 패턴");
+        {
+            var kinds = TankStats.Selectable();
+            float sum = 0f; int n = 0; string worstName = "-"; float worst = 50f;   // worst=50 에서 시작해야 첫 기종부터 비교된다
+            foreach (var k in kinds)
+            {
+                int winA = 0, decided = 0;
+                for (uint m = 0; m < MirrorGateN; m++)
+                {
+                    var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius,
+                                     k, k, Wx, (int)((m >> 1) & 1), (m & 1) == 1, true);
+                    if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
+                }
+                float pct = decided > 0 ? winA * 100f / decided : -1f;
+                sum += pct; n++;
+                if (MathF.Abs(pct - 50f) > MathF.Abs(worst - 50f)) { worst = pct; worstName = TankStats.Get(k).Name; }
+                Console.WriteLine($"    {TankStats.Get(k).Name,-12} {pct,5:F0}%");
+            }
+            float mean = n > 0 ? sum / n : -1f;
+            float se = 100f / MathF.Sqrt(MirrorGateN * (float)n) / 2f;
+            Console.WriteLine($"    12종 평균 {mean:F1}%  (표준오차 ±{se:F1}%p)  최대 이탈 {worstName} {worst:F0}%");
+            if (MathF.Abs(mean - 50f) > 3f * se)
+            { Console.WriteLine("    ❌ 미러 평균이 50% 에서 유의하게 벗어났다 — 하네스가 한쪽으로 기울어 있다"); RcFail = true; }
+            else Console.WriteLine("    ✅ 미러 평균이 50% 안(3σ) — 매치업표를 탱크 비교로 읽어도 된다");
+        }
+
+        // [6-3] 난이도 사다리가 **진짜 사다리인가**. 지금까지 난이도는 같은 값끼리만 재서(AI vs AI 대칭)
+        //       "오차가 크면 판이 길어진다"만 알았지 **강한 난이도가 약한 난이도를 실제로 이기는지**는 잰 적이 없다.
+        //       같은 난이도끼리는 당연히 50% 라 사다리 여부를 증명하지 못한다 — 서로 다른 난이도를 붙여야 한다.
+        //       읽는 법: 행(A)이 더 강한 난이도면 승률이 50% 를 **뚜렷하게** 넘어야 사다리다. 안 넘으면 손잡이가 죽은 것이다.
+        Console.WriteLine("");
+        Console.WriteLine($"[6-3] 난이도 사다리 검증 — 맵={MapName}, 캐롯 자기전, 각 20판, A팀 승률");
+        {
+            (string name, float err)[] tiers =
+            {
+                ("대조 0%",      0f),          // 네거티브 컨트롤: 오차가 없으면 난수가 조준에 안 쓰인다.
+                                               //   여기서도 미러가 50% 를 벗어나면 원인은 난수가 아니라 구조다.
+                ("에이스 0.75%", AiGunner.ErrorAce),
+                ("상급 1.5%",   AiGunner.ErrorExpert),
+                ("중급 2.5%",   AiGunner.ErrorNormal),
+                ("초급 4.0%",   AiGunner.ErrorNovice),
+            };
+            Console.Write($"    {"A vs B",-12}");
+            foreach (var t in tiers) Console.Write($"{t.name,12}");
+            Console.WriteLine();
+            bool ladderOk = true;
+            var diag = new float[tiers.Length];
+            for (int a = 0; a < tiers.Length; a++)
+            {
+                Console.Write($"    {tiers[a].name,-12}");
+                for (int b = 0; b < tiers.Length; b++)
+                {
+                    int winA = 0, decided = 0;
+                    for (uint m = 0; m < 20u; m++)
+                    {
+                        // 선공·스폰 둘 다 교차해 진영 효과를 뺀다([6-2] 교훈) — 남는 차이가 난이도뿐이어야 한다.
+                        var r = RunMatch(2000 + m * 77, tiers[a].err, MaxHp, 400, SuddenDeathTurn, BlastRadius,
+                                         TankKind.Carrot, TankKind.Carrot, Wx,
+                                         (int)((m >> 1) & 1), (m & 1) == 1, true, tiers[b].err);
+                        if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
+                    }
+                    float pct = decided > 0 ? winA * 100f / decided : -1f;
+                    Console.Write($"{pct,11:F0}%");
+                    // 한 칸 위(더 강한 난이도)가 아래를 못 이기면 사다리가 아니다. 인접 칸만 본다(a<b = A 가 더 강함).
+                    if (b == a + 1 && pct <= 55f) ladderOk = false;
+                    if (a == b) diag[a] = pct;
+                }
+                Console.WriteLine();
+            }
+            Console.WriteLine(ladderOk
+                ? "    ✅ 인접 난이도끼리 강한 쪽이 이긴다 — 사다리가 성립한다"
+                : "    ❌ 인접 난이도 차이가 안 난다 — 난이도 손잡이가 죽어 있다(§2-5 의 '창이 0.7%p' 문제)");
+
+            // 대각선(같은 난이도끼리)은 50% 여야 한다 — 벗어나면 진영 효과가 남은 것이다.
+            // 원인을 바로 가르기 위해 선공만 따로 떼어 다시 잰다(§2-9-6 과 같은 판별).
+            Console.WriteLine("    — 대각선(같은 난이도) 이 50% 를 벗어난 칸의 선공별 분해 —");
+            for (int a = 0; a < tiers.Length; a++)
+            {
+                _ = diag[a];   // 전 티어를 다 잰다 — n=20 으로는 "편향"과 "시드 운"을 못 가른다는 걸 실측으로 배웠다.
+                // ⚠️ 표본을 20판에서 **120판**으로 올리고 시드 계열도 바꾼다(2000→5000 계열).
+                //    20판 ±11%p 로는 "진짜 편향"과 "이 시드 20개가 우연히 그랬다"를 가를 수 없다 —
+                //    실제로 저오차 구간은 판이 거의 결정론적이라 시드에 심하게 끌려간다.
+                for (int ft = 0; ft < 2; ft++)
+                    for (int sp = 0; sp < 2; sp++)
+                    {
+                        int winA = 0, decided = 0, turns = 0;
+                        const uint N = 120u;
+                        for (uint m = 0; m < N; m++)
+                        {
+                            var r = RunMatch(5000 + m * 131, tiers[a].err, MaxHp, 400, SuddenDeathTurn, BlastRadius,
+                                             TankKind.Carrot, TankKind.Carrot, Wx, ft, sp == 1, true, tiers[a].err);
+                            turns += r.Turns;
+                            if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
+                        }
+                        float pct = decided > 0 ? winA * 100f / decided : -1f;
+                        Console.WriteLine($"      {tiers[a].name,-12} {(ft == 0 ? "A선공" : "B선공")} {(sp == 1 ? "스폰교환" : "스폰기본")}  A승 {pct,5:F0}%  (n={N}, ±{100f / MathF.Sqrt(N) / 2f:F0}%p, 평균 {turns / (float)N:F0}턴)");
+                    }
+            }
+        }
+
         Console.WriteLine("");
         Console.WriteLine("[6-0] 참가 자격 — 최대 사거리 vs 교전 거리");
         {
@@ -652,6 +777,8 @@ static class BattleSimVerify
         Console.WriteLine("※ 탄착오차 = 목표 21m(3R) 이내 탄만 평균. 차폐 = 지형에 막혀 그 밖에 박힌 비율.");
         Console.WriteLine("\n※ 명중률 = 적에게 피해를 준 사격 비율. 오차0 대조군이 가장 높아야 정상.");
         Console.WriteLine("※ 예상시간 = 평균턴 × 18초(§2-1 2페이즈 턴 평균). 기획서 §55 목표는 8~15분.");
+        // 미러 게이트가 떨어지면 종료 코드로 알린다 — 출력만 빨갛고 verify.sh 는 통과하던 구멍을 막는다.
+        if (RcFail) { Console.WriteLine("❌ 미러 게이트 실패 — 위 [6-2-1] 참조"); Environment.Exit(1); }
     }
 
     /// <summary>[6] 매치업. only 가 있으면 그 기종 행만(단일 변수 실험용).</summary>
