@@ -76,6 +76,9 @@ static class BattleSimVerify
     //   게임은 판 시작에 25% 확률로 눈이 오는데(BattleDemo.SnowChance [추정]) 하네스가 늘 맑음으로만 재면
     //   포세이돈의 고유 능력은 **한 번도 측정되지 않는다**(= 살아 있다고 말할 수 없다).
     static Weather Wx = Weather.Clear;
+    /// <summary>유닛당 아이템 슬롯 수(§2-9-10). `TANKFALL_ITEMS=0` 으로 끄면 아이템 이전 수치와 비교할 수 있다(회귀용).
+    /// 기본 2 는 내가 정한 값 [추정] — 기획서에 획득 규칙이 없다.</summary>
+    static int ItemSlots = 2;
     /// <summary>[6-2-1] 미러 게이트 표본. 20판(±11%p)으로는 편향과 운을 못 가른다 — 실측으로 배운 값.</summary>
     const uint MirrorGateN = 60u;
     static bool RcFail;
@@ -122,6 +125,7 @@ static class BattleSimVerify
         public int Winner, Shots, Hits, Turns;
         public int FallDamage, FallDealt;   // 낙하 피해 총량 / 그중 적에게 준 몫(§28 보상 측정)
         public int SsUsed, DotDealt, MineDealt, SatelliteShots, SubShells;   // 원작 시스템이 실제로 도는지(네거티브 컨트롤)
+        public int ItemsUsed, ItemsShielded, ItemsDoubleFired;   // 아이템(§2-9-10) 네거티브 컨트롤 — 0 이면 죽은 것
         public int ShotsA, HitsA, BlastDealtA;   // A팀만: 사격 수, 적에게 피해 준 사격 수, 폭발(직격 포함) 피해 합 — 낙하·지속·설치물 제외
         public int[] BucketShots, BucketHits;   // 턴 구간별(0-19,20-39,...) — 나선 정량화
         public int SpecialUsed;
@@ -191,6 +195,13 @@ static class BattleSimVerify
         var wind = new Vec3(0, 0, 0);
         var status = new StatusEffects();   // 독·화상·속박
         var hazards = new HazardField();    // 지뢰·지속불
+        // 아이템(§2-9-10). 게임과 **같은 ItemState** 를 쓴다 — 한쪽만 아이템을 쓰면 승률이 게임의 승률이 아니다.
+        var items = new ItemState();
+        if (ItemSlots > 0)
+        {
+            var roll = new List<ItemKind>();
+            foreach (var o in units) { Items.Roll(ref rng, ItemSlots, roll); items.Bag(o.Id).AddRange(roll); }
+        }
 
         for (int step = 0; step < maxTurns; step++)
         {
@@ -247,6 +258,46 @@ static class BattleSimVerify
                 foreach (var o in units) { if (!o.Alive) continue; if (o.Team == 0) sa++; else sb++; }
                 if (sa == 0 || sb == 0) { res.Winner = sa > 0 ? 0 : (sb > 0 ? 1 : -1); return res; }
             }
+
+            // ── 아이템 사용(AI) ──
+            // 정책 [추정]: 턴을 안 먹는 아이템은 **쓸 수 있으면 쓴다**(안 쓰면 그냥 손해다).
+            //   턴을 먹는 것(에너지2)은 정말 급할 때만. 텔레포트탄·바람반대는 AI 가 이득을 판단할
+            //   방법이 아직 없어서 안 쓴다 — **안 쓰는 걸 숨기지 말고 카운터로 드러낸다**(0 이면 사장).
+            items.TickStartOfTurn(u.Id);
+            bool turnSpentOnItem = false;
+            if (ItemSlots > 0)
+            {
+                bool lowHp = u.Hp < u.MaxHp / 2;
+                bool critical = u.Hp < u.MaxHp / 4;
+                // 눈내리기는 **팀에 포세이돈이 있을 때만** 값을 한다(SnowBonus, §2-9-7).
+                bool wantSnow = weather != Weather.Snow;
+                if (wantSnow)
+                {
+                    bool hasPoseidon = false;
+                    foreach (var t in units) if (t.Team == u.Team && t.Alive && t.Kind == TankKind.Poseidon) hasPoseidon = true;
+                    wantSnow = hasPoseidon;
+                }
+                foreach (var k in new[] { ItemKind.Shield, ItemKind.MoveUp, ItemKind.PowerUp, ItemKind.SnowFall, ItemKind.TeamEnergy, ItemKind.AddEnergy1, ItemKind.DoubleFire, ItemKind.AddEnergy2 })
+                {
+                    if (!items.Has(u.Id, k)) continue;
+                    if (k == ItemKind.AddEnergy1 && !lowHp) continue;
+                    if (k == ItemKind.AddEnergy2 && !critical) continue;
+                    if (k == ItemKind.Shield && items.HasShield(u.Id)) continue;
+                    if (k == ItemKind.SnowFall && !wantSnow) continue;
+                    if (k == ItemKind.TeamEnergy && !lowHp) continue;
+                    var capturedWeather = weather;
+                    var r = items.Use(u.Id, u.Team, k,
+                        (id, frac) => { var t = units.Find(x => x.Id == id); if (t != null) t.Hp = Math.Min(t.MaxHp, t.Hp + (int)(t.MaxHp * frac)); },
+                        (team, frac) => { foreach (var t in units) if (t.Team == team && t.Alive) t.Hp = Math.Min(t.MaxHp, t.Hp + (int)(t.MaxHp * frac)); },
+                        () => { weather = Weather.Snow; foreach (var t in units) t.W = Weather.Snow; },
+                        () => { wind = new Vec3(-wind.X, 0f, -wind.Z); });
+                    if (r == ItemState.UseResult.NotHeld) continue;
+                    res.ItemsUsed++;
+                    // 에너지2 는 턴을 먹는다 — 쓰면 이번 턴은 사격 없이 끝난다.
+                    if (r == ItemState.UseResult.AppliedEndsTurn && k == ItemKind.AddEnergy2) { turnSpentOnItem = true; break; }
+                }
+            }
+            if (turnSpentOnItem) continue;
 
             var enemies = new List<AiGunner.Target>();
             foreach (var o in units) if (o.Alive && o.Team != u.Team) enemies.Add(new AiGunner.Target { Id = o.Id, Center = o.Center, Defense = o.St.Defense });
@@ -306,15 +357,29 @@ static class BattleSimVerify
             }
             var fx = ShellEffects.Of(u.Kind, shell);
 
+            // 파워업(§2-9-10): 원작 분류가 "능력 아이템(공격력 강화)"이라 **피해**를 올린다.
+            // ⚠️ 속도를 올리면 안 된다 — AI·플레이어가 이미 조준을 마친 뒤에 거는 아이템이라
+            //    속도가 바뀌면 그 조준이 통째로 빗나간다(아이템이 손해가 된다).
+            if (items.HasPowerUp(u.Id))
+            {
+                st.BaseDamage *= Items.PowerUpScale;
+                st.DirectDamage *= Items.PowerUpScale;
+            }
+
             // 3) 다탄두: 고른 탄종의 패턴대로 전부 날린다(중앙 탄 = 위 기준 탄도)
             var pattern = Spread.Pattern(u.Kind, shell);
             bool anyHit = false;
             float craterEach = ((teamA.HasValue || teamB.HasValue) ? st.CraterRadius : craterRadius)
                                * (pattern.Count > 1 ? 0.65f : 1f);   // 다탄두는 발당 굴착을 줄인다 [추정] — 아니면 3배로 판다
+            int volleys = items.HasDoubleFire(u.Id) ? 2 : 1;   // 더블파이어: 같은 각도·파워로 한 발 더(원작)
+            for (int v = 0; v < volleys; v++)
+            {
+            if (v > 0 && u.Team == 0) res.ItemsDoubleFired++;
             for (int pi = 0; pi < pattern.Count; pi++)
             {
                 var pt = pattern[pi];
-                var sub = pattern.Count == 1 ? shot
+                // ⚠️ 두 번째 발은 **다시 푼다**. 첫 발이 지형을 깎아 놓아서 같은 궤적이라도 착탄점이 다르다.
+                var sub = (pattern.Count == 1 && v == 0) ? shot
                     : ProjectileSimulator.Simulate(vol, u.Muzzle,
                         Ballistics.VelocityFrom(plan.YawDeg + pt.YawOffsetDeg, plan.PitchDeg + pt.PitchOffsetDeg, speed),
                         accel, boxes, u.Id, MapSize);
@@ -347,6 +412,8 @@ static class BattleSimVerify
                         Damage.Compute(dist, st.BlastRadius, st.BaseDamage * pt.DamageScale, st.DirectDamage * pt.DamageScale, direct),
                         o.St.Defense);
                     if (dmg <= 0) continue;
+                    // 실드: 들어오는 공격 1회를 통째로 막는다(원작). 피해 계산 **뒤·적용 앞**에서 소모한다.
+                    if (items.ConsumeShield(o.Id)) { res.ItemsShielded++; continue; }
                     o.Hp = Math.Max(0, o.Hp - dmg);
                     if (o.Team != u.Team) { anyHit = true; if (u.Team == 0) res.BlastDealtA += dmg; }
                     // 맞은 유닛에 붙는 효과
@@ -358,6 +425,8 @@ static class BattleSimVerify
                     hazards.PlaceFire(impact.X, impact.Y, impact.Z, st.BlastRadius, fx.Param1, fx.Param2);   // 지속불·독구름은 같은 장판 구조
                 if (fx.Type == ShellEffects.EffectType.Mine) hazards.PlaceMine(impact.X, impact.Y, impact.Z, 4f, fx.Param1, u.Id);   // 반경 4m [추정]
             }
+            }
+            items.ClearShotFlags(u.Id);   // 이번 사격용 효과(파워업·더블파이어·텔레포트)는 여기서 반드시 지운다
             if (anyHit) { res.Hits++; res.BucketHits[bk]++; if (u.Team == 0) res.HitsA++; }
 
             // 지형이 꺼졌을 수 있으니 재접지 — **떨어진 만큼 피해**(§28)
@@ -393,6 +462,12 @@ static class BattleSimVerify
             else { Console.WriteLine($"❌ TANKFALL_MAP={mapEnv}: 모르는 맵(TwinHills|Crater|Terrace|Legacy)"); Environment.Exit(2); }
         }
         Console.WriteLine($"맵: {MapName}" + (LegacyMap ? " (옛 언덕 — §2-9-4 회귀 비교용)" : " (MapHeightFunction — 게임과 동일)"));
+        var itEnv = Environment.GetEnvironmentVariable("TANKFALL_ITEMS");
+        if (!string.IsNullOrEmpty(itEnv))
+        {
+            if (!int.TryParse(itEnv.Trim(), out ItemSlots) || ItemSlots < 0) { Console.WriteLine($"❌ TANKFALL_ITEMS={itEnv}: 0 이상 정수여야 한다"); Environment.Exit(2); }
+        }
+        Console.WriteLine($"아이템 슬롯: {ItemSlots}" + (ItemSlots == 0 ? " (끔 — 아이템 도입 전 수치와 비교용)" : ""));
         var wEnv = Environment.GetEnvironmentVariable("TANKFALL_WEATHER");
         if (!string.IsNullOrEmpty(wEnv))
         {
@@ -792,6 +867,7 @@ static class BattleSimVerify
         var turnAvg = new float[N];
         var fallAvg = new float[N];   // 네거티브 컨트롤: 0 이면 §28 보상이 또 죽어 있다는 뜻
         var ssAvg = new float[N]; var dotAvg = new float[N]; var mineAvg = new float[N]; var satAvg = new float[N];
+        var itemAvg = new float[N];   // 아이템 사용/판 — 네거티브 컨트롤(0 이면 아이템이 죽은 것)
         var hitPct = new float[N]; var dmgPerShot = new float[N];   // A팀 명중률 · 명중당 폭발 피해
 
         // 단일 행 모드: 그 기종이 A 팀인 행만 돈다(12셀). 나머지 행은 계산도 출력도 안 한다.
@@ -801,11 +877,11 @@ static class BattleSimVerify
         if (only.HasValue && rows[0] < 0) { Console.WriteLine($"    ❌ {only.Value} 는 선택 가능 기종이 아니다"); return; }
         foreach (int ai in rows)
         {
-            float spSum = 0f, tSum = 0f, fSum = 0f, ssSum = 0f, dotSum = 0f, mineSum = 0f, satSum = 0f;
+            float spSum = 0f, tSum = 0f, fSum = 0f, ssSum = 0f, dotSum = 0f, mineSum = 0f, satSum = 0f, itemSum = 0f;
             long shotsA = 0, hitsA = 0, blastA = 0;
             for (int bi = 0; bi < N; bi++)
             {
-                int winA = 0, decided = 0, turns = 0, spec = 0, fall = 0, ssN = 0, dotN = 0, mineN = 0, satN = 0;
+                int winA = 0, decided = 0, turns = 0, spec = 0, fall = 0, ssN = 0, dotN = 0, mineN = 0, satN = 0, itemN = 0;
                 for (uint m = 0; m < perCell; m++)
                 {
                     // [6-1] 실측: B 스폰 자리가 지형상 유리(+20%p). 홀짝 판마다 자리를 바꿔 탱크 비교에서 상쇄한다.
@@ -818,17 +894,19 @@ static class BattleSimVerify
                     var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius, kinds[ai], kinds[bi],
                                      Wx, (int)((m >> 1) & 1), (m & 1) == 1, true);
                     turns += r.Turns; spec += r.SpecialUsed; fall += r.FallDealt;
-                    ssN += r.SsUsed; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots;
+                    ssN += r.SsUsed; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots; itemN += r.ItemsUsed;
                     shotsA += r.ShotsA; hitsA += r.HitsA; blastA += r.BlastDealtA;
                     if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
                 }
                 win[ai, bi] = decided > 0 ? winA * 100f / decided : -1f;
                 spSum += spec / (float)perCell; tSum += turns / (float)perCell; fSum += fall / (float)perCell;
                 ssSum += ssN / (float)perCell; dotSum += dotN / (float)perCell; mineSum += mineN / (float)perCell; satSum += satN / (float)perCell;
+                itemSum += itemN / (float)perCell;
             }
             spUse[ai] = spSum / N; turnAvg[ai] = tSum / N; fallAvg[ai] = fSum / N;
             hitPct[ai] = shotsA > 0 ? hitsA * 100f / shotsA : 0f; dmgPerShot[ai] = hitsA > 0 ? blastA / (float)hitsA : 0f;
             ssAvg[ai] = ssSum / N; dotAvg[ai] = dotSum / N; mineAvg[ai] = mineSum / N; satAvg[ai] = satSum / N;
+            itemAvg[ai] = itemSum / N;
         }
 
         // 12종 이름을 가로로 늘어놓으면 표가 화면을 넘는다 — 번호로 찍고 아래에 범례를 단다.
@@ -854,18 +932,18 @@ static class BattleSimVerify
         Console.WriteLine("");
         Console.WriteLine("");
         Console.WriteLine("    계열·특수탄·판길이");
-        Console.Write($"    {"탱크",-14}{"계열",-6}{"체력",5}{"사거리",7}{"폭발",6}{"굴착",6}{"직격",6}{"2번탄/판",9}{"SS/판",6}{"평균턴",7}{"명중%",6}{"피해/명중",9}{"낙하",6}{"지속",6}{"설치물",7}{"위성",5}");
+        Console.Write($"    {"탱크",-14}{"계열",-6}{"체력",5}{"사거리",7}{"폭발",6}{"굴착",6}{"직격",6}{"2번탄/판",9}{"SS/판",6}{"평균턴",7}{"명중%",6}{"피해/명중",9}{"낙하",6}{"지속",6}{"설치물",7}{"위성",5}{"아이템",7}");
         Console.WriteLine("");
         foreach (int i in rows)
         {
             var t = Stats(kinds[i], ShellKind.Normal, 1f, Wx);   // 단일 행 실험의 굴착 배율이 표에도 보이게
             // ⚠️ 특수탄/판이 0 에 가까우면 밸런스가 아니라 **선택지가 죽어 있다**는 신호다.
             string dead = spUse[i] < 0.5f ? "  ❌사장" : "";
-            Console.WriteLine($"    {t.Name,-14}{TankStats.EraName(t.Era),-6}{t.Hp,5}{t.MaxRange,6:F0}m{t.BlastRadius,5:F1}m{t.CraterRadius,5:F1}m{t.DirectDamage,6:F0}{spUse[i],9:F1}{ssAvg[i],6:F1}{turnAvg[i],7:F0}{hitPct[i],6:F0}{dmgPerShot[i],9:F0}{fallAvg[i],6:F0}{dotAvg[i],6:F0}{mineAvg[i],7:F0}{satAvg[i],5:F1}{dead}");
+            Console.WriteLine($"    {t.Name,-14}{TankStats.EraName(t.Era),-6}{t.Hp,5}{t.MaxRange,6:F0}m{t.BlastRadius,5:F1}m{t.CraterRadius,5:F1}m{t.DirectDamage,6:F0}{spUse[i],9:F1}{ssAvg[i],6:F1}{turnAvg[i],7:F0}{hitPct[i],6:F0}{dmgPerShot[i],9:F0}{fallAvg[i],6:F0}{dotAvg[i],6:F0}{mineAvg[i],7:F0}{satAvg[i],5:F1}{itemAvg[i],7:F1}{dead}");
         }
         Console.WriteLine("    ※ 미러(대각선)가 50%에서 크게 벗어나면 진영 유불리(스폰·지형·선공)가 섞인 것이다.");
         Console.WriteLine("    ※ 명중% = A팀 사격 중 적에게 폭발 피해를 준 비율, 피해/명중 = 그 사격 한 번의 폭발 피해 합(방어 적용 후, 낙하·지속·설치물 제외).");
-        Console.WriteLine("    ※ 낙하 = 지형을 끊어 적에게 입힌 한 판 평균 피해(§28). 지속 = 독·화상 tick, 설치물 = 지뢰(마인랜더)+지속불(캐터펄트)+독구름(듀크) 장판 피해, 위성 = 위성탄 발수. 해당 탱크에서 0 이면 그 시스템이 죽은 것.");
+        Console.WriteLine("    ※ 낙하 = 지형을 끊어 적에게 입힌 한 판 평균 피해(§28). 지속 = 독·화상 tick, 설치물 = 지뢰(마인랜더)+지속불(캐터펄트)+독구름(듀크) 장판 피해, 위성 = 위성탄 발수, 아이템 = 한 판 평균 아이템 사용 수(§2-9-10). 해당 탱크에서 0 이면 그 시스템이 죽은 것.");
         Console.WriteLine("    ※ ⬆/⬇ = 평균 승률이 62% 이상 / 38% 이하 — 선택지가 아니라 정답 또는 함정이라는 뜻.");
     }
 }

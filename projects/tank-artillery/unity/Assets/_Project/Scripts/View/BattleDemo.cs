@@ -189,6 +189,11 @@ namespace Tankfall.View
                         Debug.LogWarning($"[Tankfall] -map 모르는 이름 '{args[i + 1]}' — TwinHills");
                 }
                 else if (args[i] == "-shotdir" && i + 1 < args.Length) _shotDir = args[i + 1];
+                else if (args[i] == "-items" && i + 1 < args.Length)
+                {
+                    if (!int.TryParse(args[i + 1].Trim(), out _itemSlots) || _itemSlots < 0)
+                    { _itemSlots = 2; Debug.LogWarning($"[Tankfall] -items 는 0 이상 정수 — 기본 2"); }
+                }
                 else if (args[i] == "-practice") _practice = true;
                 else if (args[i] == "-practiceselftest") { _practice = true; _practiceSelfTest = true; }
                 else if (args[i] == "-difficulty" && i + 1 < args.Length)
@@ -244,6 +249,14 @@ namespace Tankfall.View
             //    "이번 판은 눈"이 보이면 포세이돈을 고를지가 선택지가 되기 때문이다(성장 없는 PvP, §62).
             SetWeather(_weatherForced ?? (Random.value < SnowChance ? Weather.Snow : Weather.Clear));
             SpawnTeams();
+            _items.Clear();
+            // 아이템 뽑기는 판마다 달라야 한다 — 바람·날씨와 같은 취급(고정 시드면 매 판 같은 가방이 나온다).
+            _itemRng = new Rng((uint)Random.Range(1, int.MaxValue));
+            if (_itemSlots > 0)
+            {
+                var roll = new List<ItemKind>();
+                foreach (var u in _units) { Items.Roll(ref _itemRng, _itemSlots, roll); _items.Bag(u.Id).AddRange(roll); }
+            }
             if (_practice)
             {
                 // 연습장은 "나 하나 vs 표적 셋". 아군 2·3번은 쓰지 않으니 치운다(턴이 안 오므로 서 있기만 한다).
@@ -372,6 +385,19 @@ namespace Tankfall.View
             //    그래서 연습장에서만 열린다. 이 조건을 풀지 마라.
             if (_practice && Input.GetKeyDown(KeyCode.F2)) ShowPracticeAnswer();
             if (_practiceSelfTest && _phase == Phase.Move) { PracticeSelfTestFire(); return; }
+
+            // 아이템: [ ] 로 고르고 Enter 로 쓴다. ⚠️ 숫자키 1·2·3 은 이미 탄종(§8)이 쓰고 있다.
+            if (_itemSlots > 0 && IsPlayerTurn && (_phase == Phase.Move || _phase == Phase.Fire))
+            {
+                var bag = _items.Bag(Current.Id);
+                if (bag.Count > 0)
+                {
+                    if (Input.GetKeyDown(KeyCode.LeftBracket)) _itemSel = (_itemSel - 1 + bag.Count) % bag.Count;
+                    if (Input.GetKeyDown(KeyCode.RightBracket)) _itemSel = (_itemSel + 1) % bag.Count;
+                    if (_itemSel >= bag.Count) _itemSel = 0;
+                    if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) UseItem(Current, bag[_itemSel]);
+                }
+            }
 
             // F1 = AI 난이도 순환. 다음 AI 조준부터 바로 반영된다(AiDifficulty 는 프로퍼티라 캐시가 없다).
             if (Input.GetKeyDown(KeyCode.F1))
@@ -620,6 +646,7 @@ namespace Tankfall.View
                           $"(적 {enemies.Count}, 파워 {plan.Power * 100:F0}, 각 {plan.PitchDeg:F1}°)");
             if (!plan.Valid) { NextTurn(); return; }
 
+            AiUseItems(u);   // 조준 전에 쓴다 — 파워업은 피해만 올리므로 조준을 흔들지 않는다
             u.TurretYaw = Mathf.DeltaAngle(u.Heading, plan.YawDeg);
             u.BarrelPitch = Mathf.Clamp(plan.PitchDeg, MinElev, MaxElev);
             ApplyAim(u);
@@ -666,7 +693,10 @@ namespace Tankfall.View
             if (_forceSpecial) shell = ShellKind.Special;
             var st = TankStats.For(u.Kind, shell, u.HpFrac, u.W);
             if (shell == ShellKind.Special && ss && u.Skill.CanSs()) { st = NiceShot.ApplySs(st); u.Skill.SpendSs(); }
+            // 파워업: 원작 분류가 "능력 아이템(공격력 강화)". ⚠️ 속도를 올리면 이미 끝낸 조준이 통째로 빗나간다.
+            if (_items.HasPowerUp(u.Id)) { st.BaseDamage *= Items.PowerUpScale; st.DirectDamage *= Items.PowerUpScale; }
             _shooterStats = st; _shooterKind = u.Kind; _shooterShell = shell;
+            _shooterId = u.Id;
             // ⚠️ 쏜 뒤 일반탄으로 되돌린다. 안 그러면 다음 턴에 "고른 적 없는 2번탄"이 나가는 것처럼 보인다.
             u.Shell = ShellKind.Normal; _useSs = false;
 
@@ -701,6 +731,9 @@ namespace Tankfall.View
                 sg.AddComponent<MeshRenderer>().sharedMaterial = MakeMat(new Color(0.10f, 0.10f, 0.12f), 0.4f);
                 _shell = sg.transform;
             }
+            // 더블파이어: 같은 각도·파워를 기억해 착탄 뒤 한 발 더 쏜다(원작 "같은 힘과 각도").
+            if (_items.HasDoubleFire(u.Id) && !_pendingDoubleFire)
+            { _pendingDoubleFire = true; _dfYaw = turretYaw; _dfPitch = pitch; _dfPower = power; }
             _shell.gameObject.SetActive(res.Hit || res.Path.Count > 1);
             _phase = Phase.Flying;
             _log = $"{(u.Team == 0 ? "아군" : "적군")} 발사 — 각 {pitch:F0}° 파워 {power * 100:F0} 바람 {_wind.magnitude:F1}"
@@ -885,6 +918,8 @@ namespace Tankfall.View
                             Damage.Compute(dist, _shooterStats.BlastRadius, _shooterStats.BaseDamage * ps.scale, _shooterStats.DirectDamage * ps.scale, direct),
                             o.St.Defense);
                         if (dmg <= 0) continue;
+                        // 실드(§2-9-10): 들어오는 공격 1회를 통째로 막는다(원작).
+                        if (_items.ConsumeShield(o.Id)) { dmgLog += $"  [{(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} 실드]"; continue; }
                         o.Hp = Mathf.Max(0, o.Hp - dmg);
                         dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} −{dmg}{(direct ? "(직격)" : "")}";
                         if (fx.Type == ShellEffects.EffectType.Poison) { _status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind); dmgLog += "[독]"; }
@@ -969,6 +1004,35 @@ namespace Tankfall.View
         {
             if (_practice) { PracticeNextTurn(); return; }
 
+            // 텔레포트탄: 내 탱크를 착탄 자리로 옮긴다(원작). 지면 위로 올려 세운다.
+            if (_shooterId >= 0 && _items.HasTeleport(_shooterId) && _pendingImpact.LengthSq > 0.001f)
+            {
+                var me = _units.Find(x => x.Id == _shooterId);
+                if (me != null && me.Alive)
+                {
+                    float g = TankGroundProbe.GroundBelow(_vol, _pendingImpact.X, _pendingImpact.Z, _pendingImpact.Y + 40f);
+                    if (!float.IsNegativeInfinity(g))
+                    {
+                        me.Root.position = new Vector3(_pendingImpact.X, g + GroundVisualLift, _pendingImpact.Z);
+                        _log = "[아이템] 텔레포트탄 — 착탄 자리로 이동";
+                    }
+                }
+            }
+            // 더블파이어: 같은 각도·파워로 한 발 더. 턴은 넘기지 않는다.
+            if (_pendingDoubleFire)
+            {
+                _pendingDoubleFire = false;
+                var me = _units.Find(x => x.Id == _shooterId);
+                if (me != null && me.Alive)
+                {
+                    _items.ClearShotFlags(me.Id);      // 두 번째 발이 또 더블파이어가 되면 무한이다
+                    _log = "[아이템] 더블파이어 — 한 발 더";
+                    FireFrom(me, _dfYaw, _dfPitch, _dfPower);
+                    return;
+                }
+            }
+            if (_shooterId >= 0) _items.ClearShotFlags(_shooterId);
+
             ApplySuddenDeath();
 
             int aliveA = 0, aliveB = 0;
@@ -1001,12 +1065,61 @@ namespace Tankfall.View
             int round = _order.ActionsTaken / _units.Count + 1;
             if (round != _round) { _round = round; RollWind(); }
 
-            Current.Gauge = MoveGaugeMax;
+            _items.TickStartOfTurn(Current.Id);
+            Current.Gauge = MoveGaugeMax * _items.MoveScale(Current.Id);   // 이동증가(원작 5턴 2배)
+            _itemSel = 0;
             _power = 0f; _charging = false;
             _phase = Phase.Move;
             _phaseTimer = MovePhaseSec;
             if (_phaseCheck) BeginPhaseCheckTurn();
             if (IsPlayerTurn) _log = "MOVE — WASD 이동, 스페이스/우클릭으로 조준 진입";
+        }
+
+        // ---------------- 아이템(§2-9-10) ----------------
+
+        /// <summary>
+        /// 아이템 사용. 회복·날씨·바람은 Sim 이 유닛/씬을 모르므로 여기서 델리게이트로 넘긴다.
+        /// 턴을 먹는 아이템(에너지2)은 쓰면 그 턴이 끝난다 — 원작 표기 그대로다.
+        /// </summary>
+        void UseItem(Unit u, ItemKind k)
+        {
+            var info = Items.Get(k);
+            var r = _items.Use(u.Id, u.Team, k,
+                (id, frac) => { var t = _units.Find(x => x.Id == id); if (t != null) t.Hp = Mathf.Min(t.HpMax, t.Hp + Mathf.RoundToInt(t.HpMax * frac)); },
+                (team, frac) => { foreach (var t in _units) if (t.Team == team && t.Alive) t.Hp = Mathf.Min(t.HpMax, t.Hp + Mathf.RoundToInt(t.HpMax * frac)); },
+                () => SetWeather(Weather.Snow),
+                () => { _wind = -_wind; });
+            if (r == ItemState.UseResult.NotHeld) return;
+            _log = $"[아이템] {info.Name} — {info.Desc}";
+            // 로그로도 남긴다 — HUD 문자열만 쓰면 자동 검증에서 아이템이 도는지 확인할 방법이 없다.
+            Debug.Log($"[Tankfall] 아이템 {(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} {info.Name}");
+            if (_itemSel > 0) _itemSel--;
+            // 턴을 먹는 아이템은 사격 없이 턴을 넘긴다.
+            if (r == ItemState.UseResult.AppliedEndsTurn && !info.AppliesToShot) NextTurn();
+        }
+
+        /// <summary>AI 아이템 정책 [추정] — 턴을 안 먹는 건 쓸 수 있으면 쓴다. 하네스(BattleSimVerify)와 같은 규칙.</summary>
+        void AiUseItems(Unit u)
+        {
+            if (_itemSlots == 0) return;
+            bool lowHp = u.Hp < u.HpMax / 2, critical = u.Hp < u.HpMax / 4;
+            bool wantSnow = _weather != Weather.Snow;
+            if (wantSnow)
+            {
+                bool hasPoseidon = false;
+                foreach (var t in _units) if (t.Team == u.Team && t.Alive && t.Kind == TankKind.Poseidon) hasPoseidon = true;
+                wantSnow = hasPoseidon;
+            }
+            foreach (var k in new[] { ItemKind.Shield, ItemKind.MoveUp, ItemKind.PowerUp, ItemKind.SnowFall, ItemKind.TeamEnergy, ItemKind.AddEnergy1, ItemKind.DoubleFire })
+            {
+                if (!_items.Has(u.Id, k)) continue;
+                if (k == ItemKind.AddEnergy1 && !lowHp) continue;
+                if (k == ItemKind.TeamEnergy && !lowHp) continue;
+                if (k == ItemKind.Shield && _items.HasShield(u.Id)) continue;
+                if (k == ItemKind.SnowFall && !wantSnow) continue;
+                UseItem(u, k);
+            }
+            _ = critical;   // 에너지2 는 턴을 먹어서 AI 가 쓰면 사격을 못 한다 — 하네스와 같이 급할 때만 [추정], 지금은 보류
         }
 
         // ---------------- 연습장(§68) ----------------
@@ -1248,7 +1361,26 @@ namespace Tankfall.View
                 if (x.Team == 0) a += cell + " "; else b += cell + " ";
             }
             GUILayout.Label($"<color=#7fb0ff>아군 {a}</color>   <color=#ff8a80>적군 {b}</color>", st);
-            GUILayout.Label($"차례: <b>{(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1}</b>   각도 <b>{u.BarrelPitch:F0}°</b>   포탑 {u.TurretYaw:F0}°   이동 {Mathf.Max(0, u.Gauge):F0}", st);
+            GUILayout.Label($"차례: <b>{(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1}</b>   각도 <b>{u.BarrelPitch:F0}°</b>   포탑 {u.TurretYaw:F0}°   이동 {Mathf.Max(0, u.Gauge):F0}"
+                            + (_items.HasShield(u.Id) ? "   <b>[실드]</b>" : ""), st);
+
+            // 아이템 가방 — [ ] 로 고르고 Enter 로 사용(숫자키는 탄종이 쓴다)
+            if (_itemSlots > 0 && u.Team == 0)
+            {
+                var bag = _items.Bag(u.Id);
+                if (bag.Count == 0) GUILayout.Label("아이템: 없음", st);
+                else
+                {
+                    string line = "아이템([ ]선택, Enter사용): ";
+                    for (int bi = 0; bi < bag.Count; bi++)
+                    {
+                        var info = Items.Get(bag[bi]);
+                        line += bi == _itemSel ? $"<b>▶{info.Name}</b>  " : $"{info.Name}  ";
+                    }
+                    if (_itemSel < bag.Count) line += $"— {Items.Get(bag[_itemSel]).Desc}";
+                    GUILayout.Label(line, st);
+                }
+            }
 
             // 페이즈 + 남은 시간(§2-1). 타이머가 안 보이면 2페이즈 턴은 규칙이 아니라 그냥 불편함이다.
             if (IsPlayerTurn && (_phase == Phase.Move || _phase == Phase.Fire))
@@ -1349,11 +1481,20 @@ namespace Tankfall.View
         // 기획서 §68 의 연습장. §1("포격 감각이 실력을 결정한다")·§4("조작은 쉽게, 포격은 어렵게")를
         // 가르치는 자리다. 전투와 같은 탄도·지형·바람을 쓰되 **적이 반격하지 않고 표적이 되살아난다** —
         // 한 판을 이기는 게 목적이 아니라 같은 조건을 반복해서 감각을 만드는 게 목적이기 때문이다.
+        // ── 아이템(§2-9-10) ── 게임과 하네스가 같은 Sim/ItemState 를 쓴다.
+        readonly ItemState _items = new ItemState();
+        int _itemSlots = 2;              // -items N 으로 조절, 0 이면 끔
+        int _itemSel;                    // 선택된 가방 칸
+        Rng _itemRng = new Rng(0x17E45u);
+
         bool _practice;
         int _practiceShots, _practiceHits;
         float _practiceBestMiss = float.MaxValue, _practiceLastMiss = -1f;
         string _practiceAnswer = "";
         Vec3 _practiceImpact;
+        int _shooterId = -1;
+        /// <summary>더블파이어로 한 발 더 쏠 때 같은 각도·파워를 그대로 재사용한다(원작 "같은 힘과 각도").</summary>
+        bool _pendingDoubleFire; float _dfYaw, _dfPitch, _dfPower;
         float _practiceMissAtImpact = float.MaxValue;   // 착탄 **순간**의 표적까지 거리(지형이 깎이기 전)
         /// <summary>`-practiceselftest`: 정답 보기가 낸 각도·파워로 **자동으로 쏴 보고** 실제로 맞는지 센다.
         /// 사람 입력이 필요한 모드라 이게 없으면 연습장은 자동 검증이 불가능하다. 정답 기능의 네거티브 컨트롤이기도 하다 —
