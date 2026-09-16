@@ -585,6 +585,40 @@ static class BattleSimVerify
             Console.WriteLine($"    스폰 지면 높이  A팀 [{ha}]  B팀 [{hb}]  (높은 쪽이 사거리·시야 유리)");
         }
 
+        // [6-2] TwinHills v5 재측정에서 미러가 크게 벌어진 기종(레이저 90%, 듀크 74%, 캐터펄트 74%)을
+        //       [6-1]과 같은 방식으로 각각 판별한다 — SESSION_HANDOFF.md 의 "하지 말 것"(수치부터 만지지 말 것) 지시에 따른
+        //       원인 분리 작업. 캐롯([6-1])은 이미 "대칭"으로 나왔으니(범용 판별로는 못 잡음) 여기서 재확인 안 함.
+        Console.WriteLine("");
+        Console.WriteLine($"[6-2] 미러 이탈 원인 판별 — 맵={MapName}, 기종별 자기전(自己戰) 각 20판, A팀 승률");
+        foreach (var kind in new[] { TankKind.Laser, TankKind.Duke, TankKind.Catapult })
+        {
+            Console.WriteLine($"  · {kind}");
+            (string name, int first, bool swap, bool alt)[] conds =
+            {
+                ("순차 AAA BBB (구 하네스)", 0, false, false),
+                ("교대 A선공 (게임과 동일)", 0, false, true),
+                ("교대 B선공",              1, false, true),
+                ("교대 A선공 + 스폰 교환",  0, true,  true),
+            };
+            foreach (var c in conds)
+            {
+                int winA = 0, decided = 0, turnsSum = 0;
+                for (uint m = 0; m < 20u; m++)
+                {
+                    var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius,
+                                     kind, kind, Weather.Clear, c.first, c.swap, c.alt);
+                    turnsSum += r.Turns;
+                    if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
+                }
+                float pct = decided > 0 ? winA * 100f / decided : -1f;
+                float avgTurn = decided > 0 ? turnsSum / 20f : -1f;
+                string read = pct > 65f ? "  ← A 유리" : pct < 35f ? "  ← B 유리" : "  ← 대칭";
+                Console.WriteLine($"      {c.name,-26} {pct,5:F0}%{read}  (평균 {avgTurn:F0}턴)");
+            }
+        }
+        Console.WriteLine("    ※ 읽는 법: 'B선공'에서 뒤집히면 선공 이점, '스폰 교환'에서 뒤집히면 지형 비대칭.");
+        Console.WriteLine("    ※ 판이 짧을수록(레이저 등) 선공 이점이 상쇄되기 전에 끝난다는 가설 — 평균 턴 열로 대조.");
+
         Console.WriteLine("");
         Console.WriteLine("[6-0] 참가 자격 — 최대 사거리 vs 교전 거리");
         {
@@ -638,8 +672,14 @@ static class BattleSimVerify
                 for (uint m = 0; m < perCell; m++)
                 {
                     // [6-1] 실측: B 스폰 자리가 지형상 유리(+20%p). 홀짝 판마다 자리를 바꿔 탱크 비교에서 상쇄한다.
+                    // [6-2] 실측(2026-09-16): 실제 게임(§52)은 팀A가 등록순 동률에서 항상 먼저 쏜다 —
+                    //   설계상 의도된 동작(플레이어=A팀 고정 선공)이라 게임 코드는 안 건드린다. 하지만 이
+                    //   "미러=50% 여야 정상"이라는 매치업표의 전제는 **탱크 수치 대칭**만 봐야 하는데,
+                    //   선공권이 항상 A로 고정돼 있으면 판이 짧은 기종(레이저 6턴 등)일수록 선공 승률 편중이
+                    //   그대로 새어 들어와 탱크 자체의 좌우 대칭성과 뒤섞인다. 그래서 스폰 교환과 별도로
+                    //   선공도 2판마다 교차해 "탱크 수치만의" 대칭성을 분리해 잰다(선공 자체의 효과는 [6-2]가 따로 잰다).
                     var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius, kinds[ai], kinds[bi],
-                                     Weather.Clear, 0, (m & 1) == 1, true);
+                                     Weather.Clear, (int)((m >> 1) & 1), (m & 1) == 1, true);
                     turns += r.Turns; spec += r.SpecialUsed; fall += r.FallDealt;
                     ssN += r.SsUsed; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots;
                     shotsA += r.ShotsA; hitsA += r.HitsA; blastA += r.BlastDealtA;
