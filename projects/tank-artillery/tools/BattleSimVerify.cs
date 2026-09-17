@@ -107,8 +107,6 @@ static class BattleSimVerify
         static readonly bool UseCraterShape = Environment.GetEnvironmentVariable("TANKFALL_CRATERSHAPE") != "0";
         static readonly bool UseUltimate = Environment.GetEnvironmentVariable("TANKFALL_ULT") != "0";
 
-        /// <summary>궁극기(§2-9-12, 게이지형) 스위치. TANKFALL_ULT 를 UseUltimate 와 같이 쓴다.</summary>
-        static bool UltOn = true;
         /// <summary>보급(§2-9-11) 스위치. `TANKFALL_SUPPLY=0` 으로 끄면 아이템만 켠 상태와 비교할 수 있다(판별용).</summary>
         static bool SupplyOn = true;
         /// <summary>미러 게이트 시드 오프셋. `TANKFALL_SEED=&lt;n&gt;` — 같은 결론이 다른 시드에서도 나오는지 보는 용도.</summary>
@@ -169,7 +167,6 @@ static class BattleSimVerify
         public int SupplyDropped, SupplyPicked, SupplyDestroyed;
         public int PickedA, PickedB, SeekA, SeekB;   // 팀별 분해 — 미러가 기울면 여기가 먼저 답한다
         public int SeekTurns, SeekBlocked;
-        public int UltFired, UltMitigated;
         public int ImpairHitA;
         public int AmpShots, TornadoShots;   // 기후(§2-9-15) 네거티브 컨트롤 — 0 이면 죽은 시스템   // 방해탄(§2-9-14) — 각도·파워 고정만. 화면 방해는 AI 에 효과 0 이라 안 쓴다   // 궁극기(§2-9-12) 네거티브 컨트롤 — 0 이면 죽은 시스템   // 헬기 보급(§2-9-11) 네거티브 컨트롤
         public int ShotsA, HitsA, BlastDealtA;   // A팀만: 사격 수, 적에게 피해 준 사격 수, 폭발(직격 포함) 피해 합 — 낙하·지속·설치물 제외
@@ -243,7 +240,6 @@ static class BattleSimVerify
         var hazards = new HazardField();    // 지뢰·지속불
         // 아이템(§2-9-10). 게임과 **같은 ItemState** 를 쓴다 — 한쪽만 아이템을 쓰면 승률이 게임의 승률이 아니다.
         var items = new ItemState();
-        var ult = new UltimateState();      // 궁극기(§2-9-12)
         var impair = new ImpairState();     // 방해탄(§2-9-14)
         var air = new AirField();           // 기후 — 증폭벽·회오리(§2-9-15)
         if (ClimateOn) air.Roll(ref rng, MapSize);
@@ -379,7 +375,6 @@ static class BattleSimVerify
             //   턴을 먹는 것(에너지2)은 정말 급할 때만. 텔레포트탄·바람반대는 AI 가 이득을 판단할
             //   방법이 아직 없어서 안 쓴다 — **안 쓰는 걸 숨기지 말고 카운터로 드러낸다**(0 이면 사장).
             items.TickStartOfTurn(u.Id);
-            ult.TickStartOfTurn(u.Id);
             impair.TickStartOfTurn(u.Id);
             bool turnSpentOnItem = false;
             if (ItemSlots > 0)
@@ -446,7 +441,7 @@ static class BattleSimVerify
             int bk = Math.Min(7, res.Turns / 20);
             res.BucketShots[bk]++;
             // 나이스샷 판정(원작: 게이지를 표시 지점에 정확히 멈추면 포인트 +1) — AI 는 확률 [추정]
-            if (NiceShot.AiJudge(err, ref rng)) { u.Skill.OnNiceShot(); if (UltOn) ult.OnNiceShot(u.Id); }
+            if (NiceShot.AiJudge(err, ref rng)) u.Skill.OnNiceShot();
             if (!shot.Hit) continue;
 
             // ⚠️ 탄착오차는 **목표 근처에 떨어진 사격만** 평균 내야 한다.
@@ -473,7 +468,7 @@ static class BattleSimVerify
                 : AiGunner.SimulatePattern(vol, u.Muzzle, plan.YawDeg, plan.PitchDeg, speed, accel, boxes, u.Id, MapSize,
                                            Spread.Pattern(u.Kind, ShellKind.Special), shot, st.Flight, null, air);
             var shell = AiGunner.PickShell(st, normalHits, specialHits, enemies, satImpact, satDirect);
-            bool ss = false, ultShell = false;   // ultShell = 탄 강화형 궁극기(§49). 게이지형은 위의 `ult`(UltimateState) 다
+            bool ss = false, ultShell = false;   // 궁극기(§49) — 2번탄을 핵급으로 키운다
             if (shell == ShellKind.Special)
             {
                 if (u.Team == 0) res.SpecialUsed++;
@@ -485,17 +480,6 @@ static class BattleSimVerify
                 else if (u.Skill.CanSs() && !(UseUltimate && NiceShot.AiSaveForUltimate(u.Skill.Points, ref rng)))
                 { st = NiceShot.ApplySs(st); u.Skill.SpendSs(); ss = true; if (u.Team == 0) res.SsUsed++; }
             }
-            // 궁극기(§2-9-12): 차면 바로 쓴다 [추정] — 아끼다 판이 끝나면 없는 것과 같다.
-            if (UltOn && ult.Ready(u.Id))
-            {
-                ult.Fire(u.Id, u.Team, u.Kind,
-                         (id, f) => { var t = byId[id]; t.Hp = Math.Min(t.MaxHp, t.Hp + (int)(t.MaxHp * f)); },
-                         (tm, f) => { foreach (var o in units) if (o.Alive && o.Team == tm) o.Hp = Math.Min(o.MaxHp, o.Hp + (int)(o.MaxHp * f)); },
-                         id => status.Cleanse(id));
-                if (u.Team == 0) res.UltFired++;
-            }
-            var ultKind = ult.Armed(u.Id) ? Ultimate.Of(u.Kind) : UltimateKind.None;
-            if (ultKind != UltimateKind.None) st = Ultimate.ApplyToShot(st, ultKind);
             var fx = ShellEffects.Of(u.Kind, shell);
 
             // 파워업(§2-9-10): 원작 분류가 "능력 아이템(공격력 강화)"이라 **피해**를 올린다.
@@ -512,9 +496,8 @@ static class BattleSimVerify
             bool anyHit = false;
             // 발당 굴착은 게임과 **같은 함수**를 쓴다(CraterShape.PerShotCrater 머리말: 0.65 고정은 9연에서 5.9배로 팠다).
             float craterEach = CraterShape.PerShotCrater(
-                (teamA.HasValue || teamB.HasValue || ultKind == UltimateKind.Quake) ? st.CraterRadius : craterRadius, pattern.Count);
+                (teamA.HasValue || teamB.HasValue) ? st.CraterRadius : craterRadius, pattern.Count);
             int volleys = items.HasDoubleFire(u.Id) ? 2 : 1;   // 더블파이어: 같은 각도·파워로 한 발 더(원작)
-            if (ultKind == UltimateKind.Volley) volleys *= Ultimate.VolleyShots;   // 궁극 연사(§2-9-12)
             for (int v = 0; v < volleys; v++)
             {
             if (v > 0 && u.Team == 0) res.ItemsDoubleFired++;
@@ -568,16 +551,7 @@ static class BattleSimVerify
                     if (dmg <= 0) continue;
                     // 실드: 들어오는 공격 1회를 통째로 막는다(원작). 피해 계산 **뒤·적용 앞**에서 소모한다.
                     if (items.ConsumeShield(o.Id)) { res.ItemsShielded++; continue; }
-                    // 벙커(§2-9-12): 피해 적용 **직전**에 통과시킨다.
-                    int raw = dmg;
-                    dmg = ult.Mitigate(o.Id, dmg);
-                    if (dmg < raw && o.Team == 0) res.UltMitigated += raw - dmg;
                     o.Hp = Math.Max(0, o.Hp - dmg);
-                    if (UltOn)
-                    {
-                        if (o.Team != u.Team) ult.OnDamageDealt(u.Id, dmg);
-                        ult.OnDamageTaken(o.Id, dmg);
-                    }
                     if (o.Team != u.Team) { anyHit = true; if (u.Team == 0) res.BlastDealtA += dmg; }
                     // 맞은 유닛에 붙는 효과
                     if (fx.Type == ShellEffects.EffectType.Poison && o.Id != u.Id) status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind);
@@ -596,8 +570,7 @@ static class BattleSimVerify
                 if (fx.Type == ShellEffects.EffectType.Mine) hazards.PlaceMine(impact.X, impact.Y, impact.Z, 4f, fx.Param1, u.Id);   // 반경 4m [추정]
             }
             }
-            items.ClearShotFlags(u.Id);
-            ult.ClearShotFlags(u.Id);     // 안 지우면 궁극기가 영구 버프가 된다   // 이번 사격용 효과(파워업·더블파이어·텔레포트)는 여기서 반드시 지운다
+            items.ClearShotFlags(u.Id);   // 이번 사격용 효과(파워업·더블파이어·텔레포트)는 여기서 반드시 지운다
             // 지형이 깎였으니 상자도 내려앉힌다 — 공중에 뜬 상자는 주울 수 없다.
             if (ItemSlots > 0 && SupplyOn) supply.Settle((x, z) => TankGroundProbe.GroundBelow(vol, x, z, 80f));
             if (anyHit) { res.Hits++; res.BucketHits[bk]++; if (u.Team == 0) res.HitsA++; }
@@ -641,8 +614,6 @@ static class BattleSimVerify
         if (!string.IsNullOrWhiteSpace(sdEnv)) uint.TryParse(sdEnv.Trim(), out SeedOffset);
         var supEnv = Environment.GetEnvironmentVariable("TANKFALL_SUPPLY");
         if (!string.IsNullOrWhiteSpace(supEnv)) SupplyOn = supEnv.Trim() != "0";
-        var ultEnv = Environment.GetEnvironmentVariable("TANKFALL_ULT");
-        if (!string.IsNullOrWhiteSpace(ultEnv)) UltOn = ultEnv.Trim() != "0";
         var itEnv = Environment.GetEnvironmentVariable("TANKFALL_ITEMS");
         if (!string.IsNullOrEmpty(itEnv))
         {
@@ -1119,7 +1090,7 @@ static class BattleSimVerify
                     var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius, kinds[ai], kinds[bi],
                                      Wx, (int)((m >> 1) & 1), (m & 1) == 1, true);
                     turns += r.Turns; spec += r.SpecialUsed; fall += r.FallDealt;
-                    ssN += r.SsUsed; ultN += r.UltUsed + r.UltFired; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots; itemN += r.ItemsUsed; supN += r.SupplyPicked;
+                    ssN += r.SsUsed; ultN += r.UltUsed; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots; itemN += r.ItemsUsed; supN += r.SupplyPicked;
                     impN += r.ImpairHitA; ampN += r.AmpShots; torN += r.TornadoShots;
                     supDropN += r.SupplyDropped; supDestN += r.SupplyDestroyed; seekN += r.SeekTurns; seekBlkN += r.SeekBlocked; pkA += r.PickedA; pkB += r.PickedB; skA += r.SeekA; skB += r.SeekB;
                     shotsA += r.ShotsA; hitsA += r.HitsA; blastA += r.BlastDealtA;

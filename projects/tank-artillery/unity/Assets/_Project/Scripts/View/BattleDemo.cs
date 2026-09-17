@@ -151,6 +151,7 @@ namespace Tankfall.View
         readonly HazardField _hazards = new HazardField();      // 지뢰·지속불
         readonly List<(Vec3 impact, int direct, float scale)> _pendingShots = new List<(Vec3, int, float)>();
         TankKind _shooterKind; ShellKind _shooterShell;
+        bool _shooterUlt;         // 이번 사격이 궁극기(§49, 핵)인가 — 폭발 연출이 버섯구름으로 바뀐다
         TankKind _shellVisualKind = (TankKind)(-1);   // 지금 만들어 둔 탄 메시가 어느 기종 것인가
         ShellKind _shellVisualShell;
         ShellTrail.Style _trailStyle;                 // 지금 날아가는 탄의 자취 스타일
@@ -223,6 +224,7 @@ namespace Tankfall.View
         const float SuperTankChance = 0.06f;   // -roster Cannon,Carrot,Laser 로 바꿀 수 있다(연출 확인용)
         MapKind _map = MapKind.TwinHills;
         bool _forceSpecial;                    // -forcespecial: AI 가 항상 2번탄 — 위성탄·독구름 같은 연출을 확인할 때만
+        bool _forceUlt;                        // -forceult: 매 발 궁극기(핵) — 버섯구름 확인용. 나이스샷 문턱을 건너뛴다
         Vec3 _pendingImpact;
         int _pendingDirect = -1;
         string _winner;
@@ -257,6 +259,7 @@ namespace Tankfall.View
                 else if (args[i] == "-phasecheck") _phaseCheck = true;
                 else if (args[i] == "-gallery") { _gallery = true; _autoMode = true; }
                 else if (args[i] == "-forcespecial") _forceSpecial = true;
+                else if (args[i] == "-forceult") { _forceSpecial = true; _forceUlt = true; }
                 else if (args[i] == "-map" && i + 1 < args.Length)
                 {
                     if (!MapHeightFunction.TryParse(args[i + 1], out _map))
@@ -406,7 +409,6 @@ namespace Tankfall.View
             });
             _status.Clear(); _hazards.Clear(); _pendingShots.Clear(); RefreshHazards();
             _supply.Clear(); RefreshCrates();
-            _ult.Clear();
             _impair.Clear();
             _air.Roll(ref _airRng, MapSize);
             RefreshAir();
@@ -845,13 +847,11 @@ namespace Tankfall.View
             if (Input.GetKeyDown(KeyCode.Alpha2)) { u.Shell = ShellKind.Special; _useSs = false; _useUlt = false; }
             // SS = 나이스샷 2점. 없는데 누르면 아무 일도 없다(HUD 가 이유를 보여준다)
             if (Input.GetKeyDown(KeyCode.Alpha3) && u.Skill.CanSs()) { u.Shell = ShellKind.Special; _useSs = true; _useUlt = false; }
-            // ⚠️ 병합 2026-09-17: **궁극기가 두 개다.** 두 기계가 각자 구현한 것이 여기서 만났다.
-            //    · 4 = 탄 강화형(§49, NiceShot.ApplyUltimate) — 나이스샷 점수로 열리고 2번탄을 핵급으로 키운다
-            //    · R = 게이지형(§2-9-12, Sim/Ultimate.cs) — 피해 누적 게이지로 열리고 기종 고유 효과를 낸다
-            //    어느 쪽을 남길지는 오너 결정이라 **둘 다 살려 뒀다**(지우는 건 쉽고 되살리는 건 어렵다).
-            //    하나로 정하면 반대쪽 경로를 전부 걷어내라 — HUD·AI 선택·하네스 집계까지 따라간다.
+            // 4 = 궁극기(§49). 나이스샷을 SS 보다 더 모아야 열린다(NiceShot.UltimateCost).
+            // ⚠️ 오너 확정 2026-09-17 "궁극기가 핵 쏘는 거라니까" — 궁극기는 **이것 하나뿐이다.**
+            //    병합 때 다른 기계가 만든 게이지형(R 키, 기종 고유 효과)이 같이 들어왔으나 전부 걷어냈다.
+            //    다시 만들지 마라. 궁극기 = 2번탄을 핵급으로 키워 한 방에 판을 뒤집는 것(NiceShot.ApplyUltimate).
             if (Input.GetKeyDown(KeyCode.Alpha4) && u.Skill.CanUltimate()) { u.Shell = ShellKind.Special; _useSs = false; _useUlt = true; }
-            if (Input.GetKeyDown(KeyCode.R)) FireUltimate(u);   // 궁극기(§2-9-12). 1·2·3 은 탄종, [ ] 는 아이템이 이미 쓴다
             // 나이스샷 표시점 — 게이지를 여기서 정확히 멈추면 +1
             if (Input.GetKey(KeyCode.Q)) _mark = Mathf.Clamp01(_mark - 0.45f * dt);
             if (Input.GetKey(KeyCode.E)) _mark = Mathf.Clamp01(_mark + 0.45f * dt);
@@ -876,7 +876,7 @@ namespace Tankfall.View
                 {
                     _charging = false;
                     // 원작 나이스샷: 표시점에 정확히 멈추면 스킬포인트 +1 (허용 ±1.5% [추정])
-                    if (NiceShot.Judge(_mark, _power)) { u.Skill.OnNiceShot(); _ult.OnNiceShot(u.Id); _niceFlash = $"나이스샷! 포인트 {u.Skill.Points}"; }
+                    if (NiceShot.Judge(_mark, _power)) { u.Skill.OnNiceShot(); _niceFlash = $"나이스샷! 포인트 {u.Skill.Points}"; }
                     // 파워고정탄(§2-9-14) — 원작 "50% 이하의 힘으로 발사할 수 없게 된다".
                     float pw2 = _impair.ClampPower(u.Id, _power);
                     if (pw2 != _power) _log = $"[방해] 파워고정탄 — 50% 미만으로는 못 쏜다 ({_power * 100:F0} → {pw2 * 100:F0})";
@@ -1039,19 +1039,19 @@ namespace Tankfall.View
                 ss = !ult && shell == ShellKind.Special && u.Skill.CanSs()
                      && !NiceShot.AiSaveForUltimate(u.Skill.Points, ref _aiRng);
                 // AI 나이스샷 — 게이지 정지 정밀도를 난이도별 확률로 대신한다 [추정]
-                if (NiceShot.AiJudge(AiDifficulty, ref _aiRng)) { u.Skill.OnNiceShot(); _ult.OnNiceShot(u.Id); }
+                if (NiceShot.AiJudge(AiDifficulty, ref _aiRng)) u.Skill.OnNiceShot();
             }
             // 연출 확인용 강제(-forcespecial) — AI 뿐 아니라 자동사격의 플레이어 탱크(ForceFire 경로)에도 걸어야 아군 사격에서도 보인다
             if (_forceSpecial) shell = ShellKind.Special;
+            // -forceult: 핵(버섯구름) 확인용. 게이지를 **실제로 채워서** 연다 —
+            // 플래그로 우회하면 "연출은 되는데 게임에서는 영영 안 열리는" 상태를 못 잡는다(궁극기가 한 번도 발동 안 되던 사고).
+            if (_forceUlt) { while (!u.Skill.CanUltimate()) u.Skill.OnNiceShot(); ult = true; }
             var st = TankStats.For(u.Kind, shell, u.HpFrac, u.W);
             if (shell == ShellKind.Special && ult && u.Skill.CanUltimate()) { st = NiceShot.ApplyUltimate(st, u.Kind); u.Skill.SpendUltimate(); }
             else if (shell == ShellKind.Special && ss && u.Skill.CanSs()) { st = NiceShot.ApplySs(st); u.Skill.SpendSs(); }
             // 파워업: 원작 분류가 "능력 아이템(공격력 강화)". ⚠️ 속도를 올리면 이미 끝낸 조준이 통째로 빗나간다.
             if (_items.HasPowerUp(u.Id)) { st.BaseDamage *= Items.PowerUpScale; st.DirectDamage *= Items.PowerUpScale; }
-            // 궁극기(§2-9-12): 과충전·지진은 이번 사격 수치를 바꾸고, 연사는 발수를 늘린다.
-            var ultKind = _ult.Armed(u.Id) ? Ultimate.Of(u.Kind) : UltimateKind.None;
-            if (ultKind != UltimateKind.None) st = Ultimate.ApplyToShot(st, ultKind);
-            _shooterStats = st; _shooterKind = u.Kind; _shooterShell = shell;
+            _shooterStats = st; _shooterKind = u.Kind; _shooterShell = shell; _shooterUlt = ult;
             _shooterId = u.Id;
             // ⚠️ 쏜 뒤 일반탄으로 되돌린다. 안 그러면 다음 턴에 "고른 적 없는 2번탄"이 나가는 것처럼 보인다.
             u.Shell = ShellKind.Normal; _useSs = false; _useUlt = false;
@@ -1117,9 +1117,6 @@ namespace Tankfall.View
             // 더블파이어: 같은 각도·파워를 기억해 착탄 뒤 한 발 더 쏜다(원작 "같은 힘과 각도").
             if (_items.HasDoubleFire(u.Id) && !_pendingDoubleFire)
             { _pendingDoubleFire = true; _dfYaw = turretYaw; _dfPitch = pitch; _dfPower = power; }
-            // 궁극 연사: 같은 각도·파워로 남은 발을 이어 쏜다.
-            if (ultKind == UltimateKind.Volley && _pendingVolley == 0)
-            { _pendingVolley = Ultimate.VolleyShots - 1; _vYaw = turretYaw; _vPitch = pitch; _vPower = power; }
             _shell.gameObject.SetActive(res.Hit || res.Path.Count > 1);
 
             // ⚠️ 자취는 **탄이 만들어진 뒤에** 붙인다 — 위에서 붙였더니 첫 발은 `_shell` 이 아직 null 이라 자취가 없었다.
@@ -1339,7 +1336,7 @@ namespace Tankfall.View
                     // 지형 파괴 → 천장 붕괴(§7-6-1) → 영향 청크만 재생성
                     if (_fx == null) _fx = new GameObject("ParticleFx").AddComponent<ParticleFx>();
                     _fx.Blast(new Vector3(impact.X, impact.Y, impact.Z), craterEach,
-                              MapTheme.Of(_map, _weather == Weather.Snow).RockDark, _shooterKind, _shooterShell);
+                              MapTheme.Of(_map, _weather == Weather.Snow).RockDark, _shooterKind, _shooterShell, _shooterUlt);
 
                     // 탄마다 파이는 모양이 다르다(원작 근거는 CraterShape). 게임과 하네스가 같은 표를 쓴다.
                     float vscale = CraterShape.VScaleOf(_shooterKind, _shooterShell);
@@ -1360,13 +1357,7 @@ namespace Tankfall.View
                         if (dmg <= 0) continue;
                         // 실드(§2-9-10): 들어오는 공격 1회를 통째로 막는다(원작).
                         if (_items.ConsumeShield(o.Id)) { _fx.ShieldBlock(new Vector3(o.Center.X, o.Center.Y, o.Center.Z)); dmgLog += $"  [{(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} 실드]"; continue; }
-                        // 벙커(§2-9-12): 피해 적용 **직전**에 통과시킨다.
-                        int rawDmg = dmg;
-                        dmg = _ult.Mitigate(o.Id, dmg);
-                        if (dmg < rawDmg) dmgLog += "  [벙커]";
                         o.Hp = Mathf.Max(0, o.Hp - dmg);
-                        if (o.Team != Current.Team) _ult.OnDamageDealt(Current.Id, dmg);
-                        _ult.OnDamageTaken(o.Id, dmg);
                         CountDamage(o, dmg, direct ? $"-{dmg} 직격" : $"-{dmg}", true);
                         dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} −{dmg}{(direct ? "(직격)" : "")}";
                         if (fx.Type == ShellEffects.EffectType.Poison) { _status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind); dmgLog += "[독]"; }
@@ -1515,19 +1506,6 @@ namespace Tankfall.View
                     }
                 }
             }
-            // 궁극 연사(§2-9-12): 남은 발을 이어 쏜다. 턴은 넘기지 않는다.
-            if (_pendingVolley > 0)
-            {
-                var vu = _units.Find(x => x.Id == _shooterId);
-                if (vu != null && vu.Alive)
-                {
-                    _pendingVolley--;
-                    _log = $"[궁극] 연사 — 남은 {_pendingVolley + 1}발";
-                    FireFrom(vu, _vYaw + (_pendingVolley - 1) * Ultimate.VolleySpreadDeg, _vPitch, _vPower);
-                    return;
-                }
-                _pendingVolley = 0;
-            }
             // 더블파이어: 같은 각도·파워로 한 발 더. 턴은 넘기지 않는다.
             if (_pendingDoubleFire)
             {
@@ -1541,7 +1519,7 @@ namespace Tankfall.View
                     return;
                 }
             }
-            if (_shooterId >= 0) { _items.ClearShotFlags(_shooterId); _ult.ClearShotFlags(_shooterId); }
+            if (_shooterId >= 0) _items.ClearShotFlags(_shooterId);
 
             ApplySuddenDeath();
 
@@ -1586,7 +1564,6 @@ namespace Tankfall.View
 
             TryPickupSupply(Current);        // 상자 위에 서 있으면 이동 없이도 줍는다
             _items.TickStartOfTurn(Current.Id);
-            _ult.TickStartOfTurn(Current.Id);
             _impair.TickStartOfTurn(Current.Id);
             if (_boom) BoomTurnStart();
             // 바보탄: 카메라가 내 자리로 안 오게 **엉뚱한 탱크 자리**에 붙여둔다(원작 "화면이 자신의 위치로 오지 않는다").
@@ -1638,23 +1615,6 @@ namespace Tankfall.View
             if (r == ItemState.UseResult.AppliedEndsTurn && !info.AppliesToShot) NextTurn();
         }
 
-        /// <summary>
-        /// 궁극기(§2-9-12) 발동. 게이지가 가득 찼을 때만. 즉발형(벙커·정화)은 여기서 바로 끝나고,
-        /// 사격형(과충전·연사·지진)은 다음 사격에 실린다.
-        /// </summary>
-        void FireUltimate(Unit u)
-        {
-            if (!_ult.Ready(u.Id)) return;
-            var kind = Ultimate.Of(u.Kind);
-            bool ok = _ult.Fire(u.Id, u.Team, u.Kind,
-                (id, f) => { var t = _units.Find(x => x.Id == id); if (t != null) t.Hp = Mathf.Min(t.HpMax, t.Hp + (int)(t.HpMax * f)); },
-                (tm, f) => { foreach (var t in _units) if (t.Alive && t.Team == tm) t.Hp = Mathf.Min(t.HpMax, t.Hp + (int)(t.HpMax * f)); },
-                id => _status.Cleanse(id));
-            if (!ok) return;
-            var info = Ultimate.Get(kind);
-            _log = $"[궁극] {(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} {info.Name} — {info.Desc}";
-            Debug.Log($"[Tankfall] 궁극기 {(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} {TankStats.Get(u.Kind).Name} {info.Name}");
-        }
 
         /// <summary>AI 아이템 정책 [추정] — 턴을 안 먹는 건 쓸 수 있으면 쓴다. 하네스(BattleSimVerify)와 같은 규칙.</summary>
         void AiUseItems(Unit u)
@@ -1685,7 +1645,6 @@ namespace Tankfall.View
                 if (Items.ImpairOf(k) != ImpairKind.None && _items.ImpairShot(u.Id) != ImpairKind.None) continue;   // 한 사격에 하나만
                 UseItem(u, k);
             }
-            FireUltimate(u);   // 궁극기도 하네스와 같은 정책 [추정] — 차면 바로 쓴다
             _ = critical;   // 에너지2 는 턴을 먹어서 AI 가 쓰면 사격을 못 한다 — 하네스와 같이 급할 때만 [추정], 지금은 보류
         }
 
@@ -1996,9 +1955,7 @@ namespace Tankfall.View
                         Damage.Compute(dist, BoomMode.MeteorBlast, BoomMode.MeteorDamage, BoomMode.MeteorDamage, false),
                         o.St.Defense);
                     if (dmg <= 0) continue;
-                    dmg = _ult.Mitigate(o.Id, dmg);
                     o.Hp = Mathf.Max(0, o.Hp - dmg);
-                    _ult.OnDamageTaken(o.Id, dmg);
                     hitN++;
                     if (!o.Alive) o.Root.gameObject.SetActive(false);
                 }
@@ -2101,8 +2058,8 @@ namespace Tankfall.View
             foreach (var k in kinds)
             {
                 var t = TankStats.Get(k);
-                var ui = Ultimate.Get(Ultimate.Of(k));
-                if (GUILayout.Button($"{t.Name}  |  {TankStats.EraName(t.Era)} · 체 {t.Hp} · 궁 {ui.Name}", GUILayout.Width(160), GUILayout.Height(46)))
+                var sp2 = TankStats.For(k, ShellKind.Special, 1f, Weather.Clear);
+                if (GUILayout.Button($"{t.Name}  |  {TankStats.EraName(t.Era)} · 체 {t.Hp} · 2번탄 {sp2.Name}", GUILayout.Width(160), GUILayout.Height(46)))
                     if (_pick.Count < 3) _pick.Add(k);
                 if (++col % 4 == 0) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); }
             }
@@ -2176,9 +2133,12 @@ namespace Tankfall.View
                 var sp = TankStats.For(k, ShellKind.Special, 1f, Weather.Clear);
                 if (string.IsNullOrEmpty(sp.Name)) { Debug.Log($"[Tankfall] ❌ {k}: 2번탄 이름이 비었다"); fail++; continue; }
                 int shots = Spread.Pattern(k, ShellKind.Special).Count;
-                var ui = Ultimate.Get(Ultimate.Of(k));
-                if (ui.Kind == UltimateKind.None) { Debug.Log($"[Tankfall] ❌ {k}: 궁극기가 없다"); fail++; continue; }
-                Debug.Log($"[Tankfall] 로스터 자체검사 {TankStats.Get(k).Name,-10} 체 {u.HpMax,5} · 메시 {meshes,2} · 2번탄 {sp.Name}×{shots} · 궁 {ui.Name}");
+                // 궁극기(§49) = 2번탄을 핵급으로 키우는 것. "있다" 는 **수치가 실제로 커진다**로만 확인된다.
+                var ultSt = NiceShot.ApplyUltimate(sp, k);
+                float ultMul = sp.BaseDamage > 0f ? ultSt.BaseDamage / sp.BaseDamage : 0f;
+                if (ultMul <= 1.01f && ultSt.BlastRadius <= sp.BlastRadius && ultSt.CraterRadius <= sp.CraterRadius)
+                { Debug.Log($"[Tankfall] ❌ {k}: 궁극기가 2번탄을 안 키운다"); fail++; continue; }
+                Debug.Log($"[Tankfall] 로스터 자체검사 {TankStats.Get(k).Name,-10} 체 {u.HpMax,5} · 메시 {meshes,2} · 2번탄 {sp.Name}×{shots} · 궁 피해 ×{ultMul:F1} 폭발 {ultSt.BlastRadius:F1}m");
                 ok++;
             }
             if (fail == 0 && ok == 13) Debug.Log("[Tankfall] ✅ 원작 13종 전부 게임에 세울 수 있다(수치·외형·2번탄·궁극기)");
@@ -2470,11 +2430,7 @@ namespace Tankfall.View
                               : $"나이스샷 {u.Skill.Points}/{NiceShot.UltimateCost}  <size=9>(SS {NiceShot.SsCost} · 궁극 {NiceShot.UltimateCost})</size>",
                     11, ultReady ? Ui.Power : ssReady ? Ui.Mark : Ui.Dim);
 
-            // 게이지 궁극기(§2-9-12, R) + 방해탄(§2-9-14) 상태. 위의 "궁극 사용 가능 (4)" 는 **다른 궁극기**다
-            // (§49 탄 강화형) — 병합으로 둘이 공존한다. 자세한 사정은 입력 처리부 머리말.
-            var uinfo = Ultimate.Get(Ultimate.Of(u.Kind));
-            float ug = _ult.Gauge(u.Id);
-            bool rReady = _ult.Ready(u.Id);
+            // 방해탄(§2-9-14) — 나에게 걸린 것. (궁극기 표시는 위의 나이스샷 게이지가 이미 한다)
             var imb = new System.Text.StringBuilder();
             foreach (ImpairKind ik in System.Enum.GetValues(typeof(ImpairKind)))
             {
@@ -2482,9 +2438,8 @@ namespace Tankfall.View
                 int left = _impair.TurnsLeft(u.Id, ik);
                 if (left > 0) imb.Append($"  <color=#f88>{Impair.Name(ik)} {left}턴</color>");
             }
-            Ui.Text(new Rect(r.x + 8f, r.yMax - 40f, r.width - 16f, 18f),
-                    (rReady ? $"<b>R 궁극 {uinfo.Name} 준비</b>" : $"R 궁극 {uinfo.Name} {ug:F0}/{Ultimate.Full:F0}") + imb,
-                    10, rReady ? Ui.Power : Ui.Dim);
+            if (imb.Length > 0)
+                Ui.Text(new Rect(r.x + 8f, r.yMax - 40f, r.width - 16f, 18f), "방해:" + imb, 10, Ui.Dim);
             Ui.Text(new Rect(r.x + 8f, r.yMax - 22f, r.width - 16f, 18f),
                     $"폭발 {u.St.BlastRadius:F1}m · 굴착 {u.St.CraterRadius:F1}m · 직격 +{u.St.DirectDamage:F0}", 10, Ui.Dim);
         }
@@ -2926,61 +2881,52 @@ namespace Tankfall.View
         bool _ultSelfTest;
 
         /// <summary>
-        /// `-ultselftest` — 궁극기(§2-9-12)가 **게임에서** 도는지 스스로 확인한다.
-        /// 하네스는 이미 12종 전부 판당 0.9~2.7회 발동을 보여주지만, 그건 하네스다.
-        /// 여기서는 실제 빌드의 유닛·상태·피해 경로로 5종 전부를 한 번씩 재고, 하나라도 어긋나면 rc=1.
-        /// ⚠️ 게이지는 손으로 넣지 않는다 — **진짜 피해 경로**(OnDamageTaken)로 채워야 충전이 검증된다.
+        /// `-ultselftest` — 궁극기(§49)가 **게임에서** 도는지 스스로 확인한다.
+        ///
+        /// 궁극기는 "2번탄을 핵급으로 키우는 것"(오너 확정 2026-09-17 "궁극기가 핵 쏘는 거라니까").
+        /// 그래서 검사할 것은 셋이다: **열리는가 · 커지는가 · 소모되는가**.
+        ///
+        /// ⚠️ 이 검사가 왜 있어야 하는가 — 궁극기가 **한 번도 발동 안 된 채로 통과하던 적이 있다.**
+        ///    AI 가 2점에서 SS 를 써버려 4점에 영영 못 닿았는데, 하네스의 궁극기 ON/OFF 승률이
+        ///    숫자 하나까지 같아서야 들통났다(NiceShot.AiSaveForUltimate 머리말).
+        ///    "코드가 있다" 와 "게임에서 열린다" 는 다르다 — 게이지를 실제로 채워서 연다.
+        /// ⚠️ 네거티브 컨트롤: 문턱 직전(UltimateCost-1)에서는 **닫혀 있어야** 한다.
         /// </summary>
         void UltSelfTestStep()
         {
             int fail = 0, done = 0;
             foreach (TankKind k in System.Enum.GetValues(typeof(TankKind)))
             {
-                var kind = Ultimate.Of(k);
-                var info = Ultimate.Get(kind);
-                var probe = new UltimateState();
-                int id = 0;
+                string name = TankStats.Get(k).Name;
+                var sp = TankStats.For(k, ShellKind.Special, 1f, Weather.Clear);
 
-                // ① 충전: 피해를 20씩 넣어 게이지가 차는가(만충 전엔 발동이 거부돼야 한다)
-                if (probe.Fire(id, 0, k, null, null, null)) { Debug.Log($"[Tankfall] ❌ {info.Name}: 게이지 0 인데 발동됐다"); fail++; }
-                for (int i = 0; i < 200 && !probe.Ready(id); i++) probe.OnDamageTaken(id, 20);
-                if (!probe.Ready(id)) { Debug.Log($"[Tankfall] ❌ {info.Name}: 피해를 넣어도 게이지가 안 찬다"); fail++; continue; }
+                // ① 열리는가 — 나이스샷을 실제로 쌓아서 연다. 문턱 직전에는 닫혀 있어야 한다(네거티브 컨트롤).
+                var gauge = new SkillGauge();
+                for (int i = 0; i < NiceShot.UltimateCost - 1; i++) gauge.OnNiceShot();
+                if (gauge.CanUltimate()) { Debug.Log($"[Tankfall] ❌ {name}: 문턱 직전인데 궁극기가 열렸다"); fail++; continue; }
+                gauge.OnNiceShot();
+                if (!gauge.CanUltimate()) { Debug.Log($"[Tankfall] ❌ {name}: 문턱을 채웠는데 안 열린다"); fail++; continue; }
 
-                // ② 발동과 효과
-                int healed = 0, teamHealed = 0, cleansed = 0;
-                bool ok = probe.Fire(id, 0, k, (_, f) => healed++, (_, f) => teamHealed++, _ => cleansed++);
-                if (!ok) { Debug.Log($"[Tankfall] ❌ {info.Name}: 만충인데 발동 실패"); fail++; continue; }
-                if (probe.Gauge(id) != 0f) { Debug.Log($"[Tankfall] ❌ {info.Name}: 발동 후 게이지가 안 비었다"); fail++; }
+                // ② 커지는가 — 핵이라면 2번탄보다 확실히 세야 한다. 피해·폭발·굴착 중 하나도 안 크면 실패.
+                var ult = NiceShot.ApplyUltimate(sp, k);
+                float dmgMul = sp.BaseDamage > 0f ? ult.BaseDamage / sp.BaseDamage : 0f;
+                float blastMul = sp.BlastRadius > 0f ? ult.BlastRadius / sp.BlastRadius : 0f;
+                float craterMul = sp.CraterRadius > 0f ? ult.CraterRadius / sp.CraterRadius : 0f;
+                if (dmgMul <= 1.01f && blastMul <= 1.01f && craterMul <= 1.01f)
+                { Debug.Log($"[Tankfall] ❌ {name}: 궁극기가 2번탄과 똑같다(피해 ×{dmgMul:F2})"); fail++; continue; }
+                // 핵급의 최소선 — 피해 1.5배 **또는** 폭발/굴착 1.8배. 둘 다 못 넘으면 "핵" 이라 부를 수 없다.
+                if (dmgMul < 1.5f && blastMul < 1.8f && craterMul < 1.8f)
+                { Debug.Log($"[Tankfall] ❌ {name}: 핵급이 아니다(피해 ×{dmgMul:F2} 폭발 ×{blastMul:F2} 굴착 ×{craterMul:F2})"); fail++; continue; }
 
-                switch (kind)
-                {
-                    case UltimateKind.Bunker:
-                        if (healed == 0) { Debug.Log($"[Tankfall] ❌ 벙커가 회복을 안 했다"); fail++; }
-                        if (probe.Mitigate(id, 100) >= 100) { Debug.Log($"[Tankfall] ❌ 벙커가 피해를 안 줄였다"); fail++; }
-                        break;
-                    case UltimateKind.Purge:
-                        if (cleansed == 0 || teamHealed == 0) { Debug.Log($"[Tankfall] ❌ 정화가 해제/팀회복을 안 했다"); fail++; }
-                        break;
-                    default:
-                        if (!probe.Armed(id)) { Debug.Log($"[Tankfall] ❌ {info.Name}: 사격에 실리지 않았다"); fail++; }
-                        var baseSt = TankStats.For(k, ShellKind.Normal, 1f, Weather.Clear);
-                        var buffed = Ultimate.ApplyToShot(baseSt, kind);
-                        if (kind == UltimateKind.Overcharge && buffed.DirectDamage <= baseSt.DirectDamage)
-                        { Debug.Log($"[Tankfall] ❌ 과충전이 피해를 안 올렸다"); fail++; }
-                        if (kind == UltimateKind.Quake && buffed.CraterRadius <= baseSt.CraterRadius)
-                        { Debug.Log($"[Tankfall] ❌ 지진이 굴착을 안 키웠다"); fail++; }
-                        break;
-                }
+                // ③ 소모되는가 — 안 비면 영구 버프가 된다.
+                gauge.SpendUltimate();
+                if (gauge.CanUltimate()) { Debug.Log($"[Tankfall] ❌ {name}: 쓰고 나서도 궁극기가 열려 있다"); fail++; continue; }
 
-                // ③ 사격 플래그가 남으면 영구 버프가 된다
-                probe.ClearShotFlags(id);
-                if (probe.Armed(id)) { Debug.Log($"[Tankfall] ❌ {info.Name}: 사격 플래그가 안 지워졌다"); fail++; }
-
-                Debug.Log($"[Tankfall] 궁극 자체검사 {TankStats.Get(k).Name,-10} {info.Name} 확인");
+                Debug.Log($"[Tankfall] 궁극 자체검사 {name,-10} 피해 ×{dmgMul:F1} · 폭발 ×{blastMul:F1} · 굴착 ×{craterMul:F1}");
                 done++;
             }
             if (fail == 0 && done >= 13)
-                Debug.Log($"[Tankfall] ✅ 궁극기(§2-9-12) — 13종 {done}개 전부 충전·발동·효과·해제 확인");
+                Debug.Log($"[Tankfall] ✅ 궁극기(§49, 핵) — 13종 {done}개 전부 열림·핵급·소모 확인");
             else
                 Debug.Log($"[Tankfall] ❌ 궁극 자체검사 실패 {fail}건 (확인 {done}/13)");
             Application.Quit(fail == 0 && done >= 13 ? 0 : 1);
@@ -2992,8 +2938,6 @@ namespace Tankfall.View
 
         // ── 아이템(§2-9-10) ── 게임과 하네스가 같은 Sim/ItemState 를 쓴다.
         readonly ItemState _items = new ItemState();
-        // ── 궁극기(§2-9-12) ── 게임과 하네스가 같은 Sim/UltimateState 를 쓴다.
-        readonly UltimateState _ult = new UltimateState();
         // ── 방해탄(§2-9-14) ── 규칙·지속턴의 단일 소스는 Sim/Impair.cs(원작 출처 머리말에 있음).
         readonly ImpairState _impair = new ImpairState();
         // ── 기후: 증폭벽·회오리(§2-9-15) ── 규칙·출처는 Sim/AirFeatures.cs 머리말.
@@ -3007,8 +2951,6 @@ namespace Tankfall.View
         readonly List<(float X, float Z)> _boomSpots = new List<(float X, float Z)>();
         float _impairClock;          // 멀미탄 울렁임 위상
         Texture2D _fogTex;           // 안개탄 화면 덮개
-        int _pendingVolley;          // 궁극 연사로 더 쏠 발수
-        float _vYaw, _vPitch, _vPower;
         int _itemSlots = 2;              // -items N 으로 조절, 0 이면 끔
         int _itemSel;                    // 선택된 가방 칸
         Rng _itemRng = new Rng(0x17E45u);
@@ -3194,6 +3136,7 @@ namespace Tankfall.View
         }
 
         int _flyFrame, _volley, _resolveFrame;
+        float _nukeShotAt;           // 0 이 아니면 그 시각에 버섯구름을 찍는다(-forceult 확인용)
 
         /// <summary>
         /// ⚠️ 예전엔 `for (i=0; i<400; i++) FlyStep(0.02f)` 로 **한 프레임에 비행을 다 돌렸다**.
@@ -3221,6 +3164,10 @@ namespace Tankfall.View
                     Shot($"{13 + _volley * 2}_착탄순간_{_volley + 1}");
                     _volley++;
                     _resolveFrame = _frame;
+                    // 버섯구름은 착탄 **뒤**에 자란다(기둥 1.5s · 갓 0.6s 지연). 착탄순간 한 장만 찍으면 영영 안 보인다.
+                    // ⚠️ 프레임이 아니라 **실제 시간**으로 재야 한다 — 파티클은 Time.deltaTime 으로 늙는데
+                    //    자동사격의 비행은 1/30 고정 스텝이라 둘이 어긋난다(60fps 에서 30프레임 = 0.5초).
+                    _nukeShotAt = _shooterUlt ? Time.time + 1.7f : 0f;
                 }
                 return;
             }
@@ -3231,6 +3178,16 @@ namespace Tankfall.View
                 case 20: Shot("11_전투개시"); break;
                 case 25: AiShoot(); _flyFrame = 0; break;
             }
+
+            // 핵이면 버섯구름이 다 자란 뒤 한 장 더 찍는다.
+            if (_nukeShotAt > 0f && Time.time >= _nukeShotAt)
+            {
+                Shot($"13b_버섯구름_{_volley}");
+                _nukeShotAt = 0f;
+                _resolveFrame = _frame;          // 다음 사격을 이 시점부터 다시 센다
+                return;
+            }
+            if (_nukeShotAt > 0f) { UpdateCamera(0.05f); TickFx(1f / 30f); return; }
 
             // 착탄 연출을 20프레임 보여준 뒤 다음 사격
             if (_volley > 0 && _frame == _resolveFrame + 20)

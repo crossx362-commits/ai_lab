@@ -336,7 +336,8 @@ namespace Tankfall.View
 
         /// <param name="radius">굴착 반경. 연출 크기가 실제 파괴 크기를 따라가야 "얼마나 팠는지"가 눈에 읽힌다.</param>
         /// <param name="dirt">그 지형의 흙색(MapTheme). 사막에서 초록 파편이 튀면 안 된다.</param>
-        public void Blast(Vector3 at, float radius, Color dirt, TankKind kind, ShellKind shell)
+        /// <param name="ultimate">궁극기(§49) = 핵. true 면 버섯구름이 얹힌다(오너 확정 "궁극기가 핵 쏘는 거라니까").</param>
+        public void Blast(Vector3 at, float radius, Color dirt, TankKind kind, ShellKind shell, bool ultimate = false)
         {
             var ps = RentBlast();
             ps.transform.position = at;
@@ -345,7 +346,8 @@ namespace Tankfall.View
             ps.Play(true);
 
             // 흔들림은 반경에 비례하되 상한을 둔다 — 굴착탄(16m)에서 화면이 뒤집히면 조준을 못 한다.
-            Shake = Mathf.Min(Shake + radius * 0.055f, 1.1f);
+            // ⚠️ 핵만 상한을 올린다. 상한 자체를 올리면 평범한 착탄에서도 조준이 불가능해진다.
+            Shake = Mathf.Min(Shake + radius * (ultimate ? 0.12f : 0.055f), ultimate ? 1.8f : 1.1f);
 
             // 광원: 섬광 색으로 주변 지형·탱크를 한 번 비춘다 — 파티클만으로는 "빛"이 안 난다.
             var st = BlastStyle.Of(kind, shell);
@@ -363,6 +365,121 @@ namespace Tankfall.View
                 FadeOut(em, 1f); ShrinkOverLife(em, 1f, 0.1f);
                 em.Play(true);
             }
+
+            if (ultimate) NukeCloud(at, radius, dirt, st);
+        }
+
+        // ══════════════════════════════════════════════════════
+        //  핵 — 궁극기(§49) 전용 버섯구름
+        // ══════════════════════════════════════════════════════
+        //
+        // 왜 따로 만드는가(오너 지시 2026-09-17 "궁극기가 핵 쏘는 거라니까"):
+        // 궁극기는 나이스샷을 여러 번 성공해야 한 번 열리는 **판을 뒤집는 한 방**이다(NiceShot.UltimateCost).
+        // 그런데 연출이 일반 폭발을 키운 것뿐이면 **쓴 사람도 맞은 사람도 그게 궁극기였는지 모른다** —
+        // 수치만 커지고 화면은 그대로면 그 자원을 모을 이유가 사라진다. 형태가 달라야 한다.
+        //
+        // 버섯구름의 구조는 실제 핵폭발의 순서를 그대로 따른다:
+        //   ① 화구(fireball)   — 지면에서 부풀어 오르는 흰-주황 구
+        //   ② 기둥(stem)       — 화구가 빨아올린 먼지가 좁은 기둥으로 솟는다
+        //   ③ 갓(cap)          — 꼭대기에서 퍼지며 **바깥쪽이 아래로 말린다**(이게 있어야 버섯이다)
+        //   ④ 바닥 파도(base surge) — 지면을 따라 사방으로 깔리는 먼지 고리
+        //   ⑤ 응결 고리(condensation ring) — 충격파가 지나간 자리에 생기는 흰 링
+        //
+        // ⚠️ 연출일 뿐이다. 피해·굴착은 NiceShot.ApplyUltimate 가 정한 수치 그대로다 — 여기서 만지지 마라.
+        // ⚠️ 크기를 굴착 반경에 그대로 비례시키지 마라. 굴착 14m 급 궁극기에서 구름이 맵을 덮는다.
+        //    제곱근으로 눌러서 "핵은 늘 크지만 화면은 안 가린다"를 지킨다.
+        void NukeCloud(Vector3 at, float radius, Color dirt, in BlastStyle st)
+        {
+            float s = Mathf.Clamp(Mathf.Sqrt(radius / 7f), 0.7f, 1.9f);
+            // ⚠️ 높이를 26m 로 뒀더니 **구름이 화면 밖으로 나갔다**(스크린샷으로 확인).
+            //    카메라는 착탄점에 붙어 내려다보므로 세로로 긴 연출은 프레임을 벗어난다.
+            //    "크게" 가 아니라 "굵고 낮게" 가 이 시점에서 핵으로 읽힌다.
+            // ⚠️ 두 번째 실패: 높이는 맞췄는데 **갓이 너무 커서 하늘에 뜬 흙덩어리**로 보였다(스크린샷).
+            //    입자 크기 10.5m 에 성장 1.8배 = 폭 19m 짜리 조각이 화면 왼쪽 위를 통째로 덮었다.
+            //    버섯으로 읽히려면 갓이 아니라 **기둥과 갓의 비율**이 맞아야 한다 — 갓을 줄이고 기둥을 살렸다.
+            // ⚠️ 세 번째: 갓을 줄였더니 이번엔 **기둥이 갓 속에 묻혀** 가로로 퍼진 구름이 됐다.
+            //    버섯의 정체는 "가는 기둥 + 그보다 넓은 갓" 이라는 **비율**이다. 갓을 올려 띄우고 기둥을 가늘게 뽑는다.
+            //    갓은 기둥이 다 올라간 뒤에 핀다(지연 0.8s) — 동시에 나오면 한 덩어리로 뭉친다.
+            float H = 15f * s;                    // 갓이 앉는 높이
+            float capR = 5.0f * s;                // 갓 반경
+            var hot = Color.Lerp(st.Flash, Color.white, 0.55f);
+            // 그을음은 진해야 한다 — 옅으면 지형색에 묻혀 아무것도 안 보인다(첫 시도가 그랬다).
+            var soot = new Color(dirt.r * 0.55f + 0.08f, dirt.g * 0.5f + 0.07f, dirt.b * 0.48f + 0.07f, 0.97f);
+
+            // ① 화구 — 짧고 아주 밝게. 첫 0.2초를 이게 지배해야 "핵" 으로 읽힌다.
+            {
+                var f = Rent("NukeBall", true);
+                f.transform.position = at + Vector3.up * (1.2f * s);
+                var m = Burst(f, 0.30f, 0.55f, 0.5f * s, 2.2f * s, 3.4f * s, 6.0f * s,
+                              Color.white, hot, -0.05f, 26, 1.0f * s);
+                m.simulationSpace = ParticleSystemSimulationSpace.World;
+                FadeOut(f, 1f); GrowOverLife(f, 0.55f, 1.9f);
+                f.Play(true);
+            }
+
+            // ② 기둥 — 좁은 원뿔로 위로. 수명이 길어 갓이 뜰 때까지 이어진다.
+            {
+                var c = Rent("NukeStem", false);
+                c.transform.position = at + Vector3.up * (0.5f * s);
+                var m = Burst(c, 1.8f, 3.0f, 8f * s, 12f * s, 2.0f * s, 3.2f * s,
+                              Color.Lerp(soot, hot, 0.35f), soot, -0.02f, 70, 0.9f * s);
+                m.simulationSpace = ParticleSystemSimulationSpace.World;
+                Cone(c, 4f, 0.9f * s, new Vector3(-90f, 0f, 0f));      // -90° = +Y 로 뿜는다
+                FadeOut(c, 0.95f); GrowOverLife(c, 0.6f, 1.35f);
+                var rot = c.rotationOverLifetime; rot.enabled = true; rot.z = new ParticleSystem.MinMaxCurve(-0.7f, 0.7f);
+                c.Play(true);
+            }
+
+            // ③ 갓 — 꼭대기 원에서 바깥으로 퍼지고 **아래로 말린다**. 말림(중력 +)이 없으면 그냥 연기 구름이다.
+            {
+                var cap = Rent("NukeCap", false);
+                cap.transform.position = at + Vector3.up * H;
+                var m = Burst(cap, 2.4f, 3.8f, 0f, 0f, 3.4f * s, 5.4f * s,
+                              Color.Lerp(soot, hot, 0.22f), soot, 0.05f, 66, 0f);
+                m.simulationSpace = ParticleSystemSimulationSpace.World;
+                m.startDelay = new ParticleSystem.MinMaxCurve(0.80f, 1.05f);   // 기둥이 먼저 올라간 뒤에 핀다
+                var sh = cap.shape;
+                sh.shapeType = ParticleSystemShapeType.Donut;
+                sh.radius = capR; sh.donutRadius = capR * 0.45f; sh.rotation = new Vector3(-90f, 0f, 0f);
+                var vel = cap.velocityOverLifetime;
+                vel.enabled = true; vel.space = ParticleSystemSimulationSpace.Local;
+                vel.radial = new ParticleSystem.MinMaxCurve(2.2f * s, 4.2f * s);   // 바깥으로
+                vel.y = new ParticleSystem.MinMaxCurve(0.8f * s, 1.8f * s);        // 살짝 더 솟았다가 중력에 말린다
+                FadeOut(cap, 0.95f); GrowOverLife(cap, 0.8f, 1.35f);
+                var rot = cap.rotationOverLifetime; rot.enabled = true; rot.z = new ParticleSystem.MinMaxCurve(-0.5f, 0.5f);
+                cap.Play(true);
+            }
+
+            // ④ 바닥 파도 — 지면을 따라 낮게 깔린다. 이게 있어야 "지면에서 터졌다"가 읽힌다.
+            {
+                var b = Rent("NukeSurge", false);
+                b.transform.position = at + Vector3.up * (0.4f * s);
+                var m = Burst(b, 1.5f, 2.6f, 10f * s, 17f * s, 3.2f * s, 5.4f * s,
+                              Color.Lerp(dirt, Color.white, 0.30f), soot, 0.02f, 56, radius * 0.4f);
+                m.simulationSpace = ParticleSystemSimulationSpace.World;
+                var sh = b.shape;
+                sh.shapeType = ParticleSystemShapeType.Circle;
+                sh.radius = radius * 0.5f; sh.radiusThickness = 1f; sh.rotation = new Vector3(-90f, 0f, 0f);
+                FadeOut(b, 0.8f); GrowOverLife(b, 0.7f, 2.4f);
+                b.Play(true);
+            }
+
+            // ⑤ 응결 고리 — 충격파가 지나간 자리. 얇고 빠르게 퍼졌다 사라진다.
+            {
+                var w = Rent("NukeRing", true);
+                w.transform.position = at + Vector3.up * (2.5f * s);
+                var m = Burst(w, 0.40f, 0.65f, 26f * s, 34f * s, 1.8f * s, 3.2f * s,
+                              Color.white, new Color(1f, 1f, 1f, 0.25f), 0f, 34, 0.5f);
+                m.simulationSpace = ParticleSystemSimulationSpace.World;
+                var sh = w.shape;
+                sh.shapeType = ParticleSystemShapeType.Circle;
+                sh.radius = 1.0f; sh.radiusThickness = 0f; sh.rotation = new Vector3(-90f, 0f, 0f);
+                FadeOut(w, 0.9f); GrowOverLife(w, 0.5f, 1.6f);
+                w.Play(true);
+            }
+
+            // 광원 — 일반 폭발보다 훨씬 밝고 멀리. 핵은 주변을 통째로 한 번 태워 보여야 한다.
+            Flash(at + Vector3.up * (2f * s), Color.Lerp(hot, Color.white, 0.4f), 7.5f * s, radius * 5f + 30f);
         }
 
         ParticleSystem RentBlast()
