@@ -30,6 +30,13 @@ namespace Tankfall.Sim
         SnowFall,       // 눈내리기 — 날씨를 눈으로, 턴 소모 없음
         WindReverse,    // 바람반대 — 바람 방향 반전, 턴 소모 없음
         MoveUp,         // 이동증가 — 5턴간 이동 게이지 2배, 턴 소모 없음
+        // ── 방해탄(§2-9-14) ── 쏴서 맞춘 상대에게 건다. 전부 턴 소모(원작). 규칙·지속턴은 Sim/Impair.cs 머리말 참조.
+        FlipShell,      // 반전탄 — 상대 화면 상하 반전 3턴
+        WobbleShell,    // 멀미탄 — 상대 화면 울렁임 4턴
+        FogShell,       // 안개탄 — 상대 안개 고립 3턴
+        ConfuseShell,   // 바보탄 — 상대 화면 혼란 4턴
+        LockAngleShell, // 각도고정탄 — 상대 각도 조절 불가 3턴
+        LockPowerShell, // 파워고정탄 — 상대 파워 50% 미만 발사 불가 3턴
     }
 
     public struct ItemInfo
@@ -66,7 +73,29 @@ namespace Tankfall.Sim
             new ItemInfo { Kind = ItemKind.SnowFall,       Name = "눈내리기", ConsumesTurn = false, AppliesToShot = false, Desc = "날씨를 눈으로" },
             new ItemInfo { Kind = ItemKind.WindReverse,    Name = "바람반대", ConsumesTurn = false, AppliesToShot = false, Desc = "바람 방향 반전" },
             new ItemInfo { Kind = ItemKind.MoveUp,         Name = "이동증가", ConsumesTurn = false, AppliesToShot = false, Desc = "5턴간 이동 2배" },
+            // 방해탄 6종(§2-9-14) — 전부 사격과 함께 나가고 턴을 먹는다(원작 표기 그대로).
+            new ItemInfo { Kind = ItemKind.FlipShell,      Name = "반전탄",   ConsumesTurn = true, AppliesToShot = true, Desc = "맞은 적 화면 상하반전 3턴" },
+            new ItemInfo { Kind = ItemKind.WobbleShell,    Name = "멀미탄",   ConsumesTurn = true, AppliesToShot = true, Desc = "맞은 적 화면 울렁임 4턴" },
+            new ItemInfo { Kind = ItemKind.FogShell,       Name = "안개탄",   ConsumesTurn = true, AppliesToShot = true, Desc = "맞은 적 안개 고립 3턴" },
+            new ItemInfo { Kind = ItemKind.ConfuseShell,   Name = "바보탄",   ConsumesTurn = true, AppliesToShot = true, Desc = "맞은 적 화면 혼란 4턴" },
+            new ItemInfo { Kind = ItemKind.LockAngleShell, Name = "각도고정탄", ConsumesTurn = true, AppliesToShot = true, Desc = "맞은 적 각도 고정 3턴" },
+            new ItemInfo { Kind = ItemKind.LockPowerShell, Name = "파워고정탄", ConsumesTurn = true, AppliesToShot = true, Desc = "맞은 적 파워 하한 50% 3턴" },
         };
+
+        /// <summary>방해탄이면 어떤 효과인지. 아니면 None. 규칙·지속턴의 단일 소스는 Sim/Impair.cs 다.</summary>
+        public static ImpairKind ImpairOf(ItemKind k)
+        {
+            switch (k)
+            {
+                case ItemKind.FlipShell: return ImpairKind.FlipScreen;
+                case ItemKind.WobbleShell: return ImpairKind.Wobble;
+                case ItemKind.FogShell: return ImpairKind.Fog;
+                case ItemKind.ConfuseShell: return ImpairKind.Confuse;
+                case ItemKind.LockAngleShell: return ImpairKind.LockAngle;
+                case ItemKind.LockPowerShell: return ImpairKind.LockPower;
+                default: return ImpairKind.None;
+            }
+        }
 
         public static ItemInfo Get(ItemKind k)
         {
@@ -108,11 +137,12 @@ namespace Tankfall.Sim
         readonly HashSet<int> _powerUp = new();         // 이번 사격에 파워업이 걸린 유닛
         readonly HashSet<int> _doubleFire = new();      // 이번 사격이 두 발인 유닛
         readonly HashSet<int> _teleport = new();        // 이번 사격이 텔레포트탄인 유닛
+        readonly Dictionary<int, ImpairKind> _impairShot = new();   // 이번 사격에 실린 방해탄(§2-9-14)
 
         public void Clear()
         {
             _bag.Clear(); _shield.Clear(); _moveUp.Clear();
-            _powerUp.Clear(); _doubleFire.Clear(); _teleport.Clear();
+            _powerUp.Clear(); _doubleFire.Clear(); _teleport.Clear(); _impairShot.Clear();
         }
 
         public List<ItemKind> Bag(int id)
@@ -128,6 +158,8 @@ namespace Tankfall.Sim
         public bool HasPowerUp(int id) => _powerUp.Contains(id);
         public bool HasDoubleFire(int id) => _doubleFire.Contains(id);
         public bool HasTeleport(int id) => _teleport.Contains(id);
+        /// <summary>이번 사격에 실린 방해탄. 없으면 None.</summary>
+        public ImpairKind ImpairShot(int id) => _impairShot.TryGetValue(id, out var k) ? k : ImpairKind.None;
         public float MoveScale(int id) => _moveUp.ContainsKey(id) ? Items.MoveUpScale : 1f;
 
         /// <summary>실드 1회 소모. 막았으면 true — 피해 계산 앞에서 부른다.</summary>
@@ -144,7 +176,7 @@ namespace Tankfall.Sim
         /// <summary>사격이 끝나면 **이번 사격용 효과는 반드시 지운다**. 안 지우면 파워업이 영구 버프가 된다.</summary>
         public void ClearShotFlags(int id)
         {
-            _powerUp.Remove(id); _doubleFire.Remove(id); _teleport.Remove(id);
+            _powerUp.Remove(id); _doubleFire.Remove(id); _teleport.Remove(id); _impairShot.Remove(id);
         }
 
         public enum UseResult { NotHeld, Applied, AppliedEndsTurn }
@@ -172,6 +204,11 @@ namespace Tankfall.Sim
                 case ItemKind.SnowFall: snowFall?.Invoke(); break;
                 case ItemKind.WindReverse: windReverse?.Invoke(); break;
                 case ItemKind.MoveUp: _moveUp[id] = Items.MoveUpTurns; break;
+                default:
+                    // 방해탄(§2-9-14)은 즉발이 아니라 **이번 사격에 실린다** — 맞은 적에게 걸린다.
+                    var im = Items.ImpairOf(k);
+                    if (im != ImpairKind.None) _impairShot[id] = im;
+                    break;
             }
             return Items.Get(k).ConsumesTurn ? UseResult.AppliedEndsTurn : UseResult.Applied;
         }

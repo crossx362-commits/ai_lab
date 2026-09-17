@@ -86,6 +86,12 @@ namespace Tankfall.Sim
             _rooted[id] = turns;
         }
 
+        /// <summary>이 유닛의 상태이상(독·화상·속박)을 전부 지운다. 궁극기 "정화"(§2-9-12)가 쓴다.</summary>
+        public void Cleanse(int id)
+        {
+            _poison.Remove(id); _burn.Remove(id); _rooted.Remove(id);
+        }
+
         /// <summary>유닛이 이동할 수 있는지 확인(이동금지 상태 아닌지).</summary>
         public bool CanMove(int id) => !_rooted.ContainsKey(id);
 
@@ -152,6 +158,21 @@ namespace Tankfall.Sim
         }
 
         /// <summary>지속불을 착지점에 설치. 반경 내 유닛이 매 턴 피해를 입는다.</summary>
+        /// <summary>
+        /// 눈이 오면 장판이 사라진다 — **원작 규칙**이다.
+        ///   "눈이 내리면 포세이돈의 파워가 증폭되며, 카터펄트의 불과 듀크탱크의 독가스는 사라진다"
+        ///   (https://namu.wiki/w/포트리스2 · 2026-09-17 조회)
+        /// 지뢰는 장판이 아니라 설치물이라 남긴다(원작 서술도 불·독가스만 말한다).
+        /// </summary>
+        /// <returns>지운 장판 수</returns>
+        public int ClearFires()
+        {
+            int n = 0;
+            for (int i = 0; i < _fires.Count; i++) if (_fires[i].TurnsLeft > 0) n++;
+            _fires.Clear();
+            return n;
+        }
+
         public void PlaceFire(float x, float y, float z, float radius, int dmgPerTurn, int turns, int tag = 0)
         {
             _fires.Add(new FireField { X = x, Y = y, Z = z, Radius = radius, DmgPerTurn = dmgPerTurn, TurnsLeft = turns, Tag = tag });

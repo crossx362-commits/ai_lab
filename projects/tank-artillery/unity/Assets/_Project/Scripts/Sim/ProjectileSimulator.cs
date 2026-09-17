@@ -23,6 +23,10 @@ namespace Tankfall.Sim
         public float FlightTime;
         public int DirectHitTankId;      // 직격이면 탱크 id, 아니면 -1
         public List<Vec3> Path;          // 연출용 궤적 샘플
+        /// <summary>증폭벽(§2-9-15)을 지났으면 1.5, 아니면 1. 피해 계산이 곱한다.</summary>
+        public float DamageScale;
+        /// <summary>회오리(§2-9-15)에 휘말렸는가. 연출·로그용.</summary>
+        public bool Tornadoed;
     }
 
     public static class ProjectileSimulator
@@ -36,31 +40,42 @@ namespace Tankfall.Sim
         /// </summary>
         public static ShotResult Simulate(SdfVolume vol, Vec3 p0, Vec3 v0, Vec3 accel,
                                           IReadOnlyList<TankHitbox> tanks, int shooterId,
-                                          float mapSize)
-            => Simulate(vol, p0, v0, accel, tanks, shooterId, mapSize, default, null);
+                                          float mapSize, AirField air = null)
+            => Simulate(vol, p0, v0, accel, tanks, shooterId, mapSize, default, null, air);
 
         /// <summary>
-        /// 프로파일(추진·유도) 포함. 유도는 **정점을 지난 뒤** homingOk 인 탱크 중 HomingRange 안·전방의 가장 가까운 것을 향해
+        /// 프로파일(추진·유도) + 기후 포함. 유도는 **정점을 지난 뒤** homingOk 인 탱크 중 HomingRange 안·전방의 가장 가까운 것을 향해
         /// 초당 HomingTurnDeg 만큼 속도를 꺾는다(고정 스텝이라 결정론). 표적이 없으면 프로파일 궤적 그대로.
+        ///
+        /// ⚠️ 두 기능(추진·유도 / 증폭벽·회오리)이 **같은 루프에서 만난다**. 합칠 때 정한 것:
+        ///    · 회오리에 빨려 올라가면 **추진은 끝난 것으로 본다**(fp 의 추진만 지운다). 꼭대기에서 tBase 를 t 로 옮기는데,
+        ///      프로파일을 그대로 두면 `t-tBase=0` 이라 **연소가 처음부터 다시 시작**해 회오리가 사거리 증폭기가 된다.
+        ///    · 유도는 회오리 뒤에도 살린다(추진과 달리 연료가 아니라 제어다) — 단 진행 중이던 유도는 끊고 다시 잡게 한다.
         /// </summary>
         public static ShotResult Simulate(SdfVolume vol, Vec3 p0, Vec3 v0, Vec3 accel,
                                           IReadOnlyList<TankHitbox> tanks, int shooterId,
-                                          float mapSize, FlightProfile fp, Func<int, bool> homingOk)
+                                          float mapSize, FlightProfile fp, Func<int, bool> homingOk,
+                                          AirField air = null)
         {
             var path = new List<Vec3>(256) { p0 };
-            var res = new ShotResult { DirectHitTankId = -1, Path = path };
+            var res = new ShotResult { DirectHitTankId = -1, Path = path, DamageScale = 1f };
 
             Vec3 prev = p0;
             float prevSdf = vol.SampleWorld(p0.X, p0.Y, p0.Z);
+            // 회오리는 궤적을 한 번 끊고 다시 잇는다(머리말 참조). 무한 반복을 막으려 한 판에 한 번만.
+            Vec3 org = p0, vel = v0;
+            float tBase = 0f;
+            int lifts = 0;
             bool homing = false; Vec3 hv = default; int homeTarget = -1;
 
             for (float t = Ballistics.SimStep; t <= Ballistics.MaxFlightSec; t += Ballistics.SimStep)
             {
+                float tf = t - tBase;                       // 이번 비행 구간의 경과(회오리 뒤엔 다시 0부터)
                 Vec3 cur;
                 if (!homing)
                 {
-                    cur = Ballistics.PositionAt(p0, v0, accel, t, fp);
-                    if (fp.HasHoming && tanks != null && Ballistics.VelocityAt(v0, accel, t, fp).Y < 0f)
+                    cur = Ballistics.PositionAt(org, vel, accel, tf, fp);
+                    if (fp.HasHoming && tanks != null && Ballistics.VelocityAt(vel, accel, tf, fp).Y < 0f)
                     {
                         float best = fp.HomingRange * fp.HomingRange;
                         Vec3 fwd = (cur - prev).Normalized;
@@ -73,7 +88,7 @@ namespace Tankfall.Sim
                             float d2 = d.LengthSq;
                             if (d2 < best) { best = d2; homeTarget = i; }
                         }
-                        if (homeTarget >= 0) { homing = true; hv = Ballistics.VelocityAt(v0, accel, t, fp); }
+                        if (homeTarget >= 0) { homing = true; hv = Ballistics.VelocityAt(vel, accel, tf, fp); }
                     }
                 }
                 else
@@ -93,6 +108,30 @@ namespace Tankfall.Sim
                     else dir = want;
                     hv = dir * spd + accel * dt;
                     cur = prev + hv * dt;
+                }
+
+                // --- 기후(§2-9-15) ---
+                if (air != null)
+                {
+                    // 증폭벽: 지나가면 피해가 증폭된다(원작 "대미지가 50% 증폭된다"). 한 번만 곱한다.
+                    if (res.DamageScale == 1f && air.CrossesWall(prev, cur)) res.DamageScale = AirField.AmpScale;
+                    // 회오리: 빨려 올라갔다가 떨어진다. 꼭대기에서 거의 수직으로 다시 쏜 것처럼 잇는다.
+                    if (lifts == 0 && air.EntersTornado(prev, cur, out var tor))
+                    {
+                        lifts++;
+                        res.Tornadoed = true;
+                        org = new Vec3(tor.X, tor.TopY, tor.Z);
+                        vel = new Vec3(vel.X * 0.12f, 0f, vel.Z * 0.12f);   // 위로 빨린 뒤 거의 멈춘다 [추정]
+                        tBase = t;
+                        // ⚠️ 추진을 안 지우면 tf 가 0 으로 돌아가며 **연소가 다시 시작**한다 — 회오리가 사거리 증폭기가 된다.
+                        //    유도는 남긴다(연료가 아니라 제어다). 진행 중이던 유도는 끊고 낙하 중에 다시 잡게 한다.
+                        fp.Thrust = 0f; fp.BoostSec = 0f;
+                        homing = false; homeTarget = -1;
+                        path.Add(new Vec3(tor.X, tor.TopY, tor.Z));
+                        prev = org;
+                        prevSdf = vol.SampleWorld(org.X, org.Y, org.Z);
+                        continue;
+                    }
                 }
 
                 // --- 탱크 직격 ---
