@@ -92,7 +92,8 @@ namespace Tankfall.Sim
         /// </summary>
         public static List<SubImpact> SimulatePattern(SdfVolume vol, Vec3 muzzle, float yawDeg, float pitchDeg, float speed, Vec3 accel,
                                                       IReadOnlyList<TankHitbox> boxes, int shooterId, float mapSize,
-                                                      IReadOnlyList<Spread.ShotPattern> pattern, ShotResult? center = null)
+                                                      IReadOnlyList<Spread.ShotPattern> pattern, ShotResult? center = null,
+                                                      AirField air = null)
         {
             var list = new List<SubImpact>(pattern.Count);
             for (int i = 0; i < pattern.Count; i++)
@@ -101,7 +102,7 @@ namespace Tankfall.Sim
                 ShotResult sub;
                 if (center.HasValue && pt.YawOffsetDeg == 0f && pt.PitchOffsetDeg == 0f) sub = center.Value;
                 else sub = ProjectileSimulator.Simulate(vol, muzzle,
-                        Ballistics.VelocityFrom(yawDeg + pt.YawOffsetDeg, pitchDeg + pt.PitchOffsetDeg, speed), accel, boxes, shooterId, mapSize);
+                        Ballistics.VelocityFrom(yawDeg + pt.YawOffsetDeg, pitchDeg + pt.PitchOffsetDeg, speed), accel, boxes, shooterId, mapSize, air);
                 if (sub.Hit) list.Add(new SubImpact { Impact = sub.Impact, DirectId = sub.DirectHitTankId, Scale = pt.DamageScale });
             }
             return list;

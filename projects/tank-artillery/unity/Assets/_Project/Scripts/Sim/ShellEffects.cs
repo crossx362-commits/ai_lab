@@ -155,6 +155,21 @@ namespace Tankfall.Sim
         }
 
         /// <summary>지속불을 착지점에 설치. 반경 내 유닛이 매 턴 피해를 입는다.</summary>
+        /// <summary>
+        /// 눈이 오면 장판이 사라진다 — **원작 규칙**이다.
+        ///   "눈이 내리면 포세이돈의 파워가 증폭되며, 카터펄트의 불과 듀크탱크의 독가스는 사라진다"
+        ///   (https://namu.wiki/w/포트리스2 · 2026-09-17 조회)
+        /// 지뢰는 장판이 아니라 설치물이라 남긴다(원작 서술도 불·독가스만 말한다).
+        /// </summary>
+        /// <returns>지운 장판 수</returns>
+        public int ClearFires()
+        {
+            int n = 0;
+            for (int i = 0; i < _fires.Count; i++) if (_fires[i].TurnsLeft > 0) n++;
+            _fires.Clear();
+            return n;
+        }
+
         public void PlaceFire(float x, float y, float z, float radius, int dmgPerTurn, int turns, int tag = 0)
         {
             _fires.Add(new FireField { X = x, Y = y, Z = z, Radius = radius, DmgPerTurn = dmgPerTurn, TurnsLeft = turns, Tag = tag });

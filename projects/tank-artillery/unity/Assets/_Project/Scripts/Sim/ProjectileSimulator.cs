@@ -23,6 +23,10 @@ namespace Tankfall.Sim
         public float FlightTime;
         public int DirectHitTankId;      // 직격이면 탱크 id, 아니면 -1
         public List<Vec3> Path;          // 연출용 궤적 샘플
+        /// <summary>증폭벽(§2-9-15)을 지났으면 1.5, 아니면 1. 피해 계산이 곱한다.</summary>
+        public float DamageScale;
+        /// <summary>회오리(§2-9-15)에 휘말렸는가. 연출·로그용.</summary>
+        public bool Tornadoed;
     }
 
     public static class ProjectileSimulator
@@ -36,17 +40,41 @@ namespace Tankfall.Sim
         /// </summary>
         public static ShotResult Simulate(SdfVolume vol, Vec3 p0, Vec3 v0, Vec3 accel,
                                           IReadOnlyList<TankHitbox> tanks, int shooterId,
-                                          float mapSize)
+                                          float mapSize, AirField air = null)
         {
             var path = new List<Vec3>(256) { p0 };
-            var res = new ShotResult { DirectHitTankId = -1, Path = path };
+            var res = new ShotResult { DirectHitTankId = -1, Path = path, DamageScale = 1f };
 
             Vec3 prev = p0;
             float prevSdf = vol.SampleWorld(p0.X, p0.Y, p0.Z);
+            // 회오리는 궤적을 한 번 끊고 다시 잇는다(머리말 참조). 무한 반복을 막으려 한 판에 한 번만.
+            Vec3 org = p0, vel = v0;
+            float tBase = 0f;
+            int lifts = 0;
 
             for (float t = Ballistics.SimStep; t <= Ballistics.MaxFlightSec; t += Ballistics.SimStep)
             {
-                Vec3 cur = Ballistics.PositionAt(p0, v0, accel, t);
+                Vec3 cur = Ballistics.PositionAt(org, vel, accel, t - tBase);
+
+                // --- 기후(§2-9-15) ---
+                if (air != null)
+                {
+                    // 증폭벽: 지나가면 피해가 증폭된다(원작 "대미지가 50% 증폭된다"). 한 번만 곱한다.
+                    if (res.DamageScale == 1f && air.CrossesWall(prev, cur)) res.DamageScale = AirField.AmpScale;
+                    // 회오리: 빨려 올라갔다가 떨어진다. 꼭대기에서 거의 수직으로 다시 쏜 것처럼 잇는다.
+                    if (lifts == 0 && air.EntersTornado(prev, cur, out var tor))
+                    {
+                        lifts++;
+                        res.Tornadoed = true;
+                        org = new Vec3(tor.X, tor.TopY, tor.Z);
+                        vel = new Vec3(vel.X * 0.12f, 0f, vel.Z * 0.12f);   // 위로 빨린 뒤 거의 멈춘다 [추정]
+                        tBase = t;
+                        path.Add(new Vec3(tor.X, tor.TopY, tor.Z));
+                        prev = org;
+                        prevSdf = vol.SampleWorld(org.X, org.Y, org.Z);
+                        continue;
+                    }
+                }
 
                 // --- 탱크 직격 ---
                 if (tanks != null)
