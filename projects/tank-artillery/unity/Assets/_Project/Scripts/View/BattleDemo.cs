@@ -12,10 +12,13 @@ using Tankfall.Sim;
 
 namespace Tankfall.View
 {
-    public sealed class BattleDemo : MonoBehaviour
+    public sealed partial class BattleDemo : MonoBehaviour
     {
         // --- 지형 (§7-1) ---
-        const float MapSize = 200f, Voxel = 0.5f, OriginY = -20f;
+        // ⚠️ 맵 크기는 `MapHeightFunction.MapSize` 가 **단일 소스**다. 여기에 숫자를 적으면
+        //    지형과 게임이 다른 크기를 믿게 되어 탱크가 허공에 뜨거나 맵 밖에서 싸운다.
+        const float MapSize = MapHeightFunction.MapSize;
+        const float Voxel = 0.5f, OriginY = -20f;
         const int ChunkN = 16;
 
         // --- 전투 ---
@@ -74,8 +77,32 @@ namespace Tankfall.View
             public Vec3 Center => new Vec3(Root.position.x, Root.position.y + 1.2f, Root.position.z);
         }
 
+        /// <summary>격파 — 탱크를 숨기고 그 자리에 화구·연기 기둥(ParticleFx.Death). 죽음 처리는 전부 여기로 — 흩어져 있으면 연출이 빠진다.</summary>
+        void KillUnit(Unit u)
+        {
+            if (u.Root.gameObject.activeSelf) EnsureFx().Death(u.Root.position, TankShape.BodyColor(u.Kind));
+            u.Root.gameObject.SetActive(false);
+        }
+
+        ParticleFx EnsureFx()
+        {
+            if (_fx == null) _fx = new GameObject("ParticleFx").AddComponent<ParticleFx>();
+            return _fx;
+        }
+
+        /// <summary>독·속박 상태 파티클을 Sim 상태와 맞춘다. 턴이 바뀌거나 상태가 걸릴 때 부른다.</summary>
+        void RefreshStatusFx()
+        {
+            var fx = EnsureFx();
+            foreach (var u in _units)
+                fx.SetUnitStatus(u.Id, u.Root, u.Alive && _status.HasDot(u.Id), u.Alive && !_status.CanMove(u.Id));
+        }
+
         SdfVolume _vol;
         TerrainView _terrain;
+        Scatter _scatter;              // 나무·바위·덤불(Scatter.cs) — 거리 감각과 폭발 가독성 때문에 둔다
+        Environment _env;              // 구름·원경·해(Environment.cs) — 빈 하늘은 원작에도 없었다
+        ParticleFx _fx;                // 폭발·자취 연출(§11 M2). 없으면 착탄이 아무 무게 없이 지나간다
         Camera _cam;
         readonly List<Unit> _units = new List<Unit>();
         int _turn;                       // _units 인덱스
@@ -92,11 +119,15 @@ namespace Tankfall.View
         /// <summary>나이스샷 표시점(원작: 게이지 위에 미리 찍어 두는 녹색 선). Q/E 로 옮긴다.</summary>
         float _mark = 0.5f;
         bool _useSs;              // 3번 키 — 이번 사격을 SS(강화 2번탄)로
+        bool _useUlt;             // 4번 키 — 이번 사격을 궁극기(§49)로
         string _niceFlash;        // "나이스샷!" 표시
         readonly StatusEffects _status = new StatusEffects();   // 독·화상·속박
         readonly HazardField _hazards = new HazardField();      // 지뢰·지속불
         readonly List<(Vec3 impact, int direct, float scale)> _pendingShots = new List<(Vec3, int, float)>();
         TankKind _shooterKind; ShellKind _shooterShell;
+        TankKind _shellVisualKind = (TankKind)(-1);   // 지금 만들어 둔 탄 메시가 어느 기종 것인가
+        ShellKind _shellVisualShell;
+        ShellTrail.Style _trailStyle;                 // 지금 날아가는 탄의 자취 스타일
         Vector2 _wind;                   // 수평 방향 × 세기
 
         /// <summary>
@@ -144,7 +175,7 @@ namespace Tankfall.View
         // 설치물 연출: 지뢰 = 검은 공, 지속불 = 주황 원반, 독구름 = 녹색 원반. 판정(HazardField)은 Sim 이 하고 여기선 스냅샷만 그린다.
         readonly List<HazardField.HazardView> _hazardBuf = new List<HazardField.HazardView>();
         readonly List<Transform> _hazardGos = new List<Transform>();
-        Material _mineMat, _fireMat, _cloudMat;
+        Material _mineMat;
         float _beamTimer;
         TankKind[] _roster = DefaultRoster;   // -roster Cannon,Carrot,Laser 로 바꿀 수 있다(연출 확인용)
         MapKind _map = MapKind.TwinHills;
@@ -194,6 +225,9 @@ namespace Tankfall.View
                     if (!int.TryParse(args[i + 1].Trim(), out _itemSlots) || _itemSlots < 0)
                     { _itemSlots = 2; Debug.LogWarning($"[Tankfall] -items 는 0 이상 정수 — 기본 2"); }
                 }
+                else if (args[i] == "-uiselftest") _uiSelfTest = true;
+                else if (args[i] == "-shellcheck") _shellCheck = true;
+                else if (args[i] == "-shellgallery") _shellGallery = true;
                 else if (args[i] == "-practice") _practice = true;
                 else if (args[i] == "-practiceselftest") { _practice = true; _practiceSelfTest = true; }
                 else if (args[i] == "-supplyselftest") _supplySelfTest = true;
@@ -236,19 +270,12 @@ namespace Tankfall.View
             if (string.IsNullOrEmpty(_shotDir)) _shotDir = "Screenshots";
 
             SetupWorld();
-            _vol = new SdfVolume(Voxel, ChunkN, OriginY, Height, Mathf.RoundToInt(MapSize / Voxel),
-                                MapHeightFunction.Grad(_map));
-
-            var go = new GameObject("Terrain");
-            _terrain = go.AddComponent<TerrainView>();
-            _terrain.Init(_vol, ChunkN, MakeMat(new Color(0.46f, 0.44f, 0.36f), 0.05f));
-            int cells = Mathf.RoundToInt(MapSize / Voxel);
-            _terrain.BuildRegion(0, cells / ChunkN, _vol.GridY(-2f) / ChunkN, _vol.GridY(40f) / ChunkN + 1,
-                                 0, cells / ChunkN);
-
-            // ⚠️ 날씨는 **스폰보다 먼저** 정한다(유닛이 생성될 때 `W` 사본을 뜬다). 바람과 달리 판 내내 안 바뀐다 —
-            //    "이번 판은 눈"이 보이면 포세이돈을 고를지가 선택지가 되기 때문이다(성장 없는 PvP, §62).
+            // ⚠️ 날씨를 **지형보다 먼저** 정한다. 지형 정점 색이 눈 여부를 보고 칠해지므로(TerrainPalette),
+            //    순서가 뒤집히면 눈 오는 판에서 지형만 여름색으로 남는다.
             SetWeather(_weatherForced ?? (Random.value < SnowChance ? Weather.Snow : Weather.Clear));
+            RebuildTerrain();
+
+            // 날씨는 위에서 이미 정했다(지형 색이 그걸 본다). 유닛은 생성 시 `W` 사본을 뜨므로 여기 순서면 충분하다.
             SpawnTeams();
             _items.Clear();
             // 아이템 뽑기는 판마다 달라야 한다 — 바람·날씨와 같은 취급(고정 시드면 매 판 같은 가방이 나온다).
@@ -267,6 +294,12 @@ namespace Tankfall.View
             }
             RollWind();
             _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
+
+            // ⚠️ 자동 검증 모드는 타이틀을 거치지 않는다 — 거치면 하네스가 메뉴에서 조용히 멈춘다(BattleScreens.cs 머리말).
+            //    사람이 켠 경우에만 타이틀로 시작한다.
+            bool headless = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _practice || _uiSelfTest || _shellCheck || _shellGallery;
+            _screen = headless ? GameScreen.Battle : GameScreen.Title;
+            Sfx.Muted = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _uiSelfTest || Application.isBatchMode;
         }
 
         void SpawnTeams()
@@ -307,32 +340,206 @@ namespace Tankfall.View
                     root.rotation = Quaternion.Euler(0, u.Heading, 0);
                     _units.Add(u);
                 }
-            // 턴 순서: 팀 교차 A1 B1 A2 B2 A3 B3 (§52)
-            _units.Sort((a, b) => (a.Id % 3) * 2 + a.Team - ((b.Id % 3) * 2 + b.Team));
+            // 턴 순서: 50% 확률로 선공 팀 결정 (공정 대전 보장, 팀 교차 A1 B1 A2 B2 A3 B3 / B1 A1 B2 A2 B3 A3)
+            int firstTeam = Random.value < 0.5f ? 0 : 1;
+            _units.Sort((a, b) =>
+            {
+                int orderA = (a.Team == firstTeam) ? 0 : 1;
+                int orderB = (b.Team == firstTeam) ? 0 : 1;
+                return ((a.Id % 3) * 2 + orderA) - ((b.Id % 3) * 2 + orderB);
+            });
             _status.Clear(); _hazards.Clear(); _pendingShots.Clear(); RefreshHazards();
             _supply.Clear(); RefreshCrates();
             _order = new TurnOrder();
             foreach (var u in _units) _order.Add(u.Id, TankStats.Get(u.Kind).Delay);
-            _turn = 0;   // 전원 누적 0 → 첫 등록(아군1)이 먼저. TurnOrder.Next 와 일치한다
+            _turn = 0;   // 전원 누적 0 → 첫 등록 유닛이 먼저 턴을 가져감
         }
+
+        /// <summary>
+        /// 지형을 통째로 다시 만든다. 판 시작(§3 20_Lobby → 30_Battle)과 재시작이 같이 쓴다.
+        ///
+        /// ⚠️ 맵을 바꿨으면 **반드시** 이걸 거쳐야 한다 — `_vol` 은 생성 시점의 높이 함수를 굽는다.
+        ///    `_map` 만 바꾸고 재스폰하면 탱크는 새 맵 좌표에, 지형은 옛 맵 모양으로 남아 공중에 뜬다.
+        /// </summary>
+        void RebuildTerrain()
+        {
+            if (_terrain != null) Destroy(_terrain.gameObject);
+            _vol = new SdfVolume(Voxel, ChunkN, OriginY, Height, Mathf.RoundToInt(MapSize / Voxel),
+                                MapHeightFunction.Grad(_map));
+
+            var go = new GameObject("Terrain");
+            _terrain = go.AddComponent<TerrainView>();
+            _terrain.Theme = MapTheme.Of(_map, _weather == Weather.Snow);
+            ApplyTheme();                      // 하늘·태양·안개도 이 맵의 것으로
+            _terrain.Init(_vol, ChunkN, MakeTerrainMat());
+            int cells = Mathf.RoundToInt(MapSize / Voxel);
+            _terrain.BuildRegion(0, cells / ChunkN, _vol.GridY(-2f) / ChunkN, _vol.GridY(40f) / ChunkN + 1,
+                                 0, cells / ChunkN);
+
+            ScatterObjects();
+        }
+
+        /// <summary>
+        /// 지형 위에 나무·바위를 뿌린다. 지형을 다시 만들 때마다 같이 다시 뿌려야 한다 —
+        /// 안 그러면 옛 지형 높이에 맞춰진 나무가 공중에 뜨거나 땅에 묻힌다.
+        /// </summary>
+        void ScatterObjects()
+        {
+            if (_scatter == null)
+            {
+                var sgo = new GameObject("Scatter");
+                _scatter = sgo.AddComponent<Scatter>();
+            }
+            // 탱크 스폰 자리는 비워 둔다(Scatter 머리말 규칙 2).
+            var avoid = new List<Vector3>();
+            for (int t = 0; t < 2; t++)
+                for (int i = 0; i < 3; i++)
+                {
+                    MapHeightFunction.Spawn(_map, t, i, out float sx, out float sz);
+                    avoid.Add(new Vector3(sx, 0f, sz));
+                }
+            var th = MapTheme.Of(_map, _weather == Weather.Snow);
+            _scatter.Build(_vol, MapSize, (int)_map * 7919 + 13, avoid, th);
+
+            // 배경(구름·원경 산맥·해). 맵 밖이라 지형 파괴와 무관하지만 **테마가 바뀌면 같이 바뀌어야** 한다.
+            if (_env == null) _env = new GameObject("Environment").AddComponent<Environment>();
+            // 맵 밖 바닥 높이는 **맵 가장자리의 실제 지면**에 맞춘다 — 눈대중으로 0 을 쓰면 경계에 단이 진다.
+            float edgeY = TankGroundProbe.GroundBelow(_vol, 2f, MapSize * 0.5f, 90f);
+            if (float.IsNegativeInfinity(edgeY)) edgeY = 0f;
+            _env.Build(MapSize, th, (int)_map * 104729 + 7, _sun != null ? _sun.transform.forward : Vector3.down, edgeY);
+        }
+
+        Light _sun;
+        Transform _skyDome;
+        Material _skyMat;
 
         void SetupWorld()
         {
             var camGo = new GameObject("MainCamera");
             _cam = camGo.AddComponent<Camera>();
             _cam.tag = "MainCamera";
-            _cam.farClipPlane = 800f;
+            _cam.farClipPlane = 900f;
             _cam.clearFlags = CameraClearFlags.SolidColor;
-            _cam.backgroundColor = new Color(0.55f, 0.66f, 0.78f);
+            _cam.allowMSAA = true;
+            _cam.allowHDR = true;          // 가산 파티클(섬광·빔)이 흰색으로 뭉개지지 않게
 
-            var sun = new GameObject("Sun").AddComponent<Light>();
-            sun.type = LightType.Directional;
-            sun.transform.rotation = Quaternion.Euler(46f, 35f, 0f);
-            sun.intensity = 1.15f; sun.shadows = LightShadows.Soft;
+            ApplyQuality();
+
+            _sun = new GameObject("Sun").AddComponent<Light>();
+            _sun.type = LightType.Directional;
+            _sun.transform.rotation = Quaternion.Euler(46f, 35f, 0f);
+            _sun.intensity = 1.0f;
+            _sun.shadows = LightShadows.Soft;
+            // 그림자 품질 — 로우폴리는 **면과 그림자로** 형태를 읽히게 한다(조사 근거: directional light 가 면을 가른다).
+            //   기본값(near 가 촘촘하고 far 가 뭉개짐)이면 200m 맵에서 먼 탱크 그림자가 통째로 사라진다.
+            _sun.shadowBias = 0.02f;
+            _sun.shadowNormalBias = 0.35f;
+            _sun.shadowNearPlane = 0.2f;
+
+            // 채워 넣는 반대편 광원. 하나뿐이면 그늘이 새까매져 형태가 안 보인다(앰비언트를 올리면 색이 뜬다 — 형광 연두 사고).
+            var fill = new GameObject("FillLight").AddComponent<Light>();
+            fill.type = LightType.Directional;
+            fill.transform.rotation = Quaternion.Euler(28f, 35f + 180f, 0f);
+            fill.intensity = 0.28f;
+            fill.shadows = LightShadows.None;
+            fill.color = new Color(0.72f, 0.80f, 0.95f);        // 하늘빛 — 그늘을 차갑게
+
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.55f, 0.62f, 0.72f);
-            RenderSettings.ambientEquatorColor = new Color(0.42f, 0.42f, 0.40f);
-            RenderSettings.ambientGroundColor = new Color(0.22f, 0.20f, 0.18f);
+
+            BuildSkyDome();
+            ApplyTheme();
+        }
+
+        /// <summary>
+        /// 화질 설정. 코드로 만든 프로젝트라 QualitySettings 기본값이 그대로 남아 있었다 —
+        /// MSAA 가 꺼져 있어 지형·탱크 모서리가 전부 계단으로 나왔고(로우폴리는 **모서리가 곧 형태**라 치명적),
+        /// 그림자 거리가 짧아 200m 맵의 먼 쪽에는 그림자가 아예 없었다.
+        ///
+        /// ⚠️ 여기 값을 올리면 프레임이 떨어진다. 바꿨으면 `-perf` 로 재라(§7-7 처럼 분해해서).
+        /// </summary>
+        static void ApplyQuality()
+        {
+            QualitySettings.antiAliasing = 4;                    // MSAA 4x — 모서리 계단 제거
+            QualitySettings.anisotropicFiltering = AnisotropicFiltering.Enable;
+            QualitySettings.shadows = ShadowQuality.All;
+            QualitySettings.shadowResolution = ShadowResolution.VeryHigh;
+            QualitySettings.shadowProjection = ShadowProjection.StableFit;
+            QualitySettings.shadowDistance = 320f;               // 맵이 200m — 반대편 탱크 그림자까지 살린다
+            QualitySettings.shadowCascades = 4;
+            QualitySettings.shadowCascade4Split = new Vector3(0.05f, 0.15f, 0.35f);
+            QualitySettings.softParticles = true;
+            QualitySettings.pixelLightCount = 4;
+            QualitySettings.vSyncCount = 1;
+        }
+
+        /// <summary>
+        /// 카메라를 감싸는 안쪽 구. 하늘 그라디언트를 여기에 칠한다(원작은 맵마다 하늘이 달랐다 — SkyGradient.shader 조사 근거).
+        /// ⚠️ 카메라를 따라다녀야 한다 — 고정하면 맵 끝에서 하늘 밖으로 나간다.
+        /// </summary>
+        void BuildSkyDome()
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = "SkyDome";
+            Destroy(go.GetComponent<Collider>());
+            go.transform.localScale = Vector3.one * 860f;
+            var mr = go.GetComponent<MeshRenderer>();
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+
+            var sh = Shader.Find("Tankfall/SkyGradient");
+            if (sh == null) { Debug.LogWarning("[Tankfall] SkyGradient 셰이더 없음 — 하늘이 단색이 된다."); Destroy(go); return; }
+            _skyMat = new Material(sh);
+            mr.sharedMaterial = _skyMat;
+            _skyDome = go.transform;
+        }
+
+        /// <summary>맵 테마(MapTheme)를 하늘·태양·안개·지형에 한 번에 바른다. 색이 갈리는 지점은 여기 하나다.</summary>
+        void ApplyTheme()
+        {
+            var th = MapTheme.Of(_map, _weather == Weather.Snow);
+            if (_skyMat != null)
+            {
+                _skyMat.SetColor("_Top", th.SkyTop);
+                _skyMat.SetColor("_Bottom", th.SkyBottom);
+            }
+            if (_cam != null) _cam.backgroundColor = th.SkyBottom;
+            if (_sun != null) _sun.color = th.Sun;
+
+            // 먼 지형이 하늘로 녹아들게 — 200m 맵에서 끝이 칼로 자른 듯 끊기면 배경이 판때기로 보인다.
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = th.Fog;
+            RenderSettings.fogStartDistance = 220f;
+            RenderSettings.fogEndDistance = 620f;
+
+            // ⚠️ 앰비언트를 올리면 그림자가 옅어지고 색이 뜬다(형광 연두 사고). 직사광이 형태를 만들게 두고 여기는 낮게.
+            // 앰비언트: 너무 높으면 색이 뜨고(형광 연두) 너무 낮으면 그늘이 칙칙해진다. 그 사이 값이다.
+            RenderSettings.ambientSkyColor = Color.Lerp(th.SkyTop, Color.white, 0.2f) * 0.70f;
+            RenderSettings.ambientEquatorColor = Color.Lerp(th.Mid, th.SkyBottom, 0.5f) * 0.58f;
+            RenderSettings.ambientGroundColor = th.RockDark * 0.45f;
+
+            if (_terrain != null) _terrain.Theme = th;
+        }
+
+        /// <summary>
+        /// 지형 머티리얼. 정점 색 셰이더가 있어야 풀·흙·바위가 나온다(TerrainPalette).
+        /// ⚠️ 셰이더가 빠지면 **조용히 단색으로 돌아가는 게 아니라** 분홍색이 된다 —
+        ///    그래서 못 찾으면 경고를 남기고 Standard 로 떨어진다(단색이지만 최소한 보인다).
+        /// </summary>
+        static Material MakeTerrainMat()
+        {
+            var sh = Shader.Find("Tankfall/TerrainVertexColor");
+            if (sh == null)
+            {
+                Debug.LogWarning("[Tankfall] Tankfall/TerrainVertexColor 셰이더가 없다 — 지형이 단색이 된다. " +
+                                 "BuildScript.EnsureShadersIncluded 확인.");
+                return MakeMat(new Color(0.46f, 0.44f, 0.36f), 0.05f);
+            }
+            var m = new Material(sh);
+            // 계단 그림자(셀 셰이딩) 단계. 조사 근거: 로우폴리는 면을 **갈라 보여줘야** 형태가 읽힌다.
+            // 4 단계면 캐주얼 톤이 나오면서 지형 굴곡도 안 뭉갠다 [실측으로 조정 가능].
+            if (m.HasProperty("_Ramp")) m.SetFloat("_Ramp", 4f);
+            return m;
         }
 
         static Shader _shader;
@@ -364,6 +571,7 @@ namespace Tankfall.View
         {
             _weather = w;
             if (_units != null) foreach (var u in _units) u.W = w;
+            if (_cam != null) EnsureFx().SetSnow(w == Weather.Snow && !Application.isBatchMode, _cam.transform, _wind);
         }
 
         static string WeatherName(Weather w) => w == Weather.Snow ? "눈" : "맑음";
@@ -373,6 +581,7 @@ namespace Tankfall.View
             float a = Random.Range(0f, Mathf.PI * 2f);
             float s = Random.Range(0f, 10f);
             _wind = new Vector2(Mathf.Cos(a) * s, Mathf.Sin(a) * s);
+            if (_weather == Weather.Snow && _cam != null) EnsureFx().SetSnow(!Application.isBatchMode, _cam.transform, _wind);   // 눈은 바람을 따라 흩날린다
         }
 
         void Update()
@@ -382,7 +591,20 @@ namespace Tankfall.View
             if (_perf) { PerfStep(); return; }
             if (_supplySelfTest) { SupplySelfTestStep(); return; }
             if (_autoShot) { AutoShotStep(); return; }
+            if (_uiSelfTest) { UiSelfTestStep(); return; }
+            if (_shellCheck) { ShellCheckStep(); return; }
+            if (_shellGallery) { ShellGalleryStep(); return; }
+
             float dt = Time.deltaTime;
+            TickPopups(dt);
+
+            // 타이틀·선택·일시정지·결과 화면에서는 전투 로직이 아예 안 돈다.
+            if (_screen != GameScreen.Battle) { ScreenUpdate(); return; }
+
+            // Esc = 일시정지. 연습장·자동 모드에서도 빠져나갈 길은 있어야 한다.
+            if (Input.GetKeyDown(KeyCode.Escape)) { _screen = GameScreen.Pause; return; }
+
+            _battleClock += dt;                      // 한 판 길이 실측(§11 M3 게이트)
             TickHelicopter(dt);
 
             // F2 = 연습장 "정답 보기"(§5-7). ⚠️ **PvP HUD 에는 절대 노출 금지**(기획서 §58) —
@@ -487,7 +709,9 @@ namespace Tankfall.View
             float turn = (Input.GetKey(KeyCode.A) ? -1f : 0f) + (Input.GetKey(KeyCode.D) ? 1f : 0f);
             float fwd = (Input.GetKey(KeyCode.W) ? 1f : 0f) + (Input.GetKey(KeyCode.S) ? -1f : 0f);
             u.Heading += turn * TurnSpeed * dt;
-            if (Mathf.Abs(fwd) > 0.01f && u.Gauge > 0f) DriveUnit(u, fwd, dt);
+            bool driving = Mathf.Abs(fwd) > 0.01f && u.Gauge > 0f;
+            if (driving) DriveUnit(u, fwd, dt);
+            Sfx.Engine(driving);                 // 게이지가 바닥나면 소리도 멈춘다 — 왜 안 움직이는지가 귀로도 온다
             GroundUnit(u, dt);
             ApplyAim(u);
         }
@@ -501,6 +725,7 @@ namespace Tankfall.View
             _camYaw = u.Heading + u.TurretYaw;        // 포신이 향한 곳을 그대로 본다
             _camPitch = 18f;
             _camDist = 22f;
+            Sfx.Engine(false);
             _phase = Phase.Fire;
             _phaseTimer = FirePhaseSec;
             _power = 0f; _charging = false;
@@ -527,11 +752,13 @@ namespace Tankfall.View
             var u = Current;
 
             // 탄종 전환 — FIRE 페이즈에서만. 쏘기 직전까지 바꿀 수 있어야 관측 후 판단이 가능하다.
-            if (Input.GetKeyDown(KeyCode.Alpha1)) { u.Shell = ShellKind.Normal; _useSs = false; }
+            if (Input.GetKeyDown(KeyCode.Alpha1)) { u.Shell = ShellKind.Normal; _useSs = false; _useUlt = false; }
             // 원작: 2번탄은 무한. 예전 "3발 제한 + 2라운드 해금"은 내 발명이었고 걷어냈다(§2-9).
-            if (Input.GetKeyDown(KeyCode.Alpha2)) { u.Shell = ShellKind.Special; _useSs = false; }
+            if (Input.GetKeyDown(KeyCode.Alpha2)) { u.Shell = ShellKind.Special; _useSs = false; _useUlt = false; }
             // SS = 나이스샷 2점. 없는데 누르면 아무 일도 없다(HUD 가 이유를 보여준다)
-            if (Input.GetKeyDown(KeyCode.Alpha3) && u.Skill.CanSs()) { u.Shell = ShellKind.Special; _useSs = true; }
+            if (Input.GetKeyDown(KeyCode.Alpha3) && u.Skill.CanSs()) { u.Shell = ShellKind.Special; _useSs = true; _useUlt = false; }
+            // 4 = 궁극기(§49). 나이스샷을 SS 보다 더 모아야 열린다(NiceShot.UltimateCost).
+            if (Input.GetKeyDown(KeyCode.Alpha4) && u.Skill.CanUltimate()) { u.Shell = ShellKind.Special; _useSs = false; _useUlt = true; }
             // 나이스샷 표시점 — 게이지를 여기서 정확히 멈추면 +1
             if (Input.GetKey(KeyCode.Q)) _mark = Mathf.Clamp01(_mark - 0.45f * dt);
             if (Input.GetKey(KeyCode.E)) _mark = Mathf.Clamp01(_mark + 0.45f * dt);
@@ -585,7 +812,7 @@ namespace Tankfall.View
                 {
                     u.Hp = Mathf.Max(0, u.Hp - hz);
                     _log = $"◉ 설치물! −{hz}";
-                    if (!u.Alive) { u.Root.gameObject.SetActive(false); }
+                    if (!u.Alive) KillUnit(u);
                     break;
                 }
                 // 원작의 "이동거리"를 게이지 소모율로 옮겼다. 레이저탱크(1.35)가 가장 멀리 가고
@@ -662,6 +889,12 @@ namespace Tankfall.View
 
         void FireFrom(Unit u, float turretYaw, float pitch, float power)
         {
+            // ⚠️ 착탄은 몇 초 뒤다 — 그때 `Current` 를 보면 이미 턴이 넘어가 있어 피해가 엉뚱한 팀에 쌓인다.
+            //    쏘는 순간의 팀을 여기서 박아 둔다.
+            _shooterTeam = u.Team;
+            _stat[u.Team].Shots++;
+            Sfx.Fire(power);
+
             float worldYaw = u.Heading + turretYaw;
             var baseSt = TankStats.For(u.Kind, ShellKind.Normal, u.HpFrac, u.W);
             float speed = baseSt.SpeedAt(power);
@@ -676,6 +909,7 @@ namespace Tankfall.View
             // 2) 탄종. 플레이어는 FIRE 페이즈에서 골랐고, AI 는 착탄점을 본 뒤 고른다(§8) — 탄도가 같으니 조준을 다시 풀 필요가 없다.
             var shell = u.Shell;
             bool ss = IsPlayerTurn && _useSs;
+            bool ult = IsPlayerTurn && _useUlt;
             if (!IsPlayerTurn && res.Hit)
             {
                 var foes = new List<AiGunner.Target>();
@@ -690,23 +924,29 @@ namespace Tankfall.View
                     : AiGunner.SimulatePattern(_vol, p0, worldYaw, pitch, speed, accel, boxes, u.Id, MapSize,
                                                Spread.Pattern(u.Kind, ShellKind.Special), res);
                 shell = AiGunner.PickShell(baseSt, normalHits, specialHits, foes, satImpact, satDirect);
-                ss = shell == ShellKind.Special && u.Skill.CanSs();
+                // ⚠️ 궁극기를 먼저 보고, 못 쓰면 **아낄지 말지**를 정한다.
+                //    아끼는 단계가 없으면 2점에서 SS 로 다 써버려 궁극기가 영원히 안 나온다
+                //    (하네스에서 궁극기 ON/OFF 승률이 똑같이 나와 들통난 사고 — NiceShot.AiSaveForUltimate 머리말).
+                ult = shell == ShellKind.Special && u.Skill.CanUltimate();
+                ss = !ult && shell == ShellKind.Special && u.Skill.CanSs()
+                     && !NiceShot.AiSaveForUltimate(u.Skill.Points, ref _aiRng);
                 // AI 나이스샷 — 게이지 정지 정밀도를 난이도별 확률로 대신한다 [추정]
                 if (NiceShot.AiJudge(AiDifficulty, ref _aiRng)) u.Skill.OnNiceShot();
             }
             // 연출 확인용 강제(-forcespecial) — AI 뿐 아니라 자동사격의 플레이어 탱크(ForceFire 경로)에도 걸어야 아군 사격에서도 보인다
             if (_forceSpecial) shell = ShellKind.Special;
             var st = TankStats.For(u.Kind, shell, u.HpFrac, u.W);
-            if (shell == ShellKind.Special && ss && u.Skill.CanSs()) { st = NiceShot.ApplySs(st); u.Skill.SpendSs(); }
+            if (shell == ShellKind.Special && ult && u.Skill.CanUltimate()) { st = NiceShot.ApplyUltimate(st, u.Kind); u.Skill.SpendUltimate(); }
+            else if (shell == ShellKind.Special && ss && u.Skill.CanSs()) { st = NiceShot.ApplySs(st); u.Skill.SpendSs(); }
             // 파워업: 원작 분류가 "능력 아이템(공격력 강화)". ⚠️ 속도를 올리면 이미 끝낸 조준이 통째로 빗나간다.
             if (_items.HasPowerUp(u.Id)) { st.BaseDamage *= Items.PowerUpScale; st.DirectDamage *= Items.PowerUpScale; }
             _shooterStats = st; _shooterKind = u.Kind; _shooterShell = shell;
             _shooterId = u.Id;
             // ⚠️ 쏜 뒤 일반탄으로 되돌린다. 안 그러면 다음 턴에 "고른 적 없는 2번탄"이 나가는 것처럼 보인다.
-            u.Shell = ShellKind.Normal; _useSs = false;
+            u.Shell = ShellKind.Normal; _useSs = false; _useUlt = false;
 
             // 3) 다탄두: 고른 탄종의 패턴대로 전부 계산하고, 부탄은 각자 궤적으로 같이 날린다(카메라는 중앙 탄).
-            var pattern = Spread.Pattern(u.Kind, shell);
+            var pattern = Spread.Pattern(u.Kind, shell, ult);
             _pendingShots.Clear();
             _subPaths.Clear();
             foreach (var pt in pattern)
@@ -720,26 +960,51 @@ namespace Tankfall.View
             while (_subShells.Count < _subPaths.Count)
             {
                 var sg2 = new GameObject($"SubShell{_subShells.Count}");
-                sg2.AddComponent<MeshFilter>().sharedMesh = ProceduralTank.Ball(0.32f);
-                sg2.AddComponent<MeshRenderer>().sharedMaterial = MakeMat(new Color(0.10f, 0.10f, 0.12f), 0.4f);
+                sg2.AddComponent<MeshFilter>().sharedMesh = ProceduralTank.Shell(u.Kind, shell);
+                sg2.AddComponent<MeshRenderer>().sharedMaterial = MakeMat(ProceduralTank.ShellColor(u.Kind, shell), 0.4f);
+                sg2.transform.localScale = Vector3.one * 0.78f;      // 부탄은 조금 작게 — 중앙 탄이 주인공이다
                 _subShells.Add(sg2.transform);
             }
             for (int si = 0; si < _subShells.Count; si++) _subShells[si].gameObject.SetActive(si < _subPaths.Count);
 
+            _trailStyle = ShellTrail.Of(u.Kind, shell, ult);
             _shotPath = res.Path; _shotT = 0f;
             _pendingImpact = res.Impact; _pendingDirect = res.DirectHitTankId;
 
             if (_shell == null)
             {
                 var sg = new GameObject("Shell");
-                sg.AddComponent<MeshFilter>().sharedMesh = ProceduralTank.Ball(0.45f);
-                sg.AddComponent<MeshRenderer>().sharedMaterial = MakeMat(new Color(0.10f, 0.10f, 0.12f), 0.4f);
+                sg.AddComponent<MeshFilter>();
+                sg.AddComponent<MeshRenderer>();
                 _shell = sg.transform;
+                _shellVisualKind = (TankKind)(-1);
+            }
+            // 탄 모양·색은 **기종과 탄종**을 따른다(ProceduralTank.Shell 머리말의 원작 근거).
+            // 매 발 새로 만들면 GC 가 튀므로 바뀔 때만 다시 만든다.
+            if (_shellVisualKind != u.Kind || _shellVisualShell != shell)
+            {
+                _shellVisualKind = u.Kind; _shellVisualShell = shell;
+                _shell.GetComponent<MeshFilter>().sharedMesh = ProceduralTank.Shell(u.Kind, shell);
+                _shell.GetComponent<MeshRenderer>().sharedMaterial =
+                    MakeMat(ProceduralTank.ShellColor(u.Kind, shell), 0.4f);
+                foreach (var tr in _subShells)
+                {
+                    tr.GetComponent<MeshFilter>().sharedMesh = ProceduralTank.Shell(u.Kind, shell);
+                    tr.GetComponent<MeshRenderer>().sharedMaterial = _shell.GetComponent<MeshRenderer>().sharedMaterial;
+                }
             }
             // 더블파이어: 같은 각도·파워를 기억해 착탄 뒤 한 발 더 쏜다(원작 "같은 힘과 각도").
             if (_items.HasDoubleFire(u.Id) && !_pendingDoubleFire)
             { _pendingDoubleFire = true; _dfYaw = turretYaw; _dfPitch = pitch; _dfPower = power; }
             _shell.gameObject.SetActive(res.Hit || res.Path.Count > 1);
+
+            // ⚠️ 자취는 **탄이 만들어진 뒤에** 붙인다 — 위에서 붙였더니 첫 발은 `_shell` 이 아직 null 이라 자취가 없었다.
+            if (_fx == null) _fx = new GameObject("ParticleFx").AddComponent<ParticleFx>();
+            _fx.AttachTrail(_shell, _trailStyle);
+            // 부탄(다탄두)도 같이 — 중앙 탄만 남기면 9연이 한 발처럼 보인다.
+            for (int si = 0; si < _subShells.Count && si < _subPaths.Count; si++)
+                _fx.AttachTrail(_subShells[si], _trailStyle);
+            _fx.MuzzleFlash(u.Fire.position, u.Fire.forward, u.Kind, shell);
             _phase = Phase.Flying;
             _log = $"{(u.Team == 0 ? "아군" : "적군")} 발사 — 각 {pitch:F0}° 파워 {power * 100:F0} 바람 {_wind.magnitude:F1}"
                  + (shell == ShellKind.Special ? $"  [{st.Name}]" : "") + (pattern.Count > 1 ? $" ×{pattern.Count}" : "");
@@ -754,6 +1019,11 @@ namespace Tankfall.View
             var a = _shotPath[i]; var b = _shotPath[i + 1];
             float f = _shotT - i;
             _shell.position = new Vector3(Mathf.Lerp(a.X, b.X, f), Mathf.Lerp(a.Y, b.Y, f), Mathf.Lerp(a.Z, b.Z, f));
+            // 탄이 길쭉해졌으므로(미사일·레이저) 진행 방향을 봐야 한다 — 안 그러면 옆으로 누워 날아간다.
+            var dir = new Vector3(b.X - a.X, b.Y - a.Y, b.Z - a.Z);
+            if (dir.sqrMagnitude > 1e-6f) _shell.rotation = Quaternion.LookRotation(dir);
+
+
             // 부탄: 같은 시각(_shotT)의 자기 궤적 위치. 먼저 떨어진 부탄은 숨긴다(착탄 처리는 중앙 탄 착탄 때 한꺼번에).
             for (int si = 0; si < _subPaths.Count; si++)
             {
@@ -761,13 +1031,15 @@ namespace Tankfall.View
                 if (i >= sp.Count - 1) { tr.gameObject.SetActive(false); continue; }
                 var sa = sp[i]; var sb = sp[i + 1];
                 tr.position = new Vector3(Mathf.Lerp(sa.X, sb.X, f), Mathf.Lerp(sa.Y, sb.Y, f), Mathf.Lerp(sa.Z, sb.Z, f));
+                var sdir = new Vector3(sb.X - sa.X, sb.Y - sa.Y, sb.Z - sa.Z);
+                if (sdir.sqrMagnitude > 1e-6f) tr.rotation = Quaternion.LookRotation(sdir);
             }
         }
 
         /// <summary>
-        /// 설치물 스냅샷을 화면에 맞춘다. 지뢰는 공, 장판(지속불·독구름)은 **지면을 따라가는 구슬 고리**.
+        /// 설치물 스냅샷을 화면에 맞춘다. 지뢰는 공, 장판(지속불·독구름)은 **파티클 루프**(ParticleFx.SetFields).
         /// ⚠️ 처음엔 장판을 얇은 원반 하나로 그렸는데 크레이터가 사발 모양이라 중앙 높이의 원반은 사발 벽 아래로 들어가
-        ///    화면에 아무것도 안 보였다(스크린샷으로 확인). 고리 구슬은 점마다 지면을 재서 놓으니 경사·사발 어디서나 보인다.
+        ///    화면에 아무것도 안 보였다(스크린샷으로 확인). 구슬 고리를 거쳐 지금은 위로 솟는 불꽃/안개라 사발 안에서도 보인다.
         /// </summary>
         void RefreshHazards()
         {
@@ -775,10 +1047,7 @@ namespace Tankfall.View
             if (_mineMat == null)
             {
                 _mineMat = MakeMat(new Color(0.12f, 0.12f, 0.12f), 0.5f);
-                _fireMat = MakeMat(new Color(1.0f, 0.45f, 0.10f), 0.2f);
-                _cloudMat = MakeMat(new Color(0.45f, 0.90f, 0.30f), 0.2f);
             }
-            const int RingN = 12;
             int used = 0;
             Transform Take()
             {
@@ -798,8 +1067,11 @@ namespace Tankfall.View
                 float g = TankGroundProbe.GroundBelow(_vol, x, z, nearY + 6f);
                 return float.IsNegativeInfinity(g) ? nearY : g;
             }
-            foreach (var h in _hazardBuf)
+            // 장판(지속불·독구름)은 파티클 루프(ParticleFx.SetFields) — 예전 구슬 고리는 걷어냈다(머리말 이유는 그대로:
+            // 사발 크레이터 안에서도 불꽃은 위로 오르니 어디서나 보인다). 지면 높이는 스냅샷 Y 대신 실제 지면을 잰다.
+            for (int i = 0; i < _hazardBuf.Count; i++)
             {
+                var h = _hazardBuf[i];
                 if (h.Kind == 0)
                 {
                     var tr = Take();
@@ -808,23 +1080,11 @@ namespace Tankfall.View
                     tr.localScale = Vector3.one * 0.6f;
                     continue;
                 }
-                var mat = h.Kind == 2 ? _cloudMat : _fireMat;
-                for (int k = 0; k < RingN; k++)
-                {
-                    float a = k * (Mathf.PI * 2f / RingN);
-                    float x = h.X + Mathf.Cos(a) * h.Radius, z = h.Z + Mathf.Sin(a) * h.Radius;
-                    var tr = Take();
-                    tr.GetComponent<MeshRenderer>().sharedMaterial = mat;
-                    tr.position = new Vector3(x, GroundAt(x, z, h.Y) + 0.4f, z);
-                    tr.localScale = Vector3.one * 0.45f;
-                }
-                // 중앙 표식(남은 턴 수만큼 크기 — 3턴 0.9, 1턴 0.5)
-                var c = Take();
-                c.GetComponent<MeshRenderer>().sharedMaterial = mat;
-                c.position = new Vector3(h.X, GroundAt(h.X, h.Z, h.Y) + 0.6f, h.Z);
-                c.localScale = Vector3.one * (0.3f + 0.2f * h.TurnsLeft);
+                h.Y = GroundAt(h.X, h.Z, h.Y);
+                _hazardBuf[i] = h;
             }
             for (int i = used; i < _hazardGos.Count; i++) _hazardGos[i].gameObject.SetActive(false);
+            EnsureFx().SetFields(_hazardBuf);
         }
 
         /// <summary>착탄 뒤 잠깐 남는 연출(위성탄 빔)의 수명. Update 와 AutoShotStep 양쪽에서 부른다.</summary>
@@ -840,25 +1100,17 @@ namespace Tankfall.View
         /// <summary>위성탄: 착탄점 위 60m 하늘에서 수직으로 꽂히는 빔. 원작은 화면 위에서 레이저가 내려온다.</summary>
         void ShowSatelliteBeam(Vec3 at)
         {
-            if (_beam == null)
-            {
-                var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                go.name = "SatelliteBeam";
-                Destroy(go.GetComponent<Collider>());
-                var mr = go.GetComponent<MeshRenderer>();
-                mr.sharedMaterial = MakeMat(new Color(0.55f, 0.95f, 1.0f), 0.9f);
-                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;   // 60m 기둥 그림자가 맵을 가로지른다(스크린샷으로 확인)
-                _beam = go.transform;
-            }
-            const float H = 60f;
-            _beam.position = new Vector3(at.X, at.Y + H * 0.5f, at.Z);
-            _beam.localScale = new Vector3(0.9f, H * 0.5f, 0.9f);   // 기본 실린더 높이 2 → y 배율 = 높이/2
-            _beam.gameObject.SetActive(true);
-            _beamTimer = 0.9f;
+            // 예전엔 실린더 메시(그림자가 맵을 가로질러 껐던 그것)였다 — 지금은 파티클 기둥 + 낙하 스파크 + 바닥 링.
+            EnsureFx().SatelliteBeam(new Vector3(at.X, at.Y, at.Z), 60f);
         }
 
         void Impact()
         {
+            if (_fx != null)
+            {
+                _fx.StopTrail(_shell);
+                foreach (var tr in _subShells) _fx.StopTrail(tr);
+            }
             if (_shell != null) _shell.gameObject.SetActive(false);
             foreach (var tr in _subShells) tr.gameObject.SetActive(false);
             _subPaths.Clear();
@@ -883,6 +1135,7 @@ namespace Tankfall.View
             }
             if (_pendingShots.Count > 0)
             {
+                Sfx.Boom(_shooterStats.CraterRadius / 16f);      // 굴착 반경이 클수록 낮고 크게
                 var fx = ShellEffects.Of(_shooterKind, _shooterShell);
                 var boxes = new List<TankHitbox>();
                 foreach (var o in _units) if (o.Alive) boxes.Add(new TankHitbox { Id = o.Id, Center = o.Center, Radius = TankRadius });
@@ -910,7 +1163,13 @@ namespace Tankfall.View
 
                     impacts.Add(impact);
                     // 지형 파괴 → 천장 붕괴(§7-6-1) → 영향 청크만 재생성
-                    var blast = SdfDeformer.SubtractSphere(_vol, new BlastRequest(impact.X, impact.Y, impact.Z, craterEach));
+                    if (_fx == null) _fx = new GameObject("ParticleFx").AddComponent<ParticleFx>();
+                    _fx.Blast(new Vector3(impact.X, impact.Y, impact.Z), craterEach,
+                              MapTheme.Of(_map, _weather == Weather.Snow).RockDark, _shooterKind, _shooterShell);
+
+                    // 탄마다 파이는 모양이 다르다(원작 근거는 CraterShape). 게임과 하네스가 같은 표를 쓴다.
+                    float vscale = CraterShape.VScaleOf(_shooterKind, _shooterShell);
+                    var blast = SdfDeformer.SubtractSphere(_vol, new BlastRequest(impact.X, impact.Y, impact.Z, craterEach, vscale));
                     var collapse = CeilingCollapse.Apply(_vol, blast);
                     _terrain.ApplyDirty(CeilingCollapse.Union(blast, collapse));
 
@@ -926,21 +1185,30 @@ namespace Tankfall.View
                             o.St.Defense);
                         if (dmg <= 0) continue;
                         // 실드(§2-9-10): 들어오는 공격 1회를 통째로 막는다(원작).
-                        if (_items.ConsumeShield(o.Id)) { dmgLog += $"  [{(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} 실드]"; continue; }
+                        if (_items.ConsumeShield(o.Id)) { _fx.ShieldBlock(new Vector3(o.Center.X, o.Center.Y, o.Center.Z)); dmgLog += $"  [{(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} 실드]"; continue; }
                         o.Hp = Mathf.Max(0, o.Hp - dmg);
+                        CountDamage(o, dmg, direct ? $"-{dmg} 직격" : $"-{dmg}", true);
                         dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} −{dmg}{(direct ? "(직격)" : "")}";
                         if (fx.Type == ShellEffects.EffectType.Poison) { _status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind); dmgLog += "[독]"; }
                         if (fx.Type == ShellEffects.EffectType.Root) { _status.Root(o.Id, fx.Param1); dmgLog += "[속박]"; }
-                        if (!o.Alive) { o.Root.gameObject.SetActive(false); dmgLog += "☠"; }
+                        _fx.Hit(new Vector3(o.Center.X, o.Center.Y, o.Center.Z), direct);
+                        if (!o.Alive) { KillUnit(o); dmgLog += "☠"; }
                     }
                     // 자리에 남는 효과
                     if (fx.Type == ShellEffects.EffectType.Burn) { _hazards.PlaceFire(impact.X, impact.Y, impact.Z, _shooterStats.BlastRadius, fx.Param1, fx.Param2); dmgLog += "  [지속불]"; }
                     if (fx.Type == ShellEffects.EffectType.PoisonCloud) { _hazards.PlaceFire(impact.X, impact.Y, impact.Z, _shooterStats.BlastRadius, fx.Param1, fx.Param2, 1); dmgLog += "  [독구름]"; }
-                    if (fx.Type == ShellEffects.EffectType.Mine) { _hazards.PlaceMine(impact.X, impact.Y, impact.Z, 4f, fx.Param1, -1); dmgLog += "  [지뢰 설치]"; }
+                    if (fx.Type == ShellEffects.EffectType.Mine) { _hazards.PlaceMine(impact.X, impact.Y, impact.Z, 4f, fx.Param1, -1); _fx.MinePlaced(new Vector3(impact.X, impact.Y, impact.Z)); dmgLog += "  [지뢰 설치]"; }
                 }
                 if (swB != null) Debug.Log($"[Tankfall] EVENT 착탄처리 ×{_pendingShots.Count} {swB.Elapsed.TotalMilliseconds:F2} ms");
+                // 폭발이 나무·바위를 쓸어낸다. 안 지우면 파인 자리 위에 공중 나무가 남는다(§7-6-1 과 같은 문제).
+                if (_scatter != null)
+                    foreach (var ps in impacts)
+                        _scatter.DestroyNear(new Vector3(ps.X, ps.Y, ps.Z), craterEach + 1.5f);
+
+                if (_hitThisShot && _shooterTeam >= 0) { _stat[_shooterTeam].Hits++; _hitThisShot = false; }
                 _pendingShots.Clear();
                 RefreshHazards();
+                RefreshStatusFx();
                 // 헬기 보급(§2-9-11): 폭발이 상자를 부순다(원작 — 안의 아이템도 사라진다). 지형이 깎였으니 남은 건 내려앉힌다.
                 if (_itemSlots > 0 && _supply.Count > 0)
                 {
@@ -962,8 +1230,9 @@ namespace Tankfall.View
                     int fall = Damage.AfterDefense(Damage.FromFall(op.y - GroundVisualLift - g), o.St.Defense);
                     if (fall <= 0) continue;
                     o.Hp = Mathf.Max(0, o.Hp - fall);
+                    CountDamage(o, fall, $"-{fall} 낙하", false);
                     dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} −{fall}(낙하 {op.y - GroundVisualLift - g:F0}m)";
-                    if (!o.Alive) { o.Root.gameObject.SetActive(false); dmgLog += "☠"; }
+                    if (!o.Alive) { KillUnit(o); dmgLog += "☠"; }
                 }
                 _log = dmgLog.Length > 0 ? "착탄!" + dmgLog : "착탄 — 빗나감";
 
@@ -991,6 +1260,27 @@ namespace Tankfall.View
         const int SuddenDeathRound = 6;
         const float SuddenDeathPct = 0.05f;
 
+        /// <summary>
+        /// 피해를 전적에 쌓고 맞은 자리에 숫자를 띄운다. 폭발·낙하 **두 경로가 전부 여기만** 쓴다 —
+        /// 한쪽이 직접 더하면 명중률이 조용히 어긋난다(§2-9-1 의 교훈: 같은 로직이 여러 곳에 살면 재발한다).
+        /// </summary>
+        /// <param name="credited">쏜 쪽의 "명중"으로 셀지. 낙하 피해는 지형이 준 것이라 명중으로 세지 않는다.</param>
+        void CountDamage(Unit victim, int dmg, string popup, bool credited)
+        {
+            if (dmg <= 0) return;
+            if (credited) Sfx.Hit();
+            _stat[victim.Team].Taken += dmg;
+            if (credited && _shooterTeam >= 0)
+            {
+                _stat[_shooterTeam].Damage += dmg;
+                if (_shooterTeam != victim.Team) _hitThisShot = true;
+            }
+            AddPopup(victim.Pos, popup, victim.Team == 0 ? Ui.Enemy : Ui.Good);
+        }
+
+        /// <summary>이번 사격이 적을 맞혔는가. 한 발이 여러 명을 맞혀도 명중은 1 이다(명중률의 분모가 발수라서).</summary>
+        bool _hitThisShot;
+
         void ApplySuddenDeath()
         {
             if (_round <= SuddenDeathRound) return;
@@ -999,7 +1289,7 @@ namespace Tankfall.View
                 if (u.Alive)
                 {
                     u.Hp = Mathf.Max(0, u.Hp - Mathf.Max(1, Mathf.RoundToInt(u.St.Hp * SuddenDeathPct)));
-                    if (!u.Alive) downed++;
+                    if (!u.Alive) { downed++; KillUnit(u); }
                 }
             _log = $"☠ 서든데스 {_round}라운드 — 전원 최대HP {SuddenDeathPct * 100:F0}%" + (downed > 0 ? $" ({downed}대 격파)" : "");
         }
@@ -1057,6 +1347,14 @@ namespace Tankfall.View
             {
                 _winner = aliveA > 0 ? "아군 승리" : "적군 승리";
                 _phase = Phase.GameOver;
+                // 사람이 켠 판만 결과 화면으로. 하네스는 GameOver 상태 그대로 두고 자기 종료 조건을 쓴다.
+                if (!_autoShot && !_phaseCheck && !_gallery && !_perf && !_supplySelfTest && !_uiSelfTest)
+                {
+                    _screen = GameScreen.Result;
+                    if (aliveA > 0) Sfx.Win(); else Sfx.Lose();
+                }
+                Debug.Log($"[Tankfall] {_winner} · 라운드 {_round} · {_battleClock / 60f:F1}분 · " +
+                          $"아군 {_stat[0].Hits}/{_stat[0].Shots}발 {_stat[0].Damage}딜 · 적군 {_stat[1].Hits}/{_stat[1].Shots}발 {_stat[1].Damage}딜");
                 return;
             }
 
@@ -1070,11 +1368,12 @@ namespace Tankfall.View
                 int dot = Damage.AfterDefense(_status.TickStartOfTurn(cu.Id), cu.St.Defense);
                 int hz = Damage.AfterDefense(_hazards.OnUnitAt(cu.Id, cu.Kind, cu.Center), cu.St.Defense);
                 RefreshHazards();
+                RefreshStatusFx();
                 if (dot + hz <= 0) break;
                 cu.Hp = Mathf.Max(0, cu.Hp - dot - hz);
                 _log = $"{(cu.Team == 0 ? "아군" : "적군")}{cu.Id % 3 + 1} 턴 시작 피해{(dot > 0 ? $" 지속 −{dot}" : "")}{(hz > 0 ? $" 설치물 −{hz}" : "")}";
                 if (cu.Alive) break;
-                cu.Root.gameObject.SetActive(false);
+                KillUnit(cu);
             }
             _niceFlash = null;
             // 라운드 = 행동 수 / 유닛 수. 서든데스가 이 값을 본다
@@ -1107,6 +1406,14 @@ namespace Tankfall.View
                 () => SetWeather(Weather.Snow),
                 () => { _wind = -_wind; });
             if (r == ItemState.UseResult.NotHeld) return;
+            {
+                // 종류별 모양·색(ParticleFx.ItemBurst): 회복=초록 상승 · 실드=파란 껍질 · 파워/이동=주황/하늘 링 · 눈/텔레포트=소용돌이 · 더블파이어=노란 섬광
+                int style = k == ItemKind.Shield ? 1 : (k == ItemKind.PowerUp || k == ItemKind.MoveUp) ? 2 : (k == ItemKind.SnowFall || k == ItemKind.TeleportBullet) ? 3 : k == ItemKind.DoubleFire ? 4 : 0;
+                var col = k == ItemKind.Shield ? new Color(0.45f, 0.7f, 1f) : k == ItemKind.PowerUp ? new Color(1f, 0.55f, 0.2f) : k == ItemKind.MoveUp ? new Color(0.5f, 0.85f, 1f)
+                        : k == ItemKind.SnowFall ? Color.white : k == ItemKind.TeleportBullet ? new Color(0.8f, 0.5f, 1f) : k == ItemKind.DoubleFire ? new Color(1f, 0.9f, 0.4f) : new Color(0.5f, 1f, 0.5f);
+                if (k == ItemKind.TeamEnergy) { foreach (var t in _units) if (t.Team == u.Team && t.Alive) EnsureFx().ItemBurst(t.Pos, col, 0); }
+                else EnsureFx().ItemBurst(u.Pos, col, style);
+            }
             _log = $"[아이템] {info.Name} — {info.Desc}";
             // 로그로도 남긴다 — HUD 문자열만 쓰면 자동 검증에서 아이템이 도는지 확인할 방법이 없다.
             Debug.Log($"[Tankfall] 아이템 {(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} {info.Name}");
@@ -1345,122 +1652,331 @@ namespace Tankfall.View
             var want = focus + rot * Vector3.back * _camDist;
             _cam.transform.position = dt > 0f ? Vector3.Lerp(_cam.transform.position, want, 1f - Mathf.Exp(-9f * dt)) : want;
             _cam.transform.LookAt(focus);
+
+            // 폭발 흔들림. ⚠️ LookAt **뒤에** 더해야 한다 — 앞에 두면 LookAt 이 흔들림을 지운다.
+            if (_fx != null && _fx.Shake > 0.001f)
+            {
+                float a = _fx.Shake;
+                _cam.transform.position += new Vector3(
+                    (Mathf.PerlinNoise(Time.time * 34f, 0.3f) - 0.5f),
+                    (Mathf.PerlinNoise(0.7f, Time.time * 34f) - 0.5f),
+                    (Mathf.PerlinNoise(Time.time * 29f, 5.1f) - 0.5f)) * a * 1.6f;
+            }
+
+            if (_skyDome != null) _skyDome.position = _cam.transform.position;
         }
+
+        // ================= HUD (§57) =================
+        //
+        // 전부 도형이다 — 숫자와 ASCII 막대(`[███···┃]`)로 그리던 걸 §8 의 PowerBarUI·TeamStatusUI·
+        // MoveGaugeUI·TurnTimerUI·WindIndicatorUI 로 나눠 실제 바·패널로 그린다.
+        //
+        // 왜 바꿨나: 포격은 **파워 게이지를 눈으로 멈추는 게임**이다(§11, 나이스샷 §2-9-2).
+        // 20칸 문자 막대는 한 칸이 파워 5 라 표시점과의 차이를 눈으로 못 가른다 — 조작이 아니라 운이 된다.
+        // 픽셀 바는 같은 폭에서 20배 넘는 해상도를 준다.
+        //
+        // ⚠️ 색은 전부 `Ui` 팔레트에서 온다. 여기서 새 색을 적지 마라(Ui.cs 머리말).
+        // ⚠️ 이모지 금지 — 폰트에 글리프가 없어 □ 로 찍힌다(§2-9-11).
 
         void OnGUI()
         {
+            if (_shellGallery) { DrawGalleryLabels(); return; }   // 갤러리는 전용 라벨만 그린다
             if (_hudOff) return;
-            var st = new GUIStyle(GUI.skin.label) { fontSize = 14, richText = true };
-            GUI.Box(new Rect(8, 8, 560, 196), "");
-            GUILayout.BeginArea(new Rect(16, 14, 546, 188));
+            float W = Screen.width, H = Screen.height;
+            if (ScreenGUI()) return;                 // 타이틀·탱크 선택·설정은 전투 HUD 를 덮는다
+            // 결과도 덮는다(전투 HUD 가 표 뒤로 비치면 숫자가 안 읽힌다). 일시정지는 상황이 보여야 하니 겹쳐 그린다.
+            if (_screen == GameScreen.Result) { DrawResult(W, H); return; }
 
             var u = Current;
-            if (u == null) { GUI.Label(new Rect(20, 20, 600, 30), "초기화 실패 — 로그 확인"); return; }
-            string wd = WindArrow(_wind);
-            string dl = _order != null && Current != null ? $"  ·  딜레이 {_order.Accumulated(Current.Id)}" : "";
+            if (u == null) { Ui.Text(new Rect(20, 20, 600, 30), "초기화 실패 — 로그 확인", 16, Ui.Bad); return; }
+
+            HudTopBar(W);
+            HudTeamPanel(u);
+            HudCurrent(u, H);
+            HudPhaseTimer(W);
+            if (IsPlayerTurn && _phase == Phase.Fire)
+            {
+                HudWeapons(u, W, H);
+                HudPowerBar(u, W, H);
+            }
+            HudRange(u, W, H);
+            HudItems(u, W, H);
+            HudLog(W, H);
+            if (!_practice && !_gallery) { DrawTurnOrder(W); DrawMiniMap(W, H); }   // 갤러리 13대는 TurnOrder 미등록 — 그리면 매 프레임 예외
+            DrawPopups();
+
+            if (_screen == GameScreen.Pause) DrawPause(W, H);
+            else if (_phase == Phase.GameOver) HudGameOver(W, H);
+        }
+
+        /// <summary>상단 중앙 — 라운드·날씨·바람(도형 화살표)·난이도·보급·fps. 연습장이면 연습 지표로 바뀐다.</summary>
+        void HudTopBar(float W)
+        {
+            var r = new Rect(W * 0.5f - 300f, 8f, 600f, 46f);
+            Ui.Box(r);
+
             if (_practice)
             {
                 float acc = _practiceShots > 0 ? _practiceHits * 100f / _practiceShots : 0f;
                 string bestTxt = _practiceBestMiss < float.MaxValue ? $"{_practiceBestMiss:F1}m" : "-";
                 string lastTxt = _practiceLastMiss >= 0f ? $"{_practiceLastMiss:F1}m" : "-";
-                GUILayout.Label($"<b>TANKFALL 연습장</b>  {WeatherName(_weather)}  ·  바람 {wd} {_wind.magnitude:F1}  ·  " +
-                                $"{_practiceHits}/{_practiceShots}발 ({acc:F0}%)  ·  이번 {lastTxt} / 최고 {bestTxt}  ·  F2=정답 보기", st);
-                if (!string.IsNullOrEmpty(_practiceAnswer)) GUILayout.Label($"<b>{_practiceAnswer}</b>", st);
+                Ui.Text(new Rect(r.x + 12f, r.y + 4f, 260f, 20f), "TANKFALL 연습장", 15, Ui.Ink, TextAnchor.MiddleLeft, true);
+                Ui.Text(new Rect(r.x + 12f, r.y + 23f, 380f, 18f),
+                        $"{_practiceHits}/{_practiceShots}발 ({acc:F0}%)   이번 {lastTxt} / 최고 {bestTxt}   F2=정답", 12, Ui.Dim);
+                // 명중률 바 — 숫자보다 추세가 먼저 읽힌다
+                var ab = new Rect(r.xMax - 180f, r.y + 26f, 130f, 8f);
+                Ui.Bar(ab, acc / 100f, Ui.Good, null, Ui.Border);
+                HudWind(new Vector2(r.xMax - 30f, r.y + 23f));
+                if (!string.IsNullOrEmpty(_practiceAnswer))
+                    Ui.TextShadow(new Rect(r.x, r.yMax + 4f, r.width, 20f), _practiceAnswer, 14, Ui.Mark, TextAnchor.MiddleCenter, true);
+                return;
             }
-            else
-            GUILayout.Label($"<b>TANKFALL</b>  라운드 {_round}  ·  {WeatherName(_weather)}  ·  바람 {wd} {_wind.magnitude:F1}{dl}  ·  AI {Difficulties[_difficulty].Name}(F1){(_supply.Count > 0 ? $"  ·  보급상자 {_supply.Count}" : "")}  ·  {1f / Mathf.Max(Time.smoothDeltaTime, 1e-5f):F0} fps", st);
 
-            string a = "", b = "";
-            foreach (var x in _units)
-            {
-                string cell = x.Alive ? $"{x.Hp,4}" : "  ☠ ";
-                if (x == u) cell = $"<b>[{cell.Trim()}]</b>";
-                if (x.Team == 0) a += cell + " "; else b += cell + " ";
-            }
-            GUILayout.Label($"<color=#7fb0ff>아군 {a}</color>   <color=#ff8a80>적군 {b}</color>", st);
-            GUILayout.Label($"차례: <b>{(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1}</b>   각도 <b>{u.BarrelPitch:F0}°</b>   포탑 {u.TurretYaw:F0}°   이동 {Mathf.Max(0, u.Gauge):F0}"
-                            + (_items.HasShield(u.Id) ? "   <b>[실드]</b>" : ""), st);
+            Ui.Text(new Rect(r.x + 12f, r.y + 4f, 100f, 20f), "TANKFALL", 15, Ui.Ink, TextAnchor.MiddleLeft, true);
+            Ui.Text(new Rect(r.x + 116f, r.y + 5f, 120f, 18f), $"라운드 {_round}", 13, Ui.Dim);
+            Ui.Text(new Rect(r.x + 12f, r.y + 24f, 300f, 18f),
+                    $"{WeatherName(_weather)}   AI {Difficulties[_difficulty].Name} <size=10>(F1)</size>" +
+                    (_supply.Count > 0 ? $"   보급 {_supply.Count}" : ""), 12, Ui.Dim);
 
-            // 아이템 가방 — [ ] 로 고르고 Enter 로 사용(숫자키는 탄종이 쓴다)
-            if (_itemSlots > 0 && u.Team == 0)
-            {
-                var bag = _items.Bag(u.Id);
-                if (bag.Count == 0) GUILayout.Label("아이템: 없음", st);
-                else
+            // 바람(§5-3) — 방향은 화살표, 세기는 바. 숫자만 주면 "왼쪽 3" 을 매번 머리로 번역해야 한다.
+            HudWind(new Vector2(r.xMax - 148f, r.y + 23f));
+            var wb = new Rect(r.xMax - 126f, r.y + 19f, 76f, 9f);
+            Ui.Bar(wb, _wind.magnitude / 10f, _wind.magnitude > 6f ? Ui.Bad : _wind.magnitude > 3f ? Ui.Warn : Ui.Gauge, null, Ui.Border);
+            Ui.Text(new Rect(r.xMax - 126f, r.y + 27f, 76f, 16f), $"바람 {_wind.magnitude:F1}", 11, Ui.Dim);
+
+            Ui.Text(new Rect(r.xMax - 46f, r.y + 14f, 38f, 18f),
+                    $"{1f / Mathf.Max(Time.smoothDeltaTime, 1e-5f):F0}", 12, Ui.Dim, TextAnchor.MiddleRight);
+            Ui.Text(new Rect(r.xMax - 46f, r.y + 28f, 38f, 14f), "fps", 9, Ui.Dim, TextAnchor.MiddleRight);
+        }
+
+        /// <summary>바람 화살표. 0°=북(+Z)이고 시계 방향 — WindArrow() 문자열 규칙과 같은 각을 쓴다.</summary>
+        void HudWind(Vector2 center)
+        {
+            if (_wind.magnitude < 0.05f) { Ui.Text(new Rect(center.x - 8f, center.y - 8f, 16f, 16f), "-", 14, Ui.Dim, TextAnchor.MiddleCenter); return; }
+            float a = Mathf.Atan2(_wind.x, _wind.y) * Mathf.Rad2Deg;
+            Ui.Arrow(center, a, 26f, 4f, _wind.magnitude > 6f ? Ui.Bad : _wind.magnitude > 3f ? Ui.Warn : Ui.Gauge);
+        }
+
+        /// <summary>좌상단 — 6유닛 체력바(§8 TeamStatusUI). 색이 숫자보다 먼저 읽힌다.</summary>
+        void HudTeamPanel(Unit cur)
+        {
+            const float RowH = 26f, PanW = 250f;
+            var r = new Rect(8f, 8f, PanW, 12f + RowH * 6f + 19f);
+            Ui.Box(r);
+            Ui.Text(new Rect(r.x + 10f, r.y + 4f, 120f, 16f), "아군", 11, Ui.Ally, TextAnchor.MiddleLeft, true);
+            Ui.Text(new Rect(r.x + PanW - 60f, r.y + 4f, 50f, 16f), "적군", 11, Ui.Enemy, TextAnchor.MiddleRight, true);
+
+            float y = r.y + 20f;
+            for (int t = 0; t < 2; t++)
+                foreach (var x in _units)
                 {
-                    string line = "아이템([ ]선택, Enter사용): ";
-                    for (int bi = 0; bi < bag.Count; bi++)
-                    {
-                        var info = Items.Get(bag[bi]);
-                        line += bi == _itemSel ? $"<b>▶{info.Name}</b>  " : $"{info.Name}  ";
-                    }
-                    if (_itemSel < bag.Count) line += $"— {Items.Get(bag[_itemSel]).Desc}";
-                    GUILayout.Label(line, st);
+                    if (x.Team != t) continue;
+                    var row = new Rect(r.x + 6f, y, PanW - 12f, RowH - 4f);
+                    bool isCur = x == cur;
+                    if (isCur) { Ui.Fill(row, new Color(1f, 1f, 1f, 0.10f)); Ui.Frame(row, x.Team == 0 ? Ui.Ally : Ui.Enemy); }
+
+                    var teamCol = x.Team == 0 ? Ui.Ally : Ui.Enemy;
+                    Ui.Fill(new Rect(row.x + 3f, row.y + 4f, 3f, row.height - 8f), teamCol);          // 팀 색 기둥
+                    Ui.Text(new Rect(row.x + 12f, row.y, 84f, row.height),
+                            (isCur ? "> " : "") + TankStats.Get(x.Kind).Name, 12, x.Alive ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, isCur);
+
+                    var hb = new Rect(row.x + 98f, row.y + 6f, 96f, 10f);
+                    float f = x.Alive ? x.HpFrac : 0f;
+                    Ui.Bar(hb, f, x.Alive ? Ui.HpColor(f) : Ui.Dim, null, Ui.Border);
+                    if (_items.HasShield(x.Id)) Ui.Frame(hb, Ui.Gauge, 2f);                            // 실드 = 파란 테
+
+                    Ui.Text(new Rect(row.xMax - 52f, row.y, 48f, row.height),
+                            x.Alive ? $"{x.Hp}" : "전투불능", x.Alive ? 12 : 10,
+                            x.Alive ? Ui.Ink : Ui.Dim, TextAnchor.MiddleRight);
+                    y += RowH;
+                    if (t == 0 && x.Id % 3 == 2) { Ui.Fill(new Rect(r.x + 8f, y - 2f, PanW - 16f, 1f), Ui.Border); y += 3f; }
                 }
+        }
+
+        /// <summary>좌하단 — 지금 내 탱크: 각도·포탑·이동 게이지(§8 MoveGaugeUI).</summary>
+        void HudCurrent(Unit u, float H)
+        {
+            var r = new Rect(8f, H - 118f, 250f, 110f);
+            Ui.Box(r);
+            var teamCol = u.Team == 0 ? Ui.Ally : Ui.Enemy;
+            Ui.Text(new Rect(r.x + 10f, r.y + 5f, 230f, 18f),
+                    $"{(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} · {TankStats.Get(u.Kind).Name}", 13, teamCol, TextAnchor.MiddleLeft, true);
+
+            // 각도 — 탱크마다 상·하한이 다르다(캐롯 0~40°, 이온 20~55°). 바에 그 범위를 그려야 "왜 더 안 올라가나"가 보인다.
+            var stt = TankStats.Get(u.Kind);
+            var ab = new Rect(r.x + 52f, r.y + 28f, 108f, 10f);
+            Ui.Text(new Rect(r.x + 10f, r.y + 23f, 42f, 18f), "각도", 11, Ui.Dim);
+            float lo = Mathf.Max(MinElev, stt.MinPitch), hi = Mathf.Min(MaxElev, stt.MaxPitch);
+            Ui.Bar(ab, Mathf.InverseLerp(MinElev, MaxElev, u.BarrelPitch), Ui.Warn, null, Ui.Border);
+            Ui.Tick(ab, Mathf.InverseLerp(MinElev, MaxElev, lo), Ui.Dim, 1f);
+            Ui.Tick(ab, Mathf.InverseLerp(MinElev, MaxElev, hi), Ui.Dim, 1f);
+            Ui.Text(new Rect(ab.xMax + 4f, r.y + 23f, 42f, 18f), $"{u.BarrelPitch:F0}°", 12, Ui.Ink, TextAnchor.MiddleLeft, true);
+
+            // 이동 게이지
+            var gb = new Rect(r.x + 52f, r.y + 52f, 108f, 10f);
+            Ui.Text(new Rect(r.x + 10f, r.y + 47f, 42f, 18f), "이동", 11, Ui.Dim);
+            float gf = Mathf.Clamp01(u.Gauge / MoveGaugeMax);
+            Ui.Bar(gb, gf, gf > 0.3f ? Ui.Gauge : Ui.Bad, null, Ui.Border);
+            Ui.Text(new Rect(gb.xMax + 4f, r.y + 47f, 42f, 18f), $"{Mathf.Max(0, u.Gauge):F0}", 12, Ui.Ink, TextAnchor.MiddleLeft);
+
+            // 포탑 방위 — 작은 나침반. 숫자 야우는 3D 에서 방향으로 안 읽힌다.
+            var c = new Vector2(r.xMax - 26f, r.y + 42f);
+            Ui.Fill(new Rect(c.x - 18f, c.y - 18f, 36f, 36f), new Color(1f, 1f, 1f, 0.06f));
+            Ui.Frame(new Rect(c.x - 18f, c.y - 18f, 36f, 36f), Ui.Border);
+            Ui.Arrow(c, u.TurretYaw, 26f, 3f, Ui.Warn);
+
+            Ui.Text(new Rect(r.x + 10f, r.yMax - 22f, 90f, 18f),
+                    $"딜레이 {(_order != null ? _order.Accumulated(u.Id) : 0)}", 11, Ui.Dim);
+            DrawStatusIcons(u, new Rect(r.x + 96f, r.yMax - 21f, 150f, 16f));
+        }
+
+        /// <summary>상단 중앙 아래 — 페이즈 타이머 바(§2-1). 2페이즈 턴은 타이머가 안 보이면 규칙이 아니라 불편함이다.</summary>
+        void HudPhaseTimer(float W)
+        {
+            if (!IsPlayerTurn || (_phase != Phase.Move && _phase != Phase.Fire))
+            {
+                string s = _phase == Phase.AiThink ? "적군 조준 중" : _phase == Phase.Flying ? "포탄 비행 중" : null;
+                if (s != null) Ui.TextShadow(new Rect(W * 0.5f - 150f, 60f, 300f, 22f), s, 14, Ui.Dim, TextAnchor.MiddleCenter);
+                return;
+            }
+            bool move = _phase == Phase.Move;
+            float total = move ? MovePhaseSec : FirePhaseSec;
+            float left = Mathf.Max(0f, _phaseTimer);
+            var col = left <= 3f ? Ui.Bad : move ? Ui.Gauge : Ui.Power;
+
+            var r = new Rect(W * 0.5f - 170f, 60f, 340f, 18f);
+            Ui.Bar(r, left / total, col, Ui.Panel, Ui.Border);
+            Ui.TextShadow(new Rect(r.x + 8f, r.y, 120f, r.height), move ? "MOVE" : "FIRE", 12, Ui.Ink, TextAnchor.MiddleLeft, true);
+            Ui.TextShadow(new Rect(r.xMax - 68f, r.y, 60f, r.height), $"{left:F1}s", 12, Ui.Ink, TextAnchor.MiddleRight, true);
+            if (move)
+                Ui.TextShadow(new Rect(r.x, r.yMax + 2f, r.width, 16f),
+                              "Space / 우클릭 = 조준 진입(되돌릴 수 없음)", 10, Ui.Dim, TextAnchor.MiddleCenter);
+        }
+
+        /// <summary>우하단 — 무기 슬롯 3개(§8). 지금 뭐가 장전됐는지 안 보이면 선택지가 아니라 사고다.</summary>
+        void HudWeapons(Unit u, float W, float H)
+        {
+            var sp = TankStats.For(u.Kind, ShellKind.Special, u.HpFrac, u.W);
+            var r = new Rect(W - 268f, H - 118f, 260f, 110f);
+            Ui.Box(r);
+
+            var names = new[] { "일반탄", sp.Name, "SS", "궁극" };
+            bool ssReady = u.Skill.CanSs(), ultReady = u.Skill.CanUltimate();
+            for (int i = 0; i < 4; i++)
+            {
+                var slot = new Rect(r.x + 6f + i * 62f, r.y + 8f, 58f, 40f);
+                bool sel = i == 0 ? u.Shell == ShellKind.Normal
+                         : i == 1 ? (u.Shell == ShellKind.Special && !_useSs && !_useUlt)
+                         : i == 2 ? _useSs
+                         : _useUlt;
+                bool usable = i < 2 || (i == 2 ? ssReady : ultReady);
+                Ui.Fill(slot, sel ? new Color(1f, 0.72f, 0.25f, 0.22f) : Ui.Slot);
+                Ui.Frame(slot, sel ? Ui.Power : Ui.Border, sel ? 2f : 1f);
+                Ui.Text(new Rect(slot.x + 4f, slot.y + 2f, 20f, 14f), $"{i + 1}", 11, sel ? Ui.Power : Ui.Dim, TextAnchor.MiddleLeft, true);
+                Ui.Text(new Rect(slot.x, slot.y + 16f, slot.width, 18f), names[i], 10,
+                        usable ? (sel ? Ui.Ink : Ui.Dim) : new Color(0.45f, 0.45f, 0.48f), TextAnchor.MiddleCenter, sel);
             }
 
-            // 페이즈 + 남은 시간(§2-1). 타이머가 안 보이면 2페이즈 턴은 규칙이 아니라 그냥 불편함이다.
-            if (IsPlayerTurn && (_phase == Phase.Move || _phase == Phase.Fire))
-            {
-                bool move = _phase == Phase.Move;
-                float left = Mathf.Max(0f, _phaseTimer);
-                string col = left <= 3f ? "#ff6b6b" : move ? "#9ad1ff" : "#ffd479";
-                GUILayout.Label($"<color={col}><b>{(move ? "MOVE" : "FIRE")}</b>  {left:F1}초</color>" +
-                                (move ? "   <size=12>스페이스/우클릭 = 조준 진입(되돌릴 수 없음)</size>" : ""), st);
-            }
+            // 나이스샷 포인트 — SS 해금까지 얼마나 남았는지(§2-9-2). 차오르는 게 보여야 표시점을 맞출 이유가 생긴다.
+            // 나이스샷 게이지 — 문턱이 둘이다(SS 2점 · 궁극 4점). 두 눈금을 같이 그려야 "얼마나 더" 가 보인다.
+            var pb = new Rect(r.x + 8f, r.y + 56f, r.width - 16f, 9f);
+            Ui.Bar(pb, u.Skill.Points / (float)NiceShot.UltimateCost, ultReady ? Ui.Power : ssReady ? Ui.Mark : Ui.Gauge, null, Ui.Border);
+            Ui.Ticks(pb, NiceShot.UltimateCost, new Color(0f, 0f, 0f, 0.35f));
+            Ui.Tick(pb, NiceShot.SsCost / (float)NiceShot.UltimateCost, Ui.Mark, 2f);     // SS 문턱
+            Ui.Text(new Rect(r.x + 8f, r.y + 66f, r.width - 16f, 16f),
+                    ultReady ? $"<b>궁극 사용 가능</b> (4)  나이스샷 {u.Skill.Points}/{NiceShot.UltimateCost}"
+                    : ssReady ? $"<b>SS 사용 가능</b> (3)  나이스샷 {u.Skill.Points}/{NiceShot.UltimateCost}"
+                              : $"나이스샷 {u.Skill.Points}/{NiceShot.UltimateCost}  <size=9>(SS {NiceShot.SsCost} · 궁극 {NiceShot.UltimateCost})</size>",
+                    11, ultReady ? Ui.Power : ssReady ? Ui.Mark : Ui.Dim);
 
-            // 무기 슬롯(§8). 지금 뭐가 장전됐는지 안 보이면 선택지가 아니라 사고다.
-            if (IsPlayerTurn && _phase == Phase.Fire)
-            {
-                var sp = TankStats.For(u.Kind, ShellKind.Special, u.HpFrac, u.W);
-                string n1 = u.Shell == ShellKind.Normal ? "<b>[1 일반탄]</b>" : "<size=12>1 일반탄</size>";
-                string n2 = u.Shell == ShellKind.Special && !_useSs ? $"<b>[2 {sp.Name}]</b>" : $"<size=12>2 {sp.Name}</size>";
-                string n3 = u.Skill.CanSs()
-                    ? (_useSs ? $"<b>[3 SS {sp.Name}]</b>" : "<size=12>3 <color=#ff8>SS 준비</color></size>")
-                    : $"<size=12><color=#777>3 SS — 나이스샷 {u.Skill.Points}/{NiceShot.SsCost}</color></size>";
-                GUILayout.Label($"{n1}   {n2}   {n3}   <size=12>폭발 {u.St.BlastRadius:F1}m · 굴착 {u.St.CraterRadius:F1}m · 직격 +{u.St.DirectDamage:F0}</size>", st);
-            }
+            Ui.Text(new Rect(r.x + 8f, r.yMax - 22f, r.width - 16f, 18f),
+                    $"폭발 {u.St.BlastRadius:F1}m · 굴착 {u.St.CraterRadius:F1}m · 직격 +{u.St.DirectDamage:F0}", 10, Ui.Dim);
+        }
 
-            // §2-6 해소 — **거리는 준다, 탄착점은 안 준다.**
-            // 기획서 §58 은 예상 탄착점을 금지하고 §60 은 "저 거리면 45도 파워 65" 학습을 원한다.
-            // 거리를 숨기면 그 학습이 성립하지 않는다(눈대중으로 150m 와 170m 를 못 가른다).
-            // 거리·고도차는 포병이 관측으로 얻는 값이고, 그걸로 각·파워를 **스스로 고르는 것**이 실력이다.
-            {
-                Unit near = null; float best = float.MaxValue;
-                foreach (var o in _units)
-                    if (o.Alive && o.Team != u.Team)
-                    {
-                        float d = (o.Pos - u.Pos).sqrMagnitude;
-                        if (d < best) { best = d; near = o; }
-                    }
-                if (near != null)
+        /// <summary>
+        /// 하단 중앙 — 파워 게이지(§11). 이 게임에서 제일 중요한 위젯이다.
+        /// 표시점(§2-9-2 나이스샷)을 세로선으로 겹쳐 그려서 **멈출 자리가 눈에 보이게** 한다.
+        /// </summary>
+        void HudPowerBar(Unit u, float W, float H)
+        {
+            float bw = Mathf.Min(560f, W * 0.42f);
+            var r = new Rect(W * 0.5f - bw * 0.5f, H - 78f, bw, 24f);
+
+            Ui.Fill(new Rect(r.x - 4f, r.y - 4f, r.width + 8f, r.height + 8f), Ui.Panel);
+            float p = Mathf.Clamp01(_power);
+            // 파워 구간 색: 낮음 파랑 → 중간 주황 → 최대 부근 빨강. 끝까지 당기는 게 항상 정답이 아니라는 걸 색으로 알린다.
+            var fill = p > 0.92f ? Ui.Bad : p > 0.6f ? Ui.Power : Ui.Gauge;
+            Ui.Bar(r, p, fill, Ui.Slot, Ui.Border);
+            Ui.Ticks(r, 10, new Color(0f, 0f, 0f, 0.30f));
+            Ui.Tick(r, _mark, Ui.Mark, 3f);                       // 나이스샷 표시점(Q/E)
+
+            Ui.TextShadow(new Rect(r.x, r.y - 19f, 90f, 18f), "POWER", 12, Ui.Dim, TextAnchor.MiddleLeft, true);
+            Ui.TextShadow(new Rect(r.xMax - 120f, r.y - 19f, 120f, 18f),
+                          $"표시점 {_mark * 100:F0} <size=10>(Q/E)</size>", 11, Ui.Mark, TextAnchor.MiddleRight);
+            Ui.TextShadow(r, _charging ? $"{_power * 100:F0}" : "Space 를 눌러 차징", _charging ? 16 : 12,
+                          Ui.Ink, TextAnchor.MiddleCenter, _charging);
+
+            if (_niceFlash != null)
+                Ui.TextShadow(new Rect(r.x, r.y - 40f, r.width, 20f), _niceFlash, 14, Ui.Mark, TextAnchor.MiddleCenter, true);
+        }
+
+        /// <summary>
+        /// §2-6 해소 — **거리는 준다, 탄착점은 안 준다.**
+        /// 기획서 §58 은 예상 탄착점을 금지하고 §60 은 "저 거리면 45도 파워 65" 학습을 원한다.
+        /// 거리를 숨기면 그 학습이 성립하지 않는다 — 눈대중으로 150m 와 170m 를 못 가른다.
+        /// </summary>
+        void HudRange(Unit u, float W, float H)
+        {
+            Unit near = null; float best = float.MaxValue;
+            foreach (var o in _units)
+                if (o.Alive && o.Team != u.Team)
                 {
-                    Vector3 d3 = near.Pos - u.Pos;
-                    float horiz = new Vector2(d3.x, d3.z).magnitude;
-                    GUILayout.Label($"<size=12>최근접 적 {(near.Team == 0 ? "아군" : "적군")}{near.Id % 3 + 1} — " +
-                                    $"거리 <b>{horiz:F0}m</b>  고도차 <b>{d3.y:+0;-0;0}m</b>  (탄착 예측선 없음 §58)</size>", st);
+                    float d = (o.Pos - u.Pos).sqrMagnitude;
+                    if (d < best) { best = d; near = o; }
                 }
-            }
+            if (near == null) return;
+            Vector3 d3 = near.Pos - u.Pos;
+            float horiz = new Vector2(d3.x, d3.z).magnitude;
+            Ui.TextShadow(new Rect(W * 0.5f - 300f, H - 122f, 600f, 18f),
+                          $"최근접 {(near.Team == 0 ? "아군" : "적군")}{near.Id % 3 + 1}   거리 <b>{horiz:F0}m</b>   고도차 <b>{d3.y:+0;-0;0}m</b>   <size=10>(탄착 예측선 없음 §58)</size>",
+                          12, Ui.Dim, TextAnchor.MiddleCenter);
+        }
 
-            if (_phase == Phase.Fire && IsPlayerTurn)
+        /// <summary>우상단 — 아이템 슬롯([ ] 선택, Enter 사용). 숫자키는 탄종이 쓴다.</summary>
+        void HudItems(Unit u, float W, float H)
+        {
+            if (_itemSlots <= 0 || u.Team != 0) return;
+            var bag = _items.Bag(u.Id);
+            var r = new Rect(W - 268f, 8f, 260f, 30f + Mathf.Max(1, bag.Count) * 20f);
+            Ui.Box(r);
+            Ui.Text(new Rect(r.x + 8f, r.y + 4f, 240f, 16f), "아이템 <size=10>([ ] 선택 · Enter 사용)</size>", 11, Ui.Dim, TextAnchor.MiddleLeft, true);
+            if (bag.Count == 0) { Ui.Text(new Rect(r.x + 8f, r.y + 22f, 240f, 18f), "없음", 12, Ui.Dim); return; }
+
+            for (int i = 0; i < bag.Count; i++)
             {
-                int bars = Mathf.RoundToInt(_power * 20f), mk = Mathf.Clamp(Mathf.RoundToInt(_mark * 19f), 0, 19);
-                var gb = new System.Text.StringBuilder();
-                for (int i = 0; i < 20; i++) gb.Append(i == mk ? '┃' : i < bars ? '█' : '·');   // ┃ = 나이스샷 표시점
-                GUILayout.Label($"POWER [{gb}] {_power * 100:F0}   <size=11>표시점 {_mark * 100:F0} (Q/E)</size>"
-                                + (_niceFlash != null ? $"   <color=#8f8><b>{_niceFlash}</b></color>" : ""), st);
+                var info = Items.Get(bag[i]);
+                var row = new Rect(r.x + 6f, r.y + 22f + i * 20f, r.width - 12f, 18f);
+                bool sel = i == _itemSel;
+                if (sel) { Ui.Fill(row, new Color(1f, 1f, 1f, 0.10f)); Ui.Frame(row, Ui.Warn); }
+                Ui.Text(new Rect(row.x + 6f, row.y, 100f, row.height), info.Name, 12, sel ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, sel);
+                Ui.Text(new Rect(row.x + 104f, row.y, row.width - 110f, row.height), info.Desc, 10, Ui.Dim, TextAnchor.MiddleLeft);
             }
-            else GUILayout.Label(_phase == Phase.AiThink ? "적군 조준 중…" : _phase == Phase.Flying ? "포탄 비행 중…" : " ", st);
+        }
 
-            GUILayout.Label(_log, st);
-            GUILayout.Label("<b>WASD</b> 이동  <b>←→↑↓</b> 포탑·포신  <b>Space</b> 길게눌러 파워→놓으면 발사  <b>우클릭</b> 카메라", st);
-            GUILayout.EndArea();
+        void HudLog(float W, float H)
+        {
+            if (!string.IsNullOrEmpty(_log))
+                Ui.TextShadow(new Rect(W * 0.5f - 400f, H - 36f, 800f, 18f), _log, 12, Ui.Ink, TextAnchor.MiddleCenter);
+            Ui.TextShadow(new Rect(W * 0.5f - 400f, H - 20f, 800f, 16f),
+                          "WASD 이동   방향키 포탑·포신   Space 길게눌러 파워 → 놓으면 발사   우클릭 카메라", 10, Ui.Dim, TextAnchor.MiddleCenter);
+        }
 
-            if (_phase == Phase.GameOver)
-            {
-                var big = new GUIStyle(GUI.skin.label) { fontSize = 40, alignment = TextAnchor.MiddleCenter, richText = true };
-                GUI.Label(new Rect(0, Screen.height * 0.4f, Screen.width, 60), $"<b>{_winner}</b>", big);
-            }
+        void HudGameOver(float W, float H)
+        {
+            Ui.Fill(new Rect(0f, H * 0.36f, W, 120f), new Color(0.03f, 0.05f, 0.08f, 0.82f));
+            bool win = _winner != null && _winner.Contains("아군");
+            Ui.TextShadow(new Rect(0f, H * 0.38f, W, 70f), _winner, 40, win ? Ui.Ally : Ui.Enemy, TextAnchor.MiddleCenter, true);
+            Ui.TextShadow(new Rect(0f, H * 0.38f + 68f, W, 24f), $"라운드 {_round} 종료", 14, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
         static string WindArrow(Vector2 w)
@@ -1516,13 +2032,26 @@ namespace Tankfall.View
         }
 
         /// <summary>라운드가 바뀔 때 호출. 살아 있는 탱크를 앵커로 넘긴다 — 닿을 수 있는 자리에 떨어져야 보급이다.</summary>
+        /// <summary>
+        /// 보급 앵커 + 팀. **팀을 같이 넘겨야** 상자가 양 팀에 반반 떨어진다 —
+        /// 안 넘기면 유닛이 많은(이기는) 쪽에 몰려 우위가 증폭된다(SupplyDrop.RollDrop 머리말).
+        /// ⚠️ 호출부가 셋이라 여기 한 곳에서만 만든다(같은 로직이 흩어지면 한 곳만 고치고 넘어간다).
+        /// </summary>
+        List<Vec3> SupplyAnchors(out List<int> teams)
+        {
+            var anchors = new List<Vec3>();
+            teams = new List<int>();
+            foreach (var u in _units)
+                if (u.Alive) { var p = u.Pos; anchors.Add(new Vec3(p.x, p.y, p.z)); teams.Add(u.Team); }
+            return anchors;
+        }
+
         void RollSupply()
         {
             if (_itemSlots == 0) return;
-            var anchors = new List<Vec3>();
-            foreach (var u in _units) if (u.Alive) { var p = u.Pos; anchors.Add(new Vec3(p.x, p.y, p.z)); }
+            var anchors = SupplyAnchors(out var anchorTeams);
             if (anchors.Count == 0) return;
-            int n = _supply.RollDrop(ref _supplyRng, MapSize, (x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f), anchors);
+            int n = _supply.RollDrop(ref _supplyRng, MapSize, (x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f), anchors, anchorTeams);
             if (n <= 0) return;
             var last = _supply.Crates[_supply.Count - 1];
             ShowHelicopter(last.X, last.Z);
@@ -1612,7 +2141,7 @@ namespace Tankfall.View
                 _camYaw = 160f; _camPitch = 30f; _camDist = 45f; UpdateCamera(0f);
                 var anchors = new List<Vec3> { new Vec3(me.Pos.x, me.Pos.y, me.Pos.z) };
                 for (int t = 0; t < 40 && _supply.Count == 0; t++)
-                    _supply.RollDrop(ref _supplyRng, MapSize, (x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f), anchors);
+                    _supply.RollDrop(ref _supplyRng, MapSize, (x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f), anchors, SupplyAnchors(out var _at) != null ? _at : null);
                 if (_supply.Count == 0) { Debug.Log("[Tankfall] ❌ 보급 자체검사 — 40번 굴려도 상자가 안 떨어졌다(투하 로직 고장)"); Application.Quit(1); return; }
                 var c0 = _supply.Crates[0];
                 float d0 = Mathf.Sqrt((c0.X - me.Pos.x) * (c0.X - me.Pos.x) + (c0.Z - me.Pos.z) * (c0.Z - me.Pos.z));
@@ -1645,7 +2174,7 @@ namespace Tankfall.View
                 // ③ 폭발로 부수기
                 var anchors = new List<Vec3> { new Vec3(me.Pos.x, me.Pos.y, me.Pos.z) };
                 for (int t = 0; t < 40 && _supply.Count == 0; t++)
-                    _supply.RollDrop(ref _supplyRng, MapSize, (x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f), anchors);
+                    _supply.RollDrop(ref _supplyRng, MapSize, (x, z) => TankGroundProbe.GroundBelow(_vol, x, z, 80f), anchors, SupplyAnchors(out var _at) != null ? _at : null);
                 if (_supply.Count == 0) { Debug.Log("[Tankfall] ❌ 보급 자체검사 — 파괴 시험용 상자를 못 만들었다"); Application.Quit(1); return; }
                 var c = _supply.Crates[0];
                 int broke = _supply.DestroyNear(c.X, c.Y, c.Z, 1f);
@@ -1756,6 +2285,7 @@ namespace Tankfall.View
 
         const float GalGap = 8f;      // 갤러리 줄 간격
         const float GalZ = 100f;
+        float _galY;                  // 갤러리 줄의 바닥 높이(= 배경 바닥판 윗면)
 
         void GalleryStep()
         {
@@ -1792,6 +2322,10 @@ namespace Tankfall.View
         void BuildGalleryLineup()
         {
             _terrain.SetVisible(false);
+            // ⚠️ 지형을 꺼도 배경 바닥판(Environment.Apron)은 남는다. 예전엔 탱크를 y=0 에 세워서
+            //    바닥판(맵 가장자리 지면 높이)보다 낮으면 측면·부감 샷에 탱크가 한 대도 안 나왔다.
+            //    바닥판 윗면 높이에 세운다.
+            _galY = _env != null ? _env.ApronTopY + 0.02f : 0f;
             foreach (var u in _units) Destroy(u.Root.gameObject);
             _units.Clear();
 
@@ -1810,7 +2344,7 @@ namespace Tankfall.View
                 var root = ProceduralTank.Build(TankShape.Of(kind),
                                                 MakeMat(TankShape.BodyColor(kind), 0.22f),
                                                 track, teamMat[team], out var tur, out var bar, out var fp, wood);
-                root.position = new Vector3(100f + (i - 6) * GalGap, 0f, GalZ);
+                root.position = new Vector3(100f + (i - 6) * GalGap, _galY, GalZ);
                 _units.Add(new Unit { Id = i, Team = team, Kind = kind, HpMax = TankStats.Get(kind).Hp,
                                       Hp = TankStats.Get(kind).Hp,
                                       Root = root, Turret = tur, Barrel = bar, Fire = fp });
@@ -1836,7 +2370,7 @@ namespace Tankfall.View
             // ⚠️ 카메라를 돌리면 안 된다. 탱크를 X축으로 나란히 세워 놓고 카메라를 90° 돌리면
             //    전부 일렬로 겹쳐 한 대처럼 보인다(실제로 그렇게 찍혔다).
             //    **카메라는 줄에 항상 수직으로 두고, 보고 싶은 면은 탱크를 돌려서 만든다.**
-            var focus = new Vector3(centerX, 1.2f, GalZ);
+            var focus = new Vector3(centerX, _galY + 1.2f, GalZ);
             var rot = Quaternion.Euler(camPitch, 0f, 0f);     // 야우 0 고정 = 줄에 수직
             _cam.transform.position = focus + rot * Vector3.back * dist;
             _cam.transform.LookAt(focus);
@@ -1902,16 +2436,21 @@ namespace Tankfall.View
             if (_phase == Phase.Resolve) { UpdateCamera(0.05f); TickFx(1f / 30f); }
         }
 
-        void Shot(string name)
+        /// <summary>스크린샷이 저장될 경로. `Shot` 과 UI 자체검사의 쌍 비교가 **같은 계산**을 쓰게 한다.</summary>
+        string ShotPath(string name)
         {
             string dir = System.IO.Path.IsPathRooted(_shotDir)
                 ? _shotDir
                 : System.IO.Path.Combine(Application.dataPath, "..", _shotDir);
-            dir = System.IO.Path.GetFullPath(dir);
-            try { System.IO.Directory.CreateDirectory(dir); }
-            catch (System.Exception e) { Debug.LogError($"[Tankfall] 스크린샷 폴더 생성 실패 {dir}: {e.Message}"); return; }
+            return System.IO.Path.Combine(System.IO.Path.GetFullPath(dir), name + ".png");
+        }
 
-            string path = System.IO.Path.Combine(dir, name + ".png");
+        void Shot(string name)
+        {
+            string path = ShotPath(name);
+            try { System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)); }
+            catch (System.Exception e) { Debug.LogError($"[Tankfall] 스크린샷 폴더 생성 실패 {path}: {e.Message}"); return; }
+
             ScreenCapture.CaptureScreenshot(path);
             Debug.Log($"[Tankfall] 스크린샷 {path} · {_log}");
             _shotPaths.Add(path);
@@ -1919,13 +2458,52 @@ namespace Tankfall.View
 
         readonly List<string> _shotPaths = new List<string>();
 
-        /// <summary>찍었다고 로그만 남기고 파일이 없는 사고를 막는다 — 종료 직전에 실물을 센다.</summary>
+        /// <summary>
+        /// 찍었다고 로그만 남기고 **쓸모없는 그림**이 남는 사고를 막는다.
+        ///
+        /// ⚠️ 2026-09-17 사고: 예전엔 여기서 `File.Exists` 만 셌다. `-nographics` 로 돌리면
+        ///    렌더 타깃이 없어 PNG 가 **전부 새까맣게** 나오는데, 파일은 멀쩡히 생기므로
+        ///    로그에는 `스크린샷 검증 8/8 확인` 이 그대로 찍혔다 — 완전한 거짓 통과였다.
+        ///    "파일이 있다 ≠ 그림이 나왔다". 그래서 이제 **픽셀을 실제로 읽어** 판정한다:
+        ///    (a) 파일이 있고 (b) 단색이 아니어야 통과. 빌드 스크립트의 -nographics 제거도 같은 사고의 수리다.
+        /// </summary>
         void VerifyShots()
         {
-            int ok = 0;
-            foreach (var p in _shotPaths) if (System.IO.File.Exists(p)) ok++;
-            if (ok == _shotPaths.Count) Debug.Log($"[Tankfall] 스크린샷 검증 {ok}/{_shotPaths.Count} 확인");
-            else Debug.LogError($"[Tankfall] 스크린샷 누락 {ok}/{_shotPaths.Count} — 경로: {_shotDir}");
+            int ok = 0, blank = 0, missing = 0;
+            foreach (var p in _shotPaths)
+            {
+                if (!System.IO.File.Exists(p)) { missing++; continue; }
+                if (IsBlankPng(p)) { blank++; Debug.LogError($"[Tankfall] 스크린샷이 단색이다(렌더 실패 의심): {p}"); continue; }
+                ok++;
+            }
+            if (ok == _shotPaths.Count) Debug.Log($"[Tankfall] 스크린샷 검증 {ok}/{_shotPaths.Count} 확인 (내용까지 검사)");
+            else Debug.LogError($"[Tankfall] 스크린샷 실패 — 정상 {ok} · 단색 {blank} · 누락 {missing} / {_shotPaths.Count} · 경로 {_shotDir}");
+        }
+
+        /// <summary>PNG 를 읽어 단색인지 본다. 검은 화면·흰 화면을 "찍혔다"로 넘기지 않기 위한 네거티브 컨트롤.</summary>
+        static bool IsBlankPng(string path)
+        {
+            try
+            {
+                var bytes = System.IO.File.ReadAllBytes(path);
+                var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if (!tex.LoadImage(bytes)) { Destroy(tex); return true; }
+                var px = tex.GetPixels32();
+                Destroy(tex);
+                if (px.Length == 0) return true;
+                // 밝기 분산이 거의 없으면 단색이다. 하늘만 찍힌 화면도 HUD 가 있으면 여기를 통과한다.
+                double sum = 0, sum2 = 0;
+                int step = Mathf.Max(1, px.Length / 20000);          // 전 픽셀을 다 볼 필요는 없다
+                int n = 0;
+                for (int i = 0; i < px.Length; i += step)
+                {
+                    double v = (px[i].r * 0.299 + px[i].g * 0.587 + px[i].b * 0.114);
+                    sum += v; sum2 += v * v; n++;
+                }
+                double mean = sum / n, var = sum2 / n - mean * mean;
+                return var < 4.0;                                     // 표준편차 2 미만 = 사실상 단색
+            }
+            catch (System.Exception e) { Debug.LogError($"[Tankfall] 스크린샷 검사 실패 {path}: {e.Message}"); return true; }
         }
     }
 }

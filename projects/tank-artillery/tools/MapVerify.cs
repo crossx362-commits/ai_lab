@@ -38,6 +38,28 @@ static class MapVerify
         }
         if (worst > 0.5f) { Console.WriteLine("    ❌ 스폰 높이 비대칭 > 0.5m"); Fail++; }
         else Console.WriteLine("    ✅ 스폰 높이 대칭");
+
+        // ⚠️ 2026-09-17: 스폰 **6개 점**만 보던 검사는 그 사이 지형이 기울어도 통과한다.
+        //    실제로 미러 자기전에서 스폰을 교환하면 A 승률이 52% → 31% 로 떨어졌는데(무풍 대조군에서도),
+        //    이 게이트는 Δ0.00m 로 ✅ 였다. 스폰이 대칭이어도 **싸우는 땅**이 대칭이 아니면 판이 기운다.
+        //    그래서 격자 전체에서 h(x,z) 와 h(200-x,z) 를 대조한다.
+        {
+            float gridWorst = 0f; float wx = 0f, wz = 0f;
+            for (float z = 10f; z <= 190f; z += 5f)
+                for (float x = 10f; x <= 100f; x += 5f)
+                {
+                    float ha = MapHeightFunction.Height(map, x, z);
+                    float hb = MapHeightFunction.Height(map, MapHeightFunction.MapSize - x, z);
+                    float d = MathF.Abs(ha - hb);
+                    if (d > gridWorst) { gridWorst = d; wx = x; wz = z; }
+                }
+            if (gridWorst > 0.5f)
+            {
+                Console.WriteLine($"    ❌ 지형 좌우 비대칭 — 최대 Δ{gridWorst:F2}m @ (x={wx:F0},z={wz:F0}) 와 거울점");
+                Fail++;
+            }
+            else Console.WriteLine($"    ✅ 지형 좌우 대칭 (격자 최대 Δ{gridWorst:F2}m)");
+        }
     }
 
     static void CheckLowAngle(MapKind map, bool expectClear)

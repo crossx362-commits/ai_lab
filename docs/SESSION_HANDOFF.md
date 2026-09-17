@@ -1,4 +1,13 @@
-# SESSION HANDOFF — tank-artillery (2026-09-16)
+# SESSION HANDOFF — tank-artillery (2026-09-17)
+
+## ⚠️ 미커밋 작업 (2026-09-17 두 세션분, 전부 검증 통과 — 오너가 커밋 지시하면 한 번에)
+- 앞 세션: 타이틀/로비/결과 화면(BattleScreens.cs)·배경(Environment.cs)·폭발 파티클(ParticleFx.cs)·나무/바위(Scatter.cs)·효과음(Sfx.cs)·탄 자취(ShellTrail.cs)·지형 색(TerrainPalette/MapTheme)·UI 팔레트(Ui.cs)·궁극기(NiceShot.cs)·맥 빌드 경로(verify.sh/unity_build.sh)·셰이더 2종.
+- 이 세션: **기종별 고유 무기·소품 13종**(ProceduralTank.cs, 명세 §9 끝에 기록) / 원경 산맥이 하늘 전체를 덮던 문제(Environment.BuildRidges 크기·거리) / 결과·조작법 패널 행 겹침(높이를 행 수에서 계산) / "Development Build" 워터마크 제거(BuildScript `TANKFALL_DEV_BUILD=1` 일 때만 개발 빌드) / 갤러리 측면·부감 샷에 탱크가 안 찍히던 것(바닥판 높이) + 갤러리 TurnOrder 예외.
+- **기종×탄종 폭발 연출 26가지**(ParticleFx.BlastStyle, 원작 조사 출처는 파일 머리말·명세 §9 끝). `-shellgallery` 에 1번탄 폭발 단계 추가(5장).
+- **연출 전면 파티클화**(발사·피격·실드·격파·아이템·독/속박·설치물 루프·위성 빔·눈·폭발 광원, ExplosionFx.cs 삭제) + **탄 메시 재조형 13종** + **다층 자취**(화염/연기/스파크/링, 거리 기준 방출). 명세 §9 끝에 기록.
+- 검증: `verify.sh compile` ✅, 맥 빌드 ✅, `-gallery` 7/7 · `-uiselftest` 16/16 · `-autoshot` 8/8 스크린샷 내용 검사 통과. 스크린샷은 `unity/Build/Tankfall.app/Screenshots/`.
+- 다음 후보: 나무 종류 단조로움(둥근 나무 하나뿐), 원경 산맥 색을 안개 쪽으로 조금 더, 격파 시 잔해(지금은 숨김+연기 기둥), 탄 비행 중 회전(스핀) 연출.
+
 
 이어받은 세션은 완료한 항목을 지우고, 전부 끝나면 이 파일을 비운다.
 

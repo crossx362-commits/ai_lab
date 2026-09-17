@@ -59,6 +59,18 @@ namespace Tankfall.Sim
 
         public int RollDrop(ref Rng rng, float mapSize, Func<float, float, float> groundAt,
                             IReadOnlyList<Vec3> anchors = null)
+            => RollDrop(ref rng, mapSize, groundAt, anchors, null);
+
+        /// <summary>
+        /// <paramref name="anchorTeams"/> 를 주면 **팀을 먼저 균등하게 고른 뒤** 그 팀의 유닛 근처에 떨군다.
+        ///
+        /// ⚠️ 2026-09-17 수리: 예전엔 살아 있는 유닛 전체에서 균등 추첨했다. 그러면 유닛이 많은 쪽
+        ///    (= 이기고 있는 쪽) 근처에 상자가 더 자주 떨어져 **우세가 증폭**된다.
+        ///    미러 자기전에서 이게 평균을 50% → 44.9% 로 끌어내렸다(아이템·보급을 끄면 49.2% 로 돌아왔다).
+        ///    보급은 뒤집기 수단이지 앞선 쪽 보너스가 아니다 — 팀을 먼저 고르면 3:1 이든 1:1 이든 반반이다.
+        /// </summary>
+        public int RollDrop(ref Rng rng, float mapSize, Func<float, float, float> groundAt,
+                            IReadOnlyList<Vec3> anchors, IReadOnlyList<int> anchorTeams)
         {
             if (_crates.Count >= MaxCrates) return 0;
             if (rng.Float01() >= DropChancePerRound) return 0;
@@ -71,7 +83,22 @@ namespace Tankfall.Sim
                     float x, z;
                     if (anchors != null && anchors.Count > 0)
                     {
-                        var a = anchors[Math.Min((int)(rng.Float01() * anchors.Count), anchors.Count - 1)];
+                        int pick;
+                        if (anchorTeams != null && anchorTeams.Count == anchors.Count)
+                        {
+                            // 팀을 먼저 반반으로 고르고, 그 팀 안에서 균등 추첨한다(머리말의 증폭 문제 수리).
+                            int wantTeam = rng.Float01() < 0.5f ? 0 : 1;
+                            int cnt = 0;
+                            for (int q = 0; q < anchorTeams.Count; q++) if (anchorTeams[q] == wantTeam) cnt++;
+                            if (cnt == 0) { wantTeam = 1 - wantTeam; for (int q = 0; q < anchorTeams.Count; q++) if (anchorTeams[q] == wantTeam) cnt++; }
+                            int nth = Math.Min((int)(rng.Float01() * cnt), Math.Max(0, cnt - 1));
+                            pick = 0;
+                            for (int q = 0, seen = 0; q < anchorTeams.Count; q++)
+                                if (anchorTeams[q] == wantTeam) { if (seen == nth) { pick = q; break; } seen++; }
+                        }
+                        else pick = Math.Min((int)(rng.Float01() * anchors.Count), anchors.Count - 1);
+
+                        var a = anchors[pick];
                         float ang = rng.Range(0f, MathF.PI * 2f), rad = rng.Range(AnchorMin, AnchorMax);
                         x = a.X + MathF.Cos(ang) * rad;
                         z = a.Z + MathF.Sin(ang) * rad;

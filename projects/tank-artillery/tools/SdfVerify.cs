@@ -5,7 +5,7 @@ using Tankfall.Sim;
 
 static class SdfVerify
 {
-    const float MapSize = 200f;
+    const float MapSize = MapHeightFunction.MapSize;   // 단일 소스(MapHeightFunction)를 따른다
     const float Voxel = 0.5f;
     const int ChunkN = 16;
     const float OriginY = -20f;

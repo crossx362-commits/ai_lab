@@ -89,6 +89,9 @@ namespace Tankfall.Sim
         /// <summary>유닛이 이동할 수 있는지 확인(이동금지 상태 아닌지).</summary>
         public bool CanMove(int id) => !_rooted.ContainsKey(id);
 
+        /// <summary>독 또는 화상이 걸려 있는가 — 연출(상태 파티클)용 읽기 전용 조회. 판정에는 안 쓴다.</summary>
+        public bool HasDot(int id) => _poison.ContainsKey(id) || _burn.ContainsKey(id);
+
         /// <summary>상태 리셋(시뮬레이션 테스트용).</summary>
         public void Clear()
         {
@@ -306,7 +309,33 @@ namespace Tankfall.Sim
         ///    각도는 전부 [추정]. "집탄 시 고피해"가 되려면 좁아야 한다.
         /// </summary>
         public static IReadOnlyList<ShotPattern> Pattern(TankKind kind, ShellKind shell)
+            => Pattern(kind, shell, false);
+
+        /// <summary>
+        /// 궁극기(§49)는 **연사형 기종만** 탄두를 늘린다(오너 지시 2026-09-17: 기종별 차별점).
+        ///
+        /// 전 기종의 탄두를 늘리면 궁극기가 다시 하나가 된다 — 화력형(캐논·크로스보우)은 단발로 남겨야
+        /// "한 방"이라는 축이 살고, 굴착형(캐롯·이온)은 반경으로, 지속형은 장판으로 간다(NiceShot.ApplyUltimate).
+        /// ⚠️ 수는 전부 [추정]. 늘릴수록 집탄이 흩어져 오히려 약해질 수 있으니 하네스로 재고 조정하라.
+        /// </summary>
+        public static IReadOnlyList<ShotPattern> Pattern(TankKind kind, ShellKind shell, bool ultimate)
         {
+            if (ultimate && shell == ShellKind.Special)
+                switch (kind)
+                {
+                    case TankKind.MultiMissile: return Fan(12, 1.8f);   // 9연 → 탄막
+                    case TankKind.SuperTank:    return Fan(11, 1.8f);   // 9연 유도탄 → 11연
+                    case TankKind.Laser:        return Fan(5, 0.9f);    // 3연 회전 → 5연, 더 촘촘히
+                    case TankKind.Catapult:     return Fan(4, 3.2f);    // 투석기 → 넓게 흩뿌린다
+                    case TankKind.MineLander:   return Fan(3, 2.6f);    // 지뢰밭
+                    case TankKind.Missile:      return Fan(4, 2.0f);    // 4단 폭발
+                    case TankKind.Carrot:       return Fan(5, 2.0f);    // 삼연 → 오연
+                    case TankKind.IonAttacker:  return Fan(3, 2.2f);    // 궤도 폭격 3발
+                    case TankKind.Poseidon:     return Fan(3, 1.5f);    // 190×2 → 3발
+                    case TankKind.SecWind:      return Fan(3, 1.5f);
+                    // 캐논·크로스보우·듀크는 단발 유지 — 각각 한 방·직격·장판이 축이다.
+                }
+
             if (shell == ShellKind.Normal)
             {
                 if (kind == TankKind.MultiMissile) return Fan(3, 2.5f);   // 175×3 [추정 ±2.5°]

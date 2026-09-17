@@ -40,7 +40,10 @@ namespace Tankfall.EditorTools
         /// </summary>
         static void EnsureShadersIncluded()
         {
-            var names = new[] { "Standard", "Legacy Shaders/Diffuse" };
+            // ⚠️ 코드로만 참조하는 셰이더는 빌드에서 빠진다(분홍색으로 나온다). 새 셰이더를 쓰면 여기에 반드시 추가하라.
+            var names = new[] { "Standard", "Legacy Shaders/Diffuse", "Unlit/Color",
+                                "Legacy Shaders/Particles/Additive", "Legacy Shaders/Particles/Alpha Blended",
+                                "Tankfall/TerrainVertexColor", "Tankfall/SkyGradient" };
             var graphics = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset");
             if (graphics == null || graphics.Length == 0) return;
 
@@ -66,6 +69,14 @@ namespace Tankfall.EditorTools
             AssetDatabase.SaveAssets();
         }
 
+        /// <summary>
+        /// 개발 빌드 여부. 기본은 **일반 빌드** — 개발 빌드는 우하단에 "Development Build" 워터마크를 찍어
+        /// 스크린샷·플레이 화면을 전부 더럽힌다. 프로파일러가 필요할 때만 `TANKFALL_DEV_BUILD=1` 로 켠다.
+        /// (-logFile·ScreenCapture 는 일반 빌드에서도 그대로 동작한다.)
+        /// </summary>
+        static BuildOptions BuildOpts =>
+            System.Environment.GetEnvironmentVariable("TANKFALL_DEV_BUILD") == "1" ? BuildOptions.Development : BuildOptions.None;
+
         [MenuItem("Tankfall/Build Windows")]
         public static void BuildWindows()
         {
@@ -79,14 +90,48 @@ namespace Tankfall.EditorTools
                 scenes = new[] { ScenePath },
                 locationPathName = "Build/Tankfall.exe",
                 target = BuildTarget.StandaloneWindows64,
-                options = BuildOptions.Development,
+                options = BuildOpts,
             };
 
             var report = BuildPipeline.BuildPlayer(opts);
             var s = report.summary;
-            Debug.Log($"[Tankfall] 빌드 {s.result} · {s.totalSize / 1024 / 1024} MB · {s.totalTime.TotalSeconds:F0}s · 에러 {s.totalErrors}");
+            Debug.Log($"[Tankfall] Windows 빌드 {s.result} · {s.totalSize / 1024 / 1024} MB · {s.totalTime.TotalSeconds:F0}s · 에러 {s.totalErrors}");
             if (s.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
                 EditorApplication.Exit(1);
         }
+
+        [MenuItem("Tankfall/Build Mac")]
+        public static void BuildMac()
+        {
+            EnsureShadersIncluded();
+            if (!File.Exists(ScenePath)) CreateBootScene();
+
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+
+            var opts = new BuildPlayerOptions
+            {
+                scenes = new[] { ScenePath },
+                locationPathName = "Build/Tankfall.app",
+                target = BuildTarget.StandaloneOSX,
+                options = BuildOpts,
+            };
+
+            var report = BuildPipeline.BuildPlayer(opts);
+            var s = report.summary;
+            Debug.Log($"[Tankfall] Mac 빌드 {s.result} · {s.totalSize / 1024 / 1024} MB · {s.totalTime.TotalSeconds:F0}s · 에러 {s.totalErrors}");
+            if (s.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+                EditorApplication.Exit(1);
+        }
+
+        [MenuItem("Tankfall/Build Current Platform")]
+        public static void BuildAuto()
+        {
+#if UNITY_EDITOR_OSX
+            BuildMac();
+#else
+            BuildWindows();
+#endif
+        }
     }
 }
+

@@ -25,6 +25,12 @@ namespace Tankfall.View
         ///    폭발 한 번에 더티 청크 수만큼 수십 KB 를 복사하고 GC 에 던진다(실측: 메시 재생성 4~12 ms 의 일부).
         readonly Dictionary<Vector3Int, int> _triCount = new Dictionary<Vector3Int, int>();
         readonly List<Vector3> _v = new List<Vector3>();
+        readonly List<Vector3> _n = new List<Vector3>();
+        readonly List<Color> _c = new List<Color>();
+
+        /// <summary>맵 테마(색 팔레트). 판 시작에 한 번 정해지고 그 뒤 모든 청크가 이 값으로 칠해진다.</summary>
+        public MapTheme Theme = MapTheme.Of(Tankfall.Sim.MapKind.TwinHills, false);
+
         readonly List<int> _t = new List<int>();
 
         // 메시 재생성 내부 분해 계측(§7-7). 어디가 비싼지 추측하지 않는다.
@@ -140,6 +146,12 @@ namespace Tankfall.View
             mesh.SetTriangles(_t, 0, false);
             long t1 = Stopwatch.GetTimestamp();
             mesh.RecalculateNormals();
+            // 정점 색(§ TerrainPalette) — 법선이 나온 뒤라야 경사를 안다.
+            // ⚠️ 여기서 비용이 늘면 폭발 프레임(§7-6-3)이 흔들린다. `-perf` 로 재고 나서 손대라.
+            mesh.GetNormals(_n);
+            _c.Clear();
+            for (int i = 0; i < _v.Count; i++) _c.Add(TerrainPalette.Of(Theme, _v[i].y, _n[i].y));
+            mesh.SetColors(_c);
             long t2 = Stopwatch.GetTimestamp();
             mesh.RecalculateBounds();
             long t3 = Stopwatch.GetTimestamp();

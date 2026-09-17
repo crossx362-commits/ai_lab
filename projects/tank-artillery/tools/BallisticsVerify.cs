@@ -11,7 +11,7 @@ using Tankfall.Sim;
 
 static class BallisticsVerify
 {
-    const float Voxel = 0.5f, MapSize = 200f;
+    const float Voxel = 0.5f, MapSize = MapHeightFunction.MapSize;   // 단일 소스를 따른다
     const int ChunkN = 16;
 
     static float Flat(float x, float z) => 10f;

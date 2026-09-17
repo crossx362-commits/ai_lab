@@ -11,9 +11,41 @@ namespace Tankfall.Sim
 
     public static class MapHeightFunction
     {
-        public const float MapSize = 200f;
-        public const float TwinWestHillX = 100f, TwinWestHillZ = 75f;
-        public const float TwinEastHillX = 100f, TwinEastHillZ = 125f;
+        /// <summary>
+        /// 맵 한 변(m).
+        ///
+        /// ⚠️ 200 → 280 (2026-09-17, 오너 지시 "맵 확대"). 200m 에서는 스폰을 가장자리까지 당겨도
+        ///    교전 거리가 150m 라 파워 100 사거리(220m, §5-2)의 68% 밖에 못 썼다.
+        ///    280m + 스폰 여백 65m = **교전 150m**. 맵은 넓히되 교전 거리는 사거리 분포에 맞춘다.
+        ///
+        /// ⚠️ 교전 190m 를 시도했다가 **분포가 무너졌다**(2026-09-17 실측):
+        ///    캐터펄트는 사거리 172m 라 **최대 파워로도 못 닿아** 승률 7%,
+        ///    반대로 미사일(276m)·멀티미사일(266m)이 87%·79% 로 폭주했다.
+        ///    교전 거리는 **가장 짧은 사거리(캐터펄트 172m)보다 뚜렷하게 아래**여야 한다 —
+        ///    안 그러면 사거리가 "기종 차이"가 아니라 생사 판정이 된다.
+        /// ⚠️ 이 값을 바꾸면 지형이 따라와야 한다 — 그래서 아래 좌표는 전부 **MapSize 비례**다.
+        ///    절대 좌표(100f 같은)를 새로 적지 마라. 적는 순간 맵 크기를 못 바꾸는 코드가 된다.
+        /// ⚠️ 면적이 1.96배라 초기 메시 생성·삼각형 수도 그만큼 는다. 바꿨으면 `-perf` 로 재라(§7-7).
+        /// </summary>
+        public const float MapSize = 280f;
+
+        /// <summary>맵 중심. 지형 대칭의 기준선이다.</summary>
+        public const float Center = MapSize * 0.5f;
+
+        /// <summary>
+        /// 스폰이 맵 가장자리에서 떨어진 거리. 교전 거리 = MapSize − 2×이 값.
+        ///
+        /// ⚠️ 42 → 25 (2026-09-17, 오너 지적 "포격거리 너무 가까움").
+        ///    42 면 교전 거리가 116m 인데 파워 100 사거리가 220m 다(§5-2) — 최대의 절반만 쓰니
+        ///    파워 조절이 승부를 가르지 않았다. 25 면 150m 로 사거리의 68% 를 쓴다.
+        ///    더 늘리려면 맵(200m)을 키워야 하는데, 지형 함수가 x=100·z=75/125 같은 **절대 좌표**에
+        ///    묶여 있어 같이 비례화해야 한다 — 그건 별도 작업이다.
+        /// ⚠️ 이 값을 바꾸면 `verify.sh map`(스폰 대칭·40° 이륙)과 `battle`(승률)을 **둘 다** 다시 돌려라.
+        ///    스폰이 가장자리로 갈수록 지형이 달라져 이륙 각도와 엄폐가 바뀐다.
+        /// </summary>
+        public const float SpawnInset = 65f;
+        public const float TwinWestHillX = Center, TwinWestHillZ = MapSize * 0.375f;
+        public const float TwinEastHillX = Center, TwinEastHillZ = MapSize * 0.625f;
 
         public static string Name(MapKind k) => k switch
         {
@@ -32,8 +64,8 @@ namespace Tankfall.Sim
         public static void Spawn(MapKind map, int team, int slot, out float x, out float z)
         {
             int i = slot < 0 ? 0 : (slot > 2 ? 2 : slot);
-            z = 50f + i * 50f;
-            x = team == 0 ? 42f : MapSize - 42f;
+            z = MapSize * 0.25f + i * (MapSize * 0.25f);
+            x = team == 0 ? SpawnInset : MapSize - SpawnInset;
             _ = map;
         }
 
@@ -87,7 +119,7 @@ namespace Tankfall.Sim
 
         static void EvalCrater(float x, float z, out float h, out float hx, out float hz)
         {
-            float dx = x - 100f, dz = z - 100f;
+            float dx = x - Center, dz = z - Center;
             float r2 = dx * dx + dz * dz;
             float r = MathF.Sqrt(r2);
             float t = (r - 25f) / 70f;
@@ -112,7 +144,7 @@ namespace Tankfall.Sim
         /// </summary>
         static void AddDetailRipple(float x, float z, float amp, float k, ref float h, ref float hx, ref float hz)
         {
-            float cxm = MathF.Cos((x - 100f) * k), sxm = MathF.Sin((x - 100f) * k);
+            float cxm = MathF.Cos((x - Center) * k), sxm = MathF.Sin((x - Center) * k);
             float sz = MathF.Sin(z * k), cz = MathF.Cos(z * k);
             h += amp * cxm * cz;
             hx += amp * (-k * sxm) * cz;
@@ -121,8 +153,8 @@ namespace Tankfall.Sim
 
         static void EvalTerrace(float x, float z, out float h, out float hx, out float hz)
         {
-            float u = MathF.Abs(x - 100f);
-            float sign = x >= 100f ? 1f : -1f;
+            float u = MathF.Abs(x - Center);
+            float sign = x >= Center ? 1f : -1f;
             float step, dstep;
             if (u < 28f) { step = 3.5f; dstep = 0f; }
             else if (u < 48f)

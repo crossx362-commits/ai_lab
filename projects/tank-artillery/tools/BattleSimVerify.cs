@@ -13,7 +13,7 @@ using Tankfall.Sim;
 
 static class BattleSimVerify
 {
-    const float Voxel = 0.5f, MapSize = 200f;
+    const float Voxel = 0.5f, MapSize = MapHeightFunction.MapSize;   // 단일 소스를 따른다
     const int ChunkN = 16;
     const int MaxHp = 1000;          // 기본값. RunMatch 가 판마다 덮어쓴다(HP 스윕용)
     const float BlastRadius = 7f, BaseDamage = 300f, DirectDamage = 100f;
@@ -79,6 +79,33 @@ static class BattleSimVerify
     /// <summary>유닛당 아이템 슬롯 수(§2-9-10). `TANKFALL_ITEMS=0` 으로 끄면 아이템 이전 수치와 비교할 수 있다(회귀용).
     /// 기본 2 는 내가 정한 값 [추정] — 기획서에 획득 규칙이 없다.</summary>
     static int ItemSlots = 2;
+
+        /// <summary>
+        /// 원인 판별용 스위치(하네스 전용, 2026-09-17).
+        ///   TANKFALL_CRATERSHAPE=0 → 탄종별 굴착 모양을 끄고 전부 구로 판다
+        ///   TANKFALL_ULT=0         → 궁극기를 끈다
+        /// 캐논 승률이 33~35% 에서 24% 로 내려간 원인을 **단일 변수로** 가르기 위해 둔다(§2-9-5 방식).
+        /// ⚠️ 게임(BattleDemo)에는 이런 스위치가 없다 — 하네스에서만 대조군을 만든다.
+        /// </summary>
+        /// <summary>TANKFALL_ONLY=mirror 로 미러 게이트까지만 돌린다(반복 측정용).</summary>
+        static readonly string OnlyStage = Environment.GetEnvironmentVariable("TANKFALL_ONLY") ?? "";
+
+        /// <summary>
+        /// 미러 게이트의 조준 오차. 기본은 중급(0.025).
+        /// TANKFALL_MIRROR_ERR=0 으로 두면 **완벽 조준 대조군**이 된다 —
+        /// 운을 제거하고 구조적 편향만 남기는 판별(§2-9-8 이 쓴 방법).
+        /// </summary>
+        static readonly float MirrorErr =
+            float.TryParse(Environment.GetEnvironmentVariable("TANKFALL_MIRROR_ERR"), out var me) ? me : 0.025f;
+
+        /// <summary>TANKFALL_NOHEAL=1 이면 회복 계열 아이템을 쓰지 않는다(미러 편향 판별용).</summary>
+        static readonly bool NoHeal = Environment.GetEnvironmentVariable("TANKFALL_NOHEAL") == "1";
+
+        /// <summary>TANKFALL_NOWIND=1 이면 바람을 0 으로 고정한다(미러 편향 판별용).</summary>
+        static readonly bool NoWind = Environment.GetEnvironmentVariable("TANKFALL_NOWIND") == "1";
+
+        static readonly bool UseCraterShape = Environment.GetEnvironmentVariable("TANKFALL_CRATERSHAPE") != "0";
+        static readonly bool UseUltimate = Environment.GetEnvironmentVariable("TANKFALL_ULT") != "0";
     /// <summary>AI 가 보급 상자를 주우러 걸어갈 최대 거리 [추정]. 한 턴 이동 8m 라 여러 턴에 걸쳐 간다.</summary>
     const float SupplySeekRange = 45f;
     /// <summary>[6-2-1] 미러 게이트 표본. 20판(±11%p)으로는 편향과 운을 못 가른다 — 실측으로 배운 값.</summary>
@@ -127,6 +154,7 @@ static class BattleSimVerify
         public int Winner, Shots, Hits, Turns;
         public int FallDamage, FallDealt;   // 낙하 피해 총량 / 그중 적에게 준 몫(§28 보상 측정)
         public int SsUsed, DotDealt, MineDealt, SatelliteShots, SubShells;   // 원작 시스템이 실제로 도는지(네거티브 컨트롤)
+            public int UltUsed;        // 궁극기(§49) 발동 횟수 — 0 이면 문턱(UltimateCost)이 너무 높다는 신호다
         public int ItemsUsed, ItemsShielded, ItemsDoubleFired;   // 아이템(§2-9-10) 네거티브 컨트롤 — 0 이면 죽은 것
         public int SupplyDropped, SupplyPicked, SupplyDestroyed;
         public int SeekTurns, SeekBlocked;   // 헬기 보급(§2-9-11) 네거티브 컨트롤
@@ -146,7 +174,7 @@ static class BattleSimVerify
                                 TankKind? teamA = null, TankKind? teamB = null,
                                 Weather weather = Weather.Clear,
                                 int firstTeam = 0, bool swapSpawn = false, bool alternate = true,
-                                float? errorRatioB = null)
+                                float? errorRatioB = null, bool fairItems = false)
     {
         var rng = new Rng(seed);
         var vol = NewVolume();
@@ -205,7 +233,19 @@ static class BattleSimVerify
         if (ItemSlots > 0)
         {
             var roll = new List<ItemKind>();
-            foreach (var o in units) { Items.Roll(ref rng, ItemSlots, roll); items.Bag(o.Id).AddRange(roll); }
+            // ⚠️ `fairItems` 는 **미러 게이트 전용**이다(게임에는 없다).
+            //    아이템은 유닛 Id 로 배분되므로 스폰을 교환해도 따라가지 않는다 —
+            //    그래서 거울 조건에서 승률이 보존되지 않고(기본+교환 합이 100 이 아니게 되고) 미러 평균이 기운다.
+            //    실측: 아이템 OFF 면 합 98.4(대칭 성립), ON 이면 85.5(깨짐).
+            //    미러 게이트가 재려는 건 **탱크 수치만의 대칭**이지 아이템 운이 아니므로, 여기서만 양 팀에 같은 세트를 준다.
+            if (fairItems)
+            {
+                var perSlot = new List<ItemKind>[3];
+                for (int i = 0; i < 3; i++) { var r0 = new List<ItemKind>(); Items.Roll(ref rng, ItemSlots, r0); perSlot[i] = r0; }
+                foreach (var o in units) items.Bag(o.Id).AddRange(perSlot[o.Id % 3]);
+            }
+            else
+                foreach (var o in units) { Items.Roll(ref rng, ItemSlots, roll); items.Bag(o.Id).AddRange(roll); }
         }
 
         for (int step = 0; step < maxTurns; step++)
@@ -214,14 +254,19 @@ static class BattleSimVerify
             if (step % 6 == 0)
             {
                 float a = rng.Range(0f, MathF.PI * 2f), s = rng.Range(0f, 10f);
-                wind = new Vec3(MathF.Cos(a) * s, 0f, MathF.Sin(a) * s);
+                // ⚠️ 무풍 대조군(TANKFALL_NOWIND=1). 미러가 기울 때 **바람 때문인지**를 가르는 판별용이다.
+                //    난수는 그대로 소비한다 — 안 그러면 뒤따르는 모든 난수가 밀려 다른 판이 된다.
+                wind = NoWind ? new Vec3(0f, 0f, 0f) : new Vec3(MathF.Cos(a) * s, 0f, MathF.Sin(a) * s);
                 // 헬기 보급(§2-9-11) — 아이템을 끈 실험에서는 보급도 끈다(비교가 오염되면 안 된다).
                 if (ItemSlots > 0)
                 {
                     // 살아 있는 탱크를 앵커로 넘긴다 — 닿을 수 있는 자리에 떨어져야 보급이다.
+                    // 팀도 같이 넘긴다 — 안 넘기면 유닛이 많은(이기는) 쪽에 상자가 몰려 우위가 증폭된다
+                    // (미러 평균을 50%→44.9% 로 끌어내린 원인, SupplyDrop.RollDrop 머리말).
                     var anchors = new List<Vec3>();
-                    foreach (var o in units) if (o.Alive) anchors.Add(new Vec3(o.X, o.Y, o.Z));
-                    res.SupplyDropped += supply.RollDrop(ref rng, MapSize, (x, z) => TankGroundProbe.GroundBelow(vol, x, z, 80f), anchors);
+                    var anchorTeams = new List<int>();
+                    foreach (var o in units) if (o.Alive) { anchors.Add(new Vec3(o.X, o.Y, o.Z)); anchorTeams.Add(o.Team); }
+                    res.SupplyDropped += supply.RollDrop(ref rng, MapSize, (x, z) => TankGroundProbe.GroundBelow(vol, x, z, 80f), anchors, anchorTeams);
                 }
             }
 
@@ -332,6 +377,8 @@ static class BattleSimVerify
                 foreach (var k in new[] { ItemKind.Shield, ItemKind.MoveUp, ItemKind.PowerUp, ItemKind.SnowFall, ItemKind.TeamEnergy, ItemKind.AddEnergy1, ItemKind.DoubleFire, ItemKind.AddEnergy2 })
                 {
                     if (!items.Has(u.Id, k)) continue;
+                    // 판별용(TANKFALL_NOHEAL=1): 회복 계열만 끈다 — 미러 편향이 회복 때문인지 가른다.
+                    if (NoHeal && (k == ItemKind.AddEnergy1 || k == ItemKind.AddEnergy2 || k == ItemKind.TeamEnergy)) continue;
                     if (k == ItemKind.AddEnergy1 && !lowHp) continue;
                     if (k == ItemKind.AddEnergy2 && !critical) continue;
                     if (k == ItemKind.Shield && items.HasShield(u.Id)) continue;
@@ -399,13 +446,17 @@ static class BattleSimVerify
                 : AiGunner.SimulatePattern(vol, u.Muzzle, plan.YawDeg, plan.PitchDeg, speed, accel, boxes, u.Id, MapSize,
                                            Spread.Pattern(u.Kind, ShellKind.Special), shot);
             var shell = AiGunner.PickShell(st, normalHits, specialHits, enemies, satImpact, satDirect);
-            bool ss = false;
+            bool ss = false, ult = false;
             if (shell == ShellKind.Special)
             {
                 if (u.Team == 0) res.SpecialUsed++;
                 st = Stats(u.Kind, shell, u.HpFrac, weather);
                 order.AddExtra(u.Id, shell, false);     // 특수탄 추가 딜레이 [추정]
-                if (u.Skill.CanSs()) { st = NiceShot.ApplySs(st); u.Skill.SpendSs(); ss = true; if (u.Team == 0) res.SsUsed++; }
+                // ⚠️ 궁극기를 먼저 본다 — SS 를 먼저 쓰면 포인트가 계속 깎여 궁극기가 영원히 안 나온다(게임 쪽과 같은 규칙).
+                if (UseUltimate && u.Skill.CanUltimate()) { st = NiceShot.ApplyUltimate(st, u.Kind); u.Skill.SpendUltimate(); ss = true; ult = true; if (u.Team == 0) res.UltUsed++; }
+                // ⚠️ 아끼지 않으면 2점에서 SS 로 다 써버려 궁극기가 **영원히 안 나온다**(NiceShot.AiSaveForUltimate 머리말).
+                else if (u.Skill.CanSs() && !(UseUltimate && NiceShot.AiSaveForUltimate(u.Skill.Points, ref rng)))
+                { st = NiceShot.ApplySs(st); u.Skill.SpendSs(); ss = true; if (u.Team == 0) res.SsUsed++; }
             }
             var fx = ShellEffects.Of(u.Kind, shell);
 
@@ -419,7 +470,7 @@ static class BattleSimVerify
             }
 
             // 3) 다탄두: 고른 탄종의 패턴대로 전부 날린다(중앙 탄 = 위 기준 탄도)
-            var pattern = Spread.Pattern(u.Kind, shell);
+            var pattern = Spread.Pattern(u.Kind, shell, ult);   // 궁극기는 연사형만 탄두가 는다(게임과 같은 규칙)
             bool anyHit = false;
             float craterEach = ((teamA.HasValue || teamB.HasValue) ? st.CraterRadius : craterRadius)
                                * (pattern.Count > 1 ? 0.65f : 1f);   // 다탄두는 발당 굴착을 줄인다 [추정] — 아니면 3배로 판다
@@ -451,7 +502,10 @@ static class BattleSimVerify
                     if (u.Team == 0) res.SatelliteShots++;
                 }
 
-                var blast = SdfDeformer.SubtractSphere(vol, new BlastRequest(impact.X, impact.Y, impact.Z, craterEach));
+                // ⚠️ 굴착 모양은 게임(BattleDemo)과 **같은 표**를 써야 한다 — 한쪽만 쓰면 이 하네스의 승률이
+                //    게임의 승률이 아니게 된다(§2-9-1 교대 순서 버그의 교훈).
+                var blast = SdfDeformer.SubtractSphere(vol,
+                    new BlastRequest(impact.X, impact.Y, impact.Z, craterEach, UseCraterShape ? CraterShape.VScaleOf(u.Kind, shell) : 1f));
                 CeilingCollapse.Apply(vol, blast);
                 // 원작: 상자를 부수면 그 안의 아이템도 사라진다(적이 못 줍게 부수는 것도 전술).
                 if (ItemSlots > 0) res.SupplyDestroyed += supply.DestroyNear(impact.X, impact.Y, impact.Z, st.BlastRadius);
@@ -786,17 +840,28 @@ static class BattleSimVerify
         //         12종 평균이 50% 에서 벗어나면 그건 탱크가 아니라 하네스가 기운 것이다.
         Console.WriteLine("");
         Console.WriteLine($"[6-2-1] 미러 게이트 — 12종 자기전, 각 {MirrorGateN}판, 매치업과 같은 교차 패턴");
+        // TANKFALL_ONLY=mirror 면 여기까지만 돌고 끝낸다 — 미러를 반복 측정할 때 전체 표를 기다리지 않기 위해서다.
         {
             var kinds = TankStats.Selectable();
             float sum = 0f; int n = 0; string worstName = "-"; float worst = 50f;   // worst=50 에서 시작해야 첫 기종부터 비교된다
+            // 조합별 분해(§2-9-6 [6-2] 와 같은 판별): 스폰 교환 × 선공 4칸을 따로 세면
+            // **어느 축이 기울었는지**가 보인다. 평균만 보면 "기울었다"까지만 알고 원인을 못 짚는다.
+            var comboWin = new int[4]; var comboDec = new int[4];
             foreach (var k in kinds)
             {
                 int winA = 0, decided = 0;
                 for (uint m = 0; m < MirrorGateN; m++)
                 {
-                    var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius,
-                                     k, k, Wx, (int)((m >> 1) & 1), (m & 1) == 1, true);
-                    if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
+                    int swap = (int)((m >> 1) & 1);
+                    bool bFirst = (m & 1) == 1;
+                    int combo = swap * 2 + (bFirst ? 1 : 0);
+                    var r = RunMatch(1000 + m * 77, MirrorErr, MaxHp, 400, SuddenDeathTurn, BlastRadius,
+                                     k, k, Wx, swap, bFirst, true, null, fairItems: true);
+                    if (r.Winner >= 0)
+                    {
+                        decided++; if (r.Winner == 0) winA++;
+                        comboDec[combo]++; if (r.Winner == 0) comboWin[combo]++;
+                    }
                 }
                 float pct = decided > 0 ? winA * 100f / decided : -1f;
                 sum += pct; n++;
@@ -806,9 +871,27 @@ static class BattleSimVerify
             float mean = n > 0 ? sum / n : -1f;
             float se = 100f / MathF.Sqrt(MirrorGateN * (float)n) / 2f;
             Console.WriteLine($"    12종 평균 {mean:F1}%  (표준오차 ±{se:F1}%p)  최대 이탈 {worstName} {worst:F0}%");
+            // 조합별 A팀 승률. 스폰·선공이 대칭이라면 네 칸이 모두 50% 근처여야 한다.
+            string[] comboName = { "스폰기본·A선공", "스폰기본·B선공", "스폰교환·A선공", "스폰교환·B선공" };
+            Console.Write("    [분해] ");
+            for (int c = 0; c < 4; c++)
+                Console.Write($"{comboName[c]} {(comboDec[c] > 0 ? comboWin[c] * 100f / comboDec[c] : -1f),5:F1}%   ");
+            Console.WriteLine();
+            // 선공만 묶어 본다 — §2-9-8 에서 선공 가치가 중급 ±10%p 로 측정됐다. 그 값이 그대로 나오면 정상이다.
+            int aFirstW = comboWin[0] + comboWin[2], aFirstD = comboDec[0] + comboDec[2];
+            int bFirstW = comboWin[1] + comboWin[3], bFirstD = comboDec[1] + comboDec[3];
+            Console.WriteLine($"    [분해] A선공일 때 A승률 {(aFirstD > 0 ? aFirstW * 100f / aFirstD : -1f):F1}%   " +
+                              $"B선공일 때 A승률 {(bFirstD > 0 ? bFirstW * 100f / bFirstD : -1f):F1}%   " +
+                              $"→ 선공 가치 {(aFirstD > 0 && bFirstD > 0 ? aFirstW * 100f / aFirstD - bFirstW * 100f / bFirstD : 0f):F1}%p");
             if (MathF.Abs(mean - 50f) > 3f * se)
             { Console.WriteLine("    ❌ 미러 평균이 50% 에서 유의하게 벗어났다 — 하네스가 한쪽으로 기울어 있다"); RcFail = true; }
             else Console.WriteLine("    ✅ 미러 평균이 50% 안(3σ) — 매치업표를 탱크 비교로 읽어도 된다");
+        }
+
+        if (OnlyStage == "mirror")
+        {
+            if (RcFail) { Console.WriteLine("❌ 미러 게이트 실패"); Environment.Exit(1); }
+            Console.WriteLine("=== 미러 게이트만 실행 완료 ==="); Environment.Exit(0);
         }
 
         // [6-3] 난이도 사다리가 **진짜 사다리인가**. 지금까지 난이도는 같은 값끼리만 재서(AI vs AI 대칭)
@@ -922,7 +1005,7 @@ static class BattleSimVerify
         var spUse = new float[N];
         var turnAvg = new float[N];
         var fallAvg = new float[N];   // 네거티브 컨트롤: 0 이면 §28 보상이 또 죽어 있다는 뜻
-        var ssAvg = new float[N]; var dotAvg = new float[N]; var mineAvg = new float[N]; var satAvg = new float[N];
+        var ssAvg = new float[N]; var ultAvg = new float[N]; var dotAvg = new float[N]; var mineAvg = new float[N]; var satAvg = new float[N];
         var itemAvg = new float[N];   // 아이템 사용/판 — 네거티브 컨트롤(0 이면 아이템이 죽은 것)
         var supplyAvg = new float[N]; // 보급 줍기/판 — 네거티브 컨트롤(0 이면 헬기가 장식인 것)
         float supDropAll = 0f, supPickAll = 0f, supDestAll = 0f; int supCells = 0;
@@ -936,11 +1019,11 @@ static class BattleSimVerify
         if (only.HasValue && rows[0] < 0) { Console.WriteLine($"    ❌ {only.Value} 는 선택 가능 기종이 아니다"); return; }
         foreach (int ai in rows)
         {
-            float spSum = 0f, tSum = 0f, fSum = 0f, ssSum = 0f, dotSum = 0f, mineSum = 0f, satSum = 0f, itemSum = 0f, supSum = 0f;
+            float spSum = 0f, tSum = 0f, fSum = 0f, ssSum = 0f, ultSum = 0f, dotSum = 0f, mineSum = 0f, satSum = 0f, itemSum = 0f, supSum = 0f;
             long shotsA = 0, hitsA = 0, blastA = 0;
             for (int bi = 0; bi < N; bi++)
             {
-                int winA = 0, decided = 0, turns = 0, spec = 0, fall = 0, ssN = 0, dotN = 0, mineN = 0, satN = 0, itemN = 0, supN = 0, supDropN = 0, supDestN = 0, seekN = 0, seekBlkN = 0;
+                int winA = 0, decided = 0, turns = 0, spec = 0, fall = 0, ssN = 0, ultN = 0, dotN = 0, mineN = 0, satN = 0, itemN = 0, supN = 0, supDropN = 0, supDestN = 0, seekN = 0, seekBlkN = 0;
                 for (uint m = 0; m < perCell; m++)
                 {
                     // [6-1] 실측: B 스폰 자리가 지형상 유리(+20%p). 홀짝 판마다 자리를 바꿔 탱크 비교에서 상쇄한다.
@@ -953,21 +1036,21 @@ static class BattleSimVerify
                     var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius, kinds[ai], kinds[bi],
                                      Wx, (int)((m >> 1) & 1), (m & 1) == 1, true);
                     turns += r.Turns; spec += r.SpecialUsed; fall += r.FallDealt;
-                    ssN += r.SsUsed; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots; itemN += r.ItemsUsed; supN += r.SupplyPicked;
+                    ssN += r.SsUsed; ultN += r.UltUsed; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots; itemN += r.ItemsUsed; supN += r.SupplyPicked;
                     supDropN += r.SupplyDropped; supDestN += r.SupplyDestroyed; seekN += r.SeekTurns; seekBlkN += r.SeekBlocked;
                     shotsA += r.ShotsA; hitsA += r.HitsA; blastA += r.BlastDealtA;
                     if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
                 }
                 win[ai, bi] = decided > 0 ? winA * 100f / decided : -1f;
                 spSum += spec / (float)perCell; tSum += turns / (float)perCell; fSum += fall / (float)perCell;
-                ssSum += ssN / (float)perCell; dotSum += dotN / (float)perCell; mineSum += mineN / (float)perCell; satSum += satN / (float)perCell;
+                ssSum += ssN / (float)perCell; ultSum += ultN / (float)perCell; dotSum += dotN / (float)perCell; mineSum += mineN / (float)perCell; satSum += satN / (float)perCell;
                 itemSum += itemN / (float)perCell; supSum += supN / (float)perCell;
                 supDropAll += supDropN / (float)perCell; supPickAll += supN / (float)perCell; supDestAll += supDestN / (float)perCell; supCells++;
                 seekAll += seekN / (float)perCell; seekBlkAll += seekBlkN / (float)perCell;
             }
             spUse[ai] = spSum / N; turnAvg[ai] = tSum / N; fallAvg[ai] = fSum / N;
             hitPct[ai] = shotsA > 0 ? hitsA * 100f / shotsA : 0f; dmgPerShot[ai] = hitsA > 0 ? blastA / (float)hitsA : 0f;
-            ssAvg[ai] = ssSum / N; dotAvg[ai] = dotSum / N; mineAvg[ai] = mineSum / N; satAvg[ai] = satSum / N;
+            ssAvg[ai] = ssSum / N; ultAvg[ai] = ultSum / N; dotAvg[ai] = dotSum / N; mineAvg[ai] = mineSum / N; satAvg[ai] = satSum / N;
             itemAvg[ai] = itemSum / N; supplyAvg[ai] = supSum / N;
         }
 
@@ -994,14 +1077,14 @@ static class BattleSimVerify
         Console.WriteLine("");
         Console.WriteLine("");
         Console.WriteLine("    계열·특수탄·판길이");
-        Console.Write($"    {"탱크",-14}{"계열",-6}{"체력",5}{"사거리",7}{"폭발",6}{"굴착",6}{"직격",6}{"2번탄/판",9}{"SS/판",6}{"평균턴",7}{"명중%",6}{"피해/명중",9}{"낙하",6}{"지속",6}{"설치물",7}{"위성",5}{"아이템",7}{"보급",6}");
+        Console.Write($"    {"탱크",-14}{"계열",-6}{"체력",5}{"사거리",7}{"폭발",6}{"굴착",6}{"직격",6}{"2번탄/판",9}{"SS/판",6}{"궁극/판",8}{"평균턴",7}{"명중%",6}{"피해/명중",9}{"낙하",6}{"지속",6}{"설치물",7}{"위성",5}{"아이템",7}{"보급",6}");
         Console.WriteLine("");
         foreach (int i in rows)
         {
             var t = Stats(kinds[i], ShellKind.Normal, 1f, Wx);   // 단일 행 실험의 굴착 배율이 표에도 보이게
             // ⚠️ 특수탄/판이 0 에 가까우면 밸런스가 아니라 **선택지가 죽어 있다**는 신호다.
             string dead = spUse[i] < 0.5f ? "  ❌사장" : "";
-            Console.WriteLine($"    {t.Name,-14}{TankStats.EraName(t.Era),-6}{t.Hp,5}{t.MaxRange,6:F0}m{t.BlastRadius,5:F1}m{t.CraterRadius,5:F1}m{t.DirectDamage,6:F0}{spUse[i],9:F1}{ssAvg[i],6:F1}{turnAvg[i],7:F0}{hitPct[i],6:F0}{dmgPerShot[i],9:F0}{fallAvg[i],6:F0}{dotAvg[i],6:F0}{mineAvg[i],7:F0}{satAvg[i],5:F1}{itemAvg[i],7:F1}{supplyAvg[i],6:F1}{dead}");
+            Console.WriteLine($"    {t.Name,-14}{TankStats.EraName(t.Era),-6}{t.Hp,5}{t.MaxRange,6:F0}m{t.BlastRadius,5:F1}m{t.CraterRadius,5:F1}m{t.DirectDamage,6:F0}{spUse[i],9:F1}{ssAvg[i],6:F1}{ultAvg[i],8:F2}{turnAvg[i],7:F0}{hitPct[i],6:F0}{dmgPerShot[i],9:F0}{fallAvg[i],6:F0}{dotAvg[i],6:F0}{mineAvg[i],7:F0}{satAvg[i],5:F1}{itemAvg[i],7:F1}{supplyAvg[i],6:F1}{dead}");
         }
         if (supCells > 0)
             Console.WriteLine($"    헬기 보급(§2-9-11) 한 판 평균 — 투하 {supDropAll / supCells:F2}  획득 {supPickAll / supCells:F2}  파괴 {supDestAll / supCells:F2}" +
