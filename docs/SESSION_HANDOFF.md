@@ -54,9 +54,10 @@
   - **눈이 불·독가스를 끈다**(원작 규칙, 그동안 포세이돈 보정만 있고 절반이 빠져 있었다) — 게임·하네스 양쪽.
   - **기후 증폭벽·회오리**(§2-9-15) — 증폭벽 피해 ×1.5(원작 값), 회오리는 **닫힌 해를 두 토막으로** 이어 붙여 "빨려 올라갔다 떨어진다"를 구현(§5-4·§5-7 이 안 깨진다). 연출 포함. 하네스 열 `증폭 2.6 / 회오리 0.6`(판당). 자체검사 `-climateselftest`.
   - **Boom 모드**(§2-9-16) — 지뢰밭·지진·유성. `-boom` 으로 켠다(모드라 기본 꺼짐, 하네스는 아직 게임 전용). 자체검사 `-boomselftest`.
+  - **탱크 고르기**(§2-9-17) — 13종을 다 만들어 놓고 게임은 캐논·캐롯·레이저 셋만 쓰고 있었다. 시작 전 고르기 화면 신설, 랜덤에 슈퍼탱크(죽어 있던 탱크) 낮은 확률로 포함 [추정]. 자체검사 `-rosterselftest`(13종 전부 ✅). 탱크 표의 낡은 "미구현" 주석 4곳 정정.
 - 새 손잡이: `TANKFALL_CLIMATE=0`, `TANKFALL_SUPPLY=0`, `TANKFALL_ULT=0`, `TANKFALL_SEED=<n>`.
 - 자체검사 4종은 빌드 후 이렇게 돈다(전부 rc=0 확인):
-  `./Tankfall.exe -supplyselftest|-ultselftest|-impairselftest|-climateselftest|-boomselftest -batchmode -nographics -logFile <경로>`
+  `./Tankfall.exe -supplyselftest|-ultselftest|-impairselftest|-climateselftest|-boomselftest|-rosterselftest -batchmode -nographics -logFile <경로>`
 - 미구현 큐: **네트워크(M5)** — 오너 지시로 밸런스와 함께 뒤로 미뤘다.
 - ⚠️ **오너 지시(2026-09-16): 밸런스는 다 만든 뒤에 한다.** 미구현이 남은 동안 매치업 재측정·수치 조정에 매달리지 말 것. (포세이돈 2번탄 이동금지 2턴은 이미 구현·발동 확인됨 — 명세의 "미구현" 표기가 낡았던 것)
 - v6(선공 교차 반영) 12×12 전체표를 명세에 정식 기록할지는 선택(§2-9-6 에 요약은 반영됨).

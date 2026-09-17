@@ -146,7 +146,15 @@ namespace Tankfall.View
         readonly List<Transform> _hazardGos = new List<Transform>();
         Material _mineMat, _fireMat, _cloudMat;
         float _beamTimer;
-        TankKind[] _roster = DefaultRoster;   // -roster Cannon,Carrot,Laser 로 바꿀 수 있다(연출 확인용)
+        TankKind[] _roster = DefaultRoster;
+        bool _rosterFixed;
+        /// <summary>사람이 없는 모드(자동사격·갤러리·성능·자체검사)인가. 고르기 화면 같은 대화형 UI 는 이걸 본다.</summary>
+        bool _autoMode;               // -roster 로 지정됐으면 고르기 화면을 띄우지 않는다
+        // ── 탱크 고르기(§2-9-17) ──
+        bool _picking;
+        readonly List<TankKind> _pick = new List<TankKind>();
+        /// <summary>랜덤 뽑기에서 슈퍼탱크가 나올 확률 [추정 — 아래 주석 참조].</summary>
+        const float SuperTankChance = 0.06f;   // -roster Cannon,Carrot,Laser 로 바꿀 수 있다(연출 확인용)
         MapKind _map = MapKind.TwinHills;
         bool _forceSpecial;                    // -forcespecial: AI 가 항상 2번탄 — 위성탄·독구름 같은 연출을 확인할 때만
         Vec3 _pendingImpact;
@@ -177,11 +185,11 @@ namespace Tankfall.View
             var args = System.Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length; i++)
             {
-                if (args[i] == "-autoshot") _autoShot = true;
-                else if (args[i] == "-perf") _perf = true;
+                if (args[i] == "-autoshot") { _autoShot = true; _autoMode = true; }
+                else if (args[i] == "-perf") { _perf = true; _autoMode = true; }
                 else if (args[i] == "-timeevents") _timeEvents = true;
                 else if (args[i] == "-phasecheck") _phaseCheck = true;
-                else if (args[i] == "-gallery") _gallery = true;
+                else if (args[i] == "-gallery") { _gallery = true; _autoMode = true; }
                 else if (args[i] == "-forcespecial") _forceSpecial = true;
                 else if (args[i] == "-map" && i + 1 < args.Length)
                 {
@@ -196,12 +204,13 @@ namespace Tankfall.View
                 }
                 else if (args[i] == "-practice") _practice = true;
                 else if (args[i] == "-practiceselftest") { _practice = true; _practiceSelfTest = true; }
-                else if (args[i] == "-supplyselftest") _supplySelfTest = true;
-                else if (args[i] == "-ultselftest") _ultSelfTest = true;
-                else if (args[i] == "-impairselftest") _impairSelfTest = true;
-                else if (args[i] == "-climateselftest") _climateSelfTest = true;
+                else if (args[i] == "-supplyselftest") { _supplySelfTest = true; _autoMode = true; }
+                else if (args[i] == "-ultselftest") { _ultSelfTest = true; _autoMode = true; }
+                else if (args[i] == "-impairselftest") { _impairSelfTest = true; _autoMode = true; }
+                else if (args[i] == "-climateselftest") { _climateSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-boom") _boom = true;                     // Boom 모드(§2-9-16)
-                else if (args[i] == "-boomselftest") { _boom = true; _boomSelfTest = true; }
+                else if (args[i] == "-boomselftest") { _boom = true; _boomSelfTest = true; _autoMode = true; }
+                else if (args[i] == "-rosterselftest") { _rosterSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-difficulty" && i + 1 < args.Length)
                 {
                     int found = -1;
@@ -231,7 +240,7 @@ namespace Tankfall.View
                     foreach (var n in names)
                         if (System.Enum.TryParse<TankKind>(n.Trim(), true, out var k)) list.Add(k);
                         else Debug.LogWarning($"[Tankfall] -roster 모르는 기종 '{n}' — 무시");
-                    if (list.Count == 3) _roster = list.ToArray();
+                    if (list.Count == 3) { _roster = list.ToArray(); _rosterFixed = true; }
                     else Debug.LogWarning($"[Tankfall] -roster 는 정확히 3종이어야 한다(받은 것 {list.Count}) — 기본 로스터 사용");
                 }
             }
@@ -271,6 +280,12 @@ namespace Tankfall.View
                 _turn = 0;
             }
             RollWind();
+            // 탱크 고르기(§2-9-17) — 사람이 하는 판에서만. 자동 모드·연습장·자체검사는 건너뛴다.
+            // ⚠️ 예전엔 여기 모드를 하나하나 나열했다. `-rosterselftest` 를 새로 만들자마자 그 목록에
+            //    빼먹어서 **자체검사가 고르기 화면에 갇혀 영영 안 끝났다**(빌드는 성공, 검사는 무응답).
+            //    모드가 늘 때마다 재발할 조건이라 목록이 아니라 **플래그 하나**로 판정한다 —
+            //    사람이 없는 모드는 파싱할 때 `_autoMode` 를 켜므로 여기 손댈 일이 없다.
+            _picking = !_rosterFixed && !_autoMode && !_practice;
             _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
         }
 
@@ -409,10 +424,12 @@ namespace Tankfall.View
             if (_units.Count == 0) return;                 // Start 가 실패한 경우
             if (_gallery) { GalleryStep(); return; }
             if (_perf) { PerfStep(); return; }
+            if (_picking) { UpdateCamera(Time.deltaTime); return; }   // 고르는 동안 판은 멈춘다
             if (_supplySelfTest) { SupplySelfTestStep(); return; }
             if (_ultSelfTest) { UltSelfTestStep(); return; }
             if (_impairSelfTest) { ImpairSelfTestStep(); return; }
             if (_climateSelfTest) { ClimateSelfTestStep(); return; }
+            if (_rosterSelfTest) { RosterSelfTestStep(); return; }
             if (_boomSelfTest) { BoomSelfTestStep(); return; }
             if (_autoShot) { AutoShotStep(); return; }
             float dt = Time.deltaTime;
@@ -1640,6 +1657,118 @@ namespace Tankfall.View
             Application.Quit(fail == 0 ? 0 : 1);
         }
 
+        /// <summary>
+        /// 탱크 고르기(§2-9-17). 원작 13종을 다 만들어 놓고도 **게임에서는 캐논·캐롯·레이저 셋만**
+        /// 나오고 있었다 — 나머지 열은 매치업 하네스에서만 돌던 셈이다(선언만 있고 화면에 없으면 죽은 값이다).
+        ///
+        /// ⚠️ 슈퍼탱크: 코드 주석에 "랜덤에서만 낮은 확률로 등장"이라 적혀 있었지만 **조사로 확인되지 않았다**
+        ///    (namu.wiki 포트리스2 / 포트리스2·등장탱크 둘 다 슈퍼탱크 서술이 없다, 2026-09-17 조회).
+        ///    그래서 "고를 수는 없고 랜덤에서만 낮은 확률로 나온다"는 취급과 확률 6% 는 전부 [추정]이다.
+        ///    확실한 건 하나 — **그냥 두면 한 판도 안 나오는 죽은 탱크**라 랜덤 경로라도 열어둔다.
+        /// </summary>
+        void DrawPicker()
+        {
+            var kinds = TankStats.Selectable();
+            float w = 720f, h = 430f;
+            var r = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
+            GUI.Box(r, "");
+            GUILayout.BeginArea(new Rect(r.x + 16, r.y + 12, r.width - 32, r.height - 24));
+            var title = new GUIStyle(GUI.skin.label) { fontSize = 18, richText = true };
+            var st = new GUIStyle(GUI.skin.label) { fontSize = 13, richText = true };
+            GUILayout.Label($"<b>탱크 고르기</b>   —   {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name}", title);
+            GUILayout.Label($"<size=12>세 대를 고르세요 ({_pick.Count}/3). 같은 기종을 겹쳐 골라도 됩니다.</size>", st);
+            GUILayout.Space(6);
+
+            int col = 0;
+            GUILayout.BeginHorizontal();
+            foreach (var k in kinds)
+            {
+                var t = TankStats.Get(k);
+                var ui = Ultimate.Get(Ultimate.Of(k));
+                if (GUILayout.Button($"{t.Name}  |  {TankStats.EraName(t.Era)} · 체 {t.Hp} · 궁 {ui.Name}", GUILayout.Width(160), GUILayout.Height(46)))
+                    if (_pick.Count < 3) _pick.Add(k);
+                if (++col % 4 == 0) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); }
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Space(8);
+
+            string chosen = _pick.Count == 0 ? "<color=#999>아직 없음</color>" : "";
+            foreach (var k in _pick) chosen += TankStats.Get(k).Name + "  ";
+            GUILayout.Label($"고른 탱크: <b>{chosen}</b>", st);
+            GUILayout.Space(4);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("되돌리기", GUILayout.Width(110), GUILayout.Height(34)) && _pick.Count > 0)
+                _pick.RemoveAt(_pick.Count - 1);
+            if (GUILayout.Button("랜덤 3종", GUILayout.Width(110), GUILayout.Height(34)))
+            {
+                _pick.Clear();
+                for (int i = 0; i < 3; i++)
+                    _pick.Add(Random.value < SuperTankChance
+                        ? TankKind.SuperTank                       // 고를 수는 없고 랜덤에서만 [추정]
+                        : kinds[Random.Range(0, kinds.Length)]);
+            }
+            GUI.enabled = _pick.Count == 3;
+            if (GUILayout.Button("<b>시작</b>", GUILayout.Width(140), GUILayout.Height(34))) ConfirmPick();
+            GUI.enabled = true;
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
+        }
+
+        /// <summary>고른 대로 판을 다시 세운다. 지형·날씨는 그대로 두고 탱크만 새로 만든다.</summary>
+        void ConfirmPick()
+        {
+            _roster = _pick.ToArray();
+            foreach (var u in _units) if (u.Root != null) Destroy(u.Root.gameObject);
+            _units.Clear();
+            SpawnTeams();
+            _items.Clear();
+            if (_itemSlots > 0)
+            {
+                var roll = new List<ItemKind>();
+                foreach (var u in _units) { Items.Roll(ref _itemRng, _itemSlots, roll); _items.Bag(u.Id).AddRange(roll); }
+            }
+            _turn = 0;
+            _picking = false;
+            _phase = Phase.Move;
+            _phaseTimer = MovePhaseSec;
+            _log = $"전투 개시 — {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
+            Debug.Log($"[Tankfall] 로스터 확정 — {_roster[0]}·{_roster[1]}·{_roster[2]}");
+        }
+
+        bool _rosterSelfTest;
+
+        /// <summary>
+        /// `-rosterselftest` — **13종이 전부 실제로 판에 설 수 있는지** 확인한다(§2-9-17).
+        /// 수치표에 줄이 있는 것과 게임에 세울 수 있는 것은 다르다 — 실제로 스폰해서
+        /// 기종·체력·외형(메시)·2번탄·궁극기가 다 붙는지 본다. 하나라도 어긋나면 rc=1.
+        /// </summary>
+        void RosterSelfTestStep()
+        {
+            int fail = 0, ok = 0;
+            foreach (TankKind k in System.Enum.GetValues(typeof(TankKind)))
+            {
+                _pick.Clear();
+                _pick.Add(k); _pick.Add(k); _pick.Add(k);
+                ConfirmPick();
+                if (_units.Count != 6) { Debug.Log($"[Tankfall] ❌ {k}: 유닛이 {_units.Count}대(6대여야 한다)"); fail++; continue; }
+                var u = _units[0];
+                if (u.Kind != k) { Debug.Log($"[Tankfall] ❌ {k}: 스폰된 기종이 {u.Kind}"); fail++; continue; }
+                if (u.HpMax != TankStats.Get(k).Hp) { Debug.Log($"[Tankfall] ❌ {k}: 체력 {u.HpMax} (표 {TankStats.Get(k).Hp})"); fail++; continue; }
+                int meshes = u.Root == null ? 0 : u.Root.GetComponentsInChildren<MeshFilter>(true).Length;
+                if (meshes < 3) { Debug.Log($"[Tankfall] ❌ {k}: 외형 메시가 {meshes}개뿐이다"); fail++; continue; }
+                var sp = TankStats.For(k, ShellKind.Special, 1f, Weather.Clear);
+                if (string.IsNullOrEmpty(sp.Name)) { Debug.Log($"[Tankfall] ❌ {k}: 2번탄 이름이 비었다"); fail++; continue; }
+                int shots = Spread.Pattern(k, ShellKind.Special).Count;
+                var ui = Ultimate.Get(Ultimate.Of(k));
+                if (ui.Kind == UltimateKind.None) { Debug.Log($"[Tankfall] ❌ {k}: 궁극기가 없다"); fail++; continue; }
+                Debug.Log($"[Tankfall] 로스터 자체검사 {TankStats.Get(k).Name,-10} 체 {u.HpMax,5} · 메시 {meshes,2} · 2번탄 {sp.Name}×{shots} · 궁 {ui.Name}");
+                ok++;
+            }
+            if (fail == 0 && ok == 13) Debug.Log("[Tankfall] ✅ 원작 13종 전부 게임에 세울 수 있다(수치·외형·2번탄·궁극기)");
+            else Debug.Log($"[Tankfall] ❌ 로스터 자체검사 실패 {fail}건 (확인 {ok}/13)");
+            Application.Quit(fail == 0 && ok == 13 ? 0 : 1);
+        }
+
         void UpdateCamera(float dt)
         {
             if (Input.GetMouseButton(1))
@@ -1690,6 +1819,7 @@ namespace Tankfall.View
                 }
                 GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), _fogTex);
             }
+            if (_picking) { DrawPicker(); return; }
             if (_hudOff) return;
             var st = new GUIStyle(GUI.skin.label) { fontSize = 14, richText = true };
             GUI.Box(new Rect(8, 8, 560, 196), "");
