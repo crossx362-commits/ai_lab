@@ -105,7 +105,7 @@ namespace Tankfall.View
                 // ⚠️ 두 번 틀린 자리다. 지형 색에 가까우면 배경이 **하늘에 떠 보이고**,
                 //    안개 색에 너무 가까우면 **하늘에 묻혀 아예 안 보인다**(0.72/0.88 로 뒀다가 사라졌다).
                 //    선형 안개(220~620m)가 이 거리에서 40~75% 를 더 섞으므로 기본 색은 이 정도로 남긴다.
-                var col = Color.Lerp(theme.RockDark, theme.Fog, layer == 0 ? 0.40f : 0.55f);
+                var col = Color.Lerp(theme.RockDark, theme.Fog, layer == 0 ? 0.52f : 0.68f);   // 회색 돌덩이가 아니라 "먼 산"으로 — 안개 쪽으로 한 단 더
                 var mat = Unlit(col);
                 int n = 34 + layer * 10;
                 for (int i = 0; i < n; i++)

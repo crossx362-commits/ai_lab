@@ -1010,6 +1010,30 @@ namespace Tankfall.View
                  + (shell == ShellKind.Special ? $"  [{st.Name}]" : "") + (pattern.Count > 1 ? $" ×{pattern.Count}" : "");
         }
 
+        /// <summary>
+        /// 비행 중 탄 회전(연출, 2026-09-17). 포탄·돌은 구르고, 지뢰는 원반처럼 돌고, 바람칼은 날 축으로 돈다.
+        /// 미사일·화살·빔은 진행 방향을 지켜야 하므로 거의 안 돈다. 위치·탄도에는 아무 영향이 없다.
+        /// </summary>
+        static Quaternion ShellSpin(TankKind k, int phase = 0)
+        {
+            float t = Time.time + phase * 0.37f;
+            switch (k)
+            {
+                case TankKind.Cannon:      return Quaternion.AngleAxis(t * 420f, Vector3.right);
+                case TankKind.Catapult:    return Quaternion.AngleAxis(t * 260f, Vector3.right) * Quaternion.AngleAxis(t * 90f, Vector3.up);
+                case TankKind.Duke:        return Quaternion.AngleAxis(t * 240f, Vector3.right);
+                case TankKind.Carrot:      return Quaternion.AngleAxis(t * 200f, Vector3.forward);
+                case TankKind.MineLander:  return Quaternion.AngleAxis(t * 540f, Vector3.up);
+                case TankKind.SecWind:     return Quaternion.AngleAxis(t * 900f, Vector3.forward);
+                case TankKind.IonAttacker: return Quaternion.AngleAxis(t * 160f, Vector3.forward);
+                case TankKind.Poseidon:    return Quaternion.AngleAxis(Mathf.Sin(t * 6f) * 12f, Vector3.right);
+                case TankKind.Missile:
+                case TankKind.MultiMissile:
+                case TankKind.SuperTank:   return Quaternion.AngleAxis(t * 70f, Vector3.forward);
+                default:                   return Quaternion.identity;
+            }
+        }
+
         void FlyStep(float dt)
         {
             if (_shotPath == null || _shotPath.Count < 2) { Impact(); return; }
@@ -1021,7 +1045,7 @@ namespace Tankfall.View
             _shell.position = new Vector3(Mathf.Lerp(a.X, b.X, f), Mathf.Lerp(a.Y, b.Y, f), Mathf.Lerp(a.Z, b.Z, f));
             // 탄이 길쭉해졌으므로(미사일·레이저) 진행 방향을 봐야 한다 — 안 그러면 옆으로 누워 날아간다.
             var dir = new Vector3(b.X - a.X, b.Y - a.Y, b.Z - a.Z);
-            if (dir.sqrMagnitude > 1e-6f) _shell.rotation = Quaternion.LookRotation(dir);
+            if (dir.sqrMagnitude > 1e-6f) _shell.rotation = Quaternion.LookRotation(dir) * ShellSpin(_shooterKind);
 
 
             // 부탄: 같은 시각(_shotT)의 자기 궤적 위치. 먼저 떨어진 부탄은 숨긴다(착탄 처리는 중앙 탄 착탄 때 한꺼번에).
@@ -1032,7 +1056,7 @@ namespace Tankfall.View
                 var sa = sp[i]; var sb = sp[i + 1];
                 tr.position = new Vector3(Mathf.Lerp(sa.X, sb.X, f), Mathf.Lerp(sa.Y, sb.Y, f), Mathf.Lerp(sa.Z, sb.Z, f));
                 var sdir = new Vector3(sb.X - sa.X, sb.Y - sa.Y, sb.Z - sa.Z);
-                if (sdir.sqrMagnitude > 1e-6f) tr.rotation = Quaternion.LookRotation(sdir);
+                if (sdir.sqrMagnitude > 1e-6f) tr.rotation = Quaternion.LookRotation(sdir) * ShellSpin(_shooterKind, si + 1);
             }
         }
 

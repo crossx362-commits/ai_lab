@@ -21,7 +21,7 @@ namespace Tankfall.View
         struct Item { public Transform T; public Vector3 Pos; }
         readonly List<Item> _items = new List<Item>();
 
-        Material _trunk, _leafA, _leafB, _rock, _bush;
+        Material _trunk, _leafA, _leafB, _leafC, _rock, _rockDark, _bush, _flower;
 
         public int Count => _items.Count;
 
@@ -47,8 +47,12 @@ namespace Tankfall.View
             }
             _leafA = Mat(leafA, 0.05f);
             _leafB = Mat(leafB, 0.05f);
+            // 세 번째 잎색(노랗게 물든 개체) — 같은 초록만 200그루면 벽지가 된다. 눈이면 흰색 쪽으로.
+            _leafC = Mat(theme.Snowy ? Color.Lerp(leafB, Color.white, 0.3f) : Color.Lerp(leafB, new Color(0.85f, 0.70f, 0.25f), dry ? 0.25f : 0.45f), 0.05f);
             _rock  = Mat(theme.Snowy ? Color.Lerp(theme.Rock, Color.white, 0.45f) : theme.Rock, 0.06f);
+            _rockDark = Mat(theme.Snowy ? Color.Lerp(theme.RockDark, Color.white, 0.3f) : theme.RockDark, 0.04f);
             _bush  = Mat(Color.Lerp(theme.Mid, leafA, 0.6f), 0.03f);
+            _flower = Mat(dry ? new Color(0.95f, 0.55f, 0.35f) : new Color(0.95f, 0.45f, 0.55f), 0.1f);
 
             var rng = new Rng((uint)seed);
             int placed = 0, tries = 0;
@@ -97,48 +101,101 @@ namespace Tankfall.View
 
         Transform Tree(Vector3 p, ref Rng rng)
         {
+            // 변주(2026-09-17): 활엽수 한 종만 심었더니 화면이 막대사탕 벽지가 됐다. 같은 테마 안에서
+            // 네 형태(둥근·키 큰 포플러·옆으로 퍼진·고사목)를 섞고 잎색 셋을 돌린다. 침엽 테마도 굵기·층수를 흔든다.
             var root = new GameObject("Tree").transform;
             root.position = p;
-            float h = 3.2f + rng.Float01() * 2.6f;
+            float h = 3.0f + rng.Float01() * 3.2f;
+            float form = rng.Float01();
 
+            float tw = _theme.Tree == TreeKind.Cactus ? 0.62f : 0.34f + rng.Float01() * 0.16f;
             var trunk = Prim(PrimitiveType.Cylinder, _trunk, root);
-            trunk.localScale = new Vector3(_theme.Tree == TreeKind.Cactus ? 0.62f : 0.42f, h * 0.34f, _theme.Tree == TreeKind.Cactus ? 0.62f : 0.42f);
+            trunk.localScale = new Vector3(tw, h * 0.34f, tw);
             trunk.localPosition = new Vector3(0f, h * 0.34f, 0f);
 
             switch (_theme.Tree)
             {
                 case TreeKind.Pine:
-                    // 침엽수: 위로 갈수록 좁아지는 층. 원뿔 프리미티브가 없어 납작한 구를 쌓는다.
-                    for (int i = 0; i < 3; i++)
+                    // 침엽수: 위로 갈수록 좁아지는 층. 층수 3~5, 굵기 흔들림.
+                    int layers = 3 + (int)(rng.Float01() * 2.99f);
+                    float wide = 0.8f + rng.Float01() * 0.5f;
+                    for (int i = 0; i < layers; i++)
                     {
-                        var leaf = Prim(PrimitiveType.Sphere, i % 2 == 0 ? _leafA : _leafB, root);
-                        float s = (2.6f - i * 0.72f) * (0.9f + rng.Float01() * 0.2f);
-                        leaf.localScale = new Vector3(s, s * 0.62f, s);
-                        leaf.localPosition = new Vector3(0f, h * 0.55f + i * 0.92f, 0f);
+                        var leaf = Prim(PrimitiveType.Sphere, LeafMat(i, ref rng), root);
+                        float s = (2.8f - i * (1.9f / layers)) * wide;
+                        leaf.localScale = new Vector3(s, s * 0.55f, s);
+                        leaf.localPosition = new Vector3(0f, h * 0.5f + i * 0.85f, 0f);
                     }
                     break;
 
                 case TreeKind.Cactus:
-                    // 선인장: 기둥 + 팔 1~2개. 사막 테마(원작 The Sphinx 계열)에서 쓴다.
-                    for (int i = 0; i < 1 + (rng.Float01() < 0.6f ? 1 : 0); i++)
+                    // 선인장: 기둥 + 팔 0~3개, 꽃 가끔.
+                    int arms = (int)(rng.Float01() * 3.99f);
+                    for (int i = 0; i < arms; i++)
                     {
                         var arm = Prim(PrimitiveType.Cylinder, _trunk, root);
-                        float side = i == 0 ? 1f : -1f;
-                        arm.localScale = new Vector3(0.34f, 0.72f, 0.34f);
-                        arm.localPosition = new Vector3(side * 0.62f, h * 0.44f + rng.Float01() * 0.5f, 0f);
-                        arm.localRotation = Quaternion.Euler(0f, 0f, side * 34f);
+                        float ang = rng.Float01() * 360f;
+                        arm.localScale = new Vector3(0.32f, 0.5f + rng.Float01() * 0.5f, 0.32f);
+                        arm.localPosition = Quaternion.Euler(0f, ang, 0f) * new Vector3(0.62f, 0f, 0f) + new Vector3(0f, h * 0.36f + rng.Float01() * 0.9f, 0f);
+                        arm.localRotation = Quaternion.Euler(0f, ang, -34f);
                     }
+                    if (rng.Float01() < 0.3f) { var f = Prim(PrimitiveType.Sphere, _flower, root); f.localScale = Vector3.one * 0.4f; f.localPosition = new Vector3(0f, h * 0.7f, 0f); }
                     break;
 
                 default:
-                    // 활엽수: 둥근 덩어리 — 토이 톤에 맞는 실루엣(§9 "귀여움은 비례 + 색").
-                    int blobs = 2 + (rng.Float01() < 0.5f ? 1 : 0);
-                    for (int i = 0; i < blobs; i++)
+                    if (form < 0.12f)
                     {
-                        var leaf = Prim(PrimitiveType.Sphere, i % 2 == 0 ? _leafA : _leafB, root);
-                        float s = (2.5f - i * 0.45f) * (0.85f + rng.Float01() * 0.3f);
-                        leaf.localScale = new Vector3(s, s * 0.88f, s);
-                        leaf.localPosition = new Vector3((rng.Float01() - 0.5f) * 0.5f, h * 0.62f + i * 0.85f, (rng.Float01() - 0.5f) * 0.5f);
+                        // 고사목: 잎 없이 가지 둘. 숲에 죽은 나무가 섞이면 "살아 있는 숲"으로 읽힌다.
+                        trunk.localScale = new Vector3(tw * 0.9f, h * 0.42f, tw * 0.9f); trunk.localPosition = new Vector3(0f, h * 0.42f, 0f);
+                        for (int i = 0; i < 2; i++)
+                        {
+                            var br = Prim(PrimitiveType.Cylinder, _trunk, root);
+                            float side = i == 0 ? 1f : -1f;
+                            br.localScale = new Vector3(tw * 0.45f, h * 0.18f, tw * 0.45f);
+                            br.localPosition = new Vector3(side * h * 0.12f, h * (0.55f + i * 0.15f), 0f);
+                            br.localRotation = Quaternion.Euler(0f, 0f, side * -48f);
+                        }
+                    }
+                    else if (form < 0.40f)
+                    {
+                        // 키 큰 포플러: 좁고 긴 덩어리를 세로로 쌓는다.
+                        h *= 1.35f;
+                        trunk.localScale = new Vector3(tw * 0.9f, h * 0.30f, tw * 0.9f); trunk.localPosition = new Vector3(0f, h * 0.30f, 0f);
+                        int n = 3;
+                        for (int i = 0; i < n; i++)
+                        {
+                            var leaf = Prim(PrimitiveType.Sphere, LeafMat(i, ref rng), root);
+                            float s = (1.9f - i * 0.35f) * (0.9f + rng.Float01() * 0.2f);
+                            leaf.localScale = new Vector3(s, s * 1.5f, s);
+                            leaf.localPosition = new Vector3(0f, h * 0.5f + i * 1.15f, 0f);
+                        }
+                    }
+                    else if (form < 0.62f)
+                    {
+                        // 옆으로 퍼진 나무: 덩어리 셋이 수평으로 벌어지고 가지가 받친다.
+                        var br = Prim(PrimitiveType.Cylinder, _trunk, root);
+                        br.localScale = new Vector3(tw * 0.5f, h * 0.16f, tw * 0.5f);
+                        br.localPosition = new Vector3(h * 0.13f, h * 0.6f, 0f); br.localRotation = Quaternion.Euler(0f, 0f, -55f);
+                        for (int i = 0; i < 3; i++)
+                        {
+                            var leaf = Prim(PrimitiveType.Sphere, LeafMat(i, ref rng), root);
+                            float s = (2.2f - i * 0.3f) * (0.85f + rng.Float01() * 0.3f);
+                            float ang = i * 120f + rng.Float01() * 40f;
+                            leaf.localScale = new Vector3(s, s * 0.7f, s);
+                            leaf.localPosition = Quaternion.Euler(0f, ang, 0f) * new Vector3(s * 0.45f, 0f, 0f) + new Vector3(0f, h * 0.62f + rng.Float01() * 0.5f, 0f);
+                        }
+                    }
+                    else
+                    {
+                        // 둥근 활엽수(기본): 덩어리 2~4.
+                        int blobs = 2 + (int)(rng.Float01() * 2.99f);
+                        for (int i = 0; i < blobs; i++)
+                        {
+                            var leaf = Prim(PrimitiveType.Sphere, LeafMat(i, ref rng), root);
+                            float s = (2.5f - i * 0.4f) * (0.85f + rng.Float01() * 0.3f);
+                            leaf.localScale = new Vector3(s, s * 0.88f, s);
+                            leaf.localPosition = new Vector3((rng.Float01() - 0.5f) * 0.6f, h * 0.62f + i * 0.8f, (rng.Float01() - 0.5f) * 0.6f);
+                        }
                     }
                     break;
             }
@@ -146,18 +203,27 @@ namespace Tankfall.View
             return root;
         }
 
+        Material LeafMat(int i, ref Rng rng) { float r = rng.Float01(); return r < 0.15f ? _leafC : (i % 2 == 0 ? _leafA : _leafB); }
+
         Transform Rock(Vector3 p, ref Rng rng)
         {
+            // 바위: 큰 덩어리 + 작은 조각들(어두운 톤 섞음) + 이끼/눈 덮개 가끔. 상자 하나면 택배 상자로 보인다.
             var root = new GameObject("Rock").transform;
             root.position = p;
-            int n = 1 + (rng.Float01() < 0.6f ? 1 : 0);
+            int n = 1 + (int)(rng.Float01() * 2.99f);
             for (int i = 0; i < n; i++)
             {
-                var r = Prim(PrimitiveType.Cube, _rock, root);
-                float s = 0.9f + rng.Float01() * 1.6f;
-                r.localScale = new Vector3(s, s * (0.55f + rng.Float01() * 0.5f), s * (0.7f + rng.Float01() * 0.6f));
-                r.localPosition = new Vector3((rng.Float01() - 0.5f) * 1.4f, s * 0.3f, (rng.Float01() - 0.5f) * 1.4f);
-                r.localRotation = Quaternion.Euler(rng.Float01() * 24f - 12f, rng.Float01() * 360f, rng.Float01() * 24f - 12f);
+                var r = Prim(PrimitiveType.Cube, i > 0 && rng.Float01() < 0.5f ? _rockDark : _rock, root);
+                float s = (i == 0 ? 1.1f : 0.5f) + rng.Float01() * (i == 0 ? 1.6f : 0.7f);
+                r.localScale = new Vector3(s, s * (0.5f + rng.Float01() * 0.5f), s * (0.7f + rng.Float01() * 0.6f));
+                r.localPosition = new Vector3((rng.Float01() - 0.5f) * 1.8f, s * 0.28f, (rng.Float01() - 0.5f) * 1.8f);
+                r.localRotation = Quaternion.Euler(rng.Float01() * 30f - 15f, rng.Float01() * 360f, rng.Float01() * 30f - 15f);
+                if (i == 0 && rng.Float01() < 0.45f)
+                {
+                    var cap = Prim(PrimitiveType.Sphere, _theme.Snowy ? _leafC : _bush, root);
+                    cap.localScale = new Vector3(s * 0.8f, s * 0.25f, s * 0.7f);
+                    cap.localPosition = r.localPosition + new Vector3(0f, s * 0.42f, 0f);
+                }
             }
             return root;
         }
@@ -166,14 +232,22 @@ namespace Tankfall.View
         {
             var root = new GameObject("Bush").transform;
             root.position = p;
-            int n = 2 + (rng.Float01() < 0.5f ? 1 : 0);
+            int n = 2 + (int)(rng.Float01() * 2.99f);
             for (int i = 0; i < n; i++)
             {
-                var b = Prim(PrimitiveType.Sphere, _bush, root);
-                float s = 0.8f + rng.Float01() * 0.9f;
+                var b = Prim(PrimitiveType.Sphere, rng.Float01() < 0.2f ? _leafC : _bush, root);
+                float s = 0.7f + rng.Float01() * 1.0f;
                 b.localScale = new Vector3(s, s * 0.7f, s);
-                b.localPosition = new Vector3((rng.Float01() - 0.5f) * 1.2f, s * 0.3f, (rng.Float01() - 0.5f) * 1.2f);
+                b.localPosition = new Vector3((rng.Float01() - 0.5f) * 1.4f, s * 0.3f, (rng.Float01() - 0.5f) * 1.4f);
             }
+            // 꽃: 덤불 넷 중 하나에 작은 점 몇 개 — 색 점 하나가 풀밭을 살린다.
+            if (!_theme.Snowy && rng.Float01() < 0.25f)
+                for (int i = 0; i < 3; i++)
+                {
+                    var f = Prim(PrimitiveType.Sphere, _flower, root);
+                    f.localScale = Vector3.one * 0.22f;
+                    f.localPosition = new Vector3((rng.Float01() - 0.5f) * 1.4f, 0.75f + rng.Float01() * 0.3f, (rng.Float01() - 0.5f) * 1.4f);
+                }
             return root;
         }
 
