@@ -118,8 +118,15 @@ namespace Tankfall.Sim
         /// </summary>
         /// <param name="normal">1번탄 패턴 착탄점들(SimulatePattern).</param>
         /// <param name="special">2번탄 패턴 착탄점들. 위성탄처럼 착탄점이 따로 계산되는 탄은 null 로 두고 specialImpact 로 넘긴다.</param>
+        /// <param name="status">
+        /// **지금 판의 실제 상태 효과.** 독·화상이 이미 걸린 적에게 다시 쏘는 값을 깎는 데 쓴다.
+        /// ⚠️ **일부러 필수 인자로 뒀다.** 기본값을 주면 호출부가 안 넘겨도 컴파일이 되고, 그러면
+        ///    게임만 고쳐지고 하네스는 옛 값으로 재는 어긋남이 생긴다 — 이 프로젝트가 걸음 크기에서
+        ///    이미 한 번 당한 실패다(§2-9-11). 빈 인스턴스를 넘기는 것도 같은 결과이니 넘기지 마라.
+        /// </param>
         public static ShellKind PickShell(TankStats baseSt, IReadOnlyList<SubImpact> normal, IReadOnlyList<SubImpact> special,
-                                          IReadOnlyList<Target> enemies, Vec3? specialImpact = null, int specialDirectId = -1)
+                                          IReadOnlyList<Target> enemies, StatusEffects status,
+                                          Vec3? specialImpact = null, int specialDirectId = -1)
         {
             if (enemies == null || enemies.Count == 0 || normal == null) return ShellKind.Normal;
             var sp = baseSt.WithShell(ShellKind.Special);
@@ -159,7 +166,7 @@ namespace Tankfall.Sim
                         if (i == special.Count / 2) { spCenter = imp; haveCenter = true; }   // 부채꼴 중앙 발
                     }
             }
-            if (haveCenter) vSpecial += EffectValue(baseSt.Kind, sp, spCenter, enemies);
+            if (haveCenter) vSpecial += EffectValue(baseSt.Kind, sp, spCenter, enemies, status);
 
             // 굴착 특화 판단(발밑 끊기)은 유지 — 낙하 피해가 있으니 굴착이 곧 화력이다
             if (haveCenter && sp.CraterRadius > baseSt.CraterRadius * 1.3f)
@@ -197,22 +204,47 @@ namespace Tankfall.Sim
         ///        남은 턴이 갱신될 뿐인데, 여기서는 매번 총량을 그대로 쳐 준다.
         ///      · 포세이돈은 독 저항 50%(`StatusEffects.Poison`)인데 여기서는 안 깎는다.
         /// </summary>
-        static float EffectValue(TankKind kind, TankStats sp, Vec3 impact, IReadOnlyList<Target> enemies)
+        static float EffectValue(TankKind kind, TankStats sp, Vec3 impact, IReadOnlyList<Target> enemies,
+                                 StatusEffects status)
         {
             var fx = ShellEffects.Of(kind, ShellKind.Special);
             float near = float.MaxValue; int inBlast = 0;
+
+            // 독·화상은 **표적마다** 값이 다르다(이미 걸려 있으면 이득이 적다) — 대상별로 센다.
+            // ⚠️ `status` 가 null 이면 옛 동작(늘 총량)으로 떨어진다. 호출부가 실제 상태를 안 넘기면
+            //    게임만 고쳐지고 하네스는 옛 값으로 재는 어긋남이 생긴다 — 둘 다 같은 걸 넘겨야 한다.
+            float dotGain = 0f;
             for (int i = 0; i < enemies.Count; i++)
             {
                 float d = (enemies[i].Center - impact).Length;
                 near = MathF.Min(near, d);
-                if (d <= sp.BlastRadius) inBlast++;
+                if (d > sp.BlastRadius) continue;
+                inBlast++;
+
+                if (fx.Type == ShellEffects.EffectType.Poison)
+                    dotGain += status != null
+                        ? status.PoisonGain(enemies[i].Id, fx.Param1, fx.Param2, enemies[i].Kind)
+                        : fx.Param1 * fx.Param2;
+                else if (fx.Type == ShellEffects.EffectType.Burn)
+                    dotGain += status != null
+                        ? status.BurnGain(enemies[i].Id, fx.Param1, fx.Param2)
+                        : fx.Param1 * fx.Param2;
             }
             switch (fx.Type)
             {
+                // 지속피해 총량의 80%(적이 나가면 끊기지만 나가려면 이동을 써야 한다).
+                // ⚠️ 이제 총량이 아니라 **증분**이다 — 독·화상은 덮어쓰기라 재중독으로 얻는 게 적다
+                //    (StatusEffects.PoisonGain). 예전엔 이미 중독된 적에게도 총량을 그대로 쳐 줘서
+                //    AI 가 같은 적을 재중독시키며 턴을 버렸다.
                 case ShellEffects.EffectType.Poison:
                 case ShellEffects.EffectType.Burn:
+                    return dotGain * 0.8f;
+
+                // 독구름은 **자리에 남는 장판**(HazardField)이라 유닛 상태를 덮어쓰지 않는다 —
+                // 여러 겹 깔면 실제로 겹쳐 들어가므로 증분 할인을 하면 안 된다.
                 case ShellEffects.EffectType.PoisonCloud:
-                    return inBlast > 0 ? fx.Param1 * fx.Param2 * 0.8f * inBlast : 0f;   // 지속피해 총량의 80%(장판은 적이 나가면 끊기지만 나가려면 이동을 써야 한다)
+                    return inBlast > 0 ? fx.Param1 * fx.Param2 * 0.8f * inBlast : 0f;
+
                 case ShellEffects.EffectType.Root:
                     return inBlast > 0 ? 40f : 0f;                                        // 움직임 봉쇄 [추정 40]
                 case ShellEffects.EffectType.Mine:
@@ -241,6 +273,11 @@ namespace Tankfall.Sim
             public int Id;
             public Vec3 Center;
             public float Defense;   // 표적 방어력 — 없으면 100(원피해)
+
+            /// <summary>표적 기종. 독 저항(포세이돈 50%)을 <see cref="EffectValue"/> 가 보려면 필요하다.
+            /// ⚠️ 안 넣으면 기본값이 캐터펄트(0)라 **포세이돈 저항만 조용히 빠진다.** 호출부에서 반드시 채워라
+            /// (재중독 판정은 Id 만 쓰므로 이 값이 비어도 동작한다 — 그래서 더 눈에 안 띈다).</summary>
+            public TankKind Kind;
         }
 
         /// <summary>

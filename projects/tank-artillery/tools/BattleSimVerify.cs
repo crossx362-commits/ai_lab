@@ -330,7 +330,7 @@ static class BattleSimVerify
             hazards.Snapshot(hazBuf);
             aiFoes.Clear();
             foreach (var o in units)
-                if (o.Alive && o.Team != u.Team) aiFoes.Add(new AiGunner.Target { Id = o.Id, Center = o.Center, Defense = o.St.Defense });
+                if (o.Alive && o.Team != u.Team) aiFoes.Add(new AiGunner.Target { Id = o.Id, Kind = o.Kind, Center = o.Center, Defense = o.St.Defense });
             var mplan = AiMover.Decide(vol, u.X, u.Y, u.Z, status.CanMove(u.Id), u.St.MaxRange, MapSize,
                                        hazBuf, ItemSlots > 0 ? supply : null, aiFoes, ref rng);
             bool seeking = mplan.Why == MoveReason.Supply;
@@ -431,7 +431,7 @@ static class BattleSimVerify
             if (turnSpentOnItem) continue;
 
             var enemies = new List<AiGunner.Target>();
-            foreach (var o in units) if (o.Alive && o.Team != u.Team) enemies.Add(new AiGunner.Target { Id = o.Id, Center = o.Center, Defense = o.St.Defense });
+            foreach (var o in units) if (o.Alive && o.Team != u.Team) enemies.Add(new AiGunner.Target { Id = o.Id, Kind = o.Kind, Center = o.Center, Defense = o.St.Defense });
             if (enemies.Count == 0) break;
 
             var st = u.St;
@@ -484,7 +484,7 @@ static class BattleSimVerify
             var specialHits = satImpact.HasValue ? null
                 : AiGunner.SimulatePattern(vol, u.Muzzle, plan.YawDeg, plan.PitchDeg, speed, accel, boxes, u.Id, MapSize,
                                            Spread.Pattern(u.Kind, ShellKind.Special), shot, st.Flight, null, air);
-            var shell = AiGunner.PickShell(st, normalHits, specialHits, enemies, satImpact, satDirect);
+            var shell = AiGunner.PickShell(st, normalHits, specialHits, enemies, status, satImpact, satDirect);
             bool ss = false, ultShell = false;   // 궁극기(§49) — 2번탄을 핵급으로 키운다
             if (shell == ShellKind.Special)
             {
@@ -726,7 +726,7 @@ static class BattleSimVerify
                 if (float.IsNegativeInfinity(sg) || float.IsNegativeInfinity(tg)) continue;
                 var from = new Vec3(sx, sg + 2.4f, sz);
                 var tc = new Vec3(tx, tg + 1.2f, tz);
-                var tl = new List<AiGunner.Target> { new AiGunner.Target { Id = 9, Center = tc } };
+                var tl = new List<AiGunner.Target> { new AiGunner.Target { Id = 9, Kind = TankKind.Cannon, Center = tc } };
                 var plan = AiGunner.Decide(dvol, from, tl, new Vec3(0, 0, 0), err, ref drng, MapSize);
                 if (!plan.Valid) { misses.Add(999f); continue; }
                 var dv0 = Ballistics.VelocityFrom(plan.YawDeg, plan.PitchDeg, Ballistics.PowerToSpeed(plan.Power));

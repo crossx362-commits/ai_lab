@@ -827,7 +827,7 @@ namespace Tankfall.View
                 _hazards.Snapshot(_hazardBuf);
                 _aiFoes.Clear();
                 foreach (var o in _units)
-                    if (o.Alive && o.Team != u.Team) _aiFoes.Add(new AiGunner.Target { Id = o.Id, Center = o.Center, Defense = o.St.Defense });
+                    if (o.Alive && o.Team != u.Team) _aiFoes.Add(new AiGunner.Target { Id = o.Id, Kind = o.Kind, Center = o.Center, Defense = o.St.Defense });
                 var plan = AiMover.Decide(_vol, u.Pos.x, u.Pos.y, u.Pos.z, _status.CanMove(u.Id),
                                           u.St.MaxRange, MapSize, _hazardBuf,
                                           _itemSlots > 0 ? _supply : null, _aiFoes, ref _aiRng);
@@ -1047,7 +1047,7 @@ namespace Tankfall.View
             var enemies = new List<AiGunner.Target>();
             foreach (var o in _units)
                 if (o.Alive && o.Team != u.Team)
-                    enemies.Add(new AiGunner.Target { Id = o.Id, Center = o.Center, Defense = o.St.Defense });
+                    enemies.Add(new AiGunner.Target { Id = o.Id, Kind = o.Kind, Center = o.Center, Defense = o.St.Defense });
             if (enemies.Count == 0) { NextTurn(); return; }
 
             var from = new Vec3(u.Fire.position.x, u.Fire.position.y, u.Fire.position.z);
@@ -1098,7 +1098,7 @@ namespace Tankfall.View
             {
                 var foes = new List<AiGunner.Target>();
                 foreach (var o in _units)
-                    if (o.Alive && o.Team != u.Team) foes.Add(new AiGunner.Target { Id = o.Id, Center = o.Center, Defense = o.St.Defense });
+                    if (o.Alive && o.Team != u.Team) foes.Add(new AiGunner.Target { Id = o.Id, Kind = o.Kind, Center = o.Center, Defense = o.St.Defense });
                 Vec3? satImpact = null; int satDirect = -1;
                 if (ShellEffects.Of(u.Kind, ShellKind.Special).Type == ShellEffects.EffectType.SatelliteStrike)
                     satImpact = SatelliteStrike.Resolve(_vol, res.Impact.X, res.Impact.Z, res.Impact.Y + 60f, boxes, out satDirect);
@@ -1107,7 +1107,7 @@ namespace Tankfall.View
                 var specialHits = satImpact.HasValue ? null
                     : AiGunner.SimulatePattern(_vol, p0, worldYaw, pitch, speed, accel, boxes, u.Id, MapSize,
                                                Spread.Pattern(u.Kind, ShellKind.Special), res, baseSt.Flight, null, _air);
-                shell = AiGunner.PickShell(baseSt, normalHits, specialHits, foes, satImpact, satDirect);
+                shell = AiGunner.PickShell(baseSt, normalHits, specialHits, foes, _status, satImpact, satDirect);
                 // ⚠️ 궁극기를 먼저 보고, 못 쓰면 **아낄지 말지**를 정한다.
                 //    아끼는 단계가 없으면 2점에서 SS 로 다 써버려 궁극기가 영원히 안 나온다
                 //    (하네스에서 궁극기 ON/OFF 승률이 똑같이 나와 들통난 사고 — NiceShot.AiSaveForUltimate 머리말).

@@ -203,7 +203,7 @@ static class AiMoveVerify
         Console.WriteLine("\n[5] 사거리 확보 — 못 닿는 적에게는 붙고, 닿으면 안 붙는다");
         {
             var v = NewFlat();
-            var far = new List<AiGunner.Target> { new AiGunner.Target { Id = 9, Center = new Vec3(260f, Flat, 140f), Defense = 100f } };
+            var far = new List<AiGunner.Target> { new AiGunner.Target { Id = 9, Kind = TankKind.Cannon, Center = new Vec3(260f, Flat, 140f), Defense = 100f } };
             var rng = new Rng(5u);
             var p = AiMover.Decide(v, 40f, Flat, 140f, true, 150f, MapSize, null, null, far, ref rng);
             Test("사거리 밖 적에게 붙는다", p.Why == MoveReason.Range && p.DirX > 0.9f, $"{p.Why} dir=({p.DirX:F2},{p.DirZ:F2})");

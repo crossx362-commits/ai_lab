@@ -63,13 +63,19 @@ namespace Tankfall.Sim
             return totalDmg;
         }
 
+        /// <summary>포세이돈은 독 저항 50%. **적용(<see cref="Poison"/>)과 평가(<see cref="PoisonGain"/>)가
+        /// 같은 식을 봐야 하므로 여기 하나만 둔다** — 두 곳에 적으면 반드시 어긋난다(§2-9-1).</summary>
+        public static int PoisonAfterResist(int dmgPerTurn, TankKind targetKind)
+            => targetKind == TankKind.Poseidon ? (dmgPerTurn + 1) / 2 : dmgPerTurn;
+
         /// <summary>유닛에 독 감염. 듀크는 자신의 독 면역, 포세이돈은 반감.</summary>
         public void Poison(int id, int dmgPerTurn, int turns, TankKind targetKind)
         {
-            // 포세이돈: 독 저항 50%
-            if (targetKind == TankKind.Poseidon) dmgPerTurn = (dmgPerTurn + 1) / 2;
+            dmgPerTurn = PoisonAfterResist(dmgPerTurn, targetKind);
             if (dmgPerTurn <= 0) return;
 
+            // ⚠️ **덮어쓰기다 — 안 쌓인다.** 이미 중독된 적에게 다시 걸면 남은 턴이 갱신될 뿐이다.
+            //    AI 의 탄종 평가가 이걸 모르면 재중독을 "총량만큼 이득"으로 오판한다 → <see cref="PoisonGain"/>.
             _poison[id] = new ActiveEffect { DmgPerTurn = dmgPerTurn, TurnsLeft = turns };
         }
 
@@ -77,7 +83,34 @@ namespace Tankfall.Sim
         public void Burn(int id, int dmgPerTurn, int turns)
         {
             if (dmgPerTurn <= 0) return;
-            _burn[id] = new ActiveEffect { DmgPerTurn = dmgPerTurn, TurnsLeft = turns };
+            _burn[id] = new ActiveEffect { DmgPerTurn = dmgPerTurn, TurnsLeft = turns };   // 독과 같이 덮어쓰기
+        }
+
+        /// <summary>
+        /// 지금 이 유닛에 독을 새로 걸면 **추가로** 들어갈 총 피해.
+        ///
+        /// 덮어쓰기라 새로 거는 순간 남은 총량은 정확히 `dmg×turns` 가 된다. 따라서 이득은
+        /// **새 총량 − 지금 남은 총량**이고, 이미 더 센 독이 걸려 있으면 0 이다(더 약하게 덮어쓸 뿐이라 이득이 없다).
+        ///
+        /// ⚠️ 이 함수가 <see cref="Poison"/> 옆에 있는 이유: 평가와 적용이 **같은 규칙**을 봐야 한다.
+        ///    AiGunner 쪽에 식을 베껴 두면 저항·지속 규칙이 바뀔 때 한쪽만 고쳐져 조용히 갈린다.
+        /// </summary>
+        public int PoisonGain(int id, int dmgPerTurn, int turns, TankKind targetKind)
+        {
+            dmgPerTurn = PoisonAfterResist(dmgPerTurn, targetKind);
+            if (dmgPerTurn <= 0 || turns <= 0) return 0;
+            int after = dmgPerTurn * turns;
+            int before = _poison.TryGetValue(id, out var p) ? p.DmgPerTurn * p.TurnsLeft : 0;
+            return Math.Max(0, after - before);
+        }
+
+        /// <summary>화상판 <see cref="PoisonGain"/>. 화상은 저항이 없다.</summary>
+        public int BurnGain(int id, int dmgPerTurn, int turns)
+        {
+            if (dmgPerTurn <= 0 || turns <= 0) return 0;
+            int after = dmgPerTurn * turns;
+            int before = _burn.TryGetValue(id, out var b) ? b.DmgPerTurn * b.TurnsLeft : 0;
+            return Math.Max(0, after - before);
         }
 
         /// <summary>유닛을 이동금지 상태로. 포세이돈의 2번탄 효과.</summary>
