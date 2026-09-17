@@ -86,6 +86,12 @@ namespace Tankfall.Sim
             _rooted[id] = turns;
         }
 
+        /// <summary>이 유닛의 상태이상(독·화상·속박)을 전부 지운다. 궁극기 "정화"(§2-9-12)가 쓴다.</summary>
+        public void Cleanse(int id)
+        {
+            _poison.Remove(id); _burn.Remove(id); _rooted.Remove(id);
+        }
+
         /// <summary>유닛이 이동할 수 있는지 확인(이동금지 상태 아닌지).</summary>
         public bool CanMove(int id) => !_rooted.ContainsKey(id);
 
