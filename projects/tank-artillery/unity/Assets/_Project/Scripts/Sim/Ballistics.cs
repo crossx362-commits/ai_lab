@@ -24,6 +24,57 @@ namespace Tankfall.Sim
         public static float Dot(Vec3 a, Vec3 b) => a.X * b.X + a.Y * b.Y + a.Z * b.Z;
     }
 
+    /// <summary>
+    /// 비행 프로파일(오너 지시 2026-09-17 "미사일이 다 포물선으로 날아가지 말자").
+    ///
+    /// 두 축만 둔다. 둘 다 **결정론**이고 하나는 **닫힌 해**를 유지한다:
+    ///   · 추진(Thrust·BoostSec): 발사 방향(dir₀, 상수)으로 BoostSec 동안 Thrust 가속. 가속도가 구간별 상수라
+    ///     P(t) 는 여전히 닫힌 해다 — 추진 뒤 궤적은 "속도 s+Th·Tb 로 p₀−dir₀·½Th·Tb² 에서 쏜 포물선"과 **정확히 같다**.
+    ///     그래서 조준 역산(SolveLaunchAngles 오버로드)이 근사가 아니라 등가 포물선으로 정확히 풀린다.
+    ///   · 유도(HomingTurnDeg): 정점을 지난 뒤 사거리 안의 적 쪽으로 초당 N° 씩 꺾는다. 이 구간만 고정 스텝 적분이며
+    ///     조준은 유도 없이 푼다(유도는 맞히는 쪽으로만 돕는다).
+    /// SpeedMul 은 추진이 더한 사거리를 도로 깎아 **최대 사거리를 원래 값에 맞춘다**(= [6-0] 참가 자격·매치업 유지).
+    /// 수치는 전부 [추정] — 원작은 2D 포물선뿐이라 근거가 없다. 매치업으로 조정하라.
+    /// </summary>
+    public struct FlightProfile
+    {
+        public float Thrust;          // m/s², 발사 방향
+        public float BoostSec;        // 추진 시간
+        public float HomingTurnDeg;   // 초당 선회각(0=유도 없음)
+        public float HomingRange;     // 유도 표적 탐색 반경
+        public float SpeedMul;        // 초기속도 배율(0 이면 1)
+
+        public bool HasThrust => Thrust > 0f && BoostSec > 0f;
+        public bool HasHoming => HomingTurnDeg > 0f;
+        public float Mul => SpeedMul <= 0f ? 1f : SpeedMul;
+
+        /// <summary>추진이 더하는 등가 속도만큼 초기속도를 깎아, 최대 파워 총속도를 원래 최대와 같게 맞춘다.</summary>
+        static FlightProfile Boost(float thrust, float boostSec, float maxSpeed, float homing = 0f)
+        {
+            float add = thrust * boostSec;
+            return new FlightProfile { Thrust = thrust, BoostSec = boostSec, HomingTurnDeg = homing, HomingRange = 70f,
+                                       SpeedMul = MathF.Max(0.3f, 1f - add / maxSpeed) };
+        }
+
+        public static FlightProfile Of(TankKind kind, ShellKind shell, float powerScale)
+        {
+            float vmax = Ballistics.VelocityMax * powerScale;
+            bool sp = shell == ShellKind.Special;
+            switch (kind)
+            {
+                // ⚠️ 추진(Thrust·Boost)은 **탄종과 무관**하게 같다. AI 는 1번탄 궤적을 보고 탄종을 고르므로(§8 "탄도가 같으니
+                //    조준을 다시 풀 필요가 없다") 2번탄이 다른 추진을 가지면 고른 근거가 거짓이 된다. 2번탄은 유도만 얹는다.
+                case TankKind.Missile:      return Boost(22f, 1.2f, vmax, sp ? 55f : 0f);     // 로켓: 직진 후 낙하 · 2번 유도탄
+                case TankKind.MultiMissile: return Boost(12f, 0.8f, vmax);
+                case TankKind.SuperTank:    return Boost(26f, 1.1f, vmax, sp ? 75f : 0f);     // "핫도그" 강추진 · 9연 유도
+                case TankKind.Laser:        return Boost(34f, 0.7f, vmax);                                          // 빔: 앞부분이 거의 직선
+                case TankKind.SecWind:      return Boost(14f, 0.7f, vmax);
+                case TankKind.CrossBow:     return Boost(9f, 0.5f, vmax);                                           // 볼트: 처음만 곧게
+                default:                    return default;                                                          // 포탄·돌·물·지뢰·결정: 순수 포물선
+            }
+        }
+    }
+
     public static class Ballistics
     {
         // --- §5-1 확정 상수 ---
@@ -53,6 +104,48 @@ namespace Tankfall.Sim
         /// <summary>닫힌 해. 서버·AI·프리뷰·리플레이·킬캠이 전부 이 함수를 쓴다.</summary>
         public static Vec3 PositionAt(Vec3 p0, Vec3 v0, Vec3 accel, float t)
             => p0 + v0 * t + accel * (0.5f * t * t);
+
+        /// <summary>프로파일 포함 닫힌 해. 추진 구간은 dir₀ 방향 등가속, 그 뒤는 추진이 준 속도로 포물선.</summary>
+        public static Vec3 PositionAt(Vec3 p0, Vec3 v0, Vec3 accel, float t, in FlightProfile fp)
+        {
+            if (!fp.HasThrust) return PositionAt(p0, v0, accel, t);
+            Vec3 dir = v0.Normalized;
+            float tb = MathF.Min(t, fp.BoostSec);
+            float boost = 0.5f * fp.Thrust * tb * tb + fp.Thrust * fp.BoostSec * MathF.Max(0f, t - fp.BoostSec);
+            return p0 + v0 * t + dir * boost + accel * (0.5f * t * t);
+        }
+
+        /// <summary>프로파일 포함 속도(유도 구간 진입 시 초기값으로 쓴다).</summary>
+        public static Vec3 VelocityAt(Vec3 v0, Vec3 accel, float t, in FlightProfile fp)
+        {
+            Vec3 v = v0 + accel * t;
+            if (fp.HasThrust) v = v + v0.Normalized * (fp.Thrust * MathF.Min(t, fp.BoostSec));
+            return v;
+        }
+
+        /// <summary>
+        /// 프로파일을 아는 조준 역산. 추진은 **등가 포물선**(속도 s+Th·Tb, 원점 p₀−dir₀·½Th·Tb²)으로 정확히 바뀌는데
+        /// dir₀ 가 해에 의존하므로 4회 고정점 반복한다(방향 변화가 작아 바로 수렴). 유도는 조준에 안 넣는다.
+        /// </summary>
+        public static bool SolveLaunchAngles(Vec3 from, Vec3 to, float speed, Vec3 accel, in FlightProfile fp,
+                                             out AimSolution low, out AimSolution high)
+        {
+            if (!fp.HasThrust) return SolveLaunchAngles(from, to, speed, accel, out low, out high);
+            float add = fp.Thrust * fp.BoostSec;
+            float shift = 0.5f * fp.Thrust * fp.BoostSec * fp.BoostSec;
+            low = default; high = default;
+            Vec3 dirLo = (to - from).Normalized, dirHi = dirLo;
+            for (int i = 0; i < 4; i++)
+            {
+                bool okLo = SolveLaunchAngles(from - dirLo * shift, to, speed + add, accel, out var lo, out _);
+                bool okHi = SolveLaunchAngles(from - dirHi * shift, to, speed + add, accel, out _, out var hi);
+                if (!okLo || !okHi) return false;
+                low = lo; high = hi;
+                dirLo = VelocityFrom(lo.YawDeg, lo.PitchDeg, 1f);
+                dirHi = VelocityFrom(hi.YawDeg, hi.PitchDeg, 1f);
+            }
+            return true;
+        }
 
         /// <summary>야우/피치(도) + 속도 → 초기 속도 벡터. 유니티 좌표계(+Z 전방, +Y 위).</summary>
         public static Vec3 VelocityFrom(float yawDeg, float pitchDeg, float speed)

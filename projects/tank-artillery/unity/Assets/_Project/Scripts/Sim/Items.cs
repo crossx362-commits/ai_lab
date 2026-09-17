@@ -52,6 +52,8 @@ namespace Tankfall.Sim
         public const int MoveUpTurns = 5;         // 이동증가 — 원작 5턴
         public const float MoveUpScale = 2.0f;    // 원작 "최대 이동 거리의 2배"
 
+
+
         static readonly ItemInfo[] Table =
         {
             new ItemInfo { Kind = ItemKind.AddEnergy1,     Name = "에너지1",   ConsumesTurn = false, AppliesToShot = false, Desc = "체력 20% 회복" },
@@ -80,11 +82,18 @@ namespace Tankfall.Sim
         }
 
         /// <summary>판 시작 슬롯 채우기 [추정 — 기획서에 획득 규칙 없음]. 같은 아이템이 겹쳐도 된다(원작도 여러 개 산다).</summary>
+        /// <summary>
+        /// 판 시작 아이템 뽑기.
+        /// </summary>
         public static void Roll(ref Rng rng, int slots, List<ItemKind> into)
         {
             into.Clear();
             for (int i = 0; i < slots; i++) into.Add(Table[Math.Min((int)(rng.Float01() * Table.Length), Table.Length - 1)].Kind);
         }
+
+        /// <summary>보급 상자용 뽑기.</summary>
+        public static ItemKind RollSupply(ref Rng rng)
+            => Table[Math.Min((int)(rng.Float01() * Table.Length), Table.Length - 1)].Kind;
     }
 
     /// <summary>

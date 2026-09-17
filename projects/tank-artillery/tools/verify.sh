@@ -7,6 +7,7 @@
 #   ./tools/verify.sh battle   AI 자동 대전(명중률·한 판 길이)
 #   ./tools/verify.sh compile  컴파일만 (유니티 Play 가능 여부)
 #   ./tools/verify.sh turn|shell|nice   원작 시스템 라이브러리 단위 검증
+#   ./tools/verify.sh guide    미사일 초기 유도·자세 제어 단계
 #
 # 상수를 바꾸면 반드시 이걸 돌려라. 특히 CeilingCollapse.MinThickness,
 # TankGroundProbe.StepHeight/WalkStep 은 바꾸면 탱크가 갖힌다(명세 §7-6).
@@ -145,6 +146,7 @@ case "${1:-all}" in
   shell)   run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs ;;
   nice)    run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs ;;
   map)     run_console MapVerify          $SIM/*.cs tools/MapVerify.cs ;;
+  guide)   run_console GuidanceVerify     $SIM/*.cs tools/GuidanceVerify.cs ;;
   all)
     compile_check; manifest_check; echo
     run_console SdfVerify      $SIM/*.cs tools/SdfVerify.cs; echo
@@ -154,8 +156,9 @@ case "${1:-all}" in
     run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs; echo
     run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs; echo
     run_console MapVerify          $SIM/*.cs tools/MapVerify.cs; echo
+    run_console GuidanceVerify     $SIM/*.cs tools/GuidanceVerify.cs; echo
     run_console BattleSimVerify  $SIM/*.cs tools/BattleSimVerify.cs ;;
-  *) echo "사용: $0 [all|sdf|play|ball|battle|turn|shell|nice|map|compile]"; exit 2 ;;
+  *) echo "사용: $0 [all|sdf|play|ball|battle|turn|shell|nice|map|guide|compile]"; exit 2 ;;
 esac
 
 echo

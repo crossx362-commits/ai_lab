@@ -37,16 +37,63 @@ namespace Tankfall.Sim
         public static ShotResult Simulate(SdfVolume vol, Vec3 p0, Vec3 v0, Vec3 accel,
                                           IReadOnlyList<TankHitbox> tanks, int shooterId,
                                           float mapSize)
+            => Simulate(vol, p0, v0, accel, tanks, shooterId, mapSize, default, null);
+
+        /// <summary>
+        /// 프로파일(추진·유도) 포함. 유도는 **정점을 지난 뒤** homingOk 인 탱크 중 HomingRange 안·전방의 가장 가까운 것을 향해
+        /// 초당 HomingTurnDeg 만큼 속도를 꺾는다(고정 스텝이라 결정론). 표적이 없으면 프로파일 궤적 그대로.
+        /// </summary>
+        public static ShotResult Simulate(SdfVolume vol, Vec3 p0, Vec3 v0, Vec3 accel,
+                                          IReadOnlyList<TankHitbox> tanks, int shooterId,
+                                          float mapSize, FlightProfile fp, Func<int, bool> homingOk)
         {
             var path = new List<Vec3>(256) { p0 };
             var res = new ShotResult { DirectHitTankId = -1, Path = path };
 
             Vec3 prev = p0;
             float prevSdf = vol.SampleWorld(p0.X, p0.Y, p0.Z);
+            bool homing = false; Vec3 hv = default; int homeTarget = -1;
 
             for (float t = Ballistics.SimStep; t <= Ballistics.MaxFlightSec; t += Ballistics.SimStep)
             {
-                Vec3 cur = Ballistics.PositionAt(p0, v0, accel, t);
+                Vec3 cur;
+                if (!homing)
+                {
+                    cur = Ballistics.PositionAt(p0, v0, accel, t, fp);
+                    if (fp.HasHoming && tanks != null && Ballistics.VelocityAt(v0, accel, t, fp).Y < 0f)
+                    {
+                        float best = fp.HomingRange * fp.HomingRange;
+                        Vec3 fwd = (cur - prev).Normalized;
+                        for (int i = 0; i < tanks.Count; i++)
+                        {
+                            var tk = tanks[i];
+                            if (tk.Id == shooterId || (homingOk != null && !homingOk(tk.Id))) continue;
+                            Vec3 d = tk.Center - cur;
+                            if (Vec3.Dot(d, fwd) <= 0f) continue;                 // 뒤에 있는 건 못 쫓는다
+                            float d2 = d.LengthSq;
+                            if (d2 < best) { best = d2; homeTarget = i; }
+                        }
+                        if (homeTarget >= 0) { homing = true; hv = Ballistics.VelocityAt(v0, accel, t, fp); }
+                    }
+                }
+                else
+                {
+                    float dt = Ballistics.SimStep;
+                    Vec3 want = (tanks[homeTarget].Center - prev).Normalized;
+                    float spd = hv.Length; Vec3 dir = spd > 1e-6f ? hv * (1f / spd) : want;
+                    float maxRad = fp.HomingTurnDeg * (MathF.PI / 180f) * dt;
+                    float c = MathF.Max(-1f, MathF.Min(1f, Vec3.Dot(dir, want)));
+                    float ang = MathF.Acos(c);
+                    if (ang > maxRad && ang > 1e-4f)
+                    {
+                        // dir 을 want 쪽으로 maxRad 만큼 회전(두 벡터 평면 안에서)
+                        Vec3 perp = (want - dir * c).Normalized;
+                        dir = dir * MathF.Cos(maxRad) + perp * MathF.Sin(maxRad);
+                    }
+                    else dir = want;
+                    hv = dir * spd + accel * dt;
+                    cur = prev + hv * dt;
+                }
 
                 // --- 탱크 직격 ---
                 if (tanks != null)

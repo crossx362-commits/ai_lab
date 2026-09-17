@@ -101,6 +101,41 @@ static class BallisticsVerify
             Console.WriteLine("    ※ 정답이 작고 ±5°가 크게 빗나가야 정상");
         }
 
+        Console.WriteLine("\n[3-1] ★ 추진 프로파일 조준 역산 — 등가 포물선이 정확하면 오차가 순수 포물선과 같아야 한다");
+        {
+            var v = Vol(Flat);
+            var from = new Vec3(100f, 12f, 20f);
+            bool allOk = true;
+            foreach (var kind in new[] { TankKind.Missile, TankKind.SuperTank, TankKind.Laser, TankKind.CrossBow })
+            {
+                var st = TankStats.For(kind, ShellKind.Normal);
+                var acc = st.AccelWith(3f, 0f);
+                var fp = st.Flight;
+                // 네거티브 컨트롤: 프로파일을 **무시하고** 풀면 크게 빗나가야 한다(추진이 실제로 궤적을 바꾼다는 증거)
+                float worstNaive = 0f, worstProfile = 0f;
+                foreach (float dist in new[] { 80f, 120f, 160f })
+                {
+                    // ⚠️ 표적은 **지면 높이(Flat=10)** 에 둔다. 발사점 높이(12)에 두면 탄은 2m 아래 지면에 먼저 닿아
+                    //    저각 해일수록 수 m 더 나간 자리에 떨어진다 — 그건 역산 오차가 아니라 표적 정의 오류다(처음 그렇게 10m 가 나왔다).
+                    var to = new Vec3(100f, 10.05f, 20f + dist);
+                    float sp = st.SpeedAt(0.85f);
+                    if (Ballistics.SolveLaunchAngles(from, to, sp, acc, out var nlo, out _))
+                    {
+                        var r = ProjectileSimulator.Simulate(v, from, Ballistics.VelocityFrom(nlo.YawDeg, nlo.PitchDeg, sp), acc, null, -1, MapSize, fp, null);
+                        if (r.Hit) worstNaive = MathF.Max(worstNaive, (r.Impact - to).Length);
+                    }
+                    if (!Ballistics.SolveLaunchAngles(from, to, sp, acc, fp, out var lo, out _)) { Console.WriteLine($"    {st.Name} {dist}m: 해 없음"); allOk = false; continue; }
+                    var rp = ProjectileSimulator.Simulate(v, from, Ballistics.VelocityFrom(lo.YawDeg, lo.PitchDeg, sp), acc, null, -1, MapSize, fp, null);
+                    float miss = rp.Hit ? (rp.Impact - to).Length : 999f;
+                    worstProfile = MathF.Max(worstProfile, miss);
+                }
+                bool ok = worstProfile < 2.5f && worstNaive > worstProfile + 3f;
+                allOk &= ok;
+                Console.WriteLine($"    {(ok ? "✅" : "❌")} {st.Name,-8} 추진 {fp.Thrust:F0}m/s²×{fp.BoostSec:F1}s  프로파일 역산 오차 {worstProfile,5:F1}m   (무시하면 {worstNaive,5:F1}m)");
+            }
+            if (!allOk) { Console.WriteLine("    ❌ 추진 프로파일 역산 실패"); Environment.Exit(1); }
+        }
+
         Console.WriteLine("\n[4] 바람 편차 — 파워 70(사거리 ~172m). 파워 100 은 맵 밖이라 쟀 수 없다");
         {
             var v = Vol(Flat);

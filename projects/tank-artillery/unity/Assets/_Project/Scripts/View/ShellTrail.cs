@@ -92,7 +92,8 @@ namespace Tankfall.View
                 case TankKind.Poseidon:     s.Smoke = true; s.Flame2 = new Color(0.85f, 0.93f, 1f, 0.3f); break;
                 case TankKind.CrossBow:
                 case TankKind.MineLander:   break;                                               // 가볍게 — 원작대로 거의 무연
-                default:                    s.Smoke = true; s.Flame2 = new Color(0.7f, 0.68f, 0.66f, 0.35f); break;   // 캐논·캐터펄트·캐롯
+                case TankKind.Cannon:       s.Smoke = true; s.Sparks = true; s.Flame2 = new Color(0.7f, 0.68f, 0.66f, 0.35f); break;   // 폭탄 심지 불똥
+                default:                    s.Smoke = true; s.Flame2 = new Color(0.7f, 0.68f, 0.66f, 0.35f); break;   // 캐터펄트·캐롯
             }
 
             // 2번탄은 조금 더 진하게, 궁극기는 확실히 굵고 길게 — 무엇이 오는지 거리에서도 읽혀야 한다.

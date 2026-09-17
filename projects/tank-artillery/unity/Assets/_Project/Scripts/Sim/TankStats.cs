@@ -97,6 +97,9 @@ namespace Tankfall.Sim
         public string SpecialName;
         public float SpBlast, SpCrater, SpBase, SpDirect;
 
+        /// <summary>비행 프로파일(추진·유도). For() 가 탄종에 맞춰 채운다 — Table 행에는 없다(기본 = 순수 포물선).</summary>
+        public FlightProfile Flight;
+
         // (구) SpecialAmmo·SpecialUnlockRound 는 원작에 없는 내 발명이라 제거(§2-9). 2번탄 무한, 제한은 SS(NiceShot).
 
         // ── 로스터 표 ────────────────────────────────────────────────────────────
@@ -251,7 +254,15 @@ namespace Tankfall.Sim
         /// </summary>
         public static TankStats For(TankKind k, ShellKind shell = ShellKind.Normal,
                                     float hpFrac = 1f, Weather weather = Weather.Clear)
-            => Get(k).WithShell(shell).WithCondition(hpFrac, weather);
+            => Get(k).WithShell(shell).WithCondition(hpFrac, weather).WithFlight(shell);
+
+        /// <summary>탄종별 비행 프로파일을 끼운다. AI·시뮬·뷰·하네스가 전부 st.Flight 를 보므로 경로가 하나다.</summary>
+        public TankStats WithFlight(ShellKind shell)
+        {
+            var s = this;
+            s.Flight = FlightProfile.Of(Kind, shell, PowerScale);
+            return s;
+        }
 
         /// <summary>
         /// 특수탄을 끼운 상태의 수치. **TankStats 를 변형해 돌려주므로 하류(AI·시뮬·뷰)가 그대로 동작한다** —
@@ -305,7 +316,7 @@ namespace Tankfall.Sim
         }
 
         /// <summary>이 탱크의 파워→초기속도.</summary>
-        public float SpeedAt(float power01) => Ballistics.PowerToSpeed(power01) * PowerScale;
+        public float SpeedAt(float power01) => Ballistics.PowerToSpeed(power01) * PowerScale * Flight.Mul;   // 추진 탄은 초기속도를 깎는다(FlightProfile.SpeedMul)
 
         /// <summary>이 탱크의 가속도(중력 배율 반영 + 바람).</summary>
         public Vec3 AccelWith(float windX, float windZ)

@@ -73,6 +73,7 @@ namespace Tankfall.View
             public Transform Root, Turret, Barrel, Fire;
             public float Heading, TurretYaw, BarrelPitch = 45f, Gauge = MoveGaugeMax;
             public bool Alive => Hp > 0;
+            public float Jolt;         // 피격 흔들림 잔량(연출) — GroundUnit 이 줄인다
             public Vector3 Pos => Root.position;
             public Vec3 Center => new Vec3(Root.position.x, Root.position.y + 1.2f, Root.position.z);
         }
@@ -80,7 +81,18 @@ namespace Tankfall.View
         /// <summary>격파 — 탱크를 숨기고 그 자리에 화구·연기 기둥(ParticleFx.Death). 죽음 처리는 전부 여기로 — 흩어져 있으면 연출이 빠진다.</summary>
         void KillUnit(Unit u)
         {
-            if (u.Root.gameObject.activeSelf) EnsureFx().Death(u.Root.position, TankShape.BodyColor(u.Kind));
+            if (u.Root.gameObject.activeSelf)
+            {
+                EnsureFx().Death(u.Root.position, TankShape.BodyColor(u.Kind));
+                // 포탑이 통째로 튀어 오른다(재미요소, 연출 전용). 원본은 숨기고 복제본만 날린다 — 판정용 계층은 건드리지 않는다.
+                if (u.Turret != null)
+                {
+                    var pop = Instantiate(u.Turret.gameObject, u.Turret.position, u.Turret.rotation);
+                    pop.name = "TurretWreck";
+                    pop.AddComponent<WreckPiece>().Launch(new Vector3(Random.Range(-3f, 3f), Random.Range(11f, 16f), Random.Range(-3f, 3f)),
+                                                          new Vector3(Random.Range(-240f, 240f), Random.Range(-120f, 120f), Random.Range(-240f, 240f)), 4.5f);
+                }
+            }
             u.Root.gameObject.SetActive(false);
         }
 
@@ -96,6 +108,20 @@ namespace Tankfall.View
             var fx = EnsureFx();
             foreach (var u in _units)
                 fx.SetUnitStatus(u.Id, u.Root, u.Alive && _status.HasDot(u.Id), u.Alive && !_status.CanMove(u.Id));
+        }
+
+        bool _headless;              // 자동 검증 모드 — 슬로모 같은 시간 연출은 끈다(프레임 수로 도는 하네스를 흔들지 않기 위해)
+        float _slowUntil = -1f;      // 직격·격파 슬로모 종료 시각(unscaled)
+
+        /// <summary>
+        /// 재미요소(오너 지시 2026-09-17): 직격·격파 순간 0.45초 슬로모. 규칙이 아니라 **연출**이다 —
+        /// Time.timeScale 만 낮추므로 탄도·피해·턴은 그대로다. 자동 검증 모드에서는 안 켠다.
+        /// </summary>
+        void HitStop(float scale, float sec)
+        {
+            if (_headless) return;
+            Time.timeScale = scale;
+            _slowUntil = Time.unscaledTime + sec;
         }
 
         SdfVolume _vol;
@@ -128,6 +154,15 @@ namespace Tankfall.View
         TankKind _shellVisualKind = (TankKind)(-1);   // 지금 만들어 둔 탄 메시가 어느 기종 것인가
         ShellKind _shellVisualShell;
         ShellTrail.Style _trailStyle;                 // 지금 날아가는 탄의 자취 스타일
+        GuidanceProfile _guide;                       // 지금 날아가는 탄의 초기 유도·자세 제어 단계(없으면 default)
+
+        /// <summary>
+        /// 탄 비주얼 배율. 1.5 (2026-09-17, 오너 지시 "미사일 크기 1.5배 크게").
+        /// 150m 교전에서 탄이 작아 **무엇이 날아오는지** 보이지 않았다 — 모양·색·자취로 기종을 가르기로 했는데
+        /// 정작 알갱이가 작으면 그 세 채널이 전부 무의미해진다.
+        /// ⚠️ 연출 전용이다. 명중 판정은 `TankRadius`·SDF 레이마칭이 하므로 여기를 키워도 탄도·피해는 안 변한다.
+        /// </summary>
+        const float ShellScale = 1.5f;
         Vector2 _wind;                   // 수평 방향 × 세기
 
         /// <summary>
@@ -298,6 +333,7 @@ namespace Tankfall.View
             // ⚠️ 자동 검증 모드는 타이틀을 거치지 않는다 — 거치면 하네스가 메뉴에서 조용히 멈춘다(BattleScreens.cs 머리말).
             //    사람이 켠 경우에만 타이틀로 시작한다.
             bool headless = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _practice || _uiSelfTest || _shellCheck || _shellGallery;
+            _headless = headless;
             _screen = headless ? GameScreen.Battle : GameScreen.Title;
             Sfx.Muted = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _uiSelfTest || Application.isBatchMode;
         }
@@ -597,6 +633,7 @@ namespace Tankfall.View
 
             float dt = Time.deltaTime;
             TickPopups(dt);
+            if (_slowUntil >= 0f && Time.unscaledTime >= _slowUntil) { Time.timeScale = 1f; _slowUntil = -1f; }
 
             // 타이틀·선택·일시정지·결과 화면에서는 전투 로직이 아예 안 돈다.
             if (_screen != GameScreen.Battle) { ScreenUpdate(); return; }
@@ -831,6 +868,13 @@ namespace Tankfall.View
             var want = Quaternion.LookRotation(
                 Vector3.ProjectOnPlane(Quaternion.Euler(0, u.Heading, 0) * Vector3.forward, n), n);
             u.Root.rotation = dt > 0f ? Quaternion.Slerp(u.Root.rotation, want, 1f - Mathf.Exp(-12f * dt)) : want;
+            // 피격 흔들림(연출): 차체가 튀어 오르며 좌우로 흔들리다 잦아든다. 위치·판정(Center)에는 안 들어간다 — 곧 GroundUnit 이 되돌린다.
+            if (u.Jolt > 0f)
+            {
+                float k = u.Jolt; u.Jolt = Mathf.Max(0f, u.Jolt - dt * 1.8f);
+                u.Root.rotation *= Quaternion.Euler(Mathf.Sin(Time.time * 38f) * 10f * k, 0f, Mathf.Cos(Time.time * 29f) * 8f * k);
+                u.Root.position += Vector3.up * (Mathf.Abs(Mathf.Sin(Time.time * 22f)) * 0.45f * k);
+            }
         }
 
         Vector3 GroundNormal(float x, float z, float y)
@@ -904,7 +948,8 @@ namespace Tankfall.View
             foreach (var o in _units) if (o.Alive) boxes.Add(new TankHitbox { Id = o.Id, Center = o.Center, Radius = TankRadius });
 
             // 1) 기준 탄도(패턴 중앙)
-            var res = ProjectileSimulator.Simulate(_vol, p0, Ballistics.VelocityFrom(worldYaw, pitch, speed), accel, boxes, u.Id, MapSize);
+            System.Func<int, bool> homingOk = id => { var x = _units.Find(o => o.Id == id); return x != null && x.Team != u.Team; };
+            var res = ProjectileSimulator.Simulate(_vol, p0, Ballistics.VelocityFrom(worldYaw, pitch, speed), accel, boxes, u.Id, MapSize, baseSt.Flight, null);   // 탄종 선택용 기준 궤적(유도 없음)
 
             // 2) 탄종. 플레이어는 FIRE 페이즈에서 골랐고, AI 는 착탄점을 본 뒤 고른다(§8) — 탄도가 같으니 조준을 다시 풀 필요가 없다.
             var shell = u.Shell;
@@ -919,10 +964,10 @@ namespace Tankfall.View
                 if (ShellEffects.Of(u.Kind, ShellKind.Special).Type == ShellEffects.EffectType.SatelliteStrike)
                     satImpact = SatelliteStrike.Resolve(_vol, res.Impact.X, res.Impact.Z, res.Impact.Y + 60f, boxes, out satDirect);
                 var normalHits = AiGunner.SimulatePattern(_vol, p0, worldYaw, pitch, speed, accel, boxes, u.Id, MapSize,
-                                                          Spread.Pattern(u.Kind, ShellKind.Normal), res);
+                                                          Spread.Pattern(u.Kind, ShellKind.Normal), res, baseSt.Flight);
                 var specialHits = satImpact.HasValue ? null
                     : AiGunner.SimulatePattern(_vol, p0, worldYaw, pitch, speed, accel, boxes, u.Id, MapSize,
-                                               Spread.Pattern(u.Kind, ShellKind.Special), res);
+                                               Spread.Pattern(u.Kind, ShellKind.Special), res, baseSt.Flight);
                 shell = AiGunner.PickShell(baseSt, normalHits, specialHits, foes, satImpact, satDirect);
                 // ⚠️ 궁극기를 먼저 보고, 못 쓰면 **아낄지 말지**를 정한다.
                 //    아끼는 단계가 없으면 2점에서 SS 로 다 써버려 궁극기가 영원히 안 나온다
@@ -949,11 +994,15 @@ namespace Tankfall.View
             var pattern = Spread.Pattern(u.Kind, shell, ult);
             _pendingShots.Clear();
             _subPaths.Clear();
+            // 유도탄(2번탄)은 기준 궤적과 달리 정점 뒤에 휘므로 중앙 탄을 **유도 포함**으로 다시 푼다(부탄도 같은 프로파일).
+            var centerRes = st.Flight.HasHoming
+                ? ProjectileSimulator.Simulate(_vol, p0, Ballistics.VelocityFrom(worldYaw, pitch, speed), accel, boxes, u.Id, MapSize, st.Flight, homingOk)
+                : res;
             foreach (var pt in pattern)
             {
                 bool center = pt.YawOffsetDeg == 0f && pt.PitchOffsetDeg == 0f;
-                var sub = pattern.Count == 1 || center ? res
-                    : ProjectileSimulator.Simulate(_vol, p0, Ballistics.VelocityFrom(worldYaw + pt.YawOffsetDeg, pitch + pt.PitchOffsetDeg, speed), accel, boxes, u.Id, MapSize);
+                var sub = pattern.Count == 1 || center ? centerRes
+                    : ProjectileSimulator.Simulate(_vol, p0, Ballistics.VelocityFrom(worldYaw + pt.YawOffsetDeg, pitch + pt.PitchOffsetDeg, speed), accel, boxes, u.Id, MapSize, st.Flight, homingOk);
                 if (sub.Hit) _pendingShots.Add((sub.Impact, sub.DirectHitTankId, pt.DamageScale));
                 if (!center && sub.Path != null && sub.Path.Count > 1) _subPaths.Add(sub.Path);
             }
@@ -962,14 +1011,16 @@ namespace Tankfall.View
                 var sg2 = new GameObject($"SubShell{_subShells.Count}");
                 sg2.AddComponent<MeshFilter>().sharedMesh = ProceduralTank.Shell(u.Kind, shell);
                 sg2.AddComponent<MeshRenderer>().sharedMaterial = MakeMat(ProceduralTank.ShellColor(u.Kind, shell), 0.4f);
-                sg2.transform.localScale = Vector3.one * 0.78f;      // 부탄은 조금 작게 — 중앙 탄이 주인공이다
+                sg2.transform.localScale = Vector3.one * (ShellScale * 0.78f);   // 부탄은 조금 작게 — 중앙 탄이 주인공이다
                 _subShells.Add(sg2.transform);
             }
             for (int si = 0; si < _subShells.Count; si++) _subShells[si].gameObject.SetActive(si < _subPaths.Count);
 
             _trailStyle = ShellTrail.Of(u.Kind, shell, ult);
-            _shotPath = res.Path; _shotT = 0f;
-            _pendingImpact = res.Impact; _pendingDirect = res.DirectHitTankId;
+            // 초기 유도·자세 제어(미사일 계열만). 발사 방향은 궤적 첫 구간에서 읽으므로 따로 들고 다닐 게 없다.
+            _guide = GuidanceProfile.Of(u.Kind, st.Flight);
+            _shotPath = centerRes.Path; _shotT = 0f;
+            _pendingImpact = centerRes.Impact; _pendingDirect = centerRes.DirectHitTankId;
 
             if (_shell == null)
             {
@@ -987,6 +1038,7 @@ namespace Tankfall.View
                 _shell.GetComponent<MeshFilter>().sharedMesh = ProceduralTank.Shell(u.Kind, shell);
                 _shell.GetComponent<MeshRenderer>().sharedMaterial =
                     MakeMat(ProceduralTank.ShellColor(u.Kind, shell), 0.4f);
+                _shell.localScale = Vector3.one * ShellScale;
                 foreach (var tr in _subShells)
                 {
                     tr.GetComponent<MeshFilter>().sharedMesh = ProceduralTank.Shell(u.Kind, shell);
@@ -1043,10 +1095,8 @@ namespace Tankfall.View
             var a = _shotPath[i]; var b = _shotPath[i + 1];
             float f = _shotT - i;
             _shell.position = new Vector3(Mathf.Lerp(a.X, b.X, f), Mathf.Lerp(a.Y, b.Y, f), Mathf.Lerp(a.Z, b.Z, f));
-            // 탄이 길쭉해졌으므로(미사일·레이저) 진행 방향을 봐야 한다 — 안 그러면 옆으로 누워 날아간다.
-            var dir = new Vector3(b.X - a.X, b.Y - a.Y, b.Z - a.Z);
-            if (dir.sqrMagnitude > 1e-6f) _shell.rotation = Quaternion.LookRotation(dir) * ShellSpin(_shooterKind);
-
+            float flight = _shotT * Ballistics.SimStep;                     // path 인덱스 → 비행 경과(초)
+            Attitude(_shell, _shotPath, i, flight, dt, 0);
 
             // 부탄: 같은 시각(_shotT)의 자기 궤적 위치. 먼저 떨어진 부탄은 숨긴다(착탄 처리는 중앙 탄 착탄 때 한꺼번에).
             for (int si = 0; si < _subPaths.Count; si++)
@@ -1055,9 +1105,37 @@ namespace Tankfall.View
                 if (i >= sp.Count - 1) { tr.gameObject.SetActive(false); continue; }
                 var sa = sp[i]; var sb = sp[i + 1];
                 tr.position = new Vector3(Mathf.Lerp(sa.X, sb.X, f), Mathf.Lerp(sa.Y, sb.Y, f), Mathf.Lerp(sa.Z, sb.Z, f));
-                var sdir = new Vector3(sb.X - sa.X, sb.Y - sa.Y, sb.Z - sa.Z);
-                if (sdir.sqrMagnitude > 1e-6f) tr.rotation = Quaternion.LookRotation(sdir) * ShellSpin(_shooterKind, si + 1);
+                Attitude(tr, sp, i, flight, dt, si + 1);
             }
+        }
+
+        /// <summary>
+        /// 탄의 **자세**. 탄이 길쭉해졌으므로(미사일·레이저) 그냥 두면 옆으로 누워 날아간다.
+        ///
+        /// 기본은 "속도 방향을 본다". 미사일 계열만 Sim/Guidance 의 초기 유도·자세 제어를 얹어
+        /// 발사 직후 **노즈를 하늘로 세웠다가**(수직 상승) 속도 방향으로 꺾어 눕는다(Pitch-over).
+        /// 그 동안 TVC·측추력기 연출이 붙는다. ⚠️ 위치는 여기서 안 건드린다 — 궤적은 이미 확정돼 있다.
+        /// </summary>
+        void Attitude(Transform tr, List<Vec3> path, int i, float t, float dt, int spinPhase)
+        {
+            var a = path[i]; var b = path[i + 1];
+            var dir = new Vector3(b.X - a.X, b.Y - a.Y, b.Z - a.Z);
+            if (dir.sqrMagnitude <= 1e-10f) return;
+            var spin = ShellSpin(_shooterKind, spinPhase);
+            if (!_guide.Has || path.Count < 2) { tr.rotation = Quaternion.LookRotation(dir) * spin; return; }
+
+            // 선회율(초당 도) — 직전 구간과의 각 변화. 유도탄이 정점 뒤 꺾을 때 날개·측추력기가 물리는 근거다.
+            float turnDeg = 0f;
+            if (i >= 1)
+            {
+                var pv = new Vector3(a.X - path[i - 1].X, a.Y - path[i - 1].Y, a.Z - path[i - 1].Z);
+                if (pv.sqrMagnitude > 1e-10f)
+                    turnDeg = Vector3.Angle(pv, dir) / Ballistics.SimStep;
+            }
+            var launch = path[1] - path[0];
+            var att = Guidance.At(t, dt, new Vec3(dir.x, dir.y, dir.z), launch, _guide, turnDeg);
+            tr.rotation = Quaternion.LookRotation(new Vector3(att.Nose.X, att.Nose.Y, att.Nose.Z)) * spin;
+            if (_fx != null) _fx.Guidance(tr, att, _trailStyle);
         }
 
         /// <summary>
@@ -1132,8 +1210,8 @@ namespace Tankfall.View
         {
             if (_fx != null)
             {
-                _fx.StopTrail(_shell);
-                foreach (var tr in _subShells) _fx.StopTrail(tr);
+                _fx.StopTrail(_shell); _fx.StopGuidance(_shell);
+                foreach (var tr in _subShells) { _fx.StopTrail(tr); _fx.StopGuidance(tr); }
             }
             if (_shell != null) _shell.gameObject.SetActive(false);
             foreach (var tr in _subShells) tr.gameObject.SetActive(false);
@@ -1163,7 +1241,7 @@ namespace Tankfall.View
                 var fx = ShellEffects.Of(_shooterKind, _shooterShell);
                 var boxes = new List<TankHitbox>();
                 foreach (var o in _units) if (o.Alive) boxes.Add(new TankHitbox { Id = o.Id, Center = o.Center, Radius = TankRadius });
-                float craterEach = _shooterStats.CraterRadius * (_pendingShots.Count > 1 ? 0.65f : 1f);   // 다탄두 발당 굴착 [추정]
+                float craterEach = CraterShape.PerShotCrater(_shooterStats.CraterRadius, _pendingShots.Count);
                 var swB = _timeEvents ? System.Diagnostics.Stopwatch.StartNew() : null;
                 string dmgLog = "";
                 var impacts = new List<Vec3>();          // 보급 상자 파괴 판정용(아래에서 쓴다)
@@ -1216,7 +1294,9 @@ namespace Tankfall.View
                         if (fx.Type == ShellEffects.EffectType.Poison) { _status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind); dmgLog += "[독]"; }
                         if (fx.Type == ShellEffects.EffectType.Root) { _status.Root(o.Id, fx.Param1); dmgLog += "[속박]"; }
                         _fx.Hit(new Vector3(o.Center.X, o.Center.Y, o.Center.Z), direct);
-                        if (!o.Alive) { KillUnit(o); dmgLog += "☠"; }
+                        o.Jolt = direct ? 1f : 0.6f;                              // 차체가 들썩인다(GroundUnit)
+                        if (!o.Alive) { KillUnit(o); dmgLog += "☠"; HitStop(0.25f, 0.6f); }
+                        else if (direct) HitStop(0.35f, 0.35f);
                     }
                     // 자리에 남는 효과
                     if (fx.Type == ShellEffects.EffectType.Burn) { _hazards.PlaceFire(impact.X, impact.Y, impact.Z, _shooterStats.BlastRadius, fx.Param1, fx.Param2); dmgLog += "  [지속불]"; }
@@ -1618,7 +1698,7 @@ namespace Tankfall.View
             {
                 float power = i / 20f;
                 float speed = st.SpeedAt(power);   // FireFrom 과 **같은 함수** — 따로 계산하면 정답이 정답이 아니게 된다
-                if (!Ballistics.SolveLaunchAngles(from, target.Center, speed, accel, out var low, out var high)) continue;
+                if (!Ballistics.SolveLaunchAngles(from, target.Center, speed, accel, st.Flight, out var low, out var high)) continue;
                 // §5-7 5단계: 두 해를 **실제로 날려보고 지형에 막히지 않는 쪽**을 택한다.
                 //   ⚠️ 이 단계를 빼면 저각 해가 언덕에 박히는데도 "정답"이라고 내놓는다
                 //      (실측: 자체검사 명중률 75% — 빠진 5발이 전부 막힌 저각 해였다).
@@ -1631,7 +1711,7 @@ namespace Tankfall.View
                     if (cand.PitchDeg < st.MinPitch || cand.PitchDeg > st.MaxPitch) continue;
                     if (!haveFallback) { haveFallback = true; fbPitch = cand.PitchDeg; fbYaw = cand.YawDeg; fbPower = power; }
                     var sim = ProjectileSimulator.Simulate(_vol, from,
-                        Ballistics.VelocityFrom(cand.YawDeg, cand.PitchDeg, speed), accel, boxes, me.Id, MapSize);
+                        Ballistics.VelocityFrom(cand.YawDeg, cand.PitchDeg, speed), accel, boxes, me.Id, MapSize, st.Flight, null);
                     var miss = sim.Impact - target.Center;
                     // 허용 오차는 **폭발 반경이 아니라 탱크 반경**이다. 폭발 반경(캐롯 7m)까지 열어두면
                     // 5m 씩 빗나간 해도 "정답"이라고 내놓는다(실측으로 걸렸다). 연습장의 정답은 표적을
@@ -2418,6 +2498,10 @@ namespace Tankfall.View
                 FlyStep(1f / 30f);              // 프레임당 path 4스텝 — 비행 3.8초가 약 110프레임
                 UpdateCamera(0.05f);
                 _flyFrame++;
+                // 초기 유도·자세 제어(§Guidance)는 **발사 0.27초 부근**이 정점이다 — 0.67초(아래)만 찍으면
+                // 이미 전환이 끝나가 "그냥 날아가는 탄" 으로 보인다. 그 단계를 확인하려면 이 한 장이 필요하다.
+                // 확인 방법: ./tools/unity_build.sh run -roster Missile,Missile,Missile
+                if (_flyFrame == 8) Shot($"11b_초기유도_{_volley + 1}");
                 if (_flyFrame == 20) Shot($"{12 + _volley * 2}_포탄비행_{_volley + 1}");
                 if (_phase != Phase.Flying)     // 이 프레임에 착탄했다
                 {

@@ -111,8 +111,8 @@ namespace Tankfall.Sim
                     }
                     float g = groundAt(x, z);
                     if (float.IsNegativeInfinity(g) || float.IsNaN(g)) continue;
-                    var all = Items.All();
-                    _crates.Add(new Crate { X = x, Y = g, Z = z, Item = all[Math.Min((int)(rng.Float01() * all.Length), all.Length - 1)] });
+                    // 보급 전용 뽑기 — 핵탄두는 **여기서만** 나온다(Items.NukeDropChance 머리말).
+                    _crates.Add(new Crate { X = x, Y = g, Z = z, Item = Items.RollSupply(ref rng) });
                     made++;
                     break;
                 }

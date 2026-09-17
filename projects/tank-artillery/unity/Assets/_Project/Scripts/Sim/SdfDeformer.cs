@@ -36,6 +36,22 @@ namespace Tankfall.Sim
     /// </summary>
     public static class CraterShape
     {
+        /// <summary>
+        /// 다탄두 **발당** 굴착 반경. 총 파낸 부피가 단발과 비슷하도록 나눈다(부피 ∝ r³ → r ÷ ∛n).
+        ///
+        /// ⚠️ 예전엔 발수와 무관하게 **0.65 고정**이었다. 4발이면 대충 맞지만 9연(멀티미사일)은
+        ///    총 파괴량이 단발의 **5.9배**가 되어, 다탄두 기종이 지형을 갈아엎고 **낙하 피해로** 이겼다
+        ///    (실측: 미사일 낙하 598 · 승률 77%, 피해/명중은 161 로 낮은데도 이긴다).
+        ///    ∛n 으로 나누면 4발 0.63 · 9발 0.48 · 12발 0.44 로, 발수가 늘수록 발당 굴착이 제대로 준다.
+        /// ⚠️ 게임과 하네스가 **이 함수 하나만** 쓴다. 한쪽에 식을 또 적으면 승률이 게임의 것이 아니게 된다.
+        /// </summary>
+        public static float PerShotCrater(float craterRadius, int shotCount)
+        {
+            if (shotCount <= 1) return craterRadius;
+            return craterRadius / MathF.Cbrt(shotCount);
+        }
+
+
         public const float Min = 0.5f, Max = 1.8f;
 
         public static float VScaleOf(TankKind kind, ShellKind shell)

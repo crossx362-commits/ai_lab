@@ -141,6 +141,10 @@ namespace Tankfall.Sim
         /// 근거는 §2-9 원작 조사다(캐논 2번탄 420 최강, 캐롯 "2번탄 지형파괴 우수",
         /// 이온 "정타만 해도 지형 완전 파괴", 레이저 3연 회전, 멀티미사일 9연, 세크윈드 체력 50% 이하 +50%).
         ///
+        /// ⚠️ **핵급 규모**로 올렸다(2026-09-17, 오너 지시 "핵폭탄은 궁극기지").
+        ///    처음엔 피해만 1.4~2.9배로 올리고 반경은 1.2~2.0 에 그쳤는데, 그러면 화면에서 "궁극기를 썼다"가
+        ///    안 보인다 — 궁극기는 **지형이 통째로 사라지는 그림**이어야 한다.
+        ///    폭발·굴착을 2.0~3.4배로 올려 한 방이 판을 뒤집게 한다. 기종별로 키우는 축은 그대로 다르다.
         /// ⚠️ 배율은 전부 [추정]이다. 승률 하네스의 `UltUsed` 와 매치업표로 조정하라 —
         ///    한 기종만 압도하면 그 기종의 축을 낮춰라(§2-9-5 처럼 단일 변수로 재라).
         /// ⚠️ 탄두 수는 여기가 아니라 `Spread.Pattern(kind, shell, ultimate:true)` 가 정한다. 두 곳을 같이 봐라.
@@ -152,51 +156,61 @@ namespace Tankfall.Sim
             {
                 // ── 화력형 ──
                 case TankKind.Cannon:        // 원작 2번탄 빨콩 420 — 전무기 최강 단발. 그 축을 끝까지 민다.
-                    u.BaseDamage *= 2.9f; u.DirectDamage *= 2.2f; u.BlastRadius *= 1.25f; u.CraterRadius *= 1.35f; break;
+                    u.BaseDamage *= 2.9f; u.DirectDamage *= 2.2f; u.BlastRadius *= 1.45f; u.CraterRadius *= 1.55f; break;
 
                 case TankKind.CrossBow:      // 관통형 — 직격에 몰아준다(빗맞으면 손해인 고위험 궁극).
-                    u.DirectDamage *= 3.2f; u.BaseDamage *= 1.6f; u.BlastRadius *= 1.15f; u.CraterRadius *= 1.25f; break;
+                    u.DirectDamage *= 3.2f; u.BaseDamage *= 1.6f; u.BlastRadius *= 1.30f; u.CraterRadius *= 1.40f; break;
 
                 // ── 광역·연사형 (탄두 수는 Spread 가 늘린다) ──
                 case TankKind.Catapult:      // 투석기 — 넓게 퍼뜨린다. 발당 피해는 조금만.
-                    u.BaseDamage *= 1.5f; u.DirectDamage *= 1.3f; u.BlastRadius *= 1.85f; u.CraterRadius *= 1.45f; break;
+                    u.BaseDamage *= 1.5f; u.DirectDamage *= 1.3f; u.BlastRadius *= 2.10f; u.CraterRadius *= 1.60f; break;
 
                 case TankKind.MultiMissile:  // 9연 → 탄막. 발당은 낮추고 수로 민다.
-                    u.BaseDamage *= 1.35f; u.DirectDamage *= 1.25f; u.BlastRadius *= 1.20f; u.CraterRadius *= 1.20f; break;
+                    u.BaseDamage *= 1.35f; u.DirectDamage *= 1.25f; u.BlastRadius *= 1.35f; u.CraterRadius *= 1.35f; break;
 
                 case TankKind.Laser:         // 3연 회전 레이저 → 관통 연사. 굴착이 깊다(CraterShape 가 세로로 판다).
-                    u.BaseDamage *= 1.45f; u.DirectDamage *= 1.9f; u.BlastRadius *= 1.15f; u.CraterRadius *= 1.75f; break;
+                    u.BaseDamage *= 1.45f; u.DirectDamage *= 1.9f; u.BlastRadius *= 1.30f; u.CraterRadius *= 1.95f; break;
 
-                case TankKind.Missile:       // 1번탄 4단 폭발 — 연쇄로 민다.
-                    u.BaseDamage *= 1.6f; u.DirectDamage *= 1.6f; u.BlastRadius *= 1.45f; u.CraterRadius *= 1.40f; break;
+                // ★ 핵탄두 — 궁극기 중 유일한 전략무기급(오너 지시 2026-09-17 "핵폭탄은 궁극기지 / 어울리는 탱크 찾아서 적용").
+                //   **미사일**을 고른 이유: 핵탄두를 실어 나르는 건 탄도미사일이다. 원작에서도 미사일은
+                //   "강한 발사력"에 1번탄이 4단 폭발인 화력형이라(§2-9), 한 방이 판을 끝내는 그림에 가장 맞는다.
+                //   (이온어태커의 위성탄도 후보였지만 그쪽은 이미 "궤도 폭격"이라는 자기 정체성이 있다.)
+                // ⚠️ 이것만 규모가 다르다 — 폭발·굴착이 3배대다. 다른 기종 궁극기까지 여기 맞춰 올리지 마라.
+                //    전부 핵급이면 "핵"이 특별하지 않다(한 번 전부 올렸다가 되돌렸다).
+                case TankKind.Missile:
+                    // ⚠️ 처음 3.2/3.0/2.6 으로 뒀더니 미사일 승률이 54% → 66% ⬆ 로 튀었다(궁극 0.66회/판).
+                    //    핵의 "한 방" 느낌은 **반경**이 만든다 — 피해를 줄이고 반경을 남겨 균형을 잡는다.
+                    u.BaseDamage *= 1.9f; u.DirectDamage *= 1.7f; u.BlastRadius *= 2.60f; u.CraterRadius *= 2.60f;
+                    u.Name = "핵탄두";
+                    return u;                    // 이름을 그대로 쓴다 — 아래 "[궁극] " 접두를 안 붙인다
 
                 // ── 굴착형 ──
                 case TankKind.Carrot:        // 원작 "2번탄 지형파괴 우수" — 지형을 갈아엎는 궁극.
-                    u.BaseDamage *= 1.5f; u.DirectDamage *= 1.4f; u.BlastRadius *= 1.40f; u.CraterRadius *= 2.30f; break;
+                    u.BaseDamage *= 1.5f; u.DirectDamage *= 1.4f; u.BlastRadius *= 1.55f; u.CraterRadius *= 2.50f; break;
 
                 case TankKind.IonAttacker:   // 원작 "정타만 해도 지형 완전 파괴" — 궤도 폭격.
-                    u.BaseDamage *= 1.8f; u.DirectDamage *= 1.7f; u.BlastRadius *= 1.50f; u.CraterRadius *= 2.10f; break;
+                    u.BaseDamage *= 1.8f; u.DirectDamage *= 1.7f; u.BlastRadius *= 1.65f; u.CraterRadius *= 2.30f; break;
 
                 // ── 지속·설치형 (장판·지뢰 지속은 ShellEffects 가 늘린다) ──
                 case TankKind.Duke:          // 독구름 — 넓게 깔아 자리를 막는다.
-                    u.BaseDamage *= 1.4f; u.DirectDamage *= 1.3f; u.BlastRadius *= 2.00f; u.CraterRadius *= 1.20f; break;
+                    u.BaseDamage *= 1.4f; u.DirectDamage *= 1.3f; u.BlastRadius *= 2.20f; u.CraterRadius *= 1.35f; break;
 
                 case TankKind.MineLander:    // 지뢰밭 — 피해보다 설치 범위.
-                    u.BaseDamage *= 1.4f; u.DirectDamage *= 1.3f; u.BlastRadius *= 1.60f; u.CraterRadius *= 1.30f; break;
+                    u.BaseDamage *= 1.4f; u.DirectDamage *= 1.3f; u.BlastRadius *= 1.75f; u.CraterRadius *= 1.45f; break;
 
                 // ── 제어형 ──
                 case TankKind.Poseidon:      // 속박(§2-9-7) — 묶어 두는 게 이 기종의 무기다.
-                    u.BaseDamage *= 1.6f; u.DirectDamage *= 1.5f; u.BlastRadius *= 1.65f; u.CraterRadius *= 1.35f; break;
+                    u.BaseDamage *= 1.6f; u.DirectDamage *= 1.5f; u.BlastRadius *= 1.80f; u.CraterRadius *= 1.50f; break;
 
                 // ── 조건부 ──
                 case TankKind.SecWind:       // 원작 "체력 50% 이하 공격 +50%" — 몰린 쪽이 뒤집는 기종.
-                    u.BaseDamage *= 2.4f; u.DirectDamage *= 1.8f; u.BlastRadius *= 1.30f; u.CraterRadius *= 1.30f; break;
+                    u.BaseDamage *= 2.4f; u.DirectDamage *= 1.8f; u.BlastRadius *= 1.45f; u.CraterRadius *= 1.45f; break;
 
                 case TankKind.SuperTank:     // 방어 125 — 9연을 유지하며 고르게.
-                    u.BaseDamage *= 1.5f; u.DirectDamage *= 1.5f; u.BlastRadius *= 1.35f; u.CraterRadius *= 1.35f; break;
+                    u.BaseDamage *= 1.5f; u.DirectDamage *= 1.5f; u.BlastRadius *= 1.50f; u.CraterRadius *= 1.50f; break;
 
                 default:                     // 기종 미지정(하위 호환)
-                    u.BaseDamage *= 2.2f; u.DirectDamage *= 2.0f; u.BlastRadius *= 1.55f; u.CraterRadius *= 1.60f; break;
+                    u.BaseDamage *= 2.2f; u.DirectDamage *= 2.0f; u.BlastRadius *= 1.60f; u.CraterRadius *= 1.70f; break;
             }
             u.Name = "[궁극] " + u.Name;
             return u;

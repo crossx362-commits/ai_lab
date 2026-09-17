@@ -40,6 +40,7 @@ namespace Tankfall.View
         readonly Dictionary<int, ParticleSystem> _poisonLoops = new Dictionary<int, ParticleSystem>();              // 유닛 독 상태
         readonly Dictionary<int, ParticleSystem> _rootLoops = new Dictionary<int, ParticleSystem>();                // 유닛 속박 상태
         readonly List<ParticleSystem> _wreckLoops = new List<ParticleSystem>();                                     // 격파 연기 기둥(시간 지나면 멈춤)
+        readonly Dictionary<Transform, float> _dacsNext = new Dictionary<Transform, float>();                       // 측추력기 펄스 간격(탄별)
         ParticleSystem _snow; Transform _snowFollow;
 
         /// <summary>폭발 흔들림. 카메라가 매 프레임 읽고 여기서 저절로 줄어든다.</summary>
@@ -690,6 +691,84 @@ namespace Tankfall.View
         // ══════════════════════════════════════════════════════
         //  발사 · 피격 · 격파 · 아이템 · 상태 · 설치물 · 위성 빔 · 눈
         // ══════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 미사일 **초기 유도·자세 제어**의 연출(오너 지시 2026-09-17). 자세 값은 전부 Sim/Guidance 가 준다 —
+        /// 여기서는 그리기만 한다(그래서 유니티 없이 verify.sh guide 로 검증된다).
+        ///
+        ///   · TVC  — 자취의 "Flame" 레이어(노즐 화염)를 **짐벌처럼 꺾는다**. 배기가 옆으로 나가는 게 눈에 보여야
+        ///            "저게 힘으로 대가리를 돌리는 중" 으로 읽힌다. 화염을 탄 축에 고정해두면 아무 일도 안 일어나 보인다.
+        ///   · DACS — 몸통 옆 소형 로켓. 짧고 센 퍼프를 **옆으로** 뿜는다. 펄스라 끊겨야 한다(연속이면 그냥 연기다).
+        ///   · INS/GPS 보정 — 중간 유도 진입 순간의 청백색 링 한 번.
+        ///
+        /// ⚠️ 매 프레임 불린다. 새 오브젝트를 만들지 말고 자취의 자식·풀만 건드려야 한다.
+        /// </summary>
+        public void Guidance(Transform shell, in Attitude att, in ShellTrail.Style st)
+        {
+            if (shell == null) return;
+
+            // ── TVC: 노즐 화염을 배기 방향으로 돌린다 ──
+            if (_trails.TryGetValue(shell, out var trail) && trail != null)
+                foreach (Transform t in trail.transform)
+                    if (t.name == "Flame")
+                    {
+                        var local = shell.InverseTransformDirection(new Vector3(att.Exhaust.X, att.Exhaust.Y, att.Exhaust.Z));
+                        // Flame 은 로컬 -z 로 뿜도록 설정돼 있다(AttachTrail) — 그 축을 배기 방향에 맞춘다.
+                        if (local.sqrMagnitude > 1e-6f)
+                            t.localRotation = Quaternion.FromToRotation(Vector3.back, local.normalized);
+                        break;
+                    }
+
+            // ── DACS: 측추력기 펄스 ──
+            if (att.Dacs > 0.35f && att.DacsDir.LengthSq > 0.5f)
+            {
+                _dacsNext.TryGetValue(shell, out float next);
+                if (Time.time >= next)
+                {
+                    _dacsNext[shell] = Time.time + 0.045f;
+                    var dir = new Vector3(att.DacsDir.X, att.DacsDir.Y, att.DacsDir.Z).normalized;
+                    var nose = new Vector3(att.Nose.X, att.Nose.Y, att.Nose.Z).normalized;
+                    var p = Rent("Dacs", true);
+                    // 분사구는 탄두 쪽(무게중심 앞) — 거기서 옆으로 밀어야 대가리가 돌아간다.
+                    p.transform.position = shell.position + nose * (ShellNoseOffset * shell.localScale.x);
+                    var m = Burst(p, 0.06f, 0.14f, 7f, 13f, st.Size * 0.30f, st.Size * 0.55f,
+                                  Color.white, new Color(0.85f, 0.92f, 1f, 0.9f), 0f,
+                                  Mathf.RoundToInt(4f + att.Dacs * 5f), 0.04f);
+                    m.simulationSpace = ParticleSystemSimulationSpace.World;
+                    Cone(p, 16f, 0.05f, Quaternion.LookRotation(dir).eulerAngles);
+                    FadeOut(p, 1f); ShrinkOverLife(p, 1f, 0.1f);
+                    p.Play(true);
+                }
+            }
+
+            // ── INS/GPS 보정: 중간 유도 진입 ──
+            if (att.InsFix)
+            {
+                var r = Rent("InsFix", true);
+                r.transform.position = shell.position;
+                var m = Burst(r, 0.16f, 0.26f, 5f, 7f, st.Size * 0.4f, st.Size * 0.7f,
+                              new Color(0.7f, 0.95f, 1f), new Color(0.35f, 0.7f, 1f, 0.8f), 0f, 16, 0.05f);
+                m.simulationSpace = ParticleSystemSimulationSpace.World;
+                var sh = r.shape;
+                sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.12f; sh.radiusThickness = 0f;
+                sh.rotation = Quaternion.LookRotation(new Vector3(att.Nose.X, att.Nose.Y, att.Nose.Z)).eulerAngles;
+                FadeOut(r, 1f); GrowOverLife(r, 0.6f, 1.6f);
+                r.Play(true);
+            }
+        }
+
+        /// <summary>탄 중심에서 탄두(측추력기 분사구)까지의 거리(m). 탄 메시 길이에 맞춘 값이다.</summary>
+        const float ShellNoseOffset = 0.45f;
+
+        /// <summary>자세 연출 상태를 버린다 — 착탄 때 불러 다음 발이 남은 짐벌 각을 물려받지 않게 한다.</summary>
+        public void StopGuidance(Transform shell)
+        {
+            if (shell == null) return;
+            _dacsNext.Remove(shell);
+            if (_trails.TryGetValue(shell, out var trail) && trail != null)
+                foreach (Transform t in trail.transform)
+                    if (t.name == "Flame") { t.localRotation = Quaternion.identity; break; }
+        }
 
         /// <summary>발사 섬광 — 포구에서 앞으로 뿜는 짧은 불꽃 + 연기 퍼프 + 광원. 색은 그 기종 폭발 섬광색.</summary>
         public void MuzzleFlash(Vector3 at, Vector3 dir, TankKind kind, ShellKind shell)

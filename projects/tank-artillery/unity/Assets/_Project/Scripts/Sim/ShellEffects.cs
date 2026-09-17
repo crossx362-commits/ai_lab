@@ -338,14 +338,24 @@ namespace Tankfall.Sim
 
             if (shell == ShellKind.Normal)
             {
-                if (kind == TankKind.MultiMissile) return Fan(3, 2.5f);   // 175×3 [추정 ±2.5°]
+                // 멀티미사일 1번탄 — 원작 175×3 부채꼴.
+                // ⚠️ 간격 2.5° 는 150m 에서 발 사이 6.5m 인데 폭발 반경이 5.8m 라 **세 발이 전부 겹쳐 맞았다**
+                //    (175×3=525 가 통째로 들어가 승률 75% ⬆). 부채꼴은 퍼져야 부채꼴이다 —
+                //    4.5° 면 발 사이 11.8m 로 폭발이 안 겹쳐, 전부 맞히려면 조준이 맞아야 한다.
+                if (kind == TankKind.MultiMissile) return Fan(3, 4.5f);
+                // 미사일 1번탄 — 원작 **4단 폭발(120-90-60-30)**.
+                // ⚠️ 예전엔 합계 300 을 **단발**로 근사했다. 그러면 나눠 들어가야 할 피해가 직격 한 방에 전부 들어가
+                //    원작보다 훨씬 강해진다 — 실측 승률 76%(⬆ 2위)의 원인이었다.
+                //    네 발로 쪼개고 원작 비율(0.40/0.30/0.20/0.10)을 DamageScale 로 준다. 합은 그대로 300 이지만
+                //    흩어져 떨어지므로 **전부 맞히려면 잘 쏴야 한다** — 그게 원작의 4단 폭발이다.
+                if (kind == TankKind.Missile) return MultiStage;
                 // ⚠️ 세크윈드 1번탄은 원작대로 **단발**(220). 처음에 2발로 뒀더니 2번탄(170×2)이 항상 열세라
                 //    120판 동안 한 번도 안 쓰였다 — 원작을 벗어난 변형이 선택지를 죽였다.
                 return Fan(1, 0f);
             }
             switch (kind)
             {
-                case TankKind.MultiMissile: return Fan(9, 2.0f);   // 60×9 부채꼴 [추정 ±8°]
+                case TankKind.MultiMissile: return Fan(9, 2.6f);   // 60×9 부채꼴 — 1번탄과 같은 이유로 벌린다
                 case TankKind.SuperTank:    return Fan(9, 2.0f);   // 9연 유도탄 [추정]
                 case TankKind.Laser:        return Fan(3, 1.0f);   // 3연 회전 — 아주 촘촘 [추정 ±1°]
                 case TankKind.Carrot:       return Fan(3, 2.0f);   // 삼연포탄 [추정]
@@ -356,6 +366,15 @@ namespace Tankfall.Sim
         }
 
         /// <summary>n 발을 pitch 로 step 씩 벌린다(가운데 0). 피해 배율은 전부 1 — 발당 피해는 TankStats 가 정한다.</summary>
+        /// <summary>미사일 1번탄 4단 폭발. 원작 피해 배분(120-90-60-30)을 비율로 옮겼다.</summary>
+        static readonly ShotPattern[] MultiStage =
+        {
+            new ShotPattern { YawOffsetDeg = 0f, PitchOffsetDeg = -1.8f, DamageScale = 0.40f },
+            new ShotPattern { YawOffsetDeg = 0f, PitchOffsetDeg = -0.6f, DamageScale = 0.30f },
+            new ShotPattern { YawOffsetDeg = 0f, PitchOffsetDeg =  0.6f, DamageScale = 0.20f },
+            new ShotPattern { YawOffsetDeg = 0f, PitchOffsetDeg =  1.8f, DamageScale = 0.10f },
+        };
+
         static ShotPattern[] Fan(int n, float stepDeg)
         {
             var arr = new ShotPattern[n];

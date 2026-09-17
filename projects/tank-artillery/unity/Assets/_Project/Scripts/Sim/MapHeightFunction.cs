@@ -32,6 +32,9 @@ namespace Tankfall.Sim
         /// <summary>맵 중심. 지형 대칭의 기준선이다.</summary>
         public const float Center = MapSize * 0.5f;
 
+        /// <summary>언덕 퍼짐(면적 단위). 맵 크기의 제곱에 비례해야 지형 밀도가 유지된다.</summary>
+        public const float HillSpread = 1600f * (MapSize / 200f) * (MapSize / 200f);
+
         /// <summary>
         /// 스폰이 맵 가장자리에서 떨어진 거리. 교전 거리 = MapSize − 2×이 값.
         ///
@@ -99,9 +102,12 @@ namespace Tankfall.Sim
 
         static void EvalTwin(float x, float z, out float h, out float hx, out float hz)
         {
+            // ⚠️ `s`(언덕 퍼짐)는 **면적 단위**라 맵이 커지면 같이 커져야 한다.
+            //    280m 로 넓히고도 1600 을 그대로 뒀더니 200m 시절 언덕이 넓은 벌판에 덩그러니 놓여
+            //    지형이 통째로 밋밋해졌다(실제로 그렇게 나왔다). 맵 비례로 스케일한다.
             h = 5f; hx = 0f; hz = 0f;
-            Bump(x, z, TwinWestHillX, TwinWestHillZ, 14f, 1600f, ref h, ref hx, ref hz);
-            Bump(x, z, TwinEastHillX, TwinEastHillZ, 14f, 1600f, ref h, ref hx, ref hz);
+            Bump(x, z, TwinWestHillX, TwinWestHillZ, 17f, HillSpread, ref h, ref hx, ref hz);
+            Bump(x, z, TwinEastHillX, TwinEastHillZ, 17f, HillSpread, ref h, ref hx, ref hz);
             AddDetailRipple(x, z, 1.2f, 0.05f, ref h, ref hx, ref hz);
         }
 

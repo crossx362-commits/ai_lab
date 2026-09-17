@@ -112,7 +112,16 @@ namespace Tankfall.View
         ///    한 화면에서 두 정보가 섞여 둘 다 안 읽힌다 — 3v3 이라 아군 세 대가 서로 달라야 한다.
         ///    아래 13색은 전부 팀색과 색상환에서 떨어뜨려 고른 것이다.
         /// </summary>
-        public static Color BodyColor(TankKind k)
+        public static Color BodyColor(TankKind k) => Saturate(BodyColorBase(k), 1.18f);
+
+        /// <summary>채도 배율(캐주얼 톤, 오너 지시 2026-09-17). 원색 표는 그대로 두고 여기서만 올린다 — 숫자 13개를 고쳐 어긋나는 것보다 낫다.</summary>
+        static Color Saturate(Color c, float k)
+        {
+            Color.RGBToHSV(c, out float h, out float sat, out float v);
+            return Color.HSVToRGB(h, Mathf.Clamp01(sat * k), Mathf.Clamp01(v * 1.04f));
+        }
+
+        static Color BodyColorBase(TankKind k)
         {
             switch (k)
             {
@@ -133,8 +142,23 @@ namespace Tankfall.View
         }
     }
 
+    public enum Chassis { Track, Cart, Carriage, Truck, Hover }
+
     public static class ProceduralTank
     {
+        /// <summary>기종 → 차대. 원작 근거: 레이저·포세이돈은 호버("지뢰를 밟지 않는 단 두 개의 탱크"), 나머지는 시대 감각으로 갈랐다.</summary>
+        public static Chassis ChassisOf(TankKind k)
+        {
+            switch (k)
+            {
+                case TankKind.Catapult: case TankKind.CrossBow: return Chassis.Cart;
+                case TankKind.Cannon: return Chassis.Carriage;
+                case TankKind.Missile: case TankKind.MultiMissile: return Chassis.Truck;
+                case TankKind.Laser: case TankKind.IonAttacker: case TankKind.Poseidon: case TankKind.SecWind: return Chassis.Hover;
+                default: return Chassis.Track;
+            }
+        }
+
         /// <summary>탱크 계층을 통째로 만들어 루트를 돌려준다. FirePoint 는 out 으로.</summary>
         /// <param name="bodyMat">**종별 고유색**(포트리스 참고). 색만 보고 기체를 알게 한다.</param>
         /// <param name="accentMat">**팀 색**. 식별 기둥과 차체 띠에만 칠한다.</param>
@@ -161,45 +185,176 @@ namespace Tankfall.View
             var root = new GameObject("Tank").transform;
             woodMat ??= trackMat;
 
-            // --- 바퀴: 크고 통통하게. 개수는 실루엣 식별자(§72)라 유지하되, 많을수록 작아진다 ---
+            // ══════════════════════════════════════════════════════════════
+            //  차대·차체 — 기종별로 **바퀴부터** 다르다 (오너 지적 2026-09-17 "탱크 바퀴부터 전체 다 다르게 해야지")
+            //  다섯 차대: 나무 수레(고전) · 철 포차(캐논) · 궤도(근대·슈퍼탱크) · 트럭(미사일 계열) · 호버(미래 — 원작에서
+            //  레이저·포세이돈은 "호버형이라 지뢰를 밟지 않는다"). 차체 실루엣도 차대에 맞춘다.
+            // ══════════════════════════════════════════════════════════════
+            var kind0 = s.Kind;
+            var chassis = ChassisOf(kind0);
             int wheels = Mathf.Max(1, s.WheelCount);
-            // 참고 이미지: 바퀴 지름이 차체 높이보다 크다. 개수가 많으면 겹치지 않는 선에서 최대로.
-            // 바퀴 수가 반지름을 제한한다. 이웃 바퀴와 20~30% 겹치는 건 벨트 안이라 안 보인다 — 겹침을 허용해 키운다.
             float wheelR = Mathf.Max(0.42f, Mathf.Min(s.TrackHeight * 0.88f, s.BodyLength * 0.5f / wheels * 1.5f));
             float wheelW = s.TrackWidth * 1.05f;
-            float wx = s.BodyWidth * 0.5f + wheelW * 0.5f + 0.02f;   // 바깥으로 — 정면에서도 바퀴가 보이게
-            float bodyY0 = wheelR * 0.95f;                       // 차체 바닥 — 바퀴가 아래로 튀어나온다
+            float wx = s.BodyWidth * 0.5f + wheelW * 0.5f + 0.02f;
+            float bodyY0 = wheelR * 0.95f;
 
             var tires = MakeMesh("Tires", root, trackMat);
             var hubs = MakeMesh("Hubs", root, accentMat);
             var tm = new MeshBuilder(); var hm = new MeshBuilder();
-            for (int side = -1; side <= 1; side += 2)
+            var woodWheels = new MeshBuilder();                       // 나무 살바퀴(woodMat)
+            switch (chassis)
             {
-                float x = side * wx;
-                // 궤도 벨트 — 바퀴를 감싸는 둥근 띠. 바퀴가 아래·옆으로 삐져나오게 얇게
-                tm.Chamfer(new Vector3(x, wheelR * 1.1f, 0f),
-                           new Vector3(wheelW * 0.55f, wheelR * 1.3f, s.BodyLength * 0.98f + wheelR * 0.5f), wheelR * 0.35f);
-                for (int w = 0; w < wheels; w++)
+                case Chassis.Cart:
                 {
-                    float t = wheels == 1 ? 0.5f : w / (float)(wheels - 1);
-                    float z = Mathf.Lerp(-s.BodyLength * 0.40f, s.BodyLength * 0.40f, t);
-                    var c = new Vector3(x, wheelR, z);
-                    tm.CylinderX(c, wheelR, wheelW, 14);                     // 타이어(어두움)
-                    hm.CylinderX(c, wheelR * 0.66f, wheelW * 1.22f, 12);     // 허브(팀색) — 옆으로 살짝 돌출
-                    hm.CylinderX(c, wheelR * 0.22f, wheelW * 1.26f, 8);      // 축 캡
+                    // 나무 수레: 뒤에 큰 살바퀴 둘 + 앞에 작은 바퀴 둘. 궤도 벨트 없음.
+                    float R = Mathf.Max(0.9f, s.BodyHeight * 0.95f), r2 = R * 0.55f;
+                    bodyY0 = R * 0.75f;
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        float x = side * (s.BodyWidth * 0.5f + 0.16f);
+                        var cb = new Vector3(x, R, -s.BodyLength * 0.28f);
+                        woodWheels.CylinderX(cb, R, 0.16f, 12);                                      // 테
+                        woodWheels.CylinderX(cb, R * 0.96f, 0.10f, 12, flip: true);                  // 안쪽(살 사이 비게 보이도록 어두운 면 대신 얇게)
+                        for (int k = 0; k < 6; k++)                                                  // 살
+                            woodWheels.BoxRot(cb, new Vector3(0.10f, R * 1.9f, 0.10f), Quaternion.Euler(k * 30f, 0f, 0f));
+                        hm.CylinderX(cb, R * 0.22f, 0.26f, 8);                                       // 축 캡(팀색)
+                        var cf = new Vector3(x, r2, s.BodyLength * 0.34f);
+                        woodWheels.CylinderX(cf, r2, 0.14f, 10);
+                        for (int k = 0; k < 4; k++) woodWheels.BoxRot(cf, new Vector3(0.08f, r2 * 1.9f, 0.08f), Quaternion.Euler(k * 45f, 0f, 0f));
+                        hm.CylinderX(cf, r2 * 0.25f, 0.22f, 8);
+                    }
+                    woodWheels.CylinderX(new Vector3(0f, R, -s.BodyLength * 0.28f), 0.09f, s.BodyWidth + 0.4f, 6);   // 차축
+                    woodWheels.CylinderX(new Vector3(0f, r2, s.BodyLength * 0.34f), 0.07f, s.BodyWidth + 0.4f, 6);
+                    break;
+                }
+                case Chassis.Carriage:
+                {
+                    // 철 포차: 테 두른 쇠바퀴 넷(크고 얇음), 벨트 없음. 바퀴 안쪽은 팀색 원판.
+                    float R = Mathf.Max(0.8f, s.BodyHeight * 0.85f);
+                    bodyY0 = R * 0.8f;
+                    for (int side = -1; side <= 1; side += 2)
+                        for (int w = 0; w < 2; w++)
+                        {
+                            var c = new Vector3(side * (s.BodyWidth * 0.5f + 0.14f), R, (w == 0 ? -1f : 1f) * s.BodyLength * 0.3f);
+                            tm.CylinderX(c, R, 0.18f, 14);                       // 쇠테(어두움)
+                            hm.CylinderX(c, R * 0.78f, 0.22f, 14);               // 원판(팀색)
+                            tm.CylinderX(c, R * 0.18f, 0.28f, 8);                // 축
+                            for (int k = 0; k < 4; k++) tm.BoxRot(c, new Vector3(0.07f, R * 1.5f, 0.07f), Quaternion.Euler(k * 45f, 0f, 0f));  // 살(어두움)
+                        }
+                    break;
+                }
+                case Chassis.Truck:
+                {
+                    // 트럭: 고무 타이어 쌍(앞 1쌍, 뒤 2쌍 밀착), 벨트 없음, 타이어가 두껍다.
+                    float R = Mathf.Max(0.5f, s.TrackHeight * 0.7f);
+                    bodyY0 = R * 1.05f;
+                    float[] zs = { s.BodyLength * 0.36f, -s.BodyLength * 0.12f, -s.BodyLength * 0.36f };
+                    for (int side = -1; side <= 1; side += 2)
+                        foreach (float z in zs)
+                        {
+                            var c = new Vector3(side * (s.BodyWidth * 0.5f + wheelW * 0.45f), R, z);
+                            tm.CylinderX(c, R, wheelW * 0.9f, 14);
+                            hm.CylinderX(c, R * 0.55f, wheelW * 1.0f, 10);
+                            hm.CylinderX(c, R * 0.2f, wheelW * 1.06f, 6);
+                        }
+                    tm.Box(new Vector3(0f, R * 0.9f, 0f), new Vector3(s.BodyWidth * 0.9f, R * 0.5f, s.BodyLength * 0.9f));   // 섀시 프레임
+                    break;
+                }
+                case Chassis.Hover:
+                {
+                    // 호버: 바퀴 없음. 둥근 스커트가 지면 위에 떠 있고 아래에 팀색 추진 링. 차체는 스커트 위에 얹힌다.
+                    float hover = 0.55f, skirtH = s.BodyHeight * 0.55f;
+                    bodyY0 = hover + skirtH * 0.9f;
+                    tm.Chamfer(new Vector3(0f, hover + skirtH * 0.5f, 0f), new Vector3(s.BodyWidth * 1.25f, skirtH, s.BodyLength * 1.08f), Mathf.Min(0.35f, skirtH * 0.45f));
+                    for (int side = -1; side <= 1; side += 2)
+                        for (int w = 0; w < 2; w++)
+                        {
+                            var c = new Vector3(side * s.BodyWidth * 0.32f, hover + 0.02f, (w == 0 ? -1f : 1f) * s.BodyLength * 0.28f);
+                            hm.CylinderY(c, s.BodyWidth * 0.2f, 0.10f, 12);            // 추진 링(팀색)
+                            tm.CylinderY(c, s.BodyWidth * 0.13f, 0.14f, 10);           // 노즐(어두움)
+                        }
+                    break;
+                }
+                default:
+                {
+                    // 궤도: 벨트 + 보기륜. 슈퍼탱크는 이중 벨트(옆으로 두 줄), 마인랜더는 낮고 넓게.
+                    int belts = kind0 == TankKind.SuperTank ? 2 : 1;
+                    for (int side = -1; side <= 1; side += 2)
+                        for (int bI = 0; bI < belts; bI++)
+                        {
+                            float x = side * (wx + bI * wheelW * 1.15f);
+                            tm.Chamfer(new Vector3(x, wheelR * 1.1f, 0f),
+                                       new Vector3(wheelW * 0.55f, wheelR * 1.3f, s.BodyLength * 0.98f + wheelR * 0.5f), wheelR * 0.35f);
+                            for (int w = 0; w < wheels; w++)
+                            {
+                                float t = wheels == 1 ? 0.5f : w / (float)(wheels - 1);
+                                float z = Mathf.Lerp(-s.BodyLength * 0.40f, s.BodyLength * 0.40f, t);
+                                var c = new Vector3(x, wheelR, z);
+                                tm.CylinderX(c, wheelR, wheelW, 14);
+                                hm.CylinderX(c, wheelR * 0.66f, wheelW * 1.22f, 12);
+                                hm.CylinderX(c, wheelR * 0.22f, wheelW * 1.26f, 8);
+                            }
+                            if (kind0 == TankKind.Duke || kind0 == TankKind.Carrot)                    // 위쪽 리턴 롤러 — 궤도 느낌
+                                for (int k = -1; k <= 1; k++) tm.CylinderX(new Vector3(x, wheelR * 1.75f, k * s.BodyLength * 0.25f), wheelR * 0.28f, wheelW * 0.9f, 8);
+                        }
+                    break;
                 }
             }
             tires.mesh = tm.ToMesh("TireMesh");
             hubs.mesh = hm.ToMesh("HubMesh");
+            if (chassis == Chassis.Cart) MakeMesh("WoodWheels", root, woodMat).mesh = woodWheels.ToMesh("WoodWheelMesh");
 
-            // --- 차체: 둥근 상자 + 앞 경사 + 어깨·꼬리(실루엣 식별자) ---
+            // --- 차체: 차대별 실루엣 ---
             var body = MakeMesh("Body", root, bodyMat);
             var bm = new MeshBuilder();
             float bevel = Mathf.Min(0.26f, s.BodyHeight * 0.3f);
-            bm.Chamfer(new Vector3(0, bodyY0 + s.BodyHeight * 0.5f, 0), new Vector3(s.BodyWidth, s.BodyHeight, s.BodyLength), bevel);
-            // 앞 경사 — 앞뒤 구분. 챔퍼 위에 얹어 코가 낮아 보이게
-            bm.Wedge(new Vector3(0, bodyY0 + s.BodyHeight * 0.55f, s.BodyLength * 0.5f - bevel * 0.5f),
-                     s.BodyWidth * 0.86f, s.BodyHeight * 0.5f, s.BodyLength * 0.16f);
+            switch (chassis)
+            {
+                case Chassis.Cart:
+                {
+                    // 수레: 얇은 나무 바닥판 + 앞뒤 난간(나무), 그 위에 기종색 상자(화물)
+                    var deck = MakeMesh("Deck", root, woodMat); var deckM = new MeshBuilder();
+                    deckM.Box(new Vector3(0f, bodyY0 + 0.12f, 0f), new Vector3(s.BodyWidth, 0.24f, s.BodyLength));
+                    for (int side = -1; side <= 1; side += 2)
+                        deckM.Box(new Vector3(side * s.BodyWidth * 0.47f, bodyY0 + 0.42f, 0f), new Vector3(0.08f, 0.4f, s.BodyLength * 0.9f));
+                    deckM.Box(new Vector3(0f, bodyY0 + 0.42f, -s.BodyLength * 0.47f), new Vector3(s.BodyWidth, 0.4f, 0.08f));
+                    deck.mesh = deckM.ToMesh("DeckMesh");
+                    bm.Chamfer(new Vector3(0f, bodyY0 + 0.24f + s.BodyHeight * 0.4f, s.BodyLength * 0.05f), new Vector3(s.BodyWidth * 0.8f, s.BodyHeight * 0.8f, s.BodyLength * 0.7f), 0.1f);
+                    bodyY0 += 0.24f;                                                                 // 캐빈은 화물 위에
+                    break;
+                }
+                case Chassis.Carriage:
+                {
+                    // 포차: 둥근 통 모양 몸통(옆으로 누운 원통) + 앞뒤 마개
+                    bm.CylinderZ(new Vector3(0f, bodyY0 + s.BodyHeight * 0.5f, 0f), s.BodyHeight * 0.62f, s.BodyLength * 0.95f, 14);
+                    bm.Sphere(new Vector3(0f, bodyY0 + s.BodyHeight * 0.5f, s.BodyLength * 0.47f), s.BodyHeight * 0.62f, 10);
+                    bm.Sphere(new Vector3(0f, bodyY0 + s.BodyHeight * 0.5f, -s.BodyLength * 0.47f), s.BodyHeight * 0.62f, 10);
+                    for (int k = -1; k <= 1; k++) bm.CylinderZ(new Vector3(0f, bodyY0 + s.BodyHeight * 0.5f, k * s.BodyLength * 0.3f), s.BodyHeight * 0.66f, 0.12f, 14);   // 쇠띠
+                    break;
+                }
+                case Chassis.Truck:
+                {
+                    // 트럭: 앞쪽 캡(높음) + 뒤쪽 낮은 적재함(발사대가 얹힌다)
+                    bm.Chamfer(new Vector3(0f, bodyY0 + s.BodyHeight * 0.75f, s.BodyLength * 0.3f), new Vector3(s.BodyWidth, s.BodyHeight * 1.5f, s.BodyLength * 0.36f), 0.18f);
+                    bm.Wedge(new Vector3(0f, bodyY0 + s.BodyHeight * 0.75f, s.BodyLength * 0.48f), s.BodyWidth * 0.9f, s.BodyHeight * 0.9f, s.BodyLength * 0.12f);
+                    bm.Chamfer(new Vector3(0f, bodyY0 + s.BodyHeight * 0.3f, -s.BodyLength * 0.2f), new Vector3(s.BodyWidth, s.BodyHeight * 0.6f, s.BodyLength * 0.62f), 0.12f);
+                    break;
+                }
+                case Chassis.Hover:
+                {
+                    // 호버: 매끈한 달걀형(앞이 좁다) — 챔퍼 크게 + 앞 쐐기
+                    bm.Chamfer(new Vector3(0f, bodyY0 + s.BodyHeight * 0.5f, 0f), new Vector3(s.BodyWidth, s.BodyHeight, s.BodyLength), Mathf.Min(0.45f, s.BodyHeight * 0.48f));
+                    bm.Wedge(new Vector3(0f, bodyY0 + s.BodyHeight * 0.5f, s.BodyLength * 0.5f - 0.1f), s.BodyWidth * 0.8f, s.BodyHeight * 0.9f, s.BodyLength * 0.22f);
+                    break;
+                }
+                default:
+                {
+                    bm.Chamfer(new Vector3(0, bodyY0 + s.BodyHeight * 0.5f, 0), new Vector3(s.BodyWidth, s.BodyHeight, s.BodyLength), bevel);
+                    bm.Wedge(new Vector3(0, bodyY0 + s.BodyHeight * 0.55f, s.BodyLength * 0.5f - bevel * 0.5f),
+                             s.BodyWidth * 0.86f, s.BodyHeight * 0.5f, s.BodyLength * 0.16f);
+                    break;
+                }
+            }
             if (s.ShoulderBox > 0.01f)
                 for (int side = -1; side <= 1; side += 2)
                     bm.Chamfer(new Vector3(side * (s.BodyWidth * 0.5f + s.ShoulderBox * 0.5f - 0.05f), bodyY0 + s.BodyHeight * 0.8f, -s.BodyLength * 0.05f),
@@ -302,6 +457,19 @@ namespace Tankfall.View
                         um.Chamfer(new Vector3(0, s.TurretHeight * 0.98f, -cl * 0.1f), new Vector3(cw * 0.55f, s.TurretHeight * 0.28f, cl * 0.5f), 0.08f); // 해치
                         break;
                     }
+                }
+            }
+
+            // 눈(헤드라이트) — 캐빈 앞에 흰 구 둘 + 어두운 눈동자. 캐주얼 톤의 핵심(오너 지시 2026-09-17): 얼굴이 있으면 캐릭터가 된다.
+            {
+                var eyeMat = new Material(bodyMat) { color = new Color(0.97f, 0.97f, 0.95f) };
+                var eyes = Part("Eyes", turret, eyeMat);
+                var pupils = Part("Pupils", turret, trackMat);
+                float ey = s.TurretHeight * 0.80f, ez = cl * 0.50f;
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    eyes.Sphere(new Vector3(side * cw * 0.26f, ey, ez), 0.17f, 8);
+                    pupils.Sphere(new Vector3(side * cw * 0.26f, ey + 0.02f, ez + 0.11f), 0.09f, 6);
                 }
             }
 
@@ -602,65 +770,65 @@ namespace Tankfall.View
             var b = new MeshBuilder();
             switch (kind)
             {
-                case TankKind.Cannon:            // 검콩/빨콩 — 둥근 콩. 가운데 띠 + 뒤 뇌관
-                    b.Sphere(Vector3.zero, 0.46f, 12);
-                    b.CylinderZ(Vector3.zero, 0.48f, 0.14f, 12);
-                    b.CylinderZ(new Vector3(0f, 0f, -0.44f), 0.16f, 0.14f, 8);
+                case TankKind.Cannon:            // 검콩/빨콩 — 만화 폭탄: 둥근 몸통 + 심지(캐주얼, 오너 지시 2026-09-17)
+                    b.Sphere(Vector3.zero, 0.48f, 12);
+                    b.CylinderY(new Vector3(0f, 0.50f, 0f), 0.16f, 0.14f, 8);                  // 심지 꽂이
+                    b.CylinderY(new Vector3(0f, 0.68f, 0f), 0.05f, 0.30f, 6);                   // 심지
+                    b.BoxRot(new Vector3(0.06f, 0.86f, 0f), new Vector3(0.05f, 0.18f, 0.05f), Quaternion.Euler(0f, 0f, -40f));
+                    b.Sphere(new Vector3(0.12f, 0.93f, 0f), 0.07f, 6);                          // 불똥
                     break;
 
-                case TankKind.Missile:           // 미사일 — 몸통·탄두·4 날개·조종 날개·노즐
-                    b.CylinderZ(new Vector3(0f, 0f, -0.05f), 0.22f, 1.30f, 12);
-                    b.ConeZ(new Vector3(0f, 0f, 0.92f), 0.22f, 0.0f, 0.64f, 12);                 // 탄두
-                    b.CylinderZ(new Vector3(0f, 0f, 0.35f), 0.235f, 0.08f, 12);                   // 띠
-                    b.ConeZ(new Vector3(0f, 0f, -0.78f), 0.18f, 0.13f, 0.16f, 10);                // 노즐
-                    for (int i = 0; i < 4; i++)                                                    // 꼬리 날개(뒤로 젖힘)
+                case TankKind.Missile:           // 만화 로켓 — 통통한 몸통·큰 날개·둥근 창(캐주얼)
+                    b.CylinderZ(new Vector3(0f, 0f, -0.05f), 0.30f, 1.10f, 12);
+                    b.ConeZ(new Vector3(0f, 0f, 0.80f), 0.30f, 0.0f, 0.60f, 12);                // 둥근 탄두
+                    b.Sphere(new Vector3(0f, 0.22f, 0.15f), 0.14f, 8);                          // 창
+                    b.ConeZ(new Vector3(0f, 0f, -0.70f), 0.24f, 0.16f, 0.20f, 10);              // 노즐
+                    for (int i = 0; i < 3; i++)                                                    // 큰 날개 셋
                     {
-                        var q = Quaternion.Euler(0f, 0f, 45f + i * 90f);
-                        b.BoxRot(new Vector3(0f, 0f, -0.55f) + q * new Vector3(0f, 0.38f, 0f), new Vector3(0.04f, 0.34f, 0.42f), q * Quaternion.Euler(-28f, 0f, 0f));
-                        b.BoxRot(new Vector3(0f, 0f, 0.45f) + q * new Vector3(0f, 0.30f, 0f), new Vector3(0.03f, 0.16f, 0.22f), q);   // 앞 조종 날개
+                        var q = Quaternion.Euler(0f, 0f, 90f + i * 120f);
+                        b.BoxRot(new Vector3(0f, 0f, -0.50f) + q * new Vector3(0f, 0.46f, 0f), new Vector3(0.06f, 0.44f, 0.46f), q * Quaternion.Euler(-30f, 0f, 0f));
                     }
                     break;
 
-                case TankKind.MultiMissile:      // 묶음 탄두 — 원작 2번탄이 9연이다(§2-9). 작은 미사일 세 개가 띠로 묶여 난다.
+                case TankKind.MultiMissile:      // 폭죽 다발 — 막대 셋에 뾰족 머리, 종이 띠(캐주얼)
                     for (int mi = 0; mi < 3; mi++)
                     {
-                        float ox = (mi - 1) * 0.30f, oy = mi == 1 ? 0.22f : -0.08f;
+                        float ox = (mi - 1) * 0.30f, oy = mi == 1 ? 0.24f : -0.08f;
                         var c = new Vector3(ox, oy, 0f);
-                        b.CylinderZ(c + new Vector3(0f, 0f, -0.06f), 0.12f, 0.86f, 8);
-                        b.ConeZ(c + new Vector3(0f, 0f, 0.55f), 0.12f, 0.0f, 0.36f, 8);
-                        b.ConeZ(c + new Vector3(0f, 0f, -0.52f), 0.10f, 0.07f, 0.08f, 8);
-                        for (int i = 0; i < 3; i++)
-                        {
-                            var q = Quaternion.Euler(0f, 0f, 90f + i * 120f);
-                            b.BoxRot(c + new Vector3(0f, 0f, -0.36f) + q * new Vector3(0f, 0.18f, 0f), new Vector3(0.025f, 0.14f, 0.22f), q);
-                        }
+                        b.CylinderZ(c + new Vector3(0f, 0f, -0.15f), 0.14f, 0.80f, 8);
+                        b.ConeZ(c + new Vector3(0f, 0f, 0.50f), 0.16f, 0.0f, 0.44f, 8);
+                        b.CylinderZ(c + new Vector3(0f, 0f, -0.62f), 0.04f, 0.28f, 5);             // 막대
                     }
-                    b.CylinderZ(new Vector3(0f, 0.04f, -0.30f), 0.46f, 0.10f, 10);   // 묶는 띠
-                    b.CylinderZ(new Vector3(0f, 0.04f, 0.20f), 0.46f, 0.10f, 10);
+                    b.CylinderZ(new Vector3(0f, 0.04f, -0.05f), 0.50f, 0.14f, 10);                // 띠
+                    b.CylinderZ(new Vector3(0f, 0.04f, 0.28f), 0.50f, 0.14f, 10);
                     break;
 
-                case TankKind.Laser:             // 빔 덩어리 — 가늘고 긴 코어 + 양끝 원뿔 + 에너지 링
-                    b.CylinderZ(Vector3.zero, 0.11f, 1.90f, 8);
-                    b.ConeZ(new Vector3(0f, 0f, 1.25f), 0.11f, 0.0f, 0.6f, 8);
-                    b.ConeZ(new Vector3(0f, 0f, -1.25f), 0.0f, 0.11f, 0.6f, 8);
-                    for (int i = -1; i <= 1; i++) b.CylinderZ(new Vector3(0f, 0f, i * 0.55f), 0.26f, 0.06f, 10);
+                case TankKind.Laser:             // 번개 — 지그재그 막대(캐주얼). 빔이 "번쩍"으로 읽힌다
+                    for (int i = 0; i < 5; i++)
+                    {
+                        float z = -1.0f + i * 0.5f; float side = (i % 2 == 0) ? 1f : -1f;
+                        b.BoxRot(new Vector3(side * 0.12f, 0f, z), new Vector3(0.16f, 0.16f, 0.62f), Quaternion.Euler(0f, side * 28f, 0f));
+                    }
+                    b.ConeZ(new Vector3(0f, 0f, 1.35f), 0.16f, 0.0f, 0.40f, 6);
                     break;
 
-                case TankKind.IonAttacker:       // 위성탄 — 결정(팔면체) + 적도 링 + 안테나
-                    b.ConeZ(new Vector3(0f, 0f, 0.42f), 0.36f, 0.0f, 0.84f, 6);
-                    b.ConeZ(new Vector3(0f, 0f, -0.42f), 0.0f, 0.36f, 0.84f, 6);
-                    b.CylinderZ(Vector3.zero, 0.52f, 0.05f, 12);
-                    b.Box(Vector3.zero, new Vector3(1.10f, 0.05f, 0.05f));
-                    b.Box(Vector3.zero, new Vector3(0.05f, 1.10f, 0.05f));
+                case TankKind.IonAttacker:       // 별 — 다섯 갈래 별 + 가운데 구(캐주얼, 위성에서 떨어지는 "별똥")
+                    b.Sphere(Vector3.zero, 0.26f, 8);
+                    for (int i = 0; i < 5; i++)
+                    {
+                        var q = Quaternion.Euler(0f, 0f, i * 72f);
+                        b.BoxRot(q * new Vector3(0f, 0.36f, 0f), new Vector3(0.22f, 0.5f, 0.14f), q);
+                        b.BoxRot(q * new Vector3(0f, 0.68f, 0f), new Vector3(0.10f, 0.22f, 0.10f), q);   // 뾰족 끝
+                    }
                     break;
 
-                case TankKind.MineLander:        // 지뢰 — 원반 + 테두리 + 압력판 + 가시
-                    b.CylinderY(Vector3.zero, 0.50f, 0.22f, 12);
-                    b.CylinderY(new Vector3(0f, 0.14f, 0f), 0.22f, 0.08f, 8);
+                case TankKind.MineLander:        // 가시 기뢰 — 공 + 사방 가시(캐주얼, 한눈에 "밟으면 터진다")
+                    b.Sphere(Vector3.zero, 0.40f, 10);
                     for (int i = 0; i < 6; i++)
                     {
-                        var q = Quaternion.Euler(0f, i * 60f, 0f);
-                        b.BoxRot(q * new Vector3(0f, 0f, 0.54f), new Vector3(0.08f, 0.08f, 0.18f), q);
+                        var q = i < 4 ? Quaternion.Euler(0f, i * 90f, 0f) * Quaternion.Euler(90f, 0f, 0f) : Quaternion.Euler(i == 4 ? 0f : 180f, 0f, 0f);
+                        b.BoxRot(q * new Vector3(0f, 0f, 0.46f), new Vector3(0.12f, 0.12f, 0.24f), q);
+                        b.BoxRot(q * new Vector3(0f, 0f, 0.62f), new Vector3(0.06f, 0.06f, 0.10f), q);
                     }
                     break;
 
@@ -671,11 +839,13 @@ namespace Tankfall.View
                     b.BoxRot(new Vector3(0.05f, -0.18f, 0.05f), new Vector3(0.5f, 0.4f, 0.5f), Quaternion.Euler(20f, 35f, 15f));
                     break;
 
-                case TankKind.Poseidon:          // 물방울 — 둥근 머리 + 뒤로 가늘어지는 꼬리 + 작은 방울
-                    b.Sphere(new Vector3(0f, 0f, 0.12f), 0.36f, 12);
-                    b.ConeZ(new Vector3(0f, 0f, -0.36f), 0.0f, 0.34f, 0.72f, 12);
-                    b.Sphere(new Vector3(0.22f, 0.20f, -0.30f), 0.11f, 6);
-                    b.Sphere(new Vector3(-0.20f, -0.16f, -0.44f), 0.09f, 6);
+                case TankKind.Poseidon:          // 물고기 — 통통한 몸통 + 꼬리·등지느러미(캐주얼). 물탱의 물덩어리가 헤엄쳐 온다
+                    b.Sphere(new Vector3(0f, 0f, 0.10f), 0.36f, 12);
+                    b.ConeZ(new Vector3(0f, 0f, -0.36f), 0.0f, 0.30f, 0.60f, 12);
+                    b.BoxRot(new Vector3(0f, 0f, -0.78f), new Vector3(0.06f, 0.50f, 0.28f), Quaternion.Euler(0f, 0f, 0f));      // 꼬리
+                    b.BoxRot(new Vector3(0f, 0.36f, 0.0f), new Vector3(0.06f, 0.26f, 0.32f), Quaternion.Euler(-25f, 0f, 0f));   // 등지느러미
+                    b.BoxRot(new Vector3(0.30f, -0.08f, 0.1f), new Vector3(0.24f, 0.05f, 0.18f), Quaternion.Euler(0f, 0f, 30f));  // 가슴지느러미
+                    b.BoxRot(new Vector3(-0.30f, -0.08f, 0.1f), new Vector3(0.24f, 0.05f, 0.18f), Quaternion.Euler(0f, 0f, -30f));
                     break;
 
                 case TankKind.Duke:              // 독구름 탄 — 통 + 양옆 가스통(구 마개) + 밸브
@@ -714,17 +884,14 @@ namespace Tankfall.View
                     }
                     break;
 
-                case TankKind.SuperTank:         // 유도탄 — 매끈한 몸통 + 긴 탄두 + 젖힌 날개 넷 + 앞 카나드 + 노즐
-                    b.CylinderZ(new Vector3(0f, 0f, 0.05f), 0.20f, 1.40f, 12);
-                    b.ConeZ(new Vector3(0f, 0f, 1.15f), 0.20f, 0.0f, 0.80f, 12);
-                    b.ConeZ(new Vector3(0f, 0f, -0.72f), 0.20f, 0.13f, 0.14f, 10);
-                    b.CylinderZ(new Vector3(0f, 0f, 0.55f), 0.215f, 0.06f, 12);
-                    for (int i = 0; i < 4; i++)
-                    {
-                        var q = Quaternion.Euler(0f, 0f, i * 90f);
-                        b.BoxRot(new Vector3(0f, 0f, -0.45f) + q * new Vector3(0f, 0.42f, 0f), new Vector3(0.03f, 0.44f, 0.5f), q * Quaternion.Euler(-35f, 0f, 0f));
-                        b.BoxRot(new Vector3(0f, 0f, 0.62f) + q * new Vector3(0f, 0.28f, 0f), new Vector3(0.025f, 0.14f, 0.26f), q * Quaternion.Euler(-20f, 0f, 0f));
-                    }
+                case TankKind.SuperTank:         // 상어 어뢰 — 통통한 몸통·등지느러미·큰 꼬리(캐주얼)
+                    b.CylinderZ(new Vector3(0f, 0f, 0.0f), 0.26f, 1.20f, 12);
+                    b.ConeZ(new Vector3(0f, 0f, 0.92f), 0.26f, 0.0f, 0.64f, 12);
+                    b.Sphere(new Vector3(0f, 0f, -0.60f), 0.26f, 8);
+                    b.BoxRot(new Vector3(0f, 0.36f, 0.05f), new Vector3(0.06f, 0.36f, 0.42f), Quaternion.Euler(-30f, 0f, 0f));   // 등지느러미
+                    b.BoxRot(new Vector3(0f, 0f, -0.86f), new Vector3(0.06f, 0.62f, 0.30f), Quaternion.Euler(0f, 0f, 0f));       // 꼬리
+                    for (int side = -1; side <= 1; side += 2)
+                        b.BoxRot(new Vector3(side * 0.34f, -0.06f, 0.10f), new Vector3(0.36f, 0.05f, 0.24f), Quaternion.Euler(0f, 0f, side * 25f));
                     break;
 
                 case TankKind.SecWind:           // 바람칼 — 초승달 날 + 중심 허브 + 회전 방향 홈
@@ -866,7 +1033,7 @@ namespace Tankfall.View
             }
 
             public void CylinderY(Vector3 c, float r, float h, int seg) => Cylinder(c, r, r, h, seg, 1);
-            public void CylinderX(Vector3 c, float r, float len, int seg) => Cylinder(c, r, r, len, seg, 0);
+            public void CylinderX(Vector3 c, float r, float len, int seg, bool flip = false) => Cylinder(c, r, r, len, seg, 0, true, true, flip);
             public void CylinderZ(Vector3 c, float r, float len, int seg, bool flip = false) => Cylinder(c, r, r, len, seg, 2, true, true, flip);
             /// <summary>+z 로 갈수록 r0→r1 로 변하는 원뿔대. 원뿔·접시·탄두·당근이 전부 이것이다.</summary>
             public void ConeZ(Vector3 c, float r0, float r1, float len, int seg, bool capA = true, bool capB = true, bool flip = false)

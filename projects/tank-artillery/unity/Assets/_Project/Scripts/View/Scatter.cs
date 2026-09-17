@@ -56,7 +56,9 @@ namespace Tankfall.View
 
             var rng = new Rng((uint)seed);
             int placed = 0, tries = 0;
-            int want = Mathf.Max(40, theme.ScatterCount);
+            // ⚠️ 개수는 **면적 비례**다. 맵을 280m 로 넓히고 고정 수를 쓰면 밀도가 절반이 되어 휑해진다.
+            float areaK = (mapSize / 200f) * (mapSize / 200f);
+            int want = Mathf.Max(40, Mathf.RoundToInt(theme.ScatterCount * areaK));
             while (placed < want && tries < want * 24)
             {
                 tries++;

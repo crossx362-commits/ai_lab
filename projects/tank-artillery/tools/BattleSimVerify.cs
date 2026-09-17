@@ -413,7 +413,7 @@ static class BattleSimVerify
             foreach (var o in units) if (o.Alive) boxes.Add(new TankHitbox { Id = o.Id, Center = o.Center, Radius = TankRadius });
 
             // 1) 기준 탄도(패턴 중앙) 한 발로 착탄점을 본다
-            var shot = ProjectileSimulator.Simulate(vol, u.Muzzle, Ballistics.VelocityFrom(plan.YawDeg, plan.PitchDeg, speed), accel, boxes, u.Id, MapSize);
+            var shot = ProjectileSimulator.Simulate(vol, u.Muzzle, Ballistics.VelocityFrom(plan.YawDeg, plan.PitchDeg, speed), accel, boxes, u.Id, MapSize, st.Flight, null);
             res.Shots++;
             if (u.Team == 0) res.ShotsA++;
             int bk = Math.Min(7, res.Turns / 20);
@@ -441,10 +441,10 @@ static class BattleSimVerify
                 satImpact = SatelliteStrike.Resolve(vol, shot.Impact.X, shot.Impact.Z, shot.Impact.Y + 60f, boxes, out satDirect);
             }
             var normalHits = AiGunner.SimulatePattern(vol, u.Muzzle, plan.YawDeg, plan.PitchDeg, speed, accel, boxes, u.Id, MapSize,
-                                                      Spread.Pattern(u.Kind, ShellKind.Normal), shot);
+                                                      Spread.Pattern(u.Kind, ShellKind.Normal), shot, st.Flight);
             var specialHits = satImpact.HasValue ? null
                 : AiGunner.SimulatePattern(vol, u.Muzzle, plan.YawDeg, plan.PitchDeg, speed, accel, boxes, u.Id, MapSize,
-                                           Spread.Pattern(u.Kind, ShellKind.Special), shot);
+                                           Spread.Pattern(u.Kind, ShellKind.Special), shot, st.Flight);
             var shell = AiGunner.PickShell(st, normalHits, specialHits, enemies, satImpact, satDirect);
             bool ss = false, ult = false;
             if (shell == ShellKind.Special)
@@ -472,8 +472,9 @@ static class BattleSimVerify
             // 3) 다탄두: 고른 탄종의 패턴대로 전부 날린다(중앙 탄 = 위 기준 탄도)
             var pattern = Spread.Pattern(u.Kind, shell, ult);   // 궁극기는 연사형만 탄두가 는다(게임과 같은 규칙)
             bool anyHit = false;
-            float craterEach = ((teamA.HasValue || teamB.HasValue) ? st.CraterRadius : craterRadius)
-                               * (pattern.Count > 1 ? 0.65f : 1f);   // 다탄두는 발당 굴착을 줄인다 [추정] — 아니면 3배로 판다
+            // 발당 굴착은 게임과 **같은 함수**를 쓴다(CraterShape.PerShotCrater 머리말: 0.65 고정은 9연에서 5.9배로 팠다).
+            float craterEach = CraterShape.PerShotCrater(
+                (teamA.HasValue || teamB.HasValue) ? st.CraterRadius : craterRadius, pattern.Count);
             int volleys = items.HasDoubleFire(u.Id) ? 2 : 1;   // 더블파이어: 같은 각도·파워로 한 발 더(원작)
             for (int v = 0; v < volleys; v++)
             {
@@ -482,10 +483,12 @@ static class BattleSimVerify
             {
                 var pt = pattern[pi];
                 // ⚠️ 두 번째 발은 **다시 푼다**. 첫 발이 지형을 깎아 놓아서 같은 궤적이라도 착탄점이 다르다.
-                var sub = (pattern.Count == 1 && v == 0) ? shot
+                // 유도탄(2번탄)은 정점 뒤에 적 쪽으로 휘므로 기준 탄도를 재사용하지 않고 유도 포함으로 다시 푼다(게임 FireFrom 과 같은 규칙).
+                int uidH = u.Id;
+                var sub = (pattern.Count == 1 && v == 0 && !st.Flight.HasHoming) ? shot
                     : ProjectileSimulator.Simulate(vol, u.Muzzle,
                         Ballistics.VelocityFrom(plan.YawDeg + pt.YawOffsetDeg, plan.PitchDeg + pt.PitchOffsetDeg, speed),
-                        accel, boxes, u.Id, MapSize);
+                        accel, boxes, u.Id, MapSize, st.Flight, id => byId[id].Team != byId[uidH].Team);
                 if (pattern.Count > 1 && u.Team == 0) res.SubShells++;
                 if (!sub.Hit) continue;
 
@@ -998,6 +1001,7 @@ static class BattleSimVerify
     /// <summary>[6] 매치업. only 가 있으면 그 기종 행만(단일 변수 실험용).</summary>
     static void Matchup(TankKind? only, uint perCell)
     {
+        int totalDecided = 0, totalCells = 0;
         Console.WriteLine($"[6] 포트리스 12종 매치업 승률 (A팀 기준, 각 {perCell}판, 오차 2.5%, 서든데스 6R)");
         var kinds = TankStats.Selectable();      // 슈퍼탱크는 원작대로 선택 불가라 빠진다
         int N = kinds.Length;
@@ -1019,6 +1023,7 @@ static class BattleSimVerify
         if (only.HasValue && rows[0] < 0) { Console.WriteLine($"    ❌ {only.Value} 는 선택 가능 기종이 아니다"); return; }
         foreach (int ai in rows)
         {
+            int rowMinDecided = int.MaxValue; string rowMinCell = "-";
             float spSum = 0f, tSum = 0f, fSum = 0f, ssSum = 0f, ultSum = 0f, dotSum = 0f, mineSum = 0f, satSum = 0f, itemSum = 0f, supSum = 0f;
             long shotsA = 0, hitsA = 0, blastA = 0;
             for (int bi = 0; bi < N; bi++)
@@ -1042,6 +1047,10 @@ static class BattleSimVerify
                     if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
                 }
                 win[ai, bi] = decided > 0 ? winA * 100f / decided : -1f;
+                // ⚠️ 결판난 판이 적으면 0%/100% 가 쉽게 나온다 — 그건 밸런스가 아니라 **표본이 무너진 것**이다.
+                //    행별로 가장 적게 결판난 칸을 기억해 표 아래에 띄운다(진단이 없으면 또 오진한다).
+                if (decided < rowMinDecided) { rowMinDecided = decided; rowMinCell = $"{TankStats.Get(kinds[ai]).Name} vs {TankStats.Get(kinds[bi]).Name}"; }
+                totalDecided += decided; totalCells++;
                 spSum += spec / (float)perCell; tSum += turns / (float)perCell; fSum += fall / (float)perCell;
                 ssSum += ssN / (float)perCell; ultSum += ultN / (float)perCell; dotSum += dotN / (float)perCell; mineSum += mineN / (float)perCell; satSum += satN / (float)perCell;
                 itemSum += itemN / (float)perCell; supSum += supN / (float)perCell;
@@ -1079,6 +1088,14 @@ static class BattleSimVerify
         Console.WriteLine("    계열·특수탄·판길이");
         Console.Write($"    {"탱크",-14}{"계열",-6}{"체력",5}{"사거리",7}{"폭발",6}{"굴착",6}{"직격",6}{"2번탄/판",9}{"SS/판",6}{"궁극/판",8}{"평균턴",7}{"명중%",6}{"피해/명중",9}{"낙하",6}{"지속",6}{"설치물",7}{"위성",5}{"아이템",7}{"보급",6}");
         Console.WriteLine("");
+        if (totalCells > 0)
+        {
+            float avgDecided = totalDecided / (float)totalCells;
+            Console.WriteLine($"    [표본] 칸당 평균 결판 {avgDecided:F1}/{perCell}판" +
+                              (avgDecided < perCell * 0.6f
+                                  ? $"   ⚠️ 무승부가 많다 — 0%/100% 는 밸런스가 아니라 표본 붕괴다"
+                                  : "   (충분)"));
+        }
         foreach (int i in rows)
         {
             var t = Stats(kinds[i], ShellKind.Normal, 1f, Wx);   // 단일 행 실험의 굴착 배율이 표에도 보이게
