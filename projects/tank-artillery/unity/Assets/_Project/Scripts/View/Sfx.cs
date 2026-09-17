@@ -8,6 +8,8 @@
 //    발사 여부는 Sim 이 정하고 이 파일은 그 결과를 재생만 한다(§4-1 SIM/VIEW 분리와 같은 이유).
 //
 // ⚠️ 볼륨을 키우지 마라. 폭발이 겹치면 클리핑으로 찢어진다(다탄두는 한 프레임에 여러 발이 터진다).
+//    2026-09-17: 겹침은 이제 `Duck()`(1/√n)이 받아 준다 — 그래도 **개별 파형의 진폭**은 그대로 둬라.
+//    Duck 은 동시 발수만 보정하지 한 발이 애초에 큰 것은 못 막는다.
 
 using UnityEngine;
 
@@ -18,8 +20,11 @@ namespace Tankfall.View
         const int Rate = 44100;
 
         static Sfx _inst;
-        AudioSource _src;
-        AudioClip _fire, _boom, _hit, _move, _click, _confirm, _win, _lose;
+        AudioSource[] _pool;      // 원샷 — 소리마다 제 피치를 갖는다
+        int _next;
+        AudioSource _loop;        // 주행음 전용
+        AudioClip _fire, _hit, _move, _click, _confirm, _win, _lose;
+        AudioClip[] _boom;        // 폭발 3변주 — 다탄두는 한 프레임에 9발이 터진다
 
         public static Sfx I
         {
@@ -38,18 +43,28 @@ namespace Tankfall.View
 
         void Build()
         {
-            _src = gameObject.AddComponent<AudioSource>();
-            _src.playOnAwake = false;
-            _src.spatialBlend = 0f;          // 2D — 카메라가 포탄을 따라다녀서 3D 감쇠가 오히려 헷갈린다
+            _pool = new AudioSource[Voices];
+            for (int i = 0; i < Voices; i++) _pool[i] = NewSource();
 
             _fire    = Make("fire",    0.34f, FireWave);
-            _boom    = Make("boom",    0.90f, BoomWave);
+            _boom    = new[] { Make("boom0", 0.90f, BoomWave), Make("boom1", 0.90f, BoomWave), Make("boom2", 0.90f, BoomWave) };
             _hit     = Make("hit",     0.22f, HitWave);
             _move    = Make("move",    0.18f, MoveWave);
             _click   = Make("click",   0.06f, (t, d) => Tone(t, 660f, d, 0.035f) * 0.35f);
             _confirm = Make("confirm", 0.18f, (t, d) => (Tone(t, 523f, d, 0.12f) + Tone(t, 784f, d, 0.16f)) * 0.30f);
             _win     = Make("win",     0.90f, WinWave);
             _lose    = Make("lose",    0.90f, LoseWave);
+
+            _loop = NewSource();
+            _loop.clip = _move; _loop.loop = true; _loop.volume = 0.5f;
+        }
+
+        AudioSource NewSource()
+        {
+            var s = gameObject.AddComponent<AudioSource>();
+            s.playOnAwake = false;
+            s.spatialBlend = 0f;             // 2D — 카메라가 포탄을 따라다녀서 3D 감쇠가 오히려 헷갈린다
+            return s;
         }
 
         delegate float Wave(float t, float dur);
@@ -119,16 +134,60 @@ namespace Tankfall.View
         /// <summary>자동 검증·배치 실행에서는 소리를 내지 않는다 — 하네스가 오디오 장치에 기대면 기계마다 결과가 갈린다.</summary>
         public static bool Muted;
 
-        void One(AudioClip c, float vol, float pitch)
+        // ⚠️ **전부를 AudioSource 하나로 재생하면 안 된다**(2026-09-17 수정). 유니티에서 `pitch` 와
+        //    `Stop()` 은 **클립이 아니라 소스**에 걸리므로 한 채널에 섞으면 서로를 망가뜨린다:
+        //      · `pitch` 를 바꾸면 **이미 울리고 있던 PlayOneShot 까지** 같이 조가 바뀐다.
+        //        다탄두는 한 프레임에 9발이 터지므로 마지막 발의 피치가 앞의 8발을 통째로 끌고 갔다.
+        //      · 주행음을 끄는 `Stop()` 은 그 소스의 **원샷까지 전부 끊는다** —
+        //        걷다가 지뢰를 밟으면 폭발음이 중간에 잘렸다.
+        //    그래서 원샷은 보이스를 나눠 각자 피치를 갖게 하고, 주행 루프는 전용 소스에 둔다.
+        const int Voices = 8;
+
+        /// <summary>안 울리는 보이스를 우선 쓴다 — 울리는 보이스를 재사용하면 그 소리의 피치가 바뀐다.</summary>
+        AudioSource Take()
         {
-            if (Muted || c == null || _src == null) return;
-            _src.pitch = pitch;
-            _src.PlayOneShot(c, Mathf.Clamp01(vol));
+            for (int i = 0; i < Voices; i++)
+            {
+                var s = _pool[(_next + i) % Voices];
+                if (!s.isPlaying) { _next = (_next + i + 1) % Voices; return s; }
+            }
+            var oldest = _pool[_next]; _next = (_next + 1) % Voices; return oldest;   // 전부 울리는 중
         }
 
-        public static void Fire(float power01) => I.One(I._fire, 0.85f, Mathf.Lerp(1.12f, 0.88f, Mathf.Clamp01(power01)));
-        public static void Boom(float scale)   => I.One(I._boom, Mathf.Clamp(0.5f + scale * 0.35f, 0.4f, 1f), Mathf.Lerp(1.15f, 0.8f, Mathf.Clamp01(scale)));
-        public static void Hit()               => I.One(I._hit, 0.8f, 1f);
+        /// <summary>
+        /// 동시에 울리는 수가 늘수록 한 발씩 낮춘다(에너지 보존 1/√n).
+        /// 이게 없으면 다탄두 9발이 그대로 합쳐져 클리핑으로 찢어진다 —
+        /// 그동안은 **모든 소리의 볼륨을 낮게 유지해서** 피하고 있었다(이 파일 머리말의 경고).
+        /// </summary>
+        float Duck()
+        {
+            int on = 0;
+            for (int i = 0; i < Voices; i++) if (_pool[i].isPlaying) on++;
+            return 1f / Mathf.Sqrt(1f + on);      // 첫 발 100% · 네 발째 50% · 여덟 발째 33%
+        }
+
+        void One(AudioClip c, float vol, float pitch)
+        {
+            if (Muted || c == null || _pool == null) return;
+            float duck = Duck();
+            var s = Take();
+            s.pitch = pitch;
+            s.PlayOneShot(c, Mathf.Clamp01(vol) * duck);
+        }
+
+        /// <summary>같은 클립이 같은 피치로 겹치면 한 발처럼 뭉친다 — 발마다 살짝 흔든다.</summary>
+        static float Jitter(float amount) => 1f + Noise() * amount;
+
+        public static void Fire(float power01) => I.One(I._fire, 0.85f, Mathf.Lerp(1.12f, 0.88f, Mathf.Clamp01(power01)) * Jitter(0.03f));
+
+        public static void Boom(float scale)
+        {
+            var s = I;
+            var clip = s._boom[(int)((Noise() * 0.5f + 0.5f) * s._boom.Length) % s._boom.Length];
+            s.One(clip, Mathf.Clamp(0.5f + scale * 0.35f, 0.4f, 1f), Mathf.Lerp(1.15f, 0.8f, Mathf.Clamp01(scale)) * Jitter(0.06f));
+        }
+
+        public static void Hit()               => I.One(I._hit, 0.8f, Jitter(0.05f));
         public static void Click()             => I.One(I._click, 0.7f, 1f);
         public static void Confirm()           => I.One(I._confirm, 0.8f, 1f);
         public static void Win()               => I.One(I._win, 0.8f, 1f);
@@ -138,17 +197,11 @@ namespace Tankfall.View
         public static void Engine(bool on)
         {
             var s = I;
-            if (Muted) return;
-            if (on)
-            {
-                if (s._src.isPlaying && s._src.clip == s._move) return;
-                s._src.clip = s._move; s._src.loop = true; s._src.pitch = 1f; s._src.volume = 0.5f;
-                s._src.Play();
-            }
-            else if (s._src.clip == s._move && s._src.isPlaying)
-            {
-                s._src.Stop(); s._src.clip = null; s._src.loop = false; s._src.volume = 1f;
-            }
+            if (s._loop == null) return;
+            // ⚠️ `Muted` 는 켜는 쪽에서만 본다. 예전엔 함수 첫 줄에서 걸러서, 주행 중에 음소거가 켜지면
+            //    끄는 호출이 통째로 무시돼 루프가 영원히 남았다.
+            if (on) { if (!Muted && !s._loop.isPlaying) s._loop.Play(); }
+            else if (s._loop.isPlaying) s._loop.Stop();
         }
     }
 }

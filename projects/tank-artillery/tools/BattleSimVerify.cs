@@ -167,6 +167,9 @@ static class BattleSimVerify
         public int SupplyDropped, SupplyPicked, SupplyDestroyed;
         public int PickedA, PickedB, SeekA, SeekB;   // 팀별 분해 — 미러가 기울면 여기가 먼저 답한다
         public int SeekTurns, SeekBlocked;
+        /// <summary>A팀 이동 사유별 턴 수(MoveReason 순). **네거티브 컨트롤**: CraterEscape 가 0 이면
+        /// 구덩이 탈출이 죽은 것이고, Supply 가 0 이면 헬기가 다시 장식이 된 것이다.</summary>
+        public int[] MoveWhyA;
         public int ImpairHitA;
         public int AmpShots, TornadoShots;   // 기후(§2-9-15) 네거티브 컨트롤 — 0 이면 죽은 시스템   // 방해탄(§2-9-14) — 각도·파워 고정만. 화면 방해는 AI 에 효과 0 이라 안 쓴다   // 궁극기(§2-9-12) 네거티브 컨트롤 — 0 이면 죽은 시스템   // 헬기 보급(§2-9-11) 네거티브 컨트롤
         public int ShotsA, HitsA, BlastDealtA;   // A팀만: 사격 수, 적에게 피해 준 사격 수, 폭발(직격 포함) 피해 합 — 낙하·지속·설치물 제외
@@ -234,7 +237,7 @@ static class BattleSimVerify
         foreach (var uu in units) byId[uu.Id] = uu;
         Func<int, bool> alive = id => byId[id].Alive;
 
-        var res = new MatchResult { Winner = -1, BucketShots = new int[8], BucketHits = new int[8] };
+        var res = new MatchResult { Winner = -1, BucketShots = new int[8], BucketHits = new int[8], MoveWhyA = new int[7] };
         var wind = new Vec3(0, 0, 0);
         var status = new StatusEffects();   // 독·화상·속박
         var hazards = new HazardField();    // 지뢰·지속불
@@ -244,6 +247,8 @@ static class BattleSimVerify
         var air = new AirField();           // 기후 — 증폭벽·회오리(§2-9-15)
         if (ClimateOn) air.Roll(ref rng, MapSize);
         var supply = new SupplyDrop();      // 헬기 보급(§2-9-11)
+        var hazBuf = new List<HazardField.HazardView>();      // AiMover 에 넘길 장판 스냅샷(매 턴 재사용)
+        var aiFoes = new List<AiGunner.Target>();             // AiMover 에 넘길 적 목록(매 턴 재사용)
         if (ItemSlots > 0)
         {
             var roll = new List<ItemKind>();
@@ -314,21 +319,33 @@ static class BattleSimVerify
             //    처음엔 탐색 반경 10m·이동확률 40% 로 뒀더니 **판당 0.1회**밖에 안 주웠다(상자는 맵 전역에
             //    떨어지는데 탱크는 양쪽 끝에 몰려 있다). 한 턴에 8m 밖에 못 가므로 **여러 턴에 걸쳐 걸어갈**
             //    의지가 있어야 한다 — 반경을 넓히고, 상자를 노리는 턴은 반드시 움직이게 했다.
-            float scx = 0f, scz = 0f, scd = 0f;
-            bool seeking = false;
-            if (ItemSlots > 0 && supply.Nearest(u.X, u.Z, out scx, out scz, out scd))
-                seeking = scd <= SupplySeekRange && scd > 1e-3f;
-            if (status.CanMove(u.Id) && (seeking || rng.Float01() < 0.40f))
+            // ⚠️ 2026-09-17: 여기 있던 **하네스 전용 이동 정책**(40% 임의 방향 + 상자 탐색)을 걷어냈다.
+            //    게임의 AI 는 그때 이동 페이즈를 통째로 건너뛰고 있었으므로 **하네스가 게임보다 잘 움직였고**,
+            //    보급·지뢰·지속불 승률이 게임의 승률이 아니었다(§2-9-1: 게임과 하네스는 같은 규칙을 써야 한다).
+            //    이제 둘 다 Sim/AiMover.Decide 를 부른다. 정책을 여기서 또 쓰지 마라.
+            //
+            // ⚠️ 걷는 것만 여기 남긴다 — AiMover.Walk 가 아니라 이 루프를 쓰는 이유는
+            //    **걸음마다** 상자를 줍고 지뢰를 밟아야 하기 때문이다(게임의 DriveUnit 도 같은 구조).
+            //    걸음 크기는 양쪽 다 TankGroundProbe.WalkStep 이라 1m vs 0.25m 사고는 재발하지 않는다.
+            hazards.Snapshot(hazBuf);
+            aiFoes.Clear();
+            foreach (var o in units)
+                if (o.Alive && o.Team != u.Team) aiFoes.Add(new AiGunner.Target { Id = o.Id, Center = o.Center, Defense = o.St.Defense });
+            var mplan = AiMover.Decide(vol, u.X, u.Y, u.Z, status.CanMove(u.Id), u.St.MaxRange, MapSize,
+                                       hazBuf, ItemSlots > 0 ? supply : null, aiFoes, ref rng);
+            bool seeking = mplan.Why == MoveReason.Supply;
+            if (seeking) { res.SeekTurns++; if (u.Team == 0) res.SeekA++; else res.SeekB++; }
+            if (u.Team == 0) res.MoveWhyA[(int)mplan.Why]++;
+            if (mplan.Move)
             {
-                float hd = rng.Range(0f, MathF.PI * 2f), dx = MathF.Cos(hd), dz = MathF.Sin(hd);
-                if (seeking) { dx = (scx - u.X) / scd; dz = (scz - u.Z) / scd; res.SeekTurns++; if (u.Team == 0) res.SeekA++; else res.SeekB++; }
+                float dx = mplan.DirX, dz = mplan.DirZ;
                 // ⚠️ **하네스가 게임보다 훨씬 덜 움직이던 버그**(2026-09-16). 게임(BattleDemo.MoveUnit)은
                 //    이동을 `TankGroundProbe.WalkStep`(0.25m)으로 쪼개 걷는다 — 크레이터 턱은 가장자리 ε 구간의
                 //    상승량이 √(2Rε) 라 걸음이 크면 "너무 가파름"으로 막히기 때문이다(TankGroundProbe 머리말).
                 //    하네스는 1m 걸음이라 같은 지형에서 게임이라면 넘었을 턱에 걸렸다.
                 //    진단: 상자를 주우러 간 턴 4.29 중 2.92 가 지형에 막힘 → 헬기 보급이 죽어 있었다.
                 const float Walk = TankGroundProbe.WalkStep;
-                int steps = (int)(8f / Walk);
+                int steps = (int)(mplan.Distance / Walk);
                 float gy = u.Y; bool moved = false;
                 for (int k = 0; k < steps; k++)
                 {
@@ -1063,6 +1080,7 @@ static class BattleSimVerify
         var torAvg = new float[N];    // 방해탄 적중/판 — 각도·파워 고정만(화면 방해는 AI 상대로 안 쓴다, §2-9-14)    // 궁극기 발동/판 — 네거티브 컨트롤(0 이면 궁극기가 죽은 것)
         float supDropAll = 0f, supPickAll = 0f, supDestAll = 0f; int supCells = 0;
         float seekAll = 0f, seekBlkAll = 0f, pickAall = 0f, pickBall = 0f, seekAall = 0f, seekBall = 0f;   // 투하/획득/파괴 대조
+        var whyAll = new float[7]; float whyCells = 0f;   // AI 이동 사유(§AiMover) 네거티브 컨트롤
         var hitPct = new float[N]; var dmgPerShot = new float[N];   // A팀 명중률 · 명중당 폭발 피해
 
         // 단일 행 모드: 그 기종이 A 팀인 행만 돈다(12셀). 나머지 행은 계산도 출력도 안 한다.
@@ -1078,6 +1096,7 @@ static class BattleSimVerify
             for (int bi = 0; bi < N; bi++)
             {
                 int winA = 0, decided = 0, turns = 0, spec = 0, fall = 0, ssN = 0, ultN = 0, dotN = 0, mineN = 0, satN = 0, itemN = 0, supN = 0, supDropN = 0, supDestN = 0, seekN = 0, seekBlkN = 0, impN = 0, ampN = 0, torN = 0, pkA = 0, pkB = 0, skA = 0, skB = 0;
+                var whyN = new int[7];
                 for (uint m = 0; m < perCell; m++)
                 {
                     // [6-1] 실측: B 스폰 자리가 지형상 유리(+20%p). 홀짝 판마다 자리를 바꿔 탱크 비교에서 상쇄한다.
@@ -1093,6 +1112,7 @@ static class BattleSimVerify
                     ssN += r.SsUsed; ultN += r.UltUsed; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots; itemN += r.ItemsUsed; supN += r.SupplyPicked;
                     impN += r.ImpairHitA; ampN += r.AmpShots; torN += r.TornadoShots;
                     supDropN += r.SupplyDropped; supDestN += r.SupplyDestroyed; seekN += r.SeekTurns; seekBlkN += r.SeekBlocked; pkA += r.PickedA; pkB += r.PickedB; skA += r.SeekA; skB += r.SeekB;
+                    if (r.MoveWhyA != null) for (int w = 0; w < whyN.Length; w++) whyN[w] += r.MoveWhyA[w];
                     shotsA += r.ShotsA; hitsA += r.HitsA; blastA += r.BlastDealtA;
                     if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
                 }
@@ -1107,6 +1127,8 @@ static class BattleSimVerify
                 impSum += impN / (float)perCell; ampSum += ampN / (float)perCell; torSum += torN / (float)perCell;
                 supDropAll += supDropN / (float)perCell; supPickAll += supN / (float)perCell; supDestAll += supDestN / (float)perCell; supCells++;
                 seekAll += seekN / (float)perCell; seekBlkAll += seekBlkN / (float)perCell;
+                for (int w = 0; w < whyAll.Length; w++) whyAll[w] += whyN[w] / (float)perCell;
+                whyCells++;
                 pickAall += pkA / (float)perCell; pickBall += pkB / (float)perCell; seekAall += skA / (float)perCell; seekBall += skB / (float)perCell;
             }
             spUse[ai] = spSum / N; turnAvg[ai] = tSum / N; fallAvg[ai] = fSum / N;
@@ -1162,6 +1184,16 @@ static class BattleSimVerify
             Console.WriteLine($"      (진단) 주우러 간 턴 {seekAll / supCells:F2}  지형에 막힘 {seekBlkAll / supCells:F2}"
                               + $"  |  팀별 획득 A {pickAall / supCells:F2} : B {pickBall / supCells:F2}"
                               + $"  주우러 간 턴 A {seekAall / supCells:F2} : B {seekBall / supCells:F2}");
+        // AI 이동(§AiMover) 네거티브 컨트롤 — **게임과 하네스가 같은 함수를 쓴다**는 걸 숫자로 확인하는 자리다.
+        // 구덩이 탈출이 0 이면 "자기가 판 구덩이에 갇힌 AI" 가 돌아온 것이고, 보급이 0 이면 헬기가 다시 장식이다.
+        if (whyCells > 0)
+        {
+            string[] wn = { "안움직임", "속박", "구덩이탈출", "장판탈출", "보급", "사거리", "자리옮김" };
+            var sb = new System.Text.StringBuilder("    AI 이동 사유(A팀, 한 판 평균) —");
+            for (int w = 1; w < wn.Length; w++) sb.Append($"  {wn[w]} {whyAll[w] / whyCells:F2}");
+            Console.WriteLine(sb.ToString());
+            if (whyAll[2] / whyCells < 0.01f) Console.WriteLine("      ⚠️ 구덩이 탈출이 0 — AI 가 자기가 판 구덩이에 갇혀 있다");
+        }
         Console.WriteLine("    ※ 미러(대각선)가 50%에서 크게 벗어나면 진영 유불리(스폰·지형·선공)가 섞인 것이다.");
         Console.WriteLine("    ※ 명중% = A팀 사격 중 적에게 폭발 피해를 준 비율, 피해/명중 = 그 사격 한 번의 폭발 피해 합(방어 적용 후, 낙하·지속·설치물 제외).");
         Console.WriteLine("    ※ 낙하 = 지형을 끊어 적에게 입힌 한 판 평균 피해(§28). 지속 = 독·화상 tick, 설치물 = 지뢰(마인랜더)+지속불(캐터펄트)+독구름(듀크) 장판 피해, 위성 = 위성탄 발수, 아이템 = 한 판 평균 아이템 사용 수(§2-9-10), 보급 = 한 판 평균 헬기 상자 획득 수(§2-9-11). 해당 탱크에서 0 이면 그 시스템이 죽은 것.");

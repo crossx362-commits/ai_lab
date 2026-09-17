@@ -350,13 +350,23 @@ namespace Tankfall.View
             //    빼먹어서 **자체검사가 고르기 화면에 갇혀 영영 안 끝났다**(빌드는 성공, 검사는 무응답).
             //    모드가 늘 때마다 재발할 조건이라 목록이 아니라 **플래그 하나**로 판정한다 —
             //    사람이 없는 모드는 파싱할 때 `_autoMode` 를 켜므로 여기 손댈 일이 없다.
-            _picking = !_rosterFixed && !_autoMode && !_practice;
             _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
 
             // ⚠️ 자동 검증 모드는 타이틀을 거치지 않는다 — 거치면 하네스가 메뉴에서 조용히 멈춘다(BattleScreens.cs 머리말).
             //    사람이 켠 경우에만 타이틀로 시작한다.
             bool headless = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _practice || _uiSelfTest || _shellCheck || _shellGallery;
             _headless = headless;
+            // ⚠️ 2026-09-17 사고: `-uiselftest` 가 **고르기 화면에 갇혀 영영 안 끝났다.**
+            //    탱크 고르기(§2-9-17)가 들어오면서 `_picking` 이 Update 맨 앞에서 return 하는데,
+            //    무인 모드는 각자 파싱에서 `_autoMode` 를 켜야 했고 `-uiselftest`·`-shellcheck`·
+            //    `-shellgallery`·`-phasecheck` 넷이 빠져 있었다. 로그에 **아무것도 안 찍혀서**
+            //    "멈춘 건지 느린 건지" 조차 안 보였다(빌드가 깨진 줄 알고 한참 헤맸다).
+            //
+            //    플래그를 하나씩 켜는 방식이 원인이다 — 무인 모드를 새로 만들 때마다 또 빠진다.
+            //    그래서 **headless 목록에서 유도한다.** 위 `headless` 와 같은 조건이면 사람이 없다는 뜻이고,
+            //    사람이 없으면 고르기 화면은 성립하지 않는다. 새 무인 모드는 headless 에만 추가하면 된다.
+            if (headless) _autoMode = true;                 // 머리말 참조 — 목록을 단일 소스로 삼는다
+            _picking = !_rosterFixed && !_autoMode && !_practice;
             _screen = headless ? GameScreen.Battle : GameScreen.Title;
             Sfx.Muted = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _uiSelfTest || Application.isBatchMode;
         }
@@ -725,7 +735,7 @@ namespace Tankfall.View
             switch (_phase)
             {
                 case Phase.Move:
-                    if (!IsPlayerTurn) { _phase = Phase.AiThink; _phaseTimer = 0.9f; break; }
+                    if (!IsPlayerTurn) { AiMoveStep(dt); break; }
                     if (_phaseCheck)
                     {
                         if (_pcTurns == 0) BeginPhaseCheckTurn();   // 첫 턴은 NextTurn 을 안 거친다
@@ -793,6 +803,72 @@ namespace Tankfall.View
         // ---------------- 플레이어 ----------------
 
         /// <summary>MOVE 페이즈 — 이동과 자유 카메라만. 여기서 조준은 못 한다.</summary>
+        // ── AI 이동(§2-1 MOVE 페이즈) ──────────────────────────────────────
+        //
+        // ⚠️ **이게 없던 동안 게임의 AI 는 한 번도 움직이지 않았다**(2026-09-17, 다른 세션이 발견).
+        //    `case Phase.Move: if (!IsPlayerTurn) { _phase = Phase.AiThink; }` 로 통째로 건너뛰었다.
+        //    결과가 조용해서 오래 안 들켰다 — 화면에는 "적군 조준 중"이 뜨니 정상으로 보인다.
+        //    실제로는:
+        //      · AI 가 자기가 판 구덩이에서 못 나온다(이온어태커가 "적이 자기 구덩이에 숨어" 안 보이던 증상)
+        //      · 헬기 보급 상자를 **게임에서는 영원히 안 줍는다**(헬기가 장식이 된다)
+        //      · 독·불 장판에서 안 나온다 — AiGunner.EffectValue 는 "적이 나가면 끊긴다"를 전제로 값을 매기는데 못 나간다
+        //    그리고 **하네스는 움직이고 있었다.** 즉 승률 측정이 게임의 승률이 아니었다(§2-9-1 이 경고한 상태).
+        //
+        // 판단은 Sim/AiMover 가 한다 — 게임과 하네스가 **같은 함수**를 부른다. 여기서 정책을 또 쓰지 마라.
+        // 걷는 것은 플레이어와 같은 DriveUnit 을 쓴다(WalkStep 분할·보급 줍기·지뢰 밟기가 전부 거기 있다).
+        void AiMoveStep(float dt)
+        {
+            var u = Current;
+            if (u == null || !u.Alive) { _phase = Phase.AiThink; _phaseTimer = 0.9f; return; }
+
+            if (!_aiMoveDecided)
+            {
+                _aiMoveDecided = true;
+                _hazards.Snapshot(_hazardBuf);
+                _aiFoes.Clear();
+                foreach (var o in _units)
+                    if (o.Alive && o.Team != u.Team) _aiFoes.Add(new AiGunner.Target { Id = o.Id, Center = o.Center, Defense = o.St.Defense });
+                var plan = AiMover.Decide(_vol, u.Pos.x, u.Pos.y, u.Pos.z, _status.CanMove(u.Id),
+                                          u.St.MaxRange, MapSize, _hazardBuf,
+                                          _itemSlots > 0 ? _supply : null, _aiFoes, ref _aiRng);
+                _aiMoveLeft = plan.Move ? plan.Distance : 0f;
+                if (plan.Move)
+                {
+                    u.Heading = Mathf.Atan2(plan.DirX, plan.DirZ) * Mathf.Rad2Deg;
+                    // 이유를 남긴다 — 안 남기면 "움직이긴 하는데 왜인지 모르는" AI 가 된다.
+                    _log = $"{(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} 이동 — {MoveWhy(plan.Why)}";
+                }
+                _phaseTimer = 2.2f;      // 안전 상한. 턱에 막혀 제자리걸음이어도 턴이 안 멈춘다.
+            }
+
+            _phaseTimer -= dt;
+            if (_aiMoveLeft > 0f && u.Gauge > 0f && _phaseTimer > 0f)
+            {
+                var before = u.Pos;
+                DriveUnit(u, 1f, dt);
+                _aiMoveLeft -= Vector3.Distance(before, u.Pos);
+                // 한 발짝도 못 갔으면 막힌 것이다 — 타이머를 태우지 말고 바로 조준으로 넘긴다.
+                if ((u.Pos - before).sqrMagnitude < 1e-8f) _aiMoveLeft = 0f;
+                return;
+            }
+            _aiMoveDecided = false;
+            _phase = Phase.AiThink; _phaseTimer = 0.9f;
+        }
+
+        static string MoveWhy(MoveReason r) => r switch
+        {
+            MoveReason.CraterEscape => "구덩이 탈출",
+            MoveReason.HazardEscape => "장판 탈출",
+            MoveReason.Supply => "보급 상자",
+            MoveReason.Range => "사거리 확보",
+            MoveReason.Wander => "자리 옮김",
+            _ => "이동",
+        };
+
+        bool _aiMoveDecided;
+        float _aiMoveLeft;
+        readonly List<AiGunner.Target> _aiFoes = new List<AiGunner.Target>();
+
         void PlayerMove(float dt)
         {
             var u = Current;
@@ -1576,6 +1652,7 @@ namespace Tankfall.View
             }
             RefreshFogVisibility();
             Current.Gauge = MoveGaugeMax * _items.MoveScale(Current.Id);   // 이동증가(원작 5턴 2배)
+            _aiMoveDecided = false; _aiMoveLeft = 0f;   // ⚠️ 안 버리면 다음 AI 턴이 지난 턴 계획을 이어 쓴다
             _itemSel = 0;
             _power = 0f; _charging = false;
             _phase = Phase.Move;

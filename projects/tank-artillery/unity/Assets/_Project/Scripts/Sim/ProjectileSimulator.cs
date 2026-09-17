@@ -234,9 +234,17 @@ namespace Tankfall.Sim
         //
         // ⚠️ 무료 구간이 필요하다. 착탄마다 지면이 몇 cm 씩 꺼지는데 그걸 전부 피해로 세면
         //    아무도 안 판 판에서도 체력이 줄어든다(원인 못 찾는 버그가 된다).
+        //
+        // ⚠️ 2026-09-17 재조정 — **AI 이동이 들어오고 나서** 낙하 피해가 판을 지배하고 있었다(§AiMover 배선).
+        //    실측: 멀티미사일은 한 판 낙하 피해 635 인데 직사(폭발) 피해는 한 사격당 178 이었다.
+        //    즉 **쏘는 것보다 파는 것이 이겼다.** 크로스보우는 명중률 75%(1위)에 사격당 피해 215(상위)인데도
+        //    굴착 4.5m 라 낙하 피해가 81 뿐이라 승률 17% 로 무너졌다 — 잘 쏘는 것이 보상받지 못하는 판이었다.
+        //    26→17, 상한 420→300 으로 낮춰 "파는 것은 보상이지 승리 조건이 아니다"로 되돌린다.
+        //    ⚠️ 0 으로 만들지 마라. §28 보상이 없으면 굴착이 순수 자해가 되어 반대쪽으로 무너진다
+        //       (이온 10% · 캐터펄트 28% 였던 상태 — 이 상수가 생긴 이유다).
         public const float FallFreeMeters = 3f;
-        public const float FallDamagePerMeter = 26f;
-        public const float FallDamageMax = 420f;
+        public const float FallDamagePerMeter = 17f;
+        public const float FallDamageMax = 300f;
 
         /// <summary>발밑이 사라져 떨어진 높이(m)에 대한 피해. 3m 까지는 무피해.</summary>
         public static int FromFall(float dropMeters)

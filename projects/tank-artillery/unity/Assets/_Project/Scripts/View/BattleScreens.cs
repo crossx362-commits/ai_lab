@@ -171,8 +171,10 @@ namespace Tankfall.View
         void SetupInput()
         {
             if (Down(KeyCode.Escape)) { _screen = GameScreen.TankSelect; return; }
-            if (Down(KeyCode.DownArrow) || Down(KeyCode.S)) _setupSel = (_setupSel + 1) % 4;
-            if (Down(KeyCode.UpArrow) || Down(KeyCode.W)) _setupSel = (_setupSel + 3) % 4;
+            // ⚠️ 행을 추가하면 이 상수도 같이 늘려라. 숫자를 두 곳에 적지 않으려고 DrawSetup 의 표에서 센다.
+            int rows = SetupRows.GetLength(0);
+            if (Down(KeyCode.DownArrow) || Down(KeyCode.S)) _setupSel = (_setupSel + 1) % rows;
+            if (Down(KeyCode.UpArrow) || Down(KeyCode.W)) _setupSel = (_setupSel - 1 + rows) % rows;
 
             int dir = (Down(KeyCode.RightArrow) || Down(KeyCode.D)) ? 1 : (Down(KeyCode.LeftArrow) || Down(KeyCode.A)) ? -1 : 0;
             if (dir != 0)
@@ -188,6 +190,7 @@ namespace Tankfall.View
                         w = (w + dir + 3) % 3;
                         _weatherForced = w == 0 ? (Weather?)null : w == 1 ? Weather.Clear : Weather.Snow;
                         break;
+                    case 4: _boom = !_boom; break;   // Boom 모드(§2-9-16) — 켜고 끄기뿐이라 방향은 안 본다
                 }
 
             if (Down(KeyCode.Return) || Down(KeyCode.KeypadEnter)) StartBattle();
@@ -261,7 +264,8 @@ namespace Tankfall.View
             _screen = GameScreen.Battle;
             _log = _practice
                 ? "연습장 — Space 로 조준, F2 로 정답 보기"
-                : $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name}";
+                : $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name}"
+                  + (_boom ? " · Boom 모드" : "");
             Debug.Log($"[Tankfall] {_log}");
         }
 
@@ -363,10 +367,10 @@ namespace Tankfall.View
                         TankStats.EraName(TankStats.EraOf(k)), 10, Ui.Dim);
 
                 // 스탯 막대 4줄. 전부 같은 기준으로 정규화해야 종 사이 비교가 성립한다.
-                StatRow(r, 0, "체력", st.Hp / 1200f, Ui.Good);
-                StatRow(r, 1, "방어", st.Defense / 130f, Ui.Gauge);
-                StatRow(r, 2, "사거리", st.MaxRange / 260f, Ui.Power);
-                StatRow(r, 3, "속도", 1f - (st.Delay - 520f) / 80f, Ui.Warn);   // 딜레이가 짧을수록 자주 쏜다
+                StatRow(r, 0, "체력",   StatBars.Hp.Norm(st.Hp),        Ui.Good);
+                StatRow(r, 1, "방어",   StatBars.Def.Norm(st.Defense),  Ui.Gauge);
+                StatRow(r, 2, "사거리", StatBars.Range.Norm(st.MaxRange), Ui.Power);
+                StatRow(r, 3, "속도",   StatBars.Delay.NormInv(st.Delay), Ui.Warn);   // 딜레이가 짧을수록 자주 쏜다
 
                 if (pickIdx >= 0)
                 {
@@ -411,6 +415,49 @@ namespace Tankfall.View
                 Ui.TextShadow(new Rect(0, H - 36f, W, 22f), "Enter = 전투 설정으로", 14, Ui.Mark, TextAnchor.MiddleCenter, true);
         }
 
+        /// <summary>
+        /// 스탯 막대의 눈금. **기종 표에서 실제 최소·최대를 뽑아** 쓴다.
+        ///
+        /// ⚠️ 예전엔 `st.Hp / 1200f` 처럼 상수를 손으로 박아 뒀다. 밸런스가 수치를 옮기자마자
+        ///    눈금이 낡아 두 가지로 거짓말을 했다(2026-09-17 실측):
+        ///      · **넘쳐서 잘렸다** — 슈퍼탱크 사거리 291m ÷ 260 = 1.12 → Clamp01 이 1.0 으로 자른다.
+        ///        13종 중 1등인 게 "그냥 꽉 참"으로 보여 2·3등과 구별이 안 됐다.
+        ///      · **차이가 안 보였다** — 체력은 0.77~0.96, 즉 막대 폭의 **19%** 안에서만 움직였다.
+        ///        13종을 나란히 놓고 고르라는 화면인데 전부 같은 길이로 보인다.
+        ///    그래서 상수를 없앤다. 눈금이 표를 따라오므로 밸런스가 수치를 바꿔도 다시 안 낡는다
+        ///    (§2-9-1 "같은 값을 여러 곳에 적으면 반드시 어긋난다").
+        /// </summary>
+        readonly struct StatScale
+        {
+            readonly float _min, _span;
+            public StatScale(float min, float max) { _min = min; _span = Mathf.Max(max - min, 1e-4f); }
+
+            // 최약체도 **막대가 보여야** "값이 0"과 구별된다 — 바닥을 0.10 으로 둔다.
+            public float Norm(float v)    => Mathf.Lerp(0.10f, 1f, Mathf.Clamp01((v - _min) / _span));
+            public float NormInv(float v) => Mathf.Lerp(0.10f, 1f, 1f - Mathf.Clamp01((v - _min) / _span));
+        }
+
+        static class StatBars
+        {
+            public static readonly StatScale Hp, Def, Range, Delay;
+
+            static StatBars()
+            {
+                float hpL = float.MaxValue, hpH = float.MinValue, dfL = float.MaxValue, dfH = float.MinValue;
+                float rgL = float.MaxValue, rgH = float.MinValue, dlL = float.MaxValue, dlH = float.MinValue;
+                for (int i = 0; i < TankStats.Count; i++)
+                {
+                    var s = TankStats.Get((TankKind)i);
+                    hpL = Mathf.Min(hpL, s.Hp);       hpH = Mathf.Max(hpH, s.Hp);
+                    dfL = Mathf.Min(dfL, s.Defense);  dfH = Mathf.Max(dfH, s.Defense);
+                    rgL = Mathf.Min(rgL, s.MaxRange); rgH = Mathf.Max(rgH, s.MaxRange);
+                    dlL = Mathf.Min(dlL, s.Delay);    dlH = Mathf.Max(dlH, s.Delay);
+                }
+                Hp = new StatScale(hpL, hpH); Def = new StatScale(dfL, dfH);
+                Range = new StatScale(rgL, rgH); Delay = new StatScale(dlL, dlH);
+            }
+        }
+
         void StatRow(Rect card, int row, string label, float frac, Color col)
         {
             float y = card.y + 36f + row * 15f;
@@ -419,35 +466,51 @@ namespace Tankfall.View
             Ui.Bar(b, Mathf.Clamp01(frac), col, null, null);
         }
 
-        // ── 전투 설정(맵·난이도·아이템·날씨) ────────────────────
+        // ── 전투 설정(맵·난이도·아이템·날씨·Boom 모드) ──────────
+        /// <summary>
+        /// 설정 행의 **이름·설명**. 값은 지금 상태에 따라 달라지니 <see cref="DrawSetup"/> 에서 만든다.
+        /// 여기 두는 이유는 <see cref="SetupInput"/> 의 커서 상한이 이 표를 세게 하기 위해서다 —
+        /// 행 수를 두 곳에 적으면 행을 늘릴 때 커서가 마지막 행에 못 간다(§2-9-1 "같은 값을 여러 곳에").
+        /// </summary>
+        static readonly string[,] SetupRows =
+        {
+            { "맵",        "지형이 사거리·엄폐를 바꾼다" },
+            { "AI 난이도", "조준 오차 — 사다리 검증됨(§2-9-8)" },
+            { "아이템",    "판 시작에 무작위로 받는다" },
+            { "날씨",      "눈이면 포세이돈이 강해진다" },
+            { "Boom 모드", "지뢰밭 + 지진·유성(§2-9-16)" },
+        };
+
         void DrawSetup(float W, float H)
         {
             Scrim(W, H, 0.62f);
             Ui.TextShadow(new Rect(0, H * 0.18f, W, 30f), "전투 설정", 22, Ui.Ink, TextAnchor.MiddleCenter, true);
 
             string weather = _weatherForced == null ? "자동 (25% 눈)" : _weatherForced == Weather.Clear ? "맑음" : "눈";
-            var rows = new[]
+            var values = new[]
             {
-                ("맵", MapHeightFunction.Name(_map), "지형이 사거리·엄폐를 바꾼다"),
-                ("AI 난이도", Difficulties[_difficulty].Name, "조준 오차 — 사다리 검증됨(§2-9-8)"),
-                ("아이템", _itemSlots == 0 ? "없음" : $"{_itemSlots}개", "판 시작에 무작위로 받는다"),
-                ("날씨", weather, "눈이면 포세이돈이 강해진다"),
+                MapHeightFunction.Name(_map),
+                Difficulties[_difficulty].Name,
+                _itemSlots == 0 ? "없음" : $"{_itemSlots}개",
+                weather,
+                _boom ? "켬" : "끔",
             };
 
+            int rows = SetupRows.GetLength(0);
             float y = H * 0.30f;
-            for (int i = 0; i < rows.Length; i++)
+            for (int i = 0; i < rows; i++)
             {
                 var r = new Rect(W * 0.5f - 250f, y + i * 48f, 500f, 40f);
                 bool sel = i == _setupSel;
                 Ui.Fill(r, sel ? new Color(1f, 0.72f, 0.25f, 0.14f) : Ui.Panel);
                 Ui.Frame(r, sel ? Ui.Power : Ui.Border, sel ? 2f : 1f);
-                Ui.Text(new Rect(r.x + 16f, r.y, 150f, r.height), rows[i].Item1, 14, sel ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, sel);
-                Ui.Text(new Rect(r.x + 160f, r.y, 180f, r.height), (sel ? "< " : "  ") + rows[i].Item2 + (sel ? " >" : ""),
+                Ui.Text(new Rect(r.x + 16f, r.y, 150f, r.height), SetupRows[i, 0], 14, sel ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, sel);
+                Ui.Text(new Rect(r.x + 160f, r.y, 180f, r.height), (sel ? "< " : "  ") + values[i] + (sel ? " >" : ""),
                         14, sel ? Ui.Power : Ui.Ink, TextAnchor.MiddleCenter, sel);
-                Ui.Text(new Rect(r.x + 350f, r.y, 140f, r.height), rows[i].Item3, 9, Ui.Dim);
+                Ui.Text(new Rect(r.x + 350f, r.y, 140f, r.height), SetupRows[i, 1], 9, Ui.Dim);
             }
 
-            var team = new Rect(W * 0.5f - 250f, y + rows.Length * 48f + 12f, 500f, 44f);
+            var team = new Rect(W * 0.5f - 250f, y + rows * 48f + 12f, 500f, 44f);
             Ui.Box(team);
             Ui.Text(new Rect(team.x + 14f, team.y, 90f, team.height), "내 팀", 12, Ui.Ally, TextAnchor.MiddleLeft, true);
             for (int i = 0; i < _roster.Length; i++)
@@ -809,6 +872,9 @@ namespace Tankfall.View
         void UiSelfTestSetup(int step)
         {
             _showHelp = false;
+            // Boom 모드 행이 **그려지는지**를 스크린샷이 실제로 덮게 한다 — 커서를 그 행에 올리고 켠 상태로 찍는다.
+            // (설정에 없어서 `-boom` 으로만 켤 수 있던 걸 노출한 변경. 화면에 안 나오면 다시 도달 불가가 된다.)
+            _boom = step == 3;
             switch (step)
             {
                 case 0: _screen = GameScreen.Title; _menuSel = 0; break;
@@ -819,7 +885,7 @@ namespace Tankfall.View
                     _picked.Add(TankKind.Cannon); _picked.Add(TankKind.Carrot); _picked.Add(TankKind.Laser);
                     _pickCursor = (int)TankKind.Poseidon;
                     break;
-                case 3: _screen = GameScreen.Setup; _setupSel = 1; break;
+                case 3: _screen = GameScreen.Setup; _setupSel = SetupRows.GetLength(0) - 1; break;   // 마지막 행(Boom 모드)에 커서
                 case 4:
                     _screen = GameScreen.Battle;
                     _phase = Phase.Move; _phaseTimer = MovePhaseSec * 0.7f;
