@@ -39,7 +39,8 @@ static class TerrainHitVerify
         foreach (MapKind m in Enum.GetValues(typeof(MapKind)))
         {
             var vol = MakeVol(m);
-            MapHeightFunction.Spawn(m, 0, 1, out float sx, out float sz);
+            // 가운데쯤 한 자리. 인원이 짝수면 정중앙이 없으니 가운데에 가까운 쪽.
+            MapHeightFunction.Spawn(m, 0, MapHeightFunction.TeamSize / 2, out float sx, out float sz);
             float gy = MapHeightFunction.Height(m, sx, sz);
             foreach (float bury in new[] { 3.0f, 5.0f })
             {
@@ -67,7 +68,7 @@ static class TerrainHitVerify
         foreach (MapKind m in Enum.GetValues(typeof(MapKind)))
         {
             var vol = MakeVol(m);
-            for (int slot = 0; slot < 3; slot++)
+            for (int slot = 0; slot < MapHeightFunction.TeamSize; slot++)
             {
                 MapHeightFunction.Spawn(m, 0, slot, out float sx, out float sz);
                 float gy = MapHeightFunction.Height(m, sx, sz);
@@ -100,7 +101,7 @@ static class TerrainHitVerify
                 float cx = rng.Range(MapSize * 0.15f, MapSize * 0.85f), cz = rng.Range(MapSize * 0.15f, MapSize * 0.85f);
                 SdfDeformer.SubtractSphere(vol, new BlastRequest(cx, MapHeightFunction.Height(m, cx, cz), cz, rng.Range(4f, 9f)));
             }
-            for (int slot = 0; slot < 3; slot++)
+            for (int slot = 0; slot < MapHeightFunction.TeamSize; slot++)
             {
                 MapHeightFunction.Spawn(m, 0, slot, out float sx, out float sz);
                 var p0 = new Vec3(sx, MapHeightFunction.Height(m, sx, sz) + 2.5f, sz);

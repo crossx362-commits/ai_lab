@@ -168,10 +168,10 @@ namespace Tankfall.View
             {
                 var k = (TankKind)_pickCursor;
                 if (_picked.Contains(k)) _picked.Remove(k);
-                else if (_picked.Count < 3) _picked.Add(k);
-                // ⚠️ 같은 기종 3대를 막지 않는다 — 원작에도 그런 제한이 없고, 막으면 "3종 다 캐논" 실험을 못 한다.
+                else if (_picked.Count < MapHeightFunction.TeamSize) _picked.Add(k);
+                // ⚠️ 같은 기종을 여러 대 고르는 걸 막지 않는다 — 원작에도 그런 제한이 없고, 막으면 "3종 다 캐논" 실험을 못 한다.
             }
-            if ((Down(KeyCode.Return) || Down(KeyCode.KeypadEnter)) && _picked.Count == 3)
+            if ((Down(KeyCode.Return) || Down(KeyCode.KeypadEnter)) && _picked.Count == MapHeightFunction.TeamSize)
             {
                 _roster = _picked.ToArray();
                 _screen = GameScreen.Setup;
@@ -258,7 +258,7 @@ namespace Tankfall.View
                 var list = new List<TankKind>();
                 foreach (var n in cur.Roster.Split(','))
                     if (System.Enum.TryParse<TankKind>(n.Trim(), true, out var k)) list.Add(k);
-                if (list.Count == 3) _roster = list.ToArray();     // 기종이 사라졌거나 손상됐으면 기본 로스터
+                if (list.Count == MapHeightFunction.TeamSize) _roster = list.ToArray();     // 기종이 사라졌거나 손상됐으면 기본 로스터
             }
             Debug.Log($"[Tankfall] 저장 설정 복원 — {MapHeightFunction.Name(_map)} · AI {Difficulties[_difficulty].Name} · 아이템 {_itemSlots} · 효과음 {(Sfx.SfxOff ? "끔" : "켬")} · 음악 {(Sfx.MusicOff ? "끔" : "켬")}");
         }
@@ -551,7 +551,7 @@ namespace Tankfall.View
         void DrawTankSelect(float W, float H)
         {
             Scrim(W, H, 0.62f);
-            Ui.TextShadow(new Rect(0, 18f, W, 30f), "탱크 3대를 고른다", 22, Ui.Ink, TextAnchor.MiddleCenter, true);
+            Ui.TextShadow(new Rect(0, 18f, W, 30f), $"탱크 {MapHeightFunction.TeamSize}대를 고른다", 22, Ui.Ink, TextAnchor.MiddleCenter, true);
             Ui.TextShadow(new Rect(0, 48f, W, 20f),
                           "방향키 = 이동   Space = 선택/해제   Enter = 확정   Esc = 뒤로", 12, Ui.Dim, TextAnchor.MiddleCenter);
 
@@ -592,12 +592,15 @@ namespace Tankfall.View
             }
 
             // 고른 것 + 특수탄 설명
-            var bar = new Rect(W * 0.5f - 330f, H - 122f, 660f, 78f);
+            // 폭도 칸 수에서 유도한다 — 칸만 늘리고 상자를 그대로 두면 넷째가 상자 밖으로 나간다.
+            const float SlotW = 150f, SlotGap = 8f;
+            float barW = 28f + MapHeightFunction.TeamSize * SlotW;
+            var bar = new Rect(W * 0.5f - barW * 0.5f, H - 122f, barW, 78f);
             Ui.Box(bar);
-            Ui.Text(new Rect(bar.x + 14f, bar.y + 6f, 200f, 18f), $"고른 탱크 {_picked.Count}/3", 12, Ui.Dim, TextAnchor.MiddleLeft, true);
-            for (int i = 0; i < 3; i++)
+            Ui.Text(new Rect(bar.x + 14f, bar.y + 6f, 240f, 18f), $"고른 탱크 {_picked.Count}/{MapHeightFunction.TeamSize}", 12, Ui.Dim, TextAnchor.MiddleLeft, true);
+            for (int i = 0; i < MapHeightFunction.TeamSize; i++)
             {
-                var slot = new Rect(bar.x + 14f + i * 150f, bar.y + 26f, 142f, 42f);
+                var slot = new Rect(bar.x + 14f + i * SlotW, bar.y + 26f, SlotW - SlotGap, 42f);
                 Ui.Fill(slot, Ui.Slot); Ui.Frame(slot, Ui.Border);
                 if (i < _picked.Count)
                 {
@@ -622,7 +625,7 @@ namespace Tankfall.View
             Ui.Text(new Rect(bar.x + 470f, bar.y + 56f, 180f, 16f),
                     $"폭발 {spSt.BlastRadius:F1}m  피해 {spSt.BaseDamage:F0}", 10, Ui.Dim);
 
-            if (_picked.Count == 3)
+            if (_picked.Count == MapHeightFunction.TeamSize)
                 Ui.TextShadow(new Rect(0, H - 36f, W, 22f), "Enter = 전투 설정으로", 14, Ui.Mark, TextAnchor.MiddleCenter, true);
         }
 
@@ -727,7 +730,9 @@ namespace Tankfall.View
                 Ui.Text(new Rect(r.x + 350f, r.y, 140f, r.height), SetupRows[i, 1], 9, Ui.Dim);
             }
 
-            var team = new Rect(W * 0.5f - 250f, y + rows * 48f + 12f, 500f, 44f);
+            // 상자 폭을 인원에서 유도한다(130f 간격 × 인원 + 여백) — 넷째 이름이 상자 밖으로 삐져나갔던 자리.
+            float teamW = 100f + MapHeightFunction.TeamSize * 130f;
+            var team = new Rect(W * 0.5f - teamW * 0.5f, y + rows * 48f + 12f, teamW, 44f);
             Ui.Box(team);
             Ui.Text(new Rect(team.x + 14f, team.y, 90f, team.height), "내 팀", 12, Ui.Ally, TextAnchor.MiddleLeft, true);
             for (int i = 0; i < _roster.Length; i++)
@@ -790,7 +795,7 @@ namespace Tankfall.View
                         case 3: v = $"{_stat[t].Damage}"; break;
                         default:
                             int alive = 0; foreach (var u in _units) if (u.Team == t && u.Alive) alive++;
-                            v = $"{alive}/3"; break;
+                            v = $"{alive}/{MapHeightFunction.TeamSize}"; break;
                     }
                     Ui.Text(new Rect(r.x + 180f + t * 200f, y, 180f, 24f), v, 14,
                             t == 0 ? Ui.Ally : Ui.Enemy, TextAnchor.MiddleCenter, true);
@@ -869,7 +874,10 @@ namespace Tankfall.View
                 return d != 0 ? d : a.Id.CompareTo(b.Id);      // 동률은 등록 순서(§2-9-1) — 화면도 같은 규칙을 보여야 한다
             });
 
-            var r = new Rect(8f, 8f + 12f + 26f * 6f + 19f + 6f, 250f, 26f + alive.Count * 18f);
+            // ⚠️ Y 는 좌상단 팀 패널 **아래**여야 한다. 예전엔 그 높이(`26f * 6f`)를 손으로 베껴 뒀는데,
+            //    인원이 4:4 로 늘자 팀 패널만 길어지고 이 패널은 안 내려와 **두 패널이 2줄 겹쳤다.**
+            //    베끼지 말고 같은 식으로 유도한다(BattleDemo.HudTeamPanel 과 같은 상수를 본다).
+            var r = new Rect(8f, 8f + 12f + 26f * (MapHeightFunction.TeamSize * 2) + 19f + 6f, 250f, 26f + alive.Count * 18f);
             Ui.Box(r);
             Ui.Text(new Rect(r.x + 8f, r.y + 3f, 200f, 16f), "턴 순서 <size=9>(누적 딜레이)</size>", 10, Ui.Dim, TextAnchor.MiddleLeft, true);
             for (int i = 0; i < alive.Count; i++)
@@ -1108,7 +1116,8 @@ namespace Tankfall.View
                 case 3:
                     _screen = GameScreen.TankSelect;
                     _picked.Clear();
-                    _picked.Add(TankKind.Cannon); _picked.Add(TankKind.Carrot); _picked.Add(TankKind.Laser);
+                    // 인원만큼 채운다 — 덜 채우면 게이트 사진이 "빈 슬롯"으로 남아 화면이 틀린 줄 알게 된다.
+                    foreach (var dk in DefaultRoster) _picked.Add(dk);
                     _pickCursor = (int)TankKind.Poseidon;
                     break;
                 case 4: _screen = GameScreen.Setup; _setupSel = SetupRowBoom; break;   // Boom 모드 행에 커서

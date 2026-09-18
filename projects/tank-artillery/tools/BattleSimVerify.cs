@@ -62,11 +62,15 @@ static class BattleSimVerify
     const float TurnSeconds = 18f;        // §2-1 2페이즈 턴의 현실적 평균
 
     // §2-5 레버 2 — 실측 후 유일하게 살아남은 레버. 되먹임 나선(§2-5-1)이 폭주하기 전에 판을 끝낸다.
-    // 3v3 이므로 1라운드 = 6턴. 12라운드 = 72턴.
+    // 1라운드 = 팀인원 × 2 턴. 라운드 수로만 생각하고 턴 수는 인원에서 유도해라.
     // ⚠️ §2-5 초안의 12라운드(72턴)는 **너무 늦다**. [4] 실측상 맵은 40턴(약 7라운드)에
     //    명중률 4.2% 로 죽는다. 임계값을 그 앞에 둬야 나선을 끊는다.
     const float SuddenDeathPct = 0.05f;   // 매 턴 전원 최대HP의 5%
-    const int SuddenDeathTurn = 36;       // 6라운드 × 6명. BattleDemo.SuddenDeathRound 와 같은 값이어야 한다
+    // ⚠️ **턴 수를 숫자로 박지 마라.** 36 = 6라운드 × 6명이었는데 4:4 로 늘리자 하네스만 4.5라운드에
+    //    서든데스를 걸고 게임은 6라운드에 걸었다 — 승률·판 길이 표가 **게임과 다른 것을 재면서도 통과**한다.
+    //    라운드 수(게임의 BattleDemo.SuddenDeathRound)가 단일 소스이고, 턴 수는 인원에서 유도한다.
+    const int SuddenDeathRound = 6;
+    const int SuddenDeathTurn = SuddenDeathRound * MapHeightFunction.TeamSize * 2;
 
     static float _specPerMatch;
 
@@ -194,7 +198,7 @@ static class BattleSimVerify
         var vol = NewVolume();
         var units = new List<U>();
         for (int t = 0; t < 2; t++)
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < MapHeightFunction.TeamSize; i++)
             {
                 int side = swapSpawn ? 1 - t : t;      // 스폰 교환 — 지형 비대칭 판별용
                 SpawnAt(side, i, out float x, out float z);
@@ -202,7 +206,7 @@ static class BattleSimVerify
                 var kind = t == 0 ? (teamA ?? TankKind.Carrot) : (teamB ?? TankKind.Carrot);
                 // 종류를 지정한 실험에서는 그 탱크의 HP 를 쓴다(hp 인자는 HP 스윕 전용)
                 int startHp = (teamA.HasValue || teamB.HasValue) ? TankStats.Get(kind).Hp : hp;
-                units.Add(new U { Id = t * 3 + i, Team = t, Kind = kind, Hp = startHp, MaxHp = startHp, W = weather,
+                units.Add(new U { Id = t * MapHeightFunction.TeamSize + i, Team = t, Kind = kind, Hp = startHp, MaxHp = startHp, W = weather,
                                   X = x, Z = z, Y = float.IsNegativeInfinity(g) ? 10f : g });
             }
 
@@ -221,8 +225,8 @@ static class BattleSimVerify
         if (alternate)
         {
             int ft = firstTeam;
-            units.Sort((a, b) => (a.Id % 3) * 2 + (ft == 1 ? 1 - a.Team : a.Team)
-                               - ((b.Id % 3) * 2 + (ft == 1 ? 1 - b.Team : b.Team)));
+            units.Sort((a, b) => (a.Id % MapHeightFunction.TeamSize) * 2 + (ft == 1 ? 1 - a.Team : a.Team)
+                               - ((b.Id % MapHeightFunction.TeamSize) * 2 + (ft == 1 ? 1 - b.Team : b.Team)));
         }
 
         // 원작 딜레이 턴제(TurnOrder). 동률은 등록 순서이므로 리스트 순서 그대로 등록한다.
@@ -259,9 +263,9 @@ static class BattleSimVerify
             //    미러 게이트가 재려는 건 **탱크 수치만의 대칭**이지 아이템 운이 아니므로, 여기서만 양 팀에 같은 세트를 준다.
             if (fairItems)
             {
-                var perSlot = new List<ItemKind>[3];
-                for (int i = 0; i < 3; i++) { var r0 = new List<ItemKind>(); Items.Roll(ref rng, ItemSlots, r0); perSlot[i] = r0; }
-                foreach (var o in units) items.Bag(o.Id).AddRange(perSlot[o.Id % 3]);
+                var perSlot = new List<ItemKind>[MapHeightFunction.TeamSize];
+                for (int i = 0; i < MapHeightFunction.TeamSize; i++) { var r0 = new List<ItemKind>(); Items.Roll(ref rng, ItemSlots, r0); perSlot[i] = r0; }
+                foreach (var o in units) items.Bag(o.Id).AddRange(perSlot[o.Id % MapHeightFunction.TeamSize]);
             }
             else
                 foreach (var o in units) { Items.Roll(ref rng, ItemSlots, roll); items.Bag(o.Id).AddRange(roll); }
@@ -677,7 +681,7 @@ static class BattleSimVerify
             }
             return;
         }
-        Console.WriteLine("=== AI 자동 대전 (3v3) ===\n");
+        Console.WriteLine($"=== AI 자동 대전 ({MapHeightFunction.TeamSize}v{MapHeightFunction.TeamSize}) ===\n");
         Console.WriteLine($"{"난이도",-8} {"오차",6} {"명중률",8} {"탄착오차",10} {"차폐",6} {"평균턴",7} {"예상시간",9} {"무승부",7}");
 
         var levels = new (string, float)[]
@@ -849,7 +853,7 @@ static class BattleSimVerify
             // 지형 비대칭을 숫자로: 각 스폰 지점의 지면 높이
             var probe = NewVolume();
             string ha = "", hb = "";
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < MapHeightFunction.TeamSize; i++)
             {
                 SpawnAt(0, i, out float sax, out float saz); SpawnAt(1, i, out float sbx, out float sbz);
                 float ga = TankGroundProbe.GroundBelow(probe, sax, saz, 60f);

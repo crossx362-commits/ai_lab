@@ -1,6 +1,6 @@
 // 명세: docs/GAME_SPEC_TANK_ARTILLERY.md — M1+M3 통합 플레이
 //
-// 3 vs 3 턴제 포격전. Play 만 누르면 씬 없이 전부 코드가 만든다.
+// 팀 대 팀 턴제 포격전(한 팀 인원 = MapHeightFunction.TeamSize). Play 만 누르면 씬 없이 전부 코드가 만든다.
 //
 // 들어간 것: 탄도 해석해(§5) · 파워 제곱근 매핑(§5-2) · 바람(§5-3) · 조준 역산 AI(§5-7)
 //            피해 감쇠(§6-1) · 직격 보너스(§6-2) · 지형 파괴(§7) · 천장 붕괴(§7-6-1) · 턱 넘기(§7-6-2)
@@ -188,7 +188,13 @@ namespace Tankfall.View
         /// 캐논(고전·직격), 캐롯(근대·기준), 레이저(미래·평사).
         /// 셋 다 비슷한 걸 고르면 종을 나눈 게 화면에서 안 보인다.
         /// </summary>
-        static readonly TankKind[] DefaultRoster = { TankKind.Cannon, TankKind.Carrot, TankKind.Laser };
+        // ⚠️ 길이는 반드시 `MapHeightFunction.TeamSize` 와 같아야 한다 — 짧으면 스폰 루프가 배열 밖을 짚는다.
+        //    `-rosterselftest` 가 길이를 잰다(컴파일러는 안 잡아준다).
+        static readonly TankKind[] DefaultRoster = { TankKind.Cannon, TankKind.Carrot, TankKind.Laser, TankKind.Poseidon };
+
+        /// <summary>로스터를 "캐논·캐롯·레이저·포세이돈" 으로. 인원 수가 바뀌어도 따라온다 —
+        /// `_roster[0]·[1]·[2]` 를 손으로 나열하면 넷째가 조용히 안 보인다.</summary>
+        string RosterText() => string.Join("·", System.Array.ConvertAll(_roster, k => TankStats.Get(k).Name));
 
         /// <summary>판 전체 날씨. 눈이면 포세이돈만 강해진다(원작 고유 능력).</summary>
         /// ⚠️ 이건 한 번 고정하고 마는 값이 아니다 — 반드시 `SetWeather()` 로만 바꿔라.
@@ -314,8 +320,8 @@ namespace Tankfall.View
                     foreach (var n in names)
                         if (System.Enum.TryParse<TankKind>(n.Trim(), true, out var k)) list.Add(k);
                         else Debug.LogWarning($"[Tankfall] -roster 모르는 기종 '{n}' — 무시");
-                    if (list.Count == 3) { _roster = list.ToArray(); _rosterFixed = true; }
-                    else Debug.LogWarning($"[Tankfall] -roster 는 정확히 3종이어야 한다(받은 것 {list.Count}) — 기본 로스터 사용");
+                    if (list.Count == MapHeightFunction.TeamSize) { _roster = list.ToArray(); _rosterFixed = true; }
+                    else Debug.LogWarning($"[Tankfall] -roster 는 정확히 {MapHeightFunction.TeamSize}종이어야 한다(받은 것 {list.Count}) — 기본 로스터 사용");
                 }
             }
             // ⚠️ 예전엔 이 기본값이 `_autoShot` 일 때만 걸렸다. -gallery 를 추가하니 폴더가 null 이라
@@ -363,7 +369,7 @@ namespace Tankfall.View
             //    빼먹어서 **자체검사가 고르기 화면에 갇혀 영영 안 끝났다**(빌드는 성공, 검사는 무응답).
             //    모드가 늘 때마다 재발할 조건이라 목록이 아니라 **플래그 하나**로 판정한다 —
             //    사람이 없는 모드는 파싱할 때 `_autoMode` 를 켜므로 여기 손댈 일이 없다.
-            _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
+            _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {RosterText()}  (파랑 vs 빨강)";
 
             _headless = headless;   // 판정은 위(인자 파싱 직후)에서 한 번만 한다 — 머리말 참조
             _picking = !_rosterFixed && !_autoMode && !_practice;
@@ -375,7 +381,7 @@ namespace Tankfall.View
         {
             // === 색 채널 두 개 (포트리스 참고) ===
             // 포트리스는 탱크마다 고유색이라 색만 보고 상대 기체를 안다. 그걸 따르되,
-            // 3v3 이라 팀도 읽혀야 하므로 **종 = 차체색, 팀 = 강조색**으로 채널을 나눈다.
+            // 팀 단위 대전이라 팀도 읽혀야 하므로 **종 = 차체색, 팀 = 강조색**으로 채널을 나눈다.
             // 채도를 높게 잡은 이유: 파스텔에 가까운 밝은 색이 토이 느낌을 만든다(귀여움은 비례 + 색이다).
             // 종별 색은 ProceduralTank.BodyColor 가 단일 소스다 — 여기서 또 적으면 13종에서 어긋난다.
             var teamMat = new[]
@@ -390,13 +396,13 @@ namespace Tankfall.View
             //    이제 실루엣도 색도 **종류로 조회**한다 — 짝맞춤이라는 실패 지점 자체를 없앴다.
             var kinds = _roster;
             for (int t = 0; t < 2; t++)
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < MapHeightFunction.TeamSize; i++)
                 {
                     MapHeightFunction.Spawn(_map, t, i, out float x, out float z);
                     var root = ProceduralTank.Build(TankShape.Of(kinds[i]),
                                                     MakeMat(TankShape.BodyColor(kinds[i]), 0.22f),
                                                     track, teamMat[t], out var tur, out var bar, out var fp, wood);
-                    var u = new Unit { Id = t * 3 + i, Team = t, Kind = kinds[i], W = _weather,
+                    var u = new Unit { Id = t * MapHeightFunction.TeamSize + i, Team = t, Kind = kinds[i], W = _weather,
                                        Root = root, Turret = tur, Barrel = bar, Fire = fp };
                     u.HpMax = TankStats.Get(kinds[i]).Hp;
                     u.Hp = u.HpMax;
@@ -423,7 +429,7 @@ namespace Tankfall.View
             {
                 int orderA = (a.Team == firstTeam) ? 0 : 1;
                 int orderB = (b.Team == firstTeam) ? 0 : 1;
-                return ((a.Id % 3) * 2 + orderA) - ((b.Id % 3) * 2 + orderB);
+                return ((a.Id % MapHeightFunction.TeamSize) * 2 + orderA) - ((b.Id % MapHeightFunction.TeamSize) * 2 + orderB);
             });
             _status.Clear(); _hazards.Clear(); _pendingShots.Clear(); RefreshHazards();
             _supply.Clear(); RefreshCrates();
@@ -488,7 +494,7 @@ namespace Tankfall.View
             // 탱크 스폰 자리는 비워 둔다(Scatter 머리말 규칙 2).
             var avoid = new List<Vector3>();
             for (int t = 0; t < 2; t++)
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < MapHeightFunction.TeamSize; i++)
                 {
                     MapHeightFunction.Spawn(_map, t, i, out float sx, out float sz);
                     avoid.Add(new Vector3(sx, 0f, sz));
@@ -862,7 +868,7 @@ namespace Tankfall.View
                 {
                     u.Heading = Mathf.Atan2(plan.DirX, plan.DirZ) * Mathf.Rad2Deg;
                     // 이유를 남긴다 — 안 남기면 "움직이긴 하는데 왜인지 모르는" AI 가 된다.
-                    _log = $"{(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} 이동 — {MoveWhy(plan.Why)}";
+                    _log = $"{(u.Team == 0 ? "아군" : "적군")}{u.Id % MapHeightFunction.TeamSize + 1} 이동 — {MoveWhy(plan.Why)}";
                 }
                 _phaseTimer = 2.2f;      // 안전 상한. 턱에 막혀 제자리걸음이어도 턴이 안 멈춘다.
             }
@@ -1458,10 +1464,10 @@ namespace Tankfall.View
                             o.St.Defense);
                         if (dmg <= 0) continue;
                         // 실드(§2-9-10): 들어오는 공격 1회를 통째로 막는다(원작).
-                        if (_items.ConsumeShield(o.Id)) { _fx.ShieldBlock(new Vector3(o.Center.X, o.Center.Y, o.Center.Z)); dmgLog += $"  [{(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} 실드]"; continue; }
+                        if (_items.ConsumeShield(o.Id)) { _fx.ShieldBlock(new Vector3(o.Center.X, o.Center.Y, o.Center.Z)); dmgLog += $"  [{(o.Team == 0 ? "아군" : "적군")}{o.Id % MapHeightFunction.TeamSize + 1} 실드]"; continue; }
                         o.Hp = Mathf.Max(0, o.Hp - dmg);
                         CountDamage(o, dmg, direct ? $"-{dmg} 직격" : $"-{dmg}", true);
-                        dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} −{dmg}{(direct ? "(직격)" : "")}";
+                        dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % MapHeightFunction.TeamSize + 1} −{dmg}{(direct ? "(직격)" : "")}";
                         if (fx.Type == ShellEffects.EffectType.Poison) { _status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind); dmgLog += "[독]"; }
                         if (fx.Type == ShellEffects.EffectType.Root) { _status.Root(o.Id, fx.Param1); dmgLog += "[속박]"; }
                         // 방해탄(§2-9-14): 맞은 적에게 건다.
@@ -1515,7 +1521,7 @@ namespace Tankfall.View
                     if (fall <= 0) continue;
                     o.Hp = Mathf.Max(0, o.Hp - fall);
                     CountDamage(o, fall, $"-{fall} 낙하", false);
-                    dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % 3 + 1} −{fall}(낙하 {op.y - GroundVisualLift - g:F0}m)";
+                    dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % MapHeightFunction.TeamSize + 1} −{fall}(낙하 {op.y - GroundVisualLift - g:F0}m)";
                     if (!o.Alive) { KillUnit(o); dmgLog += "☠"; }
                 }
                 _log = dmgLog.Length > 0 ? "착탄!" + dmgLog : "착탄 — 빗나감";
@@ -1661,7 +1667,7 @@ namespace Tankfall.View
                 RefreshStatusFx();
                 if (dot + hz <= 0) break;
                 cu.Hp = Mathf.Max(0, cu.Hp - dot - hz);
-                _log = $"{(cu.Team == 0 ? "아군" : "적군")}{cu.Id % 3 + 1} 턴 시작 피해{(dot > 0 ? $" 지속 −{dot}" : "")}{(hz > 0 ? $" 설치물 −{hz}" : "")}";
+                _log = $"{(cu.Team == 0 ? "아군" : "적군")}{cu.Id % MapHeightFunction.TeamSize + 1} 턴 시작 피해{(dot > 0 ? $" 지속 −{dot}" : "")}{(hz > 0 ? $" 설치물 −{hz}" : "")}";
                 if (cu.Alive) break;
                 KillUnit(cu);
             }
@@ -1718,7 +1724,7 @@ namespace Tankfall.View
             }
             _log = $"[아이템] {info.Name} — {info.Desc}";
             // 로그로도 남긴다 — HUD 문자열만 쓰면 자동 검증에서 아이템이 도는지 확인할 방법이 없다.
-            Debug.Log($"[Tankfall] 아이템 {(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} {info.Name}");
+            Debug.Log($"[Tankfall] 아이템 {(u.Team == 0 ? "아군" : "적군")}{u.Id % MapHeightFunction.TeamSize + 1} {info.Name}");
             if (_itemSel > 0) _itemSel--;
             // 턴을 먹는 아이템은 사격 없이 턴을 넘긴다.
             if (r == ItemState.UseResult.AppliedEndsTurn && !info.AppliesToShot) NextTurn();
@@ -2217,7 +2223,7 @@ namespace Tankfall.View
             var title = new GUIStyle(GUI.skin.label) { fontSize = 18, richText = true };
             var st = new GUIStyle(GUI.skin.label) { fontSize = 13, richText = true };
             GUILayout.Label($"<b>탱크 고르기</b>   —   {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name}", title);
-            GUILayout.Label($"<size=12>세 대를 고르세요 ({_pick.Count}/3). 같은 기종을 겹쳐 골라도 됩니다.</size>", st);
+            GUILayout.Label($"<size=12>{MapHeightFunction.TeamSize}대를 고르세요 ({_pick.Count}/{MapHeightFunction.TeamSize}). 같은 기종을 겹쳐 골라도 됩니다.</size>", st);
             GUILayout.Space(6);
 
             int col = 0;
@@ -2227,7 +2233,7 @@ namespace Tankfall.View
                 var t = TankStats.Get(k);
                 var sp2 = TankStats.For(k, ShellKind.Special, 1f, Weather.Clear);
                 if (GUILayout.Button($"{t.Name}  |  {TankStats.EraName(t.Era)} · 체 {t.Hp} · 2번탄 {sp2.Name}", GUILayout.Width(160), GUILayout.Height(46)))
-                    if (_pick.Count < 3) _pick.Add(k);
+                    if (_pick.Count < MapHeightFunction.TeamSize) _pick.Add(k);
                 if (++col % 4 == 0) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); }
             }
             GUILayout.EndHorizontal();
@@ -2240,15 +2246,15 @@ namespace Tankfall.View
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("되돌리기", GUILayout.Width(110), GUILayout.Height(34)) && _pick.Count > 0)
                 _pick.RemoveAt(_pick.Count - 1);
-            if (GUILayout.Button("랜덤 3종", GUILayout.Width(110), GUILayout.Height(34)))
+            if (GUILayout.Button($"랜덤 {MapHeightFunction.TeamSize}종", GUILayout.Width(110), GUILayout.Height(34)))
             {
                 _pick.Clear();
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < MapHeightFunction.TeamSize; i++)
                     _pick.Add(Random.value < SuperTankChance
                         ? TankKind.SuperTank                       // 고를 수는 없고 랜덤에서만 [추정]
                         : kinds[Random.Range(0, kinds.Length)]);
             }
-            GUI.enabled = _pick.Count == 3;
+            GUI.enabled = _pick.Count == MapHeightFunction.TeamSize;
             if (GUILayout.Button("<b>시작</b>", GUILayout.Width(140), GUILayout.Height(34))) ConfirmPick();
             GUI.enabled = true;
             GUILayout.EndHorizontal();
@@ -2272,8 +2278,8 @@ namespace Tankfall.View
             _picking = false;
             _phase = Phase.Move;
             _phaseTimer = MovePhaseSec;
-            _log = $"전투 개시 — {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
-            Debug.Log($"[Tankfall] 로스터 확정 — {_roster[0]}·{_roster[1]}·{_roster[2]}");
+            _log = $"전투 개시 — {RosterText()}  (파랑 vs 빨강)";
+            Debug.Log($"[Tankfall] 로스터 확정 — {string.Join("·", _roster)}");
         }
 
         bool _rosterSelfTest;
@@ -2286,12 +2292,39 @@ namespace Tankfall.View
         void RosterSelfTestStep()
         {
             int fail = 0, ok = 0;
+
+            // ── 팀 인원과 로스터 길이가 맞는가 ──
+            // ⚠️ 컴파일러가 안 잡아준다. 짧으면 스폰 루프(`kinds[i]`)가 배열 밖을 짚고, 길면 넷째가 조용히 안 나온다.
+            //    4:4 로 늘릴 때 실제로 빠뜨리기 쉬운 자리라 코드가 강제한다.
+            if (DefaultRoster.Length != MapHeightFunction.TeamSize)
+            { Debug.Log($"[Tankfall] ❌ 기본 로스터 {DefaultRoster.Length}종인데 팀 인원은 {MapHeightFunction.TeamSize}"); fail++; }
+            else Debug.Log($"[Tankfall] 로스터 자체검사 — 기본 로스터 {DefaultRoster.Length}종 = 팀 인원");
+
+            // 실제로 세워 본 유닛 수도 잰다(스폰 루프가 인원을 따라왔는가 — 위와 다른 실패다).
+            int a = 0, b = 0;
+            foreach (var o in _units) { if (o.Team == 0) a++; else b++; }
+            if (a != MapHeightFunction.TeamSize || b != MapHeightFunction.TeamSize)
+            { Debug.Log($"[Tankfall] ❌ 팀 인원이 {MapHeightFunction.TeamSize} 인데 실제로 선 것은 아군 {a} · 적군 {b}"); fail++; }
+            else Debug.Log($"[Tankfall] 로스터 자체검사 — 판에 선 탱크 아군 {a} · 적군 {b}");
+
+            // 스폰 자리가 겹치지 않는가 — 분배식을 인원에서 유도하게 바꾼 자리다(겹치면 탱크가 포개진다).
+            for (int t = 0; t < 2; t++)
+                for (int i = 0; i < MapHeightFunction.TeamSize; i++)
+                    for (int j = i + 1; j < MapHeightFunction.TeamSize; j++)
+                    {
+                        MapHeightFunction.Spawn(_map, t, i, out float xi, out float zi);
+                        MapHeightFunction.Spawn(_map, t, j, out float xj, out float zj);
+                        if (Mathf.Abs(xi - xj) < 1f && Mathf.Abs(zi - zj) < 1f)
+                        { Debug.Log($"[Tankfall] ❌ 스폰 {t}팀 {i}·{j} 번이 같은 자리({xi:F0},{zi:F0})"); fail++; }
+                    }
+
             foreach (TankKind k in System.Enum.GetValues(typeof(TankKind)))
             {
                 _pick.Clear();
-                _pick.Add(k); _pick.Add(k); _pick.Add(k);
+                _pick.Clear();
+                for (int n2 = 0; n2 < MapHeightFunction.TeamSize; n2++) _pick.Add(k);
                 ConfirmPick();
-                if (_units.Count != 6) { Debug.Log($"[Tankfall] ❌ {k}: 유닛이 {_units.Count}대(6대여야 한다)"); fail++; continue; }
+                if (_units.Count != MapHeightFunction.TeamSize * 2) { Debug.Log($"[Tankfall] ❌ {k}: 유닛이 {_units.Count}대({MapHeightFunction.TeamSize * 2}대여야 한다)"); fail++; continue; }
                 var u = _units[0];
                 if (u.Kind != k) { Debug.Log($"[Tankfall] ❌ {k}: 스폰된 기종이 {u.Kind}"); fail++; continue; }
                 if (u.HpMax != TankStats.Get(k).Hp) { Debug.Log($"[Tankfall] ❌ {k}: 체력 {u.HpMax} (표 {TankStats.Get(k).Hp})"); fail++; continue; }
@@ -2465,11 +2498,13 @@ namespace Tankfall.View
             Ui.Arrow(center, a, 26f, 4f, _wind.magnitude > 6f ? Ui.Bad : _wind.magnitude > 3f ? Ui.Warn : Ui.Gauge);
         }
 
-        /// <summary>좌상단 — 6유닛 체력바(§8 TeamStatusUI). 색이 숫자보다 먼저 읽힌다.</summary>
+        /// <summary>좌상단 — 전 유닛 체력바(§8 TeamStatusUI). 색이 숫자보다 먼저 읽힌다.</summary>
         void HudTeamPanel(Unit cur)
         {
             const float RowH = 26f, PanW = 250f;
-            var r = new Rect(8f, 8f, PanW, 12f + RowH * 6f + 19f);
+            // ⚠️ 높이는 **유닛 수에서 유도한다.** 예전엔 `RowH * 6f` 로 6유닛을 박아 뒀는데,
+            //    4:4 로 늘리자 아래 두 줄이 상자 밖으로 삐져나왔다(그려지긴 해서 조용히 틀린다).
+            var r = new Rect(8f, 8f, PanW, 12f + RowH * (MapHeightFunction.TeamSize * 2) + 19f);
             Ui.Box(r);
             Ui.Text(new Rect(r.x + 10f, r.y + 4f, 120f, 16f), "아군", 11, Ui.Ally, TextAnchor.MiddleLeft, true);
             Ui.Text(new Rect(r.x + PanW - 60f, r.y + 4f, 50f, 16f), "적군", 11, Ui.Enemy, TextAnchor.MiddleRight, true);
@@ -2497,7 +2532,7 @@ namespace Tankfall.View
                             x.Alive ? $"{x.Hp}" : "전투불능", x.Alive ? 12 : 10,
                             x.Alive ? Ui.Ink : Ui.Dim, TextAnchor.MiddleRight);
                     y += RowH;
-                    if (t == 0 && x.Id % 3 == 2) { Ui.Fill(new Rect(r.x + 8f, y - 2f, PanW - 16f, 1f), Ui.Border); y += 3f; }
+                    if (t == 0 && x.Id % MapHeightFunction.TeamSize == MapHeightFunction.TeamSize - 1) { Ui.Fill(new Rect(r.x + 8f, y - 2f, PanW - 16f, 1f), Ui.Border); y += 3f; }
                 }
         }
 
@@ -2508,7 +2543,7 @@ namespace Tankfall.View
             Ui.Box(r);
             var teamCol = u.Team == 0 ? Ui.Ally : Ui.Enemy;
             Ui.Text(new Rect(r.x + 10f, r.y + 5f, 230f, 18f),
-                    $"{(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} · {TankStats.Get(u.Kind).Name}", 13, teamCol, TextAnchor.MiddleLeft, true);
+                    $"{(u.Team == 0 ? "아군" : "적군")}{u.Id % MapHeightFunction.TeamSize + 1} · {TankStats.Get(u.Kind).Name}", 13, teamCol, TextAnchor.MiddleLeft, true);
 
             // 각도 — 탱크마다 상·하한이 다르다(캐롯 0~40°, 이온 20~55°). 바에 그 범위를 그려야 "왜 더 안 올라가나"가 보인다.
             var stt = TankStats.Get(u.Kind);
@@ -2656,7 +2691,7 @@ namespace Tankfall.View
             Vector3 d3 = near.Pos - u.Pos;
             float horiz = new Vector2(d3.x, d3.z).magnitude;
             Ui.TextShadow(new Rect(W * 0.5f - 300f, H - 122f, 600f, 18f),
-                          $"최근접 {(near.Team == 0 ? "아군" : "적군")}{near.Id % 3 + 1}   거리 <b>{horiz:F0}m</b>   고도차 <b>{d3.y:+0;-0;0}m</b>   <size=10>(탄착 예측선 없음 §58)</size>",
+                          $"최근접 {(near.Team == 0 ? "아군" : "적군")}{near.Id % MapHeightFunction.TeamSize + 1}   거리 <b>{horiz:F0}m</b>   고도차 <b>{d3.y:+0;-0;0}m</b>   <size=10>(탄착 예측선 없음 §58)</size>",
                           12, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
@@ -2837,7 +2872,7 @@ namespace Tankfall.View
             var got = _supply.TryPickup(x, y, z);
             if (got == ItemKind.None) return false;
             _items.Bag(u.Id).Add(got);
-            _log = $"[보급] {(u.Team == 0 ? "아군" : "적군")}{u.Id % 3 + 1} 획득 — {Items.Get(got).Name}";
+            _log = $"[보급] {(u.Team == 0 ? "아군" : "적군")}{u.Id % MapHeightFunction.TeamSize + 1} 획득 — {Items.Get(got).Name}";
             RefreshCrates();
             return true;
         }

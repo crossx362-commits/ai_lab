@@ -26,7 +26,7 @@ static class MapVerify
     static void CheckSymmetry(MapKind map)
     {
         float worst = 0f;
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < MapHeightFunction.TeamSize; i++)
         {
             MapHeightFunction.Spawn(map, 0, i, out float ax, out float az);
             MapHeightFunction.Spawn(map, 1, i, out float bx, out float bz);
@@ -67,7 +67,7 @@ static class MapVerify
         var vol = new SdfVolume(Voxel, ChunkN, OriginY, MapHeightFunction.Fn(map),
                                 (int)(MapHeightFunction.MapSize / Voxel), MapHeightFunction.Grad(map));
         int blocked = 0;
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < MapHeightFunction.TeamSize; i++)
         {
             MapHeightFunction.Spawn(map, 0, i, out float ax, out float az);
             MapHeightFunction.Spawn(map, 1, i, out float bx, out float bz);
@@ -76,11 +76,12 @@ static class MapVerify
         }
         bool clear = blocked == 0;
         if (clear == expectClear)
-            Console.WriteLine(expectClear ? "    ✅ 40° 레인 3/3 이륙 통과" : "    ✅ 네거티브(막힘) 확인");
+            Console.WriteLine(expectClear ? $"    ✅ 40° 레인 {MapHeightFunction.TeamSize}/{MapHeightFunction.TeamSize} 이륙 통과"
+                                          : "    ✅ 네거티브(막힘) 확인");
         else
         {
             Console.WriteLine(expectClear
-                ? $"    ❌ 40° 가 {blocked}/3 레인에서 이륙 직후 지형에 박힘"
+                ? $"    ❌ 40° 가 {blocked}/{MapHeightFunction.TeamSize} 레인에서 이륙 직후 지형에 박힘"
                 : "    ❌ 네거티브 실패 — 옛 맵에서도 뚫린다(측정 고장)");
             Fail++;
         }

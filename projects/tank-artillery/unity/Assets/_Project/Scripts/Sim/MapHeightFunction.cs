@@ -47,6 +47,16 @@ namespace Tankfall.Sim
         ///    스폰이 가장자리로 갈수록 지형이 달라져 이륙 각도와 엄폐가 바뀐다.
         /// </summary>
         public const float SpawnInset = 65f;
+
+        /// <summary>
+        /// 한 팀의 탱크 수. **팀 인원을 뜻하는 숫자는 전부 여기서 유도한다** — 유닛 Id 부여, 턴 순서,
+        /// 로스터 크기, 고르기 UI 제한, HUD 줄 수, 스폰 분배가 전부 이 하나를 본다.
+        /// Sim 에 둔 이유는 하네스와 게임이 **같은 값**을 봐야 하기 때문이다 — 둘이 갈리면
+        /// 하네스는 3v3 을, 게임은 4v4 를 재면서 승률 표가 조용히 거짓말을 한다.
+        /// ⚠️ 바꾸면 밸런스가 움직인다. 3v3 으로 맞춘 승률 표는 무효이니 battle 게이트를 다시 떠라.
+        /// </summary>
+        public const int TeamSize = 4;   // 2026-09-18 오너 지시 "4:4 만들어" (이전 3)
+
         public const float TwinWestHillX = Center, TwinWestHillZ = MapSize * 0.375f;
         public const float TwinEastHillX = Center, TwinEastHillZ = MapSize * 0.625f;
 
@@ -72,8 +82,10 @@ namespace Tankfall.Sim
 
         public static void Spawn(MapKind map, int team, int slot, out float x, out float z)
         {
-            int i = slot < 0 ? 0 : (slot > 2 ? 2 : slot);
-            z = MapSize * 0.25f + i * (MapSize * 0.25f);
+            int i = slot < 0 ? 0 : (slot > TeamSize - 1 ? TeamSize - 1 : slot);
+            // 인원 수에서 유도한다 — 3명이면 0.25·0.50·0.75, 4명이면 0.2·0.4·0.6·0.8.
+            // 예전엔 0.25 간격을 숫자로 박아 3명 전용이었다(4명이면 넷째가 맵 밖 z=MapSize 에 섰다).
+            z = MapSize * (i + 1f) / (TeamSize + 1f);
             x = team == 0 ? SpawnInset : MapSize - SpawnInset;
             _ = map;
         }
