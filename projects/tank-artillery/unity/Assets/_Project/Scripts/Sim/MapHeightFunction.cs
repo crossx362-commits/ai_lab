@@ -163,19 +163,70 @@ namespace Tankfall.Sim
         }
 
         /// <summary>
-        /// 표면 디테일용 잔물결. **X=100(스폰 중심선) 기준 짝함수**로 둔다.
-        /// ⚠️ 처음엔 `sin(x*k)*cos(z*k)` 를 썼는데 sin 은 x=100 기준 대칭이 아니다 —
-        ///    슬롯에 따라 A/B 스폰 높이가 최대 0.74m 벌어져 `MapVerify` 대칭 게이트를 떨어뜨렸다
-        ///    (TwinHills 는 진폭이 작아 우연히 허용치 0.5m 안에 들었을 뿐, 같은 결함을 갖고 있었다).
-        ///    `cos((x-100)*k)` 는 x→200-x 미러에서 부호만 바뀌는 (x-100) 을 짝함수에 넣으므로 항상 대칭이다.
+        /// 지형 잔굴곡. **한 겹이 아니라 여러 겹**을 쌓는다(오너 지시 2026-09-19 "지형 형태도 해").
+        ///
+        /// 예전엔 파장 126m·진폭 1.2m 짜리 물결 **한 겹**이 전부였다 — 그래서 모든 맵이
+        /// "매끈한 돔 + 평평한 대지"였고 능선·골이 없었다. 화면에서 지형이 밋밋하게 읽힌 원인이다.
+        ///
+        /// ⚠️ 지켜야 할 것 셋(하나라도 어기면 게이트가 떨어진다):
+        ///  1. **해석적 기울기**(hx·hz)가 정확해야 한다 — SDF·탱크 접지·역산이 전부 이걸 쓴다.
+        ///     그래서 Perlin 이 아니라 **사인/코사인 합**으로 쌓는다(미분이 닫힌 형태로 나온다).
+        ///     Sim 은 UnityEngine 을 못 본다(§4-1)는 제약과도 맞는다.
+        ///  2. **x 에 대해 Center 기준 우함수**여야 한다 — `MapVerify` 가 좌우 대칭을 Δ0.00m 로 잰다.
+        ///     `cos(x-Center)`·`sin²(x-Center)` 는 우함수, `sin(x-Center)` 는 **아니다**(쓰면 대칭이 깨진다).
+        ///     실제로 처음엔 `sin(x*k)*cos(z*k)` 를 썼다가 A/B 스폰 높이가 최대 0.74m 벌어져
+        ///     대칭 게이트를 떨어뜨렸다(TwinHills 는 진폭이 작아 우연히 허용치 안에 들었을 뿐 같은 결함이었다).
+        ///  3. **기울기 총합을 낮게** 유지한다. 겹마다 최대 기울기는 `진폭 × 파수` 다.
+        ///     전부 같은 방향으로 겹쳐도 약 0.36(20°) 을 안 넘게 잡았다 — 더 키우면 탱크가 갇히고(§7-6)
+        ///     40° 이륙 레인이 막힌다(MapVerify). 진폭을 올릴 땐 **파장도 같이 늘려라.**
         /// </summary>
         static void AddDetailRipple(float x, float z, float amp, float k, ref float h, ref float hx, ref float hz)
+        {
+            // ── 1겹: 넓은 물결(기존) — 맵마다 amp·k 를 달리 준다 ──
+            Wave(x, z, amp, k, ref h, ref hx, ref hz);
+
+            // ── 2겹: 능선. z 방향으로 뻗은 두둑이 반복된다.
+            //    `sin²` 은 0 에서 납작하고 마루에서 둥글어 **골짜기가 넓고 능선이 좁다** — 실제 지형의 모양이다.
+            //    (|cos| 같은 걸 쓰면 마루에서 미분이 튀어 SDF 가 깨진다.)
+            Ridge(x - Center, 2.0f, 0.0718f, ref h, ref hx);           // 파장 ~87m
+
+            // ── 3겹: **가로 능선**. 세로 능선만 있으면 빨래판이 된다 —
+            //    두 방향을 교차시켜야 언덕과 우묵한 곳이 생겨 "지형"으로 읽힌다.
+            //    z 만의 함수라 x 대칭은 자동으로 성립한다(대칭 걱정 없이 쓸 수 있는 축이다).
+            RidgeZ(z, 1.5f, 0.0898f, ref h, ref hz);                   // 파장 ~70m
+
+            // ── 4겹: 교차 굴곡 — 능선 격자가 규칙적으로 보이지 않게 흩뜨린다.
+            Wave(x, z, 0.80f, 0.165f, ref h, ref hx, ref hz);          // 파장 ~38m
+
+            // ── 5겹: 잔결 — 가까이서 봤을 때 지면이 죽지 않게.
+            Wave(x, z, 0.30f, 0.331f, ref h, ref hx, ref hz);          // 파장 ~19m
+        }
+
+        /// <summary>코사인 곱 한 겹. x 는 Center 기준이라 좌우 대칭이 유지된다.</summary>
+        static void Wave(float x, float z, float amp, float k, ref float h, ref float hx, ref float hz)
         {
             float cxm = MathF.Cos((x - Center) * k), sxm = MathF.Sin((x - Center) * k);
             float sz = MathF.Sin(z * k), cz = MathF.Cos(z * k);
             h += amp * cxm * cz;
             hx += amp * (-k * sxm) * cz;
             hz += amp * cxm * (-k * sz);
+        }
+
+        /// <summary>
+        /// 능선 한 겹: `amp · sin²(k·u)` = `amp·(1-cos(2ku))/2`. 미분은 `amp·k·sin(2ku)` 로 닫힌 형태고
+        /// 마루·골 어디서도 매끈하다. u 는 Center 기준이라 `sin²` 이 우함수가 되어 대칭이 산다.
+        /// </summary>
+        static void Ridge(float u, float amp, float k, ref float h, ref float hx)
+        {
+            h += amp * 0.5f * (1f - MathF.Cos(2f * k * u));
+            hx += amp * k * MathF.Sin(2f * k * u);
+        }
+
+        /// <summary>z 축 능선. z 만의 함수이므로 x 대칭은 건드리지 않는다.</summary>
+        static void RidgeZ(float z, float amp, float k, ref float h, ref float hz)
+        {
+            h += amp * 0.5f * (1f - MathF.Cos(2f * k * z));
+            hz += amp * k * MathF.Sin(2f * k * z);
         }
 
         static void EvalTerrace(float x, float z, out float h, out float hx, out float hz)
