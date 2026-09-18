@@ -283,6 +283,7 @@ namespace Tankfall.View
                 else if (args[i] == "-boom") _boom = true;                     // Boom 모드(§2-9-16)
                 else if (args[i] == "-boomselftest") { _boom = true; _boomSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-rosterselftest") { _rosterSelfTest = true; _autoMode = true; }
+                else if (args[i] == "-settingsselftest") { _settingsSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-difficulty" && i + 1 < args.Length)
                 {
                     int found = -1;
@@ -696,6 +697,7 @@ namespace Tankfall.View
             if (_climateSelfTest) { ClimateSelfTestStep(); return; }
             if (_rosterSelfTest) { RosterSelfTestStep(); return; }
             if (_boomSelfTest) { BoomSelfTestStep(); return; }
+            if (_settingsSelfTest) { SettingsSelfTestStep(); return; }
             if (_autoShot) { AutoShotStep(); return; }
             if (_uiSelfTest) { UiSelfTestStep(); return; }
             if (_shellCheck) { ShellCheckStep(); return; }
@@ -2062,6 +2064,37 @@ namespace Tankfall.View
         /// 확률(지진 12%·유성 10%)이라 한 번 불러선 안 나온다 — **나올 때까지 돌려서 효과를 잰다**.
         /// 끝내 안 나오면 그것도 실패다(확률이 0 이면 죽은 시스템이다).
         /// </summary>
+        /// <summary>
+        /// 설정 화면(음량) — 화면 전환·그리기는 `-uiselftest` 가 스크린샷으로 잰다(`UiSteps[2]="설정"`).
+        /// 여기서는 값 자체(클램프·저장·실제 출력 반영)를 코드로 잰다 — 화면은 맞는데 값이 안 바뀌는 것과
+        /// 값은 바뀌는데 화면이 안 그려지는 것은 서로 다른 실패라 하나로 안 잡힌다.
+        /// </summary>
+        void SettingsSelfTestStep()
+        {
+            int fail = 0;
+            float before = Sfx.Volume;
+
+            Sfx.Volume = 1.5f;   // ① 상한 — 100% 를 넘겨도 클램프돼야 한다
+            if (!Mathf.Approximately(Sfx.Volume, 1f))
+            { Debug.Log($"[Tankfall] ❌ 음량 상한 클램프 실패 — {Sfx.Volume:F2}"); fail++; }
+            else Debug.Log("[Tankfall] 설정 자체검사 상한 — 150% 요청 → 100% 로 잘림");
+
+            Sfx.Volume = -0.5f;  // ② 하한 — 0% 밑으로도 안 내려가야 한다
+            if (!Mathf.Approximately(Sfx.Volume, 0f))
+            { Debug.Log($"[Tankfall] ❌ 음량 하한 클램프 실패 — {Sfx.Volume:F2}"); fail++; }
+            else Debug.Log("[Tankfall] 설정 자체검사 하한 — -50% 요청 → 0% 로 잘림");
+
+            Sfx.Volume = 0.4f;   // ③ 실제로 출력에 반영되는가 — 값만 바뀌고 소리는 그대로면 죽은 설정이다
+            if (!Mathf.Approximately(AudioListener.volume, 0.4f))
+            { Debug.Log($"[Tankfall] ❌ 음량이 AudioListener 에 안 걸렸다 — {AudioListener.volume:F2}"); fail++; }
+            else Debug.Log("[Tankfall] 설정 자체검사 반영 — 음량 40% 가 실제 출력(AudioListener.volume) 에 걸림");
+
+            Sfx.Volume = before;   // 값을 어지르고 끝내지 않는다
+            Debug.Log(fail == 0 ? "[Tankfall] ✅ 설정(음량) — 상한·하한·실제 반영 전부 확인"
+                                 : $"[Tankfall] ❌ 설정 자체검사 실패 {fail}건");
+            Application.Quit(fail == 0 ? 0 : 1);
+        }
+
         void BoomSelfTestStep()
         {
             int fail = 0;
@@ -3044,6 +3077,7 @@ namespace Tankfall.View
         float _tornadoSpin;
         // ── Boom 모드(§2-9-16) ── 지뢰밭·지진·유성. 규칙·출처는 Sim/BoomMode.cs 머리말.
         bool _boom, _boomSelfTest;
+        bool _settingsSelfTest;   // 설정 화면(음량) — 화면 전환은 스크린샷으로, 값 자체는 코드로 잰다
         Rng _boomRng = new Rng(0x7A11Fu);
         readonly List<(float X, float Z)> _boomSpots = new List<(float X, float Z)>();
         float _impairClock;          // 멀미탄 울렁임 위상

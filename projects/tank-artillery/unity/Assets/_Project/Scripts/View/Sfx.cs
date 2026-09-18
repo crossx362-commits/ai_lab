@@ -43,6 +43,8 @@ namespace Tankfall.View
 
         void Build()
         {
+            AudioListener.volume = Volume;   // 저장된 음량을 시작하자마자 적용 — 설정 화면을 안 열어도 반영돼야 한다
+
             _pool = new AudioSource[Voices];
             for (int i = 0; i < Voices; i++) _pool[i] = NewSource();
 
@@ -133,6 +135,24 @@ namespace Tankfall.View
         // ── 재생 ────────────────────────────────────────────────
         /// <summary>자동 검증·배치 실행에서는 소리를 내지 않는다 — 하네스가 오디오 장치에 기대면 기계마다 결과가 갈린다.</summary>
         public static bool Muted;
+
+        /// <summary>
+        /// 플레이어가 설정 화면(§3 Settings)에서 조절하는 음량. `Muted` 와는 별개다 — `Muted` 는
+        /// 하네스가 켜는 것이고, 이건 사람이 켠다. `AudioListener.volume` 하나로 걸어 두면 원샷·주행음
+        /// 전부를 한 번에 스케일할 수 있어 재생 경로마다 곱해 줄 필요가 없다.
+        /// </summary>
+        const string VolumeKey = "tankfall_volume";
+        static float? _volume;
+        public static float Volume
+        {
+            get => _volume ??= PlayerPrefs.GetFloat(VolumeKey, 1f);
+            set
+            {
+                _volume = Mathf.Clamp01(value);
+                AudioListener.volume = _volume.Value;
+                PlayerPrefs.SetFloat(VolumeKey, _volume.Value);
+            }
+        }
 
         // ⚠️ **전부를 AudioSource 하나로 재생하면 안 된다**(2026-09-17 수정). 유니티에서 `pitch` 와
         //    `Stop()` 은 **클립이 아니라 소스**에 걸리므로 한 채널에 섞으면 서로를 망가뜨린다:
