@@ -80,6 +80,10 @@ namespace Tankfall.View
             if (_screen == GameScreen.Title || _screen == GameScreen.TankSelect || _screen == GameScreen.Setup || _screen == GameScreen.Settings)
                 OrbitCamera(Time.deltaTime);
 
+            // 미리보기는 선택 화면 전용이다 — 다른 화면으로 가면 반드시 치운다(카메라에 붙어 있어서
+            // 안 치우면 전투 중에도 탱크 한 대가 화면 가운데에 따라다닌다).
+            if (_screen != GameScreen.TankSelect) ClearPreview();
+
             switch (_screen)
             {
                 case GameScreen.Title: TitleInput(); return true;
@@ -128,7 +132,17 @@ namespace Tankfall.View
             if (Down(KeyCode.UpArrow) || Down(KeyCode.W)) _menuSel = (_menuSel - 1 + TitleMenu.Length) % TitleMenu.Length;
             if (Down(KeyCode.DownArrow) || Down(KeyCode.S)) _menuSel = (_menuSel + 1) % TitleMenu.Length;
             if (!Enter()) return;
-            switch (_menuSel)
+            TitleActivate(_menuSel);
+        }
+
+        /// <summary>
+        /// 타이틀 메뉴 한 항목을 실행한다. **입력 판정과 분리한 이유는 자체검사가 부를 수 있게 하기 위해서다** —
+        /// `Input.GetKeyDown` 은 합성할 수 없어서, 여기 있는 동안에는 "눌렀을 때 그 화면으로 가는가"를
+        /// 아무도 검증하지 못했다(옛 고르기 창이 타이틀을 덮어 세 화면이 도달 불가였던 것도 그래서 안 잡혔다).
+        /// </summary>
+        void TitleActivate(int sel)
+        {
+            switch (sel)
             {
                 case 0:                                   // 전투 시작 → 탱크 고르기
                     _picked.Clear();
@@ -403,6 +417,29 @@ namespace Tankfall.View
             }
             finally { Prefs.Namespace = ns; }
 
+            // ── 메뉴에서 화면에 실제로 도달하는가 ──
+            // 🚨 "화면은 만들었는데 아무도 못 간다"가 이 프로젝트에서 실제로 났다(옛 IMGUI 고르기 창이
+            //    타이틀·탱크선택·전투설정 셋을 통째로 덮었다). 그리기는 `-uiselftest` 가 재지만 그건
+            //    화면을 **강제로 세워놓고** 찍는 것이라 **도달 가능성은 못 잰다.** 여기서 그걸 잰다.
+            {
+                var savedScreen = _screen; bool savedHelp = _showHelp;
+                _screen = GameScreen.Title; _showHelp = false;
+
+                TitleActivate(0);
+                Check(_screen == GameScreen.TankSelect, $"전투 시작 → 탱크 선택 (간 곳: {_screen})");
+                Check(_picked.Count == MapHeightFunction.TeamSize, $"탱크 선택이 로스터로 채워져 열린다({_picked.Count}대)");
+
+                _screen = GameScreen.Title;
+                TitleActivate(2);
+                Check(_screen == GameScreen.Settings, $"설정 → 설정 화면 (간 곳: {_screen})");
+
+                _screen = GameScreen.Title; _showHelp = false;
+                TitleActivate(3);
+                Check(_showHelp, "조작법 → 도움말 열림");
+
+                _screen = savedScreen; _showHelp = savedHelp;
+            }
+
             // 4) 승패 판정 — 동시 전멸은 무승부
             Check(WinnerText(0, 0) == "무승부", "0:0 → 무승부");
             Check(WinnerText(2, 0) == "아군 승리" && WinnerText(0, 1) == "적군 승리", "한쪽 생존 → 그쪽 승리");
@@ -578,92 +615,123 @@ namespace Tankfall.View
         // ── 탱크 선택(§3 20_Lobby) ─────────────────────────────
         const int PickCols = 5;
 
+        /// <summary>
+        /// 탱크 선택(§2-9-17) — **롤 챔피언 선택 방식**(오너 지시 2026-09-19 "롤 처럼 선택창").
+        ///
+        /// 예전에는 13칸 그리드 하나가 전부였다. 스탯이 카드마다 잘게 박혀 있어 비교가 안 됐고,
+        /// 저장된 로스터로 **이미 4/4 채워진 채** 열려서 고르는 화면이 아니라 확인 화면처럼 보였다
+        /// (오너: "왜 탱크 선택창 없냐" — 화면은 있었지만 선택하는 화면으로 안 읽혔다).
+        ///
+        /// 네 구역으로 나눈다:
+        ///   왼쪽  — 내 팀 슬롯. 고른 순서대로 채워지고 빈 칸은 비어 보인다(진행이 보여야 한다).
+        ///   가운데 — 커서가 가리키는 기종의 **실물 3D 미리보기**(카메라에 붙어 천천히 돈다).
+        ///   오른쪽 — 그 기종의 스탯·2번탄 상세. 한 곳에 모아야 기종끼리 비교가 된다.
+        ///   아래   — 13종 풀. 작게, 이름과 색만.
+        /// </summary>
         void DrawTankSelect(float W, float H)
         {
-            Scrim(W, H, 0.62f);
-            Ui.TextShadow(new Rect(0, 18f, W, 30f), $"탱크 {MapHeightFunction.TeamSize}대를 고른다", 22, Ui.Ink, TextAnchor.MiddleCenter, true);
-            Ui.TextShadow(new Rect(0, 48f, W, 20f),
-                          "방향키 = 이동   Space = 선택/해제   Enter = 확정   Esc = 뒤로", 12, Ui.Dim, TextAnchor.MiddleCenter);
+            // ⚠️ 스크림을 세게 깔면 **미리보기까지 어두워진다**(IMGUI 가 3D 위에 그려지므로 모델도 덮인다).
+            //    패널(Ui.Box)이 제 배경을 갖고 있으니 스크림은 배경을 눌러줄 만큼만.
+            Scrim(W, H, 0.42f);
+            var k = (TankKind)_pickCursor;
+            var st = TankStats.Get(k);
+            EnsurePreview(k);
 
-            int n = TankStats.Count;
-            int rows = (n + PickCols - 1) / PickCols;
-            // ⚠️ 스탯이 5줄(정확도 추가)이라 카드가 그만큼 높아야 한다 — 막대 마지막 줄이 카드 밖으로 나간다.
-            float cw = Mathf.Min(196f, (W - 80f) / PickCols), ch = Mathf.Min(126f, (H - 250f) / rows);
-            float gx = W * 0.5f - cw * PickCols * 0.5f, gy = 80f;
+            // 제목 띠 — 스크림을 낮춘 대신 글자 뒤는 눌러 준다(밝은 하늘에 흰 글자가 묻혔다).
+            Ui.Fill(new Rect(0, 0, W, 66f), new Color(0.02f, 0.03f, 0.05f, 0.72f));
+            Ui.TextShadow(new Rect(0, 14f, W, 28f), "탱크 선택", 22, Ui.Ink, TextAnchor.MiddleCenter, true);
+            Ui.TextShadow(new Rect(0, 42f, W, 18f),
+                          $"{_picked.Count} / {MapHeightFunction.TeamSize} 선택됨    방향키 이동 · Space 선택/해제 · Enter 확정 · Esc 뒤로",
+                          12, Ui.Dim, TextAnchor.MiddleCenter);
 
-            for (int i = 0; i < n; i++)
-            {
-                var k = (TankKind)i;
-                var st = TankStats.Get(k);
-                var r = new Rect(gx + (i % PickCols) * cw + 4f, gy + (i / PickCols) * ch + 4f, cw - 8f, ch - 8f);
-                bool cur = i == _pickCursor;
-                int pickIdx = _picked.IndexOf(k);
+            float poolH = 132f;
+            float bodyTop = 70f, bodyBot = H - poolH - 46f;
 
-                Ui.Fill(r, pickIdx >= 0 ? new Color(0.15f, 0.48f, 0.98f, 0.20f) : Ui.Panel);
-                Ui.Frame(r, cur ? Ui.Power : pickIdx >= 0 ? Ui.Ally : Ui.Border, cur ? 2f : 1f);
-
-                // 종별 차체색 — 화면의 탱크와 같은 색이라야 "이게 그놈"이 읽힌다(ProceduralTank.BodyColor 가 단일 소스)
-                Ui.Fill(new Rect(r.x + 6f, r.y + 6f, 10f, 10f), TankShape.BodyColor(k));
-                Ui.Text(new Rect(r.x + 22f, r.y + 2f, r.width - 28f, 18f), st.Name, 13, Ui.Ink, TextAnchor.MiddleLeft, true);
-                Ui.Text(new Rect(r.x + 22f, r.y + 18f, r.width - 28f, 14f),
-                        TankStats.EraName(TankStats.EraOf(k)), 10, Ui.Dim);
-
-                // 스탯 막대 4줄. 전부 같은 기준으로 정규화해야 종 사이 비교가 성립한다.
-                StatRow(r, 0, "체력",   StatBars.Hp.Norm(st.Hp),        Ui.Good);
-                StatRow(r, 1, "방어",   StatBars.Def.Norm(st.Defense),  Ui.Gauge);
-                StatRow(r, 2, "사거리", StatBars.Range.Norm(st.MaxRange), Ui.Power);
-                StatRow(r, 3, "속도",   StatBars.Delay.NormInv(st.Delay), Ui.Warn);   // 딜레이가 짧을수록 자주 쏜다
-                // 정확도 — 기종별 조준 흔들림(오너 지시 2026-09-18). **흔들림이 작을수록 정확**하므로 뒤집는다.
-                // 수치가 화면에 없으면 고를 이유가 안 보인다 — 밸런스에 영향을 주는 값은 반드시 노출한다.
-                StatRow(r, 4, "정확도", StatBars.Acc.NormInv(Spread.AimJitterDeg(k)), Ui.Mark);
-
-                if (pickIdx >= 0)
-                {
-                    var badge = new Rect(r.xMax - 22f, r.y + 4f, 18f, 18f);
-                    Ui.Fill(badge, Ui.Ally);
-                    Ui.Text(badge, $"{pickIdx + 1}", 12, Color.black, TextAnchor.MiddleCenter, true);
-                }
-            }
-
-            // 고른 것 + 특수탄 설명
-            // 폭도 칸 수에서 유도한다 — 칸만 늘리고 상자를 그대로 두면 넷째가 상자 밖으로 나간다.
-            const float SlotW = 150f, SlotGap = 8f, InfoW = 190f;
-            // ⚠️ 슬롯 칸 수만 늘리고 폭을 그대로 두면 **오른쪽 정보칸과 겹친다**(4:4 에서 실제로 겹쳤다).
-            //    슬롯 자리와 정보칸 자리를 **둘 다** 폭에 넣는다.
-            float barW = 28f + MapHeightFunction.TeamSize * SlotW + InfoW;
-            var bar = new Rect(W * 0.5f - barW * 0.5f, H - 122f, barW, 78f);
-            Ui.Box(bar);
-            Ui.Text(new Rect(bar.x + 14f, bar.y + 6f, 240f, 18f), $"고른 탱크 {_picked.Count}/{MapHeightFunction.TeamSize}", 12, Ui.Dim, TextAnchor.MiddleLeft, true);
+            // ── 왼쪽: 내 팀 슬롯 ──────────────────────────────
+            float slotW = 224f, slotH = Mathf.Min(74f, (bodyBot - bodyTop - 26f) / MapHeightFunction.TeamSize);
+            var teamBox = new Rect(24f, bodyTop, slotW, bodyBot - bodyTop);
+            Ui.Box(teamBox);
+            Ui.Text(new Rect(teamBox.x + 10f, teamBox.y + 4f, slotW - 20f, 16f), "내 팀", 12, Ui.Ally, TextAnchor.MiddleLeft, true);
             for (int i = 0; i < MapHeightFunction.TeamSize; i++)
             {
-                var slot = new Rect(bar.x + 14f + i * SlotW, bar.y + 26f, SlotW - SlotGap, 42f);
-                Ui.Fill(slot, Ui.Slot); Ui.Frame(slot, Ui.Border);
-                if (i < _picked.Count)
+                var r = new Rect(teamBox.x + 8f, teamBox.y + 24f + i * (slotH + 6f), slotW - 16f, slotH);
+                bool has = i < _picked.Count;
+                Ui.Fill(r, has ? new Color(0.15f, 0.48f, 0.98f, 0.18f) : new Color(1f, 1f, 1f, 0.04f));
+                Ui.Frame(r, has ? Ui.Ally : Ui.Border);
+                if (has)
                 {
-                    var st = TankStats.Get(_picked[i]);
-                    Ui.Fill(new Rect(slot.x + 5f, slot.y + 5f, 8f, 32f), TankShape.BodyColor(_picked[i]));
-                    Ui.Text(new Rect(slot.x + 18f, slot.y + 3f, 120f, 18f), st.Name, 13, Ui.Ink, TextAnchor.MiddleLeft, true);
-                    Ui.Text(new Rect(slot.x + 18f, slot.y + 21f, 120f, 16f), st.SpecialName, 10, Ui.Warn);
+                    var ps = TankStats.Get(_picked[i]);
+                    Ui.Fill(new Rect(r.x + 8f, r.y + 8f, 6f, r.height - 16f), TankShape.BodyColor(_picked[i]));
+                    Ui.Text(new Rect(r.x + 22f, r.y + 6f, r.width - 30f, 20f), ps.Name, 15, Ui.Ink, TextAnchor.MiddleLeft, true);
+                    Ui.Text(new Rect(r.x + 22f, r.y + 26f, r.width - 30f, 16f),
+                            $"{TankStats.EraName(TankStats.EraOf(_picked[i]))} · {ps.SpecialName}", 10, Ui.Dim, TextAnchor.MiddleLeft);
                 }
-                else Ui.Text(slot, "비어 있음", 11, Ui.Dim, TextAnchor.MiddleCenter);
+                else Ui.Text(r, $"{i + 1}번 자리 — 비어 있음", 11, Ui.Dim, TextAnchor.MiddleCenter);
             }
 
-            // 커서가 가리키는 기종의 자세한 값 — x 는 슬롯이 끝나는 자리에서 유도한다(숫자로 박으면 또 겹친다).
-            float infoX = bar.x + 14f + MapHeightFunction.TeamSize * SlotW + 6f;
-            var cs = TankStats.Get((TankKind)_pickCursor);
-            Ui.Text(new Rect(infoX, bar.y + 6f, 180f, 18f), cs.Name, 13, Ui.Power, TextAnchor.MiddleLeft, true);
-            Ui.Text(new Rect(infoX, bar.y + 24f, 180f, 16f),
-                    $"각도 {cs.MinPitch:F0}~{cs.MaxPitch:F0}°  딜레이 {cs.Delay}", 10, Ui.Dim);
-            Ui.Text(new Rect(infoX, bar.y + 40f, 180f, 16f),
-                    $"특수탄 {cs.SpecialName}", 10, Ui.Warn);
-            // ⚠️ `SpBlast`/`SpBase` 는 **배율**이다 — 그대로 찍으면 전 기종이 "1" 로 보인다(실제로 그렇게 나왔다).
+            // ── 오른쪽: 커서 기종 상세 ─────────────────────────
+            float infoW = 330f;
+            var info = new Rect(W - infoW - 24f, bodyTop, infoW, bodyBot - bodyTop);
+            Ui.Box(info);
+            Ui.Fill(new Rect(info.x + 12f, info.y + 12f, 12f, 12f), TankShape.BodyColor(k));
+            Ui.Text(new Rect(info.x + 32f, info.y + 6f, infoW - 44f, 26f), st.Name, 20, Ui.Ink, TextAnchor.MiddleLeft, true);
+            Ui.Text(new Rect(info.x + 32f, info.y + 30f, infoW - 44f, 16f),
+                    TankStats.EraName(TankStats.EraOf(k)), 11, Ui.Power, TextAnchor.MiddleLeft);
+
+            float sy = info.y + 56f;
+            void Stat(string label, float frac, Color col, string val)
+            {
+                Ui.Text(new Rect(info.x + 14f, sy, 52f, 16f), label, 10, Ui.Dim, TextAnchor.MiddleLeft);
+                Ui.Bar(new Rect(info.x + 70f, sy + 4f, infoW - 150f, 9f), Mathf.Clamp01(frac), col, null, Ui.Border);
+                Ui.Text(new Rect(info.xMax - 76f, sy, 62f, 16f), val, 10, Ui.Ink, TextAnchor.MiddleRight);
+                sy += 22f;
+            }
+            Stat("체력", StatBars.Hp.Norm(st.Hp), Ui.Good, $"{st.Hp}");
+            Stat("방어", StatBars.Def.Norm(st.Defense), Ui.Gauge, $"{st.Defense:F0}");
+            Stat("사거리", StatBars.Range.Norm(st.MaxRange), Ui.Power, $"{st.MaxRange:F0}m");
+            Stat("속도", StatBars.Delay.NormInv(st.Delay), Ui.Warn, $"딜레이 {st.Delay}");
+            Stat("정확도", StatBars.Acc.NormInv(Spread.AimJitterDeg(k)), Ui.Mark, $"±{Spread.AimJitterDeg(k):F2}°");
+
+            sy += 6f;
+            Ui.Fill(new Rect(info.x + 14f, sy, infoW - 28f, 1f), Ui.Border); sy += 10f;
+            Ui.Text(new Rect(info.x + 14f, sy, infoW - 28f, 18f), $"2번탄 · {st.SpecialName}", 13, Ui.Warn, TextAnchor.MiddleLeft, true);
+            sy += 20f;
+            // ⚠️ `SpBlast`/`SpBase` 는 **배율**이다 — 그대로 찍으면 전 기종이 "1" 로 보인다.
             //    실제 수치는 탄종을 적용한 `TankStats.For` 만 안다.
-            var spSt = TankStats.For((TankKind)_pickCursor, ShellKind.Special, 1f, Weather.Clear);
-            Ui.Text(new Rect(infoX, bar.y + 56f, 180f, 16f),
-                    $"폭발 {spSt.BlastRadius:F1}m  피해 {spSt.BaseDamage:F0}", 10, Ui.Dim);
+            var sp = TankStats.For(k, ShellKind.Special, 1f, Weather.Clear);
+            Ui.Text(new Rect(info.x + 14f, sy, infoW - 28f, 16f),
+                    $"폭발 {sp.BlastRadius:F1}m · 피해 {sp.BaseDamage:F0} · 각도 {st.MinPitch:F0}~{st.MaxPitch:F0}°", 10, Ui.Dim, TextAnchor.MiddleLeft);
+
+            // ── 아래: 13종 풀 ────────────────────────────────
+            int n = TankStats.Count;
+            float cw = (W - 48f) / PickCols, chh = 40f;
+            float gy = H - poolH - 24f;
+            Ui.Box(new Rect(24f, gy - 24f, W - 48f, poolH + 18f));
+            Ui.Text(new Rect(34f, gy - 20f, 200f, 16f), "기종", 11, Ui.Dim, TextAnchor.MiddleLeft, true);
+            for (int i = 0; i < n; i++)
+            {
+                var kk = (TankKind)i;
+                var r = new Rect(24f + (i % PickCols) * cw + 4f, gy + (i / PickCols) * (chh + 4f) + 4f, cw - 8f, chh);
+                bool cur = i == _pickCursor;
+                int idx = _picked.IndexOf(kk);
+                Ui.Fill(r, idx >= 0 ? new Color(0.15f, 0.48f, 0.98f, 0.22f) : Ui.Panel);
+                Ui.Frame(r, cur ? Ui.Power : idx >= 0 ? Ui.Ally : Ui.Border, cur ? 2f : 1f);
+                Ui.Fill(new Rect(r.x + 7f, r.y + 7f, 9f, r.height - 14f), TankShape.BodyColor(kk));
+                Ui.Text(new Rect(r.x + 22f, r.y, r.width - 50f, r.height),
+                        TankStats.Get(kk).Name, 13, cur || idx >= 0 ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, cur);
+                if (idx >= 0)
+                {
+                    var badge = new Rect(r.xMax - 22f, r.y + 10f, 16f, 16f);
+                    Ui.Fill(badge, Ui.Ally);
+                    Ui.Text(badge, $"{idx + 1}", 10, Ui.Ink, TextAnchor.MiddleCenter, true);
+                }
+            }
 
             if (_picked.Count == MapHeightFunction.TeamSize)
-                Ui.TextShadow(new Rect(0, H - 36f, W, 22f), "Enter = 전투 설정으로", 14, Ui.Mark, TextAnchor.MiddleCenter, true);
+                Ui.TextShadow(new Rect(0, H - 22f, W, 20f), "Enter = 전투 설정으로", 14, Ui.Mark, TextAnchor.MiddleCenter, true);
+            else
+                Ui.TextShadow(new Rect(0, H - 22f, W, 20f),
+                              $"{MapHeightFunction.TeamSize - _picked.Count}대 더 고르세요", 13, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
         /// <summary>
@@ -855,6 +923,71 @@ namespace Tankfall.View
         // ══════════════════════════════════════════════════════
 
         /// <summary>피해 숫자를 맞은 자리에 띄운다. 카메라 뒤는 그리지 않는다(뒤집혀 나온다).</summary>
+        // ── 탱크 머리 위 체력(원작 방식) ─────────────────────────
+        // 원작(포트리스)은 **체력이 탱크에 붙어 있다.** 이 게임은 구석 팀 패널에만 있어서
+        // "화면의 저 탱크가 지금 몇 남았나"를 알려면 이름을 패널에서 찾아 짝지어야 했다 —
+        // 3D 라 탱크가 흩어져 있어 더 안 맞는다. 맞은 자리에 숫자가 뜨는데(팝업) 정작 **남은 양**은 없었다.
+        //
+        // ⚠️ 겹침이 이 UI 의 유일한 실패 모드다. 8대가 몰리면 바가 서로를 덮는다 —
+        //    거리로 크기를 줄이고, 화면 밖·카메라 뒤는 건너뛰고, 죽은 탱크는 안 그린다.
+        // ⚠️ `_hudOff`(스크린샷 비교용 HUD 끄기)를 따라야 한다 — 호출부가 그 뒤에 있다.
+        void DrawTankHpBars()
+        {
+            if (_cam == null) return;
+            var camPos = _cam.transform.position;
+            foreach (var u in _units)
+            {
+                if (!u.Alive) continue;
+                var head = u.Pos + Vector3.up * 3.1f;
+                var sp = _cam.WorldToScreenPoint(head);
+                if (sp.z <= 0f) continue;                                  // 카메라 뒤
+                float d = Vector3.Distance(camPos, u.Pos);
+                if (d > 320f) continue;                                    // 너무 멀면 점만 찍히므로 생략
+                float k = Mathf.Clamp01(1f - (d - 60f) / 260f);            // 멀수록 작게
+                float w = Mathf.Lerp(46f, 86f, k), h = Mathf.Lerp(5f, 8f, k);
+                float x = sp.x - w * 0.5f, y = Screen.height - sp.y;
+
+                bool cur = u == Current;
+                var team = u.Team == 0 ? Ui.Ally : Ui.Enemy;
+                float f = u.HpFrac;
+
+                // 이름 — 원작의 닉네임 자리. 누구 것인지 색과 글자 둘 다로 말한다.
+                if (k > 0.35f)
+                    Ui.TextShadow(new Rect(x - 30f, y - Mathf.Lerp(12f, 17f, k), w + 60f, 14f),
+                                  $"{(u.Team == 0 ? "아군" : "적군")}{u.Id % MapHeightFunction.TeamSize + 1}",
+                                  Mathf.RoundToInt(Mathf.Lerp(9f, 11f, k)), cur ? Ui.Ink : team,
+                                  TextAnchor.MiddleCenter, cur);
+
+                var bar = new Rect(x, y, w, h);
+                Ui.Fill(new Rect(bar.x - 1f, bar.y - 1f, bar.width + 2f, bar.height + 2f), new Color(0f, 0f, 0f, 0.55f));
+                Ui.Bar(bar, f, Ui.HpColor(f), null, team);
+                // 지금 턴인 탱크는 테를 한 겹 더 — 카메라가 따라가도 "내 차례"가 화면에서 읽혀야 한다
+                if (cur) Ui.Frame(new Rect(bar.x - 3f, bar.y - 3f, bar.width + 6f, bar.height + 6f), Ui.Ink);
+
+                // 숫자는 가까울 때만 — 멀리서도 찍으면 글자가 서로 겹쳐 읽을 수 없다.
+                // ⚠️ **바 아래는 피해 팝업이 떠오르는 길목이다**(AddPopup 이 탱크에서 위로 띄운다).
+                //    거기 두면 맞는 순간 남은 체력이 숫자에 가려 안 보인다 — 실제로 겹쳤다. 왼쪽에 둔다.
+                if (k > 0.55f)
+                    Ui.TextShadow(new Rect(x - 46f, y - 3f, 42f, 14f), $"{u.Hp}", 11, Ui.Ink, TextAnchor.MiddleRight, true);
+
+                // 상태 표시 — 팀 패널과 같은 규칙(독·속박·방해). 여기 있으면 전장에서 바로 읽힌다.
+                if (k > 0.5f)
+                {
+                    float sx = bar.xMax + 4f;
+                    void Chip(string t2, Color c2)
+                    {
+                        var r2 = new Rect(sx, y - 2f, 13f, 13f);
+                        Ui.Fill(r2, new Color(c2.r, c2.g, c2.b, 0.85f));
+                        Ui.Text(r2, t2, 9, Ui.Ink, TextAnchor.MiddleCenter, true);
+                        sx += 14f;
+                    }
+                    if (_status.DotTurnsLeft(u.Id) > 0) Chip("독", Ui.Warn);
+                    if (_status.RootTurnsLeft(u.Id) > 0 || !_status.CanMove(u.Id)) Chip("속", Ui.Bad);
+                    if (_items.HasShield(u.Id)) Chip("실", Ui.Gauge);
+                }
+            }
+        }
+
         void DrawPopups()
         {
             if (_cam == null) return;

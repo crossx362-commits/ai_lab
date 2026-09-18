@@ -114,6 +114,54 @@ namespace Tankfall.View
             u.Root.gameObject.SetActive(false);
         }
 
+        // ── 탱크 선택 미리보기(롤 방식) ───────────────────────────
+        // 카드 안의 작은 색 네모로는 "이게 어떻게 생겼는지"를 못 본다. 커서가 가리키는 기종을
+        // **실물로** 세워 천천히 돌린다.
+        // ⚠️ 카메라에 붙인다. 월드에 두면 선택 화면의 궤도 카메라(OrbitCamera)가 전장을 돌기 때문에
+        //    미리보기가 화면에서 흘러가 버린다 — 붙여 두면 항상 같은 자리에 선다.
+        // ⚠️ 판정에 쓰이는 물건이 아니다. `_units` 에 넣지 마라(턴 순서·피해 대상이 되어 버린다).
+        Transform _preview;
+        TankKind _previewKind;
+        bool _previewHas;
+
+        void EnsurePreview(TankKind k)
+        {
+            if (_cam == null) return;
+            if (_previewHas && _preview != null && _previewKind == k) { SpinPreview(); return; }
+
+            if (_preview != null) Destroy(_preview.gameObject);
+            var track = MakeMat(new Color(0.22f, 0.20f, 0.24f), 0f);
+            var wood = MakeMat(new Color(0.56f, 0.37f, 0.20f), 0.05f);
+            var team = MakeMat(new Color(0.15f, 0.48f, 0.98f), 0.45f);     // 내 팀 색으로 보여준다
+            _preview = ProceduralTank.Build(TankShape.Of(k), MakeMat(TankShape.BodyColor(k), 0.22f),
+                                            track, team, out _, out _, out _, wood);
+            _preview.name = "TankPreview";
+            foreach (var d in _preview.GetComponentsInChildren<TankDrive>()) Destroy(d);   // 안 움직이므로 굴릴 것도 없다
+            _preview.SetParent(_cam.transform, false);
+            // ⚠️ 거리·크기는 눈으로 맞춰야 한다. 처음 7.2m 에 뒀더니 **탱크가 화면을 꽉 채웠다**
+            //    (탱크가 5~7m 급이라 가까이 두면 화면 밖으로 나간다). 기종마다 크기가 달라 여유를 둔다.
+            _preview.localPosition = new Vector3(0f, -1.7f, 13f);
+            _preview.localScale = Vector3.one * 0.85f;
+            _previewKind = k; _previewHas = true;
+            _previewSpin = 215f;
+        }
+
+        float _previewSpin;
+
+        void SpinPreview()
+        {
+            if (_preview == null) return;
+            _previewSpin += Time.deltaTime * 22f;                          // 천천히 — 빠르면 실루엣이 안 읽힌다
+            _preview.localRotation = Quaternion.Euler(12f, _previewSpin, 0f);
+        }
+
+        /// <summary>선택 화면을 떠날 때 치운다. 안 치우면 전투 중에도 카메라에 탱크가 붙어 따라다닌다.</summary>
+        void ClearPreview()
+        {
+            if (_preview != null) Destroy(_preview.gameObject);
+            _preview = null; _previewHas = false;
+        }
+
         Transform _wreckBin;
 
         /// <summary>잔해를 모아 두는 통. 판이 새로 시작할 때 통째로 비운다(ClearWrecks).</summary>
@@ -2561,6 +2609,7 @@ namespace Tankfall.View
             HudItems(u, W, H);
             HudLog(W, H);
             if (!_practice && !_gallery) { DrawTurnOrder(W); DrawMiniMap(W, H); }   // 갤러리 13대는 TurnOrder 미등록 — 그리면 매 프레임 예외
+            DrawTankHpBars();        // 피해 숫자(팝업)보다 **먼저** — 팝업이 위에 떠야 읽힌다
             DrawPopups();
 
             if (_screen == GameScreen.Pause) DrawPause(W, H);
