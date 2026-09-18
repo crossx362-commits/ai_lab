@@ -134,6 +134,13 @@ namespace Tankfall.View
         /// <summary>자동 검증·배치 실행에서는 소리를 내지 않는다 — 하네스가 오디오 장치에 기대면 기계마다 결과가 갈린다.</summary>
         public static bool Muted;
 
+        /// <summary>
+        /// 사람이 끈 것. `Muted` 와 따로 둔다 — `Muted` 는 하네스가 켜는 것이라 사람 설정과 섞이면
+        /// "설정에서 껐는데 저장이 안 된다"(하네스 값이 덮어씀)·"하네스가 사람 설정을 읽는다" 둘 다 생긴다.
+        /// 저장·복원은 Prefs.cs 가 한다. 이 파일은 값을 볼 뿐 쓰지 않는다.
+        /// </summary>
+        public static bool SfxOff, MusicOff;
+
         // ⚠️ **전부를 AudioSource 하나로 재생하면 안 된다**(2026-09-17 수정). 유니티에서 `pitch` 와
         //    `Stop()` 은 **클립이 아니라 소스**에 걸리므로 한 채널에 섞으면 서로를 망가뜨린다:
         //      · `pitch` 를 바꾸면 **이미 울리고 있던 PlayOneShot 까지** 같이 조가 바뀐다.
@@ -168,7 +175,7 @@ namespace Tankfall.View
 
         void One(AudioClip c, float vol, float pitch)
         {
-            if (Muted || c == null || _pool == null) return;
+            if (Muted || SfxOff || c == null || _pool == null) return;
             float duck = Duck();
             var s = Take();
             s.pitch = pitch;
@@ -200,8 +207,139 @@ namespace Tankfall.View
             if (s._loop == null) return;
             // ⚠️ `Muted` 는 켜는 쪽에서만 본다. 예전엔 함수 첫 줄에서 걸러서, 주행 중에 음소거가 켜지면
             //    끄는 호출이 통째로 무시돼 루프가 영원히 남았다.
-            if (on) { if (!Muted && !s._loop.isPlaying) s._loop.Play(); }
+            if (on) { if (!Muted && !SfxOff && !s._loop.isPlaying) s._loop.Play(); }
             else if (s._loop.isPlaying) s._loop.Stop();
+        }
+        // ══════════════════════════════════════════════════════
+        //  배경음악 — 효과음처럼 파형을 코드로 굽는다(파일 없음). 두 트랙뿐이다:
+        //    Title  — 느린 패드 + 아르페지오(72bpm, Am-F-C-G). 메뉴에서 "살아 있다"만 알리면 된다.
+        //    Battle — 킥 + 베이스 오스티나토 + 드론(104bpm, Em-Em-C-D). 턴 시간이 흐른다는 압박.
+        //  ⚠️ 루프 경계에서 딸깍 소리가 나지 않게 **모든 음이 마디 안에서 꺼지도록** 만들었다(감쇠 포락선).
+        //     길이를 바꾸면 마디 수의 정수배로만 바꿔라.
+        //  ⚠️ 음악은 게임 상태를 **보기만** 한다. `Music()` 은 매 프레임 불러도 같은 트랙이면 아무것도 안 한다.
+        // ══════════════════════════════════════════════════════
+        public enum Track { None, Title, Battle }
+
+        AudioSource _music;
+        AudioClip _titleBgm, _battleBgm;
+        Track _track = Track.None;
+        const float MusicVolume = 0.30f;     // 효과음 아래에 깔리는 정도. 폭발보다 크면 피드백(효과음)이 묻힌다.
+
+        /// <summary>원하는 트랙을 말한다. 같은 트랙이 이미 울리면 그대로 둔다. None 이면 끈다.</summary>
+        public static void Music(Track t)
+        {
+            var s = I;
+            if (s._music == null) { s._music = s.NewSource(); s._music.loop = true; s._music.volume = MusicVolume; }
+            bool want = t != Track.None && !Muted && !MusicOff;
+            if (!want)
+            {
+                if (s._music.isPlaying) s._music.Stop();
+                s._track = Track.None;
+                return;
+            }
+            if (s._track == t && s._music.isPlaying) return;
+            if (t == Track.Title) { if (s._titleBgm == null) s._titleBgm = BuildTitleBgm(); s._music.clip = s._titleBgm; }
+            else { if (s._battleBgm == null) s._battleBgm = BuildBattleBgm(); s._music.clip = s._battleBgm; }
+            s._track = t;
+            s._music.Play();
+        }
+
+        /// <summary>마지막으로 **요청이 받아들여진** 트랙. 오디오 장치가 없는 배치 실행에서도 값이 선다(자체검사용).</summary>
+        public static Track Current => _inst == null ? Track.None : _inst._track;
+
+        /// <summary>트랙의 파형을 굽는다(자체검사가 길이·진폭·루프 이음새를 잰다). 게임은 Music() 을 쓴다.</summary>
+        public static AudioClip BuildClip(Track t) => t == Track.Title ? BuildTitleBgm() : BuildBattleBgm();
+
+        static float Env(float t, float attack, float decay)   // 짧은 어택 뒤 지수 감쇠
+            => Mathf.Min(1f, t / Mathf.Max(attack, 1e-4f)) * Mathf.Exp(-t / Mathf.Max(decay, 1e-4f));
+
+        static AudioClip BuildTitleBgm()
+        {
+            const float bpm = 72f, beat = 60f / bpm, bar = beat * 4f;
+            float[][] chords =
+            {
+                new[] { 220.0f, 261.6f, 329.6f },   // Am
+                new[] { 174.6f, 220.0f, 261.6f },   // F
+                new[] { 196.0f, 261.6f, 329.6f },   // C (2전위 — 성부가 크게 안 뛰게)
+                new[] { 196.0f, 246.9f, 293.7f },   // G
+            };
+            int n = Mathf.RoundToInt(Rate * bar * chords.Length);
+            var d = new float[n];
+            float eighth = beat * 0.5f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                int b = Mathf.Min(chords.Length - 1, (int)(t / bar));
+                float tb = t - b * bar;
+                var ch = chords[b];
+                // 패드 — 마디 안에서 올라왔다 내려간다(마디 경계에서 0 → 코드 바뀔 때 딸깍이 없다)
+                float padEnv = Mathf.Min(1f, tb / 0.25f) * Mathf.Min(1f, (bar - tb) / 0.35f);
+                float pad = 0f;
+                for (int k = 0; k < ch.Length; k++)
+                    pad += Mathf.Sin(t * ch[k] * 2f * Mathf.PI) + 0.25f * Mathf.Sin(t * ch[k] * 4f * Mathf.PI);
+                pad *= padEnv * 0.09f;
+                // 아르페지오 — 8분음표마다 코드 톤 한 옥타브 위, 마지막 8분은 쉰다(호흡)
+                int e = (int)(tb / eighth);
+                float te = tb - e * eighth;
+                float arp = 0f;
+                if (e < 7)
+                {
+                    float f = ch[e % 3] * 2f;
+                    arp = Mathf.Sin(te * f * 2f * Mathf.PI) * Env(te, 0.004f, 0.22f) * 0.16f;
+                }
+                d[i] = Mathf.Clamp(pad + arp, -1f, 1f);
+            }
+            var c = AudioClip.Create("bgm_title", n, 1, Rate, false);
+            c.SetData(d, 0);
+            return c;
+        }
+
+        static AudioClip BuildBattleBgm()
+        {
+            const float bpm = 104f, beat = 60f / bpm, bar = beat * 4f;
+            float[] roots = { 82.4f, 82.4f, 65.4f, 73.4f };            // Em Em C D (E2 · C2 · D2)
+            float[][] drone =
+            {
+                new[] { 164.8f, 196.0f, 246.9f },
+                new[] { 164.8f, 196.0f, 246.9f },
+                new[] { 130.8f, 164.8f, 196.0f },
+                new[] { 146.8f, 185.0f, 220.0f },
+            };
+            int[] pattern = { 0, 0, 7, 0, 0, 12, 0, 7, 0, 0, 7, 0, 5, 0, 7, 12 };   // 16분음 베이스, 반음 오프셋
+            int n = Mathf.RoundToInt(Rate * bar * roots.Length);
+            var d = new float[n];
+            float sixteenth = beat * 0.25f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                int b = Mathf.Min(roots.Length - 1, (int)(t / bar));
+                float tb = t - b * bar;
+                // 킥 — 매 박, 120→45Hz 로 떨어지는 사인
+                float tk = tb % beat;
+                float kick = Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(120f, 45f, Mathf.Clamp01(tk * 9f)) * tk) * Env(tk, 0.002f, 0.09f) * 0.42f;
+                // 하이햇 — 뒷박(8분 오프비트), 아주 짧은 노이즈
+                float th = (tb + beat * 0.5f) % beat;
+                float hat = th < 0.04f ? Noise() * Env(th, 0.001f, 0.012f) * 0.10f : 0f;
+                // 베이스 — 16분음 오스티나토(마디 마지막 16분은 쉬어 루프 경계를 비운다)
+                int s16 = (int)(tb / sixteenth);
+                float ts = tb - s16 * sixteenth;
+                float bass = 0f;
+                if (s16 < 15)
+                {
+                    float f = roots[b] * Mathf.Pow(2f, pattern[s16] / 12f);
+                    bass = (Mathf.Sin(ts * f * 2f * Mathf.PI) + 0.35f * Mathf.Sin(ts * f * 4f * Mathf.PI))
+                           * Env(ts, 0.003f, 0.10f) * 0.22f;
+                }
+                // 드론 — 낮게 깔리는 코드, 마디 경계에서 0
+                float droneEnv = Mathf.Min(1f, tb / 0.20f) * Mathf.Min(1f, (bar - tb) / 0.25f);
+                float dr = 0f;
+                foreach (var f in drone[b]) dr += Mathf.Sin(t * f * 2f * Mathf.PI);
+                dr *= droneEnv * 0.05f;
+                d[i] = Mathf.Clamp(kick + hat + bass + dr, -1f, 1f);
+            }
+            var c = AudioClip.Create("bgm_battle", n, 1, Rate, false);
+            c.SetData(d, 0);
+            return c;
         }
     }
 }

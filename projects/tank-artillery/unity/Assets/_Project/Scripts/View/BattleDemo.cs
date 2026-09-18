@@ -283,6 +283,7 @@ namespace Tankfall.View
                 else if (args[i] == "-boom") _boom = true;                     // Boom 모드(§2-9-16)
                 else if (args[i] == "-boomselftest") { _boom = true; _boomSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-rosterselftest") { _rosterSelfTest = true; _autoMode = true; }
+                else if (args[i] == "-gameselftest") { _gameSelfTest = true; _autoMode = true; }   // 음악·설정 저장·전적·무승부
                 else if (args[i] == "-difficulty" && i + 1 < args.Length)
                 {
                     int found = -1;
@@ -320,6 +321,13 @@ namespace Tankfall.View
             //    Shot() 이 매 프레임 ArgumentNullException 을 던지고 사진은 한 장도 안 남았다.
             //    **찍는 모드가 늘 때마다 재발할 조건**이라 조건 자체를 없앤다.
             if (string.IsNullOrEmpty(_shotDir)) _shotDir = "Screenshots";
+            // ⚠️ 자동 검증 모드는 타이틀을 거치지 않는다 — 거치면 하네스가 메뉴에서 조용히 멈춘다(BattleScreens.cs 머리말).
+            //    사람이 켠 경우에만 타이틀로 시작한다. 이 판정은 인자만 보므로 파싱 직후가 자리다 —
+            //    아래 저장 설정 읽기(Prefs)와 화면 선택이 같은 값을 써야 한다(사람 판 판정을 두 곳에 두지 않는다).
+            bool headless = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _practice || _uiSelfTest || _shellCheck || _shellGallery;
+            // 사람 판이면 지난번 설정(맵·난이도·아이템·날씨·Boom·로스터·소리)을 이어받는다. 인자로 준 값은 안 덮는다(Prefs 머리말).
+            // ⚠️ 지형을 만들기 **전**이어야 한다 — 뒤에서 읽으면 타이틀 뒤 전장이 다른 맵으로 서 있다.
+            if (!headless && !_autoMode) LoadPrefs();
 
             SetupWorld();
             // ⚠️ 날씨를 **지형보다 먼저** 정한다. 지형 정점 색이 눈 여부를 보고 칠해지므로(TerrainPalette),
@@ -352,10 +360,7 @@ namespace Tankfall.View
             //    사람이 없는 모드는 파싱할 때 `_autoMode` 를 켜므로 여기 손댈 일이 없다.
             _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
 
-            // ⚠️ 자동 검증 모드는 타이틀을 거치지 않는다 — 거치면 하네스가 메뉴에서 조용히 멈춘다(BattleScreens.cs 머리말).
-            //    사람이 켠 경우에만 타이틀로 시작한다.
-            bool headless = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _practice || _uiSelfTest || _shellCheck || _shellGallery;
-            _headless = headless;
+            _headless = headless;   // 판정은 위(인자 파싱 직후)에서 한 번만 한다
             // ⚠️ 2026-09-17 사고: `-uiselftest` 가 **고르기 화면에 갇혀 영영 안 끝났다.**
             //    탱크 고르기(§2-9-17)가 들어오면서 `_picking` 이 Update 맨 앞에서 return 하는데,
             //    무인 모드는 각자 파싱에서 `_autoMode` 를 켜야 했고 `-uiselftest`·`-shellcheck`·
@@ -687,6 +692,7 @@ namespace Tankfall.View
             if (_impairSelfTest) { ImpairSelfTestStep(); return; }
             if (_climateSelfTest) { ClimateSelfTestStep(); return; }
             if (_rosterSelfTest) { RosterSelfTestStep(); return; }
+            if (_gameSelfTest) { GameSelfTestStep(); return; }
             if (_boomSelfTest) { BoomSelfTestStep(); return; }
             if (_autoShot) { AutoShotStep(); return; }
             if (_uiSelfTest) { UiSelfTestStep(); return; }
@@ -696,6 +702,9 @@ namespace Tankfall.View
             float dt = Time.deltaTime;
             TickPopups(dt);
             if (_slowUntil >= 0f && Time.unscaledTime >= _slowUntil) { Time.timeScale = 1f; _slowUntil = -1f; }
+            // 배경음악은 화면 상태에서 유도한다 — 전환 지점마다 켜고 끄면 빠뜨리는 경로가 생긴다(결과→타이틀→연습장…).
+            Sfx.Music(_screen == GameScreen.Battle || _screen == GameScreen.Pause ? Sfx.Track.Battle
+                    : _screen == GameScreen.Result ? Sfx.Track.None : Sfx.Track.Title);
 
             // 타이틀·선택·일시정지·결과 화면에서는 전투 로직이 아예 안 돈다.
             if (_screen != GameScreen.Battle) { ScreenUpdate(); return; }
@@ -1603,13 +1612,19 @@ namespace Tankfall.View
             foreach (var u in _units) { if (!u.Alive) continue; if (u.Team == 0) aliveA++; else aliveB++; }
             if (aliveA == 0 || aliveB == 0)
             {
-                _winner = aliveA > 0 ? "아군 승리" : "적군 승리";
+                // 동시 전멸은 무승부다. 서든데스(전원 최대HP 5%)가 양 팀을 같은 턴에 0 으로 만들 수 있고,
+                // 다탄두·지진도 그렇다 — 예전엔 이 경우가 "적군 승리"로 찍혔다(aliveA==0 을 먼저 봤다).
+                bool draw = aliveA == 0 && aliveB == 0;
+                _winner = WinnerText(aliveA, aliveB);
                 _phase = Phase.GameOver;
                 // 사람이 켠 판만 결과 화면으로. 하네스는 GameOver 상태 그대로 두고 자기 종료 조건을 쓴다.
                 if (!_autoShot && !_phaseCheck && !_gallery && !_perf && !_supplySelfTest && !_uiSelfTest)
                 {
                     _screen = GameScreen.Result;
-                    if (aliveA > 0) Sfx.Win(); else Sfx.Lose();
+                    if (draw) Sfx.Confirm(); else if (aliveA > 0) Sfx.Win(); else Sfx.Lose();
+                    // 전적은 사람이 AI 와 붙은 판만. 연습장(적이 안 쏜다)·자동 모드는 안 센다.
+                    if (!_practice && !_headless && !_autoMode)
+                        Prefs.Record(_difficulty, draw ? Prefs.Outcome.Draw : aliveA > 0 ? Prefs.Outcome.Win : Prefs.Outcome.Lose);
                 }
                 Debug.Log($"[Tankfall] {_winner} · 라운드 {_round} · {_battleClock / 60f:F1}분 · " +
                           $"아군 {_stat[0].Hits}/{_stat[0].Shots}발 {_stat[0].Damage}딜 · 적군 {_stat[1].Hits}/{_stat[1].Shots}발 {_stat[1].Damage}딜");
@@ -2602,8 +2617,7 @@ namespace Tankfall.View
         void HudGameOver(float W, float H)
         {
             Ui.Fill(new Rect(0f, H * 0.36f, W, 120f), new Color(0.03f, 0.05f, 0.08f, 0.82f));
-            bool win = _winner != null && _winner.Contains("아군");
-            Ui.TextShadow(new Rect(0f, H * 0.38f, W, 70f), _winner, 40, win ? Ui.Ally : Ui.Enemy, TextAnchor.MiddleCenter, true);
+            Ui.TextShadow(new Rect(0f, H * 0.38f, W, 70f), _winner, 40, ResultColor(), TextAnchor.MiddleCenter, true);
             Ui.TextShadow(new Rect(0f, H * 0.38f + 68f, W, 24f), $"라운드 {_round} 종료", 14, Ui.Dim, TextAnchor.MiddleCenter);
         }
 

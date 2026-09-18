@@ -190,7 +190,9 @@ namespace Tankfall.View
                         w = (w + dir + 3) % 3;
                         _weatherForced = w == 0 ? (Weather?)null : w == 1 ? Weather.Clear : Weather.Snow;
                         break;
-                    case 4: _boom = !_boom; break;   // Boom 모드(§2-9-16) — 켜고 끄기뿐이라 방향은 안 본다
+                    case SetupRowBoom: _boom = !_boom; break;   // Boom 모드(§2-9-16) — 켜고 끄기뿐이라 방향은 안 본다
+                    case SetupRowSfx: ToggleSfx(); break;
+                    case SetupRowMusic: ToggleMusic(); break;
                 }
 
             if (Down(KeyCode.Return) || Down(KeyCode.KeypadEnter)) StartBattle();
@@ -199,9 +201,163 @@ namespace Tankfall.View
         void PauseInput()
         {
             if (Down(KeyCode.Escape) || Enter()) { _screen = GameScreen.Battle; return; }
+            if (Down(KeyCode.M)) ToggleMusic();
+            if (Down(KeyCode.N)) ToggleSfx();
             if (Down(KeyCode.T)) ToTitle();
             if (Down(KeyCode.Q)) Quit();
         }
+
+        // ── 소리 설정 — 설정 화면과 일시정지가 **같은 함수**를 부른다. 저장도 여기서 한다(끄고 껐다 켜면 그대로여야 한다).
+        void ToggleSfx()   { Sfx.SfxOff = !Sfx.SfxOff; if (Sfx.SfxOff) Sfx.Engine(false); SavePrefs(); }
+        void ToggleMusic() { Sfx.MusicOff = !Sfx.MusicOff; SavePrefs(); }
+
+        // ── 설정 저장·복원(Prefs.cs) ─────────────────────────
+        // ⚠️ 사람 판에서만 부른다 — 호출부(Start · StartBattle · 토글)가 `_headless`/`_autoMode` 로 거른다.
+        Prefs.Settings CurrentSettings() => new Prefs.Settings
+        {
+            Map = (int)_map, Difficulty = _difficulty, ItemSlots = _itemSlots,
+            Weather = _weatherForced == null ? 0 : _weatherForced == Weather.Clear ? 1 : 2,
+            Boom = _boom, SfxOff = Sfx.SfxOff, MusicOff = Sfx.MusicOff,
+            Roster = string.Join(",", System.Array.ConvertAll(_roster, k => k.ToString())),
+        };
+
+        static readonly Prefs.Settings DefaultSettings = new Prefs.Settings
+        {
+            Map = (int)MapKind.TwinHills, Difficulty = 1, ItemSlots = 2, Weather = 0, Boom = false,
+            Roster = string.Join(",", System.Array.ConvertAll(DefaultRoster, k => k.ToString())),
+        };
+
+        void LoadPrefs()
+        {
+            var cur = CurrentSettings();
+            if (!Prefs.Load(ref cur, DefaultSettings)) return;
+            _map = (MapKind)Mathf.Clamp(cur.Map, 0, 2);
+            _difficulty = Mathf.Clamp(cur.Difficulty, 0, Difficulties.Length - 1);
+            _itemSlots = Mathf.Clamp(cur.ItemSlots, 0, 4);
+            _weatherForced = cur.Weather == 0 ? (Weather?)null : cur.Weather == 1 ? Weather.Clear : Weather.Snow;
+            _boom = cur.Boom;
+            Sfx.SfxOff = cur.SfxOff; Sfx.MusicOff = cur.MusicOff;
+            if (!_rosterFixed && !string.IsNullOrEmpty(cur.Roster))
+            {
+                var list = new List<TankKind>();
+                foreach (var n in cur.Roster.Split(','))
+                    if (System.Enum.TryParse<TankKind>(n.Trim(), true, out var k)) list.Add(k);
+                if (list.Count == 3) _roster = list.ToArray();     // 기종이 사라졌거나 손상됐으면 기본 로스터
+            }
+            Debug.Log($"[Tankfall] 저장 설정 복원 — {MapHeightFunction.Name(_map)} · AI {Difficulties[_difficulty].Name} · 아이템 {_itemSlots} · 효과음 {(Sfx.SfxOff ? "끔" : "켬")} · 음악 {(Sfx.MusicOff ? "끔" : "켬")}");
+        }
+
+        void SavePrefs()
+        {
+            if (_headless || _autoMode) return;
+            Prefs.Save(CurrentSettings());
+        }
+
+        /// <summary>승패 문구. 양 팀 생존 0 이면 무승부, 둘 다 살아 있으면 null(아직 안 끝남). NextTurn 과 자체검사가 같이 쓴다.</summary>
+        static string WinnerText(int aliveA, int aliveB)
+        {
+            if (aliveA > 0 && aliveB > 0) return null;
+            if (aliveA == 0 && aliveB == 0) return "무승부";
+            return aliveA > 0 ? "아군 승리" : "적군 승리";
+        }
+
+        // ═════════════════════════════════════════════════════
+        //  -gameselftest — 게임으로서 붙인 것들이 실제로 동작하는가(2026-09-18).
+        //  각 항목에 **빨간불 대조군**이 있다: 이음새 검사는 안 페이드된 파형에서 실패해야 하고,
+        //  저장값 없음에서는 Load 가 false 여야 하고, 음악 끔에서는 트랙이 서면 안 된다.
+        //  ⚠️ 사람 저장값을 건드리지 않는다 — Prefs.Namespace 를 바꿔 쓰고 끝에 지운다.
+        // ═════════════════════════════════════════════════════
+        bool _gameSelfTest;
+
+        /// <summary>
+        /// 루프 이음새 — 딸깍은 **값의 점프**에서 난다. 끝 n 샘플이 조용하고 첫 샘플이 0 근처면 점프가 없다.
+        /// (처음 "양끝 다 조용"으로 쟀다가 첫 박 킥이 걸렸다 — 0 에서 올라오는 어택은 딸깍이 아니다. 2026-09-18)
+        /// </summary>
+        static bool SeamQuiet(float[] d, int n, float limit)
+        {
+            if (Mathf.Abs(d[0]) > limit) return false;
+            for (int i = 0; i < n; i++)
+                if (Mathf.Abs(d[d.Length - 1 - i]) > limit) return false;
+            return true;
+        }
+
+        void GameSelfTestStep()
+        {
+            int fail = 0;
+            void Check(bool ok, string what) { if (ok) Debug.Log($"[Tankfall] 게임 자체검사 ✓ {what}"); else { Debug.Log($"[Tankfall] ❌ {what}"); fail++; } }
+
+            // 1) 배경음악 — 두 트랙이 구워지고, 들리는 진폭이며, 루프 경계가 조용하다
+            foreach (var t in new[] { Sfx.Track.Title, Sfx.Track.Battle })
+            {
+                var clip = Sfx.BuildClip(t);
+                var d = new float[clip.samples];
+                clip.GetData(d, 0);
+                float peak = 0f; foreach (var v in d) peak = Mathf.Max(peak, Mathf.Abs(v));
+                Check(clip.samples > 44100 * 5, $"{t} 길이 {clip.samples / 44100f:F1}s (5s 이상)");
+                Check(peak > 0.15f && peak <= 1f, $"{t} 최대 진폭 {peak:F2} (0.15~1.0)");
+                Check(SeamQuiet(d, 30, 0.03f), $"{t} 루프 이음새 조용함");
+            }
+            {   // 대조군: 페이드 없는 사인파는 이음새 검사에 걸려야 한다
+                var raw = new float[44100]; for (int i = 0; i < raw.Length; i++) raw[i] = Mathf.Sin(i * 0.05f + 1f) * 0.5f;
+                Check(!SeamQuiet(raw, 30, 0.03f), "대조군 — 안 페이드된 파형은 이음새 검사 실패");
+            }
+
+            // 2) 음악 게이트 — 끔/음소거면 트랙이 서지 않는다
+            bool savedMuted = Sfx.Muted, savedOff = Sfx.MusicOff;
+            Sfx.Muted = false; Sfx.MusicOff = true; Sfx.Music(Sfx.Track.Title);
+            Check(Sfx.Current == Sfx.Track.None, "음악 끔 → 트랙 없음");
+            Sfx.MusicOff = false; Sfx.Music(Sfx.Track.Title);
+            Check(Sfx.Current == Sfx.Track.Title, "음악 켬 → 타이틀 트랙");
+            Sfx.Music(Sfx.Track.Battle);
+            Check(Sfx.Current == Sfx.Track.Battle, "전투 화면 → 전투 트랙으로 전환");
+            Sfx.Muted = true; Sfx.Music(Sfx.Track.Battle);
+            Check(Sfx.Current == Sfx.Track.None, "하네스 음소거 → 트랙 없음(대조군)");
+            Sfx.Music(Sfx.Track.None);
+            Sfx.Muted = savedMuted; Sfx.MusicOff = savedOff;
+
+            // 3) 설정 저장 — 왕복 · 인자 우선 · 없음이면 false
+            string ns = Prefs.Namespace;
+            Prefs.Namespace = "tankfall.selftest.";
+            try
+            {
+                Prefs.DeleteAll(Difficulties.Length);
+                var probe = DefaultSettings;
+                Check(!Prefs.Load(ref probe, DefaultSettings), "저장값 없음 → Load=false(대조군)");
+                var a = new Prefs.Settings { Map = 2, Difficulty = 3, ItemSlots = 0, Weather = 2, Boom = true, SfxOff = true, MusicOff = true, Roster = "Poseidon,Duke,IonAttacker" };
+                Prefs.Save(a);
+                var b = DefaultSettings;
+                Check(Prefs.Load(ref b, DefaultSettings) && b.Map == 2 && b.Difficulty == 3 && b.ItemSlots == 0 && b.Weather == 2 && b.Boom && b.SfxOff && b.MusicOff && b.Roster == a.Roster,
+                      "저장 → 복원 왕복");
+                var c = DefaultSettings; c.Map = 1;                 // -map 인자를 준 상황
+                Prefs.Load(ref c, DefaultSettings);
+                Check(c.Map == 1 && c.Difficulty == 3, "인자로 준 맵은 안 덮고 나머지는 복원");
+                Prefs.Record(1, Prefs.Outcome.Win); Prefs.Record(1, Prefs.Outcome.Win);
+                Prefs.Record(0, Prefs.Outcome.Lose); Prefs.Record(2, Prefs.Outcome.Draw);
+                var tot = Prefs.Total(Difficulties.Length);
+                Check(tot.Win == 2 && tot.Lose == 1 && tot.Draw == 1, $"전적 누계 {tot.Win}승 {tot.Lose}패 {tot.Draw}무");
+                Check(Prefs.TotalText(Difficulties.Length) == "통산 2승 1패 1무", "전적 문구");
+                Prefs.DeleteAll(Difficulties.Length);
+                Check(Prefs.TotalText(Difficulties.Length) == "", "지운 뒤 전적 문구 비어 있음");
+            }
+            finally { Prefs.Namespace = ns; }
+
+            // 4) 승패 판정 — 동시 전멸은 무승부
+            Check(WinnerText(0, 0) == "무승부", "0:0 → 무승부");
+            Check(WinnerText(2, 0) == "아군 승리" && WinnerText(0, 1) == "적군 승리", "한쪽 생존 → 그쪽 승리");
+            Check(WinnerText(1, 1) == null, "양쪽 생존 → 미결");
+
+            // 5) 설정 화면 행 — 이름 상수와 표가 어긋나지 않았는가
+            Check(SetupRows[SetupRowBoom, 0] == "Boom 모드" && SetupRows[SetupRowSfx, 0] == "효과음" && SetupRows[SetupRowMusic, 0] == "음악"
+                  && SetupRowMusic == SetupRows.GetLength(0) - 1, "설정 행 상수 ↔ 표 일치");
+
+            if (fail == 0) Debug.Log("[Tankfall] ✅ 게임 자체검사 전부 통과(음악·설정 저장·전적·무승부·설정 행)");
+            else Debug.Log($"[Tankfall] ❌ 게임 자체검사 실패 {fail}건");
+            Application.Quit(fail == 0 ? 0 : 1);
+        }
+
+        /// <summary>결과 글자색 — 승리/패배/무승부. HUD 와 결과 화면이 같은 규칙을 쓴다.</summary>
+        Color ResultColor()
+            => _winner == null ? Ui.Ink : _winner.Contains("아군") ? Ui.Ally : _winner.Contains("무승부") ? Ui.Warn : Ui.Enemy;
 
         void ResultInput()
         {
@@ -262,6 +418,7 @@ namespace Tankfall.View
             _phaseTimer = MovePhaseSec;
             RollWind();
             _screen = GameScreen.Battle;
+            SavePrefs();                       // 여기까지 온 설정이 "다음에도 쓸 설정"이다
             _log = _practice
                 ? "연습장 — Space 로 조준, F2 로 정답 보기"
                 : $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name}"
@@ -306,6 +463,9 @@ namespace Tankfall.View
                 Ui.Text(r, TitleMenu[i], sel ? 19 : 17, sel ? Ui.Ink : Ui.Dim, TextAnchor.MiddleCenter, sel);
             }
             Ui.TextShadow(new Rect(0, H - 44f, W, 20f), "위아래 = 고르기   Enter = 확인", 12, Ui.Dim, TextAnchor.MiddleCenter);
+            string rec = Prefs.TotalText(Difficulties.Length);
+            if (rec.Length > 0)
+                Ui.TextShadow(new Rect(0, y + TitleMenu.Length * 46f + 10f, W, 20f), rec, 12, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
         void DrawHelp(float W, float H)
@@ -479,7 +639,11 @@ namespace Tankfall.View
             { "아이템",    "판 시작에 무작위로 받는다" },
             { "날씨",      "눈이면 포세이돈이 강해진다" },
             { "Boom 모드", "지뢰밭 + 지진·유성(§2-9-16)" },
+            { "효과음",    "발사·폭발·조작음" },
+            { "음악",      "타이틀·전투 배경음악" },
         };
+        // ⚠️ 행 번호를 숫자로 적지 마라. 소리 행을 뒤에 붙이자 "마지막 행 = Boom" 가정이 깨졌다(자체검사 커서).
+        const int SetupRowBoom = 4, SetupRowSfx = 5, SetupRowMusic = 6;
 
         void DrawSetup(float W, float H)
         {
@@ -494,6 +658,8 @@ namespace Tankfall.View
                 _itemSlots == 0 ? "없음" : $"{_itemSlots}개",
                 weather,
                 _boom ? "켬" : "끔",
+                Sfx.SfxOff ? "끔" : "켬",
+                Sfx.MusicOff ? "끔" : "켬",
             };
 
             int rows = SetupRows.GetLength(0);
@@ -528,7 +694,12 @@ namespace Tankfall.View
         {
             Scrim(W, H, 0.60f);
             Ui.TextShadow(new Rect(0, H * 0.34f, W, 50f), "일시정지", 34, Ui.Ink, TextAnchor.MiddleCenter, true);
-            string[] lines = { "Esc / Enter — 계속", "T — 타이틀로", "Q — 종료" };
+            string[] lines =
+            {
+                "Esc / Enter — 계속",
+                $"M — 음악 {(Sfx.MusicOff ? "끔" : "켬")}     N — 효과음 {(Sfx.SfxOff ? "끔" : "켬")}",
+                "T — 타이틀로", "Q — 종료",
+            };
             for (int i = 0; i < lines.Length; i++)
                 Ui.TextShadow(new Rect(0, H * 0.34f + 60f + i * 28f, W, 24f), lines[i], 15, Ui.Dim, TextAnchor.MiddleCenter);
         }
@@ -538,8 +709,11 @@ namespace Tankfall.View
         {
             Scrim(W, H, 0.66f);
             bool win = _winner != null && _winner.Contains("아군");
-            Ui.TextShadow(new Rect(0, H * 0.16f, W, 64f), win ? "승리" : "패배", 52, win ? Ui.Ally : Ui.Enemy, TextAnchor.MiddleCenter, true);
-            Ui.TextShadow(new Rect(0, H * 0.16f + 62f, W, 24f), _winner ?? "", 14, Ui.Dim, TextAnchor.MiddleCenter);
+            bool draw = _winner != null && _winner.Contains("무승부");
+            Ui.TextShadow(new Rect(0, H * 0.16f, W, 64f), draw ? "무승부" : win ? "승리" : "패배", 52, ResultColor(), TextAnchor.MiddleCenter, true);
+            string sub = _winner ?? "";
+            if (!_practice) { string rec = Prefs.TotalText(Difficulties.Length); if (rec.Length > 0) sub += "   ·   " + rec; }
+            Ui.TextShadow(new Rect(0, H * 0.16f + 62f, W, 24f), sub, 14, Ui.Dim, TextAnchor.MiddleCenter);
 
             var labels = new[] { "발사", "명중", "명중률", "준 피해", "생존" };
             // ⚠️ 높이는 행 수에서 계산한다(190 고정이었을 때 "생존" 행과 하단 캡션이 겹쳤다).
@@ -885,7 +1059,7 @@ namespace Tankfall.View
                     _picked.Add(TankKind.Cannon); _picked.Add(TankKind.Carrot); _picked.Add(TankKind.Laser);
                     _pickCursor = (int)TankKind.Poseidon;
                     break;
-                case 3: _screen = GameScreen.Setup; _setupSel = SetupRows.GetLength(0) - 1; break;   // 마지막 행(Boom 모드)에 커서
+                case 3: _screen = GameScreen.Setup; _setupSel = SetupRowBoom; break;   // Boom 모드 행에 커서
                 case 4:
                     _screen = GameScreen.Battle;
                     _phase = Phase.Move; _phaseTimer = MovePhaseSec * 0.7f;
