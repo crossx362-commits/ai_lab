@@ -19,7 +19,7 @@ namespace Tankfall.View
         public static string Namespace = "tankfall.";
         static string P => Namespace;
 
-        static readonly string[] SettingKeys = { "map", "difficulty", "items", "weather", "boom", "sfxoff", "musicoff", "roster" };
+        static readonly string[] SettingKeys = { "map", "difficulty", "items", "weather", "boom", "sfxoff", "musicoff", "roster", "volume" };
 
         /// <summary>현재 네임스페이스의 키를 전부 지운다(자체검사 정리용).</summary>
         public static void DeleteAll(int difficultyCount)
@@ -35,6 +35,21 @@ namespace Tankfall.View
         static void SetInt(string k, int v) => PlayerPrefs.SetInt(P + k, v);
         static string GetStr(string k, string d) => PlayerPrefs.GetString(P + k, d);
         static void SetStr(string k, string v) => PlayerPrefs.SetString(P + k, v);
+
+        // ── 전체 음량 ─────────────────────────────────────────
+        /// <summary>
+        /// 설정 화면의 전체 음량(0~1). 설정 묶음(`Settings`)과 따로 둔다 — 그건 "판마다 바꾸는 값"이라
+        /// 한 번에 저장되고, 이건 화살표를 누를 때마다 즉시 저장되는 환경값이다.
+        ///
+        /// ⚠️ **`PlayerPrefs` 를 직접 쓰지 마라.** 음량만 네임스페이스 밖에 있던 동안
+        ///    `-settingsselftest` 가 사람의 저장 파일에 `tankfall_volume` 을 실제로 썼다(2026-09-18 실측:
+        ///    다른 키는 0개인데 이것만 남았다). 저장은 전부 이 파일을 거쳐야 자체검사 격리가 걸린다.
+        /// </summary>
+        public static float Volume
+        {
+            get => Mathf.Clamp01(PlayerPrefs.GetFloat(P + "volume", 1f));
+            set { PlayerPrefs.SetFloat(P + "volume", Mathf.Clamp01(value)); PlayerPrefs.Save(); }
+        }
 
         // ── 설정 ──────────────────────────────────────────────
         /// <summary>저장할 설정 묶음. 값 이름은 BattleDemo 의 필드와 같다.</summary>

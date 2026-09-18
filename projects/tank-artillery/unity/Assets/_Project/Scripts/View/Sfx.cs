@@ -149,18 +149,18 @@ namespace Tankfall.View
         /// 하네스가 켜는 것이고, 이건 사람이 켠다. `AudioListener.volume` 하나로 걸어 두면 원샷·주행음
         /// 전부를 한 번에 스케일할 수 있어 재생 경로마다 곱해 줄 필요가 없다.
         /// </summary>
-        const string VolumeKey = "tankfall_volume";
-        static float? _volume;
+        /// ⚠️ 저장은 `Prefs` 가 한다(네임스페이스 격리가 걸려야 자체검사가 사람 저장값을 안 건드린다).
+        ///    값을 캐시하지도 않는다 — 캐시가 있으면 자체검사가 네임스페이스를 바꿔도 옛 값이 남아
+        ///    "격리했는데 격리가 안 된" 것처럼 보인다. PlayerPrefs 읽기는 사전 조회라 매 프레임이어도 싸다.
         public static float Volume
         {
-            get => _volume ??= PlayerPrefs.GetFloat(VolumeKey, 1f);
-            set
-            {
-                _volume = Mathf.Clamp01(value);
-                AudioListener.volume = _volume.Value;
-                PlayerPrefs.SetFloat(VolumeKey, _volume.Value);
-            }
+            get => Prefs.Volume;
+            set { Prefs.Volume = value; Apply(); }
         }
+
+        /// <summary>저장된 음량을 실제 출력에 건다. 시작할 때와 값이 바뀔 때 부른다 —
+        /// 안 부르면 "저장은 됐는데 켜면 소리가 원래대로"가 된다.</summary>
+        public static void Apply() => AudioListener.volume = Prefs.Volume;
 
         // ⚠️ **전부를 AudioSource 하나로 재생하면 안 된다**(2026-09-17 수정). 유니티에서 `pitch` 와
         //    `Stop()` 은 **클립이 아니라 소스**에 걸리므로 한 채널에 섞으면 서로를 망가뜨린다:

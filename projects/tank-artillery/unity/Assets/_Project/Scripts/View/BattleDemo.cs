@@ -1828,10 +1828,22 @@ namespace Tankfall.View
         }
 
         /// <summary>정답대로 자동 발사해 채점까지 돌려본다(`-practiceselftest`). 20발 쏘고 결과를 찍고 끝낸다.</summary>
+        // 표본 수 — 게이트가 90% 인데 20발이면 3발만 빗나가도 떨어진다(오차 ±11%p). 노이즈로 빨간불이 되면
+        // 사람이 게이트를 믿지 않게 되고, 그러면 진짜 고장도 같이 흘려보낸다. 재고 싶을 땐 늘려서 재라:
+        //   TANKFALL_PRACTICE_SHOTS=200 ./unity/Build/... -practiceselftest
+        static int PracticeSelfTestShots
+        {
+            get
+            {
+                var v = System.Environment.GetEnvironmentVariable("TANKFALL_PRACTICE_SHOTS");
+                return int.TryParse(v, out int n) && n >= 5 ? n : 20;
+            }
+        }
+
         void PracticeSelfTestFire()
         {
             if (_practiceSelfTestShots == 3) Shot("연습장");   // 오너에게 보여줄 화면 한 장
-            if (_practiceSelfTestShots >= 20)
+            if (_practiceSelfTestShots >= PracticeSelfTestShots)
             {
                 float acc = _practiceShots > 0 ? _practiceHits * 100f / _practiceShots : 0f;
                 float vacc = _practiceVerifiedShots > 0 ? _practiceVerifiedHits * 100f / _practiceVerifiedShots : -1f;
@@ -2089,7 +2101,12 @@ namespace Tankfall.View
         void SettingsSelfTestStep()
         {
             int fail = 0;
-            float before = Sfx.Volume;
+            // ⚠️ 사람 저장값을 건드리지 않는다 — `-gameselftest` 와 같은 방식으로 네임스페이스를 바꿔 쓰고 지운다.
+            //    이게 없던 동안 이 검사가 사람 저장 파일에 `tankfall_volume` 을 실제로 남겼다(2026-09-18 실측).
+            string ns = Prefs.Namespace;
+            Prefs.Namespace = "tankfall.selftest.";
+            try
+            {
 
             Sfx.Volume = 1.5f;   // ① 상한 — 100% 를 넘겨도 클램프돼야 한다
             if (!Mathf.Approximately(Sfx.Volume, 1f))
@@ -2106,8 +2123,13 @@ namespace Tankfall.View
             { Debug.Log($"[Tankfall] ❌ 음량이 AudioListener 에 안 걸렸다 — {AudioListener.volume:F2}"); fail++; }
             else Debug.Log("[Tankfall] 설정 자체검사 반영 — 음량 40% 가 실제 출력(AudioListener.volume) 에 걸림");
 
-            Sfx.Volume = before;   // 값을 어지르고 끝내지 않는다
-            Debug.Log(fail == 0 ? "[Tankfall] ✅ 설정(음량) — 상한·하한·실제 반영 전부 확인"
+            if (PlayerPrefs.HasKey("tankfall_volume"))      // 대조군 — 격리가 실제로 걸렸는가
+            { Debug.Log("[Tankfall] ❌ 음량이 네임스페이스 밖(tankfall_volume)에 쓰였다"); fail++; }
+
+            }
+            finally { Prefs.DeleteAll(Difficulties.Length); Prefs.Namespace = ns; Sfx.Apply(); }
+
+            Debug.Log(fail == 0 ? "[Tankfall] ✅ 설정(음량) — 상한·하한·실제 반영·저장 격리 전부 확인"
                                  : $"[Tankfall] ❌ 설정 자체검사 실패 {fail}건");
             Application.Quit(fail == 0 ? 0 : 1);
         }

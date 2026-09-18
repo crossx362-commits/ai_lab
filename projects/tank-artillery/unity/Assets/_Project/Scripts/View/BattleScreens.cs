@@ -243,12 +243,16 @@ namespace Tankfall.View
         {
             var cur = CurrentSettings();
             if (!Prefs.Load(ref cur, DefaultSettings)) return;
-            _map = (MapKind)Mathf.Clamp(cur.Map, 0, 2);
+            // ⚠️ 상한을 숫자로 적지 마라 — 맵이 3종일 때 적어둔 `2` 가 6종이 되고도 남아,
+            //    사람이 고른 황무지(5)가 켤 때마다 테라스(2)로 조용히 되돌아갔다(2026-09-18 병합).
+            //    설정 화면(`case 0`)이 쓰는 것과 **같은 소스**를 본다.
+            _map = (MapKind)Mathf.Clamp(cur.Map, 0, MapHeightFunction.Count - 1);
             _difficulty = Mathf.Clamp(cur.Difficulty, 0, Difficulties.Length - 1);
             _itemSlots = Mathf.Clamp(cur.ItemSlots, 0, 4);
             _weatherForced = cur.Weather == 0 ? (Weather?)null : cur.Weather == 1 ? Weather.Clear : Weather.Snow;
             _boom = cur.Boom;
             Sfx.SfxOff = cur.SfxOff; Sfx.MusicOff = cur.MusicOff;
+            Sfx.Apply();                                      // 저장된 음량을 실제 출력에 건다
             if (!_rosterFixed && !string.IsNullOrEmpty(cur.Roster))
             {
                 var list = new List<TankKind>();
@@ -348,8 +352,25 @@ namespace Tankfall.View
                 var tot = Prefs.Total(Difficulties.Length);
                 Check(tot.Win == 2 && tot.Lose == 1 && tot.Draw == 1, $"전적 누계 {tot.Win}승 {tot.Lose}패 {tot.Draw}무");
                 Check(Prefs.TotalText(Difficulties.Length) == "통산 2승 1패 1무", "전적 문구");
+                // 음량 — 저장 경로가 Prefs 를 거치는가. 여기서 쓴 값이 네임스페이스 밖으로 새면
+                // 사람 저장 파일이 더러워진다(병합 직후 실제로 샜다 — Prefs.Volume 머리말).
+                Sfx.Volume = 0.3f;
+                Check(Mathf.Approximately(Prefs.Volume, 0.3f) && Mathf.Approximately(AudioListener.volume, 0.3f),
+                      "음량 저장 → Prefs 경유 + 실제 출력 반영");
+                Check(!PlayerPrefs.HasKey("tankfall_volume"), "음량이 네임스페이스 밖으로 안 샌다(대조군)");
+
+                // 맵 상한 — 저장된 마지막 맵이 클램프에 잘리지 않는가. 숫자를 박아두면 맵이 늘 때 조용히 깨진다.
+                int last = MapHeightFunction.Count - 1;
+                var m = new Prefs.Settings { Map = last, Difficulty = 0, ItemSlots = 2, Weather = 0, Roster = "" };
+                Prefs.Save(m);
+                var mb = DefaultSettings;
+                Prefs.Load(ref mb, DefaultSettings);
+                Check(Mathf.Clamp(mb.Map, 0, MapHeightFunction.Count - 1) == last,
+                      $"마지막 맵({MapHeightFunction.Name((MapKind)last)})이 복원에서 안 잘린다");
+
                 Prefs.DeleteAll(Difficulties.Length);
                 Check(Prefs.TotalText(Difficulties.Length) == "", "지운 뒤 전적 문구 비어 있음");
+                Check(Mathf.Approximately(Prefs.Volume, 1f), "지운 뒤 음량이 기본값으로 돌아옴");
             }
             finally { Prefs.Namespace = ns; }
 
