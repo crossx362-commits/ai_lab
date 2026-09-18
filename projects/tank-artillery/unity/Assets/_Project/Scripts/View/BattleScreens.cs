@@ -842,6 +842,34 @@ namespace Tankfall.View
             Ui.Box(r);
             Ui.Text(new Rect(r.x + 6f, r.y + 2f, 80f, 14f), "미니맵", 9, Ui.Dim);
 
+            // ⚠️ 3D 라 미니맵이 **유일한 전장 개관**이다. 예전엔 유닛과 상자만 찍어서
+            //    화면 밖 지뢰·불·회오리가 어디 있는지 알 길이 아예 없었다 — 위험물부터 그린다.
+            //    순서가 중요하다: 위험물 → 상자 → 유닛(중요한 것이 위에 덮이게).
+            foreach (var w in _air.Walls)                      // 증폭벽 — z 축으로 뻗은 선
+            {
+                var a = MapToMini(r, w.X, w.Z - w.HalfLen);
+                var b = MapToMini(r, w.X, w.Z + w.HalfLen);
+                Ui.Fill(new Rect(a.x - 1f, Mathf.Min(a.y, b.y), 2f, Mathf.Abs(b.y - a.y)), Ui.Mark);
+            }
+            foreach (var t in _air.Tornadoes)                  // 회오리 — 테두리 원 대신 사각 테
+            {
+                var p = MapToMini(r, t.X, t.Z);
+                float rr = Mathf.Max(3f, t.Radius / MapSize * r.width);
+                Ui.Frame(new Rect(p.x - rr, p.y - rr, rr * 2f, rr * 2f), Ui.Gauge);
+            }
+            _hazards.Snapshot(_hazardBuf);
+            foreach (var h in _hazardBuf)
+            {
+                var p = MapToMini(r, h.X, h.Z);
+                // 지뢰(Kind 0)는 점, 장판(불·독)은 반경만큼의 네모
+                if (h.Kind == 0) Ui.Fill(new Rect(p.x - 1.5f, p.y - 1.5f, 3f, 3f), Ui.Bad);
+                else
+                {
+                    float rr = Mathf.Max(2f, h.Radius / MapSize * r.width);
+                    var c2 = Ui.Bad; c2.a = 0.45f;
+                    Ui.Fill(new Rect(p.x - rr, p.y - rr, rr * 2f, rr * 2f), c2);
+                }
+            }
             foreach (var c in _supply.Crates)
             {
                 var p = MapToMini(r, c.X, c.Z);
@@ -900,8 +928,38 @@ namespace Tankfall.View
         void DrawStatusIcons(Unit u, Rect under)
         {
             float x = under.x;
-            if (!_status.CanMove(u.Id)) { StatusChip(ref x, under.y, "속박", Ui.Bad); }
-            if (_items.HasShield(u.Id)) { StatusChip(ref x, under.y, "실드", Ui.Gauge); }
+            int root = _status.RootTurnsLeft(u.Id);
+            if (root > 0 || !_status.CanMove(u.Id)) StatusChip(ref x, under.y, root > 0 ? $"속박 {root}" : "속박", Ui.Bad);
+            int dot = _status.DotTurnsLeft(u.Id);
+            if (dot > 0) StatusChip(ref x, under.y, $"독 {_status.DotPerTurn(u.Id)}×{dot}", Ui.Warn);
+            if (_items.HasShield(u.Id)) StatusChip(ref x, under.y, "실드", Ui.Gauge);
+            foreach (ImpairKind k in System.Enum.GetValues(typeof(ImpairKind)))
+            {
+                int t = _impair.TurnsLeft(u.Id, k);
+                if (t > 0) StatusChip(ref x, under.y, $"{Impair.Name(k)} {t}", Ui.Mark);
+            }
+        }
+
+        /// <summary>
+        /// 팀 패널 한 줄 오른쪽 끝의 작은 상태 표시. **적 것도 보여야 한다** —
+        /// 예전엔 현재 턴 유닛에게만, 그것도 속박·실드 두 개만 그려서 "적이 중독인지"를
+        /// 알 방법이 아예 없었다(Sim 은 남은 턴·턴당 피해를 다 알고 있는데 UI 가 안 읽었다).
+        /// </summary>
+        void DrawRowStatus(Unit u, Rect row)
+        {
+            float x = row.x, w = 0f;
+            void Dot(string s, Color c)
+            {
+                var r = new Rect(row.xMax - 54f - w, row.y + 5f, 14f, 14f);
+                Ui.Fill(r, new Color(c.r, c.g, c.b, 0.85f));
+                Ui.Text(r, s, 9, Ui.Ink, TextAnchor.MiddleCenter, true);
+                w += 16f;
+            }
+            _ = x;
+            if (_status.DotTurnsLeft(u.Id) > 0) Dot("독", Ui.Warn);
+            if (_status.RootTurnsLeft(u.Id) > 0 || !_status.CanMove(u.Id)) Dot("속", Ui.Bad);
+            foreach (ImpairKind k in System.Enum.GetValues(typeof(ImpairKind)))
+                if (_impair.TurnsLeft(u.Id, k) > 0) { Dot("방", Ui.Mark); break; }
         }
 
         void StatusChip(ref float x, float y, string s, Color c)

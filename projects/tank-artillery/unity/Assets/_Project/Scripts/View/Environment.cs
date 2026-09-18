@@ -17,6 +17,30 @@ namespace Tankfall.View
     {
         Transform _clouds, _ridges, _sun, _apron;
 
+        /// <summary>
+        /// 바람에 흐르는 구름. 탄도를 가장 크게 흔드는 변수인데 **세계 안에 존재감이 0 이었다** —
+        /// 세기 10 의 바람이 불어도 움직이는 건 눈 파티클뿐이고 구름 16개는 못 박혀 있었다(HUD 화살표만).
+        /// 게임 규칙에는 영향이 없다(순수 연출) — 탄도는 `Sim` 이 `_wind` 로 따로 계산한다.
+        /// </summary>
+        Vector3 _windDrift;
+        float _mapSpan;
+
+        /// <summary>전투가 매 라운드 바람을 굴릴 때 불러준다. x·z 는 `_wind` 와 같은 축이다.</summary>
+        public void SetWind(float wx, float wz) => _windDrift = new Vector3(wx, 0f, wz);
+
+        void Update()
+        {
+            if (_clouds == null || _mapSpan <= 0f) return;
+            // 구름은 실제 바람보다 **천천히** 흐른다 — 같은 속도면 하늘이 급류처럼 보인다.
+            _clouds.position += _windDrift * (Time.deltaTime * 0.55f);
+            // 맵 폭의 1.7배를 넘어가면 반대편으로 되돌린다(구름을 새로 만들지 않고 감는다).
+            float lim = _mapSpan * 1.7f;
+            var p = _clouds.position;
+            if (Mathf.Abs(p.x) > lim) p.x -= Mathf.Sign(p.x) * lim * 2f;
+            if (Mathf.Abs(p.z) > lim) p.z -= Mathf.Sign(p.z) * lim * 2f;
+            _clouds.position = p;
+        }
+
         /// <summary>맵 밖 바닥판(Apron)의 윗면 높이. 갤러리처럼 지형을 끈 채 뭔가를 세울 때는 이 높이에 둬야 판 밑에 안 묻힌다.</summary>
         public float ApronTopY { get; private set; }
 
@@ -26,6 +50,7 @@ namespace Tankfall.View
             var rng = new Rng((uint)(seed * 2654435761u + 17u));
 
             BuildApron(mapSize, theme, groundY);
+            _mapSpan = mapSize;
             BuildClouds(mapSize, theme, ref rng);
             BuildRidges(mapSize, theme, ref rng);
             BuildSun(mapSize, theme, sunDir);

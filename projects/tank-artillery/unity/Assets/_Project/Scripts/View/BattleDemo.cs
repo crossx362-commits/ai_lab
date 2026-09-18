@@ -722,6 +722,7 @@ namespace Tankfall.View
             float s = Random.Range(0f, 10f);
             _wind = new Vector2(Mathf.Cos(a) * s, Mathf.Sin(a) * s);
             if (_weather == Weather.Snow && _cam != null) EnsureFx().SetSnow(!Application.isBatchMode, _cam.transform, _wind);   // 눈은 바람을 따라 흩날린다
+            if (_env != null) _env.SetWind(_wind.x, _wind.y);   // 하늘도 같은 바람을 탄다(연출 전용)
         }
 
         void Update()
@@ -2556,6 +2557,8 @@ namespace Tankfall.View
                     Ui.Text(new Rect(row.xMax - 52f, row.y, 48f, row.height),
                             x.Alive ? $"{x.Hp}" : "전투불능", x.Alive ? 12 : 10,
                             x.Alive ? Ui.Ink : Ui.Dim, TextAnchor.MiddleRight);
+                    // 적 것도 보인다 — 누가 중독·속박·방해 상태인지가 이 패널의 유일한 단서다
+                    if (x.Alive) DrawRowStatus(x, row);
                     y += RowH;
                     if (t == 0 && x.Id % MapHeightFunction.TeamSize == MapHeightFunction.TeamSize - 1) { Ui.Fill(new Rect(r.x + 8f, y - 2f, PanW - 16f, 1f), Ui.Border); y += 3f; }
                 }

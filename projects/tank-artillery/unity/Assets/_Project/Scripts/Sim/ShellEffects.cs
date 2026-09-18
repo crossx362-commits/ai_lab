@@ -131,6 +131,21 @@ namespace Tankfall.Sim
         /// <summary>독 또는 화상이 걸려 있는가 — 연출(상태 파티클)용 읽기 전용 조회. 판정에는 안 쓴다.</summary>
         public bool HasDot(int id) => _poison.ContainsKey(id) || _burn.ContainsKey(id);
 
+        /// <summary>
+        /// 지속피해 남은 턴 / 턴당 피해 — **UI 전용 읽기 조회**(판정에는 쓰지 마라).
+        /// 이 값들이 밖으로 안 나와서 "몇 턴 남았는지·턴당 몇 대미지인지"가 화면 어디에도 없었다.
+        /// </summary>
+        public int DotTurnsLeft(int id)
+            => Math.Max(_poison.TryGetValue(id, out var p) ? p.TurnsLeft : 0,
+                        _burn.TryGetValue(id, out var b) ? b.TurnsLeft : 0);
+
+        public int DotPerTurn(int id)
+            => (_poison.TryGetValue(id, out var p) ? p.DmgPerTurn : 0)
+             + (_burn.TryGetValue(id, out var b) ? b.DmgPerTurn : 0);
+
+        /// <summary>이동금지 남은 턴 — 0 이면 안 걸림.</summary>
+        public int RootTurnsLeft(int id) => _rooted.TryGetValue(id, out int t) ? t : 0;
+
         /// <summary>상태 리셋(시뮬레이션 테스트용).</summary>
         public void Clear()
         {
