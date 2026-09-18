@@ -452,6 +452,7 @@ namespace Tankfall.View
         {
             foreach (var u in _units) if (u.Root != null) Destroy(u.Root.gameObject);
             _units.Clear();
+            ClearWrecks();            // 지난 판 잔해를 안 치우면 새 전장에 남의 무덤이 서 있다
 
             // ⚠️ 날씨 → 지형 → 탱크 순서를 지켜라. 지형 색이 눈 여부를 보고 칠해진다(TerrainPalette).
             SetWeather(_weatherForced ?? (Random.value < SnowChance ? Weather.Snow : Weather.Clear));

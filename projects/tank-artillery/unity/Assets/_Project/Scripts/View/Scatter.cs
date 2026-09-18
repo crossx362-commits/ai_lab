@@ -272,14 +272,34 @@ namespace Tankfall.View
         }
 
         /// <summary>폭발이 쓸어낸다. 안 지우면 파인 자리 위에 나무가 공중에 뜬다(§7-6-1 과 같은 문제).</summary>
+        /// <summary>
+        /// 폭발 반경 안의 지물을 없앤다.
+        /// ⚠️ 예전엔 `Destroy` 만 해서 **나무·바위가 소리도 파편도 없이 증발했다** — 폭발이 지형을 쓸었다는
+        ///    순간이 안 보였다. 반경 가장자리 것은 쓰러뜨리고(WreckPiece), 가운데 것만 즉시 없앤다.
+        ///    쓰러지는 것까지 전부 남기면 큰 굴착탄에서 파편이 수십 개가 되므로 개수를 막는다.
+        /// </summary>
         public int DestroyNear(Vector3 center, float radius)
         {
-            int n = 0;
+            int n = 0, tossed = 0;
+            const int MaxToss = 6;                 // 파편 상한 — 굴착 16m 에서 화면이 파편으로 덮이지 않게
             float r2 = radius * radius;
             for (int i = _items.Count - 1; i >= 0; i--)
                 if ((_items[i].Pos - center).sqrMagnitude <= r2)
                 {
-                    if (_items[i].T != null) Destroy(_items[i].T.gameObject);
+                    var t = _items[i].T;
+                    if (t != null)
+                    {
+                        var away = t.position - center; away.y = 0f;
+                        if (tossed < MaxToss && away.sqrMagnitude > 0.01f)
+                        {
+                            // 폭심 반대쪽으로 날아가며 쓰러진다. 원본을 그대로 쓰므로 목록에서만 뺀다.
+                            tossed++;
+                            t.gameObject.AddComponent<WreckPiece>()
+                             .Launch(away.normalized * Random.Range(4f, 9f) + Vector3.up * Random.Range(4f, 8f),
+                                     new Vector3(Random.Range(-200f, 200f), Random.Range(-90f, 90f), Random.Range(-200f, 200f)), 3.2f);
+                        }
+                        else Destroy(t.gameObject);
+                    }
                     _items.RemoveAt(i);
                     n++;
                 }

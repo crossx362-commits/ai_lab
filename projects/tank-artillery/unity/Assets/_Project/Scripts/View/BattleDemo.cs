@@ -74,6 +74,8 @@ namespace Tankfall.View
             public float Heading, TurretYaw, BarrelPitch = 45f, Gauge = MoveGaugeMax;
             public bool Alive => Hp > 0;
             public float Jolt;         // 피격 흔들림 잔량(연출) — GroundUnit 이 줄인다
+            public float Recoil;       // 발사 반동 잔량(연출) — 같은 자리에서 줄인다
+            public Vector3 BarrelHome; // 포신의 제자리(기종마다 다르다). 반동이 여기서 물러났다 돌아온다.
             public Vector3 Pos => Root.position;
             public Vec3 Center => new Vec3(Root.position.x, Root.position.y + 1.2f, Root.position.z);
         }
@@ -93,13 +95,45 @@ namespace Tankfall.View
                     pop.AddComponent<WreckPiece>().Launch(new Vector3(Random.Range(-3f, 3f), Random.Range(11f, 16f), Random.Range(-3f, 3f)),
                                                           new Vector3(Random.Range(-240f, 240f), Random.Range(-120f, 120f), Random.Range(-240f, 240f)), 4.5f);
                 }
+
+                // 잔해 — 예전엔 차체가 통째로 사라져서 **"여기서 한 대가 죽었다"는 흔적이 0** 이었다.
+                // 판정용 계층(u.Root)은 그대로 숨기고, 복제본을 옆으로 눕혀 전장에 남긴다.
+                var hull = Instantiate(u.Root.gameObject, u.Root.position, u.Root.rotation);
+                hull.name = "HullWreck";
+                // ⚠️ 반드시 통에 담는다. 안 담으면 **다음 판에 지난 판 잔해가 그대로 서 있다**
+                //    (씬을 새로 안 만들고 유닛만 지우기 때문에 — StartBattle 참조).
+                hull.transform.SetParent(WreckBin(), true);
+                foreach (var d in hull.GetComponentsInChildren<TankDrive>()) Destroy(d);   // 잔해는 안 굴러간다
+                var tw = hull.transform.Find("Turret");
+                if (tw != null) tw.gameObject.SetActive(false);        // 포탑은 위에서 따로 날렸다 — 둘 다 있으면 두 개로 보인다
+                hull.transform.rotation = u.Root.rotation * Quaternion.Euler(Random.Range(12f, 26f) * (Random.value < 0.5f ? -1f : 1f),
+                                                                             Random.Range(-18f, 18f), Random.Range(14f, 30f));
+                foreach (var r in hull.GetComponentsInChildren<Renderer>())      // 그을린 색
+                    foreach (var m in r.materials) if (m.HasProperty("_Color")) m.color = Color.Lerp(m.color, new Color(0.13f, 0.12f, 0.12f), 0.68f);
             }
             u.Root.gameObject.SetActive(false);
+        }
+
+        Transform _wreckBin;
+
+        /// <summary>잔해를 모아 두는 통. 판이 새로 시작할 때 통째로 비운다(ClearWrecks).</summary>
+        Transform WreckBin()
+        {
+            if (_wreckBin == null) _wreckBin = new GameObject("Wrecks").transform;
+            return _wreckBin;
+        }
+
+        /// <summary>지난 판 잔해를 치운다. 새 판을 여는 모든 경로가 불러야 한다.</summary>
+        void ClearWrecks()
+        {
+            if (_wreckBin != null) Destroy(_wreckBin.gameObject);
+            _wreckBin = null;
         }
 
         ParticleFx EnsureFx()
         {
             if (_fx == null) _fx = new GameObject("ParticleFx").AddComponent<ParticleFx>();
+            _fx.Listener = _cam != null ? _cam.transform : null;   // 흔들림 거리 감쇠용
             return _fx;
         }
 
@@ -406,7 +440,8 @@ namespace Tankfall.View
                                                     MakeMat(TankShape.BodyColor(kinds[i]), 0.22f),
                                                     track, teamMat[t], out var tur, out var bar, out var fp, wood);
                     var u = new Unit { Id = t * MapHeightFunction.TeamSize + i, Team = t, Kind = kinds[i], W = _weather,
-                                       Root = root, Turret = tur, Barrel = bar, Fire = fp };
+                                       Root = root, Turret = tur, Barrel = bar, Fire = fp,
+                                       BarrelHome = bar != null ? bar.localPosition : Vector3.zero };
                     u.HpMax = TankStats.Get(kinds[i]).Hp;
                     u.Hp = u.HpMax;
                     u.BarrelPitch = Mathf.Clamp(u.BarrelPitch, u.St.MinPitch, u.St.MaxPitch);
@@ -1087,6 +1122,17 @@ namespace Tankfall.View
                 Vector3.ProjectOnPlane(Quaternion.Euler(0, u.Heading, 0) * Vector3.forward, n), n);
             u.Root.rotation = dt > 0f ? Quaternion.Slerp(u.Root.rotation, want, 1f - Mathf.Exp(-12f * dt)) : want;
             // 피격 흔들림(연출): 차체가 튀어 오르며 좌우로 흔들리다 잦아든다. 위치·판정(Center)에는 안 들어간다 — 곧 GroundUnit 이 되돌린다.
+            // 반동 — 차체가 뒤로 주춤하고 포신이 뒤로 물러났다 돌아온다.
+            if (u.Recoil > 0f)
+            {
+                float rk = u.Recoil; u.Recoil = Mathf.Max(0f, u.Recoil - dt * 3.2f);
+                var back = -(Quaternion.Euler(0f, u.Heading, 0f) * Vector3.forward);
+                u.Root.position += back * (0.30f * rk);
+                u.Root.rotation *= Quaternion.Euler(-7f * rk, 0f, 0f);      // 앞머리가 들린다
+                if (u.Barrel != null) u.Barrel.localPosition = u.BarrelHome + Vector3.back * (0.55f * rk);
+            }
+            else if (u.Barrel != null && u.Barrel.localPosition != u.BarrelHome) u.Barrel.localPosition = u.BarrelHome;
+
             if (u.Jolt > 0f)
             {
                 float k = u.Jolt; u.Jolt = Mathf.Max(0f, u.Jolt - dt * 1.8f);
@@ -1157,6 +1203,9 @@ namespace Tankfall.View
             _shooterTeam = u.Team;
             _stat[u.Team].Shots++;
             Sfx.Fire(power);
+            // 발사 반동 — 예전엔 총구 화염만 있고 **무게가 전혀 안 실렸다**(피격엔 Jolt 가 있는데 발사엔 없었다).
+            // 파워가 셀수록 크게 물러난다. 위치·판정(Center)에는 안 들어간다 — GroundUnit 이 곧 되돌린다.
+            u.Recoil = 0.35f + 0.65f * Mathf.Clamp01(power);
 
             float worldYaw = u.Heading + turretYaw;
             // 사격 산포(오너 지시 2026-09-18) — 같은 각도·파워로 쏴도 매번 조금씩 흔들린다.
@@ -2321,6 +2370,7 @@ namespace Tankfall.View
             _roster = _pick.ToArray();
             foreach (var u in _units) if (u.Root != null) Destroy(u.Root.gameObject);
             _units.Clear();
+            ClearWrecks();            // 판을 새로 여는 경로는 전부 잔해를 치워야 한다(StartBattle 과 같은 이유)
             SpawnTeams();
             _items.Clear();
             if (_itemSlots > 0)

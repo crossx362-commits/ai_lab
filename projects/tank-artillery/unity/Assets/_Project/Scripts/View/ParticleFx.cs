@@ -47,6 +47,24 @@ namespace Tankfall.View
         public float Shake { get; private set; }
 
         /// <summary>
+        /// 보고 있는 지점(카메라). 거리 감쇠에 쓴다 — 없으면 감쇠 없이 예전처럼 동작한다(널 안전).
+        /// </summary>
+        public Transform Listener;
+
+        /// <summary>가까우면 1, 멀면 0. 발밑(≤NearM)은 그대로, FarM 밖은 아예 안 흔든다.</summary>
+        const float ShakeNearM = 25f, ShakeFarM = 170f;
+
+        float ShakeFalloff(Vector3 at)
+        {
+            if (Listener == null) return 1f;
+            float d = Vector3.Distance(Listener.position, at);
+            if (d <= ShakeNearM) return 1f;
+            if (d >= ShakeFarM) return 0f;
+            float t = 1f - (d - ShakeNearM) / (ShakeFarM - ShakeNearM);
+            return t * t;                       // 제곱 — 중간 거리에서 너무 세게 남지 않게
+        }
+
+        /// <summary>
         /// 폭발이 아닌 사건(지진 등)이 카메라를 흔들 때. `Shake` 의 set 을 열지 않는 이유는
         /// 감쇠·상한 규칙이 이 파일 안에만 있어야 하기 때문이다 — 밖에서 대입하면 상한이 무시된다.
         /// </summary>
@@ -353,7 +371,10 @@ namespace Tankfall.View
 
             // 흔들림은 반경에 비례하되 상한을 둔다 — 굴착탄(16m)에서 화면이 뒤집히면 조준을 못 한다.
             // ⚠️ 핵만 상한을 올린다. 상한 자체를 올리면 평범한 착탄에서도 조준이 불가능해진다.
-            Shake = Mathf.Min(Shake + radius * (ultimate ? 0.12f : 0.055f), ultimate ? 1.8f : 1.1f);
+            // ⚠️ **거리로 줄인다**(명세 §75). 예전엔 반경만 봐서 **200m 밖 착탄도 발밑과 똑같이 흔들었다** —
+            //    남의 턴에 저 멀리서 터진 탄이 내 화면을 같은 세기로 때리면 거리 감각이 통째로 죽는다.
+            Shake = Mathf.Min(Shake + radius * (ultimate ? 0.12f : 0.055f) * ShakeFalloff(at),
+                              ultimate ? 1.8f : 1.1f);
 
             // 광원: 섬광 색으로 주변 지형·탱크를 한 번 비춘다 — 파티클만으로는 "빛"이 안 난다.
             var st = BlastStyle.Of(kind, shell);
