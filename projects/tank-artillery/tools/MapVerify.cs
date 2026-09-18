@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Tankfall.Sim;
 
 static class MapVerify
@@ -16,11 +17,51 @@ static class MapVerify
             Console.WriteLine($"[{MapHeightFunction.Name(map)}]");
             CheckSymmetry(map);
             CheckLowAngle(map, expectClear: true);
+            Profile(map);
         }
         Console.WriteLine("[네거티브] 옛 언덕(22m @ 60,100) 은 40° 가 막혀야 한다");
         CheckLowAngleLegacy();
         Console.WriteLine(Fail == 0 ? "\n✅ 맵 게이트 통과" : $"\n❌ 실패 {Fail}건");
         Environment.Exit(Fail == 0 ? 0 : 1);
+    }
+
+    /// <summary>
+    /// 지형 **형태 검수**(오너 지시 2026-09-19 "전체 지형 다 검수해").
+    ///
+    /// 스크린샷은 카메라가 어디를 보느냐에 따라 같은 맵도 전혀 다르게 보인다 — 실제로 Crater 는
+    /// 타이틀 카메라가 구덩이 안쪽 벽을 봐서 "평평한 모래"로만 찍혔다. 그래서 **높이 함수를 직접 격자로
+    /// 떠서** 숫자로 본다: 높이 범위·평균 경사·급경사 비율·평탄 비율.
+    ///
+    /// 읽는 법 — **평탄 비율이 높으면 밋밋한 맵**이고(엄폐가 없다), **급경사 비율이 높으면
+    /// 탱크가 갇히고(§7-6) 40° 이륙이 막힌다.** 둘 사이가 좋은 지형이다.
+    /// `TANKFALL_HEIGHTDUMP=1` 을 주면 격자를 CSV 로 찍어 그림으로 볼 수 있다.
+    /// </summary>
+    static void Profile(MapKind map)
+    {
+        const int N = 96;
+        float step = MapHeightFunction.MapSize / (N - 1);
+        float lo = float.MaxValue, hi = float.MinValue, slopeSum = 0f;
+        int steep = 0, flat = 0, n = 0;
+        bool dump = Environment.GetEnvironmentVariable("TANKFALL_HEIGHTDUMP") == "1";
+        var sb = dump ? new System.Text.StringBuilder() : null;
+
+        for (int j = 0; j < N; j++)
+        {
+            for (int i = 0; i < N; i++)
+            {
+                float x = i * step, z = j * step;
+                MapHeightFunction.Evaluate(map, x, z, out float h, out float hx, out float hz);
+                float g = MathF.Sqrt(hx * hx + hz * hz);
+                lo = MathF.Min(lo, h); hi = MathF.Max(hi, h);
+                slopeSum += g; n++;
+                if (g > 0.84f) steep++;          // tan40° — 이륙·이동이 막히기 시작하는 선
+                if (g < 0.04f) flat++;           // 사실상 평지
+                if (dump) sb.Append(h.ToString("F2")).Append(i == N - 1 ? '\n' : ',');
+            }
+        }
+        Console.WriteLine($"    형태  높이 {lo,5:F1}~{hi,5:F1}m (폭 {hi - lo,4:F1})   평균경사 {slopeSum / n:F3}" +
+                          $"   급경사 {steep * 100f / n,4:F1}%   평탄 {flat * 100f / n,4:F1}%");
+        if (dump) File.WriteAllText($"/tmp/height_{MapHeightFunction.Name(map)}.csv", sb.ToString());
     }
 
     static void CheckSymmetry(MapKind map)

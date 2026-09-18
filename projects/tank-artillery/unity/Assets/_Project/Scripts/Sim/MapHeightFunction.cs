@@ -183,33 +183,42 @@ namespace Tankfall.Sim
         static void AddDetailRipple(float x, float z, float amp, float k, ref float h, ref float hx, ref float hz)
         {
             // ── 1겹: 넓은 물결(기존) — 맵마다 amp·k 를 달리 준다 ──
-            Wave(x, z, amp, k, ref h, ref hx, ref hz);
+            Wave2(x, z, amp, k * 0.86f, k * 0.67f, 0f, ref h, ref hx, ref hz);
 
             // ── 2겹: 능선. z 방향으로 뻗은 두둑이 반복된다.
             //    `sin²` 은 0 에서 납작하고 마루에서 둥글어 **골짜기가 넓고 능선이 좁다** — 실제 지형의 모양이다.
             //    (|cos| 같은 걸 쓰면 마루에서 미분이 튀어 SDF 가 깨진다.)
-            Ridge(x - Center, 2.0f, 0.0718f, ref h, ref hx);           // 파장 ~87m
+            Ridge(x - Center, 1.30f, 0.0641f, ref h, ref hx);          // 파장 ~98m
 
             // ── 3겹: **가로 능선**. 세로 능선만 있으면 빨래판이 된다 —
             //    두 방향을 교차시켜야 언덕과 우묵한 곳이 생겨 "지형"으로 읽힌다.
             //    z 만의 함수라 x 대칭은 자동으로 성립한다(대칭 걱정 없이 쓸 수 있는 축이다).
-            RidgeZ(z, 1.5f, 0.0898f, ref h, ref hz);                   // 파장 ~70m
+            RidgeZ(z, 1.10f, 0.0837f, ref h, ref hz);                  // 파장 ~75m
 
-            // ── 4겹: 교차 굴곡 — 능선 격자가 규칙적으로 보이지 않게 흩뜨린다.
-            Wave(x, z, 0.80f, 0.165f, ref h, ref hx, ref hz);          // 파장 ~38m
-
-            // ── 5겹: 잔결 — 가까이서 봤을 때 지면이 죽지 않게.
-            Wave(x, z, 0.30f, 0.331f, ref h, ref hx, ref hz);          // 파장 ~19m
+            // ── 4~6겹: 교차 굴곡.
+            // 🚨 **x·z 에 같은 파수를 쓰지 마라**(2026-09-19 검수에서 걸렸다). 같은 k 를 쓰면
+            //    `cos(kx)·cos(kz)` 가 **완전한 정사각 격자**가 되어, 위에서 내려다본 6맵 전부가
+            //    같은 무늬로 반복되는 **누비이불**처럼 보였다. 지형이 아니라 무늬였다.
+            //    x·z 파수를 서로 다르게 주고 **z 위상까지 어긋내면** 반복이 눈에 안 띈다.
+            //    (z 위상은 마음대로 써도 된다 — 대칭이 필요한 축은 x 뿐이다.)
+            Wave2(x, z, 0.95f, 0.0723f, 0.0951f, 1.30f, ref h, ref hx, ref hz);
+            Wave2(x, z, 0.62f, 0.1370f, 0.1071f, 2.60f, ref h, ref hx, ref hz);
+            Wave2(x, z, 0.34f, 0.2310f, 0.1970f, 0.75f, ref h, ref hx, ref hz);
         }
 
-        /// <summary>코사인 곱 한 겹. x 는 Center 기준이라 좌우 대칭이 유지된다.</summary>
-        static void Wave(float x, float z, float amp, float k, ref float h, ref float hx, ref float hz)
+        /// <summary>
+        /// 코사인 곱 한 겹. x 파수·z 파수·z 위상을 따로 받는다.
+        /// x 는 `cos(x-Center)` 라 **항상 좌우 대칭**이고, z 는 위상을 넣어도 대칭과 무관하다.
+        /// </summary>
+        static void Wave2(float x, float z, float amp, float kx, float kz, float phase,
+                          ref float h, ref float hx, ref float hz)
         {
-            float cxm = MathF.Cos((x - Center) * k), sxm = MathF.Sin((x - Center) * k);
-            float sz = MathF.Sin(z * k), cz = MathF.Cos(z * k);
-            h += amp * cxm * cz;
-            hx += amp * (-k * sxm) * cz;
-            hz += amp * cxm * (-k * sz);
+            float u = (x - Center) * kx, v = z * kz + phase;
+            float cu = MathF.Cos(u), su = MathF.Sin(u);
+            float cv = MathF.Cos(v), sv = MathF.Sin(v);
+            h += amp * cu * cv;
+            hx += amp * (-kx * su) * cv;
+            hz += amp * cu * (-kz * sv);
         }
 
         /// <summary>
@@ -229,23 +238,43 @@ namespace Tankfall.Sim
             hz += amp * k * MathF.Sin(2f * k * z);
         }
 
+        /// <summary>
+        /// 계단식 지형. **층이 여러 개여야 이름값을 한다.**
+        ///
+        /// 🚨 2026-09-19 검수에서 걸렸다 — 예전엔 층이 **둘뿐**이었다(중앙 3.5m · 바깥 10m).
+        ///    "계단"이 아니라 가운데가 파인 **참호 하나**였고, 높이 폭이 7.7m 로 다른 맵의 절반,
+        ///    평탄 비율 69%(다른 맵 3%)라 사실상 평지 맵이었다. 숫자로 재기 전엔 안 보였다
+        ///    (스크린샷은 카메라가 보는 곳만 보여 준다 — `MapVerify.Profile` 머리말).
+        ///
+        /// 네 층으로 올린다: 중앙 3m → 7m → 11m → 바깥 15m.
+        /// ⚠️ **스폰이 평평한 단 위에 서야 한다.** 경사면에 세우면 한쪽으로 기운 채 시작해
+        ///    조준 각도와 엄폐가 슬롯마다 달라진다. 스폰은 |x−중심| = 75m 이므로 셋째 단(70~96m)에 온다.
+        /// ⚠️ 경사면 폭을 좁히지 마라. 오르는 높이가 같아도 폭이 좁으면 기울기가 그만큼 커져
+        ///    40° 이륙 레인이 막히고 탱크가 갇힌다(§7-6). 지금은 한 단 4m 를 18m 에 걸쳐 오른다(최대 0.33).
+        /// </summary>
         static void EvalTerrace(float x, float z, out float h, out float hx, out float hz)
         {
             float u = MathF.Abs(x - Center);
             float sign = x >= Center ? 1f : -1f;
-            float step, dstep;
-            if (u < 28f) { step = 3.5f; dstep = 0f; }
-            else if (u < 48f)
-            {
-                Smooth01((u - 28f) / 20f, out float s, out float ds);
-                step = 3.5f + 6.5f * s;
-                dstep = 6.5f * ds / 20f;
-            }
-            else { step = 10f; dstep = 0f; }
-            float ripple = 0.6f * MathF.Sin(z * 0.07f);
-            h = step + ripple;
-            hx = sign * dstep;
-            hz = 0.6f * 0.07f * MathF.Cos(z * 0.07f);
+
+            h = 3f; float du = 0f;
+            StepUp(u, 18f, 36f, 4f, ref h, ref du);      // 1단
+            StepUp(u, 52f, 70f, 4f, ref h, ref du);      // 2단 — 이 위(70~96m)가 스폰 단이다
+            StepUp(u, 96f, 114f, 4f, ref h, ref du);     // 3단(바깥 테)
+
+            hx = sign * du;
+            hz = 0f;
+            AddDetailRipple(x, z, 0.7f, 0.045f, ref h, ref hx, ref hz);
+        }
+
+        /// <summary>한 단 오르기. a~b 구간에서 climb 만큼 매끄럽게 오르고 밖에서는 평평하다.</summary>
+        static void StepUp(float u, float a, float b, float climb, ref float h, ref float du)
+        {
+            if (u <= a) return;
+            if (u >= b) { h += climb; return; }
+            Smooth01((u - a) / (b - a), out float sm, out float ds);
+            h += climb * sm;
+            du += climb * ds / (b - a);
         }
 
         /// <summary>
