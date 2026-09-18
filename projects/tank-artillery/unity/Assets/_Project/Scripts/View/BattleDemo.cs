@@ -597,6 +597,19 @@ namespace Tankfall.View
             {
                 _skyMat.SetColor("_Top", th.SkyTop);
                 _skyMat.SetColor("_Bottom", th.SkyBottom);
+
+                // 구름 색은 **테마에서 만든다**(SkyGradient.shader 머리말) — 흰색을 박으면 노을·화산 맵이 깨진다.
+                //   밝은 면은 하늘 아래쪽 색을 흰쪽으로, 그늘은 위쪽 색을 어둡게. 그래야 그 하늘에 속한 구름으로 보인다.
+                _skyMat.SetColor("_CloudColor", Color.Lerp(th.SkyBottom, Color.white, 0.75f));
+                _skyMat.SetColor("_CloudDark", Color.Lerp(th.SkyTop, th.Fog, 0.5f) * 0.92f);
+                // 눈 오는 날은 하늘을 덮는다 — 날씨가 하늘에서도 읽혀야 한다(§2-9-7 포세이돈 조건이 보이는 축).
+                _skyMat.SetFloat("_CloudCover", _weather == Weather.Snow ? 0.32f : 0.42f);
+
+                if (_sun != null)
+                {
+                    _skyMat.SetVector("_SunDir", -_sun.transform.forward);   // 빛이 오는 쪽 = 해가 있는 쪽
+                    _skyMat.SetColor("_SunColor", th.Sun);
+                }
             }
             if (_cam != null) _cam.backgroundColor = th.SkyBottom;
             if (_sun != null) _sun.color = th.Sun;
