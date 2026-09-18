@@ -929,6 +929,29 @@ namespace Tankfall.View
             if (direct) Flash(at, new Color(1f, 0.75f, 0.4f), 3f, 7f);
         }
 
+        /// <summary>
+        /// 주행 먼지 — 바퀴 밑에서 낮게 피어오른다. 탱크가 "미끄러지지" 않게 하는 두 축 중 하나
+        /// (다른 하나는 실제로 도는 바퀴 = TankDrive).
+        ///
+        /// ⚠️ 매 프레임 부르는 경로다. 그래서 **호출부가 간격을 재지 않는다** — 여기서 스스로 솎는다
+        ///    (프레임레이트가 달라지면 먼지 양이 달라지는 걸 호출부마다 막게 하면 반드시 한 곳이 빠진다).
+        /// </summary>
+        public void DriveDust(Vector3 at, Color dirt, float strength01)
+        {
+            if (Time.time < _dustNext) return;
+            _dustNext = Time.time + 0.055f;                 // 초당 ~18회 — 이보다 잦으면 먼지가 벽이 된다
+
+            float k = Mathf.Clamp01(strength01);
+            var d = Rent("DriveDust", false);
+            d.transform.position = at;
+            var c0 = new Color(dirt.r, dirt.g, dirt.b, 0.36f);
+            var c1 = new Color(dirt.r * 1.15f, dirt.g * 1.12f, dirt.b * 1.08f, 0.18f);
+            // 위로 조금, 옆으로 조금. 오래 남지 않는다(0.5초) — 지나간 자리에 먼지가 쌓여 보이면 안 된다.
+            Burst(d, 0.30f, 0.55f, 0.6f, 1.7f, 0.45f + k * 0.35f, 0.9f + k * 0.5f, c0, c1, -0.05f, 2, 0.35f);
+            FadeOut(d, 0.45f); GrowOverLife(d, 0.8f, 1.9f); d.Play(true);
+        }
+        float _dustNext;
+
         /// <summary>실드가 공격을 막았다 — 푸른 구 껍질이 한 번 번쩍이고 링이 퍼진다.</summary>
         public void ShieldBlock(Vector3 at)
         {

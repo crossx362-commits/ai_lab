@@ -361,6 +361,77 @@ namespace Tankfall.Sim
     /// <summary>다탄두(멀티미사일, 레이저, 슈퍼탱크): 한 번 쏘면 N발이 각도 편차를 두고 날아감.</summary>
     public static class Spread
     {
+        // ══════════════════════════════════════════════════════════════
+        //  사격 산포(오너 지시 2026-09-18 "발사체 궤적 랜덤")
+        //
+        //  같은 각도·파워로 쏴도 매번 정확히 같은 곳에 떨어지던 것을 흔든다. 다탄두 패턴(아래 `Pattern`)과는
+        //  **다른 축**이다 — 저건 한 발이 여러 개로 갈라지는 고정 모양이고, 이건 **한 발 한 발이 흔들리는** 것이다.
+        //
+        //  ⚠️ **`UnityEngine.Random` 을 쓰지 마라.** 이 파일은 Sim 이라 엔진을 안 보고(§4-1), 리플레이·
+        //     서버 재현이 깨진다. 호출부가 자기 `Rng` 를 넘긴다.
+        //  ⚠️ **게임과 하네스가 이 함수를 같이 쓴다.** 한쪽만 흔들면 하네스가 다른 게임을 재면서도 통과한다
+        //     (이 저장소에서 제일 자주 난 사고다).
+        //  ⚠️ 연습장은 이걸 **끈다.** "정답 보기"가 알려준 각도로 쏴서 빗나가면 정답이 거짓말이 되고,
+        //     `-practiceselftest` 의 게이트("된다고 한 건 된다")가 재는 것이 역산 정확도가 아니라
+        //     산포가 되어버린다. 끄는 판단은 호출부가 한다(BattleDemo._practice / 하네스 스위치).
+        // ══════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// 기종별 조준 흔들림(도, 한쪽 최대치). **전부 [추정]** — 원작 수치 근거는 없다.
+        ///
+        /// 계열(`TankEra`)을 그대로 축으로 삼는다 — 고전은 투석기·석궁이라 거칠고, 미래는 유도·레이저라 정밀하다.
+        /// 선택 화면이 이미 고전/근대/현대/미래를 보여주므로 플레이어가 **이유를 읽을 수 있는** 구분이다.
+        /// 계열 안에서도 기종 성격으로 한 번 더 가른다(아래 예외 표).
+        ///
+        /// 감각: 150m 에서 0.1° 는 약 0.26m, 0.5° 는 약 1.3m 다. 탱크 반경 안팎이라
+        /// "겨우 맞았다/겨우 빗나갔다"가 갈리는 크기다.
+        ///
+        /// ⚠️ **밸런스를 움직이는 수치다.** 오너가 "기종 별로 궤적 랜덤"을 지시해 넣었지만,
+        ///    여기 값을 바꾸면 승률 표가 무효가 된다 — 조정은 오너 지시가 있을 때만.
+        /// </summary>
+        public static float AimJitterDeg(TankKind kind)
+        {
+            switch (kind)
+            {
+                // 미래 — 유도·광학. 레이저는 빛이라 거의 안 흔들린다.
+                case TankKind.Laser: return 0.06f;
+                case TankKind.IonAttacker: return 0.12f;   // 위성 낙하 — 조준이 아니라 좌표다
+                case TankKind.Poseidon: return 0.16f;
+                case TankKind.SecWind: return 0.18f;
+
+                // 현대 — 유도장치는 있지만 화력이 분산된다
+                case TankKind.Missile: return 0.20f;
+                case TankKind.SuperTank: return 0.24f;
+                case TankKind.MultiMissile: return 0.30f;  // 다탄두라 애초에 흩어진다
+
+                // 근대 — 평준화
+                case TankKind.Duke: return 0.30f;
+                case TankKind.Carrot: return 0.34f;
+                case TankKind.MineLander: return 0.38f;
+
+                // 고전 — 거칠다. 투석기가 제일 못 맞힌다.
+                case TankKind.Cannon: return 0.40f;
+                case TankKind.CrossBow: return 0.46f;
+                case TankKind.Catapult: return 0.55f;
+                default: return 0.35f;
+            }
+        }
+
+        /// <summary>
+        /// 이번 사격의 조준 흔들림을 뽑는다. 좌우·상하 각각 독립으로 ±기종별 최대치.
+        /// 균등분포가 아니라 **가운데가 두꺼운** 분포다(두 번 뽑아 더한다) — 균등이면 최대치가 너무 자주 나와
+        /// "잘 쏴도 소용없다"가 된다.
+        /// </summary>
+        public static void AimJitter(ref Rng rng, TankKind kind, out float yawDeg, out float pitchDeg)
+        {
+            float m = AimJitterDeg(kind);
+            yawDeg = Tri(ref rng, m);
+            pitchDeg = Tri(ref rng, m);
+        }
+
+        static float Tri(ref Rng rng, float maxDeg)
+            => (rng.Float01() + rng.Float01() - 1f) * maxDeg;
+
         public struct ShotPattern
         {
             public float YawOffsetDeg;       // 좌우 각도 편차

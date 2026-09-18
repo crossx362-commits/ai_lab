@@ -110,6 +110,12 @@ static class BattleSimVerify
 
         static readonly bool UseCraterShape = Environment.GetEnvironmentVariable("TANKFALL_CRATERSHAPE") != "0";
         static readonly bool UseUltimate = Environment.GetEnvironmentVariable("TANKFALL_ULT") != "0";
+    /// <summary>
+    /// 사격 산포(오너 지시 2026-09-18 "발사체 궤적 랜덤"). `TANKFALL_SPREAD=0` 으로 끄면 도입 전과 비교할 수 있다.
+    /// ⚠️ 게임(`BattleDemo.FireFrom`)과 **같은 `Spread.AimJitter`** 를 부른다 — 한쪽만 흔들면
+    ///    표가 다른 게임을 재면서도 통과한다(이 저장소에서 제일 자주 난 사고).
+    /// </summary>
+    static readonly bool UseSpread = Environment.GetEnvironmentVariable("TANKFALL_SPREAD") != "0";
 
         /// <summary>보급(§2-9-11) 스위치. `TANKFALL_SUPPLY=0` 으로 끄면 아이템만 켠 상태와 비교할 수 있다(판별용).</summary>
         static bool SupplyOn = true;
@@ -455,6 +461,14 @@ static class BattleSimVerify
             var boxes = new List<TankHitbox>();
             foreach (var o in units) if (o.Alive) boxes.Add(new TankHitbox { Id = o.Id, Center = o.Center, Radius = TankRadius });
 
+            // 사격 산포 — 조준이 끝난 뒤, 쏘기 직전에 흔든다(게임과 같은 자리·같은 함수).
+            //   AI 는 정확히 조준하고 **세계가** 흔든다. 그래서 조준 계산(AiGunner)에는 안 들어간다.
+            if (UseSpread)
+            {
+                Spread.AimJitter(ref rng, u.Kind, out float jy, out float jp);
+                plan.YawDeg += jy;
+                plan.PitchDeg += jp;
+            }
             // 1) 기준 탄도(패턴 중앙) 한 발로 착탄점을 본다
             var shot = ProjectileSimulator.Simulate(vol, u.Muzzle, Ballistics.VelocityFrom(plan.YawDeg, plan.PitchDeg, speed), accel, boxes, u.Id, MapSize, st.Flight, null, air);
             res.Shots++;

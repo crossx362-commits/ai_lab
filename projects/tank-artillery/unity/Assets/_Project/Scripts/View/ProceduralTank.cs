@@ -197,10 +197,34 @@ namespace Tankfall.View
             float wheelW = s.TrackWidth * 1.05f;
             float wx = s.BodyWidth * 0.5f + wheelW * 0.5f + 0.02f;
             float bodyY0 = wheelR * 0.95f;
+            float wheelSpinR = 0f;        // 굴림 각도를 계산할 대표 바퀴 반지름(가장 큰 것)
 
             var tires = MakeMesh("Tires", root, trackMat);
             var hubs = MakeMesh("Hubs", root, accentMat);
             var tm = new MeshBuilder(); var hm = new MeshBuilder();
+
+            // ── 굴러가는 부분 ──────────────────────────────────────────
+            // 테·벨트는 축대칭이라 돌려도 안 보인다. **살과 허브만** 제 바퀴 중심에 놓인 자식으로 빼서
+            // 실제로 돌린다(TankDrive). 예전엔 이것들도 차체 메시에 통째로 구워져 있어서
+            // 탱크가 지면 위를 미끄러졌다 — 바퀴가 도는 그림이 존재할 수 없었다.
+            var drive = root.gameObject.AddComponent<TankDrive>();
+            var spinParts = new List<(Transform Tr, MeshBuilder Dark, MeshBuilder Accent)>();
+
+            Transform Spinner(Vector3 center, float radius)
+            {
+                var go = new GameObject("Wheel");
+                go.transform.SetParent(root, false);
+                go.transform.localPosition = center;
+                var dark = new MeshBuilder(); var acc = new MeshBuilder();
+                spinParts.Add((go.transform, dark, acc));
+                drive.Wheels.Add(go.transform);
+                drive.WheelRadius = Mathf.Max(drive.WheelRadius, 0f);   // 아래에서 대표값을 넣는다
+                _ = radius;
+                return go.transform;
+            }
+            // 살·허브를 그릴 때 쓰는 현재 바퀴의 빌더(Spinner 직후에 잡는다)
+            MeshBuilder SpinDark() => spinParts[spinParts.Count - 1].Dark;
+            MeshBuilder SpinAcc() => spinParts[spinParts.Count - 1].Accent;
             var woodWheels = new MeshBuilder();                       // 나무 살바퀴(woodMat)
             switch (chassis)
             {
@@ -213,15 +237,18 @@ namespace Tankfall.View
                     {
                         float x = side * (s.BodyWidth * 0.5f + 0.16f);
                         var cb = new Vector3(x, R, -s.BodyLength * 0.28f);
-                        woodWheels.CylinderX(cb, R, 0.16f, 12);                                      // 테
+                        woodWheels.CylinderX(cb, R, 0.16f, 12);                                      // 테(안 돎 — 축대칭)
                         woodWheels.CylinderX(cb, R * 0.96f, 0.10f, 12, flip: true);                  // 안쪽(살 사이 비게 보이도록 어두운 면 대신 얇게)
-                        for (int k = 0; k < 6; k++)                                                  // 살
-                            woodWheels.BoxRot(cb, new Vector3(0.10f, R * 1.9f, 0.10f), Quaternion.Euler(k * 30f, 0f, 0f));
-                        hm.CylinderX(cb, R * 0.22f, 0.26f, 8);                                       // 축 캡(팀색)
+                        Spinner(cb, R);
+                        for (int k = 0; k < 6; k++)                                                  // 살 — 돈다
+                            SpinDark().BoxRot(Vector3.zero, new Vector3(0.10f, R * 1.9f, 0.10f), Quaternion.Euler(k * 30f, 0f, 0f));
+                        SpinAcc().CylinderX(Vector3.zero, R * 0.22f, 0.26f, 8);                      // 축 캡(팀색)
+                        wheelSpinR = R;
                         var cf = new Vector3(x, r2, s.BodyLength * 0.34f);
                         woodWheels.CylinderX(cf, r2, 0.14f, 10);
-                        for (int k = 0; k < 4; k++) woodWheels.BoxRot(cf, new Vector3(0.08f, r2 * 1.9f, 0.08f), Quaternion.Euler(k * 45f, 0f, 0f));
-                        hm.CylinderX(cf, r2 * 0.25f, 0.22f, 8);
+                        Spinner(cf, r2);
+                        for (int k = 0; k < 4; k++) SpinDark().BoxRot(Vector3.zero, new Vector3(0.08f, r2 * 1.9f, 0.08f), Quaternion.Euler(k * 45f, 0f, 0f));
+                        SpinAcc().CylinderX(Vector3.zero, r2 * 0.25f, 0.22f, 8);
                     }
                     woodWheels.CylinderX(new Vector3(0f, R, -s.BodyLength * 0.28f), 0.09f, s.BodyWidth + 0.4f, 6);   // 차축
                     woodWheels.CylinderX(new Vector3(0f, r2, s.BodyLength * 0.34f), 0.07f, s.BodyWidth + 0.4f, 6);
@@ -236,10 +263,13 @@ namespace Tankfall.View
                         for (int w = 0; w < 2; w++)
                         {
                             var c = new Vector3(side * (s.BodyWidth * 0.5f + 0.14f), R, (w == 0 ? -1f : 1f) * s.BodyLength * 0.3f);
-                            tm.CylinderX(c, R, 0.18f, 14);                       // 쇠테(어두움)
-                            hm.CylinderX(c, R * 0.78f, 0.22f, 14);               // 원판(팀색)
-                            tm.CylinderX(c, R * 0.18f, 0.28f, 8);                // 축
-                            for (int k = 0; k < 4; k++) tm.BoxRot(c, new Vector3(0.07f, R * 1.5f, 0.07f), Quaternion.Euler(k * 45f, 0f, 0f));  // 살(어두움)
+                            tm.CylinderX(c, R, 0.18f, 14);                       // 쇠테(안 돎)
+                            Spinner(c, R);
+                            SpinAcc().CylinderX(Vector3.zero, R * 0.78f, 0.22f, 14);   // 원판(팀색) — 돈다
+                            SpinDark().CylinderX(Vector3.zero, R * 0.18f, 0.28f, 8);   // 축
+                            for (int k = 0; k < 4; k++)                                // 살(어두움) — 돈다
+                                SpinDark().BoxRot(Vector3.zero, new Vector3(0.07f, R * 1.5f, 0.07f), Quaternion.Euler(k * 45f, 0f, 0f));
+                            wheelSpinR = R;
                         }
                     break;
                 }
@@ -253,9 +283,14 @@ namespace Tankfall.View
                         foreach (float z in zs)
                         {
                             var c = new Vector3(side * (s.BodyWidth * 0.5f + wheelW * 0.45f), R, z);
-                            tm.CylinderX(c, R, wheelW * 0.9f, 14);
-                            hm.CylinderX(c, R * 0.55f, wheelW * 1.0f, 10);
-                            hm.CylinderX(c, R * 0.2f, wheelW * 1.06f, 6);
+                            tm.CylinderX(c, R, wheelW * 0.9f, 14);               // 타이어(안 돎)
+                            Spinner(c, R);
+                            SpinAcc().CylinderX(Vector3.zero, R * 0.55f, wheelW * 1.0f, 10);
+                            SpinAcc().CylinderX(Vector3.zero, R * 0.2f, wheelW * 1.06f, 6);
+                            // ⚠️ 허브는 축대칭이라 그것만으로는 **돌아도 안 보인다.** 살 막대를 더한다.
+                            for (int k = 0; k < 3; k++)
+                                SpinDark().BoxRot(Vector3.zero, new Vector3(wheelW * 1.08f, R * 0.95f, R * 0.13f), Quaternion.Euler(k * 60f, 0f, 0f));
+                            wheelSpinR = R;
                         }
                     tm.Box(new Vector3(0f, R * 0.9f, 0f), new Vector3(s.BodyWidth * 0.9f, R * 0.5f, s.BodyLength * 0.9f));   // 섀시 프레임
                     break;
@@ -290,9 +325,14 @@ namespace Tankfall.View
                                 float t = wheels == 1 ? 0.5f : w / (float)(wheels - 1);
                                 float z = Mathf.Lerp(-s.BodyLength * 0.40f, s.BodyLength * 0.40f, t);
                                 var c = new Vector3(x, wheelR, z);
-                                tm.CylinderX(c, wheelR, wheelW, 14);
-                                hm.CylinderX(c, wheelR * 0.66f, wheelW * 1.22f, 12);
-                                hm.CylinderX(c, wheelR * 0.22f, wheelW * 1.26f, 8);
+                                tm.CylinderX(c, wheelR, wheelW, 14);                 // 보기륜 본체(안 돎)
+                                Spinner(c, wheelR);
+                                SpinAcc().CylinderX(Vector3.zero, wheelR * 0.66f, wheelW * 1.22f, 12);
+                                SpinAcc().CylinderX(Vector3.zero, wheelR * 0.22f, wheelW * 1.26f, 8);
+                                // 살 막대 — 허브만으로는 회전이 안 보인다(축대칭)
+                                for (int k = 0; k < 3; k++)
+                                    SpinDark().BoxRot(Vector3.zero, new Vector3(wheelW * 1.3f, wheelR * 1.1f, wheelR * 0.16f), Quaternion.Euler(k * 60f, 0f, 0f));
+                                wheelSpinR = wheelR;
                             }
                             if (kind0 == TankKind.Duke || kind0 == TankKind.Carrot)                    // 위쪽 리턴 롤러 — 궤도 느낌
                                 for (int k = -1; k <= 1; k++) tm.CylinderX(new Vector3(x, wheelR * 1.75f, k * s.BodyLength * 0.25f), wheelR * 0.28f, wheelW * 0.9f, 8);
@@ -302,6 +342,16 @@ namespace Tankfall.View
             }
             tires.mesh = tm.ToMesh("TireMesh");
             hubs.mesh = hm.ToMesh("HubMesh");
+            // 회전부를 각자 굽는다. 비어 있으면 오브젝트째 버린다(호버는 바퀴가 없다).
+            foreach (var (tr, dark, acc) in spinParts)
+            {
+                bool any = false;
+                if (!dark.IsEmpty) { MakeMesh("Spokes", tr, trackMat).mesh = dark.ToMesh("SpokeMesh"); any = true; }
+                if (!acc.IsEmpty) { MakeMesh("Hub", tr, accentMat).mesh = acc.ToMesh("HubSpinMesh"); any = true; }
+                if (!any) { drive.Wheels.Remove(tr); Object.DestroyImmediate(tr.gameObject); }
+            }
+            drive.WheelRadius = wheelSpinR > 0.01f ? wheelSpinR : 0.5f;
+            drive.Hover = chassis == Chassis.Hover;
             if (chassis == Chassis.Cart) MakeMesh("WoodWheels", root, woodMat).mesh = woodWheels.ToMesh("WoodWheelMesh");
 
             // --- 차체: 차대별 실루엣 ---
@@ -945,6 +995,9 @@ namespace Tankfall.View
         {
             readonly List<Vector3> _v = new List<Vector3>();
             readonly List<int> _t = new List<int>();
+
+            /// <summary>아무것도 안 담겼는가 — 빈 메시를 굽지 않으려고 본다(빈 오브젝트가 남으면 드로우콜만 는다).</summary>
+            public bool IsEmpty => _t.Count == 0;
 
             public Mesh ToMesh(string name)
             {

@@ -368,6 +368,35 @@ namespace Tankfall.View
                 Check(Mathf.Clamp(mb.Map, 0, MapHeightFunction.Count - 1) == last,
                       $"마지막 맵({MapHeightFunction.Name((MapKind)last)})이 복원에서 안 잘린다");
 
+                // ── 사격 산포가 기종별로 다르게 걸리는가(오너 지시 2026-09-18) ──
+                // 상수를 적어두기만 하고 호출부가 기종을 안 넘기면 **전부 같은 값으로 조용히 돈다** —
+                // 컴파일러가 안 잡아주는 자리라 실제로 뽑아서 잰다.
+                {
+                    var jr = new Rng(12345u);
+                    float SpreadOf(TankKind kk)
+                    {
+                        float sum = 0f; const int N = 400;
+                        for (int i2 = 0; i2 < N; i2++)
+                        {
+                            Spread.AimJitter(ref jr, kk, out float a2, out float b2);
+                            sum += Mathf.Abs(a2) + Mathf.Abs(b2);
+                        }
+                        return sum / (N * 2);
+                    }
+                    float cat = SpreadOf(TankKind.Catapult), las = SpreadOf(TankKind.Laser);
+                    Check(cat > las * 2f, $"기종별 산포 — 캐터펄트 {cat:F3}° > 레이저 {las:F3}°");
+                    Check(las > 0f, "가장 정밀한 기종도 0 은 아니다(산포가 아예 안 걸리면 이 값이 0)");
+                    // 상한 — 표에 적은 값을 넘지 않는가(두 번 뽑아 더하는 분포라 최대치는 표 값이다)
+                    float worst = 0f;
+                    for (int i2 = 0; i2 < 2000; i2++)
+                    {
+                        Spread.AimJitter(ref jr, TankKind.Catapult, out float a2, out float b2);
+                        worst = Mathf.Max(worst, Mathf.Max(Mathf.Abs(a2), Mathf.Abs(b2)));
+                    }
+                    Check(worst <= Spread.AimJitterDeg(TankKind.Catapult) + 0.001f,
+                          $"산포가 표의 상한을 안 넘는다({worst:F3}° ≤ {Spread.AimJitterDeg(TankKind.Catapult):F2}°)");
+                }
+
                 Prefs.DeleteAll(Difficulties.Length);
                 Check(Prefs.TotalText(Difficulties.Length) == "", "지운 뒤 전적 문구 비어 있음");
                 Check(Mathf.Approximately(Prefs.Volume, 1f), "지운 뒤 음량이 기본값으로 돌아옴");
@@ -557,7 +586,8 @@ namespace Tankfall.View
 
             int n = TankStats.Count;
             int rows = (n + PickCols - 1) / PickCols;
-            float cw = Mathf.Min(196f, (W - 80f) / PickCols), ch = Mathf.Min(116f, (H - 250f) / rows);
+            // ⚠️ 스탯이 5줄(정확도 추가)이라 카드가 그만큼 높아야 한다 — 막대 마지막 줄이 카드 밖으로 나간다.
+            float cw = Mathf.Min(196f, (W - 80f) / PickCols), ch = Mathf.Min(126f, (H - 250f) / rows);
             float gx = W * 0.5f - cw * PickCols * 0.5f, gy = 80f;
 
             for (int i = 0; i < n; i++)
@@ -582,6 +612,9 @@ namespace Tankfall.View
                 StatRow(r, 1, "방어",   StatBars.Def.Norm(st.Defense),  Ui.Gauge);
                 StatRow(r, 2, "사거리", StatBars.Range.Norm(st.MaxRange), Ui.Power);
                 StatRow(r, 3, "속도",   StatBars.Delay.NormInv(st.Delay), Ui.Warn);   // 딜레이가 짧을수록 자주 쏜다
+                // 정확도 — 기종별 조준 흔들림(오너 지시 2026-09-18). **흔들림이 작을수록 정확**하므로 뒤집는다.
+                // 수치가 화면에 없으면 고를 이유가 안 보인다 — 밸런스에 영향을 주는 값은 반드시 노출한다.
+                StatRow(r, 4, "정확도", StatBars.Acc.NormInv(Spread.AimJitterDeg(k)), Ui.Mark);
 
                 if (pickIdx >= 0)
                 {
@@ -656,12 +689,13 @@ namespace Tankfall.View
 
         static class StatBars
         {
-            public static readonly StatScale Hp, Def, Range, Delay;
+            public static readonly StatScale Hp, Def, Range, Delay, Acc;
 
             static StatBars()
             {
                 float hpL = float.MaxValue, hpH = float.MinValue, dfL = float.MaxValue, dfH = float.MinValue;
                 float rgL = float.MaxValue, rgH = float.MinValue, dlL = float.MaxValue, dlH = float.MinValue;
+                float acL = float.MaxValue, acH = float.MinValue;
                 for (int i = 0; i < TankStats.Count; i++)
                 {
                     var s = TankStats.Get((TankKind)i);
@@ -669,9 +703,12 @@ namespace Tankfall.View
                     dfL = Mathf.Min(dfL, s.Defense);  dfH = Mathf.Max(dfH, s.Defense);
                     rgL = Mathf.Min(rgL, s.MaxRange); rgH = Mathf.Max(rgH, s.MaxRange);
                     dlL = Mathf.Min(dlL, s.Delay);    dlH = Mathf.Max(dlH, s.Delay);
+                    float j = Spread.AimJitterDeg((TankKind)i);
+                    acL = Mathf.Min(acL, j);          acH = Mathf.Max(acH, j);
                 }
                 Hp = new StatScale(hpL, hpH); Def = new StatScale(dfL, dfH);
                 Range = new StatScale(rgL, rgH); Delay = new StatScale(dlL, dlH);
+                Acc = new StatScale(acL, acH);
             }
         }
 

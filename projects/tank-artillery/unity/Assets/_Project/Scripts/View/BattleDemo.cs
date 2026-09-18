@@ -284,6 +284,7 @@ namespace Tankfall.View
                 else if (args[i] == "-shellgallery") { _shellGallery = true; _autoMode = true; }
                 else if (args[i] == "-practice") _practice = true;
                 else if (args[i] == "-practiceselftest") { _practice = true; _practiceSelfTest = true; }
+                else if (args[i] == "-nospread") _spreadOn = false;   // 산포를 끈 대조군(하네스 전용)
                 else if (args[i] == "-supplyselftest") { _supplySelfTest = true; _autoMode = true; }
                 else if (args[i] == "-ultselftest") { _ultSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-impairselftest") { _impairSelfTest = true; _autoMode = true; }
@@ -353,6 +354,7 @@ namespace Tankfall.View
             _items.Clear();
             // 아이템 뽑기는 판마다 달라야 한다 — 바람·날씨와 같은 취급(고정 시드면 매 판 같은 가방이 나온다).
             _itemRng = new Rng((uint)Random.Range(1, int.MaxValue));
+            _aimRng = new Rng((uint)Random.Range(1, int.MaxValue));   // 판마다 다르게 — 고정이면 매 판 같은 곳으로 빗나간다
             if (_itemSlots > 0)
             {
                 var roll = new List<ItemKind>();
@@ -1064,6 +1066,15 @@ namespace Tankfall.View
                 u.Gauge -= Mathf.Abs(each) * 2.2f / Mathf.Max(0.1f, u.St.MoveSpeed);   // 기준 45m
             }
             u.Root.position = new Vector3(p.x, ground + GroundVisualLift, p.z);
+            // 주행 먼지 — 바퀴 밑에서. 호버는 안 낸다(떠 있다). 간격 솎기는 ParticleFx 가 스스로 한다.
+            if (moved > 0f && !_headless)
+            {
+                var dr = u.Root.GetComponent<TankDrive>();
+                if (dr == null || !dr.Hover)
+                    EnsureFx().DriveDust(new Vector3(p.x, ground + 0.15f, p.z),
+                                         MapTheme.Of(_map, _weather == Weather.Snow).RockDark,
+                                         Mathf.Clamp01(Mathf.Abs(fwd)));
+            }
         }
 
         void GroundUnit(Unit u, float dt)
@@ -1148,6 +1159,16 @@ namespace Tankfall.View
             Sfx.Fire(power);
 
             float worldYaw = u.Heading + turretYaw;
+            // 사격 산포(오너 지시 2026-09-18) — 같은 각도·파워로 쏴도 매번 조금씩 흔들린다.
+            // ⚠️ 연습장은 끈다. "정답 보기"가 준 각도로 쏴서 빗나가면 정답이 거짓말이 되고,
+            //    `-practiceselftest` 게이트가 재는 것이 역산 정확도가 아니라 산포가 되어버린다.
+            // ⚠️ 하네스(`BattleSimVerify`)도 **같은 함수**를 부른다 — 한쪽만 흔들면 표가 다른 게임을 잰다.
+            if (!_practice && _spreadOn)
+            {
+                Spread.AimJitter(ref _aimRng, u.Kind, out float jy, out float jp);
+                worldYaw += jy;
+                pitch += jp;
+            }
             var baseSt = TankStats.For(u.Kind, ShellKind.Normal, u.HpFrac, u.W);
             float speed = baseSt.SpeedAt(power);
             var p0 = new Vec3(u.Fire.position.x, u.Fire.position.y, u.Fire.position.z);
@@ -2171,6 +2192,11 @@ namespace Tankfall.View
             _niceFlashUntil = Time.time + 1.6f;
             _log = $"☄ 유성! {_boomSpots.Count}발이 떨어졌다" + (hitN > 0 ? $" — {hitN}대 피격" : "");
         }
+
+        /// <summary>사격 산포용 난수. 판마다 다르게 시드한다 — 고정 시드면 매 판 같은 곳으로 빗나간다.</summary>
+        Rng _aimRng;
+        /// <summary>산포를 끄는 하네스 전용 스위치(`-nospread`). 판별 테스트용 — 게임 플레이에는 안 쓴다.</summary>
+        bool _spreadOn = true;
 
         int _boomQuakes, _boomMeteors;   // Boom 모드 네거티브 컨트롤 — 0 이면 안 도는 것
 
