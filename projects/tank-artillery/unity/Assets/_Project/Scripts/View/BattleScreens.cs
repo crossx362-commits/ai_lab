@@ -192,7 +192,8 @@ namespace Tankfall.View
                 switch (_setupSel)
                 {
                     case 0:   // 맵 — 바꾸면 지형을 다시 만들어야 한다(StartBattle 에서 한다)
-                        _map = (MapKind)(((int)_map + dir + 3) % 3);
+                        int mc = MapHeightFunction.Count;
+                        _map = (MapKind)(((int)_map + dir + mc) % mc);
                         break;
                     case 1: _difficulty = (_difficulty + dir + Difficulties.Length) % Difficulties.Length; break;
                     case 2: _itemSlots = Mathf.Clamp(_itemSlots + dir, 0, 4); break;

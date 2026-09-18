@@ -4,7 +4,7 @@
 // 이집트(The Sphinx, 계단식 지형 + 멀리 보이는 스핑크스), 해적선(The Cave), 무덤(Grave yard, 곳곳의 비석),
 // 공장(The Factory, 움직이는 용광로), 밤의 시골(The Night, "노란색의 나무 줄기와 풀" + 거대한 달).
 // 즉 원작은 **지형 색까지 맵마다 갈랐고**(보라색 지형, 분홍 지형), 맵마다 큰 배경 구조물을 세웠다.
-// 우리 맵 3종도 같은 원리로 갈라 준다 — 이름만 다르고 전부 같은 베이지 언덕이면 맵을 나눈 게 화면에서 안 보인다.
+// 우리 맵 6종도 같은 원리로 갈라 준다 — 이름만 다르고 전부 같은 베이지 언덕이면 맵을 나눈 게 화면에서 안 보인다.
 //
 // 색 구성 원칙(조사: 로우폴리 캐주얼): **제한된 팔레트**를 쓴다.
 // 테마당 지면 3색 + 바위 2색까지만 — 더 늘리면 화면이 시끄러워지고 형태가 안 읽힌다.
@@ -84,6 +84,57 @@ namespace Tankfall.View
                         Sun = new Color(0.94f, 0.96f, 1.00f),
                         Fog = new Color(0.84f, 0.89f, 0.94f),
                         Tree = TreeKind.Pine, TreeRatio = 0.48f, ScatterCount = 240,
+                    };
+                    break;
+
+                // 강 계곡 — 도랑 지형이니 물가·이끼 낀 초록 협곡으로. TwinHills(초원)와 갈리도록 채도를 눌러 이끼 낀 느낌을 준다.
+                case MapKind.Valley:
+                    t = new MapTheme
+                    {
+                        Low  = new Color(0.42f, 0.50f, 0.36f),
+                        Mid  = new Color(0.30f, 0.44f, 0.30f),
+                        High = new Color(0.22f, 0.34f, 0.26f),
+                        Rock = new Color(0.40f, 0.42f, 0.38f),
+                        RockDark = new Color(0.28f, 0.30f, 0.28f),
+                        SkyTop = new Color(0.24f, 0.44f, 0.62f),
+                        SkyBottom = new Color(0.66f, 0.78f, 0.80f),
+                        Sun = new Color(0.92f, 0.95f, 0.90f),
+                        Fog = new Color(0.62f, 0.72f, 0.70f),
+                        Tree = TreeKind.Broadleaf, TreeRatio = 0.58f, ScatterCount = 260,
+                    };
+                    break;
+
+                // 가을 능선 — 가운데 벽이 서는 지형이니 단풍 든 산등성이로. Terrace(설산)와 겹치지 않게 따뜻한 색으로 간다.
+                case MapKind.Ridge:
+                    t = new MapTheme
+                    {
+                        Low  = new Color(0.62f, 0.46f, 0.28f),
+                        Mid  = new Color(0.74f, 0.42f, 0.20f),
+                        High = new Color(0.58f, 0.30f, 0.16f),
+                        Rock = new Color(0.50f, 0.44f, 0.38f),
+                        RockDark = new Color(0.36f, 0.30f, 0.26f),
+                        SkyTop = new Color(0.40f, 0.52f, 0.72f),
+                        SkyBottom = new Color(0.92f, 0.80f, 0.62f),
+                        Sun = new Color(1.00f, 0.86f, 0.62f),
+                        Fog = new Color(0.86f, 0.76f, 0.62f),
+                        Tree = TreeKind.Broadleaf, TreeRatio = 0.50f, ScatterCount = 250,
+                    };
+                    break;
+
+                // 황무지 — 반복 능선이니 화산재 덮인 용암지대로. Crater(사막)와 갈리도록 채도를 죽인 어두운 팔레트.
+                case MapKind.Badlands:
+                    t = new MapTheme
+                    {
+                        Low  = new Color(0.30f, 0.27f, 0.25f),
+                        Mid  = new Color(0.40f, 0.32f, 0.27f),
+                        High = new Color(0.52f, 0.34f, 0.24f),
+                        Rock = new Color(0.24f, 0.22f, 0.21f),
+                        RockDark = new Color(0.14f, 0.13f, 0.13f),
+                        SkyTop = new Color(0.34f, 0.24f, 0.26f),
+                        SkyBottom = new Color(0.78f, 0.46f, 0.30f),
+                        Sun = new Color(1.00f, 0.62f, 0.38f),
+                        Fog = new Color(0.62f, 0.42f, 0.34f),
+                        Tree = TreeKind.Cactus, TreeRatio = 0.08f, ScatterCount = 160,
                     };
                     break;
             }
