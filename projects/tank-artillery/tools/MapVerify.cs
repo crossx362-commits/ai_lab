@@ -10,8 +10,8 @@ static class MapVerify
     static void Main()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine("=== 맵 3종 검증 ===\n");
-        foreach (MapKind map in new[] { MapKind.TwinHills, MapKind.Crater, MapKind.Terrace })
+        Console.WriteLine($"=== 맵 {MapHeightFunction.Count}종 검증 ===\n");
+        foreach (MapKind map in Enum.GetValues(typeof(MapKind)))
         {
             Console.WriteLine($"[{MapHeightFunction.Name(map)}]");
             CheckSymmetry(map);

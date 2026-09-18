@@ -20,15 +20,15 @@ namespace Tankfall.View
     public sealed partial class BattleDemo
     {
         /// <summary>화면 상태. Battle 이 아니면 전투 로직(Update 의 페이즈 머신)이 아예 안 돈다.</summary>
-        public enum GameScreen { Title, TankSelect, Setup, Battle, Pause, Result }
+        public enum GameScreen { Title, TankSelect, Setup, Settings, Battle, Pause, Result }
 
         GameScreen _screen = GameScreen.Battle;      // 기본은 Battle — 자동 모드가 메뉴에 걸리지 않게 한다
         int _menuSel;                        // 타이틀 메뉴 커서
         int _pickCursor;                     // 탱크 선택 커서(0..12)
         readonly List<TankKind> _picked = new List<TankKind>();
-        int _setupSel;                       // 설정 화면 행 커서
+        int _setupSel;                       // 전투 설정(맵·난이도 등) 화면 행 커서
 
-        static readonly string[] TitleMenu = { "전투 시작", "연습장", "조작법", "종료" };
+        static readonly string[] TitleMenu = { "전투 시작", "연습장", "설정", "조작법", "종료" };
         bool _showHelp;
 
         // ── 전적(결과 화면용) ──────────────────────────────────
@@ -77,7 +77,7 @@ namespace Tankfall.View
         {
             // 타이틀·선택 화면은 전장을 천천히 도는 카메라를 배경으로 쓴다.
             // 멈춘 그림이면 뒤에 살아 있는 전장이 있다는 게 안 보인다 — 그게 이 화면 구성의 이유다(머리말).
-            if (_screen == GameScreen.Title || _screen == GameScreen.TankSelect || _screen == GameScreen.Setup)
+            if (_screen == GameScreen.Title || _screen == GameScreen.TankSelect || _screen == GameScreen.Setup || _screen == GameScreen.Settings)
                 OrbitCamera(Time.deltaTime);
 
             switch (_screen)
@@ -85,6 +85,7 @@ namespace Tankfall.View
                 case GameScreen.Title: TitleInput(); return true;
                 case GameScreen.TankSelect: TankSelectInput(); return true;
                 case GameScreen.Setup: SetupInput(); return true;
+                case GameScreen.Settings: SettingsInput(); return true;
                 case GameScreen.Pause: PauseInput(); return true;
                 case GameScreen.Result: ResultInput(); return true;
             }
@@ -139,9 +140,19 @@ namespace Tankfall.View
                     _practice = true;
                     StartBattle();
                     break;
-                case 2: _showHelp = true; break;
-                case 3: Quit(); break;
+                case 2: _screen = GameScreen.Settings; break;
+                case 3: _showHelp = true; break;
+                case 4: Quit(); break;
             }
+        }
+
+        /// <summary>설정 화면 — 지금은 음량 하나뿐이다. 조작(전투 설정 §DrawSetup)과 헷갈리지 않게
+        /// "게임을 매번 바꾸는 값"(맵·난이도 등)과 "환경을 한 번 맞추는 값"(음량)을 화면째 나눈다.</summary>
+        void SettingsInput()
+        {
+            if (Down(KeyCode.Escape) || Enter()) { _screen = GameScreen.Title; return; }
+            if (Down(KeyCode.RightArrow) || Down(KeyCode.D)) Sfx.Volume += 0.1f;
+            if (Down(KeyCode.LeftArrow) || Down(KeyCode.A)) Sfx.Volume -= 0.1f;
         }
 
         void TankSelectInput()
@@ -181,7 +192,8 @@ namespace Tankfall.View
                 switch (_setupSel)
                 {
                     case 0:   // 맵 — 바꾸면 지형을 다시 만들어야 한다(StartBattle 에서 한다)
-                        _map = (MapKind)(((int)_map + dir + 3) % 3);
+                        int mc = MapHeightFunction.Count;
+                        _map = (MapKind)(((int)_map + dir + mc) % mc);
                         break;
                     case 1: _difficulty = (_difficulty + dir + Difficulties.Length) % Difficulties.Length; break;
                     case 2: _itemSlots = Mathf.Clamp(_itemSlots + dir, 0, 4); break;
@@ -439,6 +451,7 @@ namespace Tankfall.View
                 case GameScreen.Title: DrawTitle(W, H); return true;
                 case GameScreen.TankSelect: DrawTankSelect(W, H); return true;
                 case GameScreen.Setup: DrawSetup(W, H); return true;
+                case GameScreen.Settings: DrawSettings(W, H); return true;
             }
             return false;   // Pause·Result 는 전투 화면 위에 겹쳐 그린다
         }
@@ -492,6 +505,23 @@ namespace Tankfall.View
                 Ui.Text(new Rect(r.x + 230f, r.y + 16f + i * 28f, 350f, 24f), keys[i, 1], 13, Ui.Ink);
             }
             Ui.Text(new Rect(r.x, r.yMax - 26f, r.width, 20f), "Enter / Esc 로 닫기", 11, Ui.Dim, TextAnchor.MiddleCenter);
+        }
+
+        void DrawSettings(float W, float H)
+        {
+            Scrim(W, H, 0.62f);
+            Ui.TextShadow(new Rect(0, H * 0.32f, W, 30f), "설정", 22, Ui.Ink, TextAnchor.MiddleCenter, true);
+
+            var r = new Rect(W * 0.5f - 250f, H * 0.44f, 500f, 40f);
+            Ui.Fill(r, new Color(1f, 0.72f, 0.25f, 0.14f));
+            Ui.Frame(r, Ui.Power, 2f);
+            Ui.Text(new Rect(r.x + 16f, r.y, 150f, r.height), "음량", 14, Ui.Ink, TextAnchor.MiddleLeft, true);
+            Ui.Text(new Rect(r.x + 160f, r.y, 180f, r.height), $"< {Mathf.RoundToInt(Sfx.Volume * 100f)}% >",
+                    14, Ui.Power, TextAnchor.MiddleCenter, true);
+            var bar = new Rect(r.x + 350f, r.y + 14f, 130f, 12f);
+            Ui.Bar(bar, Sfx.Volume, Ui.Power, null, null);
+
+            Ui.TextShadow(new Rect(0, H - 44f, W, 20f), "좌우 = 조절   Enter / Esc = 뒤로", 12, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
         // ── 탱크 선택(§3 20_Lobby) ─────────────────────────────
@@ -1040,7 +1070,7 @@ namespace Tankfall.View
         readonly List<(string Name, string Hud, string NoHud)> _uiPairs = new List<(string, string, string)>();
 
         static readonly string[] UiSteps =
-        { "타이틀", "조작법", "탱크선택", "전투설정", "전투HUD", "파워게이지", "일시정지", "결과" };
+        { "타이틀", "조작법", "설정", "탱크선택", "전투설정", "전투HUD", "파워게이지", "일시정지", "결과" };
 
         /// <summary>단계별로 화면 상태를 만든다. 실제 화면 코드를 그대로 쓴다 — 별도 그리기를 만들면 검사가 거짓이 된다.</summary>
         void UiSelfTestSetup(int step)
@@ -1048,19 +1078,20 @@ namespace Tankfall.View
             _showHelp = false;
             // Boom 모드 행이 **그려지는지**를 스크린샷이 실제로 덮게 한다 — 커서를 그 행에 올리고 켠 상태로 찍는다.
             // (설정에 없어서 `-boom` 으로만 켤 수 있던 걸 노출한 변경. 화면에 안 나오면 다시 도달 불가가 된다.)
-            _boom = step == 3;
+            _boom = step == 4;
             switch (step)
             {
                 case 0: _screen = GameScreen.Title; _menuSel = 0; break;
-                case 1: _screen = GameScreen.Title; _menuSel = 2; _showHelp = true; break;
-                case 2:
+                case 1: _screen = GameScreen.Title; _menuSel = 3; _showHelp = true; break;   // TitleMenu[3]="조작법"(설정 삽입으로 인덱스 이동)
+                case 2: _screen = GameScreen.Settings; break;
+                case 3:
                     _screen = GameScreen.TankSelect;
                     _picked.Clear();
                     _picked.Add(TankKind.Cannon); _picked.Add(TankKind.Carrot); _picked.Add(TankKind.Laser);
                     _pickCursor = (int)TankKind.Poseidon;
                     break;
-                case 3: _screen = GameScreen.Setup; _setupSel = SetupRowBoom; break;   // Boom 모드 행에 커서
-                case 4:
+                case 4: _screen = GameScreen.Setup; _setupSel = SetupRowBoom; break;   // Boom 모드 행에 커서
+                case 5:
                     _screen = GameScreen.Battle;
                     _phase = Phase.Move; _phaseTimer = MovePhaseSec * 0.7f;
                     _turn = _units.FindIndex(o => o.Team == 0 && o.Alive);
@@ -1068,15 +1099,15 @@ namespace Tankfall.View
                     _units[_turn].Hp = Mathf.RoundToInt(_units[_turn].HpMax * 0.62f);
                     AddPopup(_units[_turn].Pos, "-128", Ui.Enemy);         // 피해 팝업도 화면에 있어야 한다
                     break;
-                case 5:
+                case 6:
                     _screen = GameScreen.Battle;
                     _phase = Phase.Fire; _phaseTimer = FirePhaseSec * 0.5f;
                     _charging = true; _power = 0.62f; _mark = 0.74f;
                     // 게이지가 궁극기까지 찬 모습을 찍는다 — 슬롯 4칸이 전부 살아 있는 상태가 검사 대상이다
                     for (int i = 0; i < NiceShot.UltimateCost; i++) _units[_turn].Skill.OnNiceShot();
                     break;
-                case 6: _screen = GameScreen.Pause; break;
-                case 7:
+                case 7: _screen = GameScreen.Pause; break;
+                case 8:
                     _winner = "아군 승리";
                     _phase = Phase.GameOver;
                     _screen = GameScreen.Result;

@@ -1,11 +1,11 @@
-// 명세: docs/GAME_SPEC_TANK_ARTILLERY.md §맵 3종
+// 명세: docs/GAME_SPEC_TANK_ARTILLERY.md §맵 6종
 // 파괴 전 지형 h(x,z) + ∇h. 경사 계수는 유한차분 5샘플이 아니라 이 기울기로 굵는다.
 
 using System;
 
 namespace Tankfall.Sim
 {
-    public enum MapKind { TwinHills = 0, Crater = 1, Terrace = 2 }
+    public enum MapKind { TwinHills = 0, Crater = 1, Terrace = 2, Valley = 3, Ridge = 4, Badlands = 5 }
 
     public delegate void HeightGrad(float x, float z, out float h, out float dhx, out float dhz);
 
@@ -50,11 +50,17 @@ namespace Tankfall.Sim
         public const float TwinWestHillX = Center, TwinWestHillZ = MapSize * 0.375f;
         public const float TwinEastHillX = Center, TwinEastHillZ = MapSize * 0.625f;
 
+        /// <summary>맵 종류 수 — 하드코딩된 3을 여기저기 두면 맵을 늘릴 때마다 빠뜨린다(2026-09-18 교훈).</summary>
+        public static readonly int Count = Enum.GetValues(typeof(MapKind)).Length;
+
         public static string Name(MapKind k) => k switch
         {
             MapKind.TwinHills => "TwinHills",
             MapKind.Crater => "Crater",
             MapKind.Terrace => "Terrace",
+            MapKind.Valley => "Valley",
+            MapKind.Ridge => "Ridge",
+            MapKind.Badlands => "Badlands",
             _ => k.ToString()
         };
 
@@ -96,6 +102,9 @@ namespace Tankfall.Sim
             {
                 case MapKind.Crater: EvalCrater(x, z, out h, out dhx, out dhz); break;
                 case MapKind.Terrace: EvalTerrace(x, z, out h, out dhx, out dhz); break;
+                case MapKind.Valley: EvalValley(x, z, out h, out dhx, out dhz); break;
+                case MapKind.Ridge: EvalRidge(x, z, out h, out dhx, out dhz); break;
+                case MapKind.Badlands: EvalBadlands(x, z, out h, out dhx, out dhz); break;
                 default: EvalTwin(x, z, out h, out dhx, out dhz); break;
             }
         }
@@ -174,6 +183,65 @@ namespace Tankfall.Sim
             h = step + ripple;
             hx = sign * dstep;
             hz = 0.6f * 0.07f * MathF.Cos(z * 0.07f);
+        }
+
+        /// <summary>
+        /// 계곡 — 맵 한가운데(x=Center)를 가로지르는 도랑. TwinHills(언덕 두 개, 국소 반경)의 반대꼴로,
+        /// **x 하나에만** 의존해 z 전체를 가로지르는 굴곡을 만든다(사거리 축과 수직인 벽). 낮은 가운데를 넘어
+        /// 반대쪽 스폰까지 아크를 쏴야 하므로 TwinHills 의 "옆으로 비켜 쏘기"와는 다른 조준을 요구한다.
+        /// `Bump` 를 그대로 못 쓰는 이유: `Bump` 는 (x,z) 둘 다에서 거리를 재는 원형 범프라 국소 언덕이 된다 —
+        /// 여기서는 z 에 무관해야 도랑이 폭 전체를 가로지른다.
+        /// </summary>
+        static void EvalValley(float x, float z, out float h, out float hx, out float hz)
+        {
+            float dx = x - Center;
+            float half = MapSize * 0.30f;
+            const float depth = 9f, baseH = 8f;
+            float u = 1f - (dx * dx) / (half * half);
+            if (u <= 0f) { h = baseH; hx = 0f; }
+            else
+            {
+                h = baseH - depth * u * u;
+                hx = 4f * depth * u * dx / (half * half);   // d/dx[-depth·(1-dx²/half²)²]
+            }
+            hz = 0f;
+            AddDetailRipple(x, z, 0.7f, 0.045f, ref h, ref hx, ref hz);
+        }
+
+        /// <summary>능선 — <see cref="EvalValley"/> 와 정반대 부호. 도랑 대신 가운데에 벽을 세운다 —
+        /// 저각으로는 아예 안 넘어가고 반드시 고각 아크가 필요하다.</summary>
+        static void EvalRidge(float x, float z, out float h, out float hx, out float hz)
+        {
+            float dx = x - Center;
+            float half = MapSize * 0.26f;
+            const float height = 11f, baseH = 5f;
+            float u = 1f - (dx * dx) / (half * half);
+            if (u <= 0f) { h = baseH; hx = 0f; }
+            else
+            {
+                h = baseH + height * u * u;
+                hx = -4f * height * u * dx / (half * half);   // d/dx[+height·(1-dx²/half²)²]
+            }
+            hz = 0f;
+            AddDetailRipple(x, z, 0.6f, 0.05f, ref h, ref hx, ref hz);
+        }
+
+        /// <summary>
+        /// 황무지 — 낮은 능선 여러 개가 폭 전체에 반복된다(사인 곡선). 하나만 넘으면 되는 TwinHills·Ridge와
+        /// 달리 **몇 번이고 걸린다** — 직사 궤적이 쭉 뚫리지 않는다. `AddDetailRipple` 과 같은
+        /// `cos((x-Center)*k)` 짝함수 트릭을 진폭만 키워 쓴다 — x→MapSize-x 미러에서 항상 대칭이라
+        /// 스폰 대칭 게이트(§맵 6종)가 자동으로 성립한다.
+        /// </summary>
+        static void EvalBadlands(float x, float z, out float h, out float hx, out float hz)
+        {
+            float k = MathF.PI * 3f / MapSize;   // 맵 폭에 능선 3개
+            const float amp = 6f, baseH = 7f;
+            float dx = x - Center;
+            float cxm = MathF.Cos(dx * k);
+            h = baseH + amp * cxm;
+            hx = -amp * k * MathF.Sin(dx * k);
+            hz = 0f;
+            AddDetailRipple(x, z, 0.5f, 0.05f, ref h, ref hx, ref hz);
         }
 
         static void Smooth01(float t, out float s, out float ds)

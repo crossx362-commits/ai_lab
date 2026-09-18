@@ -71,7 +71,7 @@ static class BattleSimVerify
     static float _specPerMatch;
 
     // ── 맵 ──  게임(BattleDemo)과 **같은 함수·같은 스폰**을 써야 승률이 게임의 승률이다(교대 순서 버그의 교훈, §2-9-1).
-    //   TANKFALL_MAP=TwinHills(기본)|Crater|Terrace — MapHeightFunction(§맵 3종). Legacy = 옛 언덕(22m·20m, §2-9-4 까지 전부 이 맵에서 잰 값) — 비교·회귀용.
+    //   TANKFALL_MAP=TwinHills(기본)|Crater|Terrace|Valley|Ridge|Badlands — MapHeightFunction(§맵 6종). Legacy = 옛 언덕(22m·20m, §2-9-4 까지 전부 이 맵에서 잰 값) — 비교·회귀용.
     // ── 날씨 ──  TANKFALL_WEATHER=Clear(기본)|Snow. 눈이면 포세이돈만 세진다(SnowBonus) —
     //   게임은 판 시작에 25% 확률로 눈이 오는데(BattleDemo.SnowChance [추정]) 하네스가 늘 맑음으로만 재면
     //   포세이돈의 고유 능력은 **한 번도 측정되지 않는다**(= 살아 있다고 말할 수 없다).
@@ -622,7 +622,7 @@ static class BattleSimVerify
         {
             if (mapEnv.Trim().Equals("Legacy", StringComparison.OrdinalIgnoreCase)) MapName = "Legacy";
             else if (MapHeightFunction.TryParse(mapEnv, out Map)) MapName = MapHeightFunction.Name(Map);
-            else { Console.WriteLine($"❌ TANKFALL_MAP={mapEnv}: 모르는 맵(TwinHills|Crater|Terrace|Legacy)"); Environment.Exit(2); }
+            else { Console.WriteLine($"❌ TANKFALL_MAP={mapEnv}: 모르는 맵(TwinHills|Crater|Terrace|Valley|Ridge|Badlands|Legacy)"); Environment.Exit(2); }
         }
         Console.WriteLine($"맵: {MapName}" + (LegacyMap ? " (옛 언덕 — §2-9-4 회귀 비교용)" : " (MapHeightFunction — 게임과 동일)"));
         var clEnv = Environment.GetEnvironmentVariable("TANKFALL_CLIMATE");

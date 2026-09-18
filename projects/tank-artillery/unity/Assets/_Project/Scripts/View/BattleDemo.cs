@@ -256,7 +256,7 @@ namespace Tankfall.View
                 if (args[i] == "-autoshot") { _autoShot = true; _autoMode = true; }
                 else if (args[i] == "-perf") { _perf = true; _autoMode = true; }
                 else if (args[i] == "-timeevents") _timeEvents = true;
-                else if (args[i] == "-phasecheck") _phaseCheck = true;
+                else if (args[i] == "-phasecheck") { _phaseCheck = true; _autoMode = true; }
                 else if (args[i] == "-gallery") { _gallery = true; _autoMode = true; }
                 else if (args[i] == "-forcespecial") _forceSpecial = true;
                 else if (args[i] == "-forceult") { _forceSpecial = true; _forceUlt = true; }
@@ -271,9 +271,9 @@ namespace Tankfall.View
                     if (!int.TryParse(args[i + 1].Trim(), out _itemSlots) || _itemSlots < 0)
                     { _itemSlots = 2; Debug.LogWarning($"[Tankfall] -items 는 0 이상 정수 — 기본 2"); }
                 }
-                else if (args[i] == "-uiselftest") _uiSelfTest = true;
-                else if (args[i] == "-shellcheck") _shellCheck = true;
-                else if (args[i] == "-shellgallery") _shellGallery = true;
+                else if (args[i] == "-uiselftest") { _uiSelfTest = true; _autoMode = true; }
+                else if (args[i] == "-shellcheck") { _shellCheck = true; _autoMode = true; }
+                else if (args[i] == "-shellgallery") { _shellGallery = true; _autoMode = true; }
                 else if (args[i] == "-practice") _practice = true;
                 else if (args[i] == "-practiceselftest") { _practice = true; _practiceSelfTest = true; }
                 else if (args[i] == "-supplyselftest") { _supplySelfTest = true; _autoMode = true; }
@@ -284,6 +284,7 @@ namespace Tankfall.View
                 else if (args[i] == "-boomselftest") { _boom = true; _boomSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-rosterselftest") { _rosterSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-gameselftest") { _gameSelfTest = true; _autoMode = true; }   // 음악·설정 저장·전적·무승부
+                else if (args[i] == "-settingsselftest") { _settingsSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-difficulty" && i + 1 < args.Length)
                 {
                     int found = -1;
@@ -321,13 +322,17 @@ namespace Tankfall.View
             //    Shot() 이 매 프레임 ArgumentNullException 을 던지고 사진은 한 장도 안 남았다.
             //    **찍는 모드가 늘 때마다 재발할 조건**이라 조건 자체를 없앤다.
             if (string.IsNullOrEmpty(_shotDir)) _shotDir = "Screenshots";
-            // ⚠️ 자동 검증 모드는 타이틀을 거치지 않는다 — 거치면 하네스가 메뉴에서 조용히 멈춘다(BattleScreens.cs 머리말).
-            //    사람이 켠 경우에만 타이틀로 시작한다. 이 판정은 인자만 보므로 파싱 직후가 자리다 —
-            //    아래 저장 설정 읽기(Prefs)와 화면 선택이 같은 값을 써야 한다(사람 판 판정을 두 곳에 두지 않는다).
-            bool headless = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _practice || _uiSelfTest || _shellCheck || _shellGallery;
+            // 사람이 없는 판인가 — **이 한 줄이 단일 소스다.** 아래 화면 판정도 저장 설정 읽기도 이 값만 본다.
+            // 🚨 여기가 한때 무인 모드를 손으로 나열했고, **두 번 다 새 모드를 빠뜨려 자체검사가 화면에 갇혔다** —
+            //    2026-09-17 고르기 화면(`_picking`), 2026-09-18 타이틀(`_screen`). 둘 다 로그가 한 줄도 안 찍혀
+            //    "멈춘 건지 느린 건지"조차 안 보였다(빌드가 깨진 줄 알고 한참 헤맸다).
+            //    **목록으로 되돌리지 마라.** 새 무인 모드를 만들 때 할 일은 그 인자를 파싱하는 한 줄에
+            //    `_autoMode = true` 를 넣는 것 하나뿐이다.
+            //    판정이 파싱 직후에 있는 이유는 저장 설정을 **지형보다 먼저** 읽어야 하기 때문이다(바로 아래).
+            bool headless = _autoMode || _practice;
             // 사람 판이면 지난번 설정(맵·난이도·아이템·날씨·Boom·로스터·소리)을 이어받는다. 인자로 준 값은 안 덮는다(Prefs 머리말).
             // ⚠️ 지형을 만들기 **전**이어야 한다 — 뒤에서 읽으면 타이틀 뒤 전장이 다른 맵으로 서 있다.
-            if (!headless && !_autoMode) LoadPrefs();
+            if (!headless) LoadPrefs();
 
             SetupWorld();
             // ⚠️ 날씨를 **지형보다 먼저** 정한다. 지형 정점 색이 눈 여부를 보고 칠해지므로(TerrainPalette),
@@ -360,20 +365,10 @@ namespace Tankfall.View
             //    사람이 없는 모드는 파싱할 때 `_autoMode` 를 켜므로 여기 손댈 일이 없다.
             _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {TankStats.Get(_roster[0]).Name}·{TankStats.Get(_roster[1]).Name}·{TankStats.Get(_roster[2]).Name}  (파랑 vs 빨강)";
 
-            _headless = headless;   // 판정은 위(인자 파싱 직후)에서 한 번만 한다
-            // ⚠️ 2026-09-17 사고: `-uiselftest` 가 **고르기 화면에 갇혀 영영 안 끝났다.**
-            //    탱크 고르기(§2-9-17)가 들어오면서 `_picking` 이 Update 맨 앞에서 return 하는데,
-            //    무인 모드는 각자 파싱에서 `_autoMode` 를 켜야 했고 `-uiselftest`·`-shellcheck`·
-            //    `-shellgallery`·`-phasecheck` 넷이 빠져 있었다. 로그에 **아무것도 안 찍혀서**
-            //    "멈춘 건지 느린 건지" 조차 안 보였다(빌드가 깨진 줄 알고 한참 헤맸다).
-            //
-            //    플래그를 하나씩 켜는 방식이 원인이다 — 무인 모드를 새로 만들 때마다 또 빠진다.
-            //    그래서 **headless 목록에서 유도한다.** 위 `headless` 와 같은 조건이면 사람이 없다는 뜻이고,
-            //    사람이 없으면 고르기 화면은 성립하지 않는다. 새 무인 모드는 headless 에만 추가하면 된다.
-            if (headless) _autoMode = true;                 // 머리말 참조 — 목록을 단일 소스로 삼는다
+            _headless = headless;   // 판정은 위(인자 파싱 직후)에서 한 번만 한다 — 머리말 참조
             _picking = !_rosterFixed && !_autoMode && !_practice;
             _screen = headless ? GameScreen.Battle : GameScreen.Title;
-            Sfx.Muted = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _uiSelfTest || Application.isBatchMode;
+            Sfx.Muted = headless || Application.isBatchMode;
         }
 
         void SpawnTeams()
@@ -415,7 +410,15 @@ namespace Tankfall.View
                     _units.Add(u);
                 }
             // 턴 순서: 50% 확률로 선공 팀 결정 (공정 대전 보장, 팀 교차 A1 B1 A2 B2 A3 B3 / B1 A1 B2 A2 B3 A3)
-            int firstTeam = Random.value < 0.5f ? 0 : 1;
+            // 🚨 2026-09-18 발견 — 연습장이 **판마다 50% 확률로 자기 자신을 조준했다**.
+            //    연습장(§68)은 "`_units[0]` = 항상 내 탱크, 나머지는 표적"을 전제로 짜여 있는데(PracticeNextTurn
+            //    머리말 "턴은 항상 나에게 돌아온다"), 이 정렬이 firstTeam 을 무작위로 골라 `_units[0]` 이 팀1일
+            //    수도 있게 만들었다. 팀1이 걸리면 TrySolvePractice 의 표적 탐색이 `o.Team == 0` 만 걸러서
+            //    자기 자신(거리 0m)을 표적으로 골랐고, 발사체는 쏜 사람을 못 맞히므로(ProjectileSimulator 가
+            //    shooterId 를 충돌에서 제외) **20발 전부 "해 없음"** 으로 나왔다 — 판마다 전부 통과하거나 전부
+            //    실패하는 50% 플레이키 자체검사였다. "공정 선공"은 PvP 개념이라 1인 연습장에는 의미가 없다 —
+            //    연습장은 firstTeam 을 고정한다.
+            int firstTeam = _practice ? 0 : (Random.value < 0.5f ? 0 : 1);
             _units.Sort((a, b) =>
             {
                 int orderA = (a.Team == firstTeam) ? 0 : 1;
@@ -593,6 +596,19 @@ namespace Tankfall.View
             {
                 _skyMat.SetColor("_Top", th.SkyTop);
                 _skyMat.SetColor("_Bottom", th.SkyBottom);
+
+                // 구름 색은 **테마에서 만든다**(SkyGradient.shader 머리말) — 흰색을 박으면 노을·화산 맵이 깨진다.
+                //   밝은 면은 하늘 아래쪽 색을 흰쪽으로, 그늘은 위쪽 색을 어둡게. 그래야 그 하늘에 속한 구름으로 보인다.
+                _skyMat.SetColor("_CloudColor", Color.Lerp(th.SkyBottom, Color.white, 0.75f));
+                _skyMat.SetColor("_CloudDark", Color.Lerp(th.SkyTop, th.Fog, 0.5f) * 0.92f);
+                // 눈 오는 날은 하늘을 덮는다 — 날씨가 하늘에서도 읽혀야 한다(§2-9-7 포세이돈 조건이 보이는 축).
+                _skyMat.SetFloat("_CloudCover", _weather == Weather.Snow ? 0.32f : 0.42f);
+
+                if (_sun != null)
+                {
+                    _skyMat.SetVector("_SunDir", -_sun.transform.forward);   // 빛이 오는 쪽 = 해가 있는 쪽
+                    _skyMat.SetColor("_SunColor", th.Sun);
+                }
             }
             if (_cam != null) _cam.backgroundColor = th.SkyBottom;
             if (_sun != null) _sun.color = th.Sun;
@@ -694,6 +710,7 @@ namespace Tankfall.View
             if (_rosterSelfTest) { RosterSelfTestStep(); return; }
             if (_gameSelfTest) { GameSelfTestStep(); return; }
             if (_boomSelfTest) { BoomSelfTestStep(); return; }
+            if (_settingsSelfTest) { SettingsSelfTestStep(); return; }
             if (_autoShot) { AutoShotStep(); return; }
             if (_uiSelfTest) { UiSelfTestStep(); return; }
             if (_shellCheck) { ShellCheckStep(); return; }
@@ -1823,13 +1840,15 @@ namespace Tankfall.View
                 // ⚠️ 게이트는 **전체 명중률이 아니라 "검증통과라고 말한 해"의 명중률**이다.
                 //    지형·각도 범위 때문에 애초에 해가 없는 배치도 나오는데(폴백), 그걸 못 맞혔다고 역산이
                 //    틀린 건 아니다. 거짓말을 안 하려면 주장한 것만 재야 한다 — "된다고 한 건 된다".
-                if (_practiceVerifiedShots >= 5 && vacc >= 90f)
+                bool ok = _practiceVerifiedShots >= 5 && vacc >= 90f;
+                if (ok)
                     Debug.Log("[Tankfall] ✅ 정답 보기가 '된다'고 한 해는 실제로 맞는다(§5-7 역산 + 채점 정상)");
                 else if (_practiceVerifiedShots < 5)
                     Debug.Log("[Tankfall] ❌ 검증통과 해 표본이 너무 적다 — 판단 불가");
                 else
                     Debug.Log("[Tankfall] ❌ 검증통과라고 한 해가 실제로는 안 맞는다 — 역산이나 채점이 고장났다");
-                Application.Quit();
+                // ⚠️ 인자 없는 Application.Quit()은 항상 rc=0이라 ❌도 통과로 보인다(2026-09-18 발견).
+                Application.Quit(ok ? 0 : 1);
                 return;
             }
             _practiceSelfTestShots++;
@@ -1875,7 +1894,10 @@ namespace Tankfall.View
             Unit target = null; float best = float.MaxValue;
             foreach (var o in _units)
             {
-                if (o.Team == 0 || !o.Alive) continue;
+                // ⚠️ `o == me` 를 반드시 걸러야 한다 — 안 그러면 거리 0m 이 항상 최솟값이라 자기 자신을
+                //    표적으로 고른다(위 firstTeam 사고에서 실제로 벌어졌던 것). 팀 조건은 그 사고의 결과일
+                //    뿐이었지 원인이 아니었다 — 두 번째 안전장치로 여기도 직접 막는다.
+                if (o == me || o.Team == me.Team || !o.Alive) continue;
                 var d = o.Center - me.Center;
                 if (d.LengthSq < best) { best = d.LengthSq; target = o; }
             }
@@ -2058,6 +2080,37 @@ namespace Tankfall.View
         }
 
         int _boomQuakes, _boomMeteors;   // Boom 모드 네거티브 컨트롤 — 0 이면 안 도는 것
+
+        /// <summary>
+        /// 설정 화면(음량) — 화면 전환·그리기는 `-uiselftest` 가 스크린샷으로 잰다(`UiSteps[2]="설정"`).
+        /// 여기서는 값 자체(클램프·저장·실제 출력 반영)를 코드로 잰다 — 화면은 맞는데 값이 안 바뀌는 것과
+        /// 값은 바뀌는데 화면이 안 그려지는 것은 서로 다른 실패라 하나로 안 잡힌다.
+        /// </summary>
+        void SettingsSelfTestStep()
+        {
+            int fail = 0;
+            float before = Sfx.Volume;
+
+            Sfx.Volume = 1.5f;   // ① 상한 — 100% 를 넘겨도 클램프돼야 한다
+            if (!Mathf.Approximately(Sfx.Volume, 1f))
+            { Debug.Log($"[Tankfall] ❌ 음량 상한 클램프 실패 — {Sfx.Volume:F2}"); fail++; }
+            else Debug.Log("[Tankfall] 설정 자체검사 상한 — 150% 요청 → 100% 로 잘림");
+
+            Sfx.Volume = -0.5f;  // ② 하한 — 0% 밑으로도 안 내려가야 한다
+            if (!Mathf.Approximately(Sfx.Volume, 0f))
+            { Debug.Log($"[Tankfall] ❌ 음량 하한 클램프 실패 — {Sfx.Volume:F2}"); fail++; }
+            else Debug.Log("[Tankfall] 설정 자체검사 하한 — -50% 요청 → 0% 로 잘림");
+
+            Sfx.Volume = 0.4f;   // ③ 실제로 출력에 반영되는가 — 값만 바뀌고 소리는 그대로면 죽은 설정이다
+            if (!Mathf.Approximately(AudioListener.volume, 0.4f))
+            { Debug.Log($"[Tankfall] ❌ 음량이 AudioListener 에 안 걸렸다 — {AudioListener.volume:F2}"); fail++; }
+            else Debug.Log("[Tankfall] 설정 자체검사 반영 — 음량 40% 가 실제 출력(AudioListener.volume) 에 걸림");
+
+            Sfx.Volume = before;   // 값을 어지르고 끝내지 않는다
+            Debug.Log(fail == 0 ? "[Tankfall] ✅ 설정(음량) — 상한·하한·실제 반영 전부 확인"
+                                 : $"[Tankfall] ❌ 설정 자체검사 실패 {fail}건");
+            Application.Quit(fail == 0 ? 0 : 1);
+        }
 
         /// <summary>
         /// `-boomselftest` — Boom 모드(§2-9-16) 세 가지가 실제로 도는지 확인한다.
@@ -3003,11 +3056,18 @@ namespace Tankfall.View
                 float dmgMul = sp.BaseDamage > 0f ? ult.BaseDamage / sp.BaseDamage : 0f;
                 float blastMul = sp.BlastRadius > 0f ? ult.BlastRadius / sp.BlastRadius : 0f;
                 float craterMul = sp.CraterRadius > 0f ? ult.CraterRadius / sp.CraterRadius : 0f;
-                if (dmgMul <= 1.01f && blastMul <= 1.01f && craterMul <= 1.01f)
+                // 🚨 발당 배율만 보면 다탄두 궁극기(멀티미사일 12발·마인랜더 3발 등)를 오판한다(2026-09-18 발견).
+                //    탄두 수는 여기가 아니라 `Spread.Pattern(kind, shell, ultimate:true)` 가 정한다 — 이 자체검사
+                //    바로 위 머리말이 "두 곳을 같이 봐라"라고 스스로 경고해놓고 정작 검사는 한 곳만 봤다.
+                //    발당 피해는 낮춰도 **총 화력**(발당 × 발수)이 핵급이면 그 축은 정상이다. 총 화력으로 본다.
+                int normalShots = Spread.Pattern(k, ShellKind.Special, false).Count;
+                int ultShots = Spread.Pattern(k, ShellKind.Special, true).Count;
+                float burstMul = normalShots > 0 ? dmgMul * ultShots / (float)normalShots : dmgMul;
+                if (Mathf.Max(dmgMul, burstMul) <= 1.01f && blastMul <= 1.01f && craterMul <= 1.01f)
                 { Debug.Log($"[Tankfall] ❌ {name}: 궁극기가 2번탄과 똑같다(피해 ×{dmgMul:F2})"); fail++; continue; }
-                // 핵급의 최소선 — 피해 1.5배 **또는** 폭발/굴착 1.8배. 둘 다 못 넘으면 "핵" 이라 부를 수 없다.
-                if (dmgMul < 1.5f && blastMul < 1.8f && craterMul < 1.8f)
-                { Debug.Log($"[Tankfall] ❌ {name}: 핵급이 아니다(피해 ×{dmgMul:F2} 폭발 ×{blastMul:F2} 굴착 ×{craterMul:F2})"); fail++; continue; }
+                // 핵급의 최소선 — 총 화력 1.5배 **또는** 폭발/굴착 1.8배. 셋 다 못 넘으면 "핵" 이라 부를 수 없다.
+                if (Mathf.Max(dmgMul, burstMul) < 1.5f && blastMul < 1.8f && craterMul < 1.8f)
+                { Debug.Log($"[Tankfall] ❌ {name}: 핵급이 아니다(발당 ×{dmgMul:F2} 총화력 ×{burstMul:F2}[{normalShots}→{ultShots}발] 폭발 ×{blastMul:F2} 굴착 ×{craterMul:F2})"); fail++; continue; }
 
                 // ③ 소모되는가 — 안 비면 영구 버프가 된다.
                 gauge.SpendUltimate();
@@ -3038,6 +3098,7 @@ namespace Tankfall.View
         float _tornadoSpin;
         // ── Boom 모드(§2-9-16) ── 지뢰밭·지진·유성. 규칙·출처는 Sim/BoomMode.cs 머리말.
         bool _boom, _boomSelfTest;
+        bool _settingsSelfTest;   // 설정 화면(음량) — 화면 전환은 스크린샷으로, 값 자체는 코드로 잰다
         Rng _boomRng = new Rng(0x7A11Fu);
         readonly List<(float X, float Z)> _boomSpots = new List<(float X, float Z)>();
         float _impairClock;          // 멀미탄 울렁임 위상
