@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-13T10:26:34+0900",
+  "updated_at": "2026-09-13T10:29:13+09:00",
   "cards": [
     {
       "id": "map-land-scale",
@@ -455,11 +455,11 @@
     },
     {
       "id": "now",
-      "title": "지금 하는 일: hit-chance — 무기 스킬 명중",
+      "title": "지금 하는 일: play-combat-loop — 전투 플레이 루프",
       "difficulty": "중",
       "model": "grok-4.6",
-      "status": "완료",
-      "assigned_loop": 44,
+      "status": "진행 중",
+      "assigned_loop": 59,
       "completed_loop": null,
       "commit": "",
       "rationale": "표시용 더미. 그록 지금 하는 일은 now_display/assignment로 표시.",
@@ -1255,11 +1255,11 @@
       "title": "전투 플레이 루프 — 사냥·판정·성장이 화면에서 이어짐",
       "difficulty": "상",
       "model": "grok-4.6",
-      "status": "대기",
-      "assigned_loop": null,
+      "status": "진행 중",
+      "assigned_loop": 59,
       "completed_loop": null,
       "commit": "",
-      "rationale": "오너 2026-09-13 최우선. 게이트만이 아니라 플레이 샷. 2클라 HP면 가산.",
+      "rationale": "오너 재확인 최우선#1. 진행 중 loop#59. 테스트+눈확인.",
       "fail_streak": 0
     },
     {
@@ -1271,7 +1271,7 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "",
-      "rationale": "오너 최우선. 필드에서 직접 채집·고갈·과적 확인.",
+      "rationale": "오너 재확인 최우선#3(전투·제작 다음). 채집은 제작 재료 공급.",
       "fail_streak": 0
     },
     {
@@ -1283,7 +1283,7 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "",
-      "rationale": "오너 최우선. 채집과 이어지는 1사이클.",
+      "rationale": "오너 재확인 최우선#2(전투 다음).",
       "fail_streak": 0
     },
     {
@@ -1295,7 +1295,7 @@
       "assigned_loop": null,
       "completed_loop": null,
       "commit": "",
-      "rationale": "오너 최우선. 가능하면 2클라. two-client-core와 묶여도 됨.",
+      "rationale": "오너 재확인 최우선#4.",
       "fail_streak": 0
     }
   ]

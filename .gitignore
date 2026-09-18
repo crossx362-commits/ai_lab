@@ -146,6 +146,7 @@ projects/ashes-to-stars/unity/mono_crash.*.json
 
 # 울온: 유니티 크래시 덤프(소스 아님, 매 실행 새로 생김)
 projects/ulon/unity/mono_crash.*.json
+projects/ulon/docs/*.lock
 
 # 울온: 지형 도포 컨트롤 텍스처 — **생성물**이다(빌더가 매 빌드 알파맵에서 다시 굽는다).
 # 8.4MB가 도포가 바뀔 때마다 통째로 재커밋돼 추적에서 뺐다(검수 판정 2026-09-09).
@@ -153,4 +154,8 @@ projects/ulon/unity/mono_crash.*.json
 # **`.meta`는 추적한다**(검수 2026-09-09): GUID가 거기 살기 때문에 그것까지 빼면 굽는 판마다
 # `TerrainTriplanar.mat`의 참조 한 줄이 흔들려 8.4MB 잡음이 작은 충돌 자리로 바뀔 뿐이다.
 projects/ulon/unity/Assets/Game/Art/Env/TerrainCtrl?.asset
+
+# 독립 Git 프로젝트 (ai_lab 저장소에 섞지 않는다)
+projects/pet-harmony-hub/
+
 
