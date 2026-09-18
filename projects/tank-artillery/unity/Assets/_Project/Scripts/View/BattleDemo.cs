@@ -256,7 +256,7 @@ namespace Tankfall.View
                 if (args[i] == "-autoshot") { _autoShot = true; _autoMode = true; }
                 else if (args[i] == "-perf") { _perf = true; _autoMode = true; }
                 else if (args[i] == "-timeevents") _timeEvents = true;
-                else if (args[i] == "-phasecheck") _phaseCheck = true;
+                else if (args[i] == "-phasecheck") { _phaseCheck = true; _autoMode = true; }
                 else if (args[i] == "-gallery") { _gallery = true; _autoMode = true; }
                 else if (args[i] == "-forcespecial") _forceSpecial = true;
                 else if (args[i] == "-forceult") { _forceSpecial = true; _forceUlt = true; }
@@ -271,9 +271,9 @@ namespace Tankfall.View
                     if (!int.TryParse(args[i + 1].Trim(), out _itemSlots) || _itemSlots < 0)
                     { _itemSlots = 2; Debug.LogWarning($"[Tankfall] -items 는 0 이상 정수 — 기본 2"); }
                 }
-                else if (args[i] == "-uiselftest") _uiSelfTest = true;
-                else if (args[i] == "-shellcheck") _shellCheck = true;
-                else if (args[i] == "-shellgallery") _shellGallery = true;
+                else if (args[i] == "-uiselftest") { _uiSelfTest = true; _autoMode = true; }
+                else if (args[i] == "-shellcheck") { _shellCheck = true; _autoMode = true; }
+                else if (args[i] == "-shellgallery") { _shellGallery = true; _autoMode = true; }
                 else if (args[i] == "-practice") _practice = true;
                 else if (args[i] == "-practiceselftest") { _practice = true; _practiceSelfTest = true; }
                 else if (args[i] == "-supplyselftest") { _supplySelfTest = true; _autoMode = true; }
@@ -354,21 +354,21 @@ namespace Tankfall.View
 
             // ⚠️ 자동 검증 모드는 타이틀을 거치지 않는다 — 거치면 하네스가 메뉴에서 조용히 멈춘다(BattleScreens.cs 머리말).
             //    사람이 켠 경우에만 타이틀로 시작한다.
-            bool headless = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _practice || _uiSelfTest || _shellCheck || _shellGallery;
+            // 🚨 **두 번째 재발**(2026-09-18). 여기가 한때 "무인 모드 목록"을 손으로 나열했었고,
+            //    `-uiselftest`·`-shellcheck`·`-shellgallery`·`-phasecheck` 가 빠져 고르기 화면에 갇힌 적이
+            //    있었다(그때 남긴 교훈이 바로 아래 사고 기록). 그런데 **그 교훈을 지키려고 만든 `_autoMode`
+            //    자체가 나중에 다시 이원화됐다** — 일부 모드(-ultselftest 등 §2-9-12·14~17)는 파싱에서
+            //    직접 `_autoMode = true` 를 켰지만, 이 줄의 `headless` 목록에는 넣는 걸 잊어서
+            //    `_picking` 은 꺼지는데 `_screen` 은 여전히 Title 로 남아 **똑같이 멈췄다.**
+            //    "단일 소스로 삼는다"고 적어놓고 소스가 두 곳(파싱 시점 플래그 vs 여기 OR 목록)이라 어긋난 것이다.
+            //    그래서 진짜 단일 소스로 좁힌다 — **모든 무인 모드는 파싱에서 `_autoMode` 를 켜고,
+            //    여기 아래 화면 판정은 오직 `_autoMode`(+ `_practice`)만 본다.** 새 무인 모드를 추가할 때
+            //    할 일은 "그 인자를 파싱하는 한 줄에 `_autoMode = true` 를 넣는 것" 하나뿐이다.
+            bool headless = _autoMode || _practice;
             _headless = headless;
-            // ⚠️ 2026-09-17 사고: `-uiselftest` 가 **고르기 화면에 갇혀 영영 안 끝났다.**
-            //    탱크 고르기(§2-9-17)가 들어오면서 `_picking` 이 Update 맨 앞에서 return 하는데,
-            //    무인 모드는 각자 파싱에서 `_autoMode` 를 켜야 했고 `-uiselftest`·`-shellcheck`·
-            //    `-shellgallery`·`-phasecheck` 넷이 빠져 있었다. 로그에 **아무것도 안 찍혀서**
-            //    "멈춘 건지 느린 건지" 조차 안 보였다(빌드가 깨진 줄 알고 한참 헤맸다).
-            //
-            //    플래그를 하나씩 켜는 방식이 원인이다 — 무인 모드를 새로 만들 때마다 또 빠진다.
-            //    그래서 **headless 목록에서 유도한다.** 위 `headless` 와 같은 조건이면 사람이 없다는 뜻이고,
-            //    사람이 없으면 고르기 화면은 성립하지 않는다. 새 무인 모드는 headless 에만 추가하면 된다.
-            if (headless) _autoMode = true;                 // 머리말 참조 — 목록을 단일 소스로 삼는다
             _picking = !_rosterFixed && !_autoMode && !_practice;
             _screen = headless ? GameScreen.Battle : GameScreen.Title;
-            Sfx.Muted = _autoShot || _perf || _gallery || _phaseCheck || _supplySelfTest || _uiSelfTest || Application.isBatchMode;
+            Sfx.Muted = headless || Application.isBatchMode;
         }
 
         void SpawnTeams()
@@ -410,7 +410,15 @@ namespace Tankfall.View
                     _units.Add(u);
                 }
             // 턴 순서: 50% 확률로 선공 팀 결정 (공정 대전 보장, 팀 교차 A1 B1 A2 B2 A3 B3 / B1 A1 B2 A2 B3 A3)
-            int firstTeam = Random.value < 0.5f ? 0 : 1;
+            // 🚨 2026-09-18 발견 — 연습장이 **판마다 50% 확률로 자기 자신을 조준했다**.
+            //    연습장(§68)은 "`_units[0]` = 항상 내 탱크, 나머지는 표적"을 전제로 짜여 있는데(PracticeNextTurn
+            //    머리말 "턴은 항상 나에게 돌아온다"), 이 정렬이 firstTeam 을 무작위로 골라 `_units[0]` 이 팀1일
+            //    수도 있게 만들었다. 팀1이 걸리면 TrySolvePractice 의 표적 탐색이 `o.Team == 0` 만 걸러서
+            //    자기 자신(거리 0m)을 표적으로 골랐고, 발사체는 쏜 사람을 못 맞히므로(ProjectileSimulator 가
+            //    shooterId 를 충돌에서 제외) **20발 전부 "해 없음"** 으로 나왔다 — 판마다 전부 통과하거나 전부
+            //    실패하는 50% 플레이키 자체검사였다. "공정 선공"은 PvP 개념이라 1인 연습장에는 의미가 없다 —
+            //    연습장은 firstTeam 을 고정한다.
+            int firstTeam = _practice ? 0 : (Random.value < 0.5f ? 0 : 1);
             _units.Sort((a, b) =>
             {
                 int orderA = (a.Team == firstTeam) ? 0 : 1;
@@ -1808,13 +1816,15 @@ namespace Tankfall.View
                 // ⚠️ 게이트는 **전체 명중률이 아니라 "검증통과라고 말한 해"의 명중률**이다.
                 //    지형·각도 범위 때문에 애초에 해가 없는 배치도 나오는데(폴백), 그걸 못 맞혔다고 역산이
                 //    틀린 건 아니다. 거짓말을 안 하려면 주장한 것만 재야 한다 — "된다고 한 건 된다".
-                if (_practiceVerifiedShots >= 5 && vacc >= 90f)
+                bool ok = _practiceVerifiedShots >= 5 && vacc >= 90f;
+                if (ok)
                     Debug.Log("[Tankfall] ✅ 정답 보기가 '된다'고 한 해는 실제로 맞는다(§5-7 역산 + 채점 정상)");
                 else if (_practiceVerifiedShots < 5)
                     Debug.Log("[Tankfall] ❌ 검증통과 해 표본이 너무 적다 — 판단 불가");
                 else
                     Debug.Log("[Tankfall] ❌ 검증통과라고 한 해가 실제로는 안 맞는다 — 역산이나 채점이 고장났다");
-                Application.Quit();
+                // ⚠️ 인자 없는 Application.Quit()은 항상 rc=0이라 ❌도 통과로 보인다(2026-09-18 발견).
+                Application.Quit(ok ? 0 : 1);
                 return;
             }
             _practiceSelfTestShots++;
@@ -1860,7 +1870,10 @@ namespace Tankfall.View
             Unit target = null; float best = float.MaxValue;
             foreach (var o in _units)
             {
-                if (o.Team == 0 || !o.Alive) continue;
+                // ⚠️ `o == me` 를 반드시 걸러야 한다 — 안 그러면 거리 0m 이 항상 최솟값이라 자기 자신을
+                //    표적으로 고른다(위 firstTeam 사고에서 실제로 벌어졌던 것). 팀 조건은 그 사고의 결과일
+                //    뿐이었지 원인이 아니었다 — 두 번째 안전장치로 여기도 직접 막는다.
+                if (o == me || o.Team == me.Team || !o.Alive) continue;
                 var d = o.Center - me.Center;
                 if (d.LengthSq < best) { best = d.LengthSq; target = o; }
             }
@@ -2989,11 +3002,18 @@ namespace Tankfall.View
                 float dmgMul = sp.BaseDamage > 0f ? ult.BaseDamage / sp.BaseDamage : 0f;
                 float blastMul = sp.BlastRadius > 0f ? ult.BlastRadius / sp.BlastRadius : 0f;
                 float craterMul = sp.CraterRadius > 0f ? ult.CraterRadius / sp.CraterRadius : 0f;
-                if (dmgMul <= 1.01f && blastMul <= 1.01f && craterMul <= 1.01f)
+                // 🚨 발당 배율만 보면 다탄두 궁극기(멀티미사일 12발·마인랜더 3발 등)를 오판한다(2026-09-18 발견).
+                //    탄두 수는 여기가 아니라 `Spread.Pattern(kind, shell, ultimate:true)` 가 정한다 — 이 자체검사
+                //    바로 위 머리말이 "두 곳을 같이 봐라"라고 스스로 경고해놓고 정작 검사는 한 곳만 봤다.
+                //    발당 피해는 낮춰도 **총 화력**(발당 × 발수)이 핵급이면 그 축은 정상이다. 총 화력으로 본다.
+                int normalShots = Spread.Pattern(k, ShellKind.Special, false).Count;
+                int ultShots = Spread.Pattern(k, ShellKind.Special, true).Count;
+                float burstMul = normalShots > 0 ? dmgMul * ultShots / (float)normalShots : dmgMul;
+                if (Mathf.Max(dmgMul, burstMul) <= 1.01f && blastMul <= 1.01f && craterMul <= 1.01f)
                 { Debug.Log($"[Tankfall] ❌ {name}: 궁극기가 2번탄과 똑같다(피해 ×{dmgMul:F2})"); fail++; continue; }
-                // 핵급의 최소선 — 피해 1.5배 **또는** 폭발/굴착 1.8배. 둘 다 못 넘으면 "핵" 이라 부를 수 없다.
-                if (dmgMul < 1.5f && blastMul < 1.8f && craterMul < 1.8f)
-                { Debug.Log($"[Tankfall] ❌ {name}: 핵급이 아니다(피해 ×{dmgMul:F2} 폭발 ×{blastMul:F2} 굴착 ×{craterMul:F2})"); fail++; continue; }
+                // 핵급의 최소선 — 총 화력 1.5배 **또는** 폭발/굴착 1.8배. 셋 다 못 넘으면 "핵" 이라 부를 수 없다.
+                if (Mathf.Max(dmgMul, burstMul) < 1.5f && blastMul < 1.8f && craterMul < 1.8f)
+                { Debug.Log($"[Tankfall] ❌ {name}: 핵급이 아니다(발당 ×{dmgMul:F2} 총화력 ×{burstMul:F2}[{normalShots}→{ultShots}발] 폭발 ×{blastMul:F2} 굴착 ×{craterMul:F2})"); fail++; continue; }
 
                 // ③ 소모되는가 — 안 비면 영구 버프가 된다.
                 gauge.SpendUltimate();
