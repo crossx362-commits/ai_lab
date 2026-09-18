@@ -76,10 +76,24 @@ namespace Tankfall.View
                 foreach (var it in _items) if ((it.Pos - p).sqrMagnitude < 5.2f * 5.2f) { near = true; break; }
                 if (near) continue;
 
+                // 종류 배분. 나무·바위·덤불만 돌리면 같은 실루엣 셋이 반복돼 **벽지처럼 보인다** —
+                // 저폴리 환경 팩의 표준 구성(바위/나무/덤불 + 그루터기·쓰러진 통나무·풀포기 + 인공물)을 따라
+                // 작은 것들을 섞는다. 작은 것은 거리 감각에도 도움이 된다(머리말 "크기를 아는 물체").
                 float roll = rng.Float01();
-                var t = roll < _theme.TreeRatio ? Tree(p, ref rng)
-                      : roll < _theme.TreeRatio + (1f - _theme.TreeRatio) * 0.6f ? Rock(p, ref rng)
-                      : Bush(p, ref rng);
+                float treeR = _theme.TreeRatio;
+                float rest = 1f - treeR;
+                Transform t;
+                if (roll < treeR) t = Tree(p, ref rng);
+                else
+                {
+                    float r2 = (roll - treeR) / Mathf.Max(0.0001f, rest);
+                    t = r2 < 0.42f ? Rock(p, ref rng)
+                      : r2 < 0.64f ? Bush(p, ref rng)
+                      : r2 < 0.76f ? GrassTuft(p, ref rng)
+                      : r2 < 0.86f ? Stump(p, ref rng)
+                      : r2 < 0.94f ? FallenLog(p, ref rng)
+                      : Debris(p, ref rng);
+                }
                 t.SetParent(transform, true);
                 _items.Add(new Item { T = t, Pos = p });
                 placed++;
@@ -209,25 +223,82 @@ namespace Tankfall.View
 
         Transform Rock(Vector3 p, ref Rng rng)
         {
-            // 바위: 큰 덩어리 + 작은 조각들(어두운 톤 섞음) + 이끼/눈 덮개 가끔. 상자 하나면 택배 상자로 보인다.
+            // 바위 — **정육면체를 쓰지 마라**(오너 지적 2026-09-19 "원통 박스 이런거 넣지말고").
+            //   `PrimitiveType.Cube` 는 모서리가 전부 직각·같은 길이라 아무리 굴리고 늘려도 **택배 상자로 보인다.**
+            //   실제로 회전·비율을 흔들어 뒀는데도 화면에서 회색 상자로 읽혔다.
+            //   저폴리 환경 에셋의 바위는 **면 수가 적되 모서리 길이가 제각각인 불규칙 다면체**다(조사 근거:
+            //   Synty POLYGON·KayKit 류 프롭 팩의 rock/boulder 공통 형태). 그래서 여기서 직접 굽는다.
+            //
+            //   덩어리 하나가 아니라 **무리**로 둔다 — 큰 덩어리 하나 + 작은 조각 몇. 자연에서 바위는 혼자 안 있다.
             var root = new GameObject("Rock").transform;
             root.position = p;
             int n = 1 + (int)(rng.Float01() * 2.99f);
+            float big = 0f;
             for (int i = 0; i < n; i++)
             {
-                var r = Prim(PrimitiveType.Cube, i > 0 && rng.Float01() < 0.5f ? _rockDark : _rock, root);
-                float s = (i == 0 ? 1.1f : 0.5f) + rng.Float01() * (i == 0 ? 1.6f : 0.7f);
-                r.localScale = new Vector3(s, s * (0.5f + rng.Float01() * 0.5f), s * (0.7f + rng.Float01() * 0.6f));
-                r.localPosition = new Vector3((rng.Float01() - 0.5f) * 1.8f, s * 0.28f, (rng.Float01() - 0.5f) * 1.8f);
-                r.localRotation = Quaternion.Euler(rng.Float01() * 30f - 15f, rng.Float01() * 360f, rng.Float01() * 30f - 15f);
-                if (i == 0 && rng.Float01() < 0.45f)
-                {
-                    var cap = Prim(PrimitiveType.Sphere, _theme.Snowy ? _leafC : _bush, root);
-                    cap.localScale = new Vector3(s * 0.8f, s * 0.25f, s * 0.7f);
-                    cap.localPosition = r.localPosition + new Vector3(0f, s * 0.42f, 0f);
-                }
+                float s = (i == 0 ? 1.0f : 0.42f) + rng.Float01() * (i == 0 ? 1.5f : 0.6f);
+                if (i == 0) big = s;
+                var r = Boulder(root, i > 0 && rng.Float01() < 0.5f ? _rockDark : _rock, s, ref rng);
+                r.localPosition = new Vector3((rng.Float01() - 0.5f) * (1.6f + big),
+                                              0f,
+                                              (rng.Float01() - 0.5f) * (1.6f + big));
+                r.localRotation = Quaternion.Euler(rng.Float01() * 16f - 8f, rng.Float01() * 360f, rng.Float01() * 16f - 8f);
+            }
+            // 눈·이끼 덮개 — 위쪽만 살짝. 덮개까지 구 하나로 두면 바위 위에 공이 얹힌 것처럼 보여
+            // **납작하게** 눌러 얹는다.
+            if (rng.Float01() < 0.45f)
+            {
+                var cap = Prim(PrimitiveType.Sphere, _theme.Snowy ? _leafC : _bush, root);
+                cap.localScale = new Vector3(big * 0.92f, big * 0.22f, big * 0.82f);
+                cap.localPosition = new Vector3(0f, big * 0.62f, 0f);
             }
             return root;
+        }
+
+        /// <summary>
+        /// 불규칙 바위 한 덩어리. 옆면 5~7 각의 **각 모서리 반지름·높이를 따로 흔든** 기둥에
+        /// 위·아래 꼭짓점을 얹어 닫는다(면 수는 적게 유지 — 저폴리 실루엣).
+        /// ⚠️ 정다각형으로 두면 "원통"이 되고, 반지름을 전부 같게 두면 "상자"가 된다.
+        ///    **제각각인 게 핵심이다** — 그래야 바위로 읽힌다.
+        /// </summary>
+        Transform Boulder(Transform parent, Material mat, float size, ref Rng rng)
+        {
+            int sides = 5 + (int)(rng.Float01() * 2.99f);          // 5~7
+            var verts = new List<Vector3>();
+            var tris = new List<int>();
+
+            float belt = 0.30f + rng.Float01() * 0.22f;            // 허리 높이
+            float topY = size * (0.55f + rng.Float01() * 0.45f);
+            float botY = -size * 0.22f;                            // 조금 땅에 묻힌다 — 공중에 뜬 바위는 즉시 가짜다
+
+            for (int i = 0; i < sides; i++)
+            {
+                float a = (i / (float)sides) * Mathf.PI * 2f + rng.Float01() * 0.22f;   // 각도도 흔든다(정다각형 금지)
+                float rad = size * (0.55f + rng.Float01() * 0.55f);
+                float y = size * belt * (0.6f + rng.Float01() * 0.8f);
+                verts.Add(new Vector3(Mathf.Cos(a) * rad, y, Mathf.Sin(a) * rad));
+            }
+            int top = verts.Count; verts.Add(new Vector3((rng.Float01() - 0.5f) * size * 0.5f, topY, (rng.Float01() - 0.5f) * size * 0.5f));
+            int bot = verts.Count; verts.Add(new Vector3((rng.Float01() - 0.5f) * size * 0.3f, botY, (rng.Float01() - 0.5f) * size * 0.3f));
+
+            for (int i = 0; i < sides; i++)
+            {
+                int a = i, b = (i + 1) % sides;
+                tris.Add(a); tris.Add(top); tris.Add(b);     // 윗면
+                tris.Add(b); tris.Add(bot); tris.Add(a);     // 아랫면
+            }
+
+            var go = new GameObject("Boulder");
+            go.transform.SetParent(parent, false);
+            var mf = go.AddComponent<MeshFilter>();
+            go.AddComponent<MeshRenderer>().sharedMaterial = mat;
+            var mesh = new Mesh { name = "BoulderMesh" };
+            mesh.SetVertices(verts);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals();                      // 평면 노멀이 아니라 부드럽게 — 면이 적어 각이 살아 있다
+            mesh.RecalculateBounds();
+            mf.mesh = mesh;
+            return go.transform;
         }
 
         Transform Bush(Vector3 p, ref Rng rng)
@@ -250,6 +321,112 @@ namespace Tankfall.View
                     f.localScale = Vector3.one * 0.22f;
                     f.localPosition = new Vector3((rng.Float01() - 0.5f) * 1.4f, 0.75f + rng.Float01() * 0.3f, (rng.Float01() - 0.5f) * 1.4f);
                 }
+            return root;
+        }
+
+        /// <summary>
+        /// 풀포기 — 얇은 판 몇 장을 세워 교차시킨다. 저폴리 환경의 기본 바닥 채움이고,
+        /// **작아서 거리 감각의 잣대**가 된다(큰 것만 있으면 원근이 안 읽힌다).
+        /// </summary>
+        Transform GrassTuft(Vector3 p, ref Rng rng)
+        {
+            var root = new GameObject("Grass").transform;
+            root.position = p;
+            if (_theme.Snowy) { /* 눈 덮인 맵에서는 성기게 — 아래 개수로 조절한다 */ }
+            int n = (_theme.Snowy ? 2 : 4) + (int)(rng.Float01() * 2.99f);
+            for (int i = 0; i < n; i++)
+            {
+                var b = Prim(PrimitiveType.Cube, rng.Float01() < 0.25f ? _leafC : _bush, root);
+                float h = 0.45f + rng.Float01() * 0.55f;
+                b.localScale = new Vector3(0.07f, h, 0.30f + rng.Float01() * 0.25f);
+                b.localPosition = new Vector3((rng.Float01() - 0.5f) * 0.9f, h * 0.5f, (rng.Float01() - 0.5f) * 0.9f);
+                b.localRotation = Quaternion.Euler(rng.Float01() * 16f - 8f, rng.Float01() * 360f, rng.Float01() * 16f - 8f);
+            }
+            return root;
+        }
+
+        /// <summary>그루터기 — 잘린 나무. 나무가 쓸려나간 전장이라는 이야기를 한 조각으로 말한다.</summary>
+        Transform Stump(Vector3 p, ref Rng rng)
+        {
+            var root = new GameObject("Stump").transform;
+            root.position = p;
+            float r = 0.34f + rng.Float01() * 0.26f, h = 0.5f + rng.Float01() * 0.6f;
+            var body = Prim(PrimitiveType.Cylinder, _trunk, root);
+            body.localScale = new Vector3(r * 2f, h * 0.5f, r * 2f);       // 유니티 실린더는 높이가 2 다
+            body.localPosition = new Vector3(0f, h * 0.5f, 0f);
+            body.localRotation = Quaternion.Euler(rng.Float01() * 8f - 4f, rng.Float01() * 360f, rng.Float01() * 8f - 4f);
+            // 잘린 단면 — 속살이 밝다. 이게 없으면 그냥 짧은 기둥으로 보인다.
+            var cut = Prim(PrimitiveType.Cylinder, _rock, root);
+            cut.localScale = new Vector3(r * 1.86f, 0.04f, r * 1.86f);
+            cut.localPosition = new Vector3(0f, h + 0.01f, 0f);
+            return root;
+        }
+
+        /// <summary>쓰러진 통나무 — 옆으로 누운 기둥 + 가끔 잔가지. 바닥에 수평선을 하나 놓아 준다.</summary>
+        Transform FallenLog(Vector3 p, ref Rng rng)
+        {
+            var root = new GameObject("Log").transform;
+            root.position = p;
+            root.localRotation = Quaternion.Euler(0f, rng.Float01() * 360f, 0f);
+            float r = 0.26f + rng.Float01() * 0.18f, len = 2.2f + rng.Float01() * 2.2f;
+            var body = Prim(PrimitiveType.Cylinder, _trunk, root);
+            body.localScale = new Vector3(r * 2f, len * 0.5f, r * 2f);
+            body.localPosition = new Vector3(0f, r, 0f);
+            body.localRotation = Quaternion.Euler(90f, 0f, 0f);            // 눕힌다
+            if (rng.Float01() < 0.5f)
+            {
+                var br = Prim(PrimitiveType.Cylinder, _trunk, root);
+                br.localScale = new Vector3(r * 0.7f, 0.4f, r * 0.7f);
+                br.localPosition = new Vector3(0f, r * 1.5f, len * 0.25f);
+                br.localRotation = Quaternion.Euler(60f, rng.Float01() * 360f, 0f);
+            }
+            return root;
+        }
+
+        /// <summary>
+        /// 인공물 — 드럼통·나무상자. **전장이라는 정체성**을 준다(저폴리 밀리터리 팩의 공통 프롭).
+        /// 아주 드물게만 둔다 — 자주 나오면 자연 지형이 창고처럼 보인다.
+        /// </summary>
+        Transform Debris(Vector3 p, ref Rng rng)
+        {
+            var root = new GameObject("Debris").transform;
+            root.position = p;
+            root.localRotation = Quaternion.Euler(0f, rng.Float01() * 360f, 0f);
+            bool barrel = rng.Float01() < 0.5f;
+            if (barrel)
+            {
+                var b = Prim(PrimitiveType.Cylinder, _rockDark, root);
+                float h = 0.9f + rng.Float01() * 0.25f;
+                b.localScale = new Vector3(0.62f, h * 0.5f, 0.62f);
+                bool tipped = rng.Float01() < 0.4f;                        // 굴러 누운 것도 섞는다
+                b.localPosition = new Vector3(0f, tipped ? 0.31f : h * 0.5f, 0f);
+                if (tipped) b.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                // 테 두 줄 — 없으면 그냥 원통이다(오너 지적의 바로 그 문제)
+                for (int i = 0; i < 2; i++)
+                {
+                    var ring = Prim(PrimitiveType.Cylinder, _rock, root);
+                    ring.localScale = new Vector3(0.66f, 0.04f, 0.66f);
+                    float t2 = i == 0 ? 0.32f : 0.68f;
+                    ring.localPosition = tipped ? new Vector3(0f, 0.31f, (t2 - 0.5f) * h) : new Vector3(0f, h * t2, 0f);
+                    ring.localRotation = tipped ? Quaternion.Euler(90f, 0f, 0f) : Quaternion.identity;
+                }
+            }
+            else
+            {
+                var c = Prim(PrimitiveType.Cube, _trunk, root);
+                float s2 = 0.7f + rng.Float01() * 0.4f;
+                c.localScale = new Vector3(s2, s2 * 0.85f, s2);
+                c.localPosition = new Vector3(0f, s2 * 0.42f, 0f);
+                c.localRotation = Quaternion.Euler(0f, rng.Float01() * 40f - 20f, rng.Float01() * 10f - 5f);
+                // 널판 — 상자 면에 결을 준다. 이게 없으면 또 "박스"다.
+                for (int i = 0; i < 2; i++)
+                {
+                    var pl = Prim(PrimitiveType.Cube, _rockDark, root);
+                    pl.localScale = new Vector3(s2 * 1.02f, s2 * 0.09f, s2 * 1.02f);
+                    pl.localPosition = c.localPosition + new Vector3(0f, (i == 0 ? -0.22f : 0.22f) * s2, 0f);
+                    pl.localRotation = c.localRotation;
+                }
+            }
             return root;
         }
 
