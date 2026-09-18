@@ -24,6 +24,7 @@ namespace Tankfall.View
         int _next;
         AudioSource _loop;        // 주행음 전용
         AudioClip _fire, _hit, _move, _click, _confirm, _win, _lose;
+        AudioClip _nice, _death, _pickup, _mine;
         AudioClip[] _boom;        // 폭발 3변주 — 다탄두는 한 프레임에 9발이 터진다
 
         public static Sfx I
@@ -56,6 +57,13 @@ namespace Tankfall.View
             _confirm = Make("confirm", 0.18f, (t, d) => (Tone(t, 523f, d, 0.12f) + Tone(t, 784f, d, 0.16f)) * 0.30f);
             _win     = Make("win",     0.90f, WinWave);
             _lose    = Make("lose",    0.90f, LoseWave);
+            // 나이스샷 — 짧고 밝은 상승 3음. 발사음과 겹쳐 울리므로 **길면 안 된다**(포성을 덮는다).
+            _nice    = Make("nice",    0.26f, NiceWave);
+            // 격파 — 폭발음과 구별돼야 "누가 죽었다"가 귀로 온다. 낮게 무너지는 소리 + 금속 파열.
+            _death   = Make("death",   0.70f, DeathWave);
+            _pickup  = Make("pickup",  0.24f, (t, d) => (Tone(t, 880f, d, 0.06f) + Tone(t, 1320f, d, 0.10f)) * 0.26f);
+            // 지뢰 — 폭발보다 짧고 날카롭다(밟았다는 놀람).
+            _mine    = Make("mine",    0.30f, (t, d) => (Tone(t, 220f, d, 0.05f) * 0.6f + Noise() * 0.5f * Mathf.Exp(-t * 18f)) * 0.7f);
 
             _loop = NewSource();
             _loop.clip = _move; _loop.loop = true; _loop.volume = 0.5f;
@@ -117,6 +125,22 @@ namespace Tankfall.View
         static float MoveWave(float t, float dur)
             => (Mathf.Sin(t * 74f * 2f * Mathf.PI) * 0.5f + Noise() * 0.30f) * 0.22f
                * Mathf.Min(1f, t * 20f) * Mathf.Min(1f, (dur - t) * 20f);   // 양끝 페이드 — 반복 재생 시 딸깍 소리 방지
+
+        /// <summary>나이스샷 — 도·미·솔 빠른 상승. 맞았을 때가 아니라 **잘 멈췄을 때** 울린다.</summary>
+        static float NiceWave(float t, float dur)
+        {
+            float[] hz = { 784f, 988f, 1319f };
+            int i = Mathf.Clamp(Mathf.FloorToInt(t / 0.07f), 0, hz.Length - 1);
+            return Mathf.Sin(t * hz[i] * 2f * Mathf.PI) * Mathf.Exp(-(t - i * 0.07f) * 9f) * 0.30f;
+        }
+
+        /// <summary>격파 — 낮게 무너지는 소리. 폭발(Boom)과 구별돼야 "한 대가 죽었다"가 따로 읽힌다.</summary>
+        static float DeathWave(float t, float dur)
+        {
+            float f = Mathf.Lerp(180f, 52f, Mathf.Clamp01(t / dur));           // 떨어지는 음정 = 무너짐
+            return (Mathf.Sin(t * f * 2f * Mathf.PI) * 0.55f + Noise() * 0.45f * Mathf.Exp(-t * 5f))
+                   * Mathf.Exp(-t * 3.2f) * 0.6f;
+        }
 
         static float WinWave(float t, float dur)
         {
@@ -220,6 +244,10 @@ namespace Tankfall.View
         public static void Confirm()           => I.One(I._confirm, 0.8f, 1f);
         public static void Win()               => I.One(I._win, 0.8f, 1f);
         public static void Lose()              => I.One(I._lose, 0.8f, 1f);
+        public static void Nice()              => I.One(I._nice, 0.75f, Jitter(0.02f));
+        public static void Death()             => I.One(I._death, 0.85f, Jitter(0.05f));
+        public static void Pickup()            => I.One(I._pickup, 0.7f, Jitter(0.03f));
+        public static void Mine()              => I.One(I._mine, 0.8f, Jitter(0.06f));
 
         /// <summary>주행음 — 누르고 있는 동안만. 매 프레임 불러도 겹치지 않게 재생 중이면 그냥 둔다.</summary>
         public static void Engine(bool on)

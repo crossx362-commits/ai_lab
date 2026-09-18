@@ -84,6 +84,7 @@ namespace Tankfall.View
             if (u.Root.gameObject.activeSelf)
             {
                 EnsureFx().Death(u.Root.position, TankShape.BodyColor(u.Kind));
+                Sfx.Death();      // 폭발음과 구별되는 소리 — "한 대가 죽었다"가 귀로 따로 와야 한다
                 // 포탑이 통째로 튀어 오른다(재미요소, 연출 전용). 원본은 숨기고 복제본만 날린다 — 판정용 계층은 건드리지 않는다.
                 if (u.Turret != null)
                 {
@@ -147,6 +148,8 @@ namespace Tankfall.View
         bool _useSs;              // 3번 키 — 이번 사격을 SS(강화 2번탄)로
         bool _useUlt;             // 4번 키 — 이번 사격을 궁극기(§49)로
         string _niceFlash;        // "나이스샷!" 표시
+        float _niceFlashUntil;    // 언제까지 보여줄지 — 페이즈가 바뀌어도 살아남아야 한다(HudPowerBar 머리말)
+        const float NiceFlashSec = 1.6f;
         readonly StatusEffects _status = new StatusEffects();   // 독·화상·속박
         readonly HazardField _hazards = new HazardField();      // 지뢰·지속불
         readonly List<(Vec3 impact, int direct, float scale)> _pendingShots = new List<(Vec3, int, float)>();
@@ -224,7 +227,6 @@ namespace Tankfall.View
         /// <summary>사람이 없는 모드(자동사격·갤러리·성능·자체검사)인가. 고르기 화면 같은 대화형 UI 는 이걸 본다.</summary>
         bool _autoMode;               // -roster 로 지정됐으면 고르기 화면을 띄우지 않는다
         // ── 탱크 고르기(§2-9-17) ──
-        bool _picking;
         readonly List<TankKind> _pick = new List<TankKind>();
         /// <summary>랜덤 뽑기에서 슈퍼탱크가 나올 확률 [추정 — 아래 주석 참조].</summary>
         const float SuperTankChance = 0.06f;   // -roster Cannon,Carrot,Laser 로 바꿀 수 있다(연출 확인용)
@@ -330,7 +332,7 @@ namespace Tankfall.View
             if (string.IsNullOrEmpty(_shotDir)) _shotDir = "Screenshots";
             // 사람이 없는 판인가 — **이 한 줄이 단일 소스다.** 아래 화면 판정도 저장 설정 읽기도 이 값만 본다.
             // 🚨 여기가 한때 무인 모드를 손으로 나열했고, **두 번 다 새 모드를 빠뜨려 자체검사가 화면에 갇혔다** —
-            //    2026-09-17 고르기 화면(`_picking`), 2026-09-18 타이틀(`_screen`). 둘 다 로그가 한 줄도 안 찍혀
+            //    2026-09-17 고르기 화면, 2026-09-18 타이틀(`_screen`). 둘 다 로그가 한 줄도 안 찍혀
             //    "멈춘 건지 느린 건지"조차 안 보였다(빌드가 깨진 줄 알고 한참 헤맸다).
             //    **목록으로 되돌리지 마라.** 새 무인 모드를 만들 때 할 일은 그 인자를 파싱하는 한 줄에
             //    `_autoMode = true` 를 넣는 것 하나뿐이다.
@@ -372,7 +374,6 @@ namespace Tankfall.View
             _log = $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name} · {RosterText()}  (파랑 vs 빨강)";
 
             _headless = headless;   // 판정은 위(인자 파싱 직후)에서 한 번만 한다 — 머리말 참조
-            _picking = !_rosterFixed && !_autoMode && !_practice;
             _screen = headless ? GameScreen.Battle : GameScreen.Title;
             Sfx.Muted = headless || Application.isBatchMode;
         }
@@ -658,6 +659,26 @@ namespace Tankfall.View
 
         static Shader _shader;
 
+        /// <summary>
+        /// 반투명 머티리얼. Standard 는 **렌더 모드를 코드로 바꿔야** 알파가 먹는다 —
+        /// 색의 알파만 낮추고 끝내면 Opaque 그대로라 불투명하게 나온다(기후 도형이 그랬다).
+        /// </summary>
+        static Material MakeFadeMat(Color c)
+        {
+            var m = new Material(MakeMat(c, 0.2f));
+            m.SetFloat("_Mode", 2f);                                  // 2 = Fade
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetInt("_ZWrite", 0);
+            m.DisableKeyword("_ALPHATEST_ON");
+            m.EnableKeyword("_ALPHABLEND_ON");
+            m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            var col = c; col.a = 0.30f;                               // 뒤가 비쳐야 적이 보인다
+            m.color = col;
+            return m;
+        }
+
         static Material MakeMat(Color c, float smooth)
         {
             if (_shader == null)
@@ -708,7 +729,6 @@ namespace Tankfall.View
             if (_units.Count == 0) return;                 // Start 가 실패한 경우
             if (_gallery) { GalleryStep(); return; }
             if (_perf) { PerfStep(); return; }
-            if (_picking) { UpdateCamera(Time.deltaTime); return; }   // 고르는 동안 판은 멈춘다
             if (_supplySelfTest) { SupplySelfTestStep(); return; }
             if (_ultSelfTest) { UltSelfTestStep(); return; }
             if (_impairSelfTest) { ImpairSelfTestStep(); return; }
@@ -984,7 +1004,18 @@ namespace Tankfall.View
                 {
                     _charging = false;
                     // 원작 나이스샷: 표시점에 정확히 멈추면 스킬포인트 +1 (허용 ±1.5% [추정])
-                    if (NiceShot.Judge(_mark, _power)) { u.Skill.OnNiceShot(); _niceFlash = $"나이스샷! 포인트 {u.Skill.Points}"; }
+                    if (NiceShot.Judge(_mark, _power))
+                    {
+                        u.Skill.OnNiceShot();
+                        // 🚨 이 게임의 핵심 조작인데 **2026-09-18 까지 완전 무피드백이었다.**
+                        //    `_niceFlash` 를 세팅한 바로 다음 줄의 `FireFrom` 이 페이즈를 Flying 으로 바꾸는데,
+                        //    이걸 그리는 `HudPowerBar` 는 `_phase == Fire` 일 때만 불린다 — 즉 **한 프레임도 안 그려졌다.**
+                        //    그래서 페이즈가 아니라 **시간**으로 살린다(아래 `_niceFlashUntil`).
+                        _niceFlash = $"나이스샷!  포인트 {u.Skill.Points}";
+                        _niceFlashUntil = Time.time + NiceFlashSec;
+                        Sfx.Nice();
+                        AddPopup(u.Pos, "나이스샷!", Ui.Mark);      // 화면 중앙 문구 + 탱크 위 팝업 둘 다
+                    }
                     // 파워고정탄(§2-9-14) — 원작 "50% 이하의 힘으로 발사할 수 없게 된다".
                     float pw2 = _impair.ClampPower(u.Id, _power);
                     if (pw2 != _power) _log = $"[방해] 파워고정탄 — 50% 미만으로는 못 쏜다 ({_power * 100:F0} → {pw2 * 100:F0})";
@@ -1016,8 +1047,14 @@ namespace Tankfall.View
                 int hz = Damage.AfterDefense(_hazards.OnUnitAt(u.Id, u.Kind, new Vec3(p.x, ground + 1.2f, p.z)), u.St.Defense);
                 if (hz > 0)
                 {
+                    // 예전엔 로그 한 줄이 전부였다 — 밟아도 아무 일도 안 일어나는 것처럼 보였다.
+                    // 피해는 `CountDamage` 로 보낸다(팝업·소리·전적이 거기 한 곳에 모여 있다).
                     u.Hp = Mathf.Max(0, u.Hp - hz);
-                    _log = $"◉ 설치물! −{hz}";
+                    var hp = new Vector3(p.x, ground + 1.2f, p.z);
+                    EnsureFx().Blast(hp, 3.2f, MapTheme.Of(_map, _weather == Weather.Snow).RockDark, u.Kind, ShellKind.Normal);
+                    Sfx.Mine();
+                    CountDamage(u, hz, $"-{hz}", false);   // 쏜 사람이 없으므로 가해 전적엔 안 쌓는다
+                    _log = $"◉ 설치물! {(u.Team == 0 ? "아군" : "적군")}{u.Id % MapHeightFunction.TeamSize + 1} −{hz}";
                     if (!u.Alive) KillUnit(u);
                     break;
                 }
@@ -1571,6 +1608,8 @@ namespace Tankfall.View
         /// <summary>이번 사격이 적을 맞혔는가. 한 발이 여러 명을 맞혀도 명중은 1 이다(명중률의 분모가 발수라서).</summary>
         bool _hitThisShot;
 
+        bool _suddenDeathAnnounced;   // 배너는 시작될 때 한 번만(매 턴 뜨면 잔소리가 된다)
+
         void ApplySuddenDeath()
         {
             if (_round <= SuddenDeathRound) return;
@@ -1578,9 +1617,19 @@ namespace Tankfall.View
             foreach (var u in _units)
                 if (u.Alive)
                 {
-                    u.Hp = Mathf.Max(0, u.Hp - Mathf.Max(1, Mathf.RoundToInt(u.St.Hp * SuddenDeathPct)));
+                    int d = Mathf.Max(1, Mathf.RoundToInt(u.St.Hp * SuddenDeathPct));
+                    u.Hp = Mathf.Max(0, u.Hp - d);
+                    CountDamage(u, d, $"-{d}", false);      // 전원 머리 위에 숫자가 떠야 "전부 깎인다"가 읽힌다
                     if (!u.Alive) { downed++; KillUnit(u); }
                 }
+            // 배너 — 로그는 다음 행동 한 번이면 덮인다. 시작된 라운드에는 화면 한가운데에 알린다.
+            if (!_suddenDeathAnnounced)
+            {
+                _suddenDeathAnnounced = true;
+                _niceFlash = "☠ 서든데스 — 이제 매 턴 전원이 깎인다";
+                _niceFlashUntil = Time.time + 2.6f;
+                Sfx.Lose();                                  // 낮게 내려가는 소리 = 나쁜 일이 시작됐다
+            }
             _log = $"☠ 서든데스 {_round}라운드 — 전원 최대HP {SuddenDeathPct * 100:F0}%" + (downed > 0 ? $" ({downed}대 격파)" : "");
         }
 
@@ -1667,6 +1716,9 @@ namespace Tankfall.View
                 RefreshStatusFx();
                 if (dot + hz <= 0) break;
                 cu.Hp = Mathf.Max(0, cu.Hp - dot - hz);
+                // 예전엔 HP 에서 조용히 빼고 로그만 갱신했다 — **내 턴이 왔는데 체력이 왜 줄었는지**
+                // 화면에 아무 단서가 없었다(팝업도 소리도 전적도 없음). `CountDamage` 한 곳으로 보낸다.
+                CountDamage(cu, dot + hz, $"-{dot + hz}", false);   // 쏜 사람이 없으니 가해 전적엔 안 쌓는다
                 _log = $"{(cu.Team == 0 ? "아군" : "적군")}{cu.Id % MapHeightFunction.TeamSize + 1} 턴 시작 피해{(dot > 0 ? $" 지속 −{dot}" : "")}{(hz > 0 ? $" 설치물 −{hz}" : "")}";
                 if (cu.Alive) break;
                 KillUnit(cu);
@@ -2002,7 +2054,11 @@ namespace Tankfall.View
                     go.name = $"Air{_airGos.Count}";
                     Destroy(go.GetComponent<Collider>());
                     var mr = go.GetComponent<MeshRenderer>();
-                    mr.sharedMaterial = MakeMat(c, 0.6f);
+                    // 🚨 `MakeMat(c, 0.6f)` 의 둘째 인자는 **알파가 아니라 Glossiness** 다.
+                    //    주석엔 "반투명 판"이라고 적혀 있었지만 Standard 가 Opaque 라서, 맵 한가운데
+                    //    **불투명한 노란 벽(40m×52m)과 하늘색 기둥(지름 14m×62m)** 이 서서 적을 가렸다.
+                    //    실제로 반투명하게 만들려면 셰이더를 Fade 모드로 돌려야 한다(색의 알파만 낮추면 무시된다).
+                    mr.sharedMaterial = MakeFadeMat(c);
                     mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                     _airGos.Add(go.transform);
                 }
@@ -2060,7 +2116,16 @@ namespace Tankfall.View
                     ApplyAim(o);
                     moved++;
                 }
-                if (moved > 0) { _log = $"⛰ 지진! 탱크 {moved}대의 위치와 각도가 흔들렸다"; _boomQuakes++; }
+                if (moved > 0)
+                {
+                    // 탱크가 순간이동하듯 자리가 바뀌는데 흔들림도 소리도 없어서 버그처럼 보였다.
+                    EnsureFx().AddShake(0.55f);
+                    Sfx.Boom(0.35f);
+                    _niceFlash = "⛰ 지진!";
+                    _niceFlashUntil = Time.time + 1.3f;
+                    _log = $"⛰ 지진! 탱크 {moved}대의 위치와 각도가 흔들렸다";
+                    _boomQuakes++;
+                }
             }
 
             // ── 유성 ── "플레이어 중 한 명의 탱이 있는 곳과 그 근처에 메테오가 떨어진다"
@@ -2078,6 +2143,10 @@ namespace Tankfall.View
                 var blast = SdfDeformer.SubtractSphere(_vol, new BlastRequest(mx, g, mz, BoomMode.MeteorCrater));
                 var collapse = CeilingCollapse.Apply(_vol, blast);
                 _terrain.ApplyDirty(CeilingCollapse.Union(blast, collapse));
+                // 예전엔 지형만 조용히 파였다 — 하늘에서 뭐가 떨어졌는지 화면에 아무 단서가 없었다.
+                EnsureFx().Blast(new Vector3(mx, g, mz), BoomMode.MeteorCrater,
+                                 MapTheme.Of(_map, _weather == Weather.Snow).RockDark, TankKind.Cannon, ShellKind.Normal);
+                Sfx.Boom(BoomMode.MeteorCrater / 8f);
                 foreach (var o in _units)
                 {
                     if (!o.Alive) continue;
@@ -2089,11 +2158,16 @@ namespace Tankfall.View
                     if (dmg <= 0) continue;
                     o.Hp = Mathf.Max(0, o.Hp - dmg);
                     hitN++;
-                    if (!o.Alive) o.Root.gameObject.SetActive(false);
+                    CountDamage(o, dmg, $"-{dmg}", false);   // 누가 얼마나 맞았는지 머리 위에 뜬다
+                    // ⚠️ `Root.SetActive(false)` 로 되돌리지 마라 — 탱크가 잔해·연기 없이 그냥 사라진다
+                    //    (KillUnit 머리말의 금지 사항인데 이 경로만 빠져 있었다).
+                    if (!o.Alive) KillUnit(o);
                 }
             }
             foreach (var o in _units) if (o.Alive) GroundUnit(o, 0f);
             _boomMeteors++;
+            _niceFlash = $"☄ 유성! {_boomSpots.Count}발";
+            _niceFlashUntil = Time.time + 1.6f;
             _log = $"☄ 유성! {_boomSpots.Count}발이 떨어졌다" + (hitN > 0 ? $" — {hitN}대 피격" : "");
         }
 
@@ -2204,64 +2278,17 @@ namespace Tankfall.View
             Application.Quit(fail == 0 ? 0 : 1);
         }
 
-        /// <summary>
-        /// 탱크 고르기(§2-9-17). 원작 13종을 다 만들어 놓고도 **게임에서는 캐논·캐롯·레이저 셋만**
-        /// 나오고 있었다 — 나머지 열은 매치업 하네스에서만 돌던 셈이다(선언만 있고 화면에 없으면 죽은 값이다).
-        ///
-        /// ⚠️ 슈퍼탱크: 코드 주석에 "랜덤에서만 낮은 확률로 등장"이라 적혀 있었지만 **조사로 확인되지 않았다**
-        ///    (namu.wiki 포트리스2 / 포트리스2·등장탱크 둘 다 슈퍼탱크 서술이 없다, 2026-09-17 조회).
-        ///    그래서 "고를 수는 없고 랜덤에서만 낮은 확률로 나온다"는 취급과 확률 6% 는 전부 [추정]이다.
-        ///    확실한 건 하나 — **그냥 두면 한 판도 안 나오는 죽은 탱크**라 랜덤 경로라도 열어둔다.
-        /// </summary>
-        void DrawPicker()
-        {
-            var kinds = TankStats.Selectable();
-            float w = 720f, h = 430f;
-            var r = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
-            GUI.Box(r, "");
-            GUILayout.BeginArea(new Rect(r.x + 16, r.y + 12, r.width - 32, r.height - 24));
-            var title = new GUIStyle(GUI.skin.label) { fontSize = 18, richText = true };
-            var st = new GUIStyle(GUI.skin.label) { fontSize = 13, richText = true };
-            GUILayout.Label($"<b>탱크 고르기</b>   —   {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name}", title);
-            GUILayout.Label($"<size=12>{MapHeightFunction.TeamSize}대를 고르세요 ({_pick.Count}/{MapHeightFunction.TeamSize}). 같은 기종을 겹쳐 골라도 됩니다.</size>", st);
-            GUILayout.Space(6);
-
-            int col = 0;
-            GUILayout.BeginHorizontal();
-            foreach (var k in kinds)
-            {
-                var t = TankStats.Get(k);
-                var sp2 = TankStats.For(k, ShellKind.Special, 1f, Weather.Clear);
-                if (GUILayout.Button($"{t.Name}  |  {TankStats.EraName(t.Era)} · 체 {t.Hp} · 2번탄 {sp2.Name}", GUILayout.Width(160), GUILayout.Height(46)))
-                    if (_pick.Count < MapHeightFunction.TeamSize) _pick.Add(k);
-                if (++col % 4 == 0) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); }
-            }
-            GUILayout.EndHorizontal();
-            GUILayout.Space(8);
-
-            string chosen = _pick.Count == 0 ? "<color=#999>아직 없음</color>" : "";
-            foreach (var k in _pick) chosen += TankStats.Get(k).Name + "  ";
-            GUILayout.Label($"고른 탱크: <b>{chosen}</b>", st);
-            GUILayout.Space(4);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("되돌리기", GUILayout.Width(110), GUILayout.Height(34)) && _pick.Count > 0)
-                _pick.RemoveAt(_pick.Count - 1);
-            if (GUILayout.Button($"랜덤 {MapHeightFunction.TeamSize}종", GUILayout.Width(110), GUILayout.Height(34)))
-            {
-                _pick.Clear();
-                for (int i = 0; i < MapHeightFunction.TeamSize; i++)
-                    _pick.Add(Random.value < SuperTankChance
-                        ? TankKind.SuperTank                       // 고를 수는 없고 랜덤에서만 [추정]
-                        : kinds[Random.Range(0, kinds.Length)]);
-            }
-            GUI.enabled = _pick.Count == MapHeightFunction.TeamSize;
-            if (GUILayout.Button("<b>시작</b>", GUILayout.Width(140), GUILayout.Height(34))) ConfirmPick();
-            GUI.enabled = true;
-            GUILayout.EndHorizontal();
-            GUILayout.EndArea();
-        }
 
         /// <summary>고른 대로 판을 다시 세운다. 지형·날씨는 그대로 두고 탱크만 새로 만든다.</summary>
+        /// <summary>
+        /// 로스터를 확정하고 팀을 다시 세운다. **지금은 `-rosterselftest` 전용 경로다** —
+        /// 사람이 고르는 길은 타이틀 → `GameScreen.TankSelect` → `GameScreen.Setup` 이다(BattleScreens).
+        /// 🚨 2026-09-18 까지 옛 IMGUI 고르기 창(`DrawPicker`)이 `_picking` 으로 살아 있었고, 그게
+        ///    `ScreenGUI()` 보다 **먼저 그려지고 return** 해서 타이틀·탱크선택·전투설정 세 화면이
+        ///    통째로 도달 불가였다. Update 도 같은 자리에서 return 해 타이틀 입력이 죽어 있었고,
+        ///    확인을 눌러도 `_screen` 은 여전히 Title 이라 **탱크를 두 번 골랐다.**
+        ///    화면을 새로 만들면 옛 경로를 반드시 지워라 — 둘 다 살려두면 먼저 그리는 쪽이 이긴다.
+        /// </summary>
         void ConfirmPick()
         {
             _roster = _pick.ToArray();
@@ -2275,7 +2302,6 @@ namespace Tankfall.View
                 foreach (var u in _units) { Items.Roll(ref _itemRng, _itemSlots, roll); _items.Bag(u.Id).AddRange(roll); }
             }
             _turn = 0;
-            _picking = false;
             _phase = Phase.Move;
             _phaseTimer = MovePhaseSec;
             _log = $"전투 개시 — {RosterText()}  (파랑 vs 빨강)";
@@ -2320,7 +2346,6 @@ namespace Tankfall.View
 
             foreach (TankKind k in System.Enum.GetValues(typeof(TankKind)))
             {
-                _pick.Clear();
                 _pick.Clear();
                 for (int n2 = 0; n2 < MapHeightFunction.TeamSize; n2++) _pick.Add(k);
                 ConfirmPick();
@@ -2421,7 +2446,6 @@ namespace Tankfall.View
                 }
                 GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), _fogTex);
             }
-            if (_picking) { DrawPicker(); return; }
             if (_hudOff) return;
             float W = Screen.width, H = Screen.height;
             if (ScreenGUI()) return;                 // 타이틀·탱크 선택·설정은 전투 HUD 를 덮는다
@@ -2440,6 +2464,7 @@ namespace Tankfall.View
                 HudWeapons(u, W, H);
                 HudPowerBar(u, W, H);
             }
+            HudNiceFlash(W, H);      // ⚠️ 위 블록 **밖**이어야 한다 — 발사 순간 페이즈가 바뀌므로(아래 머리말)
             HudRange(u, W, H);
             HudItems(u, W, H);
             HudLog(W, H);
@@ -2650,6 +2675,21 @@ namespace Tankfall.View
         /// 하단 중앙 — 파워 게이지(§11). 이 게임에서 제일 중요한 위젯이다.
         /// 표시점(§2-9-2 나이스샷)을 세로선으로 겹쳐 그려서 **멈출 자리가 눈에 보이게** 한다.
         /// </summary>
+        /// <summary>
+        /// 나이스샷 성공 문구. **파워바 안에 두면 안 된다** — 성공 판정과 발사가 같은 프레임이라
+        /// 그리려는 순간엔 이미 `Phase.Flying` 이고 파워바는 화면에서 사라져 있다(한 프레임도 안 그려졌다).
+        /// 그래서 페이즈가 아니라 시간으로 살리고, 전투 HUD 어디서나 그린다.
+        /// </summary>
+        void HudNiceFlash(float W, float H)
+        {
+            if (_niceFlash == null || Time.time >= _niceFlashUntil) return;
+            float left = _niceFlashUntil - Time.time;
+            float a = Mathf.Clamp01(left / 0.5f);                    // 끝에서 0.5초 동안 사라진다
+            var c = Ui.Mark; c.a = a;
+            float pop = 1f + Mathf.Clamp01((NiceFlashSec - left) / 0.12f) * 0f;   // 자리만 잡아둔다
+            Ui.TextShadow(new Rect(0, H * 0.34f, W, 34f), _niceFlash, Mathf.RoundToInt(26f * pop), c, TextAnchor.MiddleCenter, true);
+        }
+
         void HudPowerBar(Unit u, float W, float H)
         {
             float bw = Mathf.Min(560f, W * 0.42f);
@@ -2872,6 +2912,8 @@ namespace Tankfall.View
             var got = _supply.TryPickup(x, y, z);
             if (got == ItemKind.None) return false;
             _items.Bag(u.Id).Add(got);
+            Sfx.Pickup();
+            AddPopup(u.Pos, Items.Get(got).Name, Ui.Good);    // 뭘 주웠는지 그 자리에서 보여준다
             _log = $"[보급] {(u.Team == 0 ? "아군" : "적군")}{u.Id % MapHeightFunction.TeamSize + 1} 획득 — {Items.Get(got).Name}";
             RefreshCrates();
             return true;

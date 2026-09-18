@@ -46,6 +46,12 @@ namespace Tankfall.View
         /// <summary>폭발 흔들림. 카메라가 매 프레임 읽고 여기서 저절로 줄어든다.</summary>
         public float Shake { get; private set; }
 
+        /// <summary>
+        /// 폭발이 아닌 사건(지진 등)이 카메라를 흔들 때. `Shake` 의 set 을 열지 않는 이유는
+        /// 감쇠·상한 규칙이 이 파일 안에만 있어야 하기 때문이다 — 밖에서 대입하면 상한이 무시된다.
+        /// </summary>
+        public void AddShake(float amount) => Shake = Mathf.Min(Shake + Mathf.Max(0f, amount), 1.1f);
+
         void Update()
         {
             Shake = Mathf.Max(0f, Shake - Time.deltaTime * 2.2f);
