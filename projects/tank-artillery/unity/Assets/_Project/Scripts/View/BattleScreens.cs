@@ -593,8 +593,10 @@ namespace Tankfall.View
 
             // 고른 것 + 특수탄 설명
             // 폭도 칸 수에서 유도한다 — 칸만 늘리고 상자를 그대로 두면 넷째가 상자 밖으로 나간다.
-            const float SlotW = 150f, SlotGap = 8f;
-            float barW = 28f + MapHeightFunction.TeamSize * SlotW;
+            const float SlotW = 150f, SlotGap = 8f, InfoW = 190f;
+            // ⚠️ 슬롯 칸 수만 늘리고 폭을 그대로 두면 **오른쪽 정보칸과 겹친다**(4:4 에서 실제로 겹쳤다).
+            //    슬롯 자리와 정보칸 자리를 **둘 다** 폭에 넣는다.
+            float barW = 28f + MapHeightFunction.TeamSize * SlotW + InfoW;
             var bar = new Rect(W * 0.5f - barW * 0.5f, H - 122f, barW, 78f);
             Ui.Box(bar);
             Ui.Text(new Rect(bar.x + 14f, bar.y + 6f, 240f, 18f), $"고른 탱크 {_picked.Count}/{MapHeightFunction.TeamSize}", 12, Ui.Dim, TextAnchor.MiddleLeft, true);
@@ -612,17 +614,18 @@ namespace Tankfall.View
                 else Ui.Text(slot, "비어 있음", 11, Ui.Dim, TextAnchor.MiddleCenter);
             }
 
-            // 커서가 가리키는 기종의 자세한 값
+            // 커서가 가리키는 기종의 자세한 값 — x 는 슬롯이 끝나는 자리에서 유도한다(숫자로 박으면 또 겹친다).
+            float infoX = bar.x + 14f + MapHeightFunction.TeamSize * SlotW + 6f;
             var cs = TankStats.Get((TankKind)_pickCursor);
-            Ui.Text(new Rect(bar.x + 470f, bar.y + 6f, 180f, 18f), cs.Name, 13, Ui.Power, TextAnchor.MiddleLeft, true);
-            Ui.Text(new Rect(bar.x + 470f, bar.y + 24f, 180f, 16f),
+            Ui.Text(new Rect(infoX, bar.y + 6f, 180f, 18f), cs.Name, 13, Ui.Power, TextAnchor.MiddleLeft, true);
+            Ui.Text(new Rect(infoX, bar.y + 24f, 180f, 16f),
                     $"각도 {cs.MinPitch:F0}~{cs.MaxPitch:F0}°  딜레이 {cs.Delay}", 10, Ui.Dim);
-            Ui.Text(new Rect(bar.x + 470f, bar.y + 40f, 180f, 16f),
+            Ui.Text(new Rect(infoX, bar.y + 40f, 180f, 16f),
                     $"특수탄 {cs.SpecialName}", 10, Ui.Warn);
             // ⚠️ `SpBlast`/`SpBase` 는 **배율**이다 — 그대로 찍으면 전 기종이 "1" 로 보인다(실제로 그렇게 나왔다).
             //    실제 수치는 탄종을 적용한 `TankStats.For` 만 안다.
             var spSt = TankStats.For((TankKind)_pickCursor, ShellKind.Special, 1f, Weather.Clear);
-            Ui.Text(new Rect(bar.x + 470f, bar.y + 56f, 180f, 16f),
+            Ui.Text(new Rect(infoX, bar.y + 56f, 180f, 16f),
                     $"폭발 {spSt.BlastRadius:F1}m  피해 {spSt.BaseDamage:F0}", 10, Ui.Dim);
 
             if (_picked.Count == MapHeightFunction.TeamSize)
