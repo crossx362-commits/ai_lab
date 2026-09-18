@@ -32,6 +32,14 @@ namespace Tankfall.Sim
     public static class ProjectileSimulator
     {
         /// <summary>
+        /// 포구가 지형에 박혔을 때 "빠져나갈 수 있다"고 봐 주는 거리(m) [추정].
+        /// 포신 길이가 기종별로 2.0~5.0m 이고(ProceduralTank), 크레이터 벽·언덕은 그보다 두껍다 —
+        /// 그래서 이 값 안에서 공기가 나오면 **턱에 살짝 걸린 것**, 안 나오면 **진짜로 묻힌 것**으로 가른다.
+        /// 키우면 벽에 대고 쏴도 뚫고 나가고, 줄이면 평범한 사격이 자폭이 된다.
+        /// </summary>
+        public const float MuzzleEscape = 3.0f;
+
+        /// <summary>
         /// 발사 → 착탄. 지형·탱크 충돌을 모두 본다.
         ///
         /// ⚠️ 지형 판정은 SDF **부호 변화**만 쓴다. 오버행·동굴이 있으므로
@@ -60,10 +68,42 @@ namespace Tankfall.Sim
             var path = new List<Vec3>(256) { p0 };
             var res = new ShotResult { DirectHitTankId = -1, Path = path, DamageScale = 1f };
 
-            Vec3 prev = p0;
-            float prevSdf = vol.SampleWorld(p0.X, p0.Y, p0.Z);
+            // ⚠️ 포구가 **지형 안에 박힌 채** 쏘는 경우(구덩이 안, 비탈에 포신이 박힘 — §7-6 은 깊은 구덩이를
+            //    의도된 설계로 둔다). 아래 지형 판정은 **공기→지형 부호 전환**(`sdf<=0 && prevSdf>0`)만 본다.
+            //    시작점이 이미 지형 속이면 그 전환이 영영 안 와서 **탄이 땅속을 그대로 지나간다** —
+            //    오너 보고 "발사체가 지형을 그냥 통과한다"(2026-09-18). 실측: 묻힌 포구에서 쏜 432발 전부 관통.
+            //
+            //    조사한 표준 두 가지가 같은 답을 준다:
+            //      · PhysX GeometryQueries — 레이 원점이 solid 안이면 **거리 0·원점에 맞은 것**으로 보고한다.
+            //        https://docs.nvidia.com/gameworks/content/gameworkslibrary/physx/guide/3.3.4/Manual/GeometryQueries.html
+            //      · 포격 게임 관례(웜즈류) — 탄은 지형에 닿으면 터지므로 벽에 대고 쏘면 그 자리에서 터지고
+            //        자기도 맞는다. https://worms.fandom.com/wiki/Shotgun
+            //
+            //    다만 "묻혔으면 무조건 즉시 폭발"로 두면 포구가 턱에 **살짝** 걸린 평범한 사격까지 자폭이 된다.
+            //    그래서 포신 길이만큼(MuzzleEscape) 앞을 훑어 공기가 나오면 거기서부터 날리고,
+            //    그 안에서 못 벗어나면 진짜로 묻힌 것이라 포구에서 터뜨린다.
+            Vec3 start = p0;
+            if (vol.SampleWorld(p0.X, p0.Y, p0.Z) <= 0f)
+            {
+                Vec3 dir = v0.Normalized;
+                bool escaped = false;
+                for (float d = vol.Voxel; d <= MuzzleEscape && !escaped; d += vol.Voxel)
+                {
+                    Vec3 q = p0 + dir * d;
+                    if (vol.SampleWorld(q.X, q.Y, q.Z) > 0f) { start = q; escaped = true; }
+                }
+                if (!escaped)
+                {
+                    res.Hit = true; res.Impact = p0; res.FlightTime = 0f;
+                    return res;                       // 포구에서 터진다 — 폭발 피해는 호출부가 준다(자해 포함)
+                }
+                path.Add(start);
+            }
+
+            Vec3 prev = start;
+            float prevSdf = vol.SampleWorld(start.X, start.Y, start.Z);
             // 회오리는 궤적을 한 번 끊고 다시 잇는다(머리말 참조). 무한 반복을 막으려 한 판에 한 번만.
-            Vec3 org = p0, vel = v0;
+            Vec3 org = start, vel = v0;
             float tBase = 0f;
             int lifts = 0;
             bool homing = false; Vec3 hv = default; int homeTarget = -1;

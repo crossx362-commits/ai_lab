@@ -148,6 +148,7 @@ case "${1:-all}" in
   shell)   run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs ;;
   nice)    run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs ;;
   map)     run_console MapVerify          $SIM/*.cs tools/MapVerify.cs ;;
+  hit)     run_console TerrainHitVerify   $SIM/*.cs tools/TerrainHitVerify.cs ;;
   guide)   run_console GuidanceVerify     $SIM/*.cs tools/GuidanceVerify.cs ;;
   aimove)  run_console AiMoveVerify      $SIM/*.cs tools/AiMoveVerify.cs ;;
   shellpick) run_console ShellPickVerify  $SIM/*.cs tools/ShellPickVerify.cs ;;
@@ -160,11 +161,12 @@ case "${1:-all}" in
     run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs; echo
     run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs; echo
     run_console MapVerify          $SIM/*.cs tools/MapVerify.cs; echo
+    run_console TerrainHitVerify   $SIM/*.cs tools/TerrainHitVerify.cs; echo
     run_console GuidanceVerify     $SIM/*.cs tools/GuidanceVerify.cs; echo
     run_console AiMoveVerify      $SIM/*.cs tools/AiMoveVerify.cs; echo
     run_console ShellPickVerify   $SIM/*.cs tools/ShellPickVerify.cs; echo
     run_console BattleSimVerify  $SIM/*.cs tools/BattleSimVerify.cs ;;
-  *) echo "사용: $0 [all|sdf|play|ball|battle|turn|shell|nice|map|guide|aimove|shellpick|compile]"; exit 2 ;;
+  *) echo "사용: $0 [all|sdf|play|ball|battle|turn|shell|nice|map|hit|guide|aimove|shellpick|compile]"; exit 2 ;;
 esac
 
 echo
