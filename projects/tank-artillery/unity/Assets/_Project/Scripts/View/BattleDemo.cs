@@ -2377,6 +2377,21 @@ namespace Tankfall.View
                 for (int n2 = 0; n2 < MapHeightFunction.TeamSize; n2++) _pick.Add(k);
                 ConfirmPick();
                 if (_units.Count != MapHeightFunction.TeamSize * 2) { Debug.Log($"[Tankfall] ❌ {k}: 유닛이 {_units.Count}대({MapHeightFunction.TeamSize * 2}대여야 한다)"); fail++; continue; }
+
+                // ── 주행 연출: 바퀴가 실제로 도는 파츠로 붙었는가 ──
+                // ⚠️ 컴파일러가 안 잡아준다. 회전부를 다시 차체 메시에 구워 넣으면 **아무 경고 없이**
+                //    탱크가 미끄러지던 옛 상태로 돌아간다(그게 2026-09-18 까지의 상태였다).
+                {
+                    var drv = _units[0].Root.GetComponent<TankDrive>();
+                    if (drv == null) { Debug.Log($"[Tankfall] ❌ {k}: TankDrive 가 안 붙었다 — 바퀴가 안 돈다"); fail++; }
+                    else if (drv.Hover)
+                    {
+                        if (drv.Wheels.Count != 0) { Debug.Log($"[Tankfall] ❌ {k}: 호버인데 바퀴가 {drv.Wheels.Count}개"); fail++; }
+                    }
+                    else if (drv.Wheels.Count == 0) { Debug.Log($"[Tankfall] ❌ {k}: 도는 바퀴가 0개 — 회전부가 차체에 구워졌다"); fail++; }
+                    else if (drv.WheelRadius <= 0.01f) { Debug.Log($"[Tankfall] ❌ {k}: 바퀴 반지름이 0 — 굴림 각도가 안 나온다"); fail++; }
+                    else Debug.Log($"[Tankfall] 로스터 자체검사 {TankStats.Get(k).Name,-8} 도는 바퀴 {drv.Wheels.Count}개 · 반지름 {drv.WheelRadius:F2}m");
+                }
                 var u = _units[0];
                 if (u.Kind != k) { Debug.Log($"[Tankfall] ❌ {k}: 스폰된 기종이 {u.Kind}"); fail++; continue; }
                 if (u.HpMax != TankStats.Get(k).Hp) { Debug.Log($"[Tankfall] ❌ {k}: 체력 {u.HpMax} (표 {TankStats.Get(k).Hp})"); fail++; continue; }
