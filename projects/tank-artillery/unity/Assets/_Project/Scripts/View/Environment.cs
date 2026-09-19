@@ -114,6 +114,9 @@ namespace Tankfall.View
         /// <summary>갤러리처럼 **지형을 끈 화면**에서만 가운데를 메운다. 전투에서 부르지 마라(크레이터가 덮인다).</summary>
         public void SetApronFill(bool on) { if (_apronFill != null) _apronFill.SetActive(on); }
 
+        /// <summary>자체검사용 — 전투 중에 켜져 있으면 크레이터가 다시 덮인다. 주석이 아니라 코드가 지킨다.</summary>
+        public bool ApronFillOn => _apronFill != null && _apronFill.activeSelf;
+
         /// <summary>
         /// 가운데가 뚫린 사각 고리. 안쪽 구멍 = 플레이 영역 `[-overlap, mapSize+overlap]`,
         /// 바깥 = 그 밖으로 `out` 만큼. 사다리꼴 4장으로 만든다.

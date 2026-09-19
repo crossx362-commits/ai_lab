@@ -79,7 +79,7 @@ namespace Tankfall.View
             //  ⚠️ 이건 되돌렸던 "지형 색 얼룩" 가설과 **다른 것**이다. 그건 평평한 면의 얼룩이었고
             //     실측으로 음영임이 반증됐다. 이건 새 입력(굴착 여부)이지 같은 가설의 재시도가 아니다.
             // ══════════════════════════════════════════════════════════════
-            float below = MapHeightFunction.Height(t.Map, p.x, p.z) - p.y;
+            float below = H0(t.Map, p.x, p.z) - p.y;
             // 0.8m 아래부터 흙이 비치기 시작해 4m 에서 완전히 흙이다.
             // ⚠️ 문턱을 0 으로 두지 마라 — 복셀(0.5m) 해상도의 표면 정점이 원래 높이보다 살짝 아래에
             //    앉는 일이 흔해서, **파지도 않은 평지가 통째로 흙색**이 된다.
@@ -93,6 +93,47 @@ namespace Tankfall.View
             //    ±7% 면 얼룩이 보이되 색이 더러워지지는 않는다(더 키우면 지면이 지저분해진다).
             float shade = 1f + blotch * 0.075f;
             return new Color(col.r * shade, col.g * shade, col.b * shade, col.a);
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  원래 지면 높이 캐시 (2026-09-19)
+        //
+        //  `MapHeightFunction.Height` 를 **정점마다** 부르면 비싸다 — 실측으로 24청크 재생성의
+        //  법선+색이 1.49ms → 3.04ms 로 **두 배**가 됐고, 다탄두는 **한 프레임에 세 번** 돌아
+        //  최악 5.93ms 까지 갔다(`-autoshot -roster MultiMissile,...` 로그).
+        //  → 1m 격자로 한 번 구워 두고 이중선형으로 읽는다. 사인·코사인 여러 번 대신 덧셈 네 번이다.
+        //
+        //  ⚠️ **View 전용 캐시다. Sim 에 상태를 더하지 마라** — 결정론(§1 2순위)과 §10 델타 계약이 걸린다.
+        //  ⚠️ 1m 격자의 보간 오차는 cm 단위라 문턱 0.8m 에 안 닿는다. 격자를 **성기게** 만들지 마라
+        //     (4m 쯤 되면 언덕 꼭대기를 깎아 평지가 흙색이 된다).
+        //  ⚠️ 맵이 바뀌면 다시 굽는다. 맵 종류로 판별하므로 같은 맵이면 재사용된다.
+        // ══════════════════════════════════════════════════════════════
+        const float HStep = 1f;
+        static MapKind _hMap;
+        static float[] _hGrid;
+        static int _hN;
+
+        static float H0(MapKind map, float x, float z)
+        {
+            if (_hGrid == null || _hMap != map) BuildHeightCache(map);
+            float fx = Mathf.Clamp(x / HStep, 0f, _hN - 1.001f);
+            float fz = Mathf.Clamp(z / HStep, 0f, _hN - 1.001f);
+            int ix = (int)fx, iz = (int)fz;
+            float tx = fx - ix, tz = fz - iz;
+            int r0 = iz * _hN, r1 = r0 + _hN;
+            float a = Mathf.Lerp(_hGrid[r0 + ix], _hGrid[r0 + ix + 1], tx);
+            float b = Mathf.Lerp(_hGrid[r1 + ix], _hGrid[r1 + ix + 1], tx);
+            return Mathf.Lerp(a, b, tz);
+        }
+
+        static void BuildHeightCache(MapKind map)
+        {
+            _hN = Mathf.CeilToInt(MapHeightFunction.MapSize / HStep) + 2;
+            _hGrid = new float[_hN * _hN];
+            for (int j = 0; j < _hN; j++)
+                for (int i = 0; i < _hN; i++)
+                    _hGrid[j * _hN + i] = MapHeightFunction.Height(map, i * HStep, j * HStep);
+            _hMap = map;
         }
 
         /// <summary>파낸 것으로 판정된 정점 수 / 전체 / 원래 지면 아래 최대 깊이. `TerrainView` 가 찍는다.</summary>

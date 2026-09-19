@@ -97,6 +97,20 @@ namespace Tankfall.View
             }
 
             // 2번탄은 조금 더 진하게, 궁극기는 확실히 굵고 길게 — 무엇이 오는지 거리에서도 읽혀야 한다.
+            // 🚨 **연기가 자취를 통째로 덮고 있었다**(2026-09-19 갤러리 `gal3_자취_전체` 육안).
+            //    연기 레이어는 기본 자취보다 **수명 1.8~3.2배 · 크기 3.2배로 자란다**(`ParticleFx.AttachTrail`).
+            //    그래서 연기 색(`Flame2`)이 회색이면 그 기종의 색은 화면에서 **사라진다** —
+            //    13종 중 여덟이 똑같은 흰 연기로 보였다. 자취는 연출이 아니라 **정보**다
+            //    ("무엇이 날아오는가"를 거리에서 읽는 유일한 단서).
+            //    → 연기에도 그 기종의 색을 섞는다. 연기답게 옅지만 **색은 남는다.**
+            //    ⚠️ `Flame2` 를 회색 하나로 되돌리지 마라. 기종별 값(듀크 연두·포세이돈 물색)은 그대로 살아 있고
+            //       여기서 **한 번 더 자기 색 쪽으로 당길 뿐**이다.
+            if (s.Smoke) s.Flame2 = new Color(
+                Mathf.Lerp(s.Flame2.r, s.Color.r, 0.55f),
+                Mathf.Lerp(s.Flame2.g, s.Color.g, 0.55f),
+                Mathf.Lerp(s.Flame2.b, s.Color.b, 0.55f),
+                s.Flame2.a);
+
             if (shell == ShellKind.Special) { s.Size *= 1.25f; s.Life *= 1.15f; }
             if (ultimate) { s.Size *= 1.7f; s.Life *= 1.35f; s.Interval *= 0.7f; }
             return s;

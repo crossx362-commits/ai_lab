@@ -103,7 +103,7 @@ namespace Tankfall.View
 
             // ⚠️ `Debug` 는 여기서 모호하다 — 이 파일이 `System.Diagnostics`(Stopwatch)를 같이 쓴다.
             if (LogRebuild)
-                UnityEngine.Debug.Log($"[Tankfall] 지형재생성 청크{n,3} · 업로드 {Ms(UploadTicks),6:F2}ms · 법선+색 {Ms(NormalTicks),6:F2}ms · 바운즈 {Ms(BoundsTicks),6:F2}ms"
+                UnityEngine.Debug.Log($"[Tankfall] 지형재생성 f{Time.frameCount} 청크{n,3} · 업로드 {Ms(UploadTicks),6:F2}ms · 법선+색 {Ms(NormalTicks),6:F2}ms · 바운즈 {Ms(BoundsTicks),6:F2}ms"
                                     + $" · 파낸정점 {TerrainPalette.DugVerts}/{TerrainPalette.TotalVerts} 최대깊이 {TerrainPalette.MaxBelow:F2}m");
         }
 
