@@ -474,9 +474,11 @@ namespace Tankfall.View
             // 🔑 **오너 판단 없이 고치는 근거**: 매치업 하네스(`BattleSimVerify.cs`)는 Boom 을 **한 번도
             //    켜지 않는다**(파일 전체에 boom·지뢰밭·유성·지진 **0건**). 켜는 길은 `-boom` 인자와 설정
             //    화면(`SetupRowBoom`)뿐이다. 즉 **이 시드를 고쳐도 무효가 되는 측정표가 하나도 없다.**
-            //    (기후 `_airRng` 은 다르다 — 굴림이 100% 라 **항상 켜져 있었고** §2-5-0·12×12·난이도 표가
-            //     전부 그 배치를 전제로 나왔다. 그래서 그쪽은 오너 대기다. 같은 모양의 버그라도 **무효가
-            //     되는 표가 있느냐**가 둘을 가른다.)
+            //    ✏️ **정정(2026-09-19).** 여기 「기후는 표가 그 배치를 전제로 나왔으니 다르다」고 적었는데
+            //       **틀렸다.** 매치업 하네스는 `_airRng` 을 **쓰지 않는다** — `BattleSimVerify:296` 이
+            //       **판 시드(`new Rng(seed)`)에서 따로 굴린다.** 즉 표는 **기후가 판마다 달라지는 판**에서
+            //       나왔고, 고정 배치는 **게임에만** 있었다. 확인 안 하고 「같은 모양이지만 다르다」로 적었던 것이다.
+            //       ⇒ 둘은 결국 **같은 처리**를 받는다(무효가 되는 표가 없다). 가르는 기준 자체는 그대로다.
             // ⚠️ `ConfirmPick()` 도 판을 여는 경로지만 여기서 안 건드린다 — 거기선 이미 **진행된 난수 상태**를
             //    이어 쓰므로 판마다 달라진다. 「매 판 같은 자리」를 만든 건 **고정 시드 초기값**이었다.
             if (_boom) _boomRng = new Rng(_autoMode ? 0x7A11Fu : (uint)Random.Range(1, int.MaxValue));
@@ -572,12 +574,27 @@ namespace Tankfall.View
             _status.Clear(); _hazards.Clear(); _pendingShots.Clear(); RefreshHazards();
             _supply.Clear(); RefreshCrates();
             _impair.Clear();
-            if (!_noClimate) _air.Roll(ref _airRng, MapSize);
+            // 🚨 **기후가 «확률»이 아니었다**(2026-09-19). `WallChance/TornadoChance = 0.35` 인데
+            //    `_airRng` 이 고정 시드(`0x51C0D`)로 **한 번도 재시드되지 않아**, 6맵 전부 한 글자도
+            //    다르지 않았다: `벽(x140 z87) · 회오리(x147 z87)` — **항상 둘 다, 항상 맵 한가운데,
+            //    7m 간격으로 겹쳐서.** 기획서 35% ↔ 실제 100%.
+            //    이 파일이 `_aimRng` 옆에 「**고정 시드면 매 판 같은 곳으로 빗나간다**」고 이미 적어 뒀고
+            //    `_itemRng` 도 판마다 재시드한다 — **기후와 Boom 만 그 규칙 밖에 있었다.**
+            // 🔑 **매치업 표는 안 흔들린다**: 하네스(`BattleSimVerify:296`)는 `_airRng` 을 **안 쓰고
+            //    판 시드에서 따로 굴린다.** 즉 §2-9-6-1 은 **이미 기후가 판마다 달라지는 판**에서 나왔고,
+            //    이 수정은 **게임을 하네스에 맞추는 것**이다(어긋나 있던 쪽을 없앤다).
+            // ⚠️ 자동 모드는 **고정 시드 유지** — 하네스·자체검사가 흔들리면 게이트가 난수 탓에 죽는다.
+            if (!_noClimate)
+            {
+                _airRng = new Rng(_autoMode ? 0x51C0Du : (uint)Random.Range(1, int.MaxValue));
+                _air.Roll(ref _airRng, MapSize);
+            }
             RefreshAir();
             // 기후가 **무엇이 떴는지**를 남긴다. 「35% 확률」이라고 적혀 있어도 실제로 뜨는지는 다른 문제다 —
             // 보고서에 「기후가 안 보인다」가 올라왔을 때 «안 보이는 것»과 «안 뜬 것»을 가르는 유일한 줄이다.
-            if (_autoMode)
-                Debug.Log($"[Tankfall] 기후 굴림: 증폭벽 {_air.Walls.Count}개 · 회오리 {_air.Tornadoes.Count}개"
+            // ⚠️ 자동 모드에서만 찍으면 **사람 판에서 실제로 달라지는지**를 영영 못 잰다
+            //    (Boom 시드를 고칠 때 그 확인을 건너뛰었다). 판당 한 줄이라 늘 남긴다.
+            Debug.Log($"[Tankfall] 기후 굴림: 증폭벽 {_air.Walls.Count}개 · 회오리 {_air.Tornadoes.Count}개"
                     + (_air.Walls.Count > 0 ? $" · 벽(x{_air.Walls[0].X:F0} z{_air.Walls[0].Z:F0} 길이{_air.Walls[0].HalfLen * 2f:F0} 높이{_air.Walls[0].MinY:F0}~{_air.Walls[0].MaxY:F0})" : "")
                     + (_air.Tornadoes.Count > 0 ? $" · 회오리(x{_air.Tornadoes[0].X:F0} z{_air.Tornadoes[0].Z:F0} 반경{_air.Tornadoes[0].Radius:F0} 높이{_air.Tornadoes[0].TopY:F0})" : ""));
             // Boom 모드 지뢰밭 — 원작 "곳곳에 마인랜더의 지뢰가 드문드문 깔린 상태로 게임이 시작된다".
