@@ -311,6 +311,31 @@ game_check() {
   run_game_selftest -uiselftest shot
 }
 
+
+# ══════════════════════════════════════════════════════════════════════
+#  🛑 밸런스 측정 가드 (2026-09-19)
+#
+#  오너 지시: **"밸런스 네트웍은 내가 하라고 하기전까지 하지마라"**.
+#  `BattleSimVerify` 는 12×12 매치업 승률표를 다시 뜨는 **그 측정**이다 —
+#  §2-5-0(판 길이)·난이도 사다리가 전부 그 표를 근거로 서 있다.
+#
+#  🚨 그런데 **`verify.sh all` 이 그걸 포함하고 있었다.** 즉 「전부 돌려라」가
+#     곧 금지된 측정이었다. 실제로 이 가드를 만든 계기도 그것이다 —
+#     다른 게이트를 확인하다 명령줄에 `battle` 을 **의도 없이 끼워 넣었다**
+#     (파일을 안 쓰는 도구라 피해는 0 이었지만, 막을 수 있는 사고였다).
+#
+#  ⇒ 문서 규칙이 아니라 **코드로** 막는다(`Build/.frozen` 과 같은 발상).
+#     허가가 오면 `TANKFALL_BALANCE_OK=1` 로 연다. 우회 스위치는 이것 하나뿐이다.
+# ══════════════════════════════════════════════════════════════════════
+balance_guard() {
+  if [ "${TANKFALL_BALANCE_OK:-}" = "1" ]; then return 0; fi
+  echo "  🛑 밸런스 측정(BattleSimVerify)은 **오너 허가 전까지 막혀 있다**."
+  echo "     사유: 매치업 승률표는 §2-5-0·난이도 사다리의 근거다 — 다시 뜨면 기준선이 흔들린다."
+  # ⚠️ 안내에 `$0` 을 쓰지 마라 — 자기 복사본 재실행 가드 때문에 **임시 경로**가 찍힌다.
+  echo "     허가를 받았다면: TANKFALL_BALANCE_OK=1 ${TANKFALL_VERIFY_SELF:-./tools/verify.sh} battle"
+  return 1
+}
+
 case "${1:-all}" in
   compile) compile_check; manifest_check; rules_check ;;
   # 죽은 멤버 **후보**만 낸다(판정 아님). rc 에 영향 주지 않는다 — 처분은 사람이 정한다.
@@ -322,7 +347,11 @@ case "${1:-all}" in
   play)    run_console GameplayVerify $SIM/*.cs tools/GameplayVerify.cs; echo
     run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs ;;
   ball)    run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs ;;
-  battle)  run_console BattleSimVerify $SIM/*.cs tools/BattleSimVerify.cs ;;
+  # ⚠️ **막힌 것을 rc=0 으로 말하지 마라.** 사람이 `battle` 을 «찍어서» 불렀는데 0 을 받으면
+  #    「측정했고 통과」로 읽는다 — 오늘 「내 턴 평균 0.0초」와 같은 거짓말이다.
+  #    빌드 동결이 rc=3 을 쓰듯 여기도 **«막힘» 전용 코드**를 준다(1=실패와 구별된다).
+  battle)  balance_guard || exit 3
+           run_console BattleSimVerify $SIM/*.cs tools/BattleSimVerify.cs ;;
   turn)    run_console TurnOrderVerify    $SIM/*.cs tools/TurnOrderVerify.cs ;;
   shell)   run_console ShellEffectsVerify $SIM/*.cs tools/ShellEffectsVerify.cs ;;
   nice)    run_console NiceShotVerify     $SIM/*.cs tools/NiceShotVerify.cs ;;
@@ -344,7 +373,10 @@ case "${1:-all}" in
     run_console GuidanceVerify     $SIM/*.cs tools/GuidanceVerify.cs; echo
     run_console AiMoveVerify      $SIM/*.cs tools/AiMoveVerify.cs; echo
     run_console ShellPickVerify   $SIM/*.cs tools/ShellPickVerify.cs; echo
-    run_console BattleSimVerify  $SIM/*.cs tools/BattleSimVerify.cs ;;
+    # ⚠️ `all` 에서도 가드를 탄다 — 「전부 돌려라」가 금지된 측정을 끌고 들어오면 안 된다.
+    #    막히면 **건너뛰고 나머지 결과는 그대로 살린다**(여기서 rc 를 1 로 만들면 «막혔다»가 «실패»로 읽힌다).
+    balance_guard && run_console BattleSimVerify  $SIM/*.cs tools/BattleSimVerify.cs
+    echo ;;
   *) echo "사용: $0 [all|game|dead|sdf|play|ball|battle|turn|shell|nice|map|hit|guide|aimove|shellpick|compile]"; exit 2 ;;
 esac
 
