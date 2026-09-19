@@ -561,6 +561,33 @@ namespace Tankfall.View
             Check(WinnerText(2, 0) == "아군 승리" && WinnerText(0, 1) == "적군 승리", "한쪽 생존 → 그쪽 승리");
             Check(WinnerText(1, 1) == null, "양쪽 생존 → 미결");
 
+            // 4-1) §2-6 거리계 — **조준을 돌리면 대상이 바뀌는가**
+            //
+            // 🚨 이 줄을 **게이트가 한 번도 안 봤다.** 그래서 「조준과 무관하게 최근접 상대를 보고하는」
+            //    상태로 계속 통과했다(판별 2026-09-19: 포신을 돌려도 숫자가 안 변했고, 스폰 기하상
+            //    **누가 쏘든 항상 150m** 가 떴다 — 실제 표적은 187m·225m 일 수 있었다).
+            // ⚠️ **쌍으로 본다**: ① 다른 방향을 겨누면 다른 상대가 나온다 ② 아무도 안 겨누면 «없음»이 나온다.
+            //    ①만 재면 「매번 다른 걸 아무렇게나 고르는 함수」도 통과하고,
+            //    ②만 재면 「항상 없음」도 통과한다.
+            {
+                var me = _units.Find(o => o.Alive && o.Team == 0);
+                var foes = _units.FindAll(o => o.Alive && o.Team != (me != null ? me.Team : 0));
+                if (me == null || foes.Count < 2) Check(false, "거리계 검사: 표본이 모자람(아군 1 + 적군 2 필요)");
+                else
+                {
+                    // 서로 다른 두 적의 **실제 방위**로 겨눠 본다 — 임의의 각도가 아니라 «그 적을 겨눈» 각이다.
+                    float Bearing(Unit t) { var d = t.Pos - me.Pos; return Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg; }
+                    var a = foes[0]; var b = foes[foes.Count - 1];
+                    var pickA = AimTarget(me, Bearing(a));
+                    var pickB = AimTarget(me, Bearing(b));
+                    Check(pickA == a && pickB == b,
+                          $"겨눈 방향이 바뀌면 보고 대상이 바뀐다 ({(pickA != null ? pickA.Id.ToString() : "없음")} → {(pickB != null ? pickB.Id.ToString() : "없음")})");
+                    // 대조군: 정반대로 돌리면 **아무도 안 나와야** 한다(문턱 ±60°).
+                    var away = AimTarget(me, Bearing(a) + 180f);
+                    Check(away == null, "정반대를 겨누면 «겨누는 곳에 상대 없음» — 문턱이 실제로 걸린다");
+                }
+            }
+
             // 5) 설정 화면 행 — 이름 상수와 표가 어긋나지 않았는가
             Check(SetupRows[SetupRowBoom, 0] == "Boom 모드" && SetupRows[SetupRowSound, 0] == "소리"
                   && SetupRowSound == SetupRows.GetLength(0) - 1, "전투 설정 행 상수 ↔ 표 일치");

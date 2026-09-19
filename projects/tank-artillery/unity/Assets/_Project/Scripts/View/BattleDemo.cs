@@ -3271,25 +3271,71 @@ namespace Tankfall.View
                 Ui.TextShadow(new Rect(r.x, r.y - 40f, r.width, 20f), _niceFlash, 14, Ui.Mark, TextAnchor.MiddleCenter, true);
         }
 
+        /// <summary>겨눈 방향에서 이 각도(°)보다 더 벗어난 상대는 «겨누는 중»이 아니다 — 그 너머면 거리를 안 준다.</summary>
+        public const float AimConeDeg = 60f;
+
+        /// <summary>
+        /// **지금 겨누고 있는 상대**를 고른다(§2-6 거리계의 대상).
+        ///
+        /// 🚨 예전엔 «가장 «가까운» 상대»였다 — **조준과 아무 상관이 없었다**(2026-09-19 판별).
+        ///    포신을 어디로 돌려도 숫자가 안 변했고, 표적이 최근접이 아니면 **다른 상대의 거리**를 줬다.
+        ///    스폰 기하(MapSize 280 · Inset 65 · 4인)상 **누가 쏘든 항상 150m** 가 떴는데
+        ///    실제 표적은 187m·225m 일 수 있다 — **최대 50% 틀린 재료**로 §60 학습을 시키고 있었다.
+        /// ⇒ 고르는 기준만 **거리 → 각도**로 바꾼다. 후보 집합(살아 있는 상대 팀)은 **그대로 둔다** —
+        ///    최소 변경이 최소 위험이다.
+        ///
+        /// ⚠️ **방위(야우)만 본다. 고도각은 안 본다.** 이유를 남긴다:
+        ///    ① 사람이 «표적을 고르는» 입력은 포탑 야우다. 고도각(`BarrelPitch`)은 **탄도 파라미터**라
+        ///       파워를 조절하다 보면 계속 움직이는데, 그때마다 보고 대상이 바뀌면 **숫자가 깜빡인다.**
+        ///    ② 이 게임의 배치는 두 팀이 x 로 마주 보고 z 로 퍼진다 — 상대들은 **방위로 갈린다.**
+        ///       위아래로 겹치는 경우가 드물어 고도각을 넣어도 얻는 게 거의 없다.
+        ///    ⚠️ 겹치는 맵이 생기면 이 판단을 다시 봐라(그때는 3D 각도로).
+        /// </summary>
+        Unit AimTarget(Unit u, float worldYaw)
+        {
+            Unit best = null; float bestOff = float.MaxValue;
+            foreach (var o in _units)
+            {
+                if (!o.Alive || o.Team == u.Team) continue;
+                var d = o.Pos - u.Pos;
+                // 유니티 좌표계: 야우 0 = +Z. `Ballistics.VelocityFrom` 과 같은 규약을 쓴다.
+                float bearing = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
+                float off = Mathf.Abs(Mathf.DeltaAngle(worldYaw, bearing));
+                if (off < bestOff) { bestOff = off; best = o; }
+            }
+            // 🛑 문턱이 없으면 포신을 **정반대로 돌려도** 「각도차가 가장 작은 상대」가 뜬다 —
+            //    겨누지도 않은 상대의 거리를 주는 건 위 결함과 같은 종류다.
+            return bestOff <= AimConeDeg ? best : null;
+        }
+
         /// <summary>
         /// §2-6 해소 — **거리는 준다, 탄착점은 안 준다.**
         /// 기획서 §58 은 예상 탄착점을 금지하고 §60 은 "저 거리면 45도 파워 65" 학습을 원한다.
         /// 거리를 숨기면 그 학습이 성립하지 않는다 — 눈대중으로 150m 와 170m 를 못 가른다.
+        ///
+        /// ⚠️ §2-6 원문은 「**조준 방향 레이캐스트로 지면까지**」였는데 **이 게임에선 성립하지 않는다.**
+        ///    포신이 위를 보기 때문이다(기본 45°) — 직선 레이는 포물선이 아니라서 **10° 이상이면
+        ///    400m 까지 한 번도 지면에 안 닿는다**(0° 만 41.7m, `verify.sh sdf` [6] 실측).
+        ///    성실히 구현하면 **«—»만 뜨는 거리계**가 된다. 그래서 «겨누는 상대까지»로 실현한다.
+        ///    §2-6 의 **결정**(거리는 준다 / 탄착점은 안 준다)은 하나도 안 바뀐다 — **방법만** 바뀐다.
+        /// 🛑 여전히 금지: 예상 탄착 마커 · 전체 궤적선 · 자동 보정선(§58).
         /// </summary>
         void HudRange(Unit u, float W, float H)
         {
-            Unit near = null; float best = float.MaxValue;
-            foreach (var o in _units)
-                if (o.Alive && o.Team != u.Team)
-                {
-                    float d = (o.Pos - u.Pos).sqrMagnitude;
-                    if (d < best) { best = d; near = o; }
-                }
-            if (near == null) return;
-            Vector3 d3 = near.Pos - u.Pos;
+            var box = new Rect(W * 0.5f - 300f, H - 122f, 600f, 18f);
+            var tgt = AimTarget(u, u.Heading + u.TurretYaw);
+            if (tgt == null)
+            {
+                // ⚠️ **없음을 «0m» 로 말하지 마라.** 「내 턴 평균 0.0초」와 같은 거짓말이 된다
+                //    (사람은 «0m 거리»로 읽는다). 겨누는 상대가 없다는 걸 그대로 말한다.
+                Ui.TextShadow(box, $"겨누는 곳에 상대 없음   거리 <b>—</b>   고도차 <b>—</b>   <size=10>(탄착 예측선 없음 §58)</size>",
+                              12, Ui.Dim, TextAnchor.MiddleCenter);
+                return;
+            }
+            Vector3 d3 = tgt.Pos - u.Pos;
             float horiz = new Vector2(d3.x, d3.z).magnitude;
-            Ui.TextShadow(new Rect(W * 0.5f - 300f, H - 122f, 600f, 18f),
-                          $"최근접 {(near.Team == 0 ? "아군" : "적군")}{near.Id % MapHeightFunction.TeamSize + 1}   거리 <b>{horiz:F0}m</b>   고도차 <b>{d3.y:+0;-0;0}m</b>   <size=10>(탄착 예측선 없음 §58)</size>",
+            Ui.TextShadow(box,
+                          $"겨눈 {(tgt.Team == 0 ? "아군" : "적군")}{tgt.Id % MapHeightFunction.TeamSize + 1}   거리 <b>{horiz:F0}m</b>   고도차 <b>{d3.y:+0;-0;0}m</b>   <size=10>(탄착 예측선 없음 §58)</size>",
                           12, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
