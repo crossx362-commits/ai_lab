@@ -89,15 +89,31 @@ static class ShellPickVerify
         //    그렇다고 아무 데도 안 적으면 다음 사람이 "AI 가 왜 캐터펄트 2번탄을 과대평가하지"를
         //    처음부터 다시 판다. **못 고칠 것은 적어도 보이게 둔다.**
         {
+            // 2026-09-19: 여기는 「알려진 어긋남」 경고였다 — `AiGunner` 가 `BurnGain` 으로 점수를 매기는데
+            // 게임이 `StatusEffects.Burn` 을 **한 번도 안 불렀다.** 오너 허가로 배선했으므로 **게이트로 승격**한다.
+            // 재는 것: **AI 가 계산한 이득이 실제로 들어가는 피해와 같은가.**
+            // ⚠️ 평가(BurnGain)와 적용(Burn+TickStartOfTurn)이 같은 규칙(덮어쓰기)을 봐야 한다.
+            //    식을 AiGunner 쪽에 베껴 두면 한쪽만 낡는다 — 독이 그래서 한 번 틀렸다(d61e7527).
             var fx = ShellEffects.Of(TankKind.Catapult, ShellKind.Special);
-            var probe = new StatusEffects();
-            int aiScore = probe.BurnGain(1, fx.Param1, fx.Param2);
-            Console.WriteLine("\n[2-1] ⚠️ 알려진 어긋남 — 캐터펄트 2번탄: AI 평가 ≠ 실제 효과");
-            Console.WriteLine($"    AI 평가(AiGunner.EffectValue → BurnGain): {aiScore} (= 유닛 화상 {fx.Param1}×{fx.Param2}턴 총량)");
-            Console.WriteLine( "    실제 효과(BattleDemo 착탄 분기)        : 착탄점 지속불 HazardField.PlaceFire");
-            Console.WriteLine( "                                            — 유닛 화상 StatusEffects.Burn 은 **게임 호출부 0곳**");
-            Console.WriteLine( "    → AI 는 '맞은 적이 확정으로 받는 피해'로 점수를 주지만, 실제로는 **그 자리에 서 있어야만** 받는다.");
-            Console.WriteLine( "    🛑 배선하면 피해량이 바뀐다 = 밸런스. 오너 지시 전까지 고치지 마라(rc 에 영향 없음).");
+            Console.WriteLine("\n[2-1] 화상: AI 평가 == 실제 적용 피해 (배선 게이트)");
+            {
+                var probe = new StatusEffects();
+                int aiScore = probe.BurnGain(9, fx.Param1, fx.Param2);
+                probe.Burn(9, fx.Param1, fx.Param2);
+                int real = 0;
+                for (int t = 0; t < fx.Param2 + 2; t++) real += probe.TickStartOfTurn(9);
+                Test($"멀쩡한 적: 평가 {aiScore} == 실제 {real}", aiScore == real, $"{aiScore} vs {real}");
+
+                // 이미 타고 있는 적에게 다시 걸면 **덮어쓰기**라 추가 이득이 0 이어야 한다.
+                var probe2 = new StatusEffects();
+                probe2.Burn(9, fx.Param1, fx.Param2);
+                int gain2 = probe2.BurnGain(9, fx.Param1, fx.Param2);
+                probe2.Burn(9, fx.Param1, fx.Param2);
+                int real2 = 0;
+                for (int t = 0; t < fx.Param2 + 2; t++) real2 += probe2.TickStartOfTurn(9);
+                Test($"이미 화상: 추가 이득 {gain2} == 0, 총량은 그대로 {real2}", gain2 == 0 && real2 == fx.Param1 * fx.Param2,
+                     $"gain {gain2} · total {real2}");
+            }
         }
 
         // ═══════════════════════════════════════════════════════════

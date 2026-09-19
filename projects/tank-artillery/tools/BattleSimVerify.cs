@@ -76,6 +76,41 @@ static class BattleSimVerify
 
     static float _specPerMatch;
 
+    /// <summary>
+    /// 화상(2026-09-19 배선)이 **실제로 걸린 횟수**. 0 이면 배선이 죽은 것이다.
+    /// 원장 규칙 그대로다 — 「새 시스템은 표에 **그 시스템만 만드는 숫자**를 열로 넣어 0 이면 죽은 것으로 읽는다」
+    /// (지뢰가 120판 동안 피해 0 이었는데 열이 없어서 아무도 몰랐던 사고에서 나온 규칙).
+    /// </summary>
+    static int BurnApplied;
+
+    /// <summary>
+    /// 화상 배선이 살아 있는지 — **실행이 전부 끝난 뒤**에 판정한다.
+    ///
+    /// 🚨 처음에 이걸 `[1]` 난이도 표 **직후**에 뒀다가 헛짚었다. `[1]` 은 **캐롯 자기전**이라
+    ///    캐터펄트가 아예 안 나온다 — 배선이 멀쩡해도 항상 0 이다. 더 나쁜 것은
+    ///    **그 자리에서 배선을 끊는 네거티브 컨트롤을 돌렸더니 ❌ 가 떠서 "게이트가 작동한다"고 착각**한 것이다.
+    ///    빨간불이 뜬 이유가 내가 끊어서가 아니라 **원래 0 이라서**였다.
+    ///    → 교훈: **네거티브 컨트롤이 빨간불을 냈다고 끝이 아니다. 대조군(안 끊은 쪽)이 초록인지도 봐야 한다.**
+    /// ⚠️ 눈이면 **0 이 정답이다**(원작: 눈이 캐터펄트의 불을 끈다). 날씨를 안 보고 0 을 실패로 처리하면
+    ///    `TANKFALL_WEATHER=Snow` 실행이 애먼 빨간불을 낸다 — 거짓 빨간불도 거짓 초록불만큼 위험하다.
+    /// ⚠️ 캐터펄트가 안 도는 실행(단일 행 실험 등)에서는 판정하지 않는다 — `sawCatapult` 가 그걸 가른다.
+    /// </summary>
+    static bool SawCatapult;
+
+    static void BurnWiringGate()
+    {
+        if (Wx == Weather.Snow)
+        {
+            Console.WriteLine($"\n❄ 화상 {BurnApplied}회 — 눈에서는 0 이 정답이다(원작: 눈이 캐터펄트의 불을 끈다)");
+            if (BurnApplied > 0) { Console.WriteLine("❌ 눈인데 화상이 걸렸다 — 날씨 게이트가 샌다"); RcFail = true; }
+            return;
+        }
+        if (!SawCatapult)
+        { Console.WriteLine($"\n· 화상 게이트 건너뜀 — 이번 실행에 캐터펄트가 안 나왔다(적용 {BurnApplied}회)"); return; }
+        if (BurnApplied > 0) Console.WriteLine($"\n✅ 화상 배선 살아 있다 — {BurnApplied}회 적용됨 (캐터펄트 2번탄)");
+        else { Console.WriteLine("\n❌ 캐터펄트가 돌았는데 화상이 한 번도 안 걸렸다 — 배선이 죽었다"); RcFail = true; }
+    }
+
     // ── 맵 ──  게임(BattleDemo)과 **같은 함수·같은 스폰**을 써야 승률이 게임의 승률이다(교대 순서 버그의 교훈, §2-9-1).
     //   TANKFALL_MAP=TwinHills(기본)|Crater|Terrace|Valley|Ridge|Badlands — MapHeightFunction(§맵 6종). Legacy = 옛 언덕(22m·20m, §2-9-4 까지 전부 이 맵에서 잰 값) — 비교·회귀용.
     // ── 날씨 ──  TANKFALL_WEATHER=Clear(기본)|Snow. 눈이면 포세이돈만 세진다(SnowBonus) —
@@ -212,6 +247,7 @@ static class BattleSimVerify
                 SpawnAt(side, i, out float x, out float z);
                 float g = TankGroundProbe.GroundBelow(vol, x, z, 60f);
                 var kind = t == 0 ? (teamA ?? TankKind.Carrot) : (teamB ?? TankKind.Carrot);
+                if (kind == TankKind.Catapult) SawCatapult = true;   // 화상 게이트가 "이번 실행에 캐터펄트가 있었나"를 알아야 한다
                 // 종류를 지정한 실험에서는 그 탱크의 HP 를 쓴다(hp 인자는 HP 스윕 전용)
                 int startHp = (teamA.HasValue || teamB.HasValue) ? TankStats.Get(kind).Hp : hp;
                 units.Add(new U { Id = t * MapHeightFunction.TeamSize + i, Team = t, Kind = kind, Hp = startHp, MaxHp = startHp, W = weather,
@@ -594,6 +630,9 @@ static class BattleSimVerify
                     // 맞은 유닛에 붙는 효과
                     if (fx.Type == ShellEffects.EffectType.Poison && o.Id != u.Id) status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind);
                     if (fx.Type == ShellEffects.EffectType.Root && o.Team != u.Team) status.Root(o.Id, fx.Param1);
+                    // 화상(2026-09-19 배선) — **게임(BattleDemo)과 같은 조건이어야 한다.** 맞은 유닛 전부, 눈이면 안 붙는다.
+                    if (fx.Type == ShellEffects.EffectType.Burn && weather != Weather.Snow)
+                    { status.Burn(o.Id, fx.Param1, fx.Param2); BurnApplied++; }
                     // 방해탄(§2-9-14): 맞은 적에게 건다.
                     var imk = items.ImpairShot(u.Id);
                     if (imk != ImpairKind.None && o.Team != u.Team)
@@ -714,6 +753,8 @@ static class BattleSimVerify
                 Console.WriteLine(HasVar ? $"--- {VarName} = {v:F2} ---" : "--- 현행 ---");
                 Matchup(rk, per);
             }
+            BurnWiringGate();
+            if (RcFail) Environment.Exit(1);
             return;
         }
         Console.WriteLine($"=== AI 자동 대전 ({MapHeightFunction.TeamSize}v{MapHeightFunction.TeamSize}) ===\n");
@@ -995,6 +1036,7 @@ static class BattleSimVerify
 
         if (OnlyStage == "mirror")
         {
+            BurnWiringGate();
             if (RcFail) { Console.WriteLine("❌ 미러 게이트 실패"); Environment.Exit(1); }
             Console.WriteLine("=== 미러 게이트만 실행 완료 ==="); Environment.Exit(0);
         }
@@ -1097,6 +1139,7 @@ static class BattleSimVerify
         Console.WriteLine("\n※ 명중률 = 적에게 피해를 준 사격 비율. 오차0 대조군이 가장 높아야 정상.");
         Console.WriteLine("※ 예상시간 = 평균턴 × 18초(§2-1 2페이즈 턴 평균). 기획서 §55 목표는 8~15분.");
         // 미러 게이트가 떨어지면 종료 코드로 알린다 — 출력만 빨갛고 verify.sh 는 통과하던 구멍을 막는다.
+        BurnWiringGate();
         if (RcFail) { Console.WriteLine("❌ 미러 게이트 실패 — 위 [6-2-1] 참조"); Environment.Exit(1); }
     }
 

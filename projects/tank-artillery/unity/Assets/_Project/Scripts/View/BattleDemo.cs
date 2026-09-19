@@ -802,7 +802,13 @@ namespace Tankfall.View
             //       (https://namu.wiki/w/포트리스2 · 2026-09-17 조회)
             if (w != Weather.Snow) return;
             int gone = _hazards.ClearFires();
-            if (gone > 0) { RefreshHazards(); _log = $"❄ 눈 — 불·독가스 {gone}곳이 꺼졌다"; }
+            // ⚠️ 몸에 붙은 불도 같이 끈다. 장판만 끄면 **바닥 불은 꺼지는데 탱크는 계속 타는** 비대칭이 된다.
+            int burned = _status != null ? _status.ClearBurns() : 0;
+            if (gone > 0 || burned > 0)
+            {
+                RefreshHazards();
+                _log = $"❄ 눈 — 불·독가스 {gone}곳이 꺼졌다" + (burned > 0 ? $" · 화상 {burned}대 진화" : "");
+            }
         }
 
         static string WeatherName(Weather w) => w == Weather.Snow ? "눈" : "맑음";
@@ -1637,6 +1643,11 @@ namespace Tankfall.View
                         dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % MapHeightFunction.TeamSize + 1} −{dmg}{(direct ? "(직격)" : "")}";
                         if (fx.Type == ShellEffects.EffectType.Poison) { _status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind); dmgLog += "[독]"; }
                         if (fx.Type == ShellEffects.EffectType.Root) { _status.Root(o.Id, fx.Param1); dmgLog += "[속박]"; }
+                        // 화상(2026-09-19 배선) — 맞은 유닛에 불이 옮아붙는다. 착탄점 장판은 아래에서 따로 깐다.
+                        // ⚠️ 눈이면 안 붙는다(장판과 같은 규칙). ⚠️ 하네스(BattleSimVerify)에 **같은 줄**이 있어야
+                        //    승률 표가 게임의 승률이다 — 한쪽만 배선하면 컴파일로는 안 잡힌다.
+                        if (fx.Type == ShellEffects.EffectType.Burn && _weather != Weather.Snow)
+                        { _status.Burn(o.Id, fx.Param1, fx.Param2); dmgLog += "[화상]"; }
                         // 방해탄(§2-9-14): 맞은 적에게 건다.
                         var imk = _items.ImpairShot(Current.Id);
                         if (imk != ImpairKind.None && o.Team != Current.Team)
