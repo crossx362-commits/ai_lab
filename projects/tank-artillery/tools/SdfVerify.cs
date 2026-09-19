@@ -170,6 +170,68 @@ static class SdfVerify
                    $"{vv.ChunkCount}청크 {vv.ChunkBytes / 1024.0 / 1024.0:F1} MB");
         }
 
+        // ══════════════════════════════════════════════════════════════
+        //  [5] 레이마치(`SdfRaymarch.March`) — **호출부가 0 이던 코드다**
+        //
+        //  🚨 §8 표가 이걸 「조준 거리계」로 적어 뒀는데 **부르는 곳이 한 군데도 없었다**(2026-09-19).
+        //     즉 **맞는지 아무도 확인한 적이 없다.** §2-6 거리계를 이 함수 위에 올리기로 했으므로
+        //     **화면에 붙이기 «전에»** 여기서 잰다. 검증 안 된 코드를 HUD 에 붙이면
+        //     「숫자가 떠 있으니 맞겠지」가 된다.
+        //  ⚠️ 전부 **쌍**으로 본다 — 맞히는 것만 재면 「항상 Hit 를 반환하는 함수」도 통과한다.
+        // ══════════════════════════════════════════════════════════════
+        Console.WriteLine("\n[6] 레이마치 — 조준 거리계의 토대 (쌍으로 본다)");
+        {
+            var rv = NewVolume();
+            float cx = MapSize * 0.5f, cz = MapSize * 0.5f;
+            float h = Height(cx, cz);                       // 이 지점의 실제 지면 높이
+            float top = h + 30f;
+
+            // (a) 바로 아래로 → 30m 에서 맞아야 한다
+            var down = SdfRaymarch.March(rv, cx, top, cz, 0f, -1f, 0f, 200f);
+            Assert(down.Hit && MathF.Abs(down.Distance - 30f) < 0.6f,
+                   "바로 아래로 쏘면 «아는 거리»(30m)에서 맞는다",
+                   down.Hit ? $"{down.Distance:F2}m (y={down.Y:F2}, 지면 {h:F2})" : "안 맞음");
+
+            // (b) 위로 → **안 맞아야** 한다. (a) 의 대조군이다
+            var up = SdfRaymarch.March(rv, cx, top, cz, 0f, 1f, 0f, 200f);
+            Assert(!up.Hit, "위로 쏘면 «안 맞는다» — (a) 의 대조군", up.Hit ? $"❌ {up.Distance:F2}m 에서 맞았다" : "안 맞음 ✔");
+
+            // (c) maxDist 를 표면보다 짧게 → 안 맞아야 한다. 「거리 제한이 실제로 걸리나」
+            var shortRay = SdfRaymarch.March(rv, cx, top, cz, 0f, -1f, 0f, 20f);
+            Assert(!shortRay.Hit, "maxDist(20m)가 표면(30m)보다 짧으면 안 맞는다",
+                   shortRay.Hit ? $"❌ {shortRay.Distance:F2}m" : "안 맞음 ✔");
+
+            // (d) 45° 로 비스듬히 → 수직 30m 면 경로는 30/sin45 = 42.4m 여야 한다(평지 가정이라 여유를 둔다)
+            var diag = SdfRaymarch.March(rv, cx, top, cz, 0f, -0.70710678f, -0.70710678f, 300f);
+            Assert(diag.Hit && diag.Distance > 30f,
+                   "비스듬히 쏘면 경로가 «수직보다 길다»(기하가 반영된다)",
+                   diag.Hit ? $"{diag.Distance:F2}m (수직 {down.Distance:F2}m)" : "안 맞음");
+
+            // (e) 🔑 **원인 제거** — 그 자리를 파면 «더 멀리서» 맞아야 한다.
+            //     이게 통과해야 「지형을 실제로 보고 있다」가 성립한다(상수를 돌려주는 게 아니다).
+            float before = down.Distance;
+            SdfDeformer.SubtractSphere(rv, new BlastRequest(cx, h, cz, 9f));
+            var after = SdfRaymarch.March(rv, cx, top, cz, 0f, -1f, 0f, 200f);
+            Assert(after.Hit && after.Distance > before + 3f,
+                   "그 자리를 파면 더 멀리서 맞는다 — 상수가 아니라 «지금 지형»을 읽는다",
+                   after.Hit ? $"{before:F2}m → {after.Distance:F2}m" : "파고 나니 안 맞음");
+
+            // ── [정보] 실제 조준각에서 «맞기는 하나» ────────────────────────────────
+            // §2-6 은 「조준 방향 레이캐스트로 지면까지」라고 적었다. 그런데 이 게임의 포신은 **위를 본다**
+            // (MinPitch 0~25 · MaxPitch 40~90, 기본 45°). 직선 레이는 포물선이 아니라서 **위로 쏘면
+            // 앞에 그만큼 높은 산이 없는 한 영영 안 닿는다.** 붙이기 «전에» 실제 각도로 재 본다.
+            var rv2 = NewVolume();
+            float mx = MapHeightFunction.SpawnInset, mz = MapSize * 0.5f;
+            float my = Height(mx, mz) + 2.5f;                       // 포구 높이 정도
+            Console.WriteLine("    [정보] 포구에서 조준각별로 직선 레이가 지면에 닿는가 (평지 아님, TwinHills)");
+            foreach (float pitch in new[] { 0f, 10f, 20f, 30f, 45f, 60f })
+            {
+                float rad = pitch * MathF.PI / 180f;
+                var r = SdfRaymarch.March(rv2, mx, my, mz, MathF.Cos(rad), MathF.Sin(rad), 0f, 400f);
+                Console.WriteLine($"        {pitch,4:F0}° → {(r.Hit ? $"{r.Distance,6:F1}m 에서 닿음" : "   400m 까지 안 닿음")}");
+            }
+        }
+
         Console.WriteLine(fail == 0 ? "\n✅ SDF 게이트 통과" : $"\n❌ SDF 게이트 실패 {fail}건");
         Environment.Exit(fail == 0 ? 0 : 1);
     }
