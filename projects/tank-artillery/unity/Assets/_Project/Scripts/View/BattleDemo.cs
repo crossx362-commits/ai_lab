@@ -304,6 +304,7 @@ namespace Tankfall.View
         // 설치물 연출: 지뢰 = 검은 공, 지속불 = 주황 원반, 독구름 = 녹색 원반. 판정(HazardField)은 Sim 이 하고 여기선 스냅샷만 그린다.
         readonly List<HazardField.HazardView> _hazardBuf = new List<HazardField.HazardView>();
         readonly List<Transform> _hazardGos = new List<Transform>();
+        Material _mineCapMat;          // 지뢰 경고 뚜껑 — 미니맵 노란 점과 같은 색(RefreshHazards 머리말)
         Material _mineMat;
         float _beamTimer;
         TankKind[] _roster = DefaultRoster;
@@ -452,6 +453,22 @@ namespace Tankfall.View
             SetWeather(_weatherForced ?? (Random.value < SnowChance ? Weather.Snow : Weather.Clear));
             RebuildTerrain();
 
+            // Boom 난수도 **판마다 다르게** — 아래 `_itemRng`·`_aimRng` 과 같은 취급이다.
+            // 🚨 고정 시드(`0x7A11F`)였다: 지뢰밭이 **매 판 같은 자리**에 깔리고 지진·유성도 같은 순서로 떴다.
+            //    이 파일이 `_aimRng` 옆에 「**고정 시드면 매 판 같은 곳으로 빗나간다**」고 이미 적어 뒀는데
+            //    Boom 만 그 규칙 밖에 있었다 — 설계가 아니라 **빠뜨린 것**이다.
+            // ⚠️ 자동 모드(`-boomselftest` 등)에서는 **고정 시드를 유지**한다. 하네스가 흔들리면
+            //    「통과/실패」가 난수 탓이 되어 게이트가 죽는다. 게임만 달라지면 된다.
+            // 🔑 **오너 판단 없이 고치는 근거**: 매치업 하네스(`BattleSimVerify.cs`)는 Boom 을 **한 번도
+            //    켜지 않는다**(파일 전체에 boom·지뢰밭·유성·지진 **0건**). 켜는 길은 `-boom` 인자와 설정
+            //    화면(`SetupRowBoom`)뿐이다. 즉 **이 시드를 고쳐도 무효가 되는 측정표가 하나도 없다.**
+            //    (기후 `_airRng` 은 다르다 — 굴림이 100% 라 **항상 켜져 있었고** §2-5-0·12×12·난이도 표가
+            //     전부 그 배치를 전제로 나왔다. 그래서 그쪽은 오너 대기다. 같은 모양의 버그라도 **무효가
+            //     되는 표가 있느냐**가 둘을 가른다.)
+            // ⚠️ `ConfirmPick()` 도 판을 여는 경로지만 여기서 안 건드린다 — 거기선 이미 **진행된 난수 상태**를
+            //    이어 쓰므로 판마다 달라진다. 「매 판 같은 자리」를 만든 건 **고정 시드 초기값**이었다.
+            if (_boom) _boomRng = new Rng(_autoMode ? 0x7A11Fu : (uint)Random.Range(1, int.MaxValue));
+
             // 날씨는 위에서 이미 정했다(지형 색이 그걸 본다). 유닛은 생성 시 `W` 사본을 뜨므로 여기 순서면 충분하다.
             SpawnTeams();
             _items.Clear();
@@ -564,6 +581,8 @@ namespace Tankfall.View
                     placed++;
                 }
                 RefreshHazards();
+                // 「깔렸는가」를 남긴다 — 기후 굴림 로그와 같은 이유다(「안 보인다」와 「안 깔렸다」를 가른다).
+                if (_autoMode) Debug.Log($"[Tankfall] Boom 지뢰밭: 후보 {_boomSpots.Count}곳 중 {placed}개 설치");
                 Debug.Log($"[Tankfall] Boom 모드 — 지뢰 {placed}발 매설");
             }
             _order = new TurnOrder();
@@ -1529,6 +1548,16 @@ namespace Tankfall.View
             if (_mineMat == null)
             {
                 _mineMat = MakeMat(new Color(0.12f, 0.12f, 0.12f), 0.5f);
+                // 🚨 **지뢰가 «바위·그루터기»와 구별이 안 됐다**(2026-09-19). 안 보인 게 아니라
+                //    **보이는데 풍경으로 읽혔다** — 지름 0.6m 의 검은 공이라 흩어진 돌·통나무와 같은 물건이다.
+                //    그건 안 보이는 것보다 나쁘다: 사람은 **훑어봤다고 믿고** 그 위를 지나간다.
+                // 「안 보이는 게 설계 아닌가」를 먼저 물었고, **아니었다** — 미니맵은 지뢰를 노란 점으로
+                //    또렷이 찍는다(14개 전부). 즉 **알려주는 것이 설계**이고, 3D 쪽만 말을 안 하고 있었다.
+                // ⇒ 미니맵과 **같은 노랑**(`Ui.Warn`)으로 뚜껑을 씌운다. 두 표현이 같은 색으로 같은 것을
+                //    가리켜야 「저 노란 건 위험물」이 한 번에 학습된다.
+                // 🛑 몸통 크기는 안 키운다 — `BoomMode.MineRadius`(피해 반경)와 다른 값이라
+                //    키우면 **화면이 반경을 거짓말한다**. 눈에 띄게 하는 건 크기가 아니라 색이다.
+                _mineCapMat = MakeMat(Ui.Warn, 0.25f);
             }
             int used = 0;
             Transform Take()
@@ -1556,10 +1585,20 @@ namespace Tankfall.View
                 var h = _hazardBuf[i];
                 if (h.Kind == 0)
                 {
+                    float mg = GroundAt(h.X, h.Z, h.Y);
                     var tr = Take();
                     tr.GetComponent<MeshRenderer>().sharedMaterial = _mineMat;
-                    tr.position = new Vector3(h.X, GroundAt(h.X, h.Z, h.Y) + 0.5f, h.Z);
+                    tr.position = new Vector3(h.X, mg + 0.5f, h.Z);
                     tr.localScale = Vector3.one * 0.6f;
+                    // 경고 뚜껑 — 미니맵의 노란 점과 같은 색. 풀은 `used++` 하나뿐이라 개수가 늘어도 안전하다
+                    // (증폭벽에서 `_airGos[Walls.Count + i]` 가 장식 추가로 깨질 뻔한 것과 같은 자리를 먼저 확인했다).
+                    var cap = Take();
+                    cap.GetComponent<MeshRenderer>().sharedMaterial = _mineCapMat;
+                    // ⚠️ **위에 얹지 말고 «띠»로 두른다.** 처음엔 윗면에 작은 원반을 얹었는데 몸통에 반쯤
+                    //    파묻혀 노란 조각만 비쳤고, **위에서 볼 때만** 보였다. 지뢰는 **옆에서 지나가다** 봐야 한다.
+                    //    몸통(지름 0.6)보다 살짝 넓은 납작한 띠 → 어느 각도에서도 노란 선이 보인다.
+                    cap.position = new Vector3(h.X, mg + 0.54f, h.Z);
+                    cap.localScale = new Vector3(0.70f, 0.18f, 0.70f);
                     continue;
                 }
                 h.Y = GroundAt(h.X, h.Z, h.Y);
@@ -2412,12 +2451,50 @@ namespace Tankfall.View
             foreach (var t in _air.Tornadoes) Grow(t.X, t.Z, t.Radius, t.Radius, t.TopY);
 
             var center = new Vector3((minX + maxX) * 0.5f, top * 0.5f, (minZ + maxZ) * 0.5f);
-            // 상자의 «대각 크기»가 세로 화각 안에 들어올 거리. 여유 1.5배 — 딱 맞추면 테두리가 잘린다.
             float span = Mathf.Max(top, Mathf.Max(maxX - minX, maxZ - minZ));
-            float dist = Mathf.Max(60f, 1.5f * span / Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad));
             // x 축에서 본다 — 벽이 z 축으로 뻗어 있으므로(AirField.Roll) 옆에서 봐야 «판»이 보인다.
-            _cam.transform.position = center + new Vector3(-dist * 0.82f, dist * 0.42f, -dist * 0.30f);
+            FramePose(center, span, new Vector3(-0.82f, 0.42f, -0.30f));
+        }
+
+        /// <summary>
+        /// 무언가를 **프레임 안에 확실히 넣는** 카메라 포즈. 「보이는가」를 볼 때 쓴다.
+        /// `span` 은 대상의 최대 치수, `dir` 은 중심에서 카메라로 가는 방향(정규화 안 해도 된다).
+        /// ⚠️ 여유 1.5배 — 딱 맞추면 테두리가 잘려서 「가장자리 처리가 되나」를 못 본다.
+        /// </summary>
+        void FramePose(Vector3 center, float span, Vector3 dir, float minDist = 60f)
+        {
+            if (_cam == null) return;
+            float dist = Mathf.Max(minDist, 1.5f * span / Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad));
+            _cam.transform.position = center + dir.normalized * dist;
             _cam.transform.LookAt(center);
+        }
+
+        /// <summary>
+        /// 지뢰밭을 내려다보는 고정 포즈. **지뢰는 맵 전체에 흩어져 있어** 전투 카메라로는
+        /// 「몇 개가 어디 깔렸나」를 영영 못 본다 — 기후 전용 포즈와 같은 이유로 하나 둔다.
+        /// </summary>
+        void BoomPose()
+        {
+            if (!_boom || _cam == null) return;
+            _hazards.Snapshot(_hazardBuf);
+            float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue, y = 0f;
+            int n = 0;
+            foreach (var h in _hazardBuf)
+            {
+                if (h.Kind != 0) continue;              // 지뢰만
+                n++;
+                if (h.X < minX) minX = h.X; if (h.X > maxX) maxX = h.X;
+                if (h.Z < minZ) minZ = h.Z; if (h.Z > maxZ) maxZ = h.Z;
+                y += h.Y;
+            }
+            if (n == 0) return;
+            // ⚠️ **맵 전체를 담지 않는다.** 처음엔 지뢰 14개의 바운딩 박스를 다 넣었더니 카메라가 200m 밖으로
+            //    물러나 지뢰가 **점**이 됐다 — 그건 「어디에 몇 개」를 보는 그림이고, 그건 **미니맵이 이미 한다.**
+            //    여기서 답해야 할 질문은 다르다: **「이게 지뢰로 읽히나, 바위로 읽히나」.**
+            //    그러려면 **한 발을 가까이서** 봐야 한다. 「보이는가」는 하나가 아니라 여러 질문이다.
+            var first = _hazardBuf.Find(h => h.Kind == 0);
+            var center = new Vector3(first.X, first.Y + 0.6f, first.Z);
+            FramePose(center, 3.2f, new Vector3(-0.55f, 0.45f, -0.70f), 7f);
         }
 
         /// <summary>회오리를 돌린다 — 서 있기만 하면 기둥인지 회오리인지 안 읽힌다.</summary>
@@ -3935,6 +4012,8 @@ namespace Tankfall.View
                 //    ⚠️ 기후가 없으면 안 찍는다 — 빈 들판 사진은 아무것도 증명하지 않는다.
                 case 6:  ClimatePose(); break;
                 case 8:  if (_air.Any) Shot("10_기후"); break;
+                case 10: BoomPose(); break;
+                case 12: if (_boom) Shot("10b_지뢰밭"); break;
                 case 15: _camYaw = 160f; _camPitch = 24f; _camDist = 40f; UpdateCamera(0f); break;
                 case 20:
                     Shot("11_전투개시");
