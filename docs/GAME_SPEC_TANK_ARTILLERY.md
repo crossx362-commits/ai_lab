@@ -2021,9 +2021,48 @@ struct TurnResult {
 
 ---
 
-## 14. 부록 — 즉시 쓸 수 있는 상수 블록
+## 14. 부록 — ~~즉시 쓸 수 있는~~ **설계 초안** 상수 블록
+
+> 🛑 **복사해 넣지 마라. `GameConstants` 클래스는 존재하지 않는다.**
+>
+> 이건 **2026-09-15 설계 초안**이고 **현재 값이 아니다**(아래에 대조표가 있다). §8 Core 6개가 전부
+> 미생성이라 이 클래스도 안 만들어졌고, 값들은 `Ballistics`·`ProjectileSimulator`·`TankGroundProbe`·
+> `MapHeightFunction`·`BattleDemo` 에 **각자의 단일 소스로** 흩어져 산다.
+>
+> **복사해 넣는 순간 상수의 «두 번째 진실»이 생긴다** — 그건 2026-09-19 아침에 `BattleDemo.cs:26-27`
+> 에서 지운 바로 그 병이다(`BlastRadius 7`·`BaseDamage 300` 사본이 아무도 안 읽는 채로 살아 있어서,
+> 거기를 고치고 "게임이 안 바뀐다"고 헤매게 만드는 자리였다).
+>
+> ### 14-1. 실물 대조 (2026-09-19)
+>
+> | 초안 상수 | 초안 값 | **실제 값** | **단일 소스 (여기를 고쳐라)** |
+> |---|---|---|---|
+> | `Gravity` | 30.0 | **30.0** ✅ | `Ballistics.Gravity` (대조군 스위치는 §12-1) |
+> | `WindCoeff` | 0.35 | **0.35** ✅ | `Ballistics.WindCoeff` |
+> | `MaxFlightSec` | 15.0 | **15.0** ✅ | `Ballistics.MaxFlightSec` |
+> | `FalloffInnerRatio` | 0.21 | **0.21** ✅ | `ProjectileSimulator.FalloffInnerRatio` |
+> | `FalloffExponent` | 1.3 | **1.3** ✅ | `ProjectileSimulator.FalloffExponent` |
+> | **`FallDamagePerMeter`** | 12.0 | 🚨 **17.0** | `ProjectileSimulator.FallDamagePerMeter` |
+> | **`FallDamageMax`** | 240.0 | 🚨 **300.0** | `ProjectileSimulator.FallDamageMax` |
+> | **`MapSize`** | 200 | 🚨 **280** | `MapHeightFunction.MapSize` |
+> | `CeilingCollapseMin` | 1.0 | **1.0** ✅ | `CeilingCollapse.MinThickness` |
+> | `TankStepHeight` | 1.2 | **1.2** ✅ | `TankGroundProbe.StepHeight` |
+> | `TankWalkStep` | 0.25 | **0.25** ✅ | `TankGroundProbe.WalkStep` |
+> | `TankProbeDistance` | 1.5 | **1.5** ✅ | `TankGroundProbe.ProbeDistance` |
+> | `Voxel` / `ChunkVoxels` | 0.5 / 16 | **0.5 / 16** ✅ | `BattleDemo` · `tools/*Verify.cs` |
+> | **`SlopeMaxDeg`** | 42 | ⚠️ **이름 있는 상수가 없다** | `BattleDemo.GroundNormal` 안에 `42f` 인라인 (**자세** 전용, 이동 아님 — §2-7) |
+> | `MovePhaseSec` / `FirePhaseSec` | 12 / 15 | **12 / 15** ✅ | `BattleDemo` |
+>
+> 🚨 **틀린 셋의 사연**:
+> - **낙하 피해 26→17 · 상한 420→300**(`ProjectileSimulator` 머리말) — 굴착이 승리 조건이 되는 걸 되돌린 조정이다.
+>   초안의 `12 / 240` 은 **그 조정 이전도 이후도 아닌 제3의 값**이라, 초안이 처음부터 코드와 달랐던 것으로 보인다.
+> - **맵 200 → 280**(2026-09-17, 오너 지시 "맵 확대") — 200m 에서는 교전 150m 라 파워 100 사거리(220m)의
+>   68% 밖에 못 썼다.
+> 🛑 **값을 코드 쪽으로 «맞추지» 마라.** 여기 셋은 **문서가 낡은 것**이고, 수치를 움직이는 건 밸런스다.
 
 ```csharp
+// 🛑 아래는 2026-09-15 **설계 초안**이다. 현재 값이 아니고, 이 클래스는 존재하지 않는다.
+//    복사해 넣지 마라 — 단일 소스는 위 14-1 표의 심볼이다.
 public static class GameConstants
 {
     // 탄도 (§5-1)
