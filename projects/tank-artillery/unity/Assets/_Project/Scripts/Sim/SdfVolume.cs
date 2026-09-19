@@ -81,7 +81,13 @@ namespace Tankfall.Sim
             scale = ComputeSlopeScale(x, z);
         }
 
-        public void ClearDestroyed() => _chunks.Clear();
+        // 🗑️ `ClearDestroyed()`(= `_chunks.Clear()`) 를 2026-09-19 에 지웠다. 호출부 0곳이었다.
+        //
+        //    ⚠️ **«지형 리셋 함수가 없네» 하고 다시 만들지 마라.** 지형 리셋은 이미 다른 방식으로 한다 —
+        //       새 판은 `BattleDemo.StartBattle` → `RebuildTerrain()` 이 **볼륨을 통째로 새로 만든다.**
+        //       여기에 리셋 함수가 있으면 «둘 중 어느 쪽이 진짜 리셋인가»가 생기고, 그건 이 프로젝트가
+        //       반복해서 데인 자리다(같은 일을 두 경로가 하면 먼저 도는 쪽이 이긴다).
+        //    이름이 «지형을 되돌릴 수 있다»고 말하는데 아무도 안 부르는 상태였던 게 삭제 이유다.
 
         bool InTable(int ix, int iz) => _hTab != null && ix >= 0 && iz >= 0 && ix < _tabDim && iz < _tabDim;
         public float WorldX(int ix) => ix * Voxel;

@@ -924,13 +924,10 @@ namespace Tankfall.View
             }
         }
 
-        void StatRow(Rect card, int row, string label, float frac, Color col)
-        {
-            float y = card.y + 36f + row * 15f;
-            Ui.Text(new Rect(card.x + 8f, y - 2f, 40f, 14f), label, 9, Ui.Dim);
-            var b = new Rect(card.x + 48f, y + 2f, card.width - 58f, 7f);
-            Ui.Bar(b, Mathf.Clamp01(frac), col, null, null);
-        }
+        // 🗑️ `StatRow(card, row, label, frac, col)` 을 2026-09-19 에 지웠다. 호출부 0곳이었다.
+        //    **옛 결과 화면 레이아웃의 잔재**다 — 지금 결과 화면(`DrawResult`)은 팀별 열로 직접 그린다.
+        //    ⚠️ 살려 두면 «막대형 스탯 행 경로가 아직 있다»고 믿게 만든다.
+        //       「둘 다 살려두면 먼저 그리는 쪽이 이긴다」 계열이라 남길 이유가 없었다(옛 `DrawPicker` 사고).
 
         // ── 전투 설정(맵·난이도·아이템·날씨·Boom 모드) ──────────
         /// <summary>

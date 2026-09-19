@@ -351,6 +351,14 @@ namespace Tankfall.Sim
         ///    **중력과 무관**하다. GravityScale 이 실제로 바꾸는 것은 최대 사거리와 비행시간뿐이다.
         ///    바람 편차는 ½·a·t² 이므로 비행시간이 곧 바람 취약성이다.
         /// </summary>
+        /// <summary>
+        /// 🗑️ **호출부 0곳 (2026-09-19 실측 · 지우지 않는다).**
+        ///
+        /// 지우지 않는 이유: 이 함수는 **아무 거짓도 말하지 않는다.** 순수 함수이고, 머리말이 무엇을 위한
+        /// 것인지(바람 취약성 지표) 정확히 설명한다 — 있다고 믿게 만드는 기능이 아니라 **지금 안 쓰일 뿐**이다.
+        /// (같은 날 `Cleanse`·`ClearDestroyed`·`StatRow` 는 지웠다. 셋은 «있다»고 말하고 있었다.)
+        /// ⚠️ 밸런스가 풀리면 부를 자리가 생긴다 — 기종별 «바람에 약한 정도»를 수치로 비교할 때다.
+        /// </summary>
         public float FlightTimeAt(float range)
             => MathF.Sqrt(2f * range / (Ballistics.Gravity * GravityScale));
     }
