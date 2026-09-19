@@ -21,6 +21,15 @@ namespace Tankfall.View
         public Color Low, Mid, High;      // 고도별 지면 3색 (제한 팔레트)
         public Color Rock, RockDark;      // 경사면
         public Color Dirt, DirtDeep;      // 파낸 흙(2026-09-19) — 지표 아래가 드러난 자리
+        /// <summary>
+        /// 잎 색 3종(주·보조·물든 개체). **맵마다 다르다.**
+        /// 🚨 2026-09-19 까지 잎 색은 `Scatter` 안에서 **`TreeKind` 만 보고** 정해졌다 —
+        ///    그래서 **가을 능선(Ridge)의 지면은 단풍인데 나무만 여름 초록**이었다(스크린샷으로 잡았다).
+        ///    `Scatter` 머리말은 "나무 색은 맵 테마를 따른다"고 적혀 있었지만 **따르는 건 `Tree` 종류뿐**이었다.
+        /// ⚠️ 색은 **여기 한 곳에서만** 정한다(`TerrainPalette` 머리말의 규칙과 같다) —
+        ///    두 곳에서 정하면 경계에서 색이 튄다.
+        /// </summary>
+        public Color LeafA, LeafB, LeafC;
         public MapKind Map;               // 팔레트가 "원래 지면 높이"를 되물으려면 맵을 알아야 한다
         public Color SkyTop, SkyBottom;   // 하늘 그라디언트
         public Color Sun;                 // 태양광 색 — 시간대 느낌을 만든다
@@ -120,6 +129,11 @@ namespace Tankfall.View
                         Sun = new Color(1.00f, 0.86f, 0.62f),
                         Fog = new Color(0.86f, 0.76f, 0.62f),
                         Tree = TreeKind.Broadleaf, TreeRatio = 0.50f, ScatterCount = 250,
+                        // 🍁 가을 능선인데 잎만 여름 초록이었다(2026-09-19). 지면이 단풍이면 나무도 물들어야 한다.
+                        LeafA = new Color(0.82f, 0.42f, 0.16f),   // 주홍
+                        LeafB = new Color(0.90f, 0.62f, 0.20f),   // 노랑
+                        LeafC = new Color(0.66f, 0.26f, 0.14f),   // 짙은 단풍
+
                     };
                     break;
 
@@ -143,6 +157,17 @@ namespace Tankfall.View
 
             t.Map = k;
 
+            // ── 잎 색 ── 맵이 지정 안 했으면 종류에서 유도한다(사막=마른 초록, 침엽수=짙은 초록, 그 외=초록).
+            if (t.LeafA.a <= 0f)
+            {
+                bool dryT = t.Tree == TreeKind.Cactus;
+                t.LeafA = t.Tree == TreeKind.Pine ? new Color(0.20f, 0.42f, 0.30f)
+                        : dryT ? new Color(0.38f, 0.56f, 0.34f) : new Color(0.30f, 0.60f, 0.28f);
+                t.LeafB = t.Tree == TreeKind.Pine ? new Color(0.26f, 0.50f, 0.34f)
+                        : dryT ? new Color(0.44f, 0.62f, 0.38f) : new Color(0.40f, 0.72f, 0.33f);
+                t.LeafC = Color.Lerp(t.LeafB, new Color(0.85f, 0.70f, 0.25f), dryT ? 0.25f : 0.45f);
+            }
+
             // ── 파낸 흙 (2026-09-19) ──
             // 맵마다 따로 짓지 않고 **그 맵의 바위색에서 유도한다.** 6개 팔레트를 새로 지어내면
             // 서로 안 맞는 색이 섞이고, 맵이 늘 때마다 빠뜨린다(맵 3→6 때 깨졌던 종류의 자리).
@@ -154,9 +179,14 @@ namespace Tankfall.View
             t.Snowy = snowy;
             if (snowy)
             {
-                t.Mid = Color.Lerp(t.Mid, Color.white, 0.55f);
-                t.High = Color.Lerp(t.High, Color.white, 0.70f);
-                t.Low = Color.Lerp(t.Low, Color.white, 0.35f);
+                // 🚨 **눈이 «쌓인» 게 아니라 «색이 바랜» 것처럼 보였다**(2026-09-19, 맵 6종을 나란히 놓고 발견).
+                //    0.55/0.70/0.35 는 채도 높은 테마에서 부족했다 — 초원은 민트, 가을 능선은 살구색이 됐고
+                //    **원래 희끄무레한 Terrace 만 제대로 눈처럼 보였다.** 눈은 색을 덮는다.
+                // ⚠️ 그래도 완전한 흰색으로 밀지는 않는다 — 맵 정체성이 통째로 사라지면 여섯이 한 곳이 된다.
+                // ⚠️ 파낸 흙(`Dirt`)은 여기서 **안 건드린다**(아래 주석) — 흰 지면일수록 크레이터가 더 잘 읽힌다.
+                t.Mid = Color.Lerp(t.Mid, Color.white, 0.78f);
+                t.High = Color.Lerp(t.High, Color.white, 0.86f);
+                t.Low = Color.Lerp(t.Low, Color.white, 0.62f);
                 t.SkyTop = Color.Lerp(t.SkyTop, new Color(0.62f, 0.68f, 0.76f), 0.55f);
                 t.SkyBottom = Color.Lerp(t.SkyBottom, new Color(0.88f, 0.90f, 0.93f), 0.55f);
                 t.Sun = Color.Lerp(t.Sun, new Color(0.90f, 0.93f, 1.00f), 0.6f);

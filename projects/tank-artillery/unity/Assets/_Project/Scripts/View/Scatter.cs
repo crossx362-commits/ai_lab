@@ -37,10 +37,11 @@ namespace Tankfall.View
             // 나무 색은 맵 테마를 따른다 — 사막에 초록 활엽수가 서 있으면 테마가 깨진다(MapTheme.cs 조사 근거).
             bool dry = theme.Tree == TreeKind.Cactus;
             _trunk = Mat(dry ? new Color(0.50f, 0.40f, 0.28f) : new Color(0.42f, 0.30f, 0.20f), 0f);
-            var leafA = theme.Tree == TreeKind.Pine ? new Color(0.20f, 0.42f, 0.30f)
-                      : dry ? new Color(0.38f, 0.56f, 0.34f) : new Color(0.30f, 0.60f, 0.28f);
-            var leafB = theme.Tree == TreeKind.Pine ? new Color(0.26f, 0.50f, 0.34f)
-                      : dry ? new Color(0.44f, 0.62f, 0.38f) : new Color(0.40f, 0.72f, 0.33f);
+            // ⚠️ **잎 색을 여기서 정하지 마라 — `MapTheme` 이 유일한 소스다**(2026-09-19).
+            //    예전엔 여기서 `TreeKind` 만 보고 정했고, 그래서 **가을 능선의 지면은 단풍인데 나무만 여름**이었다.
+            //    바로 위 주석("나무 색은 맵 테마를 따른다")이 **사실이 아니었다** — 따르는 건 종류뿐이었다.
+            var leafA = theme.LeafA;
+            var leafB = theme.LeafB;
             // ⚠️ 눈이 오면 나무에도 눈이 앉아야 한다. 설원에 초록 나무가 서 있으면 날씨 표시가 거짓말이 된다.
             if (theme.Snowy)
             {
@@ -50,7 +51,7 @@ namespace Tankfall.View
             _leafA = Mat(leafA, 0.05f);
             _leafB = Mat(leafB, 0.05f);
             // 세 번째 잎색(노랗게 물든 개체) — 같은 초록만 200그루면 벽지가 된다. 눈이면 흰색 쪽으로.
-            _leafC = Mat(theme.Snowy ? Color.Lerp(leafB, Color.white, 0.3f) : Color.Lerp(leafB, new Color(0.85f, 0.70f, 0.25f), dry ? 0.25f : 0.45f), 0.05f);
+            _leafC = Mat(theme.Snowy ? Color.Lerp(theme.LeafC, Color.white, 0.4f) : theme.LeafC, 0.05f);
             _rock  = Mat(theme.Snowy ? Color.Lerp(theme.Rock, Color.white, 0.45f) : theme.Rock, 0.06f);
             _rockDark = Mat(theme.Snowy ? Color.Lerp(theme.RockDark, Color.white, 0.3f) : theme.RockDark, 0.04f);
             _bush  = Mat(Color.Lerp(theme.Mid, leafA, 0.6f), 0.03f);
