@@ -87,8 +87,17 @@ namespace Tankfall.View
         ///    잰 값이 아무 데도 안 나오면 계측이 아니라 죽은 코드다. 그래서 폭발마다 한 줄 찍는다.
         ///    ⚠️ 무인 모드에서만 찍는다(사람 판에서 매 폭발 로그를 뿌리지 않는다).
         /// </summary>
+        /// <summary>
+        /// 지형이 다시 만들어진 횟수. **«지형이 바뀌었나»를 이것 하나로 판정한다** —
+        /// 미니맵 실루엣처럼 지형을 캐시해 두는 쪽이 언제 다시 그려야 할지 알 수 있어야 한다.
+        /// ⚠️ 시간·프레임으로 재지 마라. 「몇 초마다 새로 그린다」는 **안 바뀌었을 때도 갈고**
+        ///    **바뀐 직후에는 늦는다.** 바뀐 사실 자체를 세는 게 정확하고 싸다.
+        /// </summary>
+        public int RebuildCount { get; private set; }
+
         public void ApplyDirty(in DirtyBounds b)
         {
+            RebuildCount++;
             if (b.Empty) return;
             int cx0 = FloorDiv(b.I0, _chunkN), cx1 = FloorDiv(b.I1 - 1, _chunkN) + 1;
             int cy0 = FloorDiv(b.J0, _chunkN), cy1 = FloorDiv(b.J1 - 1, _chunkN) + 1;

@@ -1160,8 +1160,22 @@ namespace Tankfall.View
         }
 
         /// <summary>
-        /// 미니맵(§59). 3D 라 화면 밖의 적이 어디 있는지가 안 보인다 — 탑다운 점으로 준다.
-        /// ⚠️ 지형 높이는 그리지 않는다. 고저차를 여기서 읽게 하면 §58(탄착 예측 금지)의 우회로가 된다.
+        /// 미니맵(§59). 3D 라 화면 밖의 적이 어디 있는지가 안 보인다 — 탑다운으로 준다.
+        ///
+        /// 🚨 **여기 「지형 높이는 그리지 않는다 — §58 의 우회로가 된다」고 적혀 있었다.**
+        ///    그런데 **이 주석이 자기가 인용한 규칙보다 엄격했다**(2026-09-19 확인).
+        ///    §58 이 실제로 금지하는 셋은 **「예상 탄착 마커 · 전체 궤적선 · 자동 보정선」**이고,
+        ///    §2-6 은 그 충돌을 절충하며 **거리계에 `↕ 고도차`를 이미 «수치로» 허용**한다.
+        ///    ⇒ 상위 문서(기획서 §2-6)가 코드 주석을 이긴다. 실루엣은 금지 목록에 없다.
+        ///
+        /// **여기서 허용되는 것**: 채도 죽인 **실루엣·음영**(어디가 높고 어디가 파였는지의 «대략»).
+        ///   사람은 이미 화면으로 지형을 본다. 탑다운 실루엣은 **사격 해가 아니다** —
+        ///   각도·파워·바람은 여전히 사람 몫이라 이걸로는 한 발도 못 푼다.
+        ///   지형을 안 보여 주는 건 정보 은폐가 아니라 **미니맵이 쓸모없는 것**이고,
+        ///   §59 가 요구한 건 «쓸모 있는 탑다운»이다.
+        /// 🚫 **금지**: 숫자 고도 · **등고선처럼 «읽어서 계산할 수 있는» 형태**(그래서 밴딩 없이
+        ///    **부드럽게** 칠한다 — 층이 지면 그게 등고선이다) · 예상 탄착 마커 · 궤적선 · 보정선.
+        ///    §2-6 이 수치로 주기로 한 것은 **거리계 하나뿐**이다.
         /// </summary>
         void DrawMiniMap(float W, float H)
         {
@@ -1173,6 +1187,20 @@ namespace Tankfall.View
             // ⚠️ 기본 패널(알파 0.78)은 여기선 너무 비친다 — 나무·언덕이 통과해 보여 점과 섞였다.
             //    미니맵은 **화면에서 유일한 전장 개관**이라 배경이 조용해야 한다.
             Ui.Box(r, new Color(0.03f, 0.05f, 0.07f, 0.95f));
+            // 지형 실루엣을 깔고 그 위에 어둠을 한 겹 덮는다 — **실루엣은 «바닥»이지 «주인공»이 아니다.**
+            // 이 한 겹이 없으면 지형 대비가 유닛 점과 싸운다(§59 가 요구한 건 유닛 개관이다).
+            var mini = MiniTerrain();
+            if (mini != null)
+            {
+                var prev = GUI.color;
+                GUI.color = Color.white;
+                GUI.DrawTexture(new Rect(r.x + 1f, r.y + 1f, r.width - 2f, r.height - 2f), mini);
+                GUI.color = prev;
+                // ⚠️ 이 어둠은 **0.20 이다.** 처음 0.34 로 덮었더니 지형은 물론 **파낸 자리까지 같이 지워졌다** —
+                //    계측에선 30칸이 잡히는데 화면엔 아무것도 없었다(「기능이 있는데 화면에 없는 것」).
+                //    유닛이 튀는 데 필요한 건 «지형을 어둡게»지 «전부 어둡게»가 아니다.
+                Ui.Fill(r, new Color(0.02f, 0.03f, 0.05f, 0.20f));
+            }
             Ui.Text(new Rect(r.x + 6f, r.y + 2f, 80f, 14f), "미니맵", 9, Ui.Dim);
 
             // ⚠️ 3D 라 미니맵이 **유일한 전장 개관**이다. 예전엔 유닛과 상자만 찍어서
@@ -1221,6 +1249,78 @@ namespace Tankfall.View
                 if (cur) Ui.Frame(new Rect(p.x - 6f, p.y - 6f, 12f, 12f), Ui.Ink);
                 Ui.Fill(new Rect(p.x - 3f, p.y - 3f, 6f, 6f), col);
             }
+        }
+
+        // ── 미니맵 지형 실루엣 ────────────────────────────────────────────────────
+        // ⚠️ **매 프레임 만들면 안 된다**(64×64 = 4096 샘플). `TerrainView.RebuildCount` 가
+        //    바뀔 때만 다시 굽는다 — 「몇 초마다」로 재면 **안 바뀌었을 때 갈고 바뀐 직후엔 늦는다.**
+        const int MiniN = 64;
+        Texture2D _miniTex;
+        MapKind _miniTexMap;
+        int _miniTexRebuild = -1;
+
+        Texture2D MiniTerrain()
+        {
+            int rc = _terrain != null ? _terrain.RebuildCount : 0;
+            if (_miniTex != null && _miniTexMap == _map && _miniTexRebuild == rc) return _miniTex;
+
+            if (_miniTex == null)
+                _miniTex = new Texture2D(MiniN, MiniN, TextureFormat.RGBA32, false)
+                {
+                    hideFlags = HideFlags.HideAndDontSave,
+                    filterMode = FilterMode.Bilinear,      // 부드럽게 — 층이 지면 그게 등고선이다(위 🚫)
+                    wrapMode = TextureWrapMode.Clamp,
+                };
+            _miniTexMap = _map; _miniTexRebuild = rc;
+
+            float cell = MapSize / (MiniN - 1);
+            var h = new float[MiniN * MiniN];
+            // ⚠️ 높이 범위를 **맵마다 다시 구한다.** 고정 범위로 정규화하면 고저차가 작은 맵은
+            //    통째로 한 색이 되고 큰 맵은 양끝이 뭉갠다 — 여섯을 한 번에 보고서야 알게 되는 종류다.
+            float lo = float.MaxValue, hi = float.MinValue;
+            for (int j = 0; j < MiniN; j++)
+                for (int i = 0; i < MiniN; i++)
+                {
+                    float v = MapHeightFunction.Height(_map, i * cell, j * cell);
+                    h[j * MiniN + i] = v;
+                    if (v < lo) lo = v;
+                    if (v > hi) hi = v;
+                }
+            float span = Mathf.Max(1f, hi - lo);
+
+            var px = new Color32[MiniN * MiniN];
+            int dug = 0;
+            for (int j = 0; j < MiniN; j++)
+                for (int i = 0; i < MiniN; i++)
+                {
+                    float t = (h[j * MiniN + i] - lo) / span;
+                    // 경사 음영 — 「어디가 비탈인가」가 실루엣을 읽히게 한다. 등고선이 아니라 **연속 음영**이다.
+                    float hx = h[j * MiniN + Mathf.Min(i + 1, MiniN - 1)] - h[j * MiniN + Mathf.Max(i - 1, 0)];
+                    float hz = h[Mathf.Min(j + 1, MiniN - 1) * MiniN + i] - h[Mathf.Max(j - 1, 0) * MiniN + i];
+                    float shade = Mathf.Clamp01(0.5f + (hx + hz) * 0.05f);
+
+                    // 🚨 **채도를 죽인 회청색만 쓴다.** 팀색(파랑·빨강)·보급(초록)·위험물(노랑)과
+                    //    색상환에서 겹치면 점 하나를 적으로 잘못 읽는다 — 이미 한 번 걸린 자리다.
+                    var c = Color.Lerp(new Color(0.09f, 0.12f, 0.15f), new Color(0.40f, 0.44f, 0.48f), t);
+                    c *= 0.74f + shade * 0.44f;
+
+                    // 파낸 자리 — 원래 지표 1.5m 아래가 «공기»면 파인 것이다(SDF 는 >0 이 바깥).
+                    // 기둥을 훑지 않고 **한 점만** 본다: 미니맵에 필요한 건 깊이가 아니라 «파였다» 하나다.
+                    if (_vol != null && _vol.SampleWorld(i * cell, h[j * MiniN + i] - 1.5f, j * cell) > 0f)
+                    // ⚠️ 섞는 양이 크다(0.88) — 파인 칸은 **한 판에 30/4096 = 0.7%** 뿐이라
+                    //    약하게 섞으면 2px 짜리가 배경에 먹힌다. 대신 **색상은 계속 저채도 흙색**이라
+                    //    팀색(파랑·빨강)·보급(초록)·위험물(노랑) 어느 것과도 안 헷갈린다.
+                    { c = Color.Lerp(c, new Color(0.52f, 0.35f, 0.22f), 0.88f); dug++; }
+
+                    c.a = 1f;
+                    px[j * MiniN + i] = c;
+                }
+            _miniTex.SetPixels32(px);
+            _miniTex.Apply(false);
+            // 「파낸 자리」가 실제로 몇 칸이나 잡혔는지 — **0 이면 기능이 없는 것과 같다.**
+            // 눈으로 「안 보이는 것 같다」로 끝내지 않으려고 숫자로 남긴다.
+            if (_autoMode) Debug.Log($"[Tankfall] 미니맵 재생성 rc={rc} · 파낸칸 {dug}/{MiniN * MiniN} · 높이 {lo:F1}~{hi:F1}m");
+            return _miniTex;
         }
 
         Vector2 MapToMini(Rect r, float x, float z)
