@@ -341,10 +341,14 @@ game_check() {
 # ══════════════════════════════════════════════════════════════════════
 balance_guard() {
   if [ "${TANKFALL_BALANCE_OK:-}" = "1" ]; then return 0; fi
-  echo "  🛑 밸런스 측정(BattleSimVerify)은 **오너 허가 전까지 막혀 있다**."
-  echo "     사유: 매치업 승률표는 §2-5-0·난이도 사다리의 근거다 — 다시 뜨면 기준선이 흔들린다."
+  echo "  🛑 밸런스 측정(BattleSimVerify)은 **의도 확인**을 요구한다."
+  echo "     사유: 6분짜리 측정이고, 이 표가 §2-5-0·난이도 사다리·M4 의 «기준선»이다 —"
+  # ⚠️ 이 문구에 백틱을 쓰지 마라 — 큰따옴표 안의 백틱은 **명령 치환**이라 그 자리에서 실행된다.
+  #    (2026-09-19: 여기에 \`verify.sh all\` 이라고 썼다가 가드가 전체 게이트를 부를 뻔했다.)
+  echo "           'verify.sh all' 에 실려 «실수로» 다시 뜨면 어제 표와 비교할 근거가 사라진다."
+  echo "     (2026-09-18 오너 동결은 09-19 해제됐다. 이건 «금지»가 아니라 «찍어서 부르는가»를 묻는 것이다.)"
   # ⚠️ 안내에 `$0` 을 쓰지 마라 — 자기 복사본 재실행 가드 때문에 **임시 경로**가 찍힌다.
-  echo "     허가를 받았다면: TANKFALL_BALANCE_OK=1 ${TANKFALL_VERIFY_SELF:-./tools/verify.sh} battle"
+  echo "     의도한 것이라면: TANKFALL_BALANCE_OK=1 ${TANKFALL_VERIFY_SELF:-./tools/verify.sh} battle"
   return 1
 }
 

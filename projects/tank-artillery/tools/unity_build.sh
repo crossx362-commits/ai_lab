@@ -109,7 +109,14 @@ FROZEN="$OUT_DIR/.frozen"
 if [ -f "$FROZEN" ]; then
   echo ""
   echo "🧊 빌드가 동결돼 있다 — 굽지 않는다. ($FROZEN)"
-  sed 's/^/   │ /' "$FROZEN"
+  # ⚠️ 사유는 «그 파일에 적어라»가 규약인데, 규약은 지켜지지 않을 때가 있다.
+  #    빈 파일이면 이 거부는 **이유 없는 거부**가 된다 — 밟은 사람이 혼자 디버깅하게 된다.
+  if [ -s "$FROZEN" ]; then
+    sed 's/^/   │ /' "$FROZEN"
+  else
+    echo "   │ (사유가 안 적혀 있다 — 동결한 사람이 파일에 이유를 안 남겼다.)"
+    echo "   │  누가 왜 막았는지 모르겠으면 지우기 전에 한 번 물어봐라."
+  fi
   echo "   해동하려면 그 파일을 지워라: rm \"$FROZEN\""
   exit 3
 fi
