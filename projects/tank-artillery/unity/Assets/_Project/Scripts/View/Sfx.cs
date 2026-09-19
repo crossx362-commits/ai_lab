@@ -24,7 +24,7 @@ namespace Tankfall.View
         int _next;
         AudioSource _loop;        // 주행음 전용
         AudioClip _fire, _hit, _move, _click, _confirm, _win, _lose;
-        AudioClip _nice, _death, _pickup, _mine;
+        AudioClip _nice, _death, _pickup, _mine, _smash;
         AudioClip[] _boom;        // 폭발 3변주 — 다탄두는 한 프레임에 9발이 터진다
 
         public static Sfx I
@@ -64,6 +64,9 @@ namespace Tankfall.View
             _pickup  = Make("pickup",  0.24f, (t, d) => (Tone(t, 880f, d, 0.06f) + Tone(t, 1320f, d, 0.10f)) * 0.26f);
             // 지뢰 — 폭발보다 짧고 날카롭다(밟았다는 놀람).
             _mine    = Make("mine",    0.30f, (t, d) => (Tone(t, 220f, d, 0.05f) * 0.6f + Noise() * 0.5f * Mathf.Exp(-t * 18f)) * 0.7f);
+            // 지형물 파괴 — 나무·바위가 **소리 없이 증발하고 있었다**(2026-09-19).
+            // 폭발음과 겹쳐 울리므로 짧아야 한다. 쪼개짐(잡음 두 번) + 둔탁하게 받치는 저음.
+            _smash   = Make("smash",   0.34f, SmashWave);
 
             _loop = NewSource();
             _loop.clip = _move; _loop.loop = true; _loop.volume = 0.5f;
@@ -100,6 +103,18 @@ namespace Tankfall.View
 
         static float Tone(float t, float hz, float dur, float decay)
             => Mathf.Sin(t * hz * 2f * Mathf.PI) * Mathf.Exp(-t / Mathf.Max(decay, 1e-4f)) * (t < dur ? 1f : 0f);
+
+        /// <summary>
+        /// 지형물 파괴 — 쪼개지는 잡음 두 번 + 낮은 둔탁음. 폭발음(`BoomWave`)과 **겹쳐** 울리므로
+        /// 길거나 크면 포성을 덮는다. 진폭을 키우지 마라(파일 머리말).
+        /// </summary>
+        static float SmashWave(float t, float dur)
+        {
+            float crack = Noise() * Mathf.Exp(-t * 26f) * 0.55f;                        // 첫 쪼개짐
+            float split = Noise() * Mathf.Exp(-Mathf.Abs(t - 0.07f) * 80f) * 0.45f;     // 되튀는 두 번째
+            float thud = Tone(t, 115f, dur, 0.035f) * 0.40f;                            // 쓰러져 닿는 저음
+            return (crack + split + thud) * 0.55f;
+        }
 
         /// <summary>발사 — 짧은 파열 + 아래로 떨어지는 저음. "쿵" 하고 밀려나는 느낌.</summary>
         static float FireWave(float t, float dur)
@@ -248,6 +263,13 @@ namespace Tankfall.View
         public static void Death()             => I.One(I._death, 0.85f, Jitter(0.05f));
         public static void Pickup()            => I.One(I._pickup, 0.7f, Jitter(0.03f));
         public static void Mine()              => I.One(I._mine, 0.8f, Jitter(0.06f));
+        /// <summary>지형물이 부서졌다. 많이 부서질수록 조금 크고 낮게 — 개수가 귀로 읽혀야 한다.</summary>
+        public static void Smash(int count)
+        {
+            if (count <= 0) return;
+            I.One(I._smash, Mathf.Min(0.72f, 0.34f + count * 0.09f),
+                  Mathf.Lerp(1.10f, 0.86f, Mathf.Clamp01(count / 8f)) * Jitter(0.07f));
+        }
 
         /// <summary>주행음 — 누르고 있는 동안만. 매 프레임 불러도 겹치지 않게 재생 중이면 그냥 둔다.</summary>
         public static void Engine(bool on)

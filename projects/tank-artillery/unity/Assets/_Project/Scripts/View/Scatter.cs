@@ -18,7 +18,9 @@ namespace Tankfall.View
 {
     public sealed class Scatter : MonoBehaviour
     {
-        struct Item { public Transform T; public Vector3 Pos; }
+        // Sway = 바람에 흔들리는 정도(0=안 흔들림). Rest = 스폰 때의 자세 — 바람 기울기를 여기에 얹는다.
+        // ⚠️ `T.rotation` 을 덮어쓰면 스폰 때의 무작위 회전이 날아가 같은 나무가 줄 맞춰 선다.
+        struct Item { public Transform T; public Vector3 Pos; public float Sway; public Quaternion Rest; }
         readonly List<Item> _items = new List<Item>();
 
         Material _trunk, _leafA, _leafB, _leafC, _rock, _rockDark, _bush, _flower;
@@ -83,19 +85,22 @@ namespace Tankfall.View
                 float treeR = _theme.TreeRatio;
                 float rest = 1f - treeR;
                 Transform t;
-                if (roll < treeR) t = Tree(p, ref rng);
+                // 바람에 흔들리는 정도는 **종류마다 다르다** — 바위가 흔들리면 즉시 가짜로 보인다.
+                // 키가 클수록 크게 흔들린다(끝이 멀어서 같은 각도라도 더 많이 움직인다).
+                float sway;
+                if (roll < treeR) { t = Tree(p, ref rng); sway = 1f; }
                 else
                 {
                     float r2 = (roll - treeR) / Mathf.Max(0.0001f, rest);
-                    t = r2 < 0.42f ? Rock(p, ref rng)
-                      : r2 < 0.64f ? Bush(p, ref rng)
-                      : r2 < 0.76f ? GrassTuft(p, ref rng)
-                      : r2 < 0.86f ? Stump(p, ref rng)
-                      : r2 < 0.94f ? FallenLog(p, ref rng)
-                      : Debris(p, ref rng);
+                    if (r2 < 0.42f) { t = Rock(p, ref rng); sway = 0f; }
+                    else if (r2 < 0.64f) { t = Bush(p, ref rng); sway = 0.55f; }
+                    else if (r2 < 0.76f) { t = GrassTuft(p, ref rng); sway = 0.85f; }
+                    else if (r2 < 0.86f) { t = Stump(p, ref rng); sway = 0f; }
+                    else if (r2 < 0.94f) { t = FallenLog(p, ref rng); sway = 0f; }
+                    else { t = Debris(p, ref rng); sway = 0f; }
                 }
                 t.SetParent(transform, true);
-                _items.Add(new Item { T = t, Pos = p });
+                _items.Add(new Item { T = t, Pos = p, Sway = sway, Rest = t.rotation });
                 placed++;
             }
         }
@@ -532,7 +537,56 @@ namespace Tankfall.View
                     _items.RemoveAt(i);
                     n++;
                 }
+            // 🚨 **여기에 소리가 없었다**(2026-09-19). 나무·바위가 파편만 날리고 **소리 없이 증발했다**.
+            //    `Sfx` 를 거치므로 설정 화면의 채널 끄기·전체 음량이 그대로 적용된다 —
+            //    새 재생 경로를 만들면 "꺼도 나는 소리"가 생긴다(파일 머리말과 같은 이유).
+            Sfx.Smash(n);
             return n;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  바람 (2026-09-19)
+        //
+        //  바람은 §1 **1순위(포격 감각)** 의 변수인데, 화면에서 읽을 곳이 **HUD 숫자 하나**뿐이었다.
+        //  하늘 구름만 흐르고 지상은 완전히 정지해 있었다 — 즉 "바람이 분다"가 전장에 안 보였다.
+        //
+        //  ⚠️ **값은 반드시 게임의 바람(`WindState`)을 그대로 받는다.** 연출용 바람을 따로 만들지 마라 —
+        //     "보이는 바람과 맞는 바람이 다른" 상태가 되고, 그건 이 프로젝트가 네 번 겪은 어긋남이다
+        //     (역산·유도탄·AI 조준·연습장). `Environment.SetWind` 와 **같은 곳에서 같은 값**으로 부른다.
+        //  ⚠️ 정점이 아니라 **트랜스폼**을 돈다(수백 개). 정점마다 도는 것을 더하지 마라(§7-6-3).
+        //  ⚠️ 이건 순수 연출이다 — 탄도·판정에 아무 영향이 없다. 흔들려도 히트박스는 없다(콜라이더 없음).
+        // ══════════════════════════════════════════════════════════════
+        Vector3 _windDir;      // 정규화된 방향(y=0)
+        float _windStrength;
+
+        public void SetWind(float wx, float wz)
+        {
+            var v = new Vector3(wx, 0f, wz);
+            _windStrength = v.magnitude;
+            _windDir = _windStrength > 1e-4f ? v / _windStrength : Vector3.zero;
+        }
+
+        void LateUpdate()
+        {
+            if (_windDir == Vector3.zero || _items.Count == 0) return;
+            // 기우는 축은 바람에 **수직**이다(바람이 미는 방향으로 넘어간다).
+            var axis = Vector3.Cross(Vector3.up, _windDir);
+            if (axis.sqrMagnitude < 1e-6f) return;
+            axis.Normalize();
+
+            // 세기 → 각도. 최대 ~7° 로 묶는다. 더 기울이면 나무가 "부러진 것"처럼 보인다.
+            float lean = Mathf.Min(_windStrength * 0.7f, 7f);
+            float amp = 0.35f + lean * 0.22f;         // 흔들림 폭
+            float t = Time.time;
+            for (int i = 0; i < _items.Count; i++)
+            {
+                var it = _items[i];
+                if (it.Sway <= 0f || it.T == null) continue;
+                // 위상은 위치에서 뽑는다 — 전부 같은 박자로 흔들리면 파도처럼 보여 가짜가 된다.
+                float phase = it.Pos.x * 0.37f + it.Pos.z * 0.61f;
+                float a = (lean + Mathf.Sin(t * 1.9f + phase) * amp) * it.Sway;
+                it.T.rotation = Quaternion.AngleAxis(a, axis) * it.Rest;
+            }
         }
 
         public void Clear()

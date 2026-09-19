@@ -178,9 +178,14 @@ namespace Tankfall.View
         /// <param name="trackMat">타이어·궤도 벨트(어두운 고무색)</param>
         /// <param name="accentMat">팀색 — 바퀴 허브·포신·기둥</param>
         /// <param name="woodMat">통나무 범퍼용. null 이면 trackMat 로 대신한다</param>
+        /// <param name="snowMat">
+        /// 눈 날씨(§2-9-7)에서만 넘긴다. 나무·바위·덤불은 `theme.Snowy` 로 흰색을 섞는데
+        /// **탱크만 도색 그대로**라 눈밭 위에 탱크만 떠 있었다(2026-09-19).
+        /// ⚠️ 순수 장식이다 — 포구 위치·히트박스에 영향 주지 마라(디테일 파츠와 같은 규칙).
+        /// </param>
         public static Transform Build(TankShape s, Material bodyMat, Material trackMat, Material accentMat,
                                       out Transform turret, out Transform barrel, out Transform firePoint,
-                                      Material woodMat = null)
+                                      Material woodMat = null, Material snowMat = null)
         {
             var root = new GameObject("Tank").transform;
             woodMat ??= trackMat;
@@ -616,6 +621,19 @@ namespace Tankfall.View
                 var th = Part("TurretHatch", turret, trackMat);
                 th.CylinderY(new Vector3(-cw * 0.18f, s.TurretHeight * 0.92f, -cl * 0.26f), s.TurretRadius * 0.30f, 0.06f, 10);
                 th.CylinderY(new Vector3(-cw * 0.18f, s.TurretHeight * 0.98f, -cl * 0.26f), s.TurretRadius * 0.23f, 0.07f, 10);
+            }
+
+            // ── 쌓인 눈 (2026-09-19) ── 윗면에만 얹는다. 눈은 위에서 내려앉는 것이다.
+            // ⚠️ 옆면·바닥에 두르지 마라 — 눈이 아니라 **도색**으로 보인다.
+            if (snowMat != null)
+            {
+                var sn = Part("Snow", root, snowMat);
+                float W3 = s.BodyWidth, H3 = s.BodyHeight, L3 = s.BodyLength;
+                float deckY = bodyY0 + H3;
+                sn.Chamfer(new Vector3(0f, deckY + 0.03f, 0f),
+                           new Vector3(W3 * 0.47f, 0.06f, L3 * 0.45f), 0.05f);      // 차체 윗면
+                var snT = Part("SnowTurret", turret, snowMat);
+                snT.CylinderY(new Vector3(0f, s.TurretHeight * 1.02f, 0f), s.TurretRadius * 0.82f, 0.05f, 12);
             }
 
             // --- 무기(포신 자리). 기종마다 통째로 다르다 ---

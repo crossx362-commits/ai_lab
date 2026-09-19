@@ -482,13 +482,15 @@ namespace Tankfall.View
             // ⚠️ 예전엔 shapes[] 와 kinds[] 두 배열을 손으로 맞췄는데, 13종에서는 반드시 어긋난다.
             //    이제 실루엣도 색도 **종류로 조회**한다 — 짝맞춤이라는 실패 지점 자체를 없앴다.
             var kinds = _roster;
+            // 눈 날씨면 탱크 윗면에도 눈이 쌓인다 — 나무·바위만 희고 탱크만 도색 그대로면 따로 논다.
+            var snow = _weather == Weather.Snow ? MakeMat(new Color(0.95f, 0.97f, 1.00f), 0.02f) : null;
             for (int t = 0; t < 2; t++)
                 for (int i = 0; i < MapHeightFunction.TeamSize; i++)
                 {
                     MapHeightFunction.Spawn(_map, t, i, out float x, out float z);
                     var root = ProceduralTank.Build(TankShape.Of(kinds[i]),
                                                     MakeMat(TankShape.BodyColor(kinds[i]), 0.22f),
-                                                    track, teamMat[t], out var tur, out var bar, out var fp, wood);
+                                                    track, teamMat[t], out var tur, out var bar, out var fp, wood, snow);
                     var u = new Unit { Id = t * MapHeightFunction.TeamSize + i, Team = t, Kind = kinds[i], W = _weather,
                                        Root = root, Turret = tur, Barrel = bar, Fire = fp,
                                        BarrelHome = bar != null ? bar.localPosition : Vector3.zero };
@@ -812,6 +814,8 @@ namespace Tankfall.View
             _wind = new Vector2(Mathf.Cos(a) * s, Mathf.Sin(a) * s);
             if (_weather == Weather.Snow && _cam != null) EnsureFx().SetSnow(!Application.isBatchMode, _cam.transform, _wind);   // 눈은 바람을 따라 흩날린다
             if (_env != null) _env.SetWind(_wind.x, _wind.y);   // 하늘도 같은 바람을 탄다(연출 전용)
+            // ⚠️ 지상도 **같은 값**을 받는다. 화면의 바람과 탄도의 바람이 갈리면 조준 감각이 거짓말을 한다.
+            if (_scatter != null) _scatter.SetWind(_wind.x, _wind.y);
         }
 
         void Update()
