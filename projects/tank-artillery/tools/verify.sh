@@ -16,7 +16,41 @@
 # TankGroundProbe.StepHeight/WalkStep 은 바꾸면 탱크가 갖힌다(명세 §7-6).
 set -u
 
-cd "$(dirname "$0")/.."
+# ══════════════════════════════════════════════════════════════════════
+#  🚨 **자기 복사본에서 다시 실행한다** (2026-09-19)
+#
+#  bash 는 스크립트를 **실행하며 읽는다.** 그래서 오래 도는 게이트(`battle` 은 6분)가 도는 중에
+#  누가 이 파일을 편집하면 **바이트 오프셋이 밀려** 엉뚱한 줄이 실행된다. 실제로 그랬다 —
+#  4:4 판 길이 측정이 도는 동안 `game` 서브커맨드를 추가했더니 끝에서
+#  `line 174: pid: unbound variable` 이 나고 **rc=1** 로 끝났다(측정 출력은 이미 찍힌 뒤라
+#  표는 멀쩡했지만, 그건 운이었다).
+#
+#  인수인계에 「실행 중인 verify.sh 를 편집하지 마라」가 **이미 있었는데도** 났다.
+#  지침 한 줄로 못 막은 것이니 **가드로 바꾼다** — bash 가 읽는 실체를 편집 대상이 아니게 만든다.
+#  누가 도중에 원본을 고쳐도 복사본은 그대로라 오프셋이 안 밀린다.
+#
+#  ⚠️ 복사본에서는 `$0` 이 임시 경로라 `dirname "$0"/..` 가 `/` 가 된다.
+#     그래서 원본 경로를 `TANKFALL_VERIFY_SELF` 로 넘기고 **그걸로** 저장소를 찾는다.
+#  ⚠️ 복사본은 **자기가 지운다**(EXIT trap). 부모는 `exec` 로 넘어가므로 trap 을 걸 수 없다.
+#  ⚠️ 복사에 실패하면 **그냥 원본으로 간다** — 게이트를 못 돌리는 것보다 낫다(경고만 찍는다).
+# ══════════════════════════════════════════════════════════════════════
+if [ -z "${TANKFALL_VERIFY_REENTRY:-}" ]; then
+  _vself="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+  _vcopy="$(mktemp -t tankfall_verify_run 2>/dev/null || echo "")"
+  if [ -n "$_vcopy" ] && cp "$_vself" "$_vcopy" 2>/dev/null; then
+    export TANKFALL_VERIFY_REENTRY=1
+    export TANKFALL_VERIFY_SELF="$_vself"
+    exec bash "$_vcopy" "$@"
+  fi
+  [ -n "$_vcopy" ] && rm -f "$_vcopy"
+  echo "⚠️ 자기 복사 실패 — 원본에서 그대로 돈다. **도는 동안 이 파일을 편집하지 마라.**" >&2
+else
+  # 복사본이다. 다 돌면 스스로 지운다.
+  trap 'rm -f "$0"' EXIT
+fi
+
+# ⚠️ `$0` 이 아니라 원본 경로를 본다(위 복사본 재실행 때문에).
+cd "$(dirname "${TANKFALL_VERIFY_SELF:-$0}")/.."
 SIM=unity/Assets/_Project/Scripts/Sim
 VIEW=unity/Assets/_Project/Scripts/View
 
