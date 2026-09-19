@@ -2762,7 +2762,17 @@ namespace Tankfall.View
             Ui.Text(new Rect(r.xMax - 46f, r.y + 28f, 38f, 14f), "fps", 9, Ui.Dim, TextAnchor.MiddleRight);
         }
 
-        /// <summary>바람 화살표. 0°=북(+Z)이고 시계 방향 — WindArrow() 문자열 규칙과 같은 각을 쓴다.</summary>
+        /// <summary>
+        /// 바람 화살표.
+        ///
+        /// **각 규칙: 0° = 북(+Z), 시계 방향으로 증가한다.** `Atan2(x, y)` 순서가 그 규칙을 만든다 —
+        /// 보통 쓰는 `Atan2(y, x)`(0°=동, 반시계)와 **인자가 뒤집혀 있으니 바꾸지 마라.**
+        /// 화면의 화살표와 조준 감각이 갈리면 사람이 바람을 반대로 읽는다.
+        ///
+        /// ⚠️ 예전엔 이 규칙의 근거를 `WindArrow()`(글자 화살표 함수)에 **위임해서** 적어 뒀는데,
+        ///    그 함수는 2026-09-19 에 죽은 코드로 삭제됐다. 근거를 다른 곳에 맡기면 그곳이 사라질 때
+        ///    **가리키는 곳이 빈 자리가 된다.** 그래서 규칙을 여기 직접 적는다.
+        /// </summary>
         void HudWind(Vector2 center)
         {
             if (_wind.magnitude < 0.05f) { Ui.Text(new Rect(center.x - 8f, center.y - 8f, 16f, 16f), "-", 14, Ui.Dim, TextAnchor.MiddleCenter); return; }
@@ -3044,14 +3054,11 @@ namespace Tankfall.View
             Ui.TextShadow(new Rect(0f, H * 0.38f + 68f, W, 24f), $"라운드 {_round} 종료", 14, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
-        static string WindArrow(Vector2 w)
-        {
-            if (w.magnitude < 0.05f) return "·";
-            float a = Mathf.Atan2(w.x, w.y) * Mathf.Rad2Deg;
-            string[] arr = { "↑", "↗", "→", "↘", "↓", "↙", "←", "↖" };
-            int i = Mathf.RoundToInt(((a + 360f) % 360f) / 45f) % 8;
-            return arr[i];
-        }
+        // 🗑️ `WindArrow(Vector2)` 를 2026-09-19 에 지웠다. 호출부 0곳이었다(남은 한 곳은 **주석**이었다).
+        //    바람을 **글자 화살표**(↑↗→…)로 찍던 시절의 잔재다 — 지금 HUD 는 `HudWind` 가 **그림으로** 그린다.
+        //    남겨 두면 «글자 화살표 경로가 아직 있다»고 믿게 만든다.
+        //    ⚠️ 각 규칙(0°=북, 시계 방향)은 `HudWind` 머리말로 **옮겨 적었다** — 여기 있던 것을 근거로
+        //       삼는 주석이 있었기 때문이다. 근거를 지울 때는 **그 근거를 참조하던 곳부터** 고쳐라.
 
         // ---------------- 성능 분해 측정 (-perf) ----------------
         //
