@@ -1536,9 +1536,12 @@ namespace Tankfall.View
                 var r = new Rect(sp.x - 70f, Screen.height - sp.y + 26f, 140f, 20f);
                 Ui.TextShadow(r, TankStats.Get((TankKind)i).Name, 13, Ui.Ink, TextAnchor.MiddleCenter, true);
                 // 폭발 단계에서는 굴착 반경을 같이 적는다 — 크기 차이를 숫자로도 대조하게
-                if (_galStep >= 3)
+                // 🚨 굴착 라벨은 **폭발 단계**의 것이다. 2026-09-20 에 자취 단계를 하나 더 넣으면서
+                //    여기 `>= 3` 이 새 자취 단계(3)까지 먹어 **「자취_꺼진뒤」 사진에 굴착 숫자가 붙었다.**
+                //    ⚠️ **단계 목록에 한 칸을 끼우면 «인덱스에 기대는 코드»가 전부 밀린다** — 넣을 때 같이 훑어라.
+                if (_galStep >= 4)
                 {
-                    var st = TankStats.For((TankKind)i, _galStep == 3 ? ShellKind.Special : ShellKind.Normal, 1f, _weather);
+                    var st = TankStats.For((TankKind)i, _galStep == 4 ? ShellKind.Special : ShellKind.Normal, 1f, _weather);
                     Ui.TextShadow(new Rect(r.x, r.y + 17f, r.width, 18f),
                                   $"굴착 {st.CraterRadius:F1}m", 11, Ui.Dim, TextAnchor.MiddleCenter);
                 }
