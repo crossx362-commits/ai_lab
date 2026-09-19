@@ -628,11 +628,12 @@ static class BattleSimVerify
                     o.Hp = Math.Max(0, o.Hp - dmg);
                     if (o.Team != u.Team) { anyHit = true; if (u.Team == 0) res.BlastDealtA += dmg; }
                     // 맞은 유닛에 붙는 효과
-                    if (fx.Type == ShellEffects.EffectType.Poison && o.Id != u.Id) status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind);
-                    if (fx.Type == ShellEffects.EffectType.Root && o.Team != u.Team) status.Root(o.Id, fx.Param1);
-                    // 화상(2026-09-19 배선) — **게임(BattleDemo)과 같은 조건이어야 한다.** 맞은 유닛 전부, 눈이면 안 붙는다.
-                    if (fx.Type == ShellEffects.EffectType.Burn && weather != Weather.Snow)
-                    { status.Burn(o.Id, fx.Param1, fx.Param2); BurnApplied++; }
+                    // 🚨 예전엔 여기에 조건을 **따로** 적었다 — 독은 `o.Id != u.Id`(자기 제외), 속박은
+                    //    `o.Team != u.Team`(적만). 게임에는 그 조건이 **없다.** 즉 이 표는 게임과
+                    //    **다른 게임을 재고 있었다**(2026-09-19 발견). 이제 규칙은 `Sim/ImpactRules` 하나다.
+                    //    ⚠️ 여기에 조건을 다시 적지 마라. 적는 순간 또 갈린다.
+                    if (ImpactRules.ApplyToHit(status, fx, weather, o.Id, o.Kind)
+                        == ShellEffects.EffectType.Burn) BurnApplied++;
                     // 방해탄(§2-9-14): 맞은 적에게 건다.
                     var imk = items.ImpairShot(u.Id);
                     if (imk != ImpairKind.None && o.Team != u.Team)
@@ -641,10 +642,8 @@ static class BattleSimVerify
                 // 자리에 남는 효과
                 // 눈이면 불·독가스는 안 남는다 — 원작 규칙(https://namu.wiki/w/포트리스2 · 2026-09-17).
                 // 게임(BattleDemo)과 같은 규칙이어야 승률이 게임의 승률이다.
-                if ((fx.Type == ShellEffects.EffectType.Burn || fx.Type == ShellEffects.EffectType.PoisonCloud)
-                    && weather != Weather.Snow)
-                    hazards.PlaceFire(impact.X, impact.Y, impact.Z, st.BlastRadius, fx.Param1, fx.Param2);   // 지속불·독구름은 같은 장판 구조
-                if (fx.Type == ShellEffects.EffectType.Mine) hazards.PlaceMine(impact.X, impact.Y, impact.Z, 4f, fx.Param1, u.Id);   // 반경 4m [추정]
+                // 자리에 남는 효과도 게임과 **같은 함수**를 부른다(지뢰 반경·장판 태그가 여기서 갈렸었다).
+                ImpactRules.ApplyToGround(hazards, fx, weather, impact.X, impact.Y, impact.Z, st.BlastRadius);
             }
             }
             items.ClearShotFlags(u.Id);   // 이번 사격용 효과(파워업·더블파이어·텔레포트)는 여기서 반드시 지운다

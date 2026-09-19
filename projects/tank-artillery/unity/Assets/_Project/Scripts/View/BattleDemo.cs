@@ -1641,13 +1641,14 @@ namespace Tankfall.View
                         o.Hp = Mathf.Max(0, o.Hp - dmg);
                         CountDamage(o, dmg, direct ? $"-{dmg} 직격" : $"-{dmg}", true);
                         dmgLog += $"  {(o.Team == 0 ? "아군" : "적군")}{o.Id % MapHeightFunction.TeamSize + 1} −{dmg}{(direct ? "(직격)" : "")}";
-                        if (fx.Type == ShellEffects.EffectType.Poison) { _status.Poison(o.Id, fx.Param1, fx.Param2, o.Kind); dmgLog += "[독]"; }
-                        if (fx.Type == ShellEffects.EffectType.Root) { _status.Root(o.Id, fx.Param1); dmgLog += "[속박]"; }
-                        // 화상(2026-09-19 배선) — 맞은 유닛에 불이 옮아붙는다. 착탄점 장판은 아래에서 따로 깐다.
-                        // ⚠️ 눈이면 안 붙는다(장판과 같은 규칙). ⚠️ 하네스(BattleSimVerify)에 **같은 줄**이 있어야
-                        //    승률 표가 게임의 승률이다 — 한쪽만 배선하면 컴파일로는 안 잡힌다.
-                        if (fx.Type == ShellEffects.EffectType.Burn && _weather != Weather.Snow)
-                        { _status.Burn(o.Id, fx.Param1, fx.Param2); dmgLog += "[화상]"; }
+                        // ⚠️ 조건을 여기 적지 마라 — 규칙은 `Sim/ImpactRules` 하나뿐이고 하네스도 **그걸** 부른다.
+                        //    여기에 조건을 하나라도 더하면 표가 다시 다른 게임을 잰다(2026-09-19 독·속박 사고).
+                        switch (ImpactRules.ApplyToHit(_status, fx, _weather, o.Id, o.Kind))
+                        {
+                            case ShellEffects.EffectType.Poison: dmgLog += "[독]"; break;
+                            case ShellEffects.EffectType.Root: dmgLog += "[속박]"; break;
+                            case ShellEffects.EffectType.Burn: dmgLog += "[화상]"; break;
+                        }
                         // 방해탄(§2-9-14): 맞은 적에게 건다.
                         var imk = _items.ImpairShot(Current.Id);
                         if (imk != ImpairKind.None && o.Team != Current.Team)
@@ -1660,12 +1661,17 @@ namespace Tankfall.View
                     }
                     // 자리에 남는 효과
                     // 눈이면 불·독가스는 아예 안 남는다(원작 규칙 — SetWeather 머리말의 출처 참조).
+                    // 자리에 남는 것도 규칙은 `ImpactRules` 하나다. 여기서는 **말만** 한다.
                     bool snowKillsField = _weather == Weather.Snow;
+                    var left = ImpactRules.ApplyToGround(_hazards, fx, _weather,
+                                   impact.X, impact.Y, impact.Z, _shooterStats.BlastRadius);
                     if (fx.Type == ShellEffects.EffectType.Burn)
-                    { if (snowKillsField) dmgLog += "  [지속불 — 눈에 꺼짐]"; else { _hazards.PlaceFire(impact.X, impact.Y, impact.Z, _shooterStats.BlastRadius, fx.Param1, fx.Param2); dmgLog += "  [지속불]"; } }
-                    if (fx.Type == ShellEffects.EffectType.PoisonCloud)
-                    { if (snowKillsField) dmgLog += "  [독구름 — 눈에 꺼짐]"; else { _hazards.PlaceFire(impact.X, impact.Y, impact.Z, _shooterStats.BlastRadius, fx.Param1, fx.Param2, 1); dmgLog += "  [독구름]"; } }
-                    if (fx.Type == ShellEffects.EffectType.Mine) { _hazards.PlaceMine(impact.X, impact.Y, impact.Z, 4f, fx.Param1, -1); _fx.MinePlaced(new Vector3(impact.X, impact.Y, impact.Z)); dmgLog += "  [지뢰 설치]"; }
+                        dmgLog += left == ShellEffects.EffectType.None ? "  [지속불 — 눈에 꺼짐]" : "  [지속불]";
+                    else if (fx.Type == ShellEffects.EffectType.PoisonCloud)
+                        dmgLog += left == ShellEffects.EffectType.None ? "  [독구름 — 눈에 꺼짐]" : "  [독구름]";
+                    else if (left == ShellEffects.EffectType.Mine)
+                    { _fx.MinePlaced(new Vector3(impact.X, impact.Y, impact.Z)); dmgLog += "  [지뢰 설치]"; }
+                    _ = snowKillsField;
                 }
                 if (swB != null) Debug.Log($"[Tankfall] EVENT 착탄처리 ×{_pendingShots.Count} {swB.Elapsed.TotalMilliseconds:F2} ms");
                 // 폭발이 나무·바위를 쓸어낸다. 안 지우면 파인 자리 위에 공중 나무가 남는다(§7-6-1 과 같은 문제).

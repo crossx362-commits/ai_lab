@@ -185,6 +185,85 @@ namespace Tankfall.Sim
     }
 
     /// <summary>위치 기반 설치물(지뢰, 지속불).</summary>
+    /// <summary>
+    /// 착탄이 거는 효과의 **유일한 규칙**. 게임(`BattleDemo`)과 하네스(`BattleSimVerify`)가 **둘 다 이걸 부른다**.
+    ///
+    /// 🚨 **왜 생겼나 (2026-09-19).** 같은 규칙이 두 파일에 따로 적혀 있었고, 그래서 **갈렸다**:
+    ///   · 독 — 게임은 맞은 유닛 **전부**, 하네스는 `o.Id != u.Id` 로 **자기 제외**
+    ///   · 속박 — 게임은 **전부**, 하네스는 `o.Team != u.Team` 로 **적만**
+    ///   이 프로젝트의 **모든 밸런스 표가 그 하네스 위에 서 있었다** — 즉 표는 게임과 다른 게임을 재 왔다.
+    ///   (크로스보우 최하위 원인을 두 번 잘못 짚었던 그 표다.)
+    ///
+    /// ⚠️ **여기 말고 다른 곳에 적용 규칙을 적지 마라.** 한 줄만 고치면 이번 건은 닫히지만
+    ///    다음 효과에서 또 갈린다 — 원인은 조건이 아니라 «두 곳에 적혀 있는 것»이었다.
+    ///    독 저항이 <see cref="StatusEffects.PoisonAfterResist"/> 하나를 적용·평가 양쪽이 부르는 것과 같은 모양이다.
+    /// ⚠️ 규칙은 **게임 쪽이 기준**이다(게임이 제품이고 하네스는 그걸 재는 도구다).
+    ///    그래서 자기·아군 제외를 **넣지 않았다** — 자기 독구름을 밟으면 자기도 중독되는 게 맞다.
+    /// </summary>
+    public static class ImpactRules
+    {
+        /// <summary>
+        /// 맞은 유닛에게 거는 효과. 실제로 건 것을 돌려준다(아무것도 안 걸렸으면 <see cref="ShellEffects.EffectType.None"/>).
+        /// 로그 문구는 **호출부가** 만든다 — Sim 이 화면 문자열을 만들면 하네스에서 쓸데없이 할당이 돈다.
+        /// </summary>
+        public static ShellEffects.EffectType ApplyToHit(StatusEffects st, in ShellEffects.EffectInfo fx,
+                                                         Weather weather, int targetId, TankKind targetKind)
+        {
+            switch (fx.Type)
+            {
+                case ShellEffects.EffectType.Poison:
+                    st.Poison(targetId, fx.Param1, fx.Param2, targetKind);
+                    return ShellEffects.EffectType.Poison;
+                case ShellEffects.EffectType.Root:
+                    st.Root(targetId, fx.Param1);
+                    return ShellEffects.EffectType.Root;
+                case ShellEffects.EffectType.Burn:
+                    // 눈이면 몸에도 불이 안 붙는다(장판과 같은 원작 규칙).
+                    if (weather == Weather.Snow) return ShellEffects.EffectType.None;
+                    st.Burn(targetId, fx.Param1, fx.Param2);
+                    return ShellEffects.EffectType.Burn;
+                default:
+                    return ShellEffects.EffectType.None;
+            }
+        }
+
+        /// <summary>
+        /// 자리에 남는 효과(장판·지뢰). 눈이면 불·독가스는 아예 안 남는다 — 원작 규칙.
+        /// </summary>
+        /// <returns>실제로 남긴 것(없으면 None).</returns>
+        public static ShellEffects.EffectType ApplyToGround(HazardField hz, in ShellEffects.EffectInfo fx,
+                                                            Weather weather, float x, float y, float z, float blastRadius)
+        {
+            switch (fx.Type)
+            {
+                case ShellEffects.EffectType.Burn:
+                    if (weather == Weather.Snow) return ShellEffects.EffectType.None;
+                    hz.PlaceFire(x, y, z, blastRadius, fx.Param1, fx.Param2, FireTagFire);
+                    return ShellEffects.EffectType.Burn;
+                case ShellEffects.EffectType.PoisonCloud:
+                    if (weather == Weather.Snow) return ShellEffects.EffectType.None;
+                    hz.PlaceFire(x, y, z, blastRadius, fx.Param1, fx.Param2, FireTagPoison);
+                    return ShellEffects.EffectType.PoisonCloud;
+                case ShellEffects.EffectType.Mine:
+                    hz.PlaceMine(x, y, z, MineRadius, fx.Param1, NoOwner);
+                    return ShellEffects.EffectType.Mine;
+                default:
+                    return ShellEffects.EffectType.None;
+            }
+        }
+
+        /// <summary>지뢰 반경(m) [추정]. 숫자를 호출부에 적지 마라 — 게임과 하네스가 갈린다.</summary>
+        public const float MineRadius = 4f;
+        /// <summary>장판 종류 — **화면 표시 전용**이다(`HazardField.OnUnitAt` 은 Tag 를 안 본다, 2026-09-19 실측).</summary>
+        public const int FireTagFire = 0, FireTagPoison = 1;
+        /// <summary>
+        /// 지뢰 주인. ⚠️ `HazardField.Mine.OwnerId` 는 **저장만 하고 아무도 안 읽는다**(2026-09-19 실측) —
+        /// 그래서 게임은 `-1`, 하네스는 쏜 사람 Id 를 넘기고 있었는데 **동작 차이는 없었다.**
+        /// 읽는 코드가 생기면 그때 의미를 정해라. 그전까지는 한 값으로 통일해 둔다.
+        /// </summary>
+        public const int NoOwner = -1;
+    }
+
     public class HazardField
     {
         struct Mine

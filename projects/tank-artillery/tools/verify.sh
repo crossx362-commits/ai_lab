@@ -142,6 +142,41 @@ manifest_check() {
   [ $bad -eq 0 ] && echo "  ✅ 코드가 쓰는 모듈이 전부 manifest 에 있다" || RC=1
 }
 
+# ══════════════════════════════════════════════════════════════════════
+#  착탄 효과 규칙이 **한 곳에만** 사는가 (2026-09-19)
+#
+#  🚨 같은 규칙이 게임(`BattleDemo`)과 하네스(`BattleSimVerify`)에 따로 적혀 있었고 **갈렸다** —
+#     독은 하네스만 «자기 제외», 속박은 하네스만 «적만». 즉 **모든 밸런스 표가 게임과 다른 게임을
+#     재고 있었다.** 컴파일로는 절대 안 잡히고, 승률이 조금 이상해 보일 뿐이라 몇 달도 갈 수 있다.
+#  → 규칙을 `Sim/ShellEffects.cs` 의 `ImpactRules` 하나로 올렸고, **여기서 재발을 막는다**:
+#     두 착탄 경로가 상태이상을 **직접** 걸면 실패. 규칙은 `ImpactRules` 를 거쳐야 한다.
+#
+#  ⚠️ `tools/ShellPickVerify.cs` 같은 **단위 검증**은 `StatusEffects` 를 직접 불러도 된다 —
+#     그건 규칙을 적용하는 게 아니라 그 클래스 자체를 재는 것이다. 그래서 착탄 경로 두 파일만 본다.
+# ══════════════════════════════════════════════════════════════════════
+rules_check() {
+  echo "### 착탄 효과 규칙 — 게임과 하네스가 같은 함수를 보는가"
+  local bad=0
+  for f in "$VIEW/BattleDemo.cs" tools/BattleSimVerify.cs; do
+    # `_status.Poison(` · `status.Root(` 같은 **직접 적용**을 찾는다(선언·주석은 제외).
+    local hits
+    hits="$(grep -nE '(^|[^A-Za-z_.])_?status\.(Poison|Root|Burn)\(' "$f" | grep -v '^\s*//' | grep -v '///' || true)"
+    if [ -n "$hits" ]; then
+      echo "  ❌ $f 가 상태이상을 직접 건다 — 규칙은 ImpactRules 하나여야 한다"
+      echo "$hits" | sed 's/^/       /'
+      bad=1
+    fi
+  done
+  # 대조군: 두 파일이 실제로 ImpactRules 를 부르고 있는가(안 부르면 위 검사는 «항상 초록»이다)
+  local uses=0
+  grep -q 'ImpactRules\.ApplyToHit' "$VIEW/BattleDemo.cs" && uses=$((uses + 1))
+  grep -q 'ImpactRules\.ApplyToHit' tools/BattleSimVerify.cs && uses=$((uses + 1))
+  if [ "$uses" -ne 2 ]; then
+    echo "  ❌ 두 착탄 경로 중 ImpactRules 를 안 부르는 곳이 있다 (부르는 곳 $uses/2)"; bad=1
+  fi
+  [ $bad -eq 0 ] && echo "  ✅ 착탄 효과 규칙이 ImpactRules 한 곳에만 있다 (게임·하네스 둘 다 호출)" || RC=1
+}
+
 compile_check() {
   echo "### 컴파일 — 유니티에서 Play 가능한가"
   rm -f "$OUT/simonly.dll"
@@ -269,7 +304,7 @@ game_check() {
 }
 
 case "${1:-all}" in
-  compile) compile_check; manifest_check ;;
+  compile) compile_check; manifest_check; rules_check ;;
   # ⚠️ `all` 에 넣지 않았다 — 유니티 빌드 1회(수 분)가 붙어서 SIM 게이트의 짧은 왕복을 죽인다.
   #    기능 커밋 전에 `verify.sh all` 과 **둘 다** 돌려라. 빌드를 아끼려면 TANKFALL_SKIP_BUILD=1.
   game)    game_check ;;
@@ -287,7 +322,7 @@ case "${1:-all}" in
   aimove)  run_console AiMoveVerify      $SIM/*.cs tools/AiMoveVerify.cs ;;
   shellpick) run_console ShellPickVerify  $SIM/*.cs tools/ShellPickVerify.cs ;;
   all)
-    compile_check; manifest_check; echo
+    compile_check; manifest_check; rules_check; echo
     run_console SdfVerify      $SIM/*.cs tools/SdfVerify.cs; echo
     run_console GameplayVerify $SIM/*.cs tools/GameplayVerify.cs; echo
     run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs; echo
