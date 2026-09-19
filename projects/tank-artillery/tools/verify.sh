@@ -6,6 +6,7 @@
 #   ./tools/verify.sh play     §7-6 세 문제만
 #   ./tools/verify.sh battle   AI 자동 대전(명중률·한 판 길이)
 #   ./tools/verify.sh compile  컴파일만 (유니티 Play 가능 여부)
+#   ./tools/verify.sh game     게임 빌드 자체검사 10종 (빌드 1회 + 전부 실행 · all 에는 안 물려 있다)
 #   ./tools/verify.sh turn|shell|nice   원작 시스템 라이브러리 단위 검증
 #   ./tools/verify.sh guide    미사일 초기 유도·자세 제어 단계
 #   ./tools/verify.sh aimove   AI 이동(구덩이·장판 탈출·보급)
@@ -137,8 +138,107 @@ compile_check() {
   fi
 }
 
+# ══════════════════════════════════════════════════════════════════════
+#  게임 빌드 자체검사 10종 (verify.sh game)
+#
+#  왜 따로 있나: 이 열 개는 **유니티 빌드 안에서만** 도는 검사다(SIM 하네스로는 못 잰다 —
+#  화면·저장·연출·입력이 걸려 있다). 그런데 여태 `verify.sh` 에 물려 있지 않아서
+#  **사람이 손으로 하나씩** 돌려야 했고, 그래서 빠뜨려도 아무도 몰랐다.
+#
+#  ⚠️ 스크린샷을 찍는 모드(-uiselftest · -practiceselftest)는 반드시 `open -a` 로 띄운다.
+#     바이너리를 직접 부르면 캡처가 전부 실패한다(2026-09-18 실측). `-nographics` 도 금지다
+#     (PNG 가 새까맣게 나오는데 로그는 통과로 찍힌다).
+#  ⚠️ 나머지 여덟은 화면을 안 찍으므로 `-batchmode -logFile` 로 직접 불러 **진짜 rc** 를 받는다.
+#     `open` 은 앱의 종료 코드를 안 돌려주므로, 찍는 둘만 로그의 ❌/✅ 로 판정한다.
+#  ⚠️ 타임아웃이 곧 실패다. 자체검사가 멈춰 선 것을 "아직 도는 중"으로 두면 게이트가 영영 안 끝난다.
+# ══════════════════════════════════════════════════════════════════════
+GAME_TIMEOUT="${TANKFALL_GAME_TIMEOUT:-240}"
+GAME_LOGDIR="${TANKFALL_GAME_LOGDIR:-/tmp/tankfall_game}"
+
+# $1 = 플래그(-ultselftest 등) · $2 = shot 이면 open -a 경로
+run_game_selftest() {
+  local flag="$1" mode="${2:-batch}" log="$GAME_LOGDIR/${1#-}.log" rc=0
+  rm -f "$log"
+  if [ "$mode" = "shot" ]; then
+    rm -rf "$GAME_LOGDIR/${1#-}_shots"; mkdir -p "$GAME_LOGDIR/${1#-}_shots"
+    open -W -a "$PWD/$GAME_APP" --args "$flag" -shotdir "$GAME_LOGDIR/${1#-}_shots" \
+         -screen-width 1600 -screen-height 900 -screen-fullscreen 0 -logFile "$log" &
+    local pid=$!
+    local waited=0
+    while kill -0 "$pid" 2>/dev/null; do
+      [ "$waited" -ge "$GAME_TIMEOUT" ] && { kill "$pid" 2>/dev/null; pkill -f "$GAME_APP" 2>/dev/null; rc=124; break; }
+      sleep 2; waited=$((waited + 2))
+    done
+    wait "$pid" 2>/dev/null || true
+    # open 은 앱의 종료 코드를 안 준다 — 로그로 판정한다.
+    if [ "$rc" -eq 0 ]; then
+      grep -q "❌" "$log" 2>/dev/null && rc=1
+      grep -q "✅" "$log" 2>/dev/null || rc=1      # ✅ 가 아예 없으면 도중에 죽은 것이다
+    fi
+  else
+    # ⚠️ stdout/stderr 를 버린다 — `-logFile` 을 줘도 플레이어가 memorysetup 수십 줄을 그대로 뱉어서
+    #    결과 줄(✅/❌)이 그 안에 묻힌다. 판정에 쓰는 건 rc 와 로그 파일이지 stdout 이 아니다.
+    "$GAME_EXE" "$flag" -batchmode -logFile "$log" >/dev/null 2>&1 &
+    local pid=$!
+    local waited=0
+    while kill -0 "$pid" 2>/dev/null; do
+      [ "$waited" -ge "$GAME_TIMEOUT" ] && { kill "$pid" 2>/dev/null; rc=124; break; }
+      sleep 2; waited=$((waited + 2))
+    done
+    if [ "$rc" -ne 124 ]; then wait "$pid"; rc=$?; fi
+  fi
+
+  if [ "$rc" -eq 0 ]; then
+    # ⚠️ `cut -c` 로 자르지 마라 — macOS 의 cut 은 **바이트**로 잘라서 한글이 깨진 채 찍힌다(실측).
+    printf '  ✅ %-20s %s\n' "$flag" "$(grep -m1 '✅' "$log" 2>/dev/null | sed 's/^\[Tankfall\] *//')"
+  elif [ "$rc" -eq 124 ]; then
+    echo "  ❌ $flag — ${GAME_TIMEOUT}초 안에 안 끝났다(멈춰 섰거나 종료를 안 부른다). 로그: $log"
+    RC=1
+  else
+    echo "  ❌ $flag — rc=$rc"
+    grep -m3 '❌' "$log" 2>/dev/null | sed 's/^/       /'
+    echo "       로그: $log"
+    RC=1
+  fi
+}
+
+game_check() {
+  echo "### 게임 자체검사 10종 — 빌드해서 실제로 돌린다"
+  if [ "$UNAME" = "Darwin" ]; then
+    GAME_APP="unity/Build/Tankfall.app"; GAME_EXE="$PWD/$GAME_APP/Contents/MacOS/unity"
+    [ -x "$GAME_EXE" ] || GAME_EXE="$PWD/$GAME_APP/Contents/MacOS/Tankfall"
+  else
+    GAME_APP="unity/Build/Tankfall.exe"; GAME_EXE="$PWD/$GAME_APP"
+  fi
+  # 판별용 손잡이: 다른 빌드를 재거나, **빨간불이 실제로 뜨는지** 확인할 때 쓴다
+  # (`TANKFALL_GAME_EXE=/usr/bin/false ./tools/verify.sh game` → 여덟 개가 전부 ❌ 로 떠야 정상이다).
+  [ -n "${TANKFALL_GAME_EXE:-}" ] && GAME_EXE="$TANKFALL_GAME_EXE"
+  mkdir -p "$GAME_LOGDIR"
+
+  if [ "${TANKFALL_SKIP_BUILD:-0}" = "1" ]; then
+    echo "  · 빌드 건너뜀(TANKFALL_SKIP_BUILD=1) — **지금 작업 트리가 아니라 옛 빌드를 잰다**"
+  else
+    echo "  · 유니티 배치 빌드 (몇 분 걸린다 · 건너뛰려면 TANKFALL_SKIP_BUILD=1)"
+    if ! ./tools/unity_build.sh >/dev/null 2>&1; then
+      echo "  ❌ 빌드 실패 — tools/.unity_build.log 를 봐라"; RC=1; return
+    fi
+  fi
+  [ -x "$GAME_EXE" ] || { echo "  ❌ 실행 파일이 없다: $GAME_EXE"; RC=1; return; }
+
+  for f in -supplyselftest -ultselftest -impairselftest -climateselftest \
+           -boomselftest -rosterselftest -gameselftest -settingsselftest; do
+    run_game_selftest "$f" batch
+  done
+  # 화면을 찍는 둘 — open -a 로만
+  run_game_selftest -practiceselftest shot
+  run_game_selftest -uiselftest shot
+}
+
 case "${1:-all}" in
   compile) compile_check; manifest_check ;;
+  # ⚠️ `all` 에 넣지 않았다 — 유니티 빌드 1회(수 분)가 붙어서 SIM 게이트의 짧은 왕복을 죽인다.
+  #    기능 커밋 전에 `verify.sh all` 과 **둘 다** 돌려라. 빌드를 아끼려면 TANKFALL_SKIP_BUILD=1.
+  game)    game_check ;;
   sdf)     run_console SdfVerify      $SIM/*.cs tools/SdfVerify.cs ;;
   play)    run_console GameplayVerify $SIM/*.cs tools/GameplayVerify.cs; echo
     run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs ;;
@@ -166,7 +266,7 @@ case "${1:-all}" in
     run_console AiMoveVerify      $SIM/*.cs tools/AiMoveVerify.cs; echo
     run_console ShellPickVerify   $SIM/*.cs tools/ShellPickVerify.cs; echo
     run_console BattleSimVerify  $SIM/*.cs tools/BattleSimVerify.cs ;;
-  *) echo "사용: $0 [all|sdf|play|ball|battle|turn|shell|nice|map|hit|guide|aimove|shellpick|compile]"; exit 2 ;;
+  *) echo "사용: $0 [all|game|sdf|play|ball|battle|turn|shell|nice|map|hit|guide|aimove|shellpick|compile]"; exit 2 ;;
 esac
 
 echo
