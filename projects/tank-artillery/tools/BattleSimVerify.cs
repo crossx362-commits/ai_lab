@@ -70,7 +70,9 @@ static class BattleSimVerify
     //    서든데스를 걸고 게임은 6라운드에 걸었다 — 승률·판 길이 표가 **게임과 다른 것을 재면서도 통과**한다.
     //    라운드 수(게임의 BattleDemo.SuddenDeathRound)가 단일 소스이고, 턴 수는 인원에서 유도한다.
     const int SuddenDeathRound = 6;
-    const int SuddenDeathTurn = SuddenDeathRound * MapHeightFunction.TeamSize * 2;
+    // ⚠️ `const` 가 아니라 프로퍼티다 — `TANKFALL_TEAM` 으로 인원을 흔들면 서든데스 턴도 같이 움직여야 한다.
+    //    `const` 로 굳혀 두면 3:3 측정이 **4:4 기준 서든데스(48턴)** 를 쓰면서 "3:3 을 쟀다"고 말한다.
+    static int SuddenDeathTurn => SuddenDeathRound * MapHeightFunction.TeamSize * 2;
 
     static float _specPerMatch;
 
@@ -636,6 +638,24 @@ static class BattleSimVerify
     static void Main()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+        // ── 팀 인원 대조군 (TANKFALL_TEAM=3) ──
+        // 게임 기본은 4:4 다. "4:4 라서 판이 길어졌다"를 말하려면 **같은 맵·같은 시드로 3:3 을 나란히**
+        // 재야 한다 — §2-5 의 옛 10.1분은 맵이 달라(옛 하네스 언덕) 대조군이 못 된다.
+        // ⚠️ 판을 만들기 **전에** 설정해야 한다. 유닛 Id 가 `team * TeamSize + i` 로 굳기 때문이다.
+        var teamEnv = Environment.GetEnvironmentVariable("TANKFALL_TEAM");
+        if (!string.IsNullOrWhiteSpace(teamEnv))
+        {
+            if (!int.TryParse(teamEnv.Trim(), out int tn))
+            { Console.WriteLine($"❌ TANKFALL_TEAM={teamEnv}: 정수가 아니다"); Environment.Exit(2); }
+            else
+            {
+                try { MapHeightFunction.SetForHarness(tn); }
+                catch (ArgumentOutOfRangeException e) { Console.WriteLine($"❌ TANKFALL_TEAM={teamEnv}: {e.Message}"); Environment.Exit(2); }
+                Console.WriteLine($"⚠️ 팀 인원 대조군: {tn}:{tn} (게임 기본 4:4 아님 — 이 표를 밸런스 근거로 쓰지 마라)");
+            }
+        }
+
         var mapEnv = Environment.GetEnvironmentVariable("TANKFALL_MAP");
         if (!string.IsNullOrEmpty(mapEnv))
         {

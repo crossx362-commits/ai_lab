@@ -54,8 +54,29 @@ namespace Tankfall.Sim
         /// Sim 에 둔 이유는 하네스와 게임이 **같은 값**을 봐야 하기 때문이다 — 둘이 갈리면
         /// 하네스는 3v3 을, 게임은 4v4 를 재면서 승률 표가 조용히 거짓말을 한다.
         /// ⚠️ 바꾸면 밸런스가 움직인다. 3v3 으로 맞춘 승률 표는 무효이니 battle 게이트를 다시 떠라.
+        ///
+        /// ⚠️ **2026-09-19 에 `const` 를 뗐다. 이유는 측정 하나다.**
+        ///    "4:4 라서 판이 길어졌다"고 말하려면 같은 맵·같은 시드로 **3:3 을 나란히** 재야 하는데,
+        ///    `const` 면 하네스가 흔들 방법이 없어서 "4:4 가 133초"라는 숫자를 **비교 대상 없이** 내놓게 된다.
+        ///    (§2-5 의 10.1분은 3:3·옛 하네스 언덕 값이라 대조군이 못 된다 — 맵이 다르면 전 구간이 다르다.)
+        ///    **게임 기본값은 4 그대로다.** 바꾸는 길은 `SetForHarness` 하나뿐이고 게임 코드는 부르지 않는다.
         /// </summary>
-        public const int TeamSize = 4;   // 2026-09-18 오너 지시 "4:4 만들어" (이전 3)
+        public static int TeamSize { get; private set; } = 4;   // 2026-09-18 오너 지시 "4:4 만들어" (이전 3)
+
+        /// <summary>
+        /// **하네스 전용.** 판이 만들어지기 **전에** 한 번만 부른다(`TANKFALL_TEAM=&lt;n&gt;`).
+        ///
+        /// ⚠️ 판이 도는 중에 바꾸면 스폰·턴 순서·HUD 가 **서로 다른 인원**을 보게 된다 — 유닛 Id 가
+        ///    `team * TeamSize + i` 로 이미 굳어 있기 때문이다. 그래서 게임(`BattleDemo`)은 이걸 안 부른다.
+        /// ⚠️ 범위를 벗어나면 **던진다.** 조용히 무시하면 하네스가 "3:3 을 쟀다"고 말하면서 4:4 를 재는
+        ///    거짓말이 된다 — 측정 도구가 조용히 실패하는 것이 이 프로젝트에서 가장 비쌌다.
+        /// </summary>
+        public static void SetForHarness(int n)
+        {
+            if (n < 1 || n > 8)
+                throw new ArgumentOutOfRangeException(nameof(n), n, "팀 인원은 1~8 (스폰 분배가 그 밖을 가정하지 않는다)");
+            TeamSize = n;
+        }
 
         public const float TwinWestHillX = Center, TwinWestHillZ = MapSize * 0.375f;
         public const float TwinEastHillX = Center, TwinEastHillZ = MapSize * 0.625f;
