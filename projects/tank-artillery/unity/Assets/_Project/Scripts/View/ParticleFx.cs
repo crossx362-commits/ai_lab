@@ -40,6 +40,7 @@ namespace Tankfall.View
         readonly Dictionary<int, ParticleSystem> _poisonLoops = new Dictionary<int, ParticleSystem>();              // 유닛 독 상태
         readonly Dictionary<int, ParticleSystem> _rootLoops = new Dictionary<int, ParticleSystem>();                // 유닛 속박 상태
         readonly List<ParticleSystem> _wreckLoops = new List<ParticleSystem>();                                     // 격파 연기 기둥(시간 지나면 멈춤)
+        readonly Dictionary<Transform, float> _trailStart = new Dictionary<Transform, float>();                  // 자취가 붙은 시각(탄별) — 연소 구간 변조의 기준
         readonly Dictionary<Transform, float> _dacsNext = new Dictionary<Transform, float>();                       // 측추력기 펄스 간격(탄별)
         ParticleSystem _snow; Transform _snowFollow;
 
@@ -687,6 +688,7 @@ namespace Tankfall.View
         public void AttachTrail(Transform shell, in ShellTrail.Style st)
         {
             if (shell == null) return;
+            _trailStart[shell] = Time.time;   // 연소 구간 변조의 t0 — 한 발에 한 번만 불린다(BattleDemo 발사 시)
             if (!_trails.TryGetValue(shell, out var ps) || ps == null)
             {
                 ps = NewSystem("Trail", shell, st.Glow);
@@ -802,6 +804,74 @@ namespace Tankfall.View
             if (!l.isPlaying) l.Play(true);
         }
 
+        /// <summary>탄 자취의 자식 레이어를 이름으로 찾는다(`AttachTrail` 이 "Flame"·"Smoke"·"Sparks"·"Ring" 으로 만든다).</summary>
+        ParticleSystem FindLayer(ParticleSystem trail, string name)
+        {
+            foreach (Transform t in trail.transform)
+                if (t.name == name) return t.GetComponent<ParticleSystem>();
+            return null;
+        }
+
+        /// <summary>추진이 «없는» 기종에서 점화처럼 보이는 입자를 총구 순간으로만 제한하는 창(초).</summary>
+        const float MuzzleOnlySec = 0.12f;
+
+        /// <summary>
+        /// **연소 구간 동안 자취를 «변조»한다** — 오너 지적(2026-09-19): 「쏜 다음 점화하면 빨라져야 하는데 같은 속도」.
+        ///
+        /// 🔑 원칙 둘(검수 2026-09-19):
+        ///  ① **«가속 중»을 «새 요소»로 표현하지 마라.** 그 기종이 **이미 쓰는 축**(불꽃 세기·링 크기·자취 굵기)을 변조한다.
+        ///     빔에 주황 불꽃을 붙이면 **13종 자취를 갈라 놓은 작업이 그만큼 무너진다** — 빔이 로켓으로 보인다.
+        ///  ② **실제 연소 구간과 맞물려야 한다.** 추진은 `BoostSec`(0.5~1.2초) 동안만 있다.
+        ///     비행 내내 세지면 **그건 또 다른 거짓말**이다. 그래서 `age/BoostSec` 으로 **꺼지는 것까지** 보여 준다.
+        ///
+        /// 🚨 그리고 **추진이 0 인 기종**(캐논·캐롯·듀크·캐터펄트·포세이돈·마인랜더·이온)은 **반대 문제**였다:
+        ///    캐논의 「폭탄 심지 불똥」이 **월드 공간에서 초당 60개씩 비행 내내** 뿜어져 **꼬리를 만들고 있었다.**
+        ///    주석은 「심지 불똥」이라 적혀 있지만 **화면은 «점화»라고 말한다** — 주석은 의도이고 화면은 사실이다.
+        ///    ⇒ 추진 0 이면 그 레이어를 **총구 순간(0.12초)에만** 둔다. 심지 불똥은 원래 발사 때 튀는 것이다.
+        /// </summary>
+        void BurnModulate(Transform shell, in ShellTrail.Style st)
+        {
+            if (!_trails.TryGetValue(shell, out var trail) || trail == null) return;
+            if (!_trailStart.TryGetValue(shell, out float t0)) return;
+            float age = Time.time - t0;
+
+            if (st.BoostSec <= 0f)
+            {
+                // 추진 없음 — 점화로 «읽히는» 것만 총구 순간으로 자른다. 나머지 레이어는 안 건드린다.
+                var sp0 = FindLayer(trail, "Sparks");
+                if (sp0 != null) { var e0 = sp0.emission; e0.rateOverTime = age < MuzzleOnlySec ? 60f : 0f; }
+                return;
+            }
+
+            // 1 → 0 으로 떨어지고, 제곱이라 **끝에서 확 꺼진다**(「점화가 끝났다」가 눈에 보이게).
+            float burn = Mathf.Clamp01(1f - age / st.BoostSec);
+            float k = burn * burn;
+
+            var fl = FindLayer(trail, "Flame");
+            if (fl != null)
+            {
+                var e = fl.emission; e.rateOverTime = 90f * (0.04f + 0.96f * k);
+                var m = fl.main; float v = 0.35f + 0.65f * k;
+                m.startSpeed = new ParticleSystem.MinMaxCurve(6f * v, 10f * v);
+            }
+
+            // 빔·바람 계열은 **자기 언어**로 — 링이 굵어졌다 가라앉는다(불꽃을 붙이지 않는다).
+            var rg = FindLayer(trail, "Ring");
+            if (rg != null)
+            {
+                var m = rg.main; float g = 1f + 0.9f * k;
+                m.startSizeMultiplier = st.Size * 0.5f * g;
+                var e = rg.emission; e.rateOverTime = 40f * (0.5f + 0.5f * k);
+            }
+
+            // 불꽃도 링도 없는 추진 기종(크로스보우)은 **기본 자취 자체**를 굵게 — 새 요소를 안 들인다.
+            if (fl == null && rg == null)
+            {
+                var m = trail.main;
+                m.startSizeMultiplier = st.Size * (1f + 0.45f * k);
+            }
+        }
+
         public void StopTrail(Transform shell)
         {
             if (shell == null) return;
@@ -850,6 +920,8 @@ namespace Tankfall.View
         public void Guidance(Transform shell, in Attitude att, in ShellTrail.Style st)
         {
             if (shell == null) return;
+
+            BurnModulate(shell, st);   // 🔥 연소 구간 변조 — 매 프레임, 모든 탄
 
             // ── TVC: 노즐 화염을 배기 방향으로 돌린다 ──
             if (_trails.TryGetValue(shell, out var trail) && trail != null)

@@ -31,6 +31,15 @@ namespace Tankfall.View
             public bool Sparks;      // 스파크: 작은 점이 옆으로 튀어 흩어진다(전기·빔)
             public bool Ring;        // 에너지 링: 탄 주위를 도는 입자(레이저·세크윈드)
             public Color Flame2;     // 화염/연기 보조색
+
+            /// <summary>
+            /// **연소 시간(초)** — `FlightProfile.BoostSec`. 0 이면 **추진이 없는 기종**이다.
+            /// 🔑 자취가 「언제 점화가 끝났는지」를 말하게 하려고 싣는다(`ParticleFx.Guidance` 가 매 프레임 읽는다).
+            /// ⚠️ **연출 전용이다** — 시뮬은 이 값을 안 본다(`Ballistics` 가 자기 걸 따로 쓴다).
+            /// 🚨 이 값이 **0 인데 «점화처럼 보이는» 레이어가 켜져 있으면 그건 거짓말**이다
+            ///    (2026-09-19: 캐논은 추진 0 인데 불똥이 비행 내내 월드 공간으로 뿜어져 나가고 있었다).
+            /// </summary>
+            public float BoostSec;
         }
 
         public static Style Of(TankKind kind, ShellKind shell, bool ultimate)
@@ -110,6 +119,10 @@ namespace Tankfall.View
                 Mathf.Lerp(s.Flame2.g, s.Color.g, 0.55f),
                 Mathf.Lerp(s.Flame2.b, s.Color.b, 0.55f),
                 s.Flame2.a);
+
+            // 연소 시간을 실어 준다 — 자취가 «언제 점화가 끝났는지»를 말할 수 있게(연출 전용).
+            // 게임의 비행 프로파일을 그대로 읽는다: 화면이 사실과 다른 시각을 말하면 그게 거짓말이다.
+            s.BoostSec = FlightProfile.Of(kind, shell, TankStats.Get(kind).PowerScale).BoostSec;
 
             if (shell == ShellKind.Special) { s.Size *= 1.25f; s.Life *= 1.15f; }
             if (ultimate) { s.Size *= 1.7f; s.Life *= 1.35f; s.Interval *= 0.7f; }
