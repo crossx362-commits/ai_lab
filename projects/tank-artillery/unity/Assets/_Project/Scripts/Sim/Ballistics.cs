@@ -71,6 +71,30 @@ namespace Tankfall.Sim
 
         public bool HasAero => AeroFwd != 0f;
 
+        /// <summary>
+        /// **수평 상수 가속 대조군 배율.** 기본 1. `0` 이면 아에로가 통째로 꺼진다.
+        ///
+        /// 🚨 왜 있나(2026-09-19). 궤적을 «모양»으로 가른 뒤 **승률 표를 안 떴다** —
+        ///    그때는 밸런스가 잠겨 있었고, 「사거리 보존 + 역산 정확」이라는 **직접 증거**가 있었다.
+        ///    밸런스가 열린 뒤 표가 이전과 달라지면 **그 차이가 궤적 탓인지**를 갈라야 한다.
+        ///    ⚠️ 하네스는 새 궤적을 **본다** — `BattleSimVerify` 가 `st.Flight` 를 넘기므로
+        ///       사거리는 ±6m 로 보존됐어도 **중간 탄도(정점위치 0.429~0.571)** 가 바뀌었다.
+        ///    ⇒ **원인 제거**로 가른다: 이걸 0 으로 두고 같은 표를 뜨면 아에로 이전과 비교된다.
+        /// 🛑 **게임 코드는 이걸 안 부른다**(기본 1). `Ballistics.SetForHarness`(중력)와 같은 규약이다.
+        /// </summary>
+        public static float AeroScale { get; private set; } = 1f;
+
+        /// <summary>대조군 전용. 범위 밖은 던진다 — 조용히 무시하면 「0 으로 쟀다」면서 1 로 재는 거짓말이 된다.</summary>
+        public static void SetAeroScaleForHarness(float k)
+        {
+            if (!(k >= 0f) || k > 1f)
+                throw new ArgumentOutOfRangeException(nameof(k), k, "아에로 대조군 배율은 0~1");
+            AeroScale = k;
+        }
+
+        /// <summary>기본값과 다른가 — 표에 «대조군 중»을 적으려고 쓴다(사람이 모르고 재면 안 된다).</summary>
+        public static bool AeroIsDefault => AeroScale == 1f;
+
         /// 🚨 **`> 0` 이 아니라 `!= 0` 이다**(2026-09-19). 음수 추진(감속)을 열면서 바꿨다.
         /// `> 0` 으로 두면 음수 프로파일에서 **`SpeedMul` 만 걸리고 감속은 안 걸려 사거리가 늘어난다** —
         /// 초기속도는 Mul>1 로 키워 놓고 되돌릴 감속을 건너뛰기 때문이다. 이 설계의 유일한 함정이라 여기 적는다.
@@ -248,11 +272,11 @@ namespace Tankfall.Sim
         /// </summary>
         public static Vec3 AeroAccel(Vec3 accel, Vec3 horizRef, in FlightProfile fp)
         {
-            if (!fp.HasAero) return accel;
+            if (!fp.HasAero || FlightProfile.AeroScale == 0f) return accel;
             var h = new Vec3(horizRef.X, 0f, horizRef.Z);
             float l = h.Length;
             if (l < 1e-6f) return accel;
-            return accel + h * (fp.AeroFwd / l);
+            return accel + h * (fp.AeroFwd * FlightProfile.AeroScale / l);
         }
 
         /// <summary>닫힌 해. 서버·AI·프리뷰·리플레이·킬캠이 전부 이 함수를 쓴다.</summary>

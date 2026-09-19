@@ -702,6 +702,17 @@ static class BattleSimVerify
             else { Console.WriteLine($"❌ TANKFALL_MAP={mapEnv}: 모르는 맵(TwinHills|Crater|Terrace|Valley|Ridge|Badlands|Legacy)"); Environment.Exit(2); }
         }
         Console.WriteLine($"맵: {MapName}" + (LegacyMap ? " (옛 언덕 — §2-9-4 회귀 비교용)" : " (MapHeightFunction — 게임과 동일)"));
+        // 🚨 **궤적 대조군**(`TANKFALL_AERO=0`). 2026-09-19 에 궤적을 «모양»으로 갈랐는데
+        //    그때는 밸런스가 잠겨 있어 **표를 안 떴다.** 하네스는 `st.Flight` 를 넘기므로 **새 궤적을 본다** —
+        //    사거리는 ±6m 로 보존됐어도 **중간 탄도(정점위치 0.494~0.496 → 0.429~0.571)** 가 바뀌었다.
+        //    표가 이전과 달라지면 **원인 제거**로 가른다: 이걸 0 으로 두고 같은 표를 뜬다.
+        var aeroEnv = Environment.GetEnvironmentVariable("TANKFALL_AERO");
+        if (!string.IsNullOrWhiteSpace(aeroEnv) && float.TryParse(aeroEnv.Trim(), out float aeroK))
+            FlightProfile.SetAeroScaleForHarness(aeroK);
+        // ⚠️ **조건을 표에 같이 찍는다.** 대조군으로 뜬 표가 기본 표와 섞이면 둘 다 못 쓴다.
+        Console.WriteLine(FlightProfile.AeroIsDefault
+            ? "궤적: 수평 상수 가속 **켬**(기본)"
+            : $"궤적: ⚠️ **대조군** — 수평 상수 가속 ×{FlightProfile.AeroScale:F2}");
         var clEnv = Environment.GetEnvironmentVariable("TANKFALL_CLIMATE");
         if (!string.IsNullOrWhiteSpace(clEnv)) ClimateOn = clEnv.Trim() != "0";
         var sdEnv = Environment.GetEnvironmentVariable("TANKFALL_SEED");
