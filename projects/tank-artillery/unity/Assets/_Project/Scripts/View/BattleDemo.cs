@@ -781,7 +781,7 @@ namespace Tankfall.View
         /// 반투명 머티리얼. Standard 는 **렌더 모드를 코드로 바꿔야** 알파가 먹는다 —
         /// 색의 알파만 낮추고 끝내면 Opaque 그대로라 불투명하게 나온다(기후 도형이 그랬다).
         /// </summary>
-        static Material MakeFadeMat(Color c)
+        static Material MakeFadeMat(Color c, float alpha)
         {
             var m = new Material(MakeMat(c, 0.2f));
             m.SetFloat("_Mode", 2f);                                  // 2 = Fade
@@ -792,9 +792,10 @@ namespace Tankfall.View
             m.EnableKeyword("_ALPHABLEND_ON");
             m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
             m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-            var col = c; col.a = 0.55f;                               // 뒤가 비쳐야 적이 보인다(45% 는 여전히 비친다)
-            // ⚠️ 0.30 → 0.55 (2026-09-19). 0.30 에서는 회오리가 하늘과 **Δ8** 로 같은 색이었다.
-            //    알파는 «얼마나 가리나»가 아니라 **«얼마나 읽히나»**가 정하는 값이다.
+            var col = c; col.a = alpha;                               // 뒤가 비쳐야 적이 보인다
+            // ⚠️ 알파를 **하나로 묶지 마라**(2026-09-19). 회오리는 하늘 앞에 서서 0.30 이면 Δ8 = 같은 색이라
+            //    0.55 가 필요했지만, 증폭벽은 0.30 에서도 Δ23~51 로 잘 보였다. 벽까지 0.55 로 올리면
+            //    **가릴 이유가 없는데 적을 가린다.** 알파는 «얼마나 가리나»가 아니라 **«얼마나 읽히나»**가 정한다.
             m.color = col;
             return m;
         }
@@ -2258,7 +2259,8 @@ namespace Tankfall.View
         void RefreshAir()
         {
             int used = 0;
-            Transform Take(PrimitiveType t, Color c)
+            _tornadoGos.Clear();
+            Transform Take(PrimitiveType t, Color c, float alpha)
             {
                 if (used >= _airGos.Count)
                 {
@@ -2270,20 +2272,51 @@ namespace Tankfall.View
                     //    주석엔 "반투명 판"이라고 적혀 있었지만 Standard 가 Opaque 라서, 맵 한가운데
                     //    **불투명한 노란 벽(40m×52m)과 하늘색 기둥(지름 14m×62m)** 이 서서 적을 가렸다.
                     //    실제로 반투명하게 만들려면 셰이더를 Fade 모드로 돌려야 한다(색의 알파만 낮추면 무시된다).
-                    mr.sharedMaterial = MakeFadeMat(c);
                     mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                     _airGos.Add(go.transform);
+                    _airMrs.Add(mr);
                 }
-                var tr = _airGos[used++];
+                // ⚠️ 풀에 든 물건은 **모양·색·알파가 매번 다르다**(판·테두리·기둥). 재질을 생성 시점에만
+                //    정하면 재사용될 때 **엉뚱한 색으로 나온다** — 꺼낼 때마다 다시 정한다.
+                var tr = _airGos[used];
+                _airMrs[used].sharedMaterial = MakeFadeMat(c, alpha);
+                used++;
                 tr.gameObject.SetActive(true);
+                tr.rotation = Quaternion.identity;
                 return tr;
             }
+            // 증폭벽 — **판 하나만 세우면 «렌더 오류»로 읽힌다**(2026-09-19). 테두리도 두께감도 없는
+            // 납작한 노란 색판이라 UI 오버레이처럼 보였다. 판 + **테두리 네 개**로 «세계 안의 물건»을 만든다.
+            // 🛑 **`MinY`(=6)은 연출이 아니라 게임 규칙이다 — 탄이 그 아래로 지나간다.**
+            //    바닥까지 내리면 **화면이 거짓말을 한다**: 사람은 막혔다고 읽는데 실제로는 통과한다.
+            //    **떠 있는 것이 사실이면 떠 있게 그린다.** 아랫변 테두리를 밝게 둬서 「여기가 끝이고
+            //    아래는 열려 있다」를 말하게 한다 — 「왜 떠 있나」가 보여야지 「왜 안 막히나」가 의문이면 실패다.
+            // 🛑 MinY·MaxY·HalfLen 은 판정에 쓰이는 수치다. 한 글자도 안 건드린다(읽기만 한다).
+            var wallCol = new Color(1.0f, 0.85f, 0.35f);
+            var wallEdge = new Color(1.0f, 0.72f, 0.18f);
             foreach (var w in _air.Walls)
             {
-                var tr = Take(PrimitiveType.Cube, new Color(1.0f, 0.85f, 0.35f));
-                tr.position = new Vector3(w.X, (w.MinY + w.MaxY) * 0.5f, w.Z);
-                tr.localScale = new Vector3(AirField.WallThickness, w.MaxY - w.MinY, w.HalfLen * 2f);
-                tr.rotation = Quaternion.identity;
+                float hy = (w.MinY + w.MaxY) * 0.5f, hh = w.MaxY - w.MinY, len = w.HalfLen * 2f;
+                var tr = Take(PrimitiveType.Cube, wallCol, 0.34f);
+                tr.position = new Vector3(w.X, hy, w.Z);
+                tr.localScale = new Vector3(AirField.WallThickness, hh, len);
+
+                const float Bar = 1.1f;                                  // 테두리 굵기(연출 전용)
+                float bt = AirField.WallThickness * 2.4f;                // 판보다 두껍게 = 두께감
+                // 윗변 · 아랫변. **아랫변을 더 굵고 밝게** — 「여기서 끝난다」가 읽혀야 한다.
+                var top = Take(PrimitiveType.Cube, wallEdge, 0.85f);
+                top.position = new Vector3(w.X, w.MaxY, w.Z);
+                top.localScale = new Vector3(bt, Bar, len);
+                var bot = Take(PrimitiveType.Cube, wallEdge, 0.95f);
+                bot.position = new Vector3(w.X, w.MinY, w.Z);
+                bot.localScale = new Vector3(bt * 1.15f, Bar * 1.5f, len);
+                // 양 끝 기둥 — 「여기까지가 벽」을 옆에서도 알 수 있게.
+                for (int e = 0; e < 2; e++)
+                {
+                    var end = Take(PrimitiveType.Cube, wallEdge, 0.85f);
+                    end.position = new Vector3(w.X, hy, w.Z + (e == 0 ? -w.HalfLen : w.HalfLen));
+                    end.localScale = new Vector3(bt, hh, Bar);
+                }
             }
             foreach (var t in _air.Tornadoes)
             {
@@ -2293,9 +2326,10 @@ namespace Tankfall.View
                 //    가장 넓은 면이 놓여 있었다. 잔디 앞(Δ50)에서만 보이는 건 밑동뿐이다.
                 //    ⇒ 폭풍 회색으로 바꾼다. 7개 배경(하늘 상/하·원경·잔디·모래·눈·붉은땅) **최소 Δ31**.
                 // ⚠️ 색을 고를 때 **한 배경만 보고 고르지 마라.** 이 값은 일곱을 한 표로 놓고 최소값을 키운 것이다.
-                var tr = Take(PrimitiveType.Cylinder, new Color(0.30f, 0.34f, 0.42f));
+                var tr = Take(PrimitiveType.Cylinder, new Color(0.30f, 0.34f, 0.42f), 0.55f);
                 tr.position = new Vector3(t.X, t.TopY * 0.5f, t.Z);
                 tr.localScale = new Vector3(t.Radius * 2f, t.TopY * 0.5f, t.Radius * 2f);   // 기본 실린더 높이 2
+                _tornadoGos.Add(tr);
             }
             for (int i = used; i < _airGos.Count; i++) _airGos[i].gameObject.SetActive(false);
         }
@@ -2360,14 +2394,39 @@ namespace Tankfall.View
             return sb.ToString();
         }
 
+        /// <summary>
+        /// 기후를 정면에서 보는 고정 포즈. **「보이는가」를 운에 맡기지 않으려고 있다.**
+        /// 기후 전체를 감싸는 상자를 구해 그 중심을 보고, 상자가 프레임에 들어올 거리에 선다.
+        /// </summary>
+        void ClimatePose()
+        {
+            if (!_air.Any || _cam == null) return;
+            float minX = float.MaxValue, maxX = float.MinValue, minZ = float.MaxValue, maxZ = float.MinValue, top = 0f;
+            void Grow(float x, float z, float halfX, float halfZ, float h)
+            {
+                if (x - halfX < minX) minX = x - halfX; if (x + halfX > maxX) maxX = x + halfX;
+                if (z - halfZ < minZ) minZ = z - halfZ; if (z + halfZ > maxZ) maxZ = z + halfZ;
+                if (h > top) top = h;
+            }
+            foreach (var w in _air.Walls) Grow(w.X, w.Z, AirField.WallThickness, w.HalfLen, w.MaxY);
+            foreach (var t in _air.Tornadoes) Grow(t.X, t.Z, t.Radius, t.Radius, t.TopY);
+
+            var center = new Vector3((minX + maxX) * 0.5f, top * 0.5f, (minZ + maxZ) * 0.5f);
+            // 상자의 «대각 크기»가 세로 화각 안에 들어올 거리. 여유 1.5배 — 딱 맞추면 테두리가 잘린다.
+            float span = Mathf.Max(top, Mathf.Max(maxX - minX, maxZ - minZ));
+            float dist = Mathf.Max(60f, 1.5f * span / Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad));
+            // x 축에서 본다 — 벽이 z 축으로 뻗어 있으므로(AirField.Roll) 옆에서 봐야 «판»이 보인다.
+            _cam.transform.position = center + new Vector3(-dist * 0.82f, dist * 0.42f, -dist * 0.30f);
+            _cam.transform.LookAt(center);
+        }
+
         /// <summary>회오리를 돌린다 — 서 있기만 하면 기둥인지 회오리인지 안 읽힌다.</summary>
         void TickAir(float dt)
         {
             if (_air.Tornadoes.Count == 0) return;
             _tornadoSpin += dt * 220f;
-            int wallN = _air.Walls.Count;
-            for (int i = 0; i < _air.Tornadoes.Count && wallN + i < _airGos.Count; i++)
-                _airGos[wallN + i].rotation = Quaternion.Euler(0f, _tornadoSpin, 0f);
+            for (int i = 0; i < _tornadoGos.Count; i++)
+                if (_tornadoGos[i] != null) _tornadoGos[i].rotation = Quaternion.Euler(0f, _tornadoSpin, 0f);
         }
 
         /// <summary>
@@ -3628,6 +3687,14 @@ namespace Tankfall.View
         readonly AirField _air = new AirField();
         Rng _airRng = new Rng(0x51C0Du);
         readonly List<Transform> _airGos = new List<Transform>();
+        readonly List<MeshRenderer> _airMrs = new List<MeshRenderer>();   // 풀과 같은 순서 — 꺼낼 때 재질을 다시 정한다
+        /// <summary>
+        /// 이번 판의 회오리 오브젝트. **인덱스 산술로 찾지 않는다.**
+        /// ⚠️ 예전엔 `_airGos[_air.Walls.Count + i]` 로 집었다 — 벽이 오브젝트 **하나**라는 가정이
+        ///    코드에 박혀 있었던 것이다. 증폭벽에 테두리 4개를 더하는 순간 그 가정이 깨져
+        ///    **엉뚱한 물건이 회오리처럼 돌았을** 것이다. 셀 수 있는 것을 세지 말고 **담아라.**
+        /// </summary>
+        readonly List<Transform> _tornadoGos = new List<Transform>();
         float _tornadoSpin;
         // ── Boom 모드(§2-9-16) ── 지뢰밭·지진·유성. 규칙·출처는 Sim/BoomMode.cs 머리말.
         bool _boom, _boomSelfTest;
@@ -3861,6 +3928,13 @@ namespace Tankfall.View
 
             switch (_frame)
             {
+                // 🚨 **기후 전용 한 장**(2026-09-19). 전투 카메라는 쏘는 탱크를 따라다녀서 기후가
+                //    프레임에 들어올지가 «운»이다 — 실제로 여러 판을 찍는 동안 증폭벽이 화면 끝에 걸치거나
+                //    언덕에 가려 **한 번도 제대로 안 보였다.** 「안 보인다」와 「그 카메라가 안 본다」를
+                //    가르려면 **기후를 정면으로 보는 고정 포즈**가 하나 있어야 한다. 갤러리와 같은 발상이다.
+                //    ⚠️ 기후가 없으면 안 찍는다 — 빈 들판 사진은 아무것도 증명하지 않는다.
+                case 6:  ClimatePose(); break;
+                case 8:  if (_air.Any) Shot("10_기후"); break;
                 case 15: _camYaw = 160f; _camPitch = 24f; _camDist = 40f; UpdateCamera(0f); break;
                 case 20:
                     Shot("11_전투개시");
