@@ -19,14 +19,42 @@ namespace Tankfall.View
         public static string Namespace = "tankfall.";
         static string P => Namespace;
 
-        static readonly string[] SettingKeys = { "map", "difficulty", "items", "weather", "boom", "sfxoff", "musicoff", "roster", "volume",
-                                                 // 턴 시간 실측(2026-09-19). 자체검사가 지워야 사람 저장값과 안 섞인다.
-                                                 "pace.hsec", "pace.hturns", "pace.asec", "pace.aturns", "pace.games" };
+        /// <summary>
+        /// **옛 빌드가 남긴 키를 쓸어담는 목록.** 지금 청소의 주력은 아래 <see cref="IndexKey"/> 색인이다.
+        /// ⚠️ 여기에 새 키를 더하지 마라 — 색인이 자동으로 잡는다. 사람이 관리하는 목록이 문제였다.
+        /// </summary>
+        static readonly string[] LegacyKeys = { "map", "difficulty", "items", "weather", "boom", "sfxoff", "musicoff", "roster", "volume" };
+
+        /// <summary>
+        /// 이 네임스페이스에 **실제로 쓴 키의 목록**. 쓰는 쪽(<see cref="Touch"/>)이 갱신한다.
+        ///
+        /// 🚨 **왜 생겼나 (2026-09-19).** 청소를 `SettingKeys` 라는 **사람이 관리하는 목록**으로 하고 있었고,
+        ///    목록에 없는 키는 **영영 남았다.** 실제로 남았다 — 자체검사 게이트를 시험하려고 저장 키 이름을
+        ///    `sfxoff` → `sfx_off_v2` 로 바꾼 빌드를 한 번 돌렸더니, 그 키가 사람 plist 에 그대로 남았다.
+        ///    「하네스가 사람 저장값을 안 건드린다」는 불변식을 **목록이 지키고 있었던 것**이고, 목록은 빠뜨린다.
+        ///    → **쓰는 쪽이 색인을 갱신한다.** 키를 늘려도 사람이 할 일이 없다.
+        /// ⚠️ `PlayerPrefs` 에는 키 열거 API 가 없다. 그래서 «접두사 전수 삭제»를 직접은 못 하고,
+        ///    이 색인이 그 역할을 대신한다. 색인을 안 거치는 저장 경로를 새로 만들지 마라.
+        /// </summary>
+        const string IndexKey = "__keys";
+
+        static void Touch(string k)
+        {
+            if (k == IndexKey) return;
+            string idx = PlayerPrefs.GetString(P + IndexKey, "");
+            if (idx.Length > 0 && ("," + idx + ",").Contains("," + k + ",")) return;   // 이미 있다
+            PlayerPrefs.SetString(P + IndexKey, idx.Length == 0 ? k : idx + "," + k);
+        }
 
         /// <summary>현재 네임스페이스의 키를 전부 지운다(자체검사 정리용).</summary>
         public static void DeleteAll(int difficultyCount)
         {
-            foreach (var k in SettingKeys) PlayerPrefs.DeleteKey(P + k);
+            // ① 색인이 아는 것 전부 — 이게 주력이다(키를 늘려도 자동으로 따라온다).
+            foreach (var k in PlayerPrefs.GetString(P + IndexKey, "").Split(','))
+                if (k.Length > 0) PlayerPrefs.DeleteKey(P + k);
+            PlayerPrefs.DeleteKey(P + IndexKey);
+            // ② 색인이 생기기 **전** 빌드가 남겼을 수 있는 것들(보험). 새 키를 여기 더하지 마라.
+            foreach (var k in LegacyKeys) PlayerPrefs.DeleteKey(P + k);
             for (int i = 0; i < difficultyCount; i++)
                 for (int o = 0; o < 3; o++) PlayerPrefs.DeleteKey(P + $"rec.{i}.{o}");
             PlayerPrefs.Save();
@@ -34,11 +62,11 @@ namespace Tankfall.View
 
         static bool Has(string k) => PlayerPrefs.HasKey(P + k);
         static int GetInt(string k, int d) => PlayerPrefs.GetInt(P + k, d);
-        static void SetInt(string k, int v) => PlayerPrefs.SetInt(P + k, v);
+        static void SetInt(string k, int v) { Touch(k); PlayerPrefs.SetInt(P + k, v); }
         static float GetFlt(string k, float d) => PlayerPrefs.GetFloat(P + k, d);
-        static void SetFlt(string k, float v) => PlayerPrefs.SetFloat(P + k, v);
+        static void SetFlt(string k, float v) { Touch(k); PlayerPrefs.SetFloat(P + k, v); }
         static string GetStr(string k, string d) => PlayerPrefs.GetString(P + k, d);
-        static void SetStr(string k, string v) => PlayerPrefs.SetString(P + k, v);
+        static void SetStr(string k, string v) { Touch(k); PlayerPrefs.SetString(P + k, v); }
 
         // ── 전체 음량 ─────────────────────────────────────────
         /// <summary>
@@ -52,7 +80,8 @@ namespace Tankfall.View
         public static float Volume
         {
             get => Mathf.Clamp01(PlayerPrefs.GetFloat(P + "volume", 1f));
-            set { PlayerPrefs.SetFloat(P + "volume", Mathf.Clamp01(value)); PlayerPrefs.Save(); }
+            // ⚠️ `PlayerPrefs.SetFloat` 을 직접 부르면 **색인에 안 올라가** 청소에서 빠진다. 반드시 SetFlt 로.
+            set { SetFlt("volume", Mathf.Clamp01(value)); PlayerPrefs.Save(); }
         }
 
         // ── 설정 ──────────────────────────────────────────────

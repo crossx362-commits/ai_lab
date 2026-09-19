@@ -432,9 +432,19 @@ namespace Tankfall.View
                 Check(pc.Games == 2 && Mathf.Approximately(pc.Human, 12f) && Mathf.Approximately(pc.Ai, 2f)
                       && Mathf.Approximately(pc.All, 7f),
                       $"턴 시간 누적 — 내 턴 {pc.Human:F1}초 · AI {pc.Ai:F1}초 · 전체 {pc.All:F1}초 ({pc.Games}판)");
-                // ⚠️ 자체검사가 사람 저장값을 안 건드리는 성질이 새 키에도 걸려야 한다.
+                // ⚠️ 자체검사가 사람 저장값을 안 건드리는 성질이 **새 키에도** 걸려야 한다.
+                //
+                // 🚨 2026-09-19: 이 청소가 `SettingKeys` 라는 **사람이 관리하는 목록**으로 돌고 있었고,
+                //    목록에 없는 키는 영영 남았다 — 실제로 `tankfall.selftest.sfx_off_v2` 가 사람 plist 에 남았다.
+                //    이제 쓰는 쪽이 색인(`__keys`)을 갱신하고 `DeleteAll` 이 그걸 지운다.
+                //    여기서 재는 것은 **"목록에 없어도 지워지는가"** 다 — `pace.*` 는 이제 목록(LegacyKeys)에 없다.
                 Prefs.DeleteAll(Difficulties.Length);
-                Check(Prefs.TurnPace().Games == 0, "턴 시간 키도 DeleteAll 이 지운다(격리)");
+                Check(Prefs.TurnPace().Games == 0, "턴 시간 키도 DeleteAll 이 지운다(색인 경유 — 목록에 없다)");
+                Check(!PlayerPrefs.HasKey(Prefs.Namespace + "pace.hsec")
+                      && !PlayerPrefs.HasKey(Prefs.Namespace + "pace.games")
+                      && !PlayerPrefs.HasKey(Prefs.Namespace + "volume")
+                      && !PlayerPrefs.HasKey(Prefs.Namespace + "__keys"),
+                      "색인·색인이 아는 키가 plist 에서 실제로 사라졌다");
 
                 // 맵 상한 — 저장된 마지막 맵이 클램프에 잘리지 않는가. 숫자를 박아두면 맵이 늘 때 조용히 깨진다.
                 int last = MapHeightFunction.Count - 1;
