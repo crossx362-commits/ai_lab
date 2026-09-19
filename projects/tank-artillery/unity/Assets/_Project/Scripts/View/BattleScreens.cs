@@ -1564,6 +1564,7 @@ namespace Tankfall.View
                 case 0:
                     _hudOff = true;              // 전투 HUD 를 끈다 — 갤러리는 탄만 보여야 한다
                     if (_fx == null) _fx = new GameObject("ParticleFx").AddComponent<ParticleFx>();
+                    _fx.DeterministicParticles = true;   // 갤러리는 «진단»이다 — 두 장을 픽셀로 대조할 수 있어야 한다(입자계 생성 «전»에 켠다)
                     if (_galStep == 0) BuildShellRow(ShellKind.Normal);
                     else if (_galStep == 1) BuildShellRow(ShellKind.Special);
                     else if (_galStep == 2 || _galStep == 3)

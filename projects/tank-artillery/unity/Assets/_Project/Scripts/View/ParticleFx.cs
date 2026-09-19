@@ -213,6 +213,18 @@ namespace Tankfall.View
             var ps = go.AddComponent<ParticleSystem>();
             ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
+            // 🔑 **진단에서는 입자 난수를 고정한다**(2026-09-20). 하네스·자체검사는 고정 시드,
+            //    게임은 판마다 난수 — Boom·기후에서 이미 쓴 규약을 «입자»에도 적용한 것이다.
+            //    이게 없으면 «같은 설정»에서도 매번 다른 그림이 나와 **두 장을 픽셀로 대조할 수 없다**
+            //    (실측: 내 코드가 아무것도 안 하는 기종도 400~1144px 씩 달랐다 = 바닥이 신호를 덮었다).
+            //    ⚠️ 시드는 **멈춘 상태에서만** 먹는다 — 위 Stop 뒤에 둔 이유다.
+            //    ⚠️ 게임 화면은 건드리지 않는다. 단조로워지는 대가 없이 «진단만» 결정적으로 만든다.
+            if (DeterministicParticles)
+            {
+                ps.useAutoRandomSeed = false;
+                unchecked { ps.randomSeed = (uint)((name + (parent != null ? parent.name : "")).GetHashCode() & 0x7fffffff); }
+            }
+
             var r = go.GetComponent<ParticleSystemRenderer>();
             r.sharedMaterial = additive ? AddMat : AlphaMat;
             r.renderMode = ParticleSystemRenderMode.Billboard;
@@ -824,6 +836,14 @@ namespace Tankfall.View
         ///    (전용 포즈 ≠ 실제 장면 — 진단 UI 와 실제 게임 합격은 구별한다).
         /// </summary>
         public float DiagAge = -1f;
+
+        /// <summary>
+        /// **진단 전용 — 입자 난수를 고정한다.** 갤러리·자체검사에서만 켠다. 게임은 끈 채로 둔다.
+        /// 🔑 켜면 **「같은 설정 = 같은 그림」**이 되어 **두 장을 픽셀로 대조할 수 있다.**
+        ///    끄면 바닥(변하지 않아야 할 것의 차이)이 신호를 덮어 **대조 자체가 무효**가 된다.
+        /// ⚠️ `NewSystem` 이 입자계를 만들 때 읽는다 — **만들기 «전에»** 켜야 한다.
+        /// </summary>
+        public bool DeterministicParticles;
 
         /// <summary>
         /// **연소 구간 동안 자취를 «변조»한다** — 오너 지적(2026-09-19): 「쏜 다음 점화하면 빨라져야 하는데 같은 속도」.
