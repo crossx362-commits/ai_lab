@@ -153,20 +153,44 @@ namespace Tankfall.View
             _clouds.SetParent(transform, false);
             var mat = Unlit(Color.Lerp(Color.white, theme.SkyBottom, 0.18f));
 
-            for (int i = 0; i < 16; i++)
+            // 🚨 **구름이 «화면에 한 번도 없었다»**(2026-09-19 계측: `구름 0/60 보임`).
+            //    예전엔 사각 범위(±mapSize*1.7 = ±476m)에 y 90~160 으로 흩뿌렸다. 그러면 대부분이
+            //    **카메라에서 가까운데 높아서** 지평선 위 15~25° 에 앉는다 — 그런데 전투 프레임이
+            //    보여주는 건 지평선 위 **6.9°** 뿐이다(피치 24° · FOV 60°). 즉 전부 **프레임 위 바깥**.
+            //    ⇒ 높이를 «미터»로 정하지 말고 **«각도»로 정한다.** 링에 올려 거리를 고정하고,
+            //       높이를 그 거리의 비율로 잡으면 어떤 맵에서도 같은 각도에 앉는다.
+            //    목표 띠: 능선 꼭대기(≈4°) 위 ~ 프레임 위 끝(6.9°) 사이.
+            //    ⚠️ 카메라가 맵 안에서 ±140m 움직이므로 각도는 폭을 갖는다 — 중앙값이 띠에 들면 된다.
+            // 링이라 대부분은 카메라 뒤·옆이다(계측: 뒤 35 · 좌우 14 / 60). 앞쪽 호에 몇 개를 확보하려고 22개를 둔다.
+            const int CloudCount = 22;
+            for (int i = 0; i < CloudCount; i++)
             {
                 var cloud = new GameObject("Cloud").transform;
                 cloud.SetParent(_clouds, false);
+                float ca = (i / (float)CloudCount) * Mathf.PI * 2f + rng.Float01() * 0.30f;
+                float cr = 640f + rng.Float01() * 220f;                 // 최원 능선(660)보다 **바깥** — 가려질 일이 없다
+                // 높이 = 거리 × 계수 ⇒ 고도각 고정. 계수는 **실측으로 맞춘 값**이지 유도한 값이 아니다:
+                //   0.085~0.115 로 뒀더니 고도각 4.8~8.4° 가 나왔고 **앞쪽 11개가 전부 «위로 넘침»** 이었다.
+                //   ⚠️ 이유: 화면 위 끝 6.9° 는 **가운데 세로선** 기준이다. 축에서 벗어난 구름은
+                //      `y_screen ∝ Y/Z` 이고 좌우로 갈수록 Z 가 작아져 **같은 고도각이라도 더 위에 찍힌다.**
+                //      그래서 「6.9° 아래면 보인다」가 아니라 **여유를 두고 그 아래**여야 한다.
+                //   ⚠️ 카메라가 맵 안에서 ±140m 움직여 거리 D 가 cr±140 이 된다 → 고도각이 ±20% 벌어진다.
+                //      띠(능선 3.6° ~ 프레임 6.9°)의 **가운데에 중앙값을 놓아야** 양끝이 다 안 샌다.
                 cloud.position = new Vector3(
-                    (rng.Float01() - 0.5f) * mapSize * 3.4f + mapSize * 0.5f,
-                    90f + rng.Float01() * 70f,
-                    (rng.Float01() - 0.5f) * mapSize * 3.4f + mapSize * 0.5f);
+                    mapSize * 0.5f + Mathf.Cos(ca) * cr,
+                //   2차 실측: 0.072~0.086 → 보임 14/85 인데 화면 y 가 **879~900**(화면 높이 900)이라
+                //   띠 위쪽에 붙어 **윗부분이 잘렸다.** 능선 851 ~ 프레임 900 사이 한가운데(≈865~885)로 내린다.
+                //   ⚠️ 고도각으로 맞추려 하지 마라 — 보이는 구름은 대부분 **축에서 벗어나 있어**
+                //      같은 고도각이 화면에선 20px 쯤 더 위에 찍힌다. **화면 y 를 보고 맞춘다.**
+                    28f + cr * (0.061f + rng.Float01() * 0.012f),
+                    mapSize * 0.5f + Mathf.Sin(ca) * cr);
 
                 int puffs = 3 + (int)(rng.Float01() * 3f);
                 for (int j = 0; j < puffs; j++)
                 {
                     var p = Prim(PrimitiveType.Sphere, mat, cloud);
-                    float s = 18f + rng.Float01() * 22f;
+                    // 멀어진 만큼 키운다 — 안 키우면 «보이긴 하는데 점»이 된다.
+                    float s = 30f + rng.Float01() * 34f;
                     p.localScale = new Vector3(s, s * 0.42f, s * 0.75f);
                     p.localPosition = new Vector3((j - puffs * 0.5f) * s * 0.55f, rng.Float01() * s * 0.10f, rng.Float01() * s * 0.2f);
                 }
@@ -197,8 +221,16 @@ namespace Tankfall.View
                 float radius = 380f + layer * 140f;
                 // ⚠️ 두 번 틀린 자리다. 지형 색에 가까우면 배경이 **하늘에 떠 보이고**,
                 //    안개 색에 너무 가까우면 **하늘에 묻혀 아예 안 보인다**(0.72/0.88 로 뒀다가 사라졌다).
-                //    선형 안개(220~620m)가 이 거리에서 40~75% 를 더 섞으므로 기본 색은 이 정도로 남긴다.
-                // 먼 층일수록 안개에 잠긴다(0.52 · 0.68 · 0.80). 이게 층을 갈라 주는 유일한 단서다.
+                //    🚨 **여기 «선형 안개가 40~75% 를 더 섞어 준다»고 적혀 있었다 — 거짓이다**(2026-09-19 실측).
+                //       배경 재질은 `Unlit()` = `Unlit/Color`, 이 셰이더는 `Fog { Mode Off }` 다.
+                //       `RenderSettings.fog`(220~620m)는 **원경 산맥에 한 번도 닿은 적이 없다.**
+                //       판별: 아래 Lerp 를 손으로 계산해 스크린샷 픽셀과 대조 →
+                //         0.52→(145,154,160) · 0.66→(157,172,182) · 0.80→(170,189,203),
+                //         3층 × 3채널 **아홉 개 전부 정확히 일치** = 런타임이 더한 것이 0.
+                //       ⇒ **여기 적는 색이 화면에 나오는 색 그대로다.** 안개가 보정해 주리라 기대하고
+                //          값을 밀지 마라 — 위 「0.72/0.88 로 뒀다가 사라졌다」가 바로 그 사고다.
+                // 먼 층일수록 «안개 색 쪽으로» 칠한다(0.52 · 0.68 · 0.80) — 안개에 잠기는 게 아니라 **그렇게 보이게 칠하는** 것이다.
+                // 이게 층을 갈라 주는 유일한 단서다.
                 float fogMix = 0.52f + layer * 0.14f;
                 // ⚠️ **눈 날씨에서 원경만 회색 판이었다**(2026-09-19 스크린샷). 지면·나무·바위는 흰데
                 //    산은 `RockDark` 기반이라 어두운 회색으로 남아 세상과 따로 놀았다.
@@ -215,8 +247,18 @@ namespace Tankfall.View
                     // 근경 h≤66 → 꼭대기(회전 포함 ≈ h*0.32+h*0.5+w*0.3 ≈ 100m)/380m ≈ 15° 상한. 원경은 안개가 지운다.
                     // 높이는 **반경에 비례**시킨다 — 각 층의 «수평선 위 각도»가 같아야 하늘을 안 덮는다.
                     // (380m 기준 h, 먼 층은 radius/380 배. 위 주석의 h/r ≤ 0.2 규칙을 층이 늘어도 지킨다.)
-                    float h = (26f + rng.Float01() * 40f) * (radius / 380f);
-                    float w = 70f + rng.Float01() * 90f;
+                    // 🚨 **여기가 하늘을 다 먹고 있었다**(2026-09-19 계측). 위 주석의 *"≈15° 상한"* 은
+                    //    **손계산이고 기준자가 틀렸다** — 세로 FOV 60° 니 지평선 위 30° 가 보인다고
+                    //    암묵 가정했는데, 전투 카메라는 18~24° **숙이고 있다.**
+                    //    `SkyReport` 실측(피치 24°, 최악 조건): 프레임이 보여주는 건 지평선 위 **6.9°**,
+                    //    그런데 능선 꼭대기는 **8.6°** → **화면 위로 넘쳐** 하늘띠가 **0px** 이었다.
+                    //    ⇒ h·w 를 **같이 절반**으로. 둘 다 줄이므로 **실루엣 비율은 그대로** —
+                    //       「회색 판때기」가 되는 건 «납작해질» 때지 «작아질» 때가 아니다.
+                    //       3겹·층별 fogMix 도 그대로라 깊이 단서는 안 잃는다.
+                    //    ⚠️ 이 값을 키우려거든 `SkyReport` 의 `하늘띠` 가 **0 이 되는지 먼저 봐라.**
+                    //       0 이면 구름·해·하늘 그라디언트가 **전부 같이** 사라진다(그때 그랬다).
+                    float h = (13f + rng.Float01() * 20f) * (radius / 380f);
+                    float w = 35f + rng.Float01() * 45f;
                     peak.position = new Vector3(
                         mapSize * 0.5f + Mathf.Cos(a) * radius,
                         h * 0.32f,
@@ -272,6 +314,99 @@ namespace Tankfall.View
             var m = new Material(sh) { color = c };
             if (m.HasProperty("_Color")) m.SetColor("_Color", c);
             return m;
+        }
+
+        /// <summary>
+        /// 하늘 계측기 — **각도를 손으로 계산하지 말고 카메라에게 물어본다.**
+        ///
+        /// 🚨 왜 있나(2026-09-19). 「구름이 안 보인다」의 원인은 높이·크기·대비·개수가 아니라
+        ///    **하늘이 원경 산맥에 통째로 가려져 있던 것**이었다. 그런데 `BuildRidges` 주석은
+        ///    봉우리를 *"≈15° 상한"* 으로 **손으로 계산해** 놓고 그걸 합격으로 적어 뒀다 —
+        ///    세로 FOV 60° 니 지평선 위 30° 가 보인다고 암묵 가정했는데, 전투 카메라는
+        ///    18~24° **숙이고 있어서** 실제로 보이는 건 그 차이뿐이다.
+        ///    손계산이 틀린 기준자였으므로 **손계산을 하나 더 하는 것으로는 못 고친다.**
+        ///    그래서 실제 투영(`WorldToScreenPoint`)으로 재서 찍는다.
+        ///
+        /// 읽는 법: `하늘띠`가 0 이면 하늘이 없는 것이고, `구름보임`이 0 이면 구름은 프레임 밖이다.
+        /// **둘 다 양수여야 「구름이 보인다」가 성립한다** — 하나만 고치면 화면은 그대로다.
+        /// </summary>
+        public string SkyReport(Camera cam)
+        {
+            if (cam == null) return "하늘계측: 카메라 없음";
+            float H = cam.pixelHeight;
+
+            // 진짜 지평선 = 카메라 높이에서 **수평으로** 아주 멀리 간 점. 원경 메시의 위쪽 끝이 아니다
+            // (에이프런 바깥 테두리를 지평선으로 착각해 4.8° 를 잃은 적이 있다 — 그래서 무한점으로 잡는다).
+            var fwd = cam.transform.forward; fwd.y = 0f;
+            if (fwd.sqrMagnitude < 1e-6f) fwd = Vector3.forward; else fwd.Normalize();
+            var hp = cam.WorldToScreenPoint(cam.transform.position + fwd * 100000f);
+            float horizonY = hp.z > 0f ? hp.y : -1f;      // 스크린 y 는 아래가 0
+
+            // 능선 꼭대기가 화면에서 얼마나 올라오나 — 각 조각의 **월드 바운즈 윗면**을 투영한다.
+            float ridgeTopY = -1f; int ridgeN = 0;
+            if (_ridges != null)
+            {
+                foreach (var mr in _ridges.GetComponentsInChildren<MeshRenderer>())
+                {
+                    var b = mr.bounds;
+                    var sp = cam.WorldToScreenPoint(new Vector3(b.center.x, b.max.y, b.center.z));
+                    if (sp.z <= 0f) continue;             // 카메라 뒤 — 투영이 뒤집힌다
+                    // 🚨 `sp.z > 0` 만으로는 부족하다(2026-09-19, 이 계측기의 **첫 판독이 거짓이었다**).
+                    //    카메라 «옆»에 있어 z 가 겨우 양수인 조각은 원근 나눗셈이 터져 y 가 폭발한다 —
+                    //    처음 찍힌 `능선꼭대기 y=12451` 은 900px 화면의 13.8배로, **화면에 있지도 않은**
+                    //    조각이 만든 숫자였다. 화면 밖 조각이 「하늘띠 0」을 만들면 그건 거짓 빨간불이다.
+                    //    ⇒ **가로도 프레임 안**인 것만 센다. 화면에 없는 것은 하늘을 가리지 않는다.
+                    if (sp.x < 0f || sp.x > cam.pixelWidth) continue;
+                    ridgeN++;
+                    if (sp.y > ridgeTopY) ridgeTopY = sp.y;
+                }
+            }
+
+            // 구름은 «프레임 안에 있나»를 센다. 하나라도 0 이면 위치가 문제지 색이 문제가 아니다.
+            // ⚠️ 「0개 보임」만 찍으면 **왜** 0 인지 모른다 — 한 번 그래서 각도 계산을 헛짚었다.
+            //    탈락 사유를 나눠 센다: 뒤 / 좌우 밖 / 위로 넘침 / 아래(능선에 묻힘) / far clip.
+            int cloudSeen = 0, cloudN = 0; float cloudLowY = -1f, cloudHighY = -1f;
+            int cBehind = 0, cSideX = 0, cTooHigh = 0, cTooLow = 0, cFar = 0;
+            float elevMin = 999f, elevMax = -999f;
+            if (_clouds != null)
+            {
+                foreach (var mr in _clouds.GetComponentsInChildren<MeshRenderer>())
+                {
+                    cloudN++;
+                    var wc = mr.bounds.center;
+                    float dist = Vector3.Distance(wc, cam.transform.position);
+                    // 지평선 위 «진짜» 고도각 — 화면 밖이어도 잰다. 이게 있어야 「얼마나 빗나갔나」를 안다.
+                    var flat = new Vector3(wc.x - cam.transform.position.x, 0f, wc.z - cam.transform.position.z);
+                    float elev = Mathf.Atan2(wc.y - cam.transform.position.y, Mathf.Max(0.01f, flat.magnitude)) * Mathf.Rad2Deg;
+                    if (elev < elevMin) elevMin = elev;
+                    if (elev > elevMax) elevMax = elev;
+
+                    var sp = cam.WorldToScreenPoint(wc);
+                    if (dist > cam.farClipPlane) { cFar++; continue; }
+                    if (sp.z <= 0f) { cBehind++; continue; }
+                    if (sp.x < 0f || sp.x > cam.pixelWidth) { cSideX++; continue; }
+                    if (sp.y > H) { cTooHigh++; continue; }
+                    if (sp.y < 0f) { cTooLow++; continue; }
+                    cloudSeen++;
+                    if (cloudLowY < 0f || sp.y < cloudLowY) cloudLowY = sp.y;
+                    if (sp.y > cloudHighY) cloudHighY = sp.y;
+                }
+            }
+
+            // 하늘 띠 = 지평선 위로 «능선이 안 덮은» 픽셀. 능선이 화면 위로 넘치면 음수가 아니라 0 이다.
+            float aboveHorizon = Mathf.Max(0f, H - horizonY);
+            float band = horizonY < 0f ? -1f : Mathf.Max(0f, H - Mathf.Max(ridgeTopY, horizonY));
+            float ppd = cam.pixelHeight / Mathf.Max(1e-3f, cam.fieldOfView);   // 픽셀/도(세로)
+
+            return string.Format(
+                "하늘계측: FOV {0:F1}° · 카메라피치 {1:F1}° · 카메라y {2:F1}m | " +
+                "지평선 y={3:F0} (위로 {4:F0}px = {5:F1}°) · 능선꼭대기 y={6:F0} ({7}조각) | " +
+                "하늘띠 {8:F0}px = {9:F1}° | 구름 {10}/{11} 보임 (y {12:F0}~{13:F0}) " +
+                "· 고도각 {14:F1}~{15:F1}° · 탈락 뒤{16} 좌우{17} 위{18} 아래{19} 멀리{20} · farClip {21:F0}m",
+                cam.fieldOfView, cam.transform.eulerAngles.x, cam.transform.position.y,
+                horizonY, aboveHorizon, aboveHorizon / ppd, ridgeTopY, ridgeN,
+                band, band / ppd, cloudSeen, cloudN, cloudLowY, cloudHighY,
+                elevMin, elevMax, cBehind, cSideX, cTooHigh, cTooLow, cFar, cam.farClipPlane);
         }
 
         public void Clear()

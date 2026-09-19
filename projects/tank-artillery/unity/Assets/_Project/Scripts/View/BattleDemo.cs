@@ -626,7 +626,9 @@ namespace Tankfall.View
             var camGo = new GameObject("MainCamera");
             _cam = camGo.AddComponent<Camera>();
             _cam.tag = "MainCamera";
-            _cam.farClipPlane = 900f;
+            // ⚠️ 구름 링이 맵 중심 반경 640~860m 에 있고 카메라는 맵 안에서 ±140m 움직인다 →
+            //    최대 1000m. 900 이면 **구름이 컬링돼 사라진다**(안개가 지우는 게 아니라 잘린다).
+            _cam.farClipPlane = 1400f;
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.allowMSAA = true;
             _cam.allowHDR = true;          // 가산 파티클(섬광·빔)이 흰색으로 뭉개지지 않게
@@ -3781,7 +3783,13 @@ namespace Tankfall.View
             switch (_frame)
             {
                 case 15: _camYaw = 160f; _camPitch = 24f; _camDist = 40f; UpdateCamera(0f); break;
-                case 20: Shot("11_전투개시"); break;
+                case 20:
+                    Shot("11_전투개시");
+                    // 🚨 이 한 장이 **고정 카메라(야우 160 · 피치 24 · 거리 40)** 다 — 전후 대조는 여기서만 한다.
+                    //    피치 24° 는 전투 카메라가 **가장 많이 숙인** 값이라 「하늘이 남나」의 최악 조건이다.
+                    //    각도는 손으로 계산하지 않는다(그러다 15° 배경을 10° 프레임에 세웠다) — 카메라에게 묻는다.
+                    if (_env != null) Debug.Log("[Tankfall] " + _env.SkyReport(_cam));
+                    break;
                 case 25: AiShoot(); _flyFrame = 0; break;
             }
 
