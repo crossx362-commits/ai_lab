@@ -112,6 +112,8 @@ open -a /Users/junholee/ai_lab/projects/tank-artillery/unity/Build/Tankfall.app
 | `기후 굴림` 로그 | **이번 판에 기후가 떴나** — 「안 보인다」와 「안 떴다」를 가른다 | 자동 모드 로그 |
 | `TerrainView.RebuildCount` | **지형이 바뀌었나**(시간·프레임으로 재지 마라 — 안 바뀌었을 때 갈고 바뀐 직후엔 늦다) | 코드에서 읽는다 |
 | 지형재생성 비용 로그 | 재생성 한 번에 **몇 ms · 몇 청크 · 파낸 정점 몇 개** | `_autoMode` 에서 자동 |
+| `verify.sh map` **스폰 탈출** | **새 맵에서 «시작부터» 갇히나** — 한 턴 이동 범위(45m) 안에서 충분히 멀어지나. **벽 스폰 대조군 포함** | `./tools/verify.sh map` |
+| **`00_맵전경` 포즈** | **이 맵이 약속하는 형태가 화면에 있나**(§2-9-6-0). 전투 카메라는 40m 추적이라 맵 형태를 안 보여준다 | `-autoshot` 자동 촬영 |
 | `./tools/verify.sh dead` | **아무도 안 부르는 멤버가 있나**(프레임워크 호출은 제외하고, 제외한 걸 출력한다) | `./tools/verify.sh dead` |
 | `-forceult` | **궁극기 연출이 실제로 어떻게 보이나**(버섯구름은 착탄 **뒤** 1.7초에 자란다) | `--args -autoshot -forceult` |
 | `-noclimate` | 기후 대조군. ⚠️ **`-autoshot` 은 결정론이 아니라** 이미지 비교로는 못 잰다(잡음 695k > 신호 115k) | `--args -autoshot -noclimate` |
@@ -134,6 +136,9 @@ cd projects/tank-artillery
 open -a "$PWD/unity/Build/Tankfall.app" --args -autoshot -shotdir /tmp/caps \
   -screen-width 1600 -screen-height 900 -screen-fullscreen 0
 ```
+⚠️ **여러 맵을 일괄 캡처할 땐 «파일 개수를 세고 빠진 것만 다시»** 찍어라. `open -W` 를 연속으로 돌리면
+   경합으로 **빈 폴더**가 나온다(코드 문제가 아니다) — 빈 폴더를 보고 「그 맵이 고장났다」로 갈 뻔했다.
+   **「돌았다」와 「나왔다」는 다르다.**
 ⚠️ **스크린샷 모드는 반드시 `open -a`.** 바이너리를 직접 부르면 캡처가 전부 실패하고
    `-nographics` 는 **PNG 가 새까맣게 나오는데 로그는 통과로 찍힌다.**
 ⚠️ 실행 파일 이름은 **`Contents/MacOS/unity`**(`Tankfall` 이 아니다).
