@@ -156,7 +156,18 @@ static class BattleSimVerify
 
         /// <summary>보급(§2-9-11) 스위치. `TANKFALL_SUPPLY=0` 으로 끄면 아이템만 켠 상태와 비교할 수 있다(판별용).</summary>
         static bool SupplyOn = true;
-        /// <summary>미러 게이트 시드 오프셋. `TANKFALL_SEED=&lt;n&gt;` — 같은 결론이 다른 시드에서도 나오는지 보는 용도.</summary>
+        /// <summary>
+        /// **시드 오프셋**(`TANKFALL_SEED=&lt;n&gt;`) — 같은 결론이 다른 시드에서도 나오는지 보는 손잡이.
+        ///
+        /// 🚨 **2026-09-19 까지 이 손잡이는 «미러 게이트에만» 닿았다.** §2-9-13 이 남긴 교훈이
+        ///    「**게이트를 새로 만들면 시드를 흔들어 그 ± 가 진짜인지 먼저 확인하라**」였는데,
+        ///    정작 ± 를 의심해야 할 **매치업 표와 난이도 사다리는 흔들 수가 없었다** —
+        ///    **교훈은 남았는데 교훈을 실행할 수단이 없었던 것**이다.
+        ///    실제로 그래서 「시드를 바꿨는데 표가 12종 전부 0.0%p」를 보고 **「완벽 재현」으로 오독할 뻔했다**
+        ///    (그 0.0%p 는 재현성의 증거가 아니라 **스위치가 안 닿았다는 증거**였다).
+        /// ⇒ 이제 **`RunMatch` 의 모든 시드**에 더한다. 일부에만 닿게 두면 같은 함정을 다시 만든다.
+        /// ⚠️ **기본값 0 이면 기존 표가 한 자리도 안 달라진다** — 그게 이 변경의 네거티브 컨트롤이다.
+        /// </summary>
         static uint SeedOffset = 0;
         /// <summary>기후(§2-9-15) 스위치. `TANKFALL_CLIMATE=0` 으로 끄면 도입 전과 비교할 수 있다.</summary>
         static bool ClimateOn = true;
@@ -717,6 +728,11 @@ static class BattleSimVerify
         if (!string.IsNullOrWhiteSpace(clEnv)) ClimateOn = clEnv.Trim() != "0";
         var sdEnv = Environment.GetEnvironmentVariable("TANKFALL_SEED");
         if (!string.IsNullOrWhiteSpace(sdEnv)) uint.TryParse(sdEnv.Trim(), out SeedOffset);
+        // ⚠️ 시드도 **산출물에 찍는다** — 조건이 명령에만 있으면 나중에 기본 표와 구별이 안 된다.
+        // 🚨 **읽은 «뒤»에 찍어야 한다.** 처음엔 이 줄을 위 두 줄 «앞»에 뒀다가
+        //    `TANKFALL_SEED=31337` 로 돌린 표에 **「시드: 기본(오프셋 0)」이 찍혔다.**
+        //    실행은 멀쩡했고 **머리말만 거짓말**을 했다 — 오늘 「계측이 자기가 만든/보기 전 상태를 보고한다」의 세 번째다.
+        Console.WriteLine(SeedOffset == 0 ? "시드: 기본(오프셋 0)" : $"시드: ⚠️ **오프셋 {SeedOffset}** — 같은 조건 다른 표본");
         var supEnv = Environment.GetEnvironmentVariable("TANKFALL_SUPPLY");
         if (!string.IsNullOrWhiteSpace(supEnv)) SupplyOn = supEnv.Trim() != "0";
         var itEnv = Environment.GetEnvironmentVariable("TANKFALL_ITEMS");
@@ -785,7 +801,7 @@ static class BattleSimVerify
             float miss = 0f;
             for (uint m = 0; m < matches; m++)
             {
-                var r = RunMatch(1000 + m * 77, err, MaxHp, 400, SuddenDeathTurn);   // 출하 설정과 동일
+                var r = RunMatch(1000 + SeedOffset + m * 77, err, MaxHp, 400, SuddenDeathTurn);   // 출하 설정과 동일
                 shots += r.Shots; hits += r.Hits; turns += r.Turns;
                 landed += r.Landed; blocked += r.Blocked; miss += r.TotalMiss;
                 if (r.Timeout) timeouts++;
@@ -842,7 +858,7 @@ static class BattleSimVerify
                 int matches = 24, turns = 0, timeouts = 0, shots = 0, hits = 0;
                 for (uint m = 0; m < matches; m++)
                 {
-                    var r = RunMatch(1000 + m * 77, err, hp);
+                    var r = RunMatch(1000 + SeedOffset + m * 77, err, hp);
                     turns += r.Turns; shots += r.Shots; hits += r.Hits;
                     if (r.Timeout) timeouts++;
                 }
@@ -862,7 +878,7 @@ static class BattleSimVerify
             var bs = new int[8]; var bh = new int[8];
             for (uint m = 0; m < 40; m++)
             {
-                var r = RunMatch(1000 + m * 77, 0.03f, 1800);
+                var r = RunMatch(1000 + SeedOffset + m * 77, 0.03f, 1800);
                 for (int i = 0; i < 8; i++) { bs[i] += r.BucketShots[i]; bh[i] += r.BucketHits[i]; }
             }
             for (int i = 0; i < 8; i++)
@@ -891,7 +907,7 @@ static class BattleSimVerify
                 int turns = 0, timeouts = 0, shots = 0, hits = 0;
                 for (uint m = 0; m < 40; m++)
                 {
-                    var r = RunMatch(1000 + m * 77, err, MaxHp, 400, 36, cr);
+                    var r = RunMatch(1000 + SeedOffset + m * 77, err, MaxHp, 400, 36, cr);
                     turns += r.Turns; shots += r.Shots; hits += r.Hits;
                     if (r.Timeout) timeouts++;
                 }
@@ -927,7 +943,7 @@ static class BattleSimVerify
                 int winA = 0, decided = 0;
                 for (uint m = 0; m < 20u; m++)
                 {
-                    var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius,
+                    var r = RunMatch(1000 + SeedOffset + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius,
                                      TankKind.Carrot, TankKind.Carrot, Wx, c.first, c.swap, c.alt);
                     if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
                 }
@@ -969,7 +985,7 @@ static class BattleSimVerify
                 int winA = 0, decided = 0, turnsSum = 0;
                 for (uint m = 0; m < 20u; m++)
                 {
-                    var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius,
+                    var r = RunMatch(1000 + SeedOffset + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius,
                                      kind, kind, Wx, c.first, c.swap, c.alt);
                     turnsSum += r.Turns;
                     if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
@@ -1081,7 +1097,7 @@ static class BattleSimVerify
                     for (uint m = 0; m < 20u; m++)
                     {
                         // 선공·스폰 둘 다 교차해 진영 효과를 뺀다([6-2] 교훈) — 남는 차이가 난이도뿐이어야 한다.
-                        var r = RunMatch(2000 + m * 77, tiers[a].err, MaxHp, 400, SuddenDeathTurn, BlastRadius,
+                        var r = RunMatch(2000 + SeedOffset + m * 77, tiers[a].err, MaxHp, 400, SuddenDeathTurn, BlastRadius,
                                          TankKind.Carrot, TankKind.Carrot, Wx,
                                          (int)((m >> 1) & 1), (m & 1) == 1, true, tiers[b].err);
                         if (r.Winner >= 0) { decided++; if (r.Winner == 0) winA++; }
@@ -1198,7 +1214,7 @@ static class BattleSimVerify
                     //   선공권이 항상 A로 고정돼 있으면 판이 짧은 기종(레이저 6턴 등)일수록 선공 승률 편중이
                     //   그대로 새어 들어와 탱크 자체의 좌우 대칭성과 뒤섞인다. 그래서 스폰 교환과 별도로
                     //   선공도 2판마다 교차해 "탱크 수치만의" 대칭성을 분리해 잰다(선공 자체의 효과는 [6-2]가 따로 잰다).
-                    var r = RunMatch(1000 + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius, kinds[ai], kinds[bi],
+                    var r = RunMatch(1000 + SeedOffset + m * 77, 0.025f, MaxHp, 400, SuddenDeathTurn, BlastRadius, kinds[ai], kinds[bi],
                                      Wx, (int)((m >> 1) & 1), (m & 1) == 1, true);
                     turns += r.Turns; spec += r.SpecialUsed; fall += r.FallDealt;
                     ssN += r.SsUsed; ultN += r.UltUsed; dotN += r.DotDealt; mineN += r.MineDealt; satN += r.SatelliteShots; itemN += r.ItemsUsed; supN += r.SupplyPicked;
