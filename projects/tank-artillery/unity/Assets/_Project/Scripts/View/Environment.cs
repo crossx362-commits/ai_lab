@@ -66,20 +66,81 @@ namespace Tankfall.View
         /// </summary>
         void BuildApron(float mapSize, in MapTheme theme, float groundY)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            go.name = "Apron";
-            Destroy(go.GetComponent<Collider>());
-            // Plane 프리미티브는 한 변이 10 단위다. 맵의 9배 폭으로 깐다.
-            go.transform.localScale = Vector3.one * (mapSize * 0.9f);
-            // 플레이 지형보다 살짝 낮게 — 같은 높이면 경계에서 z-fighting 이 난다.
-            go.transform.position = new Vector3(mapSize * 0.5f, groundY - 0.35f, mapSize * 0.5f);
+            // 🚨 **2026-09-19: 이게 전장을 덮고 있었다.**
+            //    예전에는 `PrimitiveType.Plane` 한 장을 맵 9배로 키워 **맵 한가운데에** 깔았다.
+            //    그래서 지형이 `groundY - 0.35m` 아래로 내려간 곳은 **어디든 이 판때기가 대신 보였다** —
+            //    즉 **모든 크레이터의 바닥**이 그랬다. 화면에서 구덩이가 "평평한 흰 원반"으로 보이던 것이
+            //    색 문제가 아니라 이것이었다. 판별: 지형 정점색을 통째로 검게 칠했더니(임시 진단)
+            //    **구덩이 안쪽만 검어지지 않고 그대로 남았다** — 지형이 아니었다는 증거다.
+            //    (그 전에 "굴착면 색" 가설로 두 번 헛짚었다. 색을 아무리 바꿔도 안 보이는 면을 칠하고 있었다.)
+            //
+            //    → 이제 **가운데를 뚫은 고리**로 만든다. 이름 그대로 "맵 **밖** 평지"다.
+            //    ⚠️ 가운데를 다시 메우지 마라. 판 하나가 싸다고 되돌리면 크레이터가 다시 사라진다.
+            //    ⚠️ 안쪽 경계는 맵 경계에 **0.5m 만 겹친다** — 겹침이 없으면 가장자리에 틈이 보이고,
+            //       많이 겹치면 그만큼 다시 전장을 덮는다.
+            var go = new GameObject("Apron");
+            go.transform.SetParent(transform, false);
+            go.transform.position = new Vector3(0f, groundY - 0.35f, 0f);
+            var mf = go.AddComponent<MeshFilter>();
+            mf.sharedMesh = ApronRing(mapSize, 0.5f, mapSize * 4f);
 
-            var mr = go.GetComponent<MeshRenderer>();
+            var mr = go.AddComponent<MeshRenderer>();
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             // 플레이 영역보다 어둡게 — "여기는 전장이 아니다"가 색으로 읽혀야 한다.
             mr.sharedMaterial = Lit(Color.Lerp(theme.Mid, theme.Fog, 0.35f) * 0.82f);
             _apron = go.transform;
             ApronTopY = groundY - 0.35f;
+
+            // ── 가운데 메움판 — **갤러리 전용, 평소에는 꺼져 있다** ──
+            // 갤러리(-gallery)는 지형을 통째로 끄고 탱크만 세운다. 고리로 바꾸면서 가운데가 비어
+            // 탱크가 허공에 뜬 그림이 됐다(실측). 그래서 "지형이 없을 때만" 까는 판을 따로 둔다.
+            // ⚠️ 전투에서는 절대 켜지 마라 — 이게 켜지면 크레이터 바닥이 다시 이 판으로 덮인다.
+            //    그 고장을 고치려고 고리로 바꾼 것이다.
+            var fill = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            fill.name = "ApronFill(갤러리 전용)";
+            Destroy(fill.GetComponent<Collider>());
+            fill.transform.SetParent(transform, false);
+            fill.transform.localScale = Vector3.one * (mapSize * 0.11f);   // Plane 한 변 = 10 단위
+            fill.transform.position = new Vector3(mapSize * 0.5f, ApronTopY, mapSize * 0.5f);
+            var fr = fill.GetComponent<MeshRenderer>();
+            fr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            fr.sharedMaterial = mr.sharedMaterial;
+            fill.SetActive(false);
+            _apronFill = fill;
+        }
+
+        GameObject _apronFill;
+
+        /// <summary>갤러리처럼 **지형을 끈 화면**에서만 가운데를 메운다. 전투에서 부르지 마라(크레이터가 덮인다).</summary>
+        public void SetApronFill(bool on) { if (_apronFill != null) _apronFill.SetActive(on); }
+
+        /// <summary>
+        /// 가운데가 뚫린 사각 고리. 안쪽 구멍 = 플레이 영역 `[-overlap, mapSize+overlap]`,
+        /// 바깥 = 그 밖으로 `out` 만큼. 사다리꼴 4장으로 만든다.
+        /// </summary>
+        static Mesh ApronRing(float mapSize, float overlap, float outward)
+        {
+            float i0 = -overlap, i1 = mapSize + overlap;          // 안쪽 구멍
+            float o0 = i0 - outward, o1 = i1 + outward;           // 바깥
+            var v = new Vector3[]
+            {
+                new Vector3(o0, 0f, o0), new Vector3(o1, 0f, o0), new Vector3(o1, 0f, o1), new Vector3(o0, 0f, o1), // 0~3 바깥
+                new Vector3(i0, 0f, i0), new Vector3(i1, 0f, i0), new Vector3(i1, 0f, i1), new Vector3(i0, 0f, i1), // 4~7 안쪽
+            };
+            // 각 변마다 사다리꼴 하나(위에서 볼 때 시계방향이 앞면).
+            var tri = new int[]
+            {
+                0,4,5, 0,5,1,   // -Z 쪽
+                1,5,6, 1,6,2,   // +X 쪽
+                2,6,7, 2,7,3,   // +Z 쪽
+                3,7,4, 3,4,0,   // -X 쪽
+            };
+            var m = new Mesh { name = "ApronRing" };
+            m.SetVertices(v);
+            m.SetTriangles(tri, 0);
+            m.RecalculateNormals();
+            m.RecalculateBounds();
+            return m;
         }
 
         /// <summary>구름 — 납작한 구 덩어리. 하늘이 비어 있으면 높이 감각이 없어진다.</summary>

@@ -8,6 +8,7 @@
 // ⚠️ 색을 여기나 청크에 직접 적지 마라. 한 곳(MapTheme)에서만 정해야 경계에서 색이 안 튄다.
 
 using UnityEngine;
+using Tankfall.Sim;
 
 namespace Tankfall.View
 {
@@ -58,11 +59,46 @@ namespace Tankfall.View
             // 높은 절벽일수록 짙은 바위 — 이것도 이어서 준다(예전엔 26m 에서 탁 끊겼다).
             var col = Color.Lerp(ground, Color.Lerp(t.Rock, t.RockDark, Band(y, 20f, 30f)), slope);
 
+            // ══════════════════════════════════════════════════════════════
+            //  ③ **파낸 자리는 흙이다** (2026-09-19)
+            //
+            //  이 게임의 축은 지형 파괴(§2-2 · M2)인데 **크레이터가 화면에서 안 읽혔다.** 눈 맵에서는
+            //  하얀 원반, 초원에서는 연두 원반으로 보였다 — 깊이도, 판 자리라는 것도 전달이 안 됐다.
+            //
+            //  원인은 이 함수의 **입력**이었다. 높이(y)와 경사만 봤기 때문에:
+            //    · 위의 "낮게 파인 자리는 어둡게"는 **절대 높이 -2~2m** 를 본다. TwinHills 언덕(20m)에
+            //      판 구덩이는 y=15m 라 그 구간에 아예 안 들어온다 — 언덕 위 크레이터는 한 번도 안 어두워졌다.
+            //    · 경사(slope)는 **벽**만 잡는다. 크레이터 **바닥**은 평평해서 지표면과 같은 색으로 남는다.
+            //
+            //  그래서 **"원래 지면보다 얼마나 아래인가"** 를 새 입력으로 넣는다. 파괴 전 지형은
+            //  `MapHeightFunction.Height` 가 해석적으로 돌려주므로(메모리 0, §7 머리말) 비교가 가능하다.
+            //  오버행·동굴 천장 아래도 자연히 흙이 된다 — 거기도 **지표 아래**가 맞다.
+            //
+            //  ⚠️ 정점마다 높이 함수를 한 번 더 돈다. 폭발 프레임 비용(§7-6-3)을 **재고 나서** 넣었다.
+            //  ⚠️ 눈 날씨에도 흙색 그대로다(`MapTheme.Of` 의 주석) — 흰 지면에 흰 구덩이가 문제였다.
+            //  ⚠️ 이건 되돌렸던 "지형 색 얼룩" 가설과 **다른 것**이다. 그건 평평한 면의 얼룩이었고
+            //     실측으로 음영임이 반증됐다. 이건 새 입력(굴착 여부)이지 같은 가설의 재시도가 아니다.
+            // ══════════════════════════════════════════════════════════════
+            float below = MapHeightFunction.Height(t.Map, p.x, p.z) - p.y;
+            // 0.8m 아래부터 흙이 비치기 시작해 4m 에서 완전히 흙이다.
+            // ⚠️ 문턱을 0 으로 두지 마라 — 복셀(0.5m) 해상도의 표면 정점이 원래 높이보다 살짝 아래에
+            //    앉는 일이 흔해서, **파지도 않은 평지가 통째로 흙색**이 된다.
+            float dug = Mathf.Clamp01((below - 0.8f) / 3.2f);
+            // 계측 — "넣었는데 화면이 안 바뀐다"를 눈으로 판정하지 않기 위해서다(색 노이즈 때의 교훈).
+            DugVerts += dug > 0f ? 1 : 0; TotalVerts++; if (below > MaxBelow) MaxBelow = below;
+            if (dug > 0f)
+                col = Color.Lerp(col, Color.Lerp(t.Dirt, t.DirtDeep, dug), dug * 0.9f);
+
             // ② 밝기를 흔든다 — 이게 **질감**이다. ①만으로는 경계만 움직이고 면은 여전히 단색이다.
             //    ±7% 면 얼룩이 보이되 색이 더러워지지는 않는다(더 키우면 지면이 지저분해진다).
             float shade = 1f + blotch * 0.075f;
             return new Color(col.r * shade, col.g * shade, col.b * shade, col.a);
         }
+
+        /// <summary>파낸 것으로 판정된 정점 수 / 전체 / 원래 지면 아래 최대 깊이. `TerrainView` 가 찍는다.</summary>
+        public static int DugVerts, TotalVerts;
+        public static float MaxBelow;
+        public static void ResetStats() { DugVerts = TotalVerts = 0; MaxBelow = 0f; }
 
         /// <summary>
         /// 값 노이즈(-1~1). 사인 해시 하나 — 정점마다 도는 자리라 **싸야 한다**.

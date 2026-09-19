@@ -81,17 +81,34 @@ namespace Tankfall.View
         }
 
         /// <summary>폭발·붕괴가 건드린 범위의 청크만 다시 만든다.</summary>
+        /// <summary>
+        /// 🚨 **2026-09-19: `UploadTicks`/`NormalTicks`/`BoundsTicks` 를 읽는 코드가 0곳이었다.**
+        ///    "§7-6-3 폭발 프레임 비용을 재고 나서 손대라"고 주석은 박혀 있는데 정작 **재는 눈이 없었다** —
+        ///    잰 값이 아무 데도 안 나오면 계측이 아니라 죽은 코드다. 그래서 폭발마다 한 줄 찍는다.
+        ///    ⚠️ 무인 모드에서만 찍는다(사람 판에서 매 폭발 로그를 뿌리지 않는다).
+        /// </summary>
         public void ApplyDirty(in DirtyBounds b)
         {
             if (b.Empty) return;
             int cx0 = FloorDiv(b.I0, _chunkN), cx1 = FloorDiv(b.I1 - 1, _chunkN) + 1;
             int cy0 = FloorDiv(b.J0, _chunkN), cy1 = FloorDiv(b.J1 - 1, _chunkN) + 1;
             int cz0 = FloorDiv(b.K0, _chunkN), cz1 = FloorDiv(b.K1 - 1, _chunkN) + 1;
+            ResetTicks();
+            TerrainPalette.ResetStats();
+            int n = 0;
             for (int cy = cy0; cy < cy1; cy++)
                 for (int cz = cz0; cz < cz1; cz++)
                     for (int cx = cx0; cx < cx1; cx++)
-                        RebuildChunk(new Vector3Int(cx, cy, cz));
+                    { RebuildChunk(new Vector3Int(cx, cy, cz)); n++; }
+
+            // ⚠️ `Debug` 는 여기서 모호하다 — 이 파일이 `System.Diagnostics`(Stopwatch)를 같이 쓴다.
+            if (LogRebuild)
+                UnityEngine.Debug.Log($"[Tankfall] 지형재생성 청크{n,3} · 업로드 {Ms(UploadTicks),6:F2}ms · 법선+색 {Ms(NormalTicks),6:F2}ms · 바운즈 {Ms(BoundsTicks),6:F2}ms"
+                                    + $" · 파낸정점 {TerrainPalette.DugVerts}/{TerrainPalette.TotalVerts} 최대깊이 {TerrainPalette.MaxBelow:F2}m");
         }
+
+        /// <summary>무인 모드(하네스·자동사격)에서만 켠다 — `BattleDemo` 가 세운다.</summary>
+        public bool LogRebuild;
 
         void RebuildChunk(Vector3Int c)
         {

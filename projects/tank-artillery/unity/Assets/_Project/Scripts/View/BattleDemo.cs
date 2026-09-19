@@ -561,6 +561,8 @@ namespace Tankfall.View
             _terrain.Theme = MapTheme.Of(_map, _weather == Weather.Snow);
             ApplyTheme();                      // 하늘·태양·안개도 이 맵의 것으로
             _terrain.Init(_vol, ChunkN, MakeTerrainMat());
+            // 폭발 프레임 비용(§7-6-3)을 로그로 드러낸다 — 무인 모드에서만.
+            _terrain.LogRebuild = _autoMode;
             int cells = Mathf.RoundToInt(MapSize / Voxel);
             _terrain.BuildRegion(0, cells / ChunkN, _vol.GridY(-2f) / ChunkN, _vol.GridY(40f) / ChunkN + 1,
                                  0, cells / ChunkN);
@@ -3584,9 +3586,11 @@ namespace Tankfall.View
         void BuildGalleryLineup()
         {
             _terrain.SetVisible(false);
-            // ⚠️ 지형을 꺼도 배경 바닥판(Environment.Apron)은 남는다. 예전엔 탱크를 y=0 에 세워서
-            //    바닥판(맵 가장자리 지면 높이)보다 낮으면 측면·부감 샷에 탱크가 한 대도 안 나왔다.
-            //    바닥판 윗면 높이에 세운다.
+            // ⚠️ 지형을 끄면 **가운데가 빈다.** 바닥판(Apron)은 2026-09-19 부터 맵 밖만 덮는 고리라
+            //    가운데를 안 메운다(그래야 크레이터 바닥이 보인다). 그래서 갤러리에서만 메움판을 켠다.
+            _env?.SetApronFill(true);
+            // ⚠️ 예전엔 탱크를 y=0 에 세워서 바닥판(맵 가장자리 지면 높이)보다 낮으면
+            //    측면·부감 샷에 탱크가 한 대도 안 나왔다. 바닥판 윗면 높이에 세운다.
             _galY = _env != null ? _env.ApronTopY + 0.02f : 0f;
             foreach (var u in _units) Destroy(u.Root.gameObject);
             _units.Clear();

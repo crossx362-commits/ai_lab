@@ -20,6 +20,8 @@ namespace Tankfall.View
     {
         public Color Low, Mid, High;      // 고도별 지면 3색 (제한 팔레트)
         public Color Rock, RockDark;      // 경사면
+        public Color Dirt, DirtDeep;      // 파낸 흙(2026-09-19) — 지표 아래가 드러난 자리
+        public MapKind Map;               // 팔레트가 "원래 지면 높이"를 되물으려면 맵을 알아야 한다
         public Color SkyTop, SkyBottom;   // 하늘 그라디언트
         public Color Sun;                 // 태양광 색 — 시간대 느낌을 만든다
         public Color Fog;
@@ -139,6 +141,15 @@ namespace Tankfall.View
                     break;
             }
 
+            t.Map = k;
+
+            // ── 파낸 흙 (2026-09-19) ──
+            // 맵마다 따로 짓지 않고 **그 맵의 바위색에서 유도한다.** 6개 팔레트를 새로 지어내면
+            // 서로 안 맞는 색이 섞이고, 맵이 늘 때마다 빠뜨린다(맵 3→6 때 깨졌던 종류의 자리).
+            // 맵 고유색이 필요하면 위 switch 안에서 덮어써라 — 여기서는 안 덮어쓴다.
+            if (t.Dirt.a <= 0f) t.Dirt = Color.Lerp(t.RockDark, new Color(0.44f, 0.31f, 0.20f), 0.75f);
+            if (t.DirtDeep.a <= 0f) t.DirtDeep = Color.Lerp(t.RockDark, new Color(0.25f, 0.17f, 0.11f), 0.80f);
+
             // 눈 날씨는 맵 위에 덧씌운다 — 맵 테마를 지우지 않고 밝기만 올린다(포세이돈 조건이 보여야 하므로, §2-9-7).
             t.Snowy = snowy;
             if (snowy)
@@ -150,6 +161,9 @@ namespace Tankfall.View
                 t.SkyBottom = Color.Lerp(t.SkyBottom, new Color(0.88f, 0.90f, 0.93f), 0.55f);
                 t.Sun = Color.Lerp(t.Sun, new Color(0.90f, 0.93f, 1.00f), 0.6f);
                 t.Fog = Color.Lerp(t.Fog, new Color(0.88f, 0.91f, 0.95f), 0.6f);
+                // ⚠️ **파낸 흙은 눈으로 덮지 마라.** 눈 맵에서 지표가 온통 흰색이라,
+                //    판 자리가 흙색으로 남아야 "여기가 뚫렸다"가 가장 크게 읽힌다.
+                //    (흰 지면에 흰 구덩이는 명암으로만 보인다 — 고치려는 문제가 그거다.)
             }
             return t;
         }
