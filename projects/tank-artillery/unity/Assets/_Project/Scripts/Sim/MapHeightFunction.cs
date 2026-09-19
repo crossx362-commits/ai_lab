@@ -75,8 +75,22 @@ namespace Tankfall.Sim
         {
             if (n < 1 || n > 8)
                 throw new ArgumentOutOfRangeException(nameof(n), n, "팀 인원은 1~8 (스폰 분배가 그 밖을 가정하지 않는다)");
+            // 🚨 **주석이 아니라 가드다**(2026-09-19). "판이 도는 중에 부르지 마라"를 글로만 두면 언젠가 부른다.
+            //    한 번이라도 스폰이 돌았다면 유닛 Id 가 `team * TeamSize + i` 로 이미 굳었다 —
+            //    그 뒤에 인원을 바꾸면 스폰·턴 순서·HUD 가 **서로 다른 인원**을 보게 되고,
+            //    최악은 안 죽고 **표가 조용히 다른 게임을 재는** 것이다.
+            if (_spawned)
+                throw new InvalidOperationException(
+                    "SetForHarness 는 판이 만들어지기 전에만 부를 수 있다 — 이미 Spawn 이 돌았다. " +
+                    "하네스는 Main 첫머리에서 한 번만 불러라(유닛 Id 가 team*TeamSize+i 로 굳는다).");
             TeamSize = n;
         }
+
+        /// <summary>
+        /// 스폰이 한 번이라도 돌았는가 — <see cref="SetForHarness"/> 가 «판이 시작된 뒤»를 알아채는 유일한 근거다.
+        /// ⚠️ 되돌리는 길을 만들지 마라. 되돌릴 수 있으면 가드가 아니라 제안이 된다.
+        /// </summary>
+        static bool _spawned;
 
         public const float TwinWestHillX = Center, TwinWestHillZ = MapSize * 0.375f;
         public const float TwinEastHillX = Center, TwinEastHillZ = MapSize * 0.625f;
@@ -103,6 +117,7 @@ namespace Tankfall.Sim
 
         public static void Spawn(MapKind map, int team, int slot, out float x, out float z)
         {
+            _spawned = true;          // 이 뒤로는 팀 인원을 못 바꾼다(SetForHarness 가드)
             int i = slot < 0 ? 0 : (slot > TeamSize - 1 ? TeamSize - 1 : slot);
             // 인원 수에서 유도한다 — 3명이면 0.25·0.50·0.75, 4명이면 0.2·0.4·0.6·0.8.
             // 예전엔 0.25 간격을 숫자로 박아 3명 전용이었다(4명이면 넷째가 맵 밖 z=MapSize 에 섰다).

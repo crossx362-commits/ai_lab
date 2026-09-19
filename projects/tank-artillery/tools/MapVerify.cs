@@ -21,6 +21,23 @@ static class MapVerify
         }
         Console.WriteLine("[네거티브] 옛 언덕(22m @ 60,100) 은 40° 가 막혀야 한다");
         CheckLowAngleLegacy();
+
+        // ── 팀 인원 가드 (2026-09-19) ──
+        // `SetForHarness` 는 **판이 만들어지기 전에만** 불릴 수 있다. 위에서 스폰이 수없이 돌았으니
+        // 지금 부르면 **던져야** 한다. 주석이 아니라 가드인지 여기서 확인한다.
+        // ⚠️ 이 검사가 있어야 "가드를 만들었다"가 "가드가 작동한다"가 된다 —
+        //    안 던지면 조용히 인원이 바뀌고 유닛 Id 가 굳은 뒤라 표가 다른 게임을 잰다.
+        Console.WriteLine("\n[가드] 판이 시작된 뒤 팀 인원 변경은 거부돼야 한다");
+        try
+        {
+            MapHeightFunction.SetForHarness(2);
+            Console.WriteLine("    ❌ 스폰이 돈 뒤에도 SetForHarness 가 통과했다 — 가드가 없다");
+            Fail++;
+        }
+        catch (InvalidOperationException)
+        {
+            Console.WriteLine($"    ✅ 거부됨 — 팀 인원은 {MapHeightFunction.TeamSize} 그대로다");
+        }
         Console.WriteLine(Fail == 0 ? "\n✅ 맵 게이트 통과" : $"\n❌ 실패 {Fail}건");
         Environment.Exit(Fail == 0 ? 0 : 1);
     }

@@ -19,7 +19,9 @@ namespace Tankfall.View
         public static string Namespace = "tankfall.";
         static string P => Namespace;
 
-        static readonly string[] SettingKeys = { "map", "difficulty", "items", "weather", "boom", "sfxoff", "musicoff", "roster", "volume" };
+        static readonly string[] SettingKeys = { "map", "difficulty", "items", "weather", "boom", "sfxoff", "musicoff", "roster", "volume",
+                                                 // 턴 시간 실측(2026-09-19). 자체검사가 지워야 사람 저장값과 안 섞인다.
+                                                 "pace.hsec", "pace.hturns", "pace.asec", "pace.aturns", "pace.games" };
 
         /// <summary>현재 네임스페이스의 키를 전부 지운다(자체검사 정리용).</summary>
         public static void DeleteAll(int difficultyCount)
@@ -33,6 +35,8 @@ namespace Tankfall.View
         static bool Has(string k) => PlayerPrefs.HasKey(P + k);
         static int GetInt(string k, int d) => PlayerPrefs.GetInt(P + k, d);
         static void SetInt(string k, int v) => PlayerPrefs.SetInt(P + k, v);
+        static float GetFlt(string k, float d) => PlayerPrefs.GetFloat(P + k, d);
+        static void SetFlt(string k, float v) => PlayerPrefs.SetFloat(P + k, v);
         static string GetStr(string k, string d) => PlayerPrefs.GetString(P + k, d);
         static void SetStr(string k, string v) => PlayerPrefs.SetString(P + k, v);
 
@@ -109,6 +113,40 @@ namespace Tankfall.View
                 d += GetInt($"rec.{i}.{(int)Outcome.Draw}", 0);
             }
             return (w, l, d);
+        }
+
+        // ── 턴 시간 실측 (2026-09-19) ────────────────────────
+        /// <summary>
+        /// **사람이 한 턴에 실제로 몇 초를 쓰는가.**
+        ///
+        /// 🚨 왜 재나: 명세 §2-5-0 의 "예상 시간(분)" 열은 전부 **턴 수 × 18초 가정**이다. 그 18초는
+        ///    **아무도 잰 적이 없는 값**인데, 그 위에 "한 판 11.1분 — 템포 목표 안"이라는 결론이 서 있다.
+        ///    가정 위의 결론을 그대로 두면 숫자가 혼자 사실처럼 굳는다. 그래서 **사람이 한 판 할 때마다 공짜로** 잰다.
+        ///
+        /// ⚠️ **사람 판만** 기록한다(하네스·연습장·자동 모드 제외) — 호출부가 거른다.
+        ///    하네스가 섞이면 "사람이 쓰는 시간"이 아니라 CPU 속도를 재게 된다.
+        /// ⚠️ 내 턴과 적(AI) 턴을 **따로** 센다. 사람은 조준하느라 오래 걸리고 AI 는 즉시 쏜다 —
+        ///    합쳐 평균 내면 사람의 체감 턴 길이가 절반으로 희석된다. §2-5 가 말하는 "턴"은 사람 턴이다.
+        /// 🛑 **잰 값으로 페이즈 초(MOVE 12s · FIRE 15s)를 고치지 마라 — 재기만 한다**(밸런스).
+        /// </summary>
+        public static void RecordTurnPace(float humanSec, int humanTurns, float aiSec, int aiTurns)
+        {
+            if (humanTurns <= 0 && aiTurns <= 0) return;
+            SetFlt("pace.hsec", GetFlt("pace.hsec", 0f) + humanSec);
+            SetInt("pace.hturns", GetInt("pace.hturns", 0) + humanTurns);
+            SetFlt("pace.asec", GetFlt("pace.asec", 0f) + aiSec);
+            SetInt("pace.aturns", GetInt("pace.aturns", 0) + aiTurns);
+            SetInt("pace.games", GetInt("pace.games", 0) + 1);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>통산 평균 — (내 턴 초, 적 턴 초, 전체 턴 초, 잰 판 수). 판이 없으면 전부 0.</summary>
+        public static (float Human, float Ai, float All, int Games) TurnPace()
+        {
+            float hs = GetFlt("pace.hsec", 0f), as_ = GetFlt("pace.asec", 0f);
+            int ht = GetInt("pace.hturns", 0), at = GetInt("pace.aturns", 0);
+            int g = GetInt("pace.games", 0);
+            return (ht > 0 ? hs / ht : 0f, at > 0 ? as_ / at : 0f, (ht + at) > 0 ? (hs + as_) / (ht + at) : 0f, g);
         }
 
         /// <summary>"통산 12승 8패 1무" — 한 판도 없으면 빈 문자열(타이틀에 0승 0패를 띄우면 초라하다).</summary>

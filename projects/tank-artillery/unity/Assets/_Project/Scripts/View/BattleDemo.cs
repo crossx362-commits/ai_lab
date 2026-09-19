@@ -1778,9 +1778,26 @@ namespace Tankfall.View
         /// 방금 행동한 유닛의 딜레이를 쌓고(탄종·이동 추가 [추정]) 누적 최소 유닛을 _turn 으로.
         /// NextTurn 과 자동사격(AutoShotStep) 두 경로가 **반드시 이것만** 쓴다 — 한쪽이 교대로 남으면 재발한다.
         /// </summary>
+        // ── 턴 시간 실측 (2026-09-19) ──
+        // §2-5-0 의 "분" 열은 전부 **턴 수 × 18초 가정**인데 그 18초를 아무도 잰 적이 없다.
+        // 사람이 한 판 할 때마다 공짜로 잰다. ⚠️ 내 턴과 AI 턴을 **따로** 센다 —
+        // 합쳐 평균 내면 사람의 체감 턴 길이가 AI 의 즉발 턴에 희석된다.
+        float _turnMark;                  // 이번 턴이 시작된 시각(_battleClock 기준)
+        float _humanSec, _aiSec;
+        int _humanTurns, _aiTurns;
+
         void AdvanceTurn()
         {
             var prev = Current;
+            // 이 턴에 쓴 실제 시간을 **방금 행동한 쪽**에 붙인다. 턴이 바뀌는 이 한 곳에서만 센다 —
+            // 여러 곳에서 더하면 페이즈 전환·연출 시간이 이중으로 들어간다.
+            if (prev != null)
+            {
+                float used = _battleClock - _turnMark;
+                if (prev.Team == 0) { _humanSec += used; _humanTurns++; }
+                else { _aiSec += used; _aiTurns++; }
+            }
+            _turnMark = _battleClock;
             _order.Consume(prev.Id, prev.Shell, prev.Gauge < MoveGaugeMax - 0.01f);
             int nextId = _order.Next(id => { var x = _units.Find(o => o.Id == id); return x != null && x.Alive; });
             _turn = _units.FindIndex(o => o.Id == nextId);
@@ -1837,7 +1854,12 @@ namespace Tankfall.View
                     if (draw) Sfx.Confirm(); else if (aliveA > 0) Sfx.Win(); else Sfx.Lose();
                     // 전적은 사람이 AI 와 붙은 판만. 연습장(적이 안 쏜다)·자동 모드는 안 센다.
                     if (!_practice && !_headless && !_autoMode)
+                    {
                         Prefs.Record(_difficulty, draw ? Prefs.Outcome.Draw : aliveA > 0 ? Prefs.Outcome.Win : Prefs.Outcome.Lose);
+                        // 턴당 실제 초 — §2-5-0 의 18초/턴 **가정**을 사람 판이 공짜로 검증한다.
+                        // 🛑 잰 값으로 페이즈 초를 고치지 마라(밸런스). 재고 적기만 한다.
+                        Prefs.RecordTurnPace(_humanSec, _humanTurns, _aiSec, _aiTurns);
+                    }
                 }
                 Debug.Log($"[Tankfall] {_winner} · 라운드 {_round} · {_battleClock / 60f:F1}분 · " +
                           $"아군 {_stat[0].Hits}/{_stat[0].Shots}발 {_stat[0].Damage}딜 · 적군 {_stat[1].Hits}/{_stat[1].Shots}발 {_stat[1].Damage}딜");

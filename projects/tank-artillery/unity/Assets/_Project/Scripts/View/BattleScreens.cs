@@ -423,6 +423,19 @@ namespace Tankfall.View
                       "음량 저장 → Prefs 경유 + 실제 출력 반영");
                 Check(!PlayerPrefs.HasKey("tankfall_volume"), "음량이 네임스페이스 밖으로 안 샌다(대조군)");
 
+                // 턴 시간 실측(2026-09-19) — §2-5-0 의 "분" 열이 매달린 18초/턴 **가정**을 사람 판이 검증한다.
+                // 여기서 재는 것은 «누적과 평균이 맞는가»다. 값 자체가 아니라 산수가 틀리면 결론이 조용히 틀어진다.
+                Check(Prefs.TurnPace().Games == 0, "턴 시간 — 판이 없으면 0(대조군)");
+                Prefs.RecordTurnPace(120f, 10, 20f, 10);      // 내 턴 12초 · AI 턴 2초
+                Prefs.RecordTurnPace(60f, 5, 10f, 5);         // 내 턴 12초 · AI 턴 2초 (같은 평균)
+                var pc = Prefs.TurnPace();
+                Check(pc.Games == 2 && Mathf.Approximately(pc.Human, 12f) && Mathf.Approximately(pc.Ai, 2f)
+                      && Mathf.Approximately(pc.All, 7f),
+                      $"턴 시간 누적 — 내 턴 {pc.Human:F1}초 · AI {pc.Ai:F1}초 · 전체 {pc.All:F1}초 ({pc.Games}판)");
+                // ⚠️ 자체검사가 사람 저장값을 안 건드리는 성질이 새 키에도 걸려야 한다.
+                Prefs.DeleteAll(Difficulties.Length);
+                Check(Prefs.TurnPace().Games == 0, "턴 시간 키도 DeleteAll 이 지운다(격리)");
+
                 // 맵 상한 — 저장된 마지막 맵이 클램프에 잘리지 않는가. 숫자를 박아두면 맵이 늘 때 조용히 깨진다.
                 int last = MapHeightFunction.Count - 1;
                 var m = new Prefs.Settings { Map = last, Difficulty = 0, ItemSlots = 2, Weather = 0, Roster = "" };
@@ -574,6 +587,7 @@ namespace Tankfall.View
 
             _stat = new TeamStat[2];
             _battleClock = 0f;
+            _turnMark = 0f; _humanSec = _aiSec = 0f; _humanTurns = _aiTurns = 0;   // 턴 시간 실측도 판마다 초기화
             _round = 1;
             _winner = null;
             _popups.Clear();
@@ -988,9 +1002,21 @@ namespace Tankfall.View
                 }
             }
 
-            Ui.Text(new Rect(r.x + 20f, r.yMax - 26f, r.width - 40f, 20f),
+            Ui.Text(new Rect(r.x + 20f, r.yMax - 44f, r.width - 40f, 20f),
                     $"라운드 {_round}   ·   한 판 {_battleClock / 60f:F1}분   ·   {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name}",
                     11, Ui.Dim, TextAnchor.MiddleCenter);
+
+            // 턴 시간 실측(2026-09-19) — 명세 §2-5-0 의 "분" 열이 통째로 매달린 **18초/턴 가정**을
+            // 사람 판이 공짜로 검증한다. 그래서 결과 화면에 띄운다(로그에만 두면 아무도 안 본다).
+            // ⚠️ 이건 **측정값**이지 목표가 아니다. 이 숫자를 보고 페이즈 초를 고치지 마라(밸런스).
+            {
+                float myAvg = _humanTurns > 0 ? _humanSec / _humanTurns : 0f;
+                float allAvg = (_humanTurns + _aiTurns) > 0 ? (_humanSec + _aiSec) / (_humanTurns + _aiTurns) : 0f;
+                var pace = Prefs.TurnPace();
+                string line = $"내 턴 평균 {myAvg:F1}초 ({_humanTurns}턴)   ·   전체 턴 평균 {allAvg:F1}초";
+                if (pace.Games > 1) line += $"   ·   통산 {pace.Games}판 내 턴 {pace.Human:F1}초 · 전체 {pace.All:F1}초";
+                Ui.Text(new Rect(r.x + 20f, r.yMax - 26f, r.width - 40f, 20f), line, 11, Ui.Mark, TextAnchor.MiddleCenter);
+            }
 
             Ui.TextShadow(new Rect(0, r.yMax + 22f, W, 24f), "R — 다시   T — 타이틀   Q — 종료", 15, Ui.Ink, TextAnchor.MiddleCenter, true);
         }
