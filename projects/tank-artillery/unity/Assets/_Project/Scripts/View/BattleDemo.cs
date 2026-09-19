@@ -297,6 +297,18 @@ namespace Tankfall.View
         List<Vec3> _shotPath;
         float _shotT;
         Transform _shell;
+        /// <summary>
+        /// 포탄 그림자 — **현재 위치의 수직 투영만**. 본탄 하나 + 부탄 «평행 리스트».
+        /// ⚠️ 한 배열에 두 종류를 넣고 인덱스 산술로 가르지 않는다(증폭벽에서 그 패턴을 한 번 밟았다).
+        /// </summary>
+        Transform _shellShadow;
+        readonly List<Transform> _subShadows = new List<Transform>();
+        Material _shadowMat;
+        double _shadowMs; int _shadowFrames;   // 비용 실측(§7-7-1 형식)
+        // ⚠️ **끈 뒤에 상태를 읽지 마라.** 처음엔 `HideShellShadows` 안에서 `activeSelf` 를 찍었는데
+        //    그 함수가 **끄고 나서** 찍는 바람에 언제나 «꺼짐»이 나왔다 — 로그가 자기가 만든 상태를 보고했다.
+        //    비행 «중»의 최대값을 따로 모은다.
+        int _shadowOnFrames; float _shadowMaxSize, _shadowMinAlpha = 9f, _shadowMaxAlpha;
         // 다탄두 연출: 중앙 탄 외의 부탄은 각자 궤적을 따라 같은 시각에 날아간다(카메라는 중앙 탄만 따른다)
         readonly List<List<Vec3>> _subPaths = new List<List<Vec3>>();
         readonly List<Transform> _subShells = new List<Transform>();
@@ -1500,6 +1512,7 @@ namespace Tankfall.View
             _shell.position = new Vector3(Mathf.Lerp(a.X, b.X, f), Mathf.Lerp(a.Y, b.Y, f), Mathf.Lerp(a.Z, b.Z, f));
             float flight = _shotT * Ballistics.SimStep;                     // path 인덱스 → 비행 경과(초)
             Attitude(_shell, _shotPath, i, flight, dt, 0);
+            UpdateShellShadows();
 
             // 부탄: 같은 시각(_shotT)의 자기 궤적 위치. 먼저 떨어진 부탄은 숨긴다(착탄 처리는 중앙 탄 착탄 때 한꺼번에).
             for (int si = 0; si < _subPaths.Count; si++)
@@ -1509,6 +1522,104 @@ namespace Tankfall.View
                 var sa = sp[i]; var sb = sp[i + 1];
                 tr.position = new Vector3(Mathf.Lerp(sa.X, sb.X, f), Mathf.Lerp(sa.Y, sb.Y, f), Mathf.Lerp(sa.Z, sb.Z, f));
                 Attitude(tr, sp, i, flight, dt, si + 1);
+            }
+        }
+
+        /// <summary>
+        /// 포탄 그림자 — 3D 포격에서 **깊이 판단이 제일 어렵다**. 「저 탄이 언덕 앞이냐 뒤냐」를
+        /// 사람이 읽을 수 있게 **지면에 현재 위치를 찍어** 준다(§1 1순위 «포격 감각»에 직접 붙는 연출).
+        ///
+        /// 🛑 **현재 위치의 수직 투영만 그린다. 예상 «착탄 지점»에 그리면 §58 위반이다**(탄착 마커).
+        ///    ⚠️ 다음 사람에게: 그림자를 **착탄점에 놓으면 훨씬 쓰기 편하다.** 조준이 한결 쉬워진다.
+        ///       **바로 그래서 금지다** — 그건 「탄착 예측」을 그림자라는 이름으로 주는 것이다.
+        ///       §2-6 이 절충한 선은 「거리는 준다, **탄착점은 안 준다**」이고 이건 탄착점 쪽이다.
+        ///       편해 보이면 그 줄을 다시 읽어라. **편해서 금지된 것이다.**
+        ///
+        /// ⚠️ 지형이 파이면 그림자도 따라 내려간다 — 높이를 상수로 두지 않고 **매 프레임 SDF 를 조회**한다.
+        ///    크레이터 안으로 탄이 지나가면 그림자가 그 바닥에 찍혀야 「저기가 파였다」가 같이 읽힌다.
+        /// ⚠️ 높이에 따라 **커지고 옅어진다.** 이게 그림자가 주는 진짜 정보다(높이 = 흐림).
+        ///    크기만 일정하면 「땅에 붙은 점」이라 깊이를 못 준다.
+        /// </summary>
+        void UpdateShellShadows()
+        {
+            if (_vol == null) return;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            Transform Ensure(ref Transform t, string name)
+            {
+                if (t != null) return t;
+                if (_shadowMat == null)
+                    _shadowMat = MakeFadeMat(new Color(0.04f, 0.05f, 0.07f), 0.45f);
+                // ⚠️ **Quad 를 쓰지 마라.** 한 면짜리라 뒤에서 보면 **컬링돼 안 보인다** —
+                //    처음 Quad 로 만들었더니 로그상 위치·크기는 멀쩡한데 화면에 아무것도 없었다.
+                //    눕히는 회전의 부호를 추측으로 맞추느니 **양면이 보이는 원반**을 쓴다(모양도 이쪽이 맞다).
+                var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);   // 눌러서 원반으로
+                go.name = name;
+                Destroy(go.GetComponent<Collider>());
+                var mr = go.GetComponent<MeshRenderer>();
+                mr.sharedMaterial = _shadowMat;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+                t = go.transform;
+                return t;
+            }
+
+            void Place(Transform shadow, Transform shellTr)
+            {
+                if (shellTr == null || !shellTr.gameObject.activeSelf) { shadow.gameObject.SetActive(false); return; }
+                var p = shellTr.position;
+                float g = TankGroundProbe.GroundBelow(_vol, p.x, p.z, p.y);
+                if (float.IsNegativeInfinity(g)) { shadow.gameObject.SetActive(false); return; }   // 맵 밖·허공
+                float h = Mathf.Max(0f, p.y - g);
+                shadow.gameObject.SetActive(true);
+                // 🚨 **`g + 0.06` 으로 뒀더니 그림자가 지형 «속»에 묻혀 안 보였다**(2026-09-19).
+                //    `GroundBelow` 가 주는 건 **SDF 0 면**인데, 화면에 보이는 메시는 그보다 위에 있다 —
+                //    그래서 탱크도 `GroundVisualLift`(0.18) 만큼 띄워 놓는다. 같은 상수를 쓴다.
+                //    ⚠️ 계측기는 「켜짐·지름 5.2m·알파 0.42」라고 정상 보고했다 — **투영은 가림을 못 본다.**
+                //       「그려졌다」와 「보인다」가 갈린 자리라, 눈으로 안 봤으면 통과했을 것이다.
+                shadow.position = new Vector3(p.x, g + GroundVisualLift + 0.05f, p.z);
+                // 높을수록 커진다. ⚠️ 처음 1.1+h*0.022(≈2~3m)로 뒀더니 **너무 작아 안 읽혔다** —
+                //    나무 그림자보다 작으면 풍경으로 묻힌다(지뢰에서 겪은 그 얼굴).
+                float sz = 2.4f + h * 0.05f;
+                shadow.localScale = new Vector3(sz, 0.02f, sz);          // 실린더 높이 2 → 0.04m 두께 원반
+                var c = _shadowMat.color;
+                c.a = Mathf.Clamp(0.42f * (1f - h / 110f), 0.05f, 0.42f); // 높을수록 옅다
+                // ⚠️ 공유 재질이라 여기서 색을 바꾸면 **모든 그림자가 같이** 바뀐다.
+                //    본탄·부탄이 비슷한 높이를 날아가므로 지금은 그게 자연스럽다 —
+                //    따로 가려면 재질을 인스턴스로 떠야 하고, 그만한 값이 없다.
+                _shadowMat.color = c;
+                _shadowOnFrames++;
+                if (sz > _shadowMaxSize) _shadowMaxSize = sz;
+                if (c.a < _shadowMinAlpha) _shadowMinAlpha = c.a;
+                if (c.a > _shadowMaxAlpha) _shadowMaxAlpha = c.a;
+            }
+
+            Place(Ensure(ref _shellShadow, "ShellShadow"), _shell);
+            while (_subShadows.Count < _subShells.Count)
+            {
+                Transform t = null;
+                _subShadows.Add(Ensure(ref t, $"SubShadow{_subShadows.Count}"));
+            }
+            for (int i = 0; i < _subShadows.Count; i++)
+                Place(_subShadows[i], i < _subShells.Count ? _subShells[i] : null);
+
+            sw.Stop();
+            _shadowMs += sw.Elapsed.TotalMilliseconds; _shadowFrames++;
+        }
+
+        /// <summary>비행이 끝나면 그림자를 치운다 — 남아 있으면 «없는 탄»의 그림자가 땅에 붙어 있다.</summary>
+        void HideShellShadows()
+        {
+            if (_shellShadow != null) _shellShadow.gameObject.SetActive(false);
+            foreach (var t in _subShadows) if (t != null) t.gameObject.SetActive(false);
+            if (_shadowFrames > 0 && _autoMode)
+            {
+                // 「안 보인다」와 「안 그려졌다」를 가르는 줄 — 켜졌는지·얼마나 큰지·얼마나 진한지를 남긴다.
+                Debug.Log($"[Tankfall] 포탄 그림자: {_shadowFrames}프레임 중 **켜진 프레임 {_shadowOnFrames}** · "
+                        + $"최대지름 {_shadowMaxSize:F1}m · 알파 {_shadowMinAlpha:F2}~{_shadowMaxAlpha:F2} · "
+                        + $"비용 합 {_shadowMs:F2}ms (프레임당 {_shadowMs / _shadowFrames:F3}ms)");
+                _shadowOnFrames = 0; _shadowMaxSize = 0f; _shadowMinAlpha = 9f; _shadowMaxAlpha = 0f;
+                _shadowMs = 0; _shadowFrames = 0;
             }
         }
 
@@ -1631,6 +1742,7 @@ namespace Tankfall.View
 
         void Impact()
         {
+            HideShellShadows();     // 탄이 사라졌으면 그림자도 사라져야 한다(남으면 «없는 탄»의 그림자다)
             if (_fx != null)
             {
                 _fx.StopTrail(_shell); _fx.StopGuidance(_shell);
