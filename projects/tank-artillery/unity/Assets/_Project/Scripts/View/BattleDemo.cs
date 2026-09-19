@@ -535,7 +535,7 @@ namespace Tankfall.View
                 {
                     float g = TankGroundProbe.GroundBelow(_vol, bx, bz, 80f);
                     if (float.IsNegativeInfinity(g)) continue;
-                    _hazards.PlaceMine(bx, g, bz, BoomMode.MineRadius, BoomMode.MineDamage, -1);
+                    _hazards.PlaceMine(bx, g, bz, BoomMode.MineRadius, BoomMode.MineDamage);
                     placed++;
                 }
                 RefreshHazards();

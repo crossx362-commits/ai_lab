@@ -245,7 +245,7 @@ namespace Tankfall.Sim
                     hz.PlaceFire(x, y, z, blastRadius, fx.Param1, fx.Param2, FireTagPoison);
                     return ShellEffects.EffectType.PoisonCloud;
                 case ShellEffects.EffectType.Mine:
-                    hz.PlaceMine(x, y, z, MineRadius, fx.Param1, NoOwner);
+                    hz.PlaceMine(x, y, z, MineRadius, fx.Param1);
                     return ShellEffects.EffectType.Mine;
                 default:
                     return ShellEffects.EffectType.None;
@@ -254,14 +254,12 @@ namespace Tankfall.Sim
 
         /// <summary>지뢰 반경(m) [추정]. 숫자를 호출부에 적지 마라 — 게임과 하네스가 갈린다.</summary>
         public const float MineRadius = 4f;
-        /// <summary>장판 종류 — **화면 표시 전용**이다(`HazardField.OnUnitAt` 은 Tag 를 안 본다, 2026-09-19 실측).</summary>
-        public const int FireTagFire = 0, FireTagPoison = 1;
         /// <summary>
-        /// 지뢰 주인. ⚠️ `HazardField.Mine.OwnerId` 는 **저장만 하고 아무도 안 읽는다**(2026-09-19 실측) —
-        /// 그래서 게임은 `-1`, 하네스는 쏜 사람 Id 를 넘기고 있었는데 **동작 차이는 없었다.**
-        /// 읽는 코드가 생기면 그때 의미를 정해라. 그전까지는 한 값으로 통일해 둔다.
+        /// 장판 종류. **피해에는 안 쓰이고 화면에만 쓰인다** — `HazardField.Snapshot` 이 이걸 읽어
+        /// 게임이 지속불(주황)과 독구름(녹색)을 **다른 색으로 그린다**. `OnUnitAt`(피해)은 Tag 를 안 본다.
+        /// ⚠️ "피해에 안 쓰인다"를 "아무도 안 쓴다"로 읽지 마라 — 내가 한 번 그렇게 잘못 적었다(2026-09-19).
         /// </summary>
-        public const int NoOwner = -1;
+        public const int FireTagFire = 0, FireTagPoison = 1;
     }
 
     public class HazardField
@@ -271,7 +269,10 @@ namespace Tankfall.Sim
             public float X, Y, Z;
             public float Radius;
             public int Damage;
-            public int OwnerId;
+            // 🗑️ `OwnerId` 는 2026-09-19 에 삭제했다. **저장만 하고 아무도 안 읽었다** —
+            //    그래서 게임은 -1, 하네스는 쏜 사람 Id 를 넘기고 있었는데 **동작 차이가 없었다**(둘 다 무의미).
+            //    "자기 지뢰는 안 밟는다" 같은 규칙이 필요해지면 그때 **읽는 코드와 함께** 다시 넣어라 —
+            //    읽지 않는 필드를 미리 두면 다음 사람이 «이미 처리되고 있다»고 믿는다.
             public bool Triggered;
         }
 
@@ -308,9 +309,9 @@ namespace Tankfall.Sim
         readonly List<FireField> _fires = new();
 
         /// <summary>지뢰를 착지점에 설치. 반경 내로 접근하면 1회 폭발.</summary>
-        public void PlaceMine(float x, float y, float z, float radius, int dmg, int ownerId)
+        public void PlaceMine(float x, float y, float z, float radius, int dmg)
         {
-            _mines.Add(new Mine { X = x, Y = y, Z = z, Radius = radius, Damage = dmg, OwnerId = ownerId, Triggered = false });
+            _mines.Add(new Mine { X = x, Y = y, Z = z, Radius = radius, Damage = dmg, Triggered = false });
         }
 
         /// <summary>지속불을 착지점에 설치. 반경 내 유닛이 매 턴 피해를 입는다.</summary>

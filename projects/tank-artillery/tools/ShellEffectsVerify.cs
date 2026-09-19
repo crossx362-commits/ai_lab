@@ -115,7 +115,7 @@ static class ShellEffectsVerify
             var pos2 = new Vec3(55f, 10f, 50f);    // 반경 5 안
             var pos3 = new Vec3(60f, 10f, 50f);    // 반경 밖
 
-            field.PlaceMine(50f, 10f, 50f, 5f, 200, 0);  // 반경 5, 피해 200
+            field.PlaceMine(50f, 10f, 50f, 5f, 200);  // 반경 5, 피해 200
 
             // 첫 진입: 피해
             int dmg1 = field.OnUnitAt(1, TankKind.Carrot, pos1);
@@ -127,25 +127,25 @@ static class ShellEffectsVerify
 
             // 반경 안 다른 위치: 피해
             field.Clear();
-            field.PlaceMine(50f, 10f, 50f, 5f, 200, 0);
+            field.PlaceMine(50f, 10f, 50f, 5f, 200);
             int dmg3 = field.OnUnitAt(1, TankKind.Carrot, pos2);
             Test($"지뢰 반경 안(거리 5): 피해={dmg3} (기대: 200)", dmg3 == 200);
 
             // 반경 밖: 피해 0
             field.Clear();
-            field.PlaceMine(50f, 10f, 50f, 5f, 200, 0);
+            field.PlaceMine(50f, 10f, 50f, 5f, 200);
             int dmg4 = field.OnUnitAt(1, TankKind.Carrot, pos3);
             Test($"지뢰 반경 밖(거리 10): 피해={dmg4} (기대: 0)", dmg4 == 0);
 
             // 레이저는 무시
             field.Clear();
-            field.PlaceMine(50f, 10f, 50f, 5f, 200, 0);
+            field.PlaceMine(50f, 10f, 50f, 5f, 200);
             int dmg5 = field.OnUnitAt(1, TankKind.Laser, pos1);
             Test($"지뢰 레이저 무시: 피해={dmg5} (기대: 0)", dmg5 == 0);
 
             // 포세이돈도 무시
             field.Clear();
-            field.PlaceMine(50f, 10f, 50f, 5f, 200, 0);
+            field.PlaceMine(50f, 10f, 50f, 5f, 200);
             int dmg6 = field.OnUnitAt(1, TankKind.Poseidon, pos1);
             Test($"지뢰 포세이돈 무시: 피해={dmg6} (기대: 0)", dmg6 == 0);
         }
