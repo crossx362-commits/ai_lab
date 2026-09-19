@@ -446,7 +446,8 @@ static class BattleSimVerify
 
             var st = u.St;
             float err = (u.Team == 1 && errorRatioB.HasValue) ? errorRatioB.Value : errorRatio;
-            var plan = AiGunner.Decide(vol, u.Muzzle, enemies, wind, err, ref rng, MapSize, st);
+            // ⚠️ 게임(`BattleDemo.AiShoot`)과 **같은 하늘**을 넘긴다 — 한쪽만 기후를 보면 표가 다른 게임을 잰다.
+            var plan = AiGunner.Decide(vol, u.Muzzle, enemies, wind, err, ref rng, MapSize, st, air);
             if (!plan.Valid) continue;
 
             // 방해탄(§2-9-14) — 각도고정·파워고정은 **AI 에게도 진짜 효과가 있다**(조준을 묶는다).

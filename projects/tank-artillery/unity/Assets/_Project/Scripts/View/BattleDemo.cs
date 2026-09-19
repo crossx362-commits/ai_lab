@@ -1228,7 +1228,7 @@ namespace Tankfall.View
             var from = new Vec3(u.Fire.position.x, u.Fire.position.y, u.Fire.position.z);
             var swA = _timeEvents ? System.Diagnostics.Stopwatch.StartNew() : null;
             var plan = AiGunner.Decide(_vol, from, enemies, new Vec3(_wind.x, 0f, _wind.y),
-                                       AiDifficulty, ref _aiRng, MapSize, TankStats.Get(u.Kind));
+                                       AiDifficulty, ref _aiRng, MapSize, TankStats.Get(u.Kind), _air);
             if (swA != null)
                 Debug.Log($"[Tankfall] EVENT AI조준 {swA.Elapsed.TotalMilliseconds:F2} ms " +
                           $"(적 {enemies.Count}, 파워 {plan.Power * 100:F0}, 각 {plan.PitchDeg:F1}°)");
@@ -3188,8 +3188,60 @@ namespace Tankfall.View
                 else Debug.Log($"[Tankfall] 기후 자체검사 회오리 — 착탄이 {moved:F0}m 밀려 회오리에서 {near:F0}m 지점에 떨어짐");
             }
 
+            // ── AI 조준이 기후를 보는가 ──────────────────────────
+            // 🚨 2026-09-19 까지 `AiGunner.Decide` 는 `air` 인자 자체가 없어 **기후 없는 하늘에서
+            //    조준을 검증**하고 기후 있는 하늘로 쐈다. 회오리에 먹히는 해를 "검증통과"로 골라 헛발을 쏜다.
+            //    연습장 역산이 거짓말하던 것과 같은 결함이다.
+            // 네거티브 컨트롤을 같이 잰다 — **기후를 안 준 AI 는 실제로 빗나가야** 이 검사가 뭔가를 재는 것이다.
+            {
+                var foe = _units.Find(o => o.Alive && o.Team != me.Team);
+                if (foe == null) { Debug.Log("[Tankfall] ❌ AI 조준 검사: 표적이 없다"); fail++; }
+                else
+                {
+                    var tl = new List<AiGunner.Target> {
+                        new AiGunner.Target { Id = foe.Id, Kind = foe.Kind, Center = foe.Center, Defense = foe.St.Defense } };
+                    var stA = TankStats.For(me.Kind, ShellKind.Normal, 1f, me.W);
+                    var acc = stA.AccelWith(0f, 0f);
+
+                    // 사선 한가운데에 회오리를 세운다 — 곧장 쏘면 반드시 먹힌다.
+                    _air.Clear();
+                    _air.AddTornado(new Tornado {
+                        X = (me.Center.X + foe.Center.X) * 0.5f, Z = (me.Center.Z + foe.Center.Z) * 0.5f,
+                        Radius = 30f, TopY = AirField.TornadoTop });
+
+                    // 재는 것은 **명중이 아니라 믿음과 현실의 일치**다.
+                    // 회오리가 사선을 완전히 막으면 어떤 해로도 못 맞히는 게 맞다 — AI 가 못 맞히는 것 자체는
+                    // 결함이 아니다. 결함은 **"맞는다고 믿고 쐈는데 안 맞는 것"** 이다(옛 동작).
+                    (float pred, float real) Shoot(AirField aimSky)
+                    {
+                        var rr = new Rng(20260919u);
+                        var pl = AiGunner.Decide(_vol, me.Center, tl, new Vec3(0f, 0f, 0f), 0f, ref rr,
+                                                 MapSize, stA, aimSky);
+                        var v = Ballistics.VelocityFrom(pl.YawDeg, pl.PitchDeg, stA.SpeedAt(pl.Power));
+                        // **실제 하늘**(회오리 있음)로 날린다 — 조준을 어디서 했든 세계는 하나다.
+                        var r2 = ProjectileSimulator.Simulate(_vol, me.Center, v, acc, null, me.Id, MapSize, stA.Flight, null, _air);
+                        return (pl.PredictedMiss, Mathf.Sqrt((r2.Impact - foe.Center).LengthSq));
+                    }
+
+                    var seen = Shoot(_air);    // 고친 뒤: 같은 하늘을 보고 조준
+                    var blind = Shoot(null);   // 대조군: 기후를 모르고 조준(옛 동작)
+
+                    // 대조군은 **믿음과 현실이 갈려야** 이 검사가 뭔가를 재는 것이다.
+                    bool blindLies = blind.pred < float.MaxValue && blind.real - blind.pred > 12f;
+                    bool seenHonest = seen.pred == float.MaxValue || Mathf.Abs(seen.real - seen.pred) <= 2f;
+
+                    if (!blindLies)
+                        Debug.Log($"[Tankfall] ❌ 대조군이 거짓말을 안 한다(예측 {blind.pred:F1} 실제 {blind.real:F1}) — 이 검사가 아무것도 안 재고 있다");
+                    else if (!seenHonest)
+                    { Debug.Log($"[Tankfall] ❌ AI 가 여전히 거짓말한다 — 예측 {seen.pred:F1}m 인데 실제 {seen.real:F1}m"); fail++; }
+                    else
+                        Debug.Log($"[Tankfall] AI 조준 검사 — 기후 반영: 예측 {seen.pred:F1}m ≈ 실제 {seen.real:F1}m  " +
+                                  $"/ 대조군(기후 모름): 예측 {blind.pred:F1}m 인데 실제 {blind.real:F1}m 로 거짓말");
+                }
+            }
+
             _air.Clear(); RefreshAir();
-            if (fail == 0) Debug.Log("[Tankfall] ✅ 기후(§2-9-15) — 증폭벽·회오리가 실제로 탄에 작용한다");
+            if (fail == 0) Debug.Log("[Tankfall] ✅ 기후(§2-9-15) — 증폭벽·회오리가 탄과 AI 조준 양쪽에 작용한다");
             else Debug.Log($"[Tankfall] ❌ 기후 자체검사 실패 {fail}건");
             Application.Quit(fail == 0 ? 0 : 1);
         }

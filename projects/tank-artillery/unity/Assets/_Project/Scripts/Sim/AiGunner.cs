@@ -23,6 +23,15 @@ namespace Tankfall.Sim
     public struct AimPlan
     {
         public bool Valid;
+        /// <summary>
+        /// AI 가 **스스로 예상한** 착탄 오차(m). 해를 못 찾아 대충 쏘는 폴백이면 `float.MaxValue`.
+        ///
+        /// 이 값이 있는 이유: AI 의 **믿음을 밖에서 검사할 수 있게** 하려고. 2026-09-19 까지
+        /// 조준 검증이 기후 없는 하늘에서 돌아서, AI 는 "1m 안에 맞는다"고 믿고 쏜 탄이 회오리에
+        /// 먹혀 60m 밖에 떨어져도 **아무도 그 어긋남을 못 봤다.** 이제 자체검사가
+        /// `PredictedMiss` 와 실제 착탄을 대조한다 — 믿음과 현실이 갈리면 즉시 빨간불이다.
+        /// </summary>
+        public float PredictedMiss;
         public float YawDeg;      // 월드 야우
         public float PitchDeg;
         public float Power;       // 0~1
@@ -284,9 +293,16 @@ namespace Tankfall.Sim
         /// 가장 가까운 적을 골라 조준한다. 파워를 낮은 쪽부터 훑으며 각 후보를 실제로 시뮬레이션해
         /// 조준점에 가장 가까이 떨어지는 것을 채택한다(낮은 파워 = 짧은 비행 = 바람 영향 적음).
         /// </summary>
+        /// <param name="air">
+        /// 기후(증폭벽·회오리). 🚨 **반드시 넘겨라.**
+        /// 2026-09-19 까지 이 인자 자체가 없어서 AI 는 **기후가 없는 하늘에서 조준을 검증**하고
+        /// 실제 발사는 기후가 있는 하늘로 나갔다 — 회오리에 먹히는 해를 "검증통과"로 골라 헛발을 쐈다.
+        /// 연습장 역산(`TrySolvePractice`)이 거짓말하던 것과 **똑같은 결함**이고, 거기서 이 자리를 찾았다.
+        /// **조준 검증과 실제 발사는 같은 하늘을 봐야 한다.**
+        /// </param>
         public static AimPlan Decide(SdfVolume vol, Vec3 from, IReadOnlyList<Target> enemies, Vec3 wind,
                                      float errorRatio, ref Rng rng, float mapSize = 200f,
-                                     TankStats? tank = null)
+                                     TankStats? tank = null, AirField air = null)
         {
             // 탱크 종류가 사거리·탄도·사각을 바꾼다(§9-3). 안 주면 밸런스 기준값.
             var st = tank ?? TankStats.Get(TankKind.Carrot);   // 기준 탱크(원작 초심자용 평준화)
@@ -348,17 +364,19 @@ namespace Tankfall.Sim
                     if (vol == null)
                     {
                         plan.Valid = true;
+                        plan.PredictedMiss = float.MaxValue;   // vol 이 없으면 검증 자체를 못 한다
                         plan.YawDeg = sol.YawDeg; plan.PitchDeg = sol.PitchDeg; plan.Power = pw;
                         return plan;
                     }
 
                     var vel = Ballistics.VelocityFrom(sol.YawDeg, sol.PitchDeg, speed);
-                    var sr = ProjectileSimulator.Simulate(vol, from, vel, accel, null, -1, mapSize, st.Flight, null);
+                    var sr = ProjectileSimulator.Simulate(vol, from, vel, accel, null, -1, mapSize, st.Flight, null, air);
                     float miss = sr.Hit ? (sr.Impact - aim).Length : float.MaxValue;
                     if (miss >= bestMiss) continue;
 
                     bestMiss = miss;
                     plan.Valid = true;
+                    plan.PredictedMiss = miss;
                     plan.YawDeg = sol.YawDeg; plan.PitchDeg = sol.PitchDeg; plan.Power = pw;
                     if (miss < 1.5f) return plan;       // 충분히 정확하면 더 안 찾는다
                 }
@@ -368,6 +386,7 @@ namespace Tankfall.Sim
             // 해가 없으면 최대 파워로 대충 쏜다(사거리 부족)
             Vec3 d2 = aim - from;
             plan.Valid = true;
+            plan.PredictedMiss = float.MaxValue;   // 검증을 통과한 해가 아니다 — 맞는다고 믿지 않는다
             plan.Power = 1f;
             plan.PitchDeg = MathF.Min(55f, maxPitch);
             plan.YawDeg = MathF.Atan2(d2.X, d2.Z) * (180f / MathF.PI);
