@@ -1325,8 +1325,11 @@ namespace Tankfall.View
             _pendingShots.Clear();
             _subPaths.Clear();
             // 유도탄(2번탄)은 기준 궤적과 달리 정점 뒤에 휘므로 중앙 탄을 **유도 포함**으로 다시 푼다(부탄도 같은 프로파일).
+            // ⚠️ 여기도 `_air` 를 넘긴다. 안 넘기면 **유도탄만 기후를 무시한다** —
+            //    한 발 안에서도 중앙 탄은 회오리를 통과하고 부탄은 빨려 올라가는 어긋남이 났다
+            //    (아래 부탄 호출은 `_air` 를 넘긴다). 연습장 역산이 같은 이유로 거짓말을 했다(TrySolvePractice 머리말).
             var centerRes = st.Flight.HasHoming
-                ? ProjectileSimulator.Simulate(_vol, p0, Ballistics.VelocityFrom(worldYaw, pitch, speed), accel, boxes, u.Id, MapSize, st.Flight, homingOk)
+                ? ProjectileSimulator.Simulate(_vol, p0, Ballistics.VelocityFrom(worldYaw, pitch, speed), accel, boxes, u.Id, MapSize, st.Flight, homingOk, _air)
                 : res;
             foreach (var pt in pattern)
             {
