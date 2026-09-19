@@ -1010,41 +1010,47 @@ namespace Tankfall.View
         {
             const float S = 132f;
             var r = new Rect(W - S - 10f, H - S - 128f, S, S);
-            Ui.Box(r);
+            // ⚠️ 기본 패널(알파 0.78)은 여기선 너무 비친다 — 나무·언덕이 통과해 보여 점과 섞였다.
+            //    미니맵은 **화면에서 유일한 전장 개관**이라 배경이 조용해야 한다.
+            Ui.Box(r, new Color(0.03f, 0.05f, 0.07f, 0.95f));
             Ui.Text(new Rect(r.x + 6f, r.y + 2f, 80f, 14f), "미니맵", 9, Ui.Dim);
 
             // ⚠️ 3D 라 미니맵이 **유일한 전장 개관**이다. 예전엔 유닛과 상자만 찍어서
             //    화면 밖 지뢰·불·회오리가 어디 있는지 알 길이 아예 없었다 — 위험물부터 그린다.
             //    순서가 중요하다: 위험물 → 상자 → 유닛(중요한 것이 위에 덮이게).
-            foreach (var w in _air.Walls)                      // 증폭벽 — z 축으로 뻗은 선
+            // 🚨 **미니맵 색은 팀 색과 겹치면 안 된다**(2026-09-19 검수에서 걸렸다).
+            //    회오리가 `Gauge`(하늘색)라 **아군 파랑과**, 지뢰가 `Bad`(빨강)라 **적군 빨강과** 헷갈렸다.
+            //    점 하나를 적으로 잘못 읽으면 판단이 통째로 틀어진다. 그래서 규칙을 고정한다:
+            //      파랑·빨강 = 탱크(오직 이것만) · 초록 = 이로운 것(보급) · 노랑 = 위험물 · 주황 선 = 증폭벽 · 흰 테 = 회오리
+            foreach (var w in _air.Walls)                      // 증폭벽 — z 축으로 뻗은 주황 선
             {
                 var a = MapToMini(r, w.X, w.Z - w.HalfLen);
                 var b = MapToMini(r, w.X, w.Z + w.HalfLen);
-                Ui.Fill(new Rect(a.x - 1f, Mathf.Min(a.y, b.y), 2f, Mathf.Abs(b.y - a.y)), Ui.Mark);
+                Ui.Fill(new Rect(a.x - 1f, Mathf.Min(a.y, b.y), 2f, Mathf.Abs(b.y - a.y)), Ui.Power);
             }
-            foreach (var t in _air.Tornadoes)                  // 회오리 — 테두리 원 대신 사각 테
+            foreach (var t in _air.Tornadoes)                  // 회오리 — 흰 테(팀색이 아닌 것으로)
             {
                 var p = MapToMini(r, t.X, t.Z);
                 float rr = Mathf.Max(3f, t.Radius / MapSize * r.width);
-                Ui.Frame(new Rect(p.x - rr, p.y - rr, rr * 2f, rr * 2f), Ui.Gauge);
+                Ui.Frame(new Rect(p.x - rr, p.y - rr, rr * 2f, rr * 2f), Ui.Ink);
             }
             _hazards.Snapshot(_hazardBuf);
             foreach (var h in _hazardBuf)
             {
                 var p = MapToMini(r, h.X, h.Z);
-                // 지뢰(Kind 0)는 점, 장판(불·독)은 반경만큼의 네모
-                if (h.Kind == 0) Ui.Fill(new Rect(p.x - 1.5f, p.y - 1.5f, 3f, 3f), Ui.Bad);
+                // 지뢰(Kind 0)는 점, 장판(불·독)은 반경만큼의 네모 — 둘 다 노랑(위험)
+                if (h.Kind == 0) Ui.Fill(new Rect(p.x - 1.5f, p.y - 1.5f, 3f, 3f), Ui.Warn);
                 else
                 {
                     float rr = Mathf.Max(2f, h.Radius / MapSize * r.width);
-                    var c2 = Ui.Bad; c2.a = 0.45f;
+                    var c2 = Ui.Warn; c2.a = 0.45f;
                     Ui.Fill(new Rect(p.x - rr, p.y - rr, rr * 2f, rr * 2f), c2);
                 }
             }
-            foreach (var c in _supply.Crates)
+            foreach (var c in _supply.Crates)                  // 보급 — 초록(이로운 것)
             {
                 var p = MapToMini(r, c.X, c.Z);
-                Ui.Fill(new Rect(p.x - 2f, p.y - 2f, 4f, 4f), Ui.Warn);
+                Ui.Fill(new Rect(p.x - 2f, p.y - 2f, 4f, 4f), Ui.Good);
             }
             foreach (var u in _units)
             {
