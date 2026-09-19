@@ -377,7 +377,8 @@ case "${1:-all}" in
     #    막히면 **건너뛰고 나머지 결과는 그대로 살린다**(여기서 rc 를 1 로 만들면 «막혔다»가 «실패»로 읽힌다).
     balance_guard && run_console BattleSimVerify  $SIM/*.cs tools/BattleSimVerify.cs
     echo ;;
-  *) echo "사용: $0 [all|game|dead|sdf|play|ball|battle|turn|shell|nice|map|hit|guide|aimove|shellpick|compile]"; exit 2 ;;
+  # ⚠️ `$0` 이 아니라 원본 경로 — 자기 복사본 재실행 가드 때문에 임시 경로가 찍힌다(balance_guard 와 같은 이유).
+  *) echo "사용: ${TANKFALL_VERIFY_SELF:-./tools/verify.sh} [all|game|dead|sdf|play|ball|battle|turn|shell|nice|map|hit|guide|aimove|shellpick|compile]"; exit 2 ;;
 esac
 
 echo
