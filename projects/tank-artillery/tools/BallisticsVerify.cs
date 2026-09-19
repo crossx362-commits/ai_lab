@@ -23,9 +23,15 @@ static class BallisticsVerify
     static void Main()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        // 🚨 2026-09-19: 이 파일은 **[3-1] 추진 프로파일 하나만** rc 를 냈다. §5 조준 역산 24발이
+        //    전부 「해 없음 ❌」 이어도 `verify.sh ball` 은 **0 을 반환**했다(거짓 초록불).
+        //    물리는 기준은 «쌍으로 확인할 수 있는가» — [1] 사거리 표처럼 문턱의 근거가 없는 절은
+        //    `[정보]` 로 찍고 rc 에 안 물린다.
+        int Fail = 0;
         Console.WriteLine("=== §5 탄도 · 조준 역산 검증 ===\n");
 
-        Console.WriteLine("[1] 사거리 표 (평지, 45°, 바람 0)");
+        // [정보] — 사거리 표는 «얼마나 나가는가»의 기록이지 단정이 아니다. 문턱의 근거가 없다.
+        Console.WriteLine("[1] 사거리 표 (평지, 45°, 바람 0)  [정보]");
         Console.WriteLine($"    {"파워",5} {"v0",8} {"이론사거리",11} {"실측사거리",11} {"비행",7}");
         var vol = Vol(Flat);
         foreach (float p in new[] { 0.25f, 0.5f, 0.75f, 1.0f })
@@ -78,7 +84,9 @@ static class BallisticsVerify
                         }
                         if (ok) break;
                     }
-                    if (!ok) Console.WriteLine($"    {name,5} {dist,6:F0}m {wn,6}   해 없음 ❌");
+                    // 🚨 예전엔 여기서 「해 없음 ❌」 를 **찍기만** 했다 — 24발이 전부 실패해도 rc=0 이었다.
+                    //    §5 조준 역산은 이 게임의 1순위(포격 감각)를 떠받치는 식이다. 물린다.
+                    if (!ok) { Console.WriteLine($"    {name,5} {dist,6:F0}m {wn,6}   해 없음 ❌"); Fail++; }
                 }
         }
         Console.WriteLine($"    → {total}개 중 {solved}개 해 찾음, {good}개가 3m 이내\n");
@@ -91,14 +99,22 @@ static class BallisticsVerify
             var acc = Ballistics.Accel(0f, 0f);
             float sp = Ballistics.PowerToSpeed(0.8f);
             Ballistics.SolveLaunchAngles(from, to, sp, acc, out var lo, out var hi);
+            float right = -1f, worst = -1f;
             foreach (var (pitch, tag) in new[] { (lo.PitchDeg, "정답(저각)"), (lo.PitchDeg + 5f, "+5° 틀림"), (lo.PitchDeg - 5f, "−5° 틀림") })
             {
                 var vel = Ballistics.VelocityFrom(lo.YawDeg, pitch, sp);
                 var r = ProjectileSimulator.Simulate(v, from, vel, acc, null, -1, MapSize);
                 float miss = r.Hit ? (r.Impact - to).Length : -1f;
                 Console.WriteLine($"    {tag,-12} 각 {pitch,5:F1}° → 오차 {miss,7:F1}m");
+                if (tag.StartsWith("정답")) right = miss; else worst = MathF.Min(worst < 0f ? miss : worst, miss);
             }
-            Console.WriteLine("    ※ 정답이 작고 ±5°가 크게 빗나가야 정상");
+            // 🚨 예전엔 「※ 정답이 작고 ±5°가 크게 빗나가야 정상」이라고 **적어만** 뒀다 — 사람이 읽고
+            //    판단하라는 뜻인데 아무도 안 읽는다. 그 문장을 그대로 단정으로 옮긴다.
+            //    ⚠️ 이 절 자체가 «역산이 상수를 내놓는 것이 아님»을 보이는 대조군이다 —
+            //       역산이 고장나 아무 각이나 내놓아도 [2] 는 통과할 수 있지만 여기는 못 지나간다.
+            bool aimOk = right >= 0f && worst > 0f && right < 5f && worst > right + 10f;
+            Console.WriteLine($"    {(aimOk ? "✅" : "❌")} 정답 {right:F1}m 이 ±5° 최소 오차 {worst:F1}m 보다 뚜렷이 작다");
+            if (!aimOk) Fail++;
         }
 
         Console.WriteLine("\n[3-1] ★ 추진 프로파일 조준 역산 — 등가 포물선이 정확하면 오차가 순수 포물선과 같아야 한다");
@@ -133,7 +149,7 @@ static class BallisticsVerify
                 allOk &= ok;
                 Console.WriteLine($"    {(ok ? "✅" : "❌")} {st.Name,-8} 추진 {fp.Thrust:F0}m/s²×{fp.BoostSec:F1}s  프로파일 역산 오차 {worstProfile,5:F1}m   (무시하면 {worstNaive,5:F1}m)");
             }
-            if (!allOk) { Console.WriteLine("    ❌ 추진 프로파일 역산 실패"); Environment.Exit(1); }
+            if (!allOk) { Console.WriteLine("    ❌ 추진 프로파일 역산 실패"); Fail++; }
         }
 
         Console.WriteLine("\n[4] 바람 편차 — 파워 70(사거리 ~172m). 파워 100 은 맵 밖이라 쟀 수 없다");
@@ -149,8 +165,16 @@ static class BallisticsVerify
                 if (!r.Hit || !r0.Hit) { Console.WriteLine($"    바람 {w,4:F0} → 측정 불가(맵 밖)"); continue; }
                 float drift = (r.Impact - r0.Impact).Length;
                 float expect = 0.5f * Ballistics.WindCoeff * w * r0.FlightTime * r0.FlightTime;
-                Console.WriteLine($"    바람 {w,4:F0} → 편차 {drift,6:F1}m   (½·a·t² 예상 {expect,5:F1}m)");
+                // 🚨 예전엔 측정과 예상을 나란히 **찍기만** 했다. 사람이 눈으로 비교하라는 뜻인데 안 읽는다.
+                //    §5-3 의 주장은 「바람은 ½·a·t² 로 편차를 만든다」 — 측정이 그 식과 맞는지가 단정이다.
+                //    ⚠️ 여기는 **이론값이 내장 대조군**이다. 식이 틀리면 둘이 갈라진다.
+                bool wOk = MathF.Abs(drift - expect) < MathF.Max(0.5f, expect * 0.08f);
+                Console.WriteLine($"    {(wOk ? "✅" : "❌")} 바람 {w,4:F0} → 편차 {drift,6:F1}m   (½·a·t² 예상 {expect,5:F1}m)");
+                if (!wOk) Fail++;
             }
         }
+    
+        Console.WriteLine(Fail == 0 ? "\n✅ 탄도 게이트 통과" : $"\n❌ 탄도 게이트 실패 {Fail}건");
+        Environment.Exit(Fail == 0 ? 0 : 1);
     }
 }
