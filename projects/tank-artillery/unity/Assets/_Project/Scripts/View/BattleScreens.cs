@@ -198,9 +198,15 @@ namespace Tankfall.View
         string SoundSummary()
             => $"음량 {Mathf.RoundToInt(Sfx.Volume * 100f)}% · 효과음 {(Sfx.SfxOff ? "끔" : "켬")} · 음악 {(Sfx.MusicOff ? "끔" : "켬")}";
 
+        /// <summary>
+        /// 설정 닫기. **입력 처리와 자체검사가 같은 함수를 봐야 한다** — 여기 규칙을 검사가 따로 베끼면
+        /// 한쪽만 낡는다(이 프로젝트가 반복해서 데인 자리: 적용과 평가가 같은 함수를 봐야 한다).
+        /// </summary>
+        void SettingsCloseForTest() => _screen = _settingsBack;
+
         void SettingsInput()
         {
-            if (Down(KeyCode.Escape) || Enter()) { _screen = _settingsBack; return; }
+            if (Down(KeyCode.Escape) || Enter()) { SettingsCloseForTest(); return; }
             int rows = SettingsRows.GetLength(0);
             if (Down(KeyCode.DownArrow) || Down(KeyCode.S)) _settingsSel = (_settingsSel + 1) % rows;
             if (Down(KeyCode.UpArrow) || Down(KeyCode.W)) _settingsSel = (_settingsSel - 1 + rows) % rows;
@@ -524,6 +530,30 @@ namespace Tankfall.View
                 SetWeather(Weather.Snow);
                 Check(!_status.HasDot(4242), "눈 → 몸에 붙은 불도 꺼진다(장판만 끄면 비대칭)");
                 SetWeather(w0);
+            }
+
+            // 3-2) **사람이 실제로 밟는 화면 왕복** (2026-09-19)
+            //
+            // 🚨 지금까지 화면 검사는 전부 `_screen = ...` 로 **화면을 세워 놓고 그리기만** 했다
+            //    (`-uiselftest` 9종). 그래서 «열고 → 닫으면 원래 자리로 돌아오는가»는 **한 번도 안 쟀다.**
+            //    소리 설정을 세 곳(타이틀·전투 설정·일시정지)에서 열 수 있게 만든 뒤라 정확히 여기가 위험하다 —
+            //    `_settingsBack` 을 한 군데서 안 세우면 **사람이 설정에서 나올 때 엉뚱한 화면으로 떨어진다.**
+            //    그건 그려지기는 하니까 스크린샷 검사로는 절대 안 잡힌다.
+            {
+                var back0 = _screen;
+                // 세 진입점 전부 — 연 곳으로 돌아와야 한다.
+                foreach (var from in new[] { GameScreen.Title, GameScreen.Setup, GameScreen.Pause })
+                {
+                    _screen = from;
+                    OpenSettings(from);
+                    Check(_screen == GameScreen.Settings, $"{from} → 소리 설정이 열린다 (간 곳 {_screen})");
+                    SettingsCloseForTest();
+                    Check(_screen == from, $"소리 설정 닫으면 {from} 으로 돌아온다 (간 곳 {_screen})");
+                }
+                // 커서가 남아 있으면 다음에 열 때 엉뚱한 행이 잡힌다 — 열 때마다 처음으로.
+                OpenSettings(GameScreen.Title);
+                Check(_settingsSel == 0, $"설정을 열면 커서가 처음 행이다 ({_settingsSel})");
+                _screen = back0;
             }
 
             // 4) 승패 판정 — 동시 전멸은 무승부
