@@ -394,6 +394,21 @@ namespace Tankfall.View
                     if (found >= 0) _difficulty = found;
                     else Debug.LogWarning($"[Tankfall] -difficulty 모르는 이름 '{args[i + 1]}' — 중급");
                 }
+                // ── M1 네거티브 컨트롤 (§11 머리말 · §12-1) ──
+                // 「`g` 를 30→15 로 바꿨을 때 체감이 명확히 달라지는가」를 **사람이 1분 안에** 해 보게 하는 문.
+                // ⚠️ 이건 수치 변경이 아니라 **대조군 스위치**다 — 기본값 30 은 그대로고, 이 인자를 안 주면
+                //    게임은 30 으로만 돈다. 🛑 이걸로 밸런스 표를 다시 뜨지 마라(허가된 것은 체감 비교뿐).
+                else if ((args[i] == "-g" || args[i] == "-gravity") && i + 1 < args.Length)
+                {
+                    if (float.TryParse(args[i + 1].Trim(), System.Globalization.NumberStyles.Float,
+                                       System.Globalization.CultureInfo.InvariantCulture, out float gv))
+                    {
+                        // 범위 밖·판 시작 뒤면 **던진다**. 조용히 무시하면 "g=15 로 쟀다"면서 30 으로 재게 된다.
+                        try { Ballistics.SetForHarness(gv); Debug.Log($"[Tankfall] ⚠️ 중력 대조군: g={gv} (기본 30)"); }
+                        catch (System.Exception e) { Debug.LogError($"[Tankfall] -g {args[i + 1]}: {e.Message}"); }
+                    }
+                    else Debug.LogWarning($"[Tankfall] -g 숫자가 아니다 '{args[i + 1]}' — 기본 30 으로 간다");
+                }
                 else if (args[i] == "-weather" && i + 1 < args.Length)
                 {
                     if (System.Enum.TryParse<Weather>(args[i + 1].Trim(), true, out var w)) _weatherForced = w;
@@ -2749,7 +2764,13 @@ namespace Tankfall.View
             Ui.Text(new Rect(r.x + 116f, r.y + 5f, 120f, 18f), $"라운드 {_round}", 13, Ui.Dim);
             Ui.Text(new Rect(r.x + 12f, r.y + 24f, 300f, 18f),
                     $"{WeatherName(_weather)}   AI {Difficulties[_difficulty].Name} <size=10>(F1)</size>" +
-                    (_supply.Count > 0 ? $"   보급 {_supply.Count}" : ""), 12, Ui.Dim);
+                    (_supply.Count > 0 ? $"   보급 {_supply.Count}" : "")
+                    // ⚠️ 대조군으로 돌고 있으면 **화면에 보여야 한다.** 사람이 모르고 체감을 재면
+                    //    그 판정이 통째로 거짓이 된다(§12-1 M1 네거티브 컨트롤).
+                    + (Ballistics.GravityIsDefault ? "" : $"   <color=#ffb24a>중력 대조군 g={Ballistics.Gravity:F0}</color>"),
+                    // ⚠️ 여기에 ⚠·❄ 같은 기호를 쓰지 마라 — 이 폰트에 없어서 **□ 로 깨진다**(2026-09-19 실측).
+                    //    화면 문구는 글자만 쓴다(로그는 상관없다).
+                    12, Ui.Dim);
 
             // 바람(§5-3) — 방향은 화살표, 세기는 바. 숫자만 주면 "왼쪽 3" 을 매번 머리로 번역해야 한다.
             HudWind(new Vector2(r.xMax - 148f, r.y + 23f));

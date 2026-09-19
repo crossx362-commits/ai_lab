@@ -11,7 +11,23 @@ static class MapVerify
     static void Main()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine($"=== 맵 {MapHeightFunction.Count}종 검증 ===\n");
+        // ── 중력 대조군이 **실제로 탄도를 바꾸는가** (스폰 전에만 할 수 있다) ──
+        // ⚠️ «스위치가 값을 바꾼다»가 아니라 «바뀐 값이 가속도에 반영된다»를 재야 한다.
+        //    값만 바뀌고 탄이 그대로면 대조군이 거짓말을 한다(이 프로젝트의 단골 사고: 저장됐다 ≠ 반영됐다).
+        {
+            var a30 = Ballistics.Accel(0f, 0f, 0f);
+            Ballistics.SetForHarness(15f);
+            var a15 = Ballistics.Accel(0f, 0f, 0f);
+            Ballistics.SetForHarness(30f);                     // 원상복구 — 아래 맵 검증은 기본값으로 돈다
+            bool ok = Math.Abs(a30.Y + 30f) < 1e-4f && Math.Abs(a15.Y + 15f) < 1e-4f
+                      && Math.Abs(Ballistics.Gravity - 30f) < 1e-6f;
+            Console.WriteLine(ok
+                ? $"[가드] 중력 대조군이 가속도에 반영된다 — g30 → a.y {a30.Y:F1} · g15 → a.y {a15.Y:F1} · 복구 {Ballistics.Gravity:F0} ✅"
+                : $"[가드] ❌ 대조군이 가속도에 안 걸린다 — g30 {a30.Y:F1} · g15 {a15.Y:F1} · 지금 {Ballistics.Gravity:F0}");
+            if (!ok) Fail++;
+        }
+
+        Console.WriteLine($"\n=== 맵 {MapHeightFunction.Count}종 검증 ===\n");
         foreach (MapKind map in Enum.GetValues(typeof(MapKind)))
         {
             Console.WriteLine($"[{MapHeightFunction.Name(map)}]");
@@ -37,6 +53,24 @@ static class MapVerify
         catch (InvalidOperationException)
         {
             Console.WriteLine($"    ✅ 거부됨 — 팀 인원은 {MapHeightFunction.TeamSize} 그대로다");
+        }
+
+        // ── 중력 대조군 스위치 (§12-1 · M1 네거티브 컨트롤) ──
+        // 스위치가 ① 기본값을 안 바꾸고 ② 범위를 막고 ③ 판 시작 뒤를 막는지 — **쌍으로** 잰다.
+        // ⚠️ 여기서 재는 것은 «스위치가 도는가»이지 «g 를 얼마로 할까»가 아니다. 수치 판단은 사람 몫이다.
+        Console.WriteLine("\n[가드] 중력 대조군 스위치");
+        {
+            Console.WriteLine(Math.Abs(Ballistics.Gravity - 30f) < 1e-6f && Ballistics.GravityIsDefault
+                ? "    ✅ 기본값 30 그대로다 (게임 코드는 스위치를 안 부른다)"
+                : $"    ❌ 기본값이 30 이 아니다 — {Ballistics.Gravity}");
+            if (Math.Abs(Ballistics.Gravity - 30f) >= 1e-6f) Fail++;
+
+            try { Ballistics.SetForHarness(0f); Console.WriteLine("    ❌ 0 이 통과했다"); Fail++; }
+            catch (ArgumentOutOfRangeException) { Console.WriteLine("    ✅ 범위 밖(0) 거부"); }
+
+            // 위에서 스폰이 수없이 돌았으니 **판 시작 뒤**다 → 정상값도 거부돼야 한다.
+            try { Ballistics.SetForHarness(15f); Console.WriteLine("    ❌ 판 시작 뒤인데 15 가 통과했다"); Fail++; }
+            catch (InvalidOperationException) { Console.WriteLine($"    ✅ 판 시작 뒤 거부 — 중력 {Ballistics.Gravity:F0} 그대로"); }
         }
         Console.WriteLine(Fail == 0 ? "\n✅ 맵 게이트 통과" : $"\n❌ 실패 {Fail}건");
         Environment.Exit(Fail == 0 ? 0 : 1);

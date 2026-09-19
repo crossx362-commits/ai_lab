@@ -92,6 +92,14 @@ namespace Tankfall.Sim
         /// </summary>
         static bool _spawned;
 
+        /// <summary>
+        /// **판이 한 번이라도 만들어졌는가.** 「판 시작 뒤에는 못 바꾼다」는 가드들이 **이 하나를 같이 본다** —
+        /// `TeamSize`(여기)와 `Ballistics.Gravity`(탄도 대조군 스위치)가 그렇다.
+        /// ⚠️ 같은 판정을 각자 들고 있으면 한쪽만 낡는다(이 프로젝트가 반복해 데인 자리).
+        /// ⚠️ 되돌리는 길을 만들지 마라. 되돌릴 수 있으면 가드가 아니라 제안이 된다.
+        /// </summary>
+        public static bool BattleStarted => _spawned;
+
         public const float TwinWestHillX = Center, TwinWestHillZ = MapSize * 0.375f;
         public const float TwinEastHillX = Center, TwinEastHillZ = MapSize * 0.625f;
 

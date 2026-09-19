@@ -78,7 +78,43 @@ namespace Tankfall.Sim
     public static class Ballistics
     {
         // --- §5-1 확정 상수 ---
-        public const float Gravity = 30.0f;        // 현실 3배. 탄도를 굽히고 비행을 3~4초로 줄인다
+        /// <summary>
+        /// 중력. 현실 3배 — 탄도를 굽히고 비행을 3~4초로 줄인다. **기본값 30 은 게임의 값이다.**
+        ///
+        /// 🚨 **`const` 를 뗀 이유는 «수치 변경»이 아니라 «대조군»이다** (2026-09-19).
+        ///    §11 머리말: 「각 게이트는 "통과"가 아니라 **"빨간불을 먼저 봤는가"**로 판정한다.
+        ///    네거티브 컨트롤이 없는 통과는 통과가 아니다.」
+        ///    그리고 **M1 게이트 본문이 그 대조군을 명시한다** — 「`g` 를 30→15 로 바꿨을 때 체감이
+        ///    명확히 달라지는가(안 달라지면 파워/각도가 결과를 지배하지 않는다는 뜻 → 상수 재설계)」.
+        ///    M1 은 2026-09-19 에 오너 판정으로 통과했지만 **그 대조군은 실시되지 않았다**(§12-1 · §11 M1 배너).
+        ///    그걸 사람이 1분 안에 해 볼 수 있게 여는 것이 이 스위치의 전부다.
+        ///
+        /// ⚠️ **기본값은 30 그대로다.** 게임 코드는 <see cref="SetForHarness"/> 를 **부르지 않는다**.
+        /// 🛑 이 스위치로 **밸런스 표를 다시 뜨지 마라.** 허가된 것은 «사람이 체감을 비교하는 것»뿐이다.
+        /// </summary>
+        public static float Gravity { get; private set; } = 30.0f;
+
+        /// <summary>
+        /// **대조군 전용.** 판이 만들어지기 **전에만** 부를 수 있다(`-g 15` · `TANKFALL_G=15`).
+        ///
+        /// ⚠️ 판이 도는 중에 바꾸면 이미 날아간 탄과 새 탄이 **다른 하늘**을 보게 된다 —
+        ///    이 프로젝트가 네 번 겪은 어긋남(역산·유도탄·AI 조준·연습장)과 같은 계열이다.
+        ///    그래서 <see cref="MapHeightFunction.BattleStarted"/> 를 보고 **던진다**(`TeamSize` 와 같은 가드).
+        /// ⚠️ 범위 밖은 던진다 — 조용히 무시하면 "g=15 로 쟀다"면서 30 으로 재는 거짓말이 된다.
+        /// </summary>
+        public static void SetForHarness(float g)
+        {
+            if (!(g > 0f) || g > 200f)
+                throw new ArgumentOutOfRangeException(nameof(g), g, "중력은 0 초과 200 이하 (대조군 범위)");
+            if (MapHeightFunction.BattleStarted)
+                throw new InvalidOperationException(
+                    "Ballistics.SetForHarness 는 판이 만들어지기 전에만 부를 수 있다 — 이미 Spawn 이 돌았다. " +
+                    "판 도중에 중력을 바꾸면 날아가던 탄과 새 탄이 다른 하늘을 본다.");
+            Gravity = g;
+        }
+
+        /// <summary>기본값과 다른가 — 화면에 «대조군 중»을 알리려고 쓴다(사람이 모르고 재면 안 된다).</summary>
+        public static bool GravityIsDefault => Gravity == 30.0f;
         public const float VelocityMin = 25.0f;    // 파워 0
         public const float VelocityMax = 81.2f;    // 파워 100 → 45°에서 사거리 220m
         public const float WindCoeff = 0.35f;      // 바람 1당 0.35 m/s² (최대사거리에서 ≈2.6m 편차)
