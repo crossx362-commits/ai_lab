@@ -48,6 +48,37 @@ static class BallisticsVerify
         }
         Console.WriteLine("    ※ 실측이 이론보다 약간 큰 것은 발사점이 지면보다 높기 때문 (정상)\n");
 
+        // ── [1-1] 기종별 최대 사거리 ──────────────────────────────────────────────
+        // 🚨 왜 있나(2026-09-19, 오너 지시 「발사체 궤적 다양하게」). 궤적을 기종별로 가르면
+        //    **모양만 바뀌고 사거리는 안 바뀌어야** 한다 — `FlightProfile.Boost()` 가
+        //    `SpeedMul = 1 − (thrust·boostSec)/vmax` 로 최대 파워 총속도를 원래 값에 맞추는 게 그 약속이다.
+        //    그 약속이 지켜지는지는 **말이 아니라 이 표**로 본다. 프로파일을 건드린 커밋은
+        //    이 표의 전/후를 같이 붙여야 한다.
+        // ⚠️ 「추진 없음」과 완전히 같지는 않다 — 추진은 발사 방향으로 거리를 «미리» 벌어 놓으므로
+        //    등가 포물선의 원점이 p₀ 뒤로 ½·Th·Tb² 만큼 밀린다(구조체 머리말). 그래서 **차이의 절댓값이
+        //    아니라 «전 커밋 대비 변화»가 판정 기준**이다. 여기서 문턱을 단정하지 않는다. [정보]
+        Console.WriteLine("[1-1] 기종별 최대 사거리 (평지, 파워 100, 45°, 바람 0)  [정보]");
+        Console.WriteLine($"    {"기종",-12} {"추진",16} {"v0",9} {"사거리",9} {"추진끔",9} {"차이",8}");
+        var volK = Vol(Flat);
+        foreach (TankKind k in Enum.GetValues(typeof(TankKind)))
+        {
+            var st = TankStats.For(k);   // Get() 은 원본 행이라 Flight 가 안 채워진다 — For() 가 FlightProfile.Of 를 물린다
+            float v = st.SpeedAt(1f);
+            var pk = new Vec3(100f, 12f, 20f);
+            var acck = Ballistics.Accel(0f, 0f) * st.GravityScale;
+            var fpk = st.Flight;
+            // 같은 기종을 «프로파일 켜고» / «끄고» 나란히 — 네거티브 컨트롤은 쌍으로 본다.
+            var on  = ProjectileSimulator.Simulate(volK, pk, Ballistics.VelocityFrom(0f, 45f, v), acck, null, -1, MapSize, fpk, null, null);
+            float vOff = Ballistics.PowerToSpeed(1f) * st.PowerScale;      // SpeedMul 을 뺀 원래 초기속도
+            var off = ProjectileSimulator.Simulate(volK, pk, Ballistics.VelocityFrom(0f, 45f, vOff), acck, null, -1, MapSize, default, null, null);
+            float rOn  = on.Hit  ? (on.Impact  - pk).Length : -1f;
+            float rOff = off.Hit ? (off.Impact - pk).Length : -1f;
+            string thr = fpk.HasThrust ? $"{fpk.Thrust,5:F0}m/s² ×{fpk.BoostSec,4:F1}s" : "         없음   ";
+            string dif = (rOn >= 0f && rOff >= 0f) ? $"{rOn - rOff,6:F1}m" : "   맵밖";
+            Console.WriteLine($"    {st.Name,-12} {thr,16} {v,7:F1}m/s {(rOn >= 0f ? $"{rOn,7:F0}m" : "   맵밖"),9} {(rOff >= 0f ? $"{rOff,7:F0}m" : "   맵밖"),9} {dif,8}");
+        }
+        Console.WriteLine();
+
         Console.WriteLine("[2] ★ 조준 역산 정확도 (오차 0). 이게 크면 공식 버그다");
         Console.WriteLine($"    {"지형",6} {"거리",7} {"바람",7} {"해",5} {"파워",6} {"각도",7} {"목표와 거리",12}");
         int solved = 0, total = 0, good = 0;
@@ -117,14 +148,51 @@ static class BallisticsVerify
             if (!aimOk) Fail++;
         }
 
+        // ── [1-2] 궤적 덤프 ────────────────────────────────────────────────────────
+        // 오너 지시(「궤적 다양하게」)의 **확인 수단**이다. 13종을 **같은 자리·같은 파워·같은 각도**로 쏜
+        // 궤적을 CSV 로 뱉는다 — 겹쳐 그리면 갈렸는지 1초에 보인다.
+        // ⚠️ 화면이 아니라 여기서 뽑는 게 맞다: `BattleDemo.FlyStep` 은 Sim 이 계산한 `_shotPath` 를
+        //    **재생만** 하므로 **이 경로가 곧 화면에 보이는 경로**다(카메라·연출이 안 끼어든다).
+        // `TANKFALL_PATHS=<파일>` 이 있을 때만 쓴다(평소 출력엔 안 낀다).
+        {
+            string dump = Environment.GetEnvironmentVariable("TANKFALL_PATHS");
+            if (!string.IsNullOrEmpty(dump))
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("kind,t,x,y");
+                var volD = Vol(Flat);
+                var pD = new Vec3(100f, 12f, 20f);
+                foreach (TankKind k in Enum.GetValues(typeof(TankKind)))
+                {
+                    var st = TankStats.For(k, ShellKind.Normal);
+                    float v = st.SpeedAt(0.85f);                     // 같은 파워
+                    var acc = st.AccelWith(0f, 0f);
+                    var v0 = Ballistics.VelocityFrom(0f, 45f, v);    // 같은 각도
+                    var r = ProjectileSimulator.Simulate(volD, pD, v0, acc, null, -1, MapSize, st.Flight, null, null);
+                    for (int i = 0; i < r.Path.Count; i++)
+                        sb.AppendLine($"{st.Name},{i * Ballistics.SimStep:F3},{r.Path[i].Z - pD.Z:F3},{r.Path[i].Y - pD.Y:F3}");
+                }
+                System.IO.File.WriteAllText(dump, sb.ToString());
+                Console.WriteLine($"[1-2] 궤적 덤프 → {dump}  (13종 · 같은 자리·파워 85·45°)\n");
+            }
+        }
+
         Console.WriteLine("\n[3-1] ★ 추진 프로파일 조준 역산 — 등가 포물선이 정확하면 오차가 순수 포물선과 같아야 한다");
         {
             var v = Vol(Flat);
             var from = new Vec3(100f, 12f, 20f);
             bool allOk = true;
-            foreach (var kind in new[] { TankKind.Missile, TankKind.SuperTank, TankKind.Laser, TankKind.CrossBow })
+            // 🚨 **기종 목록을 손으로 적어 두면 새 프로파일이 게이트를 안 탄다**(2026-09-19).
+            //    오너 지시로 7종에 프로파일이 생겼는데 이 절은 넷만 보고 있었다 — 특히 **음수 추진(감속)** 은
+            //    완전히 새 경로인데 **검증 0회**로 통과할 뻔했다. 목록 대신 **`HasThrust` 인 전부**를 돈다.
+            // ⚠️ 네거티브 컨트롤(`worstNaive > worstProfile + 3f`)은 여기서 **두 가지를 동시에** 본다:
+            //      ① 역산이 프로파일을 실제로 반영하는가 ② **그 프로파일이 궤적을 눈에 띄게 바꾸는가.**
+            //    ②가 깨지면(=무시해도 3m 안 틀림) 「사람 눈에도 안 보이는 프로파일」이라는 뜻이다 —
+            //    그건 게이트 실패로 다루는 게 맞다. 궤적 다양화의 목적 자체가 «보이는 것»이니까.
+            foreach (TankKind kind in Enum.GetValues(typeof(TankKind)))
             {
                 var st = TankStats.For(kind, ShellKind.Normal);
+                if (!st.Flight.HasThrust) continue;      // 캐논 등 순수 포물선은 여기 대상이 아니다
                 var acc = st.AccelWith(3f, 0f);
                 var fp = st.Flight;
                 // 네거티브 컨트롤: 프로파일을 **무시하고** 풀면 크게 빗나가야 한다(추진이 실제로 궤적을 바꾼다는 증거)

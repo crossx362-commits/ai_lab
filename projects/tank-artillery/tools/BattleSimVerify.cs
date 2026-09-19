@@ -537,10 +537,10 @@ static class BattleSimVerify
                 satImpact = SatelliteStrike.Resolve(vol, shot.Impact.X, shot.Impact.Z, shot.Impact.Y + 60f, boxes, out satDirect);
             }
             var normalHits = AiGunner.SimulatePattern(vol, u.Muzzle, plan.YawDeg, plan.PitchDeg, speed, accel, boxes, u.Id, MapSize,
-                                                      Spread.Pattern(u.Kind, ShellKind.Normal), shot, st.Flight, null, air);
+                                                      Spread.Pattern(u.Kind, ShellKind.Normal), st.Flight, shot, null, air);
             var specialHits = satImpact.HasValue ? null
                 : AiGunner.SimulatePattern(vol, u.Muzzle, plan.YawDeg, plan.PitchDeg, speed, accel, boxes, u.Id, MapSize,
-                                           Spread.Pattern(u.Kind, ShellKind.Special), shot, st.Flight, null, air);
+                                           Spread.Pattern(u.Kind, ShellKind.Special), st.Flight, shot, null, air);
             var shell = AiGunner.PickShell(st, normalHits, specialHits, enemies, status, satImpact, satDirect);
             bool ss = false, ultShell = false;   // 궁극기(§49) — 2번탄을 핵급으로 키운다
             if (shell == ShellKind.Special)

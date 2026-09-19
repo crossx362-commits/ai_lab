@@ -101,8 +101,14 @@ namespace Tankfall.Sim
         /// </summary>
         public static List<SubImpact> SimulatePattern(SdfVolume vol, Vec3 muzzle, float yawDeg, float pitchDeg, float speed, Vec3 accel,
                                                       IReadOnlyList<TankHitbox> boxes, int shooterId, float mapSize,
-                                                      IReadOnlyList<Spread.ShotPattern> pattern, ShotResult? center = null,
-                                                      FlightProfile fp = default, Func<int, bool> homingOk = null,
+                                                      IReadOnlyList<Spread.ShotPattern> pattern,
+                                                      // 🚨 **기본값을 뺐고, 그래서 자리도 앞으로 옮겼다**(2026-09-19).
+                                                      //    `fp = default` 이면 «안 넘겨도 컴파일된다» — 게임만 고치고 하네스는
+                                                      //    옛 값으로 재는 어긋남이 그렇게 생긴다(`PickShell` 의 `status` 와 같은 이유).
+                                                      //    오늘 감사에선 호출부 4곳 전부 실물을 넘기고 있었지만, **다음 사람**이 문제다.
+                                                      //    ⚠️ 필수 인자는 선택 인자보다 앞에 와야 해서 `center` 앞으로 왔다 —
+                                                      //       인자 «순서»가 바뀌었으니 호출부를 위치로 맞춰 읽지 마라.
+                                                      FlightProfile fp, ShotResult? center = null, Func<int, bool> homingOk = null,
                                                       AirField air = null)
         {
             var list = new List<SubImpact>(pattern.Count);

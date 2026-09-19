@@ -1322,10 +1322,10 @@ namespace Tankfall.View
                 if (ShellEffects.Of(u.Kind, ShellKind.Special).Type == ShellEffects.EffectType.SatelliteStrike)
                     satImpact = SatelliteStrike.Resolve(_vol, res.Impact.X, res.Impact.Z, res.Impact.Y + 60f, boxes, out satDirect);
                 var normalHits = AiGunner.SimulatePattern(_vol, p0, worldYaw, pitch, speed, accel, boxes, u.Id, MapSize,
-                                                          Spread.Pattern(u.Kind, ShellKind.Normal), res, baseSt.Flight, null, _air);
+                                                          Spread.Pattern(u.Kind, ShellKind.Normal), baseSt.Flight, res, null, _air);
                 var specialHits = satImpact.HasValue ? null
                     : AiGunner.SimulatePattern(_vol, p0, worldYaw, pitch, speed, accel, boxes, u.Id, MapSize,
-                                               Spread.Pattern(u.Kind, ShellKind.Special), res, baseSt.Flight, null, _air);
+                                               Spread.Pattern(u.Kind, ShellKind.Special), baseSt.Flight, res, null, _air);
                 shell = AiGunner.PickShell(baseSt, normalHits, specialHits, foes, _status, satImpact, satDirect);
                 // ⚠️ 궁극기를 먼저 보고, 못 쓰면 **아낄지 말지**를 정한다.
                 //    아끼는 단계가 없으면 2점에서 SS 로 다 써버려 궁극기가 영원히 안 나온다
