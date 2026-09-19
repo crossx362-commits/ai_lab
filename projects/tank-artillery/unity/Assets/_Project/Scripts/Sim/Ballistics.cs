@@ -54,6 +54,22 @@ namespace Tankfall.Sim
         public float HomingTurnDeg;   // 초당 선회각(0=유도 없음)
         public float HomingRange;     // 유도 표적 탐색 반경
         public float SpeedMul;        // 초기속도 배율(0 이면 1)
+        /// <summary>
+        /// **전 비행 구간**에 걸리는 수평 상수 가속(m/s²). +는 «앞으로 미는», −는 «끄는» 힘이다.
+        ///
+        /// 🔑 **이게 궤적 «모양»을 가르는 유일한 축이다**(2026-09-19). `Thrust` 는 `dir₀` 방향이라
+        ///    결과가 언제나 **등가 포물선**이고 정점이 항상 사거리의 절반에 온다 — 사거리만 바뀐다.
+        ///    `GravityScale` 도 마찬가지다(실측: 중력 ×0.72~×1.35 에서 **정점위치 0.500 불변**).
+        ///    **수평 성분이 들어가야 대칭이 깨진다.** 실측 도달 폭 정점위치 **0.420~0.719**.
+        /// 🔑 **새 수학이 필요 없다.** 상수 벡터라 «중력+바람»과 완전히 같은 취급이고,
+        ///    역산기는 이미 「가속도 a 는 상수 벡터」를 해석적으로 푼다(그게 바람이 풀리는 원리다).
+        ///    그래서 **닫힌 해·결정론이 그대로**다(§2-3 「매 프레임 적분은 해롭다」를 안 건드린다).
+        /// ⚠️ 방향은 «수평 전방». 아래 `AeroAccel` 이 **fp 를 받는 함수 안에서** 더한다 —
+        ///    호출부는 아무것도 안 바꾼다. 호출부에서 더하게 만들면 한 곳이 빠져 「다른 하늘」이 된다.
+        /// </summary>
+        public float AeroFwd;
+
+        public bool HasAero => AeroFwd != 0f;
 
         /// 🚨 **`> 0` 이 아니라 `!= 0` 이다**(2026-09-19). 음수 추진(감속)을 열면서 바꿨다.
         /// `> 0` 으로 두면 음수 프로파일에서 **`SpeedMul` 만 걸리고 감속은 안 걸려 사거리가 늘어난다** —
@@ -70,6 +86,28 @@ namespace Tankfall.Sim
                                        SpeedMul = MathF.Max(0.3f, 1f - add / maxSpeed) };
         }
 
+        /// <summary>
+        /// 수평 상수 가속이 바꾼 사거리를 초기속도로 되돌리는 배율.
+        /// **유도한 식이 아니라 실측에 맞춘 식**이다(45°·파워85·평지에서 사거리를 기준과 같게 만드는 배율):
+        ///   앞 +6 → 0.913 · +10 → 0.866 · +14 → 0.826 · 뒤 −6 → 1.118 · −10 → 1.225 · −14 → 1.369
+        /// `1/(1+0.0165·a)` 가 이 여섯 점을 ±2% 로 지난다.
+        /// ⚠️ `Boost()` 와 같은 한계를 공유한다 — **한 지점(최대 파워·45°)에서만 정확**하다.
+        ///    그래서 「사거리 불변」이 아니라 「사거리를 되돌리려는 보정」이다. 실제 잔차는 [1-1] 표로 본다.
+        /// </summary>
+        static float AeroMul(float fwd) => 1f / (1f + 0.0165f * fwd);
+
+        /// <summary>수평 상수 가속만 주는 프로파일(추진 없음). 사거리는 `AeroMul` 로 되돌린다.</summary>
+        static FlightProfile Aero(float fwd)
+            => new FlightProfile { AeroFwd = fwd, SpeedMul = AeroMul(fwd) };
+
+        /// <summary>기존 `dir₀` 추진에 수평 상수 가속을 얹는다 — 배율은 둘을 곱한다.</summary>
+        static FlightProfile Plus(FlightProfile fp, float fwd)
+        {
+            fp.AeroFwd = fwd;
+            fp.SpeedMul = fp.Mul * AeroMul(fwd);
+            return fp;
+        }
+
         public static FlightProfile Of(TankKind kind, ShellKind shell, float powerScale)
         {
             float vmax = Ballistics.VelocityMax * powerScale;
@@ -78,12 +116,19 @@ namespace Tankfall.Sim
             {
                 // ⚠️ 추진(Thrust·Boost)은 **탄종과 무관**하게 같다. AI 는 1번탄 궤적을 보고 탄종을 고르므로(§8 "탄도가 같으니
                 //    조준을 다시 풀 필요가 없다") 2번탄이 다른 추진을 가지면 고른 근거가 거짓이 된다. 2번탄은 유도만 얹는다.
-                case TankKind.Missile:      return Boost(22f, 1.2f, vmax, sp ? 55f : 0f);     // 로켓: 직진 후 낙하 · 2번 유도탄
-                case TankKind.MultiMissile: return Boost(12f, 0.8f, vmax);
-                case TankKind.SuperTank:    return Boost(26f, 1.1f, vmax, sp ? 75f : 0f);     // "핫도그" 강추진 · 9연 유도
-                case TankKind.Laser:        return Boost(34f, 0.7f, vmax);                                          // 빔: 앞부분이 거의 직선
-                case TankKind.SecWind:      return Boost(14f, 0.7f, vmax);
-                case TankKind.CrossBow:     return Boost(9f, 0.5f, vmax);                                           // 볼트: 처음만 곧게
+                // 아래 6종은 `dir₀` 추진(사거리)에 **수평 상수 가속(모양)**을 얹었다.
+                // ⚠️ 추진만 있을 땐 「직진 후 낙하」·「앞부분이 거의 직선」이 **주석뿐이었다** — 실제론 전부
+                //    정점위치 0.495 의 대칭 포물선이었다(2026-09-19 실측). 이제 그 서술이 참이 된다.
+                // ⚠️ **여기 수평 가속은 작다 — 일부러 그렇다.** `Boost` 와 `AeroMul` 의 보정은
+                //    각자 «혼자 있을 때» 맞춘 것이라 **곱해도 안 맞는다.** 처음에 레이저를 +12 로 줬더니
+                //    사거리가 맵 밖으로 나갔다(측정 불가). 추진이 없는 7종은 전 범위를 써도 되지만
+                //    여기 6종은 **사거리 잔차를 [1-1] 로 보면서** 작게 둔다. 모양은 그만큼 덜 갈린다.
+                case TankKind.Missile:      return Plus(Boost(22f, 1.2f, vmax, sp ? 55f : 0f), 2f);   // 로켓: 앞으로 밀려 평평하게
+                case TankKind.MultiMissile: return Plus(Boost(12f, 0.8f, vmax), 2f);
+                case TankKind.SuperTank:    return Plus(Boost(26f, 1.1f, vmax, sp ? 75f : 0f), 1f);   // "핫도그" 강추진
+                case TankKind.Laser:        return Plus(Boost(34f, 0.7f, vmax), 2f);                  // 빔: 추진 6종 중 가장 평평
+                case TankKind.SecWind:      return Plus(Boost(14f, 0.7f, vmax), -2f);                 // 바람 타듯 살짝 떠서 늦게 떨어짐
+                case TankKind.CrossBow:     return Plus(Boost(9f, 0.5f, vmax), 3f);                   // 볼트: 낮고 곧게
 
                 // ── 오너 지시(2026-09-19) 「발사체 날아가는 궤적 다양하게 하랬는데?」 ────────────────
                 // 여기 아래 7종은 **전부 `default` = 완전히 같은 포물선**이었다. ⑦ 에서 자취 «색»은 갈렸는데
@@ -102,17 +147,32 @@ namespace Tankfall.Sim
                 // 배정 근거는 **지어내지 않고 `TankStats` 의 실제 값**에서 뽑았다 — Era · MinPitch~MaxPitch ·
                 // GravityScale · MoveSpeed · 2번탄. 「이 기종이 왜 이렇게 나는가」가 표에 이미 적혀 있었다.
 
-                // 🛑 **여기에 «발사 방향 추진»으로 기종을 가르려던 배정이 있었다 — 되돌렸다**(2026-09-19).
-                //    구현·게이트는 전부 통과했는데(역산 오차 0.2~0.3m) **궤적 모양이 안 갈렸다.**
-                //    지표로 재니 이유가 나왔다: **13종 전부 정점위치가 사거리의 0.494~0.496 = 완전 대칭 포물선.**
-                //    갈린 건 모양이 아니라 **사거리**(179~242m)뿐이었다.
-                //    원인은 이 구조체 머리말에 이미 적혀 있었다 — 「추진 뒤 궤적은 …**등가 포물선과 정확히 같다**」.
-                //    **추진이 `dir₀` 로만 걸리면 결과는 언제나 포물선**이고, 역산이 닫힌 해로 정확히 풀리는
-                //    바로 그 성질이 **«모양이 절대 안 변한다»는 뜻**이다. 둘은 같은 사실의 양면이다.
-                //    ⇒ **이 축으로 «궤적 다양화»를 시도하지 마라.** 사거리만 움직이고 끝난다.
-                //       모양을 가르려면 가속도가 `dir₀` 방향이 **아니어야** 한다(고정 벡터 추진).
-                //    ⚠️ 같은 이유로 기존 6종도 **모양이 다른 게 아니다** — 더 멀리 갈 뿐이다.
-                //       위의 「직진 후 낙하」·「앞부분이 거의 직선」은 **잰 적 없는 서술**이다.
+                // ── 오너 지시(2026-09-19) 「발사체 날아가는 궤적 다양하게 하랬는데?」 ──────────────
+                // 🛑 **먼저 실패한 시도를 적어 둔다.** `dir₀` 방향 추진으로 갈랐더니 게이트는 전부 통과했는데
+                //    **모양이 안 갈렸다** — 13종 전부 정점위치 0.494~0.496 의 **완전 대칭 포물선**이고
+                //    갈린 건 사거리(179~242m)뿐이었다. 원인은 머리말에 있었다: 추진이 `dir₀` 로만 걸리면
+                //    결과는 **언제나 등가 포물선**이라, **역산이 정확한 이유가 곧 모양이 안 변하는 이유**다.
+                //    ⚠️ `GravityScale` 도 못 가른다 — 중력 ×0.72~×1.35 에서 **정점위치 0.500 불변**(실측).
+                //    ⇒ 모양을 가르는 건 **수평 성분**뿐이다. 그래서 `AeroFwd`(전 비행 상수 가속)를 쓴다.
+                //
+                // 🛑 **캐논은 일부러 비워 둔다.** 25~55° · grav 1.00 · 「가장 넓고 약한」 기준 탱크다.
+                //    **기준선이 없으면 열셋이 다 움직여도 아무것도 «달라» 보이지 않는다.** 여기를 채우지 마라.
+                case TankKind.Cannon:       return default;
+
+                // 캐터펄트: **0~90°** 전 기종 최대 고각 + **GravityScale 1.15** 최대. 투석기가 던진 돌 —
+                //   뒤로 끌려 **높이 뜨고 늦게, 가파르게** 떨어진다. 정점이 사거리 중간보다 «뒤»로 간다.
+                case TankKind.Catapult:     return Aero(-8f);
+                // 마인랜더: 5~40° 저각 + **HP 1150 전 탱크 최고** = 둔중함이 정체성. 약하게 끌린다.
+                case TankKind.MineLander:   return Aero(-4f);
+                // 포세이돈: 미래 · 물. 무겁게 얹혀 가는 느낌 — 약한 뒤끌림.
+                case TankKind.Poseidon:     return Aero(-5f);
+                // 캐롯: **0~40°** 저각 + 삼연포탄. 앞으로 밀려 **낮고 빠르게** — 저각이 눈에 읽힌다.
+                case TankKind.Carrot:       return Aero(5f);
+                // 듀크: 0~55° + **GravityScale 0.95 전 기종 최저**. 길고 완만하게 뻗는다.
+                case TankKind.Duke:         return Aero(3f);
+                // 이온어태커: 미래 + **MoveSpeed 1.27 전 기종 최고**(가장 기민). 가장 날카롭게 평평하다.
+                case TankKind.IonAttacker:  return Aero(10f);
+
                 default:                    return default;                                                          // 남는 건 없다(13종 전부 위에 있다)
             }
         }
@@ -180,6 +240,21 @@ namespace Tankfall.Sim
         public static Vec3 Accel(float windX, float windZ, float windScale = 1f)
             => new Vec3(windX * WindCoeff * windScale, -Gravity, windZ * WindCoeff * windScale);
 
+        /// <summary>
+        /// 프로파일의 수평 가속을 «가속도 벡터»에 합친다. **여기 한 곳에서만 더한다.**
+        /// `horizRef` 는 수평 전방 기준 벡터(속도 또는 목표 방향) — Y 는 무시한다.
+        /// ⚠️ 호출부에서 각자 더하게 두면 한 곳이 빠져 「믿음과 현실이 다른 하늘」이 된다.
+        ///    그래서 **fp 를 받는 함수들이 내부에서** 이걸 부른다.
+        /// </summary>
+        public static Vec3 AeroAccel(Vec3 accel, Vec3 horizRef, in FlightProfile fp)
+        {
+            if (!fp.HasAero) return accel;
+            var h = new Vec3(horizRef.X, 0f, horizRef.Z);
+            float l = h.Length;
+            if (l < 1e-6f) return accel;
+            return accel + h * (fp.AeroFwd / l);
+        }
+
         /// <summary>닫힌 해. 서버·AI·프리뷰·리플레이·킬캠이 전부 이 함수를 쓴다.</summary>
         public static Vec3 PositionAt(Vec3 p0, Vec3 v0, Vec3 accel, float t)
             => p0 + v0 * t + accel * (0.5f * t * t);
@@ -187,6 +262,7 @@ namespace Tankfall.Sim
         /// <summary>프로파일 포함 닫힌 해. 추진 구간은 dir₀ 방향 등가속, 그 뒤는 추진이 준 속도로 포물선.</summary>
         public static Vec3 PositionAt(Vec3 p0, Vec3 v0, Vec3 accel, float t, in FlightProfile fp)
         {
+            accel = AeroAccel(accel, v0, fp);            // 수평 상수 가속 = 중력·바람과 같은 취급
             if (!fp.HasThrust) return PositionAt(p0, v0, accel, t);
             Vec3 dir = v0.Normalized;
             float tb = MathF.Min(t, fp.BoostSec);
@@ -197,7 +273,7 @@ namespace Tankfall.Sim
         /// <summary>프로파일 포함 속도(유도 구간 진입 시 초기값으로 쓴다).</summary>
         public static Vec3 VelocityAt(Vec3 v0, Vec3 accel, float t, in FlightProfile fp)
         {
-            Vec3 v = v0 + accel * t;
+            Vec3 v = v0 + AeroAccel(accel, v0, fp) * t;
             if (fp.HasThrust) v = v + v0.Normalized * (fp.Thrust * MathF.Min(t, fp.BoostSec));
             return v;
         }
@@ -209,6 +285,9 @@ namespace Tankfall.Sim
         public static bool SolveLaunchAngles(Vec3 from, Vec3 to, float speed, Vec3 accel, in FlightProfile fp,
                                              out AimSolution low, out AimSolution high)
         {
+            // 수평 기준은 **해에 의존하지 않는** 「쏘는 쪽 → 목표」 방향으로 잡는다 — 그래야 결합이 없어
+            // 반복 없이 정확히 풀린다(바람이 있으면 해의 야우는 조금 달라지지만, 그 차이는 [2] 24발이 잡는다).
+            accel = AeroAccel(accel, to - from, fp);
             if (!fp.HasThrust) return SolveLaunchAngles(from, to, speed, accel, out low, out high);
             float add = fp.Thrust * fp.BoostSec;
             float shift = 0.5f * fp.Thrust * fp.BoostSec * fp.BoostSec;

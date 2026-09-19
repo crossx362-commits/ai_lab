@@ -177,7 +177,7 @@ static class BallisticsVerify
             }
         }
 
-        Console.WriteLine("\n[3-1] ★ 추진 프로파일 조준 역산 — 등가 포물선이 정확하면 오차가 순수 포물선과 같아야 한다");
+        Console.WriteLine("\n[3-1] ★ 비행 프로파일 조준 역산 — 프로파일을 무시하면 크게 빗나가야 한다(쌍으로 본다)");
         {
             var v = Vol(Flat);
             var from = new Vec3(100f, 12f, 20f);
@@ -192,7 +192,10 @@ static class BallisticsVerify
             foreach (TankKind kind in Enum.GetValues(typeof(TankKind)))
             {
                 var st = TankStats.For(kind, ShellKind.Normal);
-                if (!st.Flight.HasThrust) continue;      // 캐논 등 순수 포물선은 여기 대상이 아니다
+                // ⚠️ `HasAero` 도 반드시 포함한다(2026-09-19). 수평 상수 가속은 **역산기의 새 경로**이고
+                //    (`AeroAccel` 이 가속도 벡터를 바꾼다) 여기 말고는 네거티브 컨트롤이 없다.
+                //    `HasThrust` 만 보면 아에로 전용 6종이 **검증 0회**로 통과한다.
+                if (!st.Flight.HasThrust && !st.Flight.HasAero) continue;   // 캐논(순수 포물선)만 제외된다
                 var acc = st.AccelWith(3f, 0f);
                 var fp = st.Flight;
                 // 네거티브 컨트롤: 프로파일을 **무시하고** 풀면 크게 빗나가야 한다(추진이 실제로 궤적을 바꾼다는 증거)
@@ -215,7 +218,12 @@ static class BallisticsVerify
                 }
                 bool ok = worstProfile < 2.5f && worstNaive > worstProfile + 3f;
                 allOk &= ok;
-                Console.WriteLine($"    {(ok ? "✅" : "❌")} {st.Name,-8} 추진 {fp.Thrust:F0}m/s²×{fp.BoostSec:F1}s  프로파일 역산 오차 {worstProfile,5:F1}m   (무시하면 {worstNaive,5:F1}m)");
+                // ⚠️ 라벨에 **아에로도 찍는다.** 「추진 0m/s²×0.0s」만 찍으면 아에로 전용 기종이
+                //    «프로파일이 없는데 왜 검사하나»로 읽힌다 — 이름이 거짓말하는 자리다.
+                string tag = (fp.HasThrust ? $"추진 {fp.Thrust:F0}m/s²×{fp.BoostSec:F1}s" : "")
+                           + (fp.HasThrust && fp.HasAero ? " + " : "")
+                           + (fp.HasAero ? $"수평 {fp.AeroFwd:+0;-0}m/s²" : "");
+                Console.WriteLine($"    {(ok ? "✅" : "❌")} {st.Name,-8} {tag,-30} 역산 오차 {worstProfile,5:F1}m   (무시하면 {worstNaive,5:F1}m)");
             }
             if (!allOk) { Console.WriteLine("    ❌ 추진 프로파일 역산 실패"); Fail++; }
         }
