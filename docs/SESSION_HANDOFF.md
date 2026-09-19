@@ -250,11 +250,11 @@ sdf/play/turn/shell/nice/guide/aimove/shellpick · `-uiselftest` 9/9 전부 통�
 
 **① 먼저 지금 값(g=30)으로 몇 발** — 감을 잡는다.
 ```bash
-open -a "$PWD/projects/tank-artillery/unity/Build/Tankfall.app" --args -practice -screen-width 1600 -screen-height 900 -screen-fullscreen 0
+open -a /Users/junholee/ai_lab/projects/tank-artillery/unity/Build/Tankfall.app --args -practice -screen-width 1600 -screen-height 900 -screen-fullscreen 0
 ```
 **② 앱을 닫고, 중력을 절반으로 낮춰 같은 자리에서 몇 발** — 화면 상단에 **「중력 대조군 g=15」**가 뜬다(안 뜨면 인자가 안 먹은 것이다).
 ```bash
-open -a "$PWD/projects/tank-artillery/unity/Build/Tankfall.app" --args -practice -g 15 -screen-width 1600 -screen-height 900 -screen-fullscreen 0
+open -a /Users/junholee/ai_lab/projects/tank-artillery/unity/Build/Tankfall.app --args -practice -g 15 -screen-width 1600 -screen-height 900 -screen-fullscreen 0
 ```
 
 **무엇을 보나** — 「멀리 간다」는 당연하다(중력 절반이니 같은 파워로 두 배 난다). 그건 답이 아니다.
@@ -268,7 +268,7 @@ open -a "$PWD/projects/tank-artillery/unity/Build/Tankfall.app" --args -practice
 
 평소대로 켜고 **끝까지** 한다(결과 화면까지 가야 저장된다 — 중간에 끄면 아무것도 안 쌓인다).
 ```bash
-open -a "$PWD/projects/tank-artillery/unity/Build/Tankfall.app"
+open -a /Users/junholee/ai_lab/projects/tank-artillery/unity/Build/Tankfall.app
 ```
 - **§2-5-0 의 18초/턴** — 결과 화면의 **「내 턴 평균 ○○초 · 전체 턴 평균 ○○초」**를 알려 주면 된다.
   §2-5-0 의 "분" 열이 전부 그 **가정** 위에 서 있는데 아직 아무도 안 쟀다.
