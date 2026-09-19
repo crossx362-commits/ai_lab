@@ -530,6 +530,94 @@ namespace Tankfall.View
                     mm.Chamfer(new Vector3(-cw * 0.3f, s.TurretHeight * 1.1f + 0.16f + m * 0.3f, -cl * 0.22f), new Vector3(0.22f, 0.26f, 0.22f), 0.06f);
             }
 
+            // ══════════════════════════════════════════════════════════════
+            //  디테일 파츠(2026-09-19 오너 지시 "탱크 모델도 디테일하게")
+            //
+            //  그 전까지 차체는 **매끈한 덩어리 하나**였다 — 해치·배기구·전조등·안테나·리벳이 하나도 없어서
+            //  가까이서 보면 색칠한 상자였다. 실루엣은 차대가, **"기계"라는 느낌은 이 작은 것들이** 만든다.
+            //
+            //  ⚠️ 계열마다 다르게 붙인다. 전 기종에 같은 걸 붙이면 13종이 다시 한 덩어리로 보인다 —
+            //     고전은 리벳·공구함(손으로 만든 것), 근대는 배기구·전조등(기계), 현대는 안테나·해치(장비),
+            //     미래는 발광 통풍구(에너지). 선택 화면의 계열 구분과 눈으로 이어진다.
+            //  ⚠️ 크기는 전부 **차체 비례**다. 절대 수치를 적으면 큰 기종에서 먼지처럼 보인다.
+            //  ⚠️ 콜라이더·판정과 무관한 순수 장식이다. 포구 위치(fireZ)나 히트박스에 영향 주지 마라.
+            // ══════════════════════════════════════════════════════════════
+            {
+                var dtl = Part("HullDetail", root, trackMat);     // 어두운 금속 — 볼트·배기구·고리·안테나
+                var lamp = Part("HullLamp", root, accentMat);     // 팀색 강조 — 전조등·통풍구
+                float W2 = s.BodyWidth, H2 = s.BodyHeight, L2 = s.BodyLength;
+                float deck = bodyY0 + H2;                          // 차체 윗면
+                float nose = L2 * 0.5f, tail = -L2 * 0.5f;
+
+                // ── 공통: 전조등 · 견인고리 ──
+                // 호버는 앞이 낮게 떠 있어 고리가 땅에 닿아 보인다 — 전조등만 준다.
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    // ⚠️ 앞면 파츠는 **차체 밖으로** 내야 한다. 처음에 `nose - 0.04` 에 뒀더니
+                    //    차체 안에 통째로 묻혀 화면에 가는 선 하나로만 보였다(실측).
+                    //    표면에 얹으려면 중심을 `nose + 깊이/2` 로 둔다.
+                    lamp.Chamfer(new Vector3(side * W2 * 0.30f, bodyY0 + H2 * 0.66f, nose + 0.07f),
+                                 new Vector3(W2 * 0.17f, H2 * 0.26f, 0.14f), 0.04f);          // 전조등
+                    if (chassis != Chassis.Hover)
+                        dtl.Box(new Vector3(side * W2 * 0.30f, bodyY0 + H2 * 0.14f, nose + 0.10f),
+                                new Vector3(W2 * 0.09f, H2 * 0.16f, 0.22f));                  // 견인고리
+                }
+
+                switch (era)
+                {
+                    case TankEra.Classic:
+                        // 손으로 만든 것 — 굵은 리벳이 옆면을 따라 줄지어 박힌다 + 나무 공구함
+                        for (int side = -1; side <= 1; side += 2)
+                            for (int i = 0; i < 5; i++)
+                            {
+                                float t = -0.34f + i * 0.17f;
+                                dtl.Box(new Vector3(side * (W2 * 0.5f + 0.02f), bodyY0 + H2 * 0.55f, L2 * t),
+                                        new Vector3(0.07f, 0.12f, 0.12f));
+                            }
+                        dtl.Chamfer(new Vector3(0f, deck + H2 * 0.10f, tail + L2 * 0.16f),
+                                    new Vector3(W2 * 0.34f, H2 * 0.22f, L2 * 0.20f), 0.04f);  // 공구함
+                        break;
+
+                    case TankEra.Early:
+                        // 기계 — 뒤로 배기구 두 대, 옆에 적재함
+                        for (int side = -1; side <= 1; side += 2)
+                        {
+                            dtl.CylinderX(new Vector3(side * W2 * 0.30f, deck + H2 * 0.12f, tail + L2 * 0.06f),
+                                          H2 * 0.09f, L2 * 0.26f, 8);
+                            dtl.Chamfer(new Vector3(side * (W2 * 0.5f + 0.06f), bodyY0 + H2 * 0.72f, -L2 * 0.22f),
+                                        new Vector3(0.16f, H2 * 0.30f, L2 * 0.30f), 0.04f);   // 적재함
+                        }
+                        for (int i = 0; i < 5; i++)                                            // 앞면 리벳(밖으로 튀어나오게)
+                            dtl.Box(new Vector3((-0.28f + i * 0.14f) * W2, bodyY0 + H2 * 0.30f, nose + 0.04f),
+                                    new Vector3(0.10f, 0.12f, 0.09f));
+                        break;
+
+                    case TankEra.Modern:
+                        // 장비 — 안테나 + 배기 그릴(가는 줄 여럿이 "그릴"로 읽힌다)
+                        dtl.Box(new Vector3(W2 * 0.34f, deck + H2 * 0.9f, tail + L2 * 0.10f),
+                                new Vector3(0.05f, H2 * 1.8f, 0.05f));                        // 안테나
+                        for (int i = 0; i < 5; i++)
+                            dtl.Box(new Vector3(0f, deck + 0.03f, tail + L2 * (0.08f + i * 0.045f)),
+                                    new Vector3(W2 * 0.46f, 0.05f, 0.05f));                   // 그릴 살
+                        break;
+
+                    default:
+                        // 미래 — 옆구리 발광 통풍구 셋(팀색). 리벳은 안 붙인다(용접 없는 세대).
+                        for (int side = -1; side <= 1; side += 2)
+                            for (int i = 0; i < 3; i++)
+                                lamp.Box(new Vector3(side * (W2 * 0.5f + 0.01f), bodyY0 + H2 * 0.55f, L2 * (-0.18f + i * 0.17f)),
+                                         new Vector3(0.04f, H2 * 0.30f, L2 * 0.10f));
+                        dtl.Box(new Vector3(-W2 * 0.34f, deck + H2 * 0.8f, tail + L2 * 0.10f),
+                                new Vector3(0.04f, H2 * 1.5f, 0.04f));                        // 가는 안테나
+                        break;
+                }
+
+                // ── 포탑 해치 ── 계열 무관. 뚜껑과 테를 겹쳐야 "열리는 것"으로 읽힌다.
+                var th = Part("TurretHatch", turret, trackMat);
+                th.CylinderY(new Vector3(-cw * 0.18f, s.TurretHeight * 0.92f, -cl * 0.26f), s.TurretRadius * 0.30f, 0.06f, 10);
+                th.CylinderY(new Vector3(-cw * 0.18f, s.TurretHeight * 0.98f, -cl * 0.26f), s.TurretRadius * 0.23f, 0.07f, 10);
+            }
+
             // --- 무기(포신 자리). 기종마다 통째로 다르다 ---
             barrel = new GameObject("Barrel").transform;
             barrel.SetParent(turret, false);

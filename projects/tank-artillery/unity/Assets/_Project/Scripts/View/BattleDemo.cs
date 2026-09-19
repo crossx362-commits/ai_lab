@@ -2626,7 +2626,9 @@ namespace Tankfall.View
             HudItems(u, W, H);
             HudLog(W, H);
             if (!_practice && !_gallery) { DrawTurnOrder(W); DrawMiniMap(W, H); }   // 갤러리 13대는 TurnOrder 미등록 — 그리면 매 프레임 예외
-            DrawTankHpBars();        // 피해 숫자(팝업)보다 **먼저** — 팝업이 위에 떠야 읽힌다
+            // ⚠️ 갤러리(-gallery)는 **모델 전시 화면**이다 — 13대 머리 위 체력바가 정작 봐야 할
+            //    차체·포탑을 가린다. 전투가 아니라 모델을 보는 자리에는 안 그린다.
+            if (!_gallery) DrawTankHpBars();   // 피해 숫자(팝업)보다 **먼저** — 팝업이 위에 떠야 읽힌다
             DrawPopups();
 
             if (_screen == GameScreen.Pause) DrawPause(W, H);
