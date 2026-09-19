@@ -4224,6 +4224,12 @@ namespace Tankfall.View
                 //    언덕에 가려 **한 번도 제대로 안 보였다.** 「안 보인다」와 「그 카메라가 안 본다」를
                 //    가르려면 **기후를 정면으로 보는 고정 포즈**가 하나 있어야 한다. 갤러리와 같은 발상이다.
                 //    ⚠️ 기후가 없으면 안 찍는다 — 빈 들판 사진은 아무것도 증명하지 않는다.
+                // 맵 전경 — **「이 맵이 약속하는 형태가 화면에 있는가」**에 답하는 사진(§2-9-6-0).
+                // 전투 카메라는 탱크를 40m 에서 따라다녀 **맵의 형태를 한 번도 안 보여준다.**
+                // 기후·지뢰 전용 포즈와 같은 발상 — 물음이 다르면 사진도 달라야 한다.
+                case 2:  FramePose(new Vector3(MapSize * 0.5f, 0f, MapSize * 0.5f), MapSize * 0.62f,
+                                   new Vector3(-0.62f, 0.52f, -0.58f), 120f); break;
+                case 4:  Shot("00_맵전경"); break;
                 case 6:  ClimatePose(); break;
                 case 8:  if (_air.Any) Shot("10_기후"); break;
                 case 10: BoomPose(); break;

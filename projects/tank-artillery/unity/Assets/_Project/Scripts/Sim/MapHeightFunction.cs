@@ -195,10 +195,12 @@ namespace Tankfall.Sim
             float r = MathF.Sqrt(r2);
             float t = (r - 25f) / 70f;
             Smooth01(t, out float s, out float ds);
-            h = 4f + 10f * s;
+            // 🔑 진폭 10 → 20 (2026-09-19). 형태는 원래 «사발»이었는데 **280m 맵에 10m** 라
+            //    플레이 시점에서 «완만한 구릉»으로 읽혔다. 테두리와 바닥의 차이가 보여야 «분화구»다.
+            h = 3f + 20f * s;
             if (r > 1e-4f && ds != 0f)
             {
-                float dr = 10f * ds / 70f / r;
+                float dr = 20f * ds / 70f / r;
                 hx = dr * dx;
                 hz = dr * dz;
             }
@@ -302,9 +304,11 @@ namespace Tankfall.Sim
             float sign = x >= Center ? 1f : -1f;
 
             h = 3f; float du = 0f;
-            StepUp(u, 18f, 36f, 4f, ref h, ref du);      // 1단
-            StepUp(u, 52f, 70f, 4f, ref h, ref du);      // 2단 — 이 위(70~96m)가 스폰 단이다
-            StepUp(u, 96f, 114f, 4f, ref h, ref du);     // 3단(바깥 테)
+            // 🔑 단 높이 4 → 6 (2026-09-19). 4m 단은 280m 맵에서 «계단»으로 안 읽혔다 —
+            //    단마다 사거리가 끊기는 것이 이 맵의 전술인데 그게 화면에 없었다.
+            StepUp(u, 18f, 36f, 6f, ref h, ref du);      // 1단
+            StepUp(u, 52f, 70f, 6f, ref h, ref du);      // 2단 — 이 위(70~96m)가 스폰 단이다
+            StepUp(u, 96f, 114f, 6f, ref h, ref du);     // 3단(바깥 테)
 
             hx = sign * du;
             hz = 0f;
@@ -332,7 +336,8 @@ namespace Tankfall.Sim
         {
             float dx = x - Center;
             float half = MapSize * 0.30f;
-            const float depth = 9f, baseH = 8f;
+            // 🔑 깊이 9 → 16 · 바닥 8 → 12 (2026-09-19). «골짜기»는 양옆이 높아야 성립한다.
+            const float depth = 16f, baseH = 12f;
             float u = 1f - (dx * dx) / (half * half);
             if (u <= 0f) { h = baseH; hx = 0f; }
             else
@@ -350,7 +355,9 @@ namespace Tankfall.Sim
         {
             float dx = x - Center;
             float half = MapSize * 0.26f;
-            const float height = 11f, baseH = 5f;
+            // 🔑 높이 11 → 19 (2026-09-19). 가운데 «하나의 능선이 가로막는다»가 이 맵의 약속인데
+            //    11m 로는 넘기지 않고도 보였다. 막아야 돌아가거나 넘길 이유가 생긴다.
+            const float height = 19f, baseH = 4f;
             float u = 1f - (dx * dx) / (half * half);
             if (u <= 0f) { h = baseH; hx = 0f; }
             else
@@ -371,7 +378,8 @@ namespace Tankfall.Sim
         static void EvalBadlands(float x, float z, out float h, out float hx, out float hz)
         {
             float k = MathF.PI * 3f / MapSize;   // 맵 폭에 능선 3개
-            const float amp = 6f, baseH = 7f;
+            // 🔑 진폭 6 → 11 (2026-09-19). «여러 줄의 능선과 골»이 약속인데 6m 물결은 벌판으로 읽혔다.
+            const float amp = 11f, baseH = 9f;
             float dx = x - Center;
             float cxm = MathF.Cos(dx * k);
             h = baseH + amp * cxm;
