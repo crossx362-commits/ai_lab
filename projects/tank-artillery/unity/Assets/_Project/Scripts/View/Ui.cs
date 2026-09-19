@@ -150,6 +150,20 @@ namespace Tankfall.View
         public static void Text(Rect r, string s, int size, Color c, TextAnchor anchor = TextAnchor.MiddleLeft, bool bold = false)
             => GUI.Label(r, s, Style(size, c, anchor, bold));
 
+        /// <summary>
+        /// 줄바꿈되는 텍스트. 공용 <see cref="Style"/> 은 `wordWrap = false` 라 **긴 문장이 조용히 잘린다** —
+        /// 화면 밖으로 넘친 게 아니라 그냥 안 보인다. 설명문처럼 길이를 예측 못 하는 것만 이걸 쓴다.
+        /// ⚠️ 스타일 인스턴스를 따로 둔다. 공용 것의 `wordWrap` 을 켰다 껐다 하면
+        ///    같은 프레임의 다른 위젯이 **호출 순서에 따라** 달라진다.
+        /// </summary>
+        static GUIStyle _sw;
+        public static void TextWrap(Rect r, string s, int size, Color c, TextAnchor anchor = TextAnchor.UpperLeft)
+        {
+            if (_sw == null) _sw = new GUIStyle(GUI.skin.label) { richText = true, wordWrap = true };
+            _sw.fontSize = size; _sw.alignment = anchor; _sw.normal.textColor = c;
+            GUI.Label(r, s, _sw);
+        }
+
         /// <summary>글자 뒤에 옅은 그림자를 깔아 밝은 지형 위에서도 읽히게 한다.</summary>
         public static void TextShadow(Rect r, string s, int size, Color c, TextAnchor anchor = TextAnchor.MiddleLeft, bool bold = false)
         {

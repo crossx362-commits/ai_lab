@@ -23,8 +23,10 @@ namespace Tankfall.View
 
         // --- 전투 ---
         const int MaxHp = 1000;
-        const float BlastRadius = 7f;        // 일반탄(§2-4)
-        const float BaseDamage = 300f, DirectDamage = 100f;
+        // 🗑️ 2026-09-19 삭제: `BlastRadius 7` · `BaseDamage 300` · `DirectDamage 100` 이 여기 상수로 있었다.
+        //    **아무도 안 읽는 낡은 사본**이었다 — 실동작은 전부 `_shooterStats.*`(= `TankStats.Get(kind)`)를 본다.
+        //    남겨 두면 다음 사람이 여기를 고치고 "게임이 안 바뀐다"고 헤맨다(실제로 그런 자리였다).
+        //    폭발 반경·피해의 단일 소스는 `Sim/TankStats.cs` 뿐이다. 여기에 다시 적지 마라.
         const float TankRadius = 2.0f;
         const float MoveGaugeMax = 100f;
 
@@ -2525,6 +2527,19 @@ namespace Tankfall.View
             }
             if (fail == 0 && ok == 13) Debug.Log("[Tankfall] ✅ 원작 13종 전부 게임에 세울 수 있다(수치·외형·2번탄·궁극기)");
             else Debug.Log($"[Tankfall] ❌ 로스터 자체검사 실패 {fail}건 (확인 {ok}/13)");
+            // ── 2번탄 설명이 HUD 칸에 들어가는가 (2026-09-19) ──
+            // 설명은 `Ui.TextWrap` 이 두 줄까지 접어 준다. 그보다 길면 **조용히 잘린다** —
+            // 화면에서 알아채기 어려운 종류의 고장이라 글자 수로 미리 막는다.
+            // 근거: 칸 너비 244px · 글자 크기 9 → 한글 한 자 ≈ 9px → 줄당 ≈ 27자 → 두 줄 ≈ 54자. 여유를 두고 50.
+            const int DescBudget = 50;
+            foreach (TankKind dk in System.Enum.GetValues(typeof(TankKind)))
+            {
+                var dfx = ShellEffects.Of(dk, ShellKind.Special);
+                if (string.IsNullOrEmpty(dfx.EffectDesc))
+                { Debug.Log($"[Tankfall] ❌ {TankStats.Get(dk).Name}: 2번탄 설명이 비었다"); fail++; continue; }
+                if (dfx.EffectDesc.Length > DescBudget)
+                { Debug.Log($"[Tankfall] ❌ {TankStats.Get(dk).Name}: 2번탄 설명 {dfx.EffectDesc.Length}자 > {DescBudget}자 — HUD 에서 잘린다"); fail++; }
+            }
             Application.Quit(fail == 0 && ok == 13 ? 0 : 1);
         }
 
@@ -2787,14 +2802,16 @@ namespace Tankfall.View
         void HudWeapons(Unit u, float W, float H)
         {
             var sp = TankStats.For(u.Kind, ShellKind.Special, u.HpFrac, u.W);
-            var r = new Rect(W - 268f, H - 118f, 260f, 110f);
+            // ⚠️ 높이 110 → 134 (2026-09-19, 2번탄 설명 두 줄). 위로 자라므로 **미니맵과 겹친다** —
+            //    `DrawMiniMap` 의 아래 여백(152)이 이 높이를 보고 정해져 있다. 한쪽만 바꾸지 마라.
+            var r = new Rect(W - 268f, H - 142f, 260f, 134f);
             Ui.Box(r);
 
             var names = new[] { "일반탄", sp.Name, "SS", "궁극" };
             bool ssReady = u.Skill.CanSs(), ultReady = u.Skill.CanUltimate();
             for (int i = 0; i < 4; i++)
             {
-                var slot = new Rect(r.x + 6f + i * 62f, r.y + 8f, 58f, 40f);
+                var slot = new Rect(r.x + 6f + i * 62f, r.y + 6f, 58f, 34f);
                 bool sel = i == 0 ? u.Shell == ShellKind.Normal
                          : i == 1 ? (u.Shell == ShellKind.Special && !_useSs && !_useUlt)
                          : i == 2 ? _useSs
@@ -2807,13 +2824,33 @@ namespace Tankfall.View
                         usable ? (sel ? Ui.Ink : Ui.Dim) : new Color(0.45f, 0.45f, 0.48f), TextAnchor.MiddleCenter, sel);
             }
 
+            // ── 2번탄이 **뭘 하는지** (2026-09-19) ──
+            // 그 전까지 전투 중에 2번탄 설명을 볼 통로가 **아예 없었다** — 이름만 보고 쏘고,
+            // 뭐가 일어났는지는 착탄 로그로만 알았다. 고를 수 있는데 뭔지 모르면 선택지가 아니다.
+            // ⚠️ 문장·수치는 `ShellEffects.EffectInfo` 가 유일 소스다. 여기서 다시 쓰지 마라 —
+            //    두 곳에 적으면 효과를 바꿀 때 HUD 만 낡는다.
+            {
+                bool normal = u.Shell == ShellKind.Normal;
+                var fx = ShellEffects.Of(u.Kind, ShellKind.Special);
+                string head = normal ? "일반탄" : $"{sp.Name}{(fx.EffectName.Length > 0 ? $" · {fx.EffectName}" : "")}"
+                                                 + (_useUlt ? "  <color=#ffb24a>[궁극 — 핵]</color>" : _useSs ? "  <color=#ffd86b>[SS]</color>" : "");
+                string body = normal
+                    ? "특수 효과 없음 — 폭발·굴착만 본다"
+                    : fx.EffectDesc + (Spread.Pattern(u.Kind, ShellKind.Special, _useUlt).Count > 1
+                                       ? $"  ({Spread.Pattern(u.Kind, ShellKind.Special, _useUlt).Count}발)" : "");
+                Ui.Text(new Rect(r.x + 8f, r.y + 41f, r.width - 16f, 14f), head, 10, normal ? Ui.Dim : Ui.Mark, TextAnchor.MiddleLeft, true);
+                // ⚠️ **줄바꿈되는 텍스트여야 한다.** 설명은 기종마다 길이가 달라서(가장 긴 것은 독구름)
+                //    한 줄로 그리면 끝이 **조용히 잘린다** — 잘린 걸 화면에서 알아채기 어렵다.
+                Ui.TextWrap(new Rect(r.x + 8f, r.y + 55f, r.width - 16f, 26f), body, 9, Ui.Dim);
+            }
+
             // 나이스샷 포인트 — SS 해금까지 얼마나 남았는지(§2-9-2). 차오르는 게 보여야 표시점을 맞출 이유가 생긴다.
             // 나이스샷 게이지 — 문턱이 둘이다(SS 2점 · 궁극 4점). 두 눈금을 같이 그려야 "얼마나 더" 가 보인다.
-            var pb = new Rect(r.x + 8f, r.y + 56f, r.width - 16f, 9f);
+            var pb = new Rect(r.x + 8f, r.y + 84f, r.width - 16f, 8f);
             Ui.Bar(pb, u.Skill.Points / (float)NiceShot.UltimateCost, ultReady ? Ui.Power : ssReady ? Ui.Mark : Ui.Gauge, null, Ui.Border);
             Ui.Ticks(pb, NiceShot.UltimateCost, new Color(0f, 0f, 0f, 0.35f));
             Ui.Tick(pb, NiceShot.SsCost / (float)NiceShot.UltimateCost, Ui.Mark, 2f);     // SS 문턱
-            Ui.Text(new Rect(r.x + 8f, r.y + 66f, r.width - 16f, 16f),
+            Ui.Text(new Rect(r.x + 8f, r.y + 93f, r.width - 16f, 15f),
                     ultReady ? $"<b>궁극 사용 가능</b> (4)  나이스샷 {u.Skill.Points}/{NiceShot.UltimateCost}"
                     : ssReady ? $"<b>SS 사용 가능</b> (3)  나이스샷 {u.Skill.Points}/{NiceShot.UltimateCost}"
                               : $"나이스샷 {u.Skill.Points}/{NiceShot.UltimateCost}  <size=9>(SS {NiceShot.SsCost} · 궁극 {NiceShot.UltimateCost})</size>",
@@ -2827,10 +2864,12 @@ namespace Tankfall.View
                 int left = _impair.TurnsLeft(u.Id, ik);
                 if (left > 0) imb.Append($"  <color=#f88>{Impair.Name(ik)} {left}턴</color>");
             }
-            if (imb.Length > 0)
-                Ui.Text(new Rect(r.x + 8f, r.yMax - 40f, r.width - 16f, 18f), "방해:" + imb, 10, Ui.Dim);
-            Ui.Text(new Rect(r.x + 8f, r.yMax - 22f, r.width - 16f, 18f),
-                    $"폭발 {u.St.BlastRadius:F1}m · 굴착 {u.St.CraterRadius:F1}m · 직격 +{u.St.DirectDamage:F0}", 10, Ui.Dim);
+            // ⚠️ 방해탄과 수치를 **한 줄에** 담는다 — 2번탄 설명 두 줄이 들어오며 칸이 하나 줄었다.
+            //    패널을 위로 키우면 미니맵(H-260~H-128)과 겹친다. 방해는 걸렸을 때만 나오므로 앞에 붙인다.
+            //    (상태이상 자체는 팀 패널 뱃지가 항상 따로 보여준다 — 여기가 유일한 통로는 아니다.)
+            Ui.Text(new Rect(r.x + 8f, r.yMax - 17f, r.width - 16f, 15f),
+                    (imb.Length > 0 ? "방해:" + imb + "   " : "")
+                    + $"폭발 {u.St.BlastRadius:F1}m · 굴착 {u.St.CraterRadius:F1}m · 직격 +{u.St.DirectDamage:F0}", 9, Ui.Dim);
         }
 
         /// <summary>

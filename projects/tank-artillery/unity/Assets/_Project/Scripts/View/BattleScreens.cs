@@ -1009,7 +1009,10 @@ namespace Tankfall.View
         void DrawMiniMap(float W, float H)
         {
             const float S = 132f;
-            var r = new Rect(W - S - 10f, H - S - 128f, S, S);
+            // ⚠️ 아래 여백 128 → 152 (2026-09-19). 무기 패널이 **2번탄 설명 두 줄만큼** 커져서
+            //    그대로 두면 미니맵 아랫변과 겹쳤다. 두 값은 서로를 보고 있다 —
+            //    무기 패널 높이(`HudWeapons` 의 134)를 바꾸면 여기도 같이 봐라.
+            var r = new Rect(W - S - 10f, H - S - 152f, S, S);
             // ⚠️ 기본 패널(알파 0.78)은 여기선 너무 비친다 — 나무·언덕이 통과해 보여 점과 섞였다.
             //    미니맵은 **화면에서 유일한 전장 개관**이라 배경이 조용해야 한다.
             Ui.Box(r, new Color(0.03f, 0.05f, 0.07f, 0.95f));
@@ -1372,6 +1375,15 @@ namespace Tankfall.View
                     _phase = Phase.Fire; _phaseTimer = FirePhaseSec * 0.5f;
                     _charging = true; _power = 0.62f; _mark = 0.74f;
                     // 게이지가 궁극기까지 찬 모습을 찍는다 — 슬롯 4칸이 전부 살아 있는 상태가 검사 대상이다
+                    for (int i = 0; i < NiceShot.UltimateCost; i++) _units[_turn].Skill.OnNiceShot();
+                    // 2번탄을 골라 둔다 — **설명 줄이 실제로 그려진 사진**이 남아야 한다(2026-09-19).
+                    // ⚠️ 그냥 첫 유닛을 쓰면 캐논이 잡히는데 캐논 2번탄은 `EffectType.None` 이라
+                    //    "특수 효과 없음" 한 줄만 찍힌다 — **정작 검사하려는 경로(효과 설명)가 안 찍힌다.**
+                    //    그래서 팀에서 **효과가 있는 기종**을 골라 턴을 준다(로스터가 바뀌어도 성립한다).
+                    int fxTurn = _units.FindIndex(o => o.Team == 0 && o.Alive
+                                   && ShellEffects.Of(o.Kind, ShellKind.Special).Type != ShellEffects.EffectType.None);
+                    if (fxTurn >= 0) _turn = fxTurn;
+                    _units[_turn].Shell = ShellKind.Special; _useSs = false; _useUlt = false;
                     for (int i = 0; i < NiceShot.UltimateCost; i++) _units[_turn].Skill.OnNiceShot();
                     break;
                 case 7: _screen = GameScreen.Pause; break;

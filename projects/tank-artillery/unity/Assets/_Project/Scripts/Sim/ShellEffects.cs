@@ -80,6 +80,15 @@ namespace Tankfall.Sim
         }
 
         /// <summary>유닛에 화상 감염.</summary>
+        /// <summary>
+        /// 🗑️ **게임 호출부 0곳 (2026-09-19 실측).** `tools/ShellPickVerify.cs` 만 부른다.
+        ///
+        /// 캐터펄트 2번탄(`EffectType.Burn`)은 실제로는 **착탄점 지속불**(`HazardField.PlaceFire`)로 처리된다.
+        /// 그런데 `AiGunner` 는 같은 효과를 <see cref="BurnGain"/> 으로 **유닛 화상**처럼 점수 매긴다 —
+        /// **AI 의 평가와 실제 효과가 어긋나 있다.**
+        /// ⚠️ 배선하면 **피해량이 실제로 바뀐다 = 밸런스.** 오너 지시 전까지 연결하지 마라(2026-09-18 금지).
+        ///    지우지도 마라 — 어긋남이 보이는 상태로 두는 것이 지금의 결정이다(인수인계에 대기 항목으로 있다).
+        /// </summary>
         public void Burn(int id, int dmgPerTurn, int turns)
         {
             if (dmgPerTurn <= 0) return;
@@ -120,6 +129,11 @@ namespace Tankfall.Sim
         }
 
         /// <summary>이 유닛의 상태이상(독·화상·속박)을 전부 지운다. 궁극기 "정화"(§2-9-12)가 쓴다.</summary>
+        /// <summary>
+        /// 🗑️ **호출부 0곳 (2026-09-19 실측).** 게임도 `tools/` 도 부르지 않는다.
+        /// 명세 §8 은 "✅구현"이라 적어 놨지만 **해제해 주는 주체가 없다** — 정화 아이템·스킬이 없기 때문이다.
+        /// 지우지 않는 이유는 위 <see cref="Burn"/> 과 같다(대기 항목).
+        /// </summary>
         public void Cleanse(int id)
         {
             _poison.Remove(id); _burn.Remove(id); _rooted.Remove(id);
@@ -563,6 +577,40 @@ namespace Tankfall.Sim
             public EffectType Type;
             public int Param1;  // 피해/회복량 등
             public int Param2;  // 지속 턴수 등
+
+            /// <summary>HUD·로그에 쓸 짧은 이름.</summary>
+            public string EffectName => Type switch
+            {
+                EffectType.Poison => "독",
+                EffectType.Burn => "지속불",
+                EffectType.PoisonCloud => "독구름",
+                EffectType.Root => "속박",
+                EffectType.Mine => "지뢰",
+                EffectType.SatelliteStrike => "위성탄",
+                EffectType.Homing => "유도",
+                _ => "",
+            };
+
+            /// <summary>
+            /// 전투 중에 보여줄 한 줄 설명(§2-9 2번탄). 이게 없으면 플레이어는 2번탄이 **뭘 하는지 모른 채** 쏜다.
+            ///
+            /// ⚠️ **문장에 수치를 박지 마라.** 전부 `Param1`/`Param2` 에서 유도한다 —
+            ///    숫자를 적어 두면 효과 수치를 바꿨을 때 **설명만 낡아 거짓말**이 된다(이 프로젝트의 단골 사고).
+            /// ⚠️ 설명은 **실제 코드가 하는 일**을 적는다. `Burn` 은 이름과 달리 유닛 화상이 아니라
+            ///    **착탄점 지속불(HazardField.PlaceFire)** 로 처리된다(`BattleDemo` 착탄 분기) — 그대로 적었다.
+            ///    유닛 화상(`StatusEffects.Burn`)은 게임 호출부가 0곳이다. 아래 그 함수 머리말 참조.
+            /// </summary>
+            public string EffectDesc => Type switch
+            {
+                EffectType.Poison => $"맞은 적이 {Param2}턴 동안 매 턴 {Param1} 피해 (덮어쓰기 — 겹쳐도 안 쌓인다)",
+                EffectType.Burn => $"착탄점에 불이 남아 그 위에 선 적이 매 턴 {Param1} 피해 ({Param2}턴)",
+                EffectType.PoisonCloud => $"착탄점에 독구름이 남아 그 안에 선 적이 매 턴 {Param1} 피해 ({Param2}턴)",
+                EffectType.Root => $"맞은 적이 {Param1}턴 동안 이동 불가",
+                EffectType.Mine => $"착탄점에 지뢰를 남긴다 — 밟으면 {Param1} 피해",
+                EffectType.SatelliteStrike => "위성이 표적 지점을 수직으로 내리친다 — 지형에 가리지 않는다",
+                EffectType.Homing => "착탄점이 근처 적에게 끌린다 (유도)",
+                _ => "특수 효과 없음 — 피해·폭발·굴착 수치만 다르다",
+            };
         }
 
         /// <summary>탱크와 탄종에 따른 효과 정보.</summary>

@@ -84,6 +84,23 @@ static class ShellPickVerify
         }
 
         // ═══════════════════════════════════════════════════════════
+        // ⚠️ **알려진 어긋남을 눈에 보이게 찍는다 (2026-09-19).**
+        //    판정(rc)에는 영향을 주지 않는다 — 고치는 것이 **밸런스**라 오너 지시 전까지 금지이기 때문이다.
+        //    그렇다고 아무 데도 안 적으면 다음 사람이 "AI 가 왜 캐터펄트 2번탄을 과대평가하지"를
+        //    처음부터 다시 판다. **못 고칠 것은 적어도 보이게 둔다.**
+        {
+            var fx = ShellEffects.Of(TankKind.Catapult, ShellKind.Special);
+            var probe = new StatusEffects();
+            int aiScore = probe.BurnGain(1, fx.Param1, fx.Param2);
+            Console.WriteLine("\n[2-1] ⚠️ 알려진 어긋남 — 캐터펄트 2번탄: AI 평가 ≠ 실제 효과");
+            Console.WriteLine($"    AI 평가(AiGunner.EffectValue → BurnGain): {aiScore} (= 유닛 화상 {fx.Param1}×{fx.Param2}턴 총량)");
+            Console.WriteLine( "    실제 효과(BattleDemo 착탄 분기)        : 착탄점 지속불 HazardField.PlaceFire");
+            Console.WriteLine( "                                            — 유닛 화상 StatusEffects.Burn 은 **게임 호출부 0곳**");
+            Console.WriteLine( "    → AI 는 '맞은 적이 확정으로 받는 피해'로 점수를 주지만, 실제로는 **그 자리에 서 있어야만** 받는다.");
+            Console.WriteLine( "    🛑 배선하면 피해량이 바뀐다 = 밸런스. 오너 지시 전까지 고치지 마라(rc 에 영향 없음).");
+        }
+
+        // ═══════════════════════════════════════════════════════════
         Console.WriteLine("\n[3] PickShell 이 그 값을 실제로 읽는가 — 거리를 훑어 선택이 바뀌는 지점을 찾는다");
         Console.WriteLine("    캐터펄트(화상 40×3). 멀쩡한 적 vs 이미 화상 걸린 적.\n");
         {
