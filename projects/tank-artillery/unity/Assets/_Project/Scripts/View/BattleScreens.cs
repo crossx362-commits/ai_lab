@@ -503,6 +503,19 @@ namespace Tankfall.View
                 _screen = savedScreen; _showHelp = savedHelp;
             }
 
+            // 3-1) 눈이 **몸에 붙은 불**도 끄는가 (2026-09-19 (b) 배선)
+            //      장판 불(`HazardField.ClearFires`)만 끄고 유닛 화상을 안 끄면
+            //      «바닥 불은 꺼지는데 탱크는 계속 타는» 비대칭이 된다. 그 자리를 코드가 지킨다.
+            {
+                var w0 = _weather;
+                SetWeather(Weather.Clear);
+                _status.Burn(4242, 40, 3);
+                Check(_status.HasDot(4242), "화상이 실제로 걸린다(대조군 — 안 걸리면 아래 검사가 무의미하다)");
+                SetWeather(Weather.Snow);
+                Check(!_status.HasDot(4242), "눈 → 몸에 붙은 불도 꺼진다(장판만 끄면 비대칭)");
+                SetWeather(w0);
+            }
+
             // 4) 승패 판정 — 동시 전멸은 무승부
             Check(WinnerText(0, 0) == "무승부", "0:0 → 무승부");
             Check(WinnerText(2, 0) == "아군 승리" && WinnerText(0, 1) == "적군 승리", "한쪽 생존 → 그쪽 승리");
@@ -892,7 +905,7 @@ namespace Tankfall.View
             { "아이템",    "판 시작에 무작위로 받는다" },
             { "날씨",      "눈이면 포세이돈이 강해진다" },
             { "Boom 모드", "지뢰밭 + 지진·유성(§2-9-16)" },
-            { "소리",      "좌우 = 설정 열기" },
+            { "소리",      "" },   // 설명 칸은 SoundSummary() 가 실시간으로 채운다
         };
         // ⚠️ 행 번호를 숫자로 적지 마라. 소리 행을 뒤에 붙이자 "마지막 행 = Boom" 가정이 깨졌다(자체검사 커서).
         const int SetupRowBoom = 4, SetupRowSound = 5;
@@ -912,7 +925,9 @@ namespace Tankfall.View
                 _boom ? "켬" : "끔",
                 // 🚨 **여기서 값을 고치지 않는다 — 보여주기만 한다.** 소리의 진짜 소스는 설정 화면 하나다.
                 //    같은 값을 두 화면에서 고치게 두면 "먼저 그리는 쪽이 이기는" 사고가 난다(옛 DrawPicker).
-                SoundSummary(),
+                // ⚠️ 값 칸(180px)에 요약을 통째로 넣었더니 **끝이 잘렸다**(실측: "…음악" 에서 끊김).
+                //    값 칸은 «무슨 일이 일어나는가»(열기)만, 실제 상태는 아래 설명 칸에 건다.
+                "열기",
             };
 
             int rows = SetupRows.GetLength(0);
@@ -926,7 +941,9 @@ namespace Tankfall.View
                 Ui.Text(new Rect(r.x + 16f, r.y, 150f, r.height), SetupRows[i, 0], 14, sel ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, sel);
                 Ui.Text(new Rect(r.x + 160f, r.y, 180f, r.height), (sel ? "< " : "  ") + values[i] + (sel ? " >" : ""),
                         14, sel ? Ui.Power : Ui.Ink, TextAnchor.MiddleCenter, sel);
-                Ui.Text(new Rect(r.x + 350f, r.y, 140f, r.height), SetupRows[i, 1], 9, Ui.Dim);
+                // 소리 행만 설명 칸이 **살아 있는 값**이다(나머지는 고정 안내문).
+                Ui.Text(new Rect(r.x + 350f, r.y, 150f, r.height),
+                        i == SetupRowSound ? SoundSummary() : SetupRows[i, 1], 9, Ui.Dim);
             }
 
             // 상자 폭을 인원에서 유도한다(130f 간격 × 인원 + 여백) — 넷째 이름이 상자 밖으로 삐져나갔던 자리.
@@ -1497,6 +1514,9 @@ namespace Tankfall.View
                     _stat[0] = new TeamStat { Shots = 14, Hits = 9, Damage = 2480, Taken = 1310 };
                     _stat[1] = new TeamStat { Shots = 13, Hits = 5, Damage = 1310, Taken = 2480 };
                     _battleClock = 372f;
+                    // 턴 시간 줄이 **숫자와 함께** 찍히게 한다 — 0턴이면 "0.0초"만 나와서
+                    // 정작 검사하려는 줄이 사진에 안 남는다(2번탄 설명에서 같은 실수를 한 번 했다).
+                    _humanSec = 186f; _humanTurns = 12; _aiSec = 24f; _aiTurns = 12;
                     break;
             }
         }

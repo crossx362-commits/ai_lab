@@ -2390,14 +2390,23 @@ namespace Tankfall.View
 
             // ④ 소리 설정을 한 화면으로 합친 뒤(2026-09-19)에도 **저장 키가 그대로인가**.
             //    자리만 옮긴 것이지 키를 바꾼 게 아니다 — 키가 바뀌면 오너가 이미 저장해 둔 값이 조용히 날아간다.
-            bool sfx0 = Sfx.SfxOff, mus0 = Sfx.MusicOff;
-            ToggleSfx(); ToggleMusic();
-            if (!PlayerPrefs.HasKey(Prefs.Namespace + "sfxoff") || !PlayerPrefs.HasKey(Prefs.Namespace + "musicoff"))
-            { Debug.Log("[Tankfall] ❌ 채널 저장 키(sfxoff·musicoff)가 없다 — 통합하며 키가 바뀌었다"); fail++; }
+            //
+            // 🚨 **처음엔 `ToggleSfx()` 로 쟀다가 「항상 빨강」인 검사를 만들 뻔했다(2026-09-19 실측).**
+            //    자체검사는 `_autoMode` 라 `SavePrefs()` 가 **일부러 아무것도 안 쓴다** —
+            //    하네스가 사람 저장값을 오염시키지 않으려고 그렇게 설계돼 있다(Prefs.cs 머리말).
+            //    그래서 UI 경로로 재면 배선이 멀쩡해도 키가 안 생긴다. 깨끗한 빌드에서도 ❌ 가 떴다.
+            //    → 재야 할 것은 UI 경로가 아니라 **`Prefs` 의 키 이름**이다. 대조군(깨끗한 빌드 = 초록)을
+            //      같이 안 봤으면 영영 빨간 게이트를 심을 뻔했다.
+            var keyProbe = new Prefs.Settings { Map = 0, Difficulty = 0, ItemSlots = 1, Weather = 0,
+                                                Boom = false, SfxOff = true, MusicOff = true, Roster = "Cannon" };
+            Prefs.Save(keyProbe);
+            if (!PlayerPrefs.HasKey(Prefs.Namespace + "sfxoff") || !PlayerPrefs.HasKey(Prefs.Namespace + "musicoff")
+                || !PlayerPrefs.HasKey(Prefs.Namespace + "volume"))
+            { Debug.Log("[Tankfall] ❌ 소리 저장 키(sfxoff·musicoff·volume)가 없다 — 통합하며 키가 바뀌었다"); fail++; }
             else Debug.Log("[Tankfall] 설정 자체검사 저장 키 — sfxoff·musicoff·volume 그대로");
-            if (Sfx.SfxOff == sfx0 || Sfx.MusicOff == mus0)
-            { Debug.Log("[Tankfall] ❌ 토글이 값을 안 바꿨다"); fail++; }
-            Sfx.SfxOff = sfx0; Sfx.MusicOff = mus0;      // 원상복구 — finally 가 저장값을 지운다
+            var keyBack = DefaultSettings;
+            if (!Prefs.Load(ref keyBack, DefaultSettings) || !keyBack.SfxOff || !keyBack.MusicOff)
+            { Debug.Log("[Tankfall] ❌ 채널 값이 저장 왕복을 못 견딘다"); fail++; }
 
             }
             finally { Prefs.DeleteAll(Difficulties.Length); Prefs.Namespace = ns; Sfx.Apply(); }
