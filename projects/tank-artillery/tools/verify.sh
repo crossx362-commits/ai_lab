@@ -7,6 +7,7 @@
 #   ./tools/verify.sh battle   AI 자동 대전(명중률·한 판 길이)
 #   ./tools/verify.sh compile  컴파일만 (유니티 Play 가능 여부)
 #   ./tools/verify.sh game     게임 빌드 자체검사 10종 (빌드 1회 + 전부 실행 · all 에는 안 물려 있다)
+#   ./tools/verify.sh dead     죽은 멤버 **후보** 목록 (판정 아님 — 전수 grep 으로 확인할 것)
 #   ./tools/verify.sh turn|shell|nice   원작 시스템 라이브러리 단위 검증
 #   ./tools/verify.sh guide    미사일 초기 유도·자세 제어 단계
 #   ./tools/verify.sh aimove   AI 이동(구덩이·장판 탈출·보급)
@@ -312,6 +313,8 @@ game_check() {
 
 case "${1:-all}" in
   compile) compile_check; manifest_check; rules_check ;;
+  # 죽은 멤버 **후보**만 낸다(판정 아님). rc 에 영향 주지 않는다 — 처분은 사람이 정한다.
+  dead)    python3 tools/deadscan.py ;;
   # ⚠️ `all` 에 넣지 않았다 — 유니티 빌드 1회(수 분)가 붙어서 SIM 게이트의 짧은 왕복을 죽인다.
   #    기능 커밋 전에 `verify.sh all` 과 **둘 다** 돌려라. 빌드를 아끼려면 TANKFALL_SKIP_BUILD=1.
   game)    game_check ;;
@@ -342,7 +345,7 @@ case "${1:-all}" in
     run_console AiMoveVerify      $SIM/*.cs tools/AiMoveVerify.cs; echo
     run_console ShellPickVerify   $SIM/*.cs tools/ShellPickVerify.cs; echo
     run_console BattleSimVerify  $SIM/*.cs tools/BattleSimVerify.cs ;;
-  *) echo "사용: $0 [all|game|sdf|play|ball|battle|turn|shell|nice|map|hit|guide|aimove|shellpick|compile]"; exit 2 ;;
+  *) echo "사용: $0 [all|game|dead|sdf|play|ball|battle|turn|shell|nice|map|hit|guide|aimove|shellpick|compile]"; exit 2 ;;
 esac
 
 echo
