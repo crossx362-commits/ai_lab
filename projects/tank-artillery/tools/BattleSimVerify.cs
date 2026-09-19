@@ -50,13 +50,49 @@ static class BattleSimVerify
             default: throw new ArgumentException($"TANKFALL_VAR={VarName}: 덮을 수 없는 필드");
         }
     }
-    /// <summary>실험 값은 **기본 스탯(WithShell 전)** 에 덮고 나서 탄종·조건 보정을 거친다 — 2번탄 배율이 곱해지는 순서가 게임과 같아야 한다.</summary>
+    /// <summary>실험 값은 **기본 스탯(WithShell 전)** 에 덮고 나서 탄종·조건 보정을 거친다 — 2번탄 배율이 곱해지는 순서가 게임과 같아야 한다.
+    /// 🚨 **이 사슬은 `TankStats.For()` 와 «한 글자도 다르면 안 된다»**(2026-09-19 사고).
+    ///    `For()` 가 `.WithFlight(shell)` 을 얻은 커밋(`ecde0609`, 09-17 22:39)에서 **여기만 안 따라가서**,
+    ///    `TANKFALL_VAR` 을 건 기종은 **추진·수평 가속·발사 모션이 통째로 없는 탱크**로 측정됐다.
+    ///    판별: 같은 맵·시드·판수에서 캐롯 `MaxPitch=40`(= 기본값)이 **44%**, `VAR` 없이는 **29%** — **+15%p**.
+    ///    ⚠️ 「기본값을 넣었으니 기본값이 나온다」가 **성립하지 않았다.** 그래서 아래 <see cref="AssertVarPathIsFaithful"/> 로 **코드가 강제**한다.</summary>
     static TankStats Stats(TankKind k, ShellKind shell, float hpFrac, Weather w)
     {
         if (OnlyRow != k || !HasVar) return TankStats.For(k, shell, hpFrac, w);
         var b = TankStats.Get(k);
         SetVar(ref b, VarValue);
-        return b.WithShell(shell).WithCondition(hpFrac, w);
+        return b.WithShell(shell).WithCondition(hpFrac, w).WithFlight(shell);
+    }
+
+    /// <summary>
+    /// **실험 경로가 정상 경로와 같은 탱크를 만드는가** — 스윕을 돌리기 «전에» 확인한다.
+    /// 방법은 하나뿐이다: **덮는 값을 «기본값»으로 두면 결과가 `TankStats.For()` 와 같아야 한다.**
+    /// 🔑 이게 없으면 다음 사람이 `For()` 의 사슬에 한 단계를 더할 때 **또 여기만 안 따라간다** —
+    ///    문서로는 두 번 못 막았다(2026-09-17 에 한 번 놓쳤고, 오늘 실측으로야 잡았다).
+    /// ⚠️ 탄종·체력·날씨를 **모두** 돌려 본다. 한 조합만 보면 그 조합에만 없는 어긋남을 놓친다.
+    /// </summary>
+    static void AssertVarPathIsFaithful(TankKind k, float baseValue)
+    {
+        float saved = VarValue;
+        VarValue = baseValue;                 // 기본값으로 덮는다 = 아무것도 안 바꾼 것과 같아야 한다
+        try
+        {
+            foreach (var shell in new[] { ShellKind.Normal, ShellKind.Special })
+            foreach (var hp in new[] { 1f, 0.4f })
+            foreach (var w in new[] { Weather.Clear, Weather.Snow })
+            {
+                var mine = Stats(k, shell, hp, w);
+                var real = TankStats.For(k, shell, hp, w);
+                if (mine.Equals(real)) continue;
+                Console.WriteLine($"❌ TANKFALL_VAR 경로가 정상 경로와 «다른 탱크»를 만든다 — {TankStats.Get(k).Name} · {shell} · hp {hp:F1} · {w}");
+                Console.WriteLine($"   덮는 값을 기본값({baseValue:F2})으로 뒀는데도 다르다는 것은, 실험 경로가 «보정 단계 하나»를 빠뜨렸다는 뜻이다.");
+                Console.WriteLine($"   Stats() 의 사슬을 TankStats.For() 와 한 글자씩 대조해라(2026-09-19: .WithFlight 누락으로 +15%p).");
+                Console.WriteLine($"   실험 경로 Flight: thrust {mine.Flight.Thrust:F1} boost {mine.Flight.BoostSec:F2} aero {mine.Flight.AeroFwd:F1} motion {mine.Flight.Motion} spdMul {mine.Flight.SpeedMul:F3}");
+                Console.WriteLine($"   정상 경로 Flight: thrust {real.Flight.Thrust:F1} boost {real.Flight.BoostSec:F2} aero {real.Flight.AeroFwd:F1} motion {real.Flight.Motion} spdMul {real.Flight.SpeedMul:F3}");
+                Environment.Exit(2);
+            }
+        }
+        finally { VarValue = saved; }
     }
     const float TankRadius = 2.0f;
     const float TurnSeconds = 18f;        // §2-1 2페이즈 턴의 현실적 평균
@@ -764,6 +800,7 @@ static class BattleSimVerify
                 if (string.IsNullOrEmpty(valEnv)) values.Add(baseV);
                 else foreach (var tok in valEnv.Split(',')) values.Add(float.Parse(tok.Trim(), System.Globalization.CultureInfo.InvariantCulture));
                 HasVar = true;
+                AssertVarPathIsFaithful(rk, baseV);   // 🚨 스윕을 돌리기 «전에» — 손잡이가 다른 탱크를 재고 있으면 여기서 죽는다
                 Console.WriteLine($"=== 단일 행 실험: {baseT.Name} · {VarName} 기본 {baseV:F2} → [{string.Join(", ", values)}] (셀당 {MatchesPerCell * 2}판) ===");
             }
             else
