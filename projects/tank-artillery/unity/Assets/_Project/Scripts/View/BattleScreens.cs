@@ -1573,6 +1573,7 @@ namespace Tankfall.View
                         BuildShellRow(ShellKind.Special);
                         for (int i = 0; i < _galShells.Count; i++)
                             _fx.AttachTrail(_galShells[i], ShellTrail.Of((TankKind)i, ShellKind.Special, false));
+                        _fx.ClearTrails();   // 두 단계를 대조하려면 «둘 다 빈 상태»에서 같은 프레임만큼 쌓아야 한다
                     }
                     else
                     {

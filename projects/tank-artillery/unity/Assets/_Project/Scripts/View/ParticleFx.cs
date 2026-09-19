@@ -904,6 +904,20 @@ namespace Tankfall.View
             }
         }
 
+        /// <summary>
+        /// **진단 전용 — 모든 자취의 입자를 «비운다».**
+        /// 🔑 갤러리는 단계를 넘어가도 자취가 계속 뿜고 있어서, 다음 단계의 같은 프레임이
+        ///    **앞 단계에서 쌓인 입자**를 물려받는다. 시드를 고정해도 **그 «상태»가 남아 두 장이 달라진다**
+        ///    (실측: 시드 고정 뒤에도 포세이돈 833px·마인랜더 183px — 수명 긴 입자일수록 크다).
+        ///    ⇒ 두 장을 대조하려면 **둘 다 «빈 상태»에서 같은 프레임 수만큼** 쌓아야 한다.
+        /// ⚠️ 난수 고정과 «다른» 문제다 — 하나는 무엇이 나오나, 하나는 언제부터 세나.
+        /// </summary>
+        public void ClearTrails()
+        {
+            foreach (var kv in _trails)
+                if (kv.Value != null) kv.Value.Clear(true);
+        }
+
         public void StopTrail(Transform shell)
         {
             if (shell == null) return;
