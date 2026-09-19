@@ -2656,7 +2656,11 @@ namespace Tankfall.View
         /// </summary>
         void SyncAirVisibility()
         {
-            bool inWorld = _screen == GameScreen.Battle || _screen == GameScreen.Pause || _screen == GameScreen.Result;
+            // 🚨 **갤러리는 «덮는 상태 목록»에 없었다**(2026-09-20) — 메뉴에서 기후를 숨긴 수정이
+            //    갤러리를 안 덮어서, 증폭벽이 자취 갤러리의 **가운데 세 기종(캐논·멀티·세크윈드)을 통째로 가렸다.**
+            //    진단 화면은 **측정 대상이 아닌 것**을 화면에 두면 안 된다.
+            bool inWorld = (_screen == GameScreen.Battle || _screen == GameScreen.Pause || _screen == GameScreen.Result)
+                           && !_shellGallery;
             for (int i = 0; i < _airGos.Count; i++)
             {
                 if (_airGos[i] == null) continue;

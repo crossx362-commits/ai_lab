@@ -1480,10 +1480,10 @@ namespace Tankfall.View
         int _galStep, _galFrame;
         readonly List<Transform> _galShells = new List<Transform>();
 
-        static readonly string[] GalSteps = { "탄모양_1번탄", "탄모양_2번탄", "자취_전체", "폭발_2번탄", "폭발_1번탄" };
+        static readonly string[] GalSteps = { "탄모양_1번탄", "탄모양_2번탄", "자취_점화중", "자취_꺼진뒤", "폭발_2번탄", "폭발_1번탄" };
 
         /// <summary>몇 프레임 뒤에 찍을지. 자취가 줄로 남으려면 탄이 그만큼 움직여야 한다.</summary>
-        int GalShotFrame => _galStep == 2 ? 22 : _galStep >= 3 ? 6 : 3;
+        int GalShotFrame => _galStep == 2 || _galStep == 3 ? 22 : _galStep >= 4 ? 6 : 3;
 
         void BuildShellRow(ShellKind shellKind)
         {
@@ -1563,7 +1563,7 @@ namespace Tankfall.View
                     if (_fx == null) _fx = new GameObject("ParticleFx").AddComponent<ParticleFx>();
                     if (_galStep == 0) BuildShellRow(ShellKind.Normal);
                     else if (_galStep == 1) BuildShellRow(ShellKind.Special);
-                    else if (_galStep == 2)
+                    else if (_galStep == 2 || _galStep == 3)
                     {
                         // 자취: 13종 탄에 각자 자취를 붙인다. 제자리에 뿜으므로 한 줄로 갈린다.
                         BuildShellRow(ShellKind.Special);
@@ -1576,7 +1576,7 @@ namespace Tankfall.View
                         foreach (var t in _galShells) if (t != null) t.gameObject.SetActive(false);
                         var th = MapTheme.Of(_map, _weather == Weather.Snow);
                         // 3단계=2번탄, 4단계=1번탄 — 기종×탄종 폭발 스타일(ParticleFx.BlastStyle)을 둘 다 대조한다
-                        var gsh = _galStep == 3 ? ShellKind.Special : ShellKind.Normal;
+                        var gsh = _galStep == 4 ? ShellKind.Special : ShellKind.Normal;
                         for (int i = 0; i < TankStats.Count; i++)
                         {
                             var st = TankStats.For((TankKind)i, gsh, 1f, _weather);
@@ -1589,10 +1589,22 @@ namespace Tankfall.View
                 default:
                     // ⚠️ 자취 단계는 탄을 **움직여야** 한다. 세워 두면 입자가 탄 안에서 겹쳐 쌓여
                     //    "자취가 없다"로 보인다(실제로 그렇게 찍혔다) — 게임에서는 탄이 날아가므로 뒤에 남는다.
-                    if (_galStep == 2)
+                    if (_galStep == 2 || _galStep == 3)
+                    {
                         for (int i = 0; i < _galShells.Count; i++)
                             if (_galShells[i] != null)
                                 _galShells[i].position = GalSlot(i) + Vector3.up * (_galFrame * 0.55f - 6f);
+
+                        // 🔑 갤러리는 «시간»을 안 만든다 — 그래서 연소 구간 변조(ParticleFx.BurnModulate)가
+                        //    저절로는 안 돈다. 가짜 연소 시각을 넣어 **한 단계는 「점화 중」, 다음 단계는 「꺼진 뒤」**로 찍는다.
+                        //    ⚠️ 이건 **진단**이다 — 「변조가 시간에 따라 다른 그림을 낸다」까지만 보인다.
+                        //       「실전 비행에서 그렇게 읽히는가」는 여기서 답 못 한다(📌 미답).
+                        _fx.DiagAge = _galStep == 2 ? 0.05f : 9f;
+                        for (int i = 0; i < _galShells.Count; i++)
+                            if (_galShells[i] != null)
+                                _fx.Guidance(_galShells[i], default(Attitude), ShellTrail.Of((TankKind)i, ShellKind.Special, false));
+                        _fx.DiagAge = -1f;
+                    }
 
                     // ⚠️ `ScreenCapture.CaptureScreenshot` 은 **다음 프레임 끝**에 찍는다.
                     //    찍자마자 단계를 넘기면 그 다음 단계의 라벨이 사진에 들어간다

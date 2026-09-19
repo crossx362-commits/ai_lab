@@ -816,6 +816,16 @@ namespace Tankfall.View
         const float MuzzleOnlySec = 0.12f;
 
         /// <summary>
+        /// **진단 전용 — «가짜» 연소 경과 시각(초). 음수면 안 쓴다(실제 비행 시각을 쓴다).**
+        /// 🔑 갤러리는 탄이 «날아가지 않는다» — 시간이 안 흐르니 연소 구간 변조가 한 장에 안 담긴다.
+        ///    그래서 이 값을 넣어 **「점화 중」과 「꺼진 뒤」를 두 장으로** 나눠 찍는다.
+        /// 🛑 **이건 진단이다.** 이걸로 증명되는 것은 「변조가 시간에 따라 «다른 그림»을 낸다」까지고,
+        ///    **「실전 비행에서 사람 눈에 점화했다가 꺼진다로 읽히는가」는 증명 못 한다**
+        ///    (전용 포즈 ≠ 실제 장면 — 진단 UI 와 실제 게임 합격은 구별한다).
+        /// </summary>
+        public float DiagAge = -1f;
+
+        /// <summary>
         /// **연소 구간 동안 자취를 «변조»한다** — 오너 지적(2026-09-19): 「쏜 다음 점화하면 빨라져야 하는데 같은 속도」.
         ///
         /// 🔑 원칙 둘(검수 2026-09-19):
@@ -832,8 +842,10 @@ namespace Tankfall.View
         void BurnModulate(Transform shell, in ShellTrail.Style st)
         {
             if (!_trails.TryGetValue(shell, out var trail) || trail == null) return;
-            if (!_trailStart.TryGetValue(shell, out float t0)) return;
-            float age = Time.time - t0;
+            float age;
+            if (DiagAge >= 0f) age = DiagAge;                                   // 진단: 가짜 시각
+            else if (_trailStart.TryGetValue(shell, out float t0)) age = Time.time - t0;
+            else return;
 
             if (st.BoostSec <= 0f)
             {
