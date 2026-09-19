@@ -154,7 +154,7 @@ namespace Tankfall.View
                     _practice = true;
                     StartBattle();
                     break;
-                case 2: _screen = GameScreen.Settings; break;
+                case 2: OpenSettings(GameScreen.Title); break;
                 case 3: _showHelp = true; break;
                 case 4: Quit(); break;
             }
@@ -162,11 +162,58 @@ namespace Tankfall.View
 
         /// <summary>설정 화면 — 지금은 음량 하나뿐이다. 조작(전투 설정 §DrawSetup)과 헷갈리지 않게
         /// "게임을 매번 바꾸는 값"(맵·난이도 등)과 "환경을 한 번 맞추는 값"(음량)을 화면째 나눈다.</summary>
+        // ══════════════════════════════════════════════════════════════
+        //  소리 설정 — **한 곳이 진짜 소스다** (2026-09-19 통합, 오너 허가 (c))
+        //
+        //  그 전까지 소리 설정이 **두 화면에 나뉘어** 있었다: 채널 켜기/끄기는 전투 설정 화면,
+        //  전체 음량은 타이틀→설정 화면. 직교하는 값이라 둘 다 필요한데 **사람이 보기엔 두 군데**였다.
+        //  → 값은 그대로 두고 **자리만 합쳤다.** 여기가 소스이고, 다른 곳은 «이 화면을 여는 것»이다.
+        //
+        //  ⚠️ **UI 를 두 벌 만들지 마라.** 이 프로젝트가 가장 크게 데인 자리가 정확히 이거다 —
+        //     옛 `DrawPicker` 와 `ScreenGUI()` 가 둘 다 살아 있어서 **먼저 그리는 쪽이 이겼고**
+        //     폴리시된 화면 3종이 통째로 도달 불가였다. 전투 설정 화면은 이제 **보여주기만** 한다.
+        //  ⚠️ 저장 키는 안 바뀌었다(`sfxoff`·`musicoff`·`volume`). 자리만 옮긴 것이라
+        //     오너가 이미 저장해 둔 값이 그대로 살아 있어야 한다.
+        //  ⚠️ 행 번호를 숫자로 박지 마라 — 아래 표에서 센다(소리 행을 붙이다 커서가 깨졌던 자리).
+        // ══════════════════════════════════════════════════════════════
+        static readonly string[,] SettingsRows =
+        {
+            { "음량",   "전체 크기 — 채널을 켠 채로 줄인다" },
+            { "효과음", "발사·폭발·조작음 (일시정지 N)" },
+            { "음악",   "타이틀·전투 배경음악 (일시정지 M)" },
+        };
+        const int SettingsRowVolume = 0, SettingsRowSfx = 1, SettingsRowMusic = 2;
+        int _settingsSel;
+        /// <summary>설정을 **어디서 열었나** — 닫으면 그리로 돌아간다(타이틀·전투 설정·일시정지).</summary>
+        GameScreen _settingsBack = GameScreen.Title;
+
+        void OpenSettings(GameScreen back)
+        {
+            _settingsBack = back;
+            _settingsSel = 0;
+            _screen = GameScreen.Settings;
+        }
+
+        /// <summary>전투 설정 화면이 **읽기만** 하는 한 줄 요약. 소스는 설정 화면이다.</summary>
+        string SoundSummary()
+            => $"음량 {Mathf.RoundToInt(Sfx.Volume * 100f)}% · 효과음 {(Sfx.SfxOff ? "끔" : "켬")} · 음악 {(Sfx.MusicOff ? "끔" : "켬")}";
+
         void SettingsInput()
         {
-            if (Down(KeyCode.Escape) || Enter()) { _screen = GameScreen.Title; return; }
-            if (Down(KeyCode.RightArrow) || Down(KeyCode.D)) Sfx.Volume += 0.1f;
-            if (Down(KeyCode.LeftArrow) || Down(KeyCode.A)) Sfx.Volume -= 0.1f;
+            if (Down(KeyCode.Escape) || Enter()) { _screen = _settingsBack; return; }
+            int rows = SettingsRows.GetLength(0);
+            if (Down(KeyCode.DownArrow) || Down(KeyCode.S)) _settingsSel = (_settingsSel + 1) % rows;
+            if (Down(KeyCode.UpArrow) || Down(KeyCode.W)) _settingsSel = (_settingsSel - 1 + rows) % rows;
+
+            int dir = (Down(KeyCode.RightArrow) || Down(KeyCode.D)) ? 1 : (Down(KeyCode.LeftArrow) || Down(KeyCode.A)) ? -1 : 0;
+            if (dir == 0) return;
+            switch (_settingsSel)
+            {
+                case SettingsRowVolume: Sfx.Volume += 0.1f * dir; break;
+                // 켜고 끄기뿐이라 방향은 안 본다(Boom 행과 같은 규칙).
+                case SettingsRowSfx: ToggleSfx(); break;
+                case SettingsRowMusic: ToggleMusic(); break;
+            }
         }
 
         void TankSelectInput()
@@ -217,8 +264,8 @@ namespace Tankfall.View
                         _weatherForced = w == 0 ? (Weather?)null : w == 1 ? Weather.Clear : Weather.Snow;
                         break;
                     case SetupRowBoom: _boom = !_boom; break;   // Boom 모드(§2-9-16) — 켜고 끄기뿐이라 방향은 안 본다
-                    case SetupRowSfx: ToggleSfx(); break;
-                    case SetupRowMusic: ToggleMusic(); break;
+                    // 소리는 여기서 안 고친다 — 설정 화면을 연다(Enter 는 전투 시작이라 못 쓴다).
+                    case SetupRowSound: OpenSettings(GameScreen.Setup); return;
                 }
 
             if (Down(KeyCode.Return) || Down(KeyCode.KeypadEnter)) StartBattle();
@@ -227,8 +274,11 @@ namespace Tankfall.View
         void PauseInput()
         {
             if (Down(KeyCode.Escape) || Enter()) { _screen = GameScreen.Battle; return; }
+            // M/N 은 **빠른 토글**로 남긴다(사람이 소리를 끄고 싶은 순간은 대개 게임 중이다).
+            // 음량까지 여기서 조절하게 만들지 마라 — 그러면 소리 UI 가 세 벌이 된다. 화면을 여는 것으로 족하다.
             if (Down(KeyCode.M)) ToggleMusic();
             if (Down(KeyCode.N)) ToggleSfx();
+            if (Down(KeyCode.O)) { OpenSettings(GameScreen.Pause); return; }
             if (Down(KeyCode.T)) ToTitle();
             if (Down(KeyCode.Q)) Quit();
         }
@@ -446,8 +496,22 @@ namespace Tankfall.View
             Check(WinnerText(1, 1) == null, "양쪽 생존 → 미결");
 
             // 5) 설정 화면 행 — 이름 상수와 표가 어긋나지 않았는가
-            Check(SetupRows[SetupRowBoom, 0] == "Boom 모드" && SetupRows[SetupRowSfx, 0] == "효과음" && SetupRows[SetupRowMusic, 0] == "음악"
-                  && SetupRowMusic == SetupRows.GetLength(0) - 1, "설정 행 상수 ↔ 표 일치");
+            Check(SetupRows[SetupRowBoom, 0] == "Boom 모드" && SetupRows[SetupRowSound, 0] == "소리"
+                  && SetupRowSound == SetupRows.GetLength(0) - 1, "전투 설정 행 상수 ↔ 표 일치");
+            Check(SettingsRows[SettingsRowVolume, 0] == "음량" && SettingsRows[SettingsRowSfx, 0] == "효과음"
+                  && SettingsRows[SettingsRowMusic, 0] == "음악" && SettingsRows.GetLength(0) == 3,
+                  "소리 설정 행 상수 ↔ 표 일치");
+
+            // 6) 소리 설정이 **한 곳뿐인가** — 전투 설정 화면이 값을 고치면 두 벌이 된다(옛 DrawPicker 사고).
+            {
+                bool sfx0 = Sfx.SfxOff, mus0 = Sfx.MusicOff;
+                var back0 = _screen;
+                OpenSettings(GameScreen.Setup);
+                Check(_screen == GameScreen.Settings && _settingsBack == GameScreen.Setup,
+                      $"전투 설정의 소리 행 → 설정 화면이 열리고 돌아갈 곳을 기억한다(간 곳 {_screen}, 복귀 {_settingsBack})");
+                Check(Sfx.SfxOff == sfx0 && Sfx.MusicOff == mus0, "여는 것만으로는 값이 안 바뀐다");
+                _screen = back0;
+            }
 
             if (fail == 0) Debug.Log("[Tankfall] ✅ 게임 자체검사 전부 통과(음악·설정 저장·전적·무승부·설정 행)");
             else Debug.Log($"[Tankfall] ❌ 게임 자체검사 실패 {fail}건");
@@ -598,18 +662,30 @@ namespace Tankfall.View
         void DrawSettings(float W, float H)
         {
             Scrim(W, H, 0.62f);
-            Ui.TextShadow(new Rect(0, H * 0.32f, W, 30f), "설정", 22, Ui.Ink, TextAnchor.MiddleCenter, true);
+            Ui.TextShadow(new Rect(0, H * 0.30f, W, 30f), "소리", 22, Ui.Ink, TextAnchor.MiddleCenter, true);
 
-            var r = new Rect(W * 0.5f - 250f, H * 0.44f, 500f, 40f);
-            Ui.Fill(r, new Color(1f, 0.72f, 0.25f, 0.14f));
-            Ui.Frame(r, Ui.Power, 2f);
-            Ui.Text(new Rect(r.x + 16f, r.y, 150f, r.height), "음량", 14, Ui.Ink, TextAnchor.MiddleLeft, true);
-            Ui.Text(new Rect(r.x + 160f, r.y, 180f, r.height), $"< {Mathf.RoundToInt(Sfx.Volume * 100f)}% >",
-                    14, Ui.Power, TextAnchor.MiddleCenter, true);
-            var bar = new Rect(r.x + 350f, r.y + 14f, 130f, 12f);
-            Ui.Bar(bar, Sfx.Volume, Ui.Power, null, null);
+            int rows = SettingsRows.GetLength(0);
+            float y = H * 0.40f;
+            for (int i = 0; i < rows; i++)
+            {
+                var r = new Rect(W * 0.5f - 250f, y + i * 48f, 500f, 40f);
+                bool sel = i == _settingsSel;
+                Ui.Fill(r, sel ? new Color(1f, 0.72f, 0.25f, 0.14f) : Ui.Panel);
+                Ui.Frame(r, sel ? Ui.Power : Ui.Border, sel ? 2f : 1f);
+                Ui.Text(new Rect(r.x + 16f, r.y, 150f, r.height), SettingsRows[i, 0], 14, sel ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, sel);
 
-            Ui.TextShadow(new Rect(0, H - 44f, W, 20f), "좌우 = 조절   Enter / Esc = 뒤로", 12, Ui.Dim, TextAnchor.MiddleCenter);
+                string v = i == SettingsRowVolume ? $"{Mathf.RoundToInt(Sfx.Volume * 100f)}%"
+                         : i == SettingsRowSfx ? (Sfx.SfxOff ? "끔" : "켬")
+                                               : (Sfx.MusicOff ? "끔" : "켬");
+                Ui.Text(new Rect(r.x + 160f, r.y, 180f, r.height), (sel ? "< " : "  ") + v + (sel ? " >" : ""),
+                        14, sel ? Ui.Power : Ui.Ink, TextAnchor.MiddleCenter, sel);
+
+                // 음량은 막대로도 보여준다 — 숫자만으로는 "얼마나 남았나"가 안 읽힌다.
+                if (i == SettingsRowVolume) Ui.Bar(new Rect(r.x + 350f, r.y + 14f, 130f, 12f), Sfx.Volume, Ui.Power, null, null);
+                else Ui.Text(new Rect(r.x + 350f, r.y, 140f, r.height), SettingsRows[i, 1], 9, Ui.Dim);
+            }
+
+            Ui.TextShadow(new Rect(0, H - 44f, W, 20f), "위아래 = 고르기   좌우 = 조절   Enter / Esc = 뒤로", 12, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
         // ── 탱크 선택(§3 20_Lobby) ─────────────────────────────
@@ -802,11 +878,10 @@ namespace Tankfall.View
             { "아이템",    "판 시작에 무작위로 받는다" },
             { "날씨",      "눈이면 포세이돈이 강해진다" },
             { "Boom 모드", "지뢰밭 + 지진·유성(§2-9-16)" },
-            { "효과음",    "발사·폭발·조작음" },
-            { "음악",      "타이틀·전투 배경음악" },
+            { "소리",      "좌우 = 설정 열기" },
         };
         // ⚠️ 행 번호를 숫자로 적지 마라. 소리 행을 뒤에 붙이자 "마지막 행 = Boom" 가정이 깨졌다(자체검사 커서).
-        const int SetupRowBoom = 4, SetupRowSfx = 5, SetupRowMusic = 6;
+        const int SetupRowBoom = 4, SetupRowSound = 5;
 
         void DrawSetup(float W, float H)
         {
@@ -821,8 +896,9 @@ namespace Tankfall.View
                 _itemSlots == 0 ? "없음" : $"{_itemSlots}개",
                 weather,
                 _boom ? "켬" : "끔",
-                Sfx.SfxOff ? "끔" : "켬",
-                Sfx.MusicOff ? "끔" : "켬",
+                // 🚨 **여기서 값을 고치지 않는다 — 보여주기만 한다.** 소리의 진짜 소스는 설정 화면 하나다.
+                //    같은 값을 두 화면에서 고치게 두면 "먼저 그리는 쪽이 이기는" 사고가 난다(옛 DrawPicker).
+                SoundSummary(),
             };
 
             int rows = SetupRows.GetLength(0);
@@ -863,6 +939,7 @@ namespace Tankfall.View
             {
                 "Esc / Enter — 계속",
                 $"M — 음악 {(Sfx.MusicOff ? "끔" : "켬")}     N — 효과음 {(Sfx.SfxOff ? "끔" : "켬")}",
+                $"O — 소리 설정 (음량 {Mathf.RoundToInt(Sfx.Volume * 100f)}%)",
                 "T — 타이틀로", "Q — 종료",
             };
             for (int i = 0; i < lines.Length; i++)
@@ -1353,7 +1430,7 @@ namespace Tankfall.View
             {
                 case 0: _screen = GameScreen.Title; _menuSel = 0; break;
                 case 1: _screen = GameScreen.Title; _menuSel = 3; _showHelp = true; break;   // TitleMenu[3]="조작법"(설정 삽입으로 인덱스 이동)
-                case 2: _screen = GameScreen.Settings; break;
+                case 2: OpenSettings(GameScreen.Title); break;
                 case 3:
                     _screen = GameScreen.TankSelect;
                     _picked.Clear();

@@ -2366,6 +2366,17 @@ namespace Tankfall.View
             if (PlayerPrefs.HasKey("tankfall_volume"))      // 대조군 — 격리가 실제로 걸렸는가
             { Debug.Log("[Tankfall] ❌ 음량이 네임스페이스 밖(tankfall_volume)에 쓰였다"); fail++; }
 
+            // ④ 소리 설정을 한 화면으로 합친 뒤(2026-09-19)에도 **저장 키가 그대로인가**.
+            //    자리만 옮긴 것이지 키를 바꾼 게 아니다 — 키가 바뀌면 오너가 이미 저장해 둔 값이 조용히 날아간다.
+            bool sfx0 = Sfx.SfxOff, mus0 = Sfx.MusicOff;
+            ToggleSfx(); ToggleMusic();
+            if (!PlayerPrefs.HasKey(Prefs.Namespace + "sfxoff") || !PlayerPrefs.HasKey(Prefs.Namespace + "musicoff"))
+            { Debug.Log("[Tankfall] ❌ 채널 저장 키(sfxoff·musicoff)가 없다 — 통합하며 키가 바뀌었다"); fail++; }
+            else Debug.Log("[Tankfall] 설정 자체검사 저장 키 — sfxoff·musicoff·volume 그대로");
+            if (Sfx.SfxOff == sfx0 || Sfx.MusicOff == mus0)
+            { Debug.Log("[Tankfall] ❌ 토글이 값을 안 바꿨다"); fail++; }
+            Sfx.SfxOff = sfx0; Sfx.MusicOff = mus0;      // 원상복구 — finally 가 저장값을 지운다
+
             }
             finally { Prefs.DeleteAll(Difficulties.Length); Prefs.Namespace = ns; Sfx.Apply(); }
 
