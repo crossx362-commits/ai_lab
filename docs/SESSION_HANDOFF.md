@@ -78,6 +78,11 @@ open -a /Users/junholee/ai_lab/projects/tank-artillery/unity/Build/Tankfall.app
 | `balance_guard()` | **`BattleSimVerify`(매치업 승률표)** — 오너가 막은 그 측정 | `TANKFALL_BALANCE_OK=1` | `verify.sh battle` **rc=3**, `all` 은 건너뛰고 나머지는 살린다 |
 | 자기 복사본 재실행 | 실행 중인 `verify.sh`·`unity_build.sh` 를 편집해 바이트가 밀리는 사고 | — | 자동 |
 
+- 🚨 **편집과 «그 결과를 주장하는 명령»을 한 호흡에 붙이지 마라.** 편집 스크립트가 앵커에서 실패해도
+  뒤이은 `git commit`·빌드·검증은 **그대로 돈다** — 그러면 **하지 않은 일을 적은 커밋**이 남는다.
+  ⚠️ **이 자리를 세 번 밟았다**(`timeout` 없음 · `&&` 체인이 백그라운드를 삼킴 · 커밋이 안 된 문서 변경을 주장).
+  원장에 줄이 있는데도 못 막았다 — 그래서 **매번 읽는 여기** 적는다.
+  **절차**: ① 편집 → ② **결과를 눈으로 확인**(grep·diff) → ③ 그다음 커밋/빌드. **세 호흡으로 나눈다.**
 - **`TANKFALL_BUILD_DRYRUN=1`** — 빌드 직전까지만 가고 멈춘다. **가드를 확인할 땐 이걸 써라**
   (「일찍 죽겠지」라고 가정하고 돌리다 동결을 깬 적이 있다).
 - ⚠️ **밸런스·네트워크는 여전히 정지**(오너 지시). `TankStats.cs` 수치 · 매치업 표 근거 조정 ·
