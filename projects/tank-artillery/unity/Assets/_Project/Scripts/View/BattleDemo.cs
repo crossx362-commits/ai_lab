@@ -373,6 +373,10 @@ namespace Tankfall.View
                 else if (args[i] == "-ultselftest") { _ultSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-impairselftest") { _impairSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-climateselftest") { _climateSelfTest = true; _autoMode = true; }
+                // 🔎 **기후 네거티브 컨트롤 전용.** 기후를 안 굴린다 — 같은 판을 「기후 있음/없음」으로
+                //    두 번 찍어 **픽셀 차이**를 세면 「화면에 보이는가」가 말이 아니라 숫자로 나온다.
+                //    (「넣었는데 화면에 없는 것」을 이 프로젝트가 하루에 세 번 겪었다.)
+                else if (args[i] == "-noclimate") _noClimate = true;
                 else if (args[i] == "-boom") _boom = true;                     // Boom 모드(§2-9-16)
                 else if (args[i] == "-boomselftest") { _boom = true; _boomSelfTest = true; _autoMode = true; }
                 else if (args[i] == "-rosterselftest") { _rosterSelfTest = true; _autoMode = true; }
@@ -539,8 +543,14 @@ namespace Tankfall.View
             _status.Clear(); _hazards.Clear(); _pendingShots.Clear(); RefreshHazards();
             _supply.Clear(); RefreshCrates();
             _impair.Clear();
-            _air.Roll(ref _airRng, MapSize);
+            if (!_noClimate) _air.Roll(ref _airRng, MapSize);
             RefreshAir();
+            // 기후가 **무엇이 떴는지**를 남긴다. 「35% 확률」이라고 적혀 있어도 실제로 뜨는지는 다른 문제다 —
+            // 보고서에 「기후가 안 보인다」가 올라왔을 때 «안 보이는 것»과 «안 뜬 것»을 가르는 유일한 줄이다.
+            if (_autoMode)
+                Debug.Log($"[Tankfall] 기후 굴림: 증폭벽 {_air.Walls.Count}개 · 회오리 {_air.Tornadoes.Count}개"
+                    + (_air.Walls.Count > 0 ? $" · 벽(x{_air.Walls[0].X:F0} z{_air.Walls[0].Z:F0} 길이{_air.Walls[0].HalfLen * 2f:F0} 높이{_air.Walls[0].MinY:F0}~{_air.Walls[0].MaxY:F0})" : "")
+                    + (_air.Tornadoes.Count > 0 ? $" · 회오리(x{_air.Tornadoes[0].X:F0} z{_air.Tornadoes[0].Z:F0} 반경{_air.Tornadoes[0].Radius:F0} 높이{_air.Tornadoes[0].TopY:F0})" : ""));
             // Boom 모드 지뢰밭 — 원작 "곳곳에 마인랜더의 지뢰가 드문드문 깔린 상태로 게임이 시작된다".
             if (_boom)
             {
@@ -782,7 +792,9 @@ namespace Tankfall.View
             m.EnableKeyword("_ALPHABLEND_ON");
             m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
             m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-            var col = c; col.a = 0.30f;                               // 뒤가 비쳐야 적이 보인다
+            var col = c; col.a = 0.55f;                               // 뒤가 비쳐야 적이 보인다(45% 는 여전히 비친다)
+            // ⚠️ 0.30 → 0.55 (2026-09-19). 0.30 에서는 회오리가 하늘과 **Δ8** 로 같은 색이었다.
+            //    알파는 «얼마나 가리나»가 아니라 **«얼마나 읽히나»**가 정하는 값이다.
             m.color = col;
             return m;
         }
@@ -2275,11 +2287,77 @@ namespace Tankfall.View
             }
             foreach (var t in _air.Tornadoes)
             {
-                var tr = Take(PrimitiveType.Cylinder, new Color(0.65f, 0.78f, 0.95f));
+                // 🚨 **연하늘(0.65,0.78,0.95)이었다 — 하늘 앞에서 사실상 안 보였다**(2026-09-19 실측).
+                //    알파 0.30 으로 섞으면 지평선 쪽 하늘(SkyBottom)과의 차이가 **8/255** 다. 같은 색이란 뜻이다.
+                //    회오리는 높이 62m 라 **몸통 대부분이 하늘 앞에 선다** — 가장 안 보이는 배경 앞에
+                //    가장 넓은 면이 놓여 있었다. 잔디 앞(Δ50)에서만 보이는 건 밑동뿐이다.
+                //    ⇒ 폭풍 회색으로 바꾼다. 7개 배경(하늘 상/하·원경·잔디·모래·눈·붉은땅) **최소 Δ31**.
+                // ⚠️ 색을 고를 때 **한 배경만 보고 고르지 마라.** 이 값은 일곱을 한 표로 놓고 최소값을 키운 것이다.
+                var tr = Take(PrimitiveType.Cylinder, new Color(0.30f, 0.34f, 0.42f));
                 tr.position = new Vector3(t.X, t.TopY * 0.5f, t.Z);
                 tr.localScale = new Vector3(t.Radius * 2f, t.TopY * 0.5f, t.Radius * 2f);   // 기본 실린더 높이 2
             }
             for (int i = used; i < _airGos.Count; i++) _airGos[i].gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// 기후 계측기 — **「화면에 보이나」를 픽셀로 답한다.**
+        ///
+        /// 🚨 왜 스크린샷 비교가 아니라 이것인가(2026-09-19). 「기후 있음 / 없음」으로 두 번 찍어
+        ///    픽셀을 세려 했는데, **같은 인자로 두 번 찍은 것끼리가 695,439px 이나 달랐다** —
+        ///    기후 on/off 차이(114,582px)의 **여섯 배**다. `-autoshot` 은 판이 결정론이 아니라서
+        ///    (기종·스폰이 매번 다르다) **이미지 비교로는 아무것도 못 잰다.**
+        ///    ⇒ 잡음 바닥을 먼저 재지 않았으면 「기후가 11만 픽셀이나 보인다」고 보고할 뻔했다.
+        ///       **두 장을 비교하기 전에 «같은 것 두 장»부터 비교해라.**
+        /// 그래서 이미지가 아니라 **투영**으로 잰다. 카메라에게 물으면 판이 흔들려도 답은 정확하다.
+        ///
+        /// 읽는 법: `화면밖` 이면 카메라가 그쪽을 안 볼 뿐이고, **화면 안인데 면적이 0 에 가까우면**
+        /// 그건 「넣었는데 안 보이는 것」이다. 면적은 **가림(지형·탱크)을 고려하지 않은 상한**이다.
+        /// </summary>
+        string ClimateReport()
+        {
+            if (_cam == null) return "기후계측: 카메라 없음";
+            if (!_air.Any) return "기후계측: 이번 판에 기후 없음";
+            float W = _cam.pixelWidth, H = _cam.pixelHeight;
+            var sb = new System.Text.StringBuilder("기후계측:");
+
+            void One(string name, Vector3 c, Vector3 half)
+            {
+                float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+                int front = 0, behind = 0;
+                for (int i = 0; i < 8; i++)
+                {
+                    var corner = c + new Vector3(((i & 1) == 0 ? -1 : 1) * half.x,
+                                                 ((i & 2) == 0 ? -1 : 1) * half.y,
+                                                 ((i & 4) == 0 ? -1 : 1) * half.z);
+                    var sp = _cam.WorldToScreenPoint(corner);
+                    if (sp.z <= 0f) { behind++; continue; }   // 카메라 뒤 모서리
+                    front++;
+                    if (sp.x < x0) x0 = sp.x; if (sp.x > x1) x1 = sp.x;
+                    if (sp.y < y0) y0 = sp.y; if (sp.y > y1) y1 = sp.y;
+                }
+                if (front == 0) { sb.Append($" · {name} 카메라 뒤"); return; }
+                // 🚨 **모서리 일부만 앞이면 면적을 내지 마라**(2026-09-19). 카메라가 물체를 «관통»하는
+                //    상황에서 남은 모서리만으로 만든 사각형은 원근 나눗셈이 터진 값이라 **크게 부풀려진다** —
+                //    `SkyReport` 가 능선 꼭대기를 y=12451 로 찍었던 것과 **같은 함정**이다.
+                //    실제로 이것 때문에 「회오리 103,237px 인데 화면엔 하나도 안 보인다」가 나왔다.
+                if (behind > 0) { sb.Append($" · {name} 일부가 카메라 뒤 — 면적 미산출(거리 {Vector3.Distance(c, _cam.transform.position):F0}m)"); return; }
+                float cx0 = Mathf.Max(0f, x0), cy0 = Mathf.Max(0f, y0);
+                float cx1 = Mathf.Min(W, x1), cy1 = Mathf.Min(H, y1);
+                float area = Mathf.Max(0f, cx1 - cx0) * Mathf.Max(0f, cy1 - cy0);
+                float dist = Vector3.Distance(c, _cam.transform.position);
+                sb.Append(area <= 0f
+                    ? $" · {name} 화면밖(거리 {dist:F0}m)"
+                    : $" · {name} {area:F0}px ({100f * area / (W * H):F1}%) 거리 {dist:F0}m");
+            }
+
+            foreach (var w in _air.Walls)
+                One("증폭벽", new Vector3(w.X, (w.MinY + w.MaxY) * 0.5f, w.Z),
+                    new Vector3(AirField.WallThickness * 0.5f, (w.MaxY - w.MinY) * 0.5f, w.HalfLen));
+            foreach (var t in _air.Tornadoes)
+                One("회오리", new Vector3(t.X, t.TopY * 0.5f, t.Z),
+                    new Vector3(t.Radius, t.TopY * 0.5f, t.Radius));
+            return sb.ToString();
         }
 
         /// <summary>회오리를 돌린다 — 서 있기만 하면 기둥인지 회오리인지 안 읽힌다.</summary>
@@ -3285,6 +3363,7 @@ namespace Tankfall.View
         }
 
         bool _climateSelfTest;
+        bool _noClimate;               // -noclimate : 기후 대조군(위 인자 파싱 주석 참조)
 
         /// <summary>
         /// `-climateselftest` — 기후(§2-9-15)가 **실제로 탄에 작용하는지** 확인한다.
@@ -3789,6 +3868,7 @@ namespace Tankfall.View
                     //    피치 24° 는 전투 카메라가 **가장 많이 숙인** 값이라 「하늘이 남나」의 최악 조건이다.
                     //    각도는 손으로 계산하지 않는다(그러다 15° 배경을 10° 프레임에 세웠다) — 카메라에게 묻는다.
                     if (_env != null) Debug.Log("[Tankfall] " + _env.SkyReport(_cam));
+                    Debug.Log("[Tankfall] " + ClimateReport());
                     break;
                 case 25: AiShoot(); _flyFrame = 0; break;
             }
@@ -3844,6 +3924,10 @@ namespace Tankfall.View
 
             ScreenCapture.CaptureScreenshot(path);
             Debug.Log($"[Tankfall] 스크린샷 {path} · {_log}");
+            // 🚨 **장면마다** 기후 계측을 같이 남긴다. 한 포즈에서만 재면 「화면밖」이 나와도
+            //    그게 «안 보이는 것»인지 «그 카메라가 그쪽을 안 보는 것»인지 못 가른다 —
+            //    실제로 전투개시 포즈(야우 160)에서 넷 다 화면밖이 나와 하마터면 그렇게 볼 뻔했다.
+            if (_air.Any) Debug.Log($"[Tankfall] {name} ▸ " + ClimateReport());
             _shotPaths.Add(path);
         }
 
