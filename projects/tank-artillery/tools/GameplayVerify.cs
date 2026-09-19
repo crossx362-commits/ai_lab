@@ -146,5 +146,50 @@ static class GameplayVerify
             }
             else Console.WriteLine($"    오버행 생성 실패 (교차 {n}개) — 테스트 전제 불성립");
         }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  [6] 등반 — **무엇이 막는가**  (§11 M0 게이트, 2026-09-19)
+        //
+        //  🚨 §11 M0 는 「**42° 경사에서 등반이 막히는가**」를 사람이 눈으로 볼 게이트로 적어 뒀다.
+        //     그런데 그 문장은 **Heightfield 시절 기준**이다 — 그때는 안식각 릴랙세이션으로 벽을 42° 아래로
+        //     눕혀서 «경사각»이 등반을 막았다. **SDF 로 바꾸면서 그 수법을 못 쓰게 됐고**(`TankGroundProbe` 머리말),
+        //     지금 등반을 막는 것은 **경사각이 아니라 수직 턱 높이**(`StepHeight` 1.2m)다.
+        //
+        //  그래서 여기서는 **게이트 문장이 아니라 실제 규칙**을 쌍으로 잰다. 없는 규칙을 있다고 재면
+        //  통과하든 실패하든 거짓말이다. 42° 가 실제로 어떻게 되는지도 같이 찍어 기록을 닫는다.
+        // ═══════════════════════════════════════════════════════════════
+        // ⚠️ `GameplayVerify` 는 원래 **전부 정보성**이라 ❌ 를 찍어도 rc 가 0 이었다(2026-09-19 발견).
+        //    여기서 전체 계약을 바꾸지는 않는다 — 대신 **이 절의 단정만** 진짜 게이트로 만든다.
+        //    (전체를 rc 에 물리는 건 기존 ❌ 유무를 먼저 재고 나서 할 일이다. 검수에 보고했다.)
+        int hardFail = 0;
+        Console.WriteLine("\n[6] 등반 — 경사각이 아니라 «수직 턱»이 막는다 (§11 M0)");
+        {
+            // 한 걸음(0.25m)에 오르는 높이 = WalkStep · tanθ. 턱(1.2m)을 넘으면 막힌다.
+            Console.WriteLine($"    규칙: 한 걸음 {TankGroundProbe.WalkStep:F2}m · 넘는 턱 {TankGroundProbe.StepHeight:F2}m");
+            Console.WriteLine($"    {"경사",6} {"걸음당 상승",12} {"판정",8}");
+            foreach (float deg in new[] { 20f, 42f, 60f, 78f, 85f })
+            {
+                float rise = TankGroundProbe.WalkStep * MathF.Tan(deg * MathF.PI / 180f);
+                var vol = NewVol((x, z) => MathF.Max(0f, (x - 100f)) * MathF.Tan(deg * MathF.PI / 180f));
+                float g0 = TankGroundProbe.GroundBelow(vol, 100f, 100f, 60f);
+                var r = TankGroundProbe.CanStepTo(vol, g0, 100f + TankGroundProbe.WalkStep, 100f, out _);
+                Console.WriteLine($"    {deg,5:F0}° {rise,11:F2}m {(r == TankGroundProbe.MoveResult.Ok ? "오른다" : "막힌다"),8}");
+            }
+
+            // ── 쌍으로: 턱을 기준으로 **넘는 쪽과 막히는 쪽이 둘 다 나와야** 검사가 의미 있다 ──
+            // 수직 벽 하나를 세우고 높이만 바꾼다(경사가 아니라 턱이 변수라는 걸 그대로 드러낸다).
+            foreach (var (wall, expectOk) in new[] { (TankGroundProbe.StepHeight - 0.3f, true),
+                                                     (TankGroundProbe.StepHeight + 0.3f, false) })
+            {
+                var vol = NewVol((x, z) => x > 100f ? wall : 0f);
+                float g0 = TankGroundProbe.GroundBelow(vol, 99f, 100f, 60f);
+                var r = TankGroundProbe.CanStepTo(vol, g0, 101f, 100f, out float g1);
+                bool ok = (r == TankGroundProbe.MoveResult.Ok) == expectOk;
+                if (!ok) hardFail++;
+                Console.WriteLine($"    수직 턱 {wall:F1}m → {(r == TankGroundProbe.MoveResult.Ok ? "넘는다" : "막힌다"),6}"
+                                + $"  {YN(ok)} {(expectOk ? "턱 이하라 넘어야 한다" : "턱 초과라 막혀야 한다")} (지면 {g0:F1}→{g1:F1}m)");
+            }
+        }
+        if (hardFail > 0) { Console.WriteLine($"\n❌ [6] 등반 게이트 실패 {hardFail}건"); Environment.Exit(1); }
     }
 }
