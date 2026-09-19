@@ -150,6 +150,22 @@ open -a /Users/junholee/ai_lab/projects/tank-artillery/unity/Build/Tankfall.app
 
 ---
 
+## 🔨 빌드 — **공유 트리가 아니라 «워크트리 사본»에서 굽는다**(2026-09-20)
+
+동시 작업자가 유니티 에디터를 **상주**로 열어 둔다 — `unity/Temp/UnityLockfile` 이 안 풀린다(30분 확인).
+두 인스턴스가 **같은 프로젝트**를 열면 `Library` 를 두고 싸워 캐시가 깨진다(파일 덮어쓰기와 다른 급).
+
+```
+워크트리: /private/tmp/tankfall-worktree        (저장소 «밖» — 1.3GB Library 가 메인을 안 더럽힌다)
+재사용:   git -C /private/tmp/tankfall-worktree checkout <hash>   ← 임포트 비용은 «최초 한 번»
+빌드:     cd /private/tmp/tankfall-worktree/projects/tank-artillery && ./tools/unity_build.sh
+```
+🔑 **이건 «비켜서기»가 아니라 «더 정확한 검증»이다** — 공유 트리 빌드는 **그 순간 트리에 있던 것**(남의 미커밋 포함)을
+찍지만, 사본은 **커밋된 것만** 찍는다. ⇒ **커밋 해시 도장이 문자 그대로 참이 된다.**
+⚠️ 뒤집어 말하면 **사본은 내 미커밋을 안 갖는다** — 굽기 «전에» 커밋해라. 스크립트가 미커밋이 있으면 **멈춘다.**
+⚠️ `/private/tmp` 라 **재부팅하면 사라진다**(임포트 비용이 다시 든다). 그때 위 명령으로 다시 만들면 된다.
+⚠️ 산출물에 **「워크트리 사본 · 커밋 <hash> · 미커밋 0」** 도장을 찍는다.
+
 ## 🛑 운영 가드 — 코드가 막는다 (문서 규칙이 아니다)
 
 | 가드 | 무엇을 막나 | 여는 법 | 막혔을 때 |
