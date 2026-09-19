@@ -2029,13 +2029,21 @@ namespace Tankfall.View
                 // ⚠️ 게이트는 **전체 명중률이 아니라 "검증통과라고 말한 해"의 명중률**이다.
                 //    지형·각도 범위 때문에 애초에 해가 없는 배치도 나오는데(폴백), 그걸 못 맞혔다고 역산이
                 //    틀린 건 아니다. 거짓말을 안 하려면 주장한 것만 재야 한다 — "된다고 한 건 된다".
-                bool ok = _practiceVerifiedShots >= 5 && vacc >= 90f;
+                //
+                // 🚨 90% 였던 이유와 **왜 100% 로 올렸는지**(2026-09-19):
+                //    역산이 기후(`_air`)를 안 보고 풀어서 회오리에 먹히는 해를 "검증통과"로 내놓았다.
+                //    진짜 명중률이 89.9%(138발 실측)라 90% 게이트와 **정확히 겹쳐** 실행마다 rc 가 뒤집혔고,
+                //    사람이 게이트를 안 믿게 됐다. 원인을 고치니 104발 100% 다(`TrySolvePractice` 머리말).
+                //    **이제 검증통과 해는 예외 없이 맞아야 한다** — 하나라도 빗나가면 역산과 발사가
+                //    다시 어긋난 것이다. 게이트를 다시 내리지 마라. 내리는 건 고장을 숨기는 것이다.
+                bool ok = _practiceVerifiedShots >= 5 && vacc >= 100f;
                 if (ok)
                     Debug.Log("[Tankfall] ✅ 정답 보기가 '된다'고 한 해는 실제로 맞는다(§5-7 역산 + 채점 정상)");
                 else if (_practiceVerifiedShots < 5)
                     Debug.Log("[Tankfall] ❌ 검증통과 해 표본이 너무 적다 — 판단 불가");
                 else
-                    Debug.Log("[Tankfall] ❌ 검증통과라고 한 해가 실제로는 안 맞는다 — 역산이나 채점이 고장났다");
+                    Debug.Log("[Tankfall] ❌ 검증통과라고 한 해가 실제로는 안 맞는다 — 역산이나 채점이 고장났다. " +
+                              "제일 먼저 볼 것: 역산과 FireFrom 이 **같은 것**을 넘기는가(기후 `_air`·탄종·바람·포구).");
                 // ⚠️ 인자 없는 Application.Quit()은 항상 rc=0이라 ❌도 통과로 보인다(2026-09-18 발견).
                 Application.Quit(ok ? 0 : 1);
                 return;
@@ -2111,8 +2119,14 @@ namespace Tankfall.View
                 {
                     if (cand.PitchDeg < st.MinPitch || cand.PitchDeg > st.MaxPitch) continue;
                     if (!haveFallback) { haveFallback = true; fbPitch = cand.PitchDeg; fbYaw = cand.YawDeg; fbPower = power; }
+                    // 🚨 **기후(`_air`)를 반드시 넘겨라.** 2026-09-19 까지 여기만 빠져 있어서
+                    //    역산은 회오리가 **없는 하늘**에서 풀고, 실제 발사(`FireFrom`)는 회오리가 **있는 하늘**로
+                    //    쐈다. 그래서 "검증통과"라고 말한 해가 10% 확률로 거짓말을 했다(`-practiceselftest`
+                    //    90% 게이트가 실행마다 뒤집히던 원인). 실측: 역산 착탄 (197,7,110) vs 실제 (160,17,90) —
+                    //    실제 착탄이 **회오리 자리 한 곳에 높이만 달리해** 박혔다(빨려 올라갔다 떨어진 모양).
+                    //    **역산과 발사는 같은 하늘을 봐야 한다.**
                     var sim = ProjectileSimulator.Simulate(_vol, from,
-                        Ballistics.VelocityFrom(cand.YawDeg, cand.PitchDeg, speed), accel, boxes, me.Id, MapSize, st.Flight, null);
+                        Ballistics.VelocityFrom(cand.YawDeg, cand.PitchDeg, speed), accel, boxes, me.Id, MapSize, st.Flight, null, _air);
                     var miss = sim.Impact - target.Center;
                     // 허용 오차는 **폭발 반경이 아니라 탱크 반경**이다. 폭발 반경(캐롯 7m)까지 열어두면
                     // 5m 씩 빗나간 해도 "정답"이라고 내놓는다(실측으로 걸렸다). 연습장의 정답은 표적을
