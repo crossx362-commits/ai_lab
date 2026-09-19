@@ -876,6 +876,10 @@ namespace Tankfall.View
         void Update()
         {
             if (_units.Count == 0) return;                 // Start 가 실패한 경우
+            // ⚠️ **모드 분기보다 «위»에 둔다.** 처음엔 일반 업데이트 경로에 뒀는데, 자동 모드는 전부
+            //    바로 아래에서 `return` 하므로 **`-uiselftest` 사진에는 반영이 안 됐다** — 고쳤는데
+            //    게이트 사진은 그대로였다. 「고쳤다」와 「사진에 보인다」가 달랐던 자리다.
+            SyncAirVisibility();
             if (_gallery) { GalleryStep(); return; }
             if (_perf) { PerfStep(); return; }
             if (_supplySelfTest) { SupplySelfTestStep(); return; }
@@ -2370,6 +2374,10 @@ namespace Tankfall.View
                 tr.localScale = new Vector3(t.Radius * 2f, t.TopY * 0.5f, t.Radius * 2f);   // 기본 실린더 높이 2
                 _tornadoGos.Add(tr);
             }
+            // 「이번 판에 실제로 쓰는 오브젝트」를 기록해 둔다 — 메뉴에서 숨겼다가 **되돌릴 때**
+            // 안 쓰는 풀 오브젝트까지 같이 켜지면 엉뚱한 도형이 살아난다.
+            while (_airActive.Count < _airGos.Count) _airActive.Add(false);
+            for (int i = 0; i < _airGos.Count; i++) _airActive[i] = i < used;
             for (int i = used; i < _airGos.Count; i++) _airGos[i].gameObject.SetActive(false);
         }
 
@@ -2498,6 +2506,28 @@ namespace Tankfall.View
         }
 
         /// <summary>회오리를 돌린다 — 서 있기만 하면 기둥인지 회오리인지 안 읽힌다.</summary>
+        /// <summary>
+        /// 기후 도형을 **전장 화면에서만** 보이게 한다.
+        ///
+        /// 🚨 왜 있나(2026-09-19, 화면 6종 감사). 타이틀·탱크선택·전투설정은 전장을 **배경으로** 쓰는데,
+        ///    증폭벽(52m×40m)과 회오리가 프레임을 가로질러 **렌더 오류처럼** 보였다.
+        ///    ⚠️ `-uiselftest` 는 그동안 9/9 를 통과하고 있었다 — 그 게이트가 재는 건 «HUD 켠 사진과
+        ///       끈 사진이 다른가»지 **«화면이 완성돼 보이는가»가 아니다.** 사람이 사진을 보고서야 걸렸다.
+        /// 🛑 숨기는 근거: 메뉴의 전장은 **연출용 배경**이고 거기 선 기후는 **지난 판의 굴림**이라
+        ///    다음 판을 예고하지도 않는다 — 정보가 아니라 **오해**다. 전투·일시정지·결과에선 그대로 보인다.
+        /// ⚠️ 되돌릴 때 **이번 판에 실제로 쓰는 칸만** 켠다(`_airActive`). 풀 전체를 켜면 안 쓰는 도형이 살아난다.
+        /// </summary>
+        void SyncAirVisibility()
+        {
+            bool inWorld = _screen == GameScreen.Battle || _screen == GameScreen.Pause || _screen == GameScreen.Result;
+            for (int i = 0; i < _airGos.Count; i++)
+            {
+                if (_airGos[i] == null) continue;
+                bool want = inWorld && i < _airActive.Count && _airActive[i];
+                if (_airGos[i].gameObject.activeSelf != want) _airGos[i].gameObject.SetActive(want);
+            }
+        }
+
         void TickAir(float dt)
         {
             if (_air.Tornadoes.Count == 0) return;
@@ -3765,6 +3795,7 @@ namespace Tankfall.View
         Rng _airRng = new Rng(0x51C0Du);
         readonly List<Transform> _airGos = new List<Transform>();
         readonly List<MeshRenderer> _airMrs = new List<MeshRenderer>();   // 풀과 같은 순서 — 꺼낼 때 재질을 다시 정한다
+        readonly List<bool> _airActive = new List<bool>();                // 이번 판에 실제로 쓰는 칸(메뉴에서 숨겼다 되돌릴 때 기준)
         /// <summary>
         /// 이번 판의 회오리 오브젝트. **인덱스 산술로 찾지 않는다.**
         /// ⚠️ 예전엔 `_airGos[_air.Walls.Count + i]` 로 집었다 — 벽이 오브젝트 **하나**라는 가정이

@@ -1002,7 +1002,6 @@ namespace Tankfall.View
         void DrawPause(float W, float H)
         {
             Scrim(W, H, 0.60f);
-            Ui.TextShadow(new Rect(0, H * 0.34f, W, 50f), "일시정지", 34, Ui.Ink, TextAnchor.MiddleCenter, true);
             string[] lines =
             {
                 "Esc / Enter — 계속",
@@ -1010,8 +1009,18 @@ namespace Tankfall.View
                 $"O — 소리 설정 (음량 {Mathf.RoundToInt(Sfx.Volume * 100f)}%)",
                 "T — 타이틀로", "Q — 종료",
             };
+            // 🚨 **패널 없이 글자만 띄우고 있었다**(2026-09-19, 화면 6종 감사). 일시정지는 **전투 HUD 가
+            //    그대로 살아 있는 화면**이라(팀 패널·턴 순서·미니맵·파워 게이지) 글자가 그 위에 겹쳐
+            //    탱크·체력바와 섞였다. 스크림(0.60)만으로는 **전장이 아니라 UI 가** 배경이라 안 죽는다.
+            //    결과 화면은 같은 상황에서 `Ui.Box` 를 깐다 — **같은 문제에 같은 해법을 쓴다.**
+            // ⚠️ 높이는 줄 수에서 계산한다. 고정값으로 두면 줄이 늘 때 마지막 줄이 상자 밖으로 나간다
+            //    (결과 화면이 「190 고정」으로 똑같이 한 번 겪은 자리다).
+            float bh = 58f + lines.Length * 28f + 18f;
+            var r = new Rect(W * 0.5f - 240f, H * 0.34f - 14f, 480f, bh);
+            Ui.Box(r);
+            Ui.TextShadow(new Rect(r.x, r.y + 8f, r.width, 44f), "일시정지", 32, Ui.Ink, TextAnchor.MiddleCenter, true);
             for (int i = 0; i < lines.Length; i++)
-                Ui.TextShadow(new Rect(0, H * 0.34f + 60f + i * 28f, W, 24f), lines[i], 15, Ui.Dim, TextAnchor.MiddleCenter);
+                Ui.TextShadow(new Rect(r.x, r.y + 58f + i * 28f, r.width, 24f), lines[i], 15, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
         // ── 결과(§11 M3 게이트: 한 판 길이 실측) ────────────────
@@ -1064,10 +1073,17 @@ namespace Tankfall.View
             // 사람 판이 공짜로 검증한다. 그래서 결과 화면에 띄운다(로그에만 두면 아무도 안 본다).
             // ⚠️ 이건 **측정값**이지 목표가 아니다. 이 숫자를 보고 페이즈 초를 고치지 마라(밸런스).
             {
-                float myAvg = _humanTurns > 0 ? _humanSec / _humanTurns : 0f;
                 float allAvg = (_humanTurns + _aiTurns) > 0 ? (_humanSec + _aiSec) / (_humanTurns + _aiTurns) : 0f;
                 var pace = Prefs.TurnPace();
-                string line = $"내 턴 평균 {myAvg:F1}초 ({_humanTurns}턴)   ·   전체 턴 평균 {allAvg:F1}초";
+                // 🚨 **`0.0초 (0턴)` 로 찍히고 있었다**(2026-09-19, 이 줄을 처음 사진으로 보고 발견).
+                //    사람이 한 턴도 안 쐈으면 그건 **「0.0초가 걸렸다」가 아니라 「잰 적이 없다」**다.
+                //    숫자를 0 으로 보여 주면 화면이 **측정값인 척 거짓말을 한다** — §2-5-0 의 18초/턴 가정을
+                //    닫으려고 띄운 줄인데, 하필 그 줄이 «없음»을 «0» 으로 말하면 근거가 오염된다.
+                // ⚠️ 빈 상태는 자동사격·AI 대전에서 **항상** 나온다. 숫자가 있는 사진만 보면 영영 안 걸린다
+                //    (그래서 `-uiselftest` 에 「결과_무승부」를 **턴 기록 없음**으로 찍는 칸을 만들었다).
+                string line = _humanTurns > 0
+                    ? $"내 턴 평균 {_humanSec / _humanTurns:F1}초 ({_humanTurns}턴)   ·   전체 턴 평균 {allAvg:F1}초"
+                    : $"내 턴 기록 없음 — 사람이 쏜 턴이 없다   ·   AI 턴 평균 {allAvg:F1}초";
                 if (pace.Games > 1) line += $"   ·   통산 {pace.Games}판 내 턴 {pace.Human:F1}초 · 전체 {pace.All:F1}초";
                 Ui.Text(new Rect(r.x + 20f, r.yMax - 26f, r.width - 40f, 20f), line, 11, Ui.Mark, TextAnchor.MiddleCenter);
             }
@@ -1597,7 +1613,13 @@ namespace Tankfall.View
         readonly List<(string Name, string Hud, string NoHud)> _uiPairs = new List<(string, string, string)>();
 
         static readonly string[] UiSteps =
-        { "타이틀", "조작법", "설정", "탱크선택", "전투설정", "전투HUD", "파워게이지", "일시정지", "결과" };
+        // 🚨 **결과 화면이 「아군 승리」 하나만 찍히고 있었다**(2026-09-19). 자동사격은 거의 항상 이기고
+        //    끝나서 **패배·무승부는 이 게이트가 한 번도 안 덮었다** — 「가장 덜 다듬어졌을 자리를
+        //    가장 안 보고 있었던」 셈이다. 셋을 다 찍는다.
+        //    ⚠️ 셋은 **같은 `DrawResult`** 를 쓴다(제목·색만 갈린다). 그래도 따로 찍는 이유는
+        //       «색이 실제로 갈리는가»와 «제목이 안 잘리는가»를 사진이 덮게 하려는 것이다.
+        { "타이틀", "조작법", "설정", "탱크선택", "전투설정", "전투HUD", "파워게이지", "일시정지",
+          "결과_승리", "결과_패배", "결과_무승부" };
 
         /// <summary>단계별로 화면 상태를 만든다. 실제 화면 코드를 그대로 쓴다 — 별도 그리기를 만들면 검사가 거짓이 된다.</summary>
         void UiSelfTestSetup(int step)
@@ -1645,7 +1667,10 @@ namespace Tankfall.View
                     break;
                 case 7: _screen = GameScreen.Pause; break;
                 case 8:
-                    _winner = "아군 승리";
+                case 9:
+                case 10:
+                    // 셋 다 같은 판을 만들고 **승패만 바꾼다** — 레이아웃 차이를 승패 탓으로 오해하지 않으려고.
+                    _winner = step == 8 ? "아군 승리" : step == 9 ? "적군 승리" : "무승부";
                     _phase = Phase.GameOver;
                     _screen = GameScreen.Result;
                     _stat[0] = new TeamStat { Shots = 14, Hits = 9, Damage = 2480, Taken = 1310 };
@@ -1654,6 +1679,10 @@ namespace Tankfall.View
                     // 턴 시간 줄이 **숫자와 함께** 찍히게 한다 — 0턴이면 "0.0초"만 나와서
                     // 정작 검사하려는 줄이 사진에 안 남는다(2번탄 설명에서 같은 실수를 한 번 했다).
                     _humanSec = 186f; _humanTurns = 12; _aiSec = 24f; _aiTurns = 12;
+                    // ⚠️ **무승부 칸은 «기록 없음»으로 찍는다.** 사람 턴이 0 인 판(AI 대전·자동)에서 그 줄이
+                    //    어떻게 보이는지를 **아무도 눈으로 본 적이 없다.** 숫자가 있는 사진만 남기면
+                    //    「값이 없을 때」는 영영 안 덮인다 — 빈 상태야말로 거짓말하기 쉬운 자리다.
+                    if (step == 10) { _humanSec = 0f; _humanTurns = 0; }
                     break;
             }
         }
