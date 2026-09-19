@@ -288,8 +288,15 @@ game_check() {
     echo "  · 빌드 건너뜀(TANKFALL_SKIP_BUILD=1) — **지금 작업 트리가 아니라 옛 빌드를 잰다**"
   else
     echo "  · 유니티 배치 빌드 (몇 분 걸린다 · 건너뛰려면 TANKFALL_SKIP_BUILD=1)"
-    if ! ./tools/unity_build.sh >/dev/null 2>&1; then
-      echo "  ❌ 빌드 실패 — tools/.unity_build.log 를 봐라"; RC=1; return
+    ./tools/unity_build.sh >/dev/null 2>&1
+    local brc=$?
+    # ⚠️ rc=3 은 **동결**이다(`unity/Build/.frozen`). "빌드 실패"로 뭉뚱그리면
+    #    다음 사람이 컴파일 에러를 찾으러 로그를 뒤진다 — 원인이 전혀 다르다.
+    if [ $brc -eq 3 ]; then
+      echo "  🧊 빌드가 동결돼 있다 — 게이트를 돌릴 수 없다. 해동하거나 TANKFALL_SKIP_BUILD=1 로 기존 빌드를 재라."
+      RC=1; return
+    elif [ $brc -ne 0 ]; then
+      echo "  ❌ 빌드 실패(rc=$brc) — tools/.unity_build.log 를 봐라"; RC=1; return
     fi
   fi
   [ -x "$GAME_EXE" ] || { echo "  ❌ 실행 파일이 없다: $GAME_EXE"; RC=1; return; }
