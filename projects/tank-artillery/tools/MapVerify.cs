@@ -33,10 +33,13 @@ static class MapVerify
             Console.WriteLine($"[{MapHeightFunction.Name(map)}]");
             CheckSymmetry(map);
             CheckLowAngle(map, expectClear: true);
+            CheckSpawnEscape(map);
             Profile(map);
         }
         Console.WriteLine("[네거티브] 옛 언덕(22m @ 60,100) 은 40° 가 막혀야 한다");
         CheckLowAngleLegacy();
+        Console.WriteLine("\n[네거티브] 벽으로 둘러싼 스폰은 «갇힘»이 나와야 한다");
+        CheckSpawnEscapeTrapped();
 
         // ── 팀 인원 가드 (2026-09-19) ──
         // `SetForHarness` 는 **판이 만들어지기 전에만** 불릴 수 있다. 위에서 스폰이 수없이 돌았으니
@@ -152,6 +155,93 @@ static class MapVerify
             }
             else Console.WriteLine($"    ✅ 지형 좌우 대칭 (격자 최대 Δ{gridWorst:F2}m)");
         }
+    }
+
+    /// <summary>탱크가 한 턴에 갈 수 있는 거리. `MoveGaugeMax 100` · 소모식 `|d|*2.2/MoveSpeed` → 기준 45m.</summary>
+    const float TurnMoveRange = 45f;
+
+    /// <summary>
+    /// **스폰에서 나올 수 있는가**(§7-6-2 · 검수 조건 4, 2026-09-19).
+    ///
+    /// 🚨 왜 여기 있나. `verify.sh play` 에 갇힘·탈출 검사가 **있는데**, 그건 `GameplayVerify` 가
+    ///    **자체 `Flat`/`Hills`** 로 돈다 — **실제 맵 여섯을 한 번도 안 본다.**
+    ///    게이트는 초록인데 **덮는 상태 목록에 맵이 없었다**(`-uiselftest` 가 「승리」만 찍던 것과 같은 계열).
+    ///    맵 형태를 바꿀 때마다 필요한 검사라 **상설로** 둔다.
+    /// ⚠️ 스폰 **한 점**만 보지 않는다 — 첫 턴에 이동하므로 **한 턴 이동 범위(45m)** 안에서
+    ///    «충분히 멀어질 수 있는가»를 본다. 그 이상은 안 넓힌다(이 반경이면 충분하다).
+    /// ⚠️ **깊은 구덩이 자체는 설계다**(§7-6-2). 여기서 재는 건 **«시작부터» 갇히는가** 하나다.
+    /// </summary>
+    static bool CanLeaveSpawn(SdfVolume vol, float sx, float sz, out float reach)
+    {
+        const float Cell = 1.5f;                       // 탐색 격자. 걸음(0.25m)보다 크게 잡아도 «나갈 수 있나»는 갈린다
+        int n = (int)(TurnMoveRange / Cell);
+        var seen = new System.Collections.Generic.HashSet<long>();
+        var q = new System.Collections.Generic.Queue<(int i, int k, float gy)>();
+        float g0 = TankGroundProbe.GroundBelow(vol, sx, sz, 60f);
+        if (float.IsNegativeInfinity(g0)) { reach = -1f; return false; }
+        q.Enqueue((0, 0, g0)); seen.Add(0);
+        reach = 0f;
+        while (q.Count > 0)
+        {
+            var (i, k, gy) = q.Dequeue();
+            float d = MathF.Sqrt(i * i + k * k) * Cell;
+            if (d > reach) reach = d;
+            if (d >= TurnMoveRange) continue;
+            for (int dir = 0; dir < 8; dir++)
+            {
+                int ni = i + (dir == 0 || dir == 4 || dir == 5 ? 0 : dir < 4 ? 1 : -1);
+                int nk = k + (dir == 2 || dir == 6 ? 0 : dir == 0 || dir == 1 || dir == 7 ? 1 : -1);
+                if (MathF.Sqrt(ni * ni + nk * nk) * Cell > TurnMoveRange) continue;
+                long key = ((long)(ni + n + 1) << 20) | (uint)(nk + n + 1);
+                if (!seen.Add(key)) continue;
+                float nx = sx + ni * Cell, nz = sz + nk * Cell;
+                if (TankGroundProbe.CanStepTo(vol, gy, nx, nz, out float ngy) != TankGroundProbe.MoveResult.Ok) continue;
+                q.Enqueue((ni, nk, ngy));
+            }
+        }
+        // 「나올 수 있다」의 기준: 한 턴 범위의 절반(≈22m)까지는 갈 수 있어야 한다.
+        return reach >= TurnMoveRange * 0.5f;
+    }
+
+    static void CheckSpawnEscape(MapKind map)
+    {
+        var vol = new SdfVolume(Voxel, ChunkN, OriginY, MapHeightFunction.Fn(map),
+                                (int)(MapHeightFunction.MapSize / Voxel), MapHeightFunction.Grad(map));
+        int bad = 0; float worst = float.MaxValue;
+        for (int t = 0; t < 2; t++)
+            for (int i = 0; i < MapHeightFunction.TeamSize; i++)
+            {
+                MapHeightFunction.Spawn(map, t, i, out float sx, out float sz);
+                if (!CanLeaveSpawn(vol, sx, sz, out float reach)) bad++;
+                if (reach < worst) worst = reach;
+            }
+        int total = MapHeightFunction.TeamSize * 2;
+        Console.WriteLine(bad == 0
+            ? $"    ✅ 스폰 {total}곳 전부 나올 수 있다 (최소 도달 {worst:F0}m / 한 턴 {TurnMoveRange:F0}m)"
+            : $"    ❌ 스폰 {bad}/{total} 곳이 갇힌다 (최소 도달 {worst:F0}m)");
+        if (bad > 0) Fail++;
+    }
+
+    /// <summary>
+    /// 위 검사의 **대조군**. 일부러 벽으로 둘러싼 스폰을 만들어 **❌ 가 나오는지** 본다.
+    /// 🛑 이게 없으면 「여섯 맵 전부 통과」는 **「항상 통과라고 답하는 검사」와 구별되지 않는다.**
+    /// </summary>
+    static void CheckSpawnEscapeTrapped()
+    {
+        MapHeightFunction.Spawn(MapKind.TwinHills, 0, 0, out float sx, out float sz);
+        // 스폰 반경 6m 안은 평지, 밖은 30m 벽 — 걸음(턱 1.2m)으로는 절대 못 넘는다.
+        Func<float, float, float> walled = (x, z) =>
+        {
+            float dx = x - sx, dz = z - sz;
+            return (dx * dx + dz * dz) < 36f ? 5f : 35f;
+        };
+        var vol = new SdfVolume(Voxel, ChunkN, OriginY, walled,
+                                (int)(MapHeightFunction.MapSize / Voxel));
+        bool out_ = CanLeaveSpawn(vol, sx, sz, out float reach);
+        Console.WriteLine(!out_
+            ? $"    ✅ 갇힌 스폰에서 «갇힘»이 나온다 (도달 {reach:F0}m < {TurnMoveRange * 0.5f:F0}m) — 검사가 실제로 가른다"
+            : $"    ❌ 벽에 둘러싸였는데 «나올 수 있다»가 나왔다 (도달 {reach:F0}m)");
+        if (out_) Fail++;
     }
 
     static void CheckLowAngle(MapKind map, bool expectClear)
