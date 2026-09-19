@@ -13,9 +13,30 @@ namespace Tankfall.View
 {
     public static class TerrainPalette
     {
-        /// <summary>y = 월드 높이, upness = 면 법선의 y(1=평지, 0=수직 절벽).</summary>
-        public static Color Of(in MapTheme t, float y, float upness)
+        /// <summary>
+        /// p = 월드 위치, upness = 면 법선의 y(1=평지, 0=수직 절벽).
+        ///
+        /// 🚨 **지면에 질감이 없었다**(2026-09-19 오너 지적 "그래픽 좀더 디테일하게").
+        ///    높이·경사만 보고 칠하니 완만한 곳이 **거대한 단색 면**이 되고, 구간 경계가
+        ///    **높이가 같은 선**을 따라가 지도 등고선처럼 칼로 자른 듯 드러났다.
+        ///    → 위치로 두 가지를 흔든다: ① 구간 경계가 지나가는 자리 ② 밝기.
+        ///    ①만으로는 단색 면이 그대로라 부족하다(실제로 ①만 넣었다가 화면이 안 바뀌어 되돌린 적이 있다).
+        ///
+        /// ⚠️ **비싼 노이즈를 쓰지 마라.** 폭발마다 더러워진 청크의 정점을 전부 다시 칠한다(§7-6-3).
+        ///    Perlin 대신 사인 해시 두 번으로 끝낸다.
+        /// </summary>
+        public static Color Of(in MapTheme t, Vector3 p, float upness)
         {
+            // 위치 노이즈 — 큰 얼룩(약 11m)과 잔 얼룩(약 3m)을 겹친다.
+            float n1 = Hash(p.x * 0.09f, p.z * 0.09f);        // -1~1
+            // ⚠️ 잔 얼룩의 파수를 정점 간격(0.5m)에 가깝게 올리지 마라 — 정점마다 값이 튀어
+            //    **질감이 아니라 모래알 노이즈**가 된다. 0.20 은 약 5m 주기다.
+            float n2 = Hash(p.x * 0.20f + 7.7f, p.z * 0.20f - 3.1f);
+            float blotch = n1 * 0.70f + n2 * 0.30f;
+
+            // ① 구간 경계를 흔든다 — 등고선 한 줄로 드러나지 않게
+            float y = p.y + blotch * 2.6f;
+
             // 경사: 가파를수록 바위. 폭발로 판 벽이 여기서 드러난다.
             float slope = Mathf.Clamp01(Mathf.InverseLerp(0.86f, 0.42f, upness));
 
@@ -35,7 +56,22 @@ namespace Tankfall.View
             ground = Color.Lerp(ground, t.RockDark, (1f - Band(y, -2f, 2f)) * 0.35f);
 
             // 높은 절벽일수록 짙은 바위 — 이것도 이어서 준다(예전엔 26m 에서 탁 끊겼다).
-            return Color.Lerp(ground, Color.Lerp(t.Rock, t.RockDark, Band(y, 20f, 30f)), slope);
+            var col = Color.Lerp(ground, Color.Lerp(t.Rock, t.RockDark, Band(y, 20f, 30f)), slope);
+
+            // ② 밝기를 흔든다 — 이게 **질감**이다. ①만으로는 경계만 움직이고 면은 여전히 단색이다.
+            //    ±7% 면 얼룩이 보이되 색이 더러워지지는 않는다(더 키우면 지면이 지저분해진다).
+            float shade = 1f + blotch * 0.075f;
+            return new Color(col.r * shade, col.g * shade, col.b * shade, col.a);
+        }
+
+        /// <summary>
+        /// 값 노이즈(-1~1). 사인 해시 하나 — 정점마다 도는 자리라 **싸야 한다**.
+        /// 매끄럽지 않아도 된다(정점 색은 삼각형 안에서 보간되므로 화면에서는 부드럽게 퍼진다).
+        /// </summary>
+        static float Hash(float x, float z)
+        {
+            float v = Mathf.Sin(x * 12.9898f + z * 78.233f) * 43758.5453f;
+            return (v - Mathf.Floor(v)) * 2f - 1f;
         }
 
         /// <summary>구간 사이를 부드럽게 잇는다. 하드 컷오프가 만드는 계단진 등고선을 없애는 게 목적이다.</summary>

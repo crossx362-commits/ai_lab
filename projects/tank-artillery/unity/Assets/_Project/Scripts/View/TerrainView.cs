@@ -150,7 +150,7 @@ namespace Tankfall.View
             // ⚠️ 여기서 비용이 늘면 폭발 프레임(§7-6-3)이 흔들린다. `-perf` 로 재고 나서 손대라.
             mesh.GetNormals(_n);
             _c.Clear();
-            for (int i = 0; i < _v.Count; i++) _c.Add(TerrainPalette.Of(Theme, _v[i].y, _n[i].y));
+            for (int i = 0; i < _v.Count; i++) _c.Add(TerrainPalette.Of(Theme, _v[i], _n[i].y));
             mesh.SetColors(_c);
             long t2 = Stopwatch.GetTimestamp();
             mesh.RecalculateBounds();

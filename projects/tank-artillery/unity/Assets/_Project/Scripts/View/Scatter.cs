@@ -137,7 +137,7 @@ namespace Tankfall.View
                     float wide = 0.8f + rng.Float01() * 0.5f;
                     for (int i = 0; i < layers; i++)
                     {
-                        var leaf = Prim(PrimitiveType.Sphere, LeafMat(i, ref rng), root);
+                        var leaf = Blob(LeafMat(i, ref rng), root, ref rng);
                         float s = (2.8f - i * (1.9f / layers)) * wide;
                         leaf.localScale = new Vector3(s, s * 0.55f, s);
                         leaf.localPosition = new Vector3(0f, h * 0.5f + i * 0.85f, 0f);
@@ -155,7 +155,7 @@ namespace Tankfall.View
                         arm.localPosition = Quaternion.Euler(0f, ang, 0f) * new Vector3(0.62f, 0f, 0f) + new Vector3(0f, h * 0.36f + rng.Float01() * 0.9f, 0f);
                         arm.localRotation = Quaternion.Euler(0f, ang, -34f);
                     }
-                    if (rng.Float01() < 0.3f) { var f = Prim(PrimitiveType.Sphere, _flower, root); f.localScale = Vector3.one * 0.4f; f.localPosition = new Vector3(0f, h * 0.7f, 0f); }
+                    if (rng.Float01() < 0.3f) { var f = Blob(_flower, root, ref rng); f.localScale = Vector3.one * 0.4f; f.localPosition = new Vector3(0f, h * 0.7f, 0f); }
                     break;
 
                 default:
@@ -180,7 +180,7 @@ namespace Tankfall.View
                         int n = 3;
                         for (int i = 0; i < n; i++)
                         {
-                            var leaf = Prim(PrimitiveType.Sphere, LeafMat(i, ref rng), root);
+                            var leaf = Blob(LeafMat(i, ref rng), root, ref rng);
                             float s = (1.9f - i * 0.35f) * (0.9f + rng.Float01() * 0.2f);
                             leaf.localScale = new Vector3(s, s * 1.5f, s);
                             leaf.localPosition = new Vector3(0f, h * 0.5f + i * 1.15f, 0f);
@@ -194,7 +194,7 @@ namespace Tankfall.View
                         br.localPosition = new Vector3(h * 0.13f, h * 0.6f, 0f); br.localRotation = Quaternion.Euler(0f, 0f, -55f);
                         for (int i = 0; i < 3; i++)
                         {
-                            var leaf = Prim(PrimitiveType.Sphere, LeafMat(i, ref rng), root);
+                            var leaf = Blob(LeafMat(i, ref rng), root, ref rng);
                             float s = (2.2f - i * 0.3f) * (0.85f + rng.Float01() * 0.3f);
                             float ang = i * 120f + rng.Float01() * 40f;
                             leaf.localScale = new Vector3(s, s * 0.7f, s);
@@ -207,7 +207,7 @@ namespace Tankfall.View
                         int blobs = 2 + (int)(rng.Float01() * 2.99f);
                         for (int i = 0; i < blobs; i++)
                         {
-                            var leaf = Prim(PrimitiveType.Sphere, LeafMat(i, ref rng), root);
+                            var leaf = Blob(LeafMat(i, ref rng), root, ref rng);
                             float s = (2.5f - i * 0.4f) * (0.85f + rng.Float01() * 0.3f);
                             leaf.localScale = new Vector3(s, s * 0.88f, s);
                             leaf.localPosition = new Vector3((rng.Float01() - 0.5f) * 0.6f, h * 0.62f + i * 0.8f, (rng.Float01() - 0.5f) * 0.6f);
@@ -248,7 +248,7 @@ namespace Tankfall.View
             // **납작하게** 눌러 얹는다.
             if (rng.Float01() < 0.45f)
             {
-                var cap = Prim(PrimitiveType.Sphere, _theme.Snowy ? _leafC : _bush, root);
+                var cap = Blob(_theme.Snowy ? _leafC : _bush, root, ref rng);
                 cap.localScale = new Vector3(big * 0.92f, big * 0.22f, big * 0.82f);
                 cap.localPosition = new Vector3(0f, big * 0.62f, 0f);
             }
@@ -308,7 +308,7 @@ namespace Tankfall.View
             int n = 2 + (int)(rng.Float01() * 2.99f);
             for (int i = 0; i < n; i++)
             {
-                var b = Prim(PrimitiveType.Sphere, rng.Float01() < 0.2f ? _leafC : _bush, root);
+                var b = Blob(rng.Float01() < 0.2f ? _leafC : _bush, root, ref rng);
                 float s = 0.7f + rng.Float01() * 1.0f;
                 b.localScale = new Vector3(s, s * 0.7f, s);
                 b.localPosition = new Vector3((rng.Float01() - 0.5f) * 1.4f, s * 0.3f, (rng.Float01() - 0.5f) * 1.4f);
@@ -317,7 +317,7 @@ namespace Tankfall.View
             if (!_theme.Snowy && rng.Float01() < 0.25f)
                 for (int i = 0; i < 3; i++)
                 {
-                    var f = Prim(PrimitiveType.Sphere, _flower, root);
+                    var f = Blob(_flower, root, ref rng);
                     f.localScale = Vector3.one * 0.22f;
                     f.localPosition = new Vector3((rng.Float01() - 0.5f) * 1.4f, 0.75f + rng.Float01() * 0.3f, (rng.Float01() - 0.5f) * 1.4f);
                 }
@@ -428,6 +428,58 @@ namespace Tankfall.View
                 }
             }
             return root;
+        }
+
+        /// <summary>
+        /// 잎 덩어리 — **매끈한 구를 쓰지 마라**(2026-09-19 오너 지적 "그래픽 좀더 디테일하게").
+        /// 유니티 기본 Sphere 는 매끈하고 완벽히 둥글어서 쌓으면 **막대사탕**으로 보인다.
+        /// 저폴리 수목은 면이 적고 **모서리가 살아 있는** 덩어리다 — 여기서 직접 굽는다.
+        ///
+        /// 반지름 0.5 로 맞춘다(유니티 Sphere 와 같다) — 호출부의 `localScale` 계산을 그대로 쓰기 위해서다.
+        /// 링 두 개(위·아래)라 위아래가 좁아지는 덩어리가 되고, 반지름을 제각각 흔들어 같은 나무가 두 번 안 나온다.
+        /// </summary>
+        Transform Blob(Material mat, Transform parent, ref Rng rng)
+        {
+            int sides = 6 + (int)(rng.Float01() * 2.99f);          // 6~8
+            var v = new List<Vector3>();
+            var tri = new List<int>();
+            float a0 = rng.Float01() * 6.28f;
+
+            for (int ring = 0; ring < 2; ring++)
+            {
+                float ry = ring == 0 ? -0.17f : 0.17f;
+                float baseR = ring == 0 ? 0.46f : 0.44f;
+                for (int i = 0; i < sides; i++)
+                {
+                    float a = a0 + (i / (float)sides) * Mathf.PI * 2f + (rng.Float01() - 0.5f) * 0.22f;
+                    float rad = baseR * (0.82f + rng.Float01() * 0.36f);
+                    v.Add(new Vector3(Mathf.Cos(a) * rad, ry * (0.85f + rng.Float01() * 0.3f), Mathf.Sin(a) * rad));
+                }
+            }
+            int top = v.Count; v.Add(new Vector3((rng.Float01() - 0.5f) * 0.12f, 0.5f * (0.85f + rng.Float01() * 0.3f), (rng.Float01() - 0.5f) * 0.12f));
+            int bot = v.Count; v.Add(new Vector3((rng.Float01() - 0.5f) * 0.12f, -0.5f * (0.85f + rng.Float01() * 0.3f), (rng.Float01() - 0.5f) * 0.12f));
+
+            for (int i = 0; i < sides; i++)
+            {
+                int a = i, b = (i + 1) % sides;                    // 아래 링
+                int c = sides + i, d = sides + (i + 1) % sides;    // 위 링
+                tri.Add(a); tri.Add(c); tri.Add(b);                // 허리 띠
+                tri.Add(b); tri.Add(c); tri.Add(d);
+                tri.Add(c); tri.Add(top); tri.Add(d);              // 윗 뚜껑
+                tri.Add(b); tri.Add(bot); tri.Add(a);              // 아랫 뚜껑
+            }
+
+            var go = new GameObject("Leaf");
+            go.transform.SetParent(parent, false);
+            var mf = go.AddComponent<MeshFilter>();
+            go.AddComponent<MeshRenderer>().sharedMaterial = mat;
+            var mesh = new Mesh { name = "LeafMesh" };
+            mesh.SetVertices(v);
+            mesh.SetTriangles(tri, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            mf.mesh = mesh;
+            return go.transform;
         }
 
         Transform Prim(PrimitiveType type, Material m, Transform parent)
