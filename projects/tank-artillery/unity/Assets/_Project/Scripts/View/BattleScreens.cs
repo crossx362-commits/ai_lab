@@ -1576,17 +1576,15 @@ namespace Tankfall.View
                     else if (_galStep == 2 || _galStep == 3)
                     {
                         // 자취: 13종 탄에 각자 자취를 붙인다. 제자리에 뿜으므로 한 줄로 갈린다.
-                        // 🚨 **3단계는 «같은 탄·같은 자취»를 그대로 쓴다**(2026-09-20).
-                        //    다시 만들면 탄과 입자계가 «새것»이 되고, 앞 단계에서 이미 뿜은
-                        //    월드 공간 입자가 파괴 지연 동안 남는다 — 두 장이 «다른 조건»이 된다.
-                        //    실측: 그때 포세이돈(수명 길고 중력 받는 물방울)만 465px 이 남아
-                        //    **대조군 바닥이 안 내려갔다.** 재사용하면 그 교란이 사라진다.
-                        if (_galStep == 2)
-                        {
-                            BuildShellRow(ShellKind.Special);
-                            for (int i = 0; i < _galShells.Count; i++)
-                                _fx.AttachTrail(_galShells[i], ShellTrail.Of((TankKind)i, ShellKind.Special, false));
-                        }
+                        // 🚨 **단계마다 «새로» 짓는다 — 재사용하지 마라**(2026-09-20 실측으로 뒤집힌 가설).
+                        //    「3단계에서 다시 만드는 게 포세이돈 교란의 원인」이라고 보고 재사용으로 바꿨더니
+                        //    **바닥이 오히려 «올라갔다»**(대조군 0·0·0 → 894·1057·1247).
+                        //    이유: 입자계를 재사용하면 **난수 스트림이 이미 진행된 상태**라 같은 시드여도
+                        //    두 번째 그림이 달라진다. **새로 만들어야 고정 시드가 처음부터 다시 돈다.**
+                        //    ⇒ 대조군 셋이 정확히 0 이 되는 건 «다시 만들기» 덕이다. 되돌리지 마라.
+                        BuildShellRow(ShellKind.Special);
+                        for (int i = 0; i < _galShells.Count; i++)
+                            _fx.AttachTrail(_galShells[i], ShellTrail.Of((TankKind)i, ShellKind.Special, false));
                         _fx.ClearTrails();   // 두 단계를 대조하려면 «둘 다 빈 상태»에서 같은 프레임만큼 쌓아야 한다
                     }
                     else
