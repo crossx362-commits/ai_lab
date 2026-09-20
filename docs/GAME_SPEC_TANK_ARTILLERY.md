@@ -49,6 +49,7 @@
 | 탱크 | "프리셋 3종"(§9 머리말) · "탱크 3종"(§11 M4) | **13종** (포트리스2 원작) | `Sim/TankStats.TankKind` — §9-3 이 이미 3종을 폐기했다 |
 | 맵 | 3종 | **6종** — TwinHills·Crater·Terrace·**Valley·Ridge·Badlands** | `Sim/MapHeightFunction.MapKind` · 개수는 `MapHeightFunction.Count` |
 | 궁극기 | 피해 충전 게이지 + 기종별 효과 5종, 키 `R` (§2-9-12) | **핵 하나.** 나이스샷 포인트로 열리고 2번탄을 핵급으로 키운다, 키 `4` | `Sim/NiceShot.ApplyUltimate` · `View/BattleDemo.cs` 의 `KeyCode.Alpha4` |
+| **탱크 외형** | §9 「코드로 그린다」 | 🗑️ **외부 모델로 전환 중**(오너 결정 2026-09-20). 정본 원화 `docs/refs/tankfall_tanks_concept_2026-09-20.webp` · 발사점 불변식은 `TankShapeContract` 가 게이트로 지킨다 |
 | 네트워크 | §10 계약 · §11 M5 | **0줄.** 착수 예정(2026-09-19 해제) | 코드에 `Netcode`/`NetworkManager` **0건** |
 | 데이터 자산 | ScriptableObject 5종(`Scripts/Data/`) | **0건.** 전부 코드 상수와 `switch` 표 | `Sim/TankStats.Of` · `View/TankShape.Of` (`Scripts/Data/` 폴더 자체가 없다) |
 | 어셈블리 | `.asmdef` 3개(Sim/View/Data) | **2개** | `Sim/Tankfall.Sim.asmdef` · `View/Tankfall.View.asmdef` |
@@ -1890,7 +1891,28 @@ projects/tank-artillery/
 
 ---
 
-## 9. 탱크를 코드로 그린다 (프로시저럴 메시) — ✅ 구현됨
+## 9. 탱크를 코드로 그린다 (프로시저럴 메시) — 🗑️ **폐기 (오너 결정 2026-09-20)**
+
+> 🗑️ **오너 지시: 「모델링을 해야지 코드로 만들지 말고」 — 탱크 외형을 «외부 모델»로 전환한다.**
+> **정본 원화**: `docs/refs/tankfall_tanks_concept_2026-09-20.webp` (13종).
+> ⇒ 「**모델링 에셋 없이 실행 가능**」이라는 이 절의 **전제가 바뀌었다.**
+> 본문은 **역사로 남긴다**(§2-9-12 궁극기와 같은 처리) — **되살리지 마라.**
+>
+> 🚨 **전환의 안전 조건 — 모델은 «보이는 것»만 바꾸고 «재는 것»은 못 바꾼다.**
+> **재는 것 = 발사점(`firePoint`) · 히트박스 · `TankRadius`.**
+> `BattleDemo` 가 `u.Fire.position` 을 그대로 탄도의 시작점 `p0` 로 넘기므로,
+> 발사점이 **몇 cm 만 달라져도 명중률·승률·M4 판정·맵 표·± 가 조용히 전부 바뀐다.**
+> (히트박스는 안전하다 — `Radius = TankRadius` 상수 · `Center = 유닛 위치`라 메시와 무관하다.
+>  ⚠️ **그 둘을 모델 지오메트리에서 유도하도록 바꾸지 마라.** 그 순간 이 안전이 사라진다.)
+> ⇒ 이 제약을 지키면 **모델 교체가 «설계상 밸런스 중립»** 이 된다.
+> ✅ **문서가 아니라 게이트로 박았다**: `View/TankShapeContract.cs` 가 `-gameselftest` 에서
+> 13종의 **모델 경로 vs 프로시저럴 경로 발사점**을 대조하고 다르면 실패한다(허용 오차 2cm).
+> **네거티브 컨트롤 확인**: 발사점을 10cm 옮기면 ❌ 가 뜬다.
+> ⚠️ **모델 로더를 붙이는 사람은 호출을 `if (!ProceduralTank.ForceProcedural) { … }` 안에 넣어라** —
+> 안 감싸면 대조군을 못 만들어 **그 게이트가 언제나 «같다»고 답하며 조용히 무력해진다.**
+>
+> 🔚 **끝 조건**: **13종이 다 들어오면 `ProceduralTank` 의 탱크 생성 경로를 «삭제»한다.**
+> 남기면 **영구 이중 경로**가 된다 — 「폴백이니 남겨두자」가 되기 쉬우니 지금 적어 둔다.
 
 > `unity/Assets/_Project/Scripts/View/ProceduralTank.cs`. 박스·실린더·쐐기 빌더로 차체/궤도/포탑/포신을 만든다.
 > ❌ ~~`TankShape` 프리셋 3종(밸런스·박격포·정밀포격)이 §9-3 실루엣 표를 그대로 구현한다.~~

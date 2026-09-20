@@ -1,6 +1,6 @@
 // 명세: docs/GAME_SPEC_TANK_ARTILLERY.md §9
 //
-// 오너 요구: "탱크는 코드로 그리게" — 모델링 에셋 없이 파라미터에서 메시를 만든다.
+// Blender 제작 에셋이 기본이다(2026-09-19 오너 지시). 아래 메시 빌더는 누락 시 호환용으로 남긴다.
 // 부수 효과로 실루엣(§72)을 데이터로 조정할 수 있다: 포신 길이/구경만 바꿔도 역할이 읽힌다.
 //
 // 계층은 포탑 야우 / 포신 피치 회전 때문에 분리해야 한다:
@@ -79,11 +79,11 @@ namespace Tankfall.View
                 case TankKind.MultiMissile:  // 다연장 — 포신이 아니라 **네모난 상자**다
                     return Make(3.6f, 3.0f, 1.1f, 1.0f, 1.0f, 1.35f, 1.15f, 2.2f, 0.95f, false, 5, 0.60f, 0f, 3);
                 case TankKind.SuperTank:     // 전 항목 최대. 원작대로 고를 수 없지만 그려질 수는 있어야 한다
-                    return Make(4.0f, 3.1f, 1.3f, 1.1f, 1.1f, 1.40f, 1.15f, 3.2f, 0.60f, true, 6, 0.45f, 0.6f, 3);
+                    return Make(4.0f, 3.1f, 1.3f, 1.1f, 1.1f, 1.40f, 1.15f, 2.15f, 0.60f, true, 6, 0.45f, 0.6f, 3);
 
                 // ── 미래 ── 매끈하고 길다
                 case TankKind.Laser:         // 가장 길고 가장 가는 포신. 차체도 낮고 길다
-                    return Make(4.1f, 2.4f, 0.9f, 0.8f, 0.85f, 1.00f, 0.7f, 5.0f, 0.16f, false, 6, 0f, 1.0f, 2);
+                    return Make(4.1f, 2.4f, 0.9f, 0.8f, 0.85f, 1.00f, 0.7f, 2.6f, 0.16f, false, 6, 0f, 1.0f, 2);
                 case TankKind.IonAttacker:   // 포구가 차체만큼 굵다 — "지형이 전부 파인다"가 보이게
                     return Make(3.3f, 3.0f, 1.2f, 1.05f, 1.05f, 1.45f, 1.1f, 2.0f, 1.05f, false, 4, 0f, 0.4f, 1);
                 case TankKind.Poseidon:      // 삼지창 — 기둥 셋처럼 보이게 어깨 + 높은 기둥
@@ -125,19 +125,19 @@ namespace Tankfall.View
         {
             switch (k)
             {
-                case TankKind.Catapult:     return new Color(0.64f, 0.48f, 0.32f);  // 흙갈색
-                case TankKind.CrossBow:     return new Color(0.56f, 0.59f, 0.32f);  // 올리브
-                case TankKind.Cannon:       return new Color(0.50f, 0.55f, 0.60f);  // 회청
-                case TankKind.Carrot:       return new Color(0.97f, 0.62f, 0.25f);  // 당근 주황
-                case TankKind.Duke:         return new Color(0.34f, 0.56f, 0.38f);  // 군녹
-                case TankKind.MineLander:   return new Color(0.72f, 0.67f, 0.42f);  // 카키
-                case TankKind.Missile:      return new Color(0.74f, 0.76f, 0.80f);  // 은회색
-                case TankKind.MultiMissile: return new Color(0.28f, 0.68f, 0.66f);  // 청록
-                case TankKind.SuperTank:    return new Color(0.89f, 0.76f, 0.30f);  // 금색
-                case TankKind.Laser:        return new Color(0.68f, 0.62f, 0.93f);  // 라벤더
-                case TankKind.IonAttacker:  return new Color(0.80f, 0.42f, 0.78f);  // 자홍
-                case TankKind.Poseidon:     return new Color(0.42f, 0.79f, 0.86f);  // 아쿠아
-                default:                    return new Color(0.62f, 0.86f, 0.40f);  // 세크윈드 — 연두
+                case TankKind.Catapult:     return new Color(0.54f, 0.31f, 0.15f);  // 흙갈색
+                case TankKind.CrossBow:     return new Color(0.12f, 0.46f, 0.4f);  // 올리브
+                case TankKind.Cannon:       return new Color(0.15f, 0.2f, 0.32f);  // 회청
+                case TankKind.Carrot:       return new Color(0.93f, 0.37f, 0.085f);  // 당근 주황
+                case TankKind.Duke:         return new Color(0.39f, 0.55f, 0.15f);  // 군녹
+                case TankKind.MineLander:   return new Color(0.88f, 0.58f, 0.19f);  // 카키
+                case TankKind.Missile:      return new Color(0.9f, 0.23f, 0.075f);  // 붉은 주홍 — ⚠️ 주석이 「은회색」이라 «거짓말»이었다(2026-09-20). 값도 원화도 빨강이다
+                case TankKind.MultiMissile: return new Color(0.1f, 0.53f, 0.57f);  // 청록
+                case TankKind.SuperTank:    return new Color(0.88f, 0.61f, 0.2f);  // 금색
+                case TankKind.Laser:        return new Color(0.46f, 0.22f, 0.64f);  // 라벤더
+                case TankKind.IonAttacker:  return new Color(0.83f, 0.27f, 0.53f);  // 자홍
+                case TankKind.Poseidon:     return new Color(0.14f, 0.55f, 0.77f);  // 아쿠아
+                default:                    return new Color(0.48f, 0.66f, 0.19f);  // 세크윈드 — 연두
             }
         }
     }
@@ -195,13 +195,14 @@ namespace Tankfall.View
                                       out Transform turret, out Transform barrel, out Transform firePoint,
                                       Material woodMat = null, Material snowMat = null)
         {
-            // 🚨 **외부 모델 경로를 여기에 붙이는 사람에게**(오너 결정 2026-09-20: 탱크를 외부 모델로):
-            //    모델 로더 호출을 **반드시 `if (!ForceProcedural) { ... }` 안에** 넣어라.
-            //    그래야 <see cref="TankShapeContract"/> 가 **모델 경로와 프로시저럴 경로를 나란히 지어**
-            //    「**발사점이 같은가**」를 대조할 수 있다. 감싸지 않으면 그 게이트가 **조용히 무력해진다**
-            //    (대조군을 만들 수 없으니 언제나 «같다»고 나온다).
-            //    ⚠️ 그리고 모델은 «보이는 것»만 바꿔야 한다 — `firePoint` 는 아래 프로시저럴 계산에서
-            //       나온 값을 **그대로** 써라. 발사점이 곧 탄도의 시작점 `p0` 다.
+            // 🚨 **자체검사 전용 우회**(2026-09-20). 모델 경로와 «같은 탱크가 나오는지»를 대조하려면
+            //    프로시저럴 쪽을 강제로 한 번 지어 봐야 한다. 게임은 이 값을 절대 건드리지 않는다.
+            if (!ForceProcedural)
+            {
+                if (BlenderModels.TryBuild(s, bodyMat, trackMat, accentMat, woodMat, snowMat,
+                                           out var assetRoot, out turret, out barrel, out firePoint))
+                    return assetRoot;
+            }
             var root = new GameObject("Tank").transform;
             woodMat ??= trackMat;
 
@@ -935,6 +936,8 @@ namespace Tankfall.View
         /// </summary>
         public static Mesh Shell(TankKind kind, ShellKind shell)
         {
+            var authored = BlenderModels.Shell(kind, shell);
+            if (authored != null) return authored;
             // 재조형(오너 지시 2026-09-17 "미사일 모양 더 디테일하게"): 예전엔 상자·쐐기 두세 개였다.
             // 원뿔대(ConeZ)·구(Sphere)·회전 상자(BoxRot)로 탄두·노즐·날개·띠를 실제 탄 구조대로 그린다.
             // 정점은 탄당 200~500 — 한 화면에 최대 9발(멀티미사일)이라 부담 없다.
