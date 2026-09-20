@@ -1576,9 +1576,17 @@ namespace Tankfall.View
                     else if (_galStep == 2 || _galStep == 3)
                     {
                         // 자취: 13종 탄에 각자 자취를 붙인다. 제자리에 뿜으므로 한 줄로 갈린다.
-                        BuildShellRow(ShellKind.Special);
-                        for (int i = 0; i < _galShells.Count; i++)
-                            _fx.AttachTrail(_galShells[i], ShellTrail.Of((TankKind)i, ShellKind.Special, false));
+                        // 🚨 **3단계는 «같은 탄·같은 자취»를 그대로 쓴다**(2026-09-20).
+                        //    다시 만들면 탄과 입자계가 «새것»이 되고, 앞 단계에서 이미 뿜은
+                        //    월드 공간 입자가 파괴 지연 동안 남는다 — 두 장이 «다른 조건»이 된다.
+                        //    실측: 그때 포세이돈(수명 길고 중력 받는 물방울)만 465px 이 남아
+                        //    **대조군 바닥이 안 내려갔다.** 재사용하면 그 교란이 사라진다.
+                        if (_galStep == 2)
+                        {
+                            BuildShellRow(ShellKind.Special);
+                            for (int i = 0; i < _galShells.Count; i++)
+                                _fx.AttachTrail(_galShells[i], ShellTrail.Of((TankKind)i, ShellKind.Special, false));
+                        }
                         _fx.ClearTrails();   // 두 단계를 대조하려면 «둘 다 빈 상태»에서 같은 프레임만큼 쌓아야 한다
                     }
                     else
