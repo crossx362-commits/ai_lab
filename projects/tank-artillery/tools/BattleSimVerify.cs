@@ -241,6 +241,14 @@ static class BattleSimVerify
     /// </summary>
     static readonly bool UseSpread = Environment.GetEnvironmentVariable("TANKFALL_SPREAD") != "0";
 
+    /// <summary>
+    /// **폭발 피해 배분을 `Sim/ExplosionResolver` 로 푼다**(`TANKFALL_RESOLVER=1`). 기본은 **0(원본 경로)**.
+    /// 🔑 **A/B 대조 전용 스위치다** — 같은 시드·같은 맵으로 0/1 한 표씩 떠서 **완전 일치**를 본다.
+    ///    일치하면 그릇이 절차를 보존한다는 뜻이고, 어긋나면 **그 자리가 곧 발견**이다.
+    /// ⚠️ 두 표를 **연달아** 뜨고 그 사이 `Sim/`·`tools/` 가 안 바뀌었는지 **mtime 으로 확인**해라.
+    /// </summary>
+    static readonly bool UseResolver = Environment.GetEnvironmentVariable("TANKFALL_RESOLVER") == "1";
+
         /// <summary>보급(§2-9-11) 스위치. `TANKFALL_SUPPLY=0` 으로 끄면 아이템만 켠 상태와 비교할 수 있다(판별용).</summary>
         static bool SupplyOn = true;
         /// <summary>
@@ -711,6 +719,36 @@ static class BattleSimVerify
                 // 원작: 상자를 부수면 그 안의 아이템도 사라진다(적이 못 줍게 부수는 것도 전술).
                 if (ItemSlots > 0 && SupplyOn) res.SupplyDestroyed += supply.DestroyNear(impact.X, impact.Y, impact.Z, st.BlastRadius);
 
+                if (UseResolver)
+                {
+                    // 🧪 **그릇 경로**(`TANKFALL_RESOLVER=1`) — 같은 절차를 `Sim/ExplosionResolver` 가 푼다.
+                    //    ⚠️ 후보 **순서**는 아래 원본 루프와 같아야 한다 — **실드 소모가 순서에 달려 있다.**
+                    //    🔎 구조는 다르다: 원본은 `dist > radius && !direct` 로 **미리 거르고**, 그릇은
+                    //       **감쇠가 0 을 만들어** `dmg<=0` 에서 빠진다. **결과는 같아야 한다** — 그걸 A/B 로 잰다.
+                    var cands = new List<ExplosionResolver.Candidate>();
+                    foreach (var o in units)
+                        if (o.Alive) cands.Add(new ExplosionResolver.Candidate
+                        { Id = o.Id, Team = o.Team, Center = o.Center, Defense = o.St.Defense });
+
+                    var facts = ExplosionResolver.Resolve(impact, st.BlastRadius,
+                        st.BaseDamage * pt.DamageScale * ampScale, st.DirectDamage * pt.DamageScale * ampScale, 1f,
+                        directId, cands, true, u.Id, u.Team, items.ConsumeShield);
+
+                    foreach (var h in facts.Hits)
+                    {
+                        // 🔑 그릇은 «막았다»를 **사실로** 낸다 — 「명중으로 셀까」는 **여기(호출부)가** 정한다.
+                        if (h.ShieldBlocked) { res.ItemsShielded++; continue; }
+                        var o = units.Find(x => x.Id == h.UnitId);
+                        o.Hp = Math.Max(0, o.Hp - h.Damage);
+                        if (o.Team != u.Team) { anyHit = true; if (u.Team == 0) res.BlastDealtA += h.Damage; }
+                        if (ImpactRules.ApplyToHit(status, fx, weather, o.Id, o.Kind)
+                            == ShellEffects.EffectType.Burn) BurnApplied++;
+                        var imkR = items.ImpairShot(u.Id);
+                        if (imkR != ImpairKind.None && o.Team != u.Team)
+                        { impair.Apply(o.Id, imkR); if (u.Team == 0) res.ImpairHitA++; }
+                    }
+                }
+                else
                 foreach (var o in units)
                 {
                     if (!o.Alive) continue;
@@ -817,6 +855,10 @@ static class BattleSimVerify
         if (!string.IsNullOrWhiteSpace(aeroEnv) && float.TryParse(aeroEnv.Trim(), out float aeroK))
             FlightProfile.SetAeroScaleForHarness(aeroK);
         // ⚠️ **조건을 표에 같이 찍는다.** 대조군으로 뜬 표가 기본 표와 섞이면 둘 다 못 쓴다.
+        // ⚠️ **조건을 표에 같이 찍는다** — 그릇 경로로 뜬 표가 원본 표와 섞이면 둘 다 못 쓴다.
+        Console.WriteLine(UseResolver
+            ? "폭발 배분: ⚠️ **그릇 경로**(ExplosionResolver) — A/B 대조용"
+            : "폭발 배분: 원본 경로(기본)");
         Console.WriteLine(FlightProfile.AeroIsDefault
             ? "궤적: 수평 상수 가속 **켬**(기본)"
             : $"궤적: ⚠️ **대조군** — 수평 상수 가속 ×{FlightProfile.AeroScale:F2}");
