@@ -146,6 +146,14 @@ namespace Tankfall.View
 
     public static class ProceduralTank
     {
+        /// <summary>
+        /// **자체검사 전용 — 모델이 있어도 프로시저럴로 짓는다.** 기본 false. 게임은 안 건드린다.
+        /// 🔑 <see cref="TankShapeContract"/> 가 「모델 탱크와 프로시저럴 탱크가 **같은 발사점**을 주는가」를
+        ///    대조할 때만 켠다. 두 경로가 같은 것을 만드는지 코드가 검사하는 형태
+        ///    (하네스의 `AssertVarPathIsFaithful` 과 같은 규약).
+        /// </summary>
+        public static bool ForceProcedural;
+
         /// <summary>기종 → 차대. 원작 근거: 레이저·포세이돈은 호버("지뢰를 밟지 않는 단 두 개의 탱크"), 나머지는 시대 감각으로 갈랐다.</summary>
         public static Chassis ChassisOf(TankKind k)
         {
@@ -187,6 +195,14 @@ namespace Tankfall.View
                                       out Transform turret, out Transform barrel, out Transform firePoint,
                                       Material woodMat = null, Material snowMat = null)
         {
+            // 🚨 **자체검사 전용 우회**(2026-09-20). 모델 경로와 «같은 탱크가 나오는지»를 대조하려면
+            //    프로시저럴 쪽을 강제로 한 번 지어 봐야 한다. 게임은 이 값을 절대 건드리지 않는다.
+            if (!ForceProcedural)
+            {
+                if (BlenderModels.TryBuild(s, bodyMat, trackMat, accentMat, woodMat, snowMat,
+                                           out var assetRoot, out turret, out barrel, out firePoint))
+                    return assetRoot;
+            }
             var root = new GameObject("Tank").transform;
             woodMat ??= trackMat;
 

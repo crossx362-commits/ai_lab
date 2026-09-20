@@ -388,6 +388,11 @@ namespace Tankfall.View
                 Check(!SeamQuiet(raw, 30, 0.03f), "대조군 — 안 페이드된 파형은 이음새 검사 실패");
             }
 
+            // 🚨 **모델 전환 안전 조건**(오너 결정 2026-09-20) — 모델은 «보이는 것»만 바꾸고
+            //    «재는 것»(발사점)은 못 바꾼다. 발사점이 곧 탄도의 시작점 `p0` 이라, 몇 cm 만 달라져도
+            //    명중률·승률·M4 판정이 조용히 전부 바뀐다. 자세한 근거는 TankShapeContract 머리말.
+            TankShapeContract.Run(Check);
+
             // 2) 음악 게이트 — 끔/음소거면 트랙이 서지 않는다
             bool savedMuted = Sfx.Muted, savedOff = Sfx.MusicOff;
             Sfx.Muted = false; Sfx.MusicOff = true; Sfx.Music(Sfx.Track.Title);
