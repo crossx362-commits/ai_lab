@@ -1101,6 +1101,11 @@ namespace Tankfall.View
         /// </summary>
         public void DriveDust(Vector3 at, Color dirt, float strength01)
         {
+            // 🚨 **이 솎기는 «탱크별»이 아니라 «전역»이다**(2026-09-20 확인).
+            //    턴제라 **한 번에 한 대만 움직여** 지금은 무해하다 — 그래서 여태 안 보였다.
+            //    ⚠️ **M5(네트워크)에서 «동시 턴»이 들어오면 여러 대가 서로 먼지를 뺏는다**
+            //       (초당 18회를 나눠 쓰니 대부분의 탱크가 먼지를 못 낸다).
+            //       그때는 `Dictionary<Transform,float>` 로 **탱크별 간격**으로 바꿔라.
             if (Time.time < _dustNext) return;
             _dustNext = Time.time + 0.055f;                 // 초당 ~18회 — 이보다 잦으면 먼지가 벽이 된다
 
