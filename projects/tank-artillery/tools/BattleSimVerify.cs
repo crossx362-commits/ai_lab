@@ -22,6 +22,14 @@ static class BattleSimVerify
     // ── 단일 행 실험 (TANKFALL_ROW=IonAttacker TANKFALL_VAR=CraterRadius TANKFALL_VALUES=12,9.5,8) ──
     // 한 번에 한 변수만 바꿔 그 행만 재측정한다. Sim 수치는 손대지 않고 하네스가 그 기종의 필드 하나를 덮는다.
     // TANKFALL_CRATER=a,b,c 는 VAR=CraterRadius 의 준말. 덮을 수 있는 필드는 SetVar 의 switch 에 있는 것뿐 — 없는 이름은 즉시 종료.
+    /// <summary>`TANKFALL_VAR` 로 덮을 수 있는 필드 이름 — **거부 메시지가 이 목록을 그대로 보여 준다.**
+    /// ⚠️ `SetVar`/`GetVar` 의 switch 와 **같이** 고쳐라. 어긋나면 안내가 거짓말이 된다.</summary>
+    static readonly string[] VarNames = {
+        "CraterRadius", "BlastRadius", "BaseDamage", "DirectDamage", "Defense", "Delay", "Hp",
+        "MinPitch", "MaxPitch", "GravityScale", "WindScale", "PowerScale", "MoveSpeed",
+        "SpBase", "SpBlast", "SpCrater", "SpDirect",
+    };
+
     static TankKind? OnlyRow;
     static string VarName;
     static float VarValue;
@@ -797,6 +805,15 @@ static class BattleSimVerify
         //    사거리는 ±6m 로 보존됐어도 **중간 탄도(정점위치 0.494~0.496 → 0.429~0.571)** 가 바뀌었다.
         //    표가 이전과 달라지면 **원인 제거**로 가른다: 이걸 0 으로 두고 같은 표를 뜬다.
         var aeroEnv = Environment.GetEnvironmentVariable("TANKFALL_AERO");
+        // 🚨 **어느 스위치인지 말하지 않는 거부는 반쪽이다**(2026-09-20 가드 시험 ②).
+        //    예전엔 `아에로 대조군 배율은 0~1` 만 던져서 **`TANKFALL_AERO` 라는 말이 없었다.**
+        if (!string.IsNullOrWhiteSpace(aeroEnv) &&
+            (!float.TryParse(aeroEnv.Trim(), out float aeroPre) || !(aeroPre >= 0f) || aeroPre > 1f))
+        {
+            Console.WriteLine($"❌ TANKFALL_AERO={aeroEnv}: 0~1 사이의 «배율»이어야 한다(수평 상수 가속 대조군).");
+            Console.WriteLine("   0 = 끔(아에로 이전과 비교) · 1 = 기본(켬). 그 사이 값도 된다.");
+            Environment.Exit(2);
+        }
         if (!string.IsNullOrWhiteSpace(aeroEnv) && float.TryParse(aeroEnv.Trim(), out float aeroK))
             FlightProfile.SetAeroScaleForHarness(aeroK);
         // ⚠️ **조건을 표에 같이 찍는다.** 대조군으로 뜬 표가 기본 표와 섞이면 둘 다 못 쓴다.
@@ -832,6 +849,15 @@ static class BattleSimVerify
             if (!Enum.TryParse<TankKind>(rowEnv, true, out var rk)) { Console.WriteLine($"❌ TANKFALL_ROW={rowEnv}: 모르는 기종"); Environment.Exit(2); }
             OnlyRow = rk;
             VarName = Environment.GetEnvironmentVariable("TANKFALL_VAR");
+            // 🚨 **거부 메시지만 보고 고칠 수 있어야 한다**(2026-09-20 가드 시험 ②).
+            //    예전엔 「덮을 수 없는 필드」만 던져서 **유효한 이름을 찾으러 코드를 열어야** 했다.
+            if (!string.IsNullOrEmpty(VarName) && Array.IndexOf(VarNames, VarName) < 0)
+            {
+                Console.WriteLine($"❌ TANKFALL_VAR={VarName}: 덮을 수 없는 필드");
+                Console.WriteLine($"   쓸 수 있는 이름: {string.Join(" · ", VarNames)}");
+                Console.WriteLine("   (대소문자 그대로 써라. `TANKFALL_CRATER=a,b,c` 는 VAR=CraterRadius 의 준말이다.)");
+                Environment.Exit(2);
+            }
             var valEnv = Environment.GetEnvironmentVariable("TANKFALL_VALUES");
             var cEnv = Environment.GetEnvironmentVariable("TANKFALL_CRATER");
             if (!string.IsNullOrEmpty(cEnv)) { VarName = "CraterRadius"; valEnv = cEnv; }
