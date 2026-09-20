@@ -91,8 +91,17 @@ open /private/tmp/tankfall-worktree/projects/tank-artillery/unity/Build/Tankfall
 | `BattleDemo._shell` · `_subShells` | 한 발만 난다 | **두 발째가 첫 발을 덮어쓴다** |
 | `_shellShadow` · `_subShadows` | 〃 | 〃 (그림자가 한 벌뿐) |
 | `_trailStyle` · `_guide` | 〃 | **다른 기종 두 발이 같은 자취·유도**를 쓴다 |
-| `_shooterStats` · `_shooterKind` · `_shooterShell` · `_shooterUlt` · `_shooterId` · `_shooterTeam` | 사수가 하나 | **집계·연출이 엉뚱한 사수에 붙는다**(피해 팝업·전적) |
+| `_shooterStats` · `_shooterKind` · `_shooterShell` · `_shooterUlt` · `_shooterId` · `_shooterTeam` | 사수가 하나 **+ ✅ `credited` 로 이미 갈라 놨다**(아래) | **집계·연출이 엉뚱한 사수에 붙는다**(피해 팝업·전적) |
 | `_shellVisualKind` · `_shellVisualShell` (만들어 둔 탄 메시) | 〃 | 메시가 **매 발 다시 만들어지거나 틀린 기종**으로 나온다 |
+
+> ✅ **«지금 결함»은 아니다 — 확인했다**(2026-09-20, 읽기만).
+> `CountDamage(victim, dmg, popup, **credited**)` 는 **`credited` 일 때만** `_shooterTeam` 을 읽는다.
+> 그리고 **사수 없는 피해 다섯이 전부 `false` 를 넘긴다**: 지뢰·장판(1301) · 낙하(1973) ·
+> 서든데스(2043) · 턴시작 지속피해(2164) · 광역(2813). **직격·폭발(1908)만 `true`** 다.
+> ⇒ 「쏜 사람이 없으므로 가해 전적엔 안 쌓는다」가 **주석이 아니라 인자로** 지켜지고 있다.
+> 🔑 **그래서 이 자리는 이미 «값 객체»로 가는 길이 나 있다** — `credited`(bool)는 사실
+> **「이 피해는 누구 것인가」의 «거친» 표현**이다. `ExplosionResolver` 는 그걸 **`attacker`(값)** 로 받으면
+> `credited` 가 **`attacker != null`** 로 자연히 대체된다. 그게 §10 이 요구하는 «값»의 한 조각이다.
 
 > 🔑 **패턴이 하나다**: 「**지금 날아가는 탄**」·「**이번 사수**」처럼 **«현재» 하나를 가정한 필드**.
 > 고치는 방향도 하나다 — **그 상태를 «발/사수»에 묶어라**(리스트나 사전, 또는 «한 발»을 값 객체로).
