@@ -78,15 +78,23 @@ namespace Tankfall.View
                 var teamMat = new Material(Shader.Find("Unlit/Color")) { color = new Color(0.15f, 0.48f, 0.98f) };
                 var tinted = ProceduralTank.Build(shape, mat, mat, teamMat, out _, out _, out _);
                 bool tookTeamMat = false;
+                // 🔑 **«무엇이 있는지»를 같이 찍는다**(2026-09-20). 「팀색 못 찾음」만 말하면
+                //    고치는 사람이 **FBX 를 하나씩 열어 봐야** 한다 — 그 메시지만 보고 고칠 수 있어야 한다(ⓑ 기준).
+                var nodes = new System.Collections.Generic.List<string>();
                 if (tinted != null)
                     foreach (var r in tinted.GetComponentsInChildren<Renderer>())
+                    {
+                        if (!nodes.Contains(r.name)) nodes.Add(r.name);
                         foreach (var m in r.sharedMaterials)
                             if (m == teamMat) { tookTeamMat = true; break; }
+                    }
+                string nodeList = nodes.Count == 0 ? "(렌더러 없음)" : string.Join(" · ", nodes);
                 check(tookTeamMat, tookTeamMat
-                    ? $"{name} 팀색 주입됨 (accentMat 이 렌더러에 실제로 쓰였다)"
-                    : $"{name} **팀색이 안 먹었다** — `accentMat` 으로 넘긴 머티리얼이 어느 렌더러에도 안 쓰였다. " +
-                      "모델이 자기 머티리얼만 쓰면 **아군과 적군이 화면에서 안 갈린다.** " +
-                      "모델 파이프라인이 팀색 슬롯에 `accentMat` 을 **그대로 물리게** 해라.");
+                    ? $"{name} 팀색 주입됨 ✅ 노드: {nodeList}"     // ✅ 되는 것의 노드 이름 = «정답 예시»
+                    : $"{name} **팀색이 안 먹었다** — `accentMat` 이 어느 렌더러에도 안 쓰였다. " +
+                      $"**이 모델이 가진 노드: {nodeList}** — 이 중 팀색 면을 `Team` 으로 이름 붙이면 된다 " +
+                      "(`BlenderModels` 가 **노드 이름이 `Team` 인 렌더러에만** 팀 머티리얼을 물린다). " +
+                      "🚨 안 고치면 **아군과 적군이 화면에서 안 갈린다** — 4:4 에서 어느 게 내 탱크인지 모른다.");
 
                 if (liveUsedModel) withModel++; else procedural++;
 
