@@ -1557,8 +1557,19 @@ namespace Tankfall.View
         void ShellGalleryStep()
         {
             GalleryCamera();
+
+            // 🚨 **입자는 «프레임»이 아니라 «실시간»으로 늙는다**(2026-09-20).
+            //    갤러리는 프레임을 세는데 프레임 «길이»는 매번 다르다 — 그래서 같은 프레임 번호라도
+            //    입자 나이가 달라진다. 수명 짧은 연기는 정상상태에 도달해 티가 안 나지만,
+            //    **수명 길고 중력 받는 입자**(포세이돈 물방울·마인랜더)는 그대로 그림이 달라진다.
+            //    실측: 고정 시드로 대조군 셋이 0 이 된 뒤에도 **포세이돈만 465px** 이 남았던 이유다.
+            //    ⇒ `captureDeltaTime` 으로 **한 프레임 = 정확히 1/60초**로 못 박는다.
+            //    ⚠️ 갤러리를 벗어날 때 반드시 0 으로 되돌린다 — 안 그러면 게임 시간이 느려진다.
+            Time.captureDeltaTime = 1f / 60f;
+
             if (_galStep >= GalSteps.Length)
             {
+                Time.captureDeltaTime = 0f;   // 원래대로(실시간)
                 VerifyShots();
                 Application.Quit(0);
                 return;
