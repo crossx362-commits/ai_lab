@@ -1640,7 +1640,17 @@ namespace Tankfall.View
                     // ⚠️ `ScreenCapture.CaptureScreenshot` 은 **다음 프레임 끝**에 찍는다.
                     //    찍자마자 단계를 넘기면 그 다음 단계의 라벨이 사진에 들어간다
                     //    (자취 사진에 "폭발_전체" 라고 적혀 나왔다). 한 프레임 더 두고 넘어간다.
-                    if (_galFrame == GalShotFrame) Shot($"gal{_galStep + 1}_{GalSteps[_galStep]}");
+                    if (_galFrame == GalShotFrame)
+                    {
+                        // 🚨 **난수가 안 끼는 검증 경로**(2026-09-20). 픽셀 대조는 «난수 입자가 주인공»인
+                        //    이 장면에서 못 쓴다 — 시드를 고정해도 수명 길고 중력 받는 입자(포세이돈)는
+                        //    바닥이 안 내려간다. 그래서 «숫자»로 같이 남긴다.
+                        //    ⚠️ `[실현]`(입자 수)과 `[설정]`(방출률·크기)은 **답하는 질문이 다르다** — 섞어 읽지 마라.
+                        if (_galStep == 2 || _galStep == 3)
+                            for (int i = 0; i < _galShells.Count; i++)
+                                Debug.Log($"[Tankfall] 자취계측 {GalSteps[_galStep]} {TankStats.Get((TankKind)i).Name} {_fx.TrailReport(_galShells[i])}");
+                        Shot($"gal{_galStep + 1}_{GalSteps[_galStep]}");
+                    }
                     else if (_galFrame > GalShotFrame + 1) { _galStep++; _galFrame = -1; }
                     break;
             }

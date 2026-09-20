@@ -918,6 +918,30 @@ namespace Tankfall.View
                 if (kv.Value != null) kv.Value.Clear(true);
         }
 
+        /// <summary>
+        /// **자취를 «숫자»로 찍는다** — 난수가 안 끼는 검증 경로(2026-09-20).
+        /// 🔑 두 칸을 **구분해서** 낸다. 섞으면 다음 사람이 설정값을 보고 「보인다」로 읽는다.
+        ///  · **`[실현]` 살아 있는 입자 수** — 「**그려질 것이 있나 없나**」를 **직접** 답한다.
+        ///    캐논의 총구 불똥처럼 **있다/없다 이분법**은 이걸로 «닫힌다».
+        ///  · **`[설정]` 방출률·크기·속도** — 「**코드가 다른 값을 낸다**」까지만 답한다.
+        ///    **「그림이 다르다」는 «증명 못 한다»** — 그 구분을 로그에 그대로 적는다.
+        /// </summary>
+        public string TrailReport(Transform shell)
+        {
+            if (shell == null || !_trails.TryGetValue(shell, out var trail) || trail == null) return "자취 없음";
+            int live = trail.particleCount;
+            var cfg = new System.Text.StringBuilder();
+            foreach (Transform t in trail.transform)
+            {
+                var l = t.GetComponent<ParticleSystem>();
+                if (l == null) continue;
+                live += l.particleCount;
+                if (!l.emission.enabled) continue;
+                cfg.Append($" {t.name}(방출 {l.emission.rateOverTime.constant:F0}/s · 크기 {l.main.startSizeMultiplier:F2} · 속도 {l.main.startSpeed.constantMax:F1})");
+            }
+            return $"[실현] 입자 {live} · [설정]{(cfg.Length == 0 ? " 레이어 없음" : cfg.ToString())}";
+        }
+
         public void StopTrail(Transform shell)
         {
             if (shell == null) return;
