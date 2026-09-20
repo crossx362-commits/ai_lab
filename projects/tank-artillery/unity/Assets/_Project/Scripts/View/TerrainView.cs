@@ -29,7 +29,16 @@ namespace Tankfall.View
         readonly List<Color> _c = new List<Color>();
 
         /// <summary>맵 테마(색 팔레트). 판 시작에 한 번 정해지고 그 뒤 모든 청크가 이 값으로 칠해진다.</summary>
-        public MapTheme Theme = MapTheme.Of(Tankfall.Sim.MapKind.TwinHills, false);
+        MapTheme _theme=MapTheme.Of(Tankfall.Sim.MapKind.TwinHills,false);
+        public MapTheme Theme
+        {
+            get => _theme;
+            set
+            {
+                _theme=value;
+                if(_material!=null) { _material.SetFloat("_Biome",value.GroundTile); _material.SetFloat("_Grass",value.GrassDetail?1f:0f); }
+            }
+        }
 
         readonly List<int> _t = new List<int>();
 

@@ -1,0 +1,353 @@
+{
+  "Cannon": {
+    "boxes": [
+      [
+        18,
+        213,
+        453,
+        558
+      ],
+      [
+        520,
+        210,
+        495,
+        561
+      ],
+      [
+        1062,
+        216,
+        447,
+        552
+      ]
+    ],
+    "front_width_height": 0.8118279569892473,
+    "side_length_height": 0.8823529411764706,
+    "top_width_length": 0.8097826086956522,
+    "projection_closure_ratio": 0.8801299097237514,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "Carrot": {
+    "boxes": [
+      [
+        33,
+        150,
+        507,
+        549
+      ],
+      [
+        599,
+        177,
+        573,
+        522
+      ],
+      [
+        1241,
+        81,
+        486,
+        693
+      ]
+    ],
+    "front_width_height": 0.9234972677595629,
+    "side_length_height": 1.0977011494252873,
+    "top_width_length": 0.7012987012987013,
+    "projection_closure_ratio": 0.8335881625006293,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "Catapult": {
+    "boxes": [
+      [
+        12,
+        51,
+        552,
+        636
+      ],
+      [
+        599,
+        48,
+        564,
+        648
+      ],
+      [
+        1232,
+        42,
+        522,
+        645
+      ]
+    ],
+    "front_width_height": 0.8679245283018868,
+    "side_length_height": 0.8703703703703703,
+    "top_width_length": 0.8093023255813954,
+    "projection_closure_ratio": 0.8115829682058195,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "CrossBow": {
+    "boxes": [
+      [
+        15,
+        225,
+        564,
+        465
+      ],
+      [
+        623,
+        207,
+        537,
+        489
+      ],
+      [
+        1193,
+        129,
+        561,
+        591
+      ]
+    ],
+    "front_width_height": 1.2129032258064516,
+    "side_length_height": 1.098159509202454,
+    "top_width_length": 0.949238578680203,
+    "projection_closure_ratio": 0.859438205374045,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "Duke": {
+    "boxes": [
+      [
+        12,
+        147,
+        504,
+        585
+      ],
+      [
+        599,
+        138,
+        573,
+        597
+      ],
+      [
+        1244,
+        114,
+        501,
+        633
+      ]
+    ],
+    "front_width_height": 0.8615384615384616,
+    "side_length_height": 0.9597989949748744,
+    "top_width_length": 0.7914691943127962,
+    "projection_closure_ratio": 0.8817381593138338,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "IonAttacker": {
+    "boxes": [
+      [
+        24,
+        195,
+        558,
+        480
+      ],
+      [
+        626,
+        165,
+        504,
+        528
+      ],
+      [
+        1217,
+        192,
+        519,
+        504
+      ]
+    ],
+    "front_width_height": 1.1625,
+    "side_length_height": 0.9545454545454546,
+    "top_width_length": 1.0297619047619047,
+    "projection_closure_ratio": 0.8455522971652002,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "Laser": {
+    "boxes": [
+      [
+        18,
+        222,
+        555,
+        360
+      ],
+      [
+        608,
+        243,
+        564,
+        333
+      ],
+      [
+        1211,
+        27,
+        543,
+        726
+      ]
+    ],
+    "front_width_height": 1.5416666666666667,
+    "side_length_height": 1.6936936936936937,
+    "top_width_length": 0.7479338842975206,
+    "projection_closure_ratio": 0.8216892344656471,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "MineLander": {
+    "boxes": [
+      [
+        24,
+        120,
+        588,
+        570
+      ],
+      [
+        661,
+        129,
+        624,
+        549
+      ],
+      [
+        1353,
+        15,
+        534,
+        690
+      ]
+    ],
+    "front_width_height": 1.0315789473684212,
+    "side_length_height": 1.1366120218579234,
+    "top_width_length": 0.7739130434782608,
+    "projection_closure_ratio": 0.8527111486076967,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "Missile": {
+    "boxes": [
+      [
+        75,
+        177,
+        480,
+        498
+      ],
+      [
+        669,
+        162,
+        645,
+        516
+      ],
+      [
+        1357,
+        237,
+        600,
+        351
+      ]
+    ],
+    "front_width_height": 0.963855421686747,
+    "side_length_height": 1.25,
+    "top_width_length": 1.7094017094017093,
+    "projection_closure_ratio": 2.2168803418803416,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "MultiMissile": {
+    "boxes": [
+      [
+        24,
+        183,
+        459,
+        534
+      ],
+      [
+        594,
+        165,
+        570,
+        561
+      ],
+      [
+        1237,
+        75,
+        501,
+        696
+      ]
+    ],
+    "front_width_height": 0.8595505617977528,
+    "side_length_height": 1.0160427807486632,
+    "top_width_length": 0.7198275862068966,
+    "projection_closure_ratio": 0.8508814429945561,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "Poseidon": {
+    "boxes": [
+      [
+        27,
+        126,
+        513,
+        561
+      ],
+      [
+        655,
+        177,
+        705,
+        510
+      ],
+      [
+        1403,
+        33,
+        510,
+        687
+      ]
+    ],
+    "front_width_height": 0.9144385026737968,
+    "side_length_height": 1.3823529411764706,
+    "top_width_length": 0.74235807860262,
+    "projection_closure_ratio": 1.1222196685308612,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "SecWind": {
+    "boxes": [
+      [
+        15,
+        201,
+        636,
+        390
+      ],
+      [
+        723,
+        201,
+        519,
+        393
+      ],
+      [
+        1330,
+        159,
+        633,
+        474
+      ]
+    ],
+    "front_width_height": 1.6307692307692307,
+    "side_length_height": 1.3206106870229009,
+    "top_width_length": 1.3354430379746836,
+    "projection_closure_ratio": 1.0814530434988707,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  },
+  "SuperTank": {
+    "boxes": [
+      [
+        24,
+        132,
+        609,
+        549
+      ],
+      [
+        661,
+        126,
+        624,
+        546
+      ],
+      [
+        1341,
+        51,
+        555,
+        666
+      ]
+    ],
+    "front_width_height": 1.1092896174863387,
+    "side_length_height": 1.1428571428571428,
+    "top_width_length": 0.8333333333333334,
+    "projection_closure_ratio": 0.8585503166783955,
+    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+  }
+}

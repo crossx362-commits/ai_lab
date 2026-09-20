@@ -52,7 +52,7 @@ namespace Tankfall.View
 
                 case TankKind.Missile:
                 case TankKind.MultiMissile:  // 추진 — 주황 화염 + 흰 연기(번갈아 보이도록 밝게)
-                    s = Mk(new Color(1.00f, 0.62f, 0.22f), 0.34f, 0.40f, 0.022f, Vector3.up * 0.8f, true, false); break;
+                    s = Mk(new Color(1.00f, 0.62f, 0.22f), 0.43f, 0.65f, 0.018f, Vector3.up * 0.32f, true, false); break;
 
                 case TankKind.Laser:         // 빔 — 가늘고 촘촘한 빛줄기, 흐르지 않는다
                     s = Mk(new Color(1.00f, 0.32f, 0.36f), 0.20f, 0.28f, 0.012f, Vector3.zero, true, true); break;

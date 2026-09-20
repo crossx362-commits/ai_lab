@@ -147,8 +147,8 @@ namespace Tankfall.View
         /// </summary>
         static float Hash(float x, float z)
         {
-            float v = Mathf.Sin(x * 12.9898f + z * 78.233f) * 43758.5453f;
-            return (v - Mathf.Floor(v)) * 2f - 1f;
+            // 연속적인 넓은 색 번짐. 정점마다 독립 해시를 쓰면 모래알처럼 보인다.
+            return Mathf.Sin(x * 1.7f + Mathf.Sin(z * .9f)) * Mathf.Cos(z * 1.3f + x * .4f);
         }
 
         /// <summary>구간 사이를 부드럽게 잇는다. 하드 컷오프가 만드는 계단진 등고선을 없애는 게 목적이다.</summary>

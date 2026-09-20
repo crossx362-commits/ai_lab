@@ -198,12 +198,17 @@ namespace Tankfall.View
                                       out Transform turret, out Transform barrel, out Transform firePoint,
                                       Material woodMat = null, Material snowMat = null)
         {
-            // 🚨 **외부 모델 로더를 여기에 붙이는 사람에게**(오너 결정 2026-09-20):
-            //    호출을 **반드시 `if (!ForceProcedural) { ... }` 안에** 넣어라.
-            //    그래야 <see cref="TankShapeContract"/> 가 모델 경로와 프로시저럴 경로를 나란히 지어
-            //    「**발사점이 같은가**」를 대조할 수 있다.
-            //    ✅ 안 감싸면 **가드가 잡는다** — 우회를 걸었는데 `ProceduralBuilds` 가 안 오르면 실패한다.
-            //    ⚠️ 그리고 `firePoint` 는 아래 프로시저럴 계산값을 **그대로** 써라 — 그게 탄도의 시작점 `p0` 다.
+            // 🚨 **자체검사 전용 우회**(2026-09-20). 모델 경로와 «같은 탱크가 나오는지»를 대조하려면
+            //    프로시저럴 쪽을 강제로 한 번 지어 봐야 한다. 게임은 이 값을 절대 건드리지 않는다.
+            if (!ForceProcedural)
+            {
+                if (BlenderModels.TryBuild(s, bodyMat, trackMat, accentMat, woodMat, snowMat,
+                                           out var assetRoot, out turret, out barrel, out firePoint))
+                {
+                    TankAimRig.Attach(s, assetRoot, ref turret, ref barrel, out firePoint);
+                    return assetRoot;
+                }
+            }
             var root = new GameObject("Tank").transform;
             woodMat ??= trackMat;
 
@@ -943,8 +948,8 @@ namespace Tankfall.View
         /// </summary>
         public static Mesh Shell(TankKind kind, ShellKind shell)
         {
-            // 🚨 **탄 메시를 외부 모델로 바꾸는 사람에게**: 탄 «모양»은 연출이라 바꿔도 된다.
-            //    다만 **탄의 크기·충돌은 Sim 이 따로 갖고 있다** — 메시에서 유도하지 마라.
+            var authored = BlenderModels.Shell(kind, shell);
+            if (authored != null) return authored;
             // 재조형(오너 지시 2026-09-17 "미사일 모양 더 디테일하게"): 예전엔 상자·쐐기 두세 개였다.
             // 원뿔대(ConeZ)·구(Sphere)·회전 상자(BoxRot)로 탄두·노즐·날개·띠를 실제 탄 구조대로 그린다.
             // 정점은 탄당 200~500 — 한 화면에 최대 9발(멀티미사일)이라 부담 없다.

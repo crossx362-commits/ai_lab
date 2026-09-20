@@ -25,7 +25,7 @@ namespace Tankfall.View
         /// <summary>바퀴 반지름(m). 굴러간 거리를 각도로 바꾸는 데 쓴다 — 크면 천천히 돈다.</summary>
         public float WheelRadius = 0.5f;
 
-        /// <summary>호버는 바퀴가 없다. 흙먼지도 안 낸다(떠 있으니까) — 대신 추진 링이 있다.</summary>
+        /// <summary>호버는 흙먼지를 내지 않는다. 원화의 고래·새처럼 착지 바퀴를 함께 가질 수 있다.</summary>
         public bool Hover;
 
         /// <summary>한 프레임에 이만큼 넘게 움직였으면 주행이 아니라 순간이동이다(지진·스폰·낙하).</summary>

@@ -1,4 +1,4 @@
-// 환경 — 구름·원경 산맥·태양. 전부 코드로 만든다(에셋 없음).
+// 환경 — 일러스트 원경과 이어지는 열린 구릉 배경. 이미지가 없으면 기존 원경으로 폴백한다.
 //
 // 출처(조사 2026-09-17, 나무위키 「포트리스2/맵」): 원작 맵에는 **항상 큰 배경이 자리했다** —
 // 멀리 보이는 스핑크스(The Sphinx), 거대한 달(The Night), 전함 4대(The Yamato Ship),
@@ -51,9 +51,13 @@ namespace Tankfall.View
 
             BuildApron(mapSize, theme, groundY);
             _mapSpan = mapSize;
-            BuildClouds(mapSize, theme, ref rng);
-            BuildRidges(mapSize, theme, ref rng);
-            BuildSun(mapSize, theme, sunDir);
+            // 완성된 원경은 스카이돔에 그린다. 이미지가 없는 경우에만 기존 배경을 쓴다.
+            if(Resources.Load<Texture2D>(theme.PanoramaResource)==null)
+            {
+                BuildClouds(mapSize, theme, ref rng);
+                BuildRidges(mapSize, theme, ref rng);
+                BuildSun(mapSize, theme, sunDir);
+            }
         }
 
         /// <summary>
@@ -82,12 +86,14 @@ namespace Tankfall.View
             go.transform.SetParent(transform, false);
             go.transform.position = new Vector3(0f, groundY - 0.35f, 0f);
             var mf = go.AddComponent<MeshFilter>();
-            mf.sharedMesh = ApronRing(mapSize, 0.5f, mapSize * 4f);
+            mf.sharedMesh = BuildApronMesh(mapSize, groundY, theme);
 
             var mr = go.AddComponent<MeshRenderer>();
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             // 플레이 영역보다 어둡게 — "여기는 전장이 아니다"가 색으로 읽혀야 한다.
-            mr.sharedMaterial = Lit(Color.Lerp(theme.Mid, theme.Fog, 0.35f) * 0.82f);
+            mr.sharedMaterial = new Material(Shader.Find("Tankfall/TerrainVertexColor"));
+            mr.sharedMaterial.SetTexture("_DetailTex",Resources.Load<Texture2D>("Art/ground-grass"));
+            mr.sharedMaterial.SetFloat("_Grass",0f); // Distant slopes use broad atmospheric color, not tiled foreground grass.
             _apron = go.transform;
             ApronTopY = groundY - 0.35f;
 
@@ -104,7 +110,7 @@ namespace Tankfall.View
             fill.transform.position = new Vector3(mapSize * 0.5f, ApronTopY, mapSize * 0.5f);
             var fr = fill.GetComponent<MeshRenderer>();
             fr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            fr.sharedMaterial = mr.sharedMaterial;
+            fr.sharedMaterial = Lit(theme.Mid);
             fill.SetActive(false);
             _apronFill = fill;
         }
@@ -121,29 +127,38 @@ namespace Tankfall.View
         /// 가운데가 뚫린 사각 고리. 안쪽 구멍 = 플레이 영역 `[-overlap, mapSize+overlap]`,
         /// 바깥 = 그 밖으로 `out` 만큼. 사다리꼴 4장으로 만든다.
         /// </summary>
-        static Mesh ApronRing(float mapSize, float overlap, float outward)
+        public static Mesh BuildApronMesh(float span, float groundY, in MapTheme theme)
         {
-            float i0 = -overlap, i1 = mapSize + overlap;          // 안쪽 구멍
-            float o0 = i0 - outward, o1 = i1 + outward;           // 바깥
-            var v = new Vector3[]
+            // 열린 중앙은 그대로 유지한다. 바깥만 낮은 구릉으로 이어 평평한 판의 수평선을 없앤다.
+            const int sides=128, rings=48;
+            var vertices=new Vector3[(rings+1)*sides];
+            var colors=new Color[vertices.Length];
+            var triangles=new int[rings*sides*6];
+            float half=span*.5f;
+            for(int ring=0;ring<=rings;ring++) for(int i=0;i<sides;i++)
             {
-                new Vector3(o0, 0f, o0), new Vector3(o1, 0f, o0), new Vector3(o1, 0f, o1), new Vector3(o0, 0f, o1), // 0~3 바깥
-                new Vector3(i0, 0f, i0), new Vector3(i1, 0f, i0), new Vector3(i1, 0f, i1), new Vector3(i0, 0f, i1), // 4~7 안쪽
-            };
-            // 각 변마다 사다리꼴 하나(위에서 볼 때 시계방향이 앞면).
-            var tri = new int[]
+                float angle=i*Mathf.PI*2/sides;
+                Vector2 dir=new Vector2(Mathf.Cos(angle),Mathf.Sin(angle));
+                dir/=Mathf.Max(Mathf.Abs(dir.x),Mathf.Abs(dir.y));
+                float distance=ring*30f;
+                float x=half+dir.x*(half-.5f+distance), z=half+dir.y*(half-.5f+distance);
+                float edge=MapHeightFunction.Height(theme.Map,Mathf.Clamp(x,0,span),Mathf.Clamp(z,0,span));
+                float rolling=8f+9f*Mathf.Sin(x*.015f+1f)*Mathf.Cos(z*.018f)+4f*Mathf.Sin(z*.035f+x*.021f);
+                float h=Mathf.Lerp(edge,rolling,Mathf.SmoothStep(0,1,distance/70f));
+                vertices[ring*sides+i]=new Vector3(x,h-(groundY-.35f),z);
+                float haze=Mathf.SmoothStep(0,1,distance/480f)*.30f;
+                colors[ring*sides+i]=Color.Lerp(theme.Mid,theme.Fog,haze)*(1f+.05f*Mathf.Sin(x*.03f)*Mathf.Cos(z*.025f));
+            }
+            int t=0;
+            for(int ring=0;ring<rings;ring++) for(int i=0;i<sides;i++)
             {
-                0,4,5, 0,5,1,   // -Z 쪽
-                1,5,6, 1,6,2,   // +X 쪽
-                2,6,7, 2,7,3,   // +Z 쪽
-                3,7,4, 3,4,0,   // -X 쪽
-            };
-            var m = new Mesh { name = "ApronRing" };
-            m.SetVertices(v);
-            m.SetTriangles(tri, 0);
-            m.RecalculateNormals();
-            m.RecalculateBounds();
-            return m;
+                int a=ring*sides+i,b=ring*sides+(i+1)%sides,c=a+sides,d=b+sides;
+                triangles[t++]=a; triangles[t++]=b; triangles[t++]=c;
+                triangles[t++]=b; triangles[t++]=d; triangles[t++]=c;
+            }
+            var mesh=new Mesh{name="Open rolling landscape"};
+            mesh.vertices=vertices; mesh.triangles=triangles; mesh.colors=colors;
+            mesh.RecalculateNormals(); mesh.RecalculateBounds(); return mesh;
         }
 
         /// <summary>구름 — 납작한 구 덩어리. 하늘이 비어 있으면 높이 감각이 없어진다.</summary>

@@ -96,7 +96,8 @@ namespace Tankfall.EditorTools
             var report = BuildPipeline.BuildPlayer(opts);
             var s = report.summary;
             Debug.Log($"[Tankfall] Windows 빌드 {s.result} · {s.totalSize / 1024 / 1024} MB · {s.totalTime.TotalSeconds:F0}s · 에러 {s.totalErrors}");
-            if (s.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            // 셰이더 오류가 있어도 Unity가 Succeeded를 돌려줄 수 있다.
+            if (s.result != UnityEditor.Build.Reporting.BuildResult.Succeeded || s.totalErrors > 0)
                 EditorApplication.Exit(1);
         }
 
@@ -119,8 +120,12 @@ namespace Tankfall.EditorTools
             var report = BuildPipeline.BuildPlayer(opts);
             var s = report.summary;
             Debug.Log($"[Tankfall] Mac 빌드 {s.result} · {s.totalSize / 1024 / 1024} MB · {s.totalTime.TotalSeconds:F0}s · 에러 {s.totalErrors}");
-            if (s.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
-                EditorApplication.Exit(1);
+            // 셰이더 오류가 있어도 Unity가 Succeeded를 돌려줄 수 있다.
+            if (s.result != UnityEditor.Build.Reporting.BuildResult.Succeeded || s.totalErrors > 0)
+            {
+                if (Application.isBatchMode) EditorApplication.Exit(1);
+                else throw new System.InvalidOperationException("Mac build failed; see build report.");
+            }
         }
 
         [MenuItem("Tankfall/Build Current Platform")]
@@ -134,4 +139,3 @@ namespace Tankfall.EditorTools
         }
     }
 }
-

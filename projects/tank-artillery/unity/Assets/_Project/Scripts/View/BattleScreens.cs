@@ -145,10 +145,11 @@ namespace Tankfall.View
             switch (sel)
             {
                 case 0:                                   // 전투 시작 → 탱크 고르기
+                    _practice=false;
                     _picked.Clear();
                     foreach (var k in _roster) _picked.Add(k);
                     _pickCursor = 0;
-                    _screen = GameScreen.TankSelect;
+                    BeginSelection();
                     break;
                 case 1:                                   // 연습장 — 전투와 같은 탄도·지형을 쓰되 적이 반격하지 않는다(§68)
                     _practice = true;
@@ -225,6 +226,7 @@ namespace Tankfall.View
         void TankSelectInput()
         {
             if (Down(KeyCode.Escape)) { _screen = GameScreen.Title; return; }
+            if(_selectClock.Tick(Time.deltaTime)) { CompleteSelection(); return; }
             int n = TankStats.Count;
             if (Down(KeyCode.RightArrow) || Down(KeyCode.D)) _pickCursor = (_pickCursor + 1) % n;
             if (Down(KeyCode.LeftArrow) || Down(KeyCode.A)) _pickCursor = (_pickCursor - 1 + n) % n;
@@ -240,15 +242,13 @@ namespace Tankfall.View
             }
             if ((Down(KeyCode.Return) || Down(KeyCode.KeypadEnter)) && _picked.Count == MapHeightFunction.TeamSize)
             {
-                _roster = _picked.ToArray();
-                _screen = GameScreen.Setup;
-                _setupSel = 0;
+                CompleteSelection();
             }
         }
 
         void SetupInput()
         {
-            if (Down(KeyCode.Escape)) { _screen = GameScreen.TankSelect; return; }
+            if (Down(KeyCode.Escape)) { BeginSelection(); return; }
             // ⚠️ 행을 추가하면 이 상수도 같이 늘려라. 숫자를 두 곳에 적지 않으려고 DrawSetup 의 표에서 센다.
             int rows = SetupRows.GetLength(0);
             if (Down(KeyCode.DownArrow) || Down(KeyCode.S)) _setupSel = (_setupSel + 1) % rows;
@@ -687,6 +687,7 @@ namespace Tankfall.View
                 ? "연습장 — Space 로 조준, F2 로 정답 보기"
                 : $"전투 개시 — {MapHeightFunction.Name(_map)} · {WeatherName(_weather)} · AI {Difficulties[_difficulty].Name}"
                   + (_boom ? " · Boom 모드" : "");
+            if(!_practice && (!_autoMode || _pregameSelfTest)) BeginDeployment();
             Debug.Log($"[Tankfall] {_log}");
         }
 
@@ -712,25 +713,26 @@ namespace Tankfall.View
 
         void DrawTitle(float W, float H)
         {
-            Scrim(W, H, 0.45f);
-            Ui.TextShadow(new Rect(0, H * 0.16f, W, 90f), "TANKFALL", 72, Ui.Ink, TextAnchor.MiddleCenter, true);
-            Ui.TextShadow(new Rect(0, H * 0.16f + 88f, W, 26f), "3D 턴제 포격전", 16, Ui.Dim, TextAnchor.MiddleCenter);
+            GuiArt.Title(new Rect(0,0,W,H));
+            float logoY=H*.075f;
+            GuiArt.Logo(new Rect(W*.5f-320f,logoY,640f,H*.25f));
+            Ui.TextShadow(new Rect(0,logoY+H*.25f+5f,W,26f),"조준하고, 모으고, 빵!",16,Ui.Ink,TextAnchor.MiddleCenter);
+
 
             if (_showHelp) { DrawHelp(W, H); return; }
 
             float y = H * 0.44f;
             for (int i = 0; i < TitleMenu.Length; i++)
             {
-                var r = new Rect(W * 0.5f - 140f, y + i * 46f, 280f, 38f);
+                var r = new Rect(W * 0.5f - 155f, y + i * 54f, 310f, 46f);
                 bool sel = i == _menuSel;
-                if (sel) { Ui.Fill(r, new Color(1f, 0.72f, 0.25f, 0.18f)); Ui.Frame(r, Ui.Power, 2f); }
-                else Ui.Frame(r, Ui.Border);
+                Ui.Choice(r, sel);
                 Ui.Text(r, TitleMenu[i], sel ? 19 : 17, sel ? Ui.Ink : Ui.Dim, TextAnchor.MiddleCenter, sel);
             }
             Ui.TextShadow(new Rect(0, H - 44f, W, 20f), "위아래 = 고르기   Enter = 확인", 12, Ui.Dim, TextAnchor.MiddleCenter);
             string rec = Prefs.TotalText(Difficulties.Length);
             if (rec.Length > 0)
-                Ui.TextShadow(new Rect(0, y + TitleMenu.Length * 46f + 10f, W, 20f), rec, 12, Ui.Dim, TextAnchor.MiddleCenter);
+                Ui.TextShadow(new Rect(0, y + TitleMenu.Length * 54f + 10f, W, 20f), rec, 12, Ui.Dim, TextAnchor.MiddleCenter);
         }
 
         void DrawHelp(float W, float H)
@@ -741,7 +743,7 @@ namespace Tankfall.View
                 { "방향키 좌우 / 상하", "포탑 회전 / 포신 각도" },
                 { "Space", "길게 눌러 파워 차징 → 놓으면 발사" },
                 { "Q / E", "나이스샷 표시점 옮기기 (맞춰 멈추면 SS 포인트)" },
-                { "1 / 2 / 3 / 4", "일반탄 / 특수탄 / SS / 궁극기(§49)" },
+                { "1 / 2 / 3 / 4", "일반탄 / 특수탄 / SS / 궁극기" },
                 { "[ ] + Enter", "아이템 고르고 쓰기" },
                 { "우클릭 드래그 / 휠", "카메라 회전 / 줌" },
                 { "F1 / Esc", "AI 난이도 / 일시정지" },
@@ -770,8 +772,7 @@ namespace Tankfall.View
             {
                 var r = new Rect(W * 0.5f - 250f, y + i * 48f, 500f, 40f);
                 bool sel = i == _settingsSel;
-                Ui.Fill(r, sel ? new Color(1f, 0.72f, 0.25f, 0.14f) : Ui.Panel);
-                Ui.Frame(r, sel ? Ui.Power : Ui.Border, sel ? 2f : 1f);
+                Ui.Choice(r, sel);
                 Ui.Text(new Rect(r.x + 16f, r.y, 150f, r.height), SettingsRows[i, 0], 14, sel ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, sel);
 
                 string v = i == SettingsRowVolume ? $"{Mathf.RoundToInt(Sfx.Volume * 100f)}%"
@@ -808,26 +809,33 @@ namespace Tankfall.View
         {
             // ⚠️ 스크림을 세게 깔면 **미리보기까지 어두워진다**(IMGUI 가 3D 위에 그려지므로 모델도 덮인다).
             //    패널(Ui.Box)이 제 배경을 갖고 있으니 스크림은 배경을 눌러줄 만큼만.
-            Scrim(W, H, 0.42f);
+            Ui.Fill(new Rect(0,0,W,H),Ui.Panel);
+            var tint=GUI.color; GUI.color=new Color(.55f,.72f,1f,.13f);
+            GuiArt.Title(new Rect(0,0,W,H)); GUI.color=tint;
             var k = (TankKind)_pickCursor;
             var st = TankStats.Get(k);
             EnsurePreview(k);
 
             // 제목 띠 — 스크림을 낮춘 대신 글자 뒤는 눌러 준다(밝은 하늘에 흰 글자가 묻혔다).
             Ui.Fill(new Rect(0, 0, W, 66f), new Color(0.02f, 0.03f, 0.05f, 0.72f));
-            Ui.TextShadow(new Rect(0, 14f, W, 28f), "탱크 선택", 22, Ui.Ink, TextAnchor.MiddleCenter, true);
+            Ui.TextShadow(new Rect(0, 14f, W, 28f), "출격 준비  /  탱크 선택" + (_selectClock.Active?$"  ·  {Mathf.CeilToInt(_selectClock.Remaining):00}초":""), 22, Ui.Ink, TextAnchor.MiddleCenter, true);
             Ui.TextShadow(new Rect(0, 42f, W, 18f),
-                          $"{_picked.Count} / {MapHeightFunction.TeamSize} 선택됨    방향키 이동 · Space 선택/해제 · Enter 확정 · Esc 뒤로",
+                          $"{_picked.Count} / {MapHeightFunction.TeamSize} 선택됨    방향키 이동 · Space 선택/해제 · Enter 확정 · Esc 뒤로 · 시간 종료 시 자동 편성",
                           12, Ui.Dim, TextAnchor.MiddleCenter);
 
-            float poolH = 132f;
+            float poolH = 186f;
             float bodyTop = 70f, bodyBot = H - poolH - 46f;
+
+            // Isolated live 3D render stays bright above the studio backdrop.
+            var stage=new Rect(252f,bodyTop,W-620f,bodyBot-bodyTop);
+            DrawStudioPreview(stage);
+            Ui.Text(new Rect(stage.x,stage.yMax-34f,stage.width,28f),st.Name,26,Ui.Ink,TextAnchor.MiddleCenter,true);
 
             // ── 왼쪽: 내 팀 슬롯 ──────────────────────────────
             float slotW = 224f, slotH = Mathf.Min(74f, (bodyBot - bodyTop - 26f) / MapHeightFunction.TeamSize);
-            var teamBox = new Rect(24f, bodyTop, slotW, bodyBot - bodyTop);
+            var teamBox = new Rect(24f, bodyTop, slotW, Mathf.Min(bodyBot - bodyTop, 32f + MapHeightFunction.TeamSize * (slotH + 6f)));
             Ui.Box(teamBox);
-            Ui.Text(new Rect(teamBox.x + 10f, teamBox.y + 4f, slotW - 20f, 16f), "내 팀", 12, Ui.Ally, TextAnchor.MiddleLeft, true);
+            Ui.Text(new Rect(teamBox.x + 10f, teamBox.y + 4f, slotW - 20f, 16f), "출격 편대", 12, Ui.Ally, TextAnchor.MiddleLeft, true);
             for (int i = 0; i < MapHeightFunction.TeamSize; i++)
             {
                 var r = new Rect(teamBox.x + 8f, teamBox.y + 24f + i * (slotH + 6f), slotW - 16f, slotH);
@@ -837,9 +845,9 @@ namespace Tankfall.View
                 if (has)
                 {
                     var ps = TankStats.Get(_picked[i]);
-                    Ui.Fill(new Rect(r.x + 8f, r.y + 8f, 6f, r.height - 16f), TankShape.BodyColor(_picked[i]));
-                    Ui.Text(new Rect(r.x + 22f, r.y + 6f, r.width - 30f, 20f), ps.Name, 15, Ui.Ink, TextAnchor.MiddleLeft, true);
-                    Ui.Text(new Rect(r.x + 22f, r.y + 26f, r.width - 30f, 16f),
+                    GuiArt.Portrait(new Rect(r.x+6,r.y+5,66,r.height-10),_picked[i]);
+                    Ui.Text(new Rect(r.x + 76f, r.y + 6f, r.width - 82f, 20f), ps.Name, 15, Ui.Ink, TextAnchor.MiddleLeft, true);
+                    Ui.TextWrap(new Rect(r.x + 76f, r.y + 28f, r.width - 82f, 32f),
                             $"{TankStats.EraName(TankStats.EraOf(_picked[i]))} · {ps.SpecialName}", 10, Ui.Dim, TextAnchor.MiddleLeft);
                 }
                 else Ui.Text(r, $"{i + 1}번 자리 — 비어 있음", 11, Ui.Dim, TextAnchor.MiddleCenter);
@@ -847,7 +855,7 @@ namespace Tankfall.View
 
             // ── 오른쪽: 커서 기종 상세 ─────────────────────────
             float infoW = 330f;
-            var info = new Rect(W - infoW - 24f, bodyTop, infoW, bodyBot - bodyTop);
+            var info = new Rect(W - infoW - 24f, bodyTop, infoW, Mathf.Min(bodyBot - bodyTop, 320f));
             Ui.Box(info);
             Ui.Fill(new Rect(info.x + 12f, info.y + 12f, 12f, 12f), TankShape.BodyColor(k));
             Ui.Text(new Rect(info.x + 32f, info.y + 6f, infoW - 44f, 26f), st.Name, 20, Ui.Ink, TextAnchor.MiddleLeft, true);
@@ -878,22 +886,25 @@ namespace Tankfall.View
             Ui.Text(new Rect(info.x + 14f, sy, infoW - 28f, 16f),
                     $"폭발 {sp.BlastRadius:F1}m · 피해 {sp.BaseDamage:F0} · 각도 {st.MinPitch:F0}~{st.MaxPitch:F0}°", 10, Ui.Dim, TextAnchor.MiddleLeft);
 
+            var effect = ShellEffects.Of(k, ShellKind.Special);
+            Ui.TextWrap(new Rect(info.x + 14f, sy + 24f, infoW - 28f, 62f), effect.EffectDesc, 12, Ui.Ink);
+
             // ── 아래: 13종 풀 ────────────────────────────────
             int n = TankStats.Count;
-            float cw = (W - 48f) / PickCols, chh = 40f;
+            float cw = (W - 48f) / PickCols, chh = 58f;
             float gy = H - poolH - 24f;
             Ui.Box(new Rect(24f, gy - 24f, W - 48f, poolH + 18f));
-            Ui.Text(new Rect(34f, gy - 20f, 200f, 16f), "기종", 11, Ui.Dim, TextAnchor.MiddleLeft, true);
+            Ui.Text(new Rect(34f, gy - 20f, 200f, 16f), "함께 싸울 탱크를 골라요", 11, Ui.Dim, TextAnchor.MiddleLeft, true);
             for (int i = 0; i < n; i++)
             {
                 var kk = (TankKind)i;
                 var r = new Rect(24f + (i % PickCols) * cw + 4f, gy + (i / PickCols) * (chh + 4f) + 4f, cw - 8f, chh);
                 bool cur = i == _pickCursor;
                 int idx = _picked.IndexOf(kk);
-                Ui.Fill(r, idx >= 0 ? new Color(0.15f, 0.48f, 0.98f, 0.22f) : Ui.Panel);
-                Ui.Frame(r, cur ? Ui.Power : idx >= 0 ? Ui.Ally : Ui.Border, cur ? 2f : 1f);
-                Ui.Fill(new Rect(r.x + 7f, r.y + 7f, 9f, r.height - 14f), TankShape.BodyColor(kk));
-                Ui.Text(new Rect(r.x + 22f, r.y, r.width - 50f, r.height),
+                Ui.Choice(r, cur);
+                if (idx >= 0 && !cur) Ui.Frame(r, Ui.Ally);
+                GuiArt.Portrait(new Rect(r.x-4,r.y-16,88,r.height+30),kk);
+                Ui.Text(new Rect(r.x + 85f, r.y, r.width - 112f, r.height),
                         TankStats.Get(kk).Name, 13, cur || idx >= 0 ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, cur);
                 if (idx >= 0)
                 {
@@ -1006,8 +1017,7 @@ namespace Tankfall.View
             {
                 var r = new Rect(W * 0.5f - 250f, y + i * 48f, 500f, 40f);
                 bool sel = i == _setupSel;
-                Ui.Fill(r, sel ? new Color(1f, 0.72f, 0.25f, 0.14f) : Ui.Panel);
-                Ui.Frame(r, sel ? Ui.Power : Ui.Border, sel ? 2f : 1f);
+                Ui.Choice(r, sel);
                 Ui.Text(new Rect(r.x + 16f, r.y, 150f, r.height), SetupRows[i, 0], 14, sel ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, sel);
                 Ui.Text(new Rect(r.x + 160f, r.y, 180f, r.height), (sel ? "< " : "  ") + values[i] + (sel ? " >" : ""),
                         14, sel ? Ui.Power : Ui.Ink, TextAnchor.MiddleCenter, sel);
@@ -1020,7 +1030,7 @@ namespace Tankfall.View
             float teamW = 100f + MapHeightFunction.TeamSize * 130f;
             var team = new Rect(W * 0.5f - teamW * 0.5f, y + rows * 48f + 12f, teamW, 44f);
             Ui.Box(team);
-            Ui.Text(new Rect(team.x + 14f, team.y, 90f, team.height), "내 팀", 12, Ui.Ally, TextAnchor.MiddleLeft, true);
+            Ui.Text(new Rect(team.x + 14f, team.y, 90f, team.height), "출격 편대", 12, Ui.Ally, TextAnchor.MiddleLeft, true);
             for (int i = 0; i < _roster.Length; i++)
             {
                 Ui.Fill(new Rect(team.x + 86f + i * 130f, team.y + 12f, 8f, 20f), TankShape.BodyColor(_roster[i]));
@@ -1062,6 +1072,7 @@ namespace Tankfall.View
             Scrim(W, H, 0.66f);
             bool win = _winner != null && _winner.Contains("아군");
             bool draw = _winner != null && _winner.Contains("무승부");
+            GuiArt.Icon(new Rect(W*.5f-145f,H*.16f-6f,76f,76f),7);
             Ui.TextShadow(new Rect(0, H * 0.16f, W, 64f), draw ? "무승부" : win ? "승리" : "패배", 52, ResultColor(), TextAnchor.MiddleCenter, true);
             string sub = _winner ?? "";
             if (!_practice) { string rec = Prefs.TotalText(Difficulties.Length); if (rec.Length > 0) sub += "   ·   " + rec; }
@@ -1232,7 +1243,7 @@ namespace Tankfall.View
             // ⚠️ 아래 여백 128 → 152 (2026-09-19). 무기 패널이 **2번탄 설명 두 줄만큼** 커져서
             //    그대로 두면 미니맵 아랫변과 겹쳤다. 두 값은 서로를 보고 있다 —
             //    무기 패널 높이(`HudWeapons` 의 134)를 바꾸면 여기도 같이 봐라.
-            var r = new Rect(W - S - 10f, H - S - 152f, S, S);
+            var r = new Rect(W - S - 10f, H - S - 218f, S, S);
             // ⚠️ 기본 패널(알파 0.78)은 여기선 너무 비친다 — 나무·언덕이 통과해 보여 점과 섞였다.
             //    미니맵은 **화면에서 유일한 전장 개관**이라 배경이 조용해야 한다.
             Ui.Box(r, new Color(0.03f, 0.05f, 0.07f, 0.95f));
@@ -1391,22 +1402,18 @@ namespace Tankfall.View
                 return d != 0 ? d : a.Id.CompareTo(b.Id);      // 동률은 등록 순서(§2-9-1) — 화면도 같은 규칙을 보여야 한다
             });
 
-            // ⚠️ Y 는 좌상단 팀 패널 **아래**여야 한다. 예전엔 그 높이(`26f * 6f`)를 손으로 베껴 뒀는데,
-            //    인원이 4:4 로 늘자 팀 패널만 길어지고 이 패널은 안 내려와 **두 패널이 2줄 겹쳤다.**
-            //    베끼지 말고 같은 식으로 유도한다(BattleDemo.HudTeamPanel 과 같은 상수를 본다).
-            var r = new Rect(8f, 8f + 12f + 26f * (MapHeightFunction.TeamSize * 2) + 19f + 6f, 250f, 26f + alive.Count * 18f);
-            Ui.Box(r);
-            Ui.Text(new Rect(r.x + 8f, r.y + 3f, 200f, 16f), "턴 순서 <size=9>(누적 딜레이)</size>", 10, Ui.Dim, TextAnchor.MiddleLeft, true);
-            for (int i = 0; i < alive.Count; i++)
+            // 세로 이름 목록 대신 전장 위에 다음 행동 순서를 초상화로 보여준다.
+            float width=Mathf.Min(480f,W-550f), step=width/Mathf.Max(1,alive.Count);
+            var r=new Rect(W*.5f-width*.5f,103f,width,49f);
+            GuiArt.Panel(r,0,9);
+            for(int i=0;i<alive.Count;i++)
             {
-                var u = alive[i];
-                float y = r.y + 21f + i * 18f;
-                bool cur = u == Current;
-                if (cur) Ui.Fill(new Rect(r.x + 4f, y, r.width - 8f, 17f), new Color(1f, 1f, 1f, 0.08f));
-                Ui.Fill(new Rect(r.x + 8f, y + 5f, 3f, 8f), u.Team == 0 ? Ui.Ally : Ui.Enemy);
-                Ui.Text(new Rect(r.x + 16f, y, 130f, 17f),
-                        $"{i + 1}. {TankStats.Get(u.Kind).Name}", 11, cur ? Ui.Ink : Ui.Dim, TextAnchor.MiddleLeft, cur);
-                Ui.Text(new Rect(r.xMax - 60f, y, 52f, 17f), $"{_order.Accumulated(u.Id)}", 10, Ui.Dim, TextAnchor.MiddleRight);
+                var u=alive[i]; var cell=new Rect(r.x+i*step+4,r.y+4,step-8,41);
+                if(u==Current) GuiArt.Panel(cell,3,5);
+                GuiArt.Portrait(new Rect(cell.x,cell.y-4,cell.width,34),u.Kind);
+                Ui.Text(new Rect(cell.x,cell.y+23,cell.width,15),$"{i+1} · {_order.Accumulated(u.Id)}",9,u.Team==0?Ui.Ally:Ui.Enemy,TextAnchor.MiddleCenter,true);
+                if(cell.Contains(Event.current.mousePosition))
+                    Ui.TextShadow(new Rect(r.x,r.yMax+2,r.width,20),TankStats.Get(u.Kind).Name+" · 누적 딜레이 "+_order.Accumulated(u.Id),12,Ui.Ink,TextAnchor.MiddleCenter,true);
             }
         }
 
@@ -1503,7 +1510,7 @@ namespace Tankfall.View
                 var go = new GameObject($"Gal_{kind}");
                 go.AddComponent<MeshFilter>().sharedMesh = ProceduralTank.Shell(kind, shellKind);
                 var mr = go.AddComponent<MeshRenderer>();
-                mr.sharedMaterial = MakeMat(ProceduralTank.ShellColor(kind, shellKind), 0.4f);
+                mr.sharedMaterial = BlenderModels.ShellMaterial;
                 go.transform.position = GalSlot(i);
                 go.transform.rotation = Quaternion.Euler(0f, 210f, 0f);   // 옆·앞이 같이 보이는 각
                 go.transform.localScale = Vector3.one * 5.5f;             // 탄은 작아서 그대로면 안 보인다
@@ -1690,6 +1697,8 @@ namespace Tankfall.View
             Application.Quit(dup == 0 ? 0 : 1);
         }
         int _uiStep, _uiSub;
+        bool _uiSceneFrozen;
+        float _uiPreviousTimeScale;
         readonly List<(string Name, string Hud, string NoHud)> _uiPairs = new List<(string, string, string)>();
 
         static readonly string[] UiSteps =
@@ -1769,12 +1778,16 @@ namespace Tankfall.View
 
         void UiSelfTestStep()
         {
+            // Freeze wind/vegetation/drive animation while comparing image UI to no-UI.
+            // Otherwise elapsed render time, rather than UI, can fail the negative control.
+            if(!_uiSceneFrozen) { _uiPreviousTimeScale=Time.timeScale; Time.timeScale=0f; _uiSceneFrozen=true; }
             // 서브프레임: 0=상태 세팅, 1=HUD 켜고 캡처, 2=HUD 끄고 캡처, 3=복원하고 다음 단계
             if (_uiStep >= UiSteps.Length)
             {
-                VerifyUiPairs();
+                bool valid=VerifyUiPairs();
                 VerifyShots();
-                Application.Quit(0);
+                Time.timeScale=_uiPreviousTimeScale;
+                Application.Quit(valid?0:1);
                 return;
             }
 
@@ -1811,7 +1824,7 @@ namespace Tankfall.View
         }
 
         /// <summary>HUD 있는 장면과 없는 장면이 실제로 다른가. 같으면 UI 가 안 그려진 것이다.</summary>
-        void VerifyUiPairs()
+        bool VerifyUiPairs()
         {
             int ok = 0;
             foreach (var pair in _uiPairs)
@@ -1839,6 +1852,7 @@ namespace Tankfall.View
                 Debug.Log($"[Tankfall] ✅ UI 자체검사 {ok}/{_uiPairs.Count} + 네거티브대조 통과 — 모든 화면이 실제로 그려졌다");
             else
                 Debug.LogError($"[Tankfall] ❌ UI 자체검사 {ok}/{_uiPairs.Count} · 네거티브대조 {(controlOk ? "OK" : "실패")}");
+            return ok == _uiPairs.Count && controlOk;
         }
 
         static float PixelDiff(string a, string b)

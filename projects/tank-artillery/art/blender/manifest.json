@@ -1,0 +1,161 @@
+{
+  "generator": "Blender 5.2.0 LTS",
+  "models": [
+    {
+      "name": "Catapult",
+      "triangles": 220372
+    },
+    {
+      "name": "Catapult_Normal",
+      "triangles": 80
+    },
+    {
+      "name": "Catapult_Special",
+      "triangles": 6800
+    },
+    {
+      "name": "CrossBow",
+      "triangles": 72848
+    },
+    {
+      "name": "CrossBow_Normal",
+      "triangles": 474
+    },
+    {
+      "name": "CrossBow_Special",
+      "triangles": 1114
+    },
+    {
+      "name": "Cannon",
+      "triangles": 71152
+    },
+    {
+      "name": "Cannon_Normal",
+      "triangles": 2216
+    },
+    {
+      "name": "Cannon_Special",
+      "triangles": 3232
+    },
+    {
+      "name": "Carrot",
+      "triangles": 57828
+    },
+    {
+      "name": "Carrot_Normal",
+      "triangles": 1656
+    },
+    {
+      "name": "Carrot_Special",
+      "triangles": 2220
+    },
+    {
+      "name": "Duke",
+      "triangles": 87712
+    },
+    {
+      "name": "Duke_Normal",
+      "triangles": 2032
+    },
+    {
+      "name": "Duke_Special",
+      "triangles": 2408
+    },
+    {
+      "name": "MineLander",
+      "triangles": 42646
+    },
+    {
+      "name": "MineLander_Normal",
+      "triangles": 1504
+    },
+    {
+      "name": "MineLander_Special",
+      "triangles": 1936
+    },
+    {
+      "name": "Missile",
+      "triangles": 45152
+    },
+    {
+      "name": "Missile_Normal",
+      "triangles": 2464
+    },
+    {
+      "name": "Missile_Special",
+      "triangles": 3640
+    },
+    {
+      "name": "MultiMissile",
+      "triangles": 46196
+    },
+    {
+      "name": "MultiMissile_Normal",
+      "triangles": 2464
+    },
+    {
+      "name": "MultiMissile_Special",
+      "triangles": 3640
+    },
+    {
+      "name": "SuperTank",
+      "triangles": 82780
+    },
+    {
+      "name": "SuperTank_Normal",
+      "triangles": 2840
+    },
+    {
+      "name": "SuperTank_Special",
+      "triangles": 4016
+    },
+    {
+      "name": "Laser",
+      "triangles": 51493
+    },
+    {
+      "name": "Laser_Normal",
+      "triangles": 2084
+    },
+    {
+      "name": "Laser_Special",
+      "triangles": 2576
+    },
+    {
+      "name": "IonAttacker",
+      "triangles": 26500
+    },
+    {
+      "name": "IonAttacker_Normal",
+      "triangles": 2880
+    },
+    {
+      "name": "IonAttacker_Special",
+      "triangles": 3202
+    },
+    {
+      "name": "Poseidon",
+      "triangles": 78736
+    },
+    {
+      "name": "Poseidon_Normal",
+      "triangles": 1816
+    },
+    {
+      "name": "Poseidon_Special",
+      "triangles": 2888
+    },
+    {
+      "name": "SecWind",
+      "triangles": 56808
+    },
+    {
+      "name": "SecWind_Normal",
+      "triangles": 836
+    },
+    {
+      "name": "SecWind_Special",
+      "triangles": 2124
+    }
+  ]
+}

@@ -9,6 +9,7 @@
 #   ./tools/verify.sh game     게임 빌드 자체검사 10종 (빌드 1회 + 전부 실행 · all 에는 안 물려 있다)
 #   ./tools/verify.sh dead     죽은 멤버 **후보** 목록 (판정 아님 — 전수 grep 으로 확인할 것)
 #   ./tools/verify.sh turn|shell|nice   원작 시스템 라이브러리 단위 검증
+#   ./tools/verify.sh blast    ExplosionResolver 계약 — 경계 20 케이스(예측 ↔ 그릇)
 #   ./tools/verify.sh guide    미사일 초기 유도·자세 제어 단계
 #   ./tools/verify.sh aimove   AI 이동(구덩이·장판 탈출·보급)
 #   ./tools/verify.sh shellpick 탄종 선택(지속피해 중복 평가·독 저항)
@@ -151,6 +152,7 @@ manifest_check() {
   check_mod 'AudioSource|AudioClip'       'com.unity.modules.audio'          'Audio'
   check_mod 'LoadImage|EncodeToPNG'       'com.unity.modules.imageconversion' 'ImageConversion'
   check_mod 'ScreenCapture'               'com.unity.modules.screencapture'  'ScreenCapture'
+  check_mod 'JsonUtility'                 'com.unity.modules.jsonserialize' 'JSON'
   check_mod 'OnGUI|GUILayout|GUI\.'       'com.unity.modules.imgui'          'IMGUI'
   [ $bad -eq 0 ] && echo "  ✅ 코드가 쓰는 모듈이 전부 manifest 에 있다" || RC=1
 }
@@ -208,7 +210,7 @@ compile_check() {
   local b=(-nologo -target:library -nostdlib+ -out:"$OUT/unityall.dll" -r:"$NS")
   # ⚠️ ScriptingModule: Unity 6000.6 부터 RuntimeInitializeOnLoadMethodAttribute 의 기반 타입이
   #    CoreModule 이 아니라 여기서 PreserveAttribute 를 끌어온다(6000.3 에서는 안 걸렸다) — 버전 올릴 때마다 재확인.
-  for m in UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.InputLegacyModule UnityEngine.TextRenderingModule UnityEngine.ScreenCaptureModule UnityEngine.PhysicsModule UnityEngine.ScriptingModule UnityEngine.ImageConversionModule UnityEngine.AudioModule UnityEngine.ParticleSystemModule; do
+  for m in UnityEngine UnityEngine.CoreModule UnityEngine.IMGUIModule UnityEngine.InputLegacyModule UnityEngine.TextRenderingModule UnityEngine.ScreenCaptureModule UnityEngine.PhysicsModule UnityEngine.ScriptingModule UnityEngine.ImageConversionModule UnityEngine.AudioModule UnityEngine.ParticleSystemModule UnityEngine.JSONSerializeModule; do
     [ -f "$UE/$m.dll" ] && b+=(-r:"$UE/$m.dll")
   done
   [ -f "$UE/Unity.Scripting.dll" ] && b+=(-r:"$UE/Unity.Scripting.dll")
@@ -362,7 +364,9 @@ case "${1:-all}" in
   sdf)     run_console SdfVerify      $SIM/*.cs tools/SdfVerify.cs ;;
   play)    run_console GameplayVerify $SIM/*.cs tools/GameplayVerify.cs; echo
     run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs ;;
+  pregame) run_console PregameVerify $SIM/*.cs tools/PregameVerify.cs ;;
   ball)    run_console BallisticsVerify $SIM/*.cs tools/BallisticsVerify.cs ;;
+  blast)   run_console ExplosionResolverVerify $SIM/*.cs tools/ExplosionResolverVerify.cs ;;   # ExplosionResolver 계약(예측 ↔ 그릇)
   # ⚠️ **막힌 것을 rc=0 으로 말하지 마라.** 사람이 `battle` 을 «찍어서» 불렀는데 0 을 받으면
   #    「측정했고 통과」로 읽는다 — 오늘 「내 턴 평균 0.0초」와 같은 거짓말이다.
   #    빌드 동결이 rc=3 을 쓰듯 여기도 **«막힘» 전용 코드**를 준다(1=실패와 구별된다).

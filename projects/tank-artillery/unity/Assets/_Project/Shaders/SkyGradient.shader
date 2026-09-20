@@ -1,20 +1,12 @@
-// 하늘 — 위아래 두 색 그라디언트 + 절차적 구름 + 태양. 카메라를 감싸는 안쪽 구에 칠한다.
-//
-// 출처(조사 2026-09-17, 나무위키 「포트리스2/맵」): 원작은 맵마다 하늘이 달랐고 시간대까지 갈랐다 —
-// The Sphinx 는 저녁노을, The Night 은 거대한 달이 뜬 밤, The Valley of City 는 푸른 하늘.
-// 단색 배경(지금까지의 `Camera.backgroundColor`)으로는 그 축이 통째로 없다.
-//
-// 구름·태양 추가(2026-09-18, 오너 지시 "그래픽적 요소 개발"): 화면 위쪽 1/3 이 민무늬 그라디언트라
-// 하늘이 "배경색"으로만 읽혔다. 텍스처를 들이지 않고 **절차적으로** 굽는다 —
-// 이 프로젝트는 지형(§7)·탱크(§9)·UI 까지 전부 코드로 그린다(에셋을 들이면 라이선스·용량이 거기서만 갈린다).
-//
-// ⚠️ 구름 색을 여기에 박지 마라. 맵 테마(MapTheme)의 하늘색에서 C# 이 만들어 넘긴다 —
-//    안 그러면 노을 맵에 흰 구름이 떠서 테마가 깨진다(맵마다 하늘을 가른 이유가 사라진다).
-// ⚠️ 컬링을 뒤집고(Cull Front) 깊이를 쓰지 않는다 — 안쪽에서 보는 구이고 항상 제일 뒤에 있어야 한다.
+// 맵 테마별 일러스트 파노라마. 카메라를 따라가며 깊이를 쓰지 않는다.
 Shader "Tankfall/SkyGradient"
 {
     Properties
     {
+        _Panorama ("Painted panorama", 2D) = "white" {}
+        _UseArt ("Use art", Float) = 0
+        _ArtTint ("Art tint", Color) = (1,1,1,1)
+        _Autumn ("Autumn", Float) = 0
         _Top ("Top", Color) = (0.33, 0.58, 0.86, 1)
         _Bottom ("Bottom", Color) = (0.76, 0.87, 0.95, 1)
         _Exp ("Blend Exponent", Range(0.2, 4)) = 1.0
@@ -49,6 +41,7 @@ Shader "Tankfall/SkyGradient"
 
             struct v2f { float4 pos : SV_POSITION; float3 local : TEXCOORD0; };
 
+            sampler2D _Panorama; float _UseArt, _Autumn; fixed4 _ArtTint;
             fixed4 _Top, _Bottom, _CloudColor, _CloudDark, _SunColor;
             float _Exp, _CloudCover, _CloudSoft, _CloudScale, _CloudSpeed, _CloudSquash;
             float _SunSize, _SunGlow;
@@ -97,6 +90,17 @@ Shader "Tankfall/SkyGradient"
             fixed4 frag(v2f i) : SV_Target
             {
                 float3 d = normalize(i.local);
+                if (_UseArt > .5)
+                {
+                    float vertical=d.y*1.7+.32;
+                    float2 uv=float2(atan2(d.x,d.z)/UNITY_PI+.5,clamp(vertical,.005,.995));
+                    float3 art=tex2D(_Panorama,uv).rgb;
+                    float leaf=saturate((art.g-max(art.r,art.b)) * 5);
+                    art=lerp(art,art*float3(1.55,.82,.67),leaf*_Autumn);
+                    art=lerp(_Bottom.rgb,art,smoothstep(.005,.12,vertical));
+                    art=lerp(art,_Top.rgb,smoothstep(.86,.995,vertical));
+                    return fixed4(art*_ArtTint.rgb,1);
+                }
                 float h = saturate(d.y * 0.5 + 0.5);
                 float3 sky = lerp(_Bottom.rgb, _Top.rgb, pow(h, _Exp));
 

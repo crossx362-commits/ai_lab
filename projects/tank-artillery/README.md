@@ -1,5 +1,7 @@
 # TANKFALL — 3D 턴제 포격전
 
+탱크 13종과 일반탄·특수탄 26종의 Blender 에셋 연결은 [모델 제작 안내](art/blender/README.md)를 참고한다. 편집 원본은 `art/blender/tankfall_roster.blend`, 게임용 메시 데이터는 `unity/Assets/_Project/Resources/BlenderModels/`에 있다. 아래 초기 데모 설명의 절차적 탱크 모델은 이제 에셋 누락 시 호환용이다.
+
 기획 검토 + 개발 명세: [`docs/GAME_SPEC_TANK_ARTILLERY.md`](../../docs/GAME_SPEC_TANK_ARTILLERY.md)
 
 ---

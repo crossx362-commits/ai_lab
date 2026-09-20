@@ -30,6 +30,34 @@ static class BallisticsVerify
         int Fail = 0;
         Console.WriteLine("=== §5 탄도 · 조준 역산 검증 ===\n");
 
+        // Removing the non-ballistic motion must fail this check: a wave crosses the firing plane.
+        var wave = FlightProfile.Of(TankKind.Poseidon, ShellKind.Normal, 1f);
+        var wv = new Vec3(50f, 35f, 0f);
+        bool waveLeft = false, waveRight = false;
+        for (float t = .1f; t < 2f; t += .05f)
+        {
+            float z = Ballistics.PositionAt(default, wv, new Vec3(0,-30,0), t, wave).Z;
+            waveLeft |= z < -.1f; waveRight |= z > .1f;
+        }
+        if (!waveLeft || !waveRight) { Console.WriteLine("FAIL wave must cross both sides of launch plane"); Fail++; }
+
+        // Smooth launch/rejoin, reproducibility, changed launch variation, and velocity agreement.
+        for (int m = 1; m <= 4; m++)
+        {
+            var a = FlightMotion.Offset(wv, .5f, m);
+            var b = FlightMotion.Offset(wv, .5f, m);
+            var c = FlightMotion.Offset(new Vec3(50.1f,35,0), .5f, m);
+            if ((a-b).Length > 0 || (a-c).Length < .01f ||
+                FlightMotion.Offset(wv,0,m).Length > 0 || FlightMotion.Offset(wv,2,m).Length > 0)
+            { Console.WriteLine("FAIL deterministic variation or endpoints " + m); Fail++; }
+            var profile = new FlightProfile { Motion = m };
+            var acc = new Vec3(0,-30,0);
+            var derivative = (Ballistics.PositionAt(default,wv,acc,.501f,profile)-
+                              Ballistics.PositionAt(default,wv,acc,.499f,profile))*500f;
+            if ((derivative-Ballistics.VelocityAt(wv,acc,.5f,profile)).Length > .02f)
+            { Console.WriteLine("FAIL motion velocity " + m); Fail++; }
+        }
+
         // [정보] — 사거리 표는 «얼마나 나가는가»의 기록이지 단정이 아니다. 문턱의 근거가 없다.
         Console.WriteLine("[1] 사거리 표 (평지, 45°, 바람 0)  [정보]");
         Console.WriteLine($"    {"파워",5} {"v0",8} {"이론사거리",11} {"실측사거리",11} {"비행",7}");

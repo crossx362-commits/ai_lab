@@ -58,7 +58,7 @@ namespace Tankfall.View
             _flower = Mat(dry ? new Color(0.95f, 0.55f, 0.35f) : new Color(0.95f, 0.45f, 0.55f), 0.1f);
 
             var rng = new Rng((uint)seed);
-            int placed = 0, tries = 0;
+            int placed = 0, tries = 0, landmarks=0;
             // ⚠️ 개수는 **면적 비례**다. 맵을 280m 로 넓히고 고정 수를 쓰면 밀도가 절반이 되어 휑해진다.
             float areaK = (mapSize / 200f) * (mapSize / 200f);
             int want = Mathf.Max(40, Mathf.RoundToInt(theme.ScatterCount * areaK));
@@ -98,12 +98,19 @@ namespace Tankfall.View
                     else if (r2 < 0.76f) { t = GrassTuft(p, ref rng); sway = 0.85f; }
                     else if (r2 < 0.86f) { t = Stump(p, ref rng); sway = 0f; }
                     else if (r2 < 0.94f) { t = FallenLog(p, ref rng); sway = 0f; }
-                    else { t = Debris(p, ref rng); sway = 0f; }
+                    else
+                    {
+                        t=BlenderModels.BuildDecoration(_theme.DecorationResource); landmarks++;
+                        t.position=p; t.rotation=Quaternion.Euler(0,rng.Float01()*360,0);
+                        t.localScale=Vector3.one*(1.1f+rng.Float01()*.5f);
+                        sway=0f;
+                    }
                 }
                 t.SetParent(transform, true);
                 _items.Add(new Item { T = t, Pos = p, Sway = sway, Rest = t.rotation });
                 placed++;
             }
+            Debug.Log($"[Biomes] {theme.Map} · {theme.DecorationResource} {landmarks}개 · 바닥 {theme.GroundTile}");
         }
 
         /// <summary>지면 기울기(0=평지). 네 점을 찍어 가장 큰 높이차로 잰다 — SDF 기울기를 View 에서 다시 풀지 않기 위해서다.</summary>
@@ -127,7 +134,7 @@ namespace Tankfall.View
             // 네 형태(둥근·키 큰 포플러·옆으로 퍼진·고사목)를 섞고 잎색 셋을 돌린다. 침엽 테마도 굵기·층수를 흔든다.
             var root = new GameObject("Tree").transform;
             root.position = p;
-            float h = 3.0f + rng.Float01() * 3.2f;
+            float h = 4.0f + rng.Float01() * 3.8f;
             float form = rng.Float01();
 
             float tw = _theme.Tree == TreeKind.Cactus ? 0.62f : 0.34f + rng.Float01() * 0.16f;
@@ -165,7 +172,7 @@ namespace Tankfall.View
                     break;
 
                 default:
-                    if (form < 0.12f)
+                    if (form < 0.03f)
                     {
                         // 고사목: 잎 없이 가지 둘. 숲에 죽은 나무가 섞이면 "살아 있는 숲"으로 읽힌다.
                         trunk.localScale = new Vector3(tw * 0.9f, h * 0.42f, tw * 0.9f); trunk.localPosition = new Vector3(0f, h * 0.42f, 0f);
@@ -178,7 +185,7 @@ namespace Tankfall.View
                             br.localRotation = Quaternion.Euler(0f, 0f, side * -48f);
                         }
                     }
-                    else if (form < 0.40f)
+                    else if (form < 0.17f)
                     {
                         // 키 큰 포플러: 좁고 긴 덩어리를 세로로 쌓는다.
                         h *= 1.35f;
@@ -201,7 +208,7 @@ namespace Tankfall.View
                         for (int i = 0; i < 3; i++)
                         {
                             var leaf = Blob(LeafMat(i, ref rng), root, ref rng);
-                            float s = (2.2f - i * 0.3f) * (0.85f + rng.Float01() * 0.3f);
+                            float s = (3.0f - i * 0.3f) * (0.85f + rng.Float01() * 0.3f);
                             float ang = i * 120f + rng.Float01() * 40f;
                             leaf.localScale = new Vector3(s, s * 0.7f, s);
                             leaf.localPosition = Quaternion.Euler(0f, ang, 0f) * new Vector3(s * 0.45f, 0f, 0f) + new Vector3(0f, h * 0.62f + rng.Float01() * 0.5f, 0f);
@@ -214,7 +221,7 @@ namespace Tankfall.View
                         for (int i = 0; i < blobs; i++)
                         {
                             var leaf = Blob(LeafMat(i, ref rng), root, ref rng);
-                            float s = (2.5f - i * 0.4f) * (0.85f + rng.Float01() * 0.3f);
+                            float s = (3.7f - i * 0.45f) * (0.85f + rng.Float01() * 0.3f);
                             leaf.localScale = new Vector3(s, s * 0.88f, s);
                             leaf.localPosition = new Vector3((rng.Float01() - 0.5f) * 0.6f, h * 0.62f + i * 0.8f, (rng.Float01() - 0.5f) * 0.6f);
                         }
@@ -437,54 +444,35 @@ namespace Tankfall.View
         }
 
         /// <summary>
-        /// 잎 덩어리 — **매끈한 구를 쓰지 마라**(2026-09-19 오너 지적 "그래픽 좀더 디테일하게").
-        /// 유니티 기본 Sphere 는 매끈하고 완벽히 둥글어서 쌓으면 **막대사탕**으로 보인다.
-        /// 저폴리 수목은 면이 적고 **모서리가 살아 있는** 덩어리다 — 여기서 직접 굽는다.
-        ///
-        /// 반지름 0.5 로 맞춘다(유니티 Sphere 와 같다) — 호출부의 `localScale` 계산을 그대로 쓰기 위해서다.
-        /// 링 두 개(위·아래)라 위아래가 좁아지는 덩어리가 되고, 반지름을 제각각 흔들어 같은 나무가 두 번 안 나온다.
+        /// 잎 수관은 부드러운 구를 넓은 굴곡으로 변형해 만든다. 로컬 반지름 0.5를 유지한다.
         /// </summary>
+        static readonly Mesh[] LeafMeshes=new Mesh[8];
         Transform Blob(Material mat, Transform parent, ref Rng rng)
         {
-            int sides = 6 + (int)(rng.Float01() * 2.99f);          // 6~8
-            var v = new List<Vector3>();
-            var tri = new List<int>();
-            float a0 = rng.Float01() * 6.28f;
-
-            for (int ring = 0; ring < 2; ring++)
-            {
-                float ry = ring == 0 ? -0.17f : 0.17f;
-                float baseR = ring == 0 ? 0.46f : 0.44f;
-                for (int i = 0; i < sides; i++)
-                {
-                    float a = a0 + (i / (float)sides) * Mathf.PI * 2f + (rng.Float01() - 0.5f) * 0.22f;
-                    float rad = baseR * (0.82f + rng.Float01() * 0.36f);
-                    v.Add(new Vector3(Mathf.Cos(a) * rad, ry * (0.85f + rng.Float01() * 0.3f), Mathf.Sin(a) * rad));
-                }
-            }
-            int top = v.Count; v.Add(new Vector3((rng.Float01() - 0.5f) * 0.12f, 0.5f * (0.85f + rng.Float01() * 0.3f), (rng.Float01() - 0.5f) * 0.12f));
-            int bot = v.Count; v.Add(new Vector3((rng.Float01() - 0.5f) * 0.12f, -0.5f * (0.85f + rng.Float01() * 0.3f), (rng.Float01() - 0.5f) * 0.12f));
-
-            for (int i = 0; i < sides; i++)
-            {
-                int a = i, b = (i + 1) % sides;                    // 아래 링
-                int c = sides + i, d = sides + (i + 1) % sides;    // 위 링
-                tri.Add(a); tri.Add(c); tri.Add(b);                // 허리 띠
-                tri.Add(b); tri.Add(c); tri.Add(d);
-                tri.Add(c); tri.Add(top); tri.Add(d);              // 윗 뚜껑
-                tri.Add(b); tri.Add(bot); tri.Add(a);              // 아랫 뚜껑
-            }
-
-            var go = new GameObject("Leaf");
+            // 둥근 수관을 몇 개의 넓은 면으로 변형한다. 가늘고 각진 잎 조각을 없앤다.
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = "Sculpted foliage";
+            Destroy(go.GetComponent<Collider>());
             go.transform.SetParent(parent, false);
-            var mf = go.AddComponent<MeshFilter>();
-            go.AddComponent<MeshRenderer>().sharedMaterial = mat;
-            var mesh = new Mesh { name = "LeafMesh" };
-            mesh.SetVertices(v);
-            mesh.SetTriangles(tri, 0);
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            mf.mesh = mesh;
+            go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            int variant=Mathf.Min(7,(int)(rng.Float01()*8));
+            var mesh=LeafMeshes[variant];
+            if(mesh==null)
+            {
+                mesh=Instantiate(go.GetComponent<MeshFilter>().sharedMesh);
+                mesh.name="Soft foliage "+variant;
+                var vertices=mesh.vertices;
+                float seed=variant*.79f;
+                for(int i=0;i<vertices.Length;i++)
+                {
+                    Vector3 q=vertices[i];
+                    float warp=1f+.075f*Mathf.Sin(q.x*9f+seed)*Mathf.Cos(q.z*7f-seed)*Mathf.Sin(q.y*6f+1f);
+                    vertices[i]=q*warp;
+                }
+                mesh.vertices=vertices; mesh.RecalculateNormals(); mesh.RecalculateBounds();
+                LeafMeshes[variant]=mesh;
+            }
+            go.GetComponent<MeshFilter>().sharedMesh=mesh;
             return go.transform;
         }
 
@@ -499,7 +487,7 @@ namespace Tankfall.View
 
         static Material Mat(Color c, float smooth)
         {
-            var sh = Shader.Find("Standard") ?? Shader.Find("Legacy Shaders/Diffuse");
+            var sh = Resources.Load<Shader>("Art/SoftToy") ?? Shader.Find("Standard");
             var m = new Material(sh) { color = c };
             if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", smooth);
             if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);

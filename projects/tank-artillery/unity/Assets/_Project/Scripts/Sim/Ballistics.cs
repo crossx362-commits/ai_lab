@@ -1,3 +1,5 @@
+// FlightMotion adds launch controls to the analytic base below (2026-09-19).
+// The inverse solver describes the base path; early curved segments can meet obstacles differently.
 // 명세: docs/GAME_SPEC_TANK_ARTILLERY.md §5
 //
 // === 적분하지 않는다 ===
@@ -49,6 +51,7 @@ namespace Tankfall.Sim
     /// </summary>
     public struct FlightProfile
     {
+        public int Motion; // 0 ballistic, 1 corkscrew, 2 wave, 3 loft, 4 bank
         public float Thrust;          // m/s², 발사 방향
         public float BoostSec;        // 추진 시간
         public float HomingTurnDeg;   // 초당 선회각(0=유도 없음)
@@ -133,6 +136,19 @@ namespace Tankfall.Sim
         }
 
         public static FlightProfile Of(TankKind kind, ShellKind shell, float powerScale)
+        {
+            var fp = BaseProfile(kind, shell, powerScale);
+            switch (kind)
+            {
+                case TankKind.Missile: case TankKind.MultiMissile: case TankKind.SuperTank: fp.Motion = 1; break;
+                case TankKind.Poseidon: case TankKind.SecWind: fp.Motion = 2; break;
+                case TankKind.Catapult: case TankKind.MineLander: case TankKind.IonAttacker: fp.Motion = 3; break;
+                case TankKind.Carrot: case TankKind.Duke: fp.Motion = 4; break;
+            }
+            return fp;
+        }
+
+        static FlightProfile BaseProfile(TankKind kind, ShellKind shell, float powerScale)
         {
             float vmax = Ballistics.VelocityMax * powerScale;
             bool sp = shell == ShellKind.Special;
@@ -287,11 +303,12 @@ namespace Tankfall.Sim
         public static Vec3 PositionAt(Vec3 p0, Vec3 v0, Vec3 accel, float t, in FlightProfile fp)
         {
             accel = AeroAccel(accel, v0, fp);            // 수평 상수 가속 = 중력·바람과 같은 취급
-            if (!fp.HasThrust) return PositionAt(p0, v0, accel, t);
+            Vec3 motion = FlightMotion.Offset(v0, t, fp.Motion);
+            if (!fp.HasThrust) return PositionAt(p0, v0, accel, t) + motion;
             Vec3 dir = v0.Normalized;
             float tb = MathF.Min(t, fp.BoostSec);
             float boost = 0.5f * fp.Thrust * tb * tb + fp.Thrust * fp.BoostSec * MathF.Max(0f, t - fp.BoostSec);
-            return p0 + v0 * t + dir * boost + accel * (0.5f * t * t);
+            return p0 + v0 * t + dir * boost + accel * (0.5f * t * t) + motion;
         }
 
         /// <summary>프로파일 포함 속도(유도 구간 진입 시 초기값으로 쓴다).</summary>
@@ -299,7 +316,7 @@ namespace Tankfall.Sim
         {
             Vec3 v = v0 + AeroAccel(accel, v0, fp) * t;
             if (fp.HasThrust) v = v + v0.Normalized * (fp.Thrust * MathF.Min(t, fp.BoostSec));
-            return v;
+            return v + FlightMotion.Velocity(v0, t, fp.Motion);
         }
 
         /// <summary>

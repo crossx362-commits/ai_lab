@@ -39,6 +39,12 @@ namespace Tankfall.View
         public float TreeRatio;           // 나무 : 바위 비율(0=전부 바위)
         public int ScatterCount;
 
+        public int GroundTile => Snowy?2:(int)Map;
+        public string DecorationResource => "Decor_"+new[]{"Meadow","Desert","Snow","Valley","Autumn","Volcano"}[(int)Map];
+        public bool GrassDetail => !Snowy && (Map==MapKind.TwinHills || Map==MapKind.Valley || Map==MapKind.Ridge);
+        public string PanoramaResource => "Art/world-" +
+            (Snowy || Map==MapKind.Terrace ? "snow" : Map==MapKind.Crater ? "desert" : Map==MapKind.Badlands ? "volcano" : "meadow");
+
         public static MapTheme Of(MapKind k, bool snowy)
         {
             MapTheme t;
@@ -51,9 +57,9 @@ namespace Tankfall.View
                     {
                         // ⚠️ 채도를 더 올리지 마라. 한 번 올렸다가 조명·앰비언트와 겹쳐 **형광 연두**가 됐다.
                         //    로우폴리의 "제한 팔레트"는 색 수를 줄이라는 뜻이지 쨍하게 하라는 뜻이 아니다.
-                        Low  = new Color(0.72f, 0.66f, 0.46f),   // 물가 모래
-                        Mid  = new Color(0.38f, 0.55f, 0.29f),   // 풀
-                        High = new Color(0.27f, 0.42f, 0.23f),   // 짙은 풀
+                        Low  = new Color(0.78f, 0.75f, 0.47f),   // 물가 모래
+                        Mid  = new Color(0.43f, 0.69f, 0.32f),   // 풀
+                        High = new Color(0.30f, 0.58f, 0.31f),   // 짙은 풀
                         Rock = new Color(0.52f, 0.48f, 0.42f),
                         RockDark = new Color(0.38f, 0.35f, 0.31f),
                         SkyTop = new Color(0.33f, 0.58f, 0.86f),
@@ -162,9 +168,9 @@ namespace Tankfall.View
             {
                 bool dryT = t.Tree == TreeKind.Cactus;
                 t.LeafA = t.Tree == TreeKind.Pine ? new Color(0.20f, 0.42f, 0.30f)
-                        : dryT ? new Color(0.38f, 0.56f, 0.34f) : new Color(0.30f, 0.60f, 0.28f);
+                        : dryT ? new Color(0.38f, 0.56f, 0.34f) : new Color(0.23f, 0.59f, 0.37f);
                 t.LeafB = t.Tree == TreeKind.Pine ? new Color(0.26f, 0.50f, 0.34f)
-                        : dryT ? new Color(0.44f, 0.62f, 0.38f) : new Color(0.40f, 0.72f, 0.33f);
+                        : dryT ? new Color(0.44f, 0.62f, 0.38f) : new Color(0.43f, 0.73f, 0.34f);
                 t.LeafC = Color.Lerp(t.LeafB, new Color(0.85f, 0.70f, 0.25f), dryT ? 0.25f : 0.45f);
             }
 

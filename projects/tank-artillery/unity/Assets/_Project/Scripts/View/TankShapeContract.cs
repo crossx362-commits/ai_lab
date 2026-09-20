@@ -120,7 +120,14 @@ namespace Tankfall.View
             for (int i = 0; i < 8; i++)
             {
                 var kind = (TankKind)(i % TankStats.Count);
-                var root = ProceduralTank.Build(TankShape.Of(kind), mat, mat, mat, out _, out _, out _);
+                Transform root;
+                bool previous = ProceduralTank.ForceProcedural;
+                try
+                {
+                    ProceduralTank.ForceProcedural = true;
+                    root = ProceduralTank.Build(TankShape.Of(kind), mat, mat, mat, out _, out _, out _);
+                }
+                finally { ProceduralTank.ForceProcedural = previous; }
                 roots.Add(root);
                 foreach (var mf in root.GetComponentsInChildren<MeshFilter>())
                     if (mf.sharedMesh != null)
@@ -134,7 +141,7 @@ namespace Tankfall.View
             //    그건 「메모리를 안 쓴다」가 아니라 **「여기서는 못 잰다」**다(오늘의 「없음은 값이 아니다」).
             string memTxt = mem > 0 ? $"{mem / 1024f:N0}KB" : "⏭ 측정 불가(플레이어 빌드에서 Profiler 가 0 을 준다 — 0 이 아니라 «못 잼»이다)";
             Debug.Log($"[Tankfall] 📐 성능 기준선 — **프로시저럴 8대** · 삼각형 {tris:N0} · 렌더러 {renderers}(드로콜 상한) · 메시 메모리 {memTxt}");
-            Debug.Log("[Tankfall]    ⚠️ 이 줄은 «모델 이전»의 값이다. 모델이 들어오면 같은 형식으로 다시 재서 나란히 놓아라.");
+            Debug.Log("[Tankfall]    코드 대조군의 정적 수치다. 실제 드로콜·폭발 프레임 비용 실측은 별도로 필요하다.");
             foreach (var r in roots) if (r != null) Object.DestroyImmediate(r.gameObject);
         }
     }

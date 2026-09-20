@@ -165,7 +165,7 @@ namespace Tankfall.Sim
                         tBase = t;
                         // ⚠️ 추진을 안 지우면 tf 가 0 으로 돌아가며 **연소가 다시 시작**한다 — 회오리가 사거리 증폭기가 된다.
                         //    유도는 남긴다(연료가 아니라 제어다). 진행 중이던 유도는 끊고 낙하 중에 다시 잡게 한다.
-                        fp.Thrust = 0f; fp.BoostSec = 0f;
+                        fp.Thrust = 0f; fp.BoostSec = 0f; fp.Motion = 0; // Do not restart launch controls after tornado.
                         homing = false; homeTarget = -1;
                         path.Add(new Vec3(tor.X, tor.TopY, tor.Z));
                         prev = org;

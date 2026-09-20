@@ -1,8 +1,7 @@
 // 명세: docs/GAME_SPEC_TANK_ARTILLERY.md §8 UI — HUDController·PowerBarUI·TeamStatusUI 계열이 쓸 그리기 도구.
 //
-// 왜 코드로 그리나: 이 프로젝트는 지형(§7)도 탱크(§9)도 에셋 없이 코드로 만든다.
-// UI 만 스프라이트를 들이면 빌드·리포지토리·플랫폼 조건이 거기서만 갈린다.
-// 흰 1x1 텍스처 한 장 + `GUI.color` 곱 + `GUI.DrawTexture` 면 바·패널·테두리가 전부 나온다.
+// 공통 장갑 패널·선택 카드·계기판 스타일. 메뉴와 전투 HUD가 같은 팔레트를 사용한다.
+// 도형은 작은 캐시 텍스처로 그려 해상도에 맞춰 선명하게 유지한다.
 //
 // ⚠️ 이모지·특수 글리프를 쓰지 마라 — 기본 폰트에 글리프가 없어 □ 로 찍힌다(§2-9-11 에서 실제로 겪었다).
 //    화살표 같은 도형이 필요하면 여기 `Tri`/`Arrow` 처럼 **도형으로 그려라.**
@@ -20,17 +19,21 @@ namespace Tankfall.View
         // 팀 색은 탱크 강조색(SpawnTeams)과 같은 계열을 쓴다 — HUD 의 파랑이 화면의 파랑과 다르면 팀이 안 읽힌다.
         public static readonly Color Ally    = new Color(0.50f, 0.69f, 1.00f);
         public static readonly Color Enemy   = new Color(1.00f, 0.54f, 0.50f);
-        public static readonly Color Ink     = new Color(0.93f, 0.95f, 0.98f);
-        public static readonly Color Dim     = new Color(0.62f, 0.66f, 0.72f);
-        public static readonly Color Panel   = new Color(0.05f, 0.07f, 0.10f, 0.78f);
-        public static readonly Color Border  = new Color(1.00f, 1.00f, 1.00f, 0.16f);
-        public static readonly Color Slot    = new Color(1.00f, 1.00f, 1.00f, 0.09f);
-        public static readonly Color Good    = new Color(0.45f, 0.85f, 0.45f);
+        public static readonly Color Ink     = new Color(0.96f, 0.96f, 0.89f);
+        public static readonly Color Dim     = new Color(.68f,.77f,.91f);
+        public static readonly Color Panel   = new Color(.045f,.075f,.17f,.96f);
+        public static readonly Color Border  = new Color(0.40f, 0.61f, 0.61f, 0.55f);
+        public static readonly Color Slot    = new Color(0.025f, 0.055f, 0.065f, 0.82f);
+        public static readonly Color Good    = new Color(.35f, .88f, .68f);
         public static readonly Color Warn    = new Color(1.00f, 0.83f, 0.47f);
         public static readonly Color Bad     = new Color(1.00f, 0.42f, 0.42f);
         public static readonly Color Power   = new Color(1.00f, 0.72f, 0.25f);
         public static readonly Color Gauge   = new Color(0.55f, 0.82f, 1.00f);
         public static readonly Color Mark    = new Color(0.55f, 1.00f, 0.55f);
+
+        public static readonly Color Accent = new Color(.48f, .83f, 1f);
+        public static readonly Color Selected = new Color(.30f, .24f, .12f, .98f);
+        public static readonly Color Shadow = new Color(0f, .015f, .025f, .42f);
 
         // ── 텍스처 ──────────────────────────────────────────────
         static Texture2D _white, _tri;
@@ -95,8 +98,14 @@ namespace Tankfall.View
         /// <summary>배경 + 테두리. HUD 패널의 기본 바탕.</summary>
         public static void Box(Rect r, Color? bg = null, Color? border = null)
         {
-            Fill(r, bg ?? Panel);
-            Frame(r, border ?? Border);
+            GuiArt.Panel(r, 0, r.height < 80f ? 7f : 10f);
+        }
+
+        /// <summary>키보드 선택과 잠금 상태를 공통 카드 스타일로 표시한다.</summary>
+        public static void Choice(Rect r, bool selected, bool enabled = true)
+        {
+            GuiArt.Panel(r, selected ? 2 : 1, Mathf.Min(12f,r.height*.24f));
+            if (!enabled) Fill(r, new Color(.03f,.06f,.14f,.58f));
         }
 
         /// <summary>왼쪽부터 차는 가로 바. frac 은 0~1 로 잘라 쓴다.</summary>
@@ -104,7 +113,12 @@ namespace Tankfall.View
         {
             Fill(r, bg ?? Slot);
             float w = Mathf.Clamp01(frac) * r.width;
-            if (w > 0f) Fill(new Rect(r.x, r.y, w, r.height), fill);
+            if (w > 0f)
+            {
+                Fill(new Rect(r.x, r.y, w, r.height), fill);
+                Fill(new Rect(r.x, r.y, w, Mathf.Min(2f,r.height*.24f)), new Color(1f,1f,1f,.24f));
+                Fill(new Rect(r.x, r.yMax - 1f, w, 1f), Shadow);
+            }
             if (border.HasValue) Frame(r, border.Value);
         }
 
@@ -148,7 +162,10 @@ namespace Tankfall.View
         }
 
         public static void Text(Rect r, string s, int size, Color c, TextAnchor anchor = TextAnchor.MiddleLeft, bool bold = false)
-            => GUI.Label(r, s, Style(size, c, anchor, bold));
+        {
+            GUI.Label(new Rect(r.x+1f,r.y+1f,r.width,r.height),s,Style(size,new Color(.015f,.045f,.10f,.75f),anchor,bold));
+            GUI.Label(r,s,Style(size,c,anchor,bold));
+        }
 
         /// <summary>
         /// 줄바꿈되는 텍스트. 공용 <see cref="Style"/> 은 `wordWrap = false` 라 **긴 문장이 조용히 잘린다** —
