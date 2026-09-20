@@ -92,8 +92,9 @@ namespace Tankfall.View
                 check(tookTeamMat, tookTeamMat
                     ? $"{name} 팀색 주입됨 ✅ 노드: {nodeList}"     // ✅ 되는 것의 노드 이름 = «정답 예시»
                     : $"{name} **팀색이 안 먹었다** — `accentMat` 이 어느 렌더러에도 안 쓰였다. " +
-                      $"**이 모델이 가진 노드: {nodeList}** — 이 중 팀색 면을 `Team` 으로 이름 붙이면 된다 " +
-                      "(`BlenderModels` 가 **노드 이름이 `Team` 인 렌더러에만** 팀 머티리얼을 물린다). " +
+                      $"**이 모델이 가진 면: {nodeList}** — 이 중 «팀색이 될 면»의 **머티리얼 이름을 `Team`** 으로 바꿔라. " +
+                      "(`BlenderModels` 는 **`n.material == \"Team\"` 인 면에만** 팀 머티리얼을 물린다. " +
+                      "✅ 되는 모델은 그래서 렌더러가 `TeamMesh` 로 나온다 — 위 ✅ 줄들과 대조해 보면 바로 보인다.) " +
                       "🚨 안 고치면 **아군과 적군이 화면에서 안 갈린다** — 4:4 에서 어느 게 내 탱크인지 모른다.");
 
                 if (liveUsedModel) withModel++; else procedural++;
