@@ -87,8 +87,8 @@ static class BattleSimVerify
                 Console.WriteLine($"❌ TANKFALL_VAR 경로가 정상 경로와 «다른 탱크»를 만든다 — {TankStats.Get(k).Name} · {shell} · hp {hp:F1} · {w}");
                 Console.WriteLine($"   덮는 값을 기본값({baseValue:F2})으로 뒀는데도 다르다는 것은, 실험 경로가 «보정 단계 하나»를 빠뜨렸다는 뜻이다.");
                 Console.WriteLine($"   Stats() 의 사슬을 TankStats.For() 와 한 글자씩 대조해라(2026-09-19: .WithFlight 누락으로 +15%p).");
-                Console.WriteLine($"   실험 경로 Flight: thrust {mine.Flight.Thrust:F1} boost {mine.Flight.BoostSec:F2} aero {mine.Flight.AeroFwd:F1} motion {mine.Flight.Motion} spdMul {mine.Flight.SpeedMul:F3}");
-                Console.WriteLine($"   정상 경로 Flight: thrust {real.Flight.Thrust:F1} boost {real.Flight.BoostSec:F2} aero {real.Flight.AeroFwd:F1} motion {real.Flight.Motion} spdMul {real.Flight.SpeedMul:F3}");
+                Console.WriteLine($"   실험 경로 Flight: thrust {mine.Flight.Thrust:F1} boost {mine.Flight.BoostSec:F2} aero {mine.Flight.AeroFwd:F1} spdMul {mine.Flight.SpeedMul:F3}");
+                Console.WriteLine($"   정상 경로 Flight: thrust {real.Flight.Thrust:F1} boost {real.Flight.BoostSec:F2} aero {real.Flight.AeroFwd:F1} spdMul {real.Flight.SpeedMul:F3}");
                 Environment.Exit(2);
             }
         }
