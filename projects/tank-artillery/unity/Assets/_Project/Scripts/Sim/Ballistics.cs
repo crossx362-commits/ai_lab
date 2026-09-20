@@ -148,11 +148,11 @@ namespace Tankfall.Sim
                 //    사거리가 맵 밖으로 나갔다(측정 불가). 추진이 없는 7종은 전 범위를 써도 되지만
                 //    여기 6종은 **사거리 잔차를 [1-1] 로 보면서** 작게 둔다. 모양은 그만큼 덜 갈린다.
                 case TankKind.Missile:      return Plus(Boost(22f, 1.2f, vmax, sp ? 55f : 0f), 2f);   // 로켓: 앞으로 밀려 평평하게
-                case TankKind.MultiMissile: return Plus(Boost(12f, 0.8f, vmax), 2f);
+                case TankKind.MultiMissile: return Plus(Boost(18f, 0.8f, vmax), 2f);   // 대비↑(2026-09-20): add 9.6→14.4
                 case TankKind.SuperTank:    return Plus(Boost(26f, 1.1f, vmax, sp ? 75f : 0f), 1f);   // "핫도그" 강추진
                 case TankKind.Laser:        return Plus(Boost(34f, 0.7f, vmax), 2f);                  // 빔: 추진 6종 중 가장 평평
-                case TankKind.SecWind:      return Plus(Boost(14f, 0.7f, vmax), -2f);                 // 바람 타듯 살짝 떠서 늦게 떨어짐
-                case TankKind.CrossBow:     return Plus(Boost(9f, 0.5f, vmax), 3f);                   // 볼트: 낮고 곧게
+                case TankKind.SecWind:      return Plus(Boost(16f, 0.9f, vmax), -2f);                 // 바람 타듯 살짝 떠서 늦게 떨어짐. 대비↑(2026-09-20): add 9.8→14.4 (길게 타는 쪽으로)
+                case TankKind.CrossBow:     return Plus(Boost(24f, 0.6f, vmax), 3f);                  // 볼트: 낮고 곧게. 대비↑(2026-09-20): add 4.5→14.4 (짧고 세게 — 볼트다운 쪽으로)
 
                 // ── 오너 지시(2026-09-19) 「발사체 날아가는 궤적 다양하게 하랬는데?」 ────────────────
                 // 여기 아래 7종은 **전부 `default` = 완전히 같은 포물선**이었다. ⑦ 에서 자취 «색»은 갈렸는데
