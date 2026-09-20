@@ -154,6 +154,9 @@ namespace Tankfall.View
         /// </summary>
         public static bool ForceProcedural;
 
+        /// <summary>프로시저럴 본체가 끝까지 가서 탱크를 지은 횟수. <see cref="TankShapeContract"/> 가 읽는다.</summary>
+        public static int ProceduralBuilds;
+
         /// <summary>기종 → 차대. 원작 근거: 레이저·포세이돈은 호버("지뢰를 밟지 않는 단 두 개의 탱크"), 나머지는 시대 감각으로 갈랐다.</summary>
         public static Chassis ChassisOf(TankKind k)
         {
@@ -907,6 +910,12 @@ namespace Tankfall.View
 
             foreach (var (mf, mb, n) in parts) mf.mesh = mb.ToMesh(n);
 
+            // 🚨 **프로시저럴 본체가 «끝까지» 갔다는 표시**(2026-09-20).
+            //    `TankShapeContract` 가 `ForceProcedural` 로 우회를 걸었는데 **이 값이 안 올라가면**
+            //    「우회가 안 먹혔다 = 모델 로더가 `ForceProcedural` 밖에 붙었다」는 뜻이다.
+            //    ⚠️ 그 경우 두 경로가 «둘 다 모델»이 되어 발사점 Δ 가 언제나 0 이고
+            //       게이트가 **영원히 초록**이 된다. 주석으로는 그걸 못 막아서 **세는 것**으로 바꿨다.
+            ProceduralBuilds++;
             return root;
         }
 

@@ -392,6 +392,7 @@ namespace Tankfall.View
             //    «재는 것»(발사점)은 못 바꾼다. 발사점이 곧 탄도의 시작점 `p0` 이라, 몇 cm 만 달라져도
             //    명중률·승률·M4 판정이 조용히 전부 바뀐다. 자세한 근거는 TankShapeContract 머리말.
             TankShapeContract.Run(Check);
+            TankShapeContract.PerfBaseline();   // 📐 «프로시저럴 8대» 기준선 — 첫 모델이 들어오면 영영 못 잰다
 
             // 2) 음악 게이트 — 끔/음소거면 트랙이 서지 않는다
             bool savedMuted = Sfx.Muted, savedOff = Sfx.MusicOff;
