@@ -3,6 +3,7 @@ All coordinates are Blender local (X right, Y back, Z up). Rig anchors untouched
 """
 import math
 import bpy
+from mathutils import Vector
 
 KINDS=('Catapult','CrossBow','Cannon','Carrot')
 DECALS={}
@@ -11,6 +12,21 @@ def apply(kind,root,api):
     if kind not in KINDS:return root
     objects=list(root.children_recursive)
     def named(prefix):return [o for o in objects if o.name.split('.')[0]==prefix]
+    def traced_leaf(obj, outline, depth_fn, thickness=.055):
+        # Closed volume from an explicitly traced front outline. The front center
+        # is raised above the edge to create a folded surface, never an art plane.
+        cx=sum(p[0] for p in outline)/len(outline);cz=sum(p[1] for p in outline)/len(outline)
+        n=len(outline);verts=[]
+        for back in (False,True):
+            for x,z in outline:verts.append((x,depth_fn(x,z)+(thickness if back else -thickness),z))
+        verts.extend([(cx,depth_fn(cx,cz)-thickness-.075,cz),(cx,depth_fn(cx,cz)+thickness,cz)])
+        faces=[]
+        for i in range(n):
+            j=(i+1)%n;faces.extend([(2*n,i,j),(2*n+1,n+j,n+i),(i,n+i,n+j,j)])
+        mesh=bpy.data.meshes.new(obj.name+' traced closed leaf');mesh.from_pydata(verts,[],faces);mesh.update()
+        for mat in obj.data.materials:mesh.materials.append(mat)
+        obj.data=mesh
+        for face in mesh.polygons:face.use_smooth=True
     # The original yaw flattened each sclera in front view and elongated its pupil.
     # Retain wrap-around sockets, but expose the rounder source face and inward gaze.
     for eye in named('Eye'):
@@ -36,24 +52,29 @@ def apply(kind,root,api):
             for v in o.data.vertices:v.co.z=1.56+(v.co.z-1.56)*.90
         for o in named('Faceted loaded boulder'):o.scale.z*=.85
     elif kind=='CrossBow':
-        # Folded leaves remain closed volumes. Lengthen forehead to the beak,
-        # lift the outside tips, and widen its side fan to match the source tiers.
-        for prefix in ('Pointed owl brow leaf','Central owl forehead leaf'):
-            for o in named(prefix):
-                side=1 if sum(v.co.x for v in o.data.vertices)>0 else -1
-                central=prefix.startswith('Central')
-                # Slim closed lanceolate leaf: wide near the crest, tapered at the nose.
-                for j in range(17):
-                    t=j/16
-                    cx=0 if central else side*(.055+.86*t)
-                    cz=.82+1.03*t
-                    cy=-1.44+.36*t
-                    profile=max(.002,math.sin(math.pi*t))*(.12+.88*t)
-                    for q in range(12):
-                        a=q*math.tau/12
-                        v=o.data.vertices[j*12+q]
-                        offset=(.18 if central else .20)*profile*math.cos(a)
-                        v.co=(cx+offset,cy+.045*profile*math.sin(a),cz-(0 if central else side*.78*offset))
+        # Front outline traced against source pixels: beak (296,590),
+        # central crown (296,369), outer leaf tips (130,368)/(463,367).
+        # Mapping: source x=296+166*x; source y=755-190*z.
+        center=[(0,.84),(-.105,1.22),(-.23,1.62),(-.16,1.86),(0,2.03),(.16,1.86),(.23,1.62),(.105,1.22)]
+        side_outline=[(.055,.84),(.18,1.34),(.39,1.66),(.72,1.88),(1.00,2.04),(.91,1.68),(.66,1.38),(.27,1.08)]
+        depth=lambda x,z:-1.47+max(0,(z-1.14))*1.05
+        for o in named('Central owl forehead leaf'):traced_leaf(o,center,depth)
+        for o in named('Pointed owl brow leaf'):
+            sign=1 if sum(v.co.x for v in o.data.vertices)>0 else -1
+            traced_leaf(o,[(sign*x,z) for x,z in side_outline],depth)
+        for o in named('Owl rounded feather body'):o.scale.z=1.15
+        # A broad dorsal leaf overlaps the front crest in top view, as in the sheet.
+        template=named('Central owl forehead leaf')[0]
+        dorsal=template.copy();dorsal.data=template.data.copy();bpy.context.collection.objects.link(dorsal)
+        dorsal.name='Owl dorsal central leaf'
+        outline=[(0,-1.15),(-.34,-.80),(-.43,-.24),(-.35,.35),(0,.94),(.35,.35),(.43,-.24),(.34,-.80)]
+        # reuse closed lens construction, then turn the traced plane onto the roof.
+        traced_leaf(dorsal,outline,lambda x,z:-1.82-.10*(1-abs(z)))
+        for v in dorsal.data.vertices:
+            x,y=v.co.x*1.45,v.co.z+.25
+            z=1.13+.75*math.sqrt(max(.015,1-(x/1.1)**2-(y/1.35)**2))+.045
+            v.co=Vector((x,y,z+(-v.co.y-1.82)*.55))
+        for o in named('Small hooked owl beak'):o.location.y-=.15;o.location.z-=.06
         for o in named('Overlapping owl leaf')+named('Leaf midrib'):
             if o.type=='MESH':
                 for v in o.data.vertices:v.co.x*=1.13
@@ -69,9 +90,12 @@ def apply(kind,root,api):
             for v in o.data.vertices:v.co.z+=side*.43*v.co.x
             o.location.z-=.03
         for o in named('Round hinged captain lid'):
-            o.scale.x=1.07;o.scale.y=1.07;o.location.z+=.24
-            o.rotation_euler.x=math.radians(8)
-            api['cyl']('Captain hatch seat',(0,1.14,-.28),.56,.25,'Navy',o.parent,seg=48)
+            o.scale.x=1.07;o.scale.y=1.07;o.location.z+=.06
+            o.rotation_euler.x=math.radians(4)
+            api['cyl']('Captain hatch seat',(0,1.04,-.28),.70,.23,'Navy',o.parent,seg=48)
+            for ch in o.children:
+                if ch.name.startswith('Navy round hatch'):ch.scale.z*=1.55
+                elif ch.name.startswith('Curved hatch crown'):ch.scale.z*=1.55
     elif kind=='Carrot':
         for side in (-1,1):
             api['box']('Front gold track cheek',(side*1.14,.86,1.24),(.73,.27,.11),'Gold',root,.035)
@@ -97,10 +121,27 @@ def apply(kind,root,api):
         for o in named('Orange root eyebrow'):
             side=1 if o.parent.location.x>0 else -1
             for v in o.data.vertices:v.co.z+=side*.46*v.co.x
-        # Separate lower crown lobes restore the five-leaf front fan.
-        for o in named('Broad folded carrot crown leaf'):
-            for v in o.data.vertices:
-                if abs(v.co.x)>.40:v.co.x*=1.12
+        # Source fan tiers, traced from front pixels (center x=288): central
+        # tip (288,160), mid tips (125,212)/(450,212), low (90,298)/(484,298).
+        specs=[([(0,.65),(-.25,1.12),(-.31,1.61),(-.19,1.96),(0,2.20),(.19,1.96),(.31,1.61),(.25,1.12)],0),
+               ([(.10,.68),(.31,1.22),(.60,1.65),(.93,1.84),(.92,1.38),(.69,.96),(.32,.72)],1),
+               ([(.19,.64),(.53,.94),(.96,1.20),(1.18,1.23),(1.01,.86),(.71,.67),(.34,.58)],1)]
+        leaves=named('Broad folded carrot crown leaf')
+        outlines=[specs[0][0],specs[1][0],[(-x,z) for x,z in specs[1][0]],specs[2][0],[(-x,z) for x,z in specs[2][0]]]
+        for i,o in enumerate(leaves):
+            outline=outlines[min(i,4)]
+            # upper/mid leaves lean back so they remain wide in top and side views.
+            depth=lambda x,z: .46+(z-.65)*(.78 if i<3 else .50)
+            traced_leaf(o,outline,depth,.065)
+            if i>=3:
+                for v in o.data.vertices:v.co.z+=.25
+            if i==5:
+                # A rear leaf turned into the side plane gives the fan real side
+                # breadth, matching the side drawing rather than knife edges.
+                traced_leaf(o,specs[0][0],lambda x,z:0,.07)
+                for v in o.data.vertices:
+                    x,y,z=v.co
+                    v.co=Vector((y,.75+x*1.9+(z-.65)*.55,.65+(z-.65)*.83))
     root['approvedMethodGeometry']='organic-a-v1'
     bpy.context.view_layer.update()
     return root

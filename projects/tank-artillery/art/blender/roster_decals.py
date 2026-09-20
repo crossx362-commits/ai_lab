@@ -6,16 +6,16 @@ from mathutils import Vector
 RULES={
  'Catapult':[('Oak end face',2,'front'),('Oak end face',2,'back'),('Longitudinal oak stave',2,'top'),('Sloping carved oak eyebrow',1,'front'),('Deep leather sling',1,'back')],
  'CrossBow':[('Overlapping owl leaf',3,'front'),('Rear owl overlapping leaf',3,'back'),('Pointed owl brow leaf',3,'front'),('Central owl forehead leaf',3,'front'),('Teal wheel arch',0,'front'),('Flat laminated recurved oak limb',2,'front'),('Low curved owl carriage',2,'front')],
- 'Cannon':[('Great spherical navy cannon',1,'front'),('Great spherical navy cannon',4,'back'),('Navy round hatch',0,'top'),('Wooden carriage cheek',2,'side'),('Compact wooden gun carriage',2,'front')],
+ 'Cannon':[('Great spherical navy cannon',1,'front'),('Navy round hatch',0,'top'),('Wooden carriage cheek',2,'side'),('Compact wooden gun carriage',2,'front')],
  'Carrot':[('Smooth tapered carrot armor',9,'front'),('Smooth tapered carrot armor',9,'back'),('Broad folded carrot crown leaf',3,'front'),('Broad folded carrot crown leaf',3,'back'),('Wrapped curved fender',0,'front')],
  'Duke':[('Faceted frog chin',1,'front'),('Frog low armored back',5,'back'),('Faceted broad frog snout',15,'front'),('Toxic warning triangle',5,'front'),('Wrapped curved fender',0,'front')],
  'MineLander':[('Rounded mole armored cab',0,'front'),('Rounded mole armored cab',13,'back'),('Concave steel digging scoop',13,'front'),('Mole muzzle',1,'front'),('Wrapped curved fender',0,'front')],
  'Missile':[('Red rocket shell',9,'front'),('Rocket rounded tail',9,'back'),('Compact centered launch cradle',0,'front'),('Curved armored track fender',0,'front')],
  'MultiMissile':[('Low tiled turtle shell',6,'back'),('Low tiled turtle shell',6,'top'),('Nine cell dorsal rocket pack',0,'front'),('Nine cell dorsal rocket pack',6,'back'),('Turtle wheel boot',0,'front'),('Turtle forward head',15,'front'),('Turtle belly',9,'front')],
- 'SuperTank':[('Thick sloped frontal armor',0,'front'),('Golden shoulder launcher',0,'front'),('Broad lion lower hull',7,'back'),('Swept sculpted lion mane',11,'back'),('Wrapped curved fender',0,'front')],
- 'IonAttacker':[('Pink orbital sphere',10,'front'),('Pink orbital sphere',10,'back'),('Pink satellite eye shell',10,'back'),('Pink top cap',0,'top'),('Lower maroon keel',1,'front')],
- 'Poseidon':[('Blue whale upper shell',12,'back'),('Blue whale upper shell',1,'front'),('Whale side flipper',1,'front'),('Horizontal whale tail fluke',12,'top'),('Wrapped curved fender',0,'front')],
- 'SecWind':[('Green bird rounded head',3,'back'),('Swept green primary wing',11,'front'),('Ivory overlapping secondary',11,'front'),('Swept bird crest',3,'front'),('High wing-root green turbine',0,'back'),('Wrapped curved fender',0,'front')]
+ 'SuperTank':[('Thick sloped frontal armor',0,'front'),('Golden shoulder launcher',0,'front'),('Broad lion lower hull',7,'back'),('Layered descending crimson mane',11,'back'),('Wrapped curved fender',0,'front')],
+ 'IonAttacker':[('Pink orbital sphere',10,'front'),('Pink orbital sphere',10,'back'),('Pink satellite eye shell',10,'back'),('Pink top cap',0,'top'),('Keel lower tapered step',1,'front')],
+ 'Poseidon':[('Smooth blue whale back',12,'back'),('Smooth blue whale back',1,'front'),('Whale side flipper',1,'front'),('Horizontal whale tail fluke',12,'top'),('Wrapped curved fender',0,'front')],
+ 'SecWind':[('Green bird rounded head',3,'back'),('Broad cambered primary feather',11,'front'),('Layered ivory wing feather',11,'front'),('Swept bird crest',3,'front'),('High wing-root green turbine',0,'back'),('Wrapped curved fender',0,'front')]
 }
 def apply(kind,root,api):
  if kind not in RULES:return

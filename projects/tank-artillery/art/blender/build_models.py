@@ -140,7 +140,11 @@ def toywheel(parent,p,r,width,paint):
 
 def tank(k):
     from concept_roster import build_tank
-    return build_tank(k,SHAPES[k],globals())
+    root=build_tank(k,SHAPES[k],globals())
+    if k != "Laser" and not globals().get("SKIP_ROSTER_REFINEMENT",False):
+        from roster_refinement import apply
+        apply(k,root,globals())
+    return root
 
 def projectile(k,special):
     root=empty(k+('_Special' if special else '_Normal'))

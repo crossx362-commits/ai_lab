@@ -301,7 +301,7 @@
       [
         15,
         201,
-        636,
+        684,
         390
       ],
       [
@@ -311,17 +311,17 @@
         393
       ],
       [
-        1330,
+        1260,
         159,
-        633,
+        706,
         474
       ]
     ],
-    "front_width_height": 1.6307692307692307,
+    "front_width_height": 1.7538461538461538,
     "side_length_height": 1.3206106870229009,
-    "top_width_length": 1.3354430379746836,
-    "projection_closure_ratio": 1.0814530434988707,
-    "note": "Silhouette bounds only; not a similarity score. A consistent orthographic sheet has closure ratio near 1, except pose/occlusion differences."
+    "top_width_length": 1.489451476793249,
+    "projection_closure_ratio": 0.8916416109394543,
+    "note": "2026-09-20 source inspection: expanded front/right and top/left crop to retain full wing tips. Original image unchanged."
   },
   "SuperTank": {
     "boxes": [

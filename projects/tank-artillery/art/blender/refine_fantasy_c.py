@@ -96,6 +96,8 @@ def apply(kind, root, api):
                 leaf('Front framing mane',(s*.59,1.53-.19*j,.73),
                      (s*(1.11-.075*j),1.07-.21*j,.87),.25,.085,'Crimson',turret,bend=.06)
             leaf('Central swept forehead lock',(s*.05,1.55,.77),(s*.65,1.91,.39),.25,.10,'Crimson',turret)
+        for o in matching('Layered descending crimson mane','Front framing mane'):
+            for point in o.data.vertices:point.co.x*=1.12
         for o in matching('Lion cranium'):
             o.scale.x*=1.10; o.scale.z*=1.05
         for o in matching('Lion broad cream muzzle'):
@@ -113,6 +115,11 @@ def apply(kind, root, api):
             a.ball('Crown inset ruby',(x,y,.252),(r,r*1.12,.035),'Crimson',turret)
         for x,y in ((0,2.55),(-.57,2.26),(.57,2.26)):
             a.ball('Crown gold finial',(x,y,.18),(.048,.064,.048),'Gold',turret)
+        # Rear and side crown panels give the circlet real depth in SIDE/TOP.
+        for side in (-1,1):
+            crownside=prism('Crown side peak',[(-.28,1.93),(.30,1.93),(.19,2.15),(.02,2.37),(-.12,2.09)],.09,'Gold',turret)
+            for p in crownside.data.vertices:
+                oldx=p.co.x;p.co.x=side*.36-p.co.y;p.co.y=oldx
         # Front hull should meet the mane and have distinct armored track shoulders.
         for s in (-1,1):
             a.box('Lion front track armor',(s*1.46,1.02,1.05),(.67,.36,.91),'Gold',root,.075)
@@ -121,6 +128,10 @@ def apply(kind, root, api):
                 a.cyl('Lion shoulder bolt',(s*1.46,1.245,z),.046,.027,'Metal',root,seg=12)
             a.box('Lion rear deck shoulder',(s*.78,1.29,-.69),(.33,.30,.91),'Gold',root,.045)
         a.box('Lion chest plate',(0,1.36,1.11),(1.28,.57,.25),'Gold',root,.04)
+        prism('Deep central lion front apron',[(-.64,1.00),(.64,1.00),(.55,.34),(.40,.20),(-.40,.20),(-.55,.34)],.24,'Gold',root,z=1.40)
+        for side in (-1,1):
+            a.box('Lion apron edge strip',(side*.40,.62,1.535),(.065,.63,.025),'Gold',root,.008)
+            for yy in (.39,.84):a.cyl('Lion apron fastener',(side*.49,yy,1.553),.035,.025,'Metal',root,'z',seg=12)
         for j in range(4):a.box('Rear cooling grille',(0,1.37,-.83+j*.15),(.65,.028,.075),'Metal',root,.008)
         # Small embossed crown mark on the back of the yawing mane.
         prism('Rear royal crown badge',[(-.22,0),(-.24,.25),(-.12,.12),(0,.32),(.12,.12),(.24,.25),(.22,0)],.04,'Gold',turret,z=-.83)
@@ -132,7 +143,7 @@ def apply(kind, root, api):
         for y in (1.015,1.20):
             for r in (1.47,1.67):
                 for j in range(count):
-                    q=math.tau*j/count; verts.append((r*math.cos(q),y,r*math.sin(q)))
+                    q=math.tau*j/count; verts.append((r*math.cos(q),y-.28*r*math.sin(q),r*math.sin(q)))
         faces=[]
         for j in range(count):
             k=(j+1)%count
@@ -140,9 +151,11 @@ def apply(kind, root, api):
                       (j,2*count+j,2*count+k,k),(count+j,count+k,3*count+k,3*count+j)]
         mesh('Flat orbital gold belt',verts,faces,'Gold',root)
         for o in matching('Great cyan cyclops iris'):
-            o.scale.x*=.88; o.scale.z*=.90; o.scale.y*=.65; o.location.y+=.045
+            o.scale.x*=.95; o.scale.z*=.95; o.location.y=-1.245
+        for o in matching('Long dark vertical pupil'):
+            o.location.y=-1.402
         for o in matching('Central lens highlight'):
-            o.location.x=.22; o.location.z=2.23; o.location.y=-1.34
+            o.location.x=.22; o.location.z=2.23; o.location.y=-1.395
         # Reference satellites fill the four plan quadrants, with full gimbal supports.
         satellite_names=('Pink satellite eye shell','Pink satellite front bezel','Satellite dark lens','Satellite cyan iris','Gold pod side pivot')
         for o in matching(*satellite_names):
@@ -169,7 +182,7 @@ def apply(kind, root, api):
         remove('Blue whale upper shell','White whale ventral body','Whale smiling lip','Surface fitted ventral groove',
                'Trident center spear','Hooked trident outer tine')
         sections=[(-2.20,.12,.17,2.0),(-1.72,.35,.40,1.59),(-1.08,.87,.76,1.36),(-.40,1.18,.98,1.36),
-                  (.40,1.22,1.03,1.40),(1.02,1.02,.95,1.39),(1.51,.58,.68,1.40),(1.66,.03,.20,1.42)]
+                  (.40,1.22,1.03,1.40),(1.02,1.02,.95,1.39),(1.51,.58,.68,1.40),(1.76,.015,.015,1.42)]
         # Smooth interpolation replaces visibly faceted longitudinal joins and the staircase color boundary.
         fine=[]
         for i in range(len(sections)-1):
@@ -188,6 +201,9 @@ def apply(kind, root, api):
                     seam=c+.20*max(0,min(1,(z+1.0)/1.8))*(1-min(1,abs(x)/1.23)**2)
                     verts.append((x,seam+h*math.sin(t),z))
             faces=[(i*n+j,i*n+j+1,(i+1)*n+j+1,(i+1)*n+j) for i in range(len(fine)-1) for j in range(n-1)]
+            for row in (0,len(fine)-1):
+                cap=len(verts); z,w,h,c=fine[row]; verts.append((0,c,z))
+                faces += [(cap,row*n+j,row*n+j+1) for j in range(n-1)]
             mesh('Smooth ivory whale belly' if lower else 'Smooth blue whale back',verts,faces,mat,root)
         # Ventral grooves follow the actual convex surface, staying below the new curved lip.
         from mathutils.bvhtree import BVHTree
@@ -202,9 +218,14 @@ def apply(kind, root, api):
         # Raised actual tines expose the hooked silhouette in FRONT while retaining full depth.
         prism('Raised trident central spear',[(-.08,.0),(.08,.0),(.08,.66),(.19,.67),(0,1.01),(-.19,.67),(-.08,.66)],.16,'Gold',barrel,z=1.22)
         for s in (-1,1):
-            pts=[(0,.03),(s*.34,.03),(s*.54,.39),(s*.52,.65),(s*.76,.78),(s*.82,.44),(s*.66,.53),(s*.48,-.12),(0,-.12)]
+            pts=[(0,.03),(s*.34,.03),(s*.51,.38),(s*.54,.60),(s*.44,.79),(s*.66,.69),(s*.81,.50),(s*.83,.33),(s*.67,.42),(s*.49,-.12),(0,-.12)]
             prism('Raised hooked gold trident tine',pts,.17,'Gold',barrel,z=1.07)
             a.beam('Trident fork depth brace',(0,0,.69),(s*.43,.13,1.07),.17,'Gold',barrel)
+        for o in matching('Raised trident central spear','Raised hooked gold trident tine'):
+            for p in o.data.vertices:
+                forward=-p.co.y
+                p.co.y=-(.64+(forward-1.10)*.7+p.co.z*.82)
+                p.co.z*=.78
         for o in matching('Horizontal whale tail fluke'):
             # Camber makes the tail a volume from SIDE as well as a TOP silhouette.
             for vtx in o.data.vertices:
@@ -219,13 +240,13 @@ def apply(kind, root, api):
         for s in (-1,1):
             for j in range(8):
                 t=j/7
-                end=(s*(1.70+1.30*t),1.02+2.12*t,-.65-1.05*t)
+                end=(s*(1.55+1.45*math.sin(t*math.pi/2)),1.02+2.12*t,.42-2.12*t)
                 start=(s*.76,1.30+.22*t,-.25-.22*t)
-                leaf('Broad cambered primary feather',start,end,.31+.075*t,.09,'Body',root,normal=(0,.65,1),bend=.10)
+                leaf('Broad cambered primary feather',start,end,.31+.045*t,.09,'Body',root,normal=(0,1,1),bend=.10)
             for j in range(6):
                 t=j/5
                 leaf('Layered ivory wing feather',(s*.82,1.63+.14*t,.02),
-                     (s*(1.46+.84*t),1.38+1.44*t,-.20-.90*t),.22,.075,'Ivory',root,normal=(0,.60,1),bend=.08)
+                     (s*(1.40+.90*math.sin(t*math.pi/2)),1.38+1.44*t,.43-1.40*t),.25,.075,'Ivory',root,normal=(0,.60,1),bend=.08)
             # Root covert rounds the wing/face junction instead of leaving isolated feathers.
             a.ball('Green wing root',(s*.86,1.69,-.19),(.43,.54,.37),'Body',root)
         for o in matching('High wing-root green turbine','Ivory turbine front ring','Turbine dark well','Pitched radial turbine blade','Turbine spinner'):
@@ -233,9 +254,11 @@ def apply(kind, root, api):
             if o.name.startswith('Pitched radial turbine blade'):
                 center=Vector((1.16 if sum(v.co.x for v in o.data.vertices)>0 else -1.16,-.228,2.43))
                 for vert in o.data.vertices:vert.co=center+(vert.co-center)*1.20
-                o.location.y-=.17
+                o.location.y-=.29
             else:
                 o.scale*=1.20; o.location.y-=.17
+                if o.name.startswith(('Turbine dark well','Ivory turbine front ring')):o.location.y-=.10
+                if o.name.startswith('Turbine spinner'):o.location.y-=.08
         # Keep the lower chassis fixed; the entire bird and both turbines yaw together.
         movable=('Green bird rounded head','Eye','Broad cambered primary feather','Layered ivory wing feather','Green wing root',
                  'High wing-root green turbine','Ivory turbine front ring','Turbine dark well','Pitched radial turbine blade',
@@ -260,5 +283,54 @@ def apply(kind, root, api):
     bpy.context.view_layer.update()
     for obj,basis in anchors:
         assert all(abs(obj.matrix_basis[r][c]-basis[r][c])<1e-7 for r in range(4) for c in range(4)), obj.name
+    if kind == 'Poseidon':
+        body=[o for o in root.children_recursive if o.type=='MESH' and o.name.startswith(('Smooth blue whale back','Smooth ivory whale belly','Curved ventral pleat'))]
+        points=[o.matrix_world@v.co for o in body for v in o.data.vertices]
+        root['fantasy_c_whale_pre_fit_bounds']=[min(v.x for v in points),min(v.z for v in points),max(v.x for v in points),max(v.z for v in points)]
     root['fantasy_c_refined']=1
+    return root
+
+
+def post_fit(kind, root, api):
+    """Landmark fit leaves non-front appendages behind; reattach them to the fitted body."""
+    if kind not in ('Poseidon','IonAttacker') or root.get('fantasy_c_post_fit'):
+        return root
+    a=SimpleNamespace(**api)
+    bpy.context.view_layer.update()
+    if kind == 'Poseidon':
+        prefixes=('Smooth blue whale back','Smooth ivory whale belly','Curved ventral pleat')
+        body=[o for o in root.children_recursive if o.type=='MESH' and o.name.startswith(prefixes)]
+        points=[o.matrix_world@v.co for o in body for v in o.data.vertices]
+        now=[min(v.x for v in points),min(v.z for v in points),max(v.x for v in points),max(v.z for v in points)]
+        before=root.get('fantasy_c_whale_pre_fit_bounds')
+        if before is None:
+            raise RuntimeError('Poseidon pre-fit body bounds missing')
+        sx=(now[2]-now[0])/(before[2]-before[0]);sz=(now[3]-now[1])/(before[3]-before[1])
+        # These are body-fixed fins, not barrel controls. Preserve all depth values.
+        for obj in root.children_recursive:
+            if obj.type!='MESH' or not obj.name.startswith(('Swept whale dorsal fin','Horizontal whale tail fluke')):
+                continue
+            matrix=obj.matrix_world.copy();inverse=matrix.inverted()
+            for vertex in obj.data.vertices:
+                p=matrix@vertex.co
+                p.x=now[0]+(p.x-before[0])*sx;p.z=now[1]+(p.z-before[1])*sz
+                vertex.co=inverse@p
+            obj.data.update()
+    else:
+        irises=[o for o in root.children_recursive if o.type=='MESH' and o.name.startswith('Satellite cyan iris')]
+        if len(irises)!=4:
+            raise RuntimeError('Ion satellite iris count: '+str(len(irises)))
+        for iris in irises:
+            gaze=iris.parent
+            if gaze is None or not gaze.name.startswith('PupilGaze'):
+                raise RuntimeError('Ion satellite gaze parent missing')
+            pts=[iris.matrix_world@v.co for v in iris.data.vertices]
+            lo=Vector([min(p[j] for p in pts) for j in range(3)]);hi=Vector([max(p[j] for p in pts) for j in range(3)])
+            width=hi.x-lo.x;height=hi.z-lo.z
+            # Position against the evaluated front of the cyan lens, never inside it.
+            center=Vector(((lo.x+hi.x)*.5,lo.y-.012,(lo.z+hi.z)*.5-height*.13))
+            local=gaze.matrix_world.inverted()@center
+            a.ball('Satellite dark elliptical pupil',a.uv(local),(width*.16,height*.28,.015),'Rubber',gaze)
+    bpy.context.view_layer.update()
+    root['fantasy_c_post_fit']=1
     return root

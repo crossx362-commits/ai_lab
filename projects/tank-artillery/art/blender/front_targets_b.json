@@ -1,0 +1,622 @@
+{
+  "Duke": [
+    {
+      "prefixes": [
+        "Frog low armored back"
+      ],
+      "box": [
+        0.15278,
+        0.40342,
+        0.8373,
+        0.85641
+      ]
+    },
+    {
+      "prefixes": [
+        "Faceted frog chin",
+        "Surface fitted chin plate joint",
+        "Surface fitted lower chin seam",
+        "Small chin plate rivet"
+      ],
+      "box": [
+        0.19643,
+        0.5812,
+        0.78175,
+        0.93504
+      ]
+    },
+    {
+      "prefixes": [
+        "Faceted broad frog snout",
+        "Inset frog nostril"
+      ],
+      "box": [
+        0.15675,
+        0.41368,
+        0.83532,
+        0.64103
+      ]
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.20635,
+        0.33504,
+        0.45635,
+        0.56581
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.53175,
+        0.33504,
+        0.7877,
+        0.56581
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Transparent poison glass",
+        "Poison liquid inside",
+        "Visible liquid surface",
+        "Bottle metal collar",
+        "Bottle neck cap",
+        "Bottle cage rail",
+        "Front poison cage upright",
+        "Toxic warning triangle",
+        "Liquid bubble"
+      ],
+      "box": [
+        0.15873,
+        0.01197,
+        0.45238,
+        0.4735
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Transparent poison glass",
+        "Poison liquid inside",
+        "Visible liquid surface",
+        "Bottle metal collar",
+        "Bottle neck cap",
+        "Bottle cage rail",
+        "Front poison cage upright",
+        "Toxic warning triangle",
+        "Liquid bubble"
+      ],
+      "box": [
+        0.53373,
+        0.01197,
+        0.83135,
+        0.4735
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Inner track belt",
+        "Wheel",
+        "Flat track link",
+        "Curved track link",
+        "Frog forward segmented track pad"
+      ],
+      "box": [
+        0.00992,
+        0.72479,
+        0.22024,
+        0.99316
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Inner track belt",
+        "Wheel",
+        "Flat track link",
+        "Curved track link",
+        "Frog forward segmented track pad"
+      ],
+      "box": [
+        0.76786,
+        0.72479,
+        0.98413,
+        0.99316
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Wrapped curved fender",
+        "Frog forward track armor",
+        "Frog inset headlamp frame",
+        "Frog ivory headlamp"
+      ],
+      "box": [
+        0.00397,
+        0.60171,
+        0.22222,
+        0.7812
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wrapped curved fender",
+        "Frog forward track armor",
+        "Frog inset headlamp frame",
+        "Frog ivory headlamp"
+      ],
+      "box": [
+        0.7619,
+        0.60171,
+        0.9881,
+        0.7812
+      ],
+      "side": "right"
+    }
+  ],
+  "MineLander": [
+    {
+      "prefixes": [
+        "Rounded mole armored cab",
+        "Mole muzzle"
+      ],
+      "box": [
+        0.15136,
+        0.28246,
+        0.84354,
+        0.58246
+      ]
+    },
+    {
+      "prefixes": [
+        "Large goggle housing",
+        "Goggle metal rim",
+        "Black goggle lens",
+        "Goggle glint"
+      ],
+      "box": [
+        0.2381,
+        0.34386,
+        0.45408,
+        0.53684
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Large goggle housing",
+        "Goggle metal rim",
+        "Black goggle lens",
+        "Goggle glint"
+      ],
+      "box": [
+        0.54932,
+        0.34386,
+        0.7517,
+        0.53684
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Goggle bridge"
+      ],
+      "box": [
+        0.43707,
+        0.39298,
+        0.56122,
+        0.46842
+      ]
+    },
+    {
+      "prefixes": [
+        "Mole nose"
+      ],
+      "box": [
+        0.43878,
+        0.46316,
+        0.55272,
+        0.57018
+      ]
+    },
+    {
+      "prefixes": [
+        "Stepped cannon base",
+        "Cannon tube",
+        "Broad muzzle",
+        "Dark open bore",
+        "Muzzle lip",
+        "Mole machined muzzle edge"
+      ],
+      "box": [
+        0.37585,
+        0.01404,
+        0.63265,
+        0.28421
+      ]
+    },
+    {
+      "prefixes": [
+        "Concave steel digging scoop",
+        "Scoop raised side wing",
+        "Sculpted triangular digging tooth"
+      ],
+      "box": [
+        0.11565,
+        0.54912,
+        0.87925,
+        0.98947
+      ]
+    },
+    {
+      "prefixes": [
+        "Inner track belt",
+        "Wheel",
+        "Flat track link",
+        "Curved track link",
+        "Mole forward segmented track pad"
+      ],
+      "box": [
+        0.0085,
+        0.70351,
+        0.18027,
+        0.9614
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Inner track belt",
+        "Wheel",
+        "Flat track link",
+        "Curved track link",
+        "Mole forward segmented track pad"
+      ],
+      "box": [
+        0.81122,
+        0.70351,
+        0.9881,
+        0.9614
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Wrapped curved fender",
+        "Mole front track fender",
+        "Mole fender inset"
+      ],
+      "box": [
+        0.0085,
+        0.5807,
+        0.18367,
+        0.74211
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wrapped curved fender",
+        "Mole front track fender",
+        "Mole fender inset"
+      ],
+      "box": [
+        0.80952,
+        0.5807,
+        0.9898,
+        0.74211
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Hydraulic black sleeve",
+        "Hydraulic chrome piston",
+        "Mole yellow piston housing"
+      ],
+      "box": [
+        0.17007,
+        0.48947,
+        0.2534,
+        0.77895
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Hydraulic black sleeve",
+        "Hydraulic chrome piston",
+        "Mole yellow piston housing"
+      ],
+      "box": [
+        0.7483,
+        0.48947,
+        0.81973,
+        0.77895
+      ],
+      "side": "right"
+    }
+  ],
+  "Missile": [
+    {
+      "prefixes": [
+        "Red rocket shell",
+        "Rocket rounded tail"
+      ],
+      "box": [
+        0.1875,
+        0.03012,
+        0.81458,
+        0.62651
+      ]
+    },
+    {
+      "prefixes": [
+        "Long ivory ogive",
+        "Nose seam"
+      ],
+      "box": [
+        0.32292,
+        0.01807,
+        0.67708,
+        0.40562
+      ]
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.11458,
+        0.01606,
+        0.36458,
+        0.32129
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.64583,
+        0.01606,
+        0.88333,
+        0.32129
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Launch swivel",
+        "Pitch support cheek",
+        "Pitch bearing",
+        "Pitch bearing pin",
+        "Compact centered launch cradle",
+        "Missile front central chassis",
+        "Missile central recessed plate",
+        "Missile upright bearing support",
+        "Missile front bearing",
+        "Refined mechanical rivet"
+      ],
+      "box": [
+        0.33333,
+        0.52811,
+        0.67708,
+        0.94378
+      ]
+    },
+    {
+      "prefixes": [
+        "Swept ivory tail fin"
+      ],
+      "box": [
+        0.01458,
+        0.35341,
+        0.32292,
+        0.60843
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Swept ivory tail fin"
+      ],
+      "box": [
+        0.68958,
+        0.35341,
+        0.98958,
+        0.60843
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Inner rubber belt",
+        "Wheel",
+        "Straight tread link",
+        "End tread link",
+        "Tread transverse cleat",
+        "Curved armored track fender",
+        "Missile front tread armor pad",
+        "Rivet"
+      ],
+      "box": [
+        0.09792,
+        0.67671,
+        0.34167,
+        0.98996
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Inner rubber belt",
+        "Wheel",
+        "Straight tread link",
+        "End tread link",
+        "Tread transverse cleat",
+        "Curved armored track fender",
+        "Missile front tread armor pad",
+        "Rivet"
+      ],
+      "box": [
+        0.67292,
+        0.67671,
+        0.90833,
+        0.98996
+      ],
+      "side": "right"
+    }
+  ],
+  "MultiMissile": [
+    {
+      "prefixes": [
+        "Low tiled turtle shell",
+        "Turtle belly"
+      ],
+      "box": [
+        0.05447,
+        0.53184,
+        0.95861,
+        0.94382
+      ]
+    },
+    {
+      "prefixes": [
+        "Visible extended turtle neck",
+        "Neck segmented collar"
+      ],
+      "box": [
+        0.3159,
+        0.66667,
+        0.7037,
+        0.90075
+      ]
+    },
+    {
+      "prefixes": [
+        "Turtle forward head",
+        "Turtle inset nostril"
+      ],
+      "box": [
+        0.28976,
+        0.48689,
+        0.72985,
+        0.73221
+      ]
+    },
+    {
+      "prefixes": [
+        "Turtle ivory throat",
+        "Turtle connected ivory chest"
+      ],
+      "box": [
+        0.29847,
+        0.68165,
+        0.72113,
+        0.88764
+      ]
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.29412,
+        0.51685,
+        0.41176,
+        0.6985
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.6122,
+        0.51685,
+        0.72767,
+        0.6985
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Nine cell dorsal rocket pack",
+        "Deep dorsal launch bore",
+        "Dorsal bore lip",
+        "Launcher side panel",
+        "Dorsal vertical face border",
+        "Dorsal horizontal face border"
+      ],
+      "box": [
+        0.14161,
+        0.01685,
+        0.8671,
+        0.55618
+      ]
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Turtle broad forward tire pad"
+      ],
+      "box": [
+        0.02179,
+        0.76779,
+        0.26362,
+        0.98876
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Turtle broad forward tire pad"
+      ],
+      "box": [
+        0.74292,
+        0.76779,
+        0.98475,
+        0.98876
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Separate turtle wheel leg"
+      ],
+      "box": [
+        0.01307,
+        0.69288,
+        0.26362,
+        0.83146
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Separate turtle wheel leg"
+      ],
+      "box": [
+        0.73856,
+        0.69288,
+        0.99129,
+        0.83146
+      ],
+      "side": "right"
+    }
+  ]
+}

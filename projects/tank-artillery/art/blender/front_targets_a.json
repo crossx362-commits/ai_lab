@@ -1,0 +1,524 @@
+{
+  "Catapult": [
+    {
+      "prefixes": [
+        "Longitudinal oak stave",
+        "Oak end face",
+        "End plank joint",
+        "Flat forged barrel strap",
+        "Strap rivet"
+      ],
+      "box": [
+        0.166667,
+        0.487421,
+        0.831522,
+        0.910377
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.242754,
+        0.570755,
+        0.434783,
+        0.800314
+      ],
+      "match": "exact",
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.567029,
+        0.570755,
+        0.751812,
+        0.800314
+      ],
+      "match": "exact",
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Sloping carved oak eyebrow"
+      ],
+      "box": [
+        0.224638,
+        0.495283,
+        0.434783,
+        0.622642
+      ],
+      "match": "exact",
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Sloping carved oak eyebrow"
+      ],
+      "box": [
+        0.565217,
+        0.495283,
+        0.755435,
+        0.622642
+      ],
+      "match": "exact",
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Raised oak sling rail",
+        "Rail wood grain",
+        "Iron triangular bearing",
+        "Bearing axle",
+        "Cross shaft"
+      ],
+      "box": [
+        0.235507,
+        0.174528,
+        0.76087,
+        0.490566
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Deep leather sling",
+        "Leather rolled rim",
+        "Leather panel seam"
+      ],
+      "box": [
+        0.251812,
+        0.163522,
+        0.73913,
+        0.360063
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Twisted hemp sling rope",
+        "Thick rope binding",
+        "Looped knot strands"
+      ],
+      "box": [
+        0.195652,
+        0.100629,
+        0.800725,
+        0.36478
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Faceted loaded boulder"
+      ],
+      "box": [
+        0.268116,
+        0.011006,
+        0.710145,
+        0.227987
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Wheel"
+      ],
+      "box": [
+        0.01087,
+        0.628931,
+        0.253623,
+        0.988994
+      ],
+      "match": "exact",
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wheel"
+      ],
+      "box": [
+        0.76087,
+        0.628931,
+        0.990942,
+        0.988994
+      ],
+      "match": "exact",
+      "side": "right"
+    }
+  ],
+  "CrossBow": [
+    {
+      "prefixes": [
+        "Owl rounded feather body"
+      ],
+      "box": [
+        0.219858,
+        0.380645,
+        0.783688,
+        0.83871
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Low curved owl carriage",
+        "Owl front iron clasp"
+      ],
+      "box": [
+        0.257092,
+        0.765591,
+        0.755319,
+        0.916129
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Overlapping owl leaf",
+        "Leaf midrib",
+        "Rear owl overlapping leaf",
+        "Rear leaf vein",
+        "Pointed owl brow leaf",
+        "Central owl forehead leaf",
+        "Owl dorsal central leaf"
+      ],
+      "box": [
+        0.042553,
+        0.294624,
+        0.955674,
+        0.754839
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.235816,
+        0.496774,
+        0.47695,
+        0.823656
+      ],
+      "match": "exact",
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.51773,
+        0.496774,
+        0.764184,
+        0.823656
+      ],
+      "match": "exact",
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Small hooked owl beak"
+      ],
+      "box": [
+        0.457447,
+        0.748387,
+        0.542553,
+        0.862366
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Owl bow connected mounting stem"
+      ],
+      "box": [
+        0.446809,
+        0.212903,
+        0.551418,
+        0.372043
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Bow support",
+        "Short crossbow stock",
+        "Flat laminated recurved oak limb",
+        "Bow longitudinal lamination",
+        "Bow tip metal cap",
+        "Taut bow string",
+        "Central steel bow clamp",
+        "Raised clamp strap",
+        "Clamp round rivet"
+      ],
+      "box": [
+        0.012411,
+        0.010753,
+        0.987589,
+        0.277419
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Owl wheel cover"
+      ],
+      "box": [
+        0.044326,
+        0.658065,
+        0.253546,
+        0.989247
+      ],
+      "match": "exact",
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Owl wheel cover"
+      ],
+      "box": [
+        0.748227,
+        0.658065,
+        0.95922,
+        0.989247
+      ],
+      "match": "exact",
+      "side": "right"
+    }
+  ],
+  "Cannon": [
+    {
+      "prefixes": [
+        "Great spherical navy cannon"
+      ],
+      "box": [
+        0.068433,
+        0.170251,
+        0.935982,
+        0.808244
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Compact wooden gun carriage",
+        "Wooden carriage cheek"
+      ],
+      "box": [
+        0.205298,
+        0.729391,
+        0.810155,
+        0.915771
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Round hinged captain lid",
+        "Captain hatch seat"
+      ],
+      "box": [
+        0.229581,
+        0.008961,
+        0.777042,
+        0.224014
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.119205,
+        0.268817,
+        0.322296,
+        0.603943
+      ],
+      "match": "exact",
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.686534,
+        0.268817,
+        0.896247,
+        0.603943
+      ],
+      "match": "exact",
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Dark gun neck",
+        "Flared brass barrel",
+        "Brass rim",
+        "Deep cannon mouth",
+        "Brass muzzle stud"
+      ],
+      "box": [
+        0.264901,
+        0.270609,
+        0.739514,
+        0.663082
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Wheel"
+      ],
+      "box": [
+        0.02649,
+        0.698925,
+        0.269316,
+        0.989247
+      ],
+      "match": "exact",
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wheel"
+      ],
+      "box": [
+        0.737307,
+        0.698925,
+        0.975717,
+        0.989247
+      ],
+      "match": "exact",
+      "side": "right"
+    }
+  ],
+  "Carrot": [
+    {
+      "prefixes": [
+        "Smooth tapered carrot armor",
+        "Inset carrot armor joint"
+      ],
+      "box": [
+        0.143984,
+        0.320583,
+        0.863905,
+        0.908925
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Carrot undercarriage"
+      ],
+      "box": [
+        0.289941,
+        0.823315,
+        0.708087,
+        0.912568
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Broad folded carrot crown leaf"
+      ],
+      "box": [
+        0.102564,
+        0.009107,
+        0.897436,
+        0.415301
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.207101,
+        0.367942,
+        0.418146,
+        0.663024
+      ],
+      "match": "exact",
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye"
+      ],
+      "box": [
+        0.583826,
+        0.367942,
+        0.802761,
+        0.663024
+      ],
+      "match": "exact",
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Stepped cannon base",
+        "Cannon tube",
+        "Broad muzzle",
+        "Dark open bore",
+        "Muzzle lip"
+      ],
+      "box": [
+        0.345168,
+        0.462659,
+        0.658777,
+        0.766849
+      ],
+      "match": "exact"
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Inner track belt",
+        "Flat track link",
+        "Curved track link",
+        "Wrapped curved fender",
+        "Front gold track cheek",
+        "Front track cheek fastener"
+      ],
+      "box": [
+        0.00789,
+        0.661202,
+        0.358974,
+        0.992714
+      ],
+      "match": "exact",
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Inner track belt",
+        "Flat track link",
+        "Curved track link",
+        "Wrapped curved fender",
+        "Front gold track cheek",
+        "Front track cheek fastener"
+      ],
+      "box": [
+        0.641026,
+        0.661202,
+        0.986193,
+        0.992714
+      ],
+      "match": "exact",
+      "side": "right"
+    }
+  ]
+}

@@ -27,13 +27,20 @@ def apply(kind, root, api):
         # Projected eye whites in the source are large and almost frontal.
         for eye in named('Eye'):
             eye.rotation_euler.z=math.radians(18 if eye.location.x>0 else -18)
-            eye.scale=(1.22,1.12,1.15);eye.location+=a.v((0,-.035,.19))
+            # Source: socket ~112 px / 495 px full front width, not a third of the hull.
+            eye.scale=(.91,1.06,.97);eye.location+=a.v((0,-.035,.19))
         # Make the snout a cheeked dome and deepen the angular chin to the tread baseline.
-        scale('Faceted broad frog snout',(1.03,1.0,1.12))
         for o in named('Faceted broad frog snout'):
-            for vertex in o.data.vertices:
-                vertex.co.z-=.12+.16*abs(vertex.co.x)
+            # A sloping cheek plate replaces the old thick horizontal cylinder lip.
+            profile=[(-1.06,1.30),(-.92,1.57),(-.55,1.77),(0,1.84),(.55,1.77),(.92,1.57),(1.06,1.30),(.81,1.23),(.43,1.41),(0,1.43),(-.43,1.41),(-.81,1.23)]
+            verts=[a.v((x,y,z)) for z in (1.10,1.56) for x,y in profile]
+            n=len(profile);faces=[tuple(range(n-1,-1,-1)),tuple(range(n,n*2))]
+            faces += [(i,(i+1)%n,(i+1)%n+n,i+n) for i in range(n)]
+            o.data.clear_geometry();o.data.from_pydata(verts,[],faces);o.data.update()
+            for polygon in o.data.polygons:polygon.use_smooth=False
         move('Toxic warning triangle',(0,0,.09))
+        for o in named('Surface fitted frog mouth'):
+            objects.remove(o);bpy.data.objects.remove(o,do_unlink=True)
         for o in named('Faceted frog chin'):
             for vertex in o.data.vertices:
                 y=vertex.co.z
@@ -83,6 +90,12 @@ def apply(kind, root, api):
         # The ivory nose occupies less width than the red cheeks in the source front.
         nose=named('Long ivory ogive')[0]
         for v in nose.data.vertices:v.co.x*=.78;v.co.z*=.78
+        nose_base=min(-v.co.y for v in nose.data.vertices)
+        nose_length=max(-v.co.y for v in nose.data.vertices)-nose_base
+        for vertex in nose.data.vertices:
+            t=(-vertex.co.y-nose_base)/nose_length
+            vertex.co.z+=.38*t
+            vertex.co.y+=.055*t
         scale('Nose seam',(.78,.78,.78))
         # Old seams were authored on the untapered cylinder; the shared UV paint pass
         # supplies panel lines on the new surface instead of detached wire hoops.
@@ -99,7 +112,7 @@ def apply(kind, root, api):
                     vertex.co.x*=factor;vertex.co.y*=factor
         for eye in named('Eye'):
             eye.rotation_euler.z=math.radians(24 if eye.location.x>0 else -24)
-            eye.location.x*=1.13
+            eye.location.x*=.98
             eye.scale.z*=1.07
         # Raise the visual assembly with its cradle, keep Turret/Barrel/FirePoint intact.
         rocket=named('Rocket body group')[0];rocket.location+=a.v((0,.19,-.15))
@@ -113,12 +126,21 @@ def apply(kind, root, api):
                 a.box('Missile front tread armor pad',(s*1.04,y,z),(.66,.125,.13),'Navy',root,.018)
     elif kind == 'MultiMissile':
         # A taller forehead, lower eyes and a narrower ivory throat read as one turtle head.
-        scale('Turtle forward head',(1.12,1.16,1))
-        scale('Turtle ivory throat',(.98,1.02,.90))
-        move('Turtle ivory throat',(0,-.06,.17))
+        scale('Turtle forward head',(1.20,1.16,1))
+        move('Turtle forward head',(0,-.28,0))
+        for throat in named('Turtle ivory throat'):
+            # A volumetric cream underside intersects the green head to form the smile;
+            # unlike a crescent sheet it remains rounded and connected in side view.
+            volume=a.ball('Refined throat volume',(0,0,0),(.74,.39,.62),'Ivory',root)
+            throat.data=volume.data;throat.location=a.v((0,1.04,1.94));throat.scale=(1,1,1)
+            bpy.data.objects.remove(volume,do_unlink=True)
         for eye in named('Eye'):
             eye.rotation_euler.z=math.radians(23 if eye.location.x>0 else -23)
-            eye.location+=a.v((0,-.04,.12));eye.scale=(.92,1.04,1.10)
+            eye.location+=a.v((0,-.30,.12));eye.scale=(.92,1.04,1.10)
+        for o in named('Turtle friendly mouth'):
+            objects.remove(o);bpy.data.objects.remove(o,do_unlink=True)
+        # The reference cream throat continues into a broad chest in front of the shell.
+        a.sculpt('Turtle connected ivory chest',(0,.80,1.82),(.60,.22,.32),'Ivory',root,.75)
         # Keep neck rooted to chassis; its extension and shell remain actual 3D volumes.
         scale('Turtle belly',(.96,.73,1))
         for wheel in named('Wheel'):
@@ -136,6 +158,65 @@ def apply(kind, root, api):
                 a.box('Turtle broad forward tire pad',(s*1.11,y,z),(.52,.125,.10),'Metal',root,.025)
             for z in (-.92,.81):
                 for dx in (-.16,.16):bolt((s*1.11+dx,.69,z+.435),mat='Gold')
-            a.ball('Turtle inset nostril',(s*.20,1.63,2.568),(.025,.035,.015),'Teal',root)
+            a.ball('Turtle inset nostril',(s*.20,1.35,2.568),(.025,.035,.015),'Teal',root)
     root['approvedMethodGeometry']='mechanical-b-v1'
+    return root
+
+
+def post_fit(kind, root, api):
+    """Restore face depth ordering after FRONT-only landmark fitting.
+
+    Only posed world depth is edited; registered world X/height and rig anchors
+    are unchanged. The authored barrel pose is restored before returning.
+    """
+    if kind not in ('Duke','MineLander','Missile'):
+        return root
+    objects=list(root.children_recursive)
+    barrel=next(o for o in objects if o.name.split('.')[0]=='Barrel')
+    previous=barrel.rotation_euler.copy()
+    barrel.rotation_euler.x=-math.radians({'Duke':0,'MineLander':55,'Missile':20}[kind])
+    bpy.context.view_layer.update()
+    def named(prefix):
+        return [o for o in objects if o.type=='MESH' and o.name.split('.')[0]==prefix]
+    def ys(group):
+        return [(o.matrix_world@v.co).y for o in group for v in o.data.vertices]
+    def forward(group,delta):
+        if delta>=0:return
+        for obj in group:
+            matrix=obj.matrix_world.copy();inverse=matrix.inverted()
+            for vertex in obj.data.vertices:
+                point=matrix@vertex.co;point.y+=delta;vertex.co=inverse@point
+            obj.data.update()
+    if kind in ('Duke','Missile'):
+        occluders=named('Faceted broad frog snout' if kind=='Duke' else 'Red rocket shell')
+        front=min(ys(occluders))
+        for eye in [o for o in objects if o.name.split('.')[0]=='Eye']:
+            group=[o for o in eye.children_recursive if o.type=='MESH']
+            white=[o for o in group if o.name.startswith('Ivory sclera')]
+            if kind=='Duke':forward(group,front-.025-max(ys(white)))
+            # Reproject the pupil onto the curved white surface at the same FRONT
+            # coordinates; a whole-pupil offset would leave it floating in side view.
+            from mathutils.bvhtree import BVHTree
+            sclera=white[0]
+            surface=BVHTree.FromPolygons([sclera.matrix_world@v.co for v in sclera.data.vertices],
+                                         [tuple(p.vertices) for p in sclera.data.polygons])
+            pupil=[o for o in group if o.name.startswith(('Deep pupil','Eye highlight'))]
+            origin_y=min(ys(white))-2
+            for obj in pupil:
+                matrix=obj.matrix_world.copy();inverse=matrix.inverted()
+                values=ys([obj]);lo,hi=min(values),max(values)
+                for vertex in obj.data.vertices:
+                    point=matrix@vertex.co
+                    hit,normal,_,_=surface.ray_cast(Vector((point.x,origin_y,point.z)),Vector((0,1,0)))
+                    if hit is not None:
+                        thickness=.012+.018*(hi-point.y)/max(1e-6,hi-lo)
+                        if obj.name.startswith('Eye highlight'):thickness+=.028
+                        point.y=hit.y-thickness;vertex.co=inverse@point
+                obj.data.update()
+    else:
+        group=[o for name in ('Large goggle housing','Goggle metal rim','Black goggle lens','Goggle glint') for o in named(name)]
+        lens=named('Black goggle lens')
+        forward(group,min(ys(named('Mole muzzle')))-.035-max(ys(lens)))
+    barrel.rotation_euler=previous
+    bpy.context.view_layer.update()
     return root

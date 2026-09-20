@@ -1,0 +1,623 @@
+{
+  "SuperTank": [
+    {
+      "prefixes": [
+        "Broad lion lower hull",
+        "Thick sloped frontal armor",
+        "Armored lion neck connection",
+        "Lion chest plate",
+        "Deep central lion front apron",
+        "Lion apron edge strip",
+        "Lion apron fastener",
+        "Lion rear deck shoulder"
+      ],
+      "box": [
+        0.26929,
+        0.41894,
+        0.73235,
+        0.90346
+      ]
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Solid wheel face",
+        "Thin iron rim",
+        "Inner track belt",
+        "Flat track link",
+        "Curved track link",
+        "Wrapped curved fender",
+        "Lion front track armor",
+        "Lion fender inset panel",
+        "Lion shoulder bolt",
+        "Front visible tread pad",
+        "Tread central raised shoe"
+      ],
+      "box": [
+        0.01149,
+        0.46084,
+        0.26273,
+        0.98725
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Solid wheel face",
+        "Thin iron rim",
+        "Inner track belt",
+        "Flat track link",
+        "Curved track link",
+        "Wrapped curved fender",
+        "Lion front track armor",
+        "Lion fender inset panel",
+        "Lion shoulder bolt",
+        "Front visible tread pad",
+        "Tread central raised shoe"
+      ],
+      "box": [
+        0.74384,
+        0.46084,
+        0.99507,
+        0.98725
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Layered descending crimson mane",
+        "Front framing mane",
+        "Central swept forehead lock",
+        "Rear royal crown badge"
+      ],
+      "box": [
+        0.21511,
+        0.15847,
+        0.79803,
+        0.68124
+      ]
+    },
+    {
+      "prefixes": [
+        "Lion cranium",
+        "Lion broad cream muzzle",
+        "Lion whisker dot",
+        "Lion triangular nose",
+        "Ivory lion lower jaw",
+        "Lion split muzzle",
+        "Lion mouth right"
+      ],
+      "box": [
+        0.34154,
+        0.25137,
+        0.66667,
+        0.56648
+      ]
+    },
+    {
+      "prefixes": [
+        "Royal crown rounded band",
+        "Upright five point crown",
+        "Crown inset ruby",
+        "Crown gold finial",
+        "Crown side peak"
+      ],
+      "box": [
+        0.37274,
+        0.01275,
+        0.63218,
+        0.19854
+      ]
+    },
+    {
+      "prefixes": [
+        "Eye",
+        "Ivory sclera",
+        "Deep pupil",
+        "PupilGaze",
+        "Lion heavy angry brow"
+      ],
+      "box": [
+        0.35304,
+        0.2459,
+        0.4844,
+        0.37341
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye",
+        "Ivory sclera",
+        "Deep pupil",
+        "PupilGaze",
+        "Lion heavy angry brow"
+      ],
+      "box": [
+        0.52217,
+        0.2459,
+        0.65353,
+        0.37341
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Shoulder rocket assembly",
+        "Golden shoulder launcher",
+        "Dark four rocket inset",
+        "Shoulder rocket red body",
+        "Pointed red missile tip"
+      ],
+      "box": [
+        0.03777,
+        0.12568,
+        0.31527,
+        0.44991
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Shoulder rocket assembly",
+        "Golden shoulder launcher",
+        "Dark four rocket inset",
+        "Shoulder rocket red body",
+        "Pointed red missile tip"
+      ],
+      "box": [
+        0.6913,
+        0.12568,
+        0.96716,
+        0.44991
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Stepped cannon base",
+        "Cannon tube",
+        "Broad muzzle",
+        "Dark open bore",
+        "Muzzle lip"
+      ],
+      "box": [
+        0.39901,
+        0.50638,
+        0.60263,
+        0.75774
+      ]
+    }
+  ],
+  "IonAttacker": [
+    {
+      "prefixes": [
+        "Pink orbital sphere"
+      ],
+      "box": [
+        0.20968,
+        0.16458,
+        0.81362,
+        0.86667
+      ]
+    },
+    {
+      "prefixes": [
+        "Flat orbital gold belt"
+      ],
+      "box": [
+        0.01075,
+        0.44167,
+        1.0,
+        0.80833
+      ]
+    },
+    {
+      "prefixes": [
+        "Keel upper bowl",
+        "Keel lower tapered step",
+        "Keel small dark toe"
+      ],
+      "box": [
+        0.37276,
+        0.83333,
+        0.64158,
+        0.99375
+      ]
+    },
+    {
+      "prefixes": [
+        "Top cap stem",
+        "Pink top cap"
+      ],
+      "box": [
+        0.39068,
+        0.0625,
+        0.63082,
+        0.17708
+      ]
+    },
+    {
+      "prefixes": [
+        "Thick pink central eye bezel",
+        "Deep cyclops blue lens",
+        "Great cyan cyclops iris",
+        "Long dark vertical pupil",
+        "Central lens highlight"
+      ],
+      "box": [
+        0.26165,
+        0.20208,
+        0.76523,
+        0.74792
+      ]
+    },
+    {
+      "prefixes": [
+        "Pink satellite eye shell",
+        "Pink satellite front bezel",
+        "Satellite dark lens",
+        "Satellite cyan iris",
+        "Gold pod side pivot",
+        "Satellite bracket joint",
+        "Satellite lens pinpoint"
+      ],
+      "box": [
+        0.04301,
+        0.01042,
+        0.33154,
+        0.29375
+      ],
+      "side": "left",
+      "world_y_min": 2.0
+    },
+    {
+      "prefixes": [
+        "Pink satellite eye shell",
+        "Pink satellite front bezel",
+        "Satellite dark lens",
+        "Satellite cyan iris",
+        "Gold pod side pivot",
+        "Satellite bracket joint",
+        "Satellite lens pinpoint"
+      ],
+      "box": [
+        0.69355,
+        0.01042,
+        0.98566,
+        0.29375
+      ],
+      "side": "right",
+      "world_y_min": 2.0
+    },
+    {
+      "prefixes": [
+        "Pink satellite eye shell",
+        "Pink satellite front bezel",
+        "Satellite dark lens",
+        "Satellite cyan iris",
+        "Gold pod side pivot",
+        "Satellite bracket joint",
+        "Satellite lens pinpoint"
+      ],
+      "box": [
+        0.04122,
+        0.63125,
+        0.33154,
+        0.91667
+      ],
+      "side": "left",
+      "world_y_max": 2.0
+    },
+    {
+      "prefixes": [
+        "Pink satellite eye shell",
+        "Pink satellite front bezel",
+        "Satellite dark lens",
+        "Satellite cyan iris",
+        "Gold pod side pivot",
+        "Satellite bracket joint",
+        "Satellite lens pinpoint"
+      ],
+      "box": [
+        0.69355,
+        0.63125,
+        0.98566,
+        0.91667
+      ],
+      "side": "right",
+      "world_y_max": 2.0
+    }
+  ],
+  "Poseidon": [
+    {
+      "prefixes": [
+        "Smooth blue whale back",
+        "Smooth ivory whale belly",
+        "Curved ventral pleat"
+      ],
+      "box": [
+        0.14425,
+        0.40107,
+        0.85965,
+        0.9697
+      ]
+    },
+    {
+      "prefixes": [
+        "Whale side flipper"
+      ],
+      "box": [
+        0.0117,
+        0.66845,
+        0.20663,
+        0.80214
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Whale side flipper"
+      ],
+      "box": [
+        0.79142,
+        0.66845,
+        0.9922,
+        0.80214
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Solid wheel face",
+        "Thin iron rim",
+        "Wrapped curved fender",
+        "Whale front pod armor",
+        "Whale pod cover bolt",
+        "Front visible tread pad",
+        "Tread central raised shoe"
+      ],
+      "box": [
+        0.06823,
+        0.79857,
+        0.28655,
+        0.99287
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Solid wheel face",
+        "Thin iron rim",
+        "Wrapped curved fender",
+        "Whale front pod armor",
+        "Whale pod cover bolt",
+        "Front visible tread pad",
+        "Tread central raised shoe"
+      ],
+      "box": [
+        0.73099,
+        0.79857,
+        0.94932,
+        0.99287
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Eye",
+        "Ivory sclera",
+        "Deep pupil",
+        "PupilGaze"
+      ],
+      "box": [
+        0.18324,
+        0.44563,
+        0.33723,
+        0.65419
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye",
+        "Ivory sclera",
+        "Deep pupil",
+        "PupilGaze"
+      ],
+      "box": [
+        0.65497,
+        0.44563,
+        0.80897,
+        0.65419
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Blue trident shaft",
+        "Gold trident shaft band",
+        "Raised trident central spear",
+        "Raised hooked gold trident tine",
+        "Trident fork depth brace"
+      ],
+      "box": [
+        0.2807,
+        0.13547,
+        0.72515,
+        0.43672
+      ]
+    }
+  ],
+  "SecWind": [
+    {
+      "prefixes": [
+        "Green bird rounded head",
+        "Green wing root"
+      ],
+      "box": [
+        0.35526,
+        0.35641,
+        0.66813,
+        0.82564
+      ]
+    },
+    {
+      "prefixes": [
+        "Broad cambered primary feather",
+        "Layered ivory wing feather"
+      ],
+      "box": [
+        0.01316,
+        0.01538,
+        0.32602,
+        0.73077
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Broad cambered primary feather",
+        "Layered ivory wing feather"
+      ],
+      "box": [
+        0.68275,
+        0.01538,
+        0.98684,
+        0.73077
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Swept bird crest"
+      ],
+      "box": [
+        0.41959,
+        0.08718,
+        0.58187,
+        0.43846
+      ]
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Solid wheel face",
+        "Thin iron rim",
+        "Inner track belt",
+        "Flat track link",
+        "Curved track link",
+        "Wrapped curved fender",
+        "Bird outer track armor",
+        "Bird wing axle",
+        "Front visible tread pad",
+        "Tread central raised shoe"
+      ],
+      "box": [
+        0.23684,
+        0.69744,
+        0.38889,
+        0.99231
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Wheel",
+        "Solid wheel face",
+        "Thin iron rim",
+        "Inner track belt",
+        "Flat track link",
+        "Curved track link",
+        "Wrapped curved fender",
+        "Bird outer track armor",
+        "Bird wing axle",
+        "Front visible tread pad",
+        "Tread central raised shoe"
+      ],
+      "box": [
+        0.61842,
+        0.69744,
+        0.76901,
+        0.99231
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Eye",
+        "Ivory sclera",
+        "Deep pupil",
+        "PupilGaze"
+      ],
+      "box": [
+        0.37573,
+        0.43333,
+        0.45614,
+        0.69231
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "Eye",
+        "Ivory sclera",
+        "Deep pupil",
+        "PupilGaze"
+      ],
+      "box": [
+        0.57456,
+        0.43333,
+        0.65497,
+        0.69231
+      ],
+      "side": "right"
+    },
+    {
+      "prefixes": [
+        "Great hooked ivory eagle beak"
+      ],
+      "box": [
+        0.42836,
+        0.49231,
+        0.59795,
+        0.91282
+      ]
+    },
+    {
+      "prefixes": [
+        "High wing-root green turbine",
+        "Ivory turbine front ring",
+        "Turbine dark well",
+        "Pitched radial turbine blade",
+        "Turbine spinner"
+      ],
+      "box": [
+        0.20322,
+        0.24359,
+        0.39327,
+        0.59231
+      ],
+      "side": "left"
+    },
+    {
+      "prefixes": [
+        "High wing-root green turbine",
+        "Ivory turbine front ring",
+        "Turbine dark well",
+        "Pitched radial turbine blade",
+        "Turbine spinner"
+      ],
+      "box": [
+        0.60234,
+        0.24359,
+        0.79678,
+        0.59231
+      ],
+      "side": "right"
+    }
+  ]
+}

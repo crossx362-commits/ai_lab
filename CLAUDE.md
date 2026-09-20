@@ -404,6 +404,8 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ## 🔧 하네스 가드레일
 
+- **2026-09-19 · Tankfall 셰이더 빌드**: Metal 셰이더 오류가 2개여도 Unity `BuildResult.Succeeded`가 반환됐다. `projects/tank-artillery/unity/Assets/_Project/Scripts/Editor/BuildScript.cs`는 결과와 `totalErrors == 0`을 함께 검사한다. 예약어 오류 대조군 종료 1 → 수정본 오류 0·종료 0 확인; 증거는 프로젝트 `output/world-art/verification/`에 보관한다.
+
 > 반복된 실패를 규칙으로 박아 에이전트가 같은 실수를 안 하게 한다.
 > **상세 원장(사고별 전말·수리 내역)은 [`docs/HARNESS_GUARDRAILS_LEDGER.md`](docs/HARNESS_GUARDRAILS_LEDGER.md)** — 새 사고는 그 파일에 추가하라(이 파일에 다시 쌓지 마라, 토큰 폭증의 원인이었다).
 > 핵심 절차 요약은 [`DIRECTIVES.md`](DIRECTIVES.md). 진단이 막히거나 과거 유사 사고가 의심되면 원장을 열어 검색할 것.

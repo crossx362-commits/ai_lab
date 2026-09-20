@@ -3,7 +3,7 @@
   "models": [
     {
       "name": "Catapult",
-      "triangles": 220372
+      "triangles": 221736
     },
     {
       "name": "Catapult_Normal",
@@ -15,7 +15,7 @@
     },
     {
       "name": "CrossBow",
-      "triangles": 72848
+      "triangles": 74958
     },
     {
       "name": "CrossBow_Normal",
@@ -27,7 +27,7 @@
     },
     {
       "name": "Cannon",
-      "triangles": 71152
+      "triangles": 74534
     },
     {
       "name": "Cannon_Normal",
@@ -39,7 +39,7 @@
     },
     {
       "name": "Carrot",
-      "triangles": 57828
+      "triangles": 66971
     },
     {
       "name": "Carrot_Normal",
@@ -51,7 +51,7 @@
     },
     {
       "name": "Duke",
-      "triangles": 87712
+      "triangles": 86832
     },
     {
       "name": "Duke_Normal",
@@ -63,7 +63,7 @@
     },
     {
       "name": "MineLander",
-      "triangles": 42646
+      "triangles": 51368
     },
     {
       "name": "MineLander_Normal",
@@ -75,7 +75,7 @@
     },
     {
       "name": "Missile",
-      "triangles": 45152
+      "triangles": 45030
     },
     {
       "name": "Missile_Normal",
@@ -87,7 +87,7 @@
     },
     {
       "name": "MultiMissile",
-      "triangles": 46196
+      "triangles": 54876
     },
     {
       "name": "MultiMissile_Normal",
@@ -99,7 +99,7 @@
     },
     {
       "name": "SuperTank",
-      "triangles": 82780
+      "triangles": 90662
     },
     {
       "name": "SuperTank_Normal",
@@ -123,7 +123,7 @@
     },
     {
       "name": "IonAttacker",
-      "triangles": 26500
+      "triangles": 40424
     },
     {
       "name": "IonAttacker_Normal",
@@ -135,7 +135,7 @@
     },
     {
       "name": "Poseidon",
-      "triangles": 78736
+      "triangles": 74900
     },
     {
       "name": "Poseidon_Normal",
@@ -147,7 +147,7 @@
     },
     {
       "name": "SecWind",
-      "triangles": 56808
+      "triangles": 65480
     },
     {
       "name": "SecWind_Normal",

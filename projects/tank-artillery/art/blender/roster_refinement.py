@@ -8,7 +8,7 @@ GROUPS={
  'Catapult':'refine_organic_a','CrossBow':'refine_organic_a','Cannon':'refine_organic_a','Carrot':'refine_organic_a',
  'Duke':'refine_mechanical_b','MineLander':'refine_mechanical_b','Missile':'refine_mechanical_b','MultiMissile':'refine_mechanical_b',
  'SuperTank':'refine_fantasy_c','IonAttacker':'refine_fantasy_c','Poseidon':'refine_fantasy_c','SecWind':'refine_fantasy_c'}
-TEAM_HOSTS={'Catapult':'Oak end face','CrossBow':'Owl rounded feather body','Cannon':'Great spherical navy cannon','Carrot':'Smooth tapered carrot armor','Duke':'Frog low armored back','MineLander':'Rounded mole armored cab','Missile':'Rocket rounded tail','MultiMissile':'Nine cell dorsal rocket pack','SuperTank':'Broad lion lower hull','IonAttacker':'Pink orbital sphere','Poseidon':'Blue whale upper shell','SecWind':'Green bird rounded head'}
+TEAM_HOSTS={'Catapult':'Oak end face','CrossBow':'Owl rounded feather body','Cannon':'Great spherical navy cannon','Carrot':'Smooth tapered carrot armor','Duke':'Frog low armored back','MineLander':'Rounded mole armored cab','Missile':'Rocket rounded tail','MultiMissile':'Nine cell dorsal rocket pack','SuperTank':'Broad lion lower hull','IonAttacker':'Pink orbital sphere','Poseidon':'Smooth blue whale back','SecWind':'Green bird rounded head'}
 def team_badges(kind,root,api):
  bpy.context.view_layer.update()
  candidates=[o for o in root.children_recursive if o.type=='MESH' and o.name.startswith(TEAM_HOSTS[kind])]
@@ -33,7 +33,7 @@ def team_badges(kind,root,api):
   for j in range(n-1):
    for i in range(n-1):
     a=j*n+i;f=(a,a+1,a+n+1,a+n)
-    if all(vertices[q] is not None for q in f):faces.append(f)
+    if all(vertices[q] is not None for q in f):faces.extend([(a,a+1,a+n+1),(a,a+n+1,a+n)])
   if not faces:continue
   import bmesh
   data=bpy.data.meshes.new(kind+' team '+view);data.from_pydata([v if v is not None else (0,0,0) for v in vertices],[],faces);data.update()
@@ -49,6 +49,28 @@ def apply(kind,root,api):
  if kind=='Laser':return root
  import importlib
  importlib.import_module(GROUPS[kind]).apply(kind,root,api)
+ from front_target_fit import apply as fit_front
+ fit_front(kind,root)
+ post_fit=getattr(importlib.import_module(GROUPS[kind]),'post_fit',None)
+ if post_fit:post_fit(kind,root,api)
+ if not api.get('SKIP_THREEVIEW_REFINEMENT',False):
+  module='refine_threeview_'+('a' if kind in ('Catapult','CrossBow','Cannon','Carrot') else 'b' if kind in ('Duke','MineLander','Missile','MultiMissile') else 'c')
+  from pathlib import Path
+  if Path(__file__).with_name(module+'.py').exists():importlib.import_module(module).apply(kind,root,api)
+ bpy.context.view_layer.update()
+ # Deformed weighted normals must be recomputed from the final shape.
+ for obj in root.children_recursive:
+  if obj.type!='MESH':continue
+  data=obj.data
+  if data.has_custom_normals:data.normals_split_custom_set([(0,0,0)]*len(data.loops))
+  data.update();data.calc_loop_triangles()
+  bad=set()
+  for tri in data.loop_triangles:
+   a,b,c=[data.vertices[i].co for i in tri.vertices]
+   normal=sum((data.corner_normals[i].vector for i in tri.loops),Vector((0,0,0)))
+   if (b-a).cross(c-a).dot(normal)<-1e-8:bad.add(tri.polygon_index)
+  for index in bad:data.polygons[index].use_smooth=False
+  data.update()
  # Keep gaze offsets in the eye frame, and all the body's existing rig ancestry.
  for eye in [o for o in root.children_recursive if o.name.split('.')[0]=='Eye']:
   if any(c.name.startswith('PupilGaze') for c in eye.children):continue
@@ -56,6 +78,8 @@ def apply(kind,root,api):
   if not moving:continue
   group=api['empty']('PupilGaze',(0,0,0),eye)
   for child in moving:child.parent=group
+ for obj in list(root.children_recursive):
+  if obj.type=="MESH" and obj.data.materials and obj.data.materials[0].name=="Team":bpy.data.objects.remove(obj,do_unlink=True)
  team_badges(kind,root,api)
  from roster_decals import apply as decals
  decals(kind,root,api)
