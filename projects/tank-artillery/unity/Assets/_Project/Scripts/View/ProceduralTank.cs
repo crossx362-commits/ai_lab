@@ -195,14 +195,13 @@ namespace Tankfall.View
                                       out Transform turret, out Transform barrel, out Transform firePoint,
                                       Material woodMat = null, Material snowMat = null)
         {
-            // 🚨 **자체검사 전용 우회**(2026-09-20). 모델 경로와 «같은 탱크가 나오는지»를 대조하려면
-            //    프로시저럴 쪽을 강제로 한 번 지어 봐야 한다. 게임은 이 값을 절대 건드리지 않는다.
-            if (!ForceProcedural)
-            {
-                if (BlenderModels.TryBuild(s, bodyMat, trackMat, accentMat, woodMat, snowMat,
-                                           out var assetRoot, out turret, out barrel, out firePoint))
-                    return assetRoot;
-            }
+            // 🚨 **외부 모델 경로를 여기에 붙이는 사람에게**(오너 결정 2026-09-20: 탱크를 외부 모델로):
+            //    모델 로더 호출을 **반드시 `if (!ForceProcedural) { ... }` 안에** 넣어라.
+            //    그래야 <see cref="TankShapeContract"/> 가 **모델 경로와 프로시저럴 경로를 나란히 지어**
+            //    「**발사점이 같은가**」를 대조할 수 있다. 감싸지 않으면 그 게이트가 **조용히 무력해진다**
+            //    (대조군을 만들 수 없으니 언제나 «같다»고 나온다).
+            //    ⚠️ 그리고 모델은 «보이는 것»만 바꿔야 한다 — `firePoint` 는 아래 프로시저럴 계산에서
+            //       나온 값을 **그대로** 써라. 발사점이 곧 탄도의 시작점 `p0` 다.
             var root = new GameObject("Tank").transform;
             woodMat ??= trackMat;
 
