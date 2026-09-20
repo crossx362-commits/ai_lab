@@ -1,0 +1,286 @@
+{
+  "models": [
+    {
+      "kind": "Catapult",
+      "before": {
+        "meshes": 305,
+        "triangles": 221736,
+        "vertices": 116576,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 305,
+        "triangles": 227020,
+        "vertices": 119209,
+        "team_meshes": 1,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "CrossBow",
+      "before": {
+        "meshes": 287,
+        "triangles": 74958,
+        "vertices": 49392,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 269,
+        "triangles": 74844,
+        "vertices": 52196,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "Cannon",
+      "before": {
+        "meshes": 243,
+        "triangles": 74534,
+        "vertices": 45844,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 243,
+        "triangles": 76018,
+        "vertices": 43768,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "Carrot",
+      "before": {
+        "meshes": 187,
+        "triangles": 66971,
+        "vertices": 60793,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 192,
+        "triangles": 75127,
+        "vertices": 73781,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "Duke",
+      "before": {
+        "meshes": 224,
+        "triangles": 86832,
+        "vertices": 47176,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 218,
+        "triangles": 93102,
+        "vertices": 66998,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "MineLander",
+      "before": {
+        "meshes": 207,
+        "triangles": 51368,
+        "vertices": 32007,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 201,
+        "triangles": 45900,
+        "vertices": 26001,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "Missile",
+      "before": {
+        "meshes": 203,
+        "triangles": 45030,
+        "vertices": 25442,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 201,
+        "triangles": 44312,
+        "vertices": 24488,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "MultiMissile",
+      "before": {
+        "meshes": 180,
+        "triangles": 54876,
+        "vertices": 36628,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 173,
+        "triangles": 51520,
+        "vertices": 34062,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "SuperTank",
+      "before": {
+        "meshes": 336,
+        "triangles": 90662,
+        "vertices": 62232,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 321,
+        "triangles": 101094,
+        "vertices": 61250,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "IonAttacker",
+      "before": {
+        "meshes": 65,
+        "triangles": 40424,
+        "vertices": 32082,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 62,
+        "triangles": 45456,
+        "vertices": 34276,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "Poseidon",
+      "before": {
+        "meshes": 214,
+        "triangles": 74900,
+        "vertices": 43922,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 217,
+        "triangles": 70166,
+        "vertices": 44706,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    },
+    {
+      "kind": "SecWind",
+      "before": {
+        "meshes": 251,
+        "triangles": 65480,
+        "vertices": 47116,
+        "team_meshes": 2,
+        "source_planes": 0,
+        "source_before_edit": false,
+        "control_basis_unchanged": false
+      },
+      "staged": {
+        "meshes": 247,
+        "triangles": 74658,
+        "vertices": 55606,
+        "team_meshes": 2,
+        "source_planes": 3,
+        "source_before_edit": true,
+        "control_basis_unchanged": true
+      },
+      "art_accepted": false,
+      "game_deployed": false
+    }
+  ],
+  "laser_verified": [
+    "/Users/junholee/ai_lab/projects/tank-artillery/art/blender/characters/Laser.blend",
+    "/Users/junholee/ai_lab/projects/tank-artillery/art/blender/laser_front_form.py",
+    "/Users/junholee/ai_lab/projects/tank-artillery/unity/Assets/_Project/Resources/BlenderModels/Laser.json"
+  ],
+  "scope": "Blender staging only; not Unity runtime/team injection/frame performance or art acceptance"
+}

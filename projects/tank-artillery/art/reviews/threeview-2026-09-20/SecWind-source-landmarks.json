@@ -1,0 +1,493 @@
+{
+  "schema": "source-source-orthographic-diagnostic-v1",
+  "kind": "SecWind",
+  "read_only_analysis": true,
+  "source": "art/concepts/orthographic-v1/SecWind.png",
+  "source_size": [
+    1983,
+    793
+  ],
+  "model_review": "output/threeview-correction/review/SecWind/{front,side,top}.png",
+  "registration_snapshot": {
+    "front": {
+      "center": [
+        0.0,
+        0.4550974369049072,
+        1.617436408996582
+      ],
+      "ortho_scale": 6.52496977351262,
+      "units_per_reference_pixel": 0.008223646115034055,
+      "reference_crop": [
+        15,
+        201,
+        684,
+        390
+      ]
+    },
+    "side": {
+      "center": [
+        0.0,
+        0.4550974369049072,
+        1.617436408996582
+      ],
+      "ortho_scale": 4.913170289483689,
+      "units_per_reference_pixel": 0.00816087019049181,
+      "reference_crop": [
+        723,
+        201,
+        519,
+        393
+      ]
+    },
+    "top": {
+      "center": [
+        0.0,
+        0.4550974369049072,
+        1.617436408996582
+      ],
+      "ortho_scale": 7.412443222738016,
+      "units_per_reference_pixel": 0.009051044279009985,
+      "reference_crop": [
+        1260,
+        159,
+        706,
+        474
+      ]
+    }
+  },
+  "measurement_method": "원본 PNG 전체와 현재 review 3장을 직접 열어 수동측정. 등록파일의 현재 units/center/crop을 읽어 2D source 좌표를 각 관측 world 평면으로 변환. 원본/코드/등록파일 수정하지 않음.",
+  "coordinates": {
+    "source": "[x,y] 원본 좌상단 기준 픽셀",
+    "world": "Blender X 좌우, Y 뒤쪽(+)/앞쪽(-), Z 위쪽. 관측불가 축은 null. world를 모델 정점 실측으로 오인하지 말 것.",
+    "formula_front": "X=cx+(px-crop_x-crop_w/2)*u; Z=cz+(crop_y+crop_h/2-py)*u",
+    "formula_side": "Y=cy-(px-crop_x-crop_w/2)*u; Z=cz+(crop_y+crop_h/2-py)*u",
+    "formula_top": "X=cx+(px-crop_x-crop_w/2)*u; Y=cy+(crop_y+crop_h/2-py)*u"
+  },
+  "landmarks": {
+    "front": {
+      "wing_outer_left_tip": {
+        "source_px": [
+          25,
+          208
+        ],
+        "projected_world": {
+          "X": -2.730251,
+          "Y": null,
+          "Z": 3.163482
+        },
+        "manual_tolerance_px": 5
+      },
+      "wing_outer_right_tip": {
+        "source_px": [
+          691,
+          208
+        ],
+        "projected_world": {
+          "X": 2.746698,
+          "Y": null,
+          "Z": 3.163482
+        },
+        "manual_tolerance_px": 5
+      },
+      "left_turbine_rim_center": {
+        "source_px": [
+          225,
+          360
+        ],
+        "projected_world": {
+          "X": -1.085521,
+          "Y": null,
+          "Z": 1.913488
+        },
+        "manual_tolerance_px": 5
+      },
+      "right_turbine_rim_center": {
+        "source_px": [
+          495,
+          360
+        ],
+        "projected_world": {
+          "X": 1.134863,
+          "Y": null,
+          "Z": 1.913488
+        },
+        "manual_tolerance_px": 5
+      },
+      "left_eye_white_center": {
+        "source_px": [
+          296,
+          419
+        ],
+        "projected_world": {
+          "X": -0.501642,
+          "Y": null,
+          "Z": 1.428293
+        },
+        "manual_tolerance_px": 5
+      },
+      "right_eye_white_center": {
+        "source_px": [
+          436,
+          419
+        ],
+        "projected_world": {
+          "X": 0.649668,
+          "Y": null,
+          "Z": 1.428293
+        },
+        "manual_tolerance_px": 5
+      },
+      "visible_green_head_bbox_center": {
+        "source_px": [
+          362,
+          428
+        ],
+        "projected_world": {
+          "X": 0.041118,
+          "Y": null,
+          "Z": 1.35428
+        },
+        "manual_tolerance_px": 12
+      }
+    },
+    "side": {
+      "wing_farthest_rear_tip": {
+        "source_px": [
+          749,
+          208
+        ],
+        "projected_world": {
+          "X": null,
+          "Y": 2.360661,
+          "Z": 3.163921
+        },
+        "manual_tolerance_px": 5
+      },
+      "near_turbine_rim_center": {
+        "source_px": [
+          1040,
+          359
+        ],
+        "projected_world": {
+          "X": null,
+          "Y": -0.014153,
+          "Z": 1.93163
+        },
+        "manual_tolerance_px": 5
+      },
+      "near_eye_white_center": {
+        "source_px": [
+          1137,
+          412
+        ],
+        "projected_world": {
+          "X": null,
+          "Y": -0.805757,
+          "Z": 1.499104
+        },
+        "manual_tolerance_px": 5
+      },
+      "visible_green_head_bbox_center": {
+        "source_px": [
+          1100,
+          413
+        ],
+        "projected_world": {
+          "X": null,
+          "Y": -0.503805,
+          "Z": 1.490943
+        },
+        "manual_tolerance_px": 12
+      }
+    },
+    "top": {
+      "wing_outer_left_tip": {
+        "source_px": [
+          1269,
+          194
+        ],
+        "projected_world": {
+          "X": -3.113559,
+          "Y": 2.283408,
+          "Z": null
+        },
+        "manual_tolerance_px": 5
+      },
+      "wing_outer_right_tip": {
+        "source_px": [
+          1957,
+          194
+        ],
+        "projected_world": {
+          "X": 3.113559,
+          "Y": 2.283408,
+          "Z": null
+        },
+        "manual_tolerance_px": 5
+      },
+      "left_turbine_rim_center": {
+        "source_px": [
+          1488,
+          386
+        ],
+        "projected_world": {
+          "X": -1.131381,
+          "Y": 0.545608,
+          "Z": null
+        },
+        "manual_tolerance_px": 5
+      },
+      "right_turbine_rim_center": {
+        "source_px": [
+          1739,
+          386
+        ],
+        "projected_world": {
+          "X": 1.140432,
+          "Y": 0.545608,
+          "Z": null
+        },
+        "manual_tolerance_px": 5
+      },
+      "left_eye_white_center": {
+        "source_px": [
+          1552,
+          493
+        ],
+        "projected_world": {
+          "X": -0.552114,
+          "Y": -0.422854,
+          "Z": null
+        },
+        "manual_tolerance_px": 5
+      },
+      "right_eye_white_center": {
+        "source_px": [
+          1675,
+          493
+        ],
+        "projected_world": {
+          "X": 0.561165,
+          "Y": -0.422854,
+          "Z": null
+        },
+        "manual_tolerance_px": 5
+      },
+      "visible_green_head_bbox_center": {
+        "source_px": [
+          1613,
+          433
+        ],
+        "projected_world": {
+          "X": 0.0,
+          "Y": 0.120209,
+          "Z": null
+        },
+        "manual_tolerance_px": 12
+      }
+    }
+  },
+  "source_boxes_manual": {
+    "front": {
+      "green_head_visible": [
+        265,
+        343,
+        194,
+        170
+      ],
+      "left_turbine_outer_ring": [
+        159,
+        295,
+        133,
+        135
+      ],
+      "right_turbine_outer_ring": [
+        429,
+        295,
+        133,
+        135
+      ],
+      "left_white_eye": [
+        275,
+        373,
+        45,
+        94
+      ],
+      "right_white_eye": [
+        413,
+        373,
+        43,
+        94
+      ]
+    },
+    "side": {
+      "green_head_visible": [
+        997,
+        320,
+        206,
+        184
+      ],
+      "near_turbine_rim": [
+        1018,
+        293,
+        43,
+        131
+      ],
+      "near_white_eye": [
+        1110,
+        369,
+        55,
+        89
+      ]
+    },
+    "top": {
+      "green_head_visible": [
+        1518,
+        323,
+        194,
+        220
+      ],
+      "left_turbine_outer_ring": [
+        1420,
+        313,
+        136,
+        144
+      ],
+      "right_turbine_outer_ring": [
+        1671,
+        313,
+        136,
+        144
+      ],
+      "left_white_eye": [
+        1532,
+        450,
+        41,
+        85
+      ],
+      "right_white_eye": [
+        1653,
+        450,
+        43,
+        85
+      ]
+    },
+    "notes": "몸통은 crest/눈/부리/터빈/긴 rear chassis를 제외한 녹색 머리의 visible bbox. SIDE 후면은 터빈, TOP 중앙은 crest에 가리므로 같은 실제 3D 중심으로 확정할 수 없다. head bbox ±12px, 나머지 ±5px 수동근사."
+  },
+  "source_source_width_comparisons": [
+    {
+      "measure": "full_wing_span",
+      "front_px": 666,
+      "top_px": 688,
+      "front_world": 5.476948312612681,
+      "top_world": 6.2271184639588695,
+      "top_over_front_percent": 13.696863810429738,
+      "top_units_if_this_measure_alone_is_authority": 0.007960680686937036,
+      "warning": "단일부품에만 맞춘 진단 후보. 등록값 변경 지시/합의가 아님."
+    },
+    {
+      "measure": "turbine_rim_center_separation",
+      "front_px": 270,
+      "top_px": 251,
+      "front_world": 2.2203844510591946,
+      "top_world": 2.271812114031506,
+      "top_over_front_percent": 2.3161602914206547,
+      "top_units_if_this_measure_alone_is_authority": 0.008846153191470895,
+      "warning": "단일부품에만 맞춘 진단 후보. 등록값 변경 지시/합의가 아님."
+    },
+    {
+      "measure": "eye_white_center_separation",
+      "front_px": 140,
+      "top_px": 123,
+      "front_world": 1.1513104561047676,
+      "top_world": 1.1132784463182281,
+      "top_over_front_percent": -3.303367009730218,
+      "top_units_if_this_measure_alone_is_authority": 0.009360247610607867,
+      "warning": "단일부품에만 맞춘 진단 후보. 등록값 변경 지시/합의가 아님."
+    },
+    {
+      "measure": "visible_head_width_approx",
+      "front_px": 194,
+      "top_px": 194,
+      "front_world": 1.5953873463166066,
+      "top_world": 1.755902590127937,
+      "top_over_front_percent": 10.061208281607858,
+      "top_units_if_this_measure_alone_is_authority": 0.008223646115034055,
+      "warning": "단일부품에만 맞춘 진단 후보. 등록값 변경 지시/합의가 아님."
+    }
+  ],
+  "confirmed_registration_effect": {
+    "top_units_over_front_percent": 10.061208281607858,
+    "side_units_over_front_percent": -0.7633587786259444,
+    "front_wing_world_span": 5.476948312612681,
+    "top_wing_world_span": 6.2271184639588695,
+    "top_wing_excess_percent": 13.696863810429738,
+    "current_model_top_manual_image_tip_x": [
+      83,
+      556
+    ],
+    "current_model_top_world_span_from_render": 5.4782588193048145,
+    "model_measurement_warning": "640px review PNG의 tip x를 수동 읽은 값, ±3px. 메시 정점 직접 실측은 아님.",
+    "finding": "TOP 원본 날개는 등록상 FRONT보다 world 폭이13.70% 크다. 현재 모델 TOP의 약5.478 world 폭은 FRONT 원본5.477과 거의 같다. TOP를 보고 모델 전체 날개폭을13.7% 키우면 FRONT를 망가뜨릴 수 있다."
+  },
+  "depth_landmark_conflicts": [
+    {
+      "part": "outer wing tip",
+      "side_Y": 2.360661,
+      "top_Y": 2.283408,
+      "interpretation": "현 등록에서 tip 깊이는 약0.08 world 차이로 가깝다. TOP 전체Y이동/길이축척 변경 전에 이 정합을 보존할 필요."
+    },
+    {
+      "part": "turbine rim center",
+      "side_Y": -0.014153,
+      "top_Y": 0.545608,
+      "interpretation": "동일 fan rim 중심으로 읽으면 TOP가 SIDE보다 약0.56 world 뒤에 있다. tip은 맞는데 fan root가 다르므로 단일 전체평행이동으로 두 점을 동시에 정합할 수 없다."
+    },
+    {
+      "part": "eye white center",
+      "side_Y": -0.805757,
+      "top_Y": -0.422854,
+      "interpretation": "TOP 눈은 SIDE보다 약0.38 world 뒤로 표시된다. 몸통 중심 가림/그림의 시점도 확인 필요. 눈만 SIDE 또는TOP 하나에 강제이동하면 다른뷰가 달라진다."
+    }
+  ],
+  "view_conflicts": [
+    {
+      "component": "turbine circular fan",
+      "evidence": "FRONT outer rim bbox133x135 거의원형, SIDE face43x131 좁은타원, TOP136x144 거의원형. 수동근사.",
+      "interpretation": "같은 평면 원형 ring이 직교 FRONT와TOP에서 모두 거의원형으로 보이고 SIDE만 edge-on인 것은 엄밀한 단일 직교투영과 양립하지 않는다. FRONT와TOP가 동시에 크게보이도록 기울기를 절충할수있지만 둘다원형으로 일치시킬수없다.",
+      "recommendation": "원형 fan 자체를 view별로 늘이지 말고 고정된 진짜 원형/원통으로 유지. FRONT와SIDE rim축을 우선하면 TOP는타원이 남는 것이 정상. TOP의 원형은 원화의 설명적 표현으로 분리 기록."
+    },
+    {
+      "component": "wing feather fan",
+      "evidence": "원본 TOP은 하단 secondary/primary tip들도 좌우로 퍼지는 넓은 fan이다. 현재 모델 TOP은 상부 몇 장이 뒤쪽 대각선으로 겹쳐 좁은 띠처럼 읽힌다. 총폭만의 문제가 아니다.",
+      "interpretation": "front-visible feather 순서와 top-visible feather 순서가 서로 가려져 정확한 각 깃털 대응은 미확정. 전체폭13.7% 차이와 개별깃털 depth/spread 문제를 분리해야 한다.",
+      "recommendation": "외측 최고tip의 FRONT X/Z 및 SIDE Y/Z는 현재에 가깝게 보존. 중/하단 feather의 root-tip Y차, 피치/비틀림/겹침을 개별 수정해 TOP에서 각각의 면적이 보이게 한다. 대응불명 깃털을 같은물체라고 단정한 source-source 강제변형은 금지."
+    },
+    {
+      "component": "eyes",
+      "evidence": "현재review TOP에서 흰자가 얇게 몸통앞쪽 측면에 나타나고, 원본TOP은 긴 타원 흰자와 동공이 몸통옆에서 또렷하다. SIDE 원본 눈center는TOPsource보다world상앞쪽.",
+      "recommendation": "전체머리/눈너비 확대보다 눈정점의 머리곡면 접촉과 위쪽 face각을 조절. 전면 X/Z silhouette와동공노출을 보존하는 범위에서 eye depth/tilt를 바꾸고 세뷰를동시에확인. 원본center 깊이0.38 상충은 남는 제약으로 기록."
+    }
+  ],
+  "calibration_recommendation": {
+    "do_not": "날개전체폭 하나만으로 TOP u=.00796068로 확정하지 말 것. 이 값은 터빈중심간격과눈간격을 약10~15% 추가로 좁힌다.",
+    "diagnostic_candidates": [
+      {
+        "anchor": "FRONT/TOP green head width approximated",
+        "top_u": 0.008223646115034055,
+        "caveat": "head경계가 가려져 신뢰도낮음. 이 경우 날개폭은FRONT보다3.3% 큼."
+      },
+      {
+        "anchor": "turbine rim-center separation",
+        "top_u": 0.008846153191470895,
+        "caveat": "가장명확한쌍중심이나원화TOP팬원형표현/깊이불일치가있음. 날개폭은여전히약11% 큼."
+      },
+      {
+        "anchor": "eye-center separation",
+        "top_u": 0.009360247610607867,
+        "caveat": "작은부품 수동오차 민감, 눈시선/외측면 배치로 의미있는몸통폭proxy가아닐수있음."
+      }
+    ],
+    "decision": "등록오류기여는확인됐지만 source-source 단일척도해가아직증명되지않음. 공통chassis track-center/몸통폭과 fan축으로 적어도2개독립baseline을정한뒤 isotropic TOP scale+translation을 선택하고, wing pose/fan-face 삽화상충은 모델의별도잔차로 유지."
+  }
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "kind": "Catapult",
+    "view": "top",
+    "basis": "same visible body width in FRONT and TOP source; position from original SIDE body center",
+    "old_unit": 0.005261487369389497,
+    "new_unit": 0.006554133053417154,
+    "uncertainty": "manual body edges +/-8-12px; not exact similarity"
+  },
+  {
+    "kind": "Carrot",
+    "view": "top",
+    "basis": "same visible body width in FRONT and TOP source; position from original SIDE body center",
+    "old_unit": 0.005541244454542108,
+    "new_unit": 0.006991627103866626,
+    "uncertainty": "manual body edges +/-8-12px; not exact similarity"
+  },
+  {
+    "kind": "Poseidon",
+    "basis": "FRONT body [103,351,365,317], SIDE torso [686,344,539,321], TOP torso [1490,191,359,461]; tail clipped source crop restored",
+    "uncertainty": "body perimeter estimates and artistic projection conflicts remain"
+  }
+]

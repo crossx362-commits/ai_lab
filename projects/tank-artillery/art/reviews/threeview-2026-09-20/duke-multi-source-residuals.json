@@ -1,0 +1,1093 @@
+{
+  "measurement": "Source points manually read from original PNG; tolerance eye ±5 px, head/neck ±8 px. Model points are exact projected full-mesh bbox centers, not visible-pixel centroids. Both 640-pixel render coordinate and world residual are included.",
+  "registration_snapshot": {
+    "Duke": {
+      "front": {
+        "center": [
+          0.0,
+          0.0,
+          1.6924999952316284
+        ],
+        "ortho_scale": 3.880200033187866,
+        "units_per_reference_pixel": 0.005717948766855093,
+        "reference_crop": [
+          12,
+          147,
+          504,
+          585
+        ]
+      },
+      "side": {
+        "center": [
+          0.0,
+          0.0,
+          1.6924999952316284
+        ],
+        "ortho_scale": 3.880200033187866,
+        "units_per_reference_pixel": 0.005603015123300217,
+        "reference_crop": [
+          599,
+          138,
+          573,
+          597
+        ]
+      },
+      "top": {
+        "center": [
+          0.0,
+          0.0,
+          1.6924999952316284
+        ],
+        "ortho_scale": 3.7246012115478515,
+        "units_per_reference_pixel": 0.0050724535756766515,
+        "reference_crop": [
+          1244,
+          114,
+          501,
+          633
+        ]
+      }
+    },
+    "MultiMissile": {
+      "front": {
+        "center": [
+          0.0,
+          -0.5420366525650024,
+          1.7016843557357788
+        ],
+        "ortho_scale": 4.086958780288696,
+        "units_per_reference_pixel": 0.006597828329279182,
+        "reference_crop": [
+          24,
+          183,
+          459,
+          534
+        ]
+      },
+      "side": {
+        "center": [
+          0.0,
+          -0.5420366525650024,
+          1.7016843557357788
+        ],
+        "ortho_scale": 4.152524963929691,
+        "units_per_reference_pixel": 0.006280285789367349,
+        "reference_crop": [
+          594,
+          165,
+          570,
+          561
+        ]
+      },
+      "top": {
+        "center": [
+          0.0,
+          -0.5420366525650024,
+          1.7016843557357788
+        ],
+        "ortho_scale": 4.783751029968261,
+        "units_per_reference_pixel": 0.005925177157610312,
+        "reference_crop": [
+          1237,
+          75,
+          501,
+          696
+        ]
+      }
+    }
+  },
+  "source_original_px": {
+    "Duke": {
+      "eye": {
+        "front": [
+          174,
+          406
+        ],
+        "side": [
+          1034,
+          383
+        ],
+        "top": [
+          1409,
+          572
+        ]
+      }
+    },
+    "MultiMissile": {
+      "eye": {
+        "front": [
+          181,
+          506
+        ],
+        "side": [
+          1098,
+          445
+        ],
+        "top": [
+          1416,
+          667
+        ]
+      },
+      "head_bounds": {
+        "front": [
+          153,
+          435,
+          204,
+          194
+        ],
+        "side": [
+          1015,
+          385,
+          175,
+          173
+        ],
+        "top": [
+          1397,
+          580,
+          184,
+          183
+        ]
+      },
+      "neck_body_contact": {
+        "side": [
+          971,
+          539
+        ],
+        "top": [
+          1488,
+          533
+        ]
+      },
+      "neck_head_contact": {
+        "side": [
+          1029,
+          499
+        ],
+        "top": [
+          1488,
+          588
+        ]
+      }
+    }
+  },
+  "models": {
+    "Duke": {
+      "source_world": {
+        "eye": {
+          "front": [
+            -0.51462,
+            null,
+            1.88405
+          ],
+          "side": [
+            null,
+            -0.83205,
+            1.99226
+          ],
+          "top": [
+            -0.43369,
+            -0.71775,
+            null
+          ]
+        }
+      },
+      "variants": {
+        "before": {
+          "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/Duke/proposed.blend",
+          "eye_full_mesh_center_world": [
+            -0.50541,
+            -1.34374,
+            1.97833
+          ],
+          "eye_by_view": {
+            "front": {
+              "source_640_px": [
+                235.11936,
+                288.40554
+              ],
+              "model_640_px": [
+                236.63831,
+                272.85554
+              ],
+              "residual_640_px_model_minus_source": [
+                1.51894,
+                -15.55
+              ],
+              "residual_world_model_minus_source": [
+                0.00921,
+                null,
+                0.09428
+              ]
+            },
+            "side": {
+              "source_640_px": [
+                457.23791,
+                270.55738
+              ],
+              "model_640_px": [
+                541.63721,
+                272.85554
+              ],
+              "residual_640_px_model_minus_source": [
+                84.39929,
+                2.29816
+              ],
+              "residual_world_model_minus_source": [
+                null,
+                -0.5117,
+                -0.01393
+              ]
+            },
+            "top": {
+              "source_640_px": [
+                245.47802,
+                443.3317
+              ],
+              "model_640_px": [
+                233.15579,
+                550.89632
+              ],
+              "residual_640_px_model_minus_source": [
+                -12.32223,
+                107.56462
+              ],
+              "residual_world_model_minus_source": [
+                -0.07171,
+                -0.62599,
+                null
+              ]
+            }
+          },
+          "reference_planes": 3,
+          "controls": {
+            "Turret": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                1.6
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "Barrel": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                -1.0
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                0.12
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "FirePoint": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                -0.35
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ]
+          }
+        },
+        "after": {
+          "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/group-b/Duke/model.blend",
+          "eye_full_mesh_center_world": [
+            -0.50541,
+            -0.7749,
+            1.97833
+          ],
+          "eye_by_view": {
+            "front": {
+              "source_640_px": [
+                235.11936,
+                288.40554
+              ],
+              "model_640_px": [
+                236.63829,
+                272.85553
+              ],
+              "residual_640_px_model_minus_source": [
+                1.51893,
+                -15.55002
+              ],
+              "residual_world_model_minus_source": [
+                0.00921,
+                null,
+                0.09428
+              ]
+            },
+            "side": {
+              "source_640_px": [
+                457.23791,
+                270.55738
+              ],
+              "model_640_px": [
+                447.81195,
+                272.85553
+              ],
+              "residual_640_px_model_minus_source": [
+                -9.42597,
+                2.29814
+              ],
+              "residual_world_model_minus_source": [
+                null,
+                0.05715,
+                -0.01393
+              ]
+            },
+            "top": {
+              "source_640_px": [
+                245.47802,
+                443.3317
+              ],
+              "model_640_px": [
+                233.15578,
+                453.15141
+              ],
+              "residual_640_px_model_minus_source": [
+                -12.32224,
+                9.81971
+              ],
+              "residual_world_model_minus_source": [
+                -0.07171,
+                -0.05715,
+                null
+              ]
+            }
+          },
+          "reference_planes": 3,
+          "controls": {
+            "Turret": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                1.6
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "Barrel": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                -1.0
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                0.12
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "FirePoint": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                -0.35
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "MultiMissile": {
+      "source_world": {
+        "eye": {
+          "front": [
+            -0.47834,
+            null,
+            1.33221
+          ],
+          "side": [
+            null,
+            -1.91742,
+            1.70482
+          ],
+          "top": [
+            -0.42365,
+            -1.98778,
+            null
+          ]
+        },
+        "head_bounds": {
+          "front": {
+            "min_corner": [
+              -0.66308,
+              null,
+              1.80065
+            ],
+            "max_corner": [
+              0.68288,
+              null,
+              0.52067
+            ]
+          },
+          "side": {
+            "min_corner": [
+              null,
+              -1.39616,
+              2.08164
+            ],
+            "max_corner": [
+              null,
+              -2.49521,
+              0.99515
+            ]
+          },
+          "top": {
+            "min_corner": [
+              -0.53623,
+              -1.47229,
+              null
+            ],
+            "max_corner": [
+              0.554,
+              -2.5566,
+              null
+            ]
+          }
+        },
+        "neck_body_contact": {
+          "side": [
+            null,
+            -1.11982,
+            1.11448
+          ],
+          "top": [
+            0.00296,
+            -1.19381,
+            null
+          ]
+        },
+        "neck_head_contact": {
+          "side": [
+            null,
+            -1.48408,
+            1.36569
+          ],
+          "top": [
+            0.00296,
+            -1.51969,
+            null
+          ]
+        }
+      },
+      "variants": {
+        "before": {
+          "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/MultiMissile/proposed.blend",
+          "eye_full_mesh_center_world": [
+            -0.52305,
+            -2.25,
+            1.32232
+          ],
+          "eye_by_view": {
+            "front": {
+              "source_640_px": [
+                245.09363,
+                377.85871
+              ],
+              "model_640_px": [
+                238.09215,
+                379.4069
+              ],
+              "residual_640_px_model_minus_source": [
+                -7.00148,
+                1.54819
+              ],
+              "residual_world_model_minus_source": [
+                -0.04471,
+                null,
+                -0.00989
+              ]
+            },
+            "side": {
+              "source_640_px": [
+                531.97822,
+                319.51603
+              ],
+              "model_640_px": [
+                583.23657,
+                378.46889
+              ],
+              "residual_640_px_model_minus_source": [
+                51.25835,
+                58.95286
+              ],
+              "residual_world_model_minus_source": [
+                null,
+                -0.33258,
+                -0.38251
+              ]
+            },
+            "top": {
+              "source_640_px": [
+                263.32144,
+                513.42053
+              ],
+              "model_640_px": [
+                250.02269,
+                548.50195
+              ],
+              "residual_640_px_model_minus_source": [
+                -13.29875,
+                35.08142
+              ],
+              "residual_world_model_minus_source": [
+                -0.0994,
+                -0.26222,
+                null
+              ]
+            }
+          },
+          "head_mesh_bounds_world": {
+            "min": [
+              -0.65,
+              -2.61,
+              0.88
+            ],
+            "max": [
+              0.65,
+              -1.36,
+              1.78
+            ]
+          },
+          "reference_planes": 3,
+          "controls": {
+            "Turret": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                0.3
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                2.48
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "Barrel": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.9848077,
+                0.1736482,
+                0.0
+              ],
+              [
+                0.0,
+                -0.1736482,
+                0.9848077,
+                0.1
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "FirePoint": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                -0.88
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ]
+          }
+        },
+        "after": {
+          "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/group-b/MultiMissile/model.blend",
+          "eye_full_mesh_center_world": [
+            -0.52305,
+            -2.25,
+            1.32232
+          ],
+          "eye_by_view": {
+            "front": {
+              "source_640_px": [
+                245.09363,
+                377.85871
+              ],
+              "model_640_px": [
+                238.09215,
+                379.4069
+              ],
+              "residual_640_px_model_minus_source": [
+                -7.00148,
+                1.54819
+              ],
+              "residual_world_model_minus_source": [
+                -0.04471,
+                null,
+                -0.00989
+              ]
+            },
+            "side": {
+              "source_640_px": [
+                531.97822,
+                319.51603
+              ],
+              "model_640_px": [
+                583.23657,
+                378.46889
+              ],
+              "residual_640_px_model_minus_source": [
+                51.25835,
+                58.95286
+              ],
+              "residual_world_model_minus_source": [
+                null,
+                -0.33258,
+                -0.38251
+              ]
+            },
+            "top": {
+              "source_640_px": [
+                263.32144,
+                513.42053
+              ],
+              "model_640_px": [
+                250.02269,
+                548.50195
+              ],
+              "residual_640_px_model_minus_source": [
+                -13.29875,
+                35.08142
+              ],
+              "residual_world_model_minus_source": [
+                -0.0994,
+                -0.26222,
+                null
+              ]
+            }
+          },
+          "head_mesh_bounds_world": {
+            "min": [
+              -0.65,
+              -2.61,
+              0.88
+            ],
+            "max": [
+              0.65,
+              -1.36,
+              1.78
+            ]
+          },
+          "reference_planes": 3,
+          "controls": {
+            "Turret": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                0.3
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                2.48
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "Barrel": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.9848077,
+                0.1736482,
+                0.0
+              ],
+              [
+                0.0,
+                -0.1736482,
+                0.9848077,
+                0.1
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "FirePoint": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                -0.88
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ]
+          }
+        },
+        "depth_candidate_rejected_front_visibility": {
+          "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/group-b/MultiMissile-depth-candidate/model.blend",
+          "eye_full_mesh_center_world": [
+            -0.59183,
+            -1.9526,
+            1.32232
+          ],
+          "eye_by_view": {
+            "front": {
+              "source_640_px": [
+                245.09363,
+                377.85871
+              ],
+              "model_640_px": [
+                227.32134,
+                379.4069
+              ],
+              "residual_640_px_model_minus_source": [
+                -17.7723,
+                1.54819
+              ],
+              "residual_world_model_minus_source": [
+                -0.11349,
+                null,
+                -0.00989
+              ]
+            },
+            "side": {
+              "source_640_px": [
+                531.97822,
+                319.51603
+              ],
+              "model_640_px": [
+                537.40028,
+                378.46889
+              ],
+              "residual_640_px_model_minus_source": [
+                5.42206,
+                58.95286
+              ],
+              "residual_world_model_minus_source": [
+                null,
+                -0.03518,
+                -0.38251
+              ]
+            },
+            "top": {
+              "source_640_px": [
+                263.32144,
+                513.42053
+              ],
+              "model_640_px": [
+                240.82074,
+                508.71385
+              ],
+              "residual_640_px_model_minus_source": [
+                -22.50071,
+                -4.70668
+              ],
+              "residual_world_model_minus_source": [
+                -0.16818,
+                0.03518,
+                null
+              ]
+            }
+          },
+          "head_mesh_bounds_world": {
+            "min": [
+              -0.65,
+              -2.61,
+              0.88
+            ],
+            "max": [
+              0.65,
+              -1.36,
+              1.78
+            ]
+          },
+          "reference_planes": 3,
+          "controls": {
+            "Turret": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                0.3
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                2.48
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "Barrel": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.9848077,
+                0.1736482,
+                0.0
+              ],
+              [
+                0.0,
+                -0.1736482,
+                0.9848077,
+                0.1
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "FirePoint": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                -0.88
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ]
+          }
+        }
+      }
+    }
+  },
+  "pending_source_conflicts": [
+    {
+      "kind": "MultiMissile",
+      "measure": "eye center height",
+      "front_world_z": 1.3322059692961445,
+      "side_world_z": 1.7048244986304626,
+      "difference_world": 0.37261852933431805,
+      "decision": "Do not raise entire head/eyes without view authority; FRONT would change."
+    },
+    {
+      "kind": "MultiMissile",
+      "measure": "head width",
+      "front_world": 1.345956979172953,
+      "top_world": 1.0902325970002975,
+      "decision": "Preserve current X width; source-derived values conflict. No arbitrary average."
+    },
+    {
+      "kind": "MultiMissile",
+      "measure": "eye depth versus visibility",
+      "source_side_top_depth_agree": true,
+      "decision": "Candidate at agreed depth loses FRONT white/pupil visibility on the unchanged head; retain the prior eye placement pending view authority. Candidate renders preserved."
+    }
+  ],
+  "changes": {
+    "Duke": "Source-derived mean SIDE/TOP eye depth, reduced upward shear .15; continuous cheek recess to seat existing eyes; existing cap and upper collar disks replaced by annular metal plus transmitting glass. Neck-cap depth preserved because source plug placement differs across views.",
+    "MultiMissile": "Source-derived Y-only neck contact correction. Height and width unchanged. Rejected depth-only eye candidate preserved separately; prior three-view visible eye placement retained."
+  },
+  "verification": {
+    "control_matrices_equal": {
+      "Duke": true,
+      "MultiMissile": true
+    },
+    "main_project_exports_written": false
+  }
+}

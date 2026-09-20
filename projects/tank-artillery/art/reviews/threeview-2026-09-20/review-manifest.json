@@ -1,0 +1,146 @@
+[
+  {
+    "kind": "Catapult",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/Catapult/proposed.blend",
+    "sha256": "f5ebd672fbd91b0aa697b852a11fb735d7ed7124371b5effd93e3cb07681267a",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "CrossBow",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/CrossBow/proposed.blend",
+    "sha256": "585e8c6e95e0d5051c68343bde1de89e8dfad5f6b76b733d6fbaa5e6e26f00d6",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "Cannon",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/Cannon/proposed.blend",
+    "sha256": "13d3cb00ad2fcd6b91c3483e450764c5154f073bcf412e9138db6778c4b9af7b",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "Carrot",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/Carrot/proposed.blend",
+    "sha256": "83c27309d5c59651f941e50b59c2dafe6db97febc1c0364401243bf89f985383",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "Duke",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/Duke/proposed.blend",
+    "sha256": "80634f452996646c065991d3eb4388ad3b36c9a5b601f888a4e16ae848f01bb7",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "MineLander",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/MineLander/proposed.blend",
+    "sha256": "35dec79ef5f696d1d6510268c3fc1df5aacdd968f00e3d167f33d66d0617f392",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "Missile",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/Missile/proposed.blend",
+    "sha256": "437bdff58a4373eb938dd2aef8534699e9cae4105d09bd486abb5c84f3221003",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "MultiMissile",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/MultiMissile/proposed.blend",
+    "sha256": "1c87488168540c12f542b8de3ca51d95b4bca16da12eb1bdd39481791d704ddc",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "SuperTank",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/SuperTank/proposed.blend",
+    "sha256": "1a87a4c47d3b0c6345e2ea13f3556266547221204ba20c28760c5f27fe7bb02a",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "IonAttacker",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/IonAttacker/proposed.blend",
+    "sha256": "564d0817cc82756f0a7897eedc0e2ff3ee3ee28cf93129ae9e627f3e89eb7acb",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "Poseidon",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/Poseidon/proposed.blend",
+    "sha256": "00f70ca275553f4a55ffa100b70803469713c02555108981261eaa4cfd9b53d5",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  },
+  {
+    "kind": "SecWind",
+    "views": [
+      "front",
+      "side",
+      "top"
+    ],
+    "blend": "/Users/junholee/ai_lab/projects/tank-artillery/output/threeview-correction/review/SecWind/proposed.blend",
+    "sha256": "cfee5d45ca186fb8d93075749c9466c5703fd156741b0479dbd901d93c7abc71",
+    "status": "검토 중 · 원화 일치 미승인",
+    "deployed": false
+  }
+]

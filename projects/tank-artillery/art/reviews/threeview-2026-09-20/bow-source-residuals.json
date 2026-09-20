@@ -1,0 +1,28 @@
+{
+  "kind": "CrossBow",
+  "landmark": "bow central clamp center on depth axis",
+  "source_measurement": "Visual original source pixels; approx +/- 5 pixels. Same central clamp feature, not model-fitted image.",
+  "original_side_px": [
+    834,
+    267
+  ],
+  "original_top_px": [
+    1473,
+    238
+  ],
+  "side_registered_world_y": 0.4185739405803641,
+  "top_registered_world_y": 1.156855391064271,
+  "source_cross_view_depth_disagreement": 0.7382814504839068,
+  "new_model_clamp_center_y": 0.423,
+  "new_model_side_residual": 0.004426059419635864,
+  "new_model_top_residual": -0.7338553910642709,
+  "old_model_clamp_center_y": 0.97,
+  "old_string_apex_y": 1.758,
+  "new_string_apex_y": 0.65152,
+  "edits": [
+    "All 9 bow part prefixes shifted together in mesh world coordinates by Y -0.547",
+    "String rear-depth compressed 0.29 around original clamp center to remain attached at tip cap and within clamp stock depth",
+    "Mounting stem replaced with closed vertical prism: x +/-0.115, y [0.313,0.533], z [1.22,2.08]"
+  ],
+  "constraints": "Control empties and cameras unchanged. FRONT, SIDE, TOP source planes all present before apply. TOP position remains inconsistent with original because SIDE/TOP source imply different clamp depths. No match-complete claim."
+}

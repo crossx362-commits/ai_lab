@@ -1,0 +1,152 @@
+{
+  "method": "Original source pixels mapped using immutable current registration. Approximate hand-read pixels +/-5px. No cross-view averaging and no registration edit.",
+  "changes": {
+    "Carrot": [
+      "Only common central-tip height corrected in art pose and inverse-transformed to rest; current X/Y preserved.",
+      "Right brow actual solid mirrored from left in art-pose world coordinates; final posed bounds symmetric."
+    ],
+    "Cannon": []
+  },
+  "landmarks": {
+    "Carrot_central_leaf_tip": {
+      "front": {
+        "source_px": [
+          288,
+          160
+        ],
+        "registered_world": {
+          "x": 0.009129562664553115,
+          "z": 3.300556165055933
+        }
+      },
+      "side": {
+        "source_px": [
+          700,
+          185
+        ],
+        "registered_world": {
+          "y": 1.0618355810870612,
+          "z": 3.3102104152299434
+        }
+      },
+      "top": {
+        "source_px": [
+          1483,
+          89
+        ],
+        "registered_world": {
+          "x": -0.0148885062018978,
+          "y": 2.6962494600318325
+        }
+      }
+    },
+    "Carrot_crown_root_visible": {
+      "front": {
+        "source_px": [
+          288,
+          329
+        ],
+        "registered_world": {
+          "x": 0.009129562664553115,
+          "z": 2.271958771516282
+        }
+      },
+      "side": {
+        "source_px": [
+          831,
+          330
+        ],
+        "registered_world": {
+          "y": 0.223280003472763,
+          "z": 2.382038211000377
+        }
+      },
+      "top": {
+        "source_px": [
+          1483,
+          326
+        ],
+        "registered_world": {
+          "x": -0.0148885062018978,
+          "y": 1.039233836415442
+        }
+      }
+    },
+    "Cannon_muzzle_opening_center": {
+      "front": {
+        "source_px": [
+          246,
+          476
+        ],
+        "registered_world": {
+          "x": 0.0017999295265443867,
+          "z": 1.800705349573525
+        }
+      },
+      "side": {
+        "source_px": [
+          991,
+          385
+        ],
+        "registered_world": {
+          "y": -1.6565853229818497,
+          "z": 2.3459890793989047
+        }
+      },
+      "top": {
+        "source_px": [
+          1286,
+          744
+        ],
+        "registered_world": {
+          "x": -0.004278055999590003,
+          "y": -1.865474804587986
+        }
+      }
+    },
+    "Cannon_muzzle_rear_axis_center": {
+      "side": {
+        "source_px": [
+          896,
+          417
+        ],
+        "registered_world": {
+          "y": -1.0772357044372967,
+          "z": 2.15083973420495
+        }
+      }
+    }
+  },
+  "blocked": {
+    "Carrot_central_tip_depth": {
+      "source_side_y": 1.0618355810870612,
+      "source_top_y": 2.6962494600318325,
+      "source_disagreement": 1.6344138789447713,
+      "current_model_art_tip_y": 1.654,
+      "side_residual": 0.5921644189129387,
+      "top_residual": -1.0422494600318326,
+      "status": "BLOCKED_PENDING_OWNER_VIEW_PRIORITY; preserved current depth, no midpoint compromise"
+    },
+    "Cannon_muzzle_height": {
+      "source_front_z": 1.800705349573525,
+      "source_side_z": 2.3459890793989047,
+      "source_disagreement": 0.5452837298253796,
+      "current_model_outer_rim_center_z": 1.8310499999999998,
+      "front_residual": 0.03034465042647483,
+      "side_residual": -0.5149390793989048,
+      "status": "BLOCKED_PENDING_OWNER_VIEW_PRIORITY; no geometry adjustment"
+    },
+    "Cannon_axis": {
+      "source_side_axis_up_degrees": 18.615692007331027,
+      "current_preview_axis_up_degrees": 12,
+      "status": "No arbitrary pitch change; barrel control unchanged"
+    }
+  },
+  "verified_common_height": {
+    "before": 3.3643,
+    "after": 3.300556165055933,
+    "front_residual": 0,
+    "side_residual": -0.009654250174010226,
+    "pose": "Barrel X -10deg after hook; mesh uses inverse of posedWorld * restWorld.inverted()"
+  }
+}
